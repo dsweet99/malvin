@@ -1,8 +1,8 @@
 /target
 **/*.rs.bk
 /_malvin/
-log
-log_2
+./log
+./log_2
 *.md~
 .kissconfig~
 __pycache__/
