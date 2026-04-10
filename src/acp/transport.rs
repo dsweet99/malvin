@@ -37,6 +37,14 @@ fn agent_program(bin_override: Option<&Path>) -> String {
         .unwrap_or_else(|| AGENT_BIN.to_string())
 }
 
+pub(crate) fn requires_cursor_login_auth(
+    explicit_api_key: Option<&str>,
+    explicit_auth_token: Option<&str>,
+) -> bool {
+    effective_cursor_api_key(explicit_api_key).is_none()
+        && effective_cursor_auth_token(explicit_auth_token).is_none()
+}
+
 pub(crate) fn build_agent_acp_command(
     cwd: &Path,
     bin_override: Option<&Path>,
@@ -256,6 +264,7 @@ pub(crate) async fn handshake_inner(
     next_id: &Arc<AtomicU64>,
     cwd: &Path,
     rpc_timeout: std::time::Duration,
+    require_cursor_login_auth: bool,
 ) -> Result<String, String> {
     let init = json!({
         "protocolVersion": 1,
@@ -268,15 +277,17 @@ pub(crate) async fn handshake_inner(
     let _ = rpc_request(io, next_id, "initialize", init, rpc_timeout)
         .await
         .map_err(|e| format!("ACP `initialize` failed: {e}"))?;
-    let _ = rpc_request(
-        io,
-        next_id,
-        "authenticate",
-        json!({ "methodId": "cursor_login" }),
-        rpc_timeout,
-    )
-    .await
-    .map_err(|e| format!("ACP `authenticate` (methodId=cursor_login) failed: {e}"))?;
+    if require_cursor_login_auth {
+        let _ = rpc_request(
+            io,
+            next_id,
+            "authenticate",
+            json!({ "methodId": "cursor_login" }),
+            rpc_timeout,
+        )
+        .await
+        .map_err(|e| format!("ACP `authenticate` (methodId=cursor_login) failed: {e}"))?;
+    }
     let new_params = json!({
         "cwd": cwd.to_string_lossy(),
         "mcpServers": []
@@ -663,12 +674,57 @@ mod tests {
         assert_eq!(agent_program(None), AGENT_BIN);
     }
 
+    #[test]
+    fn requires_cursor_login_auth_skips_login_when_process_credentials_exist() {
+        let _guard = crate::test_utils::test_env_lock();
+        clear_cursor_env_for_test();
+        unsafe {
+            std::env::set_var("CURSOR_API_KEY", "key-from-env");
+        }
+        assert!(!requires_cursor_login_auth(None, None));
+        clear_cursor_env_for_test();
+    }
+
     async fn write_bad_session_new_mock(bin: &Path) {
         let script = format!(
             "#!/usr/bin/env python3\n{}",
             crate::test_utils::ACP_MOCK_JSONRPC_LOOP_PY
         )
         .replace("\"sessionId\": \"t1\"", "\"wrongKey\": \"t1\"");
+        tokio::fs::write(bin, script.as_bytes()).await.unwrap();
+        let mut perms = std::fs::metadata(bin).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(bin, perms).unwrap();
+        crate::test_utils::sync_test_executable(bin);
+    }
+
+    async fn write_authenticate_rejected_but_session_new_ok_mock(bin: &Path) {
+        let script = r#"#!/usr/bin/env python3
+import json, sys
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    msg = json.loads(line)
+    mid = msg.get("method")
+    rid = msg.get("id")
+    if mid == "initialize":
+        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
+    elif mid == "authenticate":
+        print(json.dumps({
+            "jsonrpc": "2.0",
+            "id": rid,
+            "error": {
+                "code": -32602,
+                "message": "Invalid params",
+                "data": {"message": "Failed to open browser for login."}
+            }
+        }), flush=True)
+    elif mid == "session/new":
+        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": "t1"}}), flush=True)
+    elif rid is not None:
+        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
+"#;
         tokio::fs::write(bin, script.as_bytes()).await.unwrap();
         let mut perms = std::fs::metadata(bin).unwrap().permissions();
         perms.set_mode(0o755);
@@ -731,11 +787,50 @@ mod tests {
             pending,
             acp_verbose: false,
         };
-        let err = handshake_inner(&io, &next_id, tmp.path(), acp_rpc_timeout())
+        let err = handshake_inner(&io, &next_id, tmp.path(), acp_rpc_timeout(), true)
             .await
         .unwrap_err();
         assert!(err.contains("sessionId"));
 
+        let _ = child.kill().await;
+        let _ = child.wait().await;
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
+        let _guard = crate::test_utils::test_env_lock();
+        clear_cursor_env_for_test();
+        unsafe {
+            std::env::set_var("CURSOR_API_KEY", "env-key");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let bin = tmp.path().join("auth-rejected-session-ok");
+        write_authenticate_rejected_but_session_new_ok_mock(&bin).await;
+
+        let mut cmd = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false);
+        let mut child = super::spawn_agent_acp_child(&mut cmd).await.expect("spawn");
+        let stdin = Arc::new(Mutex::new(child.stdin.take().unwrap()));
+        let stdout = child.stdout.take().unwrap();
+
+        let pending = Arc::new(Mutex::new(HashMap::new()));
+        let reader_dead = Arc::new(AtomicBool::new(false));
+        let next_id = Arc::new(AtomicU64::new(1));
+
+        spawn_test_reader_loop(stdout, pending.clone(), stdin.clone(), reader_dead.clone());
+
+        let io = AcpStdioRpc {
+            reader_dead,
+            stdin,
+            pending,
+            acp_verbose: false,
+        };
+        let sid = handshake_inner(&io, &next_id, tmp.path(), acp_rpc_timeout(), false)
+            .await
+            .expect("session/new should work without cursor_login authenticate");
+        assert_eq!(sid, "t1");
+
+        clear_cursor_env_for_test();
         let _ = child.kill().await;
         let _ = child.wait().await;
     }

@@ -1,4 +1,4 @@
-//! Regression: Python `orchestrator.py` syncs after the review prompt and skips kpop when `review.md` is already `LGTM`.
+//! Regression: syncs after the review prompt and skips kpop when `review.md` is already `LGTM`.
 
 #[test]
 fn reviewer_ops_syncs_and_checks_lgtm_before_kpop_prompt() {

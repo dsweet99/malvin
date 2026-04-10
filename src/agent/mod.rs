@@ -1,4 +1,4 @@
-//! Cursor **`agent acp`** client (replaces subprocess `cursor-agent` from the Python malvin).
+//! Cursor **`agent acp`** client.
 
 mod client;
 mod ops;

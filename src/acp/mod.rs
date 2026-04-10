@@ -52,9 +52,9 @@ pub struct AcpSpawnArgs<'a> {
     pub acp_verbose: bool,
     pub george_acp_lane: Option<&'a str>,
     pub ui_idle_notify: Option<Arc<Notify>>,
-    /// Passed through to `agent --model` when non-empty (parity with Python `--model` on cursor-agent).
+    /// Passed through to `agent --model` when non-empty.
     pub model: Option<&'a str>,
-    /// When true, passes `agent --force` (parity with Python `--force` on cursor-agent).
+    /// When true, passes `agent --force`.
     pub force: bool,
 }
 
@@ -73,6 +73,7 @@ async fn acp_spawn_start_reader_and_handshake(
     acp_verbose: bool,
     cwd: &Path,
     rpc_timeout: Duration,
+    require_cursor_login_auth: bool,
 ) -> Result<(Child, String), String> {
     let prompt_cleanup = Arc::new(PromptRpcCleanup {
         busy: busy.clone(),
@@ -96,7 +97,15 @@ async fn acp_spawn_start_reader_and_handshake(
         pending: pending.clone(),
         acp_verbose,
     };
-    let session_id = match transport::handshake_inner(&io, &next_id, cwd, rpc_timeout).await {
+    let session_id = match transport::handshake_inner(
+        &io,
+        &next_id,
+        cwd,
+        rpc_timeout,
+        require_cursor_login_auth,
+    )
+    .await
+    {
         Ok(s) => s,
         Err(e) => {
             let _ = child.kill().await;
@@ -111,6 +120,8 @@ impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     pub async fn spawn(args: AcpSpawnArgs<'_>) -> Result<Self, String> {
         let rpc_timeout = Duration::from_secs(args.rpc_timeout_secs.max(1));
+        let require_cursor_login_auth =
+            transport::requires_cursor_login_auth(args.api_key, args.auth_token);
         let mut cmd = transport::build_agent_acp_command(
             args.cwd,
             args.bin_override,
@@ -154,6 +165,7 @@ impl AcpSession {
             args.acp_verbose,
             args.cwd,
             rpc_timeout,
+            require_cursor_login_auth,
         )
         .await?;
 

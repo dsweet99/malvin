@@ -36,7 +36,7 @@ impl AgentClient {
         }
     }
 
-    /// Verify API key env or `agent` / `cursor-agent` auth probes (same intent as Python malvin).
+    /// Verify API key env or `agent` / `cursor-agent` auth probes.
     ///
     /// # Errors
     ///

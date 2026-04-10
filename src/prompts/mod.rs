@@ -1,4 +1,4 @@
-//! Prompt templates under `~/.malvin/prompts` with embedded defaults (ported from Python).
+//! Prompt templates under `~/.malvin/prompts` with embedded defaults.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -131,7 +131,7 @@ impl PromptStore {
         )))
     }
 
-    /// Load `filename`, substitute `{{ key }}` → `$key` for Python `string.Template`, then substitute.
+    /// Load `filename`, substitute `{{ key }}` → `$key`, then substitute.
     /// The same expansion is applied to `coding_rules.md` before it is injected into the main template.
     ///
     /// # Errors
@@ -175,7 +175,7 @@ fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> Stri
     substitute_template(&translated, context)
 }
 
-/// Python `string.Template.safe_substitute`-style `$identifier` replacement (no `${}` brace forms).
+/// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
 fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
     let mut out = String::with_capacity(template.len());
     let chars: Vec<char> = template.chars().collect();

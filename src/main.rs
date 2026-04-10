@@ -1,4 +1,4 @@
-//! CLI entry: `malvin plan.md` (Rust port of Python malvin).
+//! CLI entry: `malvin plan.md`.
 
 use std::path::PathBuf;
 
@@ -14,10 +14,10 @@ use malvin::prompts::{PromptError, PromptStore};
 struct Args {
     /// Path to the plan file (copied into `_malvin/.../plan.md`).
     plan_path: PathBuf,
-    /// Model label (passed to `agent --model`, same role as Python `--model` for cursor-agent).
+    /// Model label (passed to `agent --model`).
     #[arg(long, default_value = "opus-4.5")]
     model: String,
-    /// Disable force-mode compatibility flag (default: force on, matching Python malvin).
+    /// Disable force-mode (default: force on).
     #[arg(long, default_value_t = false)]
     no_force: bool,
     #[arg(long, default_value = "5")]

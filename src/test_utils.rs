@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-/// Python body for minimal stdio `agent acp` test doubles (JSON-RPC handlers only).
+/// Script body for minimal stdio `agent acp` test doubles (JSON-RPC handlers only).
 pub const ACP_MOCK_JSONRPC_LOOP_PY: &str = r#"import sys, json
 for line in sys.stdin:
     line = line.strip()

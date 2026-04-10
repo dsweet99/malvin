@@ -3,7 +3,7 @@ use std::path::Path;
 /// Paths and rendered bodies for one reviewer `review` + `kpop` pair in a single ACP session.
 pub struct ReviewerPromptPair<'a> {
     pub cwd: &'a Path,
-    /// Workspace `review.md` (synced to the artifact after the review prompt; see Python `orchestrator.py`).
+    /// Workspace `review.md` (synced to the artifact after the review prompt).
     pub workspace_review_path: &'a Path,
     /// `_malvin/.../review.md` copy used for [`crate::review_sync::is_lgtm`].
     pub artifact_review_path: &'a Path,

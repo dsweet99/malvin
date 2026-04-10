@@ -1,4 +1,4 @@
-//! Implement → review loops (ported from Python `orchestrator.py`).
+//! Implement → review loops.
 
 mod helpers;
 

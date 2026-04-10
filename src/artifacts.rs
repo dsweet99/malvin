@@ -1,4 +1,4 @@
-//! Run directories and log paths (ported from Python `artifacts.py`).
+//! Run directories and log paths.
 
 use chrono::Utc;
 use rand::Rng;
@@ -39,6 +39,7 @@ pub fn create_run_artifacts(plan_source: &Path, base_dir: Option<&Path>) -> std:
         plan_path: plan_target,
         work_dir: plan_source
             .parent()
+            .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
     })
 }
@@ -97,5 +98,18 @@ mod tests {
             r.log_path("a\\b").file_name(),
             Some(std::ffi::OsStr::new("a_b.log"))
         );
+    }
+
+    #[test]
+    fn create_run_artifacts_relative_plan_uses_dot_work_dir() {
+        let _guard = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let old_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(tmp.path()).unwrap();
+        std::fs::write("plan.md", "restated request").unwrap();
+
+        let art = create_run_artifacts(Path::new("plan.md"), None).unwrap();
+        std::env::set_current_dir(old_cwd).unwrap();
+        assert_eq!(art.work_dir, PathBuf::from("."));
     }
 }
