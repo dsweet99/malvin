@@ -48,7 +48,7 @@ pub struct AcpSpawnArgs<'a> {
     pub bin_override: Option<&'a Path>,
     pub api_key: Option<&'a str>,
     pub auth_token: Option<&'a str>,
-    pub rpc_timeout_secs: u64,
+    pub rpc_timeout: Duration,
     pub acp_verbose: bool,
     pub george_acp_lane: Option<&'a str>,
     pub ui_idle_notify: Option<Arc<Notify>>,
@@ -119,7 +119,11 @@ async fn acp_spawn_start_reader_and_handshake(
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     pub async fn spawn(args: AcpSpawnArgs<'_>) -> Result<Self, String> {
-        let rpc_timeout = Duration::from_secs(args.rpc_timeout_secs.max(1));
+        let rpc_timeout = if args.rpc_timeout.is_zero() {
+            Duration::from_millis(1)
+        } else {
+            args.rpc_timeout
+        };
         let require_cursor_login_auth =
             transport::requires_cursor_login_auth(args.api_key, args.auth_token);
         let mut cmd = transport::build_agent_acp_command(
@@ -466,7 +470,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_full_session_with_notifications_and_credentials() {
-        let _g = crate::test_utils::test_env_lock();
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-agent-acp");
         write_mock_executable(&bin).await;
@@ -475,7 +478,7 @@ for line in sys.stdin:
             bin_override: Some(&bin),
             api_key: Some("george-test-api-key"),
             auth_token: Some("george-test-auth"),
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: None,
@@ -492,16 +495,15 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_full_session_verbose_stdout_reader_path() {
-        let _g = crate::test_utils::test_env_lock();
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-agent-acp-verbose");
         write_mock_executable(&bin).await;
         let s = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(&bin),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: true,
             george_acp_lane: None,
             ui_idle_notify: None,
@@ -518,7 +520,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_ui_idle_notify_shutdown_wakes_waiter() {
-        let _g = crate::test_utils::test_env_lock();
         let notify = Arc::new(Notify::new());
         let wait_task = tokio::spawn({
             let notify = notify.clone();
@@ -533,9 +534,9 @@ for line in sys.stdin:
         let s = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(&bin),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: Some(notify),
@@ -554,7 +555,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_ui_idle_notify_cancel_ok_wakes_waiter() {
-        let _g = crate::test_utils::test_env_lock();
         let notify = Arc::new(Notify::new());
         let wait_task = tokio::spawn({
             let notify = notify.clone();
@@ -569,9 +569,9 @@ for line in sys.stdin:
         let s = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(&bin),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: Some(notify),
@@ -591,7 +591,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
-        let _g = crate::test_utils::test_env_lock();
         let notify = Arc::new(Notify::new());
         let wait_task = tokio::spawn({
             let notify = notify.clone();
@@ -606,9 +605,9 @@ for line in sys.stdin:
         let s = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(&bin),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: Some(notify),
@@ -629,16 +628,15 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_prompt_fails_after_shutdown() {
-        let _g = crate::test_utils::test_env_lock();
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-agent-acp");
         write_mock_executable(&bin).await;
         let s = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(&bin),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: None,
@@ -656,7 +654,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
-        let _g = crate::test_utils::test_env_lock();
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-acp-bad-session");
         tokio::fs::write(bin.as_path(), MOCK_BAD_SESSION_NEW.as_bytes())
@@ -670,9 +667,9 @@ for line in sys.stdin:
         let err = match AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(bin.as_path()),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: None,
@@ -714,7 +711,6 @@ for line in sys.stdin:
     #[tokio::test]
     #[allow(clippy::await_holding_lock)]
     async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
-        let _g = crate::test_utils::test_env_lock();
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-cancel-err-slow-prompt");
         crate::test_utils::write_acp_jsonrpc_mock_cancel_err_slow_prompt(&bin).await;
@@ -722,9 +718,9 @@ for line in sys.stdin:
         let session = AcpSession::spawn(AcpSpawnArgs {
             cwd: tmp.path(),
             bin_override: Some(bin.as_path()),
-            api_key: None,
+            api_key: Some("test-api-key"),
             auth_token: None,
-            rpc_timeout_secs: crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS,
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
             acp_verbose: false,
             george_acp_lane: None,
             ui_idle_notify: None,
@@ -735,17 +731,14 @@ for line in sys.stdin:
         .expect("spawn");
 
         let trace_slow = tmp.path().join("slow.jsonl");
+        let prompt_hit_path = tmp.path().join("prompt_hits");
+        let prompt_release_path = tmp.path().join("allow_prompt_complete");
         let sess_prompt = session.clone();
         let driver = tokio::spawn(async move {
             sess_prompt.prompt("slow", &trace_slow).await.unwrap();
         });
 
-        for _ in 0..200 {
-            if session.is_busy() {
-                break;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        }
+        await_workspace_pid_file(&prompt_hit_path).await;
         assert!(session.is_busy(), "expected slow prompt to mark session busy");
 
         let cancel_res = session.cancel().await;
@@ -757,8 +750,11 @@ for line in sys.stdin:
             session.is_busy(),
             "cancel RPC failed but prompt still running; busy must remain true"
         );
+        tokio::fs::write(&prompt_release_path, b"ok")
+            .await
+            .expect("release prompt");
 
-        tokio::time::timeout(std::time::Duration::from_secs(10), driver)
+        tokio::time::timeout(std::time::Duration::from_secs(1), driver)
             .await
             .expect("prompt task should finish")
             .expect("join prompt task");
@@ -771,10 +767,6 @@ for line in sys.stdin:
     async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
         use std::time::Duration;
 
-        let _g = crate::test_utils::test_env_lock();
-        unsafe {
-            std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", "2");
-        }
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("silent-agent");
         tokio::fs::write(
@@ -788,15 +780,14 @@ for line in sys.stdin:
         std::fs::set_permissions(&bin, p).unwrap();
         crate::test_utils::sync_test_executable(&bin);
 
-        let rpc_secs = crate::config::acp_rpc_timeout_secs_from_env();
         let outer = tokio::time::timeout(
-            Duration::from_secs(10),
+            Duration::from_secs(1),
             AcpSession::spawn(AcpSpawnArgs {
                 cwd: tmp.path(),
                 bin_override: Some(bin.as_path()),
-                api_key: None,
+                api_key: Some("test-api-key"),
                 auth_token: None,
-                rpc_timeout_secs: rpc_secs,
+                rpc_timeout: Duration::from_millis(50),
                 acp_verbose: false,
                 george_acp_lane: None,
                 ui_idle_notify: None,
@@ -805,9 +796,6 @@ for line in sys.stdin:
             }),
         )
         .await;
-        unsafe {
-            std::env::remove_var("MALVIN_ACP_RPC_TIMEOUT_SECS");
-        }
 
         let inner = outer.expect("spawn should not hang past outer test timeout");
         let err = match inner {

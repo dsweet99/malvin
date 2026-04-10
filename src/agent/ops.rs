@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
+use std::time::Duration;
 
 use crate::acp::{AcpSession, AcpSpawnArgs};
 use crate::review_sync::{is_lgtm, sync_review_file};
@@ -50,7 +51,7 @@ pub(super) async fn spawn_acp_session(client: &AgentClient, cwd: &Path) -> Resul
         bin_override: bin.as_deref(),
         api_key: None,
         auth_token: None,
-        rpc_timeout_secs: rpc_secs,
+        rpc_timeout: Duration::from_secs(rpc_secs),
         acp_verbose: false,
         george_acp_lane: None,
         ui_idle_notify: None,
