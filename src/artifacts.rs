@@ -15,7 +15,7 @@ pub struct RunArtifacts {
 impl RunArtifacts {
     #[must_use]
     pub fn log_path(&self, name: &str) -> PathBuf {
-        let safe = name.replace('/', "_");
+        let safe = name.replace(['/', '\\'], "_");
         self.run_dir.join(format!("{safe}.log"))
     }
 }
@@ -82,6 +82,19 @@ mod tests {
         };
         assert_eq!(
             r.log_path("a/b").file_name(),
+            Some(std::ffi::OsStr::new("a_b.log"))
+        );
+    }
+
+    #[test]
+    fn log_path_sanitizes_backslashes() {
+        let r = RunArtifacts {
+            run_dir: PathBuf::from("/tmp/run"),
+            plan_path: PathBuf::from("/tmp/run/plan.md"),
+            work_dir: PathBuf::from("/work"),
+        };
+        assert_eq!(
+            r.log_path("a\\b").file_name(),
             Some(std::ffi::OsStr::new("a_b.log"))
         );
     }

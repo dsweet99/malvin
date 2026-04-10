@@ -132,6 +132,7 @@ impl PromptStore {
     }
 
     /// Load `filename`, substitute `{{ key }}` → `$key` for Python `string.Template`, then substitute.
+    /// The same expansion is applied to `coding_rules.md` before it is injected into the main template.
     ///
     /// # Errors
     ///
@@ -149,10 +150,9 @@ impl PromptStore {
             ))
         })?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context.insert(
-            "coding_rules".to_string(),
-            self.load_coding_rules(),
-        );
+        let rules_raw = self.load_coding_rules();
+        let rules_expanded = render_template(&rules_raw, &render_context);
+        render_context.insert("coding_rules".to_string(), rules_expanded);
         Ok(render_template(&prompt_text, &render_context))
     }
 

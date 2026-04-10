@@ -56,3 +56,23 @@ fn substitute_replaces_dollar_keys() {
         "Hello /p end"
     );
 }
+
+#[test]
+fn coding_rules_nested_placeholders_expand() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(
+        root.join("implement.md"),
+        "START\n{{ coding_rules }}\nEND\n",
+    )
+    .unwrap();
+    std::fs::write(root.join("coding_rules.md"), "Path={{ plan_path }}.\n").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let mut ctx = HashMap::new();
+    ctx.insert("plan_path".to_string(), "/P".to_string());
+    let out = store.render("implement.md", &ctx).unwrap();
+    assert!(
+        out.contains("/P") && !out.contains("{{ plan_path }}"),
+        "expected nested plan_path in coding_rules; got:\n{out}"
+    );
+}
