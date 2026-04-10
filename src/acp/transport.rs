@@ -363,263 +363,339 @@ mod tests {
         assert!(super::executable_text_busy(&Error::from_raw_os_error(26)));
     }
 
-    async fn print_env_executable(tmp: &tempfile::TempDir) -> std::path::PathBuf {
-        let bin = tmp.path().join("print-env");
-        let script = "#!/bin/sh\nprintf '%s' \"${CURSOR_API_KEY}|${CURSOR_AUTH_TOKEN}\"";
-        tokio::fs::write(&bin, script.as_bytes()).await.unwrap();
-        let mut perms = std::fs::metadata(&bin).unwrap().permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&bin, perms).unwrap();
-        crate::test_utils::sync_test_executable(&bin);
-        bin
+    fn command_args(cmd: &Command) -> Vec<String> {
+        cmd.as_std()
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_forwards_key_and_token() {
+    fn command_env_value(cmd: &Command, key: &str) -> Option<String> {
+        cmd.as_std()
+            .get_envs()
+            .find(|(name, _)| *name == key)
+            .and_then(|(_, value)| value.map(|v| v.to_string_lossy().into_owned()))
+    }
+
+    fn assert_arg_value(args: &[String], flag: &str, expected: Option<&str>) {
+        if let Some(value) = expected {
+            assert!(
+                args.windows(2).any(|pair| pair[0] == flag && pair[1] == value),
+                "expected `{flag} {value}` in args: {args:?}"
+            );
+        } else {
+            assert!(
+                !args.iter().any(|arg| arg == flag),
+                "did not expect `{flag}` in args: {args:?}"
+            );
+        }
+    }
+
+    fn assert_cursor_credentials_forwarding(
+        cmd: &Command,
+        expected_key: Option<&str>,
+        expected_token: Option<&str>,
+    ) {
+        let args = command_args(cmd);
+        assert_arg_value(&args, "--api-key", expected_key);
+        assert_arg_value(&args, "--auth-token", expected_token);
+        assert_eq!(command_env_value(cmd, "CURSOR_API_KEY").as_deref(), expected_key);
+        assert_eq!(
+            command_env_value(cmd, "CURSOR_AUTH_TOKEN").as_deref(),
+            expected_token
+        );
+    }
+
+    #[test]
+    fn test_cursor_credentials_forwards_key_and_token() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out =
-            build_agent_acp_command(tmp.path(), Some(&bin), Some("key-a"), Some("tok-b"), None, None, false)
-                .output()
-                .await
-                .expect("run");
-        assert_eq!(out.stdout, b"key-a|tok-b");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some("key-a"),
+            Some("tok-b"),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("key-a"), Some("tok-b"));
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_key_only() {
+    #[test]
+    fn test_cursor_credentials_key_only() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some("k-only"), None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"k-only|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some("k-only"),
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("k-only"), None);
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_explicit_none_uses_process_env_api_key() {
+    #[test]
+    fn test_cursor_credentials_explicit_none_uses_process_env_api_key() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_API_KEY", "key-from-process-env");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"key-from-process-env|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("key-from-process-env"), None);
         clear_cursor_env_for_test();
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_explicit_none_uses_process_env_auth_token() {
+    #[test]
+    fn test_cursor_credentials_explicit_none_uses_process_env_auth_token() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_AUTH_TOKEN", "tok-from-process-env");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|tok-from-process-env");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, Some("tok-from-process-env"));
         clear_cursor_env_for_test();
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_explicit_api_key_overrides_process_env() {
+    #[test]
+    fn test_cursor_credentials_explicit_api_key_overrides_process_env() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_API_KEY", "from-env");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some("explicit-wins"), None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"explicit-wins|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some("explicit-wins"),
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("explicit-wins"), None);
         clear_cursor_env_for_test();
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_explicit_auth_token_overrides_process_env() {
+    #[test]
+    fn test_cursor_credentials_explicit_auth_token_overrides_process_env() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_AUTH_TOKEN", "from-env");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, Some("explicit-tok"), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|explicit-tok");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            Some("explicit-tok"),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, Some("explicit-tok"));
         clear_cursor_env_for_test();
     }
 
     /// Neither explicit nor `CURSOR_*` env: no credentials forwarded.
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_absent_process_env_and_no_explicit() {
+    #[test]
+    fn test_cursor_credentials_absent_process_env_and_no_explicit() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, None);
     }
 
     /// Empty explicit key skips to `CURSOR_API_KEY` from the process when set.
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_empty_explicit_key_falls_back_to_process_env() {
+    #[test]
+    fn test_cursor_credentials_empty_explicit_key_falls_back_to_process_env() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_API_KEY", "env-after-empty-explicit");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some(""), None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"env-after-empty-explicit|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some(""),
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("env-after-empty-explicit"), None);
         clear_cursor_env_for_test();
     }
 
     /// Empty `CURSOR_API_KEY` in the environment is ignored (treated as unset).
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_process_env_empty_api_key_ignored() {
+    #[test]
+    fn test_cursor_credentials_process_env_empty_api_key_ignored() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_API_KEY", "");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, None);
         clear_cursor_env_for_test();
     }
 
     /// Empty explicit token skips to `CURSOR_AUTH_TOKEN` from the process when set.
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_empty_explicit_token_falls_back_to_process_env() {
+    #[test]
+    fn test_cursor_credentials_empty_explicit_token_falls_back_to_process_env() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_AUTH_TOKEN", "env-after-empty-explicit-tok");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, Some(""), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|env-after-empty-explicit-tok");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            Some(""),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, Some("env-after-empty-explicit-tok"));
         clear_cursor_env_for_test();
     }
 
     /// Empty `CURSOR_AUTH_TOKEN` in the environment is ignored.
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_process_env_empty_auth_token_ignored() {
+    #[test]
+    fn test_cursor_credentials_process_env_empty_auth_token_ignored() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         unsafe {
             std::env::set_var("CURSOR_AUTH_TOKEN", "");
         }
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, None, None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, None);
         clear_cursor_env_for_test();
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_token_only() {
+    #[test]
+    fn test_cursor_credentials_token_only() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), None, Some("t-only"), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|t-only");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            None,
+            Some("t-only"),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, Some("t-only"));
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_empty_strings_skipped() {
+    #[test]
+    fn test_cursor_credentials_empty_strings_skipped() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some(""), Some(""), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some(""),
+            Some(""),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, None);
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_skips_empty_key_only() {
+    #[test]
+    fn test_cursor_credentials_skips_empty_key_only() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some(""), Some("tok2"), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"|tok2");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some(""),
+            Some("tok2"),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, None, Some("tok2"));
     }
 
-    #[tokio::test]
-    #[allow(clippy::await_holding_lock)]
-    async fn test_cursor_credentials_skips_empty_token_only() {
+    #[test]
+    fn test_cursor_credentials_skips_empty_token_only() {
         let _guard = crate::test_utils::test_env_lock();
         clear_cursor_env_for_test();
         let tmp = tempfile::tempdir().unwrap();
-        let bin = print_env_executable(&tmp).await;
-        let out = build_agent_acp_command(tmp.path(), Some(&bin), Some("k2"), Some(""), None, None, false)
-            .output()
-            .await
-            .expect("run");
-        assert_eq!(out.stdout, b"k2|");
+        let cmd = build_agent_acp_command(
+            tmp.path(),
+            Some(Path::new("/bin/true")),
+            Some("k2"),
+            Some(""),
+            None,
+            None,
+            false,
+        );
+        assert_cursor_credentials_forwarding(&cmd, Some("k2"), None);
     }
 
     #[tokio::test]
@@ -870,7 +946,12 @@ for line in sys.stdin:
             assert!(e.contains("canceled") || e.contains("session"), "{e}");
         });
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        for _ in 0..20 {
+            if !pending.lock().await.is_empty() {
+                break;
+            }
+            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+        }
         pending.lock().await.clear();
 
         let _ = child.kill().await;
@@ -947,7 +1028,7 @@ for line in sys.stdin:
             3,
             "unanswered",
             json!({}),
-            std::time::Duration::from_millis(200),
+            std::time::Duration::from_millis(25),
         )
         .await
         .expect_err("peer never responds");

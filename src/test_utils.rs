@@ -69,12 +69,14 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
 "#;
 
-/// `session/cancel` returns JSON-RPC error; `session/prompt` is delayed on a thread.
+/// `session/cancel` returns JSON-RPC error; `session/prompt` blocks on a release file so tests can
+/// prove prompt/cancel interleaving without paying real sleep time.
 #[cfg(unix)]
-const ACP_MOCK_CANCEL_ERR_SLOW_PROMPT_PY: &str = r#"import sys, json, time, threading
+const ACP_MOCK_CANCEL_ERR_SLOW_PROMPT_PY: &str = r#"import sys, json, threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+RELEASE = ROOT / "allow_prompt_complete"
 
 
 def bump_prompt_hit():
@@ -111,8 +113,9 @@ for line in sys.stdin:
     elif mid == "session/prompt":
         bump_prompt_hit()
 
-        def slow_reply(prompt_id):
-            time.sleep(0.35)
+        def gated_reply(prompt_id):
+            while not RELEASE.exists():
+                pass
             print(
                 json.dumps(
                     {
@@ -124,7 +127,7 @@ for line in sys.stdin:
                 flush=True,
             )
 
-        threading.Thread(target=slow_reply, args=(rid,), daemon=True).start()
+        threading.Thread(target=gated_reply, args=(rid,), daemon=True).start()
     elif rid is not None:
         print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
 "#;
