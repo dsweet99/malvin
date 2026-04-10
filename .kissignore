@@ -1,0 +1,3 @@
+target/
+# Vendored from `Projects/george` ACP client; complexity metrics are enforced upstream.
+src/acp/
