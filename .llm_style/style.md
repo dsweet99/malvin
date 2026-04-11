@@ -5,7 +5,7 @@ Use **TRIGGER** keywords/phrases to recall **ADVICE**. Detail: `./.llm_style/mal
 ---
 
 TRIGGER: run checks yourself  
-ADVICE: Execute `cargo clippy --all-targets -- -D warnings`, `cargo test`, `ruff check .`, `kiss check .` from repo root; rerun after substantive edits; do not only suggest commands. (No Python code exists; pytest is obsolete.)
+ADVICE: Execute `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`, `ruff check`, `kiss check` from repo root; rerun after substantive edits; parallelize independent checks. (No Python code; pytest collects 0.)
 
 TRIGGER: kiss check  
 ADVICE: Use `kiss check .` (full project), not bare `kiss`. See `.kissignore` for excluded paths.
@@ -40,8 +40,11 @@ ADVICE: Crate uses `edition = "2024"` and `rust-version = "1.85"` in `Cargo.toml
 TRIGGER: pre-commit hooks  
 ADVICE: `.pre-commit-config.yaml` expects `ruff`, `cargo`, `kiss` on PATH; pytest is legacy (no Python code).
 
-TRIGGER: CLI structure, subcommands  
-ADVICE: CLI lives in `src/cli/`: `args.rs` (CodeArgs, KpopArgs), `mod.rs` (dispatch), `kpop_flow.rs`, `shared_opts.rs`. `@path` syntax via `resolve_user_request()` in `src/artifacts.rs`.
+TRIGGER: CLI structure, subcommands, help text  
+ADVICE: CLI lives in `src/cli/`: `args.rs` (Cli, Commands), `mod.rs` (dispatch), `shared_opts.rs`. Use `disable_help_subcommand = true` on Cli to hide `help` subcommand. Doc comments become help text.
+
+TRIGGER: ACP trace, log files, tee output  
+ADVICE: `src/acp/reader.rs` has `TraceChunkCoalescer` for plain-text log writing; `src/agent/ops.rs` `maybe_tee_log` handles tee. Logs contain deduplicated text from `agent_message_chunk`/`agent_thought_chunk`.
 
 TRIGGER: verify before implementing  
 ADVICE: Read existing code structure before making changes; plans may already be implemented. Avoid wasted effort.
@@ -52,8 +55,8 @@ ADVICE: Use at most 4 parallel subagents for independent exploration; avoid for 
 TRIGGER: user communication  
 ADVICE: Prefer precise prose, full URLs/paths, and ```line:line:path``` code citations; avoid filler closings; keep final answer proportional to task size.
 
-TRIGGER: all checks must pass  
-ADVICE: No excuses for "pre-existing" failures. Fix ALL files, not just modified ones. Be tenacious.
+TRIGGER: all checks must pass, noqa  
+ADVICE: No excuses for "pre-existing" failures. Fix ALL files, not just modified ones. No `# noqa` additions (except for correct functioning). No test-cheating. Be tenacious.
 
 TRIGGER: TRIGGER / ADVICE  
 ADVICE: After user requests, if this file's TRIGGER words match, show the single most relevant TRIGGER:/ADVICE: pair to the user.

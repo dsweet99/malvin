@@ -63,22 +63,16 @@ pub(super) async fn spawn_acp_session(client: &AgentClient, cwd: &Path) -> Resul
 }
 
 pub(super) async fn maybe_tee_log(client: &AgentClient, log_path: &Path) {
-    if client.io.no_tee && !client.io.tee_json {
+    if client.io.no_tee {
         return;
     }
     let Ok(bytes) = tokio::fs::read(log_path).await else {
         return;
     };
     let text = String::from_utf8_lossy(&bytes);
-    if client.io.tee_json {
-        for line in text.lines() {
-            println!("{line}");
-        }
-    } else {
-        print!("{text}");
-        if !text.ends_with('\n') {
-            println!();
-        }
+    print!("{text}");
+    if !text.ends_with('\n') {
+        println!();
     }
 }
 

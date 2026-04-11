@@ -5,7 +5,7 @@
 - `ruff check .`
 - `pytest -q`
 - `cargo test`
-- `cargo clippy --all-targets -- -D warnings` (stricter than default; pre-commit also passes many `-W clippy::*` and allows some `-A` overrides)
+- `cargo clippy --all-targets --all-features -- -D warnings` (stricter than default; pre-commit also passes many `-W clippy::*` and allows some `-A` overrides)
 - `kiss check .` — **not** bare `kiss` (which only prints help)
 
 ## Constraints
@@ -25,6 +25,17 @@ Runs `ruff`, `pytest`, `cargo clippy`, `cargo test`, `kiss check .` — contribu
 - Workflow: `src/orchestrator/` + `src/review_sync.rs` (shared `is_lgtm` / `sync_review_file`).
 - Prompts + `include_str!`: `src/prompts/mod.rs` → `../../default_prompts/`; ship `default_prompts/` in repo.
 - Run dirs: `_malvin/<stamp>/` (often gitignored).
+
+## ACP trace/log architecture
+
+- `src/acp/reader.rs`: `TraceChunkCoalescer` coalesces and deduplicates text from `session/update` chunks (`agent_message_chunk`, `agent_thought_chunk`). Log files are plain text, not JSONL.
+- `src/agent/ops.rs`: `maybe_tee_log` reads log files and prints to stdout (controlled by `--no-tee`).
+- `session_update_chunk_parts()` extracts text from JSON-RPC `session/update` messages.
+
+## CLI (clap)
+
+- `src/cli/args.rs`: `Cli` struct with `#[command(disable_help_subcommand = true)]` to hide auto-generated `help` subcommand while keeping `--help`/`-h` options.
+- `src/cli/shared_opts.rs`: Shared flags like `--model`, `--no-force`, `--no-tee`.
 
 ## Review workflow
 

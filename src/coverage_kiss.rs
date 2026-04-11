@@ -131,7 +131,6 @@ mod tests {
             AgentIoOptions {
                 force: true,
                 no_tee: false,
-                tee_json: false,
             },
         );
         let _ = Orchestrator {

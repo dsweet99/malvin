@@ -140,69 +140,33 @@ fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChunkKind, Stri
     Some((kind, text))
 }
 
-fn patch_session_update_chunk_text(template: Value, merged_text: &str) -> Option<Value> {
-    let mut v = template;
-    let content = v.pointer_mut("/params/update/content")?.as_object_mut()?;
-    content.insert("text".to_string(), Value::String(merged_text.to_string()));
-    Some(v)
-}
-
 #[derive(Default)]
 struct TraceChunkCoalescer {
     message: String,
     thought: String,
-    message_tpl: Option<Value>,
-    thought_tpl: Option<Value>,
 }
 
 impl TraceChunkCoalescer {
-    fn feed(
-        &mut self,
-        kind: SessionUpdateChunkKind,
-        chunk: &str,
-        line_value: &Value,
-    ) -> Vec<String> {
-        let (buf, tpl) = match kind {
-            SessionUpdateChunkKind::Message => (&mut self.message, &mut self.message_tpl),
-            SessionUpdateChunkKind::Thought => (&mut self.thought, &mut self.thought_tpl),
+    fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) -> Vec<String> {
+        let buf = match kind {
+            SessionUpdateChunkKind::Message => &mut self.message,
+            SessionUpdateChunkKind::Thought => &mut self.thought,
         };
-        if !chunk.is_empty() && buf.is_empty() {
-            *tpl = Some(line_value.clone());
-        }
         let mut emissions = Vec::new();
         coalesce_append_chunk(buf, chunk, &mut emissions);
-        let mut out = Vec::new();
-        for piece in emissions {
-            if let Some(t) = tpl.as_ref()
-                && let Some(patched) = patch_session_update_chunk_text(t.clone(), &piece)
-                && let Ok(s) = serde_json::to_string(&patched)
-            {
-                out.push(s);
-            }
-        }
-        if buf.is_empty() {
-            *tpl = None;
-        }
-        out
+        emissions
     }
 
     fn flush_all(&mut self) -> Vec<String> {
         let mut out = Vec::new();
-        Self::flush_stream(&mut self.message, &mut self.message_tpl, &mut out);
-        Self::flush_stream(&mut self.thought, &mut self.thought_tpl, &mut out);
+        Self::flush_stream(&mut self.message, &mut out);
+        Self::flush_stream(&mut self.thought, &mut out);
         out
     }
 
-    fn flush_stream(buf: &mut String, tpl: &mut Option<Value>, out: &mut Vec<String>) {
-        if buf.is_empty() {
-            return;
-        }
-        let piece = std::mem::take(buf);
-        if let Some(t) = tpl.take()
-            && let Some(patched) = patch_session_update_chunk_text(t, &piece)
-            && let Ok(s) = serde_json::to_string(&patched)
-        {
-            out.push(s);
+    fn flush_stream(buf: &mut String, out: &mut Vec<String>) {
+        if !buf.is_empty() {
+            out.push(std::mem::take(buf));
         }
     }
 }
@@ -216,7 +180,6 @@ async fn trace_file_write_line(f: &mut tokio::fs::File, line: &str) {
 }
 
 async fn write_trace_line_coalesced(
-    raw_line: &str,
     trace_file: &mut tokio::fs::File,
     coalesce: &mut TraceChunkCoalescer,
     parsed: &Option<Value>,
@@ -224,7 +187,7 @@ async fn write_trace_line_coalesced(
     if let Some(v) = parsed
         && let Some((kind, text)) = session_update_chunk_parts(v)
     {
-        for tl in coalesce.feed(kind, text.as_str(), v) {
+        for tl in coalesce.feed(kind, text.as_str()) {
             trace_file_write_line(trace_file, &tl).await;
         }
         return;
@@ -232,7 +195,6 @@ async fn write_trace_line_coalesced(
     for tl in coalesce.flush_all() {
         trace_file_write_line(trace_file, &tl).await;
     }
-    trace_file_write_line(trace_file, raw_line).await;
 }
 
 async fn reader_loop_verbose_and_trace_line(
@@ -270,7 +232,7 @@ async fn reader_loop_verbose_and_trace_line(
 
     let mut g = trace_writer.lock().await;
     if let Some(ref mut f) = *g {
-        write_trace_line_coalesced(line, f, trace_coalesce, &parsed).await;
+        write_trace_line_coalesced(f, trace_coalesce, &parsed).await;
     }
 }
 
@@ -701,34 +663,29 @@ mod tests {
 
     #[test]
     fn trace_chunk_coalescer_merges_two_small_message_chunks() {
-        let v = json!({"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"s","update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":"x"}}}});
         let mut c = TraceChunkCoalescer::default();
-        assert!(c
-            .feed(SessionUpdateChunkKind::Message, "hel", &v)
-            .is_empty());
-        assert!(c
-            .feed(SessionUpdateChunkKind::Message, "lo", &v)
-            .is_empty());
+        assert!(c.feed(SessionUpdateChunkKind::Message, "hel").is_empty());
+        assert!(c.feed(SessionUpdateChunkKind::Message, "lo").is_empty());
         let fin = c.flush_all();
         assert_eq!(fin.len(), 1);
-        let parsed: Value = serde_json::from_str(&fin[0]).unwrap();
-        assert_eq!(
-            parsed
-                .pointer("/params/update/content/text")
-                .and_then(Value::as_str),
-            Some("hello")
-        );
+        assert_eq!(fin[0], "hello");
     }
 
     #[test]
-    fn patch_session_update_chunk_text_requires_content_path() {
-        assert!(super::patch_session_update_chunk_text(json!({"a": 1}), "x").is_none());
+    fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
+        let mut c = TraceChunkCoalescer::default();
+        let out = c.feed(SessionUpdateChunkKind::Message, "yes\nyes\n");
+        assert_eq!(
+            out,
+            vec!["yes", "yes"],
+            "consecutive identical lines must not be deduplicated"
+        );
     }
 
     #[tokio::test]
-    async fn write_trace_line_coalesced_writes_raw_when_not_json() {
+    async fn write_trace_line_coalesced_skips_non_chunk_lines() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("coalesce-trace.jsonl");
+        let path = dir.path().join("coalesce-trace.log");
         let mut f = tokio::fs::OpenOptions::new()
             .create(true)
             .truncate(true)
@@ -737,37 +694,23 @@ mod tests {
             .await
             .unwrap();
         let mut c = TraceChunkCoalescer::default();
-        let raw = "not-json-line";
-        super::write_trace_line_coalesced(raw, &mut f, &mut c, &None).await;
+        super::write_trace_line_coalesced(&mut f, &mut c, &None).await;
         drop(f);
         let s = tokio::fs::read_to_string(&path).await.unwrap();
-        assert_eq!(s.trim_end(), raw);
+        assert!(s.is_empty(), "non-chunk lines should not be written");
     }
 
     #[test]
     fn trace_chunk_coalescer_emits_at_cap_like_verbose() {
         let max = ACP_VERBOSE_COALESCE_MAX;
-        let v = json!({"jsonrpc":"2.0","method":"session/update","params":{"update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":"."}}}});
         let mut c = TraceChunkCoalescer::default();
         let chunk = "x".repeat(max + 10);
-        let out = c.feed(SessionUpdateChunkKind::Message, &chunk, &v);
+        let out = c.feed(SessionUpdateChunkKind::Message, &chunk);
         assert_eq!(out.len(), 1);
-        let p0: Value = serde_json::from_str(&out[0]).unwrap();
-        assert_eq!(
-            p0.pointer("/params/update/content/text")
-                .and_then(Value::as_str)
-                .map(|s| s.chars().count()),
-            Some(max)
-        );
+        assert_eq!(out[0].chars().count(), max);
         let fin = c.flush_all();
         assert_eq!(fin.len(), 1);
-        let p1: Value = serde_json::from_str(&fin[0]).unwrap();
-        assert_eq!(
-            p1.pointer("/params/update/content/text")
-                .and_then(Value::as_str)
-                .map(|s| s.len()),
-            Some(10)
-        );
+        assert_eq!(fin[0].len(), 10);
     }
 
     #[test]

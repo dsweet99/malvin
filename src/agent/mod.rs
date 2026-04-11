@@ -23,7 +23,6 @@ pub struct AgentIoOptions {
     pub force: bool,
     /// When false, tee log output to stdout (default). Set when user passes `--no-tee`.
     pub no_tee: bool,
-    pub tee_json: bool,
 }
 
 #[cfg(test)]
