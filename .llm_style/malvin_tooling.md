@@ -79,3 +79,25 @@ Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.r
 ## Reviewer workflow (conceptual)
 
 After **review** prompt: sync workspace review to artifact, **`is_lgtm`** on artifact before **kpop** prompt—implementation in `src/acp/ops_body.inc` / orchestrator, not a single legacy `src/agent/ops.rs` file.
+
+Root **`review.md`** is the working reviewer checklist (“problems only” / resolved). After fixing issues, update it so it does not stay stale versus `grounding.md` and the code.
+
+## KPOP `--p-creative` / MBC2
+
+- **Selection:** `src/kpop_acp_prompt.rs` — `kpop_acp_user_prompt`, `KpopAcpPromptPick`, `CREATIVE_MIN_INTERACTION`, `kpop_standalone_outbound_prompt_count`, `KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE`.
+- **Session:** `src/acp/ops_body.inc` `run_kpop_flow_once` — when `p_creative > 0`, sends continuation `session/prompt` rounds (after main + optional `learn.md`) so outbound `interaction_index` can reach **3** before the MBC2 branch may apply; sibling traces like `*_creative_pad*.log`, `*_creative_roll.log` next to the primary `kpop` trace.
+- **Prompts:** `default_prompts/mbc2.md`; embedding / defaults in `src/prompts/mod.rs`; CLI in `src/cli/args.rs` (`KpopArgs`).
+
+## Rust edition 2024 + clippy (malvin)
+
+- **`gen` is a keyword:** do not call `rng.gen()`; use e.g. `rand::distributions::{Distribution, Uniform}` and `sample(rng)`.
+- **Float guards:** prefer `!x.is_finite() || x <= 0.0` over `!(x > 0.0)` where clippy flags `neg_cmp_op_on_partial_ord` (NaN / ordering).
+- **`use` placement:** avoid `use` items after other statements in a block (`clippy::items_after_statements`); lift imports to the enclosing module (e.g. `rand` in `agent_bundle.inc` for `ops_body.inc`).
+- **Async + RNG:** `thread_rng()` / `ThreadRng` is not `Send`; do not hold it across `.await`. For multiple `session/prompt` rounds in one async fn, use one `rand::rngs::StdRng::from_entropy()` (or seed) and `&mut rng`.
+- **kiss arity:** if `arguments_per_function` fires, group parameters in a struct (same pattern as `KpopAcpPromptPick`).
+
+## Keyword index (moved from `style.md` surface)
+
+- **MSRV / edition:** `edition = "2024"`, `rust-version = "1.85"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
+- **Orchestrator prompt stems:** `prompt_md_stem` / `strip_suffix(".md")` in `src/orchestrator/` — avoid `len()-3` slicing.
+- **Prompts `include_str!`:** defaults live under `default_prompts/`; paths in `src/prompts/mod.rs`.

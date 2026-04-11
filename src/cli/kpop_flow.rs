@@ -17,7 +17,7 @@ use super::KpopArgs;
 use super::WorkflowCliOptions;
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
-    let store = prepare_kpop_prompt_store(workflow)?;
+    let store = prepare_kpop_prompt_store(workflow, kpop.p_creative)?;
     let mut client = build_agent(&kpop.shared, workflow);
     client
         .ensure_authenticated()
@@ -42,6 +42,7 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
         store: &store,
         context: &context,
         run_learn: workflow.run_learn,
+        p_creative: kpop.p_creative,
     };
     kpop_run_acp(&mut client, input).await?;
 
@@ -56,6 +57,7 @@ pub struct KpopAcpInput<'a> {
     store: &'a PromptStore,
     context: &'a HashMap<String, String>,
     run_learn: bool,
+    p_creative: f64,
 }
 
 pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Result<(), String> {
@@ -68,12 +70,22 @@ pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> 
     let learn_ref = learn_stored
         .as_ref()
         .map(|(p, l)| (p.as_str(), l.as_path()));
+    let mbc2_body = if malvin::kpop_creative_enabled(input.p_creative) {
+        input
+            .store
+            .render("mbc2.md", input.context)
+            .map_err(|e: PromptError| e.0)?
+    } else {
+        String::new()
+    };
     client
         .run_kpop_flow(
             &input.artifacts.work_dir,
             input.combined,
             input.kpop_log,
             learn_ref,
+            input.p_creative,
+            &mbc2_body,
         )
         .await
         .map_err(|e| e.0)

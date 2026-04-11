@@ -4,6 +4,9 @@ use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use std::time::Duration;
 
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+
 use crate::review_sync::{is_lgtm, sync_review_file};
 
 /// Recoverable agent failure.

@@ -20,6 +20,8 @@ pub mod agent {
 
 pub mod artifacts;
 pub mod config;
+mod kpop_acp_prompt;
+pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod env_path;
 pub mod invocation;
 pub mod log_paths;

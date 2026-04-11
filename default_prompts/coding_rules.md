@@ -1,5 +1,5 @@
 
-AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words in style.md? If so, display the one most relevant TRIGGER: / ADVICE: pair for you and the user to see.
+AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words in .llm_style/style.md? If so, display the one most relevant TRIGGER: / ADVICE: pair for you and the user to see.
 
 --
 

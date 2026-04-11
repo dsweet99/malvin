@@ -16,6 +16,7 @@ const DEFAULT_PROMPTS: &[&str] = &[
     "review_1.md",
     "review_2.md",
     "kpop.md",
+    "mbc2.md",
     "concerns.md",
     "learn.md",
     "coding_rules.md",
@@ -27,6 +28,7 @@ pub(crate) fn default_file(name: &str) -> Option<&'static str> {
         "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
         "review_2.md" => Some(include_str!("../../default_prompts/review_2.md")),
         "kpop.md" => Some(include_str!("../../default_prompts/kpop.md")),
+        "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
         "concerns.md" => Some(include_str!("../../default_prompts/concerns.md")),
         "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
         "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),
@@ -121,10 +123,15 @@ impl PromptStore {
     /// # Errors
     ///
     /// Returns [`PromptError`] listing any missing files.
-    pub fn validate_kpop_prompts(&self, run_learn: bool) -> Result<(), PromptError> {
+    pub fn validate_kpop_prompts(&self, run_learn: bool, p_creative: f64) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
         if !self.root.join("kpop.md").exists() {
             missing.push("kpop.md");
+        }
+        if crate::kpop_acp_prompt::kpop_creative_enabled(p_creative)
+            && !self.root.join("mbc2.md").exists()
+        {
+            missing.push("mbc2.md");
         }
         if run_learn && !self.root.join("learn.md").exists() {
             missing.push("learn.md");

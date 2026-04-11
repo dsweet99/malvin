@@ -88,6 +88,16 @@ fn kiss_stringify_orchestrator() {
 }
 
 #[test]
+fn kiss_stringify_kpop_acp_prompt() {
+    let _ = stringify!(crate::kpop_acp_prompt::kpop_creative_enabled);
+    let _ = stringify!(crate::kpop_acp_prompt::kpop_acp_user_prompt);
+    let _ = stringify!(crate::kpop_acp_prompt::kpop_standalone_outbound_prompt_count);
+    let _ = stringify!(crate::kpop_acp_prompt::KpopAcpPromptPick);
+    let _ = stringify!(crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION);
+    let _ = stringify!(crate::kpop_acp_prompt::KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE);
+}
+
+#[test]
 fn kiss_stringify_prompts() {
     let _ = stringify!(crate::prompts::PromptError);
     let _ = stringify!(PromptStore);
@@ -135,6 +145,7 @@ fn smoke_prompt_store_with_root() {
             "review_1.md",
             "review_2.md",
             "kpop.md",
+            "mbc2.md",
             "concerns.md",
             "learn.md",
             "coding_rules.md",

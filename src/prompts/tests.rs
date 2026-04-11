@@ -63,10 +63,35 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let root = tmp.path();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    store.validate_kpop_prompts(false).expect("kpop-only ok");
+    store.validate_kpop_prompts(false, 0.0).expect("kpop-only ok");
     assert!(
         store.validate_required().is_err(),
         "full workflow should still require implement/review/etc."
+    );
+}
+
+#[test]
+fn validate_kpop_prompts_does_not_require_mbc2_for_positive_infinity() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    store
+        .validate_kpop_prompts(false, f64::INFINITY)
+        .expect("non-finite p_creative should not imply MBC2");
+}
+
+#[test]
+fn validate_kpop_prompts_requires_mbc2_when_p_creative_positive() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_kpop_prompts(false, 0.1).unwrap_err();
+    assert!(
+        err.0.contains("mbc2.md"),
+        "expected mbc2 missing error, got {:?}",
+        err.0
     );
 }
 
@@ -76,7 +101,7 @@ fn validate_kpop_prompts_requires_learn_when_run_learn() {
     let root = tmp.path();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let err = store.validate_kpop_prompts(true).unwrap_err();
+    let err = store.validate_kpop_prompts(true, 0.0).unwrap_err();
     assert!(
         err.0.contains("learn.md"),
         "expected learn missing error, got {:?}",

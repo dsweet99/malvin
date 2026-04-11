@@ -87,24 +87,131 @@ pub(crate) struct KpopFlowOnceArgs<'a> {
     pub kpop_prompt: &'a str,
     pub kpop_log: &'a Path,
     pub learn: Option<(&'a str, &'a Path)>,
+    pub p_creative: f64,
+    pub mbc2_body: &'a str,
 }
 
+fn kpop_trace_sibling(base: &Path, tag: &str) -> PathBuf {
+    let parent = base.parent().map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    let stem = base.file_stem().and_then(|s| s.to_str()).unwrap_or("kpop");
+    parent.join(format!("{stem}_{tag}.log"))
+}
+
+#[allow(clippy::too_many_lines)] // KPOP: main, optional learn, optional creative pad/roll sequence
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: KpopFlowOnceArgs<'_>,
 ) -> Result<(), AgentError> {
-    let s = spawn_agent_acp_session(client, args.cwd).await?;
-    if let Err(e) = s.prompt(args.kpop_prompt, args.kpop_log).await {
-        let _ = s.shutdown().await;
-        return Err(AgentError(e));
-    }
-        maybe_tee_log(client, args.kpop_log);
-    if let Some((learn_body, learn_log)) = args.learn {
-        if let Err(e) = s.prompt(learn_body, learn_log).await {
-            let _ = s.shutdown().await;
-            return Err(AgentError(e));
+    /// Short continuation so the session can reach `interaction_index` 3 while respecting the “no
+    /// MBC2 on the first three ACP interactions” rule (`CREATIVE_MIN_INTERACTION`).
+    const KPOP_CREATIVE_CONTINUE: &str = "Continue applying the KPOP method (Hypothesize / Predict / Falsify); append new entries to an exp_log_*.md file under this run's _kpop/ directory as already instructed.";
+
+    async fn round(
+        session: &AcpSession,
+        client: &AgentClient,
+        text: &str,
+        log: &Path,
+    ) -> Result<(), AgentError> {
+        match session.prompt(text, log).await {
+            Ok(()) => {
+                maybe_tee_log(client, log);
+                Ok(())
+            }
+            Err(e) => Err(AgentError(e)),
         }
-        maybe_tee_log(client, learn_log);
     }
+
+    let s = spawn_agent_acp_session(client, args.cwd).await?;
+
+    let mut rng = StdRng::from_entropy();
+
+    let main_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+        &crate::kpop_acp_prompt::KpopAcpPromptPick {
+            interaction_index: 0,
+            p_creative: args.p_creative,
+            default_prompt: args.kpop_prompt,
+            mbc2_body: args.mbc2_body,
+        },
+        &mut rng,
+    );
+    if let Err(e) = round(&s, client, &main_prompt, args.kpop_log).await {
+        let _ = s.shutdown().await;
+        return Err(e);
+    }
+
+    let have_learn = args.learn.is_some();
+
+    if let Some((learn_body, learn_log)) = args.learn {
+        let learn_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+            &crate::kpop_acp_prompt::KpopAcpPromptPick {
+                interaction_index: 1,
+                p_creative: args.p_creative,
+                default_prompt: learn_body,
+                mbc2_body: args.mbc2_body,
+            },
+            &mut rng,
+        );
+        if let Err(e) = round(&s, client, &learn_prompt, learn_log).await {
+            let _ = s.shutdown().await;
+            return Err(e);
+        }
+    }
+
+    if crate::kpop_acp_prompt::kpop_creative_enabled(args.p_creative) {
+        debug_assert_eq!(
+            crate::kpop_acp_prompt::kpop_standalone_outbound_prompt_count(args.p_creative, have_learn),
+            crate::kpop_acp_prompt::KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE,
+            "creative path must send one prompt per interaction index 0..=3"
+        );
+        if have_learn {
+            let pad_log = kpop_trace_sibling(args.kpop_log, "creative_pad2");
+            let pad_text = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+                &crate::kpop_acp_prompt::KpopAcpPromptPick {
+                    interaction_index: 2,
+                    p_creative: args.p_creative,
+                    default_prompt: KPOP_CREATIVE_CONTINUE,
+                    mbc2_body: args.mbc2_body,
+                },
+                &mut rng,
+            );
+            if let Err(e) = round(&s, client, &pad_text, &pad_log).await {
+                let _ = s.shutdown().await;
+                return Err(e);
+            }
+        } else {
+            for (idx, tag) in [(1u32, "creative_pad1"), (2u32, "creative_pad2")] {
+                let pad_log = kpop_trace_sibling(args.kpop_log, tag);
+                let pad_text = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+                    &crate::kpop_acp_prompt::KpopAcpPromptPick {
+                        interaction_index: idx,
+                        p_creative: args.p_creative,
+                        default_prompt: KPOP_CREATIVE_CONTINUE,
+                        mbc2_body: args.mbc2_body,
+                    },
+                    &mut rng,
+                );
+                if let Err(e) = round(&s, client, &pad_text, &pad_log).await {
+                    let _ = s.shutdown().await;
+                    return Err(e);
+                }
+            }
+        }
+
+        let roll_log = kpop_trace_sibling(args.kpop_log, "creative_roll");
+        let roll_text = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+            &crate::kpop_acp_prompt::KpopAcpPromptPick {
+                interaction_index: 3,
+                p_creative: args.p_creative,
+                default_prompt: KPOP_CREATIVE_CONTINUE,
+                mbc2_body: args.mbc2_body,
+            },
+            &mut rng,
+        );
+        if let Err(e) = round(&s, client, &roll_text, &roll_log).await {
+            let _ = s.shutdown().await;
+            return Err(e);
+        }
+    }
+
     s.shutdown().await.map_err(AgentError)
 }

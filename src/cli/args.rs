@@ -51,6 +51,9 @@ pub struct KpopArgs {
     /// Hypothesis budget for the KPOP prompt.
     #[arg(long, default_value_t = 10)]
     pub max_loops: usize,
+    /// Probability (0–1) of sending the `mbc2.md` creative prompt after the first three ACP prompts in the KPOP session.
+    #[arg(long, default_value_t = 0.10)]
+    pub p_creative: f64,
     /// Do not learn (update memory).
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,

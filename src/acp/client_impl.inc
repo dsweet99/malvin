@@ -173,6 +173,8 @@ impl AgentClient {
         kpop_prompt: &str,
         kpop_log: &Path,
         learn: Option<(&str, &Path)>,
+        p_creative: f64,
+        mbc2_body: &str,
     ) -> Result<(), AgentError> {
         let mut last_error = String::new();
 
@@ -182,6 +184,8 @@ impl AgentClient {
                 kpop_prompt,
                 kpop_log,
                 learn,
+                p_creative,
+                mbc2_body,
             };
             match run_kpop_flow_once(self, once).await {
                 Ok(()) => return Ok(()),
