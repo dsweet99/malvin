@@ -71,6 +71,15 @@ fn agent_client_must_apply_model_when_invoking_acp_or_drop_cli_option() {
 }
 
 #[test]
+fn agent_client_must_apply_tee_mode_when_invoking_acp() {
+    let snapshot = agent_sources_for_snapshot();
+    assert!(
+        snapshot.contains("tee_trace_stdout: !client.io.no_tee"),
+        "spawn must pass CLI tee mode into AcpSpawnArgs so trace lines can stream to stdout when tee is on"
+    );
+}
+
+#[test]
 fn upgrade_plan_message_must_not_be_eprint_twice() {
     let client_impl = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/client_impl.inc"));
     let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));

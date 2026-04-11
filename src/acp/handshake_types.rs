@@ -23,6 +23,7 @@ pub struct AcpHandshakeIo {
 pub struct AcpHandshakeSessionOpts {
     pub acp_verbose: bool,
     pub require_cursor_login_auth: bool,
+    pub tee_trace_stdout: bool,
 }
 
 pub struct AcpChildStdout {

@@ -26,6 +26,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
         trace_writer: io.trace_writer.clone(),
         prompt_cleanup,
         acp_verbose: cont.session.acp_verbose,
+        tee_trace_stdout: cont.session.tee_trace_stdout,
     });
 
     let io_rpc = AcpStdioRpc {
@@ -73,6 +74,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             session: AcpHandshakeSessionOpts {
                 acp_verbose: args.acp_verbose,
                 require_cursor_login_auth,
+                tee_trace_stdout: args.tee_trace_stdout,
             },
         },
     )

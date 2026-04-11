@@ -293,7 +293,7 @@ async fn write_trace_line_coalesced_skips_non_chunk_lines() {
         .await
         .unwrap();
     let mut c = TraceChunkCoalescer::default();
-    crate::acp::write_trace_line_coalesced(&mut f, &mut c, None).await;
+    crate::acp::write_trace_line_coalesced(&mut f, &mut c, None, false).await;
     drop(f);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     assert!(s.is_empty(), "non-chunk lines should not be written");
@@ -518,6 +518,7 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
         trace_writer,
         prompt_cleanup,
         acp_verbose: false,
+        tee_trace_stdout: false,
     });
     let err = rx.await.unwrap().unwrap_err();
     assert!(err.contains("closed") || err.contains("acp"));

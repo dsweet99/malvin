@@ -155,11 +155,17 @@ impl TraceChunkCoalescer {
     }
 }
 
-pub(crate) async fn trace_file_write_line(f: &mut tokio::fs::File, line: &str) {
+pub(crate) async fn trace_file_write_line(
+    f: &mut tokio::fs::File,
+    line: &str,
+    tee_stdout: bool,
+) {
     if let Err(e) = f.write_all(line.as_bytes()).await {
         warn!(error = %e, "trace write failed");
     } else if let Err(e) = f.write_all(b"\n").await {
         warn!(error = %e, "trace newline failed");
+    } else if tee_stdout {
+        println!("{line}");
     }
 }
 
@@ -167,56 +173,22 @@ pub(crate) async fn write_trace_line_coalesced(
     trace_file: &mut tokio::fs::File,
     coalesce: &mut TraceChunkCoalescer,
     parsed: Option<&Value>,
+    tee_stdout: bool,
 ) {
     if let Some((kind, text)) = parsed.and_then(session_update_chunk_parts) {
         for tl in coalesce.feed(kind, text.as_str()) {
-            trace_file_write_line(trace_file, &tl).await;
+            trace_file_write_line(trace_file, &tl, tee_stdout).await;
         }
         return;
     }
     for tl in coalesce.flush_all() {
-        trace_file_write_line(trace_file, &tl).await;
+        trace_file_write_line(trace_file, &tl, tee_stdout).await;
     }
 }
 
 pub(crate) struct VerboseTraceCoalesceState<'a> {
     pub verbose: &'a mut VerboseIoCoalescer,
     pub trace: &'a mut TraceChunkCoalescer,
-}
-
-pub(crate) async fn reader_loop_verbose_and_trace_line(
-    line: &str,
-    acp_verbose: bool,
-    trace_writer: &std::sync::Arc<tokio::sync::Mutex<Option<tokio::fs::File>>>,
-    coalescers: &mut VerboseTraceCoalesceState<'_>,
-) {
-    let tracing = {
-        let g = trace_writer.lock().await;
-        g.is_some()
-    };
-    let parsed: Option<Value> = if acp_verbose || tracing {
-        serde_json::from_str(line).ok()
-    } else {
-        None
-    };
-
-    if acp_verbose {
-        if let Some((kind, text)) = parsed.as_ref().and_then(session_update_chunk_parts) {
-            coalescers.verbose.feed(kind, text.as_str());
-        } else {
-            coalescers.verbose.flush_all();
-            info!(
-                target: "malvin::acp::io",
-                line = %line,
-                "acp message"
-            );
-        }
-    }
-
-    let mut g = trace_writer.lock().await;
-    if let Some(ref mut f) = *g {
-        write_trace_line_coalesced(f, coalescers.trace, parsed.as_ref()).await;
-    }
 }
 
 #[test]
@@ -241,5 +213,4 @@ fn kiss_stringify_coalesce_b() {
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(VerboseTraceCoalesceState);
-    let _ = stringify!(reader_loop_verbose_and_trace_line);
 }

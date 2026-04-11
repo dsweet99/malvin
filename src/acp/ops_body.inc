@@ -38,25 +38,15 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         ui_idle_notify: None,
         model: model_opt,
         force: client.io.force,
+        tee_trace_stdout: !client.io.no_tee,
     })
     .await
     .map_err(AgentError)
 }
 
-pub(crate) async fn maybe_tee_log(client: &AgentClient, log_path: &Path) {
-    if client.io.no_tee {
-        return;
-    }
-    let Ok(bytes) = tokio::fs::read(log_path).await else {
-        return;
-    };
-    let text = String::from_utf8_lossy(&bytes);
-    let to_print = strip_trace_invocation_line_for_tee(text.as_ref());
-    print!("{to_print}");
-    if !to_print.ends_with('\n') {
-        println!();
-    }
-}
+/// After `session/prompt`, trace lines are already printed live when tee is on (`trace_file_write_line`).
+#[allow(clippy::missing_const_for_fn)]
+pub(crate) fn maybe_tee_log(_client: &AgentClient, _log_path: &Path) {}
 
 pub(crate) async fn run_reviewer_pair_once(
     client: &AgentClient,
@@ -75,7 +65,7 @@ pub(crate) async fn run_reviewer_pair_once(
     s.prompt(&review_full, pair.review_log)
         .await
         .map_err(AgentError)?;
-    maybe_tee_log(client, pair.review_log).await;
+    maybe_tee_log(client, pair.review_log);
 
     sync_review_file(pair.workspace_review_path, pair.artifact_review_path);
     if is_lgtm(pair.artifact_review_path) {
@@ -86,7 +76,7 @@ pub(crate) async fn run_reviewer_pair_once(
     s.prompt(pair.kpop_body, pair.kpop_log)
         .await
         .map_err(AgentError)?;
-    maybe_tee_log(client, pair.kpop_log).await;
+    maybe_tee_log(client, pair.kpop_log);
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())
@@ -108,13 +98,13 @@ pub(crate) async fn run_kpop_flow_once(
         let _ = s.shutdown().await;
         return Err(AgentError(e));
     }
-    maybe_tee_log(client, args.kpop_log).await;
+        maybe_tee_log(client, args.kpop_log);
     if let Some((learn_body, learn_log)) = args.learn {
         if let Err(e) = s.prompt(learn_body, learn_log).await {
             let _ = s.shutdown().await;
             return Err(AgentError(e));
         }
-        maybe_tee_log(client, learn_log).await;
+        maybe_tee_log(client, learn_log);
     }
     s.shutdown().await.map_err(AgentError)
 }

@@ -8,6 +8,7 @@ pub(crate) struct ReaderSpawnArgs {
     pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
     pub prompt_cleanup: Arc<PromptRpcCleanup>,
     pub acp_verbose: bool,
+    pub tee_trace_stdout: bool,
 }
 
 pub(crate) struct ReaderLoopInput {
@@ -18,6 +19,7 @@ pub(crate) struct ReaderLoopInput {
     pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
     pub prompt_cleanup: Option<Arc<PromptRpcCleanup>>,
     pub acp_verbose: bool,
+    pub tee_trace_stdout: bool,
 }
 
 /// JSON-RPC 2.0 allows `id` as string or number; map nonnegative integers (and decimal strings) to
@@ -149,7 +151,12 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         trace_writer,
         prompt_cleanup,
         acp_verbose,
+        tee_trace_stdout,
     } = inp;
+    let trace_opts = ReaderTraceLineOpts {
+        acp_verbose,
+        tee_trace_stdout,
+    };
     let mut lines = BufReader::new(stdout).lines();
     let mut verbose_coalesce = VerboseIoCoalescer::default();
     let mut trace_coalesce = TraceChunkCoalescer::default();
@@ -160,7 +167,7 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         };
         reader_loop_verbose_and_trace_line(
             &line,
-            acp_verbose,
+            &trace_opts,
             &trace_writer,
             &mut coalescers,
         )
@@ -184,7 +191,7 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         let mut g = trace_writer.lock().await;
         if let Some(ref mut f) = *g {
             for tl in trace_coalesce.flush_all() {
-                crate::acp::trace_file_write_line(f, &tl).await;
+                crate::acp::trace_file_write_line(f, &tl, tee_trace_stdout).await;
             }
         }
     }
@@ -205,6 +212,7 @@ pub(crate) fn spawn_acp_stdout_reader(args: ReaderSpawnArgs) -> tokio::task::Joi
             trace_writer: args.trace_writer,
             prompt_cleanup: Some(args.prompt_cleanup),
             acp_verbose: args.acp_verbose,
+            tee_trace_stdout: args.tee_trace_stdout,
         })
         .await;
     })

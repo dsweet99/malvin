@@ -533,6 +533,7 @@ fn spawn_test_reader_loop(
             trace_writer,
             prompt_cleanup: None,
             acp_verbose: false,
+            tee_trace_stdout: false,
         })
         .await;
     });

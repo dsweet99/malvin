@@ -47,6 +47,8 @@ pub struct AcpSpawnArgs<'a> {
     pub model: Option<&'a str>,
     /// When true, passes `agent --force`.
     pub force: bool,
+    /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
+    pub tee_trace_stdout: bool,
 }
 
 #[test]

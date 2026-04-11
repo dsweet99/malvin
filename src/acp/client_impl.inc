@@ -105,7 +105,7 @@ impl AgentClient {
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             match session.prompt(&full_prompt, log_path).await {
                 Ok(()) => {
-                    maybe_tee_log(self, log_path).await;
+                    maybe_tee_log(self, log_path);
                     return Ok(());
                 }
                 Err(e) => {
