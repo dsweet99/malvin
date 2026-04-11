@@ -315,86 +315,71 @@ mod tests {
     use std::path::Path;
     use tokio::sync::Notify;
 
-    const EXTENDED_MOCK_AGENT: &str = r#"#!/usr/bin/env python3
-import sys, json
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
-    try:
-        msg = json.loads(line)
-    except json.JSONDecodeError:
-        continue
-    mid = msg.get("method")
-    rid = msg.get("id")
-    if mid == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "authenticate":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "session/new":
-        print(
-            json.dumps({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": "t1"}}),
-            flush=True,
-        )
-    elif mid == "session/cancel":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "session/prompt":
-        print(
-            json.dumps({"jsonrpc": "2.0", "id": rid, "result": {"stopReason": "end"}}),
-            flush=True,
-        )
-        print(
-            json.dumps(
-                {"jsonrpc": "2.0", "method": "session/update", "params": {"k": 1}}
-            ),
-            flush=True,
-        )
-        print(
-            json.dumps(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 77,
-                    "method": "session/request_permission",
-                    "params": {},
-                }
-            ),
-            flush=True,
-        )
-        print("not-json {{{", flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "id": "string-id", "result": {}}), flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "id": 999001, "result": {}}), flush=True)
-    elif rid is not None:
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
+    const EXTENDED_MOCK_AGENT: &str = r#"const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try { msg = JSON.parse(line); } catch (e) { return; }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/new') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
+  } else if (mid === 'session/cancel') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/prompt') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
+    console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { k: 1 } }));
+    console.log(JSON.stringify({
+      jsonrpc: '2.0',
+      id: 77,
+      method: 'session/request_permission',
+      params: {},
+    }));
+    console.log('not-json {{{');
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: 'string-id', result: {} }));
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: 999001, result: {} }));
+  } else if (rid != null) {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});
 "#;
 
-    const MOCK_BAD_SESSION_NEW: &str = r#"#!/usr/bin/env python3
-import os
-open("mock.pid", "w").write(str(os.getpid()))
-import sys, json
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
-    msg = json.loads(line)
-    mid = msg.get("method")
-    rid = msg.get("id")
-    if mid == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "authenticate":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "session/new":
-        print(
-            json.dumps(
-                {"jsonrpc": "2.0", "id": rid, "result": {"wrongKey": "no-session-id"}}
-            ),
-            flush=True,
-        )
-    elif rid is not None:
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
+    const MOCK_BAD_SESSION_NEW: &str = r#"const fs = require('fs');
+const readline = require('readline');
+fs.writeFileSync('mock.pid', String(process.pid));
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try { msg = JSON.parse(line); } catch (e) { return; }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/new') {
+    console.log(JSON.stringify({
+      jsonrpc: '2.0',
+      id: rid,
+      result: { wrongKey: 'no-session-id' },
+    }));
+  } else if (rid != null) {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});
 "#;
 
     async fn write_mock_executable(path: &Path) {
-        tokio::fs::write(path, EXTENDED_MOCK_AGENT.as_bytes())
+        let script = format!("#!/usr/bin/env node\n{}", EXTENDED_MOCK_AGENT);
+        tokio::fs::write(path, script.as_bytes())
             .await
             .unwrap();
         let mut p = std::fs::metadata(path).unwrap().permissions();
@@ -656,7 +641,8 @@ for line in sys.stdin:
     async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("mock-acp-bad-session");
-        tokio::fs::write(bin.as_path(), MOCK_BAD_SESSION_NEW.as_bytes())
+        let bad_script = format!("#!/usr/bin/env node\n{}", MOCK_BAD_SESSION_NEW);
+        tokio::fs::write(bin.as_path(), bad_script.as_bytes())
             .await
             .unwrap();
         let mut p = std::fs::metadata(&bin).unwrap().permissions();
@@ -769,12 +755,9 @@ for line in sys.stdin:
 
         let tmp = workspace_with_prompt_stub();
         let bin = tmp.path().join("silent-agent");
-        tokio::fs::write(
-            bin.as_path(),
-            b"#!/usr/bin/env python3\nimport time\ntime.sleep(3600)\n",
-        )
-        .await
-        .unwrap();
+        tokio::fs::write(bin.as_path(), b"#!/bin/sh\nexec sleep 3600\n")
+            .await
+            .unwrap();
         let mut p = std::fs::metadata(&bin).unwrap().permissions();
         p.set_mode(0o755);
         std::fs::set_permissions(&bin, p).unwrap();

@@ -37,7 +37,6 @@ Be sure that all checks pass:
     -A clippy::missing_panics_doc
 - kiss check
 and all unit tests pass:
-- pytest -sv tests
 - cargo test
 
 

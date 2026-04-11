@@ -5,5 +5,3 @@
 ./log_2
 *.md~
 .kissconfig~
-__pycache__/
-*.pyc

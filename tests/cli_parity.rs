@@ -10,6 +10,14 @@ fn max_loops_zero_must_not_be_clamped_to_one() {
         !main_rs.contains("args.max_loops.max(1)"),
         "main.rs must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
     );
+    let cli_rs = concat!(
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs")),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs")),
+    );
+    assert!(
+        !cli_rs.contains("max_loops.max(1)"),
+        "src/cli must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
+    );
 }
 
 const fn agent_sources_for_snapshot() -> &'static str {

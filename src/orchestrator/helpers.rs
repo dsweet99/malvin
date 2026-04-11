@@ -4,7 +4,8 @@ use std::path::Path;
 use crate::artifacts::RunArtifacts;
 pub(super) use crate::review_sync::{is_lgtm, sync_review_file};
 
-pub(super) fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
+#[must_use]
+pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
     let mut context = HashMap::new();
     context.insert(
         "plan_path".to_string(),

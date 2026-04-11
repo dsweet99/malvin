@@ -21,7 +21,8 @@ pub struct AuthError(pub String);
 #[derive(Debug, Clone, Copy)]
 pub struct AgentIoOptions {
     pub force: bool,
-    pub tee: bool,
+    /// When false, tee log output to stdout (default). Set when user passes `--no-tee`.
+    pub no_tee: bool,
     pub tee_json: bool,
 }
 
@@ -35,5 +36,7 @@ mod kiss_refs {
         let _ = stringify!(super::ops::spawn_acp_session);
         let _ = stringify!(super::ops::maybe_tee_log);
         let _ = stringify!(super::ops::run_reviewer_pair_once);
+        let _ = stringify!(super::ops::run_kpop_flow_once);
+        let _ = stringify!(super::ops::KpopFlowOnceArgs);
     }
 }

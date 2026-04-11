@@ -9,8 +9,10 @@ use crate::agent::{AgentClient, AgentError, ReviewerPromptPair};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
 
+pub use helpers::workflow_context;
+
 use helpers::{
-    clear_review_file, is_lgtm, prompt_md_stem, sync_review_file, workflow_context,
+    clear_review_file, is_lgtm, prompt_md_stem, sync_review_file, workflow_context as workflow_context_inner,
 };
 
 /// Workflow stopped after `max_loops` without LGTM.
@@ -51,7 +53,7 @@ impl Orchestrator<'_> {
     ///
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context(self.artifacts);
+        let context = workflow_context_inner(self.artifacts);
 
         self.client
             .begin_coder_session(&self.artifacts.work_dir)

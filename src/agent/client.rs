@@ -189,4 +189,46 @@ impl AgentClient {
             "agent acp (reviewer review+kpop) failed after retries. Last error:\n{last_error}"
         )))
     }
+
+    /// Standalone KPOP: one ACP session without `.style/main.md` injection; optional `learn.md` in the same session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AgentError`] when spawn or a prompt fails after retries.
+    pub async fn run_kpop_flow(
+        &mut self,
+        cwd: &Path,
+        kpop_prompt: &str,
+        kpop_log: &Path,
+        learn: Option<(&str, &Path)>,
+    ) -> Result<(), AgentError> {
+        let mut attempt = 0u32;
+        let mut delay = 1.0f64;
+        let mut last_error = String::new();
+
+        while attempt <= self.retries {
+            attempt += 1;
+            let once = ops::KpopFlowOnceArgs {
+                cwd,
+                kpop_prompt,
+                kpop_log,
+                learn,
+            };
+            match ops::run_kpop_flow_once(self, once).await {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = e.0;
+                    if attempt > self.retries {
+                        break;
+                    }
+                    sleep(Duration::from_secs_f64(delay)).await;
+                    delay = (delay * 2.0).min(8.0);
+                }
+            }
+        }
+
+        Err(AgentError(format!(
+            "agent acp (kpop flow) failed after retries. Last error:\n{last_error}"
+        )))
+    }
 }

@@ -63,7 +63,7 @@ pub(super) async fn spawn_acp_session(client: &AgentClient, cwd: &Path) -> Resul
 }
 
 pub(super) async fn maybe_tee_log(client: &AgentClient, log_path: &Path) {
-    if !client.io.tee && !client.io.tee_json {
+    if client.io.no_tee && !client.io.tee_json {
         return;
     }
     let Ok(bytes) = tokio::fs::read(log_path).await else {
@@ -114,6 +114,33 @@ pub(super) async fn run_reviewer_pair_once(
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())
+}
+
+pub(super) struct KpopFlowOnceArgs<'a> {
+    pub cwd: &'a Path,
+    pub kpop_prompt: &'a str,
+    pub kpop_log: &'a Path,
+    pub learn: Option<(&'a str, &'a Path)>,
+}
+
+pub(super) async fn run_kpop_flow_once(
+    client: &AgentClient,
+    args: KpopFlowOnceArgs<'_>,
+) -> Result<(), AgentError> {
+    let s = spawn_acp_session(client, args.cwd).await?;
+    if let Err(e) = s.prompt(args.kpop_prompt, args.kpop_log).await {
+        let _ = s.shutdown().await;
+        return Err(AgentError(e));
+    }
+    maybe_tee_log(client, args.kpop_log).await;
+    if let Some((learn_body, learn_log)) = args.learn {
+        if let Err(e) = s.prompt(learn_body, learn_log).await {
+            let _ = s.shutdown().await;
+            return Err(AgentError(e));
+        }
+        maybe_tee_log(client, learn_log).await;
+    }
+    s.shutdown().await.map_err(AgentError)
 }
 
 #[cfg(test)]

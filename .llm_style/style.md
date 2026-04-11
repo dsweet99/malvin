@@ -5,7 +5,7 @@ Use **TRIGGER** keywords/phrases to recall **ADVICE**. Detail: `./.llm_style/mal
 ---
 
 TRIGGER: run checks yourself  
-ADVICE: Execute `ruff check .`, `pytest -q`, `cargo test`, `cargo clippy --all-targets -- -D warnings`, `kiss check .` from repo root; rerun after substantive edits; do not only suggest commands.
+ADVICE: Execute `cargo clippy --all-targets -- -D warnings`, `cargo test`, `ruff check .`, `kiss check .` from repo root; rerun after substantive edits; do not only suggest commands. (No Python code exists; pytest is obsolete.)
 
 TRIGGER: kiss check  
 ADVICE: Use `kiss check .` (full project), not bare `kiss`. See `.kissignore` for excluded paths.
@@ -38,7 +38,13 @@ TRIGGER: MSRV edition
 ADVICE: Crate uses `edition = "2024"` and `rust-version = "1.85"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
 
 TRIGGER: pre-commit hooks  
-ADVICE: `.pre-commit-config.yaml` expects `ruff`, `pytest`, `cargo`, `kiss` on PATH; document or note when adding hooks.
+ADVICE: `.pre-commit-config.yaml` expects `ruff`, `cargo`, `kiss` on PATH; pytest is legacy (no Python code).
+
+TRIGGER: CLI structure, subcommands  
+ADVICE: CLI lives in `src/cli/`: `args.rs` (CodeArgs, KpopArgs), `mod.rs` (dispatch), `kpop_flow.rs`, `shared_opts.rs`. `@path` syntax via `resolve_user_request()` in `src/artifacts.rs`.
+
+TRIGGER: verify before implementing  
+ADVICE: Read existing code structure before making changes; plans may already be implemented. Avoid wasted effort.
 
 TRIGGER: parallel subagents  
 ADVICE: Use at most 4 parallel subagents for independent exploration; avoid for tiny single-file edits.

@@ -22,6 +22,7 @@ mod tests {
         let _ = stringify!(AgentClient::run_coder_prompt);
         let _ = stringify!(AgentClient::end_coder_session);
         let _ = stringify!(AgentClient::run_reviewer_review_and_kpop);
+        let _ = stringify!(AgentClient::run_kpop_flow);
     }
 
     #[test]
@@ -129,7 +130,7 @@ mod tests {
             "m".to_string(),
             AgentIoOptions {
                 force: true,
-                tee: false,
+                no_tee: false,
                 tee_json: false,
             },
         );

@@ -763,10 +763,13 @@ mod tests {
 
     async fn write_bad_session_new_mock(bin: &Path) {
         let script = format!(
-            "#!/usr/bin/env python3\n{}",
-            crate::test_utils::ACP_MOCK_JSONRPC_LOOP_PY
+            "#!/usr/bin/env node\n{}",
+            crate::test_utils::ACP_MOCK_JSONRPC_LOOP_JS
         )
-        .replace("\"sessionId\": \"t1\"", "\"wrongKey\": \"t1\"");
+        .replace(
+            "result: { sessionId: 't1' }",
+            "result: { wrongKey: 't1' }",
+        );
         tokio::fs::write(bin, script.as_bytes()).await.unwrap();
         let mut perms = std::fs::metadata(bin).unwrap().permissions();
         perms.set_mode(0o755);
@@ -775,31 +778,34 @@ mod tests {
     }
 
     async fn write_authenticate_rejected_but_session_new_ok_mock(bin: &Path) {
-        let script = r#"#!/usr/bin/env python3
-import json, sys
-for line in sys.stdin:
-    line = line.strip()
-    if not line:
-        continue
-    msg = json.loads(line)
-    mid = msg.get("method")
-    rid = msg.get("id")
-    if mid == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
-    elif mid == "authenticate":
-        print(json.dumps({
-            "jsonrpc": "2.0",
-            "id": rid,
-            "error": {
-                "code": -32602,
-                "message": "Invalid params",
-                "data": {"message": "Failed to open browser for login."}
-            }
-        }), flush=True)
-    elif mid == "session/new":
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": "t1"}}), flush=True)
-    elif rid is not None:
-        print(json.dumps({"jsonrpc": "2.0", "id": rid, "result": {}}), flush=True)
+        let script = r#"#!/usr/bin/env node
+const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try { msg = JSON.parse(line); } catch (e) { return; }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+    console.log(JSON.stringify({
+      jsonrpc: '2.0',
+      id: rid,
+      error: {
+        code: -32602,
+        message: 'Invalid params',
+        data: { message: 'Failed to open browser for login.' },
+      },
+    }));
+  } else if (mid === 'session/new') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
+  } else if (rid != null) {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});
 "#;
         tokio::fs::write(bin, script.as_bytes()).await.unwrap();
         let mut perms = std::fs::metadata(bin).unwrap().permissions();
