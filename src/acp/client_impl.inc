@@ -1,10 +1,22 @@
+/// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
+/// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
+async fn backoff_after_agent_failure(last_error: &str, attempt: u32) -> Result<bool, AgentError> {
+    match plan_agent_retry(last_error, attempt) {
+        Err(e) => Err(e),
+        Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
+        Ok(AgentRetryOutcome::Sleep(d)) => {
+            sleep(d).await;
+            Ok(false)
+        }
+    }
+}
+
 impl AgentClient {
     #[must_use]
     pub fn new(model: String, io: AgentIoOptions) -> Self {
         Self {
             model,
             io,
-            retries: 3,
             style_prompt_path: PathBuf::from(".style").join("main.md"),
             coder_session: None,
             coder_style_on_next_prompt: false,
@@ -44,11 +56,8 @@ impl AgentClient {
         if self.coder_session.is_some() {
             return Err(AgentError("coder ACP session is already open".to_string()));
         }
-        let mut delay = 1.0f64;
         let mut last_error = String::new();
-        let mut attempt = 0u32;
-        while attempt <= self.retries {
-            attempt += 1;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
             match spawn_agent_acp_session(self, cwd).await {
                 Ok(s) => {
                     self.coder_session = Some(s);
@@ -57,11 +66,9 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
-                    if attempt > self.retries {
+                    if backoff_after_agent_failure(&last_error, attempt).await? {
                         break;
                     }
-                    sleep(Duration::from_secs_f64(delay)).await;
-                    delay = (delay * 2.0).min(8.0);
                 }
             }
         }
@@ -92,13 +99,10 @@ impl AgentClient {
         }
         self.coder_style_on_next_prompt = false;
 
-        let mut attempt = 0u32;
-        let mut delay = 1.0f64;
         let mut last_error = String::new();
         let session = session.clone();
 
-        while attempt <= self.retries {
-            attempt += 1;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
             match session.prompt(&full_prompt, log_path).await {
                 Ok(()) => {
                     maybe_tee_log(self, log_path).await;
@@ -106,11 +110,9 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e;
-                    if attempt > self.retries {
+                    if backoff_after_agent_failure(&last_error, attempt).await? {
                         break;
                     }
-                    sleep(Duration::from_secs_f64(delay)).await;
-                    delay = (delay * 2.0).min(8.0);
                 }
             }
         }
@@ -141,21 +143,16 @@ impl AgentClient {
         &mut self,
         pair: ReviewerPromptPair<'_>,
     ) -> Result<(), AgentError> {
-        let mut attempt = 0u32;
-        let mut delay = 1.0f64;
         let mut last_error = String::new();
 
-        while attempt <= self.retries {
-            attempt += 1;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
             match run_reviewer_pair_once(self, &pair).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if attempt > self.retries {
+                    if backoff_after_agent_failure(&last_error, attempt).await? {
                         break;
                     }
-                    sleep(Duration::from_secs_f64(delay)).await;
-                    delay = (delay * 2.0).min(8.0);
                 }
             }
         }
@@ -177,12 +174,9 @@ impl AgentClient {
         kpop_log: &Path,
         learn: Option<(&str, &Path)>,
     ) -> Result<(), AgentError> {
-        let mut attempt = 0u32;
-        let mut delay = 1.0f64;
         let mut last_error = String::new();
 
-        while attempt <= self.retries {
-            attempt += 1;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
             let once = KpopFlowOnceArgs {
                 cwd,
                 kpop_prompt,
@@ -193,11 +187,9 @@ impl AgentClient {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if attempt > self.retries {
+                    if backoff_after_agent_failure(&last_error, attempt).await? {
                         break;
                     }
-                    sleep(Duration::from_secs_f64(delay)).await;
-                    delay = (delay * 2.0).min(8.0);
                 }
             }
         }

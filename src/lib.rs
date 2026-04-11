@@ -20,6 +20,7 @@ pub mod agent {
 
 pub mod artifacts;
 pub mod config;
+pub mod env_path;
 pub mod invocation;
 pub mod log_paths;
 pub mod orchestrator;

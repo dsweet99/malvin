@@ -23,11 +23,11 @@ Also copy **`admin/check_untracked.sh`** from the malvin repo into the target re
 
 ### Behavior
 
-- Create **`.pre-commit-config.yaml`** from the template if missing, then run **`pre-commit install`**. If `pre-commit` is missing, fail with a clear message (or document a soft skip—pick one behavior and test it).
+- Create **`.pre-commit-config.yaml`** from the template if missing, then run **`pre-commit install`**. If `pre-commit` is missing, **fail hard** with a clear message (regression: `tests/init_pre_commit.rs`).
 - Run **`kiss init`** (creates `.kissconfig`). Do not hand-edit `.kissconfig` in consumers; follow project rules.
-- Run **`git lfs install`** for Git LFS setup (not `git install lfs`). If `git-lfs` is not on `PATH`, fail fast with an actionable error.
+- Run **`git lfs install`** for Git LFS setup (not `git install lfs`). **Fail fast** if Git LFS is unavailable: the implementation requires **`git lfs version`** (and then **`git lfs install`**) to succeed—this matches typical Git LFS installs (subcommand on Git’s `PATH`); a standalone `git-lfs` binary on `PATH` is not required.
 - Add **`grounding.md`**, **`.gitignore`**, **`.kissignore`** from templates when missing, using the table above.
-- **Idempotency:** By default, do **not** overwrite existing files. Support **`--force`** to refresh listed files from `default_repo/` (and re-copy `admin/check_untracked.sh` when forced, if we include it in the force set—document which paths `--force` touches).
+- **Idempotency:** By default, do **not** overwrite existing files. **`--force`** refreshes every installed path from `default_repo/` **and** **`admin/check_untracked.sh`** (same relative path).
 
 ---
 
@@ -78,7 +78,7 @@ Add **`malvin models`** that:
 - Runs **`cursor-agent models`** (or the supported equivalent) to obtain the list.
 - **Parse** stable fields for **name** and **description** (strip ANSI, drop trailing “tip”/banner lines). If parsing fails, fall back to a stripped pass-through rather than crashing—unless we prefer fail-fast; prefer robust display.
 - Print a **plain** list: names and descriptions.
-- At the **bottom**, state that **`composer-2`** is the default model in `malvin`.
+- At the **bottom**, state the default model in `malvin` (same label as `SharedOpts` / `DEFAULT_CLI_MODEL`, currently **`composer-2`**).
 
 ### When `cursor-agent` is missing
 
@@ -88,6 +88,4 @@ If the binary is not found or execution fails: exit **non-zero** with a short, a
 
 ## Open questions
 
-1. **`pre-commit` missing during `init`:** Fail hard, or skip hook installation with a warning?
-2. **`--force` scope:** Should `--force` overwrite only `default_repo` files, or also always refresh `admin/check_untracked.sh`?
-3. **Stretch streaming (§3):** Ship “full coverage of existing tee” in v1 and defer true streaming to a follow-up?
+1. **Stretch streaming (§3):** Ship “full coverage of existing tee” in v1 and defer true streaming to a follow-up?

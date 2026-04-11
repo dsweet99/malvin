@@ -5,7 +5,6 @@
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,
-    retries: u32,
     pub(crate) style_prompt_path: PathBuf,
     coder_session: Option<AcpSession>,
     /// When true, the next [`Self::run_coder_prompt`] prepends `.style/main.md` (first turn only).

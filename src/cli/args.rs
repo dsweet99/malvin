@@ -2,6 +2,8 @@
 
 use clap::{Args, Parser, Subcommand};
 
+use super::init_cmd::InitArgs;
+use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
 
 #[derive(Parser, Debug)]
@@ -23,6 +25,10 @@ pub enum Commands {
     Code(CodeArgs),
     /// KPOP hypothesis workflow.
     Kpop(KpopArgs),
+    /// Initialize a repository with templates and local tooling (`kiss`, Git LFS, pre-commit).
+    Init(InitArgs),
+    /// List models from the Cursor agent CLI (`cursor-agent models` / `agent models`).
+    Models(ModelsArgs),
 }
 
 #[derive(Args, Debug)]

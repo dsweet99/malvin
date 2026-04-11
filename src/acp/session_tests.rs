@@ -176,6 +176,7 @@ async fn acp_full_session_with_notifications_and_credentials() {
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
 async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
+    let _g = crate::test_utils::test_env_lock();
     crate::invocation::init_from_env();
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp");

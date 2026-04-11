@@ -27,6 +27,7 @@ pub struct AgentIoOptions {
 include!("tee_strip_body.inc");
 include!("pair.inc");
 include!("agent_client_struct.inc");
+include!("retry_policy.inc");
 include!("ops_body.inc");
 include!("client_impl.inc");
 
@@ -45,6 +46,12 @@ mod ops_resolve_bin_tests {
 
 #[test]
 fn stringify_private_helpers() {
+    let _ = stringify!(MAX_AGENT_ATTEMPTS);
+    let _ = stringify!(agent_string_is_upgrade_plan);
+    let _ = stringify!(agent_string_is_retriable);
+    let _ = stringify!(AgentRetryOutcome);
+    let _ = stringify!(plan_agent_retry);
+    let _ = stringify!(backoff_after_agent_failure);
     let _ = stringify!(AgentIoOptions);
     let _ = stringify!(has_api_key);
     let _ = stringify!(auth_probe);
@@ -54,4 +61,55 @@ fn stringify_private_helpers() {
     let _ = stringify!(run_reviewer_pair_once);
     let _ = stringify!(run_kpop_flow_once);
     let _ = stringify!(KpopFlowOnceArgs);
+}
+
+#[cfg(test)]
+mod retry_policy_tests {
+    use super::{
+        agent_string_is_retriable, agent_string_is_upgrade_plan, plan_agent_retry, AgentError,
+        AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
+    };
+
+    #[test]
+    fn upgrade_plan_is_detected() {
+        assert!(agent_string_is_upgrade_plan(
+            "Upgrade your plan to continue using the agent."
+        ));
+    }
+
+    #[test]
+    fn rpc_timeout_is_retriable() {
+        assert!(agent_string_is_retriable("acp RPC timed out"));
+    }
+
+    #[test]
+    fn context_deadline_exceeded_is_retriable() {
+        assert!(
+            agent_string_is_retriable("code=-32000; message=\"context deadline exceeded\""),
+            "common RPC timeout phrasing should be retried per bounded retry policy"
+        );
+    }
+
+    #[test]
+    fn grpc_deadline_exceeded_token_is_retriable() {
+        let msg = "code = DeadlineExceeded desc = stream closed";
+        assert!(
+            agent_string_is_retriable(msg),
+            "gRPC-style errors often use DeadlineExceeded without a space in 'deadline exceeded'"
+        );
+    }
+
+    #[test]
+    fn plan_retry_sleeps_on_first_timeout_then_stops_at_max() {
+        let r = plan_agent_retry("acp RPC timed out", 1).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::Sleep(_)));
+        let r = plan_agent_retry("acp RPC timed out", MAX_AGENT_ATTEMPTS).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::StopRetrying));
+    }
+
+    #[test]
+    fn plan_retry_upgrade_returns_agent_error() {
+        let err = plan_agent_retry("Upgrade your plan to continue", 1).unwrap_err();
+        assert!(matches!(err, AgentError(_)));
+    }
 }

@@ -1,16 +1,8 @@
-fn lookup_bin_on_path(bin: &str) -> Option<PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| dir.join(bin))
-        .find(|candidate| candidate.is_file())
-}
-
 pub(crate) fn resolve_agent_bin() -> Option<PathBuf> {
     std::env::var_os("MALVIN_AGENT_ACP_BIN")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
-        .or_else(|| lookup_bin_on_path("agent"))
-        .or_else(|| lookup_bin_on_path("cursor-agent"))
+        .or_else(crate::env_path::agent_or_cursor_agent_bin)
 }
 
 pub(crate) fn has_api_key() -> bool {

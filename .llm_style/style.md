@@ -16,6 +16,9 @@ ADVICE: `kiss check .` (full project), not bare `kiss`. See `.kissignore`.
 TRIGGER: kiss line limit  
 ADVICE: On `lines_per_file` (≈250), extract submodules (e.g. `src/acp/coalesce.rs`, `src/log_paths.rs`, `cli/command_log_tests.rs`)—not unrelated churn.
 
+TRIGGER: kiss indentation depth  
+ADVICE: If kiss reports `max_indentation_depth`, split helpers (e.g. ANSI `consume_csi_sequence` / `consume_osc_sequence` in `models_cmd.rs`).
+
 TRIGGER: .kissconfig  
 ADVICE: Never edit `.kissconfig`.
 
@@ -30,6 +33,24 @@ ADVICE: Change only what the task requires; match naming, layout, and comment le
 
 TRIGGER: review.md plan  
 ADVICE: Read `review.md` and `grounding.md` for reviewer work; verify sync → LGTM before kpop (logic in `src/acp/` includes such as `ops_body.inc`, not only a legacy `src/agent/ops.rs` path).
+
+TRIGGER: plan.md shipping sync  
+ADVICE: When `malvin init`/ACP/models behavior is fixed, update `plan.md` (resolve open questions, Git LFS wording); keep aligned with `src/cli/init_cmd.rs` and regression tests—see `malvin_tooling.md`.
+
+TRIGGER: malvin init  
+ADVICE: `src/cli/init_cmd.rs`; `default_repo/` + `admin/check_untracked.sh`; bootstrap order matches written `plan.md`; missing `pre-commit`: `tests/init_pre_commit.rs`.
+
+TRIGGER: env_path agent binary  
+ADVICE: `src/env_path.rs` `agent_or_cursor_agent_bin()` — same `agent`→`cursor-agent` order as ACP spawn (`ops_body.inc`); use for `malvin models` and any agent CLI resolution.
+
+TRIGGER: lib test_utils binary  
+ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary unit tests cannot import it; for isolated `PATH`, use `tests/*.rs` + `Command::new(env!("CARGO_BIN_EXE_malvin")).env("PATH", …)` (see `init_pre_commit.rs`).
+
+TRIGGER: ACP retry backoff  
+ADVICE: Policy in `retry_policy.inc` (`plan_agent_retry`); sleep/break via `backoff_after_agent_failure` in `client_impl.inc`; upgrade errors: client returns `Err` only—single `eprintln` at `src/cli/mod.rs` entrypoint.
+
+TRIGGER: DEFAULT_CLI_MODEL  
+ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer uses `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs` guards drift.
 
 TRIGGER: ACP include layout  
 ADVICE: Much of `src/acp/` is built with `include!` for `kiss` limits—navigate by `.inc` / file names; see `malvin_tooling.md`.

@@ -3,7 +3,9 @@
 mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
+mod init_cmd;
 mod kpop_flow;
+mod models_cmd;
 mod shared_opts;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
@@ -145,6 +147,8 @@ pub fn entrypoint() -> Exit {
             };
             rt.block_on(run_kpop(kpop, workflow))
         }
+        Commands::Init(init) => init_cmd::run_init(init.path, init.force),
+        Commands::Models(_) => models_cmd::run_models(),
     };
     match res {
         Ok(()) => Exit::Success,
@@ -176,6 +180,8 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::Cli);
     let _ = stringify!(crate::cli::Commands);
     let _ = stringify!(crate::cli::CodeArgs);
+    let _ = stringify!(crate::cli::init_cmd::InitArgs);
+    let _ = stringify!(crate::cli::models_cmd::ModelsArgs);
     let _ = stringify!(crate::cli::KpopArgs);
     let _ = stringify!(crate::cli::SharedOpts);
     let _ = stringify!(crate::cli::Exit);
@@ -190,5 +196,8 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(malvin::log_paths::format_logs_dir);
     let _ = stringify!(crate::cli::build_agent);
     let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);
+    let _ = stringify!(crate::cli::init_cmd::run_init);
+    let _ = stringify!(crate::cli::models_cmd::run_models);
+    let _ = stringify!(malvin::env_path::lookup_bin_on_path);
 }
 

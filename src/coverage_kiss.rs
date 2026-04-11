@@ -53,6 +53,12 @@ fn kiss_stringify_config() {
 }
 
 #[test]
+fn kiss_stringify_env_path() {
+    let _ = stringify!(crate::env_path::lookup_bin_on_path);
+    let _ = stringify!(crate::env_path::agent_or_cursor_agent_bin);
+}
+
+#[test]
 fn kiss_stringify_invocation() {
     let _ = stringify!(crate::invocation::init_from_env);
     let _ = stringify!(crate::invocation::command_line);

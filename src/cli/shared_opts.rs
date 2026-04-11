@@ -2,10 +2,13 @@
 
 use clap::Args;
 
+/// Default for [`SharedOpts::model`] when `--model` is omitted (product plan §4).
+pub const DEFAULT_CLI_MODEL: &str = "composer-2";
+
 #[derive(Args, Debug)]
 pub struct SharedOpts {
     /// Model label.
-    #[arg(long, default_value = "opus-4.5")]
+    #[arg(long, default_value = DEFAULT_CLI_MODEL)]
     pub model: String,
     /// Disable force-mode (omit `agent --force`).
     #[arg(long, default_value_t = false)]
