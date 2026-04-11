@@ -1,6 +1,8 @@
 //! Subcommand dispatch and async entrypoints for the `malvin` binary.
 
 mod args;
+#[cfg(all(test, unix))]
+mod command_log_tests;
 mod kpop_flow;
 mod shared_opts;
 
@@ -11,21 +13,25 @@ use clap::Parser;
 
 use std::path::Path;
 
-fn full_command_line() -> String {
-    std::env::args().collect::<Vec<_>>().join(" ")
-}
-
-pub fn emit_command_line(run_dir: &Path) {
-    let cmd = full_command_line();
-    println!("Command: {cmd}");
+/// Writes `command.log` under `run_dir`. When `echo_stdout` is true (tee on), also prints `Command: …` to stdout — same flag semantics as [`SharedOpts::tee_startup_stdout`].
+pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
+    malvin::invocation::init_from_env();
+    let cmd = malvin::invocation::command_line()
+        .expect("init_from_env populates argv via OnceLock");
+    let line = format!("Command: {cmd}");
+    if echo_stdout {
+        println!("{line}");
+    }
     let log_path = run_dir.join("command.log");
-    let _ = std::fs::write(&log_path, format!("{cmd}\n"));
+    std::fs::write(&log_path, format!("{line}\n")).map_err(|e| format!("command.log: {e}"))?;
+    Ok(())
 }
 
 use malvin::agent::AgentClient;
 pub use kpop_flow::run_kpop;
 
 use malvin::artifacts::{create_run_artifacts_from_text, resolve_user_request};
+use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
 
@@ -44,6 +50,18 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
     if workflow.run_learn {
         store.validate_exists("learn.md").map_err(|e: PromptError| e.0)?;
     }
+    Ok(store)
+}
+
+/// Like [`prepare_prompt_store`] but only checks prompts used by `malvin kpop` (not the full workflow set).
+pub fn prepare_kpop_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
+    let store = PromptStore::default_store();
+    store
+        .ensure_defaults()
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_kpop_prompts(workflow.run_learn)
+        .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
@@ -71,9 +89,9 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
     let artifacts =
         create_run_artifacts_from_text(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
 
-    echo_primary_to_stdout(&artifacts.plan_path, code.shared.primary_doc_plain_echo())?;
+    echo_primary_to_stdout(&artifacts.plan_path, code.shared.tee_startup_stdout())?;
 
-    emit_command_line(&artifacts.run_dir);
+    emit_command_line(&artifacts.run_dir, code.shared.tee_startup_stdout())?;
     println!("Logs: {}", format_logs_dir(&artifacts.run_dir)?);
 
     let mut orch = Orchestrator {
@@ -105,17 +123,8 @@ pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentCl
     )
 }
 
-pub fn format_logs_dir(run_dir: &Path) -> Result<String, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let cwd_abs = cwd.canonicalize().map_err(|e| e.to_string())?;
-    let run_abs = run_dir.canonicalize().map_err(|e| e.to_string())?;
-    Ok(run_abs.strip_prefix(&cwd_abs).map_or_else(
-        |_| run_abs.display().to_string(),
-        |p| format!("./{}", p.display()),
-    ))
-}
-
 pub fn entrypoint() -> Exit {
+    malvin::invocation::init_from_env();
     let cli = Cli::parse();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -177,9 +186,12 @@ mod kiss_tests {
         let _ = stringify!(super::run_code);
         let _ = stringify!(super::run_kpop);
         let _ = stringify!(super::prepare_prompt_store);
+        let _ = stringify!(super::prepare_kpop_prompt_store);
         let _ = stringify!(super::echo_primary_to_stdout);
         let _ = stringify!(super::emit_command_line);
-        let _ = stringify!(super::format_logs_dir);
+        let _ = stringify!(malvin::log_paths::format_logs_dir);
         let _ = stringify!(super::build_agent);
+        let _ = stringify!(super::shared_opts::SharedOpts::tee_startup_stdout);
     }
 }
+

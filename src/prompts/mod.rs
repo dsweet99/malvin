@@ -116,6 +116,29 @@ impl PromptStore {
         )))
     }
 
+    /// Ensure prompts needed for standalone `malvin kpop` exist (`kpop.md`, and `learn.md` when learning runs).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] listing any missing files.
+    pub fn validate_kpop_prompts(&self, run_learn: bool) -> Result<(), PromptError> {
+        let mut missing: Vec<&str> = Vec::new();
+        if !self.root.join("kpop.md").exists() {
+            missing.push("kpop.md");
+        }
+        if run_learn && !self.root.join("learn.md").exists() {
+            missing.push("learn.md");
+        }
+        if missing.is_empty() {
+            return Ok(());
+        }
+        Err(PromptError(format!(
+            "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
+            self.root.display(),
+            missing.join(", ")
+        )))
+    }
+
     /// Ensure a single file exists (e.g. `learn.md`).
     ///
     /// # Errors

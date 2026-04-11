@@ -39,6 +39,17 @@ mod tests {
     }
 
     #[test]
+    fn kiss_stringify_invocation() {
+        let _ = stringify!(crate::invocation::init_from_env);
+        let _ = stringify!(crate::invocation::command_line);
+    }
+
+    #[test]
+    fn kiss_stringify_log_paths() {
+        let _ = stringify!(crate::log_paths::format_logs_dir);
+    }
+
+    #[test]
     fn kiss_stringify_review_sync() {
         let _ = stringify!(crate::review_sync::is_lgtm);
         let _ = stringify!(crate::review_sync::sync_review_file);
@@ -60,6 +71,7 @@ mod tests {
         let _ = stringify!(PromptStore::with_root);
         let _ = stringify!(PromptStore::ensure_defaults);
         let _ = stringify!(PromptStore::validate_required);
+        let _ = stringify!(PromptStore::validate_kpop_prompts);
         let _ = stringify!(PromptStore::validate_exists);
         let _ = stringify!(PromptStore::render);
     }

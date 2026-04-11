@@ -5,19 +5,19 @@ use std::path::{Path, PathBuf};
 
 use malvin::agent::AgentClient;
 use malvin::artifacts::{create_kpop_run_artifacts, resolve_user_request, RunArtifacts};
+use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
 use malvin::prompts::{PromptError, PromptStore};
 
 use super::build_agent;
 use super::echo_primary_to_stdout;
 use super::emit_command_line;
-use super::format_logs_dir;
-use super::prepare_prompt_store;
+use super::prepare_kpop_prompt_store;
 use super::KpopArgs;
 use super::WorkflowCliOptions;
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
-    let store = prepare_prompt_store(workflow)?;
+    let store = prepare_kpop_prompt_store(workflow)?;
     let mut client = build_agent(&kpop.shared, workflow);
     client
         .ensure_authenticated()
@@ -80,8 +80,8 @@ async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Resu
 }
 
 fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
-    echo_primary_to_stdout(&artifacts.plan_path, kpop.shared.primary_doc_plain_echo())?;
-    emit_command_line(&artifacts.run_dir);
+    echo_primary_to_stdout(&artifacts.plan_path, kpop.shared.tee_startup_stdout())?;
+    emit_command_line(&artifacts.run_dir, kpop.shared.tee_startup_stdout())?;
     println!("Logs: {}", format_logs_dir(&artifacts.run_dir)?);
     Ok(())
 }
@@ -120,5 +120,18 @@ mod kiss_refs {
         let _ = stringify!(super::kpop_learn_bundle);
         let _ = stringify!(super::kpop_run_acp);
         let _ = stringify!(super::KpopAcpInput);
+    }
+}
+
+#[cfg(test)]
+mod combined_prompt_tests {
+    use super::kpop_combined_prompt;
+
+    #[test]
+    fn trims_sections_and_includes_budget() {
+        let s = kpop_combined_prompt("  kpop\n", "  user ask  ", 7);
+        assert!(s.contains("kpop"));
+        assert!(s.contains("user ask"));
+        assert!(s.contains("budget of 7 hypotheses"));
     }
 }

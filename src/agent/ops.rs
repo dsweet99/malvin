@@ -6,6 +6,7 @@ use crate::acp::{AcpSession, AcpSpawnArgs};
 use crate::review_sync::{is_lgtm, sync_review_file};
 
 use super::pair::ReviewerPromptPair;
+use super::tee_strip::strip_trace_invocation_line_for_tee;
 use super::AgentError;
 use super::client::AgentClient;
 
@@ -70,8 +71,9 @@ pub(super) async fn maybe_tee_log(client: &AgentClient, log_path: &Path) {
         return;
     };
     let text = String::from_utf8_lossy(&bytes);
-    print!("{text}");
-    if !text.ends_with('\n') {
+    let to_print = strip_trace_invocation_line_for_tee(text.as_ref());
+    print!("{to_print}");
+    if !to_print.ends_with('\n') {
         println!();
     }
 }

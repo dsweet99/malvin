@@ -2,6 +2,7 @@
 
 mod client;
 mod ops;
+mod tee_strip;
 pub mod pair;
 
 pub use client::AgentClient;
@@ -34,6 +35,7 @@ mod kiss_refs {
         let _ = stringify!(super::ops::auth_probe);
         let _ = stringify!(super::ops::spawn_acp_session);
         let _ = stringify!(super::ops::maybe_tee_log);
+        let _ = stringify!(super::tee_strip::strip_trace_invocation_line_for_tee);
         let _ = stringify!(super::ops::run_reviewer_pair_once);
         let _ = stringify!(super::ops::run_kpop_flow_once);
         let _ = stringify!(super::ops::KpopFlowOnceArgs);

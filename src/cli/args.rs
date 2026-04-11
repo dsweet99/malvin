@@ -29,9 +29,9 @@ pub enum Commands {
 pub struct CodeArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    #[arg(long, default_value = "5")]
+    #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
-    /// Do not learn (update memory) [default: learning on].
+    /// Do not learn (update memory).
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// `@path` reads a file; otherwise literal user text. Stored as `_malvin/.../plan.md`.
@@ -42,9 +42,10 @@ pub struct CodeArgs {
 pub struct KpopArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// Hypothesis budget for the KPOP prompt [default: 10].
+    /// Hypothesis budget for the KPOP prompt.
     #[arg(long, default_value_t = 10)]
     pub max_loops: usize,
+    /// Do not learn (update memory).
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// `@path` reads a file; otherwise literal user text. Stored as `_malvin/.../request.md`.

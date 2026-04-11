@@ -5,6 +5,8 @@ pub mod agent;
 pub use agent::AgentIoOptions;
 pub mod artifacts;
 pub mod config;
+pub mod invocation;
+pub mod log_paths;
 pub mod orchestrator;
 pub mod prompts;
 mod review_sync;

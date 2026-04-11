@@ -58,6 +58,33 @@ fn substitute_replaces_dollar_keys() {
 }
 
 #[test]
+fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    store.validate_kpop_prompts(false).expect("kpop-only ok");
+    assert!(
+        store.validate_required().is_err(),
+        "full workflow should still require implement/review/etc."
+    );
+}
+
+#[test]
+fn validate_kpop_prompts_requires_learn_when_run_learn() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_kpop_prompts(true).unwrap_err();
+    assert!(
+        err.0.contains("learn.md"),
+        "expected learn missing error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
 fn coding_rules_nested_placeholders_expand() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();

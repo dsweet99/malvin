@@ -1,46 +1,56 @@
-# Malvin repo — tooling and quality gates
+# Malvin repo — tooling, layout, quality gates
 
-## Required checks (run from repo root)
+## Required checks (repo root)
 
-- `ruff check .`
-- `pytest -q`
+- `cargo clippy --all-targets --all-features -- -D warnings`
 - `cargo test`
-- `cargo clippy --all-targets --all-features -- -D warnings` (stricter than default; pre-commit also passes many `-W clippy::*` and allows some `-A` overrides)
-- `kiss check .` — **not** bare `kiss` (which only prints help)
+- `ruff check .`
+- `kiss check .` (**not** bare `kiss`)
+- `pytest -sv tests` (minimal Python smoke; primary tests are Rust)
 
-## Constraints
+Pre-commit (`.pre-commit-config.yaml`) runs **ruff**, **cargo clippy** (with extra `-W`/`-A` flags), and **kiss** only—**not** `cargo test` or `pytest`; run the full suite before merge.
 
-- **Do not edit** `.kissconfig` (user rule).
-- **Rust 2024** + `rust-version = "1.85"` in `Cargo.toml`; document MSRV in `README.md` if extending docs.
-- **`.kissignore`** may exclude paths (e.g. large vendored `src/acp/`) from kiss metrics; still run full `kiss check .` on what remains.
+## Hard constraints
 
-## Pre-commit (`.pre-commit-config.yaml`)
+- **Never edit** `.kissconfig`.
+- **Do not run git** in automated assistance for this project; users stage/commit locally.
+- **Rust** `edition = "2024"`, `rust-version = "1.85"` in `Cargo.toml`.
+- **`.kissignore`** may exclude paths; still run `kiss check .` on the analyzed set.
 
-Runs `ruff`, `pytest`, `cargo clippy`, `cargo test`, `kiss check .` — contributors need those binaries or must skip hooks.
+## Crate layout (high level)
 
-## Layout pointers
+| Area | Location |
+|------|----------|
+| Library entry | `src/lib.rs` |
+| Binary entry | `src/main.rs` → `src/cli/` |
+| ACP JSON-RPC | `src/acp/` (`reader`, `transport`, `mod`) |
+| Agent + tee | `src/agent/` (`client`, `ops`, `pair`, `tee_strip`) |
+| Invocation argv | `src/invocation.rs` (space-joined display; not shell-safe) |
+| Log path display | `src/log_paths.rs` (`format_logs_dir`) |
+| Run artifacts | `src/artifacts.rs` |
+| Orchestrator | `src/orchestrator/`, `src/review_sync.rs` |
+| Prompts | `src/prompts/` + `default_prompts/` |
 
-- Library: `src/lib.rs`; binary: `src/main.rs`.
-- ACP: `src/acp/`; agent orchestration: `src/agent/` (`client`, `ops`, `pair`).
-- Workflow: `src/orchestrator/` + `src/review_sync.rs` (shared `is_lgtm` / `sync_review_file`).
-- Prompts + `include_str!`: `src/prompts/mod.rs` → `../../default_prompts/`; ship `default_prompts/` in repo.
-- Run dirs: `_malvin/<stamp>/` (often gitignored).
+## ACP traces and tee
 
-## ACP trace/log architecture
+- **Trace file format:** After `AcpSession::prompt` opens a trace, it may write a plaintext `Command: …\n` line (from `invocation`), then JSON lines from the agent’s stdout. The file is **not** guaranteed pure JSONL when that prelude exists.
+- **`maybe_tee_log`** (`src/agent/ops.rs`) reads the log and prints to stdout unless `--no-tee`. **`strip_trace_invocation_line_for_tee`** (`src/agent/tee_strip.rs`) removes the leading `Command:` line on tee so it is not duplicated after startup `emit_command_line`.
+- **Reader:** `TraceChunkCoalescer` and related logic in `src/acp/reader.rs` for chunk coalescing/dedup from `session/update`.
 
-- `src/acp/reader.rs`: `TraceChunkCoalescer` coalesces and deduplicates text from `session/update` chunks (`agent_message_chunk`, `agent_thought_chunk`). Log files are plain text, not JSONL.
-- `src/agent/ops.rs`: `maybe_tee_log` reads log files and prints to stdout (controlled by `--no-tee`).
-- `session_update_chunk_parts()` extracts text from JSON-RPC `session/update` messages.
+## Tests
 
-## CLI (clap)
+- **Node:** Many ACP unit tests use executable Node scripts as mock `agent acp` children; ensure `node` is on `PATH` or spawn/handshake tests fail with stdout closed / initialize errors.
+- **Brittle source tests:** Prefer async behavioral tests (e.g. read trace file contents) over `include_str!` substring checks on `src/acp/mod.rs` that break on refactors.
 
-- `src/cli/args.rs`: `Cli` struct with `#[command(disable_help_subcommand = true)]` to hide auto-generated `help` subcommand while keeping `--help`/`-h` options.
-- `src/cli/shared_opts.rs`: Shared flags like `--model`, `--no-force`, `--no-tee`.
+## kiss
 
-## Review workflow
+Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible to kiss. Split modules when limits hit.
 
-After the **review** `session/prompt`, **sync** workspace `review.md` to the run artifact, then **`is_lgtm` on the artifact** before any **kpop** prompt (`src/agent/ops.rs`). Coder session is long-lived; reviewer session does review → (if not LGTM) kpop in one ACP session when kpop runs.
+## CLI
 
-## kiss / structure
+- `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
+- `prepare_kpop_prompt_store` validates only kpop (+ learn) prompts; full workflow uses `prepare_prompt_store`.
 
-kiss enforces file length, argument counts, call counts, duplication — large files may need splitting (e.g. `prompts/` as `mod.rs` + `tests.rs`). `src/coverage_kiss.rs` uses `stringify!` so kiss sees symbols; keep in sync when renaming APIs.
+## Workflow (agent)
+
+Reviewer path: after **review** prompt, **sync** workspace review to artifact, **`is_lgtm`** on artifact before **kpop** prompt (`src/agent/ops.rs`).

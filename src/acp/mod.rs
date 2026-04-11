@@ -225,21 +225,39 @@ impl AcpSession {
         }
     }
 
-    /// Send [`session/prompt`](https://cursor.com/docs/cli/acp) for the active session; JSON stdout lines are appended to `trace_path`.
+    /// Send [`session/prompt`](https://cursor.com/docs/cli/acp) for the active session.
+    ///
+    /// The trace file at `trace_path` is truncated, then may begin with a plaintext line
+    /// `Command: …\n` (when an invocation line was recorded). Further output is JSON text from the
+    /// agent’s stdout (JSON-RPC and related lines), as appended by the ACP reader—often one JSON
+    /// value per line, but not guaranteed. **Do not treat the whole file as JSONL:** when the
+    /// `Command:` prelude is present, the stream is mixed plaintext plus JSON and must not be fed
+    /// to a strict JSON-lines parser without skipping the first line.
     pub async fn prompt(&self, text: &str, trace_path: &Path) -> Result<(), String> {
         let _prompt_turn = self.0.prompt_singleflight.lock().await;
+        crate::invocation::init_from_env();
         if let Some(parent) = trace_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
                 .map_err(|e| format!("trace mkdir: {e}"))?;
         }
-        let file = tokio::fs::OpenOptions::new()
+        let mut file = tokio::fs::OpenOptions::new()
             .create(true)
             .truncate(true)
             .write(true)
             .open(trace_path)
             .await
             .map_err(|e| format!("trace open: {e}"))?;
+        if let Some(cmd) = crate::invocation::command_line() {
+            use tokio::io::AsyncWriteExt;
+            let header = format!("Command: {cmd}\n");
+            file.write_all(header.as_bytes())
+                .await
+                .map_err(|e| format!("trace header write: {e}"))?;
+            file.flush()
+                .await
+                .map_err(|e| format!("trace header flush: {e}"))?;
+        }
         *self.0.trace_writer.lock().await = Some(file);
         self.0.busy.store(true, Ordering::SeqCst);
 
@@ -475,6 +493,41 @@ rl.on('line', (line) => {
         let trace = tmp.path().join("t.jsonl");
         s.prompt("hello", &trace).await.expect("prompt");
         s.shutdown().await.expect("shutdown");
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
+    async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
+        crate::invocation::init_from_env();
+        let tmp = workspace_with_prompt_stub();
+        let bin = tmp.path().join("mock-agent-acp");
+        write_mock_executable(&bin).await;
+        let s = AcpSession::spawn(AcpSpawnArgs {
+            cwd: tmp.path(),
+            bin_override: Some(&bin),
+            api_key: Some("george-test-api-key"),
+            auth_token: Some("george-test-auth"),
+            rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+            acp_verbose: false,
+            george_acp_lane: None,
+            ui_idle_notify: None,
+            model: None,
+            force: false,
+        })
+        .await
+        .expect("spawn mock agent acp");
+        let trace = tmp.path().join("trace.jsonl");
+        s.prompt("hello", &trace).await.expect("prompt");
+        s.shutdown().await.expect("shutdown");
+        let text = std::fs::read_to_string(&trace).expect("read trace");
+        let cmd = crate::invocation::command_line().expect("invocation line");
+        let expected_prefix = format!("Command: {cmd}\n");
+        assert!(
+            text.starts_with(&expected_prefix),
+            "trace should start with malvin Command line; expected prefix {:?} got start {:?}",
+            expected_prefix,
+            text.chars().take(80).collect::<String>()
+        );
     }
 
     #[tokio::test]
