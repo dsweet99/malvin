@@ -21,7 +21,7 @@ const DEFAULT_PROMPTS: &[&str] = &[
     "coding_rules.md",
 ];
 
-fn default_file(name: &str) -> Option<&'static str> {
+pub(crate) fn default_file(name: &str) -> Option<&'static str> {
     match name {
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
         "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
@@ -45,7 +45,7 @@ pub struct PromptStore {
     root: PathBuf,
 }
 
-fn user_home_dir() -> PathBuf {
+pub(crate) fn user_home_dir() -> PathBuf {
     if let Some(h) = std::env::var_os("HOME").filter(|s| !s.is_empty()) {
         return PathBuf::from(h);
     }
@@ -188,7 +188,7 @@ impl PromptStore {
     }
 }
 
-fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
+pub(crate) fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
     let mut translated = prompt_text.to_string();
     for key in context.keys() {
         let needle = format!("{{{{ {key} }}}}");
@@ -199,7 +199,7 @@ fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> Stri
 }
 
 /// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
-fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
+pub(crate) fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
     let mut out = String::with_capacity(template.len());
     let chars: Vec<char> = template.chars().collect();
     let mut i = 0usize;
@@ -223,17 +223,6 @@ fn substitute_template(template: &str, context: &HashMap<String, String>) -> Str
         i += 1;
     }
     out
-}
-
-#[cfg(test)]
-mod kiss_refs {
-    #[test]
-    fn stringify_private_helpers() {
-        let _ = stringify!(super::default_file);
-        let _ = stringify!(super::user_home_dir);
-        let _ = stringify!(super::render_template);
-        let _ = stringify!(super::substitute_template);
-    }
 }
 
 #[cfg(test)]

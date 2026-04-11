@@ -27,7 +27,7 @@ pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String
     Ok(())
 }
 
-use malvin::agent::AgentClient;
+use malvin::acp::AgentClient;
 pub use kpop_flow::run_kpop;
 
 use malvin::artifacts::{create_run_artifacts_from_text, resolve_user_request};
@@ -116,7 +116,7 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
 pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentClient {
     AgentClient::new(
         shared.model.clone(),
-        malvin::agent::AgentIoOptions {
+        malvin::acp::AgentIoOptions {
             force: workflow.force,
             no_tee: shared.no_tee,
         },
@@ -170,28 +170,25 @@ impl std::process::Termination for Exit {
     }
 }
 
-#[cfg(test)]
-mod kiss_tests {
-    #[test]
-    fn kiss_stringify_cli_symbols() {
-        let _ = stringify!(super::shared_opts::SharedOpts);
-        let _ = stringify!(super::Cli);
-        let _ = stringify!(super::Commands);
-        let _ = stringify!(super::CodeArgs);
-        let _ = stringify!(super::KpopArgs);
-        let _ = stringify!(super::SharedOpts);
-        let _ = stringify!(super::Exit);
-        let _ = stringify!(super::WorkflowCliOptions);
-        let _ = stringify!(super::entrypoint);
-        let _ = stringify!(super::run_code);
-        let _ = stringify!(super::run_kpop);
-        let _ = stringify!(super::prepare_prompt_store);
-        let _ = stringify!(super::prepare_kpop_prompt_store);
-        let _ = stringify!(super::echo_primary_to_stdout);
-        let _ = stringify!(super::emit_command_line);
-        let _ = stringify!(malvin::log_paths::format_logs_dir);
-        let _ = stringify!(super::build_agent);
-        let _ = stringify!(super::shared_opts::SharedOpts::tee_startup_stdout);
-    }
+#[test]
+fn kiss_stringify_cli_symbols() {
+    let _ = stringify!(crate::cli::shared_opts::SharedOpts);
+    let _ = stringify!(crate::cli::Cli);
+    let _ = stringify!(crate::cli::Commands);
+    let _ = stringify!(crate::cli::CodeArgs);
+    let _ = stringify!(crate::cli::KpopArgs);
+    let _ = stringify!(crate::cli::SharedOpts);
+    let _ = stringify!(crate::cli::Exit);
+    let _ = stringify!(crate::cli::WorkflowCliOptions);
+    let _ = stringify!(crate::cli::entrypoint);
+    let _ = stringify!(crate::cli::run_code);
+    let _ = stringify!(crate::cli::run_kpop);
+    let _ = stringify!(crate::cli::prepare_prompt_store);
+    let _ = stringify!(crate::cli::prepare_kpop_prompt_store);
+    let _ = stringify!(crate::cli::echo_primary_to_stdout);
+    let _ = stringify!(crate::cli::emit_command_line);
+    let _ = stringify!(malvin::log_paths::format_logs_dir);
+    let _ = stringify!(crate::cli::build_agent);
+    let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);
 }
 

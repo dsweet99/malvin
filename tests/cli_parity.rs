@@ -22,8 +22,8 @@ fn max_loops_zero_must_not_be_clamped_to_one() {
 
 const fn agent_sources_for_snapshot() -> &'static str {
     concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/agent/client.rs")),
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/agent/ops.rs")),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc")),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/client_impl.inc")),
     )
 }
 

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 /// Paths and rendered bodies for one reviewer `review` + `kpop` pair in a single ACP session.
 pub struct ReviewerPromptPair<'a> {
     pub cwd: &'a Path,

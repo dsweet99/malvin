@@ -1,28 +1,3 @@
-use std::path::{Path, PathBuf};
-use std::time::Duration;
-
-use tokio::time::sleep;
-
-use crate::acp::AcpSession;
-
-use super::ops;
-use super::pair::ReviewerPromptPair;
-use super::{AgentError, AgentIoOptions, AuthError};
-
-/// ACP-backed agent with grounding-aligned session lifetimes.
-///
-/// Uses one long-lived **coder** session (implement → concerns → learn) and one **reviewer**
-/// session per attempt (review + kpop), torn down after each pair.
-pub struct AgentClient {
-    pub model: String,
-    pub io: AgentIoOptions,
-    retries: u32,
-    pub(super) style_prompt_path: PathBuf,
-    coder_session: Option<AcpSession>,
-    /// When true, the next [`Self::run_coder_prompt`] prepends `.style/main.md` (first turn only).
-    coder_style_on_next_prompt: bool,
-}
-
 impl AgentClient {
     #[must_use]
     pub fn new(model: String, io: AgentIoOptions) -> Self {
@@ -42,16 +17,16 @@ impl AgentClient {
     ///
     /// Returns [`AuthError`] when no credentials and probes fail.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
-        if ops::has_api_key() {
+        if has_api_key() {
             return Ok(());
         }
-        if ops::auth_probe(&["agent", "auth", "status"]) {
+        if auth_probe(&["agent", "auth", "status"]) {
             return Ok(());
         }
-        if ops::auth_probe(&["cursor-agent", "auth", "status"]) {
+        if auth_probe(&["cursor-agent", "auth", "status"]) {
             return Ok(());
         }
-        if ops::auth_probe(&["agent", "whoami"]) {
+        if auth_probe(&["agent", "whoami"]) {
             return Ok(());
         }
         Err(AuthError(
@@ -74,7 +49,7 @@ impl AgentClient {
         let mut attempt = 0u32;
         while attempt <= self.retries {
             attempt += 1;
-            match ops::spawn_acp_session(self, cwd).await {
+            match spawn_agent_acp_session(self, cwd).await {
                 Ok(s) => {
                     self.coder_session = Some(s);
                     self.coder_style_on_next_prompt = true;
@@ -126,7 +101,7 @@ impl AgentClient {
             attempt += 1;
             match session.prompt(&full_prompt, log_path).await {
                 Ok(()) => {
-                    ops::maybe_tee_log(self, log_path).await;
+                    maybe_tee_log(self, log_path).await;
                     return Ok(());
                 }
                 Err(e) => {
@@ -172,7 +147,7 @@ impl AgentClient {
 
         while attempt <= self.retries {
             attempt += 1;
-            match ops::run_reviewer_pair_once(self, &pair).await {
+            match run_reviewer_pair_once(self, &pair).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
@@ -208,13 +183,13 @@ impl AgentClient {
 
         while attempt <= self.retries {
             attempt += 1;
-            let once = ops::KpopFlowOnceArgs {
+            let once = KpopFlowOnceArgs {
                 cwd,
                 kpop_prompt,
                 kpop_log,
                 learn,
             };
-            match ops::run_kpop_flow_once(self, once).await {
+            match run_kpop_flow_once(self, once).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;

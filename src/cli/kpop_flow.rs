@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use malvin::agent::AgentClient;
+use malvin::acp::AgentClient;
 use malvin::artifacts::{create_kpop_run_artifacts, resolve_user_request, RunArtifacts};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
@@ -49,7 +49,7 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
     Ok(())
 }
 
-struct KpopAcpInput<'a> {
+pub struct KpopAcpInput<'a> {
     artifacts: &'a RunArtifacts,
     combined: &'a str,
     kpop_log: &'a Path,
@@ -58,7 +58,7 @@ struct KpopAcpInput<'a> {
     run_learn: bool,
 }
 
-async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Result<(), String> {
+pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Result<(), String> {
     let learn_stored = kpop_learn_bundle(
         input.store,
         input.context,
@@ -79,14 +79,14 @@ async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Resu
         .map_err(|e| e.0)
 }
 
-fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
+pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
     echo_primary_to_stdout(&artifacts.plan_path, kpop.shared.tee_startup_stdout())?;
     emit_command_line(&artifacts.run_dir, kpop.shared.tee_startup_stdout())?;
     println!("Logs: {}", format_logs_dir(&artifacts.run_dir)?);
     Ok(())
 }
 
-fn kpop_combined_prompt(kpop_body: &str, user_text: &str, budget: usize) -> String {
+pub fn kpop_combined_prompt(kpop_body: &str, user_text: &str, budget: usize) -> String {
     format!(
         "{}\n\n{}\n\nYou have a budget of {} hypotheses.",
         kpop_body.trim_end(),
@@ -95,7 +95,7 @@ fn kpop_combined_prompt(kpop_body: &str, user_text: &str, budget: usize) -> Stri
     )
 }
 
-fn kpop_learn_bundle(
+pub fn kpop_learn_bundle(
     store: &PromptStore,
     context: &HashMap<String, String>,
     run_learn: bool,
@@ -111,27 +111,19 @@ fn kpop_learn_bundle(
     Ok(Some((learn_prompt, learn_log)))
 }
 
-#[cfg(test)]
-mod kiss_refs {
-    #[test]
-    fn stringify_kpop_flow_helpers() {
-        let _ = stringify!(super::kpop_emit_startup);
-        let _ = stringify!(super::kpop_combined_prompt);
-        let _ = stringify!(super::kpop_learn_bundle);
-        let _ = stringify!(super::kpop_run_acp);
-        let _ = stringify!(super::KpopAcpInput);
-    }
+#[test]
+fn stringify_kpop_flow_helpers() {
+    let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_combined_prompt);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_run_acp);
+    let _ = stringify!(crate::cli::kpop_flow::KpopAcpInput);
 }
 
-#[cfg(test)]
-mod combined_prompt_tests {
-    use super::kpop_combined_prompt;
-
-    #[test]
-    fn trims_sections_and_includes_budget() {
-        let s = kpop_combined_prompt("  kpop\n", "  user ask  ", 7);
-        assert!(s.contains("kpop"));
-        assert!(s.contains("user ask"));
-        assert!(s.contains("budget of 7 hypotheses"));
-    }
+#[test]
+fn trims_sections_and_includes_budget() {
+    let s = kpop_combined_prompt("  kpop\n", "  user ask  ", 7);
+    assert!(s.contains("kpop"));
+    assert!(s.contains("user ask"));
+    assert!(s.contains("budget of 7 hypotheses"));
 }

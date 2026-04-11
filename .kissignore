@@ -1,3 +1,8 @@
 target/
-# Vendored from `Projects/george` ACP client; complexity metrics are enforced upstream.
-src/acp/
+# Externalized `#[cfg(test)]` modules: kiss static coverage does not attribute them to impl files.
+src/acp/session_tests.rs
+src/acp/transport_tests.rs
+src/acp/reader_tests.rs
+src/orchestrator_tests.rs
+# Binary entry: covered via `cli` kiss tests; no `stringify!(main)` path in submodules.
+src/main.rs

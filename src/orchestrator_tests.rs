@@ -1,4 +1,5 @@
-use super::helpers::{is_lgtm, prompt_md_stem, sync_review_file};
+use crate::orchestrator::prompt_md_stem;
+use crate::review_sync::{is_lgtm, sync_review_file};
 
 fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();

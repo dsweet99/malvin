@@ -1,6 +1,4 @@
-target
-**/__pycache__/
-**/*.py[cod]
+./target
 **/*.rs.bk
 ./_malvin/
 ./log

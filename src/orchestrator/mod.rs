@@ -1,19 +1,19 @@
 //! Implement → review loops.
-
-mod helpers;
+//!
+//! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
+//! attribute coverage consistently; see `.kissignore`.
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::agent::{AgentClient, AgentError, ReviewerPromptPair};
+use crate::acp::{AgentClient, AgentError, ReviewerPromptPair};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
+use crate::review_sync::{is_lgtm, sync_review_file};
 
-pub use helpers::workflow_context;
+include!("helpers.rs");
 
-use helpers::{
-    clear_review_file, is_lgtm, prompt_md_stem, sync_review_file, workflow_context as workflow_context_inner,
-};
+use workflow_context as workflow_context_inner;
 
 /// Workflow stopped after `max_loops` without LGTM.
 #[derive(Debug, thiserror::Error)]
@@ -214,16 +214,3 @@ impl Orchestrator<'_> {
     }
 }
 
-#[cfg(test)]
-mod kiss_refs {
-    #[test]
-    fn stringify_private_helpers() {
-        let _ = stringify!(super::helpers::clear_review_file);
-        let _ = stringify!(super::helpers::sync_review_file);
-        let _ = stringify!(super::helpers::format_prompt_path);
-        let _ = stringify!(super::helpers::prompt_md_stem);
-    }
-}
-
-#[cfg(test)]
-mod tests;

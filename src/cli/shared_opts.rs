@@ -16,7 +16,7 @@ pub struct SharedOpts {
 }
 
 impl SharedOpts {
-    /// Whether to echo the plan/request and startup `Command:` line to stdout before agent work (`--no-tee` disables). Same `no_tee` flag is passed to the agent for ACP log tee; see [`malvin::agent::AgentIoOptions`].
+    /// Whether to echo the plan/request and startup `Command:` line to stdout before agent work (`--no-tee` disables). Same `no_tee` flag is passed to the agent for ACP log tee; see [`malvin::acp::AgentIoOptions`].
     #[must_use]
     pub(crate) const fn tee_startup_stdout(&self) -> bool {
         !self.no_tee

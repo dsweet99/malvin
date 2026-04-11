@@ -1,9 +1,3 @@
-use std::collections::HashMap;
-use std::path::Path;
-
-use crate::artifacts::RunArtifacts;
-pub(super) use crate::review_sync::{is_lgtm, sync_review_file};
-
 #[must_use]
 pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
     let mut context = HashMap::new();
@@ -23,18 +17,18 @@ pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
     context
 }
 
-pub(super) fn clear_review_file(p: &Path) {
+pub(crate) fn clear_review_file(p: &Path) {
     let _ = std::fs::remove_file(p);
 }
 
 /// Stem used in log name segments for **both** coder prompts (`implement.md`, …) and reviewer prompts (`review_1.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
-pub(super) fn prompt_md_stem(filename: &str) -> &str {
+pub(crate) fn prompt_md_stem(filename: &str) -> &str {
     filename.strip_suffix(".md").unwrap_or(filename)
 }
 
-pub(super) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
+pub(crate) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
     let path_r = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let base_r = base_dir.canonicalize().unwrap_or_else(|_| base_dir.to_path_buf());
     path_r.strip_prefix(&base_r).map_or_else(
@@ -42,3 +36,4 @@ pub(super) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
         |r| format!("./{}", r.display()),
     )
 }
+

@@ -85,14 +85,14 @@ pub fn create_kpop_run_artifacts(
     })
 }
 
-fn work_dir_for_path(path: &Path) -> PathBuf {
+pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
 }
 
-fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
+pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
     if rest.is_empty() {
         return Err("Empty path after `@`.".to_string());
     }
@@ -117,7 +117,7 @@ pub fn resolve_user_request(arg: &str) -> Result<(String, PathBuf), String> {
     )
 }
 
-fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
+pub(crate) fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
     let parent = base_dir.unwrap_or_else(|| Path::new("."));
     let run_root = parent.join("_malvin");
     std::fs::create_dir_all(&run_root)?;
@@ -127,13 +127,13 @@ fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
     Ok(run_dir)
 }
 
-fn build_identifier() -> String {
+pub(crate) fn build_identifier() -> String {
     let stamp = Utc::now().format("%Y%m%d_%H%M%S");
     let token = random_alnum(8);
     format!("{stamp}_{token}")
 }
 
-fn random_alnum(len: usize) -> String {
+pub(crate) fn random_alnum(len: usize) -> String {
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::thread_rng();
     (0..len)
@@ -142,18 +142,6 @@ fn random_alnum(len: usize) -> String {
             ALPHABET[i] as char
         })
         .collect()
-}
-
-#[cfg(test)]
-mod kiss_refs {
-    #[test]
-    fn stringify_private_helpers() {
-        let _ = stringify!(super::create_run_dir);
-        let _ = stringify!(super::build_identifier);
-        let _ = stringify!(super::random_alnum);
-        let _ = stringify!(super::create_kpop_run_artifacts);
-        let _ = stringify!(super::resolve_user_request);
-    }
 }
 
 #[cfg(test)]

@@ -2,13 +2,19 @@
 
 ## Required checks (repo root)
 
-- `cargo clippy --all-targets --all-features -- -D warnings`
-- `cargo test`
 - `ruff check .`
-- `kiss check .` (**not** bare `kiss`)
+- `kiss check .` (**not** bare `kiss`). See `.kissignore`.
 - `pytest -sv tests` (minimal Python smoke; primary tests are Rust)
+- `cargo test`
+- `cargo clippy --all-targets --all-features -- -D warnings`
 
-Pre-commit (`.pre-commit-config.yaml`) runs **ruff**, **cargo clippy** (with extra `-W`/`-A` flags), and **kiss** only—**not** `cargo test` or `pytest`; run the full suite before merge.
+Pre-commit **`cargo-clippy`** (must match `.pre-commit-config.yaml` `entry:` verbatim):
+
+```text
+cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc
+```
+
+Pre-commit also runs `ruff check .`, `kiss check .`, and `admin/check_untracked.sh` (fails if untracked `.rs`/`.py` sources exist). It does **not** run `cargo test` or `pytest`; run the full suite before merge.
 
 ## Hard constraints
 
@@ -21,36 +27,42 @@ Pre-commit (`.pre-commit-config.yaml`) runs **ruff**, **cargo clippy** (with ext
 
 | Area | Location |
 |------|----------|
-| Library entry | `src/lib.rs` |
+| Library entry | `src/lib.rs` (re-exports + deprecated `malvin::agent` shim) |
 | Binary entry | `src/main.rs` → `src/cli/` |
-| ACP JSON-RPC | `src/acp/` (`reader`, `transport`, `mod`) |
-| Agent + tee | `src/agent/` (`client`, `ops`, `pair`, `tee_strip`) |
-| Invocation argv | `src/invocation.rs` (space-joined display; not shell-safe) |
-| Log path display | `src/log_paths.rs` (`format_logs_dir`) |
+| ACP JSON-RPC / session / agent client | `src/acp/` — **many** pieces are `include!`d (see below) |
+| Invocation argv | `src/invocation.rs` |
+| Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
-| Orchestrator | `src/orchestrator/`, `src/review_sync.rs` |
+| Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
-## ACP traces and tee
+### ACP `include!` assembly (kiss dependency depth)
 
-- **Trace file format:** After `AcpSession::prompt` opens a trace, it may write a plaintext `Command: …\n` line (from `invocation`), then JSON lines from the agent’s stdout. The file is **not** guaranteed pure JSONL when that prelude exists.
-- **`maybe_tee_log`** (`src/agent/ops.rs`) reads the log and prints to stdout unless `--no-tee`. **`strip_trace_invocation_line_for_tee`** (`src/agent/tee_strip.rs`) removes the leading `Command:` line on tee so it is not duplicated after startup `emit_command_line`.
-- **Reader:** `TraceChunkCoalescer` and related logic in `src/acp/reader.rs` for chunk coalescing/dedup from `session/update`.
+Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.inc`, `ops_body.inc` (`maybe_tee_log`, reviewer pair), `reader_inline.inc`, `agent_bundle.inc`, `transport/*.rs`, `coalesce.rs`.
+
+## ACP traces, coalescing, tee
+
+- **Trace format:** After `AcpSession::prompt`, trace may start with plaintext `Command: …\n` (from `invocation`), then JSON lines from agent stdout—not guaranteed pure JSONL when that prelude exists.
+- **Tee:** `maybe_tee_log` (in `ops_body.inc`) reads the **whole** trace file; `strip_trace_invocation_line_for_tee` (`tee_strip_body.inc`) drops the duplicate prelude line. No-newline `Command:`-only buffers strip to empty (documented + tested).
+- **Coalescing:** Verbose/trace paths track **Unicode scalar counts** per buffer in `coalesce.rs` to avoid repeated full-buffer `chars().count()` in flush loops.
 
 ## Tests
 
-- **Node:** Many ACP unit tests use executable Node scripts as mock `agent acp` children; ensure `node` is on `PATH` or spawn/handshake tests fail with stdout closed / initialize errors.
-- **Brittle source tests:** Prefer async behavioral tests (e.g. read trace file contents) over `include_str!` substring checks on `src/acp/mod.rs` that break on refactors.
+- **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail.
+- **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 
 ## kiss
 
-Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible to kiss. Split modules when limits hit.
+Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible. Split modules when limits hit.
+
+## Breaking API notes
+
+- Document consumer-visible removals (e.g. old `malvin::agent` paths) in **`CHANGELOG.md`**.
 
 ## CLI
 
 - `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
-- `prepare_kpop_prompt_store` validates only kpop (+ learn) prompts; full workflow uses `prepare_prompt_store`.
 
-## Workflow (agent)
+## Reviewer workflow (conceptual)
 
-Reviewer path: after **review** prompt, **sync** workspace review to artifact, **`is_lgtm`** on artifact before **kpop** prompt (`src/agent/ops.rs`).
+After **review** prompt: sync workspace review to artifact, **`is_lgtm`** on artifact before **kpop** prompt—implementation in `src/acp/ops_body.inc` / orchestrator, not a single legacy `src/agent/ops.rs` file.

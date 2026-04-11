@@ -2,7 +2,7 @@
 
 #[test]
 fn reviewer_ops_syncs_and_checks_lgtm_before_kpop_prompt() {
-    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/agent/ops.rs"));
+    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc"));
     let sync = ops
         .find("sync_review_file(pair.workspace_review_path, pair.artifact_review_path)")
         .expect("expected sync from workspace review.md to run artifact after review prompt");

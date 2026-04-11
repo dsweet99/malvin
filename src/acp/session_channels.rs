@@ -1,0 +1,91 @@
+//! Channel state built before the ACP JSON-RPC handshake completes.
+use super::handshake_types::AcpHandshakeIo;
+use super::session_types::{AcpSessionInner, AcpSpawnArgs, ResponseTx};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64};
+use tokio::process::{Child, ChildStdin, ChildStdout};
+use tokio::sync::Mutex;
+
+pub struct SessionChannelState {
+    pub(crate) stdin: Arc<Mutex<ChildStdin>>,
+    pub(crate) pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub(crate) reader_dead: Arc<AtomicBool>,
+    pub(crate) next_id: Arc<AtomicU64>,
+    pub(crate) busy: Arc<AtomicBool>,
+    pub(crate) trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
+    pub(crate) prompt_rpc_id: Arc<AtomicU64>,
+    pub(crate) prompt_singleflight: Arc<Mutex<()>>,
+    pub(crate) ui_idle_notify: Option<Arc<tokio::sync::Notify>>,
+}
+
+impl SessionChannelState {
+    pub(crate) fn new(stdin: ChildStdin, args: &AcpSpawnArgs<'_>) -> Self {
+        Self {
+            stdin: Arc::new(Mutex::new(stdin)),
+            pending: Arc::new(Mutex::new(HashMap::new())),
+            reader_dead: Arc::new(AtomicBool::new(false)),
+            next_id: Arc::new(AtomicU64::new(1)),
+            busy: Arc::new(AtomicBool::new(false)),
+            trace_writer: Arc::new(Mutex::new(None)),
+            prompt_rpc_id: Arc::new(AtomicU64::new(0)),
+            prompt_singleflight: Arc::new(Mutex::new(())),
+            ui_idle_notify: args.ui_idle_notify.clone(),
+        }
+    }
+
+    pub(crate) fn handshake_io(&self) -> AcpHandshakeIo {
+        AcpHandshakeIo {
+            stdin: self.stdin.clone(),
+            pending: self.pending.clone(),
+            reader_dead: self.reader_dead.clone(),
+            next_id: self.next_id.clone(),
+            busy: self.busy.clone(),
+            trace_writer: self.trace_writer.clone(),
+            prompt_rpc_id: self.prompt_rpc_id.clone(),
+            ui_idle_notify: self.ui_idle_notify.clone(),
+        }
+    }
+
+    pub(crate) fn into_session_inner(
+        self,
+        child: Child,
+        session_id: String,
+        rpc_timeout: std::time::Duration,
+        acp_verbose: bool,
+    ) -> AcpSessionInner {
+        AcpSessionInner {
+            child: Mutex::new(child),
+            stdin: self.stdin,
+            pending: self.pending,
+            next_id: self.next_id,
+            session_id,
+            reader_dead: self.reader_dead,
+            rpc_timeout,
+            busy: self.busy,
+            trace_writer: self.trace_writer,
+            prompt_rpc_id: self.prompt_rpc_id,
+            prompt_singleflight: self.prompt_singleflight,
+            acp_verbose,
+            ui_idle_notify: self.ui_idle_notify,
+        }
+    }
+}
+
+pub struct SessionAfterStdioIn<'a> {
+    pub(crate) args: AcpSpawnArgs<'a>,
+    pub(crate) rpc_timeout: std::time::Duration,
+    pub(crate) require_cursor_login_auth: bool,
+    pub(crate) child: Child,
+    pub(crate) stdin: ChildStdin,
+    pub(crate) stdout: ChildStdout,
+}
+
+#[test]
+fn kiss_stringify_session_channels() {
+    let _ = stringify!(SessionChannelState);
+    let _ = stringify!(SessionChannelState::new);
+    let _ = stringify!(SessionChannelState::handshake_io);
+    let _ = stringify!(SessionChannelState::into_session_inner);
+    let _ = stringify!(SessionAfterStdioIn);
+}

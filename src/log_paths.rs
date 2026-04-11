@@ -20,14 +20,6 @@ pub fn format_logs_dir(run_dir: &Path) -> Result<String, String> {
 }
 
 #[cfg(test)]
-mod kiss_refs {
-    #[test]
-    fn stringify_helpers() {
-        let _ = stringify!(super::format_logs_dir);
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use crate::test_utils::test_env_lock;
 
