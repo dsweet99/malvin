@@ -111,14 +111,7 @@ pub fn diff_name_status_z(
     git_output(
         repo_root,
         None,
-        &[
-            "diff",
-            "--name-status",
-            "-z",
-            "-M",
-            old_tree,
-            new_tree,
-        ],
+        &["diff", "--name-status", "-z", "-M", old_tree, new_tree],
         "git diff --name-status -z -M",
     )
 }
@@ -145,4 +138,3 @@ mod kiss_stringify {
         let _ = stringify!(super::validate_repo_root);
     }
 }
-

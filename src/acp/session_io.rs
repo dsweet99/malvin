@@ -20,9 +20,7 @@ pub fn acp_stdio(s: &AcpSessionInner) -> super::AcpStdioRpc {
     }
 }
 
-pub async fn take_stdio_pipes(
-    child: &mut Child,
-) -> Result<(ChildStdin, ChildStdout), String> {
+pub async fn take_stdio_pipes(child: &mut Child) -> Result<(ChildStdin, ChildStdout), String> {
     let stdin = child
         .stdin
         .take()

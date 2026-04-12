@@ -1,15 +1,15 @@
 #![allow(unsafe_code)]
 
-use crate::acp::*;
 use crate::acp::ResponseTx;
-use serde_json::{json, Value};
+use crate::acp::*;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::process::Command;
-use tokio::sync::oneshot;
 use tokio::sync::Mutex;
+use tokio::sync::oneshot;
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -327,9 +327,15 @@ fn request_permission_correlation_id_top_level_params_and_request_id() {
     let top = json!({"jsonrpc":"2.0","id":1,"params":{"id":2}});
     assert_eq!(request_permission_correlation_id(&top), top.get("id"));
     let nested = json!({"jsonrpc":"2.0","method":"session/request_permission","params":{"id":2}});
-    assert_eq!(request_permission_correlation_id(&nested), nested.pointer("/params/id"));
+    assert_eq!(
+        request_permission_correlation_id(&nested),
+        nested.pointer("/params/id")
+    );
     let req_id = json!({"params":{"requestId":"9"}});
-    assert_eq!(request_permission_correlation_id(&req_id), req_id.pointer("/params/requestId"));
+    assert_eq!(
+        request_permission_correlation_id(&req_id),
+        req_id.pointer("/params/requestId")
+    );
     let none = json!({"method":"session/request_permission","params":{}});
     assert_eq!(request_permission_correlation_id(&none), None);
 }
@@ -458,7 +464,8 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
     let _ = child.wait().await.expect("wait cat");
     let line = String::from_utf8_lossy(&received);
     assert!(
-        line.contains("allow-always") && (line.contains(r#""id":77"#) || line.contains(r#""id": 77"#)),
+        line.contains("allow-always")
+            && (line.contains(r#""id":77"#) || line.contains(r#""id": 77"#)),
         "expected allow-always reply echoing id 77; got {line:?}"
     );
 }
@@ -568,5 +575,8 @@ fn time_ratio_when_doubling_buffer_len_coalesce_flush_cap() {
     eprintln!(
         "coalesce_flush_cap probe: t(500×cap)={t_small:?} emissions={e_small} | t(1000×cap)={t_large:?} emissions={e_large} | ratio={r:.3}"
     );
-    assert!(e_large > e_small, "expected more chunks when buffer doubles");
+    assert!(
+        e_large > e_small,
+        "expected more chunks when buffer doubles"
+    );
 }

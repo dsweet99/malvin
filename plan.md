@@ -4,6 +4,10 @@ Goal
 - Do not touch the user’s real index.
 - Count only selected file types, e.g. .rs, .py, .md.
 
+Shipped behavior (malvin)
+- **Checkpoints** in the implementation run at **orchestration boundaries** (after each coder / reviewer–kpop prompt step in `malvin code`, and at analogous boundaries in `malvin kpop`), not after every in-agent tool call. Finer “every write step” sampling would need instrumentation inside the agent/ACP layer.
+- **Per-file byte cost** follows the Option A *shape* below (opcode-weighted sums) but uses Myers-style opcodes via the `similar` crate, not Python `difflib.SequenceMatcher` as the engine—see `src/edit_efficiency/byte_cost.rs` and `.llm_style/malvin_tooling.md` § Edit efficiency.
+
 Definitions
 - Let S0, S1, ..., ST be repo snapshots taken during the run.
 - Snapshot granularity: after each agent write step, tool step, or checkpoint.

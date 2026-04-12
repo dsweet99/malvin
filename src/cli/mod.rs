@@ -18,8 +18,8 @@ use std::path::Path;
 /// Writes `command.log` under `run_dir`. When `echo_stdout` is true (tee on), also prints `Command: …` to stdout — same flag semantics as [`SharedOpts::tee_startup_stdout`].
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
     malvin::invocation::init_from_env();
-    let cmd = malvin::invocation::command_line()
-        .expect("init_from_env populates argv via OnceLock");
+    let cmd =
+        malvin::invocation::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
         println!("{line}");
@@ -29,8 +29,8 @@ pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String
     Ok(())
 }
 
-use malvin::acp::AgentClient;
 pub use kpop_flow::run_kpop;
+use malvin::acp::AgentClient;
 
 use malvin::artifacts::{create_run_artifacts_from_text, resolve_user_request};
 use malvin::log_paths::format_logs_dir;
@@ -45,12 +45,12 @@ pub struct WorkflowCliOptions {
 
 pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
-    store
-        .ensure_defaults()
-        .map_err(|e: PromptError| e.0)?;
+    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store.validate_required().map_err(|e: PromptError| e.0)?;
     if workflow.run_learn {
-        store.validate_exists("learn.md").map_err(|e: PromptError| e.0)?;
+        store
+            .validate_exists("learn.md")
+            .map_err(|e: PromptError| e.0)?;
     }
     Ok(store)
 }
@@ -61,9 +61,7 @@ pub fn prepare_kpop_prompt_store(
     p_creative: f64,
 ) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
-    store
-        .ensure_defaults()
-        .map_err(|e: PromptError| e.0)?;
+    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
         .validate_kpop_prompts(workflow.run_learn, p_creative)
         .map_err(|e: PromptError| e.0)?;
@@ -86,13 +84,11 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
     let store = prepare_prompt_store(workflow)?;
 
     let mut client = build_agent(&code.shared, workflow);
-    client
-        .ensure_authenticated()
-        .map_err(|e| e.to_string())?;
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let (text, work_dir) = resolve_user_request(&code.request)?;
-    let artifacts =
-        create_run_artifacts_from_text(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
+        .map_err(|e| e.to_string())?;
 
     echo_primary_to_stdout(&artifacts.plan_path, code.shared.tee_startup_stdout())?;
 
@@ -111,9 +107,7 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
             println!("{msg}");
         }),
     };
-    orch.run()
-        .await
-        .map_err(|e: WorkflowError| e.0)?;
+    orch.run().await.map_err(|e: WorkflowError| e.0)?;
     println!("DONE");
     Ok(())
 }
@@ -203,4 +197,3 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::models_cmd::run_models);
     let _ = stringify!(malvin::env_path::lookup_bin_on_path);
 }
-

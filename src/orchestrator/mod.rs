@@ -8,9 +8,11 @@ use std::path::Path;
 
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
-use crate::edit_efficiency::{EditEfficiencyMeter, finish_and_write_report, maybe_checkpoint};
+use crate::edit_efficiency::{
+    EditEfficiencyMeter, finish_edit_efficiency_then_return, maybe_checkpoint,
+    try_edit_efficiency_meter,
+};
 use crate::prompts::PromptStore;
-use tracing::debug;
 
 include!("helpers.rs");
 
@@ -56,19 +58,17 @@ impl Orchestrator<'_> {
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
 
-        let mut edit_efficiency = match EditEfficiencyMeter::new(&self.artifacts.work_dir) {
-            Ok(m) => Some(m),
-            Err(e) => {
-                debug!(target: "malvin::edit_efficiency", ?e, "skipping edit efficiency (not a git repo or snapshot failed)");
-                None
-            }
-        };
+        let mut edit_efficiency = try_edit_efficiency_meter(&self.artifacts.work_dir);
 
         let workflow_result = self
             .run_with_coder_session(&context, &mut edit_efficiency)
             .await;
 
-        finish_and_write_report(edit_efficiency, &self.artifacts.run_dir);
+        let workflow_result = finish_edit_efficiency_then_return(
+            edit_efficiency,
+            &self.artifacts.run_dir,
+            workflow_result,
+        );
 
         let end_result = self
             .client
@@ -100,7 +100,7 @@ impl Orchestrator<'_> {
             },
             edit_efficiency,
         )
-            .await?;
+        .await?;
         self.run_review_phase(
             ReviewPhaseArgs {
                 review_prompt: "review_2.md",
@@ -110,7 +110,7 @@ impl Orchestrator<'_> {
             },
             edit_efficiency,
         )
-            .await?;
+        .await?;
 
         if self.config.run_learn {
             (self.progress_callback)("Learn");
@@ -132,9 +132,7 @@ impl Orchestrator<'_> {
             .render(filename, context)
             .map_err(|e| WorkflowError(e.0))?;
         let stem = prompt_md_stem(filename);
-        let log = self
-            .artifacts
-            .log_path(&format!("coder_{stem}_{suffix}"));
+        let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
         self.client
             .run_coder_prompt(&prompt, &log)
             .await
@@ -143,4 +141,3 @@ impl Orchestrator<'_> {
         Ok(())
     }
 }
-

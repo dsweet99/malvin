@@ -1,7 +1,7 @@
 //! Standalone KPOP ACP user-message selection (optional MBC2 creative branch).
 
-use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
+use rand::distributions::{Distribution, Uniform};
 
 const MBC2_SUFFIX: &str = "\n\nGenerate one MBC2 hypothesis.";
 
@@ -61,10 +61,10 @@ pub fn kpop_acp_user_prompt(pick: &KpopAcpPromptPick<'_>, rng: &mut impl Rng) ->
 
 #[cfg(test)]
 mod tests {
-    use rand::rngs::StdRng;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
 
-    use super::{kpop_acp_user_prompt, CREATIVE_MIN_INTERACTION, KpopAcpPromptPick};
+    use super::{CREATIVE_MIN_INTERACTION, KpopAcpPromptPick, kpop_acp_user_prompt};
 
     #[test]
     fn first_three_interactions_never_use_mbc2_even_at_probability_one() {
@@ -110,7 +110,9 @@ mod tests {
 
     #[test]
     fn kpop_acp_session_must_send_enough_prompts_for_p_creative_to_apply() {
-        use super::{kpop_standalone_outbound_prompt_count, KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE};
+        use super::{
+            KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE, kpop_standalone_outbound_prompt_count,
+        };
 
         assert_eq!(
             kpop_standalone_outbound_prompt_count(0.1, false),

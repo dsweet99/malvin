@@ -160,13 +160,17 @@ pub async fn write_acp_jsonrpc_mock_executable(path: &Path, start_log: Option<&P
 
 /// Successful handshake; `session/prompt` responds with a JSON-RPC error.
 pub async fn write_acp_jsonrpc_mock_executable_prompt_fails(path: &Path, start_log: Option<&Path>) {
-    write_acp_mock_script_with_optional_log(path, start_log, ACP_MOCK_JSONRPC_PROMPT_FAILS_JS).await;
+    write_acp_mock_script_with_optional_log(path, start_log, ACP_MOCK_JSONRPC_PROMPT_FAILS_JS)
+        .await;
 }
 
 /// Cancel error + slow prompt (see George integration tests).
 #[cfg(unix)]
 pub async fn write_acp_jsonrpc_mock_cancel_err_slow_prompt(path: &Path) {
-    let body = format!("#!/usr/bin/env node\n{}", ACP_MOCK_CANCEL_ERR_SLOW_PROMPT_JS);
+    let body = format!(
+        "#!/usr/bin/env node\n{}",
+        ACP_MOCK_CANCEL_ERR_SLOW_PROMPT_JS
+    );
     tokio::fs::write(path, body.as_bytes()).await.unwrap();
     chmod755_executable(path);
     sync_test_executable(path);
@@ -191,11 +195,7 @@ mod start_log_header_tests {
         let header = acp_mock_start_log_header(Some(log.as_path()));
         assert!(!header.is_empty());
         let script = tmp.path().join("syntax-check.js");
-        std::fs::write(
-            &script,
-            format!("#!/usr/bin/env node\n{header}"),
-        )
-        .unwrap();
+        std::fs::write(&script, format!("#!/usr/bin/env node\n{header}")).unwrap();
         let ok = Command::new("node")
             .args(["--check", script.to_str().expect("utf8 path")])
             .status()

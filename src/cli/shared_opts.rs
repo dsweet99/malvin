@@ -13,7 +13,7 @@ pub struct SharedOpts {
     /// Disable force-mode (omit `agent --force`).
     #[arg(long, default_value_t = false)]
     pub no_force: bool,
-    /// Disable tee: do not echo the plan/request, the startup `Command:` line, or ACP session output to stdout [default: tee on]. Matches the tee contract in `grounding.md`. Run-directory files (for example `command.log` and trace logs) are always written.
+    /// Disable tee: do not echo the plan/request, the startup `Command:` line, or ACP session output to stdout [default: tee on]. Progress lines, `Logs: …`, and `DONE` still print to stdout; when edit-efficiency metering succeeds, its one-line summary prints to stdout too. If metering did not start or `finish` failed, a short hint goes to stderr (see `grounding.md`). Run-directory files (for example `command.log` and trace logs) are always written.
     #[arg(long, default_value_t = false)]
     pub no_tee: bool,
 }

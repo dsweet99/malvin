@@ -7,12 +7,26 @@ use clap::Args;
 
 use malvin::env_path::lookup_bin_on_path;
 
-const TPL_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/gitignore"));
-const TPL_KISSIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/kissignore"));
-const TPL_PRE_COMMIT: &str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/pre-commit-config.yaml"));
-const TPL_GROUNDING: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/grounding.md"));
-const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/admin/check_untracked.sh"));
+const TPL_GITIGNORE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/gitignore"
+));
+const TPL_KISSIGNORE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/kissignore"
+));
+const TPL_PRE_COMMIT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/pre-commit-config.yaml"
+));
+const TPL_GROUNDING: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/grounding.md"
+));
+const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/admin/check_untracked.sh"
+));
 
 /// Arguments for [`run_init`].
 #[derive(Args, Debug)]
@@ -32,17 +46,10 @@ pub fn run_init(path: Option<PathBuf>, force: bool) -> Result<(), String> {
 }
 
 fn resolve_init_root(path: Option<PathBuf>) -> Result<PathBuf, String> {
-    let root = path.map_or_else(
-        || std::env::current_dir().map_err(|e| e.to_string()),
-        Ok,
-    )?;
+    let root = path.map_or_else(|| std::env::current_dir().map_err(|e| e.to_string()), Ok)?;
     if !root.exists() {
-        std::fs::create_dir_all(&root).map_err(|e| {
-            format!(
-                "init: create directory {}: {e}",
-                root.display()
-            )
-        })?;
+        std::fs::create_dir_all(&root)
+            .map_err(|e| format!("init: create directory {}: {e}", root.display()))?;
     }
     Ok(root)
 }
@@ -55,7 +62,11 @@ fn write_init_templates(root: &Path, force: bool) -> Result<(), String> {
 
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
-    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)?;
+    write_shell_script(
+        &admin_dir.join("check_untracked.sh"),
+        ADMIN_CHECK_UNTRACKED,
+        force,
+    )?;
     Ok(())
 }
 
@@ -106,7 +117,9 @@ fn install_git_lfs(root: &Path) -> Result<(), String> {
         );
     }
     run_command_expect_success(
-        Command::new("git").args(["lfs", "install"]).current_dir(root),
+        Command::new("git")
+            .args(["lfs", "install"])
+            .current_dir(root),
         "`git lfs install` failed.",
     )
 }
@@ -128,8 +141,7 @@ fn write_text_file(path: &Path, contents: &str, force: bool) -> Result<(), Strin
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("init: mkdir {}: {e}", parent.display()))?;
     }
-    std::fs::write(path, contents)
-        .map_err(|e| format!("init: write {}: {e}", path.display()))?;
+    std::fs::write(path, contents).map_err(|e| format!("init: write {}: {e}", path.display()))?;
     Ok(())
 }
 

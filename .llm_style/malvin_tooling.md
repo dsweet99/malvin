@@ -4,7 +4,7 @@
 
 - `ruff check .`
 - `kiss check .` (**not** bare `kiss`). See `.kissignore`.
-- `pytest -sv tests` (minimal Python smoke; primary tests are Rust)
+- `pytest -sv tests` (minimal Python smoke; primary tests are Rust). If a test imports the repo as a package, run from repo root with `PYTHONPATH=.`.
 - `cargo test`
 - `cargo clippy --all-targets --all-features -- -D warnings`
 
@@ -15,6 +15,10 @@ cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W 
 ```
 
 Pre-commit also runs `ruff check .`, `kiss check .`, and `admin/check_untracked.sh` (fails if untracked `.rs`/`.py` sources exist). It does **not** run `cargo test` or `pytest`; run the full suite before merge.
+
+### Untracked source files (`admin/check_untracked.sh`)
+
+Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-files --others --exclude-standard`). **Agents** that must not run `git` cannot `git add`; fold new tests into an existing tracked `tests/*.rs` (e.g. `cli_parity.rs`) or ask the user to stage. Keeps pre-commit green without bypassing the hook.
 
 ## Hard constraints
 
@@ -46,6 +50,7 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 ## Edit efficiency
 
 - **Code:** `src/edit_efficiency/` — `EditEfficiencyMeter`, tree/byte diffs (`similar`, Myers-style opcodes), git helpers, `finish_and_write_report`, tests in `meter_tests.rs`.
+- **Streams / ordering:** Successful one-line summary → **`println!` (stdout)**; not measured or `finish` failure → **`eprintln!` (stderr)** — see root `grounding.md`. `finish_edit_efficiency_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
 - **Orchestration:** Checkpoints run at **prompt boundaries** (coder / reviewer–kpop), not necessarily every in-session tool invocation; see `src/orchestrator/mod.rs` and `review_loop.rs`.
 - **Fields:** `checkpoint_calls` = successful `checkpoint()` only; `gross_diff_steps` = those plus an extra step when `finish()` applies a trailing tree diff after the last checkpoint.
 - **Byte totals vs `CPython`:** Doc in `byte_cost.rs` — not bit-identical to `difflib.SequenceMatcher`; algorithms differ.
@@ -61,6 +66,7 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
+- **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
 
 ## kiss
 

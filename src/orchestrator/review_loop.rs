@@ -51,10 +51,7 @@ impl Orchestrator<'_> {
         ctx: ReviewAttemptCtx<'_>,
         edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<bool, WorkflowError> {
-        (self.progress_callback)(&format!(
-            "{} (attempt {})",
-            ctx.progress_label, ctx.attempt
-        ));
+        (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
         if ctx.review_prompt.starts_with("review_") {
             clear_review_file(&self.artifacts.run_dir.join("review.md"));
@@ -96,10 +93,9 @@ impl Orchestrator<'_> {
         edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<(), WorkflowError> {
         let stem = prompt_md_stem(ctx.review_prompt);
-        let review_log = self.artifacts.log_path(&format!(
-            "reviewer_{stem}_attempt_{}",
-            ctx.attempt
-        ));
+        let review_log = self
+            .artifacts
+            .log_path(&format!("reviewer_{stem}_attempt_{}", ctx.attempt));
         let kpop_log = self.artifacts.log_path(&format!(
             "reviewer_kpop_{}_attempt_{}",
             ctx.phase_id, ctx.attempt

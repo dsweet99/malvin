@@ -1,16 +1,16 @@
 #![allow(unsafe_code)]
 #![allow(clippy::pedantic, clippy::nursery)]
 
-use crate::acp::*;
 use crate::acp::ReaderLoopInput;
 use crate::acp::ResponseTx;
+use crate::acp::*;
 use serde_json::json;
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::process::{ChildStdin, Command};
@@ -65,7 +65,9 @@ fn executable_text_busy_matches_error_kind_and_unix_etxtbsy() {
         "no"
     )));
     #[cfg(unix)]
-    assert!(crate::acp::executable_text_busy(&Error::from_raw_os_error(26)));
+    assert!(crate::acp::executable_text_busy(&Error::from_raw_os_error(
+        26
+    )));
 }
 
 fn command_args(cmd: &Command) -> Vec<String> {
@@ -85,7 +87,8 @@ fn command_env_value(cmd: &Command, key: &str) -> Option<String> {
 fn assert_arg_value(args: &[String], flag: &str, expected: Option<&str>) {
     if let Some(value) = expected {
         assert!(
-            args.windows(2).any(|pair| pair[0] == flag && pair[1] == value),
+            args.windows(2)
+                .any(|pair| pair[0] == flag && pair[1] == value),
             "expected `{flag} {value}` in args: {args:?}"
         );
     } else {
@@ -104,7 +107,10 @@ fn assert_cursor_credentials_forwarding(
     let args = command_args(cmd);
     assert_arg_value(&args, "--api-key", expected_key);
     assert_arg_value(&args, "--auth-token", expected_token);
-    assert_eq!(command_env_value(cmd, "CURSOR_API_KEY").as_deref(), expected_key);
+    assert_eq!(
+        command_env_value(cmd, "CURSOR_API_KEY").as_deref(),
+        expected_key
+    );
     assert_eq!(
         command_env_value(cmd, "CURSOR_AUTH_TOKEN").as_deref(),
         expected_token
@@ -469,10 +475,7 @@ async fn write_bad_session_new_mock(bin: &Path) {
         "#!/usr/bin/env node\n{}",
         crate::test_utils::ACP_MOCK_JSONRPC_LOOP_JS
     )
-    .replace(
-        "result: { sessionId: 't1' }",
-        "result: { wrongKey: 't1' }",
-    );
+    .replace("result: { sessionId: 't1' }", "result: { wrongKey: 't1' }");
     tokio::fs::write(bin, script.as_bytes()).await.unwrap();
     let mut perms = std::fs::metadata(bin).unwrap().permissions();
     perms.set_mode(0o755);
@@ -562,7 +565,9 @@ async fn test_handshake_hits_session_new_error_path() {
         model: None,
         force: false,
     });
-    let mut child = crate::acp::spawn_agent_acp_child(&mut cmd).await.expect("spawn");
+    let mut child = crate::acp::spawn_agent_acp_child(&mut cmd)
+        .await
+        .expect("spawn");
     let stdin = Arc::new(Mutex::new(child.stdin.take().unwrap()));
     let stdout = child.stdout.take().unwrap();
 
@@ -585,7 +590,7 @@ async fn test_handshake_hits_session_new_error_path() {
         rpc_timeout: acp_rpc_timeout(),
         require_cursor_login_auth: true,
     })
-        .await
+    .await
     .unwrap_err();
     assert!(err.contains("sessionId"));
 
@@ -614,7 +619,9 @@ async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
         model: None,
         force: false,
     });
-    let mut child = crate::acp::spawn_agent_acp_child(&mut cmd).await.expect("spawn");
+    let mut child = crate::acp::spawn_agent_acp_child(&mut cmd)
+        .await
+        .expect("spawn");
     let stdin = Arc::new(Mutex::new(child.stdin.take().unwrap()));
     let stdout = child.stdout.take().unwrap();
 
@@ -637,8 +644,8 @@ async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
         rpc_timeout: acp_rpc_timeout(),
         require_cursor_login_auth: false,
     })
-        .await
-        .expect("session/new should work without cursor_login authenticate");
+    .await
+    .expect("session/new should work without cursor_login authenticate");
     assert_eq!(sid, "t1");
 
     clear_cursor_env_for_test();

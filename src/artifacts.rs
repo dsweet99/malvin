@@ -25,7 +25,10 @@ impl RunArtifacts {
 /// # Errors
 ///
 /// Returns an I/O error if directories cannot be created or the plan cannot be copied.
-pub fn create_run_artifacts(plan_source: &Path, base_dir: Option<&Path>) -> std::io::Result<RunArtifacts> {
+pub fn create_run_artifacts(
+    plan_source: &Path,
+    base_dir: Option<&Path>,
+) -> std::io::Result<RunArtifacts> {
     let run_dir = create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::copy(plan_source, &plan_target)?;
@@ -48,9 +51,7 @@ pub fn create_run_artifacts_from_text(
     plan_text: &str,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    let work_dir = base_dir
-        .unwrap_or_else(|| Path::new("."))
-        .to_path_buf();
+    let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
     let run_dir = create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::write(&plan_target, plan_text)?;
@@ -72,9 +73,7 @@ pub fn create_kpop_run_artifacts(
     request_text: &str,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    let work_dir = base_dir
-        .unwrap_or_else(|| Path::new("."))
-        .to_path_buf();
+    let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
     let run_dir = create_run_dir(base_dir)?;
     let request_target = run_dir.join("request.md");
     std::fs::write(&request_target, request_text)?;
@@ -86,8 +85,7 @@ pub fn create_kpop_run_artifacts(
 }
 
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
-    path
-        .parent()
+    path.parent()
         .filter(|p| !p.as_os_str().is_empty())
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
 }

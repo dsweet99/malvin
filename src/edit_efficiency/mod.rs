@@ -16,9 +16,25 @@ pub(crate) mod report;
 pub(crate) mod tree_diff;
 
 pub use error::EditEfficiencyError;
-pub use report::{finish_and_write_report, maybe_checkpoint};
+pub use report::{
+    EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE, finish_and_write_report,
+    finish_edit_efficiency_then_return, format_edit_efficiency_stdout_line, maybe_checkpoint,
+};
 
 use std::path::{Path, PathBuf};
+
+use tracing::debug;
+
+/// Best-effort meter for orchestration; logs on failure and returns `None` without propagating.
+pub fn try_edit_efficiency_meter(repo_root: impl AsRef<Path>) -> Option<EditEfficiencyMeter> {
+    match EditEfficiencyMeter::new(repo_root) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            debug!(target: "malvin::edit_efficiency", ?e, "skipping edit efficiency (not a git repo or snapshot failed)");
+            None
+        }
+    }
+}
 
 /// `net / gross` for reporting; may lose ulp precision for very large totals (display metric only).
 #[allow(clippy::cast_precision_loss)]
@@ -99,8 +115,7 @@ impl EditEfficiencyMeter {
     /// Returns an error if snapshotting or diffing fails.
     pub fn checkpoint(&mut self) -> Result<(), EditEfficiencyError> {
         let new_tree = write_tree_from_worktree(&self.repo_root, &self.index_path)?;
-        let delta =
-            filtered_tree_diff_cost(&self.repo_root, &self.baseline_tree, &new_tree)?;
+        let delta = filtered_tree_diff_cost(&self.repo_root, &self.baseline_tree, &new_tree)?;
         self.gross_bytes += delta;
         self.baseline_tree = new_tree;
         self.checkpoint_calls += 1;
@@ -116,11 +131,7 @@ impl EditEfficiencyMeter {
     pub fn finish(mut self) -> Result<EditEfficiencyReport, EditEfficiencyError> {
         let final_tree = write_tree_from_worktree(&self.repo_root, &self.index_path)?;
         if final_tree != self.baseline_tree {
-            let tail = filtered_tree_diff_cost(
-                &self.repo_root,
-                &self.baseline_tree,
-                &final_tree,
-            )?;
+            let tail = filtered_tree_diff_cost(&self.repo_root, &self.baseline_tree, &final_tree)?;
             self.gross_bytes += tail;
             self.baseline_tree = final_tree;
             self.gross_diff_steps += 1;

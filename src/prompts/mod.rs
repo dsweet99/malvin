@@ -77,7 +77,10 @@ impl PromptStore {
     /// Returns [`PromptError`] if a default file is missing from the binary or I/O fails.
     pub fn ensure_defaults(&self) -> Result<(), PromptError> {
         std::fs::create_dir_all(&self.root).map_err(|e| {
-            PromptError(format!("failed to create prompt directory {}: {e}", self.root.display()))
+            PromptError(format!(
+                "failed to create prompt directory {}: {e}",
+                self.root.display()
+            ))
         })?;
         for name in DEFAULT_PROMPTS {
             let target = self.root.join(name);
@@ -123,7 +126,11 @@ impl PromptStore {
     /// # Errors
     ///
     /// Returns [`PromptError`] listing any missing files.
-    pub fn validate_kpop_prompts(&self, run_learn: bool, p_creative: f64) -> Result<(), PromptError> {
+    pub fn validate_kpop_prompts(
+        &self,
+        run_learn: bool,
+        p_creative: f64,
+    ) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
         if !self.root.join("kpop.md").exists() {
             missing.push("kpop.md");

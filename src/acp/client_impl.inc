@@ -169,25 +169,12 @@ impl AgentClient {
     /// Returns [`AgentError`] when spawn or a prompt fails after retries.
     pub async fn run_kpop_flow(
         &mut self,
-        cwd: &Path,
-        kpop_prompt: &str,
-        kpop_log: &Path,
-        learn: Option<(&str, &Path)>,
-        p_creative: f64,
-        mbc2_body: &str,
+        flow: &mut KpopFlowOnceArgs<'_>,
     ) -> Result<(), AgentError> {
         let mut last_error = String::new();
 
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
-            let once = KpopFlowOnceArgs {
-                cwd,
-                kpop_prompt,
-                kpop_log,
-                learn,
-                p_creative,
-                mbc2_body,
-            };
-            match run_kpop_flow_once(self, once).await {
+            match run_kpop_flow_once(self, flow).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;

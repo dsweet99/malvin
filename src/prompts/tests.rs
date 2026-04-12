@@ -63,7 +63,9 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let root = tmp.path();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    store.validate_kpop_prompts(false, 0.0).expect("kpop-only ok");
+    store
+        .validate_kpop_prompts(false, 0.0)
+        .expect("kpop-only ok");
     assert!(
         store.validate_required().is_err(),
         "full workflow should still require implement/review/etc."

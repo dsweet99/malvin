@@ -26,7 +26,10 @@ fn emit_command_line_writes_command_log_when_stdout_echo_suppressed() {
     std::fs::create_dir_all(&run).unwrap();
     emit_command_line(&run, false).unwrap();
     let p = run.join("command.log");
-    assert!(p.is_file(), "command.log should still record argv when tee is off");
+    assert!(
+        p.is_file(),
+        "command.log should still record argv when tee is off"
+    );
     let text = std::fs::read_to_string(&p).expect("read command.log");
     assert!(
         text.starts_with("Command: ") && text.ends_with('\n'),

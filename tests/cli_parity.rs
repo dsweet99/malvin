@@ -1,10 +1,37 @@
 //! Behavioral constraints for the CLI.
+//!
+//! ## Gitignore parity
+//!
+//! `git check-ignore` guards for the repo root `.gitignore` and the embedded `malvin init` template.
+//! Patterns must not use a `./` prefix: git normalizes pathspecs without `./`, so those entries never
+//! matched.
+
+use std::path::Path;
+use std::process::Command;
+
+const ROOT_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.gitignore"));
+const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/gitignore"
+));
+
+fn check_ignored(repo: &Path, rel_path: &str) -> bool {
+    Command::new("git")
+        .current_dir(repo)
+        .args(["check-ignore", "-q", rel_path])
+        .status()
+        .unwrap_or_else(|e| panic!("git check-ignore spawn failed: {e}"))
+        .success()
+}
 
 #[test]
 fn max_loops_zero_must_not_be_clamped_to_one() {
     let max_loops = 0_usize;
     let iterations = (1..=max_loops).count();
-    assert_eq!(iterations, 0, "range(1..=max_loops) yields zero iterations when max_loops is 0");
+    assert_eq!(
+        iterations, 0,
+        "range(1..=max_loops) yields zero iterations when max_loops is 0"
+    );
     let main_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/main.rs"));
     assert!(
         !main_rs.contains("args.max_loops.max(1)"),
@@ -23,20 +50,29 @@ fn max_loops_zero_must_not_be_clamped_to_one() {
 const fn agent_sources_for_snapshot() -> &'static str {
     concat!(
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc")),
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/client_impl.inc")),
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/acp/client_impl.inc"
+        )),
     )
 }
 
 #[test]
 fn default_cli_model_is_composer_2() {
-    let shared = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/shared_opts.rs"));
+    let shared = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/cli/shared_opts.rs"
+    ));
     assert!(
         shared.contains("const DEFAULT_CLI_MODEL")
             && shared.contains("\"composer-2\"")
             && shared.contains("default_value = DEFAULT_CLI_MODEL"),
         "default `--model` must remain composer-2 via DEFAULT_CLI_MODEL unless intentionally changed"
     );
-    let models = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/models_cmd.rs"));
+    let models = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/cli/models_cmd.rs"
+    ));
     assert!(
         models.contains("DEFAULT_CLI_MODEL")
             && models.contains("Default model in malvin: {DEFAULT_CLI_MODEL}"),
@@ -81,7 +117,10 @@ fn agent_client_must_apply_tee_mode_when_invoking_acp() {
 
 #[test]
 fn upgrade_plan_message_must_not_be_eprint_twice() {
-    let client_impl = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/client_impl.inc"));
+    let client_impl = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/acp/client_impl.inc"
+    ));
     let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));
     let client_eprints_on_upgrade = client_impl.contains("agent_string_is_upgrade_plan")
         && client_impl.contains("eprintln!(\"{last_error}\")");
@@ -90,4 +129,84 @@ fn upgrade_plan_message_must_not_be_eprint_twice() {
         !(client_eprints_on_upgrade && cli_eprints_run_error),
         "upgrade-plan failures eprintln in client_impl and the CLI entrypoint prints AgentError again; stderr duplicates the same message"
     );
+}
+
+#[test]
+fn root_gitignore_ignores_malvin_logs_and_target() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert!(
+        check_ignored(root, "_malvin/dummy_stamp/plan.md"),
+        "expected _malvin/ run dirs to be ignored"
+    );
+    assert!(
+        check_ignored(root, "log"),
+        "expected root log file to be ignored"
+    );
+    assert!(
+        check_ignored(root, "log_2"),
+        "expected root log_2 to be ignored"
+    );
+    assert!(
+        check_ignored(root, "target/debug/malvin"),
+        "expected Rust target/ tree to be ignored"
+    );
+    assert!(
+        !check_ignored(root, "README.md"),
+        "expected README.md not to be ignored"
+    );
+}
+
+#[test]
+fn init_template_gitignore_is_consistent_with_git_check_ignore() {
+    const TEMPLATE: &str = INIT_TEMPLATE_GITIGNORE;
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::write(tmp.path().join(".gitignore"), TEMPLATE).unwrap();
+    let st = Command::new("git")
+        .args(["init"])
+        .current_dir(tmp.path())
+        .status()
+        .expect("git init");
+    assert!(st.success(), "git init failed");
+    assert!(
+        check_ignored(tmp.path(), "_malvin/x/plan.md"),
+        "template should ignore _malvin/ runs"
+    );
+    assert!(
+        check_ignored(tmp.path(), "log"),
+        "template should ignore root log"
+    );
+    assert!(
+        check_ignored(tmp.path(), "log_2"),
+        "template should ignore root log_2"
+    );
+    assert!(
+        check_ignored(tmp.path(), "target/release/foo"),
+        "template should ignore Rust target/"
+    );
+    assert!(
+        !check_ignored(tmp.path(), "src/lib.rs"),
+        "template should not ignore normal sources"
+    );
+    assert!(
+        check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
+        "template should ignore sources under nested __pycache__ dirs (not only *.pyc)"
+    );
+    assert!(
+        check_ignored(tmp.path(), "lib/foo.pyc"),
+        "template should ignore .pyc via **/*.py[cod]"
+    );
+}
+
+#[test]
+fn init_template_gitignore_matches_root_python_ignore_patterns() {
+    for line in ["**/__pycache__/", "**/*.py[cod]"] {
+        assert!(
+            ROOT_GITIGNORE.lines().any(|l| l.trim() == line),
+            "repo root .gitignore must list {line:?}"
+        );
+        assert!(
+            INIT_TEMPLATE_GITIGNORE.lines().any(|l| l.trim() == line),
+            "malvin init template .gitignore must list {line:?} so new repos match Malvin's own ignores"
+        );
+    }
 }

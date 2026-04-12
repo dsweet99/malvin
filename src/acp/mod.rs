@@ -4,22 +4,22 @@
 //! stays within project limits; use the include file names (for example `transport/rpc.rs`) when
 //! navigating—IDE “go to module” may not match a single `mod` tree.
 
-mod session_types;
 mod handshake_types;
 mod session_channels;
 mod session_io;
+mod session_types;
 
-pub use session_types::{AcpSession, AcpSpawnArgs};
 pub(crate) use session_types::ResponseTx;
+pub use session_types::{AcpSession, AcpSpawnArgs};
 
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
 mod trace_line_write;
-pub(crate) use trace_line_write::{reader_loop_verbose_and_trace_line, ReaderTraceLineOpts};
+pub(crate) use trace_line_write::{ReaderTraceLineOpts, reader_loop_verbose_and_trace_line};
 include!("session_trace.rs");
 
 // Inlined former `acp::transport` so `kiss` dependency depth stays ≤2 (no `lib → acp → transport`).
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;

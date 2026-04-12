@@ -7,27 +7,34 @@ use tempfile::TempDir;
 
 use super::EditEfficiencyMeter;
 
-fn repo_with_git() -> TempDir {
+/// Temp git repository for `edit_efficiency` tests (shared with `report` contract tests).
+pub fn repo_with_git() -> TempDir {
     let tmp = tempfile::tempdir().expect("tempdir");
     let p = tmp.path();
-    assert!(Command::new("git")
-        .args(["init", "-q"])
-        .current_dir(p)
-        .status()
-        .unwrap()
-        .success());
-    assert!(Command::new("git")
-        .args(["config", "user.email", "t@e.st"])
-        .current_dir(p)
-        .status()
-        .unwrap()
-        .success());
-    assert!(Command::new("git")
-        .args(["config", "user.name", "t"])
-        .current_dir(p)
-        .status()
-        .unwrap()
-        .success());
+    assert!(
+        Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(p)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .args(["config", "user.email", "t@e.st"])
+            .current_dir(p)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .args(["config", "user.name", "t"])
+            .current_dir(p)
+            .status()
+            .unwrap()
+            .success()
+    );
     tmp
 }
 
@@ -70,7 +77,10 @@ fn finish_tail_increments_gross_diff_steps_not_checkpoint_calls() {
     let m = EditEfficiencyMeter::new(p).unwrap();
     std::fs::write(p.join("a.rs"), b"v2").unwrap();
     let r = m.finish().unwrap();
-    assert!(r.gross_bytes > 0, "uncheckpointed edit must contribute via finish() tail");
+    assert!(
+        r.gross_bytes > 0,
+        "uncheckpointed edit must contribute via finish() tail"
+    );
     assert_eq!(r.checkpoint_calls, 0);
     assert_eq!(r.gross_diff_steps, 1);
 }
@@ -87,4 +97,12 @@ fn ignores_non_measured_files() {
     assert_eq!(r.gross_bytes, 0);
     assert_eq!(r.net_bytes, 0);
     assert_eq!(r.efficiency, 1.0);
+}
+
+#[cfg(test)]
+mod kiss_stringify {
+    #[test]
+    fn kiss_stringify_repo_with_git() {
+        let _ = stringify!(super::repo_with_git);
+    }
 }

@@ -1,10 +1,14 @@
-//! Byte-level edit cost from diff opcodes (aligned with `plan.md` Option A: opcode sums, not raw LCS distance).
+//! Byte-level edit cost from diff opcodes.
 //!
-//! We use Myers diff on byte slices ([`similar::capture_diff_slices`]) and sum insert/delete/replace
-//! weights like Python `difflib` opcode *style* accounting (equal → 0; replace → old + new length).
-//! Python’s [`difflib.SequenceMatcher`](https://docs.python.org/3/library/difflib.html) uses a different
-//! underlying algorithm; byte totals may **differ** from Myers on the same inputs—expect approximate
-//! alignment for typical edits, not bit-identical parity with `CPython`.
+//! This matches the **Option A (practical)** shape described in the repository root `plan.md`
+//! (section “How to compute byte diff cost”: sum over opcodes—equal 0, insert/delete byte counts,
+//! replace = old + new), not the stricter “Option B” minimum edit-distance formulation.
+//!
+//! Implementation uses Myers diff on byte slices ([`similar::capture_diff_slices`]) and sums
+//! insert/delete/replace weights (equal → 0; replace → old + new length). Python’s
+//! [`difflib.SequenceMatcher`](https://docs.python.org/3/library/difflib.html) uses a different
+//! underlying algorithm; byte totals may **differ** from Myers on the same inputs—see
+//! `.llm_style/malvin_tooling.md` § Edit efficiency for the project convention.
 
 use similar::{Algorithm, DiffOp, capture_diff_slices};
 
@@ -18,9 +22,7 @@ pub fn byte_edit_cost(old: &[u8], new: &[u8]) -> u64 {
             DiffOp::Delete { old_len, .. } => old_len as u64,
             DiffOp::Insert { new_len, .. } => new_len as u64,
             DiffOp::Replace {
-                old_len,
-                new_len,
-                ..
+                old_len, new_len, ..
             } => old_len as u64 + new_len as u64,
         })
         .sum()

@@ -1,7 +1,9 @@
-./target
+target/
+**/__pycache__/
+**/*.py[cod]
 **/*.rs.bk
-./_malvin/
-./log
-./log_2
+/_malvin/
+/log
+/log_2
 *.md~
 

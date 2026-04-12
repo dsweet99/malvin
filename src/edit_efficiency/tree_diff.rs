@@ -10,10 +10,19 @@ use crate::edit_efficiency::git_tree::{blob_at_tree, diff_name_status_z};
 
 #[derive(Debug, Clone)]
 enum NameRecord<'a> {
-    Modify { path: &'a str },
-    Add { path: &'a str },
-    Delete { path: &'a str },
-    Rename { old_path: &'a str, new_path: &'a str },
+    Modify {
+        path: &'a str,
+    },
+    Add {
+        path: &'a str,
+    },
+    Delete {
+        path: &'a str,
+    },
+    Rename {
+        old_path: &'a str,
+        new_path: &'a str,
+    },
 }
 
 fn has_measured_ext(path: &str) -> bool {
@@ -25,9 +34,9 @@ fn has_measured_ext(path: &str) -> bool {
 
 fn record_is_measured(rec: &NameRecord<'_>) -> bool {
     match rec {
-        NameRecord::Modify { path }
-        | NameRecord::Add { path }
-        | NameRecord::Delete { path } => has_measured_ext(path),
+        NameRecord::Modify { path } | NameRecord::Add { path } | NameRecord::Delete { path } => {
+            has_measured_ext(path)
+        }
         NameRecord::Rename { old_path, new_path } => {
             has_measured_ext(old_path) || has_measured_ext(new_path)
         }
@@ -114,10 +123,7 @@ fn record_cost(
             let o = blob_at_tree(repo_root, old_tree, path)?;
             Ok(byte_edit_cost(&o, &[]))
         }
-        NameRecord::Rename {
-            old_path,
-            new_path,
-        } => {
+        NameRecord::Rename { old_path, new_path } => {
             let o = blob_at_tree(repo_root, old_tree, old_path)?;
             let n = blob_at_tree(repo_root, new_tree, new_path)?;
             Ok(byte_edit_cost(&o, &n))
@@ -156,24 +162,30 @@ mod tests {
     fn init_repo() -> TempDir {
         let tmp = tempfile::tempdir().expect("tempdir");
         let p = tmp.path();
-        assert!(Command::new("git")
-            .args(["init", "-q"])
-            .current_dir(p)
-            .status()
-            .expect("git init")
-            .success());
-        assert!(Command::new("git")
-            .args(["config", "user.email", "t@e.st"])
-            .current_dir(p)
-            .status()
-            .expect("git config email")
-            .success());
-        assert!(Command::new("git")
-            .args(["config", "user.name", "t"])
-            .current_dir(p)
-            .status()
-            .expect("git config name")
-            .success());
+        assert!(
+            Command::new("git")
+                .args(["init", "-q"])
+                .current_dir(p)
+                .status()
+                .expect("git init")
+                .success()
+        );
+        assert!(
+            Command::new("git")
+                .args(["config", "user.email", "t@e.st"])
+                .current_dir(p)
+                .status()
+                .expect("git config email")
+                .success()
+        );
+        assert!(
+            Command::new("git")
+                .args(["config", "user.name", "t"])
+                .current_dir(p)
+                .status()
+                .expect("git config name")
+                .success()
+        );
         tmp
     }
 

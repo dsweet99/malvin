@@ -120,7 +120,6 @@ fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
     false
 }
 
-
 fn print_parsed_or_fallback(text: &str) {
     let mut printed = false;
     for line in text.lines() {
@@ -190,7 +189,11 @@ mod tests {
     #[test]
     fn strip_ansi_removes_osc_terminated_with_st() {
         let raw = "x\x1b]52;c;Z\x1b\\y";
-        assert_eq!(strip_ansi_escapes(raw), "xy", "OSC may end with ST (ESC \\) instead of BEL");
+        assert_eq!(
+            strip_ansi_escapes(raw),
+            "xy",
+            "OSC may end with ST (ESC \\) instead of BEL"
+        );
     }
 
     #[test]

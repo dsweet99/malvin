@@ -17,7 +17,7 @@ TRIGGER: .kissconfig
 ADVICE: Never edit `.kissconfig`.
 
 TRIGGER: NEVER CALL GIT  
-ADVICE: Do not run git commands; if review mentions untracked files, tell the user to stage/commit locally.
+ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/check_untracked.sh` fails on untracked `.rs`/`.py`—without `git add`, merge new tests into tracked `tests/*.rs` (see `malvin_tooling.md` § Untracked source files).
 
 TRIGGER: Hypothesis vs Claim  
 ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders when useful). Reserve Claim for cited evidence (code, logs, metrics).
@@ -29,7 +29,7 @@ TRIGGER: review grounding
 ADVICE: Read `review.md` + `grounding.md`; confirm code on disk matches notes. After fixes, update root `review.md` (no stale “open problems”). KPOP/ACP: `src/acp/*.inc` (e.g. `ops_body.inc`), not only legacy paths—see `malvin_tooling.md`.
 
 TRIGGER: edit efficiency metering  
-ADVICE: `src/edit_efficiency/` + orchestrator prompt-boundary checkpoints; `checkpoint_calls` vs `gross_diff_steps`; Myers/`similar` ≠ byte-identical to `CPython` `SequenceMatcher`. Detail: `malvin_tooling.md` § Edit efficiency.
+ADVICE: `src/edit_efficiency/`; `finish_edit_efficiency_then_return` after workflow/KPOP body (before `DONE`). Success summary stdout; not measured / finish-fail stderr (`grounding.md`). Prompt-boundary checkpoints; `checkpoint_calls` vs `gross_diff_steps`; Myers/`similar` ≠ `CPython` `SequenceMatcher`. Detail: `malvin_tooling.md` § Edit efficiency.
 
 TRIGGER: clippy doc comments  
 ADVICE: With `-D warnings`, `clippy::doc_markdown` flags bare identifiers in `//!`/`///`—wrap code-like tokens in backticks (e.g. `CPython`).
@@ -44,7 +44,7 @@ TRIGGER: Rust 2024 rand async
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Put `use` at module scope. Detail: `malvin_tooling.md` § Rust edition 2024.
 
 TRIGGER: malvin index keywords  
-ADVICE: Orchestrator prompt stems, MSRV/edition, prompts `include_str!` paths—see **Keyword index** in `malvin_tooling.md`.
+ADVICE: See **Keyword index** in `malvin_tooling.md` (orchestrator stems, MSRV/edition, `include_str!` paths).
 
 TRIGGER: malvin init  
 ADVICE: `src/cli/init_cmd.rs`; `default_repo/` + `admin/check_untracked.sh`; bootstrap order matches written `plan.md`; missing `pre-commit`: `tests/init_pre_commit.rs`.
@@ -83,7 +83,7 @@ TRIGGER: parallel subagents
 ADVICE: At most 4 parallel subagents for independent exploration; skip for tiny edits.
 
 TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; optional `date` when rules ask.
+ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when workspace rules require it.
 
 TRIGGER: all checks must pass, noqa  
 ADVICE: Fix all failures everywhere. No `# noqa` except where required for correctness. No test-cheating.

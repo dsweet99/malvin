@@ -16,7 +16,10 @@ fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
         .output()
         .expect("spawn malvin init");
 
-    assert!(!out.status.success(), "expected non-zero exit; stdout/stderr: {out:?}");
+    assert!(
+        !out.status.success(),
+        "expected non-zero exit; stdout/stderr: {out:?}"
+    );
     let msg = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),

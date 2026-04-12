@@ -25,7 +25,10 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
     }
     assert_eq!(legacy_stem("review_1.md"), prompt_md_stem("review_1.md"));
     assert_eq!(legacy_stem("review_2.md"), prompt_md_stem("review_2.md"));
-    assert_ne!(legacy_stem("readme.markdown"), prompt_md_stem("readme.markdown"));
+    assert_ne!(
+        legacy_stem("readme.markdown"),
+        prompt_md_stem("readme.markdown")
+    );
     assert_ne!(legacy_stem("review_1.MD"), prompt_md_stem("review_1.MD"));
 }
 

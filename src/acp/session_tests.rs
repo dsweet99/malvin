@@ -1,13 +1,13 @@
 #![allow(unsafe_code)]
 #![allow(clippy::pedantic, clippy::nursery)]
 
-use super::*;
 use super::session_types::AcpSessionInner;
+use super::*;
 use serde_json::json;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use std::path::Path;
 use tokio::sync::Notify;
 
 const EXTENDED_MOCK_AGENT: &str = r#"const readline = require('readline');
@@ -74,9 +74,7 @@ console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
 
 async fn write_mock_executable(path: &Path) {
     let script = format!("#!/usr/bin/env node\n{}", EXTENDED_MOCK_AGENT);
-    tokio::fs::write(path, script.as_bytes())
-        .await
-        .unwrap();
+    tokio::fs::write(path, script.as_bytes()).await.unwrap();
     let mut p = std::fs::metadata(path).unwrap().permissions();
     p.set_mode(0o755);
     std::fs::set_permissions(path, p).unwrap();
@@ -120,8 +118,7 @@ async fn await_workspace_pid_file(path: &std::path::Path) {
 fn kiss_static_refs_acp_session_inner_and_spawn_handshake() {
     assert!(std::mem::size_of::<AcpSessionInner>() > 0);
     assert!(
-        stringify!(crate::acp::acp_spawn_start_reader_and_handshake)
-            .contains("acp_spawn"),
+        stringify!(crate::acp::acp_spawn_start_reader_and_handshake).contains("acp_spawn"),
         "expected stringify to retain handshake symbol name"
     );
 }
@@ -367,8 +364,8 @@ async fn acp_prompt_fails_after_shutdown() {
         force: false,
         tee_trace_stdout: false,
     })
-        .await
-        .expect("spawn");
+    .await
+    .expect("spawn");
     s.shutdown().await.expect("shutdown");
     let trace = tmp.path().join("x.jsonl");
     assert!(s.prompt("x", &trace).await.is_err());
@@ -466,7 +463,10 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
     });
 
     await_workspace_pid_file(&prompt_hit_path).await;
-    assert!(session.is_busy(), "expected slow prompt to mark session busy");
+    assert!(
+        session.is_busy(),
+        "expected slow prompt to mark session busy"
+    );
 
     let cancel_res = session.cancel().await;
     assert!(
