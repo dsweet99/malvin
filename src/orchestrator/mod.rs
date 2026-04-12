@@ -6,8 +6,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
-
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
 use crate::post_run_hint::finish_post_run_hint_then_return;
@@ -28,6 +26,24 @@ use workflow_context as workflow_context_inner;
 #[error("{0}")]
 pub struct WorkflowError(pub String);
 
+/// Prefer workflow or session-teardown errors over run-timing artifact errors.
+pub(crate) fn prefer_primary_errors_over_timing(
+    workflow_result: Result<(), WorkflowError>,
+    end_result: Result<(), WorkflowError>,
+    timing_result: Result<(), WorkflowError>,
+) -> Result<(), WorkflowError> {
+    match (workflow_result, end_result) {
+        (Ok(()), Ok(())) => timing_result,
+        (wf, er) => {
+            let _ = timing_result;
+            match (wf, er) {
+                (Err(e), _) | (Ok(()), Err(e)) => Err(e),
+                (Ok(()), Ok(())) => unreachable!("outer match excludes both Ok"),
+            }
+        }
+    }
+}
+
 /// Review loop configuration.
 #[derive(Debug, Clone)]
 pub struct WorkflowConfig {
@@ -46,18 +62,13 @@ pub struct Orchestrator<'a> {
 
 impl Orchestrator<'_> {
     fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
-        let timing = RunTiming::new_arc();
-        self.client.timing = Some(Arc::clone(&timing));
-        timing
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .mark_wall_start(Instant::now());
-        timing
+        self.client.attach_run_timing_for_session()
     }
 
-    fn emit_run_timing_artifact(&mut self, timing: &Arc<Mutex<RunTiming>>) {
-        let _ = run_timing::finalize_and_emit_run_timing(&self.artifacts.run_dir, timing);
+    fn emit_run_timing_artifact(&mut self, timing: &Arc<Mutex<RunTiming>>) -> Result<(), WorkflowError> {
+        let res = run_timing::finalize_and_emit_run_timing(&self.artifacts.run_dir, timing);
         self.client.timing = None;
+        res.map_err(|e| WorkflowError(format!("run timing: {e}")))
     }
 
     /// Drive the full workflow.
@@ -76,7 +87,7 @@ impl Orchestrator<'_> {
             Ok(()) => self.run_with_coder_session(&context).await,
             Err(e) => Err(WorkflowError(e.0)),
         };
-        self.emit_run_timing_artifact(&timing);
+        let timing_result = self.emit_run_timing_artifact(&timing);
         let workflow_result = finish_post_run_hint_then_return(
             &self.artifacts.run_dir,
             workflow_result,
@@ -86,10 +97,7 @@ impl Orchestrator<'_> {
             .end_coder_session()
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-        match (workflow_result, end_result) {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(e), _) | (Ok(()), Err(e)) => Err(e),
-        }
+        prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
     async fn run_with_coder_session(

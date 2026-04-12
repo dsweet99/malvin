@@ -1,4 +1,4 @@
-use crate::orchestrator::prompt_md_stem;
+use crate::orchestrator::{prefer_primary_errors_over_timing, prompt_md_stem, WorkflowError};
 use crate::review_sync::{is_lgtm, sync_review_file};
 
 fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -56,6 +56,26 @@ fn sync_review_file_skips_whitespace_only_workspace() {
     std::fs::write(&artifact, "LGTM\n").unwrap();
     sync_review_file(&workspace, &artifact);
     assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
+}
+
+#[test]
+fn prefer_primary_errors_prefers_workflow_over_timing_when_both_fail() {
+    let r = prefer_primary_errors_over_timing(
+        Err(WorkflowError("workflow".into())),
+        Ok(()),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "workflow");
+}
+
+#[test]
+fn prefer_primary_errors_surfaces_timing_when_workflow_and_end_succeed() {
+    let r = prefer_primary_errors_over_timing(
+        Ok(()),
+        Ok(()),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "timing");
 }
 
 #[test]

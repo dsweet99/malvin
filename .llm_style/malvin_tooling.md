@@ -6,7 +6,7 @@
 - `kiss check .` (**not** bare `kiss`). See `.kissignore`.
 - `pytest -sv tests` (minimal Python smoke; primary tests are Rust). If a test imports the repo as a package, run from repo root with `PYTHONPATH=.`.
 - `cargo test`
-- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo clippy --all-targets --all-features -- -D warnings` (`clippy::doc_markdown`: wrap code-like tokens in `//!`/`///` in backticks—bare identifiers fail under `-D warnings`)
 
 Pre-commit **`cargo-clippy`** (must match `.pre-commit-config.yaml` `entry:` verbatim):
 
@@ -36,12 +36,14 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 | Library entry | `src/lib.rs` (re-exports + deprecated `malvin::agent` shim) |
 | Binary entry | `src/main.rs` → `src/cli/` |
 | ACP JSON-RPC / session / agent client | `src/acp/` — **many** pieces are `include!`d (see below) |
+
+**Binary vs library:** `src/cli/` is part of the **`malvin` binary crate**, not `malvin` the library. `pub(crate)` fields on `AgentClient` (e.g. `timing`) are visible inside `src/lib.rs` code only—**not** from `src/cli/`. Use public methods on the library client (e.g. `attach_run_timing_for_session`) or keep field access in lib modules (`src/orchestrator/`, …).
 | Invocation argv | `src/invocation.rs` |
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
 | Post-run metrics hint | `src/post_run_hint/report.rs` — post-run stderr line; called from `src/orchestrator/` and KPOP after ACP bodies |
-| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` only: `run_timing.json` + one stderr summary after workflow, before the post-run metrics hint; LLM vs retry/backoff; see root `grounding.md` |
+| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` and `malvin kpop`: `run_timing.json` + one stdout summary after workflow, before the post-run metrics hint; LLM vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
 ### ACP `include!` assembly (kiss dependency depth)
@@ -52,13 +54,16 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 ## Post-run metrics hint
 
-- **Code:** `src/post_run_hint/report.rs` — `finish_and_write_report` / `finish_post_run_hint_then_return`; prints a stable **“not measured”** stderr line only.
+- **Code:** `src/post_run_hint/report.rs` — `finish_and_write_report` / `finish_post_run_hint_then_return`; prints a stable **“not measured”** stderr line only. **`src/post_run_hint/mod.rs`** documents that **gross/net metering and git tree snapshots were removed**—there is no yield/gross/net computation in product code.
 - **Streams / ordering:** Stable **“not measured”** line → **`eprintln!` (stderr)** only — see root `grounding.md`. `finish_post_run_hint_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
+- **Contract tests:** `tests/cli_parity.rs` asserts the message does **not** contain `"git"` (legacy git-tree metering must not leak into user copy).
 
-## Run timing (`malvin code`)
+## Run timing (`malvin code` / `malvin kpop`)
 
-- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
-- **Artifacts:** `run_timing.json` in the run directory; stderr summary line (see root `grounding.md`) is emitted **before** the post-run metrics hint on the main code path.
+- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP attaches timing and calls the same finalizer; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
+- **Artifacts:** `run_timing.json` in the run directory; stdout summary line (see root `grounding.md`) is emitted **before** the post-run metrics hint on the main code path.
+- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_after_post_hint` in `src/cli/kpop_flow.rs`).
+- **Rustdoc:** Helpers that run *after* timing + hint I/O must not read as reordering streams vs `grounding.md`—they may only merge `Result`s once stdout/stderr order is already established in the caller.
 
 ## ACP traces, coalescing, tee
 

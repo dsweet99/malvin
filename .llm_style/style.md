@@ -19,6 +19,9 @@ ADVICE: Never edit `.kissconfig`.
 TRIGGER: NEVER CALL GIT  
 ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/check_untracked.sh` fails on untracked `.rs`/`.py`—without `git add`, merge new tests into tracked `tests/*.rs` (see `malvin_tooling.md` § Untracked source files).
 
+TRIGGER: malvin binary crate  
+ADVICE: `src/cli/` is binary-only—not the `malvin` library—so `pub(crate)` on `AgentClient` fields (e.g. `timing`) is not visible there; use public lib methods (`attach_run_timing_for_session`, …) or keep access in lib modules. See `malvin_tooling.md` § Crate layout.
+
 TRIGGER: Hypothesis vs Claim  
 ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders when useful). Reserve Claim for cited evidence (code, logs, metrics).
 
@@ -29,28 +32,22 @@ TRIGGER: review grounding
 ADVICE: Read `review.md` + `grounding.md`; confirm code and CLI help match. After fixes, update root `review.md` (no stale “open problems”). ACP: `src/acp/*.inc` (e.g. `ops_body.inc`)—see `malvin_tooling.md`.
 
 TRIGGER: grounding code parity  
-ADVICE: When post-run stdout/stderr behavior changes, align `grounding.md` with sources (`src/post_run_hint/report.rs`, `src/run_timing/mod.rs` + `report.rs`, `src/cli/shared_opts.rs`, …). `tests/cli_parity.rs` may `include_str!` those files—see `malvin_tooling.md` § Tests.
+ADVICE: When post-run stdout/stderr behavior changes, align `grounding.md` with sources (`post_run_hint/`, `run_timing/`, …). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). `tests/cli_parity.rs` may `include_str!`—see `malvin_tooling.md` § Tests.
 
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/` (agent **pacing** vs thoroughness—not product metrics wording), `.cursorrules`, `_kpop/` logs with code/docs—see `malvin_tooling.md` § Repo-wide string contracts.
 
 TRIGGER: post-run metrics hint  
-ADVICE: `src/post_run_hint/report.rs` stderr line + `finish_post_run_hint_then_return` ordering. See `grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
+ADVICE: **`src/post_run_hint/`** (`report.rs`): stable “not measured” stderr only; **gross/net/git-tree metering removed** (see `mod.rs`). Message must not contain `"git"` (`tests/cli_parity.rs`). `finish_post_run_hint_then_return` ordering—`grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
 
 TRIGGER: run timing  
-ADVICE: `malvin code` only: optional `AgentClient::timing`; `run_timing.json` + stderr summary **before** post-run metrics hint. Instrument `client_impl.inc` / `ops_body.inc`; finalize from orchestrator—see `grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop`: `run_timing.json` + stdout summary **before** stderr post-run hint; record in `client_impl.inc` / `ops_body.inc`; `attach_run_timing_for_session` / finalize from orchestrator or KPOP. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
 
-TRIGGER: clippy doc comments  
-ADVICE: With `-D warnings`, `clippy::doc_markdown` flags bare identifiers in `//!`/`///`—wrap code-like tokens in backticks (e.g. `CPython`).
-
-TRIGGER: plan.md shipping sync  
-ADVICE: When `malvin init`/ACP/models behavior changes, update root `plan.md`; align with `src/cli/init_cmd.rs` and tests—see `malvin_tooling.md`.
-
-TRIGGER: `_malvin` plan  
-ADVICE: One-off task specs may live in `_malvin/**/plan.md`—implement when cited; root `plan.md` is working metrics/bootstrap—see `malvin_tooling.md` § `malvin init` + ACP bounded retry.
+TRIGGER: plan.md root vs `_malvin`  
+ADVICE: Root `plan.md`: sync with shipped `malvin init`/ACP/models (`src/cli/init_cmd.rs`, tests). One-off task specs: `_malvin/**/plan.md` when cited. See `malvin_tooling.md` § `malvin init` + ACP bounded retry.
 
 TRIGGER: KPOP experiment, MBC2, p-creative  
-ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—see `malvin_tooling.md` § KPOP. Hypothesize → Predict → Falsify; `_malvin/**/_kpop/exp_log_*.md`. Parser/ANSI: `malvin_debugging.md`.
+ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—`malvin_tooling.md` § KPOP. **Hypothesize → Predict → Falsify**; restate problem; optional **hypothesis budget**; log cycles to `_malvin/**/_kpop/exp_log_*.md` (`malvin_debugging.md`). Parser/ANSI: same file.
 
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Put `use` at module scope. Detail: `malvin_tooling.md` § Rust edition 2024.
@@ -89,10 +86,10 @@ TRIGGER: CLI, help text
 ADVICE: `src/cli/`: `args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; doc comments become `--help`. Tee: `SharedOpts::tee_startup_stdout`.
 
 TRIGGER: search tools subagents  
-ADVICE: If workspace glob/`rg` errors, run `rg`/`find` from repo root (`malvin_debugging.md`). At most 4 parallel subagents for independent exploration; skip for tiny edits.
+ADVICE: Workspace search tool errors → shell `rg`/`find` from repo root (`malvin_debugging.md`). ≤4 parallel subagents for independent work; skip for tiny edits.
 
 TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when rules require; if the request matches a TRIGGER keyword, show the single most relevant TRIGGER:/ADVICE: pair.
+ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when rules require; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only replies when the user expects work (shell `rg` if IDE search fails).
 
 TRIGGER: all checks must pass, noqa  
 ADVICE: Fix all failures everywhere. No `# noqa` except where required for correctness. No test-cheating.

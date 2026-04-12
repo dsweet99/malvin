@@ -1,6 +1,6 @@
-//! Wall-clock and phase-bucketed LLM wait timing for `malvin code` orchestration runs.
+//! Wall-clock and phase-bucketed LLM wait timing for `malvin code` and `malvin kpop` runs.
 //!
-//! **Streams:** Summary uses `eprintln!` (stderr); JSON is written under the run directory — see root `grounding.md`.
+//! **Streams:** Summary uses `println!` (stdout); JSON is written under the run directory — see root `grounding.md`.
 
 mod report;
 
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 /// JSON artifact filename under [`crate::artifacts::RunArtifacts::run_dir`].
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
-/// One line printed to stderr after the workflow body (before post-run metrics hint ordering in orchestrator).
+/// One line printed to stdout after the workflow body (before the stderr post-run hint; `malvin code` / `malvin kpop`).
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "Run timing:";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
@@ -123,14 +123,28 @@ impl RunTiming {
         }
     }
 
-    /// Writes `run_timing.json` and prints one stderr summary line (timestamp-prefixed).
+    /// Writes `run_timing.json` and prints one stdout summary line (timestamp-prefixed).
     ///
     /// # Errors
     ///
     /// Returns an error if the JSON file cannot be created or written.
-    pub fn write_json_and_eprint_summary(&self, run_dir: &Path) -> std::io::Result<()> {
-        report::write_json_and_eprint_summary(self, run_dir)
+    pub fn write_json_and_print_summary(&self, run_dir: &Path) -> std::io::Result<()> {
+        report::write_json_and_print_summary(self, run_dir)
     }
+}
+
+/// Installs a fresh [`RunTiming`] in `timing_slot` and records wall-clock start at [`Instant::now`].
+///
+/// `malvin code` and `malvin kpop` both use this so attachment stays consistent.
+#[must_use]
+pub fn attach_new_run_timing(timing_slot: &mut Option<Arc<Mutex<RunTiming>>>) -> Arc<Mutex<RunTiming>> {
+    let timing = RunTiming::new_arc();
+    *timing_slot = Some(Arc::clone(&timing));
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .mark_wall_start(Instant::now());
+    timing
 }
 
 /// Records one LLM wait interval into `timing`, if present.
@@ -159,11 +173,11 @@ pub fn record_backoff(timing: Option<&Arc<Mutex<RunTiming>>>, d: Duration) {
     g.add_agent_retry_backoff(d);
 }
 
-/// Finalizes wall clock if needed, writes JSON, prints the stderr summary line.
+/// Finalizes wall clock if needed, writes JSON, prints the stdout summary line.
 ///
 /// # Errors
 ///
-/// Returns an error if writing `run_timing.json` fails (see [`RunTiming::write_json_and_eprint_summary`]).
+/// Returns an error if writing `run_timing.json` fails (see [`RunTiming::write_json_and_print_summary`]).
 pub fn finalize_and_emit_run_timing(run_dir: &Path, timing: &Arc<Mutex<RunTiming>>) -> std::io::Result<()> {
     let mut g = timing.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     if g.wall_end.is_none() {
@@ -171,7 +185,7 @@ pub fn finalize_and_emit_run_timing(run_dir: &Path, timing: &Arc<Mutex<RunTiming
     }
     let snapshot = g.clone();
     drop(g);
-    snapshot.write_json_and_eprint_summary(run_dir)
+    snapshot.write_json_and_print_summary(run_dir)
 }
 
 #[cfg(test)]

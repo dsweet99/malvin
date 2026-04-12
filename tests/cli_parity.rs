@@ -251,7 +251,7 @@ fn grounding_post_run_hint_stderr_matches_report_implementation() {
 }
 
 #[test]
-fn grounding_run_timing_stderr_contract_matches_run_timing_module() {
+fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     let run_timing_rs = concat!(
         include_str!(concat!(
@@ -263,13 +263,14 @@ fn grounding_run_timing_stderr_contract_matches_run_timing_module() {
             "/src/run_timing/report.rs"
         )),
     );
-    let grounding_promises = grounding.contains("run_timing.json") && grounding.contains("stderr");
-    let implementation_eprints = run_timing_rs.contains("eprintln!")
+    let grounding_promises = grounding.contains("run_timing.json")
+        && grounding.contains("**stdout** summary line");
+    let implementation_prints = run_timing_rs.contains("println!")
         && run_timing_rs.contains("RUN_TIMING_SUMMARY_PREFIX");
     assert_eq!(
         grounding_promises,
-        implementation_eprints,
-        "grounding.md and src/run_timing/mod.rs + report.rs must stay aligned on run_timing.json + stderr summary"
+        implementation_prints,
+        "grounding.md and src/run_timing/mod.rs + report.rs must stay aligned on run_timing.json + stdout summary"
     );
 }
 
@@ -278,7 +279,7 @@ fn grounding_kpop_finishes_run_timing_before_post_run_hint() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     assert!(
         grounding.contains("KPOP") && grounding.to_lowercase().contains("same ordering"),
-        "grounding.md must document KPOP stderr ordering relative to post-run metrics hint"
+        "grounding.md must document KPOP run-timing stdout before post-run metrics hint on stderr"
     );
     let kpop_flow = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -286,7 +287,7 @@ fn grounding_kpop_finishes_run_timing_before_post_run_hint() {
     ));
     // Match call sites only (imports appear earlier and would invert ordering).
     let i_finalize = kpop_flow.find("run_timing::finalize_and_emit_run_timing");
-    let i_hint = kpop_flow.find("finish_post_run_hint_then_return(&ctx.artifacts.run_dir");
+    let i_hint = kpop_flow.find("finish_post_run_hint_then_return(run_dir, acp_result)");
     assert!(
         i_finalize.is_some() && i_hint.is_some(),
         "malvin kpop must call finalize_and_emit_run_timing and finish_post_run_hint_then_return"

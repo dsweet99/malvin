@@ -37,6 +37,14 @@ impl AgentClient {
         self.timing = timing;
     }
 
+    /// Installs [`crate::run_timing::RunTiming`] for this session (`malvin code` and `malvin kpop`).
+    #[must_use]
+    pub fn attach_run_timing_for_session(
+        &mut self,
+    ) -> std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>> {
+        crate::run_timing::attach_new_run_timing(&mut self.timing)
+    }
+
     /// Verify API key env or `agent` / `cursor-agent` auth probes.
     ///
     /// # Errors

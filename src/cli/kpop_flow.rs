@@ -9,16 +9,13 @@ use super::build_agent;
 use super::echo_primary_to_stdout;
 use super::emit_command_line;
 use super::prepare_kpop_prompt_store;
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
-
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
 use malvin::post_run_hint::finish_post_run_hint_then_return;
 use malvin::prompts::{PromptError, PromptStore};
-use malvin::run_timing::{self, RunTiming};
+use malvin::run_timing;
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let store = prepare_kpop_prompt_store(workflow, kpop.p_creative)?;
@@ -54,16 +51,6 @@ struct KpopAfterStartup<'a> {
     text: &'a str,
 }
 
-fn attach_kpop_run_timing(client: &mut AgentClient) -> Arc<Mutex<RunTiming>> {
-    let timing = RunTiming::new_arc();
-    client.set_run_timing(Some(Arc::clone(&timing)));
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .mark_wall_start(Instant::now());
-    timing
-}
-
 async fn kpop_run_prompt_and_post_run_hint(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
     let context = workflow_context(ctx.artifacts);
     let kpop_body = ctx
@@ -82,12 +69,32 @@ async fn kpop_run_prompt_and_post_run_hint(ctx: KpopAfterStartup<'_>) -> Result<
         p_creative: ctx.kpop.p_creative,
     };
 
-    // Match `Orchestrator::run`: run-timing stderr + JSON, then post-run hint (grounding.md).
-    let timing = attach_kpop_run_timing(ctx.client);
+    // Match `Orchestrator::run`: run-timing stdout summary + JSON, then post-run hint (grounding.md).
+    let timing = ctx.client.attach_run_timing_for_session();
     let acp_result = kpop_run_acp(ctx.client, input).await;
-    let _ = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);
+    let timing_result = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);
     ctx.client.set_run_timing(None);
-    finish_post_run_hint_then_return(&ctx.artifacts.run_dir, acp_result)
+    merge_acp_and_timing_after_post_hint(&ctx.artifacts.run_dir, acp_result, timing_result)
+}
+
+/// stderr post-run hint plus error precedence, **after** run timing is already emitted.
+///
+/// Callers must run [`crate::run_timing::finalize_and_emit_run_timing`] first so stdout run timing
+/// precedes this function’s stderr hint (`grounding.md`). This does not reorder streams; it only
+/// merges [`Result`]s so an ACP failure wins over a timing I/O error when both occur.
+fn merge_acp_and_timing_after_post_hint(
+    run_dir: &Path,
+    acp_result: Result<(), String>,
+    timing_result: std::io::Result<()>,
+) -> Result<(), String> {
+    let with_hint = finish_post_run_hint_then_return(run_dir, acp_result);
+    match with_hint {
+        Ok(()) => timing_result.map_err(|e| e.to_string()),
+        Err(e) => {
+            let _ = timing_result;
+            Err(e)
+        }
+    }
 }
 
 pub struct KpopAcpInput<'a> {
@@ -177,4 +184,28 @@ fn trims_sections_and_includes_budget() {
     assert!(s.contains("kpop"));
     assert!(s.contains("user ask"));
     assert!(s.contains("budget of 7 hypotheses"));
+}
+
+#[test]
+fn hypothesis_legacy_timing_after_hint_masks_acp_when_both_fail() {
+    let tmp = tempfile::tempdir().unwrap();
+    let acp: Result<(), String> = Err("acp".into());
+    let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
+    let out = finish_post_run_hint_then_return(tmp.path(), acp);
+    let legacy = (|| {
+        timing.map_err(|e| e.to_string())?;
+        out
+    })();
+    assert!(
+        legacy.unwrap_err().contains("timing"),
+        "legacy order should surface timing error, masking ACP (H1)"
+    );
+}
+
+#[test]
+fn merge_acp_prefers_acp_error_when_both_fail() {
+    let tmp = tempfile::tempdir().unwrap();
+    let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
+    let merged = merge_acp_and_timing_after_post_hint(tmp.path(), Err("acp".into()), timing);
+    assert_eq!(merged, Err("acp".into()));
 }

@@ -31,6 +31,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::run_reviewer_review_and_kpop);
     let _ = stringify!(AgentClient::run_kpop_flow);
     let _ = stringify!(AgentClient::set_run_timing);
+    let _ = stringify!(AgentClient::attach_run_timing_for_session);
 }
 
 #[test]
@@ -69,6 +70,7 @@ fn kiss_stringify_post_run_hint() {
 #[test]
 fn kiss_stringify_run_timing() {
     let _ = stringify!(crate::run_timing::RunTiming::new_arc);
+    let _ = stringify!(crate::run_timing::attach_new_run_timing);
     let _ = stringify!(crate::run_timing::finalize_and_emit_run_timing);
     let _ = stringify!(crate::run_timing::RUN_TIMING_JSON_FILE);
     let _ = stringify!(crate::run_timing::RUN_TIMING_SUMMARY_PREFIX);
