@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-**TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP), `./.llm_style/malvin_debugging.md` (debug, search fallbacks).
+When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP), `./.llm_style/malvin_debugging.md` (debug, search fallbacks).
 
 ---
 
@@ -62,7 +62,7 @@ TRIGGER: lib test_utils binary
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary unit tests cannot import it; for isolated `PATH`, use `tests/*.rs` + `Command::new(env!("CARGO_BIN_EXE_malvin")).env("PATH", …)` (see `init_pre_commit.rs`).
 
 TRIGGER: ACP retry backoff  
-ADVICE: `retry_policy.inc` + `backoff_after_agent_failure` in `client_impl.inc`; exhausted messages use `{retries}`—see `malvin_tooling.md` § ACP bounded retry. Upgrade: `Err` only—single `eprintln` at `src/cli/mod.rs`.
+ADVICE: Retriable substrings + `plan_agent_retry` in `retry_policy.inc`; backoff loop in `client_impl.inc`; policy tests in `agent_bundle.inc` (`retry_policy_tests`). Add narrow `contains` phrases only—see `malvin_tooling.md` § ACP bounded retry. Upgrade: `Err` only—single `eprintln` at `src/cli/mod.rs`.
 
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer uses `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs` guards drift.
@@ -92,4 +92,4 @@ TRIGGER: user communication
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when rules require; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only replies when the user expects work (shell `rg` if IDE search fails).
 
 TRIGGER: all checks must pass, noqa  
-ADVICE: Fix all failures everywhere. No `# noqa` except where required for correctness. No test-cheating.
+ADVICE: Fix all failures everywhere (do not treat any as “pre-existing”). No `# noqa` except where required for correctness. No test-cheating.

@@ -104,6 +104,26 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn writable_iterable_closed_is_retriable() {
+        assert!(agent_string_is_retriable(
+            "Error: S: WritableIterable is closed"
+        ));
+    }
+
+    #[test]
+    fn readable_iterable_closed_is_retriable() {
+        assert!(agent_string_is_retriable(
+            "Error: S: ReadableIterable is closed"
+        ));
+    }
+
+    #[test]
+    fn plan_retry_sleeps_on_writable_iterable_closed() {
+        let r = plan_agent_retry("Error: S: WritableIterable is closed", 1).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::Sleep(_)));
+    }
+
+    #[test]
     fn plan_retry_sleeps_on_first_timeout_then_stops_at_max() {
         let r = plan_agent_retry("acp RPC timed out", 1).expect("retry");
         assert!(matches!(r, AgentRetryOutcome::Sleep(_)));

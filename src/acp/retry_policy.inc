@@ -15,13 +15,16 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
         .contains("upgrade your plan to continue")
 }
 
-/// Retriable errors for the initial policy: RPC timeouts and similar transport stalls.
+/// Retriable errors for the initial policy: RPC timeouts, transport stalls, and ACP session
+/// teardown when the outbound stream/session is already closed (retry opens a fresh session).
 pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
     lower.contains("timed out")
         || lower.contains("timeout")
         || lower.contains("deadline exceeded")
         || lower.contains("deadlineexceeded")
+        || lower.contains("writableiterable is closed")
+        || lower.contains("readableiterable is closed")
 }
 
 #[derive(Debug)]
