@@ -16,7 +16,7 @@ cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W 
 
 Pre-commit also runs `ruff check .`, `kiss check .`, and `admin/check_untracked.sh` (fails if untracked `.rs`/`.py` sources exist). It does **not** run `cargo test` or `pytest`; run the full suite before merge.
 
-If the workspace **ripgrep/search tool** errors (e.g. I/O), run **`rg` from a repo-root shell** instead.
+If the workspace **ripgrep/search tool** errors (e.g. I/O), run **`rg` from a repo-root shell** instead. **KPOP experiment logs**, `malvin models` parser/ANSI caveats, and the same search fallback are indexed in **`.llm_style/malvin_debugging.md`**.
 
 ### Untracked source files (`admin/check_untracked.sh`)
 

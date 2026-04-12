@@ -1,11 +1,11 @@
 # LLM style — malvin (index)
 
-Use **TRIGGER** keywords to recall **ADVICE**. Commands, layout, gates, KPOP/MBC2, Rust 2024 quirks: `./.llm_style/malvin_tooling.md`.
+Use **TRIGGER** keywords to recall **ADVICE**. Commands, layout, gates, KPOP/MBC2, Rust 2024 quirks: `./.llm_style/malvin_tooling.md`. Debugging, KPOP logs, `models` parser/ANSI caveats, search fallbacks: `./.llm_style/malvin_debugging.md`.
 
 ---
 
 TRIGGER: run checks pre-commit  
-ADVICE: From repo root: `ruff check .`, `kiss check .`, `pytest -sv tests` with `PYTHONPATH=.`, `cargo test`, and **`cargo clippy` verbatim from `.pre-commit-config.yaml` `entry:`** (see `malvin_tooling.md`). Rerun during multi-step work (do not defer full suite to the end); parallelize independent checks.
+ADVICE: From repo root run the suite in `malvin_tooling.md` § Required checks; **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Rerun during multi-step work; parallelize independent checks.
 
 TRIGGER: kiss check  
 ADVICE: `kiss check .` (full project), not bare `kiss`. See `.kissignore`.
@@ -46,6 +46,9 @@ ADVICE: One-off task specs may live in `_malvin/**/plan.md`—implement when cit
 TRIGGER: KPOP p-creative MBC2  
 ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—see `malvin_tooling.md` § KPOP.
 
+TRIGGER: KPOP experiment log  
+ADVICE: Hypothesize → Predict → Falsify; log to `_malvin/**/_kpop/exp_log_*.md`. Parser/ANSI sharp edges: `malvin_debugging.md`.
+
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Put `use` at module scope. Detail: `malvin_tooling.md` § Rust edition 2024.
 
@@ -82,11 +85,8 @@ ADVICE: `.pre-commit-config.yaml` runs ruff, clippy, kiss, `admin/check_untracke
 TRIGGER: CLI, help text  
 ADVICE: `src/cli/`: `args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; doc comments become `--help`. Tee: `SharedOpts::tee_startup_stdout`.
 
-TRIGGER: parallel subagents  
-ADVICE: At most 4 parallel subagents for independent exploration; skip for tiny edits.
-
-TRIGGER: workspace rg fails  
-ADVICE: If the workspace search/`rg` tool errors, run `rg` from a repo-root shell—see `malvin_tooling.md` Required checks.
+TRIGGER: search tools subagents  
+ADVICE: If workspace glob/`rg` errors, run `rg`/`find` from repo root (`malvin_debugging.md`). At most 4 parallel subagents for independent exploration; skip for tiny edits.
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when workspace rules require it; when rules mention TRIGGER words, show the single most relevant TRIGGER:/ADVICE: pair.
