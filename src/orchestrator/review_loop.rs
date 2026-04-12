@@ -1,11 +1,6 @@
-//! Review phase loop: reviewer + kpop pair, concerns, checkpoints.
-//!
-//! Edit-efficiency [`maybe_checkpoint`] runs after each completed reviewer/kpop pair (and coder prompts
-//! are checkpointed from [`super::Orchestrator::run_coder_prompt`] in `mod.rs`). Finer per–tool-call
-//! sampling would require hooks inside the agent/ACP implementation, not only here.
+//! Review phase loop: reviewer + kpop pair, concerns.
 
 use crate::acp::{AgentError, ReviewerPromptPair};
-use crate::edit_efficiency::{EditEfficiencyMeter, maybe_checkpoint};
 use crate::review_sync::{is_lgtm, sync_review_file};
 
 use super::Orchestrator;
@@ -18,7 +13,6 @@ impl Orchestrator<'_> {
     pub(super) async fn run_review_phase(
         &mut self,
         phase: ReviewPhaseArgs<'_>,
-        edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<(), WorkflowError> {
         let review_path = self.artifacts.run_dir.join("review.md");
         let workspace_review_path = self.artifacts.work_dir.join("review.md");
@@ -33,10 +27,7 @@ impl Orchestrator<'_> {
                 review_path: &review_path,
                 context: phase.context,
             };
-            if self
-                .review_phase_single_attempt(ctx, edit_efficiency)
-                .await?
-            {
+            if self.review_phase_single_attempt(ctx).await? {
                 return Ok(());
             }
         }
@@ -49,7 +40,6 @@ impl Orchestrator<'_> {
     async fn review_phase_single_attempt(
         &mut self,
         ctx: ReviewAttemptCtx<'_>,
-        edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<bool, WorkflowError> {
         (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
@@ -67,7 +57,7 @@ impl Orchestrator<'_> {
             .render("kpop.md", ctx.context)
             .map_err(|e| WorkflowError(e.0))?;
 
-        self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body, edit_efficiency)
+        self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body)
             .await?;
 
         sync_review_file(ctx.workspace_review_path, ctx.review_path);
@@ -79,7 +69,6 @@ impl Orchestrator<'_> {
             "concerns.md",
             ctx.context,
             &format!("{}_attempt_{}", ctx.phase_id, ctx.attempt),
-            edit_efficiency,
         )
         .await?;
         Ok(false)
@@ -90,7 +79,6 @@ impl Orchestrator<'_> {
         ctx: &ReviewAttemptCtx<'_>,
         review_body: &str,
         kpop_body: &str,
-        edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<(), WorkflowError> {
         let stem = prompt_md_stem(ctx.review_prompt);
         let review_log = self
@@ -114,7 +102,6 @@ impl Orchestrator<'_> {
             .run_reviewer_review_and_kpop(pair)
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
-        maybe_checkpoint(edit_efficiency);
         Ok(())
     }
 }

@@ -40,7 +40,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
-| Edit efficiency | `src/edit_efficiency/` — meter, reports; wired from `src/orchestrator/` (prompt-boundary checkpoints) |
+| Edit efficiency | `src/edit_efficiency/report.rs` — post-run stderr hint; called from `src/orchestrator/` and KPOP after ACP bodies |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
 ### ACP `include!` assembly (kiss dependency depth)
@@ -51,12 +51,8 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 ## Edit efficiency
 
-- **Code:** `src/edit_efficiency/` — `EditEfficiencyMeter`, tree/byte diffs (`similar`, Myers-style opcodes), git helpers, `finish_and_write_report`, tests in `meter_tests.rs`.
-- **Streams / ordering:** Successful one-line summary → **`println!` (stdout)**; not measured or `finish` failure → **`eprintln!` (stderr)** — see root `grounding.md`. `finish_edit_efficiency_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
-- **Orchestration:** Checkpoints run at **prompt boundaries** (coder / reviewer–kpop), not necessarily every in-session tool invocation; see `src/orchestrator/mod.rs` and `review_loop.rs`.
-- **Fields:** `checkpoint_calls` = successful `checkpoint()` only; `gross_diff_steps` = those plus an extra step when `finish()` applies a trailing tree diff after the last checkpoint.
-- **Byte totals vs `CPython`:** Doc in `byte_cost.rs` — not bit-identical to `difflib.SequenceMatcher`; algorithms differ.
-- **Git temp index:** Prefer a temp **directory** and a nonexistent index path until git creates it; an empty index file can break git operations.
+- **Code:** `src/edit_efficiency/report.rs` — `finish_and_write_report` / `finish_edit_efficiency_then_return`; metering (git tree snapshots, gross/net bytes) was removed.
+- **Streams / ordering:** Stable **“not measured”** line → **`eprintln!` (stderr)** only — see root `grounding.md`. `finish_edit_efficiency_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
 
 ## ACP traces, coalescing, tee
 
@@ -69,6 +65,7 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
+- **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/edit_efficiency/report.rs`) so documented stdout/stderr post-run behavior stays aligned with sources—extend when stream contracts change.
 
 ## kiss
 

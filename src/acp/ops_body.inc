@@ -90,7 +90,6 @@ pub struct KpopFlowOnceArgs<'a> {
     pub learn: Option<(&'a str, &'a Path)>,
     pub p_creative: f64,
     pub mbc2_body: &'a str,
-    pub edit_efficiency: &'a mut Option<crate::edit_efficiency::EditEfficiencyMeter>,
 }
 
 fn kpop_trace_sibling(base: &Path, tag: &str) -> PathBuf {
@@ -102,7 +101,7 @@ fn kpop_trace_sibling(base: &Path, tag: &str) -> PathBuf {
 #[allow(clippy::too_many_lines)] // KPOP: main, optional learn, optional creative pad/roll sequence
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
-    args: &mut KpopFlowOnceArgs<'_>,
+    args: &KpopFlowOnceArgs<'_>,
 ) -> Result<(), AgentError> {
     /// Short continuation so the session can reach `interaction_index` 3 while respecting the “no
     /// MBC2 on the first three ACP interactions” rule (`CREATIVE_MIN_INTERACTION`).
@@ -140,7 +139,6 @@ pub(crate) async fn run_kpop_flow_once(
         let _ = s.shutdown().await;
         return Err(e);
     }
-    crate::edit_efficiency::maybe_checkpoint(args.edit_efficiency);
 
     let have_learn = args.learn.is_some();
 
@@ -158,7 +156,6 @@ pub(crate) async fn run_kpop_flow_once(
             let _ = s.shutdown().await;
             return Err(e);
         }
-        crate::edit_efficiency::maybe_checkpoint(args.edit_efficiency);
     }
 
     if crate::kpop_acp_prompt::kpop_creative_enabled(args.p_creative) {
@@ -182,7 +179,6 @@ pub(crate) async fn run_kpop_flow_once(
                 let _ = s.shutdown().await;
                 return Err(e);
             }
-            crate::edit_efficiency::maybe_checkpoint(args.edit_efficiency);
         } else {
             for (idx, tag) in [(1u32, "creative_pad1"), (2u32, "creative_pad2")] {
                 let pad_log = kpop_trace_sibling(args.kpop_log, tag);
@@ -199,7 +195,6 @@ pub(crate) async fn run_kpop_flow_once(
                     let _ = s.shutdown().await;
                     return Err(e);
                 }
-                crate::edit_efficiency::maybe_checkpoint(args.edit_efficiency);
             }
         }
 
@@ -217,7 +212,6 @@ pub(crate) async fn run_kpop_flow_once(
             let _ = s.shutdown().await;
             return Err(e);
         }
-        crate::edit_efficiency::maybe_checkpoint(args.edit_efficiency);
     }
 
     s.shutdown().await.map_err(AgentError)

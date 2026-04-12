@@ -8,10 +8,7 @@ use std::path::Path;
 
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
-use crate::edit_efficiency::{
-    EditEfficiencyMeter, finish_edit_efficiency_then_return, maybe_checkpoint,
-    try_edit_efficiency_meter,
-};
+use crate::edit_efficiency::finish_edit_efficiency_then_return;
 use crate::prompts::PromptStore;
 
 include!("helpers.rs");
@@ -58,14 +55,9 @@ impl Orchestrator<'_> {
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
 
-        let mut edit_efficiency = try_edit_efficiency_meter(&self.artifacts.work_dir);
-
-        let workflow_result = self
-            .run_with_coder_session(&context, &mut edit_efficiency)
-            .await;
+        let workflow_result = self.run_with_coder_session(&context).await;
 
         let workflow_result = finish_edit_efficiency_then_return(
-            edit_efficiency,
             &self.artifacts.run_dir,
             workflow_result,
         );
@@ -85,10 +77,9 @@ impl Orchestrator<'_> {
     async fn run_with_coder_session(
         &mut self,
         context: &HashMap<String, String>,
-        edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<(), WorkflowError> {
         (self.progress_callback)("Implement");
-        self.run_coder_prompt("implement.md", context, "main", edit_efficiency)
+        self.run_coder_prompt("implement.md", context, "main")
             .await?;
 
         self.run_review_phase(
@@ -98,7 +89,6 @@ impl Orchestrator<'_> {
                 phase_id: "review_1",
                 context,
             },
-            edit_efficiency,
         )
         .await?;
         self.run_review_phase(
@@ -108,13 +98,12 @@ impl Orchestrator<'_> {
                 phase_id: "review_2",
                 context,
             },
-            edit_efficiency,
         )
         .await?;
 
         if self.config.run_learn {
             (self.progress_callback)("Learn");
-            self.run_coder_prompt("learn.md", context, "final", edit_efficiency)
+            self.run_coder_prompt("learn.md", context, "final")
                 .await?;
         }
         Ok(())
@@ -125,7 +114,6 @@ impl Orchestrator<'_> {
         filename: &str,
         context: &HashMap<String, String>,
         suffix: &str,
-        edit_efficiency: &mut Option<EditEfficiencyMeter>,
     ) -> Result<(), WorkflowError> {
         let prompt = self
             .prompts
@@ -137,7 +125,6 @@ impl Orchestrator<'_> {
             .run_coder_prompt(&prompt, &log)
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
-        maybe_checkpoint(edit_efficiency);
         Ok(())
     }
 }

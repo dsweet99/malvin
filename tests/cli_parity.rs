@@ -5,7 +5,12 @@
 //! `git check-ignore` guards for the repo root `.gitignore` and the embedded `malvin init` template.
 //! Patterns must not use a `./` prefix: git normalizes pathspecs without `./`, so those entries never
 //! matched.
+//!
+//! ## Grounding vs edit-efficiency
+//!
+//! Contract checks between `grounding.md` and `src/edit_efficiency/report.rs` after git-based metering removal.
 
+use malvin::edit_efficiency::EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE;
 use std::path::Path;
 use std::process::Command;
 
@@ -209,4 +214,38 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
             "malvin init template .gitignore must list {line:?} so new repos match Malvin's own ignores"
         );
     }
+}
+
+#[test]
+fn not_measured_message_does_not_blame_git_after_git_metering_removed() {
+    assert!(
+        !EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE.contains("git"),
+        "git tree metering was removed (see plan); stderr hint must not reference git ({EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE:?})"
+    );
+}
+
+#[test]
+fn grounding_stdout_edit_efficiency_summary_matches_report_implementation() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    let report_rs = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/edit_efficiency/report.rs"
+    ));
+    let grounding_promises_stdout_summary =
+        grounding.contains("edit-efficiency one-line summary on success");
+    let implementation_prints_summary_to_stdout = report_rs.lines().any(|line| {
+        let t = line.trim_start();
+        if t.starts_with("//") || t.starts_with("//!") {
+            return false;
+        }
+        // `eprintln!` contains the substring `println!`; exclude stderr prints.
+        line.contains("println!")
+            && !line.contains("eprintln!")
+            && line.to_lowercase().contains("efficiency")
+    });
+    assert_eq!(
+        grounding_promises_stdout_summary,
+        implementation_prints_summary_to_stdout,
+        "grounding.md and src/edit_efficiency/report.rs disagree on whether a success-path edit-efficiency line is printed to stdout"
+    );
 }

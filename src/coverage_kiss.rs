@@ -60,19 +60,9 @@ fn kiss_stringify_env_path() {
 
 #[test]
 fn kiss_stringify_edit_efficiency() {
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyReport);
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyError);
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter);
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::new);
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::checkpoint);
-    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::finish);
-    let _ = stringify!(crate::edit_efficiency::byte_cost::byte_edit_cost);
-    let _ = stringify!(crate::edit_efficiency::maybe_checkpoint);
-    let _ = stringify!(crate::edit_efficiency::try_edit_efficiency_meter);
     let _ = stringify!(crate::edit_efficiency::finish_and_write_report);
     let _ = stringify!(crate::edit_efficiency::finish_edit_efficiency_then_return);
     let _ = stringify!(crate::edit_efficiency::EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE);
-    let _ = stringify!(crate::edit_efficiency::format_edit_efficiency_stdout_line);
 }
 
 #[test]

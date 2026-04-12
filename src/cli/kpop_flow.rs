@@ -11,9 +11,7 @@ use super::emit_command_line;
 use super::prepare_kpop_prompt_store;
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
-use malvin::edit_efficiency::{
-    EditEfficiencyMeter, finish_edit_efficiency_then_return, try_edit_efficiency_meter,
-};
+use malvin::edit_efficiency::finish_edit_efficiency_then_return;
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
 use malvin::prompts::{PromptError, PromptStore};
@@ -70,12 +68,10 @@ async fn kpop_run_prompt_and_efficiency(ctx: KpopAfterStartup<'_>) -> Result<(),
         p_creative: ctx.kpop.p_creative,
     };
 
-    let mut edit_efficiency = try_edit_efficiency_meter(&ctx.artifacts.work_dir);
-
     // Match `Orchestrator::run`: always finish reporting after the ACP body (see
-    // [`finish_edit_efficiency_then_return`]) so users see a line even when ACP returns an error.
-    let acp_result = kpop_run_acp(ctx.client, input, &mut edit_efficiency).await;
-    finish_edit_efficiency_then_return(edit_efficiency, &ctx.artifacts.run_dir, acp_result)
+    // [`finish_edit_efficiency_then_return`]) so users see the hint even when ACP returns an error.
+    let acp_result = kpop_run_acp(ctx.client, input).await;
+    finish_edit_efficiency_then_return(&ctx.artifacts.run_dir, acp_result)
 }
 
 pub struct KpopAcpInput<'a> {
@@ -91,7 +87,6 @@ pub struct KpopAcpInput<'a> {
 pub async fn kpop_run_acp(
     client: &mut AgentClient,
     input: KpopAcpInput<'_>,
-    edit_efficiency: &mut Option<EditEfficiencyMeter>,
 ) -> Result<(), String> {
     let learn_stored =
         kpop_learn_bundle(input.store, input.context, input.run_learn, input.artifacts)?;
@@ -106,16 +101,15 @@ pub async fn kpop_run_acp(
     } else {
         String::new()
     };
-    let mut flow = KpopFlowOnceArgs {
+    let flow = KpopFlowOnceArgs {
         cwd: &input.artifacts.work_dir,
         kpop_prompt: input.combined,
         kpop_log: input.kpop_log,
         learn: learn_ref,
         p_creative: input.p_creative,
         mbc2_body: &mbc2_body,
-        edit_efficiency,
     };
-    client.run_kpop_flow(&mut flow).await.map_err(|e| e.0)
+    client.run_kpop_flow(&flow).await.map_err(|e| e.0)
 }
 
 pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
@@ -154,7 +148,6 @@ pub fn kpop_learn_bundle(
 fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::kpop_flow::KpopAfterStartup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_efficiency);
-    let _ = stringify!(crate::edit_efficiency::try_edit_efficiency_meter);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_combined_prompt);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
