@@ -26,7 +26,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 
 - **Never edit** `.kissconfig`.
 - **Do not run git** in automated assistance for this project; users stage/commit locally.
-- **Rust** `edition = "2024"`, `rust-version = "1.85"` in `Cargo.toml`.
+- **Rust** `edition = "2024"`, `rust-version = "1.87"` in `Cargo.toml`.
 - **`.kissignore`** may exclude paths; still run `kiss check .` on the analyzed set.
 
 ## Crate layout (high level)
@@ -40,7 +40,8 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
-| Edit efficiency | `src/edit_efficiency/report.rs` — post-run stderr hint; called from `src/orchestrator/` and KPOP after ACP bodies |
+| Post-run metrics hint | `src/post_run_hint/report.rs` — post-run stderr line; called from `src/orchestrator/` and KPOP after ACP bodies |
+| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` only: `run_timing.json` + one stderr summary after workflow, before the post-run metrics hint; LLM vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
 ### ACP `include!` assembly (kiss dependency depth)
@@ -49,10 +50,15 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 **Included `.rs` files** (e.g. `transport/command.rs` pulled into `acp/mod.rs`) **inherit the parent module’s `use`**—types like `Path` are not imported locally unless the include parent brings them.
 
-## Edit efficiency
+## Post-run metrics hint
 
-- **Code:** `src/edit_efficiency/report.rs` — `finish_and_write_report` / `finish_edit_efficiency_then_return`; metering (git tree snapshots, gross/net bytes) was removed.
-- **Streams / ordering:** Stable **“not measured”** line → **`eprintln!` (stderr)** only — see root `grounding.md`. `finish_edit_efficiency_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
+- **Code:** `src/post_run_hint/report.rs` — `finish_and_write_report` / `finish_post_run_hint_then_return`; prints a stable **“not measured”** stderr line only.
+- **Streams / ordering:** Stable **“not measured”** line → **`eprintln!` (stderr)** only — see root `grounding.md`. `finish_post_run_hint_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
+
+## Run timing (`malvin code`)
+
+- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
+- **Artifacts:** `run_timing.json` in the run directory; stderr summary line (see root `grounding.md`) is emitted **before** the post-run metrics hint on the main code path.
 
 ## ACP traces, coalescing, tee
 
@@ -65,11 +71,15 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
-- **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/edit_efficiency/report.rs`) so documented stdout/stderr post-run behavior stays aligned with sources—extend when stream contracts change.
+- **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/post_run_hint/report.rs`) so documented stdout/stderr post-run behavior stays aligned with sources—extend when stream contracts change.
+
+### Repo-wide string contracts (renames, banned fragments)
+
+When removing or renaming a user-facing term, **`rg` the whole repository** (implementation, `grounding.md`, `default_prompts/`, `.cursorrules`, `.llm_style/`, `_kpop/` logs). A short **forbidden substring** may appear inside unrelated English words—verify with context, not only exact tokens. In **learn/review prompts**, distinguish **agent pacing** (latency, thoroughness) from **post-run metrics** language in code (`post_run_hint`). **`tests/cli_parity.rs`** asserts `grounding.md` matches stderr contracts when implementation uses `eprintln!` for the post-run hint; if docs lag, tests fail before runtime.
 
 ## kiss
 
-Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible. Split modules when limits hit.
+Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible. Split modules when limits hit (e.g. extract `report.rs`, thin orchestrator `run()` helpers when `calls_per_function` fires). Run `kiss check .` during multi-step work—not only at the end.
 
 ## Breaking API notes
 
@@ -116,6 +126,6 @@ Root **`review.md`** is the working reviewer checklist (“problems only” / re
 
 ## Keyword index (moved from `style.md` surface)
 
-- **MSRV / edition:** `edition = "2024"`, `rust-version = "1.85"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
+- **MSRV / edition:** `edition = "2024"`, `rust-version = "1.87"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
 - **Orchestrator prompt stems:** `prompt_md_stem` / `strip_suffix(".md")` in `src/orchestrator/` — avoid `len()-3` slicing.
 - **Prompts `include_str!`:** defaults live under `default_prompts/`; paths in `src/prompts/mod.rs`.

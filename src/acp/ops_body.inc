@@ -51,6 +51,7 @@ pub(crate) fn maybe_tee_log(_client: &AgentClient, _log_path: &Path) {}
 pub(crate) async fn run_reviewer_pair_once(
     client: &AgentClient,
     pair: &ReviewerPromptPair<'_>,
+    pair_id: crate::run_timing::ReviewPairId,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, pair.cwd).await?;
 
@@ -62,9 +63,14 @@ pub(crate) async fn run_reviewer_pair_once(
         }
     }
 
-    s.prompt(&review_full, pair.review_log)
-        .await
-        .map_err(AgentError)?;
+    let t_review = Instant::now();
+    let review_out = s.prompt(&review_full, pair.review_log).await;
+    crate::run_timing::record_llm(
+        client.timing.as_ref(),
+        pair_id.review_phase(),
+        t_review.elapsed(),
+    );
+    review_out.map_err(AgentError)?;
     maybe_tee_log(client, pair.review_log);
 
     sync_review_file(pair.workspace_review_path, pair.artifact_review_path);
@@ -73,9 +79,10 @@ pub(crate) async fn run_reviewer_pair_once(
         return Ok(());
     }
 
-    s.prompt(pair.kpop_body, pair.kpop_log)
-        .await
-        .map_err(AgentError)?;
+    let t_kpop = Instant::now();
+    let kpop_out = s.prompt(pair.kpop_body, pair.kpop_log).await;
+    crate::run_timing::record_llm(client.timing.as_ref(), pair_id.kpop_phase(), t_kpop.elapsed());
+    kpop_out.map_err(AgentError)?;
     maybe_tee_log(client, pair.kpop_log);
 
     s.shutdown().await.map_err(AgentError)?;
@@ -112,13 +119,19 @@ pub(crate) async fn run_kpop_flow_once(
         client: &AgentClient,
         text: &str,
         log: &Path,
+        phase: crate::run_timing::TimingPhase,
     ) -> Result<(), AgentError> {
+        let t0 = Instant::now();
         match session.prompt(text, log).await {
             Ok(()) => {
+                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
                 maybe_tee_log(client, log);
                 Ok(())
             }
-            Err(e) => Err(AgentError(e)),
+            Err(e) => {
+                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
+                Err(AgentError(e))
+            }
         }
     }
 
@@ -135,7 +148,15 @@ pub(crate) async fn run_kpop_flow_once(
         },
         &mut rng,
     );
-    if let Err(e) = round(&s, client, &main_prompt, args.kpop_log).await {
+    if let Err(e) = round(
+        &s,
+        client,
+        &main_prompt,
+        args.kpop_log,
+        crate::run_timing::TimingPhase::Implement,
+    )
+    .await
+    {
         let _ = s.shutdown().await;
         return Err(e);
     }
@@ -152,7 +173,15 @@ pub(crate) async fn run_kpop_flow_once(
             },
             &mut rng,
         );
-        if let Err(e) = round(&s, client, &learn_prompt, learn_log).await {
+        if let Err(e) = round(
+            &s,
+            client,
+            &learn_prompt,
+            learn_log,
+            crate::run_timing::TimingPhase::Learn,
+        )
+        .await
+        {
             let _ = s.shutdown().await;
             return Err(e);
         }
@@ -175,7 +204,15 @@ pub(crate) async fn run_kpop_flow_once(
                 },
                 &mut rng,
             );
-            if let Err(e) = round(&s, client, &pad_text, &pad_log).await {
+            if let Err(e) = round(
+                &s,
+                client,
+                &pad_text,
+                &pad_log,
+                crate::run_timing::TimingPhase::Implement,
+            )
+            .await
+            {
                 let _ = s.shutdown().await;
                 return Err(e);
             }
@@ -191,7 +228,15 @@ pub(crate) async fn run_kpop_flow_once(
                     },
                     &mut rng,
                 );
-                if let Err(e) = round(&s, client, &pad_text, &pad_log).await {
+                if let Err(e) = round(
+                    &s,
+                    client,
+                    &pad_text,
+                    &pad_log,
+                    crate::run_timing::TimingPhase::Implement,
+                )
+                .await
+                {
                     let _ = s.shutdown().await;
                     return Err(e);
                 }
@@ -208,7 +253,15 @@ pub(crate) async fn run_kpop_flow_once(
             },
             &mut rng,
         );
-        if let Err(e) = round(&s, client, &roll_text, &roll_log).await {
+        if let Err(e) = round(
+            &s,
+            client,
+            &roll_text,
+            &roll_log,
+            crate::run_timing::TimingPhase::Implement,
+        )
+        .await
+        {
             let _ = s.shutdown().await;
             return Err(e);
         }

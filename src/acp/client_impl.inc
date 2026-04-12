@@ -1,10 +1,15 @@
 /// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
 /// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
-async fn backoff_after_agent_failure(last_error: &str, attempt: u32) -> Result<bool, AgentError> {
+async fn backoff_after_agent_failure(
+    timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    last_error: &str,
+    attempt: u32,
+) -> Result<bool, AgentError> {
     match plan_agent_retry(last_error, attempt) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {
+            crate::run_timing::record_backoff(timing, d);
             sleep(d).await;
             Ok(false)
         }
@@ -20,7 +25,16 @@ impl AgentClient {
             style_prompt_path: PathBuf::from(".style").join("main.md"),
             coder_session: None,
             coder_style_on_next_prompt: false,
+            timing: None,
         }
+    }
+
+    /// When set (orchestrator, standalone KPOP), LLM waits and retry backoff are recorded.
+    pub fn set_run_timing(
+        &mut self,
+        timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    ) {
+        self.timing = timing;
     }
 
     /// Verify API key env or `agent` / `cursor-agent` auth probes.
@@ -68,7 +82,7 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(&last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
                         break;
                     }
                 }
@@ -86,7 +100,12 @@ impl AgentClient {
     /// # Errors
     ///
     /// Returns [`AgentError`] when there is no session or the prompt fails after retries.
-    pub async fn run_coder_prompt(&mut self, prompt: &str, log_path: &Path) -> Result<(), AgentError> {
+    pub async fn run_coder_prompt(
+        &mut self,
+        prompt: &str,
+        log_path: &Path,
+        llm_phase: Option<crate::run_timing::TimingPhase>,
+    ) -> Result<(), AgentError> {
         let session = self
             .coder_session
             .as_ref()
@@ -109,14 +128,21 @@ impl AgentClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
+            let t0 = Instant::now();
             match session.prompt(&full_prompt, log_path).await {
                 Ok(()) => {
+                    if let Some(ph) = llm_phase {
+                        crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());
+                    }
                     maybe_tee_log(self, log_path);
                     return Ok(());
                 }
                 Err(e) => {
+                    if let Some(ph) = llm_phase {
+                        crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());
+                    }
                     last_error = e;
-                    if backoff_after_agent_failure(&last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
                         break;
                     }
                 }
@@ -150,17 +176,18 @@ impl AgentClient {
     pub async fn run_reviewer_review_and_kpop(
         &mut self,
         pair: ReviewerPromptPair<'_>,
+        pair_id: crate::run_timing::ReviewPairId,
     ) -> Result<(), AgentError> {
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_reviewer_pair_once(self, &pair).await {
+            match run_reviewer_pair_once(self, &pair, pair_id).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(&last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
                         break;
                     }
                 }
@@ -192,7 +219,7 @@ impl AgentClient {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(&last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
                         break;
                     }
                 }

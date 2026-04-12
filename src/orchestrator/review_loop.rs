@@ -2,6 +2,7 @@
 
 use crate::acp::{AgentError, ReviewerPromptPair};
 use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::run_timing::{ReviewPairId, TimingPhase};
 
 use super::Orchestrator;
 use super::WorkflowError;
@@ -57,7 +58,11 @@ impl Orchestrator<'_> {
             .render("kpop.md", ctx.context)
             .map_err(|e| WorkflowError(e.0))?;
 
-        self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body)
+        let pair_id = match ctx.phase_id {
+            "review_2" => ReviewPairId::Two,
+            _ => ReviewPairId::One,
+        };
+        self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body, pair_id)
             .await?;
 
         sync_review_file(ctx.workspace_review_path, ctx.review_path);
@@ -69,6 +74,7 @@ impl Orchestrator<'_> {
             "concerns.md",
             ctx.context,
             &format!("{}_attempt_{}", ctx.phase_id, ctx.attempt),
+            TimingPhase::Concerns,
         )
         .await?;
         Ok(false)
@@ -79,6 +85,7 @@ impl Orchestrator<'_> {
         ctx: &ReviewAttemptCtx<'_>,
         review_body: &str,
         kpop_body: &str,
+        pair_id: ReviewPairId,
     ) -> Result<(), WorkflowError> {
         let stem = prompt_md_stem(ctx.review_prompt);
         let review_log = self
@@ -99,7 +106,7 @@ impl Orchestrator<'_> {
             kpop_log: &kpop_log,
         };
         self.client
-            .run_reviewer_review_and_kpop(pair)
+            .run_reviewer_review_and_kpop(pair, pair_id)
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())

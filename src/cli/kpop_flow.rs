@@ -9,12 +9,16 @@ use super::build_agent;
 use super::echo_primary_to_stdout;
 use super::emit_command_line;
 use super::prepare_kpop_prompt_store;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
-use malvin::edit_efficiency::finish_edit_efficiency_then_return;
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
+use malvin::post_run_hint::finish_post_run_hint_then_return;
 use malvin::prompts::{PromptError, PromptStore};
+use malvin::run_timing::{self, RunTiming};
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let store = prepare_kpop_prompt_store(workflow, kpop.p_creative)?;
@@ -27,7 +31,7 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
 
     kpop_emit_startup(&kpop, &artifacts)?;
 
-    kpop_run_prompt_and_efficiency(KpopAfterStartup {
+    kpop_run_prompt_and_post_run_hint(KpopAfterStartup {
         client: &mut client,
         kpop: &kpop,
         workflow,
@@ -50,7 +54,17 @@ struct KpopAfterStartup<'a> {
     text: &'a str,
 }
 
-async fn kpop_run_prompt_and_efficiency(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
+fn attach_kpop_run_timing(client: &mut AgentClient) -> Arc<Mutex<RunTiming>> {
+    let timing = RunTiming::new_arc();
+    client.set_run_timing(Some(Arc::clone(&timing)));
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .mark_wall_start(Instant::now());
+    timing
+}
+
+async fn kpop_run_prompt_and_post_run_hint(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
     let context = workflow_context(ctx.artifacts);
     let kpop_body = ctx
         .store
@@ -68,10 +82,12 @@ async fn kpop_run_prompt_and_efficiency(ctx: KpopAfterStartup<'_>) -> Result<(),
         p_creative: ctx.kpop.p_creative,
     };
 
-    // Match `Orchestrator::run`: always finish reporting after the ACP body (see
-    // [`finish_edit_efficiency_then_return`]) so users see the hint even when ACP returns an error.
+    // Match `Orchestrator::run`: run-timing stderr + JSON, then post-run hint (grounding.md).
+    let timing = attach_kpop_run_timing(ctx.client);
     let acp_result = kpop_run_acp(ctx.client, input).await;
-    finish_edit_efficiency_then_return(&ctx.artifacts.run_dir, acp_result)
+    let _ = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);
+    ctx.client.set_run_timing(None);
+    finish_post_run_hint_then_return(&ctx.artifacts.run_dir, acp_result)
 }
 
 pub struct KpopAcpInput<'a> {
@@ -147,7 +163,7 @@ pub fn kpop_learn_bundle(
 #[test]
 fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::kpop_flow::KpopAfterStartup);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_efficiency);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_post_run_hint);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_combined_prompt);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);

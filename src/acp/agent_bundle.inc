@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 use std::process::Command as StdCommand;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;

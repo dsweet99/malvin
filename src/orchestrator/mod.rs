@@ -5,11 +5,14 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
-use crate::edit_efficiency::finish_edit_efficiency_then_return;
+use crate::post_run_hint::finish_post_run_hint_then_return;
 use crate::prompts::PromptStore;
+use crate::run_timing::{self, RunTiming, TimingPhase};
 
 include!("helpers.rs");
 
@@ -42,6 +45,21 @@ pub struct Orchestrator<'a> {
 }
 
 impl Orchestrator<'_> {
+    fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
+        let timing = RunTiming::new_arc();
+        self.client.timing = Some(Arc::clone(&timing));
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .mark_wall_start(Instant::now());
+        timing
+    }
+
+    fn emit_run_timing_artifact(&mut self, timing: &Arc<Mutex<RunTiming>>) {
+        let _ = run_timing::finalize_and_emit_run_timing(&self.artifacts.run_dir, timing);
+        self.client.timing = None;
+    }
+
     /// Drive the full workflow.
     ///
     /// # Errors
@@ -49,25 +67,25 @@ impl Orchestrator<'_> {
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts);
-
-        self.client
+        let timing = self.attach_run_timing();
+        let begin_res = self
+            .client
             .begin_coder_session(&self.artifacts.work_dir)
-            .await
-            .map_err(|e: AgentError| WorkflowError(e.0))?;
-
-        let workflow_result = self.run_with_coder_session(&context).await;
-
-        let workflow_result = finish_edit_efficiency_then_return(
+            .await;
+        let workflow_result = match begin_res {
+            Ok(()) => self.run_with_coder_session(&context).await,
+            Err(e) => Err(WorkflowError(e.0)),
+        };
+        self.emit_run_timing_artifact(&timing);
+        let workflow_result = finish_post_run_hint_then_return(
             &self.artifacts.run_dir,
             workflow_result,
         );
-
         let end_result = self
             .client
             .end_coder_session()
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-
         match (workflow_result, end_result) {
             (Ok(()), Ok(())) => Ok(()),
             (Err(e), _) | (Ok(()), Err(e)) => Err(e),
@@ -79,7 +97,7 @@ impl Orchestrator<'_> {
         context: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
         (self.progress_callback)("Implement");
-        self.run_coder_prompt("implement.md", context, "main")
+        self.run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
             .await?;
 
         self.run_review_phase(
@@ -103,7 +121,7 @@ impl Orchestrator<'_> {
 
         if self.config.run_learn {
             (self.progress_callback)("Learn");
-            self.run_coder_prompt("learn.md", context, "final")
+            self.run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
                 .await?;
         }
         Ok(())
@@ -114,6 +132,7 @@ impl Orchestrator<'_> {
         filename: &str,
         context: &HashMap<String, String>,
         suffix: &str,
+        llm_phase: TimingPhase,
     ) -> Result<(), WorkflowError> {
         let prompt = self
             .prompts
@@ -122,7 +141,7 @@ impl Orchestrator<'_> {
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
         self.client
-            .run_coder_prompt(&prompt, &log)
+            .run_coder_prompt(&prompt, &log, Some(llm_phase))
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())

@@ -4,7 +4,7 @@
 - Algorithms/methods + notable results
 - Tooling/workflow constraints (commands, env gotchas, quality gates)
 - The user's preferences (about coding or communication)
-- Agent efficiency
+- Agent pacing (latency vs thoroughness)
 - Code quality
 
 2) Summarize them as a short bullet list.

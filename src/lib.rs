@@ -24,7 +24,7 @@ pub mod agent {
 
 pub mod artifacts;
 pub mod config;
-pub mod edit_efficiency;
+pub mod post_run_hint;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod env_path;
@@ -33,6 +33,7 @@ pub mod log_paths;
 pub mod orchestrator;
 pub mod prompts;
 mod review_sync;
+pub mod run_timing;
 
 #[cfg(test)]
 mod coverage_kiss;

@@ -30,6 +30,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::end_coder_session);
     let _ = stringify!(AgentClient::run_reviewer_review_and_kpop);
     let _ = stringify!(AgentClient::run_kpop_flow);
+    let _ = stringify!(AgentClient::set_run_timing);
 }
 
 #[test]
@@ -59,10 +60,18 @@ fn kiss_stringify_env_path() {
 }
 
 #[test]
-fn kiss_stringify_edit_efficiency() {
-    let _ = stringify!(crate::edit_efficiency::finish_and_write_report);
-    let _ = stringify!(crate::edit_efficiency::finish_edit_efficiency_then_return);
-    let _ = stringify!(crate::edit_efficiency::EDIT_EFFICIENCY_NOT_MEASURED_MESSAGE);
+fn kiss_stringify_post_run_hint() {
+    let _ = stringify!(crate::post_run_hint::finish_and_write_report);
+    let _ = stringify!(crate::post_run_hint::finish_post_run_hint_then_return);
+    let _ = stringify!(crate::post_run_hint::POST_RUN_METRICS_NOT_MEASURED_MESSAGE);
+}
+
+#[test]
+fn kiss_stringify_run_timing() {
+    let _ = stringify!(crate::run_timing::RunTiming::new_arc);
+    let _ = stringify!(crate::run_timing::finalize_and_emit_run_timing);
+    let _ = stringify!(crate::run_timing::RUN_TIMING_JSON_FILE);
+    let _ = stringify!(crate::run_timing::RUN_TIMING_SUMMARY_PREFIX);
 }
 
 #[test]
