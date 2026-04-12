@@ -7,6 +7,9 @@ Use **TRIGGER** keywords to recall **ADVICE**. Commands, layout, gates, KPOP/MBC
 TRIGGER: run checks pre-commit  
 ADVICE: From repo root: `ruff check .`, `kiss check .`, `pytest -sv tests`, `cargo test`, and **`cargo clippy` verbatim from `.pre-commit-config.yaml` `entry:`** (see `malvin_tooling.md`). Rerun after substantive edits; parallelize independent checks.
 
+TRIGGER: verify often  
+ADVICE: During multi-step work, re-run ruff, `kiss check .`, clippy (`entry:`), `cargo test`, and `pytest -sv tests` with `PYTHONPATH=.`—avoid deferring the full suite to the end.
+
 TRIGGER: kiss check  
 ADVICE: `kiss check .` (full project), not bare `kiss`. See `.kissignore`.
 
@@ -29,7 +32,7 @@ TRIGGER: review grounding
 ADVICE: Read `review.md` + `grounding.md`; confirm code on disk matches notes. After fixes, update root `review.md` (no stale “open problems”). KPOP/ACP: `src/acp/*.inc` (e.g. `ops_body.inc`), not only legacy paths—see `malvin_tooling.md`.
 
 TRIGGER: edit efficiency metering  
-ADVICE: `src/edit_efficiency/`; `finish_edit_efficiency_then_return` after workflow/KPOP body (before `DONE`). Success summary stdout; not measured / finish-fail stderr (`grounding.md`). Prompt-boundary checkpoints; `checkpoint_calls` vs `gross_diff_steps`; Myers/`similar` ≠ `CPython` `SequenceMatcher`. Detail: `malvin_tooling.md` § Edit efficiency.
+ADVICE: `src/edit_efficiency/` + `finish_edit_efficiency_then_return` placement; stdout vs stderr and checkpoints—see `malvin_tooling.md` § Edit efficiency.
 
 TRIGGER: clippy doc comments  
 ADVICE: With `-D warnings`, `clippy::doc_markdown` flags bare identifiers in `//!`/`///`—wrap code-like tokens in backticks (e.g. `CPython`).
@@ -37,8 +40,11 @@ ADVICE: With `-D warnings`, `clippy::doc_markdown` flags bare identifiers in `//
 TRIGGER: plan.md shipping sync  
 ADVICE: When `malvin init`/ACP/models behavior changes, update `plan.md`; align with `src/cli/init_cmd.rs` and tests—see `malvin_tooling.md`.
 
+TRIGGER: `_malvin` plan  
+ADVICE: One-off task specs may live in `_malvin/**/plan.md`—implement when cited; root `plan.md` is bootstrap/shipping—see `malvin_tooling.md` § `malvin init` + ACP bounded retry.
+
 TRIGGER: KPOP p-creative MBC2  
-ADVICE: `src/kpop_acp_prompt.rs` + `src/acp/ops_body.inc` `run_kpop_flow_once`; `--p-creative` > 0 adds continuation rounds so MBC2 can apply after the first three outbound prompts. Counts: `kpop_standalone_outbound_prompt_count`. Detail: `malvin_tooling.md` § KPOP.
+ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—see `malvin_tooling.md` § KPOP.
 
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Put `use` at module scope. Detail: `malvin_tooling.md` § Rust edition 2024.
@@ -56,7 +62,7 @@ TRIGGER: lib test_utils binary
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary unit tests cannot import it; for isolated `PATH`, use `tests/*.rs` + `Command::new(env!("CARGO_BIN_EXE_malvin")).env("PATH", …)` (see `init_pre_commit.rs`).
 
 TRIGGER: ACP retry backoff  
-ADVICE: Policy in `retry_policy.inc` (`plan_agent_retry`); sleep/break via `backoff_after_agent_failure` in `client_impl.inc`; upgrade errors: client returns `Err` only—single `eprintln` at `src/cli/mod.rs` entrypoint.
+ADVICE: `retry_policy.inc` + `backoff_after_agent_failure` in `client_impl.inc`; exhausted messages use `{retries}`—see `malvin_tooling.md` § ACP bounded retry. Upgrade: `Err` only—single `eprintln` at `src/cli/mod.rs`.
 
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer uses `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs` guards drift.
@@ -82,11 +88,11 @@ ADVICE: `src/cli/`: `args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcomm
 TRIGGER: parallel subagents  
 ADVICE: At most 4 parallel subagents for independent exploration; skip for tiny edits.
 
+TRIGGER: workspace rg fails  
+ADVICE: If the workspace search/`rg` tool errors, run `rg` from a repo-root shell—see `malvin_tooling.md` Required checks.
+
 TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when workspace rules require it.
+ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when workspace rules require it; when rules mention TRIGGER words, show the single most relevant TRIGGER:/ADVICE: pair.
 
 TRIGGER: all checks must pass, noqa  
 ADVICE: Fix all failures everywhere. No `# noqa` except where required for correctness. No test-cheating.
-
-TRIGGER: TRIGGER / ADVICE  
-ADVICE: After a user request, if TRIGGER words match, show the single most relevant TRIGGER:/ADVICE: pair.

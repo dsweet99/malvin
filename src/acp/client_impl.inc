@@ -57,7 +57,9 @@ impl AgentClient {
             return Err(AgentError("coder ACP session is already open".to_string()));
         }
         let mut last_error = String::new();
+        let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
             match spawn_agent_acp_session(self, cwd).await {
                 Ok(s) => {
                     self.coder_session = Some(s);
@@ -72,8 +74,10 @@ impl AgentClient {
                 }
             }
         }
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
         Err(AgentError(format!(
-            "agent acp (coder session) failed to spawn after retries. Last error:\n{last_error}"
+            "agent acp (coder session) failed to spawn after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 
@@ -102,7 +106,9 @@ impl AgentClient {
         let mut last_error = String::new();
         let session = session.clone();
 
+        let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
             match session.prompt(&full_prompt, log_path).await {
                 Ok(()) => {
                     maybe_tee_log(self, log_path);
@@ -117,8 +123,10 @@ impl AgentClient {
             }
         }
 
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
         Err(AgentError(format!(
-            "agent acp (coder prompt) failed after retries. Last error:\n{last_error}"
+            "agent acp (coder prompt) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 
@@ -145,7 +153,9 @@ impl AgentClient {
     ) -> Result<(), AgentError> {
         let mut last_error = String::new();
 
+        let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
             match run_reviewer_pair_once(self, &pair).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
@@ -157,8 +167,10 @@ impl AgentClient {
             }
         }
 
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
         Err(AgentError(format!(
-            "agent acp (reviewer review+kpop) failed after retries. Last error:\n{last_error}"
+            "agent acp (reviewer review+kpop) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 
@@ -173,7 +185,9 @@ impl AgentClient {
     ) -> Result<(), AgentError> {
         let mut last_error = String::new();
 
+        let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
             match run_kpop_flow_once(self, flow).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
@@ -185,8 +199,10 @@ impl AgentClient {
             }
         }
 
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
         Err(AgentError(format!(
-            "agent acp (kpop flow) failed after retries. Last error:\n{last_error}"
+            "agent acp (kpop flow) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 }

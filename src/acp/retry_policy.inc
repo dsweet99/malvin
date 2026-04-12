@@ -4,6 +4,12 @@
 
 pub(crate) const MAX_AGENT_ATTEMPTS: u32 = 3;
 
+/// English noun for `n` retry attempts after the first try (`n` is `attempts_used - 1` in callers).
+#[must_use]
+pub(crate) const fn retries_noun(n: u32) -> &'static str {
+    if n == 1 { "retry" } else { "retries" }
+}
+
 pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
     msg.to_ascii_lowercase()
         .contains("upgrade your plan to continue")

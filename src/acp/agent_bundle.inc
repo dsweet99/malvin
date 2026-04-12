@@ -50,6 +50,7 @@ mod ops_resolve_bin_tests {
 #[test]
 fn stringify_private_helpers() {
     let _ = stringify!(MAX_AGENT_ATTEMPTS);
+    let _ = stringify!(retries_noun);
     let _ = stringify!(agent_string_is_upgrade_plan);
     let _ = stringify!(agent_string_is_retriable);
     let _ = stringify!(AgentRetryOutcome);
@@ -69,8 +70,8 @@ fn stringify_private_helpers() {
 #[cfg(test)]
 mod retry_policy_tests {
     use super::{
-        agent_string_is_retriable, agent_string_is_upgrade_plan, plan_agent_retry, AgentError,
-        AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
+        agent_string_is_retriable, agent_string_is_upgrade_plan, plan_agent_retry, retries_noun,
+        AgentError, AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
     };
 
     #[test]
@@ -114,5 +115,26 @@ mod retry_policy_tests {
     fn plan_retry_upgrade_returns_agent_error() {
         let err = plan_agent_retry("Upgrade your plan to continue", 1).unwrap_err();
         assert!(matches!(err, AgentError(_)));
+    }
+
+    #[test]
+    fn retries_noun_is_singular_only_for_one() {
+        assert_eq!(retries_noun(0), "retries");
+        assert_eq!(retries_noun(1), "retry");
+        assert_eq!(retries_noun(2), "retries");
+    }
+
+    #[test]
+    fn agent_retry_exhausted_messages_avoid_one_retries_grammar() {
+        // Mirrors suffix in `client_impl.inc` when bounded retries are exhausted.
+        for (retries, want) in [(0_u32, "retries"), (1, "retry"), (2, "retries")] {
+            let noun = retries_noun(retries);
+            let msg = format!("failed after {retries} {noun}.");
+            assert!(
+                !msg.contains("1 retries"),
+                "bad grammar in message: {msg}"
+            );
+            assert!(msg.contains(&format!("{retries} {want}")), "got {msg}");
+        }
     }
 }
