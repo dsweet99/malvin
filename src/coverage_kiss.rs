@@ -59,6 +59,19 @@ fn kiss_stringify_env_path() {
 }
 
 #[test]
+fn kiss_stringify_edit_efficiency() {
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyReport);
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyError);
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter);
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::new);
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::checkpoint);
+    let _ = stringify!(crate::edit_efficiency::EditEfficiencyMeter::finish);
+    let _ = stringify!(crate::edit_efficiency::byte_cost::byte_edit_cost);
+    let _ = stringify!(crate::edit_efficiency::maybe_checkpoint);
+    let _ = stringify!(crate::edit_efficiency::finish_and_write_report);
+}
+
+#[test]
 fn kiss_stringify_invocation() {
     let _ = stringify!(crate::invocation::init_from_env);
     let _ = stringify!(crate::invocation::command_line);
@@ -85,6 +98,8 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::format_prompt_path);
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
+    let _ = stringify!(crate::orchestrator::review_context::ReviewPhaseArgs);
+    let _ = stringify!(crate::orchestrator::review_context::ReviewAttemptCtx);
 }
 
 #[test]

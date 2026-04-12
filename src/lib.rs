@@ -1,4 +1,6 @@
 //! Malvin: implementation and review workflow driven by Cursor **`agent acp`** (ACP).
+// Transitive deps (e.g. `rand` / `tempfile`) pull duplicate crate versions; `clippy::cargo` flags it.
+#![allow(clippy::multiple_crate_versions)]
 
 pub mod acp;
 pub use acp::{
@@ -20,6 +22,7 @@ pub mod agent {
 
 pub mod artifacts;
 pub mod config;
+pub mod edit_efficiency;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod env_path;

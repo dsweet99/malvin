@@ -229,4 +229,18 @@ mod tests {
         assert_eq!(n, "composer-2");
         assert_eq!(d, "Fast");
     }
+
+    #[test]
+    fn kiss_stringify_models_cmd() {
+        let _ = stringify!(ModelsArgs);
+        let _ = stringify!(run_models);
+        let _ = stringify!(resolve_models_cli);
+        let _ = stringify!(consume_csi_sequence);
+        let _ = stringify!(consume_osc_sequence);
+        let _ = stringify!(strip_ansi_escapes);
+        let _ = stringify!(trim_trailing_tip_lines);
+        let _ = stringify!(looks_like_tip_banner_line);
+        let _ = stringify!(print_parsed_or_fallback);
+        let _ = stringify!(parse_model_line);
+    }
 }

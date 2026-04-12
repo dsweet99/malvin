@@ -1,4 +1,9 @@
 // Build and spawn the `agent acp` child process.
+//
+// This file is `include!`d from `acp/mod.rs`. It does not declare its own `use std::path::Path`; it
+// relies on the parent module’s imports. If you move or trim `mod.rs` `use` lines, restore `Path`
+// (or add a local import) here so `BuildAgentAcpCommandArgs` keeps compiling.
+use std::ffi::OsString;
 use std::{io, process::Stdio};
 use tokio::{process::{Child, Command}, time::sleep};
 
@@ -12,6 +17,21 @@ const PARENT_ENV_KEYS: &[&str] = &[
     "XDG_CONFIG_HOME",
     "XDG_STATE_HOME",
 ];
+
+/// Prepend common locations so `#!/usr/bin/env node` mock agents resolve when `PATH` is minimal.
+pub(crate) fn prepend_standard_path_for_child(cmd: &mut Command) {
+    const PREFIX: &str = "/usr/bin:/bin:/usr/local/bin";
+    let merged = match std::env::var_os("PATH") {
+        Some(p) if !p.is_empty() => {
+            let mut o = OsString::from(PREFIX);
+            o.push(":");
+            o.push(p);
+            o
+        }
+        _ => OsString::from(PREFIX),
+    };
+    cmd.env("PATH", merged);
+}
 
 pub(crate) fn forward_parent_env(cmd: &mut Command) {
     for &key in PARENT_ENV_KEYS {
@@ -77,6 +97,7 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
         cmd.arg("--model").arg(m);
     }
     apply_acp_tail(&mut cmd, args.cwd, args.george_acp_lane);
+    prepend_standard_path_for_child(&mut cmd);
     cmd
 }
 
@@ -115,6 +136,7 @@ pub(crate) fn executable_text_busy(err: &io::Error) -> bool {
 #[test]
 fn kiss_stringify_command_a() {
     let _ = stringify!(AGENT_BIN);
+    let _ = stringify!(prepend_standard_path_for_child);
     let _ = stringify!(forward_parent_env);
     let _ = stringify!(apply_api_and_auth);
     let _ = stringify!(apply_acp_tail);

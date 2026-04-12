@@ -28,6 +28,12 @@ ADVICE: Change only what the task requires; match naming, layout, and comment le
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; confirm code on disk matches notes. After fixes, update root `review.md` (no stale “open problems”). KPOP/ACP: `src/acp/*.inc` (e.g. `ops_body.inc`), not only legacy paths—see `malvin_tooling.md`.
 
+TRIGGER: edit efficiency metering  
+ADVICE: `src/edit_efficiency/` + orchestrator prompt-boundary checkpoints; `checkpoint_calls` vs `gross_diff_steps`; Myers/`similar` ≠ byte-identical to `CPython` `SequenceMatcher`. Detail: `malvin_tooling.md` § Edit efficiency.
+
+TRIGGER: clippy doc comments  
+ADVICE: With `-D warnings`, `clippy::doc_markdown` flags bare identifiers in `//!`/`///`—wrap code-like tokens in backticks (e.g. `CPython`).
+
 TRIGGER: plan.md shipping sync  
 ADVICE: When `malvin init`/ACP/models behavior changes, update `plan.md`; align with `src/cli/init_cmd.rs` and tests—see `malvin_tooling.md`.
 
@@ -56,7 +62,7 @@ TRIGGER: DEFAULT_CLI_MODEL
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer uses `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs` guards drift.
 
 TRIGGER: ACP include layout  
-ADVICE: Much of `src/acp/` is built with `include!` for `kiss` limits—navigate by `.inc` / file names; see `malvin_tooling.md`.
+ADVICE: Much of `src/acp/` is `include!` for `kiss`—navigate `.inc` names; **included `.rs` inherit parent `use`** (not a standalone module tree). See `malvin_tooling.md`.
 
 TRIGGER: ACP trace, JSONL, tee  
 ADVICE: Traces mix plaintext `Command:` prelude then JSON; `strip_trace_invocation_line_for_tee` + `maybe_tee_log` strip duplicate prelude on tee (`tee_strip_body.inc`, `ops_body.inc`). Reader/coalescing: `reader_inline.inc`, `coalesce.rs`.
@@ -65,7 +71,7 @@ TRIGGER: coalesce Unicode scalars
 ADVICE: Track running scalar counts per buffer in verbose/trace coalescing; avoid hot full-buffer `chars().count()` rescans—see `src/acp/coalesce.rs`.
 
 TRIGGER: ACP tests, node  
-ADVICE: Many ACP tests spawn `#!/usr/bin/env node` mocks; `node` must be on PATH or handshake tests fail.
+ADVICE: Mock `agent acp` children often use `#!/usr/bin/env node`; ensure `node` on PATH—`prepend_standard_path_for_child` (`transport/command.rs`) when stripping env. See `malvin_tooling.md` § Tests.
 
 TRIGGER: pre-commit hooks  
 ADVICE: `.pre-commit-config.yaml` runs ruff, clippy, kiss, `admin/check_untracked.sh`—not `cargo test`/`pytest`; run full suite manually or in CI.

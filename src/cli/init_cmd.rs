@@ -161,4 +161,18 @@ mod tests {
         assert!(!TPL_PRE_COMMIT.trim().is_empty());
         assert!(ADMIN_CHECK_UNTRACKED.contains("check_untracked"));
     }
+
+    #[test]
+    fn kiss_stringify_init_cmd() {
+        let _ = stringify!(InitArgs);
+        let _ = stringify!(run_init);
+        let _ = stringify!(resolve_init_root);
+        let _ = stringify!(write_init_templates);
+        let _ = stringify!(bootstrap_repo_tooling);
+        let _ = stringify!(require_on_path);
+        let _ = stringify!(install_git_lfs);
+        let _ = stringify!(run_command_expect_success);
+        let _ = stringify!(write_text_file);
+        let _ = stringify!(write_shell_script);
+    }
 }

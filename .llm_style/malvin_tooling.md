@@ -34,11 +34,22 @@ Pre-commit also runs `ruff check .`, `kiss check .`, and `admin/check_untracked.
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
+| Edit efficiency | `src/edit_efficiency/` — meter, reports; wired from `src/orchestrator/` (prompt-boundary checkpoints) |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
 ### ACP `include!` assembly (kiss dependency depth)
 
 Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.inc`, `ops_body.inc` (`maybe_tee_log`, reviewer pair), `reader_inline.inc`, `agent_bundle.inc`, `transport/*.rs`, `coalesce.rs`.
+
+**Included `.rs` files** (e.g. `transport/command.rs` pulled into `acp/mod.rs`) **inherit the parent module’s `use`**—types like `Path` are not imported locally unless the include parent brings them.
+
+## Edit efficiency
+
+- **Code:** `src/edit_efficiency/` — `EditEfficiencyMeter`, tree/byte diffs (`similar`, Myers-style opcodes), git helpers, `finish_and_write_report`, tests in `meter_tests.rs`.
+- **Orchestration:** Checkpoints run at **prompt boundaries** (coder / reviewer–kpop), not necessarily every in-session tool invocation; see `src/orchestrator/mod.rs` and `review_loop.rs`.
+- **Fields:** `checkpoint_calls` = successful `checkpoint()` only; `gross_diff_steps` = those plus an extra step when `finish()` applies a trailing tree diff after the last checkpoint.
+- **Byte totals vs `CPython`:** Doc in `byte_cost.rs` — not bit-identical to `difflib.SequenceMatcher`; algorithms differ.
+- **Git temp index:** Prefer a temp **directory** and a nonexistent index path until git creates it; an empty index file can break git operations.
 
 ## ACP traces, coalescing, tee
 
@@ -48,7 +59,7 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 ## Tests
 
-- **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail.
+- **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 
 ## kiss
