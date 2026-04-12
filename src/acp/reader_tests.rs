@@ -8,8 +8,12 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::process::Command;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 use tokio::sync::oneshot;
+
+fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+    (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
+}
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -76,6 +80,7 @@ async fn dispatch_resolves_pending_when_response_id_is_decimal_string() {
 #[tokio::test]
 async fn test_handle_incoming_line_parse_error_and_extension_method() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let mut child = Command::new("sleep")
         .arg("30")
         .stdin(Stdio::piped())
@@ -92,6 +97,8 @@ async fn test_handle_incoming_line_parse_error_and_extension_method() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -102,11 +109,18 @@ async fn test_handle_incoming_line_parse_error_and_extension_method() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
     )
     .await;
+    assert_eq!(
+        acp_activity_seq.load(Ordering::SeqCst),
+        1,
+        "only valid JSON should count as ACP activity"
+    );
 }
 
 #[test]
@@ -356,6 +370,7 @@ fn test_permission_reply_shape() {
 #[tokio::test]
 async fn test_handle_session_update_and_permission_replies() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let mut child = Command::new("sleep")
         .arg("5")
         .stdin(Stdio::piped())
@@ -368,6 +383,8 @@ async fn test_handle_session_update_and_permission_replies() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -379,6 +396,8 @@ async fn test_handle_session_update_and_permission_replies() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -396,6 +415,7 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
     use tokio::io::AsyncReadExt;
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let mut child = Command::new("cat")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -409,6 +429,8 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -436,6 +458,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
     use tokio::io::AsyncReadExt;
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let mut child = Command::new("cat")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -449,6 +472,8 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -473,6 +498,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 #[tokio::test]
 async fn test_permission_json_or_write_failure_is_logged() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let mut child = Command::new("true")
         .stdin(Stdio::piped())
         .spawn()
@@ -484,6 +510,8 @@ async fn test_permission_json_or_write_failure_is_logged() {
         IncomingLineDispatch {
             pending: &pending,
             stdin: &stdin,
+            acp_activity_seq: &acp_activity_seq,
+            acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
         },
@@ -507,6 +535,7 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
         .spawn()
         .expect("sleep");
     let stdin = Arc::new(Mutex::new(stdin_holder.stdin.take().expect("stdin")));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let trace_writer: Arc<Mutex<Option<tokio::fs::File>>> = Arc::new(Mutex::new(None));
     let busy = Arc::new(AtomicBool::new(false));
@@ -521,6 +550,8 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
         stdout,
         pending: pending.clone(),
         stdin,
+        acp_activity_seq,
+        acp_activity_notify,
         reader_dead,
         trace_writer,
         prompt_cleanup,

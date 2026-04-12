@@ -5,11 +5,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use tokio::process::{Child, ChildStdin, ChildStdout};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 
 pub struct SessionChannelState {
     pub(crate) stdin: Arc<Mutex<ChildStdin>>,
     pub(crate) pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub(crate) acp_activity_seq: Arc<AtomicU64>,
+    pub(crate) acp_activity_notify: Arc<Notify>,
     pub(crate) reader_dead: Arc<AtomicBool>,
     pub(crate) next_id: Arc<AtomicU64>,
     pub(crate) busy: Arc<AtomicBool>,
@@ -19,11 +21,18 @@ pub struct SessionChannelState {
     pub(crate) ui_idle_notify: Option<Arc<tokio::sync::Notify>>,
 }
 
+fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+    (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
+}
+
 impl SessionChannelState {
     pub(crate) fn new(stdin: ChildStdin, args: &AcpSpawnArgs<'_>) -> Self {
+        let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
         Self {
             stdin: Arc::new(Mutex::new(stdin)),
             pending: Arc::new(Mutex::new(HashMap::new())),
+            acp_activity_seq,
+            acp_activity_notify,
             reader_dead: Arc::new(AtomicBool::new(false)),
             next_id: Arc::new(AtomicU64::new(1)),
             busy: Arc::new(AtomicBool::new(false)),
@@ -38,6 +47,8 @@ impl SessionChannelState {
         AcpHandshakeIo {
             stdin: self.stdin.clone(),
             pending: self.pending.clone(),
+            acp_activity_seq: self.acp_activity_seq.clone(),
+            acp_activity_notify: self.acp_activity_notify.clone(),
             reader_dead: self.reader_dead.clone(),
             next_id: self.next_id.clone(),
             busy: self.busy.clone(),
@@ -58,6 +69,8 @@ impl SessionChannelState {
             child: Mutex::new(child),
             stdin: self.stdin,
             pending: self.pending,
+            acp_activity_seq: self.acp_activity_seq,
+            acp_activity_notify: self.acp_activity_notify,
             next_id: self.next_id,
             session_id,
             reader_dead: self.reader_dead,

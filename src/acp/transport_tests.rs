@@ -14,7 +14,11 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::time::Duration;
 use tokio::io::AsyncReadExt;
 use tokio::process::{ChildStdin, Command};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
+
+fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+    (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
+}
 
 fn clear_cursor_env_for_test() {
     unsafe {
@@ -524,6 +528,8 @@ fn spawn_test_reader_loop(
     stdout: tokio::process::ChildStdout,
     pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     stdin: Arc<Mutex<ChildStdin>>,
+    acp_activity_seq: Arc<AtomicU64>,
+    acp_activity_notify: Arc<Notify>,
     reader_dead: Arc<AtomicBool>,
 ) {
     let trace_writer: Arc<Mutex<Option<tokio::fs::File>>> = Arc::new(Mutex::new(None));
@@ -532,6 +538,8 @@ fn spawn_test_reader_loop(
             stdout,
             pending,
             stdin,
+            acp_activity_seq,
+            acp_activity_notify,
             reader_dead,
             trace_writer,
             prompt_cleanup: None,
@@ -572,15 +580,25 @@ async fn test_handshake_hits_session_new_error_path() {
     let stdout = child.stdout.take().unwrap();
 
     let pending = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let next_id = Arc::new(AtomicU64::new(1));
 
-    spawn_test_reader_loop(stdout, pending.clone(), stdin.clone(), reader_dead.clone());
+    spawn_test_reader_loop(
+        stdout,
+        pending.clone(),
+        stdin.clone(),
+        acp_activity_seq.clone(),
+        acp_activity_notify.clone(),
+        reader_dead.clone(),
+    );
 
     let io = AcpStdioRpc {
         reader_dead,
         stdin,
         pending,
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let err = handshake_inner(HandshakeParams {
@@ -626,15 +644,25 @@ async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
     let stdout = child.stdout.take().unwrap();
 
     let pending = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let next_id = Arc::new(AtomicU64::new(1));
 
-    spawn_test_reader_loop(stdout, pending.clone(), stdin.clone(), reader_dead.clone());
+    spawn_test_reader_loop(
+        stdout,
+        pending.clone(),
+        stdin.clone(),
+        acp_activity_seq.clone(),
+        acp_activity_notify.clone(),
+        reader_dead.clone(),
+    );
 
     let io = AcpStdioRpc {
         reader_dead,
         stdin,
         pending,
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let sid = handshake_inner(HandshakeParams {
@@ -664,6 +692,7 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
     let stdin = Arc::new(Mutex::new(child.stdin.take().unwrap()));
     let mut stdout = child.stdout.take().unwrap();
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let next_id = Arc::new(AtomicU64::new(1));
 
@@ -671,6 +700,8 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
         reader_dead,
         stdin: stdin.clone(),
         pending: pending.clone(),
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let drain = tokio::spawn(async move {
@@ -727,6 +758,7 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
     let _ = child.wait().await;
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let next_id = Arc::new(AtomicU64::new(1));
 
@@ -734,6 +766,8 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
         reader_dead,
         stdin,
         pending,
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let err = rpc_request(RpcRequestNext {
@@ -771,11 +805,14 @@ async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
         while stdout.read(&mut buf).await.unwrap_or(0) > 0 {}
     });
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let io = AcpStdioRpc {
         reader_dead,
         stdin,
         pending,
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let err = rpc_request_with_correlation_id(RpcOutgoing {
@@ -806,10 +843,13 @@ async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
         .expect("sleep");
     let stdin = Arc::new(Mutex::new(child.stdin.take().expect("stdin")));
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let io = AcpStdioRpc {
         reader_dead,
         stdin,
         pending,
+        acp_activity_seq,
+        acp_activity_notify,
         acp_verbose: false,
     };
     let err = rpc_request_with_correlation_id(RpcOutgoing {
@@ -824,4 +864,32 @@ async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
     assert!(err.contains("dead"), "{err}");
     let _ = child.kill().await;
     let _ = child.wait().await;
+}
+
+#[tokio::test]
+async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive() {
+    let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let seq = acp_activity_seq.clone();
+    let notify = acp_activity_notify.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        note_acp_json_activity(&seq, &notify);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        note_acp_json_activity(&seq, &notify);
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        let _ = tx.send(Ok(json!({"ok": true})));
+    });
+    let res = rpc_wait_response(RpcWaitArgs {
+        pending: &pending,
+        acp_activity_seq: &acp_activity_seq,
+        acp_activity_notify: &acp_activity_notify,
+        id: 3,
+        rpc_timeout: std::time::Duration::from_millis(40),
+        rx,
+    })
+    .await
+    .expect("ACP activity should extend the timeout window");
+    assert_eq!(res["ok"], true);
 }

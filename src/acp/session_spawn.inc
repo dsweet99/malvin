@@ -22,6 +22,8 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
         stdout,
         pending: io.pending.clone(),
         stdin: io.stdin.clone(),
+        acp_activity_seq: io.acp_activity_seq.clone(),
+        acp_activity_notify: io.acp_activity_notify.clone(),
         reader_dead: io.reader_dead.clone(),
         trace_writer: io.trace_writer.clone(),
         prompt_cleanup,
@@ -33,6 +35,8 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
         reader_dead: io.reader_dead.clone(),
         stdin: io.stdin.clone(),
         pending: io.pending.clone(),
+        acp_activity_seq: io.acp_activity_seq.clone(),
+        acp_activity_notify: io.acp_activity_notify.clone(),
         acp_verbose: cont.session.acp_verbose,
     };
     let session_id = match handshake_inner(HandshakeParams {

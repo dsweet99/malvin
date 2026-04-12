@@ -4,6 +4,8 @@ pub(crate) struct ReaderSpawnArgs {
     pub stdout: ChildStdout,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub stdin: Arc<Mutex<ChildStdin>>,
+    pub acp_activity_seq: Arc<AtomicU64>,
+    pub acp_activity_notify: Arc<Notify>,
     pub reader_dead: Arc<AtomicBool>,
     pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
     pub prompt_cleanup: Arc<PromptRpcCleanup>,
@@ -15,6 +17,8 @@ pub(crate) struct ReaderLoopInput {
     pub stdout: ChildStdout,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub stdin: Arc<Mutex<ChildStdin>>,
+    pub acp_activity_seq: Arc<AtomicU64>,
+    pub acp_activity_notify: Arc<Notify>,
     pub reader_dead: Arc<AtomicBool>,
     pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
     pub prompt_cleanup: Option<Arc<PromptRpcCleanup>>,
@@ -59,6 +63,14 @@ pub(crate) fn jsonrpc_response_id_as_u64(id_v: &Value) -> Option<u64> {
     id_v.as_str()?.parse::<u64>().ok()
 }
 
+pub(crate) fn note_acp_json_activity(
+    acp_activity_seq: &Arc<AtomicU64>,
+    acp_activity_notify: &Arc<Notify>,
+) {
+    acp_activity_seq.fetch_add(1, Ordering::SeqCst);
+    acp_activity_notify.notify_waiters();
+}
+
 pub(crate) async fn dispatch_response(
     msg: &Value,
     pending: &Arc<Mutex<HashMap<u64, ResponseTx>>>,
@@ -91,6 +103,8 @@ pub(crate) async fn dispatch_response(
 pub(crate) struct IncomingLineDispatch<'a> {
     pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub stdin: &'a Arc<Mutex<ChildStdin>>,
+    pub acp_activity_seq: &'a Arc<AtomicU64>,
+    pub acp_activity_notify: &'a Arc<Notify>,
     pub prompt_cleanup: Option<&'a PromptRpcCleanup>,
     pub acp_verbose: bool,
 }
@@ -103,6 +117,7 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             return;
         }
     };
+    note_acp_json_activity(d.acp_activity_seq, d.acp_activity_notify);
     match msg.get("method").and_then(|m| m.as_str()) {
         None => {
             let _ = dispatch_response(&msg, d.pending, d.prompt_cleanup).await;
@@ -147,6 +162,8 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         stdout,
         pending,
         stdin,
+        acp_activity_seq,
+        acp_activity_notify,
         reader_dead,
         trace_writer,
         prompt_cleanup,
@@ -178,6 +195,8 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
             IncomingLineDispatch {
                 pending: &pending,
                 stdin: &stdin,
+                acp_activity_seq: &acp_activity_seq,
+                acp_activity_notify: &acp_activity_notify,
                 prompt_cleanup: pc,
                 acp_verbose,
             },
@@ -208,6 +227,8 @@ pub(crate) fn spawn_acp_stdout_reader(args: ReaderSpawnArgs) -> tokio::task::Joi
             stdout: args.stdout,
             pending: args.pending,
             stdin: args.stdin,
+            acp_activity_seq: args.acp_activity_seq,
+            acp_activity_notify: args.acp_activity_notify,
             reader_dead: args.reader_dead,
             trace_writer: args.trace_writer,
             prompt_cleanup: Some(args.prompt_cleanup),

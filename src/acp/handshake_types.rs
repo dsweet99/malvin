@@ -12,6 +12,8 @@ use super::session_types::ResponseTx;
 pub struct AcpHandshakeIo {
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub acp_activity_seq: Arc<AtomicU64>,
+    pub acp_activity_notify: Arc<Notify>,
     pub reader_dead: Arc<AtomicBool>,
     pub next_id: Arc<AtomicU64>,
     pub busy: Arc<AtomicBool>,

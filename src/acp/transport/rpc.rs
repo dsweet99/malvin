@@ -5,6 +5,8 @@ pub(crate) struct AcpStdioRpc {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub acp_activity_seq: Arc<AtomicU64>,
+    pub acp_activity_notify: Arc<tokio::sync::Notify>,
     pub acp_verbose: bool,
 }
 
@@ -56,6 +58,15 @@ pub(crate) struct RpcRequestNext<'a> {
     pub rpc_timeout: std::time::Duration,
 }
 
+pub(crate) struct RpcWaitArgs<'a> {
+    pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub acp_activity_seq: &'a Arc<AtomicU64>,
+    pub acp_activity_notify: &'a Arc<tokio::sync::Notify>,
+    pub id: u64,
+    pub rpc_timeout: std::time::Duration,
+    pub rx: oneshot::Receiver<Result<Value, String>>,
+}
+
 pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Result<Value, String> {
     let io = o.io;
     if io.reader_dead.load(std::sync::atomic::Ordering::SeqCst) {
@@ -80,7 +91,15 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
         io.pending.lock().await.remove(&o.id);
         return Err(e);
     }
-    rpc_wait_response(&io.pending, o.id, o.rpc_timeout, rx).await
+    rpc_wait_response(RpcWaitArgs {
+        pending: &io.pending,
+        acp_activity_seq: &io.acp_activity_seq,
+        acp_activity_notify: &io.acp_activity_notify,
+        id: o.id,
+        rpc_timeout: o.rpc_timeout,
+        rx,
+    })
+    .await
 }
 
 pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> {
@@ -97,17 +116,38 @@ pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> 
     .await
 }
 
-pub(crate) async fn rpc_wait_response(
-    pending: &Arc<Mutex<HashMap<u64, ResponseTx>>>,
-    id: u64,
-    rpc_timeout: std::time::Duration,
-    rx: oneshot::Receiver<Result<Value, String>>,
-) -> Result<Value, String> {
-    if let Ok(ready_recv) = tokio::time::timeout(rpc_timeout, rx).await {
-        ready_recv.map_err(|_| "acp request canceled (session dropped)".to_string())?
-    } else {
-        pending.lock().await.remove(&id);
-        Err("acp RPC timed out".into())
+pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, String> {
+    let mut rx = args.rx;
+    let mut seen_activity = args
+        .acp_activity_seq
+        .load(std::sync::atomic::Ordering::SeqCst);
+    loop {
+        let activity = args.acp_activity_notify.notified();
+        tokio::pin!(activity);
+        let latest = args
+            .acp_activity_seq
+            .load(std::sync::atomic::Ordering::SeqCst);
+        if latest != seen_activity {
+            seen_activity = latest;
+            continue;
+        }
+        let timeout = tokio::time::sleep(args.rpc_timeout);
+        tokio::pin!(timeout);
+        tokio::select! {
+            ready_recv = &mut rx => {
+                return ready_recv
+                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+            }
+            () = &mut activity => {
+                seen_activity = args
+                    .acp_activity_seq
+                    .load(std::sync::atomic::Ordering::SeqCst);
+            }
+            () = &mut timeout => {
+                args.pending.lock().await.remove(&args.id);
+                return Err("acp RPC timed out".into());
+            }
+        }
     }
 }
 
@@ -117,6 +157,7 @@ fn kiss_stringify_rpc_a() {
     let _ = stringify!(write_rpc_line);
     let _ = stringify!(RpcOutgoing);
     let _ = stringify!(RpcRequestNext);
+    let _ = stringify!(RpcWaitArgs);
 }
 
 #[test]
