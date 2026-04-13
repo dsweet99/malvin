@@ -7,5 +7,5 @@ target
 /log_2
 *.md~
 .llm_style/
-._kpop/
+_kpop/
 *~
