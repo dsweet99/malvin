@@ -5,6 +5,7 @@
 //! navigating—IDE “go to module” may not match a single `mod` tree.
 
 mod handshake_types;
+mod outgoing_prompt_trace;
 mod session_channels;
 mod session_io;
 mod session_types;

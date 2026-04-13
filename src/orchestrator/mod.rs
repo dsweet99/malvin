@@ -143,7 +143,7 @@ impl Orchestrator<'_> {
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
         self.client
-            .run_coder_prompt(&prompt, &log, stem, Some(llm_phase), false)
+            .run_coder_prompt(&prompt, &log, stem, Some(llm_phase), false, None)
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())

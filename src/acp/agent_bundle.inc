@@ -56,7 +56,9 @@ fn stringify_private_helpers() {
     let _ = stringify!(plan_agent_retry);
     let _ = stringify!(backoff_after_agent_failure);
     let _ = stringify!(AgentIoOptions);
-    let _ = stringify!(compose_coder_prompt_for_session);
+    let _ = stringify!(read_coder_repo_style_text);
+    let _ = stringify!(prepend_coder_repo_style_to_prompt);
+    let _ = stringify!(coder_prompt_body_with_optional_repo_style);
     let _ = stringify!(has_api_key);
     let _ = stringify!(auth_probe);
     let _ = stringify!(spawn_agent_acp_session);
@@ -68,14 +70,14 @@ fn stringify_private_helpers() {
 
 #[cfg(test)]
 mod compose_coder_prompt_tests {
-    use super::compose_coder_prompt_for_session;
+    use super::coder_prompt_body_with_optional_repo_style;
 
     #[test]
     fn prepends_style_file_on_first_turn_when_not_skipped() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let style = tmp.path().join("main.md");
         std::fs::write(&style, "STYLE\n").expect("write style");
-        let out = compose_coder_prompt_for_session("USER", true, false, &style);
+        let out = coder_prompt_body_with_optional_repo_style("USER", true, false, &style).0;
         assert_eq!(out, "STYLE\n\nUSER");
     }
 
@@ -84,7 +86,7 @@ mod compose_coder_prompt_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let style = tmp.path().join("main.md");
         std::fs::write(&style, "STYLE\n").expect("write style");
-        let out = compose_coder_prompt_for_session("USER", true, true, &style);
+        let out = coder_prompt_body_with_optional_repo_style("USER", true, true, &style).0;
         assert_eq!(out, "USER");
     }
 
@@ -93,7 +95,7 @@ mod compose_coder_prompt_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let style = tmp.path().join("main.md");
         std::fs::write(&style, "  \n  ").expect("write style");
-        let out = compose_coder_prompt_for_session("USER", true, false, &style);
+        let out = coder_prompt_body_with_optional_repo_style("USER", true, false, &style).0;
         assert_eq!(out, "USER");
     }
 }

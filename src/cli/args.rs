@@ -13,7 +13,7 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Non-interactive agent, via Cursor ACP",
+    about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true
 )]
 pub struct Cli {

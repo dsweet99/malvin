@@ -85,13 +85,13 @@ ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `str
 ## Run timing (`malvin code` / `malvin kpop` / `malvin do`)
 
 TRIGGER: TIMING line JSON parity  
-ADVICE: One `serde_json::Value` from `to_json_value` is written pretty to `run_timing.json` and passed to `format_timing_stdout_line_from_json` for stdout—keeps `TIMING:` aligned with disk. `PHASE_MS_KEYS_JSON_ORDER` in `report.rs` must match `phases_ms` keys in `to_json_value`.
+ADVICE: One `serde_json::Value` from `to_json_value` is written pretty to `run_timing.json` and passed to `format_timing_stdout_line_from_json` for stdout—keeps the line aligned with disk. The stdout text after the timestamp prefix uses [`RUN_TIMING_SUMMARY_PREFIX`] in `src/run_timing/mod.rs` — literal **`"TIMING: "`** (colon + **one ASCII space** before the first field); do not describe it as bare `` `TIMING:` `` in docs. `PHASE_MS_KEYS_JSON_ORDER` in `report.rs` must match `phases_ms` keys in `to_json_value`.
 
 TRIGGER: CLI emit run timing after ACP  
 ADVICE: `src/cli/timing_merge.rs` — `emit_run_timing_after_acp(client, run_dir, &timing, acp_result)` wraps `finalize_and_emit_run_timing` + `set_run_timing(None)` + `merge_acp_and_timing_results`; used by `do_flow` and `kpop_flow` (not async-generic—avoids `&mut AgentClient` + `Future` lifetime issues).
 
 - **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP and **`do`** attach timing and finalize via `emit_run_timing_after_acp`; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
-- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** `TIMING:` line after the workflow body (see root `grounding.md`).
+- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** line beginning with **`TIMING: `** (see `RUN_TIMING_SUMMARY_PREFIX`, root `grounding.md`).
 - **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`; `merge_acp_and_timing_results` in `timing_merge.rs`).
 - **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP / `do` callers.
 
@@ -135,6 +135,9 @@ ADVICE: Use `RunArtifacts::artifact_review_md()` / `workspace_review_md()` in `s
 
 TRIGGER: sync_review_then_is_lgtm  
 ADVICE: `src/review_sync.rs` — `sync_review_then_is_lgtm` returns **`io::Result<bool>`** (propagate read/write with `?`); map to `AgentError` / `WorkflowError` in `ops_body.inc` and `orchestrator/review_loop.rs`. Do not treat sync I/O failure as “not LGTM.”
+
+TRIGGER: sync_review_file clear stale LGTM  
+ADVICE: **`sync_review_file`** (**`src/review_sync.rs`**) **writes an empty file** to the artifact path when the workspace `review.md` is **missing** or **whitespace-only after trim**, so a previous **`LGTM`** in the artifact cannot survive. Parent dirs are created as needed. Non-empty workspace text overwrites the artifact as before. **`is_lgtm`** still maps **`read_to_string`** failures to **`false`**. Regress in-crate tests in **`review_sync.rs`** + **`orchestrator_tests.rs`**.
 
 TRIGGER: reviewer pair order regression  
 ADVICE: `tests/cli_parity.rs` **`reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order`** `include_str!`s `src/acp/ops_body.inc` and asserts source order: review `session/prompt` → `sync_review_then_is_lgtm(...)` → kpop `session/prompt`. Pair with behavioral tests in `src/review_sync.rs` (not only substring guards).
@@ -199,10 +202,18 @@ TRIGGER: CLI kiss gate
 ADVICE: **`malvin code`** / **`malvin kpop`** require a **`kiss`** executable on **`PATH`** (`lookup_bin_on_path` in **`src/env_path.rs`**). **`require_kiss_for_malvin`** returns an install hint: **`cargo install kiss-ai`**. **`require_kiss_for_cli_command`** in **`src/cli/mod.rs`** runs **immediately after** **`Cli::parse()`** and **before** **`init_stdout_style`** / Tokio so missing-`kiss` exits fail fast; stderr does not need stdout ANSI setup. **`malvin init`** also calls **`require_kiss_for_malvin("init")`** before **`kiss init`**. Binary regression: **`tests/kiss_code_kpop_path.rs`** (minimal isolated **`PATH`**, **`env!("CARGO_BIN_EXE_malvin")`**—same spawn pattern as **`tests/init_pre_commit.rs`**).
 
 - **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
-- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt_header_and_user` (`header.md` via `PromptStore::render_prompt_only` + request text, plus header/user strings for split `malvin do` trace), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
 
-TRIGGER: compose_coder_prompt session  
-ADVICE: `compose_coder_prompt_for_session` at top of `client_impl.inc`: prepends `.style/main.md` when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. `--raw` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_raw_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
+### malvin do ACP trace (split stems)
+
+TRIGGER: malvin do split trace stems  
+ADVICE: Non-`--raw` **`run_coder_prompt`** passes **`do_trace_split: Some((header, user))`** → **`AcpSession::prompt_do_trace_split`** with **`DoPromptTraceSplit`** (`src/acp/outgoing_prompt_trace.rs`). Outgoing trace: **`>style`** (if `.style/main.md` prepended), **`>header`** (full lines on disk; tee echoes **one** collapsed stdout line), **`>prompt`** (user request; per-line tee). Incoming tag **`<prompt`**. **`who`** is ignored on this path (documented on **`run_coder_prompt`**). **`kiss`:** split types into **`outgoing_prompt_trace.rs`** when **`session_types.rs`** hits **`concrete_types_per_file`**.
+
+TRIGGER: repo style single read  
+ADVICE: **`coder_prompt_body_with_optional_repo_style`** (`client_impl.inc` top) returns **`(full_prompt, repo_style)`** with at most **one** read of **`.style/main.md`**; **`repo_style.as_deref()`** feeds **`DoPromptTraceSplit.style_text`** when **`do_trace_split`** is **`Some`**—do not read the style path again for trace.
+
+TRIGGER: coder_prompt_body session  
+ADVICE: `coder_prompt_body_with_optional_repo_style` at top of `client_impl.inc` (with `read_coder_repo_style_text` / `prepend_coder_repo_style_to_prompt`): prepends `.style/main.md` when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. `--raw` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_raw_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
 - **Timing merge:** `timing_merge.rs` — `merge_acp_and_timing_results` shared with `kpop_flow.rs` (avoid duplicated merge helpers; kiss `duplication`).
 - **`src/cli/args.rs`, `mod.rs`, `shared_opts.rs`:** `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
 - **Default model:** `DEFAULT_CLI_MODEL` in `shared_opts.rs`; `malvin models` footer must use the same constant (see `tests/cli_parity.rs`).

@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI + **kiss gate** for `code`/`kpop`, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, wrong-value falsifiers + multi-tool checks, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`** backlog, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP **`include!`**, **`RUN_TIMING_SUMMARY_PREFIX`** / `TIMING: ` docs, **malvin do** split trace, **`src/output/`** tee, CLI + **kiss gate**, **review sync** clears stale LGTM, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify-in-shell, **`review_sync` tests**, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`**, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
 
 ---
 
@@ -23,15 +23,15 @@ ADVICE: `src/child_health/` (`linux`/`macos`/`other`); `process_absent` vs `cann
 TRIGGER: voluntary_ctxt parse  
 ADVICE: Linux `parse_status_voluntary_ctxt`: after `strip_prefix`, use **`rest.trim().parse()`**—`trim_start()` leaves trailing `\r` and breaks `u64` parse. See `malvin_tooling.md` § Child health.
 TRIGGER: malvin binary crate  
-ADVICE: `src/cli/` is binary-only—not the `malvin` library—so `pub(crate)` on `AgentClient` fields is not visible there; use public lib methods or keep access in lib modules. Private `src/cli/*.rs` submodules: `pub fn` not `pub(crate) fn` when `clippy::redundant_pub_crate` fires. See `malvin_tooling.md` § Crate layout.
+ADVICE: `src/cli/` is binary-only—not the `malvin` library—so `pub(crate)` on `AgentClient` fields is not visible there; use public lib methods or keep access in lib modules. Private `src/cli/*.rs` submodules: `pub fn` not `pub(crate) fn` when `clippy::redundant_pub_crate` fires. Library `///` docs must not link `[`crate::cli::...`]`—the CLI crate is separate; use plain text (“`malvin do`”, …). See `malvin_tooling.md` § Crate layout.
 TRIGGER: Hypothesis vs Claim  
 ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders when useful). Reserve Claim for cited evidence (code, logs, metrics).
 TRIGGER: minimal diff  
 ADVICE: Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Verify claims vs `src/` + tests—**reviewer bullets can lag** already-correct docs/code; resolve by updating `review.md` and adding **`tests/cli_parity.rs`** guards when useful. Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
-TRIGGER: malvin do --raw  
-ADVICE: `do_flow.rs` passes `skip_repo_style: do_args.raw` into `AgentClient::run_coder_prompt`; `compose_coder_prompt_for_session` in `client_impl.inc` skips `.style/main.md` on the first coder turn when true. Orchestrator passes `false`. Align `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests` (`agent_bundle.inc`). Detail: `malvin_tooling.md` § CLI + coder prompt compose.
+TRIGGER: malvin do CLI  
+ADVICE: **`--raw`:** `skip_repo_style`, ACP stem `raw`. **Non-raw:** `do_trace_split` → stems `>style` / `>header` / `>prompt` (tee collapses `header` to one stdout line); types `src/acp/outgoing_prompt_trace.rs`; one `.style/main.md` read via `coder_prompt_body_with_optional_repo_style` for both compose + trace. `do_flow.rs`, `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests`. Detail: `malvin_tooling.md` § CLI + malvin do ACP trace.
 TRIGGER: grounding code parity  
 ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, `src/output/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent paths—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`; e.g. obsolete `src/artifacts.rs` vs `src/artifacts/`—`malvin_tooling.md` § Tests). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: stdout stderr log header  
@@ -43,7 +43,7 @@ ADVICE: After changing ACP prompt signatures or include-body call shapes, check 
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/`, `.cursorrules`, `_kpop/` logs—see `malvin_tooling.md` § Repo-wide string contracts.
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** `TIMING:` line after the workflow body—**same `serde_json::Value`** for disk + stdout; no separate stderr “metrics hint.” Dual-failure: prefer primary workflow/ACP error—root `grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** line whose payload after the timestamp starts with [`RUN_TIMING_SUMMARY_PREFIX`] (**`TIMING: `** — colon plus **one ASCII space** before the first `name = value` field)—**same `serde_json::Value`** for disk + stdout; never document bare `` `TIMING:` `` without that space (`timing_merge.rs`, `run_timing/mod.rs`, `report.rs`, `grounding.md`). No separate stderr “metrics hint.” Dual-failure: prefer primary workflow/ACP error—`malvin_tooling.md` § Run timing.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: root plan.md informal bullets  
@@ -86,8 +86,8 @@ TRIGGER: clippy tunable const zero
 ADVICE: `pub const` threshold **0** still needs a skippable `else` for later tuning; put `index < CONST` in one `const fn` with a **single** `#[allow(clippy::absurd_extreme_comparisons)]`—kiss `attributes_per_function` may require dropping `#[inline]`; see `malvin_tooling.md` § Clippy tunable const + kiss.
 TRIGGER: CLI async timing finalize  
 ADVICE: After `await` ACP work, call sync `emit_run_timing_after_acp` (`src/cli/timing_merge.rs`)—avoid async helpers taking `FnOnce(&mut AgentClient) -> Fut` (lifetime errors with `&mut` + returned `Future`). See `malvin_tooling.md` § Run timing.
-TRIGGER: clap help default punctuation  
-ADVICE: In manual **`///`** on **`#[arg]`**, write **`[default: …]`** not **`(default: …)`** so help matches clap’s built-in default lines—`malvin_tooling.md` § CLI (`shared_opts.rs` pattern).
+TRIGGER: review_sync stale KPOP falsify  
+ADVICE: **`sync_review_file`** / **`is_lgtm`** sharp edges (stale artifact **`LGTM`**, read errors → **`false`**)—`malvin_tooling.md` § Review sync. **KPOP/fs falsify:** run shell checks; **`review_sync`** is lib-private—test in-crate—`malvin_debugging.md` § KPOP falsify filesystem + § KPOP bug hunt review_sync visibility.
 TRIGGER: llm_style layout paths  
 ADVICE: **`.llm_style/malvin_tooling.md`** crate-layout + file-path ADVICEs must match **`src/`**; on renames/splits extend **`tests/cli_parity.rs`** `include_str!` guards—`malvin_tooling.md` § Tests (**`malvin_tooling path strings vs src`**).
 TRIGGER: user communication  

@@ -1,5 +1,7 @@
 use session_io::acp_stdio;
 
+use outgoing_prompt_trace::{DoPromptTraceSplit, OutgoingPromptTrace};
+
 /// [`AcpSession`] implementation and post-spawn handshake.
 pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
     if who == "learn" {
@@ -63,27 +65,72 @@ impl AcpSession {
     ///
     /// Returns `Err` if trace file setup or the JSON-RPC request fails (see also [`Self::cancel`]).
     pub async fn prompt(&self, text: &str, trace_path: &Path, who: &str) -> Result<(), String> {
-        self.prompt_impl(text, trace_path, who).await
+        self.prompt_impl(text, trace_path, OutgoingPromptTrace::Uniform(who))
+            .await
     }
 
-    async fn prompt_impl(&self, text: &str, trace_path: &Path, who: &str) -> Result<(), String> {
+    /// Like [`Self::prompt`], but records `malvin do` trace segments (`>style`, `>header`, `>prompt`).
+    ///
+    /// `text` must be the exact payload sent on `session/prompt` (including any prepended style text).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if trace file setup or the JSON-RPC request fails (see also [`Self::cancel`]).
+    pub async fn prompt_do_trace_split(
+        &self,
+        text: &str,
+        trace_path: &Path,
+        split: DoPromptTraceSplit<'_>,
+    ) -> Result<(), String> {
+        self.prompt_impl(text, trace_path, OutgoingPromptTrace::DoSplit(split))
+            .await
+    }
+
+    async fn prompt_impl(
+        &self,
+        text: &str,
+        trace_path: &Path,
+        trace: OutgoingPromptTrace<'_>,
+    ) -> Result<(), String> {
         let _prompt_turn = self.0.prompt_singleflight.lock().await;
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
-        trace_write_outgoing_prompt(
-            &mut file,
-            who,
-            text,
-            self.0.tee_trace_stdout,
-        )
-        .await?;
-        let incoming_tag =
-            crate::output::format_acp_directional_tag_prefix('<', who);
+        let (incoming_tag, stdout_replacement_who) = match &trace {
+            OutgoingPromptTrace::Uniform(who) => {
+                trace_write_outgoing_prompt(
+                    &mut file,
+                    who,
+                    text,
+                    self.0.tee_trace_stdout,
+                )
+                .await?;
+                (
+                    crate::output::format_acp_directional_tag_prefix('<', who),
+                    *who,
+                )
+            }
+            OutgoingPromptTrace::DoSplit(split) => {
+                trace_write_outgoing_prompt_do(
+                    &mut file,
+                    DoOutgoingTraceParts {
+                        style_text: split.style_text,
+                        header_text: split.header,
+                        user_text: split.user,
+                        tee_stdout: self.0.tee_trace_stdout,
+                    },
+                )
+                .await?;
+                (
+                    crate::output::format_acp_directional_tag_prefix('<', "prompt"),
+                    "prompt",
+                )
+            }
+        };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
             who: incoming_tag,
-            stdout_replacement: prompt_stdout_replacement(who),
+            stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
         });
         self.0.busy.store(true, Ordering::SeqCst);
@@ -159,10 +206,13 @@ impl AcpSession {
 #[test]
 fn kiss_stringify_session_a() {
     let _ = stringify!(prompt_stdout_replacement);
+    let _ = stringify!(OutgoingPromptTrace::Uniform);
+    let _ = stringify!(OutgoingPromptTrace::DoSplit);
     let _ = stringify!(AcpSession::spawn);
     let _ = stringify!(AcpSession::is_alive);
     let _ = stringify!(AcpSession::is_busy);
     let _ = stringify!(AcpSession::prompt);
+    let _ = stringify!(AcpSession::prompt_do_trace_split);
     let _ = stringify!(AcpSession::cancel);
     let _ = stringify!(AcpSession::shutdown);
 }

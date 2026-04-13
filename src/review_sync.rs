@@ -14,15 +14,25 @@ pub fn is_lgtm(review_path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+fn clear_artifact_review(artifact_review_path: &Path) -> io::Result<()> {
+    if let Some(parent) = artifact_review_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(artifact_review_path, "")
+}
+
 pub fn sync_review_file(
     workspace_review_path: &Path,
     artifact_review_path: &Path,
 ) -> io::Result<()> {
     if !workspace_review_path.exists() {
+        // Do not leave a stale artifact LGTM when the workspace has no review file.
+        clear_artifact_review(artifact_review_path)?;
         return Ok(());
     }
     let text = std::fs::read_to_string(workspace_review_path)?;
     if text.trim().is_empty() {
+        clear_artifact_review(artifact_review_path)?;
         return Ok(());
     }
     std::fs::write(artifact_review_path, text)
@@ -76,6 +86,30 @@ mod tests {
         let artifact = t.path().join("review.md");
         std::fs::write(&artifact, "nope").unwrap();
         assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+    }
+
+    #[test]
+    fn sync_review_then_is_lgtm_false_when_workspace_missing_clears_stale_lgtm_artifact() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("missing.md");
+        let artifact = t.path().join("review.md");
+        std::fs::write(&artifact, "LGTM\n").unwrap();
+        assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+        assert!(!is_lgtm(&artifact));
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    }
+
+    #[test]
+    fn sync_review_then_is_lgtm_false_when_workspace_whitespace_only_clears_stale_lgtm() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("run").join("review.md");
+        std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        std::fs::write(&workspace, "  \n\t\n").unwrap();
+        std::fs::write(&artifact, "LGTM\n").unwrap();
+        assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+        assert!(!is_lgtm(&artifact));
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
     }
 
     #[test]

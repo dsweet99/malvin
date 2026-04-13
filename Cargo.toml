@@ -1,9 +1,9 @@
 [package]
 name = "malvin"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.87"
-description = "Non-interactive agent, via Cursor ACP"
+description = "Non-interactive CLI agent, via Cursor ACP"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/dsweet/malvin"

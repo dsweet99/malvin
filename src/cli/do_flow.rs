@@ -14,18 +14,15 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
-/// Stem for ACP trace directional tags (`[>…]` / `[<…]`) on `session/prompt`.
-/// Default `malvin do` sends the expanded `header.md` body plus the user request, so its ACP trace label
-/// reflects that prompt provenance instead of the shared implement-phase timing bucket.
-const DO_ACP_TRACE_STEM: &str = "header";
-
 /// ACP trace stem when `--raw` sends only the user text (no `header.md`).
 const DO_RAW_ACP_TRACE_STEM: &str = "raw";
 
-/// One `malvin do` coder prompt: body, trace label, and whether to skip `.style/main.md`.
-struct DoCoderRun<'a> {
-    combined: &'a str,
-    acp_trace_stem: &'a str,
+/// One `malvin do` coder prompt: combined payload, optional header/user trace split, and style skip.
+struct DoCoderRun {
+    combined: String,
+    /// When set, trace uses `>header` / `>prompt` (and optional `>style`) instead of a single stem.
+    header_user_for_trace: Option<(String, String)>,
+    acp_trace_stem: &'static str,
     skip_repo_style: bool,
 }
 
@@ -65,18 +62,17 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
         &do_args.request,
     )?;
 
-    let (combined, trace_stem) = if do_args.raw {
-        (raw_do_acp_prompt(&text), DO_RAW_ACP_TRACE_STEM)
+    let (combined, trace_stem, header_user) = if do_args.raw {
+        (raw_do_acp_prompt(&text), DO_RAW_ACP_TRACE_STEM, None)
     } else {
         let store = prepare_do_prompt_store()?;
-        (
-            combine_do_acp_prompt(&store, &artifacts, &text)?,
-            DO_ACP_TRACE_STEM,
-        )
+        let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
+        (combined, "header", Some((header, user)))
     };
 
     let coder = DoCoderRun {
-        combined: combined.as_str(),
+        combined,
+        header_user_for_trace: header_user,
         acp_trace_stem: trace_stem,
         skip_repo_style: do_args.raw,
     };
@@ -89,7 +85,7 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
 async fn run_do_with_timing(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
-    coder: DoCoderRun<'_>,
+    coder: DoCoderRun,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
     if coder.acp_trace_stem == DO_RAW_ACP_TRACE_STEM {
@@ -102,17 +98,20 @@ async fn run_do_with_timing(
     emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }
 
-/// Build the coder ACP prompt: expanded `header.md`, then the resolved request text.
-pub fn combine_do_acp_prompt(
+/// Renders `header.md` once; returns combined prompt plus header and user strings for ACP trace splitting.
+pub fn combine_do_acp_prompt_header_and_user(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     text: &str,
-) -> Result<String, String> {
+) -> Result<(String, String, String), String> {
     let context = workflow_context(artifacts);
     let header_body = store
         .render_prompt_only("header.md", &context)
         .map_err(|e: PromptError| e.0)?;
-    Ok(format!("{}\n\n{}", header_body.trim_end(), text.trim_end()))
+    let header = header_body.trim_end().to_string();
+    let user = text.trim_end().to_string();
+    let combined = format!("{header}\n\n{user}");
+    Ok((combined, header, user))
 }
 
 /// User text only, for `--raw` (no template files).
@@ -123,20 +122,25 @@ pub fn raw_do_acp_prompt(text: &str) -> String {
 async fn run_do_acp(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
-    coder: DoCoderRun<'_>,
+    coder: DoCoderRun,
 ) -> Result<(), String> {
     client
         .begin_coder_session(&artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
     let log = artifacts.log_path("do");
+    let do_split = coder
+        .header_user_for_trace
+        .as_ref()
+        .map(|(h, u)| (h.as_str(), u.as_str()));
     let run_res = client
         .run_coder_prompt(
-            coder.combined,
+            &coder.combined,
             &log,
             coder.acp_trace_stem,
             Some(TimingPhase::Implement),
             coder.skip_repo_style,
+            do_split,
         )
         .await
         .map_err(|e| e.to_string());
@@ -152,7 +156,7 @@ fn stringify_do_flow_helpers() {
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::do_flow::run_do);
     let _ = stringify!(crate::cli::do_flow::DoArgs);
-    let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt);
+    let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
     let _ = stringify!(crate::cli::do_flow::raw_do_acp_prompt);
     let _ = stringify!(crate::cli::do_flow::DoCoderRun);
 }
@@ -164,7 +168,7 @@ mod do_tests {
     use malvin::artifacts::RunArtifacts;
     use malvin::prompts::PromptStore;
 
-    use super::{combine_do_acp_prompt, raw_do_acp_prompt};
+    use super::{combine_do_acp_prompt_header_and_user, raw_do_acp_prompt};
 
     #[test]
     fn combine_do_acp_prompt_joins_rendered_header_and_request() {
@@ -182,7 +186,9 @@ mod do_tests {
             work_dir: tmp.path().to_path_buf(),
         };
         let store = PromptStore::with_root(prompt_root);
-        let out = combine_do_acp_prompt(&store, &artifacts, "USER_TEXT").expect("combine");
+        let out = combine_do_acp_prompt_header_and_user(&store, &artifacts, "USER_TEXT")
+            .expect("combine")
+            .0;
         assert!(
             out.starts_with("OPEN"),
             "expected header first; got {out:?}"
@@ -226,12 +232,6 @@ mod do_tests {
             }
             _ => panic!("expected Do subcommand"),
         }
-    }
-
-    /// Standalone `do` prepends `header.md`, so the ACP trace label records prompt provenance.
-    #[test]
-    fn do_acp_trace_stem_matches_header_prompt_contract() {
-        assert_eq!(super::DO_ACP_TRACE_STEM, "header");
     }
 
     #[test]

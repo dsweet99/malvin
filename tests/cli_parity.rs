@@ -286,7 +286,7 @@ fn malvin_do_raw_skips_repo_style_prepend_contract() {
     );
     assert!(
         client_impl.contains("skip_repo_style")
-            && client_impl.contains("compose_coder_prompt_for_session"),
+            && client_impl.contains("coder_prompt_body_with_optional_repo_style"),
         "AgentClient::run_coder_prompt must honor skip_repo_style"
     );
 }
@@ -317,6 +317,21 @@ fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     assert_eq!(
         grounding_promises, implementation_delivers,
         "grounding.md and src/run_timing/report.rs must stay aligned on run_timing.json + stdout summary"
+    );
+}
+
+#[test]
+fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
+    let cargo_toml = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
+    let Some(desc_line) = cargo_toml.lines().find(|l| {
+        let t = l.trim_start();
+        t.starts_with("description = ")
+    }) else {
+        panic!("Cargo.toml must declare [package] description = \"...\"");
+    };
+    assert!(
+        !desc_line.contains(":[>"),
+        "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
     );
 }
 

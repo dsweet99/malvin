@@ -1,4 +1,5 @@
-//! JSON + stdout summary for [`super::RunTiming`].
+//! JSON (`run_timing.json`) plus one **stdout** summary line for [`super::RunTiming`].
+//! The printed line uses [`super::RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: `, colon plus trailing ASCII space) before the first `name = value` field—see [`format_timing_stdout_line_from_json`].
 
 use std::io;
 use std::path::Path;
@@ -81,7 +82,7 @@ fn phase_display_name<'a>(v: &'a Value, key: &'a str) -> &'a str {
         .unwrap_or(key)
 }
 
-/// Builds the `TIMING:` line from the same [`serde_json::Value`] written to `run_timing.json`, so fields stay aligned.
+/// Builds the stdout timing summary line (prefix [`RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` including the trailing space before the first `name = value` field) from the same [`serde_json::Value`] written to `run_timing.json`, so fields stay aligned.
 fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
     let mut first = true;

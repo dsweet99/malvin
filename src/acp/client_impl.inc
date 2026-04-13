@@ -1,27 +1,38 @@
-/// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
-/// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
-/// Build the text sent on `session/prompt`, optionally prefixing `.style/main.md` on the first coder turn.
+/// Read repo `.style/main.md` text with the same trim / empty rules as coder prompt composition.
 ///
-/// When `skip_repo_style` is set (e.g. `malvin do --raw`), the style file is ignored so only `prompt` is sent.
-pub(crate) fn compose_coder_prompt_for_session(
+/// Returns `None` when the file is missing, unreadable, or whitespace-only after trim.
+pub(crate) fn read_coder_repo_style_text(style_prompt_path: &Path) -> Option<String> {
+    std::fs::read_to_string(style_prompt_path)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|t| !t.is_empty())
+}
+
+/// Prefix non-empty trimmed style before `prompt`, matching [`coder_prompt_body_with_optional_repo_style`].
+pub(crate) fn prepend_coder_repo_style_to_prompt(prompt: &str, style_trimmed: Option<&str>) -> String {
+    style_trimmed
+        .filter(|t| !t.is_empty())
+        .map_or_else(|| prompt.to_string(), |t| format!("{t}\n\n{prompt}"))
+}
+
+/// Build full prompt text and optional repo style read in one pass (at most one `read_to_string` on the style path).
+pub(crate) fn coder_prompt_body_with_optional_repo_style(
     prompt: &str,
     style_on_first_turn: bool,
     skip_repo_style: bool,
     style_prompt_path: &Path,
-) -> String {
-    let mut full_prompt = prompt.to_string();
-    if style_on_first_turn
-        && !skip_repo_style
-        && let Ok(style_text) = std::fs::read_to_string(style_prompt_path)
-    {
-        let t = style_text.trim();
-        if !t.is_empty() {
-            full_prompt = format!("{t}\n\n{full_prompt}");
-        }
-    }
-    full_prompt
+) -> (String, Option<String>) {
+    let repo_style = if style_on_first_turn && !skip_repo_style {
+        read_coder_repo_style_text(style_prompt_path)
+    } else {
+        None
+    };
+    let full_prompt = prepend_coder_repo_style_to_prompt(prompt, repo_style.as_deref());
+    (full_prompt, repo_style)
 }
 
+/// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
+/// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
 async fn backoff_after_agent_failure(
     timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     last_error: &str,
@@ -130,6 +141,11 @@ impl AgentClient {
     /// When `skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
     /// `.style/main.md` when present. Set `skip_repo_style` for `malvin do --raw` so only `prompt` is sent.
     ///
+    /// `who` names the single outbound/inbound trace stem when `do_trace_split` is `None` (for example
+    /// `main` for `implement.md`). When `do_trace_split` is `Some`, stems come from the split trace
+    /// (`>style` / `>header` / `>prompt`) and `who` is **not** used; callers may pass any placeholder
+    /// (the `malvin do` subcommand passes `"header"` for non-`--raw` runs).
+    ///
     /// # Errors
     ///
     /// Returns [`AgentError`] when there is no session or the prompt fails after retries.
@@ -140,18 +156,26 @@ impl AgentClient {
         who: &str,
         llm_phase: Option<crate::run_timing::TimingPhase>,
         skip_repo_style: bool,
+        do_trace_split: Option<(&str, &str)>,
     ) -> Result<(), AgentError> {
         let session = self
             .coder_session
             .as_ref()
             .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?;
 
-        let full_prompt = compose_coder_prompt_for_session(
+        let (full_prompt, repo_style) = coder_prompt_body_with_optional_repo_style(
             prompt,
             self.coder_style_on_next_prompt,
             skip_repo_style,
             &self.style_prompt_path,
         );
+
+        let style_for_do_trace = if do_trace_split.is_some() {
+            repo_style.as_deref()
+        } else {
+            None
+        };
+
         self.coder_style_on_next_prompt = false;
 
         let mut last_error = String::new();
@@ -161,7 +185,23 @@ impl AgentClient {
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
             let t0 = Instant::now();
-            match session.prompt(&full_prompt, log_path, who).await {
+            let prompt_res = match do_trace_split {
+                None => session.prompt(&full_prompt, log_path, who).await,
+                Some((header, user)) => {
+                    session
+                        .prompt_do_trace_split(
+                            &full_prompt,
+                            log_path,
+                            DoPromptTraceSplit {
+                                style_text: style_for_do_trace,
+                                header,
+                                user,
+                            },
+                        )
+                        .await
+                }
+            };
+            match prompt_res {
                 Ok(()) => {
                     if let Some(ph) = llm_phase {
                         crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());

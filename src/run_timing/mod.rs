@@ -1,6 +1,6 @@
 //! Wall-clock and phase-bucketed LLM wait timing for `malvin code`, `malvin kpop`, and `malvin do` runs.
 //!
-//! **Streams:** One stdout `TIMING:` summary line via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
+//! **Streams:** One stdout line beginning with [`RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: ` including the trailing space before the first `name = value` field) via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
 
 mod report;
 
@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 /// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop` / `malvin do`).
-pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING:";
+pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
