@@ -17,3 +17,6 @@ AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words 
 - Label any statement which is a hypothesis as such.
 
 --
+
+TRIGGER: grounding.md
+ADVICE: Never update grounding unless explicitly asked to by the user.

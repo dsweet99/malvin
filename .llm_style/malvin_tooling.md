@@ -101,6 +101,17 @@ ADVICE: `src/cli/timing_merge.rs` — `emit_run_timing_after_acp(client, run_dir
 - **Tee:** Live trace tee goes through the stdout reader (`trace_file_write_line` / coalescing). **No** post-prompt stub—historical `maybe_tee_log` was removed. Post-hoc strip contract: `strip_trace_invocation_line_for_tee` lives in **`tee_strip_tests.inc`** (test-only `include!`). No-newline `Command:`-only buffers strip to empty (documented + tested).
 - **Coalescing:** Verbose/trace paths track **Unicode scalar counts** per buffer in `coalesce.rs` to avoid repeated full-buffer `chars().count()` in flush loops.
 
+### ACP learn tee (outbound vs inbound)
+
+TRIGGER: learn stem who  
+ADVICE: `learn.md` coder turns use `who`/`stem` **`"learn"`**—from `prompt_md_stem` in `orchestrator/mod.rs` `run_coder_prompt`, or hard-coded **`"learn"`** in `ops_body.inc` for standalone KPOP learn. `AcpSession::prompt(..., who)` sets trace tags and tee metadata.
+
+TRIGGER: learn outbound stdout omit  
+ADVICE: **`trace_write_outgoing_prompt`** (`session_trace.rs`) calls **`acp_tee_echo_outgoing_prompt_lines(tee_stdout, stem)`**; when `stem == "learn"`, skip **`print_stdout_acp_tee_line`** (`AcpTeeDirection::ToAgent`) for each outgoing `>` line. Trace file still writes full lines via **`format_line`**.
+
+TRIGGER: learn inbound placeholder  
+ADVICE: **`prompt_stdout_replacement`** (`session.rs`) yields **`LEARNING_PLACEHOLDER`** for `who == "learn"`; **`trace_tee_stdout_line`** (`coalesce.rs`) prints it at most once to stdout while the trace file records real agent chunks—do not strip learn text from disk traces.
+
 TRIGGER: clippy match same arms JSON wall  
 ADVICE: Prefer `v.get("wall_clock_ms").and_then(Value::as_u64)` over duplicated `match` arms for wall `n/a` vs numeric—`clippy::match_same_arms` (`run_timing/report.rs`).
 
@@ -126,9 +137,9 @@ TRIGGER: reviewer pair order regression
 ADVICE: `tests/cli_parity.rs` **`reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order`** `include_str!`s `src/acp/ops_body.inc` and asserts source order: review `session/prompt` → `sync_review_then_is_lgtm(...)` → kpop `session/prompt`. Pair with behavioral tests in `src/review_sync.rs` (not only substring guards).
 
 TRIGGER: shared stdout stderr output  
-ADVICE: `src/output.rs` — line-oriented helpers (`format_line`, `print_stdout_line`, …). Align `#[must_use]` with sibling APIs if plain `cargo clippy` warns; pre-commit allows `-A clippy::must_use_candidate`.
+ADVICE: **`src/output/mod.rs`** (+ optional **`src/output/*.rs`**, e.g. **`acp_tee.rs`**) — line-oriented helpers (`format_line`, `print_stdout_line`, …). **`pub use`** re-exports preserve **`malvin::output::`** paths after splits. Align `#[must_use]` with sibling APIs if plain `cargo clippy` warns; pre-commit allows `-A clippy::must_use_candidate`.
 
-## Prefixed log lines (`src/output.rs`, `grounding.md`)
+## Prefixed log lines (`src/output/`, `grounding.md`)
 
 TRIGGER: LOG_TAG_INNER_WIDTH bracket who  
 ADVICE: `format_log_tag_inner` pads/truncates the bracket label to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. Same width applies to ACP trace lines built with `format_line` / `format_acp_directional_tag_prefix` (directional `>`/`<` stem before padding).
@@ -138,6 +149,15 @@ ADVICE: On-disk logs and traces use **`format_line`** / **`format_line_with_time
 
 TRIGGER: stdout ANSI gate  
 ADVICE: `init_stdout_style(no_color)` (binary `entrypoint` after **`Cli::parse()`**) sets color when `stdout().is_terminal()` and not `--no-color` (`GlobalOpts` in **`shared_opts.rs`**) and **`NO_COLOR`** is unset. `print_stdout_line` chooses ansi vs plain; pipes/tests stay uncolored.
+
+TRIGGER: ACP tee direction colors  
+ADVICE: Live tee only: **`print_stdout_acp_tee_line`** in **`src/output/acp_tee.rs`** — **`AcpTeeDirection::ToAgent`**: bright **green** `[who]:` prefix (prompt text to agent) from **`trace_write_outgoing_prompt`** (`session_trace.rs`); **`FromAgent`**: bright **magenta** (agent stream / learn placeholder) from **`trace_tee_stdout_line`** (`coalesce.rs`). Payload text stays unstyled. **Disk** traces still **`format_line`** only (no escapes).
+
+TRIGGER: output kiss lines_per_file split  
+ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, split into **`mod.rs`** + focused sibling (e.g. **`acp_tee.rs`**) instead of shrinking behavior; re-export at **`output` module** root.
+
+TRIGGER: kiss static coverage per module  
+ADVICE: If **`kiss check`** reports **test_coverage** gaps for a file, add **`#[cfg(test)]`** **`stringify!`** (and minimal smoke calls) **in that same source file**—not only **`src/coverage_kiss.rs`**—so static coverage attributes to the implementation module.
 
 TRIGGER: kiss GlobalOpts shared_opts not args only  
 ADVICE: New root-level flattened flags (e.g. **`GlobalOpts`**) belong in **`shared_opts.rs`** when **`kiss`** `concrete_types_per_file` would break if added to **`args.rs`** alone; **`Cli`** flattens them from there.
@@ -151,7 +171,8 @@ When removing or renaming a user-facing term, **`rg` the whole repository** (imp
 
 ## kiss
 
-Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible. Split modules when limits hit (e.g. extract `report.rs`, thin orchestrator `run()` helpers when `calls_per_function` fires). Run `kiss check .` during multi-step work—not only at the end.
+TRIGGER: kiss limits split modules  
+ADVICE: Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.rs` and `kiss_refs` / `stringify!` so symbols stay visible. Split modules when limits hit (e.g. extract `report.rs`, **`src/output/acp_tee.rs`**, thin orchestrator `run()` helpers when `calls_per_function` fires). Run **`kiss check .`** during multi-step work—not only at the end.
 
 ## Breaking API notes
 

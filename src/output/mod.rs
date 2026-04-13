@@ -1,5 +1,9 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
+mod acp_tee;
+
+pub use acp_tee::{AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line};
+
 use std::io::{IsTerminal, stdout};
 use std::sync::OnceLock;
 
@@ -110,9 +114,12 @@ pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_line_with_timestamp,
-        format_line_with_timestamp_ansi, format_log_tag_inner, is_command_prelude_line,
+        LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
+        format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
+        format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
+        print_stdout_line, print_stdout_text,
     };
+    use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
 
     #[test]
     fn formats_expected_mini_header() {
@@ -155,5 +162,36 @@ mod tests {
     fn exported_constants_match_public_contract() {
         assert_eq!(MALVIN_WHO, "malvin");
         assert_eq!(LEARNING_PLACEHOLDER, "[learning...]");
+    }
+
+    #[test]
+    fn smoke_print_and_format_paths_cover_helpers() {
+        assert_eq!(format_acp_directional_tag_prefix('>', "x"), ">x");
+        let _ = format_line("who", "body");
+        init_stdout_style(true);
+        print_stdout_line("u", "one");
+        print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
+        print_stderr_line("e", "err");
+        print_stdout_text("t", "a\nb");
+        let mut it = super::logical_lines("x\ny");
+        assert_eq!(it.next(), Some("x"));
+        assert_eq!(it.next(), Some("y"));
+    }
+
+    #[test]
+    fn kiss_stringify_output_symbols() {
+        let _ = stringify!(super::format_log_tag_inner);
+        let _ = stringify!(super::format_acp_directional_tag_prefix);
+        let _ = stringify!(super::format_line_with_timestamp);
+        let _ = stringify!(super::timestamp_now_string);
+        let _ = stringify!(super::format_line);
+        let _ = stringify!(super::format_line_with_timestamp_ansi);
+        let _ = stringify!(super::init_stdout_style);
+        let _ = stringify!(super::stdout_use_color);
+        let _ = stringify!(super::print_stdout_line);
+        let _ = stringify!(super::print_stderr_line);
+        let _ = stringify!(super::print_stdout_text);
+        let _ = stringify!(super::is_command_prelude_line);
+        let _ = stringify!(super::logical_lines);
     }
 }

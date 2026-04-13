@@ -162,11 +162,19 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, tee_stdout:
     match writer.stdout_replacement {
         Some(rep) => {
             if !writer.placeholder_emitted {
-                crate::output::print_stdout_line(&writer.who, rep);
+                crate::output::print_stdout_acp_tee_line(
+                    crate::output::AcpTeeDirection::FromAgent,
+                    &writer.who,
+                    rep,
+                );
                 writer.placeholder_emitted = true;
             }
         }
-        None => crate::output::print_stdout_line(&writer.who, line),
+        None => crate::output::print_stdout_acp_tee_line(
+            crate::output::AcpTeeDirection::FromAgent,
+            &writer.who,
+            line,
+        ),
     }
 }
 

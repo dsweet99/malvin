@@ -1,13 +1,15 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, prefixed log lines, `/proc` child health, LiteLLM/token notes), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
 
 ---
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 TRIGGER: kiss check and limits  
-ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. **`src/cli/args.rs`** is often at the type cap—fold new flattened CLI structs into **`shared_opts.rs`** (e.g. `GlobalOpts`) instead of only growing `args.rs`. Update `src/coverage_kiss.rs` / `stringify!` when symbols move. See `malvin_tooling.md` § kiss + § Prefixed log lines.
+ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. **`src/cli/args.rs`** is often at the type cap—fold new flattened CLI structs into **`shared_opts.rs`** (e.g. `GlobalOpts`) instead of only growing `args.rs`. Update `src/coverage_kiss.rs` / `stringify!` when symbols move; add **`#[cfg(test)]`** `stringify!` / smoke in the **same file** when kiss flags a module (see `malvin_tooling.md` § kiss + § Prefixed log lines).
+TRIGGER: clippy doc first paragraph  
+ADVICE: **`clippy::too_long_first_doc_paragraph`**: keep the opening **`///`** paragraph short; put detail in following paragraphs (pre-commit uses `-D warnings`).
 TRIGGER: .kissconfig  
 ADVICE: Never edit `.kissconfig`.
 TRIGGER: NEVER CALL GIT  
@@ -31,11 +33,11 @@ ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (
 TRIGGER: malvin do --raw  
 ADVICE: `do_flow.rs` passes `skip_repo_style: do_args.raw` into `AgentClient::run_coder_prompt`; `compose_coder_prompt_for_session` in `client_impl.inc` skips `.style/main.md` on the first coder turn when true. Orchestrator passes `false`. Align `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests` (`agent_bundle.inc`). Detail: `malvin_tooling.md` § CLI + coder prompt compose.
 TRIGGER: grounding code parity  
-ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
+ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, `src/output/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: stdout stderr log header  
-ADVICE: Route through `src/output.rs` (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** (`command.log`, traces) and **stderr** use plain `format_line` (no ANSI). **Stdout** may ANSI-color the timestamp/`[who]:` prefix when a TTY and not `--no-color` / `NO_COLOR` (`init_stdout_style` after `Cli::parse()`, `GlobalOpts` in `shared_opts.rs`). Document stable rules in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
-TRIGGER: learn tee redaction  
-ADVICE: `learn` prompt output must be written to logs normally but replaced with exact stdout placeholder `[learning...]`; implement via prompt-specific tee metadata in ACP trace writing, not by mutating stored log content.
+ADVICE: Route through **`src/output/mod.rs`** (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **ACP tee** ANSI + direction: **`src/output/acp_tee.rs`** (`AcpTeeDirection`, `print_stdout_acp_tee_line`)—outbound vs inbound colors; wire points **`session_trace.rs`** / **`coalesce.rs`**. **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** and **stderr** plain `format_line` (no ANSI). Default stdout prefix coloring: dim timestamp + cyan `who` unless ACP tee path. Document in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
+TRIGGER: learn ACP tee  
+ADVICE: Outbound `>learn`: omit stdout echo when tee on (`acp_tee_echo_outgoing_prompt_lines`, `src/acp/session_trace.rs`); disk trace keeps full prompt text. Inbound `<learn`: at most one stdout `[learning...]` (`prompt_stdout_replacement`, `trace_tee_stdout_line` in `session.rs` / `coalesce.rs`). Do not mutate on-disk trace content for redaction; unit-test pure tee helpers beside `kiss_stringify_*` in the same file—`malvin_tooling.md` § ACP learn tee.
 TRIGGER: source-shape regression tests  
 ADVICE: After changing ACP prompt signatures or include-body call shapes, check string-based tests like `tests/review_ops_order.rs` and docs-parity tests that `include_str!` source files—they may need updates even when runtime behavior is correct.
 TRIGGER: repo-wide string contracts  

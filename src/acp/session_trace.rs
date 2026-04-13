@@ -40,6 +40,15 @@ pub(crate) async fn trace_write_invocation_header(
     Ok(())
 }
 
+/// Whether to mirror outgoing `session/prompt` lines (`>` tags) to stdout when tee is enabled.
+///
+/// The `learn.md` prompt is still written to the trace file on disk; stdout omits those lines so
+/// learn prompt text is not echoed to the terminal (see `grounding.md`, Tee).
+#[must_use]
+pub(crate) fn acp_tee_echo_outgoing_prompt_lines(tee_stdout: bool, stem: &str) -> bool {
+    tee_stdout && stem != "learn"
+}
+
 /// Log the exact prompt text sent on `session/prompt` with an outgoing (`>`) tag per line.
 pub(crate) async fn trace_write_outgoing_prompt(
     file: &mut tokio::fs::File,
@@ -49,6 +58,7 @@ pub(crate) async fn trace_write_outgoing_prompt(
 ) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     let tag_raw = crate::output::format_acp_directional_tag_prefix('>', stem);
+    let echo_outgoing_to_stdout = acp_tee_echo_outgoing_prompt_lines(tee_stdout, stem);
     for line in crate::output::logical_lines(prompt_text) {
         let l = crate::output::format_line(&tag_raw, line);
         file.write_all(l.as_bytes())
@@ -57,8 +67,12 @@ pub(crate) async fn trace_write_outgoing_prompt(
         file.write_all(b"\n")
             .await
             .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
-        if tee_stdout {
-            crate::output::print_stdout_line(&tag_raw, line);
+        if echo_outgoing_to_stdout {
+            crate::output::print_stdout_acp_tee_line(
+                crate::output::AcpTeeDirection::ToAgent,
+                &tag_raw,
+                line,
+            );
         }
     }
     file.flush()
@@ -68,9 +82,17 @@ pub(crate) async fn trace_write_outgoing_prompt(
 }
 
 #[test]
+fn acp_tee_echo_outgoing_skips_learn_stdout() {
+    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "learn"));
+    assert!(acp_tee_echo_outgoing_prompt_lines(true, "implement"));
+    assert!(!acp_tee_echo_outgoing_prompt_lines(false, "learn"));
+}
+
+#[test]
 fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_prepare_file);
     let _ = stringify!(trace_open_truncated);
     let _ = stringify!(trace_write_invocation_header);
+    let _ = stringify!(acp_tee_echo_outgoing_prompt_lines);
     let _ = stringify!(trace_write_outgoing_prompt);
 }
