@@ -7,6 +7,8 @@ pub struct ReviewerPromptPair<'a> {
     pub artifact_review_path: &'a Path,
     pub review_body: &'a str,
     pub kpop_body: &'a str,
+    pub review_who: &'a str,
+    pub kpop_who: &'a str,
     pub review_log: &'a Path,
     pub kpop_log: &'a Path,
 }

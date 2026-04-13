@@ -26,7 +26,10 @@ pub(crate) async fn trace_write_invocation_header(
 ) -> Result<(), String> {
     if let Some(cmd) = crate::invocation::command_line() {
         use tokio::io::AsyncWriteExt;
-        let header = format!("Command: {cmd}\n");
+        let header = format!(
+            "{}\n",
+            crate::output::format_line(crate::output::MALVIN_WHO, &format!("Command: {cmd}"))
+        );
         file.write_all(header.as_bytes())
             .await
             .map_err(|e| format!("trace header write: {e}"))?;

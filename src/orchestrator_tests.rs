@@ -45,7 +45,7 @@ fn sync_review_file_skips_empty_workspace_so_artifact_lgtm_is_preserved() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact);
+    sync_review_file(&workspace, &artifact).unwrap();
     assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
 }
 
@@ -54,7 +54,7 @@ fn sync_review_file_skips_whitespace_only_workspace() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "  \n\t\n").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact);
+    sync_review_file(&workspace, &artifact).unwrap();
     assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
 }
 
@@ -83,6 +83,6 @@ fn sync_review_file_copies_nonempty_workspace_to_artifact() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "LGTM\n").unwrap();
     std::fs::write(&artifact, "old").unwrap();
-    sync_review_file(&workspace, &artifact);
+    sync_review_file(&workspace, &artifact).unwrap();
     assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
 }

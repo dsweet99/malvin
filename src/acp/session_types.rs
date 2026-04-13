@@ -10,6 +10,12 @@ use tokio::sync::{Mutex, Notify, oneshot};
 
 pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
 
+pub struct PromptTraceWriter {
+    pub file: tokio::fs::File,
+    pub who: String,
+    pub stdout_replacement: Option<&'static str>,
+}
+
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
     /// OS PID for [`crate::child_health`] liveness checks (0 if unknown).
@@ -23,7 +29,7 @@ pub struct AcpSessionInner {
     pub reader_dead: Arc<AtomicBool>,
     pub rpc_timeout: Duration,
     pub busy: Arc<AtomicBool>,
-    pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
+    pub trace_writer: Arc<Mutex<Option<PromptTraceWriter>>>,
     pub prompt_rpc_id: Arc<AtomicU64>,
     /// Serializes `AcpSession::prompt` so overlapping callers cannot stomp the trace writer.
     pub prompt_singleflight: Arc<Mutex<()>>,
@@ -58,6 +64,7 @@ pub struct AcpSpawnArgs<'a> {
 #[test]
 fn kiss_stringify_session_types() {
     let _ = stringify!(ResponseTx);
+    let _ = stringify!(PromptTraceWriter);
     let _ = stringify!(AcpSessionInner);
     let _ = stringify!(AcpSession);
     let _ = stringify!(AcpSpawnArgs);

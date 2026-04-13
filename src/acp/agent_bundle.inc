@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::review_sync::sync_review_then_is_lgtm;
 
 /// Recoverable agent failure.
 #[derive(Debug, thiserror::Error)]

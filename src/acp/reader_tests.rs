@@ -299,18 +299,48 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
 async fn write_trace_line_coalesced_skips_non_chunk_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace.log");
-    let mut f = tokio::fs::OpenOptions::new()
+    let f = tokio::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
         .write(true)
         .open(&path)
         .await
         .unwrap();
+    let mut writer = PromptTraceWriter {
+        file: f,
+        who: "kpop".to_string(),
+        stdout_replacement: None,
+    };
     let mut c = TraceChunkCoalescer::default();
-    crate::acp::write_trace_line_coalesced(&mut f, &mut c, None, false).await;
-    drop(f);
+    crate::acp::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
+    drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     assert!(s.is_empty(), "non-chunk lines should not be written");
+}
+
+#[tokio::test]
+async fn trace_file_write_line_prefixes_with_prompt_who() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-prefix.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "review_1".to_string(),
+        stdout_replacement: None,
+    };
+    crate::acp::trace_file_write_line(&mut writer, "hello", false).await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains(":[review_1]: hello\n"),
+        "expected prompt-prefixed trace line, got {s:?}"
+    );
 }
 
 #[test]
@@ -537,7 +567,7 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
     let stdin = Arc::new(Mutex::new(stdin_holder.stdin.take().expect("stdin")));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
-    let trace_writer: Arc<Mutex<Option<tokio::fs::File>>> = Arc::new(Mutex::new(None));
+    let trace_writer: Arc<Mutex<Option<PromptTraceWriter>>> = Arc::new(Mutex::new(None));
     let busy = Arc::new(AtomicBool::new(false));
     let prompt_rpc_id = Arc::new(AtomicU64::new(0));
     let prompt_cleanup = Arc::new(PromptRpcCleanup {
@@ -569,7 +599,7 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
 async fn dispatch_clears_prompt_cleanup_when_id_matches() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let busy = Arc::new(AtomicBool::new(true));
-    let trace_writer: Arc<Mutex<Option<tokio::fs::File>>> = Arc::new(Mutex::new(None));
+    let trace_writer: Arc<Mutex<Option<PromptTraceWriter>>> = Arc::new(Mutex::new(None));
     let prompt_rpc_id = Arc::new(AtomicU64::new(5));
     let cleanup = PromptRpcCleanup {
         busy: busy.clone(),

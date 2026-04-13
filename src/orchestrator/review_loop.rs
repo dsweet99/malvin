@@ -1,7 +1,7 @@
 //! Review phase loop: reviewer + kpop pair, concerns.
 
 use crate::acp::{AgentError, ReviewerPromptPair};
-use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::review_sync::sync_review_then_is_lgtm;
 use crate::run_timing::{ReviewPairId, TimingPhase};
 
 use super::Orchestrator;
@@ -15,8 +15,8 @@ impl Orchestrator<'_> {
         &mut self,
         phase: ReviewPhaseArgs<'_>,
     ) -> Result<(), WorkflowError> {
-        let review_path = self.artifacts.run_dir.join("review.md");
-        let workspace_review_path = self.artifacts.work_dir.join("review.md");
+        let review_path = self.artifacts.artifact_review_md();
+        let workspace_review_path = self.artifacts.workspace_review_md();
 
         for attempt in 1..=self.config.max_loops {
             let ctx = ReviewAttemptCtx {
@@ -45,8 +45,8 @@ impl Orchestrator<'_> {
         (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
         if ctx.review_prompt.starts_with("review_") {
-            clear_review_file(&self.artifacts.run_dir.join("review.md"));
-            clear_review_file(&self.artifacts.work_dir.join("review.md"));
+            clear_review_file(ctx.review_path);
+            clear_review_file(ctx.workspace_review_path);
         }
 
         let review_body = self
@@ -65,8 +65,9 @@ impl Orchestrator<'_> {
         self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body, pair_id)
             .await?;
 
-        sync_review_file(ctx.workspace_review_path, ctx.review_path);
-        if is_lgtm(ctx.review_path) {
+        let lgtm = sync_review_then_is_lgtm(ctx.workspace_review_path, ctx.review_path)
+            .map_err(|e| WorkflowError(format!("review.md sync: {e}")))?;
+        if lgtm {
             return Ok(true);
         }
         (self.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
@@ -102,6 +103,8 @@ impl Orchestrator<'_> {
             artifact_review_path: ctx.review_path,
             review_body,
             kpop_body,
+            review_who: stem,
+            kpop_who: "kpop",
             review_log: &review_log,
             kpop_log: &kpop_log,
         };

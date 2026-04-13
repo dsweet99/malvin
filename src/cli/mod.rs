@@ -14,6 +14,7 @@ pub use shared_opts::SharedOpts;
 use clap::Parser;
 
 use std::path::Path;
+use malvin::output::{MALVIN_WHO, format_line, print_stderr_line, print_stdout_line, print_stdout_text};
 
 /// Writes `command.log` under `run_dir`. When `echo_stdout` is true (tee on), also prints `Command: …` to stdout — same flag semantics as [`SharedOpts::tee_startup_stdout`].
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
@@ -22,17 +23,18 @@ pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String
         malvin::invocation::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
-        println!("{line}");
+        print_stdout_line(MALVIN_WHO, &line);
     }
     let log_path = run_dir.join("command.log");
-    std::fs::write(&log_path, format!("{line}\n")).map_err(|e| format!("command.log: {e}"))?;
+    std::fs::write(&log_path, format!("{}\n", format_line(MALVIN_WHO, &line)))
+        .map_err(|e| format!("command.log: {e}"))?;
     Ok(())
 }
 
 pub use kpop_flow::run_kpop;
 use malvin::acp::AgentClient;
 
-use malvin::artifacts::{create_run_artifacts_from_text, resolve_user_request};
+use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
@@ -73,27 +75,30 @@ pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), 
         return Ok(());
     }
     let plan_text = std::fs::read_to_string(plan_path).map_err(|e| e.to_string())?;
-    print!("{plan_text}");
-    if !plan_text.ends_with('\n') {
-        println!();
-    }
+    print_stdout_text(MALVIN_WHO, &plan_text);
     Ok(())
 }
 
-pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
+fn prepare_code_run(
+    code: &CodeArgs,
+    workflow: WorkflowCliOptions,
+) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
-
-    let mut client = build_agent(&code.shared, workflow);
+    let client = build_agent(&code.shared, workflow);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-
     let (text, work_dir) = resolve_user_request(&code.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
+    Ok((store, client, artifacts))
+}
+
+pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
+    let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
     echo_primary_to_stdout(&artifacts.plan_path, code.shared.tee_startup_stdout())?;
 
     emit_command_line(&artifacts.run_dir, code.shared.tee_startup_stdout())?;
-    println!("Logs: {}", format_logs_dir(&artifacts.run_dir)?);
+    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
 
     let mut orch = Orchestrator {
         client: &mut client,
@@ -104,11 +109,11 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
             run_learn: workflow.run_learn,
         },
         progress_callback: Box::new(|msg: &str| {
-            println!("{msg}");
+            print_stdout_line(MALVIN_WHO, msg);
         }),
     };
     orch.run().await.map_err(|e: WorkflowError| e.0)?;
-    println!("DONE");
+    print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
@@ -150,7 +155,7 @@ pub fn entrypoint() -> Exit {
     match res {
         Ok(()) => Exit::Success,
         Err(e) => {
-            eprintln!("{e}");
+            print_stderr_line(MALVIN_WHO, &e);
             Exit::Failure
         }
     }

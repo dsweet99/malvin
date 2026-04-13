@@ -532,7 +532,7 @@ fn spawn_test_reader_loop(
     acp_activity_notify: Arc<Notify>,
     reader_dead: Arc<AtomicBool>,
 ) {
-    let trace_writer: Arc<Mutex<Option<tokio::fs::File>>> = Arc::new(Mutex::new(None));
+    let trace_writer: Arc<Mutex<Option<PromptTraceWriter>>> = Arc::new(Mutex::new(None));
     tokio::spawn(async move {
         crate::acp::reader_loop(ReaderLoopInput {
             stdout,

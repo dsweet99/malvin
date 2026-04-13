@@ -1,6 +1,14 @@
 use session_io::acp_stdio;
 
 /// [`AcpSession`] implementation and post-spawn handshake.
+pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
+    if who == "learn" {
+        Some(crate::output::LEARNING_PLACEHOLDER)
+    } else {
+        None
+    }
+}
+
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///
@@ -54,16 +62,20 @@ impl AcpSession {
     /// # Errors
     ///
     /// Returns `Err` if trace file setup or the JSON-RPC request fails (see also [`Self::cancel`]).
-    pub async fn prompt(&self, text: &str, trace_path: &Path) -> Result<(), String> {
-        self.prompt_impl(text, trace_path).await
+    pub async fn prompt(&self, text: &str, trace_path: &Path, who: &str) -> Result<(), String> {
+        self.prompt_impl(text, trace_path, who).await
     }
 
-    async fn prompt_impl(&self, text: &str, trace_path: &Path) -> Result<(), String> {
+    async fn prompt_impl(&self, text: &str, trace_path: &Path, who: &str) -> Result<(), String> {
         let _prompt_turn = self.0.prompt_singleflight.lock().await;
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
-        *self.0.trace_writer.lock().await = Some(file);
+        *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
+            file,
+            who: who.to_string(),
+            stdout_replacement: prompt_stdout_replacement(who),
+        });
         self.0.busy.store(true, Ordering::SeqCst);
 
         let id = self.0.next_id.fetch_add(1, Ordering::SeqCst);
@@ -136,6 +148,7 @@ impl AcpSession {
 
 #[test]
 fn kiss_stringify_session_a() {
+    let _ = stringify!(prompt_stdout_replacement);
     let _ = stringify!(AcpSession::spawn);
     let _ = stringify!(AcpSession::is_alive);
     let _ = stringify!(AcpSession::is_busy);
@@ -149,4 +162,14 @@ fn kiss_stringify_session_b() {
     let _ = stringify!(AcpSession::send_rpc);
     let _ = stringify!(AcpSession::reset_prompt_inflight);
     let _ = stringify!(AcpSession::prompt_impl);
+}
+
+#[test]
+fn prompt_stdout_replacement_redacts_learn_only() {
+    assert_eq!(
+        prompt_stdout_replacement("learn"),
+        Some(crate::output::LEARNING_PLACEHOLDER)
+    );
+    assert_eq!(prompt_stdout_replacement("kpop"), None);
+    assert_eq!(prompt_stdout_replacement("review_1"), None);
 }

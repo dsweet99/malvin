@@ -95,6 +95,23 @@ ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `str
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
 - **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/post_run_hint/report.rs`) so documented stdout/stderr post-run behavior stays aligned with sources—extend when stream contracts change.
 
+## Review sync, `review.md`, shared output
+
+TRIGGER: RunArtifacts review paths  
+ADVICE: Use `RunArtifacts::artifact_review_md()` / `workspace_review_md()` in `src/artifacts.rs` for workspace ↔ run artifact `review.md` paths; avoid duplicating `run_dir.join("review.md")` / `work_dir.join("review.md")` at call sites.
+
+TRIGGER: sync_review_then_is_lgtm  
+ADVICE: `src/review_sync.rs` — `sync_review_then_is_lgtm` returns **`io::Result<bool>`** (propagate read/write with `?`); map to `AgentError` / `WorkflowError` in `ops_body.inc` and `orchestrator/review_loop.rs`. Do not treat sync I/O failure as “not LGTM.”
+
+TRIGGER: reviewer pair order regression  
+ADVICE: `tests/cli_parity.rs` **`reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order`** `include_str!`s `src/acp/ops_body.inc` and asserts source order: review `session/prompt` → `sync_review_then_is_lgtm(...)` → kpop `session/prompt`. Pair with behavioral tests in `src/review_sync.rs` (not only substring guards).
+
+TRIGGER: shared stdout stderr output  
+ADVICE: `src/output.rs` — line-oriented helpers (`format_line`, `print_stdout_line`, …). Align `#[must_use]` with sibling APIs if plain `cargo clippy` warns; pre-commit allows `-A clippy::must_use_candidate`.
+
+TRIGGER: redundant_pub_crate  
+ADVICE: `clippy::redundant_pub_crate`: in a non-`pub` submodule, prefer `pub struct` over `pub(crate) struct` when the type is only re-exported at the parent (e.g. `acp/session_types.rs` → `acp/mod.rs`).
+
 ### Repo-wide string contracts (renames, banned fragments)
 
 When removing or renaming a user-facing term, **`rg` the whole repository** (implementation, `grounding.md`, `default_prompts/`, `.cursorrules`, `.llm_style/`, `_kpop/` logs). A short **forbidden substring** may appear inside unrelated English words—verify with context, not only exact tokens. In **learn/review prompts**, distinguish **agent pacing** (latency, thoroughness) from **post-run metrics** language in code (`post_run_hint`). **`tests/cli_parity.rs`** asserts `grounding.md` matches stderr contracts when implementation uses `eprintln!` for the post-run hint; if docs lag, tests fail before runtime.
@@ -127,6 +144,10 @@ Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.r
 - **Included in:** `agent_bundle.inc` pulls `retry_policy.inc`, `ops_body.inc`, `client_impl.inc`.
 - **Unit tests:** `retry_policy_tests` in `src/acp/agent_bundle.inc` (policy helpers are not only tested from integration tests).
 - **User-facing exhaustion messages:** `client_impl.inc` formats `failed after {retries} retries` using `retries = attempts_used.saturating_sub(1)` (post-first-failure attempts), not raw `MAX_AGENT_ATTEMPTS`.
+
+TRIGGER: ACP upgrade plan eprintln  
+ADVICE: Upgrade-plan `Err`: **single** `eprintln!` at `src/cli/mod.rs` (not duplicated in `client_impl.inc`); see `retry_policy.inc` / `client_impl.inc`.
+
 - **Ad-hoc task specs:** `_malvin/**/plan.md` may hold one-off agent instructions—implement when the user cites that path; product/bootstrap `plan.md` remains the shipped template story (`init_cmd`).
 
 ## Reviewer workflow (conceptual)

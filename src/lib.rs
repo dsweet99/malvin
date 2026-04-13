@@ -31,6 +31,7 @@ pub mod env_path;
 pub mod invocation;
 pub mod log_paths;
 pub mod orchestrator;
+pub mod output;
 pub mod prompts;
 mod review_sync;
 pub mod run_timing;

@@ -9,7 +9,7 @@ mod session_channels;
 mod session_io;
 mod session_types;
 
-pub(crate) use session_types::ResponseTx;
+pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 pub use session_types::{AcpSession, AcpSpawnArgs};
 
 include!("cursor_credentials.rs");

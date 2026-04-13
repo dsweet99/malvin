@@ -167,7 +167,7 @@ async fn acp_full_session_with_notifications_and_credentials() {
     .await
     .expect("spawn mock agent acp");
     let trace = tmp.path().join("t.jsonl");
-    s.prompt("hello", &trace).await.expect("prompt");
+    s.prompt("hello", &trace, "implement").await.expect("prompt");
     s.shutdown().await.expect("shutdown");
 }
 
@@ -195,15 +195,19 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
     .await
     .expect("spawn mock agent acp");
     let trace = tmp.path().join("trace.jsonl");
-    s.prompt("hello", &trace).await.expect("prompt");
+    s.prompt("hello", &trace, "implement").await.expect("prompt");
     s.shutdown().await.expect("shutdown");
     let text = std::fs::read_to_string(&trace).expect("read trace");
     let cmd = crate::invocation::command_line().expect("invocation line");
-    let expected_prefix = format!("Command: {cmd}\n");
+    let expected_fragment = format!(":[malvin]: Command: {cmd}\n");
     assert!(
-        text.starts_with(&expected_prefix),
-        "trace should start with malvin Command line; expected prefix {:?} got start {:?}",
-        expected_prefix,
+        text.starts_with(&expected_fragment)
+            || text
+                .lines()
+                .next()
+                .is_some_and(|line| line.ends_with(&format!(":[malvin]: Command: {cmd}"))),
+        "trace should start with malvin Command line; expected fragment {:?} got start {:?}",
+        expected_fragment,
         text.chars().take(80).collect::<String>()
     );
 }
@@ -230,7 +234,7 @@ async fn acp_full_session_verbose_stdout_reader_path() {
     .await
     .expect("spawn verbose");
     let trace = tmp.path().join("tv.jsonl");
-    s.prompt("hi", &trace).await.expect("prompt");
+    s.prompt("hi", &trace, "implement").await.expect("prompt");
     s.shutdown().await.expect("shutdown");
 }
 
@@ -337,7 +341,7 @@ async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
     .await
     .expect("spawn");
     let trace = tmp.path().join("prompt_err.jsonl");
-    assert!(s.prompt("x", &trace).await.is_err());
+    assert!(s.prompt("x", &trace, "implement").await.is_err());
     tokio::time::timeout(std::time::Duration::from_secs(5), wait_task)
         .await
         .expect("wait task should finish")
@@ -368,7 +372,7 @@ async fn acp_prompt_fails_after_shutdown() {
     .expect("spawn");
     s.shutdown().await.expect("shutdown");
     let trace = tmp.path().join("x.jsonl");
-    assert!(s.prompt("x", &trace).await.is_err());
+    assert!(s.prompt("x", &trace, "implement").await.is_err());
 }
 
 #[cfg(unix)]
@@ -459,7 +463,7 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
     let prompt_release_path = tmp.path().join("allow_prompt_complete");
     let sess_prompt = session.clone();
     let driver = tokio::spawn(async move {
-        sess_prompt.prompt("slow", &trace_slow).await.unwrap();
+        sess_prompt.prompt("slow", &trace_slow, "implement").await.unwrap();
     });
 
     await_workspace_pid_file(&prompt_hit_path).await;

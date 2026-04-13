@@ -62,6 +62,27 @@ const fn agent_sources_for_snapshot() -> &'static str {
 }
 
 #[test]
+fn reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order() {
+    let ops = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/acp/ops_body.inc"
+    ));
+    let review = ops
+        .find("s.prompt(&review_full, pair.review_log, pair.review_who)")
+        .expect("expected review session/prompt in run_reviewer_pair_once");
+    let sync = ops
+        .find("sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)")
+        .expect("expected sync_review_then_is_lgtm after review prompt");
+    let kpop = ops
+        .find("s.prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who)")
+        .expect("expected kpop session/prompt after LGTM branch");
+    assert!(
+        review < sync && sync < kpop,
+        "review prompt must precede workspace→artifact sync/LGTM check, which must precede kpop prompt"
+    );
+}
+
+#[test]
 fn default_cli_model_is_composer_2() {
     let shared = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

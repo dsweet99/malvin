@@ -1,5 +1,6 @@
 //! Shared `review.md` workspace ↔ run artifact sync and LGTM detection.
 
+use std::io;
 use std::path::Path;
 
 #[must_use]
@@ -13,22 +14,66 @@ pub fn is_lgtm(review_path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn sync_review_file(workspace_review_path: &Path, artifact_review_path: &Path) {
+pub fn sync_review_file(workspace_review_path: &Path, artifact_review_path: &Path) -> io::Result<()> {
     if !workspace_review_path.exists() {
-        return;
+        return Ok(());
     }
-    if let Ok(text) = std::fs::read_to_string(workspace_review_path) {
-        if text.trim().is_empty() {
-            return;
-        }
-        let _ = std::fs::write(artifact_review_path, text);
+    let text = std::fs::read_to_string(workspace_review_path)?;
+    if text.trim().is_empty() {
+        return Ok(());
     }
+    std::fs::write(artifact_review_path, text)
+}
+
+/// Sync workspace `review.md` into the run artifact, then return whether the artifact reads as LGTM.
+///
+/// Returns an error when the workspace file cannot be read or the artifact cannot be written.
+///
+/// Used by the ACP reviewer pair (`run_reviewer_pair_once` in `ops_body.inc`) so the post-review sequence stays one API surface.
+pub fn sync_review_then_is_lgtm(
+    workspace_review_path: &Path,
+    artifact_review_path: &Path,
+) -> io::Result<bool> {
+    sync_review_file(workspace_review_path, artifact_review_path)?;
+    Ok(is_lgtm(artifact_review_path))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn sync_review_then_is_lgtm_true_after_copy() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("run").join("review.md");
+        std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        let mut f = std::fs::File::create(&workspace).unwrap();
+        writeln!(f, "LGTM").unwrap();
+        assert!(sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+        assert!(artifact.exists());
+    }
+
+    #[test]
+    fn sync_review_file_errors_when_artifact_path_is_not_writable_file() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        std::fs::write(&workspace, "LGTM\n").unwrap();
+        let artifact = t.path().join("blocked");
+        std::fs::create_dir_all(&artifact).unwrap();
+        assert!(sync_review_file(&workspace, &artifact).is_err());
+        assert!(sync_review_then_is_lgtm(&workspace, &artifact).is_err());
+    }
+
+    #[test]
+    fn sync_review_then_is_lgtm_false_when_workspace_missing() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("missing.md");
+        let artifact = t.path().join("review.md");
+        std::fs::write(&artifact, "nope").unwrap();
+        assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+    }
 
     #[test]
     fn is_lgtm_accepts_utf8_bom_prefixed_lgtm() {

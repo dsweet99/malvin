@@ -1,6 +1,9 @@
 //! Trace file line emission and coalesced writes (used by the ACP stdout reader).
 
-use super::{VerboseTraceCoalesceState, session_update_chunk_parts, write_trace_line_coalesced};
+use super::{
+    PromptTraceWriter, VerboseTraceCoalesceState, session_update_chunk_parts,
+    write_trace_line_coalesced,
+};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -16,7 +19,7 @@ pub struct ReaderTraceLineOpts {
 pub async fn reader_loop_verbose_and_trace_line(
     line: &str,
     opts: &ReaderTraceLineOpts,
-    trace_writer: &Arc<Mutex<Option<tokio::fs::File>>>,
+    trace_writer: &Arc<Mutex<Option<PromptTraceWriter>>>,
     coalescers: &mut VerboseTraceCoalesceState<'_>,
 ) {
     let tracing = {

@@ -38,6 +38,8 @@ fn kiss_stringify_agent() {
 fn kiss_stringify_artifacts() {
     let _ = stringify!(RunArtifacts);
     let _ = stringify!(RunArtifacts::log_path);
+    let _ = stringify!(RunArtifacts::artifact_review_md);
+    let _ = stringify!(RunArtifacts::workspace_review_md);
     let _ = stringify!(create_run_artifacts);
     let _ = stringify!(crate::artifacts::create_run_dir);
     let _ = stringify!(crate::artifacts::build_identifier);
@@ -94,6 +96,7 @@ fn kiss_stringify_log_paths() {
 fn kiss_stringify_review_sync() {
     let _ = stringify!(crate::review_sync::is_lgtm);
     let _ = stringify!(crate::review_sync::sync_review_file);
+    let _ = stringify!(crate::review_sync::sync_review_then_is_lgtm);
 }
 
 #[test]

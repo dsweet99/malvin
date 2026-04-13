@@ -156,21 +156,23 @@ impl TraceChunkCoalescer {
 }
 
 pub(crate) async fn trace_file_write_line(
-    f: &mut tokio::fs::File,
+    writer: &mut PromptTraceWriter,
     line: &str,
     tee_stdout: bool,
 ) {
-    if let Err(e) = f.write_all(line.as_bytes()).await {
+    let formatted = crate::output::format_line(&writer.who, line);
+    if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
-    } else if let Err(e) = f.write_all(b"\n").await {
+    } else if let Err(e) = writer.file.write_all(b"\n").await {
         warn!(error = %e, "trace newline failed");
     } else if tee_stdout {
-        println!("{line}");
+        let stdout_line = writer.stdout_replacement.unwrap_or(line);
+        crate::output::print_stdout_line(&writer.who, stdout_line);
     }
 }
 
 pub(crate) async fn write_trace_line_coalesced(
-    trace_file: &mut tokio::fs::File,
+    trace_file: &mut PromptTraceWriter,
     coalesce: &mut TraceChunkCoalescer,
     parsed: Option<&Value>,
     tee_stdout: bool,

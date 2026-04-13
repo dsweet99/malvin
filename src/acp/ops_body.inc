@@ -64,7 +64,7 @@ pub(crate) async fn run_reviewer_pair_once(
     }
 
     let t_review = Instant::now();
-    let review_out = s.prompt(&review_full, pair.review_log).await;
+    let review_out = s.prompt(&review_full, pair.review_log, pair.review_who).await;
     crate::run_timing::record_llm(
         client.timing.as_ref(),
         pair_id.review_phase(),
@@ -73,14 +73,16 @@ pub(crate) async fn run_reviewer_pair_once(
     review_out.map_err(AgentError)?;
     maybe_tee_log(client, pair.review_log);
 
-    sync_review_file(pair.workspace_review_path, pair.artifact_review_path);
-    if is_lgtm(pair.artifact_review_path) {
+    // Order invariant: workspace sync → LGTM on artifact → optional kpop prompt (`review_sync::sync_review_then_is_lgtm`).
+    let lgtm = sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)
+        .map_err(|e| AgentError(format!("review.md sync: {e}")))?;
+    if lgtm {
         s.shutdown().await.map_err(AgentError)?;
         return Ok(());
     }
 
     let t_kpop = Instant::now();
-    let kpop_out = s.prompt(pair.kpop_body, pair.kpop_log).await;
+    let kpop_out = s.prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who).await;
     crate::run_timing::record_llm(client.timing.as_ref(), pair_id.kpop_phase(), t_kpop.elapsed());
     kpop_out.map_err(AgentError)?;
     maybe_tee_log(client, pair.kpop_log);
@@ -119,10 +121,11 @@ pub(crate) async fn run_kpop_flow_once(
         client: &AgentClient,
         text: &str,
         log: &Path,
+        who: &str,
         phase: crate::run_timing::TimingPhase,
     ) -> Result<(), AgentError> {
         let t0 = Instant::now();
-        match session.prompt(text, log).await {
+        match session.prompt(text, log, who).await {
             Ok(()) => {
                 crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
                 maybe_tee_log(client, log);
@@ -153,6 +156,7 @@ pub(crate) async fn run_kpop_flow_once(
         client,
         &main_prompt,
         args.kpop_log,
+        "kpop",
         crate::run_timing::TimingPhase::Implement,
     )
     .await
@@ -178,6 +182,7 @@ pub(crate) async fn run_kpop_flow_once(
             client,
             &learn_prompt,
             learn_log,
+            "learn",
             crate::run_timing::TimingPhase::Learn,
         )
         .await
@@ -209,6 +214,7 @@ pub(crate) async fn run_kpop_flow_once(
                 client,
                 &pad_text,
                 &pad_log,
+                "kpop",
                 crate::run_timing::TimingPhase::Implement,
             )
             .await
@@ -233,6 +239,7 @@ pub(crate) async fn run_kpop_flow_once(
                     client,
                     &pad_text,
                     &pad_log,
+                    "kpop",
                     crate::run_timing::TimingPhase::Implement,
                 )
                 .await
@@ -258,6 +265,7 @@ pub(crate) async fn run_kpop_flow_once(
             client,
             &roll_text,
             &roll_log,
+            "kpop",
             crate::run_timing::TimingPhase::Implement,
         )
         .await

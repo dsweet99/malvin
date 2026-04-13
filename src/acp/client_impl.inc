@@ -112,6 +112,7 @@ impl AgentClient {
         &mut self,
         prompt: &str,
         log_path: &Path,
+        who: &str,
         llm_phase: Option<crate::run_timing::TimingPhase>,
     ) -> Result<(), AgentError> {
         let session = self
@@ -137,7 +138,7 @@ impl AgentClient {
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
             let t0 = Instant::now();
-            match session.prompt(&full_prompt, log_path).await {
+            match session.prompt(&full_prompt, log_path, who).await {
                 Ok(()) => {
                     if let Some(ph) = llm_phase {
                         crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());

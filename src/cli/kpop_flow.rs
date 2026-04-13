@@ -13,6 +13,7 @@ use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing;
 
@@ -37,7 +38,7 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
     })
     .await?;
 
-    println!("DONE");
+    print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
@@ -131,7 +132,7 @@ pub async fn kpop_run_acp(
 pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
     echo_primary_to_stdout(&artifacts.plan_path, kpop.shared.tee_startup_stdout())?;
     emit_command_line(&artifacts.run_dir, kpop.shared.tee_startup_stdout())?;
-    println!("Logs: {}", format_logs_dir(&artifacts.run_dir)?);
+    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
     Ok(())
 }
 

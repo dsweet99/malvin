@@ -1,6 +1,6 @@
 //! Channel state built before the ACP JSON-RPC handshake completes.
 use super::handshake_types::AcpHandshakeIo;
-use super::session_types::{AcpSessionInner, AcpSpawnArgs, ResponseTx};
+use super::session_types::{AcpSessionInner, AcpSpawnArgs, PromptTraceWriter, ResponseTx};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
@@ -15,7 +15,7 @@ pub struct SessionChannelState {
     pub(crate) reader_dead: Arc<AtomicBool>,
     pub(crate) next_id: Arc<AtomicU64>,
     pub(crate) busy: Arc<AtomicBool>,
-    pub(crate) trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
+    pub(crate) trace_writer: Arc<Mutex<Option<PromptTraceWriter>>>,
     pub(crate) prompt_rpc_id: Arc<AtomicU64>,
     pub(crate) prompt_singleflight: Arc<Mutex<()>>,
     pub(crate) ui_idle_notify: Option<Arc<tokio::sync::Notify>>,

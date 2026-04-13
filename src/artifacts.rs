@@ -18,6 +18,18 @@ impl RunArtifacts {
         let safe = name.replace(['/', '\\'], "_");
         self.run_dir.join(format!("{safe}.log"))
     }
+
+    /// Run-directory copy of `review.md` (artifact for [`crate::review_sync`]).
+    #[must_use]
+    pub fn artifact_review_md(&self) -> PathBuf {
+        self.run_dir.join("review.md")
+    }
+
+    /// Workspace `review.md` under [`Self::work_dir`].
+    #[must_use]
+    pub fn workspace_review_md(&self) -> PathBuf {
+        self.work_dir.join("review.md")
+    }
 }
 
 /// Copy `plan_source` into a fresh run directory under `base_dir`/`_malvin`/…

@@ -4,7 +4,7 @@ use tokio::sync::Notify;
 /// Clears busy / trace when the JSON-RPC response for a `session/prompt` request is processed.
 pub(crate) struct PromptRpcCleanup {
     pub busy: Arc<AtomicBool>,
-    pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
+    pub trace_writer: Arc<Mutex<Option<PromptTraceWriter>>>,
     pub prompt_rpc_id: Arc<AtomicU64>,
     /// When set (UI lane only), [`Self::clear_if_prompt_response`] notifies waiters when `busy` clears.
     pub idle_notify: Option<Arc<Notify>>,

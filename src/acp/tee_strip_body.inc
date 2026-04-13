@@ -12,7 +12,10 @@
 /// that single prelude line and this returns an empty slice (nothing left to tee after stripping).
 #[allow(dead_code)]
 pub(crate) fn strip_trace_invocation_line_for_tee(text: &str) -> &str {
-    if !text.starts_with("Command: ") {
+    let Some(first) = text.lines().next() else {
+        return text;
+    };
+    if !crate::output::is_command_prelude_line(first) {
         return text;
     }
     text.find('\n').map_or("", |i| &text[i + 1..])

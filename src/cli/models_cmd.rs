@@ -6,6 +6,7 @@ use std::process::Command;
 use clap::Args;
 
 use malvin::env_path::agent_or_cursor_agent_bin;
+use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 use super::shared_opts::DEFAULT_CLI_MODEL;
 
@@ -88,8 +89,8 @@ pub fn run_models() -> Result<(), String> {
     let text = strip_ansi_escapes(raw.as_ref());
     let cleaned = trim_trailing_tip_lines(&text);
     print_parsed_or_fallback(&cleaned);
-    println!();
-    println!("Default model in malvin: {DEFAULT_CLI_MODEL}");
+    print_stdout_line(MALVIN_WHO, "");
+    print_stdout_line(MALVIN_WHO, &format!("Default model in malvin: {DEFAULT_CLI_MODEL}"));
     Ok(())
 }
 
@@ -128,15 +129,12 @@ fn print_parsed_or_fallback(text: &str) {
             continue;
         }
         if let Some((name, rest)) = parse_model_line(t) {
-            println!("{name}\t{rest}");
+            print_stdout_line(MALVIN_WHO, &format!("{name}\t{rest}"));
             printed = true;
         }
     }
     if !printed {
-        print!("{text}");
-        if !text.ends_with('\n') {
-            println!();
-        }
+        print_stdout_text(MALVIN_WHO, text);
     }
 }
 

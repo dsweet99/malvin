@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
-use super::session_types::ResponseTx;
+use super::session_types::{PromptTraceWriter, ResponseTx};
 
 pub struct AcpHandshakeIo {
     pub stdin: Arc<Mutex<ChildStdin>>,
@@ -17,7 +17,7 @@ pub struct AcpHandshakeIo {
     pub reader_dead: Arc<AtomicBool>,
     pub next_id: Arc<AtomicU64>,
     pub busy: Arc<AtomicBool>,
-    pub trace_writer: Arc<Mutex<Option<tokio::fs::File>>>,
+    pub trace_writer: Arc<Mutex<Option<PromptTraceWriter>>>,
     pub prompt_rpc_id: Arc<AtomicU64>,
     pub ui_idle_notify: Option<Arc<Notify>>,
 }
