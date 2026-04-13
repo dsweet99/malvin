@@ -2,7 +2,7 @@
 name = "malvin"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.87"
 description = "Malvin application"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -14,8 +14,8 @@ categories = ["development-tools"]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
 rand = "0.8"
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tempfile = "3"
 thiserror = "1"
 tokio = { version = "1", features = [
     "fs",
@@ -29,7 +29,6 @@ tokio = { version = "1", features = [
 tracing = "0.1"
 
 [dev-dependencies]
-tempfile = "3"
 
 [lib]
 name = "malvin"
@@ -45,3 +44,8 @@ unsafe_code = "deny"
 [lints.clippy]
 pedantic = "warn"
 nursery = "warn"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+errno = "0.3"
+libc = "0.2"
+libproc = "0.14"

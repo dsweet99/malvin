@@ -58,9 +58,86 @@ fn substitute_replaces_dollar_keys() {
 }
 
 #[test]
+fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    store
+        .validate_kpop_prompts(false, 0.0)
+        .expect("kpop-only ok");
+    assert!(
+        store.validate_required().is_err(),
+        "full workflow should still require implement/review/etc."
+    );
+}
+
+#[test]
+fn validate_kpop_prompts_does_not_require_mbc2_for_positive_infinity() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    store
+        .validate_kpop_prompts(false, f64::INFINITY)
+        .expect("non-finite p_creative should not imply MBC2");
+}
+
+#[test]
+fn validate_kpop_prompts_requires_mbc2_when_p_creative_positive() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_kpop_prompts(false, 0.1).unwrap_err();
+    assert!(
+        err.0.contains("mbc2.md"),
+        "expected mbc2 missing error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn validate_required_fails_when_header_or_coding_rules_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    for name in [
+        "implement.md",
+        "review_1.md",
+        "review_2.md",
+        "kpop.md",
+        "concerns.md",
+    ] {
+        std::fs::write(root.join(name), "x").unwrap();
+    }
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_required().unwrap_err();
+    assert!(
+        err.0.contains("header.md") && err.0.contains("coding_rules.md"),
+        "expected missing header + coding_rules in error: {}",
+        err.0
+    );
+}
+
+#[test]
+fn validate_kpop_prompts_requires_learn_when_run_learn() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_kpop_prompts(true, 0.0).unwrap_err();
+    assert!(
+        err.0.contains("learn.md"),
+        "expected learn missing error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
 fn coding_rules_nested_placeholders_expand() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(
         root.join("implement.md"),
         "START\n{{ coding_rules }}\nEND\n",
@@ -75,4 +152,38 @@ fn coding_rules_nested_placeholders_expand() {
         out.contains("/P") && !out.contains("{{ plan_path }}"),
         "expected nested plan_path in coding_rules; got:\n{out}"
     );
+}
+
+fn store_with_header_rules_implement(root: &std::path::Path) -> PromptStore {
+    std::fs::write(root.join("header.md"), "OPENING").unwrap();
+    std::fs::write(root.join("coding_rules.md"), "RULES").unwrap();
+    std::fs::write(root.join("implement.md"), "{{ coding_rules }}").unwrap();
+    PromptStore::with_root(root.to_path_buf())
+}
+
+#[test]
+fn header_prepends_coding_rules_placeholder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = store_with_header_rules_implement(tmp.path());
+    let mut ctx = HashMap::new();
+    ctx.insert("plan_path".to_string(), "/x".to_string());
+    ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
+    let out = store.render("implement.md", &ctx).unwrap();
+    assert!(
+        out.starts_with("OPENING\n\nRULES"),
+        "expected header before rules; got:\n{out}"
+    );
+}
+
+#[test]
+fn render_prompt_only_skips_coding_rules_injection() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "H{{ plan_path }}").unwrap();
+    std::fs::write(root.join("coding_rules.md"), "SHOULD_NOT_APPEAR").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let mut ctx = HashMap::new();
+    ctx.insert("plan_path".to_string(), "/p".to_string());
+    let out = store.render_prompt_only("header.md", &ctx).unwrap();
+    assert_eq!(out, "H/p");
 }

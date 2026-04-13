@@ -1,25 +1,4 @@
 
-AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words in style.md? If so, display the one most relevant TRIGGER: / ADVICE: pair for you and the user to see.
-
---
-
-### Definitions: Claims vs Hypotheses
-
-- Label uncertain reasoning as Hypothesis; only use Claim with explicit evidence.
-- Claims must cite evidence (code refs, logs, metrics). Otherwise, downgrade to Hypothesis.
-- For each Hypothesis, include:
-  - Hypothesis: concise, falsifiable statement.
-  - Predictions: measurable outcomes if true.
-  - Test: minimal experiment (setup, variables, metrics, pass/fail).
-  - Confounders: likely alternatives and controls.
-- Language:
-  - Hypothesis: “suggests”, “may”, “indicates”.
-  - Claim (with evidence): “shows”, “demonstrates”, “causes”.
-- Label any statement which is a hypothesis as such.
-
---
-
-
 Use parallelized subagents (at most 4).
 
 Work until the end without asking for user input. If you are uncertain about an implementation
@@ -41,6 +20,8 @@ and all unit tests pass:
 
 
 Run checks & tests frequently to avoid a big cleanup at the end.
+
+Write code to fail fast. Assert liberally.
 
 ## Nota Bene
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
