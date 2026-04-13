@@ -38,16 +38,13 @@ TRIGGER: review grounding
 ADVICE: Read `review.md` + `grounding.md`; confirm code and CLI help match. After fixes, update root `review.md` (no stale “open problems”). ACP: `src/acp/*.inc` (e.g. `ops_body.inc`)—see `malvin_tooling.md`.
 
 TRIGGER: grounding code parity  
-ADVICE: When post-run stdout/stderr behavior changes, align `grounding.md` with sources (`post_run_hint/`, `run_timing/`, …). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). `tests/cli_parity.rs` may `include_str!`—see `malvin_tooling.md` § Tests.
+ADVICE: When run-timing or tee stdout behavior changes, align `grounding.md` with sources (`run_timing/`, `src/acp/`, …). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). `tests/cli_parity.rs` may `include_str!`—see `malvin_tooling.md` § Tests.
 
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/` (agent **pacing** vs thoroughness—not product metrics wording), `.cursorrules`, `_kpop/` logs with code/docs—see `malvin_tooling.md` § Repo-wide string contracts.
 
-TRIGGER: post-run metrics hint  
-ADVICE: **`src/post_run_hint/`** (`report.rs`): stable “not measured” stderr only; **gross/net/git-tree metering removed** (see `mod.rs`). Message must not contain `"git"` (`tests/cli_parity.rs`). `finish_post_run_hint_then_return` ordering—`grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
-
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop`: `run_timing.json` + stdout summary **before** stderr post-run hint; record in `client_impl.inc` / `ops_body.inc`; `attach_run_timing_for_session` / finalize from orchestrator or KPOP. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop`: `run_timing.json` + one stdout summary line after the workflow body; record in `client_impl.inc` / `ops_body.inc`; `attach_run_timing_for_session` / finalize from orchestrator or KPOP. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
 
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md`: sync with shipped `malvin init`/ACP/models (`src/cli/init_cmd.rs`, tests). One-off task specs: `_malvin/**/plan.md` when cited. See `malvin_tooling.md` § `malvin init` + ACP bounded retry.

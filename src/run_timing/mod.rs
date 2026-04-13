@@ -103,9 +103,13 @@ impl RunTiming {
         self.llm_wait = self.llm_wait.saturating_add(d);
         match phase {
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
-            TimingPhase::Review1Review => self.review_1_review = self.review_1_review.saturating_add(d),
+            TimingPhase::Review1Review => {
+                self.review_1_review = self.review_1_review.saturating_add(d);
+            }
             TimingPhase::Review1Kpop => self.review_1_kpop = self.review_1_kpop.saturating_add(d),
-            TimingPhase::Review2Review => self.review_2_review = self.review_2_review.saturating_add(d),
+            TimingPhase::Review2Review => {
+                self.review_2_review = self.review_2_review.saturating_add(d);
+            }
             TimingPhase::Review2Kpop => self.review_2_kpop = self.review_2_kpop.saturating_add(d),
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
@@ -137,7 +141,9 @@ impl RunTiming {
 ///
 /// `malvin code` and `malvin kpop` both use this so attachment stays consistent.
 #[must_use]
-pub fn attach_new_run_timing(timing_slot: &mut Option<Arc<Mutex<RunTiming>>>) -> Arc<Mutex<RunTiming>> {
+pub fn attach_new_run_timing(
+    timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,
+) -> Arc<Mutex<RunTiming>> {
     let timing = RunTiming::new_arc();
     *timing_slot = Some(Arc::clone(&timing));
     timing
@@ -148,17 +154,11 @@ pub fn attach_new_run_timing(timing_slot: &mut Option<Arc<Mutex<RunTiming>>>) ->
 }
 
 /// Records one LLM wait interval into `timing`, if present.
-pub fn record_llm(
-    timing: Option<&Arc<Mutex<RunTiming>>>,
-    phase: TimingPhase,
-    elapsed: Duration,
-) {
+pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {
     let Some(t) = timing else {
         return;
     };
-    let mut g = t
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     g.add_llm_phase(phase, elapsed);
 }
 
@@ -167,9 +167,7 @@ pub fn record_backoff(timing: Option<&Arc<Mutex<RunTiming>>>, d: Duration) {
     let Some(t) = timing else {
         return;
     };
-    let mut g = t
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut g = t.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     g.add_agent_retry_backoff(d);
 }
 
@@ -178,8 +176,13 @@ pub fn record_backoff(timing: Option<&Arc<Mutex<RunTiming>>>, d: Duration) {
 /// # Errors
 ///
 /// Returns an error if writing `run_timing.json` fails (see [`RunTiming::write_json_and_print_summary`]).
-pub fn finalize_and_emit_run_timing(run_dir: &Path, timing: &Arc<Mutex<RunTiming>>) -> std::io::Result<()> {
-    let mut g = timing.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+pub fn finalize_and_emit_run_timing(
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+) -> std::io::Result<()> {
+    let mut g = timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     if g.wall_end.is_none() {
         g.mark_wall_end(Instant::now());
     }

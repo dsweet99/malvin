@@ -7,7 +7,7 @@ use std::time::Duration;
 use chrono::Local;
 use serde_json::{Value, json};
 
-use super::{RunTiming, RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX};
+use super::{RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX, RunTiming};
 
 pub(super) fn duration_ms_u64(d: Duration) -> u64 {
     u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
@@ -57,7 +57,9 @@ pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io:
     );
     let llm = format_duration_secs_3_from_ms(duration_ms_u64(r.llm_wait));
     let backoff = format_duration_secs_3_from_ms(duration_ms_u64(r.agent_retry_backoff));
-    println!("{ts} {RUN_TIMING_SUMMARY_PREFIX} wall {wall}; LLM wait {llm}; agent retry/backoff {backoff} (see {RUN_TIMING_JSON_FILE})");
+    println!(
+        "{ts} {RUN_TIMING_SUMMARY_PREFIX} wall {wall}; LLM wait {llm}; agent retry/backoff {backoff} (see {RUN_TIMING_JSON_FILE})"
+    );
     Ok(())
 }
 
@@ -82,7 +84,8 @@ mod format_tests {
         let s = format_duration_secs_3_from_ms(ms);
         let (whole, frac) = s.strip_suffix('s').unwrap().split_once('.').unwrap();
         assert_eq!(frac.len(), 3);
-        let ms_round_trip: u64 = whole.parse::<u64>().unwrap() * 1000 + frac.parse::<u64>().unwrap();
+        let ms_round_trip: u64 =
+            whole.parse::<u64>().unwrap() * 1000 + frac.parse::<u64>().unwrap();
         assert_eq!(
             ms, ms_round_trip,
             "summary seconds must encode the same truncated-ms value as JSON"

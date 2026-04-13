@@ -20,6 +20,10 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
+/// Parallel tests mutate global `PATH`; use a fixed path (see `reader_tests` / `ops_inline_tests.inc`).
+const SLEEP_BIN: &str = "/bin/sleep";
+const TRUE_BIN: &str = "/usr/bin/true";
+
 fn clear_cursor_env_for_test() {
     unsafe {
         std::env::remove_var("CURSOR_API_KEY");
@@ -415,7 +419,7 @@ fn test_cursor_credentials_skips_empty_token_only() {
 
 #[tokio::test]
 async fn test_write_rpc_line_fails_after_child_stdin_closed() {
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("60")
         .stdin(Stdio::piped())
         .spawn()
@@ -685,7 +689,7 @@ async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
 
 #[tokio::test]
 async fn test_rpc_cancel_when_pending_sender_dropped() {
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("60")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -747,7 +751,7 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
 /// the process (e.g. stdin closed before `write_rpc_line`).
 #[tokio::test]
 async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
-    let mut child = Command::new("true")
+    let mut child = Command::new(TRUE_BIN)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -797,7 +801,7 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[tokio::test]
 async fn rpc_timeout_dead_child_reports_exit_not_hung() {
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("60")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -847,9 +851,8 @@ async fn rpc_timeout_dead_child_reports_exit_not_hung() {
 /// Regression: an inbound JSON-RPC response must win when it arrives during the post-timeout
 /// child-health grace sleep — `rpc_wait_response` races `rx` against `evaluate_after_acp_silence`.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-#[tokio::test]
-async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
-    let mut child = Command::new("sleep")
+async fn rpc_response_arriving_during_child_health_grace_body() {
+    let mut child = Command::new(SLEEP_BIN)
         .arg("120")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -887,9 +890,15 @@ async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
     assert_eq!(res["delivered"], true);
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[tokio::test]
+async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
+    rpc_response_arriving_during_child_health_grace_body().await;
+}
+
 #[tokio::test]
 async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("15")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -933,7 +942,7 @@ async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
 #[tokio::test]
 async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
     let reader_dead = Arc::new(AtomicBool::new(true));
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("2")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

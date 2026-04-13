@@ -2,12 +2,7 @@ use std::time::{Duration, Instant};
 
 use super::*;
 
-fn health_snapshot(
-    t0: Instant,
-    cpu: u64,
-    threads: u32,
-    ctxt: Option<u64>,
-) -> ChildHealth {
+fn health_snapshot(t0: Instant, cpu: u64, threads: u32, ctxt: Option<u64>) -> ChildHealth {
     ChildHealth {
         exists: true,
         zombie: false,
@@ -142,3 +137,6 @@ mod linux_parse {
         );
     }
 }
+
+#[cfg(target_os = "macos")]
+mod macos_sample;

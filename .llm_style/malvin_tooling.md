@@ -42,8 +42,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
-| Post-run metrics hint | `src/post_run_hint/report.rs` — post-run stderr line; called from `src/orchestrator/` and KPOP after ACP bodies |
-| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` and `malvin kpop`: `run_timing.json` + one stdout summary after workflow, before the post-run metrics hint; LLM vs retry/backoff; see root `grounding.md` |
+| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` and `malvin kpop`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/` |
 
 ### ACP `include!` assembly (kiss dependency depth)
@@ -55,7 +54,7 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 ## Child health + ACP silence (`src/child_health/`)
 
 TRIGGER: child health module layout  
-ADVICE: Library module at `src/child_health/mod.rs` with `linux.rs`, `macos.rs` (`libproc` + `errno`/`libc`), `other.rs`, and `tests.rs` when `kiss` `lines_per_file` requires. Wired from `src/lib.rs` (`mod child_health`); RPC wait in `src/acp/transport/rpc.rs` (`child_pid` on `AcpStdioRpc`). `src/coverage_kiss.rs` `stringify!` for public helpers.
+ADVICE: Library module at `src/child_health/mod.rs` with `linux.rs`, `macos.rs` (`libproc` + `errno`/`libc`), `other.rs`, and `tests/` (e.g. `macos_sample.rs`) when split helps `kiss` limits. Wired from `src/lib.rs` (`mod child_health`); RPC wait in `src/acp/transport/rpc.rs` (`child_pid` on `AcpStdioRpc`). `src/coverage_kiss.rs` `stringify!` for public helpers.
 
 TRIGGER: process_absent cannot_sample  
 ADVICE: **`process_absent`**: OS says PID row missing (`/proc` `NotFound`; macOS `proc_pidinfo` + `errno == ESRCH`). **`cannot_sample`**: I/O/parse failure or ambiguous read—`exists: true`, `counters_trusted: false`, zero placeholders. Do not conflate with “gone” (user-facing `acp child process is not running`).
@@ -69,23 +68,17 @@ ADVICE: After the silence `sleep(rpc_timeout)`, use `tokio::select!` so the JSON
 TRIGGER: voluntary_ctxt switches parse  
 ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `strip_prefix("voluntary_ctxt_switches:")`, use **`rest.trim().parse::<u64>()`**—`trim_start()` alone leaves a trailing **`\r`** on the value token and **`u64` parse returns `Err`**, so voluntary context switches are dropped and progress detection weakens. Regression: `child_health::tests::linux_parse::voluntary_ctxt_parses_when_value_has_trailing_cr`.
 
-## Post-run metrics hint
-
-- **Code:** `src/post_run_hint/report.rs` — `finish_and_write_report` / `finish_post_run_hint_then_return`; prints a stable **“not measured”** stderr line only. **`src/post_run_hint/mod.rs`** documents that **gross/net metering and git tree snapshots were removed**—there is no yield/gross/net computation in product code.
-- **Streams / ordering:** Stable **“not measured”** line → **`eprintln!` (stderr)** only — see root `grounding.md`. `finish_post_run_hint_then_return` runs after the workflow/KPOP ACP body, before CLI `DONE` / `end_coder_session` (or equivalent).
-- **Contract tests:** `tests/cli_parity.rs` asserts the message does **not** contain `"git"` (legacy git-tree metering must not leak into user copy).
-
 ## Run timing (`malvin code` / `malvin kpop`)
 
 - **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP attaches timing and calls the same finalizer; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
-- **Artifacts:** `run_timing.json` in the run directory; stdout summary line (see root `grounding.md`) is emitted **before** the post-run metrics hint on the main code path.
-- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_after_post_hint` in `src/cli/kpop_flow.rs`).
-- **Rustdoc:** Helpers that run *after* timing + hint I/O must not read as reordering streams vs `grounding.md`—they may only merge `Result`s once stdout/stderr order is already established in the caller.
+- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** summary line after the workflow body (see root `grounding.md`).
+- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_results` in `src/cli/kpop_flow.rs`).
+- **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP callers.
 
 ## ACP traces, coalescing, tee
 
 - **Trace format:** After `AcpSession::prompt`, trace may start with plaintext `Command: …\n` (from `invocation`), then JSON lines from agent stdout—not guaranteed pure JSONL when that prelude exists.
-- **Tee:** `maybe_tee_log` (in `ops_body.inc`) reads the **whole** trace file; `strip_trace_invocation_line_for_tee` (`tee_strip_body.inc`) drops the duplicate prelude line. No-newline `Command:`-only buffers strip to empty (documented + tested).
+- **Tee:** Live trace tee goes through the stdout reader (`trace_file_write_line` / coalescing). `maybe_tee_log` in `ops_body.inc` is a no-op (historical hook). Post-hoc whole-file tee uses `strip_trace_invocation_line_for_tee` (`tee_strip_body.inc`) to drop a duplicate `Command:` prelude. No-newline `Command:`-only buffers strip to empty (documented + tested).
 - **Coalescing:** Verbose/trace paths track **Unicode scalar counts** per buffer in `coalesce.rs` to avoid repeated full-buffer `chars().count()` in flush loops.
 
 ## Tests
@@ -93,11 +86,11 @@ ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `str
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
-- **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/post_run_hint/report.rs`) so documented stdout/stderr post-run behavior stays aligned with sources—extend when stream contracts change.
+- **Grounding vs code:** `tests/cli_parity.rs` may `include_str!` root `grounding.md` and implementation files (e.g. `src/run_timing/report.rs`) so documented stdout/run-timing behavior stays aligned with sources.
 
 ### Repo-wide string contracts (renames, banned fragments)
 
-When removing or renaming a user-facing term, **`rg` the whole repository** (implementation, `grounding.md`, `default_prompts/`, `.cursorrules`, `.llm_style/`, `_kpop/` logs). A short **forbidden substring** may appear inside unrelated English words—verify with context, not only exact tokens. In **learn/review prompts**, distinguish **agent pacing** (latency, thoroughness) from **post-run metrics** language in code (`post_run_hint`). **`tests/cli_parity.rs`** asserts `grounding.md` matches stderr contracts when implementation uses `eprintln!` for the post-run hint; if docs lag, tests fail before runtime.
+When removing or renaming a user-facing term, **`rg` the whole repository** (implementation, `grounding.md`, `default_prompts/`, `.cursorrules`, `.llm_style/`, `_kpop/` logs). A short **forbidden substring** may appear inside unrelated English words—verify with context, not only exact tokens. In **learn/review prompts**, distinguish **agent pacing** (latency, thoroughness) from product **metrics** wording when that distinction matters for user-visible copy.
 
 ## kiss
 
