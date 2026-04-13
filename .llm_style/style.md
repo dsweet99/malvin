@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP, root **`plan.md`** backlog, search fallbacks).
 
 ---
 
@@ -46,10 +46,10 @@ TRIGGER: run timing
 ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** `TIMING:` line after the workflow body—**same `serde_json::Value`** for disk + stdout; no separate stderr “metrics hint.” Dual-failure: prefer primary workflow/ACP error—root `grounding.md` + `malvin_tooling.md` § Run timing.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
-TRIGGER: KPOP experiment, MBC2, p-creative  
-ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`—`malvin_tooling.md` § KPOP. `malvin models` parser/ANSI: `malvin_debugging.md`.
-TRIGGER: KPOP HPF log  
-ADVICE: **Hypothesize → Predict → Falsify**; session artifact path; **`mkdir -p`** before write—`malvin_debugging.md` § KPOP. IDE search I/O → shell `rg` from repo root.
+TRIGGER: root plan.md informal bullets  
+ADVICE: Repo-root **`./plan.md`** may hold ad-hoc requirements (not always synced with `grounding.md`). Read when cited; verify vs `src/` + tests—`malvin_debugging.md` § Root plan.
+TRIGGER: KPOP MBC2, HPF, models  
+ADVICE: Creative/kpop: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, `p_creative`—`malvin_tooling.md` § KPOP. **HPF** (hypothesize/predict/falsify, budget, `_malvin/.../exp_log_*.md`, incremental log, summary+tl;dr, verification-only)—`malvin_debugging.md` § KPOP + § KPOP verification. **`malvin models`** parser/ANSI: `malvin_debugging.md`. IDE search I/O → shell `rg` from repo root.
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Detail: `malvin_tooling.md` § Rust edition 2024.
 TRIGGER: malvin init  
