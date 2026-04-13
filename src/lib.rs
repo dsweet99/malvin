@@ -23,6 +23,7 @@ pub mod agent {
 }
 
 pub mod artifacts;
+mod child_health;
 pub mod config;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;

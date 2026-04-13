@@ -52,6 +52,20 @@ Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.i
 
 **Included `.rs` files** (e.g. `transport/command.rs` pulled into `acp/mod.rs`) **inherit the parent module’s `use`**—types like `Path` are not imported locally unless the include parent brings them.
 
+## Child health + ACP silence (`src/child_health/`)
+
+TRIGGER: child health module layout  
+ADVICE: Library module at `src/child_health/mod.rs` with `linux.rs`, `macos.rs` (`libproc` + `errno`/`libc`), `other.rs`, and `tests.rs` when `kiss` `lines_per_file` requires. Wired from `src/lib.rs` (`mod child_health`); RPC wait in `src/acp/transport/rpc.rs` (`child_pid` on `AcpStdioRpc`). `src/coverage_kiss.rs` `stringify!` for public helpers.
+
+TRIGGER: process_absent cannot_sample  
+ADVICE: **`process_absent`**: OS says PID row missing (`/proc` `NotFound`; macOS `proc_pidinfo` + `errno == ESRCH`). **`cannot_sample`**: I/O/parse failure or ambiguous read—`exists: true`, `counters_trusted: false`, zero placeholders. Do not conflate with “gone” (user-facing `acp child process is not running`).
+
+TRIGGER: counters_trusted progress  
+ADVICE: **`health_indicates_progress`** compares CPU/context/thread fields only when **both** snapshots have `counters_trusted`. If the first sample is untrusted, do **not** infer progress from a lone trusted second read (typical Linux `/proc` counters would always look “busy”). `silence_grace_for_rpc_timeout` clamps `rpc_timeout/8` to 50–250ms.
+
+TRIGGER: rpc_wait_response health race  
+ADVICE: After the silence `sleep(rpc_timeout)`, use `tokio::select!` so the JSON-RPC **`oneshot`** and **`evaluate_after_acp_silence`** (grace sleep inside) are polled together—inbound responses during grace must return success, not `AppearsHung`. Regression: `transport_tests::rpc_response_arriving_during_child_health_grace_is_delivered`.
+
 ## Post-run metrics hint
 
 - **Code:** `src/post_run_hint/report.rs` — `finish_and_write_report` / `finish_post_run_hint_then_return`; prints a stable **“not measured”** stderr line only. **`src/post_run_hint/mod.rs`** documents that **gross/net metering and git tree snapshots were removed**—there is no yield/gross/net computation in product code.

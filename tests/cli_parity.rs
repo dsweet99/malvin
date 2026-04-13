@@ -251,3 +251,37 @@ fn grounding_no_longer_promises_post_run_metrics_hint() {
         "ACP/workflow sources should not reference the removed post-run metrics hint"
     );
 }
+
+#[test]
+fn shared_opts_and_run_timing_sources_must_not_revive_stderr_post_run_metrics_copy() {
+    let shared = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/cli/shared_opts.rs"
+    ));
+    let run_timing = concat!(
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/run_timing/mod.rs"
+        )),
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/run_timing/report.rs"
+        )),
+    );
+    let kpop_flow = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/cli/kpop_flow.rs"
+    ));
+    assert!(
+        !shared.contains("metrics hint") && !shared.contains("tracked-edit"),
+        "`--no-tee` help must not promise removed stderr tracked-edit metrics; align with grounding.md"
+    );
+    assert!(
+        !run_timing.contains("stderr post-run hint") && !run_timing.contains("stderr post-run"),
+        "run_timing sources should not describe a stderr post-run metrics line; run timing is stdout + JSON per grounding.md"
+    );
+    assert!(
+        !kpop_flow.contains("post-run hint"),
+        "kpop flow comments must not describe a removed stderr post-run metrics step"
+    );
+}

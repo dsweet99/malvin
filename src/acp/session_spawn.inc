@@ -11,6 +11,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
     cont: AcpHandshakeContinuation<'_>,
 ) -> Result<(Child, String), String> {
     let mut child = pipes.child;
+    let child_pid = child.id().unwrap_or(0);
     let stdout = pipes.stdout;
     let prompt_cleanup = Arc::new(PromptRpcCleanup {
         busy: io.busy.clone(),
@@ -38,6 +39,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
         acp_activity_seq: io.acp_activity_seq.clone(),
         acp_activity_notify: io.acp_activity_notify.clone(),
         acp_verbose: cont.session.acp_verbose,
+        child_pid,
     };
     let session_id = match handshake_inner(HandshakeParams {
         io: &io_rpc,

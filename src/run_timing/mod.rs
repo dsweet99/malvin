@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 /// JSON artifact filename under [`crate::artifacts::RunArtifacts::run_dir`].
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
-/// One line printed to stdout after the workflow body (before the stderr post-run hint; `malvin code` / `malvin kpop`).
+/// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop`).
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "Run timing:";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).

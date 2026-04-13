@@ -25,6 +25,8 @@ pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
         || lower.contains("deadlineexceeded")
         || lower.contains("writableiterable is closed")
         || lower.contains("readableiterable is closed")
+        || lower.contains("acp child process is not running")
+        || lower.contains("acp child process is zombie")
 }
 
 /// True when `s` indicates a real timeout without matching configuration identifiers like `timeout_ms`.

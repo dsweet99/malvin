@@ -68,7 +68,7 @@ async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Resul
         p_creative: ctx.kpop.p_creative,
     };
 
-    // Match `Orchestrator::run`: run-timing stdout summary + JSON, then post-run hint (grounding.md).
+    // Match `Orchestrator::run`: run-timing stdout summary + JSON after the ACP body (grounding.md).
     let timing = ctx.client.attach_run_timing_for_session();
     let acp_result = kpop_run_acp(ctx.client, input).await;
     let timing_result = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);

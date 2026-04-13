@@ -13,7 +13,7 @@ pub struct SharedOpts {
     /// Disable force-mode (omit `agent --force`).
     #[arg(long, default_value_t = false)]
     pub no_force: bool,
-    /// Disable tee: do not echo the plan/request, the startup `Command:` line, or ACP session output to stdout [default: tee on]. Progress lines, `Logs: …`, and `DONE` still print to stdout. A short post-run tracked-edit metrics hint may go to stderr after the workflow (see `grounding.md`). Run-directory files (for example `command.log` and trace logs) are always written.
+    /// Disable tee: do not echo the plan/request, the startup `Command:` line, or ACP session output to stdout [default: tee on]. Progress lines, `Logs: …`, and `DONE` still print to stdout. Run timing (`run_timing.json` and one stdout summary line) is emitted after the workflow body as described in `grounding.md`. Run-directory files (for example `command.log` and trace logs) are always written.
     #[arg(long, default_value_t = false)]
     pub no_tee: bool,
 }

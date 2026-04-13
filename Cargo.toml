@@ -44,3 +44,8 @@ unsafe_code = "deny"
 [lints.clippy]
 pedantic = "warn"
 nursery = "warn"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+errno = "0.3"
+libc = "0.2"
+libproc = "0.14"

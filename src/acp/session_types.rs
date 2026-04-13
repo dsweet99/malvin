@@ -12,6 +12,8 @@ pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
 
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
+    /// OS PID for [`crate::child_health`] liveness checks (0 if unknown).
+    pub child_pid: u32,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,

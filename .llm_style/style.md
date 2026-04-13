@@ -1,23 +1,26 @@
 # LLM style — malvin (index)
 
-When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP), `./.llm_style/malvin_debugging.md` (debug, search fallbacks).
+When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, child health), `./.llm_style/malvin_debugging.md` (debug, search fallbacks).
 
 ---
 
-TRIGGER: run checks pre-commit  
-ADVICE: From repo root run the suite in `malvin_tooling.md` § Required checks; **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Rerun mid-task (catches `kiss` limits early); parallelize independent checks.
+TRIGGER: all checks pre-commit  
+ADVICE: Run full suite in `malvin_tooling.md` § Required checks; **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure (no “pre-existing”); no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks.
 
 TRIGGER: kiss check  
 ADVICE: `kiss check .` (full project), not bare `kiss`. See `.kissignore`.
 
 TRIGGER: kiss limits  
-ADVICE: `lines_per_file` (≈250), `calls_per_function`, or `max_indentation_depth`: split submodules (e.g. `run_timing/report.rs`), extract helpers from hot paths—not unrelated churn. Renames: update `src/coverage_kiss.rs` / `stringify!` when symbols move.
+ADVICE: `lines_per_file` (≈250), `calls_per_function`, or `max_indentation_depth`: split submodules (e.g. `run_timing/report.rs`, `child_health/tests.rs`), extract helpers—not unrelated churn. Renames: update `src/coverage_kiss.rs` / `stringify!` when symbols move.
 
 TRIGGER: .kissconfig  
 ADVICE: Never edit `.kissconfig`.
 
 TRIGGER: NEVER CALL GIT  
-ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/check_untracked.sh` fails on untracked `.rs`/`.py`—without `git add`, merge new tests into tracked `tests/*.rs` (see `malvin_tooling.md` § Untracked source files).
+ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/check_untracked.sh` fails on untracked `.rs`/`.py`—without `git add`, merge new tests into tracked `tests/*.rs` (see `malvin_tooling.md` § Untracked). New lib modules under `src/` (e.g. `child_health/`) must be tracked **with** `lib.rs` / `Cargo.toml` / `Cargo.lock` for reproducible clones.
+
+TRIGGER: child health ACP silence  
+ADVICE: `src/child_health/` (`linux`/`macos`/`other`); `process_absent` vs `cannot_sample`; `counters_trusted`; `rpc_wait_response` races JSON-RPC `oneshot` with `evaluate_after_acp_silence`. See `malvin_tooling.md` § Child health + ACP silence.
 
 TRIGGER: malvin binary crate  
 ADVICE: `src/cli/` is binary-only—not the `malvin` library—so `pub(crate)` on `AgentClient` fields (e.g. `timing`) is not visible there; use public lib methods (`attach_run_timing_for_session`, …) or keep access in lib modules. See `malvin_tooling.md` § Crate layout.
@@ -47,7 +50,10 @@ TRIGGER: plan.md root vs `_malvin`
 ADVICE: Root `plan.md`: sync with shipped `malvin init`/ACP/models (`src/cli/init_cmd.rs`, tests). One-off task specs: `_malvin/**/plan.md` when cited. See `malvin_tooling.md` § `malvin init` + ACP bounded retry.
 
 TRIGGER: KPOP experiment, MBC2, p-creative  
-ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—`malvin_tooling.md` § KPOP. **Hypothesize → Predict → Falsify**; restate problem; optional **hypothesis budget**; log cycles to `_malvin/**/_kpop/exp_log_*.md` (`malvin_debugging.md`). Parser/ANSI: same file.
+ADVICE: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, outbound counts—`malvin_tooling.md` § KPOP. `malvin models` parser/ANSI: `malvin_debugging.md`.
+
+TRIGGER: KPOP HPF log  
+ADVICE: **Hypothesize → Predict → Falsify**; restate problem first; optional **hypothesis budget**; session artifact path and incremental logging, **`mkdir -p`** before write, closing summary—`malvin_debugging.md` § KPOP. IDE search I/O errors → shell `rg` from repo root—same file.
 
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Put `use` at module scope. Detail: `malvin_tooling.md` § Rust edition 2024.
@@ -87,6 +93,3 @@ ADVICE: Workspace **glob/search** I/O (e.g. `rg: IO error`) → shell `rg`/`find
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when rules require; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only replies when the user expects work (shell `rg` if IDE search fails).
-
-TRIGGER: all checks must pass, noqa  
-ADVICE: Fix all failures everywhere (do not treat any as “pre-existing”). No `# noqa` except where required for correctness. No test-cheating.

@@ -87,6 +87,12 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn dead_child_errors_are_retriable() {
+        assert!(agent_string_is_retriable("acp child process is not running"));
+        assert!(agent_string_is_retriable("acp child process is zombie"));
+    }
+
+    #[test]
     fn context_deadline_exceeded_is_retriable() {
         assert!(
             agent_string_is_retriable("code=-32000; message=\"context deadline exceeded\""),

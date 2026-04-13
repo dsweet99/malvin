@@ -55,6 +55,16 @@ fn kiss_stringify_config() {
 }
 
 #[test]
+fn kiss_stringify_child_health() {
+    let _ = stringify!(crate::child_health::ChildHealth);
+    let _ = stringify!(crate::child_health::SilenceHealthOutcome);
+    let _ = stringify!(crate::child_health::sample_child_health);
+    let _ = stringify!(crate::child_health::evaluate_after_acp_silence);
+    let _ = stringify!(crate::child_health::health_indicates_progress);
+    let _ = stringify!(crate::child_health::silence_grace_for_rpc_timeout);
+}
+
+#[test]
 fn kiss_stringify_env_path() {
     let _ = stringify!(crate::env_path::lookup_bin_on_path);
     let _ = stringify!(crate::env_path::agent_or_cursor_agent_bin);
