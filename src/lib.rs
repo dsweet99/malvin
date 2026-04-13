@@ -24,7 +24,6 @@ pub mod agent {
 
 pub mod artifacts;
 pub mod config;
-pub mod post_run_hint;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod env_path;

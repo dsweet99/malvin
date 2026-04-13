@@ -13,7 +13,6 @@ use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
-use malvin::post_run_hint::finish_post_run_hint_then_return;
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing;
 
@@ -28,7 +27,7 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
 
     kpop_emit_startup(&kpop, &artifacts)?;
 
-    kpop_run_prompt_and_post_run_hint(KpopAfterStartup {
+    kpop_run_prompt_and_finalize_timing(KpopAfterStartup {
         client: &mut client,
         kpop: &kpop,
         workflow,
@@ -51,7 +50,7 @@ struct KpopAfterStartup<'a> {
     text: &'a str,
 }
 
-async fn kpop_run_prompt_and_post_run_hint(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
+async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
     let context = workflow_context(ctx.artifacts);
     let kpop_body = ctx
         .store
@@ -74,21 +73,15 @@ async fn kpop_run_prompt_and_post_run_hint(ctx: KpopAfterStartup<'_>) -> Result<
     let acp_result = kpop_run_acp(ctx.client, input).await;
     let timing_result = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);
     ctx.client.set_run_timing(None);
-    merge_acp_and_timing_after_post_hint(&ctx.artifacts.run_dir, acp_result, timing_result)
+    merge_acp_and_timing_results(acp_result, timing_result)
 }
 
-/// stderr post-run hint plus error precedence, **after** run timing is already emitted.
-///
-/// Callers must run [`crate::run_timing::finalize_and_emit_run_timing`] first so stdout run timing
-/// precedes this function’s stderr hint (`grounding.md`). This does not reorder streams; it only
-/// merges [`Result`]s so an ACP failure wins over a timing I/O error when both occur.
-fn merge_acp_and_timing_after_post_hint(
-    run_dir: &Path,
+/// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
+fn merge_acp_and_timing_results(
     acp_result: Result<(), String>,
     timing_result: std::io::Result<()>,
 ) -> Result<(), String> {
-    let with_hint = finish_post_run_hint_then_return(run_dir, acp_result);
-    match with_hint {
+    match acp_result {
         Ok(()) => timing_result.map_err(|e| e.to_string()),
         Err(e) => {
             let _ = timing_result;
@@ -170,7 +163,7 @@ pub fn kpop_learn_bundle(
 #[test]
 fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::kpop_flow::KpopAfterStartup);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_post_run_hint);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_finalize_timing);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_combined_prompt);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
@@ -188,13 +181,11 @@ fn trims_sections_and_includes_budget() {
 
 #[test]
 fn hypothesis_legacy_timing_after_hint_masks_acp_when_both_fail() {
-    let tmp = tempfile::tempdir().unwrap();
     let acp: Result<(), String> = Err("acp".into());
     let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
-    let out = finish_post_run_hint_then_return(tmp.path(), acp);
     let legacy = (|| {
         timing.map_err(|e| e.to_string())?;
-        out
+        acp
     })();
     assert!(
         legacy.unwrap_err().contains("timing"),
@@ -204,8 +195,7 @@ fn hypothesis_legacy_timing_after_hint_masks_acp_when_both_fail() {
 
 #[test]
 fn merge_acp_prefers_acp_error_when_both_fail() {
-    let tmp = tempfile::tempdir().unwrap();
     let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
-    let merged = merge_acp_and_timing_after_post_hint(tmp.path(), Err("acp".into()), timing);
+    let merged = merge_acp_and_timing_results(Err("acp".into()), timing);
     assert_eq!(merged, Err("acp".into()));
 }

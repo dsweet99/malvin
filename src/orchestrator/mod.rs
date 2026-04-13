@@ -8,7 +8,6 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
-use crate::post_run_hint::finish_post_run_hint_then_return;
 use crate::prompts::PromptStore;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 
@@ -88,10 +87,6 @@ impl Orchestrator<'_> {
             Err(e) => Err(WorkflowError(e.0)),
         };
         let timing_result = self.emit_run_timing_artifact(&timing);
-        let workflow_result = finish_post_run_hint_then_return(
-            &self.artifacts.run_dir,
-            workflow_result,
-        );
         let end_result = self
             .client
             .end_coder_session()

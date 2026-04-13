@@ -6,11 +6,10 @@
 //! Patterns must not use a `./` prefix: git normalizes pathspecs without `./`, so those entries never
 //! matched.
 //!
-//! ## Grounding vs post-run metrics hint
+//! ## Grounding vs run timing
 //!
-//! Contract checks between `grounding.md` and `src/post_run_hint/report.rs` after git-based metering removal.
+//! Contract checks between `grounding.md` and the run-timing implementation.
 
-use malvin::post_run_hint::POST_RUN_METRICS_NOT_MEASURED_MESSAGE;
 use std::path::Path;
 use std::process::Command;
 
@@ -217,40 +216,6 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
 }
 
 #[test]
-fn not_measured_message_does_not_blame_git_after_git_metering_removed() {
-    assert!(
-        !POST_RUN_METRICS_NOT_MEASURED_MESSAGE.contains("git"),
-        "git tree metering was removed (see plan); stderr hint must not reference git ({POST_RUN_METRICS_NOT_MEASURED_MESSAGE:?})"
-    );
-}
-
-#[test]
-fn grounding_post_run_hint_stderr_matches_report_implementation() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    let report_rs = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/post_run_hint/report.rs"
-    ));
-    let grounding_ties_post_run_hint_to_stderr = grounding.lines().any(|line| {
-        let lower = line.to_lowercase();
-        line.contains("stderr") && lower.contains("tracked edit metrics")
-    });
-    let report_emits_hint_on_stderr = report_rs.lines().any(|line| {
-        let t = line.trim_start();
-        if t.starts_with("//") || t.starts_with("//!") {
-            return false;
-        }
-        line.contains("eprintln!")
-            && line.contains("POST_RUN_METRICS_NOT_MEASURED_MESSAGE")
-    });
-    assert_eq!(
-        grounding_ties_post_run_hint_to_stderr,
-        report_emits_hint_on_stderr,
-        "grounding.md must document tracked edit metrics on stderr iff report.rs uses eprintln! for that hint"
-    );
-}
-
-#[test]
 fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     let run_timing_rs = concat!(
@@ -275,25 +240,14 @@ fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
 }
 
 #[test]
-fn grounding_kpop_finishes_run_timing_before_post_run_hint() {
+fn grounding_no_longer_promises_post_run_metrics_hint() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     assert!(
-        grounding.contains("KPOP") && grounding.to_lowercase().contains("same ordering"),
-        "grounding.md must document KPOP run-timing stdout before post-run metrics hint on stderr"
-    );
-    let kpop_flow = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/kpop_flow.rs"
-    ));
-    // Match call sites only (imports appear earlier and would invert ordering).
-    let i_finalize = kpop_flow.find("run_timing::finalize_and_emit_run_timing");
-    let i_hint = kpop_flow.find("finish_post_run_hint_then_return(run_dir, acp_result)");
-    assert!(
-        i_finalize.is_some() && i_hint.is_some(),
-        "malvin kpop must call finalize_and_emit_run_timing and finish_post_run_hint_then_return"
+        !grounding.to_lowercase().contains("tracked edit metrics"),
+        "grounding.md should not mention the removed post-run metrics hint"
     );
     assert!(
-        i_finalize.unwrap() < i_hint.unwrap(),
-        "finalize_and_emit_run_timing must run before finish_post_run_hint_then_return (grounding.md)"
+        !agent_sources_for_snapshot().contains("post_run_hint"),
+        "ACP/workflow sources should not reference the removed post-run metrics hint"
     );
 }

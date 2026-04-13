@@ -61,13 +61,6 @@ fn kiss_stringify_env_path() {
 }
 
 #[test]
-fn kiss_stringify_post_run_hint() {
-    let _ = stringify!(crate::post_run_hint::finish_and_write_report);
-    let _ = stringify!(crate::post_run_hint::finish_post_run_hint_then_return);
-    let _ = stringify!(crate::post_run_hint::POST_RUN_METRICS_NOT_MEASURED_MESSAGE);
-}
-
-#[test]
 fn kiss_stringify_run_timing() {
     let _ = stringify!(crate::run_timing::RunTiming::new_arc);
     let _ = stringify!(crate::run_timing::attach_new_run_timing);
