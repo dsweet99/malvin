@@ -1,17 +1,19 @@
 # LLM style — malvin (index)
 
-When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, review sync, `/proc` child health), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, `/proc` child health), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
 
 ---
 
 TRIGGER: all checks pre-commit  
-ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`**); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
+ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 TRIGGER: kiss check and limits  
-ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file` (e.g. ~250 `src/prompts/mod.rs` → `prompts/template.rs`), `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract shared helpers, move CLI arg structs to dedicated files—not unrelated churn. Update `src/coverage_kiss.rs` / `stringify!` when symbols move. See `malvin_tooling.md` § kiss.
+ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. Update `src/coverage_kiss.rs` / `stringify!` when symbols move. See `malvin_tooling.md` § kiss.
 TRIGGER: .kissconfig  
 ADVICE: Never edit `.kissconfig`.
 TRIGGER: NEVER CALL GIT  
 ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/check_untracked.sh` fails on untracked `.rs`/`.py`—without `git add`, merge new tests into tracked `tests/*.rs` (e.g. `cli_parity.rs`); see `malvin_tooling.md` § Untracked.
+TRIGGER: clap help command order  
+ADVICE: `malvin --help` lists subcommands in **`src/cli/args.rs`** `Commands` enum declaration order—reorder variants to change the usage list; see `malvin_tooling.md` § CLI.
 TRIGGER: cli mod sibling file  
 ADVICE: `src/cli/mod.rs` `mod name;` requires `src/cli/name.rs`; ship in the same change—`malvin_tooling.md` § CLI.
 TRIGGER: child health ACP silence  
@@ -27,13 +29,11 @@ ADVICE: Change only what the task requires; match naming, layout, and comment le
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
 TRIGGER: grounding code parity  
-ADVICE: When run-timing, tee, or post-run stdout/stderr behavior changes, align `grounding.md` with sources (`run_timing/`, `src/acp/`, …). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). `tests/cli_parity.rs` may `include_str!` implementation files and `ops_body.inc` (e.g. reviewer pair order test)—see `malvin_tooling.md` § Tests + Review sync.
+ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/`, `.cursorrules`, `_kpop/` logs—see `malvin_tooling.md` § Repo-wide string contracts.
-TRIGGER: post-run metrics hint  
-ADVICE: Optional stderr line after run timing: stable “not measured” copy only (no gross/net/repo-tree metering). Message must not contain `"git"` (`tests/cli_parity.rs`). Ordering: `grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one stdout `TIMING:` line after the workflow body (**before** stderr post-run hint)—**same `serde_json::Value`** drives disk + stdout (`report.rs`); `attach_new_run_timing` / `attach_run_timing_for_session` for all three; `emit_run_timing_after_acp` (`timing_merge.rs`) for `do`/`kpop` finalize. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** `TIMING:` line after the workflow body—**same `serde_json::Value`** for disk + stdout; no separate stderr “metrics hint.” Dual-failure: prefer primary workflow/ACP error—root `grounding.md` + `malvin_tooling.md` § Run timing.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: KPOP experiment, MBC2, p-creative  
@@ -67,4 +67,4 @@ ADVICE: When the user demands all checks/tests green on **all** files, fix repo-
 TRIGGER: CLI async timing finalize  
 ADVICE: After `await` ACP work, call sync `emit_run_timing_after_acp` (`src/cli/timing_merge.rs`)—avoid async helpers taking `FnOnce(&mut AgentClient) -> Fut` (lifetime errors with `&mut` + returned `Future`). See `malvin_tooling.md` § Run timing.
 TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work.
+ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work. **Agent pacing:** distinguish product “metrics” wording from model latency/thoroughness when user-visible copy matters (`malvin_tooling.md` § Repo-wide string contracts).

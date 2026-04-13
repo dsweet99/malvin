@@ -22,14 +22,14 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Initialize a repository with templates and local tooling (`kiss`, Git LFS, pre-commit).
+    Init(InitArgs),
+    /// Run one coder ACP prompt.
+    Do(DoArgs),
     /// Run the full implement → review → learn workflow.
     Code(CodeArgs),
     /// KPOP hypothesis workflow.
     Kpop(KpopArgs),
-    /// Run one coder ACP prompt (`header.md` plus your text or `@file`).
-    Do(DoArgs),
-    /// Initialize a repository with templates and local tooling (`kiss`, Git LFS, pre-commit).
-    Init(InitArgs),
     /// List models from the Cursor agent CLI (`cursor-agent models` / `agent models`).
     Models(ModelsArgs),
 }

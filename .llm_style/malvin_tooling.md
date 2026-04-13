@@ -106,6 +106,9 @@ ADVICE: Prefer `v.get("wall_clock_ms").and_then(Value::as_u64)` over duplicated 
 
 ## Tests
 
+TRIGGER: docs parity llm_style  
+ADVICE: `tests/cli_parity.rs` **`include_str!`**s root **`grounding.md`**, **`.llm_style/style.md`**, **`.llm_style/malvin_tooling.md`**, and selected **`src/`** files—guards against revived removed modules (e.g. `post_run_hint`), stderr post-run metrics copy, and **`TIMING:`** / JSON contract drift. Editing agent guidance or user-facing behavior: run **`cargo test`** (or at least `cli_parity`) before merge.
+
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
@@ -141,6 +144,9 @@ Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.r
 - Document consumer-visible removals (e.g. old `malvin::agent` paths) in **`CHANGELOG.md`**.
 
 ## CLI (`src/cli/`)
+
+TRIGGER: clap Commands enum order  
+ADVICE: `clap` prints **`Commands:`** in **`#[derive(Subcommand)]`** variant order (`src/cli/args.rs`). To change `malvin --help` list order (e.g. `init`, `do`, `code`, …), reorder the enum—not `mod.rs` match arms (those can stay any order).
 
 TRIGGER: CLI help and shared opts  
 ADVICE: `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; `SharedOpts::tee_startup_stdout`.
