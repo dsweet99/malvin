@@ -14,6 +14,12 @@ use chrono::Local;
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
 
+/// One stdout line `[{label}...]` plus the full outgoing prompt body (same formatting as [`print_stdout_text`]).
+pub fn print_outgoing_prompt_log(label: &str, full_prompt: &str) {
+    print_stdout_line(MALVIN_WHO, &format!("[{label}...]"));
+    print_stdout_text(MALVIN_WHO, full_prompt);
+}
+
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
 pub const LOG_TAG_INNER_WIDTH: usize = 10;
 
@@ -120,7 +126,7 @@ mod tests {
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
         format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
         format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
-        print_stdout_line, print_stdout_text,
+        print_outgoing_prompt_log, print_stdout_line, print_stdout_text,
     };
 
     #[test]
@@ -181,6 +187,7 @@ mod tests {
         print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
         print_stderr_line("e", "err");
         print_stdout_text("t", "a\nb");
+        print_outgoing_prompt_log("main", "full\nbody");
         let mut it = super::logical_lines("x\ny");
         assert_eq!(it.next(), Some("x"));
         assert_eq!(it.next(), Some("y"));
@@ -199,6 +206,7 @@ mod tests {
         let _ = stringify!(super::print_stdout_line);
         let _ = stringify!(super::print_stderr_line);
         let _ = stringify!(super::print_stdout_text);
+        let _ = stringify!(super::print_outgoing_prompt_log);
         let _ = stringify!(super::is_command_prelude_line);
         let _ = stringify!(super::logical_lines);
     }

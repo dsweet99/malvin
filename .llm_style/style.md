@@ -1,9 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP **`include!`**, **`RUN_TIMING_SUMMARY_PREFIX`** / `TIMING: ` docs, **malvin do** split trace, **`src/output/`** tee, CLI + **kiss gate**, **review sync** clears stale LGTM, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify-in-shell, **`review_sync` tests**, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`**, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
-
----
-
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP **`include!`**, run-timing + **primary-vs-secondary** error merge, **`DEFAULT_REPO_STYLE_PROMPT_REL`**, **malvin do** trace, **`src/output/`** tee, CLI/**kiss**, **review sync**, **`tests/cli_parity.rs`** guards, child health), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify, **`review_sync`**, `_malvin/...` plans, search fallbacks), `./.llm_style/authoring_llm_style.md` (keep this index **<100** lines; split detail to topic files).
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 TRIGGER: kiss check and limits  
@@ -18,6 +15,8 @@ TRIGGER: clap help command order
 ADVICE: `malvin --help` lists subcommands in **`src/cli/args.rs`** `Commands` enum declaration order—reorder variants to change the usage list; see `malvin_tooling.md` § CLI.
 TRIGGER: cli mod sibling file  
 ADVICE: `src/cli/mod.rs` `mod name;` requires `src/cli/name.rs`; ship in the same change—`malvin_tooling.md` § CLI.
+TRIGGER: lib artifacts submodule file  
+ADVICE: Same for **`src/artifacts/mod.rs`** (e.g. `grounding_backup.rs`); add **`tests/cli_parity.rs`** `include_str!` wiring checks when a new submodule is easy to omit from commits—`malvin_tooling.md` § Artifacts + § Tests.
 TRIGGER: child health ACP silence  
 ADVICE: `src/child_health/` (`linux`/`macos`/`other`); `process_absent` vs `cannot_sample`; `counters_trusted`; `rpc_wait_response` races JSON-RPC `oneshot` with `evaluate_after_acp_silence`. See `malvin_tooling.md` § Child health + ACP silence.
 TRIGGER: voluntary_ctxt parse  
@@ -31,7 +30,7 @@ ADVICE: Change only what the task requires; match naming, layout, and comment le
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Verify claims vs `src/` + tests—**reviewer bullets can lag** already-correct docs/code; resolve by updating `review.md` and adding **`tests/cli_parity.rs`** guards when useful. Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
 TRIGGER: malvin do CLI  
-ADVICE: **`--raw`:** `skip_repo_style`, ACP stem `raw`. **Non-raw:** `do_trace_split` → stems `>style` / `>header` / `>prompt` (tee collapses `header` to one stdout line); types `src/acp/outgoing_prompt_trace.rs`; one `.style/main.md` read via `coder_prompt_body_with_optional_repo_style` for both compose + trace. `do_flow.rs`, `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests`. Detail: `malvin_tooling.md` § CLI + malvin do ACP trace.
+ADVICE: **Default (raw):** `skip_repo_style`, ACP stem `raw`. **`--cooked`:** `do_trace_split` → stems `>style` / `>header` / `>prompt` (tee collapses `header` to one stdout line); types `src/acp/outgoing_prompt_trace.rs`; one repo-style read via `coder_prompt_body_with_optional_repo_style` for both compose + trace. `do_flow.rs`, `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests`. Detail: `malvin_tooling.md` § CLI + malvin do ACP trace.
 TRIGGER: grounding code parity  
 ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, `src/output/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent paths—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`; e.g. obsolete `src/artifacts.rs` vs `src/artifacts/`—`malvin_tooling.md` § Tests). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: stdout stderr log header  
@@ -43,7 +42,11 @@ ADVICE: After changing ACP prompt signatures or include-body call shapes, check 
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/`, `.cursorrules`, `_kpop/` logs—see `malvin_tooling.md` § Repo-wide string contracts.
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** line whose payload after the timestamp starts with [`RUN_TIMING_SUMMARY_PREFIX`] (**`TIMING: `** — colon plus **one ASCII space** before the first `name = value` field)—**same `serde_json::Value`** for disk + stdout; never document bare `` `TIMING:` `` without that space (`timing_merge.rs`, `run_timing/mod.rs`, `report.rs`, `grounding.md`). No separate stderr “metrics hint.” Dual-failure: prefer primary workflow/ACP error—`malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **stdout** line whose payload after the timestamp starts with [`RUN_TIMING_SUMMARY_PREFIX`] (**`TIMING: `** — colon plus **one ASCII space** before the first `name = value` field)—**same `serde_json::Value`** for disk + stdout; never document bare `` `TIMING:` `` without that space (`timing_merge.rs`, `run_timing/mod.rs`, `report.rs`, `grounding.md`). No separate stderr “metrics hint.”—`malvin_tooling.md` § Run timing.
+TRIGGER: primary vs secondary Result  
+ADVICE: **`merge_acp_and_timing_results`** and **`prefer_primary_string_errors`** (`src/cli/timing_merge.rs`) surface ACP/workflow failures over run-timing I/O or **`grounding.md` restore** failures—`malvin_tooling.md` § Error merge.
+TRIGGER: rustdoc grounding repo style  
+ADVICE: **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`.style/main.md`) in **`src/acp/client_impl.inc`**; user contract in **`grounding.md`** section **## Repo style file**. In **`///`** cite **`## Heading`**, not `§`—`malvin_tooling.md` § Repo style + § Docs parity.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: root plan.md informal bullets  
@@ -92,5 +95,3 @@ TRIGGER: llm_style layout paths
 ADVICE: **`.llm_style/malvin_tooling.md`** crate-layout + file-path ADVICEs must match **`src/`**; on renames/splits extend **`tests/cli_parity.rs`** `include_str!` guards—`malvin_tooling.md` § Tests (**`malvin_tooling path strings vs src`**).
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work. **Named workflows** (KPOP, hypothesis budgets, stamped `_malvin/` paths): full thoroughness over skipping steps—`malvin_debugging.md` § KPOP protocol completeness. **Agent pacing:** distinguish product “metrics” wording from model latency/thoroughness when user-visible copy matters (`malvin_tooling.md` § Repo-wide string contracts).
-TRIGGER: llm_style index size  
-ADVICE: Keep `./.llm_style/style.md` **<100** lines; add TRIGGER:/ADVICE: detail in `./.llm_style/<topic>.md`—consolidate overlaps; do not drop rules—see `authoring_llm_style.md`.

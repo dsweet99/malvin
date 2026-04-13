@@ -57,6 +57,8 @@ pub struct Orchestrator<'a> {
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
+    /// Snapshot path under `~/.malvin/groundings/`, restored before each review and after the workflow.
+    pub grounding_backup: Option<std::path::PathBuf>,
 }
 
 impl Orchestrator<'_> {

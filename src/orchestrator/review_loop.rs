@@ -42,6 +42,11 @@ impl Orchestrator<'_> {
         &mut self,
         ctx: ReviewAttemptCtx<'_>,
     ) -> Result<bool, WorkflowError> {
+        if let Some(b) = &self.grounding_backup {
+            crate::artifacts::restore_workspace_grounding(&self.artifacts.work_dir, b)
+                .map_err(WorkflowError)?;
+        }
+
         (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
         if ctx.review_prompt.starts_with("review_") {

@@ -8,12 +8,25 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
-use super::timing_merge::emit_run_timing_after_acp;
+use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
-use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
+use malvin::artifacts::{
+    RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
+    resolve_user_request, restore_workspace_grounding,
+};
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
+
+fn merge_kpop_acp_with_grounding_restore(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    grounding_backup: Option<&PathBuf>,
+) -> Result<(), String> {
+    let restore_res = grounding_backup
+        .map_or(Ok(()), |b| restore_workspace_grounding(work_dir, b));
+    prefer_primary_string_errors(primary, restore_res)
+}
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let store = prepare_kpop_prompt_store(workflow, kpop.p_creative)?;
@@ -24,9 +37,11 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
 
+    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+
     kpop_emit_startup(&kpop, &artifacts)?;
 
-    kpop_run_prompt_and_finalize_timing(KpopAfterStartup {
+    let acp_res = kpop_run_prompt_and_finalize_timing(KpopAfterStartup {
         client: &mut client,
         kpop: &kpop,
         workflow,
@@ -34,7 +49,8 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
         store: &store,
         text: &text,
     })
-    .await?;
+    .await;
+    merge_kpop_acp_with_grounding_restore(acp_res, &artifacts.work_dir, grounding_backup.as_ref())?;
 
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
@@ -139,6 +155,7 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
+    let _ = stringify!(crate::cli::kpop_flow::merge_kpop_acp_with_grounding_restore);
     let _ = stringify!(crate::cli::kpop_flow::KpopAfterStartup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_run_prompt_and_finalize_timing);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);

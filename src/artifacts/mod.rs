@@ -1,6 +1,11 @@
 //! Run directories and log paths.
 
+mod grounding_backup;
 mod startup_tag;
+
+pub use grounding_backup::{
+    backup_workspace_grounding_if_present, restore_workspace_grounding,
+};
 
 use chrono::Utc;
 use rand::Rng;

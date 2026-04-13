@@ -1,4 +1,10 @@
-/// Read repo `.style/main.md` text with the same trim / empty rules as coder prompt composition.
+/// Repo-relative path (under the workflow working directory) for optional injected style text.
+///
+/// [`AgentClient::new`](crate::AgentClient::new) sets [`AgentClient`](crate::AgentClient)’s
+/// `style_prompt_path` to this string by default. Documented in repository `grounding.md`.
+pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = ".style/main.md";
+
+/// Read optional repo-local style text (trimmed) with the same rules as coder prompt composition.
 ///
 /// Returns `None` when the file is missing, unreadable, or whitespace-only after trim.
 pub(crate) fn read_coder_repo_style_text(style_prompt_path: &Path) -> Option<String> {
@@ -55,7 +61,7 @@ impl AgentClient {
         Self {
             model,
             io,
-            style_prompt_path: PathBuf::from(".style").join("main.md"),
+            style_prompt_path: PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL),
             coder_session: None,
             coder_style_on_next_prompt: false,
             timing: None,
@@ -139,12 +145,12 @@ impl AgentClient {
     /// Run one prompt on the open coder session (implement, concerns, or learn).
     ///
     /// When `skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
-    /// `.style/main.md` when present. Set `skip_repo_style` for `malvin do --raw` so only `prompt` is sent.
+    /// injected repo style when present. Set `skip_repo_style` for default raw `malvin do` so only `prompt` is sent.
     ///
     /// `who` names the single outbound/inbound trace stem when `do_trace_split` is `None` (for example
     /// `main` for `implement.md`). When `do_trace_split` is `Some`, stems come from the split trace
     /// (`>style` / `>header` / `>prompt`) and `who` is **not** used; callers may pass any placeholder
-    /// (the `malvin do` subcommand passes `"header"` for non-`--raw` runs).
+    /// (the `malvin do` subcommand passes `"header"` for `--cooked` runs).
     ///
     /// # Errors
     ///
@@ -272,7 +278,7 @@ impl AgentClient {
         )))
     }
 
-    /// Standalone KPOP: one ACP session without `.style/main.md` injection; optional `learn.md` in the same session.
+    /// Standalone KPOP: one ACP session without injected repo style; optional `learn.md` in the same session.
     ///
     /// # Errors
     ///

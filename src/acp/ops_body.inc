@@ -52,13 +52,8 @@ pub(crate) async fn run_reviewer_pair_once(
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, pair.cwd).await?;
 
-    let mut review_full = pair.review_body.to_string();
-    if let Ok(style_text) = std::fs::read_to_string(&client.style_prompt_path) {
-        let t = style_text.trim();
-        if !t.is_empty() {
-            review_full = format!("{t}\n\n{review_full}");
-        }
-    }
+    let repo_style = read_coder_repo_style_text(&client.style_prompt_path);
+    let review_full = prepend_coder_repo_style_to_prompt(pair.review_body, repo_style.as_deref());
 
     let t_review = Instant::now();
     let review_out = s.prompt(&review_full, pair.review_log, pair.review_who).await;

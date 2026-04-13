@@ -43,7 +43,8 @@ pub use kpop_flow::run_kpop;
 use malvin::acp::AgentClient;
 
 use malvin::artifacts::{
-    RunArtifacts, create_run_artifacts_from_text, resolve_user_request, startup_request_tag_label,
+    RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    resolve_user_request, restore_workspace_grounding, startup_request_tag_label,
 };
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
@@ -127,6 +128,8 @@ fn prepare_code_run(
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
+    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+
     emit_run_startup_sequence(&artifacts, code.shared.tee_startup_stdout(), &code.request)?;
 
     let mut orch = Orchestrator {
@@ -140,8 +143,13 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
         progress_callback: Box::new(|msg: &str| {
             print_stdout_line(MALVIN_WHO, msg);
         }),
+        grounding_backup: grounding_backup.clone(),
     };
-    orch.run().await.map_err(|e: WorkflowError| e.0)?;
+    let workflow_res = orch.run().await.map_err(|e: WorkflowError| e.0);
+    let restore_res = grounding_backup
+        .as_ref()
+        .map_or(Ok(()), |b| restore_workspace_grounding(&artifacts.work_dir, b));
+    timing_merge::prefer_primary_string_errors(workflow_res, restore_res)?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

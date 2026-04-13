@@ -127,6 +127,11 @@ impl AcpSession {
                 )
             }
         };
+        let outgoing_label = match &trace {
+            OutgoingPromptTrace::Uniform(who) => *who,
+            OutgoingPromptTrace::DoSplit(_) => "do",
+        };
+        crate::output::print_outgoing_prompt_log(outgoing_label, text);
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
             who: incoming_tag,

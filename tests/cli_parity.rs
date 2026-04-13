@@ -274,15 +274,36 @@ fn malvin_tooling_documents_run_artifacts_module_dir_not_flat_file() {
 }
 
 #[test]
-fn malvin_do_raw_skips_repo_style_prepend_contract() {
+fn artifacts_grounding_backup_module_is_declared_and_source_tracked() {
+    let mod_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/artifacts/mod.rs"));
+    let backup_rs = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/artifacts/grounding_backup.rs"
+    ));
+    assert!(
+        mod_rs.contains("mod grounding_backup")
+            && mod_rs.contains("pub use grounding_backup::")
+            && mod_rs.contains("backup_workspace_grounding_if_present"),
+        "src/artifacts/mod.rs must declare `mod grounding_backup` and re-export backup/restore"
+    );
+    assert!(
+        backup_rs.contains("pub fn backup_workspace_grounding_if_present")
+            && backup_rs.contains("pub fn restore_workspace_grounding")
+            && backup_rs.contains("# Errors"),
+        "src/artifacts/grounding_backup.rs must ship with backup/restore APIs and documented errors (commit beside mod.rs)",
+    );
+}
+
+#[test]
+fn malvin_do_default_skips_repo_style_prepend_contract() {
     let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
     let client_impl = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/src/acp/client_impl.inc"
     ));
     assert!(
-        do_flow.contains("skip_repo_style") && do_flow.contains("do_args.raw"),
-        "`malvin do --raw` must pass skip_repo_style from do_args.raw into run_coder_prompt (no .style/main.md prepend)"
+        do_flow.contains("skip_repo_style") && do_flow.contains("do_args.cooked"),
+        "`malvin do` default raw must pass skip_repo_style from !do_args.cooked into run_coder_prompt (no injected repo style prepend)"
     );
     assert!(
         client_impl.contains("skip_repo_style")
@@ -297,6 +318,25 @@ fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
     assert!(
         !args_rs.contains("first 3 prompts"),
         "`malvin kpop --p-creative` help must not claim a stale 'first 3 prompts' deferral; align with src/kpop_acp_prompt.rs (CREATIVE_MIN_INTERACTION)"
+    );
+}
+
+#[test]
+fn grounding_outgoing_prompts_documentation_matches_split_trace_tee_behavior() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    let session_trace = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/acp/session_trace.rs"
+    ));
+    let split_do_trace = session_trace.contains("trace_write_outgoing_prompt_do");
+    let outgoing_mentions_tee = grounding
+        .lines()
+        .skip_while(|l| !l.contains("## Outgoing prompts"))
+        .take(30)
+        .any(|l| l.to_lowercase().contains("tee"));
+    assert!(
+        !split_do_trace || outgoing_mentions_tee,
+        "grounding.md § Outgoing prompts must describe tee + split `malvin do --cooked` stdout (ACP tee lines before the `[do...]` bracket line), or the doc overstates a single bracket line + body as the only stdout",
     );
 }
 
@@ -317,6 +357,26 @@ fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     assert_eq!(
         grounding_promises, implementation_delivers,
         "grounding.md and src/run_timing/report.rs must stay aligned on run_timing.json + stdout summary"
+    );
+}
+
+/// Root `grounding.md` scopes mutating-git policy to ACP workflows; `malvin init` may invoke `git`
+/// (Git LFS). This test locks that pairing to the sources.
+#[test]
+fn grounding_git_write_constraint_matches_cli_init_behavior() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    let init_cmd = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/init_cmd.rs"));
+    assert!(
+        !grounding.contains("Never make a writing call to git"),
+        "grounding.md must not use an unscoped blanket git-write ban; carve out malvin init / scope ACP workflows"
+    );
+    assert!(
+        grounding.contains("ACP-driven") && grounding.contains("malvin init"),
+        "grounding.md must scope mutating-git rules to ACP workflows and mention malvin init bootstrap"
+    );
+    assert!(
+        init_cmd.contains(r#"Command::new("git")"#) && init_cmd.contains("lfs"),
+        "malvin init must invoke git for Git LFS; grounding.md must document that exception"
     );
 }
 

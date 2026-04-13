@@ -31,6 +31,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::run_kpop_flow);
     let _ = stringify!(AgentClient::set_run_timing);
     let _ = stringify!(AgentClient::attach_run_timing_for_session);
+    let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
 }
 
 #[test]
@@ -48,6 +49,8 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::startup_request_tag_label);
     let _ = stringify!(crate::artifacts::work_dir_for_path);
     let _ = stringify!(crate::artifacts::resolve_at_file);
+    let _ = stringify!(crate::artifacts::backup_workspace_grounding_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_grounding);
 }
 
 #[test]
@@ -230,5 +233,6 @@ fn smoke_orchestrator_instantiation() {
             run_learn: false,
         },
         progress_callback: Box::new(|_: &str| {}),
+        grounding_backup: None,
     };
 }

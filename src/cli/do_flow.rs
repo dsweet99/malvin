@@ -14,7 +14,7 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
-/// ACP trace stem when `--raw` sends only the user text (no `header.md`).
+/// ACP trace stem when the default raw mode sends only the user text (no `header.md`).
 const DO_RAW_ACP_TRACE_STEM: &str = "raw";
 
 /// One `malvin do` coder prompt: combined payload, optional header/user trace split, and style skip.
@@ -31,9 +31,9 @@ struct DoCoderRun {
 pub struct DoArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// User text only (no header.md / bundled prompts).
+    /// Prepend `header.md` and allow optional injected repo style (legacy non-raw behavior).
     #[arg(long, default_value_t = false)]
-    pub raw: bool,
+    pub cooked: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
@@ -62,19 +62,19 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
         &do_args.request,
     )?;
 
-    let (combined, trace_stem, header_user) = if do_args.raw {
-        (raw_do_acp_prompt(&text), DO_RAW_ACP_TRACE_STEM, None)
-    } else {
+    let (combined, trace_stem, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
         let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
         (combined, "header", Some((header, user)))
+    } else {
+        (raw_do_acp_prompt(&text), DO_RAW_ACP_TRACE_STEM, None)
     };
 
     let coder = DoCoderRun {
         combined,
         header_user_for_trace: header_user,
         acp_trace_stem: trace_stem,
-        skip_repo_style: do_args.raw,
+        skip_repo_style: !do_args.cooked,
     };
     run_do_with_timing(&mut client, &artifacts, coder).await?;
 
@@ -114,7 +114,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     Ok((combined, header, user))
 }
 
-/// User text only, for `--raw` (no template files).
+/// User text only for default raw `malvin do` (no template files).
 pub fn raw_do_acp_prompt(text: &str) -> String {
     text.trim_end().to_string()
 }
@@ -213,21 +213,21 @@ mod do_tests {
         match cli.command {
             Commands::Do(d) => {
                 assert_eq!(d.request, "fix the bug");
-                assert!(!d.raw);
+                assert!(!d.cooked);
             }
             _ => panic!("expected Do subcommand"),
         }
     }
 
     #[test]
-    fn cli_accepts_do_raw() {
+    fn cli_accepts_do_cooked() {
         use crate::cli::Cli;
         use crate::cli::Commands;
 
-        let cli = Cli::try_parse_from(["malvin", "do", "--raw", "x"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "do", "--cooked", "x"]).expect("parse");
         match cli.command {
             Commands::Do(d) => {
-                assert!(d.raw);
+                assert!(d.cooked);
                 assert_eq!(d.request, "x");
             }
             _ => panic!("expected Do subcommand"),

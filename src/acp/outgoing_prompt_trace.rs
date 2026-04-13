@@ -3,7 +3,7 @@
 /// How outgoing `session/prompt` text is mirrored to the trace file and (when tee is on) stdout.
 pub enum OutgoingPromptTrace<'a> {
     Uniform(&'a str),
-    /// `malvin do`: split `.style/main.md` (optional), `header.md`, and user request in the trace.
+    /// `malvin do`: split optional injected repo style, `header.md`, and user request in the trace.
     DoSplit(DoPromptTraceSplit<'a>),
 }
 

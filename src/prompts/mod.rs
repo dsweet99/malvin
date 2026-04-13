@@ -96,7 +96,7 @@ impl PromptStore {
         )))
     }
 
-    /// Ensure prompts needed for standalone `malvin kpop` exist (`kpop.md`, and `learn.md` when learning runs).
+    /// Ensure prompts needed for standalone `malvin kpop` exist (`header.md`, `kpop.md`, and `learn.md` when learning runs).
     ///
     /// # Errors
     ///
@@ -107,6 +107,9 @@ impl PromptStore {
         p_creative: f64,
     ) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
+        if !self.root.join("header.md").exists() {
+            missing.push("header.md");
+        }
         if !self.root.join("kpop.md").exists() {
             missing.push("kpop.md");
         }

@@ -54,7 +54,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 **Binary vs library:** `src/cli/` is part of the **`malvin` binary crate**, not `malvin` the library. `pub(crate)` fields on `AgentClient` (e.g. `timing`) are visible inside `src/lib.rs` code only—**not** from `src/cli/`. Use public methods on the library client (e.g. `attach_run_timing_for_session`) or keep field access in lib modules (`src/orchestrator/`, …).
 | Invocation argv | `src/invocation.rs` |
 | Log path display | `src/log_paths.rs` |
-| Run artifacts | `src/artifacts/` (`mod.rs`, `startup_tag.rs`) |
+| Run artifacts | `src/artifacts/` (`mod.rs`, `startup_tag.rs`, `grounding_backup.rs`) |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
 | Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code`, `malvin kpop`, `malvin do`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/`; `prompts/template.rs` holds merge/render helpers when `kiss` `lines_per_file` caps `mod.rs` (~250 lines) |
@@ -94,6 +94,24 @@ ADVICE: `src/cli/timing_merge.rs` — `emit_run_timing_after_acp(client, run_dir
 - **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** line beginning with **`TIMING: `** (see `RUN_TIMING_SUMMARY_PREFIX`, root `grounding.md`).
 - **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`; `merge_acp_and_timing_results` in `timing_merge.rs`).
 - **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP / `do` callers.
+
+### Error merge (`src/cli/timing_merge.rs`)
+
+TRIGGER: merge_acp_and_timing_results  
+ADVICE: After ACP body, **`emit_run_timing_after_acp`** passes **`merge_acp_and_timing_results(acp_result, timing_result)`**—ACP `Err` wins; timing `Err` only if ACP was `Ok`.
+
+TRIGGER: prefer_primary_string_errors  
+ADVICE: **`prefer_primary_string_errors(primary, restore)`**—used after **`malvin code`** / **`malvin kpop`** when restoring workspace **`grounding.md`** from `~/.malvin/groundings/...`; primary workflow/ACP `Err(String)` wins over restore failure (same “prefer primary” idea as timing merge).
+
+## Repo style file (optional)
+
+TRIGGER: DEFAULT_REPO_STYLE_PROMPT_REL  
+ADVICE: Public const **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`".style/main.md"`) in **`src/acp/client_impl.inc`**; **`AgentClient::new`** sets **`style_prompt_path`** from it. **`read_coder_repo_style_text`** / **`prepend_coder_repo_style_to_prompt`** share trim/empty rules with coder and reviewer paths. Root **`grounding.md`** section **## Repo style file** is the user-facing contract.
+
+## Docs parity (rustdoc ↔ `grounding.md`)
+
+TRIGGER: rustdoc section cite  
+ADVICE: Repository **`grounding.md`** uses Markdown **`##` / `###` headings**—in **`///`** comments refer to **`## Heading name`** (bold or backticks), not typographic “§ Section” labels, so readers can search the file.
 
 ## ACP traces, coalescing, tee
 
@@ -202,18 +220,18 @@ TRIGGER: CLI kiss gate
 ADVICE: **`malvin code`** / **`malvin kpop`** require a **`kiss`** executable on **`PATH`** (`lookup_bin_on_path` in **`src/env_path.rs`**). **`require_kiss_for_malvin`** returns an install hint: **`cargo install kiss-ai`**. **`require_kiss_for_cli_command`** in **`src/cli/mod.rs`** runs **immediately after** **`Cli::parse()`** and **before** **`init_stdout_style`** / Tokio so missing-`kiss` exits fail fast; stderr does not need stdout ANSI setup. **`malvin init`** also calls **`require_kiss_for_malvin("init")`** before **`kiss init`**. Binary regression: **`tests/kiss_code_kpop_path.rs`** (minimal isolated **`PATH`**, **`env!("CARGO_BIN_EXE_malvin")`**—same spawn pattern as **`tests/init_pre_commit.rs`**).
 
 - **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
-- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt_header_and_user` (`header.md` via `PromptStore::render_prompt_only` + request text, plus header/user strings for split `malvin do` trace), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt_header_and_user` (`header.md` via `PromptStore::render_prompt_only` + request text, plus header/user strings for split `malvin do` trace), `raw_do_acp_prompt` by default, `skip_repo_style: !do_args.cooked` into `run_coder_prompt` (no injected repo style on first turn when raw), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
 
 ### malvin do ACP trace (split stems)
 
 TRIGGER: malvin do split trace stems  
-ADVICE: Non-`--raw` **`run_coder_prompt`** passes **`do_trace_split: Some((header, user))`** → **`AcpSession::prompt_do_trace_split`** with **`DoPromptTraceSplit`** (`src/acp/outgoing_prompt_trace.rs`). Outgoing trace: **`>style`** (if `.style/main.md` prepended), **`>header`** (full lines on disk; tee echoes **one** collapsed stdout line), **`>prompt`** (user request; per-line tee). Incoming tag **`<prompt`**. **`who`** is ignored on this path (documented on **`run_coder_prompt`**). **`kiss`:** split types into **`outgoing_prompt_trace.rs`** when **`session_types.rs`** hits **`concrete_types_per_file`**.
+ADVICE: **`--cooked`** **`run_coder_prompt`** passes **`do_trace_split: Some((header, user))`** → **`AcpSession::prompt_do_trace_split`** with **`DoPromptTraceSplit`** (`src/acp/outgoing_prompt_trace.rs`). Outgoing trace: **`>style`** (if injected repo style prepended), **`>header`** (full lines on disk; tee echoes **one** collapsed stdout line), **`>prompt`** (user request; per-line tee). Incoming tag **`<prompt`**. **`who`** is ignored on this path (documented on **`run_coder_prompt`**). **`kiss`:** split types into **`outgoing_prompt_trace.rs`** when **`session_types.rs`** hits **`concrete_types_per_file`**.
 
 TRIGGER: repo style single read  
-ADVICE: **`coder_prompt_body_with_optional_repo_style`** (`client_impl.inc` top) returns **`(full_prompt, repo_style)`** with at most **one** read of **`.style/main.md`**; **`repo_style.as_deref()`** feeds **`DoPromptTraceSplit.style_text`** when **`do_trace_split`** is **`Some`**—do not read the style path again for trace.
+ADVICE: **`coder_prompt_body_with_optional_repo_style`** (`client_impl.inc` top) returns **`(full_prompt, repo_style)`** with at most **one** read of the repo style file; **`repo_style.as_deref()`** feeds **`DoPromptTraceSplit.style_text`** when **`do_trace_split`** is **`Some`**—do not read the style path again for trace.
 
 TRIGGER: coder_prompt_body session  
-ADVICE: `coder_prompt_body_with_optional_repo_style` at top of `client_impl.inc` (with `read_coder_repo_style_text` / `prepend_coder_repo_style_to_prompt`): prepends `.style/main.md` when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. `--raw` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_raw_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
+ADVICE: `coder_prompt_body_with_optional_repo_style` at top of `client_impl.inc` (with `read_coder_repo_style_text` / `prepend_coder_repo_style_to_prompt`): prepends injected repo style when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. Default raw `malvin do` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_default_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
 - **Timing merge:** `timing_merge.rs` — `merge_acp_and_timing_results` shared with `kpop_flow.rs` (avoid duplicated merge helpers; kiss `duplication`).
 - **`src/cli/args.rs`, `mod.rs`, `shared_opts.rs`:** `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
 - **Default model:** `DEFAULT_CLI_MODEL` in `shared_opts.rs`; `malvin models` footer must use the same constant (see `tests/cli_parity.rs`).
