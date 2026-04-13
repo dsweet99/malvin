@@ -3,13 +3,13 @@
 //! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
 //! attribute coverage consistently; see `.kissignore`.
 
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
 use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
 use crate::run_timing::{self, RunTiming, TimingPhase};
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 include!("helpers.rs");
 
@@ -64,7 +64,10 @@ impl Orchestrator<'_> {
         self.client.attach_run_timing_for_session()
     }
 
-    fn emit_run_timing_artifact(&mut self, timing: &Arc<Mutex<RunTiming>>) -> Result<(), WorkflowError> {
+    fn emit_run_timing_artifact(
+        &mut self,
+        timing: &Arc<Mutex<RunTiming>>,
+    ) -> Result<(), WorkflowError> {
         let res = run_timing::finalize_and_emit_run_timing(&self.artifacts.run_dir, timing);
         self.client.timing = None;
         res.map_err(|e| WorkflowError(format!("run timing: {e}")))
@@ -103,23 +106,19 @@ impl Orchestrator<'_> {
         self.run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
             .await?;
 
-        self.run_review_phase(
-            ReviewPhaseArgs {
-                review_prompt: "review_1.md",
-                progress_label: "Review-1",
-                phase_id: "review_1",
-                context,
-            },
-        )
+        self.run_review_phase(ReviewPhaseArgs {
+            review_prompt: "review_1.md",
+            progress_label: "Review-1",
+            phase_id: "review_1",
+            context,
+        })
         .await?;
-        self.run_review_phase(
-            ReviewPhaseArgs {
-                review_prompt: "review_2.md",
-                progress_label: "Review-2",
-                phase_id: "review_2",
-                context,
-            },
-        )
+        self.run_review_phase(ReviewPhaseArgs {
+            review_prompt: "review_2.md",
+            progress_label: "Review-2",
+            phase_id: "review_2",
+            context,
+        })
         .await?;
 
         if self.config.run_learn {

@@ -119,10 +119,7 @@ const fn silence_outcome_from_pair(
     }
 }
 
-pub async fn evaluate_after_acp_silence(
-    pid: u32,
-    grace: Duration,
-) -> SilenceHealthOutcome {
+pub async fn evaluate_after_acp_silence(pid: u32, grace: Duration) -> SilenceHealthOutcome {
     let first = sample_child_health(pid);
     if !first.exists {
         return SilenceHealthOutcome::ChildNotRunning;

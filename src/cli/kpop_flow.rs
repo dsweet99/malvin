@@ -101,10 +101,7 @@ pub struct KpopAcpInput<'a> {
     p_creative: f64,
 }
 
-pub async fn kpop_run_acp(
-    client: &mut AgentClient,
-    input: KpopAcpInput<'_>,
-) -> Result<(), String> {
+pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Result<(), String> {
     let learn_stored =
         kpop_learn_bundle(input.store, input.context, input.run_learn, input.artifacts)?;
     let learn_ref = learn_stored

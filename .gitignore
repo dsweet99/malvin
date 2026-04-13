@@ -7,3 +7,6 @@ target
 /log_2
 *.md~
 
+# Local data dumps (not part of the Malvin tree)
+/ts_repos_monthly.csv
+

@@ -5,7 +5,7 @@ When the project `.cursorrules` says so, read this file **first** on the opening
 ---
 
 TRIGGER: all checks pre-commit  
-ADVICE: Full suite in `malvin_tooling.md` § Required checks; **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
+ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`**); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 
 TRIGGER: kiss check  
 ADVICE: `kiss check .` (full project), not bare `kiss`. See `.kissignore`.
@@ -38,16 +38,16 @@ TRIGGER: review grounding
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
 
 TRIGGER: grounding code parity  
-ADVICE: When post-run stdout/stderr behavior changes, align `grounding.md` with sources. `tests/cli_parity.rs` may `include_str!` implementation files and `ops_body.inc` (e.g. reviewer pair order test)—see `malvin_tooling.md` § Tests + Review sync.
+ADVICE: When run-timing, tee, or post-run stdout/stderr behavior changes, align `grounding.md` with sources (`run_timing/`, `src/acp/`, …). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). `tests/cli_parity.rs` may `include_str!` implementation files and `ops_body.inc` (e.g. reviewer pair order test)—see `malvin_tooling.md` § Tests + Review sync.
 
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/`, `.cursorrules`, `_kpop/` logs—see `malvin_tooling.md` § Repo-wide string contracts.
 
 TRIGGER: post-run metrics hint  
-ADVICE: **`src/post_run_hint/`** (`report.rs`): stable “not measured” stderr only; **gross/net/git-tree metering removed** (`mod.rs`). Message must not contain `"git"` (`tests/cli_parity.rs`). Ordering: `grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
+ADVICE: Optional stderr line after run timing: stable “not measured” copy only (no gross/net/repo-tree metering). Message must not contain `"git"` (`tests/cli_parity.rs`). Ordering: `grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
 
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop`: `run_timing.json` + stdout summary **before** stderr post-run hint; `client_impl.inc` / `ops_body.inc`; dual failure: prefer primary error—`grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop`: `run_timing.json` + one stdout summary line after the workflow body (**before** stderr post-run hint); record in `client_impl.inc` / `ops_body.inc`; `attach_run_timing_for_session` / finalize from orchestrator or KPOP. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
 
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
@@ -88,11 +88,11 @@ ADVICE: Mock `agent acp` children often `#!/usr/bin/env node`; `prepend_standard
 TRIGGER: pre-commit hooks  
 ADVICE: `.pre-commit-config.yaml`: ruff, clippy, kiss, `admin/check_untracked.sh`—**not** `cargo test`/`pytest`; run full suite manually or in CI.
 
-TRIGGER: CLI, help text  
-ADVICE: `src/cli/`: `args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; `SharedOpts::tee_startup_stdout`.
-
 TRIGGER: search tools subagents  
-ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). ≤4 parallel subagents; skip for tiny edits.
+ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). Merge-marker sweeps: limit to text globs / exclude `target/`—`malvin_tooling.md` § Merge markers, `_malvin` plans, green tree. ≤4 parallel subagents; skip for tiny edits.
+
+TRIGGER: full suite scope  
+ADVICE: When the user demands all checks/tests green on **all** files, fix repo-wide failures—no “pre-existing” hand-waving; see `malvin_tooling.md` § green tree no excuses.
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work.

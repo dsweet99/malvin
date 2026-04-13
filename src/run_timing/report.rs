@@ -81,7 +81,8 @@ mod format_tests {
         let s = format_duration_secs_3_from_ms(ms);
         let (whole, frac) = s.strip_suffix('s').unwrap().split_once('.').unwrap();
         assert_eq!(frac.len(), 3);
-        let ms_round_trip: u64 = whole.parse::<u64>().unwrap() * 1000 + frac.parse::<u64>().unwrap();
+        let ms_round_trip: u64 =
+            whole.parse::<u64>().unwrap() * 1000 + frac.parse::<u64>().unwrap();
         assert_eq!(
             ms, ms_round_trip,
             "summary seconds must encode the same truncated-ms value as JSON"

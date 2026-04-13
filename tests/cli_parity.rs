@@ -237,26 +237,46 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
 }
 
 #[test]
+fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
+    // Regression: `.llm_style/` used to describe `src/post_run_hint/` after that code was removed;
+    // keep guides aligned with root `grounding.md` (see `grounding_no_longer_promises_post_run_metrics_hint`).
+    for (path, src) in [
+        (
+            ".llm_style/malvin_tooling.md",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/.llm_style/malvin_tooling.md"
+            )),
+        ),
+        (
+            ".llm_style/style.md",
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.llm_style/style.md")),
+        ),
+    ] {
+        assert!(
+            !src.contains("src/post_run_hint") && !src.contains("post_run_hint/"),
+            "{path} must not reference removed post_run_hint paths; align with grounding.md",
+        );
+    }
+}
+
+#[test]
 fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    let run_timing_rs = concat!(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/run_timing/mod.rs"
-        )),
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/run_timing/report.rs"
-        )),
-    );
-    let grounding_promises = grounding.contains("run_timing.json")
-        && grounding.contains("**stdout** summary line");
-    let implementation_prints = run_timing_rs.contains("println!")
-        && run_timing_rs.contains("RUN_TIMING_SUMMARY_PREFIX");
+    let report_rs = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/run_timing/report.rs"
+    ));
+    let grounding_promises =
+        grounding.contains("run_timing.json") && grounding.contains("**stdout** summary line");
+    // Require the stdout + JSON contract in `report.rs` (not module docs / `mod.rs` alone).
+    let implementation_delivers = report_rs.contains("write_json_and_print_summary")
+        && report_rs.contains("print_stdout_line")
+        && report_rs.contains("RUN_TIMING_SUMMARY_PREFIX")
+        && report_rs.contains("RUN_TIMING_JSON_FILE");
     assert_eq!(
-        grounding_promises,
-        implementation_prints,
-        "grounding.md and src/run_timing/mod.rs + report.rs must stay aligned on run_timing.json + stdout summary"
+        grounding_promises, implementation_delivers,
+        "grounding.md and src/run_timing/report.rs must stay aligned on run_timing.json + stdout summary"
     );
 }
 
@@ -289,10 +309,7 @@ fn shared_opts_and_run_timing_sources_must_not_revive_stderr_post_run_metrics_co
             "/src/run_timing/report.rs"
         )),
     );
-    let kpop_flow = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/kpop_flow.rs"
-    ));
+    let kpop_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/kpop_flow.rs"));
     assert!(
         !shared.contains("metrics hint") && !shared.contains("tracked-edit"),
         "`--no-tee` help must not promise removed stderr tracked-edit metrics; align with grounding.md"

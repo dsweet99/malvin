@@ -1,4 +1,4 @@
-use crate::orchestrator::{prefer_primary_errors_over_timing, prompt_md_stem, WorkflowError};
+use crate::orchestrator::{WorkflowError, prefer_primary_errors_over_timing, prompt_md_stem};
 use crate::review_sync::{is_lgtm, sync_review_file};
 
 fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -70,11 +70,7 @@ fn prefer_primary_errors_prefers_workflow_over_timing_when_both_fail() {
 
 #[test]
 fn prefer_primary_errors_surfaces_timing_when_workflow_and_end_succeed() {
-    let r = prefer_primary_errors_over_timing(
-        Ok(()),
-        Ok(()),
-        Err(WorkflowError("timing".into())),
-    );
+    let r = prefer_primary_errors_over_timing(Ok(()), Ok(()), Err(WorkflowError("timing".into())));
     assert_eq!(r.err().unwrap().0, "timing");
 }
 

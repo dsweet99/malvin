@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use crate::acp::ResponseTx;
 use crate::acp::*;
 use serde_json::{Value, json};
@@ -8,12 +6,18 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::process::Command;
-use tokio::sync::{Mutex, Notify};
 use tokio::sync::oneshot;
+use tokio::sync::{Mutex, Notify};
 
 fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
+
+// Standard locations: other tests mutate process-global `PATH` under `test_env_lock`; do not rely on lookup.
+const SLEEP_BIN: &str = "/bin/sleep";
+const TRUE_BIN: &str = "/bin/true";
+#[cfg(unix)]
+const CAT_BIN: &str = "/bin/cat";
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -81,7 +85,7 @@ async fn dispatch_resolves_pending_when_response_id_is_decimal_string() {
 async fn test_handle_incoming_line_parse_error_and_extension_method() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("30")
         .stdin(Stdio::piped())
         .spawn()
@@ -401,7 +405,7 @@ fn test_permission_reply_shape() {
 async fn test_handle_session_update_and_permission_replies() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new("sleep")
+    let mut child = Command::new(SLEEP_BIN)
         .arg("5")
         .stdin(Stdio::piped())
         .spawn()
@@ -446,7 +450,7 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new("cat")
+    let mut child = Command::new(CAT_BIN)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -489,7 +493,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new("cat")
+    let mut child = Command::new(CAT_BIN)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -529,7 +533,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 async fn test_permission_json_or_write_failure_is_logged() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new("true")
+    let mut child = Command::new(TRUE_BIN)
         .stdin(Stdio::piped())
         .spawn()
         .expect("true");
@@ -551,7 +555,7 @@ async fn test_permission_json_or_write_failure_is_logged() {
 
 #[tokio::test]
 async fn test_reader_loop_drains_pending_on_stdout_eof() {
-    let mut child = Command::new("true")
+    let mut child = Command::new(TRUE_BIN)
         .stdout(Stdio::piped())
         .spawn()
         .expect("true");
@@ -559,7 +563,7 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (tx, rx) = oneshot::channel();
     pending.lock().await.insert(7, tx);
-    let mut stdin_holder = Command::new("sleep")
+    let mut stdin_holder = Command::new(SLEEP_BIN)
         .arg("2")
         .stdin(Stdio::piped())
         .spawn()
