@@ -233,9 +233,26 @@ Root **`review.md`** is the working reviewer checklist (“problems only” / re
 
 ## KPOP `--p-creative` / MBC2
 
-- **Selection:** `src/kpop_acp_prompt.rs` — `kpop_acp_user_prompt`, `KpopAcpPromptPick`, `CREATIVE_MIN_INTERACTION`, `kpop_standalone_outbound_prompt_count`, `KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE`.
-- **Session:** `src/acp/ops_body.inc` `run_kpop_flow_once` — when `p_creative > 0`, sends continuation `session/prompt` rounds (after main + optional `learn.md`) so outbound `interaction_index` can reach **3** before the MBC2 branch may apply; sibling traces like `*_creative_pad*.log`, `*_creative_roll.log` next to the primary `kpop` trace.
+- **Selection:** `src/kpop_acp_prompt.rs` — `kpop_acp_user_prompt`, `KpopAcpPromptPick`, `CREATIVE_MIN_INTERACTION`, `kpop_standalone_outbound_prompt_count`, `kpop_creative_enabled`.
+- **Session:** `src/acp/ops_body.inc` `run_kpop_flow_once` — main KPOP `session/prompt` (interaction **0**), optional `learn` (`learn.md`, interaction **1**). No synthetic continuation prompts; MBC2 gating uses only those real workflow turns.
 - **Prompts:** `default_prompts/mbc2.md`; embedding / defaults in `src/prompts/mod.rs`; CLI in `src/cli/args.rs` (`KpopArgs`).
+
+TRIGGER: KPOP outbound count contract  
+ADVICE: `kpop_standalone_outbound_prompt_count(has_learn)` returns **1** (main only) or **2** (main + learn)—**not** extra rounds for `--p-creative`; creative mode only changes text via `kpop_acp_user_prompt`. Keep `run_kpop_flow_once` aligned (e.g. `debug_assert_eq!` vs that count) so the `pub` helper stays live and `dead_code` clean.
+
+TRIGGER: KPOP MBC2 interaction gate  
+ADVICE: `skip_mbc2_for_interaction_index` (or equivalent): when `CREATIVE_MIN_INTERACTION == 0`, index-based skip is off; keep an `else` branch with `interaction_index < CREATIVE_MIN_INTERACTION` so raising the constant later does not require rewriting the gate—use one `const fn` + `#[allow(clippy::absurd_extreme_comparisons)]` on that fn only.
+
+## Clippy tunable const + kiss (malvin)
+
+TRIGGER: clippy absurd_extreme_comparisons  
+ADVICE: Comparisons like `u32 < PUB_CONST` when the const is **0** trigger `absurd_extreme_comparisons`; centralize in a helper `const fn` with `if CONST == 0 { false } else { … }` and a **single** `allow` on that fn—see § KPOP MBC2 interaction gate.
+
+TRIGGER: kiss attributes_per_function  
+ADVICE: Threshold is **1** attribute per function—do not stack `#[inline]` + `#[allow(clippy::…)]`; drop `inline` if the allow is required for a small `const fn`.
+
+TRIGGER: clippy useless_let_if_seq  
+ADVICE: Prefer `let n = if let Some(…) = … { …; 2 } else { 1 };` over `let mut n = 1;` + conditional reassignment when sequencing main vs optional follow-up prompts (`ops_body.inc` pattern).
 
 ## Rust edition 2024 + clippy (malvin)
 

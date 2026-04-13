@@ -92,6 +92,12 @@ async fn run_do_with_timing(
     coder: DoCoderRun<'_>,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
+    if coder.acp_trace_stem == DO_RAW_ACP_TRACE_STEM {
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .set_implement_display_name(DO_RAW_ACP_TRACE_STEM);
+    }
     let acp_result = run_do_acp(client, artifacts, coder).await;
     emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }

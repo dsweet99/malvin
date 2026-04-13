@@ -20,6 +20,9 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         "wall_clock_ms": wall_ms,
         "llm_wait_ms": ms(r.llm_wait),
         "agent_retry_backoff_ms": ms(r.agent_retry_backoff),
+        "phase_display_names": {
+            "implement": r.implement_display_name,
+        },
         "phases_ms": {
             "implement": ms(r.implement),
             "review_1_review": ms(r.review_1_review),
@@ -70,6 +73,14 @@ fn timing_line_append_part(out: &mut String, first: &mut bool, key: &str, val: &
     let _ = write!(out, "{key} = {val}");
 }
 
+fn phase_display_name<'a>(v: &'a Value, key: &'a str) -> &'a str {
+    v.get("phase_display_names")
+        .and_then(Value::as_object)
+        .and_then(|o| o.get(key))
+        .and_then(Value::as_str)
+        .unwrap_or(key)
+}
+
 /// Builds the `TIMING:` line from the same [`serde_json::Value`] written to `run_timing.json`, so fields stay aligned.
 fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
@@ -93,7 +104,12 @@ fn format_timing_stdout_line_from_json(v: &Value) -> String {
             .and_then(|o| o.get(key))
             .and_then(Value::as_u64)
             .unwrap_or(0);
-        timing_line_append_part(&mut s, &mut first, key, &format_ms_one_decimal_s(ms));
+        timing_line_append_part(
+            &mut s,
+            &mut first,
+            phase_display_name(v, key),
+            &format_ms_one_decimal_s(ms),
+        );
     }
     s
 }
@@ -143,6 +159,22 @@ mod format_tests {
         let json = super::to_json_value(&r);
         let line = super::format_timing_stdout_line_from_json(&json);
         assert!(line.contains("concerns = "));
+    }
+
+    #[test]
+    fn timing_line_uses_phase_display_name_alias_when_present() {
+        use crate::run_timing::{RunTiming, TimingPhase};
+
+        let mut r = RunTiming::default();
+        r.set_implement_display_name("raw");
+        r.mark_wall_start(std::time::Instant::now());
+        r.mark_wall_end(std::time::Instant::now());
+        r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+        let json = super::to_json_value(&r);
+        let line = super::format_timing_stdout_line_from_json(&json);
+        assert_eq!(json["phase_display_names"]["implement"], "raw");
+        assert!(line.contains("raw = "));
+        assert!(!line.contains("implement = "));
     }
 
     #[test]

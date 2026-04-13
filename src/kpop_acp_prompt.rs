@@ -5,31 +5,39 @@ use rand::distributions::{Distribution, Uniform};
 
 const MBC2_SUFFIX: &str = "\n\nGenerate one MBC2 hypothesis.";
 
-/// First this many `session/prompt` calls in a KPOP run skip the creative branch.
-pub const CREATIVE_MIN_INTERACTION: u32 = 3;
+/// First this many outbound `session/prompt` indices skip the MBC2 branch (even when `p_creative`
+/// is 1.0). **0** disables that skip so only `p_creative` and the random roll apply—standalone KPOP
+/// uses real prompts (main, optional `learn`) with no synthetic continuation rounds.
+pub const CREATIVE_MIN_INTERACTION: u32 = 0;
 
-/// How many `session/prompt` calls standalone `malvin kpop` performs when `--p-creative` > 0 so
-/// interaction index [`CREATIVE_MIN_INTERACTION`] exists and the MBC2 branch can apply (see `acp::run_kpop_flow_once`).
-pub const KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE: u32 = CREATIVE_MIN_INTERACTION + 1;
+/// When [`CREATIVE_MIN_INTERACTION`] is **0**, the `else` branch is unreachable; it remains so the
+/// threshold can be raised without rewriting the gate.
+#[allow(clippy::absurd_extreme_comparisons)]
+const fn skip_mbc2_for_interaction_index(interaction_index: u32) -> bool {
+    if CREATIVE_MIN_INTERACTION == 0 {
+        false
+    } else {
+        interaction_index < CREATIVE_MIN_INTERACTION
+    }
+}
 
-const _: () = assert!(KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE > CREATIVE_MIN_INTERACTION);
-
-/// `true` when standalone KPOP should load `mbc2.md` and may send extra pad/roll prompts.
+/// `true` when standalone KPOP should load `mbc2.md` and may apply the MBC2 suffix on outbound
+/// prompts (via [`kpop_acp_user_prompt`]).
 ///
-/// Matches [`kpop_acp_user_prompt`] and [`kpop_standalone_outbound_prompt_count`]: non-finite or
-/// non-positive values disable the creative path (unlike raw `p_creative > 0.0`, which is true for `+∞`).
+/// Standalone KPOP does not add extra `session/prompt` rounds for creative mode: non-finite or
+/// non-positive `p_creative` values disable the creative path (unlike raw `p_creative > 0.0`, which
+/// is true for `+∞`).
 #[must_use]
 pub fn kpop_creative_enabled(p_creative: f64) -> bool {
     p_creative.is_finite() && p_creative > 0.0
 }
 
-/// Outbound `session/prompt` count for standalone `malvin kpop` (main + optional learn + optional creative rounds).
+/// Outbound `session/prompt` count for standalone `malvin kpop` (main + optional learn).
+///
+/// Creative mode only changes prompt text via [`kpop_acp_user_prompt`], not the number of rounds.
 #[must_use]
-pub fn kpop_standalone_outbound_prompt_count(p_creative: f64, has_learn: bool) -> u32 {
-    if !kpop_creative_enabled(p_creative) {
-        return u32::from(has_learn).saturating_add(1);
-    }
-    KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE
+pub fn kpop_standalone_outbound_prompt_count(has_learn: bool) -> u32 {
+    u32::from(has_learn).saturating_add(1)
 }
 
 /// Inputs for [`kpop_acp_user_prompt`].
@@ -48,7 +56,7 @@ pub fn kpop_acp_user_prompt(pick: &KpopAcpPromptPick<'_>, rng: &mut impl Rng) ->
     } else {
         0.0
     };
-    if pick.interaction_index < CREATIVE_MIN_INTERACTION || p <= 0.0 {
+    if skip_mbc2_for_interaction_index(pick.interaction_index) || p <= 0.0 {
         return pick.default_prompt.to_string();
     }
     let roll = Uniform::from(0.0..1.0).sample(rng);
@@ -67,25 +75,11 @@ mod tests {
     use super::{CREATIVE_MIN_INTERACTION, KpopAcpPromptPick, kpop_acp_user_prompt};
 
     #[test]
-    fn first_three_interactions_never_use_mbc2_even_at_probability_one() {
-        let mut rng = StdRng::seed_from_u64(1);
-        for idx in 0..CREATIVE_MIN_INTERACTION {
-            let pick = KpopAcpPromptPick {
-                interaction_index: idx,
-                p_creative: 1.0,
-                default_prompt: "DEFAULT",
-                mbc2_body: "MBC2",
-            };
-            let out = kpop_acp_user_prompt(&pick, &mut rng);
-            assert_eq!(out, "DEFAULT");
-        }
-    }
-
-    #[test]
-    fn fourth_interaction_can_switch_when_probability_one() {
+    fn first_interaction_can_switch_when_probability_one() {
+        assert_eq!(CREATIVE_MIN_INTERACTION, 0);
         let mut rng = StdRng::seed_from_u64(1);
         let pick = KpopAcpPromptPick {
-            interaction_index: CREATIVE_MIN_INTERACTION,
+            interaction_index: 0,
             p_creative: 1.0,
             default_prompt: "DEFAULT",
             mbc2_body: "MBC2",
@@ -109,21 +103,11 @@ mod tests {
     }
 
     #[test]
-    fn kpop_acp_session_must_send_enough_prompts_for_p_creative_to_apply() {
-        use super::{
-            KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE, kpop_standalone_outbound_prompt_count,
-        };
+    fn kpop_acp_standalone_prompt_count_matches_main_plus_optional_learn() {
+        use super::kpop_standalone_outbound_prompt_count;
 
-        assert_eq!(
-            kpop_standalone_outbound_prompt_count(0.1, false),
-            KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE
-        );
-        assert_eq!(
-            kpop_standalone_outbound_prompt_count(0.1, true),
-            KPOP_SESSION_PROMPT_COUNT_WHEN_P_CREATIVE
-        );
-        assert_eq!(kpop_standalone_outbound_prompt_count(0.0, false), 1);
-        assert_eq!(kpop_standalone_outbound_prompt_count(0.0, true), 2);
+        assert_eq!(kpop_standalone_outbound_prompt_count(false), 1);
+        assert_eq!(kpop_standalone_outbound_prompt_count(true), 2);
     }
 
     #[test]
@@ -131,25 +115,5 @@ mod tests {
         use super::kpop_creative_enabled;
 
         assert!(!kpop_creative_enabled(f64::INFINITY));
-    }
-
-    #[test]
-    fn creative_gate_matches_extra_prompt_count() {
-        use super::{kpop_creative_enabled, kpop_standalone_outbound_prompt_count};
-
-        for p in [
-            f64::NAN,
-            f64::INFINITY,
-            f64::NEG_INFINITY,
-            0.0,
-            -0.0,
-            -1.0,
-            0.1,
-            1.0,
-        ] {
-            let base = u32::from(false).saturating_add(1);
-            let extra = kpop_standalone_outbound_prompt_count(p, false) > base;
-            assert_eq!(kpop_creative_enabled(p), extra, "p={p:?}");
-        }
     }
 }

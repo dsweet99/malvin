@@ -59,6 +59,7 @@ pub struct RunTiming {
     llm_wait: Duration,
     agent_retry_backoff: Duration,
     implement: Duration,
+    implement_display_name: &'static str,
     review_1_review: Duration,
     review_1_kpop: Duration,
     review_2_review: Duration,
@@ -75,6 +76,7 @@ impl Default for RunTiming {
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
             implement: Duration::ZERO,
+            implement_display_name: "implement",
             review_1_review: Duration::ZERO,
             review_1_kpop: Duration::ZERO,
             review_2_review: Duration::ZERO,
@@ -118,6 +120,10 @@ impl RunTiming {
 
     pub const fn add_agent_retry_backoff(&mut self, d: Duration) {
         self.agent_retry_backoff = self.agent_retry_backoff.saturating_add(d);
+    }
+
+    pub const fn set_implement_display_name(&mut self, label: &'static str) {
+        self.implement_display_name = label;
     }
 
     pub(crate) fn wall_duration(&self) -> Option<Duration> {

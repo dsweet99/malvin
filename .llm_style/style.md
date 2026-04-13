@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP, root **`plan.md`** backlog, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, wrong-value falsifiers + multi-tool checks, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`** backlog, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
 
 ---
 
@@ -49,7 +49,7 @@ ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-of
 TRIGGER: root plan.md informal bullets  
 ADVICE: Repo-root **`./plan.md`** may hold ad-hoc requirements (not always synced with `grounding.md`). Read when cited; verify vs `src/` + tests—`malvin_debugging.md` § Root plan.
 TRIGGER: KPOP MBC2, HPF, models  
-ADVICE: Creative/kpop: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, `p_creative`—`malvin_tooling.md` § KPOP. **HPF** (hypothesize/predict/falsify, budget, `_malvin/.../exp_log_*.md`, incremental log, summary+tl;dr, verification-only)—`malvin_debugging.md` § KPOP + § KPOP verification. **`malvin models`** parser/ANSI: `malvin_debugging.md`. IDE search I/O → shell `rg` from repo root.
+ADVICE: Creative/kpop: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`, `p_creative`—`malvin_tooling.md` § KPOP. **HPF** (hypothesize/predict/falsify, budget, `_malvin/.../exp_log_*.md`—**use the user’s directory if the prompt names `./_malvin/.../_kpop/`**), incremental log, summary+tl;dr, verification-only—`malvin_debugging.md` § KPOP + § KPOP verification. **`malvin models`** parser/ANSI: `malvin_debugging.md`. IDE search I/O → shell `rg` from repo root.
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Detail: `malvin_tooling.md` § Rust edition 2024.
 TRIGGER: malvin init  
@@ -78,6 +78,10 @@ TRIGGER: search tools subagents
 ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). Merge-marker sweeps: limit to text globs / exclude `target/`—`malvin_tooling.md` § Merge markers, `_malvin` plans, green tree. ≤4 parallel subagents; skip for tiny edits.
 TRIGGER: full suite scope  
 ADVICE: When the user demands all checks/tests green on **all** files, fix repo-wide failures—no “pre-existing” hand-waving; see `malvin_tooling.md` § green tree no excuses.
+TRIGGER: pub contract dead_code  
+ADVICE: `pub fn` count/budget helpers must stay referenced from workflow code (`debug_assert!`, planners)—otherwise `-D dead_code` on the lib; see `malvin_tooling.md` § KPOP contracts + clippy.
+TRIGGER: clippy tunable const zero  
+ADVICE: `pub const` threshold **0** still needs a skippable `else` for later tuning; put `index < CONST` in one `const fn` with a **single** `#[allow(clippy::absurd_extreme_comparisons)]`—kiss `attributes_per_function` may require dropping `#[inline]`; see `malvin_tooling.md` § Clippy tunable const + kiss.
 TRIGGER: CLI async timing finalize  
 ADVICE: After `await` ACP work, call sync `emit_run_timing_after_acp` (`src/cli/timing_merge.rs`)—avoid async helpers taking `FnOnce(&mut AgentClient) -> Fut` (lifetime errors with `&mut` + returned `Future`). See `malvin_tooling.md` § Run timing.
 TRIGGER: clap help default punctuation  
@@ -85,4 +89,6 @@ ADVICE: In manual **`///`** on **`#[arg]`**, write **`[default: …]`** not **`(
 TRIGGER: llm_style layout paths  
 ADVICE: **`.llm_style/malvin_tooling.md`** crate-layout + file-path ADVICEs must match **`src/`**; on renames/splits extend **`tests/cli_parity.rs`** `include_str!` guards—`malvin_tooling.md` § Tests (**`malvin_tooling path strings vs src`**).
 TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work. **Agent pacing:** distinguish product “metrics” wording from model latency/thoroughness when user-visible copy matters (`malvin_tooling.md` § Repo-wide string contracts).
+ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work. **Named workflows** (KPOP, hypothesis budgets, stamped `_malvin/` paths): full thoroughness over skipping steps—`malvin_debugging.md` § KPOP protocol completeness. **Agent pacing:** distinguish product “metrics” wording from model latency/thoroughness when user-visible copy matters (`malvin_tooling.md` § Repo-wide string contracts).
+TRIGGER: llm_style index size  
+ADVICE: Keep `./.llm_style/style.md` **<100** lines; add TRIGGER:/ADVICE: detail in `./.llm_style/<topic>.md`—consolidate overlaps; do not drop rules—see `authoring_llm_style.md`.

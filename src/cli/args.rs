@@ -13,7 +13,7 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Implement / review / learn via Cursor agent ACP",
+    about = "Non-interactive agent, via Cursor ACP",
     disable_help_subcommand = true
 )]
 pub struct Cli {
@@ -27,13 +27,13 @@ pub struct Cli {
 pub enum Commands {
     /// Templates, kiss, pre-commit, Git LFS.
     Init(InitArgs),
-    /// Single ACP coder prompt.
+    /// Send a prompt to the agent.
     Do(DoArgs),
     /// Implement → review → learn.
     Code(CodeArgs),
-    /// KPOP hypothesis loop.
+    /// KPOP investigation loop.
     Kpop(KpopArgs),
-    /// Models from `agent` / `cursor-agent`.
+    /// List available models.
     Models(ModelsArgs),
 }
 
@@ -44,7 +44,7 @@ pub struct CodeArgs {
     /// Implement → review → learn loop budget.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
-    /// Skip learn (memory update).
+    /// Skip learning.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
@@ -58,10 +58,10 @@ pub struct KpopArgs {
     /// KPOP loop budget.
     #[arg(long, default_value_t = 10)]
     pub max_loops: usize,
-    /// P(mbc2 creative) after the first 3 prompts (0–1).
+    /// Probability (0–1) of using the MBC2 creative prompt variant on each outbound KPOP prompt when creative mode applies.
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
-    /// Skip learn (memory update).
+    /// Skip learning.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// Request or `@file` → `_malvin/.../request.md`.

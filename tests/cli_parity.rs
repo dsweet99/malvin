@@ -292,6 +292,15 @@ fn malvin_do_raw_skips_repo_style_prepend_contract() {
 }
 
 #[test]
+fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
+    let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
+    assert!(
+        !args_rs.contains("first 3 prompts"),
+        "`malvin kpop --p-creative` help must not claim a stale 'first 3 prompts' deferral; align with src/kpop_acp_prompt.rs (CREATIVE_MIN_INTERACTION)"
+    );
+}
+
+#[test]
 fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     let report_rs = include_str!(concat!(
