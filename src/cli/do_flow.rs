@@ -15,8 +15,9 @@ use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
 /// Stem for ACP trace directional tags (`[>…]` / `[<…]`) on `session/prompt`.
-/// Matches the implement step in `malvin code` (`implement.md` → stem `implement`), not the log basename.
-const DO_ACP_TRACE_STEM: &str = "implement";
+/// `malvin do` sends the expanded `header.md` body plus the user request, so its ACP trace label
+/// reflects that prompt provenance instead of the shared implement-phase timing bucket.
+const DO_ACP_TRACE_STEM: &str = "header";
 
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
@@ -171,9 +172,9 @@ mod do_tests {
         }
     }
 
-    /// Standalone `do` is the coder/implement prompt; ACP tags must match the implement step (`_malvin/.../plan.md`).
+    /// Standalone `do` prepends `header.md`, so the ACP trace label records prompt provenance.
     #[test]
-    fn do_acp_trace_stem_matches_implement_step_contract() {
-        assert_eq!(super::DO_ACP_TRACE_STEM, "implement");
+    fn do_acp_trace_stem_matches_header_prompt_contract() {
+        assert_eq!(super::DO_ACP_TRACE_STEM, "header");
     }
 }
