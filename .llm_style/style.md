@@ -33,7 +33,7 @@ ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside lo
 TRIGGER: post-run metrics hint  
 ADVICE: Optional stderr line after run timing: stable “not measured” copy only (no gross/net/repo-tree metering). Message must not contain `"git"` (`tests/cli_parity.rs`). Ordering: `grounding.md` + `malvin_tooling.md` § Post-run metrics hint.
 TRIGGER: run timing  
-ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one stdout summary line after the workflow body (**before** stderr post-run hint); record in `client_impl.inc` / `ops_body.inc`; `attach_run_timing_for_session` / finalize from orchestrator, KPOP, or `do_flow`. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
+ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one stdout `TIMING:` line after the workflow body (**before** stderr post-run hint)—**same `serde_json::Value`** drives disk + stdout (`report.rs`); `attach_new_run_timing` / `attach_run_timing_for_session` for all three; `emit_run_timing_after_acp` (`timing_merge.rs`) for `do`/`kpop` finalize. If timing I/O and workflow/ACP both fail, prefer the primary error—see `grounding.md` + `malvin_tooling.md` § Run timing.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: KPOP experiment, MBC2, p-creative  
@@ -55,7 +55,7 @@ ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer `{DEFAULT_CLI_MODEL}`; `de
 TRIGGER: ACP include layout  
 ADVICE: Much of `src/acp/` is `include!` for `kiss`—navigate `.inc` names; **included `.rs` inherit parent `use`**. See `malvin_tooling.md`.
 TRIGGER: ACP trace, JSONL, tee  
-ADVICE: `strip_trace_invocation_line_for_tee` + `maybe_tee_log` (`tee_strip_body.inc`, `ops_body.inc`); `reader_inline.inc`, `coalesce.rs`—`malvin_tooling.md` § ACP traces.
+ADVICE: Live tee: stdout reader (`trace_file_write_line`, `coalesce.rs`, `reader_inline.inc`). Test-only `strip_trace_invocation_line_for_tee` (`tee_strip_tests.inc`); **no** post-prompt file tee stub—`malvin_tooling.md` § ACP traces.
 TRIGGER: ACP tests, node  
 ADVICE: Mock `agent acp` children often `#!/usr/bin/env node`; `prepend_standard_path_for_child` (`transport/command.rs`). See `malvin_tooling.md` § Tests.
 TRIGGER: pre-commit hooks  
@@ -64,5 +64,7 @@ TRIGGER: search tools subagents
 ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). Merge-marker sweeps: limit to text globs / exclude `target/`—`malvin_tooling.md` § Merge markers, `_malvin` plans, green tree. ≤4 parallel subagents; skip for tiny edits.
 TRIGGER: full suite scope  
 ADVICE: When the user demands all checks/tests green on **all** files, fix repo-wide failures—no “pre-existing” hand-waving; see `malvin_tooling.md` § green tree no excuses.
+TRIGGER: CLI async timing finalize  
+ADVICE: After `await` ACP work, call sync `emit_run_timing_after_acp` (`src/cli/timing_merge.rs`)—avoid async helpers taking `FnOnce(&mut AgentClient) -> Fut` (lifetime errors with `&mut` + returned `Future`). See `malvin_tooling.md` § Run timing.
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work.

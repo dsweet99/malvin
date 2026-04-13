@@ -37,7 +37,9 @@ pub use do_flow::run_do;
 pub use kpop_flow::run_kpop;
 use malvin::acp::AgentClient;
 
-use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
+use malvin::artifacts::{
+    RunArtifacts, create_run_artifacts_from_text, resolve_user_request, startup_request_tag_label,
+};
 use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
@@ -73,12 +75,16 @@ pub fn prepare_kpop_prompt_store(
     Ok(store)
 }
 
-pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), String> {
+pub fn echo_primary_to_stdout(
+    plan_path: &Path,
+    echo_plain: bool,
+    startup_tag_label: &str,
+) -> Result<(), String> {
     if !echo_plain {
         return Ok(());
     }
     let plan_text = std::fs::read_to_string(plan_path).map_err(|e| e.to_string())?;
-    print_stdout_text(MALVIN_WHO, &plan_text);
+    print_stdout_text(startup_tag_label, &plan_text);
     Ok(())
 }
 
@@ -88,8 +94,10 @@ pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), 
 pub fn emit_run_startup_sequence(
     artifacts: &RunArtifacts,
     tee_startup_stdout: bool,
+    cli_request: &str,
 ) -> Result<(), String> {
-    echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout)?;
+    let tag = startup_request_tag_label(cli_request);
+    echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout, &tag)?;
     emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
     print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
     Ok(())
@@ -111,7 +119,7 @@ fn prepare_code_run(
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
-    emit_run_startup_sequence(&artifacts, code.shared.tee_startup_stdout())?;
+    emit_run_startup_sequence(&artifacts, code.shared.tee_startup_stdout(), &code.request)?;
 
     let mut orch = Orchestrator {
         client: &mut client,
@@ -225,4 +233,6 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::init_cmd::run_init);
     let _ = stringify!(crate::cli::models_cmd::run_models);
     let _ = stringify!(malvin::env_path::lookup_bin_on_path);
+    let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
 }

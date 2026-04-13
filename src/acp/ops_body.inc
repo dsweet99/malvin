@@ -44,10 +44,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     .map_err(AgentError)
 }
 
-/// After `session/prompt`, trace lines are already printed live when tee is on (`trace_file_write_line`).
-#[allow(clippy::missing_const_for_fn)]
-pub(crate) fn maybe_tee_log(_client: &AgentClient, _log_path: &Path) {}
-
+/// Review + kpop prompts: trace output tees live in the ACP stdout reader when enabled (`trace_file_write_line`).
 pub(crate) async fn run_reviewer_pair_once(
     client: &AgentClient,
     pair: &ReviewerPromptPair<'_>,
@@ -71,7 +68,6 @@ pub(crate) async fn run_reviewer_pair_once(
         t_review.elapsed(),
     );
     review_out.map_err(AgentError)?;
-    maybe_tee_log(client, pair.review_log);
 
     // Order invariant: workspace sync → LGTM on artifact → optional kpop prompt (`review_sync::sync_review_then_is_lgtm`).
     let lgtm = sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)
@@ -85,7 +81,6 @@ pub(crate) async fn run_reviewer_pair_once(
     let kpop_out = s.prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who).await;
     crate::run_timing::record_llm(client.timing.as_ref(), pair_id.kpop_phase(), t_kpop.elapsed());
     kpop_out.map_err(AgentError)?;
-    maybe_tee_log(client, pair.kpop_log);
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())
@@ -128,7 +123,6 @@ pub(crate) async fn run_kpop_flow_once(
         match session.prompt(text, log, who).await {
             Ok(()) => {
                 crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
-                maybe_tee_log(client, log);
                 Ok(())
             }
             Err(e) => {

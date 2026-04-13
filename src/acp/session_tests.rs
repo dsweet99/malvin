@@ -199,13 +199,14 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
     s.shutdown().await.expect("shutdown");
     let text = std::fs::read_to_string(&trace).expect("read trace");
     let cmd = crate::invocation::command_line().expect("invocation line");
-    let expected_fragment = format!(":[malvin]: Command: {cmd}\n");
+    let inner = crate::output::format_log_tag_inner(crate::output::MALVIN_WHO);
+    let expected_fragment = format!(":[{inner}]: Command: {cmd}\n");
     assert!(
         text.starts_with(&expected_fragment)
-            || text
+            ||         text
                 .lines()
                 .next()
-                .is_some_and(|line| line.ends_with(&format!(":[malvin]: Command: {cmd}"))),
+                .is_some_and(|line| line.ends_with(&format!(":[{inner}]: Command: {cmd}"))),
         "trace should start with malvin Command line; expected fragment {:?} got start {:?}",
         expected_fragment,
         text.chars().take(80).collect::<String>()

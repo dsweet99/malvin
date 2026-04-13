@@ -18,7 +18,6 @@ fn kiss_stringify_agent() {
     let _ = stringify!(crate::acp::has_api_key);
     let _ = stringify!(crate::acp::auth_probe);
     let _ = stringify!(crate::acp::spawn_agent_acp_session);
-    let _ = stringify!(crate::acp::maybe_tee_log);
     let _ = stringify!(crate::acp::strip_trace_invocation_line_for_tee);
     let _ = stringify!(crate::acp::run_reviewer_pair_once);
     let _ = stringify!(crate::acp::run_kpop_flow_once);
@@ -46,6 +45,7 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::random_alnum);
     let _ = stringify!(crate::artifacts::create_kpop_run_artifacts);
     let _ = stringify!(crate::artifacts::resolve_user_request);
+    let _ = stringify!(crate::artifacts::startup_request_tag_label);
     let _ = stringify!(crate::artifacts::work_dir_for_path);
     let _ = stringify!(crate::artifacts::resolve_at_file);
 }

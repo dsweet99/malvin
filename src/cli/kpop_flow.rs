@@ -8,13 +8,12 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
-use super::timing_merge::merge_acp_and_timing_results;
+use super::timing_merge::emit_run_timing_after_acp;
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
-use malvin::run_timing;
 
 pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let store = prepare_kpop_prompt_store(workflow, kpop.p_creative)?;
@@ -71,9 +70,7 @@ async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Resul
     // Match `Orchestrator::run`: run-timing stdout summary + JSON after the ACP body (grounding.md).
     let timing = ctx.client.attach_run_timing_for_session();
     let acp_result = kpop_run_acp(ctx.client, input).await;
-    let timing_result = run_timing::finalize_and_emit_run_timing(&ctx.artifacts.run_dir, &timing);
-    ctx.client.set_run_timing(None);
-    merge_acp_and_timing_results(acp_result, timing_result)
+    emit_run_timing_after_acp(ctx.client, &ctx.artifacts.run_dir, &timing, acp_result)
 }
 
 pub struct KpopAcpInput<'a> {
@@ -112,7 +109,7 @@ pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> 
 }
 
 pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
-    emit_run_startup_sequence(artifacts, kpop.shared.tee_startup_stdout())
+    emit_run_startup_sequence(artifacts, kpop.shared.tee_startup_stdout(), &kpop.request)
 }
 
 pub fn kpop_combined_prompt(kpop_body: &str, user_text: &str, budget: usize) -> String {
@@ -176,6 +173,6 @@ fn hypothesis_legacy_timing_after_hint_masks_acp_when_both_fail() {
 #[test]
 fn merge_acp_prefers_acp_error_when_both_fail() {
     let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
-    let merged = merge_acp_and_timing_results(Err("acp".into()), timing);
+    let merged = super::timing_merge::merge_acp_and_timing_results(Err("acp".into()), timing);
     assert_eq!(merged, Err("acp".into()));
 }

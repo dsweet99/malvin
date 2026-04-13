@@ -1,8 +1,12 @@
 //! Run directories and log paths.
 
+mod startup_tag;
+
 use chrono::Utc;
 use rand::Rng;
 use std::path::{Path, PathBuf};
+
+pub use startup_tag::startup_request_tag_label;
 
 /// One workflow run: isolated `_malvin/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]

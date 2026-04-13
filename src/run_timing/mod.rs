@@ -1,6 +1,6 @@
 //! Wall-clock and phase-bucketed LLM wait timing for `malvin code`, `malvin kpop`, and `malvin do` runs.
 //!
-//! **Streams:** One stdout summary line via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
+//! **Streams:** One stdout `TIMING:` summary line via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
 
 mod report;
 
@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 /// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop` / `malvin do`).
-pub const RUN_TIMING_SUMMARY_PREFIX: &str = "Run timing:";
+pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING:";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -139,7 +139,8 @@ impl RunTiming {
 
 /// Installs a fresh [`RunTiming`] in `timing_slot` and records wall-clock start at [`Instant::now`].
 ///
-/// `malvin code` and `malvin kpop` both use this so attachment stays consistent.
+/// `malvin code`, `malvin kpop`, and `malvin do` use this via [`crate::acp::AgentClient::attach_run_timing_for_session`]
+/// so attachment stays consistent.
 #[must_use]
 pub fn attach_new_run_timing(
     timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,

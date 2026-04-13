@@ -6,13 +6,17 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::shared_opts::SharedOpts;
-use super::timing_merge::merge_acp_and_timing_results;
+use super::timing_merge::emit_run_timing_after_acp;
 use malvin::acp::AgentClient;
 use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
-use malvin::run_timing::{self, TimingPhase};
+use malvin::run_timing::TimingPhase;
+
+/// Stem for ACP trace directional tags (`[>…]` / `[<…]`) on `session/prompt`.
+/// Matches the implement step in `malvin code` (`implement.md` → stem `implement`), not the log basename.
+const DO_ACP_TRACE_STEM: &str = "implement";
 
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
@@ -44,7 +48,11 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
     let artifacts =
         create_run_artifacts_from_text(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
 
-    emit_run_startup_sequence(&artifacts, do_args.shared.tee_startup_stdout())?;
+    emit_run_startup_sequence(
+        &artifacts,
+        do_args.shared.tee_startup_stdout(),
+        &do_args.request,
+    )?;
 
     let combined = combine_do_acp_prompt(&store, &artifacts, &text)?;
 
@@ -61,9 +69,7 @@ async fn run_do_with_timing(
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
     let acp_result = run_do_acp(client, artifacts, combined).await;
-    let timing_result = run_timing::finalize_and_emit_run_timing(&artifacts.run_dir, &timing);
-    client.set_run_timing(None);
-    merge_acp_and_timing_results(acp_result, timing_result)
+    emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }
 
 /// Build the coder ACP prompt: expanded `header.md`, then the resolved request text.
@@ -97,7 +103,7 @@ async fn run_do_acp(
         .run_coder_prompt(
             combined,
             &log,
-            "do",
+            DO_ACP_TRACE_STEM,
             Some(TimingPhase::Implement),
         )
         .await
@@ -163,5 +169,11 @@ mod do_tests {
             Commands::Do(d) => assert_eq!(d.request, "fix the bug"),
             _ => panic!("expected Do subcommand"),
         }
+    }
+
+    /// Standalone `do` is the coder/implement prompt; ACP tags must match the implement step (`_malvin/.../plan.md`).
+    #[test]
+    fn do_acp_trace_stem_matches_implement_step_contract() {
+        assert_eq!(super::DO_ACP_TRACE_STEM, "implement");
     }
 }

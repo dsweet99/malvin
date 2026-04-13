@@ -12,8 +12,11 @@ pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
 
 pub struct PromptTraceWriter {
     pub file: tokio::fs::File,
+    /// Raw tag label before fixed-width padding (e.g. `<implement`, `malvin`).
     pub who: String,
     pub stdout_replacement: Option<&'static str>,
+    /// For learn tee: emit [`crate::output::LEARNING_PLACEHOLDER`] at most once to stdout.
+    pub placeholder_emitted: bool,
 }
 
 pub struct AcpSessionInner {
@@ -34,6 +37,8 @@ pub struct AcpSessionInner {
     /// Serializes `AcpSession::prompt` so overlapping callers cannot stomp the trace writer.
     pub prompt_singleflight: Arc<Mutex<()>>,
     pub acp_verbose: bool,
+    /// Echo trace lines to stdout when tee is enabled (see [`AcpSpawnArgs::tee_trace_stdout`]).
+    pub tee_trace_stdout: bool,
     /// When set (UI lane), observers are notified whenever `busy` becomes false.
     pub ui_idle_notify: Option<Arc<Notify>>,
 }

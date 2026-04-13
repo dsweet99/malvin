@@ -27,7 +27,6 @@ pub struct AgentIoOptions {
     pub no_tee: bool,
 }
 
-include!("tee_strip_body.inc");
 include!("pair.inc");
 include!("agent_client_struct.inc");
 include!("retry_policy.inc");
@@ -60,7 +59,6 @@ fn stringify_private_helpers() {
     let _ = stringify!(has_api_key);
     let _ = stringify!(auth_probe);
     let _ = stringify!(spawn_agent_acp_session);
-    let _ = stringify!(maybe_tee_log);
     let _ = stringify!(strip_trace_invocation_line_for_tee);
     let _ = stringify!(run_reviewer_pair_once);
     let _ = stringify!(run_kpop_flow_once);

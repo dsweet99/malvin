@@ -143,7 +143,6 @@ impl AgentClient {
                     if let Some(ph) = llm_phase {
                         crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());
                     }
-                    maybe_tee_log(self, log_path);
                     return Ok(());
                 }
                 Err(e) => {

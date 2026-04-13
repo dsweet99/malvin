@@ -1,5 +1,6 @@
 use std::os::unix::fs::PermissionsExt;
 
+use malvin::output::{MALVIN_WHO, format_log_tag_inner};
 use tempfile::tempdir;
 
 use super::emit_command_line;
@@ -13,8 +14,9 @@ fn emit_command_line_writes_command_log_when_run_dir_is_writable() {
     let p = run.join("command.log");
     assert!(p.is_file(), "command.log should record argv beside the run");
     let text = std::fs::read_to_string(&p).expect("read command.log");
+    let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(
-        text.contains(":[malvin]: Command: ") && text.ends_with('\n'),
+        text.contains(&format!(":[{inner}]: Command: ")) && text.ends_with('\n'),
         "command.log should match stdout line format; got {text:?}"
     );
 }
@@ -31,8 +33,9 @@ fn emit_command_line_writes_command_log_when_stdout_echo_suppressed() {
         "command.log should still record argv when tee is off"
     );
     let text = std::fs::read_to_string(&p).expect("read command.log");
+    let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(
-        text.contains(":[malvin]: Command: ") && text.ends_with('\n'),
+        text.contains(&format!(":[{inner}]: Command: ")) && text.ends_with('\n'),
         "command.log should match stdout format when tee is off; got {text:?}"
     );
 }

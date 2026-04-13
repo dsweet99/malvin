@@ -155,6 +155,21 @@ impl TraceChunkCoalescer {
     }
 }
 
+fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, tee_stdout: bool) {
+    if !tee_stdout {
+        return;
+    }
+    match writer.stdout_replacement {
+        Some(rep) => {
+            if !writer.placeholder_emitted {
+                crate::output::print_stdout_line(&writer.who, rep);
+                writer.placeholder_emitted = true;
+            }
+        }
+        None => crate::output::print_stdout_line(&writer.who, line),
+    }
+}
+
 pub(crate) async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
     line: &str,
@@ -163,12 +178,13 @@ pub(crate) async fn trace_file_write_line(
     let formatted = crate::output::format_line(&writer.who, line);
     if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
-    } else if let Err(e) = writer.file.write_all(b"\n").await {
-        warn!(error = %e, "trace newline failed");
-    } else if tee_stdout {
-        let stdout_line = writer.stdout_replacement.unwrap_or(line);
-        crate::output::print_stdout_line(&writer.who, stdout_line);
+        return;
     }
+    if let Err(e) = writer.file.write_all(b"\n").await {
+        warn!(error = %e, "trace newline failed");
+        return;
+    }
+    trace_tee_stdout_line(writer, line, tee_stdout);
 }
 
 pub(crate) async fn write_trace_line_coalesced(
@@ -212,6 +228,7 @@ fn kiss_stringify_coalesce_b() {
     let _ = stringify!(TraceChunkCoalescer);
     let _ = stringify!(TraceChunkCoalescer::feed);
     let _ = stringify!(TraceChunkCoalescer::flush_all);
+    let _ = stringify!(trace_tee_stdout_line);
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(VerboseTraceCoalesceState);

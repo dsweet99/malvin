@@ -2,7 +2,7 @@
 use handshake_types::{
     AcpChildStdout, AcpHandshakeContinuation, AcpHandshakeIo, AcpHandshakeSessionOpts,
 };
-use session_channels::{SessionAfterStdioIn, SessionChannelState};
+use session_channels::{SessionAfterStdioIn, SessionChannelState, SessionReaderTelemetry};
 use session_io::{clamp_rpc_timeout, take_stdio_pipes};
 
 pub(crate) async fn acp_spawn_start_reader_and_handshake(
@@ -89,7 +89,10 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         child,
         session_id,
         rpc_timeout,
-        args.acp_verbose,
+        SessionReaderTelemetry {
+            acp_verbose: args.acp_verbose,
+            tee_trace_stdout: args.tee_trace_stdout,
+        },
     ))))
 }
 

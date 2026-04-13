@@ -5,9 +5,31 @@ use chrono::Local;
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
 
+/// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
+pub const LOG_TAG_INNER_WIDTH: usize = 15;
+
+#[must_use]
+pub fn format_log_tag_inner(label: &str) -> String {
+    let mut s: String = label.chars().take(LOG_TAG_INNER_WIDTH).collect();
+    while s.chars().count() < LOG_TAG_INNER_WIDTH {
+        s.push(' ');
+    }
+    s
+}
+
+/// Outgoing (`>`) or incoming (`<`) ACP trace label before fixed-width padding (e.g. `>implement`).
+#[must_use]
+pub fn format_acp_directional_tag_prefix(direction: char, stem: &str) -> String {
+    let mut s = String::new();
+    s.push(direction);
+    s.push_str(stem);
+    s
+}
+
 #[must_use]
 pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
-    format!("{ts}:[{who}]: {line}")
+    let inner = format_log_tag_inner(who);
+    format!("{ts}:[{inner}]: {line}")
 }
 
 #[must_use]
@@ -43,7 +65,7 @@ pub fn is_command_prelude_line(line: &str) -> bool {
             .is_some_and(|(_, payload)| payload.starts_with("Command: "))
 }
 
-fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
+pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
     text.split_inclusive('\n')
         .map(|part| part.strip_suffix('\n').unwrap_or(part))
 }
@@ -51,15 +73,24 @@ fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        LEARNING_PLACEHOLDER, MALVIN_WHO, format_line_with_timestamp, is_command_prelude_line,
+        LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_line_with_timestamp,
+        format_log_tag_inner, is_command_prelude_line,
     };
 
     #[test]
     fn formats_expected_mini_header() {
+        let inner = format_log_tag_inner("kpop");
         assert_eq!(
             format_line_with_timestamp("20260413.121314.015", "kpop", "hello"),
-            "20260413.121314.015:[kpop]: hello"
+            format!("20260413.121314.015:[{inner}]: hello")
         );
+    }
+
+    #[test]
+    fn log_tag_inner_is_fixed_width() {
+        assert_eq!(format_log_tag_inner("plan").chars().count(), LOG_TAG_INNER_WIDTH);
+        let long = "a".repeat(100);
+        assert_eq!(format_log_tag_inner(&long).chars().count(), LOG_TAG_INNER_WIDTH);
     }
 
     #[test]

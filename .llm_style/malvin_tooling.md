@@ -61,7 +61,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 
 ### ACP `include!` assembly (kiss dependency depth)
 
-Navigate by **include file names** (not only `mod` tree): e.g. `tee_strip_body.inc`, `ops_body.inc` (`maybe_tee_log`, reviewer pair), `reader_inline.inc`, `agent_bundle.inc`, `transport/*.rs`, `coalesce.rs`.
+Navigate by **include file names** (not only `mod` tree): e.g. `ops_body.inc` (reviewer pair), `tee_strip_tests.inc` (test-only strip helper), `reader_inline.inc`, `agent_bundle.inc`, `transport/*.rs`, `coalesce.rs`.
 
 **Included `.rs` files** (e.g. `transport/command.rs` pulled into `acp/mod.rs`) **inherit the parent module’s `use`**—types like `Path` are not imported locally unless the include parent brings them.
 
@@ -84,16 +84,25 @@ ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `str
 
 ## Run timing (`malvin code` / `malvin kpop` / `malvin do`)
 
-- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP and **`do`** (`src/cli/do_flow.rs` `run_do_with_timing`) attach timing and call the same finalizer; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
-- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** summary line after the workflow body (see root `grounding.md`).
-- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_results` in `src/cli/timing_merge.rs` used by KPOP and `do`).
-- **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP callers.
+TRIGGER: TIMING line JSON parity  
+ADVICE: One `serde_json::Value` from `to_json_value` is written pretty to `run_timing.json` and passed to `format_timing_stdout_line_from_json` for stdout—keeps `TIMING:` aligned with disk. `PHASE_MS_KEYS_JSON_ORDER` in `report.rs` must match `phases_ms` keys in `to_json_value`.
+
+TRIGGER: CLI emit run timing after ACP  
+ADVICE: `src/cli/timing_merge.rs` — `emit_run_timing_after_acp(client, run_dir, &timing, acp_result)` wraps `finalize_and_emit_run_timing` + `set_run_timing(None)` + `merge_acp_and_timing_results`; used by `do_flow` and `kpop_flow` (not async-generic—avoids `&mut AgentClient` + `Future` lifetime issues).
+
+- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP and **`do`** attach timing and finalize via `emit_run_timing_after_acp`; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
+- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** `TIMING:` line after the workflow body (see root `grounding.md`).
+- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`; `merge_acp_and_timing_results` in `timing_merge.rs`).
+- **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP / `do` callers.
 
 ## ACP traces, coalescing, tee
 
 - **Trace format:** After `AcpSession::prompt`, trace may start with plaintext `Command: …\n` (from `invocation`), then JSON lines from agent stdout—not guaranteed pure JSONL when that prelude exists.
-- **Tee:** Live trace tee goes through the stdout reader (`trace_file_write_line` / coalescing). `maybe_tee_log` in `ops_body.inc` is a no-op (historical hook). Post-hoc whole-file tee uses `strip_trace_invocation_line_for_tee` (`tee_strip_body.inc`) to drop a duplicate `Command:` prelude. No-newline `Command:`-only buffers strip to empty (documented + tested).
+- **Tee:** Live trace tee goes through the stdout reader (`trace_file_write_line` / coalescing). **No** post-prompt stub—historical `maybe_tee_log` was removed. Post-hoc strip contract: `strip_trace_invocation_line_for_tee` lives in **`tee_strip_tests.inc`** (test-only `include!`). No-newline `Command:`-only buffers strip to empty (documented + tested).
 - **Coalescing:** Verbose/trace paths track **Unicode scalar counts** per buffer in `coalesce.rs` to avoid repeated full-buffer `chars().count()` in flush loops.
+
+TRIGGER: clippy match same arms JSON wall  
+ADVICE: Prefer `v.get("wall_clock_ms").and_then(Value::as_u64)` over duplicated `match` arms for wall `n/a` vs numeric—`clippy::match_same_arms` (`run_timing/report.rs`).
 
 ## Tests
 

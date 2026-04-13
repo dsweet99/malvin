@@ -71,10 +71,20 @@ impl AcpSession {
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
+        trace_write_outgoing_prompt(
+            &mut file,
+            who,
+            text,
+            self.0.tee_trace_stdout,
+        )
+        .await?;
+        let incoming_tag =
+            crate::output::format_acp_directional_tag_prefix('<', who);
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
-            who: who.to_string(),
+            who: incoming_tag,
             stdout_replacement: prompt_stdout_replacement(who),
+            placeholder_emitted: false,
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

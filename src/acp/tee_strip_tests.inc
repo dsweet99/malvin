@@ -1,3 +1,24 @@
+// Test-only: trace tee strip contract (not used in non-test `malvin` builds).
+
+/// Trace files may start with our `Command: …` prelude (see [`crate::acp::AcpSession::prompt`]). That
+/// line is already printed once at CLI startup when tee is on; skip it here so tee does not repeat
+/// the same invocation on stdout.
+///
+/// Post-hoc tee used to read the **whole** trace file before streaming existed; kept for unit tests
+/// and the strip contract. Live tee skips the trace `Command:` line because startup already echoed it.
+///
+/// If the buffer begins with `Command: ` but contains **no** newline, the entire buffer is treated as
+/// that single prelude line and this returns an empty slice (nothing left to tee after stripping).
+pub(crate) fn strip_trace_invocation_line_for_tee(text: &str) -> &str {
+    let Some(first) = text.lines().next() else {
+        return text;
+    };
+    if !crate::output::is_command_prelude_line(first) {
+        return text;
+    }
+    text.find('\n').map_or("", |i| &text[i + 1..])
+}
+
 #[test]
 fn strips_malvin_command_prelude_only() {
     assert_eq!(

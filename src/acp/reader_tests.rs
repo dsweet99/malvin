@@ -314,6 +314,7 @@ async fn write_trace_line_coalesced_skips_non_chunk_lines() {
         file: f,
         who: "kpop".to_string(),
         stdout_replacement: None,
+        placeholder_emitted: false,
     };
     let mut c = TraceChunkCoalescer::default();
     crate::acp::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
@@ -337,12 +338,14 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         file,
         who: "review_1".to_string(),
         stdout_replacement: None,
+        placeholder_emitted: false,
     };
     crate::acp::trace_file_write_line(&mut writer, "hello", false).await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
+    let inner = crate::output::format_log_tag_inner("review_1");
     assert!(
-        s.contains(":[review_1]: hello\n"),
+        s.contains(&format!(":[{inner}]: hello\n")),
         "expected prompt-prefixed trace line, got {s:?}"
     );
 }

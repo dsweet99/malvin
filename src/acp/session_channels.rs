@@ -7,6 +7,13 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
+/// Verbose logging and stdout tee for the ACP reader (bundled for [`SessionChannelState::into_session_inner`]).
+#[derive(Clone, Copy)]
+pub struct SessionReaderTelemetry {
+    pub acp_verbose: bool,
+    pub tee_trace_stdout: bool,
+}
+
 pub struct SessionChannelState {
     pub(crate) stdin: Arc<Mutex<ChildStdin>>,
     pub(crate) pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
@@ -63,7 +70,7 @@ impl SessionChannelState {
         child: Child,
         session_id: String,
         rpc_timeout: std::time::Duration,
-        acp_verbose: bool,
+        telemetry: SessionReaderTelemetry,
     ) -> AcpSessionInner {
         let child_pid = child.id().unwrap_or(0);
         AcpSessionInner {
@@ -81,7 +88,8 @@ impl SessionChannelState {
             trace_writer: self.trace_writer,
             prompt_rpc_id: self.prompt_rpc_id,
             prompt_singleflight: self.prompt_singleflight,
-            acp_verbose,
+            acp_verbose: telemetry.acp_verbose,
+            tee_trace_stdout: telemetry.tee_trace_stdout,
             ui_idle_notify: self.ui_idle_notify,
         }
     }
@@ -98,6 +106,7 @@ pub struct SessionAfterStdioIn<'a> {
 
 #[test]
 fn kiss_stringify_session_channels() {
+    let _ = stringify!(SessionReaderTelemetry);
     let _ = stringify!(SessionChannelState);
     let _ = stringify!(SessionChannelState::new);
     let _ = stringify!(SessionChannelState::handshake_io);
