@@ -29,11 +29,11 @@ ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders when 
 TRIGGER: minimal diff  
 ADVICE: Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
 TRIGGER: review grounding  
-ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). If the issue is already fixed in `src/`, confirm tests, then LGTM/resolved—do not leave obsolete problem text. Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
+ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Verify claims vs `src/` + tests—**reviewer bullets can lag** already-correct docs/code; resolve by updating `review.md` and adding **`tests/cli_parity.rs`** guards when useful. Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
 TRIGGER: malvin do --raw  
 ADVICE: `do_flow.rs` passes `skip_repo_style: do_args.raw` into `AgentClient::run_coder_prompt`; `compose_coder_prompt_for_session` in `client_impl.inc` skips `.style/main.md` on the first coder turn when true. Orchestrator passes `false`. Align `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests` (`agent_bundle.inc`). Detail: `malvin_tooling.md` § CLI + coder prompt compose.
 TRIGGER: grounding code parity  
-ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, `src/output/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
+ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, `src/output/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent paths—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`; e.g. obsolete `src/artifacts.rs` vs `src/artifacts/`—`malvin_tooling.md` § Tests). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: stdout stderr log header  
 ADVICE: Route through **`src/output/mod.rs`** (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **ACP tee** ANSI + direction: **`src/output/acp_tee.rs`** (`AcpTeeDirection`, `print_stdout_acp_tee_line`)—outbound vs inbound colors; wire points **`session_trace.rs`** / **`coalesce.rs`**. **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** and **stderr** plain `format_line` (no ANSI). Default stdout prefix coloring: dim timestamp + cyan `who` unless ACP tee path. Document in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
 TRIGGER: learn ACP tee  
@@ -80,5 +80,9 @@ TRIGGER: full suite scope
 ADVICE: When the user demands all checks/tests green on **all** files, fix repo-wide failures—no “pre-existing” hand-waving; see `malvin_tooling.md` § green tree no excuses.
 TRIGGER: CLI async timing finalize  
 ADVICE: After `await` ACP work, call sync `emit_run_timing_after_acp` (`src/cli/timing_merge.rs`)—avoid async helpers taking `FnOnce(&mut AgentClient) -> Fut` (lifetime errors with `&mut` + returned `Future`). See `malvin_tooling.md` § Run timing.
+TRIGGER: clap help default punctuation  
+ADVICE: In manual **`///`** on **`#[arg]`**, write **`[default: …]`** not **`(default: …)`** so help matches clap’s built-in default lines—`malvin_tooling.md` § CLI (`shared_opts.rs` pattern).
+TRIGGER: llm_style layout paths  
+ADVICE: **`.llm_style/malvin_tooling.md`** crate-layout + file-path ADVICEs must match **`src/`**; on renames/splits extend **`tests/cli_parity.rs`** `include_str!` guards—`malvin_tooling.md` § Tests (**`malvin_tooling path strings vs src`**).
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only when the user expects work. **Agent pacing:** distinguish product “metrics” wording from model latency/thoroughness when user-visible copy matters (`malvin_tooling.md` § Repo-wide string contracts).

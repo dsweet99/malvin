@@ -15,8 +15,10 @@ pub use shared_opts::SharedOpts;
 
 use clap::Parser;
 
+use malvin::output::{
+    MALVIN_WHO, format_line, print_stderr_line, print_stdout_line, print_stdout_text,
+};
 use std::path::Path;
-use malvin::output::{MALVIN_WHO, format_line, print_stderr_line, print_stdout_line, print_stdout_text};
 
 /// Writes `command.log` under `run_dir`. When `echo_stdout` is true (tee on), also prints `Command: …` to stdout — same flag semantics as [`SharedOpts::tee_startup_stdout`].
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
@@ -99,7 +101,10 @@ pub fn emit_run_startup_sequence(
     let tag = startup_request_tag_label(cli_request);
     echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout, &tag)?;
     emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
-    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
+    print_stdout_line(
+        MALVIN_WHO,
+        &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?),
+    );
     Ok(())
 }
 

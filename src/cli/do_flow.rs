@@ -34,19 +34,17 @@ struct DoCoderRun<'a> {
 pub struct DoArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// Send only the user prompt to ACP (no `header.md`, `learn.md`, or other prompt files).
+    /// User text only (no header.md / bundled prompts).
     #[arg(long, default_value_t = false)]
     pub raw: bool,
-    /// `@path` reads a file; otherwise literal user text. Stored as `_malvin/.../plan.md`.
+    /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
 
 /// Ensure `~/.malvin/prompts` defaults (including `header.md`) exist.
 pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
-    store
-        .ensure_defaults()
-        .map_err(|e: PromptError| e.0)?;
+    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("header.md")
         .map_err(|e: PromptError| e.0)?;
@@ -58,8 +56,8 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let (text, work_dir) = resolve_user_request(&do_args.request)?;
-    let artifacts =
-        create_run_artifacts_from_text(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
+        .map_err(|e| e.to_string())?;
 
     emit_run_startup_sequence(
         &artifacts,
@@ -108,11 +106,7 @@ pub fn combine_do_acp_prompt(
     let header_body = store
         .render_prompt_only("header.md", &context)
         .map_err(|e: PromptError| e.0)?;
-    Ok(format!(
-        "{}\n\n{}",
-        header_body.trim_end(),
-        text.trim_end()
-    ))
+    Ok(format!("{}\n\n{}", header_body.trim_end(), text.trim_end()))
 }
 
 /// User text only, for `--raw` (no template files).

@@ -14,7 +14,10 @@ pub fn is_lgtm(review_path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-pub fn sync_review_file(workspace_review_path: &Path, artifact_review_path: &Path) -> io::Result<()> {
+pub fn sync_review_file(
+    workspace_review_path: &Path,
+    artifact_review_path: &Path,
+) -> io::Result<()> {
     if !workspace_review_path.exists() {
         return Ok(());
     }

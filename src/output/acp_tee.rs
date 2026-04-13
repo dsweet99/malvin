@@ -1,7 +1,7 @@
 //! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
-use super::{format_line, format_log_tag_inner, timestamp_now_string, stdout_use_color};
 use super::{ANSI_DIM, ANSI_RESET};
+use super::{format_line, format_log_tag_inner, stdout_use_color, timestamp_now_string};
 
 const ANSI_BRIGHT_GREEN: &str = "\x1b[92m";
 const ANSI_BRIGHT_MAGENTA: &str = "\x1b[95m";

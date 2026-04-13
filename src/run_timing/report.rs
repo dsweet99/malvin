@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use super::{RunTiming, RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX};
+use super::{RUN_TIMING_JSON_FILE, RUN_TIMING_SUMMARY_PREFIX, RunTiming};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
 pub(super) fn duration_ms_u64(d: Duration) -> u64 {
@@ -75,7 +75,9 @@ fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
     let mut first = true;
     match v.get("wall_clock_ms").and_then(Value::as_u64) {
-        Some(ms) => timing_line_append_part(&mut s, &mut first, "wall", &format_ms_one_decimal_s(ms)),
+        Some(ms) => {
+            timing_line_append_part(&mut s, &mut first, "wall", &format_ms_one_decimal_s(ms));
+        }
         None => timing_line_append_part(&mut s, &mut first, "wall", "n/a"),
     }
     for (json_key, line_key) in [
@@ -83,12 +85,7 @@ fn format_timing_stdout_line_from_json(v: &Value) -> String {
         ("agent_retry_backoff_ms", "agent_retry_backoff"),
     ] {
         let ms = v.get(json_key).and_then(Value::as_u64).unwrap_or(0);
-        timing_line_append_part(
-            &mut s,
-            &mut first,
-            line_key,
-            &format_ms_one_decimal_s(ms),
-        );
+        timing_line_append_part(&mut s, &mut first, line_key, &format_ms_one_decimal_s(ms));
     }
     let phases = v.get("phases_ms").and_then(Value::as_object);
     for key in PHASE_MS_KEYS_JSON_ORDER {
@@ -124,7 +121,9 @@ mod format_tests {
         r.mark_wall_end(std::time::Instant::now());
         r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(23_451));
         let json: Value = super::to_json_value(&r);
-        let implement_ms = json["phases_ms"]["implement"].as_u64().expect("implement ms in json");
+        let implement_ms = json["phases_ms"]["implement"]
+            .as_u64()
+            .expect("implement ms in json");
         let expected = format_ms_one_decimal_s(implement_ms);
         let line = super::format_timing_stdout_line_from_json(&json);
         assert!(

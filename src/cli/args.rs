@@ -13,10 +13,9 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Implementation and review workflow via agent acp",
+    about = "Implement / review / learn via Cursor agent ACP",
     disable_help_subcommand = true
 )]
-#[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
@@ -26,15 +25,15 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Initialize a repository with templates and local tooling (`kiss`, Git LFS, pre-commit).
+    /// Templates, kiss, pre-commit, Git LFS.
     Init(InitArgs),
-    /// Run one coder ACP prompt.
+    /// Single ACP coder prompt.
     Do(DoArgs),
-    /// Run the full implement → review → learn workflow.
+    /// Implement → review → learn.
     Code(CodeArgs),
-    /// KPOP hypothesis workflow.
+    /// KPOP hypothesis loop.
     Kpop(KpopArgs),
-    /// List models from the Cursor agent CLI (`cursor-agent models` / `agent models`).
+    /// Models from `agent` / `cursor-agent`.
     Models(ModelsArgs),
 }
 
@@ -42,12 +41,13 @@ pub enum Commands {
 pub struct CodeArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
+    /// Implement → review → learn loop budget.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
-    /// Do not learn (update memory).
+    /// Skip learn (memory update).
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// `@path` reads a file; otherwise literal user text. Stored as `_malvin/.../plan.md`.
+    /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
 
@@ -55,15 +55,15 @@ pub struct CodeArgs {
 pub struct KpopArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// Hypothesis budget for the KPOP prompt.
+    /// KPOP loop budget.
     #[arg(long, default_value_t = 10)]
     pub max_loops: usize,
-    /// Probability (0–1) of sending the `mbc2.md` creative prompt after the first three ACP prompts in the KPOP session.
+    /// P(mbc2 creative) after the first 3 prompts (0–1).
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
-    /// Do not learn (update memory).
+    /// Skip learn (memory update).
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// `@path` reads a file; otherwise literal user text. Stored as `_malvin/.../request.md`.
+    /// Request or `@file` → `_malvin/.../request.md`.
     pub request: String,
 }

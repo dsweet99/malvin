@@ -10,8 +10,7 @@ pub fn startup_request_tag_label(cli_request: &str) -> String {
         || "prompt".to_string(),
         |path_str| {
             let path = Path::new(path_str);
-            path
-                .file_stem()
+            path.file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("plan")
                 .to_string()

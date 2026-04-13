@@ -31,10 +31,10 @@ const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
 /// Arguments for [`run_init`].
 #[derive(Args, Debug)]
 pub struct InitArgs {
-    /// Overwrite files installed from `default_repo/` and refresh `admin/check_untracked.sh`.
+    /// Overwrite `default_repo/` installs; refresh `admin/check_untracked.sh`.
     #[arg(long, default_value_t = false)]
     pub force: bool,
-    /// Target directory (defaults to the current working directory).
+    /// Target directory [default: cwd].
     pub path: Option<PathBuf>,
 }
 
@@ -71,7 +71,7 @@ fn write_init_templates(root: &Path, force: bool) -> Result<(), String> {
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
-    // Match product plan: templates include `.pre-commit-config.yaml`, then hooks, then `kiss init`, then Git LFS.
+    // Order: ship `.pre-commit-config.yaml`, install hooks, `kiss init`, Git LFS.
     require_on_path(
         "pre-commit",
         "`pre-commit` is not installed or not on PATH; install pre-commit (for example `pip install pre-commit`) before running `malvin init`.",

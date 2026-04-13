@@ -1,48 +1,15 @@
 //! Prompt templates under `~/.malvin/prompts` with embedded defaults.
 
+mod defaults;
 mod template;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS};
 use template::merge_header_and_coding_rules;
 
-const REQUIRED_PROMPTS: &[&str] = &[
-    "implement.md",
-    "review_1.md",
-    "review_2.md",
-    "kpop.md",
-    "concerns.md",
-    "header.md",
-    "coding_rules.md",
-];
-
-const DEFAULT_PROMPTS: &[&str] = &[
-    "implement.md",
-    "review_1.md",
-    "review_2.md",
-    "kpop.md",
-    "mbc2.md",
-    "concerns.md",
-    "learn.md",
-    "header.md",
-    "coding_rules.md",
-];
-
-pub(crate) fn default_file(name: &str) -> Option<&'static str> {
-    match name {
-        "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
-        "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
-        "review_2.md" => Some(include_str!("../../default_prompts/review_2.md")),
-        "kpop.md" => Some(include_str!("../../default_prompts/kpop.md")),
-        "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
-        "concerns.md" => Some(include_str!("../../default_prompts/concerns.md")),
-        "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
-        "header.md" => Some(include_str!("../../default_prompts/header.md")),
-        "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),
-        _ => None,
-    }
-}
+pub(crate) use defaults::default_file;
 
 /// User-facing prompt configuration error.
 #[derive(Debug, thiserror::Error)]
@@ -242,7 +209,8 @@ impl PromptStore {
     }
 }
 
-#[allow(unused_imports)] // `substitute_template`: tests / coverage only (not used in this module body).
+#[allow(unused_imports)]
+// `substitute_template`: tests / coverage only (not used in this module body).
 pub(crate) use template::{render_template, substitute_template};
 
 #[cfg(test)]

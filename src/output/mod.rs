@@ -2,7 +2,9 @@
 
 mod acp_tee;
 
-pub use acp_tee::{AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line};
+pub use acp_tee::{
+    AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
+};
 
 use std::io::{IsTerminal, stdout};
 use std::sync::OnceLock;
@@ -113,13 +115,13 @@ pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
 
 #[cfg(test)]
 mod tests {
+    use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
     use super::{
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
         format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
         format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
         print_stdout_line, print_stdout_text,
     };
-    use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
 
     #[test]
     fn formats_expected_mini_header() {
@@ -132,9 +134,15 @@ mod tests {
 
     #[test]
     fn log_tag_inner_is_fixed_width() {
-        assert_eq!(format_log_tag_inner("plan").chars().count(), LOG_TAG_INNER_WIDTH);
+        assert_eq!(
+            format_log_tag_inner("plan").chars().count(),
+            LOG_TAG_INNER_WIDTH
+        );
         let long = "a".repeat(100);
-        assert_eq!(format_log_tag_inner(&long).chars().count(), LOG_TAG_INNER_WIDTH);
+        assert_eq!(
+            format_log_tag_inner(&long).chars().count(),
+            LOG_TAG_INNER_WIDTH
+        );
     }
 
     #[test]

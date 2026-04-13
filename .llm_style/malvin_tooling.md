@@ -54,7 +54,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 **Binary vs library:** `src/cli/` is part of the **`malvin` binary crate**, not `malvin` the library. `pub(crate)` fields on `AgentClient` (e.g. `timing`) are visible inside `src/lib.rs` code only—**not** from `src/cli/`. Use public methods on the library client (e.g. `attach_run_timing_for_session`) or keep field access in lib modules (`src/orchestrator/`, …).
 | Invocation argv | `src/invocation.rs` |
 | Log path display | `src/log_paths.rs` |
-| Run artifacts | `src/artifacts.rs` |
+| Run artifacts | `src/artifacts/` (`mod.rs`, `startup_tag.rs`) |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
 | Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code`, `malvin kpop`, `malvin do`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/`; `prompts/template.rs` holds merge/render helpers when `kiss` `lines_per_file` caps `mod.rs` (~250 lines) |
@@ -120,6 +120,9 @@ ADVICE: Prefer `v.get("wall_clock_ms").and_then(Value::as_u64)` over duplicated 
 TRIGGER: docs parity llm_style  
 ADVICE: `tests/cli_parity.rs` **`include_str!`**s root **`grounding.md`**, **`.llm_style/style.md`**, **`.llm_style/malvin_tooling.md`**, and selected **`src/`** files—guards against revived removed modules (e.g. `post_run_hint`), stderr post-run metrics copy, and **`TIMING:`** / JSON contract drift. Editing agent guidance or user-facing behavior: run **`cargo test`** (or at least `cli_parity`) before merge.
 
+TRIGGER: malvin_tooling path strings vs src  
+ADVICE: After a module split/rename, update **`.llm_style/malvin_tooling.md`** crate-layout table and path ADVICEs to match **`src/lib.rs`** / real dirs (e.g. run artifacts: **`src/artifacts/`** `mod.rs` + `startup_tag.rs`). Extend **`tests/cli_parity.rs`** with **`include_str!(malvin_tooling.md)`** asserts that forbid obsolete flat-module paths and require current module paths—see **`malvin_tooling_documents_run_artifacts_module_dir_not_flat_file`**.
+
 - **Node:** Many ACP tests use executable Node scripts as mock `agent acp` children; `node` must be on `PATH` or handshake tests fail. Spawns that need a minimal UNIX layout use **`prepend_standard_path_for_child`** (`src/acp/transport/command.rs`) so `#!/usr/bin/env node` resolves.
 - **Brittle source tests:** Prefer behavioral tests over `include_str!` substring checks on `mod.rs` that break on refactors.
 - **CLI / gitignore guards:** Cross-cutting behavioral checks and `git check-ignore` fixtures often live in `tests/cli_parity.rs` (alongside ACP spawn string guards).
@@ -128,7 +131,7 @@ ADVICE: `tests/cli_parity.rs` **`include_str!`**s root **`grounding.md`**, **`.l
 ## Review sync, `review.md`, shared output
 
 TRIGGER: RunArtifacts review paths  
-ADVICE: Use `RunArtifacts::artifact_review_md()` / `workspace_review_md()` in `src/artifacts.rs` for workspace ↔ run artifact `review.md` paths; avoid duplicating `run_dir.join("review.md")` / `work_dir.join("review.md")` at call sites.
+ADVICE: Use `RunArtifacts::artifact_review_md()` / `workspace_review_md()` in `src/artifacts/mod.rs` for workspace ↔ run artifact `review.md` paths; avoid duplicating `run_dir.join("review.md")` / `work_dir.join("review.md")` at call sites.
 
 TRIGGER: sync_review_then_is_lgtm  
 ADVICE: `src/review_sync.rs` — `sync_review_then_is_lgtm` returns **`io::Result<bool>`** (propagate read/write with `?`); map to `AgentError` / `WorkflowError` in `ops_body.inc` and `orchestrator/review_loop.rs`. Do not treat sync I/O failure as “not LGTM.”
@@ -185,6 +188,9 @@ ADVICE: `clap` prints **`Commands:`** in **`#[derive(Subcommand)]`** variant ord
 
 TRIGGER: CLI help and shared opts  
 ADVICE: `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; `SharedOpts::tee_startup_stdout`.
+
+TRIGGER: clap help manual default text  
+ADVICE: For extra prose on **`#[arg]`** lines (beyond clap’s auto **`[default: …]`**), use **`[default: …]`** in **`///`** docs, not **`(default: …)`**, so usage stays consistent (`src/cli/shared_opts.rs`, `init_cmd.rs` pattern).
 
 TRIGGER: cli mod sibling file  
 ADVICE: Each `mod name;` in `src/cli/mod.rs` requires `src/cli/name.rs` (e.g. `do_flow`, `timing_merge`). Add the `.rs` in the **same change** as the `mod` line so checkouts compile; agents do not run `git`—users stage the pair.

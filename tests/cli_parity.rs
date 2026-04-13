@@ -63,10 +63,7 @@ const fn agent_sources_for_snapshot() -> &'static str {
 
 #[test]
 fn reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order() {
-    let ops = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/ops_body.inc"
-    ));
+    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc"));
     let review = ops
         .find("s.prompt(&review_full, pair.review_log, pair.review_who)")
         .expect("expected review session/prompt in run_reviewer_pair_once");
@@ -258,6 +255,22 @@ fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
             "{path} must not reference removed post_run_hint paths; align with grounding.md",
         );
     }
+}
+
+#[test]
+fn malvin_tooling_documents_run_artifacts_module_dir_not_flat_file() {
+    let tooling = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/.llm_style/malvin_tooling.md"
+    ));
+    assert!(
+        !tooling.contains("src/artifacts.rs"),
+        "malvin_tooling.md must not point at removed flat `src/artifacts.rs`; run artifacts live under `src/artifacts/`",
+    );
+    assert!(
+        tooling.contains("src/artifacts/mod.rs") && tooling.contains("src/artifacts/"),
+        "malvin_tooling.md must document `RunArtifacts` / review paths via `src/artifacts/` (e.g. mod.rs)",
+    );
 }
 
 #[test]

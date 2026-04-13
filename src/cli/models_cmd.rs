@@ -90,7 +90,10 @@ pub fn run_models() -> Result<(), String> {
     let cleaned = trim_trailing_tip_lines(&text);
     print_parsed_or_fallback(&cleaned);
     print_stdout_line(MALVIN_WHO, "");
-    print_stdout_line(MALVIN_WHO, &format!("Default model in malvin: {DEFAULT_CLI_MODEL}"));
+    print_stdout_line(
+        MALVIN_WHO,
+        &format!("Default model in malvin: {DEFAULT_CLI_MODEL}"),
+    );
     Ok(())
 }
 
