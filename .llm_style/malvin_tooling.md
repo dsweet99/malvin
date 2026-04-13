@@ -155,7 +155,10 @@ TRIGGER: cli mod sibling file
 ADVICE: Each `mod name;` in `src/cli/mod.rs` requires `src/cli/name.rs` (e.g. `do_flow`, `timing_merge`). Add the `.rs` in the **same change** as the `mod` line so checkouts compile; agents do not run `git`—users stage the pair.
 
 - **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
-- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+
+TRIGGER: compose_coder_prompt session  
+ADVICE: `compose_coder_prompt_for_session` at top of `client_impl.inc`: prepends `.style/main.md` when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. `--raw` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_raw_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
 - **Timing merge:** `timing_merge.rs` — `merge_acp_and_timing_results` shared with `kpop_flow.rs` (avoid duplicated merge helpers; kiss `duplication`).
 - **`src/cli/args.rs`, `mod.rs`, `shared_opts.rs`:** `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
 - **Default model:** `DEFAULT_CLI_MODEL` in `shared_opts.rs`; `malvin models` footer must use the same constant (see `tests/cli_parity.rs`).
@@ -200,6 +203,12 @@ Root **`review.md`** is the working reviewer checklist (“problems only” / re
 - **`use` placement:** avoid `use` items after other statements in a block (`clippy::items_after_statements`); lift imports to the enclosing module (e.g. `rand` in `agent_bundle.inc` for `ops_body.inc`).
 - **Async + RNG:** `thread_rng()` / `ThreadRng` is not `Send`; do not hold it across `.await`. For multiple `session/prompt` rounds in one async fn, use one `rand::rngs::StdRng::from_entropy()` (or seed) and `&mut rng`.
 - **kiss arity:** if `arguments_per_function` fires, group parameters in a struct (same pattern as `KpopAcpPromptPick`).
+
+## LiteLLM / token cost (external proxy)
+
+- Prefer **provider `usage`** on each response when cost matters; that is authoritative when present.
+- LiteLLM **`token_counter`** uses **tiktoken** / HF tokenizers + message/tool heuristics; unknown OpenAI-style models may fall back to **`cl100k_base`**—treat counts as **approximate** vs Anthropic/Gemini/etc.
+- **`completion_cost`** multiplies tokens (from usage or estimate) by `model_cost_map` prices; **`litellm.disable_token_counter`** can zero counts.
 
 ## Keyword index (moved from `style.md` surface)
 

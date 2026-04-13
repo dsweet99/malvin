@@ -261,6 +261,24 @@ fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
 }
 
 #[test]
+fn malvin_do_raw_skips_repo_style_prepend_contract() {
+    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
+    let client_impl = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/acp/client_impl.inc"
+    ));
+    assert!(
+        do_flow.contains("skip_repo_style") && do_flow.contains("do_args.raw"),
+        "`malvin do --raw` must pass skip_repo_style from do_args.raw into run_coder_prompt (no .style/main.md prepend)"
+    );
+    assert!(
+        client_impl.contains("skip_repo_style")
+            && client_impl.contains("compose_coder_prompt_for_session"),
+        "AgentClient::run_coder_prompt must honor skip_repo_style"
+    );
+}
+
+#[test]
 fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
     let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
     let report_rs = include_str!(concat!(

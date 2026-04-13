@@ -56,6 +56,7 @@ fn stringify_private_helpers() {
     let _ = stringify!(plan_agent_retry);
     let _ = stringify!(backoff_after_agent_failure);
     let _ = stringify!(AgentIoOptions);
+    let _ = stringify!(compose_coder_prompt_for_session);
     let _ = stringify!(has_api_key);
     let _ = stringify!(auth_probe);
     let _ = stringify!(spawn_agent_acp_session);
@@ -63,6 +64,38 @@ fn stringify_private_helpers() {
     let _ = stringify!(run_reviewer_pair_once);
     let _ = stringify!(run_kpop_flow_once);
     let _ = stringify!(KpopFlowOnceArgs);
+}
+
+#[cfg(test)]
+mod compose_coder_prompt_tests {
+    use super::compose_coder_prompt_for_session;
+
+    #[test]
+    fn prepends_style_file_on_first_turn_when_not_skipped() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let style = tmp.path().join("main.md");
+        std::fs::write(&style, "STYLE\n").expect("write style");
+        let out = compose_coder_prompt_for_session("USER", true, false, &style);
+        assert_eq!(out, "STYLE\n\nUSER");
+    }
+
+    #[test]
+    fn skip_repo_style_omits_style_even_when_first_turn() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let style = tmp.path().join("main.md");
+        std::fs::write(&style, "STYLE\n").expect("write style");
+        let out = compose_coder_prompt_for_session("USER", true, true, &style);
+        assert_eq!(out, "USER");
+    }
+
+    #[test]
+    fn whitespace_only_style_file_does_not_prepend() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let style = tmp.path().join("main.md");
+        std::fs::write(&style, "  \n  ").expect("write style");
+        let out = compose_coder_prompt_for_session("USER", true, false, &style);
+        assert_eq!(out, "USER");
+    }
 }
 
 #[cfg(test)]

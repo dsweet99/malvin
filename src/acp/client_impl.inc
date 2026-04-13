@@ -1,5 +1,27 @@
 /// Apply bounded-retry backoff after a failed attempt, or stop the retry loop.
 /// Returns `Ok(true)` when the caller should `break` the attempt loop; `Err` on upgrade-plan short-circuit.
+/// Build the text sent on `session/prompt`, optionally prefixing `.style/main.md` on the first coder turn.
+///
+/// When `skip_repo_style` is set (e.g. `malvin do --raw`), the style file is ignored so only `prompt` is sent.
+pub(crate) fn compose_coder_prompt_for_session(
+    prompt: &str,
+    style_on_first_turn: bool,
+    skip_repo_style: bool,
+    style_prompt_path: &Path,
+) -> String {
+    let mut full_prompt = prompt.to_string();
+    if style_on_first_turn
+        && !skip_repo_style
+        && let Ok(style_text) = std::fs::read_to_string(style_prompt_path)
+    {
+        let t = style_text.trim();
+        if !t.is_empty() {
+            full_prompt = format!("{t}\n\n{full_prompt}");
+        }
+    }
+    full_prompt
+}
+
 async fn backoff_after_agent_failure(
     timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     last_error: &str,
@@ -105,6 +127,9 @@ impl AgentClient {
 
     /// Run one prompt on the open coder session (implement, concerns, or learn).
     ///
+    /// When `skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
+    /// `.style/main.md` when present. Set `skip_repo_style` for `malvin do --raw` so only `prompt` is sent.
+    ///
     /// # Errors
     ///
     /// Returns [`AgentError`] when there is no session or the prompt fails after retries.
@@ -114,21 +139,19 @@ impl AgentClient {
         log_path: &Path,
         who: &str,
         llm_phase: Option<crate::run_timing::TimingPhase>,
+        skip_repo_style: bool,
     ) -> Result<(), AgentError> {
         let session = self
             .coder_session
             .as_ref()
             .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?;
 
-        let mut full_prompt = prompt.to_string();
-        if self.coder_style_on_next_prompt
-            && let Ok(style_text) = std::fs::read_to_string(&self.style_prompt_path)
-        {
-            let t = style_text.trim();
-            if !t.is_empty() {
-                full_prompt = format!("{t}\n\n{full_prompt}");
-            }
-        }
+        let full_prompt = compose_coder_prompt_for_session(
+            prompt,
+            self.coder_style_on_next_prompt,
+            skip_repo_style,
+            &self.style_prompt_path,
+        );
         self.coder_style_on_next_prompt = false;
 
         let mut last_error = String::new();

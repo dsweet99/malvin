@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, `/proc` child health), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, `/proc` child health, LiteLLM/token notes), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
 
 ---
 
@@ -27,9 +27,17 @@ ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders when 
 TRIGGER: minimal diff  
 ADVICE: Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
 TRIGGER: review grounding  
-ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
+ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes (no stale “open problems”). If the issue is already fixed in `src/`, confirm tests, then LGTM/resolved—do not leave obsolete problem text. Review sync API + paths: `malvin_tooling.md` § Review sync + `review.md`.
+TRIGGER: malvin do --raw  
+ADVICE: `do_flow.rs` passes `skip_repo_style: do_args.raw` into `AgentClient::run_coder_prompt`; `compose_coder_prompt_for_session` in `client_impl.inc` skips `.style/main.md` on the first coder turn when true. Orchestrator passes `false`. Align `grounding.md`; regress `tests/cli_parity.rs` + `compose_coder_prompt_tests` (`agent_bundle.inc`). Detail: `malvin_tooling.md` § CLI + coder prompt compose.
 TRIGGER: grounding code parity  
 ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
+TRIGGER: stdout stderr log header  
+ADVICE: Route user-visible output through `src/output.rs` helpers, not raw `println!`/`eprintln!`, so every line keeps the `YYYYMMDD.HHMMSS.mmm:[who]: ` contract across stdout, stderr, `command.log`, and ACP trace logs.
+TRIGGER: learn tee redaction  
+ADVICE: `learn` prompt output must be written to logs normally but replaced with exact stdout placeholder `[learning...]`; implement via prompt-specific tee metadata in ACP trace writing, not by mutating stored log content.
+TRIGGER: source-shape regression tests  
+ADVICE: After changing ACP prompt signatures or include-body call shapes, check string-based tests like `tests/review_ops_order.rs` and docs-parity tests that `include_str!` source files—they may need updates even when runtime behavior is correct.
 TRIGGER: repo-wide string contracts  
 ADVICE: Renaming or banning a term: `rg` repo-wide (fragments can hide inside longer words); update `default_prompts/`, `.cursorrules`, `_kpop/` logs—see `malvin_tooling.md` § Repo-wide string contracts.
 TRIGGER: run timing  
@@ -49,7 +57,11 @@ ADVICE: `src/env_path.rs` `agent_or_cursor_agent_bin()` — same `agent`→`curs
 TRIGGER: lib test_utils binary  
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary tests use `tests/*.rs` + `env!("CARGO_BIN_EXE_malvin")` (see `init_pre_commit.rs`).
 TRIGGER: ACP retry backoff  
-ADVICE: `retry_policy.inc`, `client_impl.inc`, `retry_policy_tests` in `agent_bundle.inc`—narrow `contains` phrases; guard **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
+ADVICE: `retry_policy.inc`—retriable = **timeout / deadline** substrings only; other agent/tooling errors **fail fast** (no backoff retry). `client_impl.inc`, `agent_bundle.inc` tests; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
+TRIGGER: LiteLLM token cost  
+ADVICE: Prefer provider **`usage`** for billing; LiteLLM **`token_counter`** is heuristic (tiktoken/HF, fallbacks)—`malvin_tooling.md` § LiteLLM / token cost.
+TRIGGER: diff thrash metric wording  
+ADVICE: Byte- or path-summed edit costs and **gross/net ratios** depend on checkpoint cadence and diff math—do not treat “1.0” or low gross as proof the agent made no mistakes; state assumptions.
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs`.
 TRIGGER: ACP include layout  
