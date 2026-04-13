@@ -129,4 +129,16 @@ mod linux_parse {
         let s = "Name:\tfoo\nvoluntary_ctxt_switches:\t4242\n";
         assert_eq!(parse_status_voluntary_ctxt(s), Some(4242));
     }
+
+    /// Value must tolerate a trailing `\r` on the line (e.g. odd line endings) so we do not drop
+    /// the counter and under-count OS "progress" during silence grace.
+    #[test]
+    fn voluntary_ctxt_parses_when_value_has_trailing_cr() {
+        let s = "voluntary_ctxt_switches:\t4242\r";
+        assert_eq!(
+            parse_status_voluntary_ctxt(s),
+            Some(4242),
+            "trailing \\r after the numeric value must not break u64 parse"
+        );
+    }
 }

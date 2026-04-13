@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, child health), `./.llm_style/malvin_debugging.md` (debug, search fallbacks).
+When the project `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, `/proc` child health), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
 
 ---
 
@@ -21,6 +21,9 @@ ADVICE: Do not run git commands; users stage/commit locally. Pre-commit `admin/c
 
 TRIGGER: child health ACP silence  
 ADVICE: `src/child_health/` (`linux`/`macos`/`other`); `process_absent` vs `cannot_sample`; `counters_trusted`; `rpc_wait_response` races JSON-RPC `oneshot` with `evaluate_after_acp_silence`. See `malvin_tooling.md` § Child health + ACP silence.
+
+TRIGGER: voluntary_ctxt parse  
+ADVICE: Linux `parse_status_voluntary_ctxt`: after `strip_prefix`, use **`rest.trim().parse()`**—`trim_start()` leaves trailing `\r` and breaks `u64` parse. See `malvin_tooling.md` § Child health.
 
 TRIGGER: malvin binary crate  
 ADVICE: `src/cli/` is binary-only—not the `malvin` library—so `pub(crate)` on `AgentClient` fields (e.g. `timing`) is not visible there; use public lib methods (`attach_run_timing_for_session`, …) or keep access in lib modules. See `malvin_tooling.md` § Crate layout.

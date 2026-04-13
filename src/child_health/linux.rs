@@ -39,7 +39,7 @@ pub(super) fn parse_proc_stat_line(line: &str) -> Option<ParsedProcStat> {
 pub(super) fn parse_status_voluntary_ctxt(status: &str) -> Option<u64> {
     for line in status.lines() {
         if let Some(rest) = line.strip_prefix("voluntary_ctxt_switches:") {
-            return rest.trim_start().parse().ok();
+            return rest.trim().parse().ok();
         }
     }
     None
