@@ -138,6 +138,7 @@ fn kiss_stringify_prompts() {
     let _ = stringify!(PromptStore::validate_kpop_prompts);
     let _ = stringify!(PromptStore::validate_exists);
     let _ = stringify!(PromptStore::render);
+    let _ = stringify!(PromptStore::render_prompt_only);
 }
 
 #[test]
@@ -174,6 +175,7 @@ fn smoke_prompt_store_with_root() {
             "mbc2.md",
             "concerns.md",
             "learn.md",
+            "header.md",
             "coding_rules.md",
         ],
         b"body",

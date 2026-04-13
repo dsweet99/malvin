@@ -56,8 +56,8 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 | Log path display | `src/log_paths.rs` |
 | Run artifacts | `src/artifacts.rs` |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
-| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code` and `malvin kpop`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
-| Prompts | `src/prompts/` + `default_prompts/` |
+| Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code`, `malvin kpop`, `malvin do`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
+| Prompts | `src/prompts/` + `default_prompts/`; `prompts/template.rs` holds merge/render helpers when `kiss` `lines_per_file` caps `mod.rs` (~250 lines) |
 
 ### ACP `include!` assembly (kiss dependency depth)
 
@@ -82,11 +82,11 @@ ADVICE: After the silence `sleep(rpc_timeout)`, use `tokio::select!` so the JSON
 TRIGGER: voluntary_ctxt switches parse  
 ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `strip_prefix("voluntary_ctxt_switches:")`, use **`rest.trim().parse::<u64>()`**—`trim_start()` alone leaves a trailing **`\r`** on the value token and **`u64` parse returns `Err`**, so voluntary context switches are dropped and progress detection weakens. Regression: `child_health::tests::linux_parse::voluntary_ctxt_parses_when_value_has_trailing_cr`.
 
-## Run timing (`malvin code` / `malvin kpop`)
+## Run timing (`malvin code` / `malvin kpop` / `malvin do`)
 
-- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP attaches timing and calls the same finalizer; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
+- **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP and **`do`** (`src/cli/do_flow.rs` `run_do_with_timing`) attach timing and call the same finalizer; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
 - **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** summary line after the workflow body (see root `grounding.md`).
-- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_results` in `src/cli/kpop_flow.rs`).
+- **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`, `merge_acp_and_timing_results` in `src/cli/timing_merge.rs` used by KPOP and `do`).
 - **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP callers.
 
 ## ACP traces, coalescing, tee
@@ -131,12 +131,18 @@ Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.r
 
 - Document consumer-visible removals (e.g. old `malvin::agent` paths) in **`CHANGELOG.md`**.
 
-## CLI
+## CLI (`src/cli/`)
 
 TRIGGER: CLI help and shared opts  
 ADVICE: `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; `SharedOpts::tee_startup_stdout`.
 
-- `src/cli/args.rs`, `mod.rs`, `shared_opts.rs`; `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
+TRIGGER: cli mod sibling file  
+ADVICE: Each `mod name;` in `src/cli/mod.rs` requires `src/cli/name.rs` (e.g. `do_flow`, `timing_merge`). Add the `.rs` in the **same change** as the `mod` line so checkouts compile; agents do not run `git`—users stage the pair.
+
+- **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
+- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+- **Timing merge:** `timing_merge.rs` — `merge_acp_and_timing_results` shared with `kpop_flow.rs` (avoid duplicated merge helpers; kiss `duplication`).
+- **`src/cli/args.rs`, `mod.rs`, `shared_opts.rs`:** `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
 - **Default model:** `DEFAULT_CLI_MODEL` in `shared_opts.rs`; `malvin models` footer must use the same constant (see `tests/cli_parity.rs`).
 
 ## `malvin init`, `plan.md`, env

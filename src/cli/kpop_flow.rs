@@ -6,12 +6,11 @@ use std::path::{Path, PathBuf};
 use super::KpopArgs;
 use super::WorkflowCliOptions;
 use super::build_agent;
-use super::echo_primary_to_stdout;
-use super::emit_command_line;
+use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
+use super::timing_merge::merge_acp_and_timing_results;
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{RunArtifacts, create_kpop_run_artifacts, resolve_user_request};
-use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
@@ -77,20 +76,6 @@ async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Resul
     merge_acp_and_timing_results(acp_result, timing_result)
 }
 
-/// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
-fn merge_acp_and_timing_results(
-    acp_result: Result<(), String>,
-    timing_result: std::io::Result<()>,
-) -> Result<(), String> {
-    match acp_result {
-        Ok(()) => timing_result.map_err(|e| e.to_string()),
-        Err(e) => {
-            let _ = timing_result;
-            Err(e)
-        }
-    }
-}
-
 pub struct KpopAcpInput<'a> {
     artifacts: &'a RunArtifacts,
     combined: &'a str,
@@ -127,10 +112,7 @@ pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> 
 }
 
 pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
-    echo_primary_to_stdout(&artifacts.plan_path, kpop.shared.tee_startup_stdout())?;
-    emit_command_line(&artifacts.run_dir, kpop.shared.tee_startup_stdout())?;
-    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
-    Ok(())
+    emit_run_startup_sequence(artifacts, kpop.shared.tee_startup_stdout())
 }
 
 pub fn kpop_combined_prompt(kpop_body: &str, user_text: &str, budget: usize) -> String {

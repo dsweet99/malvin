@@ -1,7 +1,11 @@
 //! Prompt templates under `~/.malvin/prompts` with embedded defaults.
 
+mod template;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use template::merge_header_and_coding_rules;
 
 const REQUIRED_PROMPTS: &[&str] = &[
     "implement.md",
@@ -9,6 +13,8 @@ const REQUIRED_PROMPTS: &[&str] = &[
     "review_2.md",
     "kpop.md",
     "concerns.md",
+    "header.md",
+    "coding_rules.md",
 ];
 
 const DEFAULT_PROMPTS: &[&str] = &[
@@ -19,6 +25,7 @@ const DEFAULT_PROMPTS: &[&str] = &[
     "mbc2.md",
     "concerns.md",
     "learn.md",
+    "header.md",
     "coding_rules.md",
 ];
 
@@ -31,6 +38,7 @@ pub(crate) fn default_file(name: &str) -> Option<&'static str> {
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
         "concerns.md" => Some(include_str!("../../default_prompts/concerns.md")),
         "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
+        "header.md" => Some(include_str!("../../default_prompts/header.md")),
         "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),
         _ => None,
     }
@@ -169,7 +177,8 @@ impl PromptStore {
     }
 
     /// Load `filename`, substitute `{{ key }}` → `$key`, then substitute.
-    /// The same expansion is applied to `coding_rules.md` before it is injected into the main template.
+    /// The same expansion is applied to `header.md` and `coding_rules.md`; the results are concatenated
+    /// (header first) and injected as `coding_rules` into the main template.
     ///
     /// # Errors
     ///
@@ -187,10 +196,33 @@ impl PromptStore {
             ))
         })?;
         let mut render_context: HashMap<String, String> = context.clone();
+        let header_raw = self.load_header();
+        let header_expanded = render_template(&header_raw, &render_context);
         let rules_raw = self.load_coding_rules();
         let rules_expanded = render_template(&rules_raw, &render_context);
-        render_context.insert("coding_rules".to_string(), rules_expanded);
+        let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
+        render_context.insert("coding_rules".to_string(), merged);
         Ok(render_template(&prompt_text, &render_context))
+    }
+
+    /// Expand a single prompt file with `context` (`{{ key }}` / `$key`) without injecting `coding_rules`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] if the file cannot be read.
+    pub fn render_prompt_only(
+        &self,
+        filename: &str,
+        context: &HashMap<String, String>,
+    ) -> Result<String, PromptError> {
+        let path = self.root.join(filename);
+        let prompt_text = std::fs::read_to_string(&path).map_err(|_| {
+            PromptError(format!(
+                "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
+                self.root.display()
+            ))
+        })?;
+        Ok(render_template(&prompt_text, context))
     }
 
     fn load_coding_rules(&self) -> String {
@@ -200,44 +232,18 @@ impl PromptStore {
             .trim()
             .to_string()
     }
+
+    fn load_header(&self) -> String {
+        let p = self.root.join("header.md");
+        std::fs::read_to_string(p)
+            .unwrap_or_default()
+            .trim()
+            .to_string()
+    }
 }
 
-pub(crate) fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
-    let mut translated = prompt_text.to_string();
-    for key in context.keys() {
-        let needle = format!("{{{{ {key} }}}}");
-        let dollar = format!("${key}");
-        translated = translated.replace(&needle, &dollar);
-    }
-    substitute_template(&translated, context)
-}
-
-/// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
-pub(crate) fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
-    let mut out = String::with_capacity(template.len());
-    let chars: Vec<char> = template.chars().collect();
-    let mut i = 0usize;
-    while i < chars.len() {
-        if chars[i] == '$' && i + 1 < chars.len() {
-            let start = i + 1;
-            let mut end = start;
-            while end < chars.len() && (chars[end].is_ascii_alphanumeric() || chars[end] == '_') {
-                end += 1;
-            }
-            if end > start {
-                let key: String = chars[start..end].iter().collect();
-                if let Some(val) = context.get(&key) {
-                    out.push_str(val);
-                    i = end;
-                    continue;
-                }
-            }
-        }
-        out.push(chars[i]);
-        i += 1;
-    }
-    out
-}
+#[allow(unused_imports)] // `substitute_template`: tests / coverage only (not used in this module body).
+pub(crate) use template::{render_template, substitute_template};
 
 #[cfg(test)]
 #[allow(unsafe_code)]

@@ -3,10 +3,12 @@
 mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
+mod do_flow;
 mod init_cmd;
 mod kpop_flow;
 mod models_cmd;
 mod shared_opts;
+mod timing_merge;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
 pub use shared_opts::SharedOpts;
@@ -31,6 +33,7 @@ pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String
     Ok(())
 }
 
+pub use do_flow::run_do;
 pub use kpop_flow::run_kpop;
 use malvin::acp::AgentClient;
 
@@ -79,6 +82,19 @@ pub fn echo_primary_to_stdout(plan_path: &Path, echo_plain: bool) -> Result<(), 
     Ok(())
 }
 
+/// Echo the primary run artifact, write `command.log` / optional `Command:` line, then print `Logs: …`.
+///
+/// Shared by `malvin code`, `malvin kpop`, and `malvin do` so startup output stays consistent.
+pub fn emit_run_startup_sequence(
+    artifacts: &RunArtifacts,
+    tee_startup_stdout: bool,
+) -> Result<(), String> {
+    echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout)?;
+    emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
+    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
+    Ok(())
+}
+
 fn prepare_code_run(
     code: &CodeArgs,
     workflow: WorkflowCliOptions,
@@ -95,10 +111,7 @@ fn prepare_code_run(
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
-    echo_primary_to_stdout(&artifacts.plan_path, code.shared.tee_startup_stdout())?;
-
-    emit_command_line(&artifacts.run_dir, code.shared.tee_startup_stdout())?;
-    print_stdout_line(MALVIN_WHO, &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?));
+    emit_run_startup_sequence(&artifacts, code.shared.tee_startup_stdout())?;
 
     let mut orch = Orchestrator {
         client: &mut client,
@@ -149,6 +162,13 @@ pub fn entrypoint() -> Exit {
             };
             rt.block_on(run_kpop(kpop, workflow))
         }
+        Commands::Do(do_cmd) => {
+            let workflow = WorkflowCliOptions {
+                force: !do_cmd.shared.no_force,
+                run_learn: false,
+            };
+            rt.block_on(run_do(do_cmd, workflow))
+        }
         Commands::Init(init) => init_cmd::run_init(init.path, init.force),
         Commands::Models(_) => models_cmd::run_models(),
     };
@@ -182,6 +202,7 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::Cli);
     let _ = stringify!(crate::cli::Commands);
     let _ = stringify!(crate::cli::CodeArgs);
+    let _ = stringify!(crate::cli::do_flow::DoArgs);
     let _ = stringify!(crate::cli::init_cmd::InitArgs);
     let _ = stringify!(crate::cli::models_cmd::ModelsArgs);
     let _ = stringify!(crate::cli::KpopArgs);
@@ -190,11 +211,14 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::WorkflowCliOptions);
     let _ = stringify!(crate::cli::entrypoint);
     let _ = stringify!(crate::cli::run_code);
+    let _ = stringify!(crate::cli::run_do);
+    let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
     let _ = stringify!(crate::cli::prepare_prompt_store);
     let _ = stringify!(crate::cli::prepare_kpop_prompt_store);
     let _ = stringify!(crate::cli::echo_primary_to_stdout);
     let _ = stringify!(crate::cli::emit_command_line);
+    let _ = stringify!(crate::cli::emit_run_startup_sequence);
     let _ = stringify!(malvin::log_paths::format_logs_dir);
     let _ = stringify!(crate::cli::build_agent);
     let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);

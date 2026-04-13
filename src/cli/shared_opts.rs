@@ -1,4 +1,4 @@
-//! Shared CLI flags for `code` and `kpop`.
+//! Shared CLI flags for `code`, `kpop`, and `do`.
 
 use clap::Args;
 

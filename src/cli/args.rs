@@ -2,6 +2,7 @@
 
 use clap::{Args, Parser, Subcommand};
 
+use super::do_flow::DoArgs;
 use super::init_cmd::InitArgs;
 use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
@@ -25,6 +26,8 @@ pub enum Commands {
     Code(CodeArgs),
     /// KPOP hypothesis workflow.
     Kpop(KpopArgs),
+    /// Run one coder ACP prompt (`header.md` plus your text or `@file`).
+    Do(DoArgs),
     /// Initialize a repository with templates and local tooling (`kiss`, Git LFS, pre-commit).
     Init(InitArgs),
     /// List models from the Cursor agent CLI (`cursor-agent models` / `agent models`).

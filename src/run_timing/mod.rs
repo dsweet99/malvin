@@ -1,4 +1,4 @@
-//! Wall-clock and phase-bucketed LLM wait timing for `malvin code` and `malvin kpop` runs.
+//! Wall-clock and phase-bucketed LLM wait timing for `malvin code`, `malvin kpop`, and `malvin do` runs.
 //!
 //! **Streams:** One stdout summary line via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
 
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 /// JSON artifact filename under [`crate::artifacts::RunArtifacts::run_dir`].
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
-/// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop`).
+/// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop` / `malvin do`).
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "Run timing:";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
