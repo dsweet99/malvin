@@ -1,13 +1,13 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, `/proc` child health, LiteLLM/token notes), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, CLI, docs parity, prefixed log lines, `/proc` child health, LiteLLM/token notes), `./.llm_style/malvin_debugging.md` (KPOP, search fallbacks).
 
 ---
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 TRIGGER: kiss check and limits  
-ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. Update `src/coverage_kiss.rs` / `stringify!` when symbols move. See `malvin_tooling.md` § kiss.
+ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. **`src/cli/args.rs`** is often at the type cap—fold new flattened CLI structs into **`shared_opts.rs`** (e.g. `GlobalOpts`) instead of only growing `args.rs`. Update `src/coverage_kiss.rs` / `stringify!` when symbols move. See `malvin_tooling.md` § kiss + § Prefixed log lines.
 TRIGGER: .kissconfig  
 ADVICE: Never edit `.kissconfig`.
 TRIGGER: NEVER CALL GIT  
@@ -33,7 +33,7 @@ ADVICE: `do_flow.rs` passes `skip_repo_style: do_args.raw` into `AgentClient::ru
 TRIGGER: grounding code parity  
 ADVICE: When run-timing, tee, or workflow stdout/stderr behavior changes, align **`grounding.md`** with sources (`run_timing/`, `src/acp/`, …). **`.llm_style/*.md`** must not describe removed or nonexistent behavior—regressions guarded in `tests/cli_parity.rs` (`include_str!` on `grounding.md`, `.llm_style/`). Helpers that only merge `Result`s after I/O must not read as reordering streams (`kpop_flow.rs`). See `malvin_tooling.md` § Tests + docs parity.
 TRIGGER: stdout stderr log header  
-ADVICE: Route user-visible output through `src/output.rs` helpers, not raw `println!`/`eprintln!`, so every line keeps the `YYYYMMDD.HHMMSS.mmm:[who]: ` contract across stdout, stderr, `command.log`, and ACP trace logs.
+ADVICE: Route through `src/output.rs` (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** (`command.log`, traces) and **stderr** use plain `format_line` (no ANSI). **Stdout** may ANSI-color the timestamp/`[who]:` prefix when a TTY and not `--no-color` / `NO_COLOR` (`init_stdout_style` after `Cli::parse()`, `GlobalOpts` in `shared_opts.rs`). Document stable rules in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
 TRIGGER: learn tee redaction  
 ADVICE: `learn` prompt output must be written to logs normally but replaced with exact stdout placeholder `[learning...]`; implement via prompt-specific tee metadata in ACP trace writing, not by mutating stored log content.
 TRIGGER: source-shape regression tests  

@@ -1,12 +1,21 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
+use std::io::{IsTerminal, stdout};
+use std::sync::OnceLock;
+
 use chrono::Local;
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
 
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
-pub const LOG_TAG_INNER_WIDTH: usize = 15;
+pub const LOG_TAG_INNER_WIDTH: usize = 10;
+
+static STDOUT_USE_COLOR: OnceLock<bool> = OnceLock::new();
+
+const ANSI_DIM: &str = "\x1b[90m";
+const ANSI_CYAN: &str = "\x1b[36m";
+const ANSI_RESET: &str = "\x1b[0m";
 
 #[must_use]
 pub fn format_log_tag_inner(label: &str) -> String {
@@ -32,19 +41,47 @@ pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
     format!("{ts}:[{inner}]: {line}")
 }
 
-#[must_use]
-pub fn format_line(who: &str, line: &str) -> String {
+fn timestamp_now_string() -> String {
     let now = Local::now();
-    let ts = format!(
+    format!(
         "{}.{:03}",
         now.format("%Y%m%d.%H%M%S"),
         now.timestamp_subsec_millis()
-    );
-    format_line_with_timestamp(&ts, who, line)
+    )
+}
+
+#[must_use]
+pub fn format_line(who: &str, line: &str) -> String {
+    format_line_with_timestamp(&timestamp_now_string(), who, line)
+}
+
+/// ANSI-colored prefix for terminal stdout only. Log files and trace files must use
+/// [`format_line`] / [`format_line_with_timestamp`] instead.
+#[must_use]
+pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
+    let inner = format_log_tag_inner(who);
+    format!("{ANSI_DIM}{ts}{ANSI_RESET}{ANSI_CYAN}:[{inner}]:{ANSI_RESET} {line}")
+}
+
+/// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true,
+/// when `NO_COLOR` is set, or when stdout is not a terminal.
+pub fn init_stdout_style(no_color: bool) {
+    let disabled_by_env = std::env::var_os("NO_COLOR").is_some();
+    let use_color = !no_color && !disabled_by_env && stdout().is_terminal();
+    let _ = STDOUT_USE_COLOR.set(use_color);
+}
+
+fn stdout_use_color() -> bool {
+    *STDOUT_USE_COLOR.get().unwrap_or(&false)
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    println!("{}", format_line(who, line));
+    let s = if stdout_use_color() {
+        format_line_with_timestamp_ansi(&timestamp_now_string(), who, line)
+    } else {
+        format_line(who, line)
+    };
+    println!("{s}");
 }
 
 pub fn print_stderr_line(who: &str, line: &str) {
@@ -74,7 +111,7 @@ pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
 mod tests {
     use super::{
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_line_with_timestamp,
-        format_log_tag_inner, is_command_prelude_line,
+        format_line_with_timestamp_ansi, format_log_tag_inner, is_command_prelude_line,
     };
 
     #[test]
@@ -94,11 +131,21 @@ mod tests {
     }
 
     #[test]
+    fn ansi_timestamp_line_keeps_payload_plain() {
+        let plain = format_line_with_timestamp("20260413.121314.015", "kpop", "hello");
+        assert!(!plain.contains('\x1b'));
+        let ansi = format_line_with_timestamp_ansi("20260413.121314.015", "kpop", "hello");
+        assert!(ansi.contains('\x1b'));
+        assert!(ansi.ends_with(" hello"));
+    }
+
+    #[test]
     fn detects_prefixed_and_unprefixed_command_prelude() {
+        let inner = format_log_tag_inner(MALVIN_WHO);
         assert!(is_command_prelude_line("Command: malvin code @plan.md"));
-        assert!(is_command_prelude_line(
-            "20260413.121314.015:[malvin]: Command: malvin code @plan.md"
-        ));
+        assert!(is_command_prelude_line(&format!(
+            "20260413.121314.015:[{inner}]: Command: malvin code @plan.md"
+        )));
         assert!(!is_command_prelude_line(
             "20260413.121314.015:[kpop]: not a command line"
         ));

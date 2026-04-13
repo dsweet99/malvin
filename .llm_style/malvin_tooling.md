@@ -128,6 +128,20 @@ ADVICE: `tests/cli_parity.rs` **`reviewer_pair_ops_preserves_review_sync_lgtm_be
 TRIGGER: shared stdout stderr output  
 ADVICE: `src/output.rs` — line-oriented helpers (`format_line`, `print_stdout_line`, …). Align `#[must_use]` with sibling APIs if plain `cargo clippy` warns; pre-commit allows `-A clippy::must_use_candidate`.
 
+## Prefixed log lines (`src/output.rs`, `grounding.md`)
+
+TRIGGER: LOG_TAG_INNER_WIDTH bracket who  
+ADVICE: `format_log_tag_inner` pads/truncates the bracket label to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. Same width applies to ACP trace lines built with `format_line` / `format_acp_directional_tag_prefix` (directional `>`/`<` stem before padding).
+
+TRIGGER: plain format_line files only  
+ADVICE: On-disk logs and traces use **`format_line`** / **`format_line_with_timestamp`** only—e.g. `trace_file_write_line` (`coalesce.rs`), `trace_write_*` (`session_trace.rs`), `emit_command_line` (`cli/mod.rs`). Never write **`format_line_with_timestamp_ansi`** or escape codes to files.
+
+TRIGGER: stdout ANSI gate  
+ADVICE: `init_stdout_style(no_color)` (binary `entrypoint` after **`Cli::parse()`**) sets color when `stdout().is_terminal()` and not `--no-color` (`GlobalOpts` in **`shared_opts.rs`**) and **`NO_COLOR`** is unset. `print_stdout_line` chooses ansi vs plain; pipes/tests stay uncolored.
+
+TRIGGER: kiss GlobalOpts shared_opts not args only  
+ADVICE: New root-level flattened flags (e.g. **`GlobalOpts`**) belong in **`shared_opts.rs`** when **`kiss`** `concrete_types_per_file` would break if added to **`args.rs`** alone; **`Cli`** flattens them from there.
+
 TRIGGER: redundant_pub_crate  
 ADVICE: `clippy::redundant_pub_crate`: in a non-`pub` submodule, prefer `pub struct` over `pub(crate) struct` when the type is only re-exported at the parent (e.g. `acp/session_types.rs` → `acp/mod.rs`).
 

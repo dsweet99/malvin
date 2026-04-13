@@ -7,6 +7,8 @@ use super::init_cmd::InitArgs;
 use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
 
+pub use super::shared_opts::GlobalOpts;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "malvin",
@@ -16,6 +18,8 @@ use super::shared_opts::SharedOpts;
 )]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Cli {
+    #[command(flatten)]
+    pub global: GlobalOpts,
     #[command(subcommand)]
     pub command: Commands,
 }

@@ -1,9 +1,17 @@
-//! Shared CLI flags for `code`, `kpop`, and `do`.
+//! Shared CLI flags for `code`, `kpop`, and `do`, plus root-level global flags.
 
 use clap::Args;
 
 /// Default for [`SharedOpts::model`] when `--model` is omitted (product plan §4).
 pub const DEFAULT_CLI_MODEL: &str = "composer-2";
+
+/// Flags that apply to every subcommand (place before or after the subcommand name).
+#[derive(Args, Debug)]
+pub struct GlobalOpts {
+    /// Disable ANSI colors on prefixed stdout log lines (timestamps and `[who]` tags).
+    #[arg(long, global = true, default_value_t = false)]
+    pub no_color: bool,
+}
 
 #[derive(Args, Debug)]
 pub struct SharedOpts {

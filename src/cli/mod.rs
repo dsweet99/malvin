@@ -151,6 +151,7 @@ pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentCl
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
+    malvin::output::init_stdout_style(cli.global.no_color);
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -208,6 +209,7 @@ impl std::process::Termination for Exit {
 fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::shared_opts::SharedOpts);
     let _ = stringify!(crate::cli::Cli);
+    let _ = stringify!(crate::cli::shared_opts::GlobalOpts);
     let _ = stringify!(crate::cli::Commands);
     let _ = stringify!(crate::cli::CodeArgs);
     let _ = stringify!(crate::cli::do_flow::DoArgs);
