@@ -62,7 +62,7 @@ TRIGGER: lib test_utils binary
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary unit tests cannot import it; for isolated `PATH`, use `tests/*.rs` + `Command::new(env!("CARGO_BIN_EXE_malvin")).env("PATH", …)` (see `init_pre_commit.rs`).
 
 TRIGGER: ACP retry backoff  
-ADVICE: Retriable substrings + `plan_agent_retry` in `retry_policy.inc`; backoff loop in `client_impl.inc`; policy tests in `agent_bundle.inc` (`retry_policy_tests`). Add narrow `contains` phrases only—see `malvin_tooling.md` § ACP bounded retry. Upgrade: `Err` only—single `eprintln` at `src/cli/mod.rs`.
+ADVICE: Retriable substrings + `plan_agent_retry` in `retry_policy.inc`; backoff loop in `client_impl.inc`; policy tests in `agent_bundle.inc` (`retry_policy_tests`). Add narrow `contains` phrases; guard **`timeout_*`** validation false positives—see `malvin_tooling.md` § ACP bounded retry. Upgrade: `Err` only—single `eprintln` at `src/cli/mod.rs`.
 
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer uses `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs` guards drift.
@@ -71,10 +71,7 @@ TRIGGER: ACP include layout
 ADVICE: Much of `src/acp/` is `include!` for `kiss`—navigate `.inc` names; **included `.rs` inherit parent `use`** (not a standalone module tree). See `malvin_tooling.md`.
 
 TRIGGER: ACP trace, JSONL, tee  
-ADVICE: Traces mix plaintext `Command:` prelude then JSON; `strip_trace_invocation_line_for_tee` + `maybe_tee_log` strip duplicate prelude on tee (`tee_strip_body.inc`, `ops_body.inc`). Reader/coalescing: `reader_inline.inc`, `coalesce.rs`.
-
-TRIGGER: coalesce Unicode scalars  
-ADVICE: Track running scalar counts per buffer in verbose/trace coalescing; avoid hot full-buffer `chars().count()` rescans—see `src/acp/coalesce.rs`.
+ADVICE: Traces mix plaintext `Command:` prelude then JSON; `strip_trace_invocation_line_for_tee` + `maybe_tee_log` strip duplicate prelude on tee (`tee_strip_body.inc`, `ops_body.inc`). Reader/coalescing: `reader_inline.inc`, `coalesce.rs` (Unicode scalar counts per buffer—see `malvin_tooling.md` § ACP traces).
 
 TRIGGER: ACP tests, node  
 ADVICE: Mock `agent acp` children often use `#!/usr/bin/env node`; ensure `node` on PATH—`prepend_standard_path_for_child` (`transport/command.rs`) when stripping env. See `malvin_tooling.md` § Tests.
@@ -86,7 +83,7 @@ TRIGGER: CLI, help text
 ADVICE: `src/cli/`: `args.rs`, `mod.rs`, `shared_opts.rs`; `disable_help_subcommand = true`; doc comments become `--help`. Tee: `SharedOpts::tee_startup_stdout`.
 
 TRIGGER: search tools subagents  
-ADVICE: Workspace search tool errors → shell `rg`/`find` from repo root (`malvin_debugging.md`). ≤4 parallel subagents for independent work; skip for tiny edits.
+ADVICE: Workspace **glob/search** I/O (e.g. `rg: IO error`) → shell `rg`/`find` from repo root (`malvin_debugging.md`). ≤4 parallel subagents; skip for tiny edits.
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; ```startLine:endLine:path``` citations; proportional length; `date` when rules require; matching TRIGGER → show one TRIGGER:/ADVICE: pair. Prefer **running commands** over instruction-only replies when the user expects work (shell `rg` if IDE search fails).

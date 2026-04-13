@@ -20,11 +20,20 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
 pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
     lower.contains("timed out")
-        || lower.contains("timeout")
+        || timeout_word_without_identifier_false_positive(&lower)
         || lower.contains("deadline exceeded")
         || lower.contains("deadlineexceeded")
         || lower.contains("writableiterable is closed")
         || lower.contains("readableiterable is closed")
+}
+
+/// True when `s` indicates a real timeout without matching configuration identifiers like `timeout_ms`.
+fn timeout_word_without_identifier_false_positive(s: &str) -> bool {
+    if !s.contains("timeout") {
+        return false;
+    }
+    // Avoid retriable classification for validation/config text (`timeout_ms`, `grpc_timeout_ms`, …).
+    !s.contains("timeout_")
 }
 
 #[derive(Debug)]

@@ -118,6 +118,14 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn validation_timeout_field_name_is_not_retriable() {
+        assert!(
+            !agent_string_is_retriable("validation failed: timeout_ms must be positive"),
+            "config/validation errors mentioning timeout_* should not waste bounded retries"
+        );
+    }
+
+    #[test]
     fn plan_retry_sleeps_on_writable_iterable_closed() {
         let r = plan_agent_retry("Error: S: WritableIterable is closed", 1).expect("retry");
         assert!(matches!(r, AgentRetryOutcome::Sleep(_)));

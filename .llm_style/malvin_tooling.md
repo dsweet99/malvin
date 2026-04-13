@@ -105,6 +105,7 @@ Enforces lines-per-file, call counts, duplication, etc. Use `src/coverage_kiss.r
 
 - **Policy:** `src/acp/retry_policy.inc` (`MAX_AGENT_ATTEMPTS`, `plan_agent_retry`, retriable / upgrade-plan strings).
 - **Retriable strings:** `agent_string_is_retriable` uses ASCII-lowercased `contains` checks—add **narrow** substrings for transient transport/session teardown (e.g. writable/readable iterable closed), not broad patterns that mask logic errors.
+- **`timeout` wording:** A bare `contains("timeout")` can match **config/validation** copy (`timeout_ms`, `grpc_timeout_ms`). The policy uses `timeout_word_without_identifier_false_positive` in `retry_policy.inc` (skip when `timeout_` appears) while keeping phrases like `timed out`. Regress in `agent_bundle.inc` `retry_policy_tests`.
 - **Sleep/break loop:** `backoff_after_agent_failure` in `src/acp/client_impl.inc` (included via `agent_bundle.inc`).
 - **Included in:** `agent_bundle.inc` pulls `retry_policy.inc`, `ops_body.inc`, `client_impl.inc`.
 - **Unit tests:** `retry_policy_tests` in `src/acp/agent_bundle.inc` (policy helpers are not only tested from integration tests).
