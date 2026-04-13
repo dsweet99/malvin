@@ -151,7 +151,7 @@ TRIGGER: plain format_line files only
 ADVICE: On-disk logs and traces use **`format_line`** / **`format_line_with_timestamp`** only—e.g. `trace_file_write_line` (`coalesce.rs`), `trace_write_*` (`session_trace.rs`), `emit_command_line` (`cli/mod.rs`). Never write **`format_line_with_timestamp_ansi`** or escape codes to files.
 
 TRIGGER: stdout ANSI gate  
-ADVICE: `init_stdout_style(no_color)` (binary `entrypoint` after **`Cli::parse()`**) sets color when `stdout().is_terminal()` and not `--no-color` (`GlobalOpts` in **`shared_opts.rs`**) and **`NO_COLOR`** is unset. `print_stdout_line` chooses ansi vs plain; pipes/tests stay uncolored.
+ADVICE: `init_stdout_style(no_color)` runs after **`Cli::parse()`** and after **`require_kiss_for_cli_command`** when applicable—if `kiss` is missing for **`code`**/**`kpop`**, **`entrypoint`** exits first (stderr via **`print_stderr_line`** / plain **`format_line`**) without calling **`init_stdout_style`**. Otherwise sets color when `stdout().is_terminal()` and not `--no-color` (`GlobalOpts` in **`shared_opts.rs`**) and **`NO_COLOR`** is unset. `print_stdout_line` chooses ansi vs plain; pipes/tests stay uncolored.
 
 TRIGGER: ACP tee direction colors  
 ADVICE: Live tee only: **`print_stdout_acp_tee_line`** in **`src/output/acp_tee.rs`** — **`AcpTeeDirection::ToAgent`**: bright **green** `[who]:` prefix (prompt text to agent) from **`trace_write_outgoing_prompt`** (`session_trace.rs`); **`FromAgent`**: bright **magenta** (agent stream / learn placeholder) from **`trace_tee_stdout_line`** (`coalesce.rs`). Payload text stays unstyled. **Disk** traces still **`format_line`** only (no escapes).
@@ -194,6 +194,9 @@ ADVICE: For extra prose on **`#[arg]`** lines (beyond clap’s auto **`[default:
 
 TRIGGER: cli mod sibling file  
 ADVICE: Each `mod name;` in `src/cli/mod.rs` requires `src/cli/name.rs` (e.g. `do_flow`, `timing_merge`). Add the `.rs` in the **same change** as the `mod` line so checkouts compile; agents do not run `git`—users stage the pair.
+
+TRIGGER: CLI kiss gate  
+ADVICE: **`malvin code`** / **`malvin kpop`** require a **`kiss`** executable on **`PATH`** (`lookup_bin_on_path` in **`src/env_path.rs`**). **`require_kiss_for_malvin`** returns an install hint: **`cargo install kiss-ai`**. **`require_kiss_for_cli_command`** in **`src/cli/mod.rs`** runs **immediately after** **`Cli::parse()`** and **before** **`init_stdout_style`** / Tokio so missing-`kiss` exits fail fast; stderr does not need stdout ANSI setup. **`malvin init`** also calls **`require_kiss_for_malvin("init")`** before **`kiss init`**. Binary regression: **`tests/kiss_code_kpop_path.rs`** (minimal isolated **`PATH`**, **`env!("CARGO_BIN_EXE_malvin")`**—same spawn pattern as **`tests/init_pre_commit.rs`**).
 
 - **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
 - **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.

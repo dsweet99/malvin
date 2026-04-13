@@ -8,6 +8,8 @@ mod init_cmd;
 mod kpop_flow;
 mod models_cmd;
 mod shared_opts;
+#[cfg(test)]
+mod stringify_cov;
 mod timing_merge;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
@@ -15,6 +17,7 @@ pub use shared_opts::SharedOpts;
 
 use clap::Parser;
 
+use malvin::env_path::require_kiss_for_malvin;
 use malvin::output::{
     MALVIN_WHO, format_line, print_stderr_line, print_stdout_line, print_stdout_text,
 };
@@ -153,35 +156,51 @@ pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentCl
     )
 }
 
+/// `malvin code` / `malvin kpop` need `kiss` on `PATH`; check before stdout styling or async work.
+fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
+    match cmd {
+        Commands::Code(_) => require_kiss_for_malvin("code"),
+        Commands::Kpop(_) => require_kiss_for_malvin("kpop"),
+        Commands::Do(_) | Commands::Init(_) | Commands::Models(_) => Ok(()),
+    }
+}
+
+fn tokio_runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime")
+}
+
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
+    if let Err(e) = require_kiss_for_cli_command(&cli.command) {
+        print_stderr_line(MALVIN_WHO, &e);
+        return Exit::Failure;
+    }
     malvin::output::init_stdout_style(cli.global.no_color);
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("tokio runtime");
     let res = match cli.command {
         Commands::Code(code) => {
             let workflow = WorkflowCliOptions {
                 force: !code.shared.no_force,
                 run_learn: !code.no_learn,
             };
-            rt.block_on(run_code(code, workflow))
+            tokio_runtime().block_on(run_code(code, workflow))
         }
         Commands::Kpop(kpop) => {
             let workflow = WorkflowCliOptions {
                 force: !kpop.shared.no_force,
                 run_learn: !kpop.no_learn,
             };
-            rt.block_on(run_kpop(kpop, workflow))
+            tokio_runtime().block_on(run_kpop(kpop, workflow))
         }
         Commands::Do(do_cmd) => {
             let workflow = WorkflowCliOptions {
                 force: !do_cmd.shared.no_force,
                 run_learn: false,
             };
-            rt.block_on(run_do(do_cmd, workflow))
+            tokio_runtime().block_on(run_do(do_cmd, workflow))
         }
         Commands::Init(init) => init_cmd::run_init(init.path, init.force),
         Commands::Models(_) => models_cmd::run_models(),
@@ -208,38 +227,4 @@ impl std::process::Termination for Exit {
             Self::Failure => std::process::ExitCode::from(1),
         }
     }
-}
-
-#[test]
-fn kiss_stringify_cli_symbols() {
-    let _ = stringify!(crate::cli::shared_opts::SharedOpts);
-    let _ = stringify!(crate::cli::Cli);
-    let _ = stringify!(crate::cli::shared_opts::GlobalOpts);
-    let _ = stringify!(crate::cli::Commands);
-    let _ = stringify!(crate::cli::CodeArgs);
-    let _ = stringify!(crate::cli::do_flow::DoArgs);
-    let _ = stringify!(crate::cli::init_cmd::InitArgs);
-    let _ = stringify!(crate::cli::models_cmd::ModelsArgs);
-    let _ = stringify!(crate::cli::KpopArgs);
-    let _ = stringify!(crate::cli::SharedOpts);
-    let _ = stringify!(crate::cli::Exit);
-    let _ = stringify!(crate::cli::WorkflowCliOptions);
-    let _ = stringify!(crate::cli::entrypoint);
-    let _ = stringify!(crate::cli::run_code);
-    let _ = stringify!(crate::cli::run_do);
-    let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
-    let _ = stringify!(crate::cli::run_kpop);
-    let _ = stringify!(crate::cli::prepare_prompt_store);
-    let _ = stringify!(crate::cli::prepare_kpop_prompt_store);
-    let _ = stringify!(crate::cli::echo_primary_to_stdout);
-    let _ = stringify!(crate::cli::emit_command_line);
-    let _ = stringify!(crate::cli::emit_run_startup_sequence);
-    let _ = stringify!(malvin::log_paths::format_logs_dir);
-    let _ = stringify!(crate::cli::build_agent);
-    let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);
-    let _ = stringify!(crate::cli::init_cmd::run_init);
-    let _ = stringify!(crate::cli::models_cmd::run_models);
-    let _ = stringify!(malvin::env_path::lookup_bin_on_path);
-    let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
 }

@@ -70,6 +70,7 @@ fn kiss_stringify_child_health() {
 fn kiss_stringify_env_path() {
     let _ = stringify!(crate::env_path::lookup_bin_on_path);
     let _ = stringify!(crate::env_path::agent_or_cursor_agent_bin);
+    let _ = stringify!(crate::env_path::require_kiss_for_malvin);
 }
 
 #[test]

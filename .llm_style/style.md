@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, wrong-value falsifiers + multi-tool checks, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`** backlog, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP, **`src/output/`** tee + prefixed lines, CLI + **kiss gate** for `code`/`kpop`, docs parity, child health, LiteLLM), `./.llm_style/malvin_debugging.md` (KPOP HPF, wrong-value falsifiers + multi-tool checks, **user-given `_malvin/.../exp` paths**, protocol completeness, root **`plan.md`** backlog, search fallbacks), `./.llm_style/authoring_llm_style.md` (index **<100** lines, topic split, TRIGGER consolidation).
 
 ---
 
@@ -58,6 +58,8 @@ TRIGGER: env_path agent binary
 ADVICE: `src/env_path.rs` `agent_or_cursor_agent_bin()` — same `agent`→`cursor-agent` order as ACP spawn (`ops_body.inc`).
 TRIGGER: lib test_utils binary  
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary tests use `tests/*.rs` + `env!("CARGO_BIN_EXE_malvin")` (see `init_pre_commit.rs`).
+TRIGGER: code kpop require kiss  
+ADVICE: **`require_kiss_for_cli_command`** (`src/cli/mod.rs`) + **`require_kiss_for_malvin`** (`src/env_path.rs`); install **`cargo install kiss-ai`**. Regress **`tests/kiss_code_kpop_path.rs`**—see **`malvin_tooling.md` § CLI kiss gate**.
 TRIGGER: ACP retry backoff  
 ADVICE: `retry_policy.inc`—retriable = **timeout / deadline** substrings only; other agent/tooling errors **fail fast** (no backoff retry). `client_impl.inc`, `agent_bundle.inc` tests; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
 TRIGGER: LiteLLM token cost  

@@ -5,7 +5,7 @@ use std::process::Command;
 
 use clap::Args;
 
-use malvin::env_path::lookup_bin_on_path;
+use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 
 const TPL_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -81,10 +81,7 @@ fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
         "`pre-commit install` failed (is this directory a git repository?).",
     )?;
 
-    require_on_path(
-        "kiss",
-        "`kiss` is not installed or not on PATH; install kiss before running `malvin init`.",
-    )?;
+    require_kiss_for_malvin("init")?;
     run_command_expect_success(
         Command::new("kiss").arg("init").current_dir(root),
         "`kiss init` failed.",
