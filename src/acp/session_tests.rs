@@ -167,7 +167,7 @@ async fn acp_full_session_with_notifications_and_credentials() {
     .await
     .expect("spawn mock agent acp");
     let trace = tmp.path().join("t.jsonl");
-    s.prompt("hello", &trace, "implement")
+    s.prompt("hello", &trace, "implement", None)
         .await
         .expect("prompt");
     s.shutdown().await.expect("shutdown");
@@ -197,7 +197,7 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
     .await
     .expect("spawn mock agent acp");
     let trace = tmp.path().join("trace.jsonl");
-    s.prompt("hello", &trace, "implement")
+    s.prompt("hello", &trace, "implement", None)
         .await
         .expect("prompt");
     s.shutdown().await.expect("shutdown");
@@ -239,7 +239,9 @@ async fn acp_full_session_verbose_stdout_reader_path() {
     .await
     .expect("spawn verbose");
     let trace = tmp.path().join("tv.jsonl");
-    s.prompt("hi", &trace, "implement").await.expect("prompt");
+    s.prompt("hi", &trace, "implement", None)
+        .await
+        .expect("prompt");
     s.shutdown().await.expect("shutdown");
 }
 
@@ -346,7 +348,10 @@ async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
     .await
     .expect("spawn");
     let trace = tmp.path().join("prompt_err.jsonl");
-    assert!(s.prompt("x", &trace, "implement").await.is_err());
+    assert!(s
+        .prompt("x", &trace, "implement", None)
+        .await
+        .is_err());
     tokio::time::timeout(std::time::Duration::from_secs(5), wait_task)
         .await
         .expect("wait task should finish")
@@ -377,7 +382,10 @@ async fn acp_prompt_fails_after_shutdown() {
     .expect("spawn");
     s.shutdown().await.expect("shutdown");
     let trace = tmp.path().join("x.jsonl");
-    assert!(s.prompt("x", &trace, "implement").await.is_err());
+    assert!(s
+        .prompt("x", &trace, "implement", None)
+        .await
+        .is_err());
 }
 
 #[cfg(unix)]
@@ -469,7 +477,7 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
     let sess_prompt = session.clone();
     let driver = tokio::spawn(async move {
         sess_prompt
-            .prompt("slow", &trace_slow, "implement")
+            .prompt("slow", &trace_slow, "implement", None)
             .await
             .unwrap();
     });
@@ -543,4 +551,35 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
         err.contains("timed out") || err.contains("acp RPC"),
         "unexpected err: {err}"
     );
+}
+
+#[test]
+fn kiss_stringify_session_a() {
+    let _ = stringify!(super::prompt_stdout_replacement);
+    let _ = stringify!(super::outgoing_prompt_trace::OutgoingPromptTrace::Uniform);
+    let _ = stringify!(super::outgoing_prompt_trace::OutgoingPromptTrace::DoSplit);
+    let _ = stringify!(AcpSession::spawn);
+    let _ = stringify!(AcpSession::is_alive);
+    let _ = stringify!(AcpSession::is_busy);
+    let _ = stringify!(AcpSession::prompt);
+    let _ = stringify!(AcpSession::prompt_do_trace_split);
+    let _ = stringify!(AcpSession::cancel);
+    let _ = stringify!(AcpSession::shutdown);
+}
+
+#[test]
+fn kiss_stringify_session_b() {
+    let _ = stringify!(AcpSession::send_rpc);
+    let _ = stringify!(AcpSession::reset_prompt_inflight);
+    let _ = stringify!(AcpSession::prompt_impl);
+}
+
+#[test]
+fn prompt_stdout_replacement_redacts_learn_only() {
+    assert_eq!(
+        super::prompt_stdout_replacement("learn"),
+        Some(crate::output::LEARNING_PLACEHOLDER)
+    );
+    assert_eq!(super::prompt_stdout_replacement("kpop"), None);
+    assert_eq!(super::prompt_stdout_replacement("review_1"), None);
 }

@@ -2,7 +2,7 @@
 ///
 /// [`AgentClient::new`](crate::AgentClient::new) sets [`AgentClient`](crate::AgentClient)’s
 /// `style_prompt_path` to this string by default. Documented in repository `grounding.md`.
-pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = ".style/main.md";
+pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = "coder_style.md";
 
 /// Read optional repo-local style text (trimmed) with the same rules as coder prompt composition.
 ///
@@ -147,14 +147,17 @@ impl AgentClient {
     /// When `skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
     /// injected repo style when present. Set `skip_repo_style` for default raw `malvin do` so only `prompt` is sent.
     ///
-    /// `who` names the single outbound/inbound trace stem when `do_trace_split` is `None` (for example
-    /// `main` for `implement.md`). When `do_trace_split` is `Some`, stems come from the split trace
-    /// (`>style` / `>header` / `>prompt`) and `who` is **not** used; callers may pass any placeholder
-    /// (the `malvin do` subcommand passes `"header"` for `--cooked` runs).
+    /// `who` names the outbound/inbound **trace stem** when `do_trace_split` is `None` (for example
+    /// `implement` for `implement.md`). `stdout_bracket_label`
+    /// overrides the stdout `[label...]` line and is usually the template filename (for example
+    /// `implement.md`); pass `None` to default the bracket label to `who`. When `do_trace_split` is `Some`,
+    /// stems come from the split trace (`>style` / `>header` / `>prompt`) and `who` / `stdout_bracket_label`
+    /// are not used for the split path (the `malvin do` subcommand passes `"raw"` or `"header"` as `who` for trace only).
     ///
     /// # Errors
     ///
     /// Returns [`AgentError`] when there is no session or the prompt fails after retries.
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_coder_prompt(
         &mut self,
         prompt: &str,
@@ -163,6 +166,7 @@ impl AgentClient {
         llm_phase: Option<crate::run_timing::TimingPhase>,
         skip_repo_style: bool,
         do_trace_split: Option<(&str, &str)>,
+        stdout_bracket_label: Option<&str>,
     ) -> Result<(), AgentError> {
         let session = self
             .coder_session
@@ -192,7 +196,9 @@ impl AgentClient {
             attempts_used = attempt;
             let t0 = Instant::now();
             let prompt_res = match do_trace_split {
-                None => session.prompt(&full_prompt, log_path, who).await,
+                None => session
+                    .prompt(&full_prompt, log_path, who, stdout_bracket_label)
+                    .await,
                 Some((header, user)) => {
                     session
                         .prompt_do_trace_split(

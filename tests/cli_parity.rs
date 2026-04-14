@@ -65,13 +65,13 @@ const fn agent_sources_for_snapshot() -> &'static str {
 fn reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order() {
     let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc"));
     let review = ops
-        .find("s.prompt(&review_full, pair.review_log, pair.review_who)")
+        .find("pair.review_log, pair.review_who, None")
         .expect("expected review session/prompt in run_reviewer_pair_once");
     let sync = ops
         .find("sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)")
         .expect("expected sync_review_then_is_lgtm after review prompt");
     let kpop = ops
-        .find("s.prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who)")
+        .find("pair.kpop_log, pair.kpop_who, None")
         .expect("expected kpop session/prompt after LGTM branch");
     assert!(
         review < sync && sync < kpop,
@@ -436,5 +436,36 @@ fn shared_opts_and_run_timing_sources_must_not_revive_stderr_post_run_metrics_co
     assert!(
         !kpop_flow.contains("post-run hint"),
         "kpop flow comments must not describe a removed stderr post-run metrics step"
+    );
+}
+
+#[test]
+fn grounding_documents_acp_stdout_tee_or_explicit_opt_out() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    assert!(
+        grounding.contains("--no-tee")
+            || grounding
+                .to_lowercase()
+                .contains("tee")
+                && grounding.to_lowercase().contains("stdout"),
+        "grounding.md should describe tee / `--no-tee` vs stdout (ACP traces, startup echo) so CLI behavior is discoverable"
+    );
+}
+
+#[test]
+fn grounding_documents_repo_style_contract_for_coder_style_md() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    assert!(
+        grounding.contains("coder_style.md") || grounding.contains("Repo style"),
+        "grounding.md should describe optional `coder_style.md` (DEFAULT_REPO_STYLE_PROMPT_REL) / injected repo style; client_impl.inc points readers here"
+    );
+}
+
+#[test]
+fn grounding_has_outgoing_prompts_heading_for_acp_tee_docs() {
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    assert!(
+        grounding.contains("## Outgoing prompts"),
+        "grounding.md must keep ## Outgoing prompts so ACP tee / `[…]` log behavior stays documented (session_trace.rs cites it)"
     );
 }

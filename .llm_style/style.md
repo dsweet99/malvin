@@ -46,7 +46,7 @@ ADVICE: `malvin code` / `malvin kpop` / `malvin do`: `run_timing.json` + one **s
 TRIGGER: primary vs secondary Result  
 ADVICE: **`merge_acp_and_timing_results`** and **`prefer_primary_string_errors`** (`src/cli/timing_merge.rs`) surface ACP/workflow failures over run-timing I/O or **`grounding.md` restore** failures—`malvin_tooling.md` § Error merge.
 TRIGGER: rustdoc grounding repo style  
-ADVICE: **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`.style/main.md`) in **`src/acp/client_impl.inc`**; user contract in **`grounding.md`** section **## Repo style file**. In **`///`** cite **`## Heading`**, not `§`—`malvin_tooling.md` § Repo style + § Docs parity.
+ADVICE: **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`coder_style.md`) in **`src/acp/client_impl.inc`**; user contract in **`grounding.md`** section **## Repo style file**. In **`///`** cite **`## Heading`**, not `§`—`malvin_tooling.md` § Repo style + § Docs parity.
 TRIGGER: plan.md root vs `_malvin`  
 ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—`malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: root plan.md informal bullets  
@@ -75,6 +75,8 @@ TRIGGER: ACP include layout
 ADVICE: Much of `src/acp/` is `include!` for `kiss`—navigate `.inc` names; **included `.rs` inherit parent `use`**. See `malvin_tooling.md`.
 TRIGGER: ACP trace, JSONL, tee  
 ADVICE: Live tee: stdout reader (`trace_file_write_line`, `coalesce.rs`, `reader_inline.inc`). Test-only `strip_trace_invocation_line_for_tee` (`tee_strip_tests.inc`); **no** post-prompt file tee stub—`malvin_tooling.md` § ACP traces.
+TRIGGER: ACP trace labels  
+ADVICE: Directional ACP tags label the **outer prompt template filename stem** (`implement.md` → `implement`, `review_1.md` → `review_1`). For **`malvin do`**, the outer prompt is **`header.md`**, so use **`header`** even though run timing still records **Implement**.
 TRIGGER: ACP tests, node  
 ADVICE: Mock `agent acp` children often `#!/usr/bin/env node`; `prepend_standard_path_for_child` (`transport/command.rs`). See `malvin_tooling.md` § Tests.
 TRIGGER: pre-commit hooks  

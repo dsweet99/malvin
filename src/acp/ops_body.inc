@@ -56,7 +56,9 @@ pub(crate) async fn run_reviewer_pair_once(
     let review_full = prepend_coder_repo_style_to_prompt(pair.review_body, repo_style.as_deref());
 
     let t_review = Instant::now();
-    let review_out = s.prompt(&review_full, pair.review_log, pair.review_who).await;
+    let review_out = s
+        .prompt(&review_full, pair.review_log, pair.review_who, None)
+        .await;
     crate::run_timing::record_llm(
         client.timing.as_ref(),
         pair_id.review_phase(),
@@ -73,7 +75,9 @@ pub(crate) async fn run_reviewer_pair_once(
     }
 
     let t_kpop = Instant::now();
-    let kpop_out = s.prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who).await;
+    let kpop_out = s
+        .prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who, None)
+        .await;
     crate::run_timing::record_llm(client.timing.as_ref(), pair_id.kpop_phase(), t_kpop.elapsed());
     kpop_out.map_err(AgentError)?;
 
@@ -104,7 +108,7 @@ pub(crate) async fn run_kpop_flow_once(
         phase: crate::run_timing::TimingPhase,
     ) -> Result<(), AgentError> {
         let t0 = Instant::now();
-        match session.prompt(text, log, who).await {
+        match session.prompt(text, log, who, None).await {
             Ok(()) => {
                 crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
                 Ok(())

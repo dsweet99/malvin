@@ -1,6 +1,8 @@
 use session_io::acp_stdio;
 
-use outgoing_prompt_trace::{DoPromptTraceSplit, OutgoingPromptTrace};
+use outgoing_prompt_trace::{
+    DoPromptTraceSplit, OutgoingPromptTrace, UniformOutgoingTrace,
+};
 
 /// [`AcpSession`] implementation and post-spawn handshake.
 pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
@@ -9,6 +11,23 @@ pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
     } else {
         None
     }
+}
+
+async fn rpc_session_prompt_text(session: &AcpSession, text: &str, id: u64) -> Result<(), String> {
+    let params = json!({
+        "sessionId": &session.0.session_id,
+        "prompt": [{ "type": "text", "text": text }]
+    });
+    let io = acp_stdio(&session.0);
+    rpc_request_with_correlation_id(RpcOutgoing {
+        io: &io,
+        id,
+        method: "session/prompt",
+        params,
+        rpc_timeout: session.0.rpc_timeout,
+    })
+    .await
+    .map(|_| ())
 }
 
 impl AcpSession {
@@ -64,9 +83,23 @@ impl AcpSession {
     /// # Errors
     ///
     /// Returns `Err` if trace file setup or the JSON-RPC request fails (see also [`Self::cancel`]).
-    pub async fn prompt(&self, text: &str, trace_path: &Path, who: &str) -> Result<(), String> {
-        self.prompt_impl(text, trace_path, OutgoingPromptTrace::Uniform(who))
-            .await
+    /// `stdout_bracket_label` overrides the one-line `[label...]` stdout header; defaults to `who`.
+    pub async fn prompt(
+        &self,
+        text: &str,
+        trace_path: &Path,
+        who: &str,
+        stdout_bracket_label: Option<&str>,
+    ) -> Result<(), String> {
+        self.prompt_impl(
+            text,
+            trace_path,
+            OutgoingPromptTrace::Uniform(UniformOutgoingTrace {
+                trace_who: who,
+                stdout_bracket_label,
+            }),
+        )
+        .await
     }
 
     /// Like [`Self::prompt`], but records `malvin do` trace segments (`>style`, `>header`, `>prompt`).
@@ -96,18 +129,19 @@ impl AcpSession {
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
-        let (incoming_tag, stdout_replacement_who) = match &trace {
-            OutgoingPromptTrace::Uniform(who) => {
+        let (incoming_tag, stdout_replacement_who, outgoing_label) = match &trace {
+            OutgoingPromptTrace::Uniform(u) => {
                 trace_write_outgoing_prompt(
                     &mut file,
-                    who,
+                    u.trace_who,
                     text,
                     self.0.tee_trace_stdout,
                 )
                 .await?;
                 (
-                    crate::output::format_acp_directional_tag_prefix('<', who),
-                    *who,
+                    crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
+                    u.trace_who,
+                    u.stdout_bracket_label.unwrap_or(u.trace_who),
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
@@ -124,12 +158,9 @@ impl AcpSession {
                 (
                     crate::output::format_acp_directional_tag_prefix('<', "prompt"),
                     "prompt",
+                    "do",
                 )
             }
-        };
-        let outgoing_label = match &trace {
-            OutgoingPromptTrace::Uniform(who) => *who,
-            OutgoingPromptTrace::DoSplit(_) => "do",
         };
         crate::output::print_outgoing_prompt_log(outgoing_label, text);
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
@@ -143,23 +174,10 @@ impl AcpSession {
         let id = self.0.next_id.fetch_add(1, Ordering::SeqCst);
         self.0.prompt_rpc_id.store(id, Ordering::SeqCst);
 
-        let params = json!({
-            "sessionId": &self.0.session_id,
-            "prompt": [{ "type": "text", "text": text }]
-        });
-
-        let io = acp_stdio(&self.0);
-        let res = rpc_request_with_correlation_id(RpcOutgoing {
-            io: &io,
-            id,
-            method: "session/prompt",
-            params,
-            rpc_timeout: self.0.rpc_timeout,
-        })
-        .await;
+        let res = rpc_session_prompt_text(self, text, id).await;
 
         match res {
-            Ok(_) => Ok(()),
+            Ok(()) => Ok(()),
             Err(e) => {
                 self.reset_prompt_inflight().await;
                 Err(e)
@@ -206,35 +224,4 @@ impl AcpSession {
         drop(ch);
         Ok(())
     }
-}
-
-#[test]
-fn kiss_stringify_session_a() {
-    let _ = stringify!(prompt_stdout_replacement);
-    let _ = stringify!(OutgoingPromptTrace::Uniform);
-    let _ = stringify!(OutgoingPromptTrace::DoSplit);
-    let _ = stringify!(AcpSession::spawn);
-    let _ = stringify!(AcpSession::is_alive);
-    let _ = stringify!(AcpSession::is_busy);
-    let _ = stringify!(AcpSession::prompt);
-    let _ = stringify!(AcpSession::prompt_do_trace_split);
-    let _ = stringify!(AcpSession::cancel);
-    let _ = stringify!(AcpSession::shutdown);
-}
-
-#[test]
-fn kiss_stringify_session_b() {
-    let _ = stringify!(AcpSession::send_rpc);
-    let _ = stringify!(AcpSession::reset_prompt_inflight);
-    let _ = stringify!(AcpSession::prompt_impl);
-}
-
-#[test]
-fn prompt_stdout_replacement_redacts_learn_only() {
-    assert_eq!(
-        prompt_stdout_replacement("learn"),
-        Some(crate::output::LEARNING_PLACEHOLDER)
-    );
-    assert_eq!(prompt_stdout_replacement("kpop"), None);
-    assert_eq!(prompt_stdout_replacement("review_1"), None);
 }

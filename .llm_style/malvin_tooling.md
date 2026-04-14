@@ -106,7 +106,7 @@ ADVICE: **`prefer_primary_string_errors(primary, restore)`**—used after **`mal
 ## Repo style file (optional)
 
 TRIGGER: DEFAULT_REPO_STYLE_PROMPT_REL  
-ADVICE: Public const **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`".style/main.md"`) in **`src/acp/client_impl.inc`**; **`AgentClient::new`** sets **`style_prompt_path`** from it. **`read_coder_repo_style_text`** / **`prepend_coder_repo_style_to_prompt`** share trim/empty rules with coder and reviewer paths. Root **`grounding.md`** section **## Repo style file** is the user-facing contract.
+ADVICE: Public const **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`"coder_style.md"`) in **`src/acp/client_impl.inc`**; **`AgentClient::new`** sets **`style_prompt_path`** from it. **`read_coder_repo_style_text`** / **`prepend_coder_repo_style_to_prompt`** share trim/empty rules with coder and reviewer paths. Root **`grounding.md`** section **## Repo style file** is the user-facing contract.
 
 ## Docs parity (rustdoc ↔ `grounding.md`)
 

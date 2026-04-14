@@ -75,7 +75,7 @@ mod compose_coder_prompt_tests {
     #[test]
     fn prepends_style_file_on_first_turn_when_not_skipped() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let style = tmp.path().join("main.md");
+        let style = tmp.path().join("coder_style.md");
         std::fs::write(&style, "STYLE\n").expect("write style");
         let out = coder_prompt_body_with_optional_repo_style("USER", true, false, &style).0;
         assert_eq!(out, "STYLE\n\nUSER");
@@ -84,7 +84,7 @@ mod compose_coder_prompt_tests {
     #[test]
     fn skip_repo_style_omits_style_even_when_first_turn() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let style = tmp.path().join("main.md");
+        let style = tmp.path().join("coder_style.md");
         std::fs::write(&style, "STYLE\n").expect("write style");
         let out = coder_prompt_body_with_optional_repo_style("USER", true, true, &style).0;
         assert_eq!(out, "USER");
@@ -93,7 +93,7 @@ mod compose_coder_prompt_tests {
     #[test]
     fn whitespace_only_style_file_does_not_prepend() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let style = tmp.path().join("main.md");
+        let style = tmp.path().join("coder_style.md");
         std::fs::write(&style, "  \n  ").expect("write style");
         let out = coder_prompt_body_with_optional_repo_style("USER", true, false, &style).0;
         assert_eq!(out, "USER");
