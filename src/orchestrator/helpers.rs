@@ -1,18 +1,16 @@
-#[must_use]
-pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
-    let mut context = HashMap::new();
+fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     context.insert(
         "plan_path".to_string(),
         artifacts.plan_path.display().to_string(),
     );
-    let kpop = artifacts
+    let kpop_dir = artifacts
         .run_dir
         .join("_kpop")
         .canonicalize()
         .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
     context.insert(
         "kpop_log_dir".to_string(),
-        format_prompt_path(&kpop, &artifacts.work_dir),
+        format_prompt_path(&kpop_dir, &artifacts.work_dir),
     );
     context.insert(
         "review_path".to_string(),
@@ -22,6 +20,18 @@ pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
         "result_path".to_string(),
         format_prompt_path(&artifacts.artifact_result_md(), &artifacts.work_dir),
     );
+}
+
+#[must_use]
+pub fn workflow_context(
+    artifacts: &RunArtifacts,
+    prompts: &PromptStore,
+) -> HashMap<String, String> {
+    let mut context = HashMap::new();
+    insert_artifact_paths(&mut context, artifacts);
+    if let Ok(kpop_content) = prompts.render_prompt_only("kpop.md", &context) {
+        context.insert("kpop".to_string(), kpop_content);
+    }
     context
 }
 

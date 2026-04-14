@@ -66,7 +66,7 @@ struct KpopAfterStartup<'a> {
 }
 
 async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
-    let context = workflow_context(ctx.artifacts);
+    let context = workflow_context(ctx.artifacts, ctx.store);
     let kpop_body = ctx
         .store
         .render("kpop.md", &context)

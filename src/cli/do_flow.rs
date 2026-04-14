@@ -104,7 +104,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts);
+    let context = workflow_context(artifacts, store);
     let header_body = store
         .render_prompt_only("header.md", &context)
         .map_err(|e: PromptError| e.0)?;

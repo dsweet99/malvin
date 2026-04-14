@@ -81,7 +81,7 @@ impl Orchestrator<'_> {
     ///
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts);
+        let context = workflow_context_inner(self.artifacts, self.prompts);
         let timing = self.attach_run_timing();
         let begin_res = self
             .client

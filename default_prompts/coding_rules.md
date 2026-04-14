@@ -24,7 +24,7 @@ and all unit tests pass:
 
 Run checks & tests frequently to avoid a big cleanup at the end.
 
-Write code to fail fast. Assert liberally.
+Write code to fail fast. Assert liberally. DRY.
 
 ## Nota Bene
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
