@@ -305,3 +305,17 @@ ADVICE: Prefer `let n = if let Some(…) = … { …; 2 } else { 1 };` over `let
 - **MSRV / edition:** `edition = "2024"`, `rust-version = "1.87"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
 - **Orchestrator prompt stems:** `prompt_md_stem` / `strip_suffix(".md")` in `src/orchestrator/` — avoid `len()-3` slicing.
 - **Prompts `include_str!`:** defaults live under `default_prompts/`; paths in `src/prompts/mod.rs`.
+
+## `malvin code` workflow structure
+
+TRIGGER: malvin code workflow  
+ADVICE: `implement.md` → review loop (review_1/review_2 with `kpop_review.md`, not `kpop.md`) → `learn.md`. No `validate_plan.md` step.
+
+TRIGGER: kpop.md vs kpop_review.md  
+ADVICE: **`kpop.md`** is for standalone `malvin kpop` runs. **`kpop_review.md`** is used in `malvin code` review loops—validates and revises `review.md`. Both in `default_prompts/` and `src/prompts/defaults.rs`.
+
+TRIGGER: concerns ABORT result_path  
+ADVICE: `concerns.md` may write "ABORT" to `{{result_path}}` (`_malvin/<run>/result.md`). After concerns, orchestrator calls `check_abort` in `src/orchestrator/helpers.rs`—if file contains "ABORT", workflow halts with error.
+
+TRIGGER: workflow template context  
+ADVICE: `workflow_context` in `src/orchestrator/helpers.rs` provides: `plan_path`, `kpop_log_dir`, `review_path`, `result_path`. All paths point to `_malvin/<run>/` artifacts except user-provided `plan_path`.

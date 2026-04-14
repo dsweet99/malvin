@@ -11,7 +11,7 @@ fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
 
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
-        .args(["init"])
+        .args(["init", "python", "--path"])
         .arg(project.path())
         .output()
         .expect("spawn malvin init");

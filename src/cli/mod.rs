@@ -210,7 +210,7 @@ pub fn entrypoint() -> Exit {
             };
             tokio_runtime().block_on(run_do(do_cmd, workflow))
         }
-        Commands::Init(init) => init_cmd::run_init(init.path, init.force),
+        Commands::Init(init) => init_cmd::run_init(init.path, init.force, &init.languages),
         Commands::Models(_) => models_cmd::run_models(),
     };
     match res {
