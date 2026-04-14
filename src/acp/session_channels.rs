@@ -7,11 +7,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
-/// Verbose logging and stdout tee for the ACP reader (bundled for [`SessionChannelState::into_session_inner`]).
+/// Verbose logging for ACP (bundled for [`SessionChannelState::into_session_inner`]).
 #[derive(Clone, Copy)]
 pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
-    pub tee_trace_stdout: bool,
 }
 
 pub struct SessionChannelState {
@@ -89,7 +88,6 @@ impl SessionChannelState {
             prompt_rpc_id: self.prompt_rpc_id,
             prompt_singleflight: self.prompt_singleflight,
             acp_verbose: telemetry.acp_verbose,
-            tee_trace_stdout: telemetry.tee_trace_stdout,
             ui_idle_notify: self.ui_idle_notify,
         }
     }

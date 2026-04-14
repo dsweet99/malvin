@@ -129,19 +129,14 @@ impl AcpSession {
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
-        let (incoming_tag, stdout_replacement_who, outgoing_label) = match &trace {
+        let (incoming_tag, stdout_replacement_who) = match &trace {
             OutgoingPromptTrace::Uniform(u) => {
-                trace_write_outgoing_prompt(
-                    &mut file,
-                    u.trace_who,
-                    text,
-                    self.0.tee_trace_stdout,
-                )
-                .await?;
+                trace_write_outgoing_prompt(&mut file, u.trace_who, text).await?;
+                let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
+                crate::output::print_outgoing_prompt_log(outgoing_label);
                 (
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
-                    u.stdout_bracket_label.unwrap_or(u.trace_who),
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
@@ -151,18 +146,15 @@ impl AcpSession {
                         style_text: split.style_text,
                         header_text: split.header,
                         user_text: split.user,
-                        tee_stdout: self.0.tee_trace_stdout,
                     },
                 )
                 .await?;
                 (
                     crate::output::format_acp_directional_tag_prefix('<', "prompt"),
                     "prompt",
-                    "do",
                 )
             }
         };
-        crate::output::print_outgoing_prompt_log(outgoing_label);
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
             who: incoming_tag,

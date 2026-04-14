@@ -37,8 +37,6 @@ pub struct AcpSessionInner {
     /// Serializes `AcpSession::prompt` so overlapping callers cannot stomp the trace writer.
     pub prompt_singleflight: Arc<Mutex<()>>,
     pub acp_verbose: bool,
-    /// Echo trace lines to stdout when tee is enabled (see [`AcpSpawnArgs::tee_trace_stdout`]).
-    pub tee_trace_stdout: bool,
     /// When set (UI lane), observers are notified whenever `busy` becomes false.
     pub ui_idle_notify: Option<Arc<Notify>>,
 }
