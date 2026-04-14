@@ -231,8 +231,6 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
 
 #[test]
 fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
-    // Regression: `.llm_style/` used to describe `src/post_run_hint/` after that code was removed;
-    // keep guides aligned with root `grounding.md` (see `grounding_no_longer_promises_post_run_metrics_hint`).
     for (path, src) in [
         (
             ".llm_style/malvin_tooling.md",
@@ -248,7 +246,7 @@ fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
     ] {
         assert!(
             !src.contains("src/post_run_hint") && !src.contains("post_run_hint/"),
-            "{path} must not reference removed post_run_hint paths; align with grounding.md",
+            "{path} must not reference removed post_run_hint paths",
         );
     }
 }
@@ -317,7 +315,6 @@ fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
     );
 }
 
-
 #[test]
 fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
     let cargo_toml = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
@@ -360,15 +357,14 @@ fn shared_opts_and_run_timing_sources_must_not_revive_stderr_post_run_metrics_co
     let kpop_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/kpop_flow.rs"));
     assert!(
         !shared.contains("metrics hint") && !shared.contains("tracked-edit"),
-        "`--no-tee` help must not promise removed stderr tracked-edit metrics; align with grounding.md"
+        "`--no-tee` help must not promise removed stderr tracked-edit metrics"
     );
     assert!(
         !run_timing.contains("stderr post-run hint") && !run_timing.contains("stderr post-run"),
-        "run_timing sources should not describe a stderr post-run metrics line; run timing is stdout + JSON per grounding.md"
+        "run_timing sources should not describe a stderr post-run metrics line; run timing is stdout + JSON"
     );
     assert!(
         !kpop_flow.contains("post-run hint"),
         "kpop flow comments must not describe a removed stderr post-run metrics step"
     );
 }
-
