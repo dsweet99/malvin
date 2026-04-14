@@ -1,6 +1,6 @@
 # Project grounding
 
-## Ojbective
+## Objective
 
 Describe project's objective /  purpose / goals.
 
