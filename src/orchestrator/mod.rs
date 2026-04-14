@@ -50,7 +50,7 @@ pub struct WorkflowConfig {
     pub run_learn: bool,
 }
 
-/// Runs implement + two review phases + optional learn pass.
+/// Runs implement, two review phases, and optional learn pass.
 pub struct Orchestrator<'a> {
     pub client: &'a mut AgentClient,
     pub prompts: &'a PromptStore,

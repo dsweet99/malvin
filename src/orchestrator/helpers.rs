@@ -14,11 +14,25 @@ pub fn workflow_context(artifacts: &RunArtifacts) -> HashMap<String, String> {
         "kpop_log_dir".to_string(),
         format_prompt_path(&kpop, &artifacts.work_dir),
     );
+    context.insert(
+        "review_path".to_string(),
+        format_prompt_path(&artifacts.artifact_review_md(), &artifacts.work_dir),
+    );
+    context.insert(
+        "result_path".to_string(),
+        format_prompt_path(&artifacts.artifact_result_md(), &artifacts.work_dir),
+    );
     context
 }
 
 pub(crate) fn clear_review_file(p: &Path) {
     let _ = std::fs::remove_file(p);
+}
+
+pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
+    std::fs::read_to_string(result_path)
+        .ok()
+        .filter(|content| content.contains("ABORT"))
 }
 
 /// Stem used in log name segments for **both** coder prompts (`implement.md`, …) and reviewer prompts (`review_1.md`, …).

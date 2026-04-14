@@ -6,10 +6,10 @@ Please review the codebase. Pay special attention to code that differs from bran
 - Is the code idiomatic?
 - Is the code elegant?
 
-Write your review (problems only) to review.md.
+Write your review (problems only) to  {{review_path}}.
 
 If everything is ok, just write
 ```
 LGTM
 ```
-in review.md.
+in  {{review_path}}.

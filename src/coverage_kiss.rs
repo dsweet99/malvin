@@ -39,6 +39,7 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(RunArtifacts);
     let _ = stringify!(RunArtifacts::log_path);
     let _ = stringify!(RunArtifacts::artifact_review_md);
+    let _ = stringify!(RunArtifacts::artifact_result_md);
     let _ = stringify!(RunArtifacts::workspace_review_md);
     let _ = stringify!(create_run_artifacts);
     let _ = stringify!(crate::artifacts::create_run_dir);
@@ -109,6 +110,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(WorkflowConfig);
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
+    let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
@@ -175,6 +177,7 @@ fn smoke_prompt_store_with_root() {
             "review_1.md",
             "review_2.md",
             "kpop.md",
+            "kpop_review.md",
             "mbc2.md",
             "concerns.md",
             "learn.md",
@@ -202,7 +205,7 @@ fn smoke_orchestrator_instantiation() {
             "implement.md",
             "review_1.md",
             "review_2.md",
-            "kpop.md",
+            "kpop_review.md",
             "concerns.md",
         ],
         b"Hello {{ plan_path }} $kpop_log_dir",

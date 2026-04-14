@@ -1,4 +1,4 @@
-### KPOP: Apply this method to the user's problem.
+### KPop: Apply this method to the user's problem.
 
 Restate the problem clearly.
 

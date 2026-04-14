@@ -4,9 +4,10 @@ Use parallelized subagents (at most 4).
 Work until the end without asking for user input. If you are uncertain about an implementation
 detail, use your best judgement. There will always be an opportunity to revise later on.
 
-Be sure that all checks pass:
-- ruff check
-- cargo clippy --all-targets --all-features -- \
+Some projects are Rust. Some are Python. Some are both. You are not required to have both languages. Consult grounding.md and the existing codebase if you are unsure about which language to use.
+
+Be sure that all relevant checks pass:
+- [rust] cargo clippy --all-targets --all-features -- \
     -D warnings \
     -W clippy::pedantic \
     -W clippy::nursery \
@@ -14,10 +15,12 @@ Be sure that all checks pass:
     -A clippy::must_use_candidate \
     -A clippy::missing_errors_doc \
     -A clippy::missing_panics_doc
-- kiss check
-and all unit tests pass:
-- cargo test
+- [python] ruff check
+- [rust & python] kiss check
 
+and all unit tests pass:
+- [rust] cargo test
+- [python] pytest -sv tests
 
 Run checks & tests frequently to avoid a big cleanup at the end.
 

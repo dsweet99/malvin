@@ -6,6 +6,7 @@ use crate::run_timing::{ReviewPairId, TimingPhase};
 
 use super::Orchestrator;
 use super::WorkflowError;
+use super::check_abort;
 use super::clear_review_file;
 use super::prompt_md_stem;
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
@@ -60,7 +61,7 @@ impl Orchestrator<'_> {
             .map_err(|e| WorkflowError(e.0))?;
         let kpop_body = self
             .prompts
-            .render("kpop.md", ctx.context)
+            .render("kpop_review.md", ctx.context)
             .map_err(|e| WorkflowError(e.0))?;
 
         let pair_id = match ctx.phase_id {
@@ -75,6 +76,13 @@ impl Orchestrator<'_> {
         if lgtm {
             return Ok(true);
         }
+        self.run_concerns_and_check_abort(&ctx).await
+    }
+
+    async fn run_concerns_and_check_abort(
+        &mut self,
+        ctx: &ReviewAttemptCtx<'_>,
+    ) -> Result<bool, WorkflowError> {
         (self.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
         self.run_coder_prompt(
             "concerns.md",
@@ -83,6 +91,9 @@ impl Orchestrator<'_> {
             TimingPhase::Concerns,
         )
         .await?;
+        if let Some(abort_msg) = check_abort(&self.artifacts.artifact_result_md()) {
+            return Err(WorkflowError(format!("ABORT: {abort_msg}")));
+        }
         Ok(false)
     }
 
