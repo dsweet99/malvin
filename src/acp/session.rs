@@ -162,7 +162,7 @@ impl AcpSession {
                 )
             }
         };
-        crate::output::print_outgoing_prompt_log(outgoing_label, text);
+        crate::output::print_outgoing_prompt_log(outgoing_label);
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
             who: incoming_tag,

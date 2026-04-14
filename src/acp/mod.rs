@@ -6,6 +6,7 @@
 
 mod handshake_types;
 mod outgoing_prompt_trace;
+pub use outgoing_prompt_trace::CoderPromptOptions;
 mod session_channels;
 mod session_io;
 mod session_types;

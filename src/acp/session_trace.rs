@@ -43,9 +43,9 @@ pub(crate) async fn trace_write_invocation_header(
 /// Whether to mirror outgoing `session/prompt` lines (`>` tags) to stdout when tee is enabled.
 ///
 /// For stem `learn`, the trace file still records full `>learn` lines; tee does not mirror them to
-/// stdout (so learn body text is not echoed as tee lines). The `[learn...]` bracket line and full
-/// body are still printed via [`crate::acp::AcpSession::prompt_impl`] (`print_outgoing_prompt_log`).
-/// See repository root `grounding.md`, section **## Outgoing prompts** (including the `learn` bullet).
+/// stdout (so learn body text is not echoed as tee lines). The `[learn...]` bracket announcement
+/// is still printed via [`crate::acp::AcpSession::prompt_impl`] (`print_outgoing_prompt_log`).
+/// See repository root `grounding.md`, section **## Outgoing prompts**.
 #[must_use]
 pub(crate) fn acp_tee_echo_outgoing_prompt_lines(tee_stdout: bool, stem: &str) -> bool {
     tee_stdout && stem != "learn"

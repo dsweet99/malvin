@@ -7,7 +7,7 @@ use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::shared_opts::SharedOpts;
 use super::timing_merge::emit_run_timing_after_acp;
-use malvin::acp::AgentClient;
+use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
@@ -138,10 +138,12 @@ async fn run_do_acp(
             &coder.combined,
             &log,
             coder.acp_trace_stem,
-            Some(TimingPhase::Implement),
-            coder.skip_repo_style,
-            do_split,
-            None,
+            CoderPromptOptions {
+                llm_phase: Some(TimingPhase::Implement),
+                skip_repo_style: coder.skip_repo_style,
+                do_trace_split: do_split,
+                stdout_bracket_label: None,
+            },
         )
         .await
         .map_err(|e| e.to_string());

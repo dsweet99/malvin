@@ -144,11 +144,11 @@ impl AgentClient {
 
     /// Run one prompt on the open coder session (implement, concerns, or learn).
     ///
-    /// When `skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
+    /// When `opts.skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
     /// injected repo style when present. Set `skip_repo_style` for default raw `malvin do` so only `prompt` is sent.
     ///
-    /// `who` names the outbound/inbound **trace stem** when `do_trace_split` is `None` (for example
-    /// `implement` for `implement.md`). `stdout_bracket_label`
+    /// `who` names the outbound/inbound **trace stem** when `opts.do_trace_split` is `None` (for example
+    /// `implement` for `implement.md`). `opts.stdout_bracket_label`
     /// overrides the stdout `[label...]` line and is usually the template filename (for example
     /// `implement.md`); pass `None` to default the bracket label to `who`. When `do_trace_split` is `Some`,
     /// stems come from the split trace (`>style` / `>header` / `>prompt`) and `who` / `stdout_bracket_label`
@@ -157,17 +157,19 @@ impl AgentClient {
     /// # Errors
     ///
     /// Returns [`AgentError`] when there is no session or the prompt fails after retries.
-    #[allow(clippy::too_many_arguments)]
     pub async fn run_coder_prompt(
         &mut self,
         prompt: &str,
         log_path: &Path,
         who: &str,
-        llm_phase: Option<crate::run_timing::TimingPhase>,
-        skip_repo_style: bool,
-        do_trace_split: Option<(&str, &str)>,
-        stdout_bracket_label: Option<&str>,
+        opts: outgoing_prompt_trace::CoderPromptOptions<'_>,
     ) -> Result<(), AgentError> {
+        let outgoing_prompt_trace::CoderPromptOptions {
+            llm_phase,
+            skip_repo_style,
+            do_trace_split,
+            stdout_bracket_label,
+        } = opts;
         let session = self
             .coder_session
             .as_ref()

@@ -4,8 +4,8 @@
 
 pub mod acp;
 pub use acp::{
-    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AuthError, KpopFlowOnceArgs,
-    ReviewerPromptPair,
+    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AuthError,
+    CoderPromptOptions, KpopFlowOnceArgs, ReviewerPromptPair,
 };
 
 /// Compatibility shim for code that imported `malvin::agent` before the `acp`-centric layout.

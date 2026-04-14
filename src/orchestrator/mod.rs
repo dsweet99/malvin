@@ -3,7 +3,7 @@
 //! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
 //! attribute coverage consistently; see `.kissignore`.
 
-use crate::acp::{AgentClient, AgentError};
+use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
 use crate::run_timing::{self, RunTiming, TimingPhase};
@@ -149,10 +149,12 @@ impl Orchestrator<'_> {
                 &prompt,
                 &log,
                 stem,
-                Some(llm_phase),
-                false,
-                None,
-                Some(filename),
+                CoderPromptOptions {
+                    llm_phase: Some(llm_phase),
+                    skip_repo_style: false,
+                    do_trace_split: None,
+                    stdout_bracket_label: Some(filename),
+                },
             )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;

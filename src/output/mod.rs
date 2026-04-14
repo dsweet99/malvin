@@ -14,10 +14,14 @@ use chrono::Local;
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
 
-/// One stdout line `[{label}...]` plus the full outgoing prompt body (same formatting as [`print_stdout_text`]).
-pub fn print_outgoing_prompt_log(label: &str, full_prompt: &str) {
-    print_stdout_line(MALVIN_WHO, &format!("[{label}...]"));
-    print_stdout_text(MALVIN_WHO, full_prompt);
+/// Announce one outgoing prompt to stdout.
+///
+/// Prints a single bracket line `[{label}...]` with the directional `>{label}` tag as `who`.
+/// Does **not** echo the full prompt body to stdout (that goes only to the trace file).
+pub fn print_outgoing_prompt_log(label: &str) {
+    let directional_tag = format_acp_directional_tag_prefix('>', label);
+    let bracket_payload = format!("[{label}...]");
+    print_stdout_acp_tee_line(AcpTeeDirection::ToAgent, &directional_tag, &bracket_payload);
 }
 
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
@@ -187,7 +191,7 @@ mod tests {
         print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
         print_stderr_line("e", "err");
         print_stdout_text("t", "a\nb");
-        print_outgoing_prompt_log("main", "full\nbody");
+        print_outgoing_prompt_log("main");
         let mut it = super::logical_lines("x\ny");
         assert_eq!(it.next(), Some("x"));
         assert_eq!(it.next(), Some("y"));
