@@ -42,7 +42,7 @@ pub(crate) fn clear_review_file(p: &Path) {
 pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
     std::fs::read_to_string(result_path)
         .ok()
-        .filter(|content| content.contains("ABORT"))
+        .filter(|content| content.lines().any(|line| line.starts_with("ABORT:")))
 }
 
 /// Stem used in log name segments for **both** coder prompts (`implement.md`, …) and reviewer prompts (`review_1.md`, …).

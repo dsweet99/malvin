@@ -24,6 +24,8 @@ and all applicable unit tests pass:
 
 Run checks & tests frequently to avoid a big cleanup at the end.
 
+Do not write "documentation parity guards". Do not write comments. NEVER EDIT grounding.md.
+
 Write code to fail fast. Assert liberally. DRY.
 
 ## Nota Bene

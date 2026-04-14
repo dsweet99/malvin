@@ -1,15 +1,3 @@
-//! Behavioral constraints for the CLI.
-//!
-//! ## Gitignore parity
-//!
-//! `git check-ignore` guards for the repo root `.gitignore` and the embedded `malvin init` template.
-//! Patterns must not use a `./` prefix: git normalizes pathspecs without `./`, so those entries never
-//! matched.
-//!
-//! ## Grounding vs run timing
-//!
-//! Contract checks between `grounding.md` and the run-timing implementation.
-
 use std::path::Path;
 use std::process::Command;
 
@@ -234,46 +222,6 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
 }
 
 #[test]
-fn llm_style_docs_do_not_reference_removed_post_run_hint_module() {
-    // Regression: `.llm_style/` used to describe `src/post_run_hint/` after that code was removed;
-    // keep guides aligned with root `grounding.md` (see `grounding_no_longer_promises_post_run_metrics_hint`).
-    for (path, src) in [
-        (
-            ".llm_style/malvin_tooling.md",
-            include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/.llm_style/malvin_tooling.md"
-            )),
-        ),
-        (
-            ".llm_style/style.md",
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.llm_style/style.md")),
-        ),
-    ] {
-        assert!(
-            !src.contains("src/post_run_hint") && !src.contains("post_run_hint/"),
-            "{path} must not reference removed post_run_hint paths; align with grounding.md",
-        );
-    }
-}
-
-#[test]
-fn malvin_tooling_documents_run_artifacts_module_dir_not_flat_file() {
-    let tooling = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/.llm_style/malvin_tooling.md"
-    ));
-    assert!(
-        !tooling.contains("src/artifacts.rs"),
-        "malvin_tooling.md must not point at removed flat `src/artifacts.rs`; run artifacts live under `src/artifacts/`",
-    );
-    assert!(
-        tooling.contains("src/artifacts/mod.rs") && tooling.contains("src/artifacts/"),
-        "malvin_tooling.md must document `RunArtifacts` / review paths via `src/artifacts/` (e.g. mod.rs)",
-    );
-}
-
-#[test]
 fn artifacts_grounding_backup_module_is_declared_and_source_tracked() {
     let mod_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/artifacts/mod.rs"));
     let backup_rs = include_str!(concat!(
@@ -322,65 +270,6 @@ fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
 }
 
 #[test]
-fn grounding_outgoing_prompts_documentation_matches_split_trace_tee_behavior() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    let session_trace = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/session_trace.rs"
-    ));
-    let split_do_trace = session_trace.contains("trace_write_outgoing_prompt_do");
-    let outgoing_mentions_tee = grounding
-        .lines()
-        .skip_while(|l| !l.contains("## Outgoing prompts"))
-        .take(30)
-        .any(|l| l.to_lowercase().contains("tee"));
-    assert!(
-        !split_do_trace || outgoing_mentions_tee,
-        "grounding.md § Outgoing prompts must describe tee + split `malvin do --cooked` stdout (ACP tee lines before the `[do...]` bracket line), or the doc overstates a single bracket line + body as the only stdout",
-    );
-}
-
-#[test]
-fn grounding_run_timing_stdout_contract_matches_run_timing_module() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    let report_rs = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/run_timing/report.rs"
-    ));
-    let grounding_promises =
-        grounding.contains("run_timing.json") && grounding.contains("**stdout** summary line");
-    // Require the stdout + JSON contract in `report.rs` (not module docs / `mod.rs` alone).
-    let implementation_delivers = report_rs.contains("write_json_and_print_summary")
-        && report_rs.contains("print_stdout_line")
-        && report_rs.contains("RUN_TIMING_SUMMARY_PREFIX")
-        && report_rs.contains("RUN_TIMING_JSON_FILE");
-    assert_eq!(
-        grounding_promises, implementation_delivers,
-        "grounding.md and src/run_timing/report.rs must stay aligned on run_timing.json + stdout summary"
-    );
-}
-
-/// Root `grounding.md` scopes mutating-git policy to ACP workflows; `malvin init` may invoke `git`
-/// (Git LFS). This test locks that pairing to the sources.
-#[test]
-fn grounding_git_write_constraint_matches_cli_init_behavior() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    let init_cmd = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/init_cmd.rs"));
-    assert!(
-        !grounding.contains("Never make a writing call to git"),
-        "grounding.md must not use an unscoped blanket git-write ban; carve out malvin init / scope ACP workflows"
-    );
-    assert!(
-        grounding.contains("ACP-driven") && grounding.contains("malvin init"),
-        "grounding.md must scope mutating-git rules to ACP workflows and mention malvin init bootstrap"
-    );
-    assert!(
-        init_cmd.contains(r#"Command::new("git")"#) && init_cmd.contains("lfs"),
-        "malvin init must invoke git for Git LFS; grounding.md must document that exception"
-    );
-}
-
-#[test]
 fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
     let cargo_toml = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
     let Some(desc_line) = cargo_toml.lines().find(|l| {
@@ -392,80 +281,5 @@ fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
     assert!(
         !desc_line.contains(":[>"),
         "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
-    );
-}
-
-#[test]
-fn grounding_no_longer_promises_post_run_metrics_hint() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    assert!(
-        !grounding.to_lowercase().contains("tracked edit metrics"),
-        "grounding.md should not mention the removed post-run metrics hint"
-    );
-    assert!(
-        !agent_sources_for_snapshot().contains("post_run_hint"),
-        "ACP/workflow sources should not reference the removed post-run metrics hint"
-    );
-}
-
-#[test]
-fn shared_opts_and_run_timing_sources_must_not_revive_stderr_post_run_metrics_copy() {
-    let shared = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/shared_opts.rs"
-    ));
-    let run_timing = concat!(
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/run_timing/mod.rs"
-        )),
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/run_timing/report.rs"
-        )),
-    );
-    let kpop_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/kpop_flow.rs"));
-    assert!(
-        !shared.contains("metrics hint") && !shared.contains("tracked-edit"),
-        "`--no-tee` help must not promise removed stderr tracked-edit metrics; align with grounding.md"
-    );
-    assert!(
-        !run_timing.contains("stderr post-run hint") && !run_timing.contains("stderr post-run"),
-        "run_timing sources should not describe a stderr post-run metrics line; run timing is stdout + JSON per grounding.md"
-    );
-    assert!(
-        !kpop_flow.contains("post-run hint"),
-        "kpop flow comments must not describe a removed stderr post-run metrics step"
-    );
-}
-
-#[test]
-fn grounding_documents_acp_stdout_tee_or_explicit_opt_out() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    assert!(
-        grounding.contains("--no-tee")
-            || grounding
-                .to_lowercase()
-                .contains("tee")
-                && grounding.to_lowercase().contains("stdout"),
-        "grounding.md should describe tee / `--no-tee` vs stdout (ACP traces, startup echo) so CLI behavior is discoverable"
-    );
-}
-
-#[test]
-fn grounding_documents_repo_style_contract_for_coder_style_md() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    assert!(
-        grounding.contains("coder_style.md") || grounding.contains("Repo style"),
-        "grounding.md should describe optional `coder_style.md` (DEFAULT_REPO_STYLE_PROMPT_REL) / injected repo style; client_impl.inc points readers here"
-    );
-}
-
-#[test]
-fn grounding_has_outgoing_prompts_heading_for_acp_tee_docs() {
-    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
-    assert!(
-        grounding.contains("## Outgoing prompts"),
-        "grounding.md must keep ## Outgoing prompts so ACP tee / `[…]` log behavior stays documented (session_trace.rs cites it)"
     );
 }
