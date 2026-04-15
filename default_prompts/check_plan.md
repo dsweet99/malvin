@@ -2,12 +2,15 @@
 ---
 {{ kpop }}
 ---
-KPop: Check {{ plan_path }} for
-- Consistency with grounding.md
-- Self-consistency
-- Errors
-- Feasibility
+KPop: Check {{ plan_path }} for blocking issues.
 
-Write your findings to {{ review_path }}.
+A plan is acceptable if it:
+- Does NOT contradict grounding.md (silence on details is fine—grounding.md fills gaps)
+- Is internally consistent (no contradictory requirements)
+- Is feasible given the codebase
 
-If everything is ok, just write LGTM in {{ review_path }}.
+Brief plans like "Write this app" or "Implement the feature" are valid when grounding.md provides context. The plan does not need to restate grounding.md requirements.
+
+Write LGTM to {{ review_path }} unless there is a concrete blocking issue.
+
+If there IS a blocking issue, write a brief explanation to {{ review_path }}.
