@@ -5,15 +5,17 @@ pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
     AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
-    print_stdout_acp_tee_line_with_timestamp,
+    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_payload,
 };
 
-use std::io::{IsTerminal, stderr, stdout};
+use std::io::{IsTerminal, stdout};
 use std::sync::OnceLock;
 
 use chrono::Local;
 
-use self::terminal_wrap::{stdout_is_wrappable_terminal, terminal_columns, wrap_words_bounded};
+use self::terminal_wrap::{
+    stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
+};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
@@ -97,9 +99,7 @@ fn stdout_use_color() -> bool {
 
 pub fn print_stdout_line(who: &str, line: &str) {
     let ts = timestamp_now_string();
-    let prefix_len = format_line_with_timestamp(&ts, who, "").chars().count();
-    let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
-    let wrap = stdout_is_wrappable_terminal() && line.chars().count() > max_payload;
+    let (max_payload, wrap) = stdout_line_wrap_meta(&ts, who, line);
     if !wrap {
         let s = if stdout_use_color() {
             format_line_with_timestamp_ansi(&ts, who, line)
@@ -121,9 +121,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
 
 pub fn print_stderr_line(who: &str, line: &str) {
     let ts = timestamp_now_string();
-    let prefix_len = format_line_with_timestamp(&ts, who, "").chars().count();
-    let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
-    let wrap = stderr().is_terminal() && line.chars().count() > max_payload;
+    let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, line);
     if !wrap {
         eprintln!("{}", format_line_with_timestamp(&ts, who, line));
         return;

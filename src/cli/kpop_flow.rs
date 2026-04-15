@@ -11,6 +11,7 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
+use super::repo_checks;
 use super::LEARN_MIN_ELAPSED_MS;
 use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
@@ -56,6 +57,8 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+
+    repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
 

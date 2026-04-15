@@ -336,3 +336,18 @@ ADVICE: `concerns.md` may write "ABORT" to `{{result_path}}` (`_malvin/<run>/res
 
 TRIGGER: workflow template context  
 ADVICE: `workflow_context` in `src/orchestrator/helpers.rs` provides: `plan_path`, `kpop_log_dir`, `review_path`, `result_path`. All paths point to `_malvin/<run>/` artifacts except user-provided `plan_path`.
+
+## Repo workspace gates (`src/cli/repo_checks.rs`)
+
+TRIGGER: repo workspace gates  
+ADVICE: `run_repo_workspace_gates`: `kiss_clamp::ensure_kiss_clamp_if_needed` → `warn_kissconfig_test_coverage_if_needed` (parse `[gate].test_coverage_threshold` in `.kissconfig`; warn if missing or `< 90`; on read/parse error print warning with underlying `io`/`toml` error) → `run_pre_commit_checks_or_warn` (no `.pre-commit-config.yaml` → warn; else `pre-commit run --all-files` via `Command::output`, `format_pre_commit_failure` on non-success: exit code or `signal`, stdout/stderr, `trim_detail_chars`). Wired from **`run_code`** (`mod.rs`), **`run_kpop`** (`kpop_flow.rs`), **`run_do`** (`do_flow.rs`). Implementation: `repo_checks.rs`; kiss clamp logic: `kiss_clamp.rs`.
+
+## Kiss structural refactors
+
+TRIGGER: kiss structural refactors  
+ADVICE: When `kiss check` fires on arity/size: **args** → one `struct` per call site pattern; **calls** in one function → extract named helper (`run_repo_workspace_gates`); **lines** in `cli/mod.rs` → new file (e.g. `exit.rs` for `Exit` + `Termination`). Binary `stringify_cov.rs` may need new `stringify!` refs.
+
+## Diff thrash metrics
+
+TRIGGER: diff thrash metric wording  
+ADVICE: Byte- or path-summed edit costs and **gross/net ratios** depend on checkpoint cadence and diff math—do not treat “1.0” or low gross as proof the agent made no mistakes; state assumptions.

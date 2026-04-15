@@ -4,9 +4,11 @@ mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
 mod do_flow;
+mod exit;
 mod init_cmd;
 mod kiss_clamp;
 mod kpop_flow;
+mod repo_checks;
 mod models_cmd;
 mod shared_opts;
 #[cfg(test)]
@@ -14,6 +16,7 @@ mod stringify_cov;
 mod timing_merge;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
+pub use exit::Exit;
 pub use shared_opts::SharedOpts;
 
 use clap::Parser;
@@ -135,7 +138,7 @@ fn prepare_code_run(
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
-    kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir)?;
+    repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
 
@@ -230,21 +233,6 @@ pub fn entrypoint() -> Exit {
         Err(e) => {
             print_stderr_line(MALVIN_WHO, &e);
             Exit::Failure
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Exit {
-    Success,
-    Failure,
-}
-
-impl std::process::Termination for Exit {
-    fn report(self) -> std::process::ExitCode {
-        match self {
-            Self::Success => std::process::ExitCode::SUCCESS,
-            Self::Failure => std::process::ExitCode::from(1),
         }
     }
 }

@@ -4,6 +4,7 @@ use clap::Args;
 
 use super::WorkflowCliOptions;
 use super::emit_run_startup_sequence;
+use super::repo_checks;
 use super::shared_opts::SharedOpts;
 use super::timing_merge::emit_run_timing_after_acp;
 use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
@@ -63,6 +64,8 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
 
+    repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
+
     if !raw_mode {
         emit_run_startup_sequence(
             &artifacts,
@@ -103,12 +106,6 @@ async fn run_do_with_timing(
         return run_do_acp(client, artifacts, coder).await;
     }
     let timing = client.attach_run_timing_for_session();
-    if coder.acp_trace_stem == DO_RAW_ACP_TRACE_STEM {
-        timing
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .set_implement_display_name(DO_RAW_ACP_TRACE_STEM);
-    }
     let acp_result = run_do_acp(client, artifacts, coder).await;
     emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }

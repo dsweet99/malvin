@@ -399,6 +399,39 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
     );
 }
 
+#[tokio::test]
+async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-thought.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "review_1".to_string(),
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: false,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "internal reasoning",
+        false,
+        Some(SessionUpdateChunkKind::Thought),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains("[internal reasoning]"),
+        "thought chunks should be bracketed in traces, got {s:?}"
+    );
+}
+
 #[test]
 fn trace_chunk_coalescer_emits_at_cap_like_verbose() {
     let max = ACP_VERBOSE_COALESCE_MAX;

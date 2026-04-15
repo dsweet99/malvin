@@ -66,6 +66,13 @@ struct TraceTeeStdoutCtx<'a> {
     ts: &'a str,
 }
 
+fn format_trace_display_line(line: &str, kind: Option<SessionUpdateChunkKind>) -> String {
+    match kind {
+        Some(SessionUpdateChunkKind::Thought) => format!("[{line}]"),
+        _ => line.to_string(),
+    }
+}
+
 fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
     if !ctx.tee_stdout {
         return;
@@ -98,12 +105,23 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
                 writer.placeholder_emitted = true;
             }
         }
-        None => crate::output::print_stdout_acp_tee_line_with_timestamp(
-            crate::output::AcpTeeDirection::FromAgent,
-            &writer.who,
-            line,
-            ctx.ts,
-        ),
+        None => {
+            if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
+                crate::output::print_stdout_acp_tee_line_with_timestamp_dim_payload(
+                    crate::output::AcpTeeDirection::FromAgent,
+                    &writer.who,
+                    line,
+                    ctx.ts,
+                );
+            } else {
+                crate::output::print_stdout_acp_tee_line_with_timestamp(
+                    crate::output::AcpTeeDirection::FromAgent,
+                    &writer.who,
+                    line,
+                    ctx.ts,
+                );
+            }
+        }
     }
 }
 
@@ -116,8 +134,9 @@ pub async fn trace_file_write_line(
     if raw_output_should_skip_chunk(kind, writer) {
         return;
     }
+    let display_line = format_trace_display_line(line, kind);
     let ts = crate::output::timestamp_now_string();
-    let formatted = crate::output::format_line_with_timestamp(&ts, &writer.who, line);
+    let formatted = crate::output::format_line_with_timestamp(&ts, &writer.who, &display_line);
     if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
         return;
@@ -128,7 +147,7 @@ pub async fn trace_file_write_line(
     }
     trace_tee_stdout_line(
         writer,
-        line,
+        &display_line,
         &TraceTeeStdoutCtx {
             tee_stdout,
             kind,
@@ -177,6 +196,7 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(ReaderTraceLineOpts);
     let _ = stringify!(reader_loop_verbose_and_trace_line);
     let _ = stringify!(TraceTeeStdoutCtx);
+    let _ = stringify!(format_trace_display_line);
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
 }

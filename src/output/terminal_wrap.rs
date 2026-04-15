@@ -1,4 +1,4 @@
-use std::io::{IsTerminal, stdout};
+use std::io::{IsTerminal, stderr, stdout};
 
 #[must_use]
 pub fn terminal_columns() -> usize {
@@ -12,6 +12,23 @@ pub fn terminal_columns() -> usize {
 #[must_use]
 pub fn stdout_is_wrappable_terminal() -> bool {
     stdout().is_terminal()
+}
+
+fn line_wrap_meta(ts: &str, who: &str, line: &str, stream_is_tty: bool) -> (usize, bool) {
+    let prefix_len = super::format_line_with_timestamp(ts, who, "").chars().count();
+    let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
+    let wrap = stream_is_tty && line.chars().count() > max_payload;
+    (max_payload, wrap)
+}
+
+#[must_use]
+pub fn stdout_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
+    line_wrap_meta(ts, who, line, stdout_is_wrappable_terminal())
+}
+
+#[must_use]
+pub fn stderr_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
+    line_wrap_meta(ts, who, line, stderr().is_terminal())
 }
 
 fn split_long_word(word: &str, max_payload_chars: usize) -> Vec<String> {
@@ -97,6 +114,8 @@ mod tests {
     fn kiss_stringify_terminal_wrap_symbols() {
         let _ = stringify!(super::terminal_columns);
         let _ = stringify!(super::stdout_is_wrappable_terminal);
+        let _ = stringify!(super::stdout_line_wrap_meta);
+        let _ = stringify!(super::stderr_line_wrap_meta);
         let _ = stringify!(super::wrap_words_bounded);
     }
 }

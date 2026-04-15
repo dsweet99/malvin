@@ -1,10 +1,14 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, layout, ACP **`include!`**, run-timing + **primary-vs-secondary** error merge, **`DEFAULT_REPO_STYLE_PROMPT_REL`**, **malvin do** trace, **`src/output/`** tee + **TTY word wrap**, CLI/**kiss**, **review sync**, **`tests/cli_parity.rs`** guards, child health, **`malvin code` workflow**), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify, **`review_sync`**, `_malvin/...` plans, search fallbacks), `./.llm_style/malvin_kpop_schedule.md` (pre-generated KPOP schedule, `workflow_context_paths_only`, exact **`LGTM`**), `./.llm_style/authoring_llm_style.md` (keep this index **<100** lines; split detail to topic files).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, **`repo_checks`** workspace, layout, ACP **`include!`**, run-timing + **primary-vs-secondary** error merge, **`DEFAULT_REPO_STYLE_PROMPT_REL`**, **malvin do** trace, **`src/output/`** tee + **TTY word wrap**, CLI/**kiss**, **review sync**, **`tests/cli_parity.rs`** guards, child health, **`malvin code` workflow**), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify, **`review_sync`**, `_malvin/...` plans, search fallbacks), `./.llm_style/malvin_kpop_schedule.md` (pre-generated KPOP schedule, `workflow_context_paths_only`, exact **`LGTM`**), `./.llm_style/authoring_llm_style.md` (keep this index **<100** lines; split detail to topic files).
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`). **Pre-commit** runs ruff + clippy + kiss + `admin/check_untracked.sh` but **not** `cargo test`/`pytest`—run those manually.
 TRIGGER: kiss check and limits  
 ADVICE: `kiss check .` (full project); see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file`. **Remove `stringify!()` hacks** when real integration tests exist. **Split monolithic tests** into focused functions. Use `.kissignore` for genuinely untestable code. See `malvin_tooling.md` § kiss.
+TRIGGER: kiss structural refactors  
+ADVICE: `arguments_per_function` → group parameters in a `struct` (e.g. `AcpTeeLineFmt` in `acp_tee.rs`). `calls_per_function` on a workflow entrypoint → extract a helper (e.g. `run_repo_workspace_gates` in `repo_checks.rs`). `lines_per_file` on `cli/mod.rs` → split submodules (e.g. `exit.rs`). See `malvin_tooling.md` § Kiss structural refactors.
+TRIGGER: repo_checks workspace  
+ADVICE: **`src/cli/repo_checks.rs`**: `run_repo_workspace_gates` (kiss clamp → kissconfig coverage warning → `pre-commit run --all-files` or warn if no `.pre-commit-config.yaml`). **`run_code`**, **`run_kpop`**, **`run_do`**. Surface `.kissconfig` read/parse errors; failed `pre-commit` includes exit code + stdout/stderr (trimmed). See `malvin_tooling.md` § Repo workspace gates.
 TRIGGER: clippy doc first paragraph  
 ADVICE: **`clippy::too_long_first_doc_paragraph`**: keep the opening **`///`** paragraph short; put detail in following paragraphs. **`clippy::items_after_statements`**: `use` must come before other statements in function blocks (pre-commit uses `-D warnings`).
 TRIGGER: .kissconfig  
@@ -36,7 +40,7 @@ ADVICE: **Never edit `grounding.md`**. When `tests/cli_parity.rs` checks fail du
 TRIGGER: stdout stderr log header  
 ADVICE: Route through **`src/output/mod.rs`** (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **ACP tee** ANSI + direction: **`src/output/acp_tee.rs`** (`AcpTeeDirection`, `print_stdout_acp_tee_line`)—outbound vs inbound colors; wire points **`session_trace.rs`** / **`coalesce.rs`**. **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** and **stderr** plain `format_line` (no ANSI). Default stdout prefix coloring: dim timestamp + cyan `who` unless ACP tee path. Document in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
 TRIGGER: terminal TTY word wrap  
-ADVICE: **`terminal_wrap.rs`** + `print_*` / **`acp_tee`**: TTY + **`COLUMNS`** (env 20–500, else 80); repeat full prefix/timestamp on continuations; **disk** `trace_file_write_line` unchanged; raw tee **`trace_line_write.rs`**. **Coalesce** cap ≠ TTY wrap—`malvin_tooling.md` § Terminal wrap (TTY).
+ADVICE: **`terminal_wrap.rs`**: `line_wrap_meta` → `stdout_line_wrap_meta` / `stderr_line_wrap_meta`; **`print_stdout_line`**, **`print_stderr_line`**, **`acp_tee`** share width rules; TTY + **`COLUMNS`** (20–500, else 80); repeat prefix on continuations; **disk** `trace_file_write_line` unchanged; raw tee **`trace_line_write.rs`**. **Coalesce** cap ≠ TTY wrap—`malvin_tooling.md` § Terminal wrap (TTY).
 TRIGGER: outgoing prompt stdout  
 ADVICE: **All** outgoing prompts: no body tee to stdout (`acp_tee_echo_outgoing_prompt_lines` returns `false`); only `[{stem}...]` announcement via `print_outgoing_prompt_log`. Disk trace keeps full `>{stem}` lines. For `do --cooked`: announce each segment (`[style...]`, `[header...]`, `[prompt...]`). Inbound `<learn`: one `[learning...]` placeholder (`prompt_stdout_replacement`). See `malvin_tooling.md` § ACP tee.
 TRIGGER: source-shape regression tests  
@@ -67,8 +71,6 @@ TRIGGER: ACP retry backoff
 ADVICE: `retry_policy.rs`—retriable = **timeout / deadline / failed to initialize session** substrings; other errors **fail fast**. Tests in `agent_bundle.rs`; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
 TRIGGER: LiteLLM token cost  
 ADVICE: Prefer provider **`usage`** for billing; LiteLLM **`token_counter`** is heuristic (tiktoken/HF, fallbacks)—`malvin_tooling.md` § LiteLLM / token cost.
-TRIGGER: diff thrash metric wording  
-ADVICE: Byte- or path-summed edit costs and **gross/net ratios** depend on checkpoint cadence and diff math—do not treat “1.0” or low gross as proof the agent made no mistakes; state assumptions.
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs`.
 TRIGGER: ACP include layout  
@@ -80,9 +82,7 @@ ADVICE: Directional ACP tags label the **outer prompt template filename stem** (
 TRIGGER: ACP tests, node  
 ADVICE: Mock `agent acp` children often `#!/usr/bin/env node`; `prepend_standard_path_for_child` (`transport/command.rs`). See `malvin_tooling.md` § Tests.
 TRIGGER: search tools subagents  
-ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). Merge-marker sweeps: limit to text globs / exclude `target/`—`malvin_tooling.md` § Merge markers, `_malvin` plans, green tree. ≤4 parallel subagents; skip for tiny edits.
-TRIGGER: full suite scope  
-ADVICE: When the user demands all checks/tests green on **all** files, fix repo-wide failures—no “pre-existing” hand-waving; see `malvin_tooling.md` § green tree no excuses.
+ADVICE: Workspace search I/O errors → shell `rg` from repo root (`malvin_debugging.md`). Merge-marker sweeps: text globs / exclude `target/`—`malvin_tooling.md` § Merge markers. ≤4 parallel subagents; skip for tiny edits. **All files green:** fix every failure—no “pre-existing” hand-waving (`malvin_tooling.md` § green tree no excuses).
 TRIGGER: pub contract dead_code  
 ADVICE: `pub fn` count/budget helpers must stay referenced from workflow code (`debug_assert!`, planners)—otherwise `-D dead_code` on the lib; see `malvin_tooling.md` § KPOP contracts + clippy.
 TRIGGER: clippy tunable const zero  

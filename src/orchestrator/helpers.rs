@@ -49,9 +49,13 @@ pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {
 }
 
 pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
-    std::fs::read_to_string(result_path)
-        .ok()
-        .filter(|content| content.lines().any(|line| line.starts_with("ABORT:")))
+    let content = std::fs::read_to_string(result_path).ok()?;
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix("ABORT:") {
+            return Some(rest.trim_start().to_string());
+        }
+    }
+    None
 }
 
 /// Stem used in log name segments for **both** coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`review_1.md`, …).
@@ -83,6 +87,29 @@ mod helper_tests {
         let mut ctx = HashMap::new();
         insert_formatted(&mut ctx, "key", &path, tmp.path());
         assert!(ctx.get("key").unwrap().contains("file.md"));
+    }
+
+    #[test]
+    fn check_abort_returns_message_after_prefix_not_entire_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("result.md");
+        std::fs::write(
+            &p,
+            "context line\nABORT: stop here\nmore\n",
+        )
+        .unwrap();
+        assert_eq!(
+            check_abort(&p).as_deref(),
+            Some("stop here")
+        );
+    }
+
+    #[test]
+    fn check_abort_returns_none_when_no_abort_line() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("result.md");
+        std::fs::write(&p, "ok\n").unwrap();
+        assert!(check_abort(&p).is_none());
     }
 
     #[test]
