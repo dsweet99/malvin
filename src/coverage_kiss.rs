@@ -27,7 +27,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::begin_coder_session);
     let _ = stringify!(AgentClient::run_coder_prompt);
     let _ = stringify!(AgentClient::end_coder_session);
-    let _ = stringify!(AgentClient::run_reviewer_review_and_kpop);
+    let _ = stringify!(AgentClient::run_reviewer_review);
     let _ = stringify!(AgentClient::run_kpop_flow);
     let _ = stringify!(AgentClient::set_run_timing);
     let _ = stringify!(AgentClient::attach_run_timing_for_session);
@@ -177,7 +177,6 @@ fn smoke_prompt_store_with_root() {
             "review_1.md",
             "review_2.md",
             "kpop.md",
-            "kpop_review.md",
             "mbc2.md",
             "concerns.md",
             "learn.md",
@@ -205,7 +204,6 @@ fn smoke_orchestrator_instantiation() {
             "implement.md",
             "review_1.md",
             "review_2.md",
-            "kpop_review.md",
             "concerns.md",
         ],
         b"Hello {{ plan_path }} $kpop_log_dir",

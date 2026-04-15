@@ -1,4 +1,4 @@
-//! Review phase loop: reviewer + kpop pair, concerns.
+//! Review phase loop: reviewer, concerns.
 
 use crate::acp::{AgentError, ReviewerPromptPair};
 use crate::review_sync::sync_review_then_is_lgtm;
@@ -59,16 +59,12 @@ impl Orchestrator<'_> {
             .prompts
             .render(ctx.review_prompt, ctx.context)
             .map_err(|e| WorkflowError(e.0))?;
-        let kpop_body = self
-            .prompts
-            .render("kpop_review.md", ctx.context)
-            .map_err(|e| WorkflowError(e.0))?;
 
         let pair_id = match ctx.phase_id {
             "review_2" => ReviewPairId::Two,
             _ => ReviewPairId::One,
         };
-        self.run_reviewer_pair_for_attempt(&ctx, &review_body, &kpop_body, pair_id)
+        self.run_reviewer_pair_for_attempt(&ctx, &review_body, pair_id)
             .await?;
 
         let lgtm = sync_review_then_is_lgtm(ctx.workspace_review_path, ctx.review_path)
@@ -101,31 +97,23 @@ impl Orchestrator<'_> {
         &mut self,
         ctx: &ReviewAttemptCtx<'_>,
         review_body: &str,
-        kpop_body: &str,
         pair_id: ReviewPairId,
     ) -> Result<(), WorkflowError> {
         let stem = prompt_md_stem(ctx.review_prompt);
         let review_log = self
             .artifacts
             .log_path(&format!("reviewer_{stem}_attempt_{}", ctx.attempt));
-        let kpop_log = self.artifacts.log_path(&format!(
-            "reviewer_kpop_{}_attempt_{}",
-            ctx.phase_id, ctx.attempt
-        ));
 
         let pair = ReviewerPromptPair {
             cwd: &self.artifacts.work_dir,
             workspace_review_path: ctx.workspace_review_path,
             artifact_review_path: ctx.review_path,
             review_body,
-            kpop_body,
             review_who: stem,
-            kpop_who: "kpop",
             review_log: &review_log,
-            kpop_log: &kpop_log,
         };
         self.client
-            .run_reviewer_review_and_kpop(pair, pair_id)
+            .run_reviewer_review(pair, pair_id)
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())

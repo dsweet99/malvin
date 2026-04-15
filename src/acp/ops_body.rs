@@ -44,7 +44,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     .map_err(AgentError)
 }
 
-/// Review + kpop prompts: trace output tees live in the ACP stdout reader when enabled (`trace_file_write_line`).
+/// Reviewer prompt: trace output tees live in the ACP stdout reader when enabled (`trace_file_write_line`).
 pub(crate) async fn run_reviewer_pair_once(
     client: &AgentClient,
     pair: &ReviewerPromptPair<'_>,
@@ -65,21 +65,6 @@ pub(crate) async fn run_reviewer_pair_once(
         t_review.elapsed(),
     );
     review_out.map_err(AgentError)?;
-
-    // Order invariant: workspace sync → LGTM on artifact → optional kpop prompt (`review_sync::sync_review_then_is_lgtm`).
-    let lgtm = sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)
-        .map_err(|e| AgentError(format!("review.md sync: {e}")))?;
-    if lgtm {
-        s.shutdown().await.map_err(AgentError)?;
-        return Ok(());
-    }
-
-    let t_kpop = Instant::now();
-    let kpop_out = s
-        .prompt(pair.kpop_body, pair.kpop_log, pair.kpop_who, None)
-        .await;
-    crate::run_timing::record_llm(client.timing.as_ref(), pair_id.kpop_phase(), t_kpop.elapsed());
-    kpop_out.map_err(AgentError)?;
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())

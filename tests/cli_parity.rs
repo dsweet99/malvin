@@ -50,21 +50,10 @@ const fn agent_sources_for_snapshot() -> &'static str {
 }
 
 #[test]
-fn reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order() {
+fn reviewer_pair_ops_calls_review_prompt() {
     let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs"));
-    let review = ops
-        .find("pair.review_log, pair.review_who, None")
+    ops.find("pair.review_log, pair.review_who, None")
         .expect("expected review session/prompt in run_reviewer_pair_once");
-    let sync = ops
-        .find("sync_review_then_is_lgtm(pair.workspace_review_path, pair.artifact_review_path)")
-        .expect("expected sync_review_then_is_lgtm after review prompt");
-    let kpop = ops
-        .find("pair.kpop_log, pair.kpop_who, None")
-        .expect("expected kpop session/prompt after LGTM branch");
-    assert!(
-        review < sync && sync < kpop,
-        "review prompt must precede workspace→artifact sync/LGTM check, which must precede kpop prompt"
-    );
 }
 
 #[test]

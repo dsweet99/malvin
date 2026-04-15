@@ -1,6 +1,8 @@
 {{ coding_rules }}
-
-Please review the codebase. Pay special attention to code that differs from branch main/.
+---
+{{ kpop }}
+---
+KPop: Please review the codebase. Pay special attention to code that differs from branch main/.
 - Is the code consistent with grounding.md and `{{ plan_path }}`?
 - Are there bugs?
 - Is there avoidable redundancy or wasted work?

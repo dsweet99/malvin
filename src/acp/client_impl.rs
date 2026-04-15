@@ -253,12 +253,12 @@ impl AgentClient {
         Ok(())
     }
 
-    /// One **reviewer** session: `review` then `kpop` (same ACP session, two `session/prompt` calls).
+    /// One **reviewer** session: spawns ACP, sends the review prompt, then shuts down.
     ///
     /// # Errors
     ///
-    /// Returns [`AgentError`] when spawn or either prompt fails after retries.
-    pub async fn run_reviewer_review_and_kpop(
+    /// Returns [`AgentError`] when spawn or the prompt fails after retries.
+    pub async fn run_reviewer_review(
         &mut self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
@@ -282,7 +282,7 @@ impl AgentClient {
         let retries = attempts_used.saturating_sub(1);
         let noun = retries_noun(retries);
         Err(AgentError(format!(
-            "agent acp (reviewer review+kpop) failed after {retries} {noun}. Last error:\n{last_error}"
+            "agent acp (reviewer) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 

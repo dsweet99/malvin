@@ -27,9 +27,7 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         "phases_ms": {
             "implement": ms(r.implement),
             "review_1_review": ms(r.review_1_review),
-            "review_1_kpop": ms(r.review_1_kpop),
             "review_2_review": ms(r.review_2_review),
-            "review_2_kpop": ms(r.review_2_kpop),
             "concerns": ms(r.concerns),
             "learn": ms(r.learn),
         }
@@ -37,12 +35,10 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
 }
 
 /// Phase keys under `phases_ms` in [`to_json_value`] — keep order aligned with [`format_timing_stdout_line_from_json`].
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 5] = [
     "implement",
     "review_1_review",
-    "review_1_kpop",
     "review_2_review",
-    "review_2_kpop",
     "concerns",
     "learn",
 ];

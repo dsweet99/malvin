@@ -19,9 +19,7 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 pub enum TimingPhase {
     Implement,
     Review1Review,
-    Review1Kpop,
     Review2Review,
-    Review2Kpop,
     Concerns,
     Learn,
 }
@@ -41,14 +39,6 @@ impl ReviewPairId {
             Self::Two => TimingPhase::Review2Review,
         }
     }
-
-    #[must_use]
-    pub const fn kpop_phase(self) -> TimingPhase {
-        match self {
-            Self::One => TimingPhase::Review1Kpop,
-            Self::Two => TimingPhase::Review2Kpop,
-        }
-    }
 }
 
 /// Mutable accumulator; wall clock is bounded by orchestrator (`Instant` monotonic).
@@ -61,9 +51,7 @@ pub struct RunTiming {
     implement: Duration,
     implement_display_name: &'static str,
     review_1_review: Duration,
-    review_1_kpop: Duration,
     review_2_review: Duration,
-    review_2_kpop: Duration,
     concerns: Duration,
     learn: Duration,
 }
@@ -78,9 +66,7 @@ impl Default for RunTiming {
             implement: Duration::ZERO,
             implement_display_name: "implement",
             review_1_review: Duration::ZERO,
-            review_1_kpop: Duration::ZERO,
             review_2_review: Duration::ZERO,
-            review_2_kpop: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
         }
@@ -108,11 +94,9 @@ impl RunTiming {
             TimingPhase::Review1Review => {
                 self.review_1_review = self.review_1_review.saturating_add(d);
             }
-            TimingPhase::Review1Kpop => self.review_1_kpop = self.review_1_kpop.saturating_add(d),
             TimingPhase::Review2Review => {
                 self.review_2_review = self.review_2_review.saturating_add(d);
             }
-            TimingPhase::Review2Kpop => self.review_2_kpop = self.review_2_kpop.saturating_add(d),
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
         }
@@ -216,11 +200,11 @@ mod tests {
         r.mark_wall_end(Instant::now());
         r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(10));
         let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
-        for key in ["implement", "review_1_review", "review_1_kpop", "review_2_review", "review_2_kpop", "concerns", "learn"] {
+        for key in ["implement", "review_1_review", "review_2_review", "concerns", "learn"] {
             assert!(phases.get(key).is_some(), "missing {key}");
         }
         assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
-        assert_eq!(ReviewPairId::Two.kpop_phase(), TimingPhase::Review2Kpop);
+        assert_eq!(ReviewPairId::Two.review_phase(), TimingPhase::Review2Review);
     }
 
     #[test]

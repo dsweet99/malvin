@@ -108,7 +108,6 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
         "implement.md",
         "review_1.md",
         "review_2.md",
-        "kpop_review.md",
         "concerns.md",
     ] {
         std::fs::write(root.join(name), "x").unwrap();

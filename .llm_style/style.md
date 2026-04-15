@@ -4,7 +4,7 @@ When `.cursorrules` says so, read this file **first** on the opening message—b
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`).
 TRIGGER: kiss check and limits  
-ADVICE: `kiss check .` (full project), not bare `kiss`—see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file**: split modules, extract helpers—not unrelated churn. **`src/cli/args.rs`** is often at the type cap—fold new flattened CLI structs into **`shared_opts.rs`** (e.g. `GlobalOpts`) instead of only growing `args.rs`. **Coverage:** kiss doesn't cross-reference test modules—tests in `*_tests.rs` or separate modules don't count. Prefer **real tests** over `stringify!()`; use `.kissignore` for genuinely untestable code (test helpers, platform-specific `child_health/*.rs`, entry points). Consolidate tests when line limits hit. See `malvin_tooling.md` § kiss.
+ADVICE: `kiss check .` (full project); see `.kissignore`. Limits: `lines_per_file`, `calls_per_function`, `max_indentation_depth`, **duplication**, **concrete_types_per_file`. **Remove `stringify!()` hacks** when real integration tests exist. **Split monolithic tests** into focused functions. Use `.kissignore` for genuinely untestable code. See `malvin_tooling.md` § kiss.
 TRIGGER: clippy doc first paragraph  
 ADVICE: **`clippy::too_long_first_doc_paragraph`**: keep the opening **`///`** paragraph short; put detail in following paragraphs. **`clippy::items_after_statements`**: `use` must come before other statements in function blocks (pre-commit uses `-D warnings`).
 TRIGGER: .kissconfig  
@@ -56,7 +56,7 @@ ADVICE: Creative/kpop: `kpop_acp_prompt.rs`, `ops_body.inc` `run_kpop_flow_once`
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Detail: `malvin_tooling.md` § Rust edition 2024.
 TRIGGER: malvin init  
-ADVICE: `src/cli/init_cmd.rs`; `default_repo/` + `admin/check_untracked.sh`; `tests/init_pre_commit.rs` when `pre-commit` missing.
+ADVICE: `src/cli/init_cmd.rs`; `default_repo/` templates (incl. `llm_style/style.md` with TRIGGER/ADVICE pairs); auto-commit **only on fresh repos** (no prior commits); `tests/init_pre_commit.rs` for integration tests.
 TRIGGER: env_path agent binary  
 ADVICE: `src/env_path.rs` `agent_or_cursor_agent_bin()` — same `agent`→`cursor-agent` order as ACP spawn (`ops_body.inc`).
 TRIGGER: lib test_utils binary  
@@ -64,7 +64,7 @@ ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary tests use `test
 TRIGGER: code kpop require kiss  
 ADVICE: **`require_kiss_for_cli_command`** (`src/cli/mod.rs`) + **`require_kiss_for_malvin`** (`src/env_path.rs`); install **`cargo install kiss-ai`**. Regress **`tests/kiss_code_kpop_path.rs`**—see **`malvin_tooling.md` § CLI kiss gate**.
 TRIGGER: ACP retry backoff  
-ADVICE: `retry_policy.inc`—retriable = **timeout / deadline** substrings only; other agent/tooling errors **fail fast** (no backoff retry). `client_impl.inc`, `agent_bundle.inc` tests; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
+ADVICE: `retry_policy.rs`—retriable = **timeout / deadline / failed to initialize session** substrings; other errors **fail fast**. Tests in `agent_bundle.rs`; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
 TRIGGER: LiteLLM token cost  
 ADVICE: Prefer provider **`usage`** for billing; LiteLLM **`token_counter`** is heuristic (tiktoken/HF, fallbacks)—`malvin_tooling.md` § LiteLLM / token cost.
 TRIGGER: diff thrash metric wording  
@@ -72,7 +72,7 @@ ADVICE: Byte- or path-summed edit costs and **gross/net ratios** depend on check
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs`.
 TRIGGER: ACP include layout  
-ADVICE: Much of `src/acp/` is `include!` for `kiss`—navigate `.inc` names; **included `.rs` inherit parent `use`**. See `malvin_tooling.md`.
+ADVICE: Much of `src/acp/` uses `include!` for kiss limits—**all files use `.rs` extension** (not `.inc`). Included `.rs` files inherit parent `use`. When renaming, update `include!()` in source **and** `include_str!()` in `tests/cli_parity.rs`. See `malvin_tooling.md`.
 TRIGGER: ACP trace, JSONL, tee  
 ADVICE: Live tee: stdout reader (`trace_file_write_line`, `coalesce.rs`, `reader_inline.inc`). Test-only `strip_trace_invocation_line_for_tee` (`tee_strip_tests.inc`); **no** post-prompt file tee stub—`malvin_tooling.md` § ACP traces.
 TRIGGER: ACP trace labels  
