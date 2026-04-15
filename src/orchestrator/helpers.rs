@@ -51,7 +51,7 @@ pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
         .filter(|content| content.lines().any(|line| line.starts_with("ABORT:")))
 }
 
-/// Stem used in log name segments for **both** coder prompts (`validate_plan.md`, `implement.md`, …) and reviewer prompts (`review_1.md`, …).
+/// Stem used in log name segments for **both** coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`review_1.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {

@@ -17,8 +17,4 @@ For every bug you find, write a failing test that exposes it.
 
 Write your review (problems only) to {{ review_path }}.
 
-If everything is ok, just write
-```
-LGTM
-```
-in {{ review_path }}.
+If everything is ok, just write LGTM in {{ review_path }}.

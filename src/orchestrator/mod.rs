@@ -135,7 +135,9 @@ impl Orchestrator<'_> {
         self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
             .await?;
 
-        let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
+        let contents = std::fs::read_to_string(&review_path).map_err(|e| {
+            WorkflowError(format!("failed to read review file: {e}"))
+        })?;
         if !is_lgtm_str(&contents) {
             (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
             return Err(WorkflowError("check_plan did not pass".to_string()));
