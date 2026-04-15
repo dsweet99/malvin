@@ -47,6 +47,9 @@ pub struct CodeArgs {
     /// Skip learning.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
+    /// Skip plan validation step.
+    #[arg(long, default_value_t = false)]
+    pub trust_the_plan: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }

@@ -233,6 +233,7 @@ fn smoke_orchestrator_instantiation() {
             max_loops: 1,
             run_learn: false,
             learn_min_elapsed_ms: 0,
+            skip_check_plan: false,
         },
         progress_callback: Box::new(|_: &str| {}),
         grounding_backup: None,

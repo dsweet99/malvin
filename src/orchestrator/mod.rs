@@ -6,6 +6,7 @@
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
+use crate::review_sync::is_lgtm;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -51,6 +52,8 @@ pub struct WorkflowConfig {
     /// Skip learn phase if elapsed time is below this threshold (milliseconds).
     /// Default: `300_000` (5 minutes). Set to 0 to always run learn when `run_learn` is true.
     pub learn_min_elapsed_ms: u64,
+    /// Skip `check_plan` step (enabled by `--trust-the-plan`).
+    pub skip_check_plan: bool,
 }
 
 /// Runs implement, two review phases, and optional learn pass.
@@ -125,6 +128,20 @@ impl Orchestrator<'_> {
         &mut self,
         context: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
+        if !self.config.skip_check_plan {
+            let review_path = self.artifacts.workspace_review_md();
+            clear_review_file(&review_path);
+            (self.progress_callback)("CheckPlan");
+            self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
+                .await?;
+
+            if !is_lgtm(&review_path) {
+                let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
+                (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
+                return Err(WorkflowError("check_plan did not pass".to_string()));
+            }
+        }
+
         (self.progress_callback)("Implement");
         self.run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
             .await?;

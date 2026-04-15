@@ -143,6 +143,7 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
             max_loops: code.max_loops,
             run_learn: workflow.run_learn,
             learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
+            skip_check_plan: code.trust_the_plan,
         },
         progress_callback: Box::new(|msg: &str| {
             print_stdout_line(MALVIN_WHO, msg);

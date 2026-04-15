@@ -7,6 +7,7 @@ Malvin drives a structured **implementation and review** workflow for software w
 ## Workflows
 
 - **`malvin code`**
+- header; check_plan (skip with --trust-the-plan)
 - header; coding_rules; implement
 - header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
 - header; review_2; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
@@ -23,3 +24,5 @@ Malvin drives a structured **implementation and review** workflow for software w
 - **`malvin init`**
 - Bootstraps a new project with pre-commit hooks and Git LFS configuration
 
+## Other constraints
+- No "documentation parity guards"

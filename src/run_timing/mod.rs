@@ -17,6 +17,7 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
+    CheckPlan,
     Implement,
     Review1Review,
     Review2Review,
@@ -48,6 +49,7 @@ pub struct RunTiming {
     wall_end: Option<Instant>,
     llm_wait: Duration,
     agent_retry_backoff: Duration,
+    check_plan: Duration,
     implement: Duration,
     implement_display_name: &'static str,
     review_1_review: Duration,
@@ -63,6 +65,7 @@ impl Default for RunTiming {
             wall_end: None,
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
+            check_plan: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
             review_1_review: Duration::ZERO,
@@ -90,6 +93,7 @@ impl RunTiming {
     pub const fn add_llm_phase(&mut self, phase: TimingPhase, d: Duration) {
         self.llm_wait = self.llm_wait.saturating_add(d);
         match phase {
+            TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
             TimingPhase::Review1Review => {
                 self.review_1_review = self.review_1_review.saturating_add(d);
@@ -200,7 +204,7 @@ mod tests {
         r.mark_wall_end(Instant::now());
         r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(10));
         let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
-        for key in ["implement", "review_1_review", "review_2_review", "concerns", "learn"] {
+        for key in ["check_plan", "implement", "review_1_review", "review_2_review", "concerns", "learn"] {
             assert!(phases.get(key).is_some(), "missing {key}");
         }
         assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);

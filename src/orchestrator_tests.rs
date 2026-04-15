@@ -1,4 +1,4 @@
-use crate::orchestrator::{WorkflowError, prefer_primary_errors_over_timing, prompt_md_stem, should_run_learn_check, workflow_context};
+use crate::orchestrator::{WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem, should_run_learn_check, workflow_context};
 use crate::review_sync::{is_lgtm, sync_review_file};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
@@ -137,4 +137,29 @@ fn should_run_learn_check_at_or_above_threshold_runs() {
     assert!(should_run_learn_check(300_000, 300_000), "5 min threshold, exactly 5 min => run");
     assert!(should_run_learn_check(300_000, 300_001), "5 min threshold, just over => run");
     assert!(should_run_learn_check(300_000, 600_000), "5 min threshold, 10 min => run");
+}
+
+#[test]
+fn clear_review_file_removes_existing_lgtm_content() {
+    let t = tempfile::tempdir().unwrap();
+    let review_path = t.path().join("review.md");
+    std::fs::write(&review_path, "LGTM\n").unwrap();
+    assert!(is_lgtm(&review_path), "precondition: file contains LGTM");
+    clear_review_file(&review_path);
+    assert!(!review_path.exists(), "clear_review_file should remove file");
+    assert!(!is_lgtm(&review_path), "is_lgtm returns false after clear");
+}
+
+#[test]
+fn clear_review_file_succeeds_on_nonexistent_file() {
+    let t = tempfile::tempdir().unwrap();
+    let review_path = t.path().join("does_not_exist.md");
+    clear_review_file(&review_path);
+    assert!(!review_path.exists());
+}
+
+#[test]
+fn check_plan_error_message_format() {
+    let err = WorkflowError("check_plan did not pass".to_string());
+    assert_eq!(err.0, "check_plan did not pass");
 }
