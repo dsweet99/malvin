@@ -14,7 +14,7 @@ cat > grounding.md << 'EOF'
 
 ## Objective
 
-Hello, world
+Say Hello to the world.
 
 ## Constraints
 - Code is written in Rust.
