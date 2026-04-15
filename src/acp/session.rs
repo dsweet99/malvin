@@ -132,8 +132,10 @@ impl AcpSession {
         let (incoming_tag, stdout_replacement_who) = match &trace {
             OutgoingPromptTrace::Uniform(u) => {
                 trace_write_outgoing_prompt(&mut file, u.trace_who, text).await?;
-                let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
-                crate::output::print_outgoing_prompt_log(outgoing_label);
+                if !self.0.raw_output {
+                    let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
+                    crate::output::print_outgoing_prompt_log(outgoing_label);
+                }
                 (
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
