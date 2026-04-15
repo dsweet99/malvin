@@ -3,11 +3,10 @@
 use clap::Args;
 
 use super::WorkflowCliOptions;
-use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::shared_opts::SharedOpts;
 use super::timing_merge::emit_run_timing_after_acp;
-use malvin::acp::{AgentClient, CoderPromptOptions};
+use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
 use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
@@ -49,18 +48,28 @@ pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
 }
 
 pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
-    let mut client = build_agent(&do_args.shared, workflow);
+    let raw_mode = !do_args.cooked;
+    let mut client = AgentClient::new(
+        do_args.shared.model.clone(),
+        AgentIoOptions {
+            force: workflow.force,
+            no_tee: do_args.shared.no_tee,
+            raw_output: raw_mode,
+        },
+    );
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let (text, work_dir) = resolve_user_request(&do_args.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
 
-    emit_run_startup_sequence(
-        &artifacts,
-        do_args.shared.tee_startup_stdout(),
-        &do_args.request,
-    )?;
+    if !raw_mode {
+        emit_run_startup_sequence(
+            &artifacts,
+            do_args.shared.tee_startup_stdout(),
+            &do_args.request,
+        )?;
+    }
 
     let (combined, trace_stem, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
@@ -76,9 +85,11 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
         acp_trace_stem: trace_stem,
         skip_repo_style: !do_args.cooked,
     };
-    run_do_with_timing(&mut client, &artifacts, coder).await?;
+    run_do_with_timing(&mut client, &artifacts, coder, raw_mode).await?;
 
-    print_stdout_line(MALVIN_WHO, "DONE");
+    if !raw_mode {
+        print_stdout_line(MALVIN_WHO, "DONE");
+    }
     Ok(())
 }
 
@@ -86,7 +97,11 @@ async fn run_do_with_timing(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
     coder: DoCoderRun,
+    raw_mode: bool,
 ) -> Result<(), String> {
+    if raw_mode {
+        return run_do_acp(client, artifacts, coder).await;
+    }
     let timing = client.attach_run_timing_for_session();
     if coder.acp_trace_stem == DO_RAW_ACP_TRACE_STEM {
         timing

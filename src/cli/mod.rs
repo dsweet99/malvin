@@ -168,6 +168,7 @@ pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentCl
         malvin::acp::AgentIoOptions {
             force: workflow.force,
             no_tee: shared.no_tee,
+            raw_output: false,
         },
     )
 }

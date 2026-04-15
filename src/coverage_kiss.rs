@@ -222,6 +222,7 @@ fn smoke_orchestrator_instantiation() {
         AgentIoOptions {
             force: true,
             no_tee: false,
+            raw_output: false,
         },
     );
     let _ = Orchestrator {

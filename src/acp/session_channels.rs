@@ -11,6 +11,8 @@ use tokio::sync::{Mutex, Notify};
 #[derive(Clone, Copy)]
 pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
+    /// When true, print raw output without timestamps/prefixes.
+    pub raw_output: bool,
 }
 
 pub struct SessionChannelState {
@@ -89,6 +91,7 @@ impl SessionChannelState {
             prompt_singleflight: self.prompt_singleflight,
             acp_verbose: telemetry.acp_verbose,
             ui_idle_notify: self.ui_idle_notify,
+            raw_output: telemetry.raw_output,
         }
     }
 }

@@ -160,6 +160,7 @@ impl AcpSession {
             who: incoming_tag,
             stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
+            raw_output: self.0.raw_output,
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

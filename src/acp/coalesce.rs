@@ -159,6 +159,10 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, tee_stdout:
     if !tee_stdout {
         return;
     }
+    if writer.raw_output {
+        println!("{line}");
+        return;
+    }
     match writer.stdout_replacement {
         Some(rep) => {
             if !writer.placeholder_emitted {

@@ -163,6 +163,7 @@ async fn acp_full_session_with_notifications_and_credentials() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn mock agent acp");
@@ -193,6 +194,7 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn mock agent acp");
@@ -235,6 +237,7 @@ async fn acp_full_session_verbose_stdout_reader_path() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn verbose");
@@ -271,6 +274,7 @@ async fn acp_ui_idle_notify_shutdown_wakes_waiter() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn");
@@ -307,6 +311,7 @@ async fn acp_ui_idle_notify_cancel_ok_wakes_waiter() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn");
@@ -344,6 +349,7 @@ async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn");
@@ -377,6 +383,7 @@ async fn acp_prompt_fails_after_shutdown() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn");
@@ -415,6 +422,7 @@ async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     {
@@ -467,6 +475,7 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
         model: None,
         force: false,
         tee_trace_stdout: false,
+        raw_output: false,
     })
     .await
     .expect("spawn");
@@ -538,6 +547,7 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
             model: None,
             force: false,
             tee_trace_stdout: false,
+            raw_output: false,
         }),
     )
     .await;

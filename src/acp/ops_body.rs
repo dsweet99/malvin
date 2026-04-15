@@ -39,6 +39,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         model: model_opt,
         force: client.io.force,
         tee_trace_stdout: !client.io.no_tee,
+        raw_output: client.io.raw_output,
     })
     .await
     .map_err(AgentError)

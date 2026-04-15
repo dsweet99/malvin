@@ -23,6 +23,8 @@ pub struct AgentIoOptions {
     pub force: bool,
     /// When false, tee log output to stdout (default). Set when user passes `--no-tee`.
     pub no_tee: bool,
+    /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
+    pub raw_output: bool,
 }
 
 include!("pair.rs");
