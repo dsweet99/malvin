@@ -17,6 +17,7 @@ const HOOK_RUFF: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/defau
 const HOOK_CLIPPY: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/clippy.yaml"));
 const HOOK_KISS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/kiss.yaml"));
 const HOOK_UNTRACKED: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/untracked.yaml"));
+const TPL_STYLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/llm_style/style.md"));
 
 /// Supported languages for `malvin init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +129,8 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
     write_text_file(&root.join("grounding.md"), &grounding, force)?;
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
-    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)
+    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)?;
+    write_text_file(&root.join(".llm_style").join("style.md"), TPL_STYLE, force)
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
@@ -148,13 +150,15 @@ fn create_initial_commit(root: &Path) -> Result<(), String> {
     let has_staged = Command::new("git").args(["diff", "--cached", "--quiet"]).current_dir(root)
         .status().map(|s| !s.success()).unwrap_or(false);
     if has_staged {
+        eprintln!("init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)");
         run_command_expect_success(
             Command::new("git").args(["-c", "user.name=malvin", "-c", "user.email=malvin@localhost"])
                 .args(["commit", "--no-verify", "-m", "Initial commit from malvin init"]).current_dir(root),
             "`git commit` failed.",
         )?;
+        ensure_branch_is_main(root)?;
     }
-    ensure_branch_is_main(root)
+    Ok(())
 }
 
 fn repo_already_has_commits(root: &Path) -> bool {
@@ -225,23 +229,67 @@ mod tests {
     use super::*;
 
     #[test]
-    fn init_unit_tests() {
-        assert!(!TPL_GITIGNORE.trim().is_empty() && ADMIN_CHECK_UNTRACKED.contains("check_untracked"));
+    fn templates_are_nonempty() {
+        assert!(!TPL_GITIGNORE.trim().is_empty());
+        assert!(ADMIN_CHECK_UNTRACKED.contains("check_untracked"));
+        assert!(!TPL_STYLE.trim().is_empty());
+    }
+
+    #[test]
+    fn parse_languages_accepts_valid_languages() {
         assert_eq!(parse_languages(&["python".into()]).unwrap(), vec![Language::Python]);
         assert_eq!(parse_languages(&["Python".into(), "rust".into()]).unwrap(), vec![Language::Python, Language::Rust]);
-        assert!(parse_languages(&["javascript".into()]).is_err() && parse_languages(&[]).is_err());
+    }
+
+    #[test]
+    fn parse_languages_rejects_invalid() {
+        assert!(parse_languages(&["javascript".into()]).is_err());
+        assert!(parse_languages(&[]).is_err());
+    }
+
+    #[test]
+    fn format_languages_for_grounding_formats_correctly() {
         assert_eq!(format_languages_for_grounding(&[Language::Python]), "in Python");
+    }
+
+    #[test]
+    fn build_pre_commit_config_includes_correct_hooks() {
         let py = build_pre_commit_config(&[Language::Python]);
-        assert!(py.contains("ruff") && !py.contains("clippy") && py.contains("kiss"));
+        assert!(py.contains("ruff"));
+        assert!(!py.contains("clippy"));
+        assert!(py.contains("kiss"));
         let both = build_pre_commit_config(&[Language::Python, Language::Rust]);
-        assert!(both.contains("ruff") && both.contains("clippy"));
+        assert!(both.contains("ruff"));
+        assert!(both.contains("clippy"));
+    }
+
+    #[test]
+    fn resolve_init_root_creates_nested_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let nested = tmp.path().join("a").join("b");
-        assert!(resolve_init_root(Some(nested.clone())).is_ok() && nested.exists());
+        assert!(resolve_init_root(Some(nested.clone())).is_ok());
+        assert!(nested.exists());
+    }
+
+    #[test]
+    fn require_on_path_finds_existing_binary() {
         require_on_path("ls", "e").unwrap();
-        assert!(require_on_path("nonexistent_xyz", "e").is_err());
+    }
+
+    #[test]
+    fn require_on_path_fails_for_missing_binary() {
+        assert!(require_on_path("nonexistent_xyz_binary_12345", "e").is_err());
+    }
+
+    #[test]
+    fn run_command_expect_success_detects_failure() {
         run_command_expect_success(&mut Command::new("true"), "ok").unwrap();
         assert!(run_command_expect_success(&mut Command::new("false"), "f").is_err());
+    }
+
+    #[test]
+    fn write_text_file_respects_force_flag() {
+        let tmp = tempfile::tempdir().unwrap();
         let path = tmp.path().join("sub").join("f.txt");
         write_text_file(&path, "hello", false).unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "hello");
@@ -250,18 +298,20 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "orig");
         write_text_file(&path, "new", true).unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
-        #[cfg(unix)] {
-            use std::os::unix::fs::PermissionsExt;
-            let script = tmp.path().join("s.sh");
-            write_shell_script(&script, "#!/bin/sh", false).unwrap();
-            assert!(std::fs::metadata(&script).unwrap().permissions().mode() & 0o111 != 0);
-        }
-        let _ = (stringify!(InitArgs), stringify!(Language), stringify!(run_init), stringify!(parse_languages));
-        let _ = (stringify!(build_pre_commit_config), stringify!(write_init_templates), stringify!(bootstrap_repo_tooling), stringify!(create_initial_commit));
     }
 
     #[test]
-    fn git_branch_and_lfs() {
+    #[cfg(unix)]
+    fn write_shell_script_sets_executable_bit() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let script = tmp.path().join("s.sh");
+        write_shell_script(&script, "#!/bin/sh", false).unwrap();
+        assert!(std::fs::metadata(&script).unwrap().permissions().mode() & 0o111 != 0);
+    }
+
+    #[test]
+    fn ensure_branch_is_main_renames_to_main() {
         let tmp = tempfile::tempdir().unwrap();
         Command::new("git").args(["init"]).current_dir(tmp.path()).output().unwrap();
         Command::new("git").args(["-c", "user.name=t", "-c", "user.email=t@t"]).args(["commit", "--allow-empty", "-m", "i"]).current_dir(tmp.path()).output().unwrap();
@@ -269,7 +319,19 @@ mod tests {
         ensure_branch_is_main(tmp.path()).unwrap();
         Command::new("git").args(["branch", "-M", "master"]).current_dir(tmp.path()).output().unwrap();
         ensure_branch_is_main(tmp.path()).unwrap();
-        assert_eq!(String::from_utf8_lossy(&Command::new("git").args(["branch", "--show-current"]).current_dir(tmp.path()).output().unwrap().stdout).trim(), "main");
-        if Command::new("git").args(["lfs", "version"]).status().map(|s| s.success()).unwrap_or(false) { install_git_lfs(tmp.path()).unwrap(); }
+        let branch = Command::new("git").args(["branch", "--show-current"]).current_dir(tmp.path()).output().unwrap();
+        assert_eq!(String::from_utf8_lossy(&branch.stdout).trim(), "main");
+    }
+
+    #[test]
+    fn install_git_lfs_succeeds_when_available() {
+        let lfs_available = Command::new("git").args(["lfs", "version"]).status().map(|s| s.success()).unwrap_or(false);
+        if !lfs_available {
+            eprintln!("test skipped: git-lfs not installed");
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        Command::new("git").args(["init"]).current_dir(tmp.path()).output().unwrap();
+        install_git_lfs(tmp.path()).unwrap();
     }
 }

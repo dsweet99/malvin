@@ -26,8 +26,13 @@ pub fn workflow_context(
 ) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
-    if let Ok(kpop_content) = prompts.render_prompt_only("kpop.md", &context) {
-        context.insert("kpop".to_string(), kpop_content);
+    match prompts.render_prompt_only("kpop.md", &context) {
+        Ok(kpop_content) => {
+            context.insert("kpop".to_string(), kpop_content);
+        }
+        Err(e) => {
+            eprintln!("warning: failed to render kpop.md template: {e}");
+        }
     }
     context
 }
