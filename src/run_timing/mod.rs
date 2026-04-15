@@ -230,4 +230,18 @@ mod tests {
         record_llm(None, TimingPhase::Implement, Duration::from_millis(100));
         record_backoff(None, Duration::from_millis(100));
     }
+
+    #[test]
+    fn check_plan_phase_accumulates_timing() {
+        let mut r = RunTiming::default();
+        r.mark_wall_start(Instant::now());
+        r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(100));
+        r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(50));
+        r.mark_wall_end(Instant::now());
+        assert_eq!(r.check_plan, Duration::from_millis(150));
+        assert_eq!(r.llm_wait, Duration::from_millis(150));
+        let json = report::to_json_value(&r);
+        let phases = json.get("phases_ms").unwrap();
+        assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
+    }
 }

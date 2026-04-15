@@ -3,14 +3,18 @@
 use std::io;
 use std::path::Path;
 
+/// Check if the given string content represents an LGTM approval.
 #[must_use]
+pub fn is_lgtm_str(content: &str) -> bool {
+    let t = content.trim();
+    let t = t.strip_prefix('\u{FEFF}').unwrap_or(t).trim();
+    t == "LGTM"
+}
+
+#[allow(dead_code, clippy::must_use_candidate)]
 pub fn is_lgtm(review_path: &Path) -> bool {
     std::fs::read_to_string(review_path)
-        .map(|s| {
-            let t = s.trim();
-            let t = t.strip_prefix('\u{FEFF}').unwrap_or(t).trim();
-            t == "LGTM"
-        })
+        .map(|s| is_lgtm_str(&s))
         .unwrap_or(false)
 }
 
@@ -21,21 +25,24 @@ fn clear_artifact_review(artifact_review_path: &Path) -> io::Result<()> {
     std::fs::write(artifact_review_path, "")
 }
 
+/// Syncs the workspace review file to the artifact location, returning the content synced.
+///
+/// Returns `None` if the workspace file does not exist or is whitespace-only.
 pub fn sync_review_file(
     workspace_review_path: &Path,
     artifact_review_path: &Path,
-) -> io::Result<()> {
+) -> io::Result<Option<String>> {
     if !workspace_review_path.exists() {
-        // Do not leave a stale artifact LGTM when the workspace has no review file.
         clear_artifact_review(artifact_review_path)?;
-        return Ok(());
+        return Ok(None);
     }
     let text = std::fs::read_to_string(workspace_review_path)?;
     if text.trim().is_empty() {
         clear_artifact_review(artifact_review_path)?;
-        return Ok(());
+        return Ok(None);
     }
-    std::fs::write(artifact_review_path, text)
+    std::fs::write(artifact_review_path, &text)?;
+    Ok(Some(text))
 }
 
 /// Sync workspace `review.md` into the run artifact, then return whether the artifact reads as LGTM.
@@ -47,14 +54,67 @@ pub fn sync_review_then_is_lgtm(
     workspace_review_path: &Path,
     artifact_review_path: &Path,
 ) -> io::Result<bool> {
-    sync_review_file(workspace_review_path, artifact_review_path)?;
-    Ok(is_lgtm(artifact_review_path))
+    let content = sync_review_file(workspace_review_path, artifact_review_path)?;
+    Ok(content.as_deref().is_some_and(is_lgtm_str))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn is_lgtm_str_returns_true_for_exact_lgtm() {
+        assert!(is_lgtm_str("LGTM"));
+        assert!(is_lgtm_str("LGTM\n"));
+        assert!(is_lgtm_str("  LGTM  "));
+        assert!(is_lgtm_str("\n\tLGTM\n\t"));
+    }
+
+    #[test]
+    fn is_lgtm_str_with_bom_returns_true() {
+        assert!(is_lgtm_str("\u{FEFF}LGTM"));
+        assert!(is_lgtm_str("\u{FEFF}LGTM\n"));
+    }
+
+    #[test]
+    fn is_lgtm_str_returns_false_for_non_lgtm() {
+        assert!(!is_lgtm_str(""));
+        assert!(!is_lgtm_str("lgtm"));
+        assert!(!is_lgtm_str("LGTM!"));
+        assert!(!is_lgtm_str("Not LGTM"));
+        assert!(!is_lgtm_str("## Concerns\n- issue"));
+    }
+
+    #[test]
+    fn sync_review_file_returns_content_when_copied() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("run").join("review.md");
+        std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        std::fs::write(&workspace, "LGTM\n").unwrap();
+        let result = sync_review_file(&workspace, &artifact).unwrap();
+        assert_eq!(result, Some("LGTM\n".to_string()));
+    }
+
+    #[test]
+    fn sync_review_file_returns_none_when_workspace_missing() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("missing.md");
+        let artifact = t.path().join("review.md");
+        let result = sync_review_file(&workspace, &artifact).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn sync_review_file_returns_none_when_workspace_empty() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("review.md");
+        std::fs::write(&workspace, "").unwrap();
+        let result = sync_review_file(&workspace, &artifact).unwrap();
+        assert_eq!(result, None);
+    }
 
     #[test]
     fn sync_review_then_is_lgtm_true_after_copy() {

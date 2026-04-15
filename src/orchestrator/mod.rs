@@ -6,7 +6,7 @@
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
-use crate::review_sync::is_lgtm;
+use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -124,22 +124,31 @@ impl Orchestrator<'_> {
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
+    async fn run_check_plan(
+        &mut self,
+        context: &HashMap<String, String>,
+    ) -> Result<(), WorkflowError> {
+        let review_path = self.artifacts.workspace_review_md();
+        clear_review_file(&review_path)
+            .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
+        (self.progress_callback)("CheckPlan");
+        self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
+            .await?;
+
+        let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
+        if !is_lgtm_str(&contents) {
+            (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
+            return Err(WorkflowError("check_plan did not pass".to_string()));
+        }
+        Ok(())
+    }
+
     async fn run_with_coder_session(
         &mut self,
         context: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
         if !self.config.skip_check_plan {
-            let review_path = self.artifacts.workspace_review_md();
-            clear_review_file(&review_path);
-            (self.progress_callback)("CheckPlan");
-            self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
-                .await?;
-
-            if !is_lgtm(&review_path) {
-                let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
-                (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
-                return Err(WorkflowError("check_plan did not pass".to_string()));
-            }
+            self.run_check_plan(context).await?;
         }
 
         (self.progress_callback)("Implement");

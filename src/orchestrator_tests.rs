@@ -1,5 +1,5 @@
 use crate::orchestrator::{WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem, should_run_learn_check, workflow_context};
-use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::review_sync::{is_lgtm, is_lgtm_str, sync_review_file};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
 
@@ -145,7 +145,7 @@ fn clear_review_file_removes_existing_lgtm_content() {
     let review_path = t.path().join("review.md");
     std::fs::write(&review_path, "LGTM\n").unwrap();
     assert!(is_lgtm(&review_path), "precondition: file contains LGTM");
-    clear_review_file(&review_path);
+    clear_review_file(&review_path).unwrap();
     assert!(!review_path.exists(), "clear_review_file should remove file");
     assert!(!is_lgtm(&review_path), "is_lgtm returns false after clear");
 }
@@ -154,12 +154,60 @@ fn clear_review_file_removes_existing_lgtm_content() {
 fn clear_review_file_succeeds_on_nonexistent_file() {
     let t = tempfile::tempdir().unwrap();
     let review_path = t.path().join("does_not_exist.md");
-    clear_review_file(&review_path);
+    clear_review_file(&review_path).unwrap();
     assert!(!review_path.exists());
 }
 
 #[test]
+fn clear_review_file_returns_error_on_permission_denied() {
+    use std::os::unix::fs::PermissionsExt;
+    let t = tempfile::tempdir().unwrap();
+    let protected_dir = t.path().join("protected");
+    std::fs::create_dir(&protected_dir).unwrap();
+    let review_path = protected_dir.join("review.md");
+    std::fs::write(&review_path, "LGTM\n").unwrap();
+    std::fs::set_permissions(&protected_dir, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let result = clear_review_file(&review_path);
+    std::fs::set_permissions(&protected_dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(result.is_err(), "clear_review_file should return error on permission denied");
+}
+
+#[test]
 fn check_plan_error_message_format() {
+    let err = WorkflowError("check_plan did not pass".to_string());
+    assert_eq!(err.0, "check_plan did not pass");
+}
+
+#[test]
+fn is_lgtm_str_returns_false_for_non_lgtm_content() {
+    assert!(!is_lgtm_str(""), "empty string is not LGTM");
+    assert!(!is_lgtm_str("not lgtm"), "arbitrary text is not LGTM");
+    assert!(!is_lgtm_str("## Issues\n- problem 1"), "review with issues is not LGTM");
+    assert!(!is_lgtm_str("lgtm"), "lowercase lgtm is not LGTM");
+    assert!(!is_lgtm_str("LGTM with notes"), "LGTM with extra text is not LGTM");
+    assert!(!is_lgtm_str("Almost LGTM"), "LGTM with prefix is not LGTM");
+}
+
+#[test]
+fn is_lgtm_str_returns_true_for_lgtm() {
+    assert!(is_lgtm_str("LGTM"), "exact LGTM");
+    assert!(is_lgtm_str("LGTM\n"), "LGTM with trailing newline");
+    assert!(is_lgtm_str("  LGTM  "), "LGTM with whitespace");
+    assert!(is_lgtm_str("\u{FEFF}LGTM"), "LGTM with BOM");
+}
+
+#[test]
+fn check_plan_abort_flow_components_verify_non_lgtm_causes_failure() {
+    let t = tempfile::tempdir().unwrap();
+    let review_path = t.path().join("review.md");
+
+    std::fs::write(&review_path, "LGTM\n").unwrap();
+    clear_review_file(&review_path).expect("clear_review_file must succeed");
+    assert!(!review_path.exists(), "old LGTM must be cleared");
+
+    std::fs::write(&review_path, "## Issues\n- The plan is incomplete").unwrap();
+    let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
+    assert!(!is_lgtm_str(&contents), "non-LGTM content triggers abort");
     let err = WorkflowError("check_plan did not pass".to_string());
     assert_eq!(err.0, "check_plan did not pass");
 }

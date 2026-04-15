@@ -37,8 +37,12 @@ pub fn workflow_context(
     context
 }
 
-pub(crate) fn clear_review_file(p: &Path) {
-    let _ = std::fs::remove_file(p);
+pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(p) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
 pub(crate) fn check_abort(result_path: &Path) -> Option<String> {

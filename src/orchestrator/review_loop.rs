@@ -51,8 +51,10 @@ impl Orchestrator<'_> {
         (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
         if ctx.review_prompt.starts_with("review_") {
-            clear_review_file(ctx.review_path);
-            clear_review_file(ctx.workspace_review_path);
+            clear_review_file(ctx.review_path)
+                .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
+            clear_review_file(ctx.workspace_review_path)
+                .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
         }
 
         let review_body = self
