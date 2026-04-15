@@ -57,16 +57,16 @@ fn reviewer_pair_ops_calls_review_prompt() {
 }
 
 #[test]
-fn default_cli_model_is_composer_2() {
+fn default_cli_model_is_composer_2_fast() {
     let shared = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/src/cli/shared_opts.rs"
     ));
     assert!(
         shared.contains("const DEFAULT_CLI_MODEL")
-            && shared.contains("\"composer-2\"")
+            && shared.contains("\"composer-2-fast\"")
             && shared.contains("default_value = DEFAULT_CLI_MODEL"),
-        "default `--model` must remain composer-2 via DEFAULT_CLI_MODEL unless intentionally changed"
+        "default `--model` must remain composer-2-fast via DEFAULT_CLI_MODEL unless intentionally changed"
     );
     let models = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
