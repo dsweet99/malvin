@@ -1,0 +1,7 @@
+      - id: kiss-check
+        name: kiss check
+        entry: kiss check .
+        language: system
+        pass_filenames: false
+        always_run: true
+
