@@ -41,17 +41,17 @@ fn max_loops_zero_must_not_be_clamped_to_one() {
 
 const fn agent_sources_for_snapshot() -> &'static str {
     concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc")),
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs")),
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/src/acp/client_impl.inc"
+            "/src/acp/client_impl.rs"
         )),
     )
 }
 
 #[test]
 fn reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order() {
-    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.inc"));
+    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs"));
     let review = ops
         .find("pair.review_log, pair.review_who, None")
         .expect("expected review session/prompt in run_reviewer_pair_once");
@@ -129,7 +129,7 @@ fn agent_client_must_apply_tee_mode_when_invoking_acp() {
 fn upgrade_plan_message_must_not_be_eprint_twice() {
     let client_impl = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.inc"
+        "/src/acp/client_impl.rs"
     ));
     let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));
     let client_eprints_on_upgrade = client_impl.contains("agent_string_is_upgrade_plan")
@@ -247,7 +247,7 @@ fn malvin_do_default_skips_repo_style_prepend_contract() {
     let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
     let client_impl = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.inc"
+        "/src/acp/client_impl.rs"
     ));
     assert!(
         do_flow.contains("skip_repo_style") && do_flow.contains("do_args.cooked"),
@@ -302,5 +302,27 @@ fn implement_prompt_validate_plan_claim_must_match_workflow_and_grounding() {
         !implement_claims_validate_plan
             || (workflow_runs_validate_plan && grounding_documents_validate_plan),
         "implement.md must not claim a preceding validate_plan step unless both the workflow driver and grounding.md include that phase"
+    );
+}
+
+#[test]
+fn grounding_documents_conditional_learn_when_workflow_skips_short_runs() {
+    let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));
+    let orchestrator = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/orchestrator/mod.rs"
+    ));
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    let code_has_conditional_learn = cli_mod.contains("LEARN_MIN_ELAPSED_MS")
+        && orchestrator.contains("learn_min_elapsed_ms")
+        && orchestrator.contains("should_run_learn()");
+    let grounding_mentions_conditional_learn = grounding.contains("5 minutes")
+        || grounding.contains("300_000")
+        || grounding.contains("Only run the learn phase when")
+        || grounding.contains("skip learning")
+        || grounding.contains("unless the run is short");
+    assert!(
+        !code_has_conditional_learn || grounding_mentions_conditional_learn,
+        "grounding.md must document the conditional learn gate once the workflow skips learn on short runs"
     );
 }

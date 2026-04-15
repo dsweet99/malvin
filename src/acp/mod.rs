@@ -56,11 +56,11 @@ fn kiss_stringify_acp_rpc_and_cursor_auth() {
     let _ = stringify!(requires_cursor_login_auth);
 }
 
-include!("reader_inline.inc");
-include!("session_spawn.inc");
+include!("reader_inline.rs");
+include!("session_spawn.rs");
 include!("session.rs");
 
-include!("agent_bundle.inc");
+include!("agent_bundle.rs");
 
 #[cfg(test)]
 mod transport_tests;

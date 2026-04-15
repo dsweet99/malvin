@@ -26,6 +26,7 @@ and all applicable unit tests pass:
 - Do not write "documentation parity guards". Do not write comments. NEVER EDIT grounding.md.
 - Keep each unit test's running time under 10 seconds.
 - Write code to fail fast. Assert liberally. DRY.
+- Don't name files ".inc".  .rs and .py are the correct extensions.
 
 ## Nota Bene
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me

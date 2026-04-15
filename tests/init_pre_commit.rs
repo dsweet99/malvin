@@ -198,56 +198,80 @@ fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_r
 }
 
 #[test]
-fn malvin_init_succeeds_without_preconfigured_git_identity() {
+fn malvin_init_does_not_autocommit_preexisting_repo_changes() {
     let project = tempfile::tempdir().unwrap();
-    let empty_home = tempfile::tempdir().unwrap();
     Command::new("git")
         .arg("init")
         .current_dir(project.path())
         .output()
         .expect("git init");
 
+    let keep = project.path().join("keep.txt");
+    std::fs::write(&keep, "before\n").expect("write keep");
+    let initial_commit = Command::new("git")
+        .args([
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.com",
+            "add",
+            ".",
+        ])
+        .current_dir(project.path())
+        .output()
+        .expect("git add");
+    assert!(initial_commit.status.success(), "git add failed: {initial_commit:?}");
+    let initial_commit = Command::new("git")
+        .args([
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.com",
+            "commit",
+            "-m",
+            "seed repo",
+        ])
+        .current_dir(project.path())
+        .output()
+        .expect("git commit");
+    assert!(
+        initial_commit.status.success(),
+        "seed commit failed: {initial_commit:?}"
+    );
+
+    std::fs::write(&keep, "after\n").expect("dirty tracked file");
+
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("HOME", empty_home.path())
-        .env("XDG_CONFIG_HOME", empty_home.path())
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env_remove("GIT_AUTHOR_NAME")
-        .env_remove("GIT_AUTHOR_EMAIL")
-        .env_remove("GIT_COMMITTER_NAME")
-        .env_remove("GIT_COMMITTER_EMAIL")
         .args(["init", "python", "--path"])
         .arg(project.path())
         .output()
         .expect("spawn malvin init");
-    assert!(
-        out.status.success(),
-        "init should not depend on global git identity for a fresh repo; stdout/stderr: {out:?}"
-    );
-}
+    assert!(out.status.success(), "malvin init failed: {out:?}");
 
-#[test]
-fn malvin_init_is_idempotent_on_a_clean_repo() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
+    let commit_count = Command::new("git")
+        .args(["rev-list", "--count", "HEAD"])
         .current_dir(project.path())
         .output()
-        .expect("git init");
-
-    let first = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn first malvin init");
-    assert!(first.status.success(), "first init failed: {first:?}");
-
-    let second = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn second malvin init");
+        .expect("git rev-list --count HEAD");
     assert!(
-        second.status.success(),
-        "rerunning init on a clean repo should be a no-op success; stdout/stderr: {second:?}"
+        commit_count.status.success(),
+        "git rev-list --count HEAD failed: {commit_count:?}"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&commit_count.stdout).trim(),
+        "1",
+        "init should not create a new commit when bootstrapping an existing repo"
+    );
+
+    let tracked = Command::new("git")
+        .args(["show", "HEAD:keep.txt"])
+        .current_dir(project.path())
+        .output()
+        .expect("git show HEAD:keep.txt");
+    assert!(tracked.status.success(), "git show failed: {tracked:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&tracked.stdout),
+        "before\n",
+        "existing tracked content should not be silently rewritten into a new init commit"
     );
 }

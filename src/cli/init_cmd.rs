@@ -143,6 +143,9 @@ fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
 }
 
 fn create_initial_commit(root: &Path) -> Result<(), String> {
+    if repo_already_has_commits(root) {
+        return Ok(());
+    }
     run_command_expect_success(Command::new("git").args(["add", "."]).current_dir(root), "`git add .` failed.")?;
     let has_staged = Command::new("git").args(["diff", "--cached", "--quiet"]).current_dir(root)
         .status().map(|s| !s.success()).unwrap_or(false);
@@ -154,6 +157,15 @@ fn create_initial_commit(root: &Path) -> Result<(), String> {
         )?;
     }
     ensure_branch_is_main(root)
+}
+
+fn repo_already_has_commits(root: &Path) -> bool {
+    Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(root)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 fn ensure_branch_is_main(root: &Path) -> Result<(), String> {

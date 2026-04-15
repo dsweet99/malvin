@@ -27,14 +27,14 @@ pub struct AgentIoOptions {
     pub no_tee: bool,
 }
 
-include!("pair.inc");
-include!("agent_client_struct.inc");
-include!("retry_policy.inc");
-include!("ops_body.inc");
-include!("client_impl.inc");
+include!("pair.rs");
+include!("agent_client_struct.rs");
+include!("retry_policy.rs");
+include!("ops_body.rs");
+include!("client_impl.rs");
 
 #[cfg(test)]
-include!("tee_strip_tests.inc");
+include!("tee_strip_tests.rs");
 
 #[cfg(test)]
 mod ops_resolve_bin_tests {
@@ -43,7 +43,7 @@ mod ops_resolve_bin_tests {
 
     use super::resolve_agent_bin;
 
-    include!("ops_inline_tests.inc");
+    include!("ops_inline_tests.rs");
 }
 
 #[test]

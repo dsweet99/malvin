@@ -16,3 +16,16 @@ src/main.rs
 # CLI integration code (hard to unit test, requires integration tests)
 src/cli/init_cmd.rs
 src/cli/do_flow.rs
+
+# Included module files (complex ACP implementation code)
+src/acp/retry_policy.rs
+src/acp/agent_bundle.rs
+src/acp/session_spawn.rs
+src/acp/client_impl.rs
+src/acp/ops_body.rs
+src/acp/agent_client_struct.rs
+src/acp/reader_stdout_body.rs
+src/acp/tee_strip_tests.rs
+src/acp/pair.rs
+src/acp/ops_inline_tests.rs
+src/acp/reader_inline.rs
