@@ -183,7 +183,10 @@ ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, spli
 ### Terminal wrap (TTY)
 
 TRIGGER: terminal_wrap module  
-ADVICE: **`src/output/terminal_wrap.rs`** — `terminal_columns()` reads **`COLUMNS`** (**20–500** inclusive; else **80**), `stdout_is_wrappable_terminal()` (`stdout().is_terminal()`), `wrap_words_bounded(max, text)` (word boundaries + char splits for overlong tokens). **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
+ADVICE: **`src/output/terminal_wrap.rs`** — **`terminal_columns()`** = **`columns_from_env()`** (valid **`COLUMNS`** **20–500**) **or** **`columns_from_tty()`** (**`terminal_size::terminal_size()`**, width **≥20** capped at **500**; **`None`** if query fails or too narrow) **or** **80**. **`stdout_line_wrap_meta`** / **`line_wrap_meta`** use that width; **`acp_tee.rs`** tees with same wrap; **`trace_line_write.rs`** uses **`terminal_columns()`** for raw stdout wrap. **`stdout_is_wrappable_terminal()`**, **`wrap_words_bounded`**. **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
+
+TRIGGER: terminal_size crate  
+ADVICE: Dependency **`terminal_size`** (see **`Cargo.toml`**). **`terminal_size()`** returns **`Option<(Width, Height)>`**; use **`usize::from(w.0)`** for column count (**`Width`** is a **`u16`** newtype—do not cast the tuple element incorrectly).
 
 TRIGGER: print_stdout wrap rule  
 ADVICE: **`print_stdout_line`** / **`print_stderr_line`**: wrap only when **`stdout`/`stderr`** is a TTY **and** `line.chars().count() > max_payload`, where **`max_payload = terminal_columns().saturating_sub(prefix_len).max(1)`** and **`prefix_len`** = **`format_line_with_timestamp(ts, who, "").chars().count()`** (plain prefix). **Same `ts`** for all continuation lines. **Pipes** (`!is_terminal()`): one unwrapped line, original spacing preserved when no wrap path runs.
@@ -311,7 +314,13 @@ ADVICE: Prefer `let n = if let Some(…) = … { …; 2 } else { 1 };` over `let
 - **Async + RNG:** `thread_rng()` / `ThreadRng` is not `Send`; do not hold it across `.await`. For multiple `session/prompt` rounds in one async fn, use one `rand::rngs::StdRng::from_entropy()` (or seed) and `&mut rng`.
 - **kiss arity:** if `arguments_per_function` fires, group parameters in a struct (same pattern as `KpopAcpPromptPick`).
 
+TRIGGER: Rust 2024 unsafe env tests  
+ADVICE: **`std::env::set_var`** / **`remove_var`** are **`unsafe`** in Rust **2024**. Repo **`Cargo.toml`** **`[lints.rust] unsafe_code = "deny"`**—tests that mutate **`COLUMNS`** (or other env) need **`#[allow(unsafe_code)]`** on the test (or narrow scope) and **`unsafe { … }`** around those calls; **`std::sync::Mutex`** can serialize env tests. **`clippy::redundant_closure_for_method_calls`:** **`Mutex::lock`** poison recovery → **`unwrap_or_else(std::sync::PoisonError::into_inner)`**.
+
 ## LiteLLM / token cost (external proxy)
+
+TRIGGER: LiteLLM token cost  
+ADVICE: Prefer **provider `usage`** on each response when cost matters; LiteLLM **`token_counter`** is **heuristic** (tiktoken/HF, fallbacks)—treat counts as **approximate** vs Anthropic/Gemini/etc. Bullets below expand pricing/counter behavior.
 
 - Prefer **provider `usage`** on each response when cost matters; that is authoritative when present.
 - LiteLLM **`token_counter`** uses **tiktoken** / HF tokenizers + message/tool heuristics; unknown OpenAI-style models may fall back to **`cl100k_base`**—treat counts as **approximate** vs Anthropic/Gemini/etc.

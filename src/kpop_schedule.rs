@@ -34,8 +34,9 @@ pub fn generate_kpop_schedule(
         0.0
     };
     let mut out = Vec::with_capacity(max_loops);
+    let roll_uniform = Uniform::from(0.0..1.0);
     for _ in 0..max_loops {
-        let roll = Uniform::from(0.0..1.0).sample(rng);
+        let roll = roll_uniform.sample(rng);
         if roll < p {
             out.push(KpopScheduleStep::Mbc2ThenFalsify);
         } else {

@@ -1,11 +1,25 @@
 use std::io::{IsTerminal, stderr, stdout};
 
-#[must_use]
-pub fn terminal_columns() -> usize {
+fn columns_from_env() -> Option<usize> {
     std::env::var("COLUMNS")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
         .filter(|&c| (20..=500).contains(&c))
+}
+
+fn columns_from_tty() -> Option<usize> {
+    let (w, _) = terminal_size::terminal_size()?;
+    let w = usize::from(w.0);
+    if w < 20 {
+        return None;
+    }
+    Some(w.min(500))
+}
+
+#[must_use]
+pub fn terminal_columns() -> usize {
+    columns_from_env()
+        .or_else(columns_from_tty)
         .unwrap_or(80)
 }
 
@@ -80,7 +94,11 @@ pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{split_long_word, wrap_words_bounded};
+    use std::sync::Mutex;
+
+    use super::{split_long_word, terminal_columns, wrap_words_bounded};
+
+    static COLUMNS_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn wrap_fits_short_line_single_segment() {
@@ -108,6 +126,25 @@ mod tests {
     fn split_long_word_respects_boundary() {
         let v = split_long_word("abcdefghij", 4);
         assert_eq!(v, vec!["abcd", "efgh", "ij"]);
+    }
+
+    #[allow(unsafe_code)]
+    #[test]
+    fn terminal_columns_env_override() {
+        let _guard = COLUMNS_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let prev = std::env::var("COLUMNS").ok();
+        unsafe {
+            std::env::set_var("COLUMNS", "100");
+        }
+        assert_eq!(terminal_columns(), 100);
+        unsafe {
+            match prev {
+                Some(v) => std::env::set_var("COLUMNS", v),
+                None => std::env::remove_var("COLUMNS"),
+            }
+        }
     }
 
     #[test]

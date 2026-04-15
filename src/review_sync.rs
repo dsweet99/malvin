@@ -49,7 +49,7 @@ pub fn sync_review_file(
 ///
 /// Returns an error when the workspace file cannot be read or the artifact cannot be written.
 ///
-/// Used by the ACP reviewer pair (`run_reviewer_pair_once` in `ops_body.inc`) so the post-review sequence stays one API surface.
+/// Used by the ACP reviewer pair (`run_reviewer_pair_once` in `ops_body.rs`) so the post-review sequence stays one API surface.
 pub fn sync_review_then_is_lgtm(
     workspace_review_path: &Path,
     artifact_review_path: &Path,

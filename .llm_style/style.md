@@ -1,6 +1,6 @@
 # LLM style — malvin (index)
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, **`repo_checks`** workspace, layout, ACP **`include!`**, run-timing + **primary-vs-secondary** error merge, **`DEFAULT_REPO_STYLE_PROMPT_REL`**, **malvin do** trace, **`src/output/`** tee + **TTY word wrap**, CLI/**kiss**, **review sync**, **`tests/cli_parity.rs`** guards, child health, **`malvin code` workflow**), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify, **`review_sync`**, `_malvin/...` plans, search fallbacks), `./.llm_style/malvin_kpop_schedule.md` (pre-generated KPOP schedule, `workflow_context_paths_only`, exact **`LGTM`**), `./.llm_style/authoring_llm_style.md` (keep this index **<100** lines; split detail to topic files).
+When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail: `./.llm_style/malvin_tooling.md` (gates, **`repo_checks`** workspace, layout, ACP **`include!`**, run-timing + **primary-vs-secondary** error merge, **`DEFAULT_REPO_STYLE_PROMPT_REL`**, **malvin do** trace, **`src/output/`** tee + **TTY word wrap**, **`terminal_size`**, CLI/**kiss**, **review sync**, **`tests/cli_parity.rs`** guards, child health, **`malvin code` workflow**), `./.llm_style/malvin_debugging.md` (KPOP HPF, falsify, **`review_sync`**, `_malvin/...` plans, **stale plan sync**, search fallbacks), `./.llm_style/malvin_kpop_schedule.md` (pre-generated KPOP schedule, `workflow_context_paths_only`, exact **`LGTM`**), `./.llm_style/authoring_llm_style.md` (keep this index **<100** lines; split detail to topic files).
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks (Rust + **`pytest -sv tests`** with **`PYTHONPATH=.`** when tests import the repo); **`cargo clippy`** must match `.pre-commit-config.yaml` `entry:` verbatim. Fix every failure; no `# noqa` except for correctness; no test-cheating. Rerun mid-task (kiss limits); parallelize independent checks. **`clippy::double_must_use`:** do not add `#[must_use]` on `fn` that already returns a `#[must_use]` type (e.g. `Result`). **Pre-commit** runs ruff + clippy + kiss + `admin/check_untracked.sh` but **not** `cargo test`/`pytest`—run those manually.
 TRIGGER: kiss check and limits  
@@ -40,7 +40,7 @@ ADVICE: **Never edit `grounding.md`**. When `tests/cli_parity.rs` checks fail du
 TRIGGER: stdout stderr log header  
 ADVICE: Route through **`src/output/mod.rs`** (`print_stdout_line`, `print_stderr_line`, `format_line`, …). **ACP tee** ANSI + direction: **`src/output/acp_tee.rs`** (`AcpTeeDirection`, `print_stdout_acp_tee_line`)—outbound vs inbound colors; wire points **`session_trace.rs`** / **`coalesce.rs`**. **Logical** text: `YYYYMMDD.HHMMSS.mmm:[who]: …` with `[who]` padded/truncated to **`LOG_TAG_INNER_WIDTH`** Unicode scalars. **Disk** and **stderr** plain `format_line` (no ANSI). Default stdout prefix coloring: dim timestamp + cyan `who` unless ACP tee path. Document in **`grounding.md`**. Detail: `malvin_tooling.md` § Prefixed log lines.
 TRIGGER: terminal TTY word wrap  
-ADVICE: **`terminal_wrap.rs`**: `line_wrap_meta` → `stdout_line_wrap_meta` / `stderr_line_wrap_meta`; **`print_stdout_line`**, **`print_stderr_line`**, **`acp_tee`** share width rules; TTY + **`COLUMNS`** (20–500, else 80); repeat prefix on continuations; **disk** `trace_file_write_line` unchanged; raw tee **`trace_line_write.rs`**. **Coalesce** cap ≠ TTY wrap—`malvin_tooling.md` § Terminal wrap (TTY).
+ADVICE: **`terminal_wrap.rs`**: **`terminal_columns()`** = valid **`COLUMNS`** **or** **`terminal_size::terminal_size()`** (else **80**); `line_wrap_meta` → **`stdout_line_wrap_meta`** / **`stderr_line_wrap_meta`**; **`print_stdout_line`**, **`print_stderr_line`**, **`acp_tee`**, raw tee **`trace_line_write.rs`** share width rules; repeat prefix on continuations; **disk** unwrapped. **Coalesce** cap ≠ TTY wrap—`malvin_tooling.md` § Terminal wrap (TTY).
 TRIGGER: outgoing prompt stdout  
 ADVICE: **All** outgoing prompts: no body tee to stdout (`acp_tee_echo_outgoing_prompt_lines` returns `false`); only `[{stem}...]` announcement via `print_outgoing_prompt_log`. Disk trace keeps full `>{stem}` lines. For `do --cooked`: announce each segment (`[style...]`, `[header...]`, `[prompt...]`). Inbound `<learn`: one `[learning...]` placeholder (`prompt_stdout_replacement`). See `malvin_tooling.md` § ACP tee.
 TRIGGER: source-shape regression tests  
@@ -54,11 +54,15 @@ ADVICE: **`merge_acp_and_timing_results`** and **`prefer_primary_string_errors`*
 TRIGGER: rustdoc grounding repo style  
 ADVICE: **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`coder_style.md`) in **`src/acp/client_impl.inc`**; user contract in **`grounding.md`** section **## Repo style file**. In **`///`** cite **`## Heading`**, not `§`—`malvin_tooling.md` § Repo style + § Docs parity.
 TRIGGER: plan.md root vs `_malvin`  
-ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—**may be informal** vs `grounding.md`; verify vs `src/` + tests—`malvin_debugging.md` § Root plan; `malvin_tooling.md` § `malvin init` + ACP bounded retry.
+ADVICE: Root `plan.md` vs shipped init/ACP/models (`init_cmd.rs`, tests); one-off `_malvin/**/plan.md` when cited—**may be informal** vs `grounding.md`; **update** after **`src/`** changes so the plan is not stale—`malvin_debugging.md` § Root plan + § **_malvin plan stale**; `malvin_tooling.md` § `malvin init` + ACP bounded retry.
 TRIGGER: KPOP MBC2, HPF, models  
 ADVICE: Schedule + prompts + review token: **`malvin_kpop_schedule.md`**. **HPF** (hypothesize/predict/falsify, `_malvin/.../exp_log_*.md`, user-stamped path when cited), summary+tl;dr—`malvin_debugging.md` § KPOP. **`malvin models`** / IDE `rg` fallback—`malvin_debugging.md`. `p_creative`, `kpop_schedule.rs`, `ops_body.rs` `run_kpop_flow_once`: `malvin_tooling.md` § KPOP.
 TRIGGER: Rust 2024 rand async  
 ADVICE: `gen` is a keyword—use `Uniform` sampling. `Send` across `await`: `StdRng`, not `thread_rng`. Detail: `malvin_tooling.md` § Rust edition 2024.
+TRIGGER: Rust 2024 unsafe env tests  
+ADVICE: **`set_var`/`remove_var`** are **`unsafe`**; **`unsafe_code = deny`** → **`#[allow(unsafe_code)]`** + **`unsafe { }`** for test env mutation; **`terminal_size`** **`Width`**: **`usize::from(w.0)`**—`malvin_tooling.md` § Rust edition 2024.
+TRIGGER: _malvin plan stale  
+ADVICE: **`_malvin/**/plan.md`** may predate **`src/`**; after implementation, **update plan + `review.md`**—`malvin_debugging.md` § **_malvin plan stale**.
 TRIGGER: malvin init  
 ADVICE: `src/cli/init_cmd.rs`; `default_repo/` templates (incl. `llm_style/style.md` with TRIGGER/ADVICE pairs); auto-commit **only on fresh repos** (no prior commits); `tests/init_pre_commit.rs` for integration tests.
 TRIGGER: env_path agent binary  
@@ -69,8 +73,6 @@ TRIGGER: code kpop require kiss
 ADVICE: **`require_kiss_for_cli_command`** (`src/cli/mod.rs`) + **`require_kiss_for_malvin`** (`src/env_path.rs`); install **`cargo install kiss-ai`**. Regress **`tests/kiss_code_kpop_path.rs`**—see **`malvin_tooling.md` § CLI kiss gate**.
 TRIGGER: ACP retry backoff  
 ADVICE: `retry_policy.rs`—retriable = **timeout / deadline / failed to initialize session** substrings; other errors **fail fast**. Tests in `agent_bundle.rs`; **`timeout_*`** false positives—`malvin_tooling.md` § ACP bounded retry.
-TRIGGER: LiteLLM token cost  
-ADVICE: Prefer provider **`usage`** for billing; LiteLLM **`token_counter`** is heuristic (tiktoken/HF, fallbacks)—`malvin_tooling.md` § LiteLLM / token cost.
 TRIGGER: DEFAULT_CLI_MODEL  
 ADVICE: `src/cli/shared_opts.rs`; `models_cmd` footer `{DEFAULT_CLI_MODEL}`; `default_cli_model_is_composer_2` in `tests/cli_parity.rs`.
 TRIGGER: ACP include layout  
