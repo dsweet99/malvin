@@ -13,6 +13,7 @@ mod child_health;
 pub mod config;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
+pub mod kpop_schedule;
 pub mod env_path;
 pub mod invocation;
 pub mod log_paths;

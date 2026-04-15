@@ -3,11 +3,8 @@ fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, b
 }
 
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
-    context.insert(
-        "plan_path".to_string(),
-        artifacts.plan_path.display().to_string(),
-    );
     let base = &artifacts.work_dir;
+    insert_formatted(context, "plan_path", &artifacts.plan_path, base);
     insert_formatted(context, "grounding_path", &base.join("grounding.md"), base);
     let kpop_dir = artifacts
         .run_dir
@@ -20,12 +17,18 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
 }
 
 #[must_use]
+pub fn workflow_context_paths_only(artifacts: &RunArtifacts) -> HashMap<String, String> {
+    let mut context = HashMap::new();
+    insert_artifact_paths(&mut context, artifacts);
+    context
+}
+
+#[must_use]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
 ) -> HashMap<String, String> {
-    let mut context = HashMap::new();
-    insert_artifact_paths(&mut context, artifacts);
+    let mut context = workflow_context_paths_only(artifacts);
     match prompts.render_prompt_only("kpop.md", &context) {
         Ok(kpop_content) => {
             context.insert("kpop".to_string(), kpop_content);

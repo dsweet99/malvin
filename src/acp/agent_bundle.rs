@@ -4,9 +4,6 @@ use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use std::time::{Duration, Instant};
 
-use rand::rngs::StdRng;
-use rand::SeedableRng;
-
 /// Recoverable agent failure.
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]

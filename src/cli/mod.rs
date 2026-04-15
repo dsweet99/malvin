@@ -75,12 +75,15 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
 /// Like [`prepare_prompt_store`] but only checks prompts used by `malvin kpop` (not the full workflow set).
 pub fn prepare_kpop_prompt_store(
     workflow: WorkflowCliOptions,
-    p_creative: f64,
+    require_mbc2: bool,
 ) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
-        .validate_kpop_prompts(workflow.run_learn, p_creative)
+        .validate_kpop_prompts(malvin::prompts::KpopPromptValidation {
+            run_learn: workflow.run_learn,
+            require_mbc2,
+        })
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }

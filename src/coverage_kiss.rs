@@ -115,6 +115,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::format_prompt_path);
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
+    let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
     let _ = stringify!(crate::orchestrator::review_context::ReviewPhaseArgs);
     let _ = stringify!(crate::orchestrator::review_context::ReviewAttemptCtx);
 }
@@ -122,9 +123,16 @@ fn kiss_stringify_orchestrator() {
 #[test]
 fn kiss_stringify_kpop_acp_prompt() {
     let _ = stringify!(crate::kpop_acp_prompt::kpop_creative_enabled);
-    let _ = stringify!(crate::kpop_acp_prompt::kpop_acp_user_prompt);
-    let _ = stringify!(crate::kpop_acp_prompt::KpopAcpPromptPick);
     let _ = stringify!(crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION);
+}
+
+#[test]
+fn kiss_stringify_kpop_schedule() {
+    let _ = stringify!(crate::kpop_schedule::KpopScheduleStep);
+    let _ = stringify!(crate::kpop_schedule::generate_kpop_schedule);
+    let _ = stringify!(crate::kpop_schedule::schedule_requires_mbc2);
+    let _ = stringify!(crate::kpop_schedule::render_planned_schedule_lines);
+    let _ = stringify!(crate::kpop_schedule::build_scheduled_kpop_prompt);
 }
 
 #[test]

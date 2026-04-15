@@ -65,7 +65,10 @@ pub(crate) async fn run_reviewer_pair_once(
         pair_id.review_phase(),
         t_review.elapsed(),
     );
-    review_out.map_err(AgentError)?;
+    if let Err(e) = review_out {
+        let _ = s.shutdown().await;
+        return Err(AgentError(e));
+    }
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())
@@ -77,8 +80,6 @@ pub struct KpopFlowOnceArgs<'a> {
     pub kpop_prompt: &'a str,
     pub kpop_log: &'a Path,
     pub learn: Option<(&'a str, &'a Path)>,
-    pub p_creative: f64,
-    pub mbc2_body: &'a str,
     /// Skip learn if elapsed time is below this threshold (milliseconds).
     /// Uses `grounding.md` "unless short" rule. Set to 0 to always run learn.
     pub learn_min_elapsed_ms: u64,
@@ -111,21 +112,10 @@ pub(crate) async fn run_kpop_flow_once(
 
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
-    let mut rng = StdRng::from_entropy();
-
-    let main_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
-        &crate::kpop_acp_prompt::KpopAcpPromptPick {
-            interaction_index: 0,
-            p_creative: args.p_creative,
-            default_prompt: args.kpop_prompt,
-            mbc2_body: args.mbc2_body,
-        },
-        &mut rng,
-    );
     if let Err(e) = round(
         &s,
         client,
-        &main_prompt,
+        args.kpop_prompt,
         args.kpop_log,
         "kpop",
         crate::run_timing::TimingPhase::Implement,
@@ -147,19 +137,10 @@ pub(crate) async fn run_kpop_flow_once(
         let should_learn =
             crate::orchestrator::should_run_learn_check(args.learn_min_elapsed_ms, elapsed_ms);
         if should_learn {
-            let learn_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
-                &crate::kpop_acp_prompt::KpopAcpPromptPick {
-                    interaction_index: 1,
-                    p_creative: args.p_creative,
-                    default_prompt: learn_body,
-                    mbc2_body: args.mbc2_body,
-                },
-                &mut rng,
-            );
             if let Err(e) = round(
                 &s,
                 client,
-                &learn_prompt,
+                learn_body,
                 learn_log,
                 "learn",
                 crate::run_timing::TimingPhase::Learn,

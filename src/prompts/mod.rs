@@ -16,6 +16,13 @@ pub(crate) use defaults::default_file;
 #[error("{0}")]
 pub struct PromptError(pub String);
 
+/// Inputs for [`PromptStore::validate_kpop_prompts`].
+#[derive(Debug, Clone, Copy)]
+pub struct KpopPromptValidation {
+    pub run_learn: bool,
+    pub require_mbc2: bool,
+}
+
 /// Prompt files on disk (`~/.malvin/prompts` by default).
 #[derive(Debug, Clone)]
 pub struct PromptStore {
@@ -103,8 +110,7 @@ impl PromptStore {
     /// Returns [`PromptError`] listing any missing files.
     pub fn validate_kpop_prompts(
         &self,
-        run_learn: bool,
-        p_creative: f64,
+        validation: KpopPromptValidation,
     ) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
         if !self.root.join("header.md").exists() {
@@ -113,12 +119,10 @@ impl PromptStore {
         if !self.root.join("kpop.md").exists() {
             missing.push("kpop.md");
         }
-        if crate::kpop_acp_prompt::kpop_creative_enabled(p_creative)
-            && !self.root.join("mbc2.md").exists()
-        {
+        if validation.require_mbc2 && !self.root.join("mbc2.md").exists() {
             missing.push("mbc2.md");
         }
-        if run_learn && !self.root.join("learn.md").exists() {
+        if validation.run_learn && !self.root.join("learn.md").exists() {
             missing.push("learn.md");
         }
         if missing.is_empty() {
@@ -208,6 +212,16 @@ impl PromptStore {
             .trim()
             .to_string()
     }
+}
+
+#[allow(clippy::implicit_hasher)]
+pub fn render_mbc2_for_scheduled_kpop_block(
+    store: &PromptStore,
+    context: &HashMap<String, String>,
+) -> Result<String, PromptError> {
+    let mut ctx = context.clone();
+    ctx.insert("coding_rules".to_string(), String::new());
+    store.render_prompt_only("mbc2.md", &ctx)
 }
 
 /// Merged `header.md` + `coding_rules.md` text that [`PromptStore::render`] injects as `coding_rules`.
