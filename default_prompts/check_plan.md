@@ -11,6 +11,6 @@ A plan is acceptable if it:
 
 Brief plans like "Write this app" or "Implement the feature" are valid when grounding.md provides context. The plan does not need to restate grounding.md requirements.
 
-Write LGTM to {{ review_path }} unless there is a concrete blocking issue.
+If acceptable, write ONLY the four characters "LGTM" to {{ review_path }}. No explanation, no additional text—just LGTM.
 
-If there IS a blocking issue, write a brief explanation to {{ review_path }}.
+If there IS a blocking issue, write a brief explanation to {{ review_path }} (without LGTM).
