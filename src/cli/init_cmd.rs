@@ -17,7 +17,6 @@ const HOOK_RUFF: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/defau
 const HOOK_CLIPPY: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/clippy.yaml"));
 const HOOK_KISS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/kiss.yaml"));
 const HOOK_UNTRACKED: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/untracked.yaml"));
-const TPL_STYLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/llm_style/style.md"));
 
 /// Supported languages for `malvin init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -129,8 +128,7 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
     write_text_file(&root.join("grounding.md"), &grounding, force)?;
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
-    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)?;
-    write_text_file(&root.join(".llm_style").join("style.md"), TPL_STYLE, force)
+    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {

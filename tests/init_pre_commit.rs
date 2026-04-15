@@ -133,7 +133,7 @@ fn malvin_init_language_args_are_case_insensitive() {
 }
 
 #[test]
-fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_repo() {
+fn malvin_init_creates_initial_commit_on_main_for_fresh_repo() {
     let project = tempfile::tempdir().unwrap();
     Command::new("git")
         .arg("init")
@@ -147,11 +147,6 @@ fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_r
         .output()
         .expect("spawn malvin init");
     assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    assert!(
-        project.path().join(".llm_style/style.md").exists(),
-        "init should install .llm_style/style.md for fresh repos"
-    );
 
     let head = Command::new("git")
         .args(["branch", "--show-current"])
@@ -190,10 +185,6 @@ fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_r
     assert!(
         tracked_stdout.contains("grounding.md"),
         "initial commit should include grounding.md"
-    );
-    assert!(
-        tracked_stdout.contains(".llm_style/style.md"),
-        "initial commit should include .llm_style/style.md"
     );
 }
 
