@@ -34,6 +34,9 @@ pub struct DoArgs {
     /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
+    /// Run kiss clamp + configured pre-commit hooks before the prompt (coding-style runs).
+    #[arg(long, default_value_t = false)]
+    pub repo_gates: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
@@ -64,7 +67,9 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
 
-    repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
+    if do_args.repo_gates {
+        repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
+    }
 
     if !raw_mode {
         emit_run_startup_sequence(
@@ -229,6 +234,7 @@ mod do_tests {
             Commands::Do(d) => {
                 assert_eq!(d.request, "fix the bug");
                 assert!(!d.cooked);
+                assert!(!d.repo_gates);
             }
             _ => panic!("expected Do subcommand"),
         }
@@ -244,6 +250,22 @@ mod do_tests {
             Commands::Do(d) => {
                 assert!(d.cooked);
                 assert_eq!(d.request, "x");
+                assert!(!d.repo_gates);
+            }
+            _ => panic!("expected Do subcommand"),
+        }
+    }
+
+    #[test]
+    fn cli_accepts_do_repo_gates() {
+        use crate::cli::Cli;
+        use crate::cli::Commands;
+
+        let cli = Cli::try_parse_from(["malvin", "do", "--repo-gates", "y"]).expect("parse");
+        match cli.command {
+            Commands::Do(d) => {
+                assert!(d.repo_gates);
+                assert_eq!(d.request, "y");
             }
             _ => panic!("expected Do subcommand"),
         }
