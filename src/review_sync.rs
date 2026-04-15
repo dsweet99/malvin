@@ -121,4 +121,23 @@ mod tests {
         f.write_all(b"LGTM\n").unwrap();
         assert!(is_lgtm(&p));
     }
+
+    #[test]
+    fn clear_artifact_review_creates_parent_dirs_and_empties_file() {
+        let t = tempfile::tempdir().unwrap();
+        let artifact = t.path().join("nested").join("dir").join("review.md");
+        std::fs::write(artifact.parent().unwrap().join("dummy"), "x").ok();
+        clear_artifact_review(&artifact).unwrap();
+        assert!(artifact.exists());
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    }
+
+    #[test]
+    fn clear_artifact_review_overwrites_existing_content() {
+        let t = tempfile::tempdir().unwrap();
+        let artifact = t.path().join("review.md");
+        std::fs::write(&artifact, "LGTM\nsome content").unwrap();
+        clear_artifact_review(&artifact).unwrap();
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    }
 }

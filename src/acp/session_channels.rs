@@ -111,3 +111,11 @@ fn kiss_stringify_session_channels() {
     let _ = stringify!(SessionChannelState::into_session_inner);
     let _ = stringify!(SessionAfterStdioIn);
 }
+
+#[test]
+fn acp_activity_state_returns_valid_arc_pair() {
+    use std::sync::atomic::Ordering;
+    let (seq, notify) = acp_activity_state();
+    assert_eq!(seq.load(Ordering::SeqCst), 0);
+    notify.notify_one();
+}

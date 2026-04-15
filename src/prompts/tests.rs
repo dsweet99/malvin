@@ -191,3 +191,17 @@ fn render_prompt_only_skips_coding_rules_injection() {
     let out = store.render_prompt_only("header.md", &ctx).unwrap();
     assert_eq!(out, "H/p");
 }
+
+#[test]
+fn merge_header_and_coding_rules_combines_nonempty() {
+    assert_eq!(merge_header_and_coding_rules("head", "rules"), "head\n\nrules");
+    assert_eq!(merge_header_and_coding_rules("  head  ", "  rules  "), "head\n\nrules");
+}
+
+#[test]
+fn merge_header_and_coding_rules_handles_empty() {
+    assert_eq!(merge_header_and_coding_rules("", ""), "");
+    assert_eq!(merge_header_and_coding_rules("head", ""), "head");
+    assert_eq!(merge_header_and_coding_rules("", "rules"), "rules");
+    assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
+}

@@ -56,6 +56,9 @@ pub struct WorkflowCliOptions {
     pub run_learn: bool,
 }
 
+/// Skip learn phase if elapsed time is below 5 minutes (300,000 ms).
+pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
+
 pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
@@ -139,6 +142,7 @@ pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<()
         config: WorkflowConfig {
             max_loops: code.max_loops,
             run_learn: workflow.run_learn,
+            learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
         },
         progress_callback: Box::new(|msg: &str| {
             print_stdout_line(MALVIN_WHO, msg);

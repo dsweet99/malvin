@@ -1,5 +1,7 @@
-use crate::orchestrator::{WorkflowError, prefer_primary_errors_over_timing, prompt_md_stem};
+use crate::orchestrator::{WorkflowError, prefer_primary_errors_over_timing, prompt_md_stem, should_run_learn_check, workflow_context};
 use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::artifacts::RunArtifacts;
+use crate::prompts::PromptStore;
 
 fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();
@@ -81,4 +83,58 @@ fn sync_review_file_copies_nonempty_workspace_to_artifact() {
     std::fs::write(&artifact, "old").unwrap();
     sync_review_file(&workspace, &artifact).unwrap();
     assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
+}
+
+#[test]
+fn workflow_context_review_path_must_point_to_workspace_not_artifact() {
+    let t = tempfile::tempdir().unwrap();
+    let run_dir = t.path().join("_malvin").join("run123");
+    std::fs::create_dir_all(&run_dir).unwrap();
+    let plan_path = run_dir.join("plan.md");
+    std::fs::write(&plan_path, "test plan").unwrap();
+
+    let artifacts = RunArtifacts {
+        run_dir,
+        plan_path,
+        work_dir: t.path().to_path_buf(),
+    };
+    let prompts = PromptStore::default_store();
+    let ctx = workflow_context(&artifacts, &prompts);
+
+    let review_path = ctx.get("review_path").expect("review_path must be in context");
+
+    // The review_path should point to workspace review.md (./review.md),
+    // NOT the artifact review.md (./_malvin/run123/review.md).
+    // This is critical because sync_review_file reads from workspace and writes to artifact.
+    // If the prompt tells the agent to write to the artifact path, sync will clear it
+    // because the workspace file doesn't exist.
+    assert!(
+        !review_path.contains("_malvin"),
+        "review_path must point to workspace (./review.md), not artifact (./_malvin/.../review.md); \
+         got: {review_path}"
+    );
+    assert_eq!(
+        review_path, "./review.md",
+        "review_path should be ./review.md (workspace path)"
+    );
+}
+
+#[test]
+fn should_run_learn_check_zero_threshold_always_runs() {
+    assert!(should_run_learn_check(0, 0), "0 threshold, 0 elapsed => run");
+    assert!(should_run_learn_check(0, 1), "0 threshold, any elapsed => run");
+    assert!(should_run_learn_check(0, 300_000), "0 threshold, 5 min => run");
+}
+
+#[test]
+fn should_run_learn_check_below_threshold_skips() {
+    assert!(!should_run_learn_check(300_000, 0), "5 min threshold, 0 elapsed => skip");
+    assert!(!should_run_learn_check(300_000, 299_999), "5 min threshold, just under => skip");
+}
+
+#[test]
+fn should_run_learn_check_at_or_above_threshold_runs() {
+    assert!(should_run_learn_check(300_000, 300_000), "5 min threshold, exactly 5 min => run");
+    assert!(should_run_learn_check(300_000, 300_001), "5 min threshold, just over => run");
+    assert!(should_run_learn_check(300_000, 600_000), "5 min threshold, 10 min => run");
 }

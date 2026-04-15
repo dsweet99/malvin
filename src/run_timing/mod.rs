@@ -133,6 +133,13 @@ impl RunTiming {
         }
     }
 
+    /// Returns elapsed time since wall start (for mid-run checks like conditional learn).
+    #[must_use]
+    pub fn elapsed_so_far(&self) -> Duration {
+        self.wall_start
+            .map_or(Duration::ZERO, |start| Instant::now().saturating_duration_since(start))
+    }
+
     /// Writes `run_timing.json` and prints one stdout summary line (timestamp-prefixed).
     ///
     /// # Errors
@@ -203,29 +210,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn run_timing_json_includes_phase_keys() {
+    fn run_timing_json_phases_and_review_pair_id_mapping() {
         let mut r = RunTiming::default();
         r.mark_wall_start(Instant::now());
         r.mark_wall_end(Instant::now());
         r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(10));
-        let v = report::to_json_value(&r);
-        let phases = v.get("phases_ms").unwrap();
-        for key in [
-            "implement",
-            "review_1_review",
-            "review_1_kpop",
-            "review_2_review",
-            "review_2_kpop",
-            "concerns",
-            "learn",
-        ] {
+        let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
+        for key in ["implement", "review_1_review", "review_1_kpop", "review_2_review", "review_2_kpop", "concerns", "learn"] {
             assert!(phases.get(key).is_some(), "missing {key}");
         }
+        assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
+        assert_eq!(ReviewPairId::Two.kpop_phase(), TimingPhase::Review2Kpop);
     }
 
     #[test]
-    fn review_pair_id_maps_phases() {
-        assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
-        assert_eq!(ReviewPairId::Two.kpop_phase(), TimingPhase::Review2Kpop);
+    fn elapsed_so_far_and_record_functions() {
+        let mut r = RunTiming::default();
+        assert_eq!(r.elapsed_so_far(), Duration::ZERO);
+        r.mark_wall_start(Instant::now());
+        std::thread::sleep(Duration::from_millis(10));
+        assert!(r.elapsed_so_far() >= Duration::from_millis(5));
+        let timing = RunTiming::new_arc();
+        record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(100));
+        record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(50));
+        record_backoff(Some(&timing), Duration::from_millis(200));
+        record_backoff(Some(&timing), Duration::from_millis(100));
+        let g = timing.lock().unwrap();
+        assert_eq!((g.implement, g.llm_wait, g.agent_retry_backoff),
+            (Duration::from_millis(150), Duration::from_millis(150), Duration::from_millis(300)));
+        drop(g);
+        record_llm(None, TimingPhase::Implement, Duration::from_millis(100));
+        record_backoff(None, Duration::from_millis(100));
     }
 }

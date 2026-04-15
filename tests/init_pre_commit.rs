@@ -131,3 +131,123 @@ fn malvin_init_language_args_are_case_insensitive() {
     let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
     assert!(grounding.contains("in Python and Rust"), "grounding should have proper casing");
 }
+
+#[test]
+fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_repo() {
+    let project = tempfile::tempdir().unwrap();
+    Command::new("git")
+        .arg("init")
+        .current_dir(project.path())
+        .output()
+        .expect("git init");
+
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .args(["init", "python", "--path"])
+        .arg(project.path())
+        .output()
+        .expect("spawn malvin init");
+    assert!(out.status.success(), "malvin init failed: {out:?}");
+
+    assert!(
+        project.path().join(".llm_style/style.md").exists(),
+        "init should install .llm_style/style.md for fresh repos"
+    );
+
+    let head = Command::new("git")
+        .args(["branch", "--show-current"])
+        .current_dir(project.path())
+        .output()
+        .expect("git branch --show-current");
+    assert!(head.status.success(), "git branch --show-current failed: {head:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&head.stdout).trim(),
+        "main",
+        "init should leave HEAD on main"
+    );
+
+    let commit_count = Command::new("git")
+        .args(["rev-list", "--count", "HEAD"])
+        .current_dir(project.path())
+        .output()
+        .expect("git rev-list --count HEAD");
+    assert!(
+        commit_count.status.success(),
+        "git rev-list --count HEAD failed: {commit_count:?}"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&commit_count.stdout).trim(),
+        "1",
+        "init should create exactly one initial commit in a fresh repo"
+    );
+
+    let tracked = Command::new("git")
+        .args(["ls-tree", "-r", "--name-only", "HEAD"])
+        .current_dir(project.path())
+        .output()
+        .expect("git ls-tree");
+    assert!(tracked.status.success(), "git ls-tree failed: {tracked:?}");
+    let tracked_stdout = String::from_utf8_lossy(&tracked.stdout);
+    assert!(
+        tracked_stdout.contains("grounding.md"),
+        "initial commit should include grounding.md"
+    );
+    assert!(
+        tracked_stdout.contains(".llm_style/style.md"),
+        "initial commit should include .llm_style/style.md"
+    );
+}
+
+#[test]
+fn malvin_init_succeeds_without_preconfigured_git_identity() {
+    let project = tempfile::tempdir().unwrap();
+    let empty_home = tempfile::tempdir().unwrap();
+    Command::new("git")
+        .arg("init")
+        .current_dir(project.path())
+        .output()
+        .expect("git init");
+
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("HOME", empty_home.path())
+        .env("XDG_CONFIG_HOME", empty_home.path())
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env_remove("GIT_AUTHOR_NAME")
+        .env_remove("GIT_AUTHOR_EMAIL")
+        .env_remove("GIT_COMMITTER_NAME")
+        .env_remove("GIT_COMMITTER_EMAIL")
+        .args(["init", "python", "--path"])
+        .arg(project.path())
+        .output()
+        .expect("spawn malvin init");
+    assert!(
+        out.status.success(),
+        "init should not depend on global git identity for a fresh repo; stdout/stderr: {out:?}"
+    );
+}
+
+#[test]
+fn malvin_init_is_idempotent_on_a_clean_repo() {
+    let project = tempfile::tempdir().unwrap();
+    Command::new("git")
+        .arg("init")
+        .current_dir(project.path())
+        .output()
+        .expect("git init");
+
+    let first = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .args(["init", "python", "--path"])
+        .arg(project.path())
+        .output()
+        .expect("spawn first malvin init");
+    assert!(first.status.success(), "first init failed: {first:?}");
+
+    let second = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .args(["init", "python", "--path"])
+        .arg(project.path())
+        .output()
+        .expect("spawn second malvin init");
+    assert!(
+        second.status.success(),
+        "rerunning init on a clean repo should be a no-op success; stdout/stderr: {second:?}"
+    );
+}

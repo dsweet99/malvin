@@ -283,3 +283,24 @@ fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
         "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
     );
 }
+
+#[test]
+fn implement_prompt_validate_plan_claim_must_match_workflow_and_grounding() {
+    let implement = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/default_prompts/implement.md"
+    ));
+    let orchestrator = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/orchestrator/mod.rs"
+    ));
+    let grounding = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/grounding.md"));
+    let implement_claims_validate_plan = implement.contains("preceding validate_plan step");
+    let workflow_runs_validate_plan = orchestrator.contains("\"validate_plan.md\"");
+    let grounding_documents_validate_plan = grounding.contains("validate_plan");
+    assert!(
+        !implement_claims_validate_plan
+            || (workflow_runs_validate_plan && grounding_documents_validate_plan),
+        "implement.md must not claim a preceding validate_plan step unless both the workflow driver and grounding.md include that phase"
+    );
+}

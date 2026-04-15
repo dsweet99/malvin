@@ -48,6 +48,9 @@ pub(crate) fn prefer_primary_errors_over_timing(
 pub struct WorkflowConfig {
     pub max_loops: usize,
     pub run_learn: bool,
+    /// Skip learn phase if elapsed time is below this threshold (milliseconds).
+    /// Default: `300_000` (5 minutes). Set to 0 to always run learn when `run_learn` is true.
+    pub learn_min_elapsed_ms: u64,
 }
 
 /// Runs implement, two review phases, and optional learn pass.
@@ -61,9 +64,27 @@ pub struct Orchestrator<'a> {
     pub grounding_backup: Option<std::path::PathBuf>,
 }
 
+/// Returns true if learn should run given threshold and elapsed time.
+/// Threshold of 0 means always run. Otherwise, run only if elapsed >= threshold.
+#[must_use]
+pub const fn should_run_learn_check(threshold_ms: u64, elapsed_ms: u64) -> bool {
+    threshold_ms == 0 || elapsed_ms >= threshold_ms
+}
+
 impl Orchestrator<'_> {
     fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
         self.client.attach_run_timing_for_session()
+    }
+
+    fn should_run_learn(&self) -> bool {
+        let elapsed_ms = self.client.timing.as_ref().map_or(0, |t| {
+            let d = t
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .elapsed_so_far();
+            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+        });
+        should_run_learn_check(self.config.learn_min_elapsed_ms, elapsed_ms)
     }
 
     fn emit_run_timing_artifact(
@@ -123,7 +144,7 @@ impl Orchestrator<'_> {
         })
         .await?;
 
-        if self.config.run_learn {
+        if self.config.run_learn && self.should_run_learn() {
             (self.progress_callback)("Learn");
             self.run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
                 .await?;

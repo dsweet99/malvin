@@ -234,6 +234,7 @@ fn smoke_orchestrator_instantiation() {
         config: WorkflowConfig {
             max_loops: 1,
             run_learn: false,
+            learn_min_elapsed_ms: 0,
         },
         progress_callback: Box::new(|_: &str| {}),
         grounding_backup: None,

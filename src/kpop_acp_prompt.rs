@@ -116,4 +116,14 @@ mod tests {
 
         assert!(!kpop_creative_enabled(f64::INFINITY));
     }
+
+    #[test]
+    fn skip_mbc2_for_interaction_index_always_false_when_min_is_zero() {
+        use super::skip_mbc2_for_interaction_index;
+
+        assert_eq!(CREATIVE_MIN_INTERACTION, 0, "test assumes min is 0");
+        assert!(!skip_mbc2_for_interaction_index(0));
+        assert!(!skip_mbc2_for_interaction_index(1));
+        assert!(!skip_mbc2_for_interaction_index(100));
+    }
 }

@@ -137,3 +137,21 @@ fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_write_outgoing_prompt_do);
     let _ = stringify!(DoOutgoingTraceParts);
 }
+
+#[tokio::test]
+async fn trace_write_tagged_body_writes_prefixed_lines() {
+    let tmp = tempfile::NamedTempFile::new().unwrap();
+    let path = tmp.path();
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .await
+        .unwrap();
+    trace_write_tagged_body(&mut file, "test", "line1\nline2").await.unwrap();
+    drop(file);
+    let content = std::fs::read_to_string(path).unwrap();
+    assert!(content.contains("test"), "should include stem");
+    assert!(content.contains("line1"), "should include line1");
+    assert!(content.contains("line2"), "should include line2");
+}

@@ -31,7 +31,7 @@ struct DoCoderRun {
 pub struct DoArgs {
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// Prepend `header.md` and allow optional injected repo style (legacy non-raw behavior).
+    /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.

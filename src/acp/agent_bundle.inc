@@ -157,6 +157,16 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn session_init_failure_is_retriable() {
+        assert!(
+            agent_string_is_retriable(
+                "ACP `session/new` failed: code=-32603; message=\"Internal error\"; detail=\"Failed to initialize session services\""
+            ),
+            "transient ACP session initialization failures should be retried"
+        );
+    }
+
+    #[test]
     fn validation_timeout_field_name_is_not_retriable() {
         assert!(
             !agent_string_is_retriable("validation failed: timeout_ms must be positive"),
