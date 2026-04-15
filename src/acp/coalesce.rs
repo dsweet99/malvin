@@ -1,5 +1,5 @@
 // Verbose/trace coalescing for `session/update` chunks.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SessionUpdateChunkKind {
     Message,
     Thought,
@@ -130,89 +130,43 @@ pub(crate) struct TraceChunkCoalescer {
 }
 
 impl TraceChunkCoalescer {
-    pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) -> Vec<String> {
+    pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) -> Vec<(SessionUpdateChunkKind, String)> {
         let (buf, buf_chars) = match kind {
             SessionUpdateChunkKind::Message => (&mut self.message, &mut self.message_chars),
             SessionUpdateChunkKind::Thought => (&mut self.thought, &mut self.thought_chars),
         };
         let mut emissions = Vec::new();
         coalesce_append_chunk(buf, buf_chars, chunk, &mut emissions);
-        emissions
+        emissions.into_iter().map(|line| (kind, line)).collect()
     }
 
-    pub fn flush_all(&mut self) -> Vec<String> {
+    pub fn flush_all(&mut self) -> Vec<(SessionUpdateChunkKind, String)> {
         let mut out = Vec::new();
-        Self::flush_stream(&mut self.message, &mut self.message_chars, &mut out);
-        Self::flush_stream(&mut self.thought, &mut self.thought_chars, &mut out);
+        Self::flush_stream(
+            SessionUpdateChunkKind::Message,
+            &mut self.message,
+            &mut self.message_chars,
+            &mut out,
+        );
+        Self::flush_stream(
+            SessionUpdateChunkKind::Thought,
+            &mut self.thought,
+            &mut self.thought_chars,
+            &mut out,
+        );
         out
     }
 
-    fn flush_stream(buf: &mut String, buf_chars: &mut usize, out: &mut Vec<String>) {
+    fn flush_stream(
+        kind: SessionUpdateChunkKind,
+        buf: &mut String,
+        buf_chars: &mut usize,
+        out: &mut Vec<(SessionUpdateChunkKind, String)>,
+    ) {
         if !buf.is_empty() {
-            out.push(std::mem::take(buf));
+            out.push((kind, std::mem::take(buf)));
             *buf_chars = 0;
         }
-    }
-}
-
-fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, tee_stdout: bool) {
-    if !tee_stdout {
-        return;
-    }
-    if writer.raw_output {
-        println!("{line}");
-        return;
-    }
-    match writer.stdout_replacement {
-        Some(rep) => {
-            if !writer.placeholder_emitted {
-                crate::output::print_stdout_acp_tee_line(
-                    crate::output::AcpTeeDirection::FromAgent,
-                    &writer.who,
-                    rep,
-                );
-                writer.placeholder_emitted = true;
-            }
-        }
-        None => crate::output::print_stdout_acp_tee_line(
-            crate::output::AcpTeeDirection::FromAgent,
-            &writer.who,
-            line,
-        ),
-    }
-}
-
-pub(crate) async fn trace_file_write_line(
-    writer: &mut PromptTraceWriter,
-    line: &str,
-    tee_stdout: bool,
-) {
-    let formatted = crate::output::format_line(&writer.who, line);
-    if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
-        warn!(error = %e, "trace write failed");
-        return;
-    }
-    if let Err(e) = writer.file.write_all(b"\n").await {
-        warn!(error = %e, "trace newline failed");
-        return;
-    }
-    trace_tee_stdout_line(writer, line, tee_stdout);
-}
-
-pub(crate) async fn write_trace_line_coalesced(
-    trace_file: &mut PromptTraceWriter,
-    coalesce: &mut TraceChunkCoalescer,
-    parsed: Option<&Value>,
-    tee_stdout: bool,
-) {
-    if let Some((kind, text)) = parsed.and_then(session_update_chunk_parts) {
-        for tl in coalesce.feed(kind, text.as_str()) {
-            trace_file_write_line(trace_file, &tl, tee_stdout).await;
-        }
-        return;
-    }
-    for tl in coalesce.flush_all() {
-        trace_file_write_line(trace_file, &tl, tee_stdout).await;
     }
 }
 
@@ -240,8 +194,5 @@ fn kiss_stringify_coalesce_b() {
     let _ = stringify!(TraceChunkCoalescer);
     let _ = stringify!(TraceChunkCoalescer::feed);
     let _ = stringify!(TraceChunkCoalescer::flush_all);
-    let _ = stringify!(trace_tee_stdout_line);
-    let _ = stringify!(trace_file_write_line);
-    let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(VerboseTraceCoalesceState);
 }

@@ -209,8 +209,8 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
     {
         let mut g = trace_writer.lock().await;
         if let Some(ref mut f) = *g {
-            for tl in trace_coalesce.flush_all() {
-                crate::acp::trace_file_write_line(f, &tl, tee_trace_stdout).await;
+            for (kind, tl) in trace_coalesce.flush_all() {
+                crate::acp::trace_file_write_line(f, &tl, tee_trace_stdout, Some(kind)).await;
             }
         }
     }

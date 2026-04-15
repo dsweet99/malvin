@@ -285,7 +285,7 @@ fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     assert!(c.feed(SessionUpdateChunkKind::Message, "lo").is_empty());
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
-    assert_eq!(fin[0], "hello");
+    assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "hello".to_string()));
 }
 
 #[test]
@@ -294,7 +294,10 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
     let out = c.feed(SessionUpdateChunkKind::Message, "yes\nyes\n");
     assert_eq!(
         out,
-        vec!["yes", "yes"],
+        vec![
+            (SessionUpdateChunkKind::Message, "yes".to_string()),
+            (SessionUpdateChunkKind::Message, "yes".to_string()),
+        ],
         "consecutive identical lines must not be deduplicated"
     );
 }
@@ -318,7 +321,7 @@ async fn write_trace_line_coalesced_skips_non_chunk_lines() {
         raw_output: false,
     };
     let mut c = TraceChunkCoalescer::default();
-    crate::acp::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
+    super::trace_line_write::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     assert!(s.is_empty(), "non-chunk lines should not be written");
@@ -342,13 +345,57 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         placeholder_emitted: false,
         raw_output: false,
     };
-    crate::acp::trace_file_write_line(&mut writer, "hello", false).await;
+    crate::acp::trace_file_write_line(&mut writer, "hello", false, None).await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     let inner = crate::output::format_log_tag_inner("review_1");
     assert!(
         s.contains(&format!(":[{inner}]: hello\n")),
         "expected prompt-prefixed trace line, got {s:?}"
+    );
+}
+
+#[tokio::test]
+async fn raw_trace_file_write_line_skips_thought_chunks() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-raw-thought.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "raw".to_string(),
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: true,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "internal reasoning",
+        false,
+        Some(SessionUpdateChunkKind::Thought),
+    )
+    .await;
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "final answer",
+        false,
+        Some(SessionUpdateChunkKind::Message),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        !s.contains("internal reasoning"),
+        "raw output should suppress thought chunks, got {s:?}"
+    );
+    assert!(
+        s.contains("final answer"),
+        "raw output should keep message chunks, got {s:?}"
     );
 }
 
@@ -359,10 +406,11 @@ fn trace_chunk_coalescer_emits_at_cap_like_verbose() {
     let chunk = "x".repeat(max + 10);
     let out = c.feed(SessionUpdateChunkKind::Message, &chunk);
     assert_eq!(out.len(), 1);
-    assert_eq!(out[0].chars().count(), max);
+    assert_eq!(out[0].0, SessionUpdateChunkKind::Message);
+    assert_eq!(out[0].1.chars().count(), max);
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
-    assert_eq!(fin[0].len(), 10);
+    assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "x".repeat(10)));
 }
 
 #[test]
