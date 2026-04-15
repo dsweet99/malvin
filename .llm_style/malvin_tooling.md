@@ -178,7 +178,24 @@ TRIGGER: ACP tee direction colors
 ADVICE: Live tee only: **`print_stdout_acp_tee_line`** in **`src/output/acp_tee.rs`** — **`AcpTeeDirection::ToAgent`**: bright **green** `[who]:` prefix (prompt text to agent) from **`trace_write_outgoing_prompt`** (`session_trace.rs`); **`FromAgent`**: bright **magenta** (agent stream / learn placeholder) from **`trace_tee_stdout_line`** (`coalesce.rs`). Payload text stays unstyled. **Disk** traces still **`format_line`** only (no escapes).
 
 TRIGGER: output kiss lines_per_file split  
-ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, split into **`mod.rs`** + focused sibling (e.g. **`acp_tee.rs`**) instead of shrinking behavior; re-export at **`output` module** root.
+ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, split into **`mod.rs`** + focused sibling (e.g. **`acp_tee.rs`**, **`terminal_wrap.rs`**) instead of shrinking behavior; re-export at **`output` module** root.
+
+### Terminal wrap (TTY)
+
+TRIGGER: terminal_wrap module  
+ADVICE: **`src/output/terminal_wrap.rs`** — `terminal_columns()` reads **`COLUMNS`** (**20–500** inclusive; else **80**), `stdout_is_wrappable_terminal()` (`stdout().is_terminal()`), `wrap_words_bounded(max, text)` (word boundaries + char splits for overlong tokens). **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
+
+TRIGGER: print_stdout wrap rule  
+ADVICE: **`print_stdout_line`** / **`print_stderr_line`**: wrap only when **`stdout`/`stderr`** is a TTY **and** `line.chars().count() > max_payload`, where **`max_payload = terminal_columns().saturating_sub(prefix_len).max(1)`** and **`prefix_len`** = **`format_line_with_timestamp(ts, who, "").chars().count()`** (plain prefix). **Same `ts`** for all continuation lines. **Pipes** (`!is_terminal()`): one unwrapped line, original spacing preserved when no wrap path runs.
+
+TRIGGER: acp_tee wrap  
+ADVICE: **`print_stdout_acp_tee_line`** (`acp_tee.rs`): same **`max_payload`** / prefix rule as **`print_stdout_line`**; ANSI tee colors unchanged on each physical line.
+
+TRIGGER: raw trace stdout wrap  
+ADVICE: **`trace_tee_stdout_line`** (`src/acp/trace_line_write.rs`): if **`writer.raw_output`**, wrap **plain** stdout at **`terminal_columns()`** without malvin prefix. **`trace_file_write_line`** still **`write_all(format_line(...))`** to disk **unwrapped**—on-disk format stable.
+
+TRIGGER: coalesce not TTY wrap  
+ADVICE: **`ACP_VERBOSE_COALESCE_MAX`** and **`coalesce_append_chunk`** (`coalesce.rs`) buffer **JSON `session/update` chunks** for trace + verbose **`tracing`**; **do not** treat flush-at-125-scalars as terminal width—TTY reflow is **`wrap_words_bounded`** only.
 
 TRIGGER: kiss static coverage per module  
 ADVICE: If **`kiss check`** reports **test_coverage** gaps for a file, add **`#[cfg(test)]`** **`stringify!`** (and minimal smoke calls) **in that same source file**—not only **`src/coverage_kiss.rs`**—so static coverage attributes to the implementation module.

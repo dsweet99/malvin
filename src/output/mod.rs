@@ -1,15 +1,19 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
 mod acp_tee;
+pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
     AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp,
 };
 
-use std::io::{IsTerminal, stdout};
+use std::io::{IsTerminal, stderr, stdout};
 use std::sync::OnceLock;
 
 use chrono::Local;
+
+use self::terminal_wrap::{stdout_is_wrappable_terminal, terminal_columns, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
@@ -57,7 +61,7 @@ pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
     format!("{ts}:[{inner}]: {line}")
 }
 
-fn timestamp_now_string() -> String {
+pub(crate) fn timestamp_now_string() -> String {
     let now = Local::now();
     format!(
         "{}.{:03}",
@@ -92,16 +96,41 @@ fn stdout_use_color() -> bool {
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    let s = if stdout_use_color() {
-        format_line_with_timestamp_ansi(&timestamp_now_string(), who, line)
-    } else {
-        format_line(who, line)
-    };
-    println!("{s}");
+    let ts = timestamp_now_string();
+    let prefix_len = format_line_with_timestamp(&ts, who, "").chars().count();
+    let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
+    let wrap = stdout_is_wrappable_terminal() && line.chars().count() > max_payload;
+    if !wrap {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_ansi(&ts, who, line)
+        } else {
+            format_line_with_timestamp(&ts, who, line)
+        };
+        println!("{s}");
+        return;
+    }
+    for seg in wrap_words_bounded(max_payload, line) {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_ansi(&ts, who, &seg)
+        } else {
+            format_line_with_timestamp(&ts, who, &seg)
+        };
+        println!("{s}");
+    }
 }
 
 pub fn print_stderr_line(who: &str, line: &str) {
-    eprintln!("{}", format_line(who, line));
+    let ts = timestamp_now_string();
+    let prefix_len = format_line_with_timestamp(&ts, who, "").chars().count();
+    let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
+    let wrap = stderr().is_terminal() && line.chars().count() > max_payload;
+    if !wrap {
+        eprintln!("{}", format_line_with_timestamp(&ts, who, line));
+        return;
+    }
+    for seg in wrap_words_bounded(max_payload, line) {
+        eprintln!("{}", format_line_with_timestamp(&ts, who, &seg));
+    }
 }
 
 pub fn print_stdout_text(who: &str, text: &str) {
@@ -213,5 +242,7 @@ mod tests {
         let _ = stringify!(super::print_outgoing_prompt_log);
         let _ = stringify!(super::is_command_prelude_line);
         let _ = stringify!(super::logical_lines);
+        let _ = stringify!(super::print_stdout_acp_tee_line);
+        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp);
     }
 }

@@ -1,7 +1,7 @@
 //! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
 use super::{ANSI_DIM, ANSI_RESET};
-use super::{format_line, format_log_tag_inner, stdout_use_color, timestamp_now_string};
+use super::{format_log_tag_inner, stdout_use_color, timestamp_now_string};
 
 const ANSI_BRIGHT_GREEN: &str = "\x1b[92m";
 const ANSI_BRIGHT_MAGENTA: &str = "\x1b[95m";
@@ -37,12 +37,40 @@ pub fn format_line_with_timestamp_acp_ansi(
 /// Stdout tee for ACP trace lines: when color is enabled, outbound (`>`) vs inbound (`<`) use
 /// different ANSI colors for the `[who]:` prefix; payload text stays unstyled.
 pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &str) {
-    let s = if stdout_use_color() {
-        format_line_with_timestamp_acp_ansi(&timestamp_now_string(), direction, who, line)
-    } else {
-        format_line(who, line)
-    };
-    println!("{s}");
+    let ts = timestamp_now_string();
+    print_stdout_acp_tee_line_with_timestamp(direction, who, line, &ts);
+}
+
+/// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
+pub fn print_stdout_acp_tee_line_with_timestamp(
+    direction: AcpTeeDirection,
+    who: &str,
+    line: &str,
+    ts: &str,
+) {
+    let prefix_len = super::format_line_with_timestamp(ts, who, "").chars().count();
+    let max_payload = super::terminal_wrap::terminal_columns()
+        .saturating_sub(prefix_len)
+        .max(1);
+    let wrap = super::terminal_wrap::stdout_is_wrappable_terminal()
+        && line.chars().count() > max_payload;
+    if !wrap {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_acp_ansi(ts, direction, who, line)
+        } else {
+            super::format_line_with_timestamp(ts, who, line)
+        };
+        println!("{s}");
+        return;
+    }
+    for seg in super::terminal_wrap::wrap_words_bounded(max_payload, line) {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_acp_ansi(ts, direction, who, &seg)
+        } else {
+            super::format_line_with_timestamp(ts, who, &seg)
+        };
+        println!("{s}");
+    }
 }
 
 #[cfg(test)]
@@ -77,5 +105,6 @@ mod tests {
         let _ = stringify!(AcpTeeDirection::FromAgent);
         let _ = stringify!(super::format_line_with_timestamp_acp_ansi);
         let _ = stringify!(super::print_stdout_acp_tee_line);
+        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp);
     }
 }
