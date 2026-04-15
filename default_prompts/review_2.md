@@ -2,7 +2,7 @@
 ---
 {{ kpop }}
 
-MANDATORY: Use the Task tool to launch up to 4 parallel subagents for:
+MANDATORY: Use the Task tool to launch up to 3 parallel subagents for:
 - Exploring different areas of the codebase simultaneously
 - Testing multiple hypotheses in parallel
 Do NOT use sequential tool calls where parallel subagents would work.

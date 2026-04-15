@@ -166,12 +166,10 @@ impl PromptStore {
             ))
         })?;
         let mut render_context: HashMap<String, String> = context.clone();
-        let header_raw = self.load_header();
-        let header_expanded = render_template(&header_raw, &render_context);
-        let rules_raw = self.load_coding_rules();
-        let rules_expanded = render_template(&rules_raw, &render_context);
-        let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
-        render_context.insert("coding_rules".to_string(), merged);
+        render_context.insert(
+            "coding_rules".to_string(),
+            merged_coding_rules(self, context),
+        );
         Ok(render_template(&prompt_text, &render_context))
     }
 
@@ -210,6 +208,20 @@ impl PromptStore {
             .trim()
             .to_string()
     }
+}
+
+/// Merged `header.md` + `coding_rules.md` text that [`PromptStore::render`] injects as `coding_rules`.
+///
+/// Use when assembling a prompt without [`PromptStore::render`] (for example prepending rules to a
+/// [`PromptStore::render_prompt_only`] body so embedding contexts do not duplicate `{{ coding_rules }}`).
+#[allow(clippy::implicit_hasher, clippy::must_use_candidate)]
+pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String>) -> String {
+    let render_context: HashMap<String, String> = context.clone();
+    let header_raw = store.load_header();
+    let header_expanded = render_template(&header_raw, &render_context);
+    let rules_raw = store.load_coding_rules();
+    let rules_expanded = render_template(&rules_raw, &render_context);
+    merge_header_and_coding_rules(&header_expanded, &rules_expanded)
 }
 
 #[allow(unused_imports)]

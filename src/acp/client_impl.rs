@@ -1,7 +1,6 @@
 /// Repo-relative path (under the workflow working directory) for optional injected style text.
 ///
 /// [`AgentClient::new`](crate::AgentClient::new) sets [`AgentClient`](crate::AgentClient)’s
-/// `style_prompt_path` to this string by default. Documented in repository `grounding.md`.
 pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = "coder_style.md";
 
 /// Read optional repo-local style text (trimmed) with the same rules as coder prompt composition.

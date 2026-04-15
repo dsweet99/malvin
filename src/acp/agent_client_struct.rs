@@ -1,7 +1,11 @@
 /// ACP-backed agent with grounding-aligned session lifetimes.
 ///
-/// Uses one long-lived **coder** session (implement → concerns → learn) and one **reviewer**
-/// session per attempt (review + kpop), torn down after each pair.
+/// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
+/// (unless skipped), `implement`, optional `learn`, and `concerns` prompts that run only inside
+/// each review phase—after a reviewer attempt fails to produce LGTM, not as a step between
+/// implement and learn. Each review attempt uses a short-lived **reviewer** session for
+/// `run_reviewer_review`, then tears it down. KPOP is driven by `run_kpop_flow` /
+/// `run_kpop_flow_once`, not the reviewer-session API.
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,

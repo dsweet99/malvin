@@ -40,12 +40,7 @@ pub(crate) async fn trace_write_invocation_header(
     Ok(())
 }
 
-/// Whether to mirror outgoing `session/prompt` lines (`>` tags) to stdout when tee is enabled.
-///
-/// Always returns `false`: outgoing prompt body text is never echoed line-by-line to stdout.
-/// The trace file still records full `>{stem}` lines. A single `[{stem}...]` bracket announcement
-/// is printed via [`crate::output::print_outgoing_prompt_log`] after the trace write.
-/// See repository root `grounding.md`, section **## Outgoing prompts**.
+
 #[allow(dead_code)]
 pub(crate) const fn acp_tee_echo_outgoing_prompt_lines(_tee_stdout: bool, _stem: &str) -> bool {
     false

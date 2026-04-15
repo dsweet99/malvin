@@ -32,14 +32,6 @@ pub fn kpop_creative_enabled(p_creative: f64) -> bool {
     p_creative.is_finite() && p_creative > 0.0
 }
 
-/// Outbound `session/prompt` count for standalone `malvin kpop` (main + optional learn).
-///
-/// Creative mode only changes prompt text via [`kpop_acp_user_prompt`], not the number of rounds.
-#[must_use]
-pub fn kpop_standalone_outbound_prompt_count(has_learn: bool) -> u32 {
-    u32::from(has_learn).saturating_add(1)
-}
-
 /// Inputs for [`kpop_acp_user_prompt`].
 #[derive(Debug, Clone, Copy)]
 pub struct KpopAcpPromptPick<'a> {
@@ -100,14 +92,6 @@ mod tests {
         };
         let out = kpop_acp_user_prompt(&pick, &mut rng);
         assert_eq!(out, "DEFAULT");
-    }
-
-    #[test]
-    fn kpop_acp_standalone_prompt_count_matches_main_plus_optional_learn() {
-        use super::kpop_standalone_outbound_prompt_count;
-
-        assert_eq!(kpop_standalone_outbound_prompt_count(false), 1);
-        assert_eq!(kpop_standalone_outbound_prompt_count(true), 2);
     }
 
     #[test]

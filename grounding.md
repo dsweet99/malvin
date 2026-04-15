@@ -7,6 +7,7 @@ Malvin drives a structured **implementation and review** workflow for software w
 ## Workflows
 
 - **`malvin code`**
+- If there is existing code but no .kissconfig, run `kiss clamp`.
 - header; check_plan (skip with --trust-the-plan)
 - header; coding_rules; implement
 - header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times

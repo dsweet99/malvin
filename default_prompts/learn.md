@@ -1,3 +1,4 @@
+{{ coding_rules }}
 
 1) What *new*, interesting/surprising things did you learn in this chat about?:
 - Codebase structure (where things live)

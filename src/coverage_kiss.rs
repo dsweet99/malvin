@@ -123,7 +123,6 @@ fn kiss_stringify_orchestrator() {
 fn kiss_stringify_kpop_acp_prompt() {
     let _ = stringify!(crate::kpop_acp_prompt::kpop_creative_enabled);
     let _ = stringify!(crate::kpop_acp_prompt::kpop_acp_user_prompt);
-    let _ = stringify!(crate::kpop_acp_prompt::kpop_standalone_outbound_prompt_count);
     let _ = stringify!(crate::kpop_acp_prompt::KpopAcpPromptPick);
     let _ = stringify!(crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION);
 }

@@ -11,7 +11,5 @@ Repeat until you think you've solved the problem:
 Log your hypotheses and test results -- as they become available -- to a file named {{ kpop_log_dir }}/exp_log_{name}.md, where
 you choose a semantically-reasonable name, unless the user specifies one.
 
-You have a budget of 10 hypotheses, unless the user specifies otherwise.
-
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
 

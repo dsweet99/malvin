@@ -8,6 +8,7 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
+use super::LEARN_MIN_ELAPSED_MS;
 use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
 use malvin::acp::{AgentClient, KpopFlowOnceArgs};
 use malvin::artifacts::{
@@ -16,7 +17,7 @@ use malvin::artifacts::{
 };
 use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::prompts::{PromptError, PromptStore};
+use malvin::prompts::{PromptError, PromptStore, merged_coding_rules};
 
 fn merge_kpop_acp_with_grounding_restore(
     primary: Result<(), String>,
@@ -67,10 +68,12 @@ struct KpopAfterStartup<'a> {
 
 async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Result<(), String> {
     let context = workflow_context(ctx.artifacts, ctx.store);
-    let kpop_body = ctx
+    let kpop_core = ctx
         .store
-        .render("kpop.md", &context)
+        .render_prompt_only("kpop.md", &context)
         .map_err(|e: PromptError| e.0)?;
+    let rules = merged_coding_rules(ctx.store, &context);
+    let kpop_body = format!("{}\n\n{}", rules.trim_end(), kpop_core.trim_end());
     let combined = kpop_combined_prompt(&kpop_body, ctx.text, ctx.kpop.max_loops);
     let kpop_log = ctx.artifacts.log_path("kpop");
     let input = KpopAcpInput {
@@ -81,6 +84,7 @@ async fn kpop_run_prompt_and_finalize_timing(ctx: KpopAfterStartup<'_>) -> Resul
         context: &context,
         run_learn: ctx.workflow.run_learn,
         p_creative: ctx.kpop.p_creative,
+        learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
     };
 
     // Match `Orchestrator::run`: run-timing stdout summary + JSON after the ACP body (grounding.md).
@@ -97,6 +101,7 @@ pub struct KpopAcpInput<'a> {
     context: &'a HashMap<String, String>,
     run_learn: bool,
     p_creative: f64,
+    learn_min_elapsed_ms: u64,
 }
 
 pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> Result<(), String> {
@@ -120,6 +125,7 @@ pub async fn kpop_run_acp(client: &mut AgentClient, input: KpopAcpInput<'_>) -> 
         learn: learn_ref,
         p_creative: input.p_creative,
         mbc2_body: &mbc2_body,
+        learn_min_elapsed_ms: input.learn_min_elapsed_ms,
     };
     client.run_kpop_flow(&flow).await.map_err(|e| e.0)
 }

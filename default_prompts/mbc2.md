@@ -1,3 +1,5 @@
+{{ coding_rules }}
+
 # MBC2
 You are stuck producing small local variations of the same idea.
 

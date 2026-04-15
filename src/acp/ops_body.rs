@@ -78,6 +78,9 @@ pub struct KpopFlowOnceArgs<'a> {
     pub learn: Option<(&'a str, &'a Path)>,
     pub p_creative: f64,
     pub mbc2_body: &'a str,
+    /// Skip learn if elapsed time is below this threshold (milliseconds).
+    /// Uses `grounding.md` "unless short" rule. Set to 0 to always run learn.
+    pub learn_min_elapsed_ms: u64,
 }
 
 pub(crate) async fn run_kpop_flow_once(
@@ -133,37 +136,49 @@ pub(crate) async fn run_kpop_flow_once(
     }
 
     let outbound_prompts: u32 = if let Some((learn_body, learn_log)) = args.learn {
-        let learn_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
-            &crate::kpop_acp_prompt::KpopAcpPromptPick {
-                interaction_index: 1,
-                p_creative: args.p_creative,
-                default_prompt: learn_body,
-                mbc2_body: args.mbc2_body,
-            },
-            &mut rng,
-        );
-        if let Err(e) = round(
-            &s,
-            client,
-            &learn_prompt,
-            learn_log,
-            "learn",
-            crate::run_timing::TimingPhase::Learn,
-        )
-        .await
-        {
-            let _ = s.shutdown().await;
-            return Err(e);
+        let elapsed_ms = client.timing.as_ref().map_or(0, |t| {
+            let d = t
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .elapsed_so_far();
+            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+        });
+        let should_learn =
+            crate::orchestrator::should_run_learn_check(args.learn_min_elapsed_ms, elapsed_ms);
+        if should_learn {
+            let learn_prompt = crate::kpop_acp_prompt::kpop_acp_user_prompt(
+                &crate::kpop_acp_prompt::KpopAcpPromptPick {
+                    interaction_index: 1,
+                    p_creative: args.p_creative,
+                    default_prompt: learn_body,
+                    mbc2_body: args.mbc2_body,
+                },
+                &mut rng,
+            );
+            if let Err(e) = round(
+                &s,
+                client,
+                &learn_prompt,
+                learn_log,
+                "learn",
+                crate::run_timing::TimingPhase::Learn,
+            )
+            .await
+            {
+                let _ = s.shutdown().await;
+                return Err(e);
+            }
+            2
+        } else {
+            1
         }
-        2
     } else {
         1
     };
 
-    debug_assert_eq!(
-        outbound_prompts,
-        crate::kpop_acp_prompt::kpop_standalone_outbound_prompt_count(args.learn.is_some()),
-        "standalone KPOP must match main (+ optional learn) only"
+    debug_assert!(
+        outbound_prompts == 1 || outbound_prompts == 2,
+        "standalone KPOP: 1 (main only) or 2 (main + learn)"
     );
 
     s.shutdown().await.map_err(AgentError)

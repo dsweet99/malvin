@@ -5,6 +5,7 @@ mod args;
 mod command_log_tests;
 mod do_flow;
 mod init_cmd;
+mod kiss_clamp;
 mod kpop_flow;
 mod models_cmd;
 mod shared_opts;
@@ -130,6 +131,8 @@ fn prepare_code_run(
 
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
+
+    kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir)?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
 
