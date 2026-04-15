@@ -97,7 +97,7 @@ pub fn echo_primary_to_stdout(
     Ok(())
 }
 
-/// Echo the primary run artifact, write `command.log` / optional `Command:` line, then print `Logs: …`.
+/// Write `command.log` / optional `Command:` line, echo the primary run artifact, then print `Logs: …`.
 ///
 /// Shared by `malvin code`, `malvin kpop`, and `malvin do` so startup output stays consistent.
 pub fn emit_run_startup_sequence(
@@ -105,9 +105,9 @@ pub fn emit_run_startup_sequence(
     tee_startup_stdout: bool,
     cli_request: &str,
 ) -> Result<(), String> {
+    emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
     let tag = startup_request_tag_label(cli_request);
     echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout, &tag)?;
-    emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
     print_stdout_line(
         MALVIN_WHO,
         &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?),
