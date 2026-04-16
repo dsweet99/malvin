@@ -50,7 +50,8 @@ pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {
 
 pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(result_path).ok()?;
-    for line in content.lines() {
+    let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
+    for line in text.lines() {
         if let Some(rest) = line.strip_prefix("ABORT:") {
             return Some(rest.trim_start().to_string());
         }
@@ -110,6 +111,16 @@ mod helper_tests {
         let p = tmp.path().join("result.md");
         std::fs::write(&p, "ok\n").unwrap();
         assert!(check_abort(&p).is_none());
+    }
+
+    #[test]
+    fn check_abort_strips_utf8_bom_before_matching_abort_line() {
+        let tmp = tempfile::tempdir().unwrap();
+        let p = tmp.path().join("result.md");
+        let mut bytes: Vec<u8> = vec![0xEF, 0xBB, 0xBF];
+        bytes.extend_from_slice(b"ABORT: bom case\n");
+        std::fs::write(&p, bytes).unwrap();
+        assert_eq!(check_abort(&p).as_deref(), Some("bom case"));
     }
 
     #[test]
