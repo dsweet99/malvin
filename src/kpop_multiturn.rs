@@ -49,6 +49,10 @@ pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
 }
 
 impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
+    pub fn exp_log_path(&self) -> &std::path::Path {
+        &self.exp_log_path
+    }
+
     pub fn new(builder: B, exp_log_path: PathBuf, max_hypotheses: usize, p_creative: f64) -> Result<Self, String> {
         Self::from_params(KpopMultiturnParams {
             builder,

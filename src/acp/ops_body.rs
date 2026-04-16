@@ -192,6 +192,16 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             let _ = s.shutdown().await;
             return Err(e);
         }
+        let exp_text = crate::kpop_schedule::read_exp_log_text(state.exp_log_path())
+            .map_err(AgentError)?;
+        let n = crate::kpop_schedule::hypotheses_emitted(&exp_text);
+        if n > state.max_hypotheses {
+            let _ = s.shutdown().await;
+            return Err(AgentError(format!(
+                "experiment log counts {n} hypothesis steps, exceeding --max-hypotheses ({})",
+                state.max_hypotheses
+            )));
+        }
         if is_kpop_block {
             state.record_kpop_block_prompt_completed();
         } else {
