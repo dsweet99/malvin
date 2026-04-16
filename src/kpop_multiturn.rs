@@ -63,7 +63,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
         let text = read_exp_log_text(&params.exp_log_path)?;
         let kpop_before = count_kpop_entries(&text);
         let mean = block_mean_from_p_creative(params.p_creative);
-        let n = poisson_block_size(&mut params.rng, mean);
+        let n = poisson_block_size(&mut params.rng, mean).max(1);
         let phase = Phase::KpopBlock {
             target_n: n,
             kpop_before,
@@ -196,17 +196,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
             self.start_new_block_after_mbc2()?;
             return Ok(NextStep::Again);
         }
-        if *sent == 0 {
-            return self
-                .builder
-                .mbc2_pure()
-                .map(|s| NextStep::Emit(MultiturnPrompt::Mbc2(s)));
-        }
-        if *sent == 1 {
-            if hypotheses_emitted(text) >= self.max_hypotheses {
-                self.start_new_block_after_mbc2()?;
-                return Ok(NextStep::Again);
-            }
+        if *sent < 2 {
             return self
                 .builder
                 .mbc2_pure()

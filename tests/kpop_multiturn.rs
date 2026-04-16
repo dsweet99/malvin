@@ -303,9 +303,9 @@ impl KpopMultiturnPrompts for CaptureWants {
 fn overshoot_credit_adds_to_next_block_target() {
     let mean = block_mean_from_p_creative(0.0);
     let mut rng = StdRng::seed_from_u64(42);
-    let tn1 = poisson_block_size(&mut rng, mean);
+    let tn1 = poisson_block_size(&mut rng, mean).max(1);
     let overshoot = 3usize;
-    let expected_n2 = overshoot + poisson_block_size(&mut rng, mean);
+    let expected_n2 = (overshoot + poisson_block_size(&mut rng, mean)).max(1);
 
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");

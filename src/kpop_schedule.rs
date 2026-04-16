@@ -24,7 +24,7 @@ pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
         k += 1;
         p *= rng.r#gen::<f64>();
         if p <= l {
-            return (k - 1).max(1);
+            return k - 1;
         }
     }
 }
@@ -74,7 +74,7 @@ pub fn agent_declared_success(text: &str) -> bool {
         let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
             return false;
         };
-        rest.is_empty() || rest.starts_with(char::is_whitespace)
+        rest.trim().is_empty()
     })
 }
 
@@ -106,6 +106,19 @@ mod tests {
     }
 
     #[test]
+    fn poisson_draw_can_be_zero() {
+        let mut rng = StdRng::seed_from_u64(2026);
+        let mut saw_zero = false;
+        for _ in 0..4000 {
+            if poisson_block_size(&mut rng, 0.5) == 0 {
+                saw_zero = true;
+                break;
+            }
+        }
+        assert!(saw_zero);
+    }
+
+    #[test]
     fn counts_steps_in_exp_log() {
         let text = "## Step 1 — KPOP x\n## Step 2 — MBC2 y\n## Step 3 — KPOP z\n";
         assert_eq!(count_kpop_entries(text), 2);
@@ -122,6 +135,12 @@ mod tests {
     #[test]
     fn success_marker_rejects_heading_prefix_extensions() {
         assert!(!agent_declared_success("## KPOP_SOLVED_extra\n"));
+    }
+
+    #[test]
+    fn success_marker_rejects_non_empty_remainder_after_keyword() {
+        assert!(!agent_declared_success("## KPOP_SOLVED  not actually solved\n"));
+        assert!(!agent_declared_success("## KPOP_SOLVED\tstill working\n"));
     }
 
     #[test]

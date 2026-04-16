@@ -16,8 +16,10 @@ Malvin drives a structured **implementation and review** workflow for software w
 
 - **`malvin kpop`**
 - header
-- kpop
+- kpop; break if agent declares success
+- mbc2 between kpop blocks (rate controlled by --p-creative)
 - learn (unless the run is short)
+- constraint: (kpop + mbc2) <= --max_hypotheses 
 
 - **`malvin do`**
 - prompt
