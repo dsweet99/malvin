@@ -1,7 +1,7 @@
 //! `kiss` coverage: static `stringify!` refs for CLI symbols (kept out of `mod.rs` for line budget).
 
 #[test]
-fn kiss_stringify_cli_symbols() {
+fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::shared_opts::SharedOpts);
     let _ = stringify!(crate::cli::Cli);
     let _ = stringify!(crate::cli::shared_opts::GlobalOpts);
@@ -19,6 +19,13 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(crate::cli::run_do);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
+    let _ = stringify!(crate::cli::kpop_flow::KpopPrepared);
+    let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_run_acp_multiturn);
+}
+
+#[test]
+fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::prepare_prompt_store);
     let _ = stringify!(crate::cli::prepare_kpop_prompt_store);
     let _ = stringify!(crate::cli::echo_primary_to_stdout);

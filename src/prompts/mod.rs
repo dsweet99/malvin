@@ -103,7 +103,7 @@ impl PromptStore {
         )))
     }
 
-    /// Ensure prompts needed for standalone `malvin kpop` exist (`header.md`, `kpop.md`, and `learn.md` when learning runs).
+    /// Ensure prompts needed for standalone `malvin kpop` exist (`header.md`, `kpop_common.md`, `kpop_block.md`, and `learn.md` when learning runs).
     ///
     /// # Errors
     ///
@@ -116,11 +116,14 @@ impl PromptStore {
         if !self.root.join("header.md").exists() {
             missing.push("header.md");
         }
-        if !self.root.join("kpop.md").exists() {
-            missing.push("kpop.md");
+        if !self.root.join("kpop_common.md").exists() {
+            missing.push("kpop_common.md");
         }
-        if validation.require_mbc2 && !self.root.join("mbc2.md").exists() {
-            missing.push("mbc2.md");
+        if !self.root.join("kpop_block.md").exists() {
+            missing.push("kpop_block.md");
+        }
+        if validation.require_mbc2 && !self.root.join("mbc2_pure.md").exists() {
+            missing.push("mbc2_pure.md");
         }
         if validation.run_learn && !self.root.join("learn.md").exists() {
             missing.push("learn.md");

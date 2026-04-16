@@ -5,7 +5,7 @@
 /// each review phase—after a reviewer attempt fails to produce LGTM, not as a step between
 /// implement and learn. Each review attempt uses a short-lived **reviewer** session for
 /// `run_reviewer_review`, then tears it down. KPOP is driven by `run_kpop_flow` /
-/// `run_kpop_flow_once`, not the reviewer-session API.
+/// `run_kpop_multiturn` / `run_kpop_flow_once`, not the reviewer-session API.
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,

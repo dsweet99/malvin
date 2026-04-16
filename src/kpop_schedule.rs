@@ -1,109 +1,81 @@
+use std::path::Path;
+
 use rand::Rng;
-use rand::distributions::{Distribution, Uniform};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KpopScheduleStep {
-    KpopOnce,
-    Mbc2ThenFalsify,
-}
-
-const KPOP_ONCE_LINE: &str = "KPOP: Hypothesize and falsify once.";
-const MBC2_GENERATE_LINE: &str = "MBC2: Generate exactly one hypothesis for the user request.";
-const MBC2_FALSIFY_LINE: &str = "KPOP: Try to falsify that MBC2 hypothesis.";
-
-const EXECUTION_RULES: &str = "Execution rules:\n\
-- Execute the steps in order.\n\
-- Do not merge or skip steps.\n\
-- A range like `1-10: KPOP: ...` denotes that many distinct steps; treat each one separately.\n\
-- For each step, produce a short result block.\n\
-- For KPOP steps, do exactly one hypothesis and one falsification attempt.\n\
-- For MBC2 steps, do exactly one creative hypothesis only.\n\
-- Suggestion: track which scheduled step you are on with your todo-list tool.";
+pub const KPOP_CATCHUP_CAP: u32 = 3;
 
 #[must_use]
-pub fn schedule_requires_mbc2(schedule: &[KpopScheduleStep]) -> bool {
-    schedule.iter().any(|s| matches!(s, KpopScheduleStep::Mbc2ThenFalsify))
+pub fn block_mean_from_p_creative(p_creative: f64) -> f64 {
+    if crate::kpop_acp_prompt::kpop_creative_enabled(p_creative) {
+        let p = p_creative.clamp(0.0, 1.0);
+        ((1.0 - p) / p).max(1.0)
+    } else {
+        10.0
+    }
 }
 
-pub fn generate_kpop_schedule(
-    max_loops: usize,
-    p_creative: f64,
-    rng: &mut impl Rng,
-) -> Vec<KpopScheduleStep> {
-    let p = if crate::kpop_acp_prompt::kpop_creative_enabled(p_creative) {
-        p_creative.clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let mut out = Vec::with_capacity(max_loops);
-    let roll_uniform = Uniform::from(0.0..1.0);
-    for _ in 0..max_loops {
-        let roll = roll_uniform.sample(rng);
-        if roll < p {
-            out.push(KpopScheduleStep::Mbc2ThenFalsify);
-        } else {
-            out.push(KpopScheduleStep::KpopOnce);
+#[must_use]
+pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
+    let lambda = mean.max(1e-12);
+    let l = (-lambda).exp();
+    let mut k = 0_usize;
+    let mut p = 1.0_f64;
+    loop {
+        k += 1;
+        p *= rng.r#gen::<f64>();
+        if p <= l {
+            return (k - 1).max(1);
         }
     }
-    out
+}
+
+pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
+    std::fs::read_to_string(path).map_err(|e| {
+        format!(
+            "failed to read exp log {}: {e}",
+            path.display()
+        )
+    })
+}
+
+fn step_kind(line: &str) -> Option<&'static str> {
+    let t = line.trim_start();
+    let rest = t.strip_prefix("## Step ")?;
+    let (_, tail) = rest.split_once(" — ")?;
+    let tail = tail.trim_start();
+    if tail.starts_with("KPOP") {
+        return Some("KPOP");
+    }
+    if tail.starts_with("MBC2") {
+        return Some("MBC2");
+    }
+    None
 }
 
 #[must_use]
-pub fn render_planned_schedule_lines(schedule: &[KpopScheduleStep]) -> String {
-    let mut lines: Vec<String> = Vec::new();
-    let mut i: usize = 0;
-    while i < schedule.len() {
-        match schedule[i] {
-            KpopScheduleStep::Mbc2ThenFalsify => {
-                let n = i + 1;
-                lines.push(format!("{n}a. {MBC2_GENERATE_LINE}"));
-                lines.push(format!("{n}b. {MBC2_FALSIFY_LINE}"));
-                i += 1;
-            }
-            KpopScheduleStep::KpopOnce => {
-                let run_end = kpop_once_run_end(schedule, i);
-                let start = i + 1;
-                if run_end == start {
-                    lines.push(format!("{start}. {KPOP_ONCE_LINE}"));
-                } else {
-                    lines.push(format!("{start}-{run_end}: {KPOP_ONCE_LINE}"));
-                }
-                i = run_end;
-            }
-        }
-    }
-    lines.join("\n")
-}
-
-fn kpop_once_run_end(schedule: &[KpopScheduleStep], start: usize) -> usize {
-    let mut j = start + 1;
-    while j < schedule.len() && matches!(schedule[j], KpopScheduleStep::KpopOnce) {
-        j += 1;
-    }
-    j
+pub fn count_kpop_entries(text: &str) -> usize {
+    text.lines().filter(|line| step_kind(line) == Some("KPOP")).count()
 }
 
 #[must_use]
-pub fn build_scheduled_kpop_prompt(
-    kpop_definition: &str,
-    mbc2_definition: &str,
-    user_request: &str,
-    schedule: &[KpopScheduleStep],
-) -> String {
-    let kdef = kpop_definition.trim_end();
-    let ureq = user_request.trim_end();
-    let sched_text = render_planned_schedule_lines(schedule);
-    let with_mbc2 = schedule_requires_mbc2(schedule);
-    if with_mbc2 {
-        let mdef = mbc2_definition.trim();
-        format!(
-            "Define KPOP:\n{kdef}\n\n---\n\nDefine MBC2:\n{mdef}\n\n---\n\nUser request:\n{ureq}\n\nPlanned schedule:\n{sched_text}\n\n{EXECUTION_RULES}"
-        )
-    } else {
-        format!(
-            "Define KPOP:\n{kdef}\n\n---\n\nUser request:\n{ureq}\n\nPlanned schedule:\n{sched_text}\n\n{EXECUTION_RULES}"
-        )
-    }
+pub fn count_mbc2_entries(text: &str) -> usize {
+    text.lines().filter(|line| step_kind(line) == Some("MBC2")).count()
+}
+
+#[must_use]
+pub fn hypotheses_emitted(text: &str) -> usize {
+    count_kpop_entries(text) + count_mbc2_entries(text)
+}
+
+#[must_use]
+pub fn agent_declared_success(text: &str) -> bool {
+    text.lines().any(|line| {
+        let t = line.trim_start();
+        let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
+            return false;
+        };
+        rest.is_empty() || rest.starts_with(char::is_whitespace)
+    })
 }
 
 #[cfg(test)]
@@ -112,137 +84,50 @@ mod tests {
     use rand::rngs::StdRng;
 
     use super::{
-        KpopScheduleStep, build_scheduled_kpop_prompt, generate_kpop_schedule,
-        render_planned_schedule_lines, schedule_requires_mbc2,
+        agent_declared_success, block_mean_from_p_creative, count_kpop_entries,
+        count_mbc2_entries, hypotheses_emitted, poisson_block_size, read_exp_log_text,
     };
 
     #[test]
-    fn p_creative_zero_is_all_kpop_once() {
-        let mut rng = StdRng::seed_from_u64(42);
-        let s = generate_kpop_schedule(20, 0.0, &mut rng);
-        assert!(s.iter().all(|x| matches!(x, KpopScheduleStep::KpopOnce)));
-        assert!(!schedule_requires_mbc2(&s));
+    fn block_mean_matches_one_minus_p_over_p() {
+        assert!((block_mean_from_p_creative(0.1) - 9.0).abs() < 1e-9);
     }
 
     #[test]
-    fn p_creative_one_is_all_mbc2_pairs() {
-        let mut rng = StdRng::seed_from_u64(99);
-        let s = generate_kpop_schedule(15, 1.0, &mut rng);
-        assert!(s
-            .iter()
-            .all(|x| matches!(x, KpopScheduleStep::Mbc2ThenFalsify)));
-        assert!(schedule_requires_mbc2(&s));
+    fn block_mean_fallback_ten_when_mbc2_disabled() {
+        assert!((block_mean_from_p_creative(0.0) - 10.0).abs() < 1e-9);
     }
 
     #[test]
-    fn seeded_schedule_is_stable() {
-        let mut a = StdRng::seed_from_u64(12345);
-        let mut b = StdRng::seed_from_u64(12345);
-        let sa = generate_kpop_schedule(30, 0.3, &mut a);
-        let sb = generate_kpop_schedule(30, 0.3, &mut b);
-        assert_eq!(sa, sb);
+    fn poisson_seeded_stable() {
+        let mut a = StdRng::seed_from_u64(7);
+        let mut b = StdRng::seed_from_u64(7);
+        assert_eq!(poisson_block_size(&mut a, 9.0), poisson_block_size(&mut b, 9.0));
     }
 
     #[test]
-    fn render_kpop_collapses_runs_but_keeps_singletons_and_mbc2_pairs() {
-        let one = render_planned_schedule_lines(&[KpopScheduleStep::KpopOnce]);
-        assert_eq!(one.trim(), "1. KPOP: Hypothesize and falsify once.");
-
-        let ten = vec![KpopScheduleStep::KpopOnce; 10];
-        assert_eq!(
-            render_planned_schedule_lines(&ten).trim(),
-            "1-10: KPOP: Hypothesize and falsify once."
-        );
-
-        let mixed = vec![
-            KpopScheduleStep::KpopOnce,
-            KpopScheduleStep::KpopOnce,
-            KpopScheduleStep::KpopOnce,
-            KpopScheduleStep::Mbc2ThenFalsify,
-            KpopScheduleStep::KpopOnce,
-            KpopScheduleStep::KpopOnce,
-        ];
-        let expected = "1-3: KPOP: Hypothesize and falsify once.\n\
-                        4a. MBC2: Generate exactly one hypothesis for the user request.\n\
-                        4b. KPOP: Try to falsify that MBC2 hypothesis.\n\
-                        5-6: KPOP: Hypothesize and falsify once.";
-        assert_eq!(render_planned_schedule_lines(&mixed), expected);
-
-        let singleton_between_mbc2s = render_planned_schedule_lines(&[
-            KpopScheduleStep::Mbc2ThenFalsify,
-            KpopScheduleStep::KpopOnce,
-            KpopScheduleStep::Mbc2ThenFalsify,
-        ]);
-        assert!(singleton_between_mbc2s.contains("2. KPOP: Hypothesize and falsify once."));
-        assert!(!singleton_between_mbc2s.contains("2-2:"));
+    fn counts_steps_in_exp_log() {
+        let text = "## Step 1 — KPOP x\n## Step 2 — MBC2 y\n## Step 3 — KPOP z\n";
+        assert_eq!(count_kpop_entries(text), 2);
+        assert_eq!(count_mbc2_entries(text), 1);
+        assert_eq!(hypotheses_emitted(text), 3);
     }
 
     #[test]
-    fn execution_rules_mention_range_semantics_and_todo_list() {
-        let sched = vec![KpopScheduleStep::KpopOnce; 3];
-        let p = build_scheduled_kpop_prompt("K", "", "req", &sched);
-        assert!(p.contains("A range like `1-10: KPOP: ...` denotes that many distinct steps"));
-        assert!(p.contains("track which scheduled step you are on with your todo-list tool"));
+    fn success_marker_detected() {
+        assert!(!agent_declared_success("no marker"));
+        assert!(agent_declared_success("## KPOP_SOLVED\ndone"));
     }
 
     #[test]
-    fn prompt_orders_sections_with_and_without_mbc2() {
-        let sched = [KpopScheduleStep::KpopOnce];
-        let p = build_scheduled_kpop_prompt("KD", "", "REQ", &sched);
-        assert!(p.starts_with("Define KPOP:\nKD"));
-        let u = p.find("User request:").expect("user");
-        let pl = p.find("Planned schedule:").expect("plan");
-        assert!(u < pl);
-        assert!(!p.contains("Define MBC2:"));
-
-        let sched_m = [KpopScheduleStep::Mbc2ThenFalsify];
-        let p2 = build_scheduled_kpop_prompt("KD", "MD", "REQ", &sched_m);
-        assert!(p2.contains("Define MBC2:\nMD"));
-        let d_mbc2 = p2.find("Define MBC2:").expect("mbc2");
-        let u2 = p2.find("User request:").expect("user2");
-        assert!(d_mbc2 < u2);
+    fn success_marker_rejects_heading_prefix_extensions() {
+        assert!(!agent_declared_success("## KPOP_SOLVED_extra\n"));
     }
 
     #[test]
-    fn nonfinite_p_creative_yields_no_mbc2_steps() {
-        let mut rng = StdRng::seed_from_u64(1);
-        let s = generate_kpop_schedule(10, f64::NAN, &mut rng);
-        assert!(s.iter().all(|x| matches!(x, KpopScheduleStep::KpopOnce)));
-    }
-
-    fn mbc2_dup_test_store(
-        tmp: &std::path::Path,
-    ) -> (
-        crate::prompts::PromptStore,
-        std::collections::HashMap<String, String>,
-    ) {
-        std::fs::write(tmp.join("header.md"), "hdr").unwrap();
-        std::fs::write(tmp.join("coding_rules.md"), "CR_UNIQUE_MARKER_X").unwrap();
-        std::fs::write(tmp.join("kpop.md"), "kline").unwrap();
-        std::fs::write(tmp.join("mbc2.md"), "{{ coding_rules }}\nmbc2tail").unwrap();
-        (
-            crate::prompts::PromptStore::with_root(tmp.to_path_buf()),
-            std::collections::HashMap::new(),
-        )
-    }
-
-    #[test]
-    fn scheduled_kpop_mbc2_body_does_not_duplicate_merged_coding_rules() {
-        let tmp = tempfile::tempdir().unwrap();
-        let (store, context) = mbc2_dup_test_store(tmp.path());
-        let rules = crate::prompts::merged_coding_rules(&store, &context);
-        let kpop_core = store
-            .render_prompt_only("kpop.md", &context)
-            .expect("kp");
-        let kpop_body = format!("{}\n\n{}", rules.trim_end(), kpop_core.trim_end());
-        let mbc2_body = crate::prompts::render_mbc2_for_scheduled_kpop_block(&store, &context)
-            .expect("mb");
-        let combined = build_scheduled_kpop_prompt(
-            &kpop_body,
-            &mbc2_body,
-            "u",
-            &[KpopScheduleStep::Mbc2ThenFalsify],
-        );
-        assert_eq!(combined.matches("CR_UNIQUE_MARKER_X").count(), 1);
+    fn read_exp_log_text_errors_on_missing_file() {
+        let p = std::path::Path::new("/nonexistent/malvin_exp_log_read_test.md");
+        let e = read_exp_log_text(p).expect_err("missing file");
+        assert!(e.contains("failed to read exp log"));
     }
 }

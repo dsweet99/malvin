@@ -74,10 +74,10 @@ pub(crate) async fn run_reviewer_pair_once(
     Ok(())
 }
 
-/// Inputs for [`run_kpop_flow_once`] and [`AgentClient::run_kpop_flow`](crate::AgentClient::run_kpop_flow).
+/// Inputs for [`run_kpop_flow_once`].
 pub struct KpopFlowOnceArgs<'a> {
     pub cwd: &'a Path,
-    pub kpop_prompt: &'a str,
+    pub kpop_prompts: &'a [&'a str],
     pub kpop_log: &'a Path,
     pub learn: Option<(&'a str, &'a Path)>,
     /// Skip learn if elapsed time is below this threshold (milliseconds).
@@ -85,48 +85,50 @@ pub struct KpopFlowOnceArgs<'a> {
     pub learn_min_elapsed_ms: u64,
 }
 
+async fn kpop_round(
+    session: &AcpSession,
+    client: &AgentClient,
+    text: &str,
+    log: &Path,
+    who: &str,
+    phase: crate::run_timing::TimingPhase,
+) -> Result<(), AgentError> {
+    let t0 = Instant::now();
+    match session.prompt(text, log, who, None).await {
+        Ok(()) => {
+            crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
+            Ok(())
+        }
+        Err(e) => {
+            crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
+            Err(AgentError(e))
+        }
+    }
+}
+
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
 ) -> Result<(), AgentError> {
-    async fn round(
-        session: &AcpSession,
-        client: &AgentClient,
-        text: &str,
-        log: &Path,
-        who: &str,
-        phase: crate::run_timing::TimingPhase,
-    ) -> Result<(), AgentError> {
-        let t0 = Instant::now();
-        match session.prompt(text, log, who, None).await {
-            Ok(()) => {
-                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
-                Ok(())
-            }
-            Err(e) => {
-                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
-                Err(AgentError(e))
-            }
+    let s = spawn_agent_acp_session(client, args.cwd).await?;
+
+    for prompt in args.kpop_prompts {
+        if let Err(e) = kpop_round(
+            &s,
+            client,
+            prompt,
+            args.kpop_log,
+            "kpop",
+            crate::run_timing::TimingPhase::Implement,
+        )
+        .await
+        {
+            let _ = s.shutdown().await;
+            return Err(e);
         }
     }
 
-    let s = spawn_agent_acp_session(client, args.cwd).await?;
-
-    if let Err(e) = round(
-        &s,
-        client,
-        args.kpop_prompt,
-        args.kpop_log,
-        "kpop",
-        crate::run_timing::TimingPhase::Implement,
-    )
-    .await
-    {
-        let _ = s.shutdown().await;
-        return Err(e);
-    }
-
-    let outbound_prompts: u32 = if let Some((learn_body, learn_log)) = args.learn {
+    if let Some((learn_body, learn_log)) = args.learn {
         let elapsed_ms = client.timing.as_ref().map_or(0, |t| {
             let d = t
                 .lock()
@@ -137,7 +139,7 @@ pub(crate) async fn run_kpop_flow_once(
         let should_learn =
             crate::orchestrator::should_run_learn_check(args.learn_min_elapsed_ms, elapsed_ms);
         if should_learn {
-            if let Err(e) = round(
+            if let Err(e) = kpop_round(
                 &s,
                 client,
                 learn_body,
@@ -150,18 +152,79 @@ pub(crate) async fn run_kpop_flow_once(
                 let _ = s.shutdown().await;
                 return Err(e);
             }
-            2
-        } else {
-            1
         }
-    } else {
-        1
-    };
+    }
 
-    debug_assert!(
-        outbound_prompts == 1 || outbound_prompts == 2,
-        "standalone KPOP: 1 (main only) or 2 (main + learn)"
-    );
+    s.shutdown().await.map_err(AgentError)
+}
+
+pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
+    client: &AgentClient,
+    cwd: &std::path::Path,
+    kpop_log: &std::path::Path,
+    learn: Option<(&str, &std::path::Path)>,
+    learn_min_elapsed_ms: u64,
+    state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+) -> Result<(), AgentError> {
+    let s = spawn_agent_acp_session(client, cwd).await?;
+
+    loop {
+        let prompt = match state.next_prompt() {
+            Ok(Some(p)) => p,
+            Ok(None) => break,
+            Err(e) => {
+                let _ = s.shutdown().await;
+                return Err(AgentError(e));
+            }
+        };
+        let is_kpop_block = matches!(prompt, crate::multiturn_prompt::MultiturnPrompt::KpopBlock(_));
+        let text = prompt.as_str();
+        if let Err(e) = kpop_round(
+            &s,
+            client,
+            text,
+            kpop_log,
+            "kpop",
+            crate::run_timing::TimingPhase::Implement,
+        )
+        .await
+        {
+            let _ = s.shutdown().await;
+            return Err(e);
+        }
+        if is_kpop_block {
+            state.record_kpop_block_prompt_completed();
+        } else {
+            state.record_mbc2_prompt_completed();
+        }
+    }
+
+    if let Some((learn_body, learn_log)) = learn {
+        let elapsed_ms = client.timing.as_ref().map_or(0, |t| {
+            let d = t
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .elapsed_so_far();
+            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+        });
+        let should_learn =
+            crate::orchestrator::should_run_learn_check(learn_min_elapsed_ms, elapsed_ms);
+        if should_learn {
+            if let Err(e) = kpop_round(
+                &s,
+                client,
+                learn_body,
+                learn_log,
+                "learn",
+                crate::run_timing::TimingPhase::Learn,
+            )
+            .await
+            {
+                let _ = s.shutdown().await;
+                return Err(e);
+            }
+        }
+    }
 
     s.shutdown().await.map_err(AgentError)
 }

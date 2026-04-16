@@ -62,7 +62,8 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(super::KpopPromptValidation {
@@ -81,7 +82,8 @@ fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(super::KpopPromptValidation {
@@ -96,7 +98,8 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store
         .validate_kpop_prompts(super::KpopPromptValidation {
@@ -105,8 +108,8 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
         })
         .unwrap_err();
     assert!(
-        err.0.contains("mbc2.md"),
-        "expected mbc2 missing error, got {:?}",
+        err.0.contains("mbc2_pure.md"),
+        "expected mbc2_pure missing error, got {:?}",
         err.0
     );
 }
@@ -137,7 +140,8 @@ fn validate_kpop_prompts_requires_learn_when_run_learn() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop.md"), "kpop").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store
         .validate_kpop_prompts(super::KpopPromptValidation {

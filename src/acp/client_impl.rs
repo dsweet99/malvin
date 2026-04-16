@@ -316,4 +316,49 @@ impl AgentClient {
             "agent acp (kpop flow) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
+
+    /// Multiturn KPOP: one ACP session; each [`crate::kpop_multiturn::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AgentError`] when spawn or a prompt fails after retries.
+    pub async fn run_kpop_multiturn<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
+        &mut self,
+        cwd: &Path,
+        kpop_log: &Path,
+        learn: Option<(&str, &Path)>,
+        learn_min_elapsed_ms: u64,
+        state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+    ) -> Result<(), AgentError> {
+        let mut last_error = String::new();
+
+        let mut attempts_used = 0_u32;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
+            match run_kpop_multiturn_once(
+                self,
+                cwd,
+                kpop_log,
+                learn,
+                learn_min_elapsed_ms,
+                state,
+            )
+            .await
+            {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = e.0;
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
+        Err(AgentError(format!(
+            "agent acp (kpop multiturn) failed after {retries} {noun}. Last error:\n{last_error}"
+        )))
+    }
 }

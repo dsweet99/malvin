@@ -29,12 +29,12 @@ pub fn workflow_context(
     prompts: &PromptStore,
 ) -> HashMap<String, String> {
     let mut context = workflow_context_paths_only(artifacts);
-    match prompts.render_prompt_only("kpop.md", &context) {
+    match prompts.render_prompt_only("kpop_common.md", &context) {
         Ok(kpop_content) => {
             context.insert("kpop".to_string(), kpop_content);
         }
         Err(e) => {
-            eprintln!("warning: failed to render kpop.md template: {e}");
+            eprintln!("warning: failed to render kpop_common.md template: {e}");
         }
     }
     context
@@ -73,6 +73,11 @@ pub(crate) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
         |_| path.display().to_string(),
         |r| format!("./{}", r.display()),
     )
+}
+
+#[must_use]
+pub fn format_exp_log_relative(artifacts: &crate::artifacts::RunArtifacts, exp_log: &Path) -> String {
+    format_prompt_path(exp_log, &artifacts.work_dir)
 }
 
 #[cfg(test)]
