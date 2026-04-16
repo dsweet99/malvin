@@ -14,9 +14,11 @@ const MBC2_FALSIFY_LINE: &str = "KPOP: Try to falsify that MBC2 hypothesis.";
 const EXECUTION_RULES: &str = "Execution rules:\n\
 - Execute the steps in order.\n\
 - Do not merge or skip steps.\n\
+- A range like `1-10: KPOP: ...` denotes that many distinct steps; treat each one separately.\n\
 - For each step, produce a short result block.\n\
 - For KPOP steps, do exactly one hypothesis and one falsification attempt.\n\
-- For MBC2 steps, do exactly one creative hypothesis only.";
+- For MBC2 steps, do exactly one creative hypothesis only.\n\
+- Suggestion: track which scheduled step you are on with your todo-list tool.";
 
 #[must_use]
 pub fn schedule_requires_mbc2(schedule: &[KpopScheduleStep]) -> bool {
@@ -49,17 +51,36 @@ pub fn generate_kpop_schedule(
 #[must_use]
 pub fn render_planned_schedule_lines(schedule: &[KpopScheduleStep]) -> String {
     let mut lines: Vec<String> = Vec::new();
-    for (idx, step) in schedule.iter().enumerate() {
-        let n = idx + 1;
-        match step {
-            KpopScheduleStep::KpopOnce => lines.push(format!("{n}. {KPOP_ONCE_LINE}")),
+    let mut i: usize = 0;
+    while i < schedule.len() {
+        match schedule[i] {
             KpopScheduleStep::Mbc2ThenFalsify => {
+                let n = i + 1;
                 lines.push(format!("{n}a. {MBC2_GENERATE_LINE}"));
                 lines.push(format!("{n}b. {MBC2_FALSIFY_LINE}"));
+                i += 1;
+            }
+            KpopScheduleStep::KpopOnce => {
+                let run_end = kpop_once_run_end(schedule, i);
+                let start = i + 1;
+                if run_end == start {
+                    lines.push(format!("{start}. {KPOP_ONCE_LINE}"));
+                } else {
+                    lines.push(format!("{start}-{run_end}: {KPOP_ONCE_LINE}"));
+                }
+                i = run_end;
             }
         }
     }
     lines.join("\n")
+}
+
+fn kpop_once_run_end(schedule: &[KpopScheduleStep], start: usize) -> usize {
+    let mut j = start + 1;
+    while j < schedule.len() && matches!(schedule[j], KpopScheduleStep::KpopOnce) {
+        j += 1;
+    }
+    j
 }
 
 #[must_use]
@@ -123,17 +144,45 @@ mod tests {
     }
 
     #[test]
-    fn render_kpop_only_and_mbc2_pair() {
-        let plain = [KpopScheduleStep::KpopOnce, KpopScheduleStep::KpopOnce];
-        let t = render_planned_schedule_lines(&plain);
-        assert!(t.contains("1. KPOP:"));
-        assert!(t.contains("2. KPOP:"));
-        assert!(!t.contains("1a."));
+    fn render_kpop_collapses_runs_but_keeps_singletons_and_mbc2_pairs() {
+        let one = render_planned_schedule_lines(&[KpopScheduleStep::KpopOnce]);
+        assert_eq!(one.trim(), "1. KPOP: Hypothesize and falsify once.");
 
-        let creative = [KpopScheduleStep::Mbc2ThenFalsify];
-        let t2 = render_planned_schedule_lines(&creative);
-        assert!(t2.contains("1a. MBC2:"));
-        assert!(t2.contains("1b. KPOP:"));
+        let ten = vec![KpopScheduleStep::KpopOnce; 10];
+        assert_eq!(
+            render_planned_schedule_lines(&ten).trim(),
+            "1-10: KPOP: Hypothesize and falsify once."
+        );
+
+        let mixed = vec![
+            KpopScheduleStep::KpopOnce,
+            KpopScheduleStep::KpopOnce,
+            KpopScheduleStep::KpopOnce,
+            KpopScheduleStep::Mbc2ThenFalsify,
+            KpopScheduleStep::KpopOnce,
+            KpopScheduleStep::KpopOnce,
+        ];
+        let expected = "1-3: KPOP: Hypothesize and falsify once.\n\
+                        4a. MBC2: Generate exactly one hypothesis for the user request.\n\
+                        4b. KPOP: Try to falsify that MBC2 hypothesis.\n\
+                        5-6: KPOP: Hypothesize and falsify once.";
+        assert_eq!(render_planned_schedule_lines(&mixed), expected);
+
+        let singleton_between_mbc2s = render_planned_schedule_lines(&[
+            KpopScheduleStep::Mbc2ThenFalsify,
+            KpopScheduleStep::KpopOnce,
+            KpopScheduleStep::Mbc2ThenFalsify,
+        ]);
+        assert!(singleton_between_mbc2s.contains("2. KPOP: Hypothesize and falsify once."));
+        assert!(!singleton_between_mbc2s.contains("2-2:"));
+    }
+
+    #[test]
+    fn execution_rules_mention_range_semantics_and_todo_list() {
+        let sched = vec![KpopScheduleStep::KpopOnce; 3];
+        let p = build_scheduled_kpop_prompt("K", "", "req", &sched);
+        assert!(p.contains("A range like `1-10: KPOP: ...` denotes that many distinct steps"));
+        assert!(p.contains("track which scheduled step you are on with your todo-list tool"));
     }
 
     #[test]
