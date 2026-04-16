@@ -1,4 +1,5 @@
-//! JSON + stdout summary for [`super::RunTiming`].
+//! JSON (`run_timing.json`) plus one **stdout** summary line for [`super::RunTiming`].
+//! The printed line uses [`super::RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: `, colon plus trailing ASCII space) before the first `name = value` field—see [`format_timing_stdout_line_from_json`].
 
 use std::io;
 use std::path::Path;
@@ -24,11 +25,10 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "implement": r.implement_display_name,
         },
         "phases_ms": {
+            "check_plan": ms(r.check_plan),
             "implement": ms(r.implement),
             "review_1_review": ms(r.review_1_review),
-            "review_1_kpop": ms(r.review_1_kpop),
             "review_2_review": ms(r.review_2_review),
-            "review_2_kpop": ms(r.review_2_kpop),
             "concerns": ms(r.concerns),
             "learn": ms(r.learn),
         }
@@ -36,12 +36,11 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
 }
 
 /// Phase keys under `phases_ms` in [`to_json_value`] — keep order aligned with [`format_timing_stdout_line_from_json`].
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 6] = [
+    "check_plan",
     "implement",
     "review_1_review",
-    "review_1_kpop",
     "review_2_review",
-    "review_2_kpop",
     "concerns",
     "learn",
 ];
@@ -81,7 +80,7 @@ fn phase_display_name<'a>(v: &'a Value, key: &'a str) -> &'a str {
         .unwrap_or(key)
 }
 
-/// Builds the `TIMING:` line from the same [`serde_json::Value`] written to `run_timing.json`, so fields stay aligned.
+/// Builds the stdout timing summary line (prefix [`RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` including the trailing space before the first `name = value` field) from the same [`serde_json::Value`] written to `run_timing.json`, so fields stay aligned.
 fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
     let mut first = true;
@@ -192,5 +191,45 @@ mod format_tests {
         assert!(line.contains("implement = "));
         assert!(line.contains("learn = "));
         assert!(line.contains(&format_ms_one_decimal_s(100)));
+    }
+
+    #[test]
+    fn duration_ms_u64_converts_duration_to_milliseconds() {
+        assert_eq!(super::duration_ms_u64(Duration::from_millis(0)), 0);
+        assert_eq!(super::duration_ms_u64(Duration::from_millis(123)), 123);
+        assert_eq!(super::duration_ms_u64(Duration::from_secs(5)), 5000);
+    }
+
+    #[test]
+    fn timing_line_append_part_formats_key_value_pairs() {
+        let mut out = String::new();
+        let mut first = true;
+        super::timing_line_append_part(&mut out, &mut first, "foo", "1.0s");
+        assert_eq!(out, "foo = 1.0s");
+        assert!(!first);
+        super::timing_line_append_part(&mut out, &mut first, "bar", "2.0s");
+        assert_eq!(out, "foo = 1.0s bar = 2.0s");
+    }
+
+    #[test]
+    fn phase_display_name_returns_alias_or_key() {
+        let json: Value = serde_json::json!({
+            "phase_display_names": { "implement": "raw" }
+        });
+        assert_eq!(super::phase_display_name(&json, "implement"), "raw");
+        assert_eq!(super::phase_display_name(&json, "learn"), "learn");
+    }
+
+    #[test]
+    fn write_json_and_print_summary_creates_file() {
+        use crate::run_timing::{RunTiming, TimingPhase, RUN_TIMING_JSON_FILE};
+
+        let tmp = tempfile::tempdir().unwrap();
+        let mut r = RunTiming::default();
+        r.mark_wall_start(std::time::Instant::now());
+        r.mark_wall_end(std::time::Instant::now());
+        r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+        r.write_json_and_print_summary(tmp.path()).unwrap();
+        assert!(tmp.path().join(RUN_TIMING_JSON_FILE).exists());
     }
 }

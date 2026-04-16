@@ -15,8 +15,9 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
         .contains("upgrade your plan to continue")
 }
 
-/// Retriable errors for the initial policy: RPC timeouts, transport stalls, and ACP session
-/// teardown when the outbound stream/session is already closed (retry opens a fresh session).
+/// Retriable errors for the initial policy: RPC timeouts, transport stalls, ACP session
+/// teardown when the outbound stream/session is already closed (retry opens a fresh session),
+/// and transient session initialization failures.
 pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     let lower = msg.to_ascii_lowercase();
     lower.contains("timed out")
@@ -27,6 +28,7 @@ pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
         || lower.contains("readableiterable is closed")
         || lower.contains("acp child process is not running")
         || lower.contains("acp child process is zombie")
+        || lower.contains("failed to initialize session")
 }
 
 /// True when `s` indicates a real timeout without matching configuration identifiers like `timeout_ms`.

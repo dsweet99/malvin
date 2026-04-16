@@ -1,0 +1,6 @@
+      - id: check-untracked
+        name: check untracked source files
+        entry: admin/check_untracked.sh
+        language: system
+        pass_filenames: false
+        always_run: true

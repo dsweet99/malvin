@@ -40,26 +40,20 @@ pub(crate) async fn trace_write_invocation_header(
     Ok(())
 }
 
-/// Whether to mirror outgoing `session/prompt` lines (`>` tags) to stdout when tee is enabled.
-///
-/// The `learn.md` prompt is still written to the trace file on disk; stdout omits those lines so
-/// learn prompt text is not echoed to the terminal (see `grounding.md`, Tee).
-#[must_use]
-pub(crate) fn acp_tee_echo_outgoing_prompt_lines(tee_stdout: bool, stem: &str) -> bool {
-    tee_stdout && stem != "learn"
+
+#[allow(dead_code)]
+pub(crate) const fn acp_tee_echo_outgoing_prompt_lines(_tee_stdout: bool, _stem: &str) -> bool {
+    false
 }
 
-/// Log the exact prompt text sent on `session/prompt` with an outgoing (`>`) tag per line.
-pub(crate) async fn trace_write_outgoing_prompt(
+async fn trace_write_tagged_body(
     file: &mut tokio::fs::File,
     stem: &str,
-    prompt_text: &str,
-    tee_stdout: bool,
+    body: &str,
 ) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     let tag_raw = crate::output::format_acp_directional_tag_prefix('>', stem);
-    let echo_outgoing_to_stdout = acp_tee_echo_outgoing_prompt_lines(tee_stdout, stem);
-    for line in crate::output::logical_lines(prompt_text) {
+    for line in crate::output::logical_lines(body) {
         let l = crate::output::format_line(&tag_raw, line);
         file.write_all(l.as_bytes())
             .await
@@ -67,14 +61,51 @@ pub(crate) async fn trace_write_outgoing_prompt(
         file.write_all(b"\n")
             .await
             .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
-        if echo_outgoing_to_stdout {
-            crate::output::print_stdout_acp_tee_line(
-                crate::output::AcpTeeDirection::ToAgent,
-                &tag_raw,
-                line,
-            );
-        }
     }
+    Ok(())
+}
+
+#[allow(clippy::struct_field_names)]
+pub(crate) struct DoOutgoingTraceParts<'a> {
+    pub style_text: Option<&'a str>,
+    pub header_text: &'a str,
+    pub user_text: &'a str,
+}
+
+/// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request);
+/// stdout announces each segment with a `[{stem}...]` bracket line (no body tee).
+pub(crate) async fn trace_write_outgoing_prompt_do(
+    file: &mut tokio::fs::File,
+    parts: DoOutgoingTraceParts<'_>,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let DoOutgoingTraceParts {
+        style_text,
+        header_text,
+        user_text,
+    } = parts;
+    if let Some(s) = style_text.filter(|t| !t.trim().is_empty()) {
+        trace_write_tagged_body(file, "style", s.trim()).await?;
+        crate::output::print_outgoing_prompt_log("style");
+    }
+    trace_write_tagged_body(file, "header", header_text).await?;
+    crate::output::print_outgoing_prompt_log("header");
+    trace_write_tagged_body(file, "prompt", user_text).await?;
+    crate::output::print_outgoing_prompt_log("prompt");
+    file.flush()
+        .await
+        .map_err(|e| format!("trace outgoing prompt flush: {e}"))?;
+    Ok(())
+}
+
+/// Log the exact prompt text sent on `session/prompt` with an outgoing (`>`) tag per line.
+pub(crate) async fn trace_write_outgoing_prompt(
+    file: &mut tokio::fs::File,
+    stem: &str,
+    prompt_text: &str,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    trace_write_tagged_body(file, stem, prompt_text).await?;
     file.flush()
         .await
         .map_err(|e| format!("trace outgoing prompt flush: {e}"))?;
@@ -82,10 +113,13 @@ pub(crate) async fn trace_write_outgoing_prompt(
 }
 
 #[test]
-fn acp_tee_echo_outgoing_skips_learn_stdout() {
+fn acp_tee_echo_outgoing_always_false() {
     assert!(!acp_tee_echo_outgoing_prompt_lines(true, "learn"));
-    assert!(acp_tee_echo_outgoing_prompt_lines(true, "implement"));
+    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "implement"));
     assert!(!acp_tee_echo_outgoing_prompt_lines(false, "learn"));
+    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "style"));
+    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "header"));
+    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "prompt"));
 }
 
 #[test]
@@ -95,4 +129,24 @@ fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_write_invocation_header);
     let _ = stringify!(acp_tee_echo_outgoing_prompt_lines);
     let _ = stringify!(trace_write_outgoing_prompt);
+    let _ = stringify!(trace_write_outgoing_prompt_do);
+    let _ = stringify!(DoOutgoingTraceParts);
+}
+
+#[tokio::test]
+async fn trace_write_tagged_body_writes_prefixed_lines() {
+    let tmp = tempfile::NamedTempFile::new().unwrap();
+    let path = tmp.path();
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .await
+        .unwrap();
+    trace_write_tagged_body(&mut file, "test", "line1\nline2").await.unwrap();
+    drop(file);
+    let content = std::fs::read_to_string(path).unwrap();
+    assert!(content.contains("test"), "should include stem");
+    assert!(content.contains("line1"), "should include line1");
+    assert!(content.contains("line2"), "should include line2");
 }

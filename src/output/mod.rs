@@ -1,9 +1,11 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
 mod acp_tee;
+pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
     AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_payload,
 };
 
 use std::io::{IsTerminal, stdout};
@@ -11,8 +13,22 @@ use std::sync::OnceLock;
 
 use chrono::Local;
 
+use self::terminal_wrap::{
+    stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
+};
+
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
+
+/// Announce one outgoing prompt to stdout.
+///
+/// Prints a single bracket line `[{label}...]` with the directional `>{label}` tag as `who`.
+/// Does **not** echo the full prompt body to stdout (that goes only to the trace file).
+pub fn print_outgoing_prompt_log(label: &str) {
+    let directional_tag = format_acp_directional_tag_prefix('>', label);
+    let bracket_payload = format!("[{label}...]");
+    print_stdout_acp_tee_line(AcpTeeDirection::ToAgent, &directional_tag, &bracket_payload);
+}
 
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
 pub const LOG_TAG_INNER_WIDTH: usize = 10;
@@ -47,7 +63,7 @@ pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
     format!("{ts}:[{inner}]: {line}")
 }
 
-fn timestamp_now_string() -> String {
+pub(crate) fn timestamp_now_string() -> String {
     let now = Local::now();
     format!(
         "{}.{:03}",
@@ -82,16 +98,37 @@ fn stdout_use_color() -> bool {
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    let s = if stdout_use_color() {
-        format_line_with_timestamp_ansi(&timestamp_now_string(), who, line)
-    } else {
-        format_line(who, line)
-    };
-    println!("{s}");
+    let ts = timestamp_now_string();
+    let (max_payload, wrap) = stdout_line_wrap_meta(&ts, who, line);
+    if !wrap {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_ansi(&ts, who, line)
+        } else {
+            format_line_with_timestamp(&ts, who, line)
+        };
+        println!("{s}");
+        return;
+    }
+    for seg in wrap_words_bounded(max_payload, line) {
+        let s = if stdout_use_color() {
+            format_line_with_timestamp_ansi(&ts, who, &seg)
+        } else {
+            format_line_with_timestamp(&ts, who, &seg)
+        };
+        println!("{s}");
+    }
 }
 
 pub fn print_stderr_line(who: &str, line: &str) {
-    eprintln!("{}", format_line(who, line));
+    let ts = timestamp_now_string();
+    let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, line);
+    if !wrap {
+        eprintln!("{}", format_line_with_timestamp(&ts, who, line));
+        return;
+    }
+    for seg in wrap_words_bounded(max_payload, line) {
+        eprintln!("{}", format_line_with_timestamp(&ts, who, &seg));
+    }
 }
 
 pub fn print_stdout_text(who: &str, text: &str) {
@@ -120,7 +157,7 @@ mod tests {
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
         format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
         format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
-        print_stdout_line, print_stdout_text,
+        print_outgoing_prompt_log, print_stdout_line, print_stdout_text,
     };
 
     #[test]
@@ -181,6 +218,7 @@ mod tests {
         print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
         print_stderr_line("e", "err");
         print_stdout_text("t", "a\nb");
+        print_outgoing_prompt_log("main");
         let mut it = super::logical_lines("x\ny");
         assert_eq!(it.next(), Some("x"));
         assert_eq!(it.next(), Some("y"));
@@ -199,7 +237,10 @@ mod tests {
         let _ = stringify!(super::print_stdout_line);
         let _ = stringify!(super::print_stderr_line);
         let _ = stringify!(super::print_stdout_text);
+        let _ = stringify!(super::print_outgoing_prompt_log);
         let _ = stringify!(super::is_command_prelude_line);
         let _ = stringify!(super::logical_lines);
+        let _ = stringify!(super::print_stdout_acp_tee_line);
+        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp);
     }
 }

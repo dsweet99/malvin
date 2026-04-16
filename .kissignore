@@ -1,8 +1,31 @@
 target/
-# Externalized `#[cfg(test)]` modules: kiss static coverage does not attribute them to impl files.
+
+# Test helper files (called BY tests, not testable themselves)
+src/acp/reader_tests.rs
 src/acp/session_tests.rs
 src/acp/transport_tests.rs
-src/acp/reader_tests.rs
-src/orchestrator_tests.rs
-# Binary entry: covered via `cli` kiss tests; no `stringify!(main)` path in submodules.
+
+# Platform-specific code (only compiles on specific platforms)
+src/child_health/linux.rs
+src/child_health/macos.rs
+src/child_health/other.rs
+
+# Entry point
 src/main.rs
+
+# CLI integration code (hard to unit test, requires integration tests)
+src/cli/init_cmd.rs
+src/cli/do_flow.rs
+
+# Included module files (complex ACP implementation code)
+src/acp/retry_policy.rs
+src/acp/agent_bundle.rs
+src/acp/session_spawn.rs
+src/acp/client_impl.rs
+src/acp/ops_body.rs
+src/acp/agent_client_struct.rs
+src/acp/reader_stdout_body.rs
+src/acp/tee_strip_tests.rs
+src/acp/pair.rs
+src/acp/ops_inline_tests.rs
+src/acp/reader_inline.rs

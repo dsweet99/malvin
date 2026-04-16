@@ -3,9 +3,10 @@
 //! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
 //! attribute coverage consistently; see `.kissignore`.
 
-use crate::acp::{AgentClient, AgentError};
+use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
+use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -48,20 +49,45 @@ pub(crate) fn prefer_primary_errors_over_timing(
 pub struct WorkflowConfig {
     pub max_loops: usize,
     pub run_learn: bool,
+    /// Skip learn phase if elapsed time is below this threshold (milliseconds).
+    /// Default: `300_000` (5 minutes). Set to 0 to always run learn when `run_learn` is true.
+    pub learn_min_elapsed_ms: u64,
+    /// Skip `check_plan` step (enabled by `--trust-the-plan`).
+    pub skip_check_plan: bool,
 }
 
-/// Runs implement + two review phases + optional learn pass.
+/// Runs implement, two review phases, and optional learn pass.
 pub struct Orchestrator<'a> {
     pub client: &'a mut AgentClient,
     pub prompts: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
+    /// Snapshot path under `~/.malvin/groundings/`, restored before each review and after the workflow.
+    pub grounding_backup: Option<std::path::PathBuf>,
+}
+
+/// Returns true if learn should run given threshold and elapsed time.
+/// Threshold of 0 means always run. Otherwise, run only if elapsed >= threshold.
+#[must_use]
+pub const fn should_run_learn_check(threshold_ms: u64, elapsed_ms: u64) -> bool {
+    threshold_ms == 0 || elapsed_ms >= threshold_ms
 }
 
 impl Orchestrator<'_> {
     fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
         self.client.attach_run_timing_for_session()
+    }
+
+    fn should_run_learn(&self) -> bool {
+        let elapsed_ms = self.client.timing.as_ref().map_or(0, |t| {
+            let d = t
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .elapsed_so_far();
+            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+        });
+        should_run_learn_check(self.config.learn_min_elapsed_ms, elapsed_ms)
     }
 
     fn emit_run_timing_artifact(
@@ -79,7 +105,7 @@ impl Orchestrator<'_> {
     ///
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts);
+        let context = workflow_context_inner(self.artifacts, self.prompts);
         let timing = self.attach_run_timing();
         let begin_res = self
             .client
@@ -98,10 +124,35 @@ impl Orchestrator<'_> {
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
+    async fn run_check_plan(
+        &mut self,
+        context: &HashMap<String, String>,
+    ) -> Result<(), WorkflowError> {
+        let review_path = self.artifacts.workspace_review_md();
+        clear_review_file(&review_path)
+            .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
+        (self.progress_callback)("CheckPlan");
+        self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
+            .await?;
+
+        let contents = std::fs::read_to_string(&review_path).map_err(|e| {
+            WorkflowError(format!("failed to read review file: {e}"))
+        })?;
+        if !is_lgtm_str(&contents) {
+            (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
+            return Err(WorkflowError("check_plan did not pass".to_string()));
+        }
+        Ok(())
+    }
+
     async fn run_with_coder_session(
         &mut self,
         context: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
+        if !self.config.skip_check_plan {
+            self.run_check_plan(context).await?;
+        }
+
         (self.progress_callback)("Implement");
         self.run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
             .await?;
@@ -121,7 +172,7 @@ impl Orchestrator<'_> {
         })
         .await?;
 
-        if self.config.run_learn {
+        if self.config.run_learn && self.should_run_learn() {
             (self.progress_callback)("Learn");
             self.run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
                 .await?;
@@ -143,7 +194,17 @@ impl Orchestrator<'_> {
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
         self.client
-            .run_coder_prompt(&prompt, &log, stem, Some(llm_phase), false)
+            .run_coder_prompt(
+                &prompt,
+                &log,
+                stem,
+                CoderPromptOptions {
+                    llm_phase: Some(llm_phase),
+                    skip_repo_style: false,
+                    do_trace_split: None,
+                    stdout_bracket_label: Some(filename),
+                },
+            )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())

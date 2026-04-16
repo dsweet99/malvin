@@ -7,11 +7,12 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
-/// Verbose logging and stdout tee for the ACP reader (bundled for [`SessionChannelState::into_session_inner`]).
+/// Verbose logging for ACP (bundled for [`SessionChannelState::into_session_inner`]).
 #[derive(Clone, Copy)]
 pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
-    pub tee_trace_stdout: bool,
+    /// When true, print raw output without timestamps/prefixes.
+    pub raw_output: bool,
 }
 
 pub struct SessionChannelState {
@@ -89,8 +90,8 @@ impl SessionChannelState {
             prompt_rpc_id: self.prompt_rpc_id,
             prompt_singleflight: self.prompt_singleflight,
             acp_verbose: telemetry.acp_verbose,
-            tee_trace_stdout: telemetry.tee_trace_stdout,
             ui_idle_notify: self.ui_idle_notify,
+            raw_output: telemetry.raw_output,
         }
     }
 }
@@ -112,4 +113,12 @@ fn kiss_stringify_session_channels() {
     let _ = stringify!(SessionChannelState::handshake_io);
     let _ = stringify!(SessionChannelState::into_session_inner);
     let _ = stringify!(SessionAfterStdioIn);
+}
+
+#[test]
+fn acp_activity_state_returns_valid_arc_pair() {
+    use std::sync::atomic::Ordering;
+    let (seq, notify) = acp_activity_state();
+    assert_eq!(seq.load(Ordering::SeqCst), 0);
+    notify.notify_one();
 }

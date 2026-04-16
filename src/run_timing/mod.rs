@@ -1,6 +1,6 @@
 //! Wall-clock and phase-bucketed LLM wait timing for `malvin code`, `malvin kpop`, and `malvin do` runs.
 //!
-//! **Streams:** One stdout `TIMING:` summary line via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
+//! **Streams:** One stdout line beginning with [`RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: ` including the trailing space before the first `name = value` field) via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
 
 mod report;
 
@@ -12,16 +12,15 @@ use std::time::{Duration, Instant};
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
 /// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop` / `malvin do`).
-pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING:";
+pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
+    CheckPlan,
     Implement,
     Review1Review,
-    Review1Kpop,
     Review2Review,
-    Review2Kpop,
     Concerns,
     Learn,
 }
@@ -41,14 +40,6 @@ impl ReviewPairId {
             Self::Two => TimingPhase::Review2Review,
         }
     }
-
-    #[must_use]
-    pub const fn kpop_phase(self) -> TimingPhase {
-        match self {
-            Self::One => TimingPhase::Review1Kpop,
-            Self::Two => TimingPhase::Review2Kpop,
-        }
-    }
 }
 
 /// Mutable accumulator; wall clock is bounded by orchestrator (`Instant` monotonic).
@@ -58,12 +49,11 @@ pub struct RunTiming {
     wall_end: Option<Instant>,
     llm_wait: Duration,
     agent_retry_backoff: Duration,
+    check_plan: Duration,
     implement: Duration,
     implement_display_name: &'static str,
     review_1_review: Duration,
-    review_1_kpop: Duration,
     review_2_review: Duration,
-    review_2_kpop: Duration,
     concerns: Duration,
     learn: Duration,
 }
@@ -75,12 +65,11 @@ impl Default for RunTiming {
             wall_end: None,
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
+            check_plan: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
             review_1_review: Duration::ZERO,
-            review_1_kpop: Duration::ZERO,
             review_2_review: Duration::ZERO,
-            review_2_kpop: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
         }
@@ -104,15 +93,14 @@ impl RunTiming {
     pub const fn add_llm_phase(&mut self, phase: TimingPhase, d: Duration) {
         self.llm_wait = self.llm_wait.saturating_add(d);
         match phase {
+            TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
             TimingPhase::Review1Review => {
                 self.review_1_review = self.review_1_review.saturating_add(d);
             }
-            TimingPhase::Review1Kpop => self.review_1_kpop = self.review_1_kpop.saturating_add(d),
             TimingPhase::Review2Review => {
                 self.review_2_review = self.review_2_review.saturating_add(d);
             }
-            TimingPhase::Review2Kpop => self.review_2_kpop = self.review_2_kpop.saturating_add(d),
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
         }
@@ -131,6 +119,13 @@ impl RunTiming {
             (Some(a), Some(b)) => Some(b.saturating_duration_since(a)),
             _ => None,
         }
+    }
+
+    /// Returns elapsed time since wall start (for mid-run checks like conditional learn).
+    #[must_use]
+    pub fn elapsed_so_far(&self) -> Duration {
+        self.wall_start
+            .map_or(Duration::ZERO, |start| Instant::now().saturating_duration_since(start))
     }
 
     /// Writes `run_timing.json` and prints one stdout summary line (timestamp-prefixed).
@@ -203,29 +198,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn run_timing_json_includes_phase_keys() {
+    fn run_timing_json_phases_and_review_pair_id_mapping() {
         let mut r = RunTiming::default();
         r.mark_wall_start(Instant::now());
         r.mark_wall_end(Instant::now());
         r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(10));
-        let v = report::to_json_value(&r);
-        let phases = v.get("phases_ms").unwrap();
-        for key in [
-            "implement",
-            "review_1_review",
-            "review_1_kpop",
-            "review_2_review",
-            "review_2_kpop",
-            "concerns",
-            "learn",
-        ] {
+        let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
+        for key in ["check_plan", "implement", "review_1_review", "review_2_review", "concerns", "learn"] {
             assert!(phases.get(key).is_some(), "missing {key}");
         }
+        assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
+        assert_eq!(ReviewPairId::Two.review_phase(), TimingPhase::Review2Review);
     }
 
     #[test]
-    fn review_pair_id_maps_phases() {
-        assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
-        assert_eq!(ReviewPairId::Two.kpop_phase(), TimingPhase::Review2Kpop);
+    fn elapsed_so_far_and_record_functions() {
+        let mut r = RunTiming::default();
+        assert_eq!(r.elapsed_so_far(), Duration::ZERO);
+        r.mark_wall_start(Instant::now());
+        std::thread::sleep(Duration::from_millis(10));
+        assert!(r.elapsed_so_far() >= Duration::from_millis(5));
+        let timing = RunTiming::new_arc();
+        record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(100));
+        record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(50));
+        record_backoff(Some(&timing), Duration::from_millis(200));
+        record_backoff(Some(&timing), Duration::from_millis(100));
+        let g = timing.lock().unwrap();
+        assert_eq!((g.implement, g.llm_wait, g.agent_retry_backoff),
+            (Duration::from_millis(150), Duration::from_millis(150), Duration::from_millis(300)));
+        drop(g);
+        record_llm(None, TimingPhase::Implement, Duration::from_millis(100));
+        record_backoff(None, Duration::from_millis(100));
+    }
+
+    #[test]
+    fn check_plan_phase_accumulates_timing() {
+        let mut r = RunTiming::default();
+        r.mark_wall_start(Instant::now());
+        r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(100));
+        r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(50));
+        r.mark_wall_end(Instant::now());
+        assert_eq!(r.check_plan, Duration::from_millis(150));
+        assert_eq!(r.llm_wait, Duration::from_millis(150));
+        let json = report::to_json_value(&r);
+        let phases = json.get("phases_ms").unwrap();
+        assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
     }
 }

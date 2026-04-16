@@ -13,7 +13,7 @@ pub use super::shared_opts::GlobalOpts;
 #[command(
     name = "malvin",
     version,
-    about = "Non-interactive agent, via Cursor ACP",
+    about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true
 )]
 pub struct Cli {
@@ -47,6 +47,9 @@ pub struct CodeArgs {
     /// Skip learning.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
+    /// Skip plan validation step.
+    #[arg(long, default_value_t = false)]
+    pub trust_the_plan: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
@@ -58,7 +61,7 @@ pub struct KpopArgs {
     /// KPOP loop budget.
     #[arg(long, default_value_t = 10)]
     pub max_loops: usize,
-    /// Probability (0–1) of using the MBC2 creative prompt variant on each outbound KPOP prompt when creative mode applies.
+    /// Probability (0–1) that each budget iteration is scheduled as an MBC2 generate-then-falsify pair (vs plain KPOP). Ignored when `p_creative` is non-finite or ≤ 0.
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
     /// Skip learning.

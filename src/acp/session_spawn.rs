@@ -91,7 +91,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         rpc_timeout,
         SessionReaderTelemetry {
             acp_verbose: args.acp_verbose,
-            tee_trace_stdout: args.tee_trace_stdout,
+            raw_output: args.raw_output,
         },
     ))))
 }

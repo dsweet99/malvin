@@ -1,4 +1,4 @@
-### KPOP: Apply this method to the user's problem.
+### KPop: Apply this method to the user's problem.
 
 Restate the problem clearly.
 
@@ -12,3 +12,4 @@ Log your hypotheses and test results -- as they become available -- to a file na
 you choose a semantically-reasonable name, unless the user specifies one.
 
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
+

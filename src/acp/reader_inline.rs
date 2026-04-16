@@ -25,4 +25,4 @@ impl PromptRpcCleanup {
 }
 
 // Single stdout include (no `reader::stdout` submodule) for `kiss` dependency depth.
-include!("reader_stdout_body.inc");
+include!("reader_stdout_body.rs");

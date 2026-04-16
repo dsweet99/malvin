@@ -27,10 +27,11 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::begin_coder_session);
     let _ = stringify!(AgentClient::run_coder_prompt);
     let _ = stringify!(AgentClient::end_coder_session);
-    let _ = stringify!(AgentClient::run_reviewer_review_and_kpop);
+    let _ = stringify!(AgentClient::run_reviewer_review);
     let _ = stringify!(AgentClient::run_kpop_flow);
     let _ = stringify!(AgentClient::set_run_timing);
     let _ = stringify!(AgentClient::attach_run_timing_for_session);
+    let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
 }
 
 #[test]
@@ -38,6 +39,7 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(RunArtifacts);
     let _ = stringify!(RunArtifacts::log_path);
     let _ = stringify!(RunArtifacts::artifact_review_md);
+    let _ = stringify!(RunArtifacts::artifact_result_md);
     let _ = stringify!(RunArtifacts::workspace_review_md);
     let _ = stringify!(create_run_artifacts);
     let _ = stringify!(crate::artifacts::create_run_dir);
@@ -48,6 +50,8 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::startup_request_tag_label);
     let _ = stringify!(crate::artifacts::work_dir_for_path);
     let _ = stringify!(crate::artifacts::resolve_at_file);
+    let _ = stringify!(crate::artifacts::backup_workspace_grounding_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_grounding);
 }
 
 #[test]
@@ -106,10 +110,12 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(WorkflowConfig);
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
+    let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
+    let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
     let _ = stringify!(crate::orchestrator::review_context::ReviewPhaseArgs);
     let _ = stringify!(crate::orchestrator::review_context::ReviewAttemptCtx);
 }
@@ -117,10 +123,16 @@ fn kiss_stringify_orchestrator() {
 #[test]
 fn kiss_stringify_kpop_acp_prompt() {
     let _ = stringify!(crate::kpop_acp_prompt::kpop_creative_enabled);
-    let _ = stringify!(crate::kpop_acp_prompt::kpop_acp_user_prompt);
-    let _ = stringify!(crate::kpop_acp_prompt::kpop_standalone_outbound_prompt_count);
-    let _ = stringify!(crate::kpop_acp_prompt::KpopAcpPromptPick);
     let _ = stringify!(crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION);
+}
+
+#[test]
+fn kiss_stringify_kpop_schedule() {
+    let _ = stringify!(crate::kpop_schedule::KpopScheduleStep);
+    let _ = stringify!(crate::kpop_schedule::generate_kpop_schedule);
+    let _ = stringify!(crate::kpop_schedule::schedule_requires_mbc2);
+    let _ = stringify!(crate::kpop_schedule::render_planned_schedule_lines);
+    let _ = stringify!(crate::kpop_schedule::build_scheduled_kpop_prompt);
 }
 
 #[test]
@@ -199,7 +211,6 @@ fn smoke_orchestrator_instantiation() {
             "implement.md",
             "review_1.md",
             "review_2.md",
-            "kpop.md",
             "concerns.md",
         ],
         b"Hello {{ plan_path }} $kpop_log_dir",
@@ -219,6 +230,7 @@ fn smoke_orchestrator_instantiation() {
         AgentIoOptions {
             force: true,
             no_tee: false,
+            raw_output: false,
         },
     );
     let _ = Orchestrator {
@@ -228,7 +240,10 @@ fn smoke_orchestrator_instantiation() {
         config: WorkflowConfig {
             max_loops: 1,
             run_learn: false,
+            learn_min_elapsed_ms: 0,
+            skip_check_plan: false,
         },
         progress_callback: Box::new(|_: &str| {}),
+        grounding_backup: None,
     };
 }

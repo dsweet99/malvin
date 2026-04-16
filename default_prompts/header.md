@@ -19,4 +19,6 @@ AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words 
 --
 
 TRIGGER: grounding.md
-ADVICE: Never update grounding unless explicitly asked to by the user.
+ADVICE: Never modify grounding unless explicitly asked to by the user.
+
+--

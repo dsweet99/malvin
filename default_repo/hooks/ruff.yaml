@@ -1,0 +1,7 @@
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check .
+        language: system
+        pass_filenames: false
+        always_run: true
+

@@ -1,6 +1,11 @@
 //! Run directories and log paths.
 
+mod grounding_backup;
 mod startup_tag;
+
+pub use grounding_backup::{
+    backup_workspace_grounding_if_present, restore_workspace_grounding,
+};
 
 use chrono::Utc;
 use rand::Rng;
@@ -33,6 +38,12 @@ impl RunArtifacts {
     #[must_use]
     pub fn workspace_review_md(&self) -> PathBuf {
         self.work_dir.join("review.md")
+    }
+
+    /// Run-directory `result.md` for concerns ABORT signaling.
+    #[must_use]
+    pub fn artifact_result_md(&self) -> PathBuf {
+        self.run_dir.join("result.md")
     }
 }
 
@@ -163,29 +174,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn log_path_sanitizes_slashes() {
+    fn log_path_sanitizes_slashes_and_backslashes() {
         let r = RunArtifacts {
             run_dir: PathBuf::from("/tmp/run"),
             plan_path: PathBuf::from("/tmp/run/plan.md"),
             work_dir: PathBuf::from("/work"),
         };
-        assert_eq!(
-            r.log_path("a/b").file_name(),
-            Some(std::ffi::OsStr::new("a_b.log"))
-        );
-    }
-
-    #[test]
-    fn log_path_sanitizes_backslashes() {
-        let r = RunArtifacts {
-            run_dir: PathBuf::from("/tmp/run"),
-            plan_path: PathBuf::from("/tmp/run/plan.md"),
-            work_dir: PathBuf::from("/work"),
-        };
-        assert_eq!(
-            r.log_path("a\\b").file_name(),
-            Some(std::ffi::OsStr::new("a_b.log"))
-        );
+        assert_eq!(r.log_path("a/b").file_name(), Some(std::ffi::OsStr::new("a_b.log")));
+        assert_eq!(r.log_path("a\\b").file_name(), Some(std::ffi::OsStr::new("a_b.log")));
     }
 
     #[test]

@@ -20,7 +20,21 @@ pub fn merge_acp_and_timing_results(
     }
 }
 
-/// After ACP work: write `run_timing.json`, print `TIMING:`, clear [`AgentClient`] timing slot, merge errors.
+/// Prefer the primary workflow/ACP error over a grounding restore error when both occur.
+pub fn prefer_primary_string_errors(
+    primary: Result<(), String>,
+    restore: Result<(), String>,
+) -> Result<(), String> {
+    match primary {
+        Err(e) => {
+            let _ = restore;
+            Err(e)
+        }
+        Ok(()) => restore,
+    }
+}
+
+/// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`malvin::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
 pub fn emit_run_timing_after_acp(
     client: &mut AgentClient,
     run_dir: &Path,
@@ -30,4 +44,30 @@ pub fn emit_run_timing_after_acp(
     let timing_result = malvin::run_timing::finalize_and_emit_run_timing(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::prefer_primary_string_errors;
+
+    #[test]
+    fn prefer_primary_drops_restore_error_when_primary_fails() {
+        assert_eq!(
+            prefer_primary_string_errors(Err("wf".into()), Err("restore".into())),
+            Err("wf".into())
+        );
+    }
+
+    #[test]
+    fn prefer_primary_surfaces_restore_when_primary_ok() {
+        assert_eq!(
+            prefer_primary_string_errors(Ok(()), Err("restore".into())),
+            Err("restore".into())
+        );
+    }
+
+    #[test]
+    fn prefer_primary_ok_when_both_ok() {
+        assert_eq!(prefer_primary_string_errors(Ok(()), Ok(())), Ok(()));
+    }
 }

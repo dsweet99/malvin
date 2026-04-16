@@ -32,4 +32,8 @@ fn kiss_stringify_cli_symbols() {
     let _ = stringify!(malvin::env_path::lookup_bin_on_path);
     let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
+    let _ = stringify!(crate::cli::timing_merge::prefer_primary_string_errors);
+    let _ = stringify!(crate::cli::repo_checks::warn_kissconfig_test_coverage_if_needed);
+    let _ = stringify!(crate::cli::repo_checks::run_pre_commit_checks_or_warn);
+    let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
 }

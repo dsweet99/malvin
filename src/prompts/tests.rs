@@ -61,10 +61,14 @@ fn substitute_replaces_dollar_keys() {
 fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
-        .validate_kpop_prompts(false, 0.0)
+        .validate_kpop_prompts(super::KpopPromptValidation {
+            run_learn: false,
+            require_mbc2: false,
+        })
         .expect("kpop-only ok");
     assert!(
         store.validate_required().is_err(),
@@ -73,23 +77,33 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
 }
 
 #[test]
-fn validate_kpop_prompts_does_not_require_mbc2_for_positive_infinity() {
+fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
-        .validate_kpop_prompts(false, f64::INFINITY)
-        .expect("non-finite p_creative should not imply MBC2");
+        .validate_kpop_prompts(super::KpopPromptValidation {
+            run_learn: false,
+            require_mbc2: false,
+        })
+        .expect("schedule without MBC2 should not require mbc2.md");
 }
 
 #[test]
-fn validate_kpop_prompts_requires_mbc2_when_p_creative_positive() {
+fn validate_kpop_prompts_requires_mbc2_when_requested() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let err = store.validate_kpop_prompts(false, 0.1).unwrap_err();
+    let err = store
+        .validate_kpop_prompts(super::KpopPromptValidation {
+            run_learn: false,
+            require_mbc2: true,
+        })
+        .unwrap_err();
     assert!(
         err.0.contains("mbc2.md"),
         "expected mbc2 missing error, got {:?}",
@@ -105,7 +119,6 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
         "implement.md",
         "review_1.md",
         "review_2.md",
-        "kpop.md",
         "concerns.md",
     ] {
         std::fs::write(root.join(name), "x").unwrap();
@@ -123,9 +136,15 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
 fn validate_kpop_prompts_requires_learn_when_run_learn() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop.md"), "kpop").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let err = store.validate_kpop_prompts(true, 0.0).unwrap_err();
+    let err = store
+        .validate_kpop_prompts(super::KpopPromptValidation {
+            run_learn: true,
+            require_mbc2: false,
+        })
+        .unwrap_err();
     assert!(
         err.0.contains("learn.md"),
         "expected learn missing error, got {:?}",
@@ -186,4 +205,18 @@ fn render_prompt_only_skips_coding_rules_injection() {
     ctx.insert("plan_path".to_string(), "/p".to_string());
     let out = store.render_prompt_only("header.md", &ctx).unwrap();
     assert_eq!(out, "H/p");
+}
+
+#[test]
+fn merge_header_and_coding_rules_combines_nonempty() {
+    assert_eq!(merge_header_and_coding_rules("head", "rules"), "head\n\nrules");
+    assert_eq!(merge_header_and_coding_rules("  head  ", "  rules  "), "head\n\nrules");
+}
+
+#[test]
+fn merge_header_and_coding_rules_handles_empty() {
+    assert_eq!(merge_header_and_coding_rules("", ""), "");
+    assert_eq!(merge_header_and_coding_rules("head", ""), "head");
+    assert_eq!(merge_header_and_coding_rules("", "rules"), "rules");
+    assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
 }

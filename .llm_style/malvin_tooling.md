@@ -54,7 +54,7 @@ Fails when `*.rs` or `*.py` exist under the repo but are not tracked (`git ls-fi
 **Binary vs library:** `src/cli/` is part of the **`malvin` binary crate**, not `malvin` the library. `pub(crate)` fields on `AgentClient` (e.g. `timing`) are visible inside `src/lib.rs` code only—**not** from `src/cli/`. Use public methods on the library client (e.g. `attach_run_timing_for_session`) or keep field access in lib modules (`src/orchestrator/`, …).
 | Invocation argv | `src/invocation.rs` |
 | Log path display | `src/log_paths.rs` |
-| Run artifacts | `src/artifacts/` (`mod.rs`, `startup_tag.rs`) |
+| Run artifacts | `src/artifacts/` (`mod.rs`, `startup_tag.rs`, `grounding_backup.rs`) |
 | Orchestrator | `src/orchestrator/`, `src/review_sync.rs`; `#[cfg(test)]` `src/orchestrator_tests.rs` |
 | Run timing | `src/run_timing/mod.rs` + `src/run_timing/report.rs` — `malvin code`, `malvin kpop`, `malvin do`: `run_timing.json` + one **stdout** summary after the workflow body; LLM wait vs retry/backoff; see root `grounding.md` |
 | Prompts | `src/prompts/` + `default_prompts/`; `prompts/template.rs` holds merge/render helpers when `kiss` `lines_per_file` caps `mod.rs` (~250 lines) |
@@ -85,15 +85,33 @@ ADVICE: In `child_health/linux.rs` **`parse_status_voluntary_ctxt`**, after `str
 ## Run timing (`malvin code` / `malvin kpop` / `malvin do`)
 
 TRIGGER: TIMING line JSON parity  
-ADVICE: One `serde_json::Value` from `to_json_value` is written pretty to `run_timing.json` and passed to `format_timing_stdout_line_from_json` for stdout—keeps `TIMING:` aligned with disk. `PHASE_MS_KEYS_JSON_ORDER` in `report.rs` must match `phases_ms` keys in `to_json_value`.
+ADVICE: One `serde_json::Value` from `to_json_value` is written pretty to `run_timing.json` and passed to `format_timing_stdout_line_from_json` for stdout—keeps the line aligned with disk. The stdout text after the timestamp prefix uses [`RUN_TIMING_SUMMARY_PREFIX`] in `src/run_timing/mod.rs` — literal **`"TIMING: "`** (colon + **one ASCII space** before the first field); do not describe it as bare `` `TIMING:` `` in docs. `PHASE_MS_KEYS_JSON_ORDER` in `report.rs` must match `phases_ms` keys in `to_json_value`.
 
 TRIGGER: CLI emit run timing after ACP  
 ADVICE: `src/cli/timing_merge.rs` — `emit_run_timing_after_acp(client, run_dir, &timing, acp_result)` wraps `finalize_and_emit_run_timing` + `set_run_timing(None)` + `merge_acp_and_timing_results`; used by `do_flow` and `kpop_flow` (not async-generic—avoids `&mut AgentClient` + `Future` lifetime issues).
 
 - **Code:** `src/run_timing/` (`mod.rs`, `report.rs`); orchestrator sets `AgentClient::timing` and finalizes after `run_with_coder_session`; KPOP and **`do`** attach timing and finalize via `emit_run_timing_after_acp`; ACP `client_impl.inc` / `ops_body.inc` record `session/prompt` duration and bounded-retry sleeps.
-- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** `TIMING:` line after the workflow body (see root `grounding.md`).
+- **Artifacts:** `run_timing.json` in the run directory; one timestamp-prefixed **stdout** line beginning with **`TIMING: `** (see `RUN_TIMING_SUMMARY_PREFIX`, root `grounding.md`).
 - **Dual failure:** If timing I/O and workflow/ACP both fail, return the **primary** error first (`prefer_primary_errors_over_timing` in `src/orchestrator/mod.rs`; `merge_acp_and_timing_results` in `timing_merge.rs`).
 - **Rustdoc:** Helpers that merge `Result`s after timing I/O must not read as reordering stdout vs `grounding.md`—ordering is established in the orchestrator / KPOP / `do` callers.
+
+### Error merge (`src/cli/timing_merge.rs`)
+
+TRIGGER: merge_acp_and_timing_results  
+ADVICE: After ACP body, **`emit_run_timing_after_acp`** passes **`merge_acp_and_timing_results(acp_result, timing_result)`**—ACP `Err` wins; timing `Err` only if ACP was `Ok`.
+
+TRIGGER: prefer_primary_string_errors  
+ADVICE: **`prefer_primary_string_errors(primary, restore)`**—used after **`malvin code`** / **`malvin kpop`** when restoring workspace **`grounding.md`** from `~/.malvin/groundings/...`; primary workflow/ACP `Err(String)` wins over restore failure (same “prefer primary” idea as timing merge).
+
+## Repo style file (optional)
+
+TRIGGER: DEFAULT_REPO_STYLE_PROMPT_REL  
+ADVICE: Public const **`DEFAULT_REPO_STYLE_PROMPT_REL`** (`"coder_style.md"`) in **`src/acp/client_impl.inc`**; **`AgentClient::new`** sets **`style_prompt_path`** from it. **`read_coder_repo_style_text`** / **`prepend_coder_repo_style_to_prompt`** share trim/empty rules with coder and reviewer paths. Root **`grounding.md`** section **## Repo style file** is the user-facing contract.
+
+## Docs parity (rustdoc ↔ `grounding.md`)
+
+TRIGGER: rustdoc section cite  
+ADVICE: Repository **`grounding.md`** uses Markdown **`##` / `###` headings**—in **`///`** comments refer to **`## Heading name`** (bold or backticks), not typographic “§ Section” labels, so readers can search the file.
 
 ## ACP traces, coalescing, tee
 
@@ -136,6 +154,9 @@ ADVICE: Use `RunArtifacts::artifact_review_md()` / `workspace_review_md()` in `s
 TRIGGER: sync_review_then_is_lgtm  
 ADVICE: `src/review_sync.rs` — `sync_review_then_is_lgtm` returns **`io::Result<bool>`** (propagate read/write with `?`); map to `AgentError` / `WorkflowError` in `ops_body.inc` and `orchestrator/review_loop.rs`. Do not treat sync I/O failure as “not LGTM.”
 
+TRIGGER: sync_review_file clear stale LGTM  
+ADVICE: **`sync_review_file`** (**`src/review_sync.rs`**) **writes an empty file** to the artifact path when the workspace `review.md` is **missing** or **whitespace-only after trim**, so a previous **`LGTM`** in the artifact cannot survive. Parent dirs are created as needed. Non-empty workspace text overwrites the artifact as before. **`is_lgtm`** still maps **`read_to_string`** failures to **`false`**. Regress in-crate tests in **`review_sync.rs`** + **`orchestrator_tests.rs`**.
+
 TRIGGER: reviewer pair order regression  
 ADVICE: `tests/cli_parity.rs` **`reviewer_pair_ops_preserves_review_sync_lgtm_before_kpop_order`** `include_str!`s `src/acp/ops_body.inc` and asserts source order: review `session/prompt` → `sync_review_then_is_lgtm(...)` → kpop `session/prompt`. Pair with behavioral tests in `src/review_sync.rs` (not only substring guards).
 
@@ -157,7 +178,27 @@ TRIGGER: ACP tee direction colors
 ADVICE: Live tee only: **`print_stdout_acp_tee_line`** in **`src/output/acp_tee.rs`** — **`AcpTeeDirection::ToAgent`**: bright **green** `[who]:` prefix (prompt text to agent) from **`trace_write_outgoing_prompt`** (`session_trace.rs`); **`FromAgent`**: bright **magenta** (agent stream / learn placeholder) from **`trace_tee_stdout_line`** (`coalesce.rs`). Payload text stays unstyled. **Disk** traces still **`format_line`** only (no escapes).
 
 TRIGGER: output kiss lines_per_file split  
-ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, split into **`mod.rs`** + focused sibling (e.g. **`acp_tee.rs`**) instead of shrinking behavior; re-export at **`output` module** root.
+ADVICE: When **`kiss`** `lines_per_file` (~250) fires on **`src/output/`**, split into **`mod.rs`** + focused sibling (e.g. **`acp_tee.rs`**, **`terminal_wrap.rs`**) instead of shrinking behavior; re-export at **`output` module** root.
+
+### Terminal wrap (TTY)
+
+TRIGGER: terminal_wrap module  
+ADVICE: **`src/output/terminal_wrap.rs`** — **`terminal_columns()`** = **`columns_from_env()`** (valid **`COLUMNS`** **20–500**) **or** **`columns_from_tty()`** (**`terminal_size::terminal_size()`**, width **≥20** capped at **500**; **`None`** if query fails or too narrow) **or** **80**. **`stdout_line_wrap_meta`** / **`line_wrap_meta`** use that width; **`acp_tee.rs`** tees with same wrap; **`trace_line_write.rs`** uses **`terminal_columns()`** for raw stdout wrap. **`stdout_is_wrappable_terminal()`**, **`wrap_words_bounded`**. **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
+
+TRIGGER: terminal_size crate  
+ADVICE: Dependency **`terminal_size`** (see **`Cargo.toml`**). **`terminal_size()`** returns **`Option<(Width, Height)>`**; use **`usize::from(w.0)`** for column count (**`Width`** is a **`u16`** newtype—do not cast the tuple element incorrectly).
+
+TRIGGER: print_stdout wrap rule  
+ADVICE: **`print_stdout_line`** / **`print_stderr_line`**: wrap only when **`stdout`/`stderr`** is a TTY **and** `line.chars().count() > max_payload`, where **`max_payload = terminal_columns().saturating_sub(prefix_len).max(1)`** and **`prefix_len`** = **`format_line_with_timestamp(ts, who, "").chars().count()`** (plain prefix). **Same `ts`** for all continuation lines. **Pipes** (`!is_terminal()`): one unwrapped line, original spacing preserved when no wrap path runs.
+
+TRIGGER: acp_tee wrap  
+ADVICE: **`print_stdout_acp_tee_line`** (`acp_tee.rs`): same **`max_payload`** / prefix rule as **`print_stdout_line`**; ANSI tee colors unchanged on each physical line.
+
+TRIGGER: raw trace stdout wrap  
+ADVICE: **`trace_tee_stdout_line`** (`src/acp/trace_line_write.rs`): if **`writer.raw_output`**, wrap **plain** stdout at **`terminal_columns()`** without malvin prefix. **`trace_file_write_line`** still **`write_all(format_line(...))`** to disk **unwrapped**—on-disk format stable.
+
+TRIGGER: coalesce not TTY wrap  
+ADVICE: **`ACP_VERBOSE_COALESCE_MAX`** and **`coalesce_append_chunk`** (`coalesce.rs`) buffer **JSON `session/update` chunks** for trace + verbose **`tracing`**; **do not** treat flush-at-125-scalars as terminal width—TTY reflow is **`wrap_words_bounded`** only.
 
 TRIGGER: kiss static coverage per module  
 ADVICE: If **`kiss check`** reports **test_coverage** gaps for a file, add **`#[cfg(test)]`** **`stringify!`** (and minimal smoke calls) **in that same source file**—not only **`src/coverage_kiss.rs`**—so static coverage attributes to the implementation module.
@@ -199,10 +240,18 @@ TRIGGER: CLI kiss gate
 ADVICE: **`malvin code`** / **`malvin kpop`** require a **`kiss`** executable on **`PATH`** (`lookup_bin_on_path` in **`src/env_path.rs`**). **`require_kiss_for_malvin`** returns an install hint: **`cargo install kiss-ai`**. **`require_kiss_for_cli_command`** in **`src/cli/mod.rs`** runs **immediately after** **`Cli::parse()`** and **before** **`init_stdout_style`** / Tokio so missing-`kiss` exits fail fast; stderr does not need stdout ANSI setup. **`malvin init`** also calls **`require_kiss_for_malvin("init")`** before **`kiss init`**. Binary regression: **`tests/kiss_code_kpop_path.rs`** (minimal isolated **`PATH`**, **`env!("CARGO_BIN_EXE_malvin")`**—same spawn pattern as **`tests/init_pre_commit.rs`**).
 
 - **Startup (shared):** `emit_run_startup_sequence` in `mod.rs` — echo primary artifact, `command.log` / optional `Command:`, then `Logs: …` — used by `code`, `kpop`, `do`.
-- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt` (`header.md` via `PromptStore::render_prompt_only` + request text), `raw_do_acp_prompt` when `--raw`, `skip_repo_style: do_args.raw` into `run_coder_prompt` (no `.style/main.md` on first turn), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
+- **`do`:** `do_flow.rs` — `DoArgs` lives here (kiss `concrete_types_per_file` on `args.rs`); `prepare_do_prompt_store`, `combine_do_acp_prompt_header_and_user` (`header.md` via `PromptStore::render_prompt_only` + request text, plus header/user strings for split `malvin do` trace), `raw_do_acp_prompt` by default, `skip_repo_style: !do_args.cooked` into `run_coder_prompt` (no injected repo style on first turn when raw), `run_do_with_timing`; binary `#[cfg(test)]` parses `Cli::try_parse_from` and exercises combine.
 
-TRIGGER: compose_coder_prompt session  
-ADVICE: `compose_coder_prompt_for_session` at top of `client_impl.inc`: prepends `.style/main.md` when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. `--raw` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_raw_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
+### malvin do ACP trace (split stems)
+
+TRIGGER: malvin do split trace stems  
+ADVICE: **`--cooked`** **`run_coder_prompt`** passes **`do_trace_split: Some((header, user))`** → **`AcpSession::prompt_do_trace_split`** with **`DoPromptTraceSplit`** (`src/acp/outgoing_prompt_trace.rs`). Outgoing trace: **`>style`** (if injected repo style prepended), **`>header`** (full lines on disk; tee echoes **one** collapsed stdout line), **`>prompt`** (user request; per-line tee). Incoming tag **`<prompt`**. **`who`** is ignored on this path (documented on **`run_coder_prompt`**). **`kiss`:** split types into **`outgoing_prompt_trace.rs`** when **`session_types.rs`** hits **`concrete_types_per_file`**.
+
+TRIGGER: repo style single read  
+ADVICE: **`coder_prompt_body_with_optional_repo_style`** (`client_impl.inc` top) returns **`(full_prompt, repo_style)`** with at most **one** read of the repo style file; **`repo_style.as_deref()`** feeds **`DoPromptTraceSplit.style_text`** when **`do_trace_split`** is **`Some`**—do not read the style path again for trace.
+
+TRIGGER: coder_prompt_body session  
+ADVICE: `coder_prompt_body_with_optional_repo_style` at top of `client_impl.inc` (with `read_coder_repo_style_text` / `prepend_coder_repo_style_to_prompt`): prepends injected repo style when `style_on_first_turn && !skip_repo_style &&` file nonempty (trim nonempty). `begin_coder_session` sets `coder_style_on_next_prompt`; `run_coder_prompt` passes it into compose then clears it. Default raw `malvin do` sets `skip_repo_style` so only the prompt string is sent. Tests: `compose_coder_prompt_tests` in `agent_bundle.inc`; CLI string contract `malvin_do_default_skips_repo_style_prepend_contract` in `tests/cli_parity.rs`.
 - **Timing merge:** `timing_merge.rs` — `merge_acp_and_timing_results` shared with `kpop_flow.rs` (avoid duplicated merge helpers; kiss `duplication`).
 - **`src/cli/args.rs`, `mod.rs`, `shared_opts.rs`:** `tee_startup_stdout` gates startup `Command:` + plan echo vs `--no-tee`.
 - **Default model:** `DEFAULT_CLI_MODEL` in `shared_opts.rs`; `malvin models` footer must use the same constant (see `tests/cli_parity.rs`).
@@ -265,7 +314,13 @@ ADVICE: Prefer `let n = if let Some(…) = … { …; 2 } else { 1 };` over `let
 - **Async + RNG:** `thread_rng()` / `ThreadRng` is not `Send`; do not hold it across `.await`. For multiple `session/prompt` rounds in one async fn, use one `rand::rngs::StdRng::from_entropy()` (or seed) and `&mut rng`.
 - **kiss arity:** if `arguments_per_function` fires, group parameters in a struct (same pattern as `KpopAcpPromptPick`).
 
+TRIGGER: Rust 2024 unsafe env tests  
+ADVICE: **`std::env::set_var`** / **`remove_var`** are **`unsafe`** in Rust **2024**. Repo **`Cargo.toml`** **`[lints.rust] unsafe_code = "deny"`**—tests that mutate **`COLUMNS`** (or other env) need **`#[allow(unsafe_code)]`** on the test (or narrow scope) and **`unsafe { … }`** around those calls; **`std::sync::Mutex`** can serialize env tests. **`clippy::redundant_closure_for_method_calls`:** **`Mutex::lock`** poison recovery → **`unwrap_or_else(std::sync::PoisonError::into_inner)`**.
+
 ## LiteLLM / token cost (external proxy)
+
+TRIGGER: LiteLLM token cost  
+ADVICE: Prefer **provider `usage`** on each response when cost matters; LiteLLM **`token_counter`** is **heuristic** (tiktoken/HF, fallbacks)—treat counts as **approximate** vs Anthropic/Gemini/etc. Bullets below expand pricing/counter behavior.
 
 - Prefer **provider `usage`** on each response when cost matters; that is authoritative when present.
 - LiteLLM **`token_counter`** uses **tiktoken** / HF tokenizers + message/tool heuristics; unknown OpenAI-style models may fall back to **`cl100k_base`**—treat counts as **approximate** vs Anthropic/Gemini/etc.
@@ -276,3 +331,32 @@ ADVICE: Prefer `let n = if let Some(…) = … { …; 2 } else { 1 };` over `let
 - **MSRV / edition:** `edition = "2024"`, `rust-version = "1.87"` in `Cargo.toml`; mention in `README.md` if documenting toolchain.
 - **Orchestrator prompt stems:** `prompt_md_stem` / `strip_suffix(".md")` in `src/orchestrator/` — avoid `len()-3` slicing.
 - **Prompts `include_str!`:** defaults live under `default_prompts/`; paths in `src/prompts/mod.rs`.
+
+## `malvin code` workflow structure
+
+TRIGGER: malvin code workflow  
+ADVICE: `implement.md` → review loop (review_1/review_2 with `kpop_review.md`, not `kpop.md`) → `learn.md`. No `validate_plan.md` step.
+
+TRIGGER: kpop.md vs kpop_review.md  
+ADVICE: **`kpop.md`** is for standalone `malvin kpop` runs. **`kpop_review.md`** is used in `malvin code` review loops—validates and revises `review.md`. Both in `default_prompts/` and `src/prompts/defaults.rs`.
+
+TRIGGER: concerns ABORT result_path  
+ADVICE: `concerns.md` may write "ABORT" to `{{result_path}}` (`_malvin/<run>/result.md`). After concerns, orchestrator calls `check_abort` in `src/orchestrator/helpers.rs`—if file contains "ABORT", workflow halts with error.
+
+TRIGGER: workflow template context  
+ADVICE: `workflow_context` in `src/orchestrator/helpers.rs` provides: `plan_path`, `kpop_log_dir`, `review_path`, `result_path`. All paths point to `_malvin/<run>/` artifacts except user-provided `plan_path`.
+
+## Repo workspace gates (`src/cli/repo_checks.rs`)
+
+TRIGGER: repo workspace gates  
+ADVICE: `run_repo_workspace_gates`: `kiss_clamp::ensure_kiss_clamp_if_needed` → `warn_kissconfig_test_coverage_if_needed` (parse `[gate].test_coverage_threshold` in `.kissconfig`; warn if missing or `< 90`; on read/parse error print warning with underlying `io`/`toml` error) → `run_pre_commit_checks_or_warn` (no `.pre-commit-config.yaml` → warn; else `pre-commit run --all-files` via `Command::output`, `format_pre_commit_failure` on non-success: exit code or `signal`, stdout/stderr, `trim_detail_chars`). Wired from **`run_code`** (`mod.rs`), **`run_kpop`** (`kpop_flow.rs`), **`run_do`** (`do_flow.rs`). Implementation: `repo_checks.rs`; kiss clamp logic: `kiss_clamp.rs`.
+
+## Kiss structural refactors
+
+TRIGGER: kiss structural refactors  
+ADVICE: When `kiss check` fires on arity/size: **args** → one `struct` per call site pattern; **calls** in one function → extract named helper (`run_repo_workspace_gates`); **lines** in `cli/mod.rs` → new file (e.g. `exit.rs` for `Exit` + `Termination`). Binary `stringify_cov.rs` may need new `stringify!` refs.
+
+## Diff thrash metrics
+
+TRIGGER: diff thrash metric wording  
+ADVICE: Byte- or path-summed edit costs and **gross/net ratios** depend on checkpoint cadence and diff math—do not treat “1.0” or low gross as proof the agent made no mistakes; state assumptions.

@@ -5,6 +5,8 @@
 //! navigating—IDE “go to module” may not match a single `mod` tree.
 
 mod handshake_types;
+mod outgoing_prompt_trace;
+pub use outgoing_prompt_trace::CoderPromptOptions;
 mod session_channels;
 mod session_io;
 mod session_types;
@@ -15,7 +17,9 @@ pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
 mod trace_line_write;
-pub(crate) use trace_line_write::{ReaderTraceLineOpts, reader_loop_verbose_and_trace_line};
+pub(crate) use trace_line_write::{
+    ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,
+};
 include!("session_trace.rs");
 
 // Inlined former `acp::transport` so `kiss` dependency depth stays ≤2 (no `lib → acp → transport`).
@@ -54,11 +58,11 @@ fn kiss_stringify_acp_rpc_and_cursor_auth() {
     let _ = stringify!(requires_cursor_login_auth);
 }
 
-include!("reader_inline.inc");
-include!("session_spawn.inc");
+include!("reader_inline.rs");
+include!("session_spawn.rs");
 include!("session.rs");
 
-include!("agent_bundle.inc");
+include!("agent_bundle.rs");
 
 #[cfg(test)]
 mod transport_tests;

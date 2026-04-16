@@ -17,6 +17,8 @@ pub struct PromptTraceWriter {
     pub stdout_replacement: Option<&'static str>,
     /// For learn tee: emit [`crate::output::LEARNING_PLACEHOLDER`] at most once to stdout.
     pub placeholder_emitted: bool,
+    /// When true, print raw output without timestamps/prefixes.
+    pub raw_output: bool,
 }
 
 pub struct AcpSessionInner {
@@ -37,10 +39,10 @@ pub struct AcpSessionInner {
     /// Serializes `AcpSession::prompt` so overlapping callers cannot stomp the trace writer.
     pub prompt_singleflight: Arc<Mutex<()>>,
     pub acp_verbose: bool,
-    /// Echo trace lines to stdout when tee is enabled (see [`AcpSpawnArgs::tee_trace_stdout`]).
-    pub tee_trace_stdout: bool,
     /// When set (UI lane), observers are notified whenever `busy` becomes false.
     pub ui_idle_notify: Option<Arc<Notify>>,
+    /// When true, print raw output without timestamps/prefixes.
+    pub raw_output: bool,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -49,6 +51,7 @@ pub struct AcpSessionInner {
 pub struct AcpSession(pub(crate) Arc<AcpSessionInner>);
 
 /// Arguments for [`AcpSession::spawn`].
+#[allow(clippy::struct_excessive_bools)]
 pub struct AcpSpawnArgs<'a> {
     pub cwd: &'a Path,
     pub bin_override: Option<&'a Path>,
@@ -64,6 +67,8 @@ pub struct AcpSpawnArgs<'a> {
     pub force: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
+    /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
+    pub raw_output: bool,
 }
 
 #[test]
