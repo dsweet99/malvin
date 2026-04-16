@@ -5,9 +5,40 @@ use super::kiss_clamp;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 pub fn run_repo_workspace_gates(work_dir: &Path) -> Result<(), String> {
+    ensure_workspace_style_markers(work_dir)?;
     kiss_clamp::ensure_kiss_clamp_if_needed(work_dir)?;
     warn_kissconfig_test_coverage_if_needed(work_dir);
     run_pre_commit_checks_or_warn(work_dir)
+}
+
+/// Touch `<work_dir>/grounding.md` and `<work_dir>/.llm_style/style.md` when missing.
+///
+/// Creating these as empty files gives coder/reviewer prompts a stable path to read
+/// instead of re-discovering their absence every phase. Existing files are never touched.
+///
+/// # Errors
+///
+/// Returns an error string if a file or the `.llm_style` directory cannot be created.
+pub fn ensure_workspace_style_markers(work_dir: &Path) -> Result<(), String> {
+    touch_if_missing(&work_dir.join("grounding.md"))?;
+    let style_dir = work_dir.join(".llm_style");
+    if !style_dir.is_dir() {
+        std::fs::create_dir_all(&style_dir)
+            .map_err(|e| format!("create {}: {e}", style_dir.display()))?;
+    }
+    touch_if_missing(&style_dir.join("style.md"))
+}
+
+fn touch_if_missing(path: &Path) -> Result<(), String> {
+    if path.exists() {
+        return Ok(());
+    }
+    std::fs::File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
+    print_stdout_line(
+        MALVIN_WHO,
+        &format!("Touched empty {} (was missing)", path.display()),
+    );
+    Ok(())
 }
 
 pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path) {
@@ -109,7 +140,9 @@ pub fn run_pre_commit_checks_or_warn(work_dir: &Path) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_pre_commit_failure, should_warn_low_test_coverage};
+    use super::{
+        ensure_workspace_style_markers, format_pre_commit_failure, should_warn_low_test_coverage,
+    };
 
     #[test]
     fn pre_commit_failure_includes_exit_and_streams() {
@@ -151,5 +184,51 @@ mod tests {
     fn coverage_ok_above_90() {
         let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 100\n").unwrap();
         assert!(!should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
+    fn style_markers_are_touched_when_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        ensure_workspace_style_markers(work).unwrap();
+        let grounding = work.join("grounding.md");
+        let style = work.join(".llm_style").join("style.md");
+        assert!(grounding.is_file(), "grounding.md not created");
+        assert!(style.is_file(), "style.md not created");
+        assert_eq!(std::fs::read(&grounding).unwrap(), Vec::<u8>::new());
+        assert_eq!(std::fs::read(&style).unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn style_markers_preserve_existing_content() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        std::fs::create_dir_all(work.join(".llm_style")).unwrap();
+        std::fs::write(work.join("grounding.md"), b"KEEP ME\n").unwrap();
+        std::fs::write(work.join(".llm_style").join("style.md"), b"STYLE STAYS\n").unwrap();
+        ensure_workspace_style_markers(work).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(work.join("grounding.md")).unwrap(),
+            "KEEP ME\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(work.join(".llm_style").join("style.md")).unwrap(),
+            "STYLE STAYS\n"
+        );
+    }
+
+    #[test]
+    fn style_markers_mixed_touch_only_missing_one() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        std::fs::write(work.join("grounding.md"), b"ORIGINAL\n").unwrap();
+        ensure_workspace_style_markers(work).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(work.join("grounding.md")).unwrap(),
+            "ORIGINAL\n"
+        );
+        let style = work.join(".llm_style").join("style.md");
+        assert!(style.is_file());
+        assert_eq!(std::fs::read(&style).unwrap(), Vec::<u8>::new());
     }
 }
