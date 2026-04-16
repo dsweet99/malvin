@@ -39,6 +39,26 @@ impl KpopMultiturnPrompts for EchoPrompts {
 }
 
 #[test]
+fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("exp.md");
+    std::fs::write(
+        &path,
+        "## Step 1 — KPOP a\n## Step 2 — KPOP b\n## Step 3 — MBC2 c\n",
+    )
+    .unwrap();
+    let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
+        builder: EchoPrompts,
+        exp_log_path: path,
+        max_hypotheses: 3,
+        p_creative: 0.5,
+        rng: StdRng::seed_from_u64(1),
+    })
+    .unwrap();
+    assert!(state.next_prompt().unwrap().is_none());
+}
+
+#[test]
 fn multiturn_exits_when_exp_log_hits_success_marker() {
     let tmp = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(tmp.path(), "## KPOP_SOLVED\nx\n").unwrap();
@@ -154,7 +174,11 @@ fn kpop_catch_up_exhausted_returns_error_when_log_stays_empty() {
         assert!(state.next_prompt().unwrap().is_some());
         state.record_kpop_block_prompt_completed();
     }
-    assert!(state.next_prompt().is_err());
+    let err = state.next_prompt().expect_err("expected catch-up exhaustion");
+    assert!(
+        err.contains("initial attempt") && err.contains("catch-up attempts"),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]

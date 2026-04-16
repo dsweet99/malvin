@@ -1,5 +1,11 @@
+# Review
+
 ## Problems
 
-1. **Resolved:** `read_exp_log_text` now returns `Result<String, String>` and surfaces I/O errors; `KpopMultiturnState::new` / `from_params` and `next_prompt` / block transitions propagate them (`src/kpop_schedule.rs`, `src/kpop_multiturn.rs`).
+LGTM
 
-2. **Grounding wording (no repo edit):** The short workflow list in `grounding.md` still reads like a one-shot `header` then `kpop`. Runtime multiturn behavior (shared preamble per turn, Poisson blocks, pure MBC2 interleave) is implemented in `src/cli/kpop_flow.rs` and `src/kpop_multiturn.rs` but is not spelled out in `grounding.md`. Updating those bullets would require editing `grounding.md`, which is out of scope for this pass; see `ABORT` note in `_malvin/20260416_182803_au7les6e/result.md`.
+## Notes
+
+- `grounding.md` does not spell out multiturn KPOP mechanics; behavior still fits the high-level `malvin kpop` workflow. `grounding.md` unchanged per policy.
+- `_malvin/20260416_192440_qfbatfl4/plan.md` “Status (implemented)” matches the tree (`KpopArgs::max_hypotheses`, multiturn driver, per-turn prompts, exp-log counting).
+- **Session vs retries:** On a successful run, `AgentClient::run_kpop_multiturn` completes in one `run_kpop_multiturn_once` call (`src/acp/client_impl.rs`), which spawns a single ACP session for all multiturn prompts (`run_kpop_multiturn_once` in `src/acp/ops_body.rs`). The outer retry loop only runs again after a failed attempt; each new attempt calls `run_kpop_multiturn_once` again (new session), while `KpopMultiturnState` and the exp log persist—aligned with plan Q3 on the success path and with retriable ACP failures otherwise.

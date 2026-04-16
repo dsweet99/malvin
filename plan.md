@@ -162,24 +162,12 @@ close ACP session
 
 **Code surfaces that change:**
 - `src/kpop_schedule.rs` — remove `KpopScheduleStep::Mbc2ThenFalsify`, `generate_kpop_schedule`, `schedule_requires_mbc2`, `build_scheduled_kpop_prompt` (the pre-rolled schedule is gone). Replace with: `poisson_block_size(rng, mean) -> usize` (hand-rolled Knuth), `block_mean_from_p_creative(p) -> f64`, `count_kpop_entries(path) -> usize`, `count_mbc2_entries(path) -> usize`, `agent_declared_success(path) -> bool`.
-- `src/cli/kpop_flow.rs` — replace `kpop_run_acp` with the loop above.
+- `src/cli/kpop_flow.rs` — multiturn driver via `kpop_run_acp_multiturn` and `KpopMultiturnState` (replaces the prior single-shot `kpop_run_acp` path).
 - `src/cli/args.rs` — `KpopArgs::max_loops` renamed to `max_hypotheses`; CLI flag renamed `--max-loops` → `--max-hypotheses`. `CodeArgs::max_loops` is left alone (different concept). `p_creative` kept, help text updated to describe its new Poisson-mean role.
-- `src/acp/ops_body.rs::run_kpop_flow_once` — extend (or add sibling `run_kpop_flow_multi`) so we can dispatch *N* prompts in one ACP session instead of the current 1–2.
-- `default_prompts/kpop.md` — split into three per-turn templates:
-  - `default_prompts/kpop_block.md` — "You are in a KPOP turn. Run exactly `{{ want }}` HPF iterations. Record each as `## Step K — KPOP …` in `{{ exp_log }}` and stop."
-  - `default_prompts/mbc2_pure.md` — "You are in a pure-MBC2 turn. Produce exactly one MBC2 hypothesis. Do **not** falsify it. Record as `## Step K — MBC2 …` in `{{ exp_log }}` and stop."
-  - Shared preamble (Hypothesis-vs-Claim, coding rules) factored into `default_prompts/kpop_common.md`.
+- `src/acp/ops_body.rs` — `run_kpop_multiturn_once` dispatches sequential prompts in one ACP session (`run_kpop_flow_once` remains for any legacy single-flow callers).
+- Per-turn templates: `default_prompts/kpop_block.md`, `mbc2_pure.md`, shared preamble `kpop_common.md`. In `src/prompts/defaults.rs`, embedded `kpop.md` and `kpop_common.md` map to the same `include_str!` body (no separate on-disk `default_prompts/kpop.md`).
 - Tests: replace `src/kpop_schedule.rs` schedule tests with block-planner tests (Poisson mean mapping, block-size floor, `kpop_creative_enabled` disable path); add a new `tests/kpop_multiturn.rs` integration test with a stub agent that produces short / overshoot / empty turns to exercise the catch-up, credit, MBC2-retry, and success-early-exit paths.
 
-### Derivative details — my proposed defaults (raise a flag if any is wrong)
+## Status (implemented)
 
-1. **Success-marker convention.** Agent declares "done" by appending a final section `## KPOP_SOLVED\n<one-paragraph why>` to the exp-log. Malvin greps `^## KPOP_SOLVED\b` after each turn. Clear, greppable, mirrors existing `## Step K — …` style.
-2. **Poisson implementation.** Hand-roll Knuth's algorithm (~6 lines) against `StdRng` rather than add a new `rand_distr` dependency. Floor at 1 so we never dispatch a zero-sized KPOP block.
-3. **Default `--max-hypotheses`.** Keep the current `--max-loops` default of **10** so `malvin kpop @req.md` with no flags still feels familiar. (Old semantic: 10 pre-rolled slots. New semantic: 10 total emitted hypotheses. Same order of magnitude.)
-4. **`p_creative` retention.** Kept, default **0.10** (unchanged). Help text rewritten: "Probability of MBC2 interleave; higher = more frequent creative-break turns and smaller KPOP blocks. 0 or non-finite disables MBC2 turns."
-5. **Single long ACP session (Q3).** Reuse the existing `AgentClient` session; loop in the driver sends `prompt` requests sequentially. No new session primitives needed.
-6. **Kiss / clippy.** Keep `src/kpop_schedule.rs` and `src/cli/kpop_flow.rs` under the 250-line cap by pushing the loop body into a small `KpopLoopState` struct with `next_block_size`, `run_kpop_block`, `run_mbc2_turn` methods.
-
----
-
-Please confirm the five defaults above (or correct any), then I'll implement.
+The decision table and sketch above are implemented: `src/kpop_multiturn.rs`, `src/kpop_schedule.rs`, `KpopArgs::max_hypotheses`, `run_kpop_multiturn_once`, per-turn prompts under `default_prompts/`, and `tests/kpop_multiturn.rs`. Details and the canonical status blurb also appear in `_malvin/20260416_192440_qfbatfl4/plan.md`. `grounding.md` stays a short workflow index; multiturn mechanics are defined in code and prompts, not in `grounding.md`.

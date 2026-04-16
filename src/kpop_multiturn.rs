@@ -148,7 +148,9 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
             return Err("internal: expected KpopBlock phase".to_string());
         };
         if *attempts > KPOP_CATCHUP_CAP {
-            return Err("KPOP block fell short after catch-up turns (max 3 per block).".to_string());
+            return Err(format!(
+                "KPOP block still incomplete after the initial attempt and {KPOP_CATCHUP_CAP} catch-up attempts.",
+            ));
         }
         let remaining_budget = self
             .max_hypotheses
@@ -173,10 +175,6 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     ) -> Result<NextStep, String> {
         let actual = kpop_now.saturating_sub(kb);
         self.credit = actual.saturating_sub(tn);
-        if agent_declared_success(text) {
-            self.done = true;
-            return Ok(NextStep::Stop);
-        }
         if !kpop_creative_enabled(self.p_creative) {
             self.start_new_block_after_mbc2()?;
             return Ok(NextStep::Again);
