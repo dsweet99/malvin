@@ -11,9 +11,9 @@ Identify the core assumptions of the current idea. For each one:
 - Consider its negation
 - Consider asymptotic scaling or pathological edge cases
 
-Generate ideas that are structurally distant from the original but obey the same rules.
+Generate a hypothesis that is structurally distant from those produced so far but obey the same rules.
 
-If an idea could be reached by a small parameter tweak, discard it and go further.
+If a hypothesis could be reached by a small parameter tweak, discard it and go further.
 
 Do not evaluate or prune yet. Your goal is boundary exploration, not refinement.
 
