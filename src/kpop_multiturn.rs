@@ -7,14 +7,14 @@ use crate::kpop_acp_prompt::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 use crate::kpop_schedule::{
-    KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_kpop_entries,
-    count_mbc2_entries, hypotheses_emitted, poisson_block_size, read_exp_log_text,
+    KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_mbc2_entries,
+    hypotheses_emitted, poisson_block_size, read_exp_log_text,
 };
 
 enum Phase {
     KpopBlock {
         target_n: usize,
-        kpop_before: usize,
+        hypotheses_before: usize,
         attempts: u32,
     },
     Mbc2 {
@@ -65,12 +65,12 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
 
     pub fn from_params(mut params: KpopMultiturnParams<B>) -> Result<Self, String> {
         let text = read_exp_log_text(&params.exp_log_path)?;
-        let kpop_before = count_kpop_entries(&text);
+        let hypotheses_before = hypotheses_emitted(&text);
         let mean = block_mean_from_p_creative(params.p_creative);
         let n = poisson_block_size(&mut params.rng, mean).max(1);
         let phase = Phase::KpopBlock {
             target_n: n,
-            kpop_before,
+            hypotheses_before,
             attempts: 0,
         };
         Ok(Self {
@@ -126,26 +126,26 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     }
 
     fn run_kpop_phase(&mut self, text: &str) -> Result<NextStep, String> {
-        let kpop_now = count_kpop_entries(text);
-        let (need, kb, tn) = {
+        let hypotheses_now = hypotheses_emitted(text);
+        let (need, hb, tn) = {
             let Phase::KpopBlock {
                 target_n,
-                kpop_before,
+                hypotheses_before,
                 attempts: _,
             } = &self.phase
             else {
                 return Err("internal: expected KpopBlock phase".to_string());
             };
-            let done_in_block = kpop_now.saturating_sub(*kpop_before);
+            let done_in_block = hypotheses_now.saturating_sub(*hypotheses_before);
             let w = target_n.saturating_sub(done_in_block);
-            (w, *kpop_before, *target_n)
+            (w, *hypotheses_before, *target_n)
         };
         if need == 0 {
-            return self.complete_kpop_block(text, kpop_now, kb, tn);
+            return self.complete_kpop_block(hypotheses_now, hb, tn);
         }
         let Phase::KpopBlock {
             target_n: _,
-            kpop_before: _,
+            hypotheses_before: _,
             attempts,
         } = &mut self.phase
         else {
@@ -172,18 +172,25 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
 
     fn complete_kpop_block(
         &mut self,
-        text: &str,
-        kpop_now: usize,
-        kb: usize,
+        hypotheses_now: usize,
+        hb: usize,
         tn: usize,
     ) -> Result<NextStep, String> {
-        let actual = kpop_now.saturating_sub(kb);
+        let actual = hypotheses_now.saturating_sub(hb);
         self.credit = actual.saturating_sub(tn);
         if !kpop_creative_enabled(self.p_creative) {
-            self.start_new_block_after_mbc2()?;
+            let mean = block_mean_from_p_creative(self.p_creative);
+            let n = self.credit + poisson_block_size(&mut self.rng, mean);
+            self.credit = 0;
+            self.phase = Phase::KpopBlock {
+                target_n: n.max(1),
+                hypotheses_before: hypotheses_now,
+                attempts: 0,
+            };
             return Ok(NextStep::Again);
         }
-        let mbc2_before = count_mbc2_entries(text);
+        let text = read_exp_log_text(&self.exp_log_path)?;
+        let mbc2_before = count_mbc2_entries(&text);
         self.phase = Phase::Mbc2 {
             baseline: mbc2_before,
             sent: 0,
@@ -212,13 +219,13 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
 
     fn start_new_block_after_mbc2(&mut self) -> Result<(), String> {
         let text = read_exp_log_text(&self.exp_log_path)?;
-        let kpop_before = count_kpop_entries(&text);
+        let hypotheses_before = hypotheses_emitted(&text);
         let mean = block_mean_from_p_creative(self.p_creative);
         let n = self.credit + poisson_block_size(&mut self.rng, mean);
         self.credit = 0;
         self.phase = Phase::KpopBlock {
             target_n: n.max(1),
-            kpop_before,
+            hypotheses_before,
             attempts: 0,
         };
         Ok(())
