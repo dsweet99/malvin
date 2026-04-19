@@ -41,7 +41,9 @@ pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
 fn step_kind(line: &str) -> Option<&'static str> {
     let t = line.trim_start();
     let rest = t.strip_prefix("## Step ")?;
-    let (_, tail) = rest.split_once(" — ")?;
+    let tail = [" — ", " – ", " - "]
+        .iter()
+        .find_map(|sep| rest.split_once(sep).map(|(_, t)| t))?;
     let tail = tail.trim_start();
     if tail.starts_with("KPOP") {
         return Some("KPOP");
@@ -124,6 +126,37 @@ mod tests {
         assert_eq!(count_kpop_entries(text), 2);
         assert_eq!(count_mbc2_entries(text), 1);
         assert_eq!(hypotheses_emitted(text), 3);
+    }
+
+    #[test]
+    fn counts_steps_with_ascii_hyphen_separator() {
+        let text = "## Step 1 - KPOP x\n## Step 2 - MBC2 y\n## Step 3 - KPOP z\n";
+        assert_eq!(count_kpop_entries(text), 2);
+        assert_eq!(count_mbc2_entries(text), 1);
+        assert_eq!(hypotheses_emitted(text), 3);
+    }
+
+    #[test]
+    fn counts_steps_with_en_dash_separator() {
+        let text = "## Step 1 \u{2013} KPOP x\n## Step 2 \u{2013} MBC2 y\n";
+        assert_eq!(count_kpop_entries(text), 1);
+        assert_eq!(count_mbc2_entries(text), 1);
+        assert_eq!(hypotheses_emitted(text), 2);
+    }
+
+    #[test]
+    fn counts_steps_with_mixed_dash_styles() {
+        let text = "## Step 1 — KPOP a\n## Step 2 - KPOP b\n## Step 3 \u{2013} MBC2 c\n";
+        assert_eq!(count_kpop_entries(text), 2);
+        assert_eq!(count_mbc2_entries(text), 1);
+        assert_eq!(hypotheses_emitted(text), 3);
+    }
+
+    #[test]
+    fn rejects_step_without_recognized_separator() {
+        let text = "## Step 1 KPOP no-sep\n## Step 2: KPOP colon\n";
+        assert_eq!(count_kpop_entries(text), 0);
+        assert_eq!(hypotheses_emitted(text), 0);
     }
 
     #[test]
