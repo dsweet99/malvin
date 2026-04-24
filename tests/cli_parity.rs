@@ -265,6 +265,29 @@ fn malvin_do_raw_uses_do_header_cooked_uses_header_contract() {
 }
 
 #[test]
+fn malvin_do_must_not_emit_tagged_stdout_prompt_lines() {
+    let session_trace = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/acp/session_trace.rs"
+    ));
+    assert!(
+        !session_trace.contains("print_outgoing_prompt_log(\"style\")")
+            && !session_trace.contains("print_outgoing_prompt_log(\"header\")")
+            && !session_trace.contains("print_outgoing_prompt_log(\"prompt\")"),
+        "`malvin do` must not print tagged `[style...]`, `[header...]`, or `[prompt...]` stdout lines"
+    );
+}
+
+#[test]
+fn malvin_do_cooked_must_not_use_incoming_prompt_tag() {
+    let session = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
+    assert!(
+        !session.contains("format_acp_directional_tag_prefix('<', \"prompt\")"),
+        "`malvin do` must not use `<prompt` incoming tee tag"
+    );
+}
+
+#[test]
 fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
     let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
     assert!(
@@ -285,6 +308,27 @@ fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
     assert!(
         !desc_line.contains(":[>"),
         "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
+    );
+}
+
+#[test]
+fn malvin_do_cooked_must_not_use_prompt_tag_for_incoming_stdout() {
+    let session_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
+    assert!(
+        !session_rs.contains("format_acp_directional_tag_prefix('<', \"prompt\")"),
+        "`malvin do --cooked` currently routes incoming output as `<prompt`; this still emits tagged stdout tee lines and violates no-tagged-log output intent"
+    );
+}
+
+#[test]
+fn calc_eval_invalid_input_must_assert_err_prefix_on_stderr_only() {
+    let eval_script = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/evaluations/calc_cli_rs.sh"
+    ));
+    assert!(
+        !eval_script.contains("2>&1"),
+        "invalid-input oracle must verify ERR prefix on stderr specifically; merging stdout+stderr (`2>&1`) hides channel violations"
     );
 }
 

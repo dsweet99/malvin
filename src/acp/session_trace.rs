@@ -72,8 +72,7 @@ pub(crate) struct DoOutgoingTraceParts<'a> {
     pub user_text: &'a str,
 }
 
-/// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request);
-/// stdout announces each segment with a `[{stem}...]` bracket line (no body tee).
+/// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request).
 pub(crate) async fn trace_write_outgoing_prompt_do(
     file: &mut tokio::fs::File,
     parts: DoOutgoingTraceParts<'_>,
@@ -86,12 +85,9 @@ pub(crate) async fn trace_write_outgoing_prompt_do(
     } = parts;
     if let Some(s) = style_text.filter(|t| !t.trim().is_empty()) {
         trace_write_tagged_body(file, "style", s.trim()).await?;
-        crate::output::print_outgoing_prompt_log("style");
     }
     trace_write_tagged_body(file, "header", header_text).await?;
-    crate::output::print_outgoing_prompt_log("header");
     trace_write_tagged_body(file, "prompt", user_text).await?;
-    crate::output::print_outgoing_prompt_log("prompt");
     file.flush()
         .await
         .map_err(|e| format!("trace outgoing prompt flush: {e}"))?;

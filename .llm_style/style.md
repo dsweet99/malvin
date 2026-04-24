@@ -19,7 +19,7 @@ CONFIDENCE: 0
 
 TRIGGER: grounding.md never edit  
 ADVICE: **Never edit `grounding.md`**. Update tests instead if `cli_parity.rs` checks fail. See `malvin_tooling.md` § Tests.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 ## General methodology
 
@@ -33,7 +33,7 @@ CONFIDENCE: 0
 
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
@@ -89,7 +89,7 @@ CONFIDENCE: 0
 
 TRIGGER: KPOP HPF and review LGTM  
 ADVICE: Multiturn and HPF: `malvin_kpop_schedule.md` / `malvin_debugging.md`. `is_lgtm_str` / `sync_review_file` sharp edges; root `review.md` must be **exactly** `LGTM` (trim) for automation—`malvin_kpop_schedule.md` § `review.md is_lgtm exact`.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: plan grounding search  
 ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.

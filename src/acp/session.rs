@@ -151,10 +151,7 @@ impl AcpSession {
                     },
                 )
                 .await?;
-                (
-                    crate::output::format_acp_directional_tag_prefix('<', "prompt"),
-                    "prompt",
-                )
+                (crate::output::MALVIN_WHO.to_string(), crate::output::MALVIN_WHO)
             }
         };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
