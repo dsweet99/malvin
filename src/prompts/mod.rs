@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS};
-use template::merge_header_and_coding_rules;
+
+pub use defaults::{DO_HEADER_MD, HEADER_MD};
 
 pub(crate) use defaults::default_file;
 
@@ -113,8 +114,8 @@ impl PromptStore {
         validation: KpopPromptValidation,
     ) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
-        if !self.root.join("header.md").exists() {
-            missing.push("header.md");
+        if !self.root.join(HEADER_MD).exists() {
+            missing.push(HEADER_MD);
         }
         if !self.root.join("kpop_common.md").exists() {
             missing.push("kpop_common.md");
@@ -200,7 +201,7 @@ impl PromptStore {
         Ok(render_template(&prompt_text, context))
     }
 
-    fn load_coding_rules(&self) -> String {
+    pub(crate) fn load_coding_rules(&self) -> String {
         let p = self.root.join("coding_rules.md");
         std::fs::read_to_string(p)
             .unwrap_or_default()
@@ -208,8 +209,8 @@ impl PromptStore {
             .to_string()
     }
 
-    fn load_header(&self) -> String {
-        let p = self.root.join("header.md");
+    pub(crate) fn load_header(&self) -> String {
+        let p = self.root.join(HEADER_MD);
         std::fs::read_to_string(p)
             .unwrap_or_default()
             .trim()
@@ -217,33 +218,10 @@ impl PromptStore {
     }
 }
 
-#[allow(clippy::implicit_hasher)]
-pub fn render_mbc2_for_scheduled_kpop_block(
-    store: &PromptStore,
-    context: &HashMap<String, String>,
-) -> Result<String, PromptError> {
-    let mut ctx = context.clone();
-    ctx.insert("coding_rules".to_string(), String::new());
-    store.render_prompt_only("mbc2.md", &ctx)
-}
-
-/// Merged `header.md` + `coding_rules.md` text that [`PromptStore::render`] injects as `coding_rules`.
-///
-/// Use when assembling a prompt without [`PromptStore::render`] (for example prepending rules to a
-/// [`PromptStore::render_prompt_only`] body so embedding contexts do not duplicate `{{ coding_rules }}`).
-#[allow(clippy::implicit_hasher, clippy::must_use_candidate)]
-pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String>) -> String {
-    let render_context: HashMap<String, String> = context.clone();
-    let header_raw = store.load_header();
-    let header_expanded = render_template(&header_raw, &render_context);
-    let rules_raw = store.load_coding_rules();
-    let rules_expanded = render_template(&rules_raw, &render_context);
-    merge_header_and_coding_rules(&header_expanded, &rules_expanded)
-}
-
-#[allow(unused_imports)]
-// `substitute_template`: tests / coverage only (not used in this module body).
-pub(crate) use template::{render_template, substitute_template};
+pub use template::{
+    merge_header_and_coding_rules, merged_coding_rules, render_mbc2_for_scheduled_kpop_block,
+    render_template, substitute_template,
+};
 
 #[cfg(test)]
 #[allow(unsafe_code)]

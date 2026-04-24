@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{RunArtifacts, create_run_artifacts};
 use crate::orchestrator::{Orchestrator, WorkflowConfig};
-use crate::prompts::PromptStore;
+use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 #[test]
 fn kiss_stringify_agent() {
@@ -161,6 +161,8 @@ fn kiss_stringify_prompts() {
     let _ = stringify!(PromptStore::validate_exists);
     let _ = stringify!(PromptStore::render);
     let _ = stringify!(PromptStore::render_prompt_only);
+    let _ = stringify!(HEADER_MD);
+    let _ = stringify!(DO_HEADER_MD);
 }
 
 #[test]
@@ -200,7 +202,8 @@ fn smoke_prompt_store_with_root() {
             "mbc2.md",
             "concerns.md",
             "learn.md",
-            "header.md",
+            HEADER_MD,
+            DO_HEADER_MD,
             "coding_rules.md",
         ],
         b"body",

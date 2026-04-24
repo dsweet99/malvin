@@ -1,4 +1,7 @@
-//! `do` subcommand: single coder ACP prompt with optional `header.md` + user text.
+//! `do` subcommand: one coder ACP prompt. Default raw mode prepends `do_header.md` to the user
+//! request; `--cooked` prepends `header.md` instead (and allows repo style).
+
+use std::collections::HashMap;
 
 use clap::Args;
 
@@ -9,19 +12,16 @@ use super::shared_opts::SharedOpts;
 use super::timing_merge::emit_run_timing_after_acp;
 use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
 use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
-use malvin::orchestrator::workflow_context;
+use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::prompts::{PromptError, PromptStore};
+use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
-/// ACP trace stem when the default raw mode sends only the user text (no `header.md`).
 const DO_RAW_ACP_TRACE_STEM: &str = "raw";
 
-/// One `malvin do` coder prompt: combined payload, optional header/user trace split, and style skip.
 struct DoCoderRun {
     combined: String,
-    /// When set, trace uses `>header` / `>prompt` (and optional `>style`) instead of a single stem.
-    header_user_for_trace: Option<(String, String)>,
+    header_user_for_trace: (String, String),
     acp_trace_stem: &'static str,
     skip_repo_style: bool,
 }
@@ -41,14 +41,21 @@ pub struct DoArgs {
     pub request: String,
 }
 
-/// Ensure `~/.malvin/prompts` defaults (including `header.md`) exist.
-pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
+fn prepare_do_prompt_store_validating(required_template: &str) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists("header.md")
+        .validate_exists(required_template)
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
+}
+
+pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
+    prepare_do_prompt_store_validating(HEADER_MD)
+}
+
+pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
+    prepare_do_prompt_store_validating(DO_HEADER_MD)
 }
 
 pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
@@ -82,9 +89,12 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
     let (combined, trace_stem, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
         let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
-        (combined, "header", Some((header, user)))
+        (combined, "header", (header, user))
     } else {
-        (raw_do_acp_prompt(&text), DO_RAW_ACP_TRACE_STEM, None)
+        let store = prepare_do_raw_prompt_store()?;
+        let (combined, header, user) =
+            combine_do_raw_header_and_user(&store, &artifacts, &text)?;
+        (combined, DO_RAW_ACP_TRACE_STEM, (header, user))
     };
 
     let coder = DoCoderRun {
@@ -115,15 +125,14 @@ async fn run_do_with_timing(
     emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }
 
-/// Renders `header.md` once; returns combined prompt plus header and user strings for ACP trace splitting.
-pub fn combine_do_acp_prompt_header_and_user(
+fn combine_do_prompt_file_and_user(
     store: &PromptStore,
-    artifacts: &RunArtifacts,
     text: &str,
+    template_file: &str,
+    context: &HashMap<String, String>,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts, store);
     let header_body = store
-        .render_prompt_only("header.md", &context)
+        .render_prompt_only(template_file, context)
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
@@ -131,9 +140,24 @@ pub fn combine_do_acp_prompt_header_and_user(
     Ok((combined, header, user))
 }
 
-/// User text only for default raw `malvin do` (no template files).
-pub fn raw_do_acp_prompt(text: &str) -> String {
-    text.trim_end().to_string()
+/// Renders `header.md` once; returns combined prompt plus header and user strings for ACP trace splitting.
+pub fn combine_do_acp_prompt_header_and_user(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+    text: &str,
+) -> Result<(String, String, String), String> {
+    let context = workflow_context(artifacts, store);
+    combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
+}
+
+/// Renders `do_header.md` once; same return shape for default raw `malvin do`.
+pub fn combine_do_raw_header_and_user(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+    text: &str,
+) -> Result<(String, String, String), String> {
+    let context = workflow_context_paths_only(artifacts);
+    combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
 }
 
 async fn run_do_acp(
@@ -146,10 +170,8 @@ async fn run_do_acp(
         .await
         .map_err(|e| e.to_string())?;
     let log = artifacts.log_path("do");
-    let do_split = coder
-        .header_user_for_trace
-        .as_ref()
-        .map(|(h, u)| (h.as_str(), u.as_str()));
+    let (ref header, ref user) = coder.header_user_for_trace;
+    let do_split = Some((header.as_str(), user.as_str()));
     let run_res = client
         .run_coder_prompt(
             &coder.combined,
@@ -177,7 +199,8 @@ fn stringify_do_flow_helpers() {
     let _ = stringify!(crate::cli::do_flow::run_do);
     let _ = stringify!(crate::cli::do_flow::DoArgs);
     let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
-    let _ = stringify!(crate::cli::do_flow::raw_do_acp_prompt);
+    let _ = stringify!(crate::cli::do_flow::combine_do_raw_header_and_user);
+    let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
     let _ = stringify!(crate::cli::do_flow::DoCoderRun);
 }
 
@@ -186,16 +209,16 @@ mod do_tests {
     use clap::Parser;
 
     use malvin::artifacts::RunArtifacts;
-    use malvin::prompts::PromptStore;
+    use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
-    use super::{combine_do_acp_prompt_header_and_user, raw_do_acp_prompt};
+    use super::{combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user};
 
     #[test]
     fn combine_do_acp_prompt_joins_rendered_header_and_request() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let prompt_root = tmp.path().join("prompts");
         std::fs::create_dir_all(&prompt_root).expect("mkdir");
-        std::fs::write(prompt_root.join("header.md"), "OPEN\n").expect("header");
+        std::fs::write(prompt_root.join(HEADER_MD), "OPEN\n").expect("header");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "ignored").expect("plan");
         let run_dir = tmp.path().join("_malvin").join("r");
@@ -220,8 +243,26 @@ mod do_tests {
     }
 
     #[test]
-    fn raw_do_acp_prompt_is_trimmed_user_text_only() {
-        assert_eq!(raw_do_acp_prompt("  hi\n\n"), "  hi");
+    fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prompt_root = tmp.path().join("prompts");
+        std::fs::create_dir_all(&prompt_root).expect("mkdir");
+        std::fs::write(prompt_root.join(DO_HEADER_MD), "DO\n").expect("do_header");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "ignored").expect("plan");
+        let run_dir = tmp.path().join("_malvin").join("r");
+        std::fs::create_dir_all(&run_dir).expect("run");
+        let artifacts = RunArtifacts {
+            run_dir,
+            plan_path: plan,
+            work_dir: tmp.path().to_path_buf(),
+        };
+        let store = PromptStore::with_root(prompt_root);
+        let out = combine_do_raw_header_and_user(&store, &artifacts, "  hi\n\n")
+            .expect("combine")
+            .0;
+        assert!(out.starts_with("DO"), "expected do_header first; got {out:?}");
+        assert!(out.contains("  hi"), "expected request body; got {out:?}");
     }
 
     #[test]

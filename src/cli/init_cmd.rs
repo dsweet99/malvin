@@ -232,6 +232,7 @@ mod tests {
     fn templates_are_nonempty() {
         assert!(!TPL_GITIGNORE.trim().is_empty());
         assert!(ADMIN_CHECK_UNTRACKED.contains("check_untracked"));
+        assert!(ADMIN_CHECK_UNTRACKED.contains("exclude-standard"));
         assert!(!TPL_STYLE.trim().is_empty());
     }
 

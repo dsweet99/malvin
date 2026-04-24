@@ -57,16 +57,16 @@ fn reviewer_pair_ops_calls_review_prompt() {
 }
 
 #[test]
-fn default_cli_model_is_composer_2_fast() {
+fn default_cli_model_is_gpt_53_codex_fast() {
     let shared = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/src/cli/shared_opts.rs"
     ));
     assert!(
         shared.contains("const DEFAULT_CLI_MODEL")
-            && shared.contains("\"composer-2-fast\"")
+            && shared.contains("\"gpt-5.3-codex-fast\"")
             && shared.contains("default_value = DEFAULT_CLI_MODEL"),
-        "default `--model` must remain composer-2-fast via DEFAULT_CLI_MODEL unless intentionally changed"
+        "default `--model` must remain gpt-5.3-codex-fast via DEFAULT_CLI_MODEL unless intentionally changed"
     );
     let models = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -246,6 +246,21 @@ fn malvin_do_default_skips_repo_style_prepend_contract() {
         client_impl.contains("skip_repo_style")
             && client_impl.contains("coder_prompt_body_with_optional_repo_style"),
         "AgentClient::run_coder_prompt must honor skip_repo_style"
+    );
+}
+
+#[test]
+fn malvin_do_raw_uses_do_header_cooked_uses_header_contract() {
+    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
+    assert!(
+        do_flow.contains("prepare_do_raw_prompt_store")
+            && do_flow.contains("DO_HEADER_MD")
+            && do_flow.contains("combine_do_raw_header_and_user")
+            && do_flow.contains("prepare_do_prompt_store()")
+            && do_flow.contains("combine_do_acp_prompt_header_and_user")
+            && do_flow.contains("HEADER_MD")
+            && do_flow.contains("do_args.cooked"),
+        "default raw `malvin do` must use do_header path; `--cooked` must use header.md path"
     );
 }
 

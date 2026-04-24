@@ -1,6 +1,10 @@
 //! `{{ key }}` / `$key` expansion for prompt files.
+#![allow(clippy::implicit_hasher)]
 
 use std::collections::HashMap;
+
+use super::PromptError;
+use super::PromptStore;
 
 pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str) -> String {
     let h = header_expanded.trim();
@@ -14,8 +18,10 @@ pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str
 }
 
 pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
+    let mut keys: Vec<&String> = context.keys().collect();
+    keys.sort_unstable();
     let mut translated = prompt_text.to_string();
-    for key in context.keys() {
+    for key in keys {
         let needle = format!("{{{{ {key} }}}}");
         let dollar = format!("${key}");
         translated = translated.replace(&needle, &dollar);
@@ -48,4 +54,23 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
         i += 1;
     }
     out
+}
+
+pub fn render_mbc2_for_scheduled_kpop_block(
+    store: &PromptStore,
+    context: &HashMap<String, String>,
+) -> Result<String, PromptError> {
+    let mut ctx = context.clone();
+    ctx.insert("coding_rules".to_string(), String::new());
+    store.render_prompt_only("mbc2.md", &ctx)
+}
+
+#[allow(clippy::must_use_candidate)]
+pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String>) -> String {
+    let render_context: HashMap<String, String> = context.clone();
+    let header_raw = store.load_header();
+    let header_expanded = render_template(&header_raw, &render_context);
+    let rules_raw = store.load_coding_rules();
+    let rules_expanded = render_template(&rules_raw, &render_context);
+    merge_header_and_coding_rules(&header_expanded, &rules_expanded)
 }

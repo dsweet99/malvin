@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pre-commit hook: fail if any .rs or .py files are untracked
+# Pre-commit hook: fail if any .rs or .py source files are untracked.
 #
 # Untracked files that match .gitignore (and other standard Git excludes) are
 # ignored; we use --exclude-standard so behavior matches `git status`.

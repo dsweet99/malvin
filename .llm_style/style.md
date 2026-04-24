@@ -1,10 +1,10 @@
 # LLM style — malvin (index)
 
 When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail in topic files:
-- **`malvin_tooling.md`** — gates, `repo_checks`, ACP, run-timing, `malvin do`, `src/output/`, kiss, review sync, `cli_parity`, child health, `malvin code`
-- **`malvin_debugging.md`** — KPOP HPF, falsify, `review_sync`, `_malvin/` plans + `ABORT:`/grounding, search fallbacks
-- **`malvin_kpop_schedule.md`** — multiturn, `kpop.md`/`kpop_common` embed, prompts, `LGTM`
-- **`authoring_llm_style.md`** — index <100 lines; split to topic files
+- **`malvin_tooling.md`** — gates, ACP, `malvin do` (raw `workflow_context_paths_only` vs cooked `workflow_context`), `DoArgs` in `do_flow.rs` (not `args.rs`), `default_repo/` vs root `admin/check_untracked`, kiss, `cli_parity`, review sync, run timing, `malvin code`
+- **`malvin_debugging.md`** — KPOP HPF, falsify, `_malvin/**/plan.md` (gitignore—read by path), `ABORT:`, workspace `rg` fallback
+- **`malvin_kpop_schedule.md`** — multiturn, prompts, exact `LGTM` / `is_lgtm_str`
+- **`authoring_llm_style.md`** — index <100 lines; topic split
 
 ## Hard constraints
 
@@ -38,7 +38,7 @@ TRIGGER: user communication
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
 CONFIDENCE: 0
 
-## Tooling pointers (detail in malvin_tooling.md)
+## Tooling (detail in malvin_tooling.md)
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
@@ -65,7 +65,7 @@ ADVICE: `terminal_wrap.rs` handles width. See `malvin_tooling.md` § Terminal wr
 CONFIDENCE: 0
 
 TRIGGER: malvin do CLI  
-ADVICE: Default raw vs `--cooked`. See `malvin_tooling.md` § CLI + malvin do ACP trace.
+ADVICE: Default raw vs `--cooked`; raw `do_header` uses `workflow_context_paths_only` (no `kpop_common` preload), cooked `header` uses `workflow_context` for `{{ kpop }}` in custom templates. See `malvin_tooling.md` § CLI.
 CONFIDENCE: 0
 
 TRIGGER: Rust 2024 edition  
@@ -76,34 +76,16 @@ TRIGGER: ACP include layout
 ADVICE: `src/acp/` uses `include!` for kiss limits. See `malvin_tooling.md` § ACP.
 CONFIDENCE: 0
 
-TRIGGER: malvin init  
-ADVICE: `src/cli/init_cmd.rs`; `default_repo/` templates. See `malvin_tooling.md` § `malvin init`.
+TRIGGER: malvin init and kiss gate  
+ADVICE: `init_cmd.rs`, `default_repo/`, and `require_kiss_for_malvin` / `require_kiss_for_cli_command` (`init`, `code`, `kpop`). See `malvin_tooling.md` § `malvin init` and § CLI kiss gate.
 CONFIDENCE: 0
 
-TRIGGER: code kpop require kiss  
-ADVICE: `require_kiss_for_cli_command`. See `malvin_tooling.md` § CLI kiss gate.
+## KPOP, review, plans
+
+TRIGGER: KPOP HPF and review LGTM  
+ADVICE: Multiturn and HPF: `malvin_kpop_schedule.md` / `malvin_debugging.md`. `is_lgtm_str` / `sync_review_file` sharp edges; root `review.md` must be **exactly** `LGTM` (trim) for automation—`malvin_kpop_schedule.md` § `review.md is_lgtm exact`.
 CONFIDENCE: 0
 
-## KPOP pointers (detail in malvin_kpop_schedule.md / malvin_debugging.md)
-
-TRIGGER: KPOP multiturn HPF  
-ADVICE: Multiturn in `malvin_kpop_schedule.md`; HPF workflow in `malvin_debugging.md`.
-CONFIDENCE: 0
-
-TRIGGER: review_sync stale KPOP falsify  
-ADVICE: `sync_review_file` / `is_lgtm` sharp edges. See `malvin_tooling.md` § Review sync; exact `LGTM` in `malvin_kpop_schedule.md`.
-CONFIDENCE: 0
-
-## Plans and grounding (detail in malvin_debugging.md)
-
-TRIGGER: plan.md root vs _malvin  
-ADVICE: Root `plan.md` vs `_malvin/**/plan.md`. See `malvin_debugging.md` § plans.
-CONFIDENCE: 0
-
-TRIGGER: grounding workflow bullets  
-ADVICE: `grounding.md` workflow DSL. See `malvin_debugging.md` § plan vs grounding.
-CONFIDENCE: 0
-
-TRIGGER: search tools subagents  
-ADVICE: Workspace search I/O errors → shell `rg`. See `malvin_debugging.md` § workspace search.
+TRIGGER: plan grounding search  
+ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.
 CONFIDENCE: 0

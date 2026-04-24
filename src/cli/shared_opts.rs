@@ -3,7 +3,7 @@
 use clap::Args;
 
 /// Default for [`SharedOpts::model`] when `--model` is omitted.
-pub const DEFAULT_CLI_MODEL: &str = "composer-2-fast";
+pub const DEFAULT_CLI_MODEL: &str = "gpt-5.3-codex-fast";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]
