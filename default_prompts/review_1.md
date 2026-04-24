@@ -13,7 +13,7 @@ KPop: Please review the codebase. Pay special attention to code that differs fro
 - Is there avoidable redundancy or wasted work?
 - Is the code well-tested?
 
-For every bug you find, write a failing test that exposes it.
+For every bug you find, write a failing regression test that exposes it.
 
 Write your review (problems only) to {{ review_path }}.
 

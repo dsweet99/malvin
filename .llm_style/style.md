@@ -4,6 +4,7 @@ When `.cursorrules` says so, read this file **first** on the opening message—b
 - **`malvin_tooling.md`** — gates, ACP, `malvin do` (raw `workflow_context_paths_only` vs cooked `workflow_context`), `DoArgs` in `do_flow.rs` (not `args.rs`), `default_repo/` vs root `admin/check_untracked`, kiss, `cli_parity`, review sync, run timing, `malvin code`
 - **`malvin_debugging.md`** — KPOP HPF, falsify, `_malvin/**/plan.md` (gitignore—read by path), `ABORT:`, workspace `rg` fallback
 - **`malvin_kpop_schedule.md`** — multiturn, prompts, exact `LGTM` / `is_lgtm_str`
+- **`malvin_evaluations.md`** — eval harness patterns (`evaluations/`, temp repos, deterministic pass/fail oracles)
 - **`authoring_llm_style.md`** — index <100 lines; topic split
 
 ## Hard constraints
@@ -78,6 +79,10 @@ CONFIDENCE: 0
 
 TRIGGER: malvin init and kiss gate  
 ADVICE: `init_cmd.rs`, `default_repo/`, and `require_kiss_for_malvin` / `require_kiss_for_cli_command` (`init`, `code`, `kpop`). See `malvin_tooling.md` § `malvin init` and § CLI kiss gate.
+CONFIDENCE: 0
+
+TRIGGER: evaluation scripts  
+ADVICE: Put harnesses in `evaluations/`; run in temp repos; assert stdout/stderr/exit code contracts; print `EVAL_PASS` only after all assertions pass. See `malvin_evaluations.md`.
 CONFIDENCE: 0
 
 ## KPOP, review, plans
