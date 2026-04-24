@@ -129,7 +129,7 @@ impl AcpSession {
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
         trace_write_invocation_header(&mut file).await?;
-        let (incoming_tag, stdout_replacement_who) = match &trace {
+        let (incoming_tag, stdout_replacement_who, trace_raw_output) = match &trace {
             OutgoingPromptTrace::Uniform(u) => {
                 trace_write_outgoing_prompt(&mut file, u.trace_who, text).await?;
                 if !self.0.raw_output {
@@ -139,6 +139,7 @@ impl AcpSession {
                 (
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
+                    self.0.raw_output,
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
@@ -151,7 +152,11 @@ impl AcpSession {
                     },
                 )
                 .await?;
-                (crate::output::MALVIN_WHO.to_string(), crate::output::MALVIN_WHO)
+                (
+                    crate::output::format_acp_directional_tag_prefix('<', "do"),
+                    "do",
+                    true,
+                )
             }
         };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
@@ -159,7 +164,7 @@ impl AcpSession {
             who: incoming_tag,
             stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
-            raw_output: self.0.raw_output,
+            raw_output: trace_raw_output,
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

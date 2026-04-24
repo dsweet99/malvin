@@ -6,14 +6,12 @@ use std::collections::HashMap;
 use clap::Args;
 
 use super::WorkflowCliOptions;
-use super::emit_run_startup_sequence;
 use super::repo_checks;
 use super::shared_opts::SharedOpts;
 use super::timing_merge::emit_run_timing_after_acp;
 use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
 use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
-use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
@@ -78,14 +76,6 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
         repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
     }
 
-    if !raw_mode {
-        emit_run_startup_sequence(
-            &artifacts,
-            do_args.shared.tee_startup_stdout(),
-            &do_args.request,
-        )?;
-    }
-
     let (combined, trace_stem, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
         let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
@@ -104,10 +94,6 @@ pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(),
         skip_repo_style: !do_args.cooked,
     };
     run_do_with_timing(&mut client, &artifacts, coder, raw_mode).await?;
-
-    if !raw_mode {
-        print_stdout_line(MALVIN_WHO, "DONE");
-    }
     Ok(())
 }
 

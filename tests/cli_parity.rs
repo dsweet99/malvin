@@ -279,15 +279,6 @@ fn malvin_do_must_not_emit_tagged_stdout_prompt_lines() {
 }
 
 #[test]
-fn malvin_do_cooked_must_not_use_incoming_prompt_tag() {
-    let session = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
-    assert!(
-        !session.contains("format_acp_directional_tag_prefix('<', \"prompt\")"),
-        "`malvin do` must not use `<prompt` incoming tee tag"
-    );
-}
-
-#[test]
 fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
     let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
     assert!(
@@ -317,6 +308,28 @@ fn malvin_do_cooked_must_not_use_prompt_tag_for_incoming_stdout() {
     assert!(
         !session_rs.contains("format_acp_directional_tag_prefix('<', \"prompt\")"),
         "`malvin do --cooked` currently routes incoming output as `<prompt`; this still emits tagged stdout tee lines and violates no-tagged-log output intent"
+    );
+}
+
+#[test]
+fn malvin_do_cooked_must_not_emit_startup_or_done_tagged_stdout() {
+    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
+    assert!(
+        !do_flow.contains("emit_run_startup_sequence("),
+        "`malvin do --cooked` must not emit tagged startup lines (`Command:`, prompt echo, logs path)"
+    );
+    assert!(
+        !do_flow.contains("print_stdout_line(MALVIN_WHO, \"DONE\")"),
+        "`malvin do --cooked` must not emit tagged DONE line"
+    );
+}
+
+#[test]
+fn malvin_do_cooked_must_not_route_incoming_chunks_with_malvin_tag() {
+    let session_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
+    assert!(
+        !session_rs.contains("(crate::output::MALVIN_WHO.to_string(), crate::output::MALVIN_WHO)"),
+        "`malvin do --cooked` must not route incoming chunks through tagged `MALVIN_WHO` tee identity"
     );
 }
 

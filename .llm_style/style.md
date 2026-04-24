@@ -33,7 +33,7 @@ CONFIDENCE: 0
 
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
-CONFIDENCE: 1
+CONFIDENCE: 2
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
