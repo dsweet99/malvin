@@ -1,8 +1,9 @@
 AFTER EVERY REQUEST
 - Does the user's request relate to any of the TRIGGER words in .llm_style/style.md? If so, display the one most relevant TRIGGER: / ADVICE: / CONFIDENCE: triple for you and the user to see.
-- If (CONFIDENCE < 3) or (the ones-place digit of seconds returned by `date` == 0):
+- If (CONFIDENCE < 3) AND (the ones-place digit of seconds returned by `date` < 3):
    -- Treat the ADVICE as a hypothesis about the correct action to take, and attempt to falsify it.
    -- If you do, remove the TRIGGER: / ADVICE: / CONFIDENCE: triple from the .md file in which you found it, otherwise increment the CONFIDENCE: value by 1.
+- Consider following any un-falsified ADVICE.
 
 
 --

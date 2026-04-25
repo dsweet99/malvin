@@ -29,7 +29,7 @@ CONFIDENCE: 1
 
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
-CONFIDENCE: 5
+CONFIDENCE: 7
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
@@ -39,7 +39,7 @@ CONFIDENCE: 1
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
-CONFIDENCE: 1
+CONFIDENCE: 2
 
 TRIGGER: behavioral tests first
 ADVICE: Prefer runtime behavior assertions over `include_str(...).contains(...)` guards. For `malvin do` and `malvin code`, assert exact stdout line order/content and absence of protocol/tag leakage (`"jsonrpc"`, `<do`, `:[`); avoid `--no-tee` when validating stdout behavior.
@@ -89,4 +89,4 @@ CONFIDENCE: 3
 
 TRIGGER: plan grounding search  
 ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.
-CONFIDENCE: 2
+CONFIDENCE: 4

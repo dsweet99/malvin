@@ -41,34 +41,36 @@ pub(crate) async fn trace_write_invocation_header(
 }
 
 
+async fn file_write_line_with_newline(
+    file: &mut tokio::fs::File,
+    bytes: &[u8],
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    file.write_all(bytes)
+        .await
+        .map_err(|e| format!("trace outgoing prompt write: {e}"))?;
+    file.write_all(b"\n")
+        .await
+        .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
+    Ok(())
+}
+
 async fn trace_write_tagged_body(
     file: &mut tokio::fs::File,
     stem: &str,
     body: &str,
 ) -> Result<(), String> {
-    use tokio::io::AsyncWriteExt;
     let tag_raw = crate::output::format_acp_directional_tag_prefix('>', stem);
     for line in crate::output::logical_lines(body) {
         let l = crate::output::format_line(&tag_raw, line);
-        file.write_all(l.as_bytes())
-            .await
-            .map_err(|e| format!("trace outgoing prompt write: {e}"))?;
-        file.write_all(b"\n")
-            .await
-            .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
+        file_write_line_with_newline(file, l.as_bytes()).await?;
     }
     Ok(())
 }
 
 async fn trace_write_plain_body(file: &mut tokio::fs::File, body: &str) -> Result<(), String> {
-    use tokio::io::AsyncWriteExt;
     for line in crate::output::logical_lines(body) {
-        file.write_all(line.as_bytes())
-            .await
-            .map_err(|e| format!("trace outgoing prompt write: {e}"))?;
-        file.write_all(b"\n")
-            .await
-            .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
+        file_write_line_with_newline(file, line.as_bytes()).await?;
     }
     Ok(())
 }
@@ -143,6 +145,7 @@ fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_write_outgoing_prompt);
     let _ = stringify!(trace_write_outgoing_prompt_do);
     let _ = stringify!(DoOutgoingTraceParts);
+    let _ = stringify!(file_write_line_with_newline);
     let _ = stringify!(trace_write_tagged_body);
     let _ = stringify!(trace_write_plain_body);
     let _ = stringify!(compose_do_split_prompt_text);

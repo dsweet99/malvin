@@ -14,6 +14,8 @@ use malvin::MultiturnPrompt;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
+const MBC2_SEEK_MAX_STEPS: usize = 10_000;
+
 struct StubPrompts;
 
 impl KpopMultiturnPrompts for StubPrompts {
@@ -193,7 +195,7 @@ fn mbc2_without_dispatch_record_reissues_first_prompt() {
     })
     .unwrap();
     let mut step = 1usize;
-    loop {
+    for _ in 0..MBC2_SEEK_MAX_STEPS {
         let p = state.next_prompt().expect("prompt");
         let Some(pr) = p else {
             panic!("unexpected stop");
@@ -210,6 +212,7 @@ fn mbc2_without_dispatch_record_reissues_first_prompt() {
             step += 1;
         }
     }
+    panic!("expected stub mbc2 within {MBC2_SEEK_MAX_STEPS} scheduler steps");
 }
 
 #[test]

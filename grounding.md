@@ -24,9 +24,25 @@ Malvin drives a structured **implementation and review** workflow for software w
 - **`malvin do`**
 - do_header
 - prompt
+- No logging chrome to stdout. Just write the agent text.
 
 - **`malvin init`**
 - Bootstraps a new project with pre-commit hooks and Git LFS configuration
 
 ## Other constraints
 - No "documentation parity guards"
+
+
+## Text formatting
+When logging agent output to stdout in `malvin code` or `malvin kpop`
+- Format the Markdown.
+- Use gray for thought text and white for regular text.
+- Use colors to differentiate "from agent" tags from "to agent" tags.
+
+When logging agent output to stdout in `malvin code` or `malvin kpop` or `malvin do`
+- Transform from json and coalesce.
+- Use word wrap.
+
+When logging agent output to stdout in `malvin do`
+- Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output.
+
