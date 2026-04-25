@@ -22,9 +22,9 @@ struct DoCoderRun {
 }
 
 const fn do_mode_flags(cooked: bool, thoughts: bool) -> (bool, bool) {
-    let raw_output = !thoughts;
+    let pass_through_raw_agent_stream = !thoughts;
     let skip_repo_style = !cooked;
-    (raw_output, skip_repo_style)
+    (pass_through_raw_agent_stream, skip_repo_style)
 }
 
 /// Arguments for [`run_do`].
@@ -64,13 +64,13 @@ pub async fn run_do(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let (raw_mode, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
+    let (raw_output, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
     let mut client = AgentClient::new(
         shared.model.clone(),
         AgentIoOptions {
             force: workflow.force,
             no_tee: shared.no_tee,
-            raw_output: raw_mode,
+            raw_output,
         },
     );
     client.ensure_authenticated().map_err(|e| e.to_string())?;
@@ -113,7 +113,7 @@ fn combine_do_prompt_file_and_user(
         .render_prompt_only(template_file, context)
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
-    let user = text.to_string();
+    let user = text.trim_end().to_string();
     let combined = format!("{header}\n\n{user}");
     Ok((combined, header, user))
 }
@@ -239,9 +239,9 @@ mod do_tests {
             combine_do_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n")
                 .expect("combine");
         assert_eq!(header, "DO_TOKEN");
-        assert_eq!(user, "USER_RAW_TOKEN\n\n");
-        assert_eq!(combined, "DO_TOKEN\n\nUSER_RAW_TOKEN\n\n");
-        assert_eq!(combined.split("\n\n").count(), 3);
+        assert_eq!(user, "USER_RAW_TOKEN");
+        assert_eq!(combined, "DO_TOKEN\n\nUSER_RAW_TOKEN");
+        assert_eq!(combined.split("\n\n").count(), 2);
         assert_eq!(combined.matches("DO_TOKEN").count(), 1);
         assert_eq!(combined.matches("USER_RAW_TOKEN").count(), 1);
     }

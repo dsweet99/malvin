@@ -33,7 +33,7 @@ CONFIDENCE: 0
 
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
-CONFIDENCE: 3
+CONFIDENCE: 5
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
@@ -67,7 +67,7 @@ CONFIDENCE: 0
 
 TRIGGER: malvin do CLI  
 ADVICE: Default raw vs `--cooked`; raw `do_header` uses `workflow_context_paths_only` (no `kpop_common` preload), cooked `header` uses `workflow_context` for `{{ kpop }}` in custom templates. See `malvin_tooling.md` § CLI.
-CONFIDENCE: 0
+CONFIDENCE: 2
 
 TRIGGER: Rust 2024 edition  
 ADVICE: `gen` is keyword; `set_var`/`remove_var` are `unsafe`. See `malvin_tooling.md` § Rust edition 2024.

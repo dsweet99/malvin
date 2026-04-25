@@ -1,59 +1,43 @@
+mod common;
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::Command;
 
 #[cfg(unix)]
-const DO_STREAMING_MOCK: &str = r"const fs = require('fs');
-const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
-if (capturePath) {
-  fs.writeFileSync(capturePath, process.argv.slice(2).join('\n'));
+use common::{
+    ACP_MOCK_INTEGRATION_DO_STREAMING_LONG_AGENT_MSG_JS, ACP_MOCK_INTEGRATION_DO_STREAMING_UPDATE_JS,
+};
+#[cfg(unix)]
+use malvin::config::DEFAULT_CLI_MODEL;
+
+#[cfg(unix)]
+const DO_WRAP_COLUMNS: &str = "32";
+
+#[cfg(unix)]
+fn do_test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    let workspace = root.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
+    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+    (root, home, workspace)
 }
-const readline = require('readline');
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on('line', (line) => {
-  line = line.trim();
-  if (!line) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch (e) { return; }
-  const mid = msg.method;
-  const rid = msg.id;
-  if (mid === 'initialize') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'authenticate') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'session/new') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
-  } else if (mid === 'session/prompt') {
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          content: { type: 'text', text: 'agent message\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_thought_chunk',
-          content: { type: 'text', text: 'hidden thought\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
-  } else if (rid != null) {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  }
-});
-";
 
 #[cfg(unix)]
 fn write_mock_executable(path: &std::path::Path) {
-    let script = format!("#!/usr/bin/env node\n{DO_STREAMING_MOCK}");
+    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_DO_STREAMING_UPDATE_JS}");
+    std::fs::write(path, script).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+fn write_long_agent_mock(path: &Path) {
+    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_DO_STREAMING_LONG_AGENT_MSG_JS}");
     std::fs::write(path, script).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("metadata").permissions();
     perms.set_mode(0o755);
@@ -62,12 +46,7 @@ fn write_mock_executable(path: &std::path::Path) {
 
 #[cfg(unix)]
 fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    let workspace = root.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+    let (root, home, workspace) = do_test_home_workspace();
     let mock = root.path().join("mock-agent-acp-do");
     write_mock_executable(&mock);
     let mut args = vec!["do"];
@@ -84,28 +63,47 @@ fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
 }
 
 #[cfg(unix)]
-fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<String>) {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    let workspace = root.path().join("workspace");
-    let capture = root.path().join("captured-argv.txt");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+fn run_do_long_text_mock(extra_args: &[&str]) -> std::process::Output {
+    let (root, home, workspace) = do_test_home_workspace();
     let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock);
+    write_long_agent_mock(&mock);
     let mut args = vec!["do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
+    Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .env("COLUMNS", DO_WRAP_COLUMNS)
+        .args(args)
+        .output()
+        .expect("spawn malvin do")
+}
+
+#[cfg(unix)]
+fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<String>) {
+    let mut args: Vec<&str> = vec!["do"];
+    args.extend_from_slice(extra_args);
+    args.push("say hi");
+    run_malvin_with_captured_argv(&args)
+}
+
+#[cfg(unix)]
+fn run_malvin_with_captured_argv(malvin_args: &[&str]) -> (std::process::Output, Vec<String>) {
+    let (root, home, workspace) = do_test_home_workspace();
+    let capture = root.path().join("captured-argv.txt");
+    let mock = root.path().join("mock-agent-acp-do");
+    write_mock_executable(&mock);
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .current_dir(&workspace)
         .env("HOME", &home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
         .env("MALVIN_CAPTURE_ARGS_PATH", &capture)
-        .args(args)
+        .args(malvin_args)
         .output()
-        .expect("spawn malvin do");
+        .expect("spawn malvin");
     let captured_args = std::fs::read_to_string(&capture)
         .unwrap_or_default()
         .lines()
@@ -138,15 +136,47 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
 
 #[cfg(unix)]
 #[test]
+fn do_wraps_long_raw_agent_line_when_columns_set() {
+    let out = run_do_long_text_mock(&[]);
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout_s = String::from_utf8_lossy(&out.stdout);
+    let text_lines: Vec<&str> = stdout_s
+        .lines()
+        .map(|l| l.trim_end_matches('\r'))
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        text_lines.len() > 1,
+        "expected word-wrapped stdout (multiple non-empty lines), got {:?}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let joined: String = text_lines.iter().copied().collect();
+    assert_eq!(joined.len(), 120);
+    assert!(joined.chars().all(|c| c == 'a'));
+    let col_n: usize = DO_WRAP_COLUMNS.parse().expect("columns");
+    assert!(
+        text_lines.iter().all(|l| l.chars().count() <= col_n),
+        "each wrapped segment should fit COLUMNS: {text_lines:?}"
+    );
+    assert!(!String::from_utf8_lossy(&out.stdout).contains("jsonrpc"));
+}
+
+#[cfg(unix)]
+#[test]
 fn do_stdout_includes_thoughts_only_with_flag() {
     let out = run_do_with_mock(&["--thoughts"]);
     assert!(out.status.success(), "malvin do --thoughts failed: {out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     let lines = stdout_lines_preserve_shape(&out.stdout);
-    assert_eq!(lines.len(), 3, "unexpected stdout shape: {lines:?}");
-    assert_eq!(lines[0], "agent message");
-    assert!(lines[1].contains("hidden thought"), "stdout was {stdout:?}");
-    assert_eq!(lines[2], "");
+    assert_eq!(lines.len(), 4, "unexpected stdout shape: {lines:?}");
+    assert!(lines[0].contains("do..."), "expected outgoing do bracket line, got: {lines:?}");
+    assert_eq!(lines[1], "agent message");
+    assert!(lines[2].contains("hidden thought"), "stdout was {stdout:?}");
+    assert_eq!(lines[3], "");
     assert!(stdout.contains("hidden thought"), "stdout was {stdout:?}");
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
@@ -162,8 +192,8 @@ fn do_forwards_default_model_and_force_to_agent() {
         .map(|w| w[1].as_str())
         .collect();
     assert!(
-        model_values == vec!["composer-2"],
-        "expected exactly one forwarded --model composer-2; argv={argv:?}"
+        model_values == vec![DEFAULT_CLI_MODEL],
+        "expected exactly one forwarded --model {DEFAULT_CLI_MODEL}; argv={argv:?}"
     );
     let force_count = argv.iter().filter(|arg| arg.as_str() == "--force").count();
     assert!(
@@ -179,30 +209,14 @@ fn do_forwards_default_model_and_force_to_agent() {
 #[cfg(unix)]
 #[test]
 fn do_respects_no_force_and_explicit_model_flags() {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    let workspace = root.path().join("workspace");
-    let capture = root.path().join("captured-argv.txt");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
-    let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock);
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("MALVIN_CAPTURE_ARGS_PATH", &capture)
-        .args(["--no-force", "--model", "composer-x", "do", "say hi"])
-        .output()
-        .expect("spawn malvin do");
+    let (out, argv) = run_malvin_with_captured_argv(&[
+        "--no-force",
+        "--model",
+        "composer-x",
+        "do",
+        "say hi",
+    ]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
-    let argv: Vec<String> = std::fs::read_to_string(&capture)
-        .unwrap_or_default()
-        .lines()
-        .map(std::string::ToString::to_string)
-        .collect();
     let model_values: Vec<&str> = argv
         .windows(2)
         .filter(|w| w[0] == "--model")

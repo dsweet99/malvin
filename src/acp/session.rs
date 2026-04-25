@@ -38,6 +38,23 @@ fn trim_prompt_payload_trailing_ws(s: &str) -> &str {
     s.trim_end_matches(is_prompt_payload_trailing_ws)
 }
 
+async fn do_split_trace_preamble(
+    file: &mut tokio::fs::File,
+    raw_output: bool,
+    split: &DoPromptTraceSplit<'_>,
+) -> Result<(String, &'static str, bool, bool), String> {
+    trace_write_invocation_and_do_split_prompt(file, split).await?;
+    if !raw_output {
+        crate::output::print_outgoing_prompt_log("do");
+    }
+    Ok((
+        crate::output::format_acp_directional_tag_prefix('<', "do"),
+        "do",
+        raw_output,
+        true,
+    ))
+}
+
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///
@@ -56,7 +73,11 @@ impl AcpSession {
         let mut ch = self.0.child.lock().await;
         match ch.try_wait() {
             Ok(Some(_)) => false,
-            Ok(None) | Err(_) => true,
+            Ok(None) => true,
+            Err(e) => {
+                warn!(error = %e, "child try_wait failed; treating as not alive");
+                false
+            }
         }
     }
 
@@ -162,21 +183,7 @@ impl AcpSession {
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
-                trace_write_outgoing_prompt_do(
-                    &mut file,
-                    DoOutgoingTraceParts {
-                        style_text: split.style_text,
-                        header_text: split.header,
-                        user_text: split.user,
-                    },
-                )
-                .await?;
-                (
-                    crate::output::format_acp_directional_tag_prefix('<', "do"),
-                    "do",
-                    self.0.raw_output,
-                    true,
-                )
+                do_split_trace_preamble(&mut file, self.0.raw_output, split).await?
             }
         };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {

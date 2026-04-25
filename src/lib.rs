@@ -3,6 +3,7 @@
 #![allow(clippy::multiple_crate_versions)]
 
 pub mod acp;
+pub mod ansi_strip;
 pub use acp::{
     AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AuthError,
     CoderPromptOptions, KpopFlowOnceArgs, ReviewerPromptPair,

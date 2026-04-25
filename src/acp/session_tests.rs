@@ -338,10 +338,21 @@ async fn acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts() 
     .expect("prompt");
     s.shutdown().await.expect("shutdown");
     let text = std::fs::read_to_string(&trace).expect("trace");
+    let pos_cmd = text
+        .find("Command:")
+        .expect("trace should include invocation header like uniform prompts");
+    let pos_body = text
+        .find("STYLE\n\nHEADER\n\nUSER\n")
+        .expect("do-split body");
+    assert!(
+        pos_cmd < pos_body,
+        "invocation line must precede prompt body, trace was {text:?}"
+    );
     assert!(text.contains("STYLE\n\nHEADER\n\nUSER\n"), "trace was {text:?}");
     assert!(text.contains("agent message\n"), "trace was {text:?}");
     assert!(!text.contains("hidden thought"), "trace was {text:?}");
-    assert!(!text.contains(":["));
+    assert!(!text.contains(":[>"), "no ACP-style outgoing `>stem` log lines in plain do trace");
+    assert!(!text.contains(":[<"), "no ACP-style incoming log lines in plain do trace");
     assert!(!text.contains("<do"));
 }
 
@@ -381,9 +392,17 @@ async fn acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace() {
     .expect("prompt");
     s.shutdown().await.expect("shutdown");
     let text = std::fs::read_to_string(&trace).expect("trace");
+    let pos_cmd = text
+        .find("Command:")
+        .expect("trace should include invocation header like uniform prompts");
+    let pos_body = text
+        .find("STYLE\n\nHEADER\n\nUSER\n")
+        .expect("do-split body");
+    assert!(pos_cmd < pos_body, "invocation before body, trace was {text:?}");
     assert!(text.contains("agent message\n"), "trace was {text:?}");
     assert!(text.contains("[hidden thought]"), "trace was {text:?}");
-    assert!(!text.contains(":["));
+    assert!(!text.contains(":[>"), "no ACP-style outgoing `>stem` log lines in plain do trace");
+    assert!(!text.contains(":[<"), "no ACP-style incoming log lines in plain do trace");
     assert!(!text.contains("<do"));
 }
 

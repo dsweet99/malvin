@@ -41,11 +41,6 @@ pub(crate) async fn trace_write_invocation_header(
 }
 
 
-#[allow(dead_code)]
-pub(crate) const fn acp_tee_echo_outgoing_prompt_lines(_tee_stdout: bool, _stem: &str) -> bool {
-    false
-}
-
 async fn trace_write_tagged_body(
     file: &mut tokio::fs::File,
     stem: &str,
@@ -95,6 +90,22 @@ pub(crate) fn compose_do_split_prompt_text(parts: &DoOutgoingTraceParts<'_>) -> 
     sections.join("\n\n")
 }
 
+pub(crate) async fn trace_write_invocation_and_do_split_prompt(
+    file: &mut tokio::fs::File,
+    split: &outgoing_prompt_trace::DoPromptTraceSplit<'_>,
+) -> Result<(), String> {
+    trace_write_invocation_header(file).await?;
+    trace_write_outgoing_prompt_do(
+        file,
+        DoOutgoingTraceParts {
+            style_text: split.style_text,
+            header_text: split.header,
+            user_text: split.user,
+        },
+    )
+    .await
+}
+
 /// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request).
 pub(crate) async fn trace_write_outgoing_prompt_do(
     file: &mut tokio::fs::File,
@@ -124,21 +135,11 @@ pub(crate) async fn trace_write_outgoing_prompt(
 }
 
 #[test]
-fn acp_tee_echo_outgoing_always_false() {
-    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "learn"));
-    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "implement"));
-    assert!(!acp_tee_echo_outgoing_prompt_lines(false, "learn"));
-    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "style"));
-    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "header"));
-    assert!(!acp_tee_echo_outgoing_prompt_lines(true, "prompt"));
-}
-
-#[test]
 fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_prepare_file);
     let _ = stringify!(trace_open_truncated);
     let _ = stringify!(trace_write_invocation_header);
-    let _ = stringify!(acp_tee_echo_outgoing_prompt_lines);
+    let _ = stringify!(trace_write_invocation_and_do_split_prompt);
     let _ = stringify!(trace_write_outgoing_prompt);
     let _ = stringify!(trace_write_outgoing_prompt_do);
     let _ = stringify!(DoOutgoingTraceParts);

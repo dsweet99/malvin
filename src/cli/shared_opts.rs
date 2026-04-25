@@ -1,9 +1,9 @@
 //! Shared CLI flags for `code`, `kpop`, and `do`, plus root-level global flags.
 
 use clap::Args;
+pub use malvin::config::DEFAULT_CLI_MODEL;
 
-/// Default for [`SharedOpts::model`] when `--model` is omitted.
-pub const DEFAULT_CLI_MODEL: &str = "composer-2";
+const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]
@@ -21,13 +21,16 @@ pub struct SharedOpts {
     /// Don't `--force` cursor-agent.
     #[arg(long, global = true, default_value_t = false)]
     pub no_force: bool,
-    /// Omit stdout streaming [default: tee on].
-    #[arg(long, global = true, default_value_t = false)]
+    #[arg(
+        long,
+        global = true,
+        default_value_t = false,
+        help = NO_TEE_HELPTEXT
+    )]
     pub no_tee: bool,
 }
 
 impl SharedOpts {
-    /// Omit stdout streaming [default: tee on].
     #[must_use]
     pub(crate) const fn tee_startup_stdout(&self) -> bool {
         !self.no_tee

@@ -29,10 +29,8 @@ pub async fn reader_loop_verbose_and_trace_line(
     trace_writer: &Arc<Mutex<Option<PromptTraceWriter>>>,
     coalescers: &mut VerboseTraceCoalesceState<'_>,
 ) {
-    let tracing = {
-        let g = trace_writer.lock().await;
-        g.is_some()
-    };
+    let mut g = trace_writer.lock().await;
+    let tracing = g.is_some();
     let parsed: Option<Value> = if opts.acp_verbose || tracing {
         serde_json::from_str(line).ok()
     } else {
@@ -52,7 +50,6 @@ pub async fn reader_loop_verbose_and_trace_line(
         }
     }
 
-    let mut g = trace_writer.lock().await;
     if let Some(ref mut f) = *g {
         write_trace_line_coalesced(
             f,
@@ -87,6 +84,21 @@ fn format_trace_display_line(line: &str, kind: Option<SessionUpdateChunkKind>) -
     }
 }
 
+fn print_tee_unprefixed_wrapped_line(line: &str) {
+    let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
+        0,
+        line,
+        crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
+    );
+    if !wrap {
+        println!("{line}");
+        return;
+    }
+    for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
+        println!("{seg}");
+    }
+}
+
 fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
     if !ctx.tee_stdout {
         return;
@@ -94,21 +106,8 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
     if raw_output_should_skip_chunk(ctx.kind, writer) {
         return;
     }
-    if writer.plain_lines {
-        println!("{line}");
-        return;
-    }
-    if writer.raw_output {
-        let cols = crate::output::terminal_wrap::terminal_columns();
-        if crate::output::terminal_wrap::stdout_is_wrappable_terminal()
-            && line.chars().count() > cols
-        {
-            for seg in crate::output::terminal_wrap::wrap_words_bounded(cols, line) {
-                println!("{seg}");
-            }
-        } else {
-            println!("{line}");
-        }
+    if writer.plain_lines || writer.raw_output {
+        print_tee_unprefixed_wrapped_line(line);
         return;
     }
     match writer.stdout_replacement {
@@ -161,11 +160,8 @@ pub async fn trace_file_write_line(
     };
     if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
-        return;
-    }
-    if let Err(e) = writer.file.write_all(b"\n").await {
+    } else if let Err(e) = writer.file.write_all(b"\n").await {
         warn!(error = %e, "trace newline failed");
-        return;
     }
     trace_tee_stdout_line(
         writer,
@@ -192,7 +188,8 @@ pub async fn write_trace_line_coalesced(
     for (kind, tl) in coalesce.flush_all() {
         trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
     }
-    trace_file_write_line(trace_file, opts.raw_line, false, None).await;
+    let unparsed_tee = opts.tee_stdout && opts.parsed.is_none();
+    trace_file_write_line(trace_file, opts.raw_line, unparsed_tee, None).await;
 }
 
 #[test]
@@ -201,6 +198,7 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(reader_loop_verbose_and_trace_line);
     let _ = stringify!(TraceTeeStdoutCtx);
     let _ = stringify!(format_trace_display_line);
+    let _ = stringify!(print_tee_unprefixed_wrapped_line);
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(WriteTraceLineCoalescedOpts);

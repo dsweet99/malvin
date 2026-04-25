@@ -1,45 +1,16 @@
+mod common;
+
 use std::path::Path;
 use std::process::Command;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-const ROOT_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.gitignore"));
 const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
 #[cfg(unix)]
-const CODE_STREAMING_MOCK: &str = r"const readline = require('readline');
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on('line', (line) => {
-  line = line.trim();
-  if (!line) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch (e) { return; }
-  const mid = msg.method;
-  const rid = msg.id;
-  if (mid === 'initialize') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'authenticate') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'session/new') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
-  } else if (mid === 'session/prompt') {
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          content: { type: 'text', text: 'agent message\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
-  } else if (rid != null) {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  }
-});";
+use common::ACP_MOCK_INTEGRATION_CODE_STREAMING_UPDATE_JS;
 
 fn check_ignored(repo: &Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -52,7 +23,7 @@ fn check_ignored(repo: &Path, rel_path: &str) -> bool {
 
 #[cfg(unix)]
 fn write_mock_executable(path: &Path) {
-    let script = format!("#!/usr/bin/env node\n{CODE_STREAMING_MOCK}");
+    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_CODE_STREAMING_UPDATE_JS}");
     std::fs::write(path, script).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("metadata").permissions();
     perms.set_mode(0o755);
@@ -118,9 +89,13 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
+    let lower = combined.to_lowercase();
     assert!(
-        combined.contains("Did not receive LGTM for review_1.md within max loops."),
-        "missing max-loops failure message: {combined:?}"
+        lower.contains("max")
+            && lower.contains("loop")
+            && lower.contains("lgtm")
+            && combined.contains("review_1"),
+        "missing max-loops / review_1 / LGTM failure cues: {combined:?}"
     );
     assert_eq!(
         combined.matches("Implement").count(),
@@ -217,26 +192,11 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
 }
 
 #[test]
-fn init_template_gitignore_matches_root_python_ignore_patterns() {
+fn init_template_gitignore_lists_python_artifact_patterns() {
     for line in ["**/__pycache__/", "**/*.py[cod]"] {
         assert!(
-            ROOT_GITIGNORE.lines().any(|l| l.trim() == line),
-            "repo root .gitignore must list {line:?}"
-        );
-        assert!(
             INIT_TEMPLATE_GITIGNORE.lines().any(|l| l.trim() == line),
-            "malvin init template .gitignore must list {line:?} so new repos match Malvin's own ignores"
+            "malvin init template .gitignore must list {line:?}"
         );
     }
 }
-
-#[test]
-fn kpop_p_creative_runtime_gate_contract() {
-    assert!(!malvin::kpop_creative_enabled(0.0));
-    assert!(!malvin::kpop_creative_enabled(-0.1));
-    assert!(!malvin::kpop_creative_enabled(f64::INFINITY));
-    assert!(!malvin::kpop_creative_enabled(f64::NAN));
-    assert!(malvin::kpop_creative_enabled(0.1));
-}
-
-

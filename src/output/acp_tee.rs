@@ -3,6 +3,8 @@
 use super::{ANSI_DIM, ANSI_RESET};
 use super::{format_log_tag_inner, stdout_use_color, timestamp_now_string};
 
+use crate::ansi_strip::strip_ansi_escapes;
+
 const ANSI_BRIGHT_GREEN: &str = "\x1b[92m";
 const ANSI_BRIGHT_MAGENTA: &str = "\x1b[95m";
 
@@ -102,9 +104,28 @@ pub fn print_stdout_acp_tee_line_with_timestamp_dim_payload(
     });
 }
 
+fn acp_tee_log_prefix_len(ctx: &AcpTeeLineFmt<'_>) -> usize {
+    let s = if super::stdout_use_color() {
+        format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
+            ts: ctx.ts,
+            direction: ctx.direction,
+            who: ctx.who,
+            line: "",
+            dim_payload: ctx.dim_payload,
+        })
+    } else {
+        super::format_line_with_timestamp(ctx.ts, ctx.who, "")
+    };
+    strip_ansi_escapes(&s).chars().count()
+}
+
 fn print_stdout_acp_tee_line_with_timestamp_payload(ctx: &AcpTeeLineFmt<'_>) {
-    let (max_payload, wrap) =
-        super::terminal_wrap::stdout_line_wrap_meta(ctx.ts, ctx.who, ctx.line);
+    let prefix_len = acp_tee_log_prefix_len(ctx);
+    let (max_payload, wrap) = super::terminal_wrap::line_wrap_for_prefix_len(
+        prefix_len,
+        ctx.line,
+        super::terminal_wrap::stdout_allows_log_word_wrap(),
+    );
     if !wrap {
         let s = if stdout_use_color() {
             format_line_with_timestamp_acp_ansi_payload(ctx)
@@ -174,6 +195,7 @@ mod tests {
         let _ = stringify!(AcpTeeDirection::ToAgent);
         let _ = stringify!(AcpTeeDirection::FromAgent);
         let _ = stringify!(super::AcpTeeLineFmt);
+        let _ = stringify!(super::acp_tee_log_prefix_len);
         let _ = stringify!(super::format_line_with_timestamp_acp_ansi);
         let _ = stringify!(super::format_line_with_timestamp_acp_ansi_payload);
         let _ = stringify!(super::print_stdout_acp_tee_line);

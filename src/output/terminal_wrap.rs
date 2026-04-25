@@ -1,5 +1,7 @@
 use std::io::{IsTerminal, stderr, stdout};
 
+use crate::ansi_strip::strip_ansi_escapes;
+
 fn columns_from_env() -> Option<usize> {
     std::env::var("COLUMNS")
         .ok()
@@ -23,26 +25,58 @@ pub fn terminal_columns() -> usize {
         .unwrap_or(80)
 }
 
+/// True when stdout is a TTY, or `COLUMNS` parses to a column count in `20..=500`, so long log
+/// lines may be word-wrapped to the available width.
 #[must_use]
-pub fn stdout_is_wrappable_terminal() -> bool {
-    stdout().is_terminal()
+pub fn stdout_allows_log_word_wrap() -> bool {
+    stdout().is_terminal() || columns_from_env().is_some()
 }
 
-fn line_wrap_meta(ts: &str, who: &str, line: &str, stream_is_tty: bool) -> (usize, bool) {
-    let prefix_len = super::format_line_with_timestamp(ts, who, "").chars().count();
+/// True when stderr is a TTY, or `COLUMNS` is valid the same way as for [`stdout_allows_log_word_wrap`].
+#[must_use]
+pub fn stderr_allows_log_word_wrap() -> bool {
+    stderr().is_terminal() || columns_from_env().is_some()
+}
+
+fn malvin_tagged_stdout_prefix_len(ts: &str, who: &str) -> usize {
+    let s = if super::stdout_use_color() {
+        super::format_line_with_timestamp_ansi(ts, who, "")
+    } else {
+        super::format_line_with_timestamp(ts, who, "")
+    };
+    strip_ansi_escapes(&s).chars().count()
+}
+
+pub fn line_wrap_for_prefix_len(
+    prefix_len: usize,
+    line: &str,
+    allow_word_wrap: bool,
+) -> (usize, bool) {
     let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
-    let wrap = stream_is_tty && line.chars().count() > max_payload;
+    let wrap = allow_word_wrap && line.chars().count() > max_payload;
     (max_payload, wrap)
+}
+
+fn line_wrap_meta_tagged_malvin(ts: &str, who: &str, line: &str, allow_word_wrap: bool) -> (usize, bool) {
+    let prefix_len = malvin_tagged_stdout_prefix_len(ts, who);
+    line_wrap_for_prefix_len(prefix_len, line, allow_word_wrap)
+}
+
+fn line_wrap_meta_tagged_plain(ts: &str, who: &str, line: &str, allow_word_wrap: bool) -> (usize, bool) {
+    let prefix_len = super::format_line_with_timestamp(ts, who, "")
+        .chars()
+        .count();
+    line_wrap_for_prefix_len(prefix_len, line, allow_word_wrap)
 }
 
 #[must_use]
 pub fn stdout_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
-    line_wrap_meta(ts, who, line, stdout_is_wrappable_terminal())
+    line_wrap_meta_tagged_malvin(ts, who, line, stdout_allows_log_word_wrap())
 }
 
 #[must_use]
 pub fn stderr_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
-    line_wrap_meta(ts, who, line, stderr().is_terminal())
+    line_wrap_meta_tagged_plain(ts, who, line, stderr_allows_log_word_wrap())
 }
 
 fn split_long_word(word: &str, max_payload_chars: usize) -> Vec<String> {
@@ -54,11 +88,14 @@ fn split_long_word(word: &str, max_payload_chars: usize) -> Vec<String> {
     }
     let mut out = Vec::new();
     let mut cur = String::new();
+    let mut cur_len: usize = 0;
     for ch in word.chars() {
-        if cur.chars().count() >= max_payload_chars {
+        if cur_len >= max_payload_chars {
             out.push(std::mem::take(&mut cur));
+            cur_len = 0;
         }
         cur.push(ch);
+        cur_len += 1;
     }
     if !cur.is_empty() {
         out.push(cur);
@@ -67,29 +104,49 @@ fn split_long_word(word: &str, max_payload_chars: usize) -> Vec<String> {
 }
 
 #[must_use]
-pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
-    if max_payload_chars == 0 {
-        return vec![text.to_string()];
-    }
+fn wrap_words_single_line_no_newlines(max_payload_chars: usize, text: &str) -> Vec<String> {
     let mut lines = Vec::new();
     let mut cur_line = String::new();
+    let mut cur_len: usize = 0;
     for word in text.split_whitespace() {
         for chunk in split_long_word(word, max_payload_chars) {
-            let can_extend = cur_line.is_empty()
-                || cur_line.chars().count() + 1 + chunk.chars().count() <= max_payload_chars;
+            let chunk_n = chunk.chars().count();
+            let can_extend = cur_line.is_empty() || cur_len + 1 + chunk_n <= max_payload_chars;
             if !can_extend {
                 lines.push(std::mem::take(&mut cur_line));
+                cur_len = 0;
             }
             if !cur_line.is_empty() {
                 cur_line.push(' ');
+                cur_len += 1;
             }
             cur_line.push_str(&chunk);
+            cur_len += chunk_n;
         }
     }
     if !cur_line.is_empty() || lines.is_empty() {
         lines.push(cur_line);
     }
     lines
+}
+
+#[must_use]
+pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
+    if max_payload_chars == 0 {
+        return vec![text.to_string()];
+    }
+    let mut out = Vec::new();
+    for para in text.split('\n') {
+        if para.is_empty() {
+            out.push(String::new());
+            continue;
+        }
+        out.extend(wrap_words_single_line_no_newlines(max_payload_chars, para));
+    }
+    if out.is_empty() {
+        out.push(String::new());
+    }
+    out
 }
 
 #[cfg(test)]
@@ -104,6 +161,12 @@ mod tests {
     fn wrap_fits_short_line_single_segment() {
         let v = wrap_words_bounded(72, "hello world");
         assert_eq!(v, vec!["hello world"]);
+    }
+
+    #[test]
+    fn wrap_does_not_merge_words_across_line_breaks() {
+        let v = wrap_words_bounded(40, "aa bb\ncc dd");
+        assert_eq!(v, vec!["aa bb", "cc dd"]);
     }
 
     #[test]
@@ -139,6 +202,32 @@ mod tests {
             std::env::set_var("COLUMNS", "100");
         }
         assert_eq!(terminal_columns(), 100);
+        assert!(super::stdout_allows_log_word_wrap());
+        assert!(super::stderr_allows_log_word_wrap());
+        unsafe {
+            match prev {
+                Some(v) => std::env::set_var("COLUMNS", v),
+                None => std::env::remove_var("COLUMNS"),
+            }
+        }
+    }
+
+    #[test]
+    #[allow(unsafe_code)]
+    fn long_line_wraps_when_valid_columns_env_set() {
+        let _guard = COLUMNS_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let prev = std::env::var("COLUMNS").ok();
+        let long = "x".repeat(400);
+        unsafe {
+            std::env::set_var("COLUMNS", "40");
+        }
+        let (_max, wrap) = super::stdout_line_wrap_meta("20260101.120000.000", "malvin", &long);
+        assert!(
+            super::stdout_allows_log_word_wrap() && wrap,
+            "COLUMNS set should allow wrapping a long line even when stdout is not a TTY"
+        );
         unsafe {
             match prev {
                 Some(v) => std::env::set_var("COLUMNS", v),
@@ -149,10 +238,13 @@ mod tests {
 
     #[test]
     fn kiss_stringify_terminal_wrap_symbols() {
+        let _ = stringify!(super::line_wrap_for_prefix_len);
         let _ = stringify!(super::terminal_columns);
-        let _ = stringify!(super::stdout_is_wrappable_terminal);
+        let _ = stringify!(super::stdout_allows_log_word_wrap);
+        let _ = stringify!(super::stderr_allows_log_word_wrap);
         let _ = stringify!(super::stdout_line_wrap_meta);
         let _ = stringify!(super::stderr_line_wrap_meta);
         let _ = stringify!(super::wrap_words_bounded);
+        let _ = stringify!(super::wrap_words_single_line_no_newlines);
     }
 }
