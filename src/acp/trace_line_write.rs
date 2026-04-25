@@ -192,7 +192,8 @@ pub async fn write_trace_line_coalesced(
     for (kind, tl) in coalesce.flush_all() {
         trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
     }
-    trace_file_write_line(trace_file, opts.raw_line, opts.tee_stdout, None).await;
+    let tee_non_chunk = opts.tee_stdout && !trace_file.plain_lines;
+    trace_file_write_line(trace_file, opts.raw_line, tee_non_chunk, None).await;
 }
 
 #[test]

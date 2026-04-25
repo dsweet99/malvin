@@ -15,7 +15,7 @@ CONFIDENCE: 0
 
 TRIGGER: NEVER CALL GIT  
 ADVICE: Do not run git commands; users stage/commit locally. See `malvin_tooling.md` § Untracked.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: grounding.md never edit  
 ADVICE: **Never edit `grounding.md`**. Update tests instead if `cli_parity.rs` checks fail. See `malvin_tooling.md` § Tests.
@@ -25,7 +25,7 @@ CONFIDENCE: 2
 
 TRIGGER: Hypothesis vs Claim  
 ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders). Reserve Claim for cited evidence (code, logs, metrics).
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: minimal diff  
 ADVICE: Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
@@ -45,6 +45,10 @@ TRIGGER: all checks pre-commit
 ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
 CONFIDENCE: 1
 
+TRIGGER: behavioral tests first
+ADVICE: Prefer runtime behavior assertions over `include_str(...).contains(...)` guards. For `malvin do`, assert exact stdout line order and absence of protocol/tag leakage (`"jsonrpc"`, `<do`, `:[`).
+CONFIDENCE: 0
+
 TRIGGER: kiss check and limits  
 ADVICE: `kiss check .` (full project). See `malvin_tooling.md` § kiss.
 CONFIDENCE: 0
@@ -59,10 +63,6 @@ CONFIDENCE: 0
 
 TRIGGER: stdout stderr log header  
 ADVICE: Route through `src/output/mod.rs`. See `malvin_tooling.md` § Prefixed log lines.
-CONFIDENCE: 0
-
-TRIGGER: terminal TTY word wrap  
-ADVICE: `terminal_wrap.rs` handles width. See `malvin_tooling.md` § Terminal wrap.
 CONFIDENCE: 0
 
 TRIGGER: malvin do CLI  
@@ -93,4 +93,4 @@ CONFIDENCE: 1
 
 TRIGGER: plan grounding search  
 ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.
-CONFIDENCE: 1
+CONFIDENCE: 2

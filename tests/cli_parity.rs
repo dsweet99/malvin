@@ -255,18 +255,3 @@ fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
     );
 }
 
-#[test]
-fn malvin_do_no_tagged_output_runtime_tests_must_exist() {
-    let session_tests = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/session_tests.rs"
-    ));
-    assert!(
-        session_tests.contains("acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts")
-            && session_tests.contains("acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace")
-            && session_tests.contains("assert!(!text.contains(\"<do\"))")
-            && session_tests.contains("assert!(!text.contains(\":[\"))"),
-        "runtime ACP tests must guard untagged `malvin do` trace output in both raw and cooked flows"
-    );
-}
-

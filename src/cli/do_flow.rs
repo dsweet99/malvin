@@ -21,8 +21,8 @@ struct DoCoderRun {
     skip_repo_style: bool,
 }
 
-const fn do_mode_flags(cooked: bool) -> (bool, bool) {
-    let raw_output = !cooked;
+const fn do_mode_flags(cooked: bool, thoughts: bool) -> (bool, bool) {
+    let raw_output = !thoughts;
     let skip_repo_style = !cooked;
     (raw_output, skip_repo_style)
 }
@@ -38,6 +38,8 @@ pub struct DoArgs {
     /// Run kiss clamp + configured pre-commit hooks before the prompt (coding-style runs).
     #[arg(long, default_value_t = false)]
     pub repo_gates: bool,
+    #[arg(long, default_value_t = false)]
+    pub thoughts: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
@@ -60,7 +62,7 @@ pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
 }
 
 pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
-    let (raw_mode, skip_repo_style) = do_mode_flags(do_args.cooked);
+    let (raw_mode, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
     let mut client = AgentClient::new(
         do_args.shared.model.clone(),
         AgentIoOptions {
@@ -253,6 +255,7 @@ mod do_tests {
                 assert_eq!(d.request, "fix the bug");
                 assert!(!d.cooked);
                 assert!(!d.repo_gates);
+                assert!(!d.thoughts);
             }
             _ => panic!("expected Do subcommand"),
         }
@@ -269,6 +272,7 @@ mod do_tests {
                 assert!(d.cooked);
                 assert_eq!(d.request, "x");
                 assert!(!d.repo_gates);
+                assert!(!d.thoughts);
             }
             _ => panic!("expected Do subcommand"),
         }
@@ -284,23 +288,45 @@ mod do_tests {
             Commands::Do(d) => {
                 assert!(d.repo_gates);
                 assert_eq!(d.request, "y");
+                assert!(!d.thoughts);
             }
             _ => panic!("expected Do subcommand"),
         }
     }
 
     #[test]
-    fn do_mode_flags_raw_defaults() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(false);
+    fn cli_accepts_do_thoughts() {
+        use crate::cli::Cli;
+        use crate::cli::Commands;
+
+        let cli = Cli::try_parse_from(["malvin", "do", "--thoughts", "z"]).expect("parse");
+        match cli.command {
+            Commands::Do(d) => {
+                assert!(d.thoughts);
+                assert_eq!(d.request, "z");
+            }
+            _ => panic!("expected Do subcommand"),
+        }
+    }
+
+    #[test]
+    fn do_mode_flags_default_hides_thoughts() {
+        let (raw_output, skip_repo_style) = super::do_mode_flags(false, false);
         assert!(raw_output);
         assert!(skip_repo_style);
     }
 
     #[test]
-    fn do_mode_flags_cooked_toggles_off_raw_and_style_skip() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(true);
-        assert!(!raw_output);
+    fn do_mode_flags_cooked_keeps_thoughts_hidden_without_flag() {
+        let (raw_output, skip_repo_style) = super::do_mode_flags(true, false);
+        assert!(raw_output);
         assert!(!skip_repo_style);
     }
 
+    #[test]
+    fn do_mode_flags_thoughts_flag_enables_thoughts() {
+        let (raw_output, skip_repo_style) = super::do_mode_flags(true, true);
+        assert!(!raw_output);
+        assert!(!skip_repo_style);
+    }
 }
