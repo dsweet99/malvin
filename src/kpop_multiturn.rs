@@ -232,3 +232,11 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     }
 }
 
+#[cfg(test)]
+mod kpop_multiturn_kiss {
+    #[test]
+    fn kiss_stringify_phase_and_next() {
+        let _ = stringify!(super::Phase);
+        let _ = stringify!(super::NextStep);
+    }
+}

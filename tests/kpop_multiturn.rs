@@ -145,10 +145,8 @@ fn kpop_block_finishes_after_agent_writes_enough_steps() {
         panic!("expected kpop block");
     };
     let want = parse_kpop_want(&s).expect("want in stub");
-    let mut step = 1usize;
-    for _ in 0..want {
+    for step in 1..=want {
         append_kpop_line(&path, step);
-        step += 1;
     }
     let p2 = state.next_prompt().expect("second");
     assert!(p2.is_some());
@@ -334,10 +332,8 @@ fn overshoot_credit_adds_to_next_block_target() {
         .expect("want");
     assert_eq!(got1, tn1);
 
-    let mut step = 1usize;
-    for _ in 0..(tn1 + overshoot) {
+    for step in 1..=(tn1 + overshoot) {
         append_kpop_line(&path, step);
-        step += 1;
     }
 
     let p2 = state.next_prompt().unwrap().expect("second prompt");

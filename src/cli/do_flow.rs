@@ -9,9 +9,14 @@ use super::WorkflowCliOptions;
 use super::repo_checks;
 use super::repo_checks::RepoGateOutput;
 use super::shared_opts::SharedOpts;
-use malvin::acp::{AgentClient, AgentIoOptions, CoderPromptOptions};
-use malvin::artifacts::{RunArtifacts, create_run_artifacts_from_text, resolve_user_request};
+use super::timing_merge;
+use malvin::acp::{AgentClient, CoderPromptOptions};
+use malvin::artifacts::{
+    RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    resolve_user_request, restore_workspace_grounding,
+};
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
@@ -67,11 +72,14 @@ pub async fn run_do(
     let (raw_output, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
     let mut client = AgentClient::new(
         shared.model.clone(),
-        AgentIoOptions {
-            force: workflow.force,
-            no_tee: shared.no_tee,
-            raw_output,
-        },
+        super::agent_io_options(
+            shared,
+            workflow,
+            super::AgentStdoutTeeFlags {
+                emit_stdout_markdown: false,
+                raw_output,
+            },
+        ),
     );
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
@@ -99,7 +107,14 @@ pub async fn run_do(
         header_user_for_trace: header_user,
         skip_repo_style,
     };
-    run_do_acp(&mut client, &artifacts, coder).await?;
+    super::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &do_args.request)?;
+    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
+    let restore_res = grounding_backup
+        .as_ref()
+        .map_or(Ok(()), |b| restore_workspace_grounding(&artifacts.work_dir, b));
+    timing_merge::prefer_primary_string_errors(acp_res, restore_res)?;
+    print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
@@ -147,6 +162,7 @@ async fn run_do_acp(
         .begin_coder_session(&artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
+    let timing = client.attach_run_timing_for_session();
     let log = artifacts.log_path("do");
     let (ref header, ref user) = coder.header_user_for_trace;
     let do_split = Some((header.as_str(), user.as_str()));
@@ -165,10 +181,11 @@ async fn run_do_acp(
         .await
         .map_err(|e| e.to_string());
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    match (run_res, end_res) {
+    let merged = match (&run_res, &end_res) {
         (Ok(()), Ok(())) => Ok(()),
-        (Err(e), _) | (Ok(()), Err(e)) => Err(e),
-    }
+        (Err(e), _) | (Ok(()), Err(e)) => Err(e.clone()),
+    };
+    timing_merge::emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, merged)
 }
 
 #[test]

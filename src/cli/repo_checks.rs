@@ -148,6 +148,11 @@ mod tests {
 
     #[test]
     fn pre_commit_failure_includes_exit_and_streams() {
+        let _ = (
+            stringify!(super::emit_repo_gate_stdout_line),
+            stringify!(super::touch_if_missing),
+            stringify!(super::trim_detail_chars),
+        );
         let out = std::process::Command::new("sh")
             .args(["-c", "echo out; echo err >&2; exit 7"])
             .output()

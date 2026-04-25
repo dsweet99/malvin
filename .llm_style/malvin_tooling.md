@@ -432,6 +432,10 @@ TRIGGER: malvin code workflow
 ADVICE: `implement.md` → review loop (review_1/review_2 with `kpop_review.md`, not `kpop.md`) → `learn.md`. No `validate_plan.md` step.
 CONFIDENCE: 0
 
+TRIGGER: malvin code check_plan pacing  
+ADVICE: **`check_plan`** can dominate **`TIMING:`** wall/LLM seconds vs **`implement`** on greenfield temp repos (e.g. **`evaluations/calc_cli_rs.sh`**). Agents often spend long spans on **`kiss`** static expectations, **`cargo fmt --check`**, and strict **`cargo clippy`** before implementation converges. Debug with stdout **`TIMING:`** + **`_malvin/<run>/`** logs; see **`malvin_evaluations.md`** § calc eval wall time.
+CONFIDENCE: 0
+
 TRIGGER: kpop.md vs kpop_review.md  
 ADVICE: **`kpop.md`** is for standalone `malvin kpop` runs. **`kpop_review.md`** is used in `malvin code` review loops—validates and revises `review.md`. Both in `default_prompts/` and `src/prompts/defaults.rs`.
 CONFIDENCE: 0

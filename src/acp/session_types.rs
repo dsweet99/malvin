@@ -10,6 +10,7 @@ use tokio::sync::{Mutex, Notify, oneshot};
 
 pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct PromptTraceWriter {
     pub file: tokio::fs::File,
     /// Raw tag label before fixed-width padding (e.g. `<implement`, `malvin`).
@@ -20,6 +21,8 @@ pub struct PromptTraceWriter {
     pub placeholder_emitted: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 pub struct AcpSessionInner {
@@ -44,6 +47,8 @@ pub struct AcpSessionInner {
     pub ui_idle_notify: Option<Arc<Notify>>,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -70,6 +75,8 @@ pub struct AcpSpawnArgs<'a> {
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 #[test]

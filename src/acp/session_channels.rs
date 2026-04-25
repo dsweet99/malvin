@@ -13,6 +13,8 @@ pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 pub struct SessionChannelState {
@@ -92,6 +94,7 @@ impl SessionChannelState {
             acp_verbose: telemetry.acp_verbose,
             ui_idle_notify: self.ui_idle_notify,
             raw_output: telemetry.raw_output,
+            emit_stdout_markdown: telemetry.emit_stdout_markdown,
         }
     }
 }

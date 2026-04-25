@@ -1,6 +1,6 @@
-//! Wall-clock and phase-bucketed LLM wait timing for `malvin code`, `malvin kpop`, and `malvin do` runs.
+//! Wall-clock and phase-bucketed LLM wait timing for agent runs (`malvin code` / `malvin kpop` / `malvin do`).
 //!
-//! **Streams:** One stdout line beginning with [`RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: ` including the trailing space before the first `name = value` field) via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory — see root `grounding.md`.
+//! **Streams:** One stdout line beginning with [`RUN_TIMING_SUMMARY_PREFIX`] (`TIMING: ` including the trailing space before the first `name = value` field) via [`crate::output::print_stdout_line`] (timestamp-prefixed `YYYYMMDD.HHMMSS.mmm:[malvin]: …`, same helper as other CLI stdout); the helper formats then prints the line. JSON is written under the run directory as [`RUN_TIMING_JSON_FILE`].
 
 mod report;
 
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 /// JSON artifact filename under [`crate::artifacts::RunArtifacts::run_dir`].
 pub const RUN_TIMING_JSON_FILE: &str = "run_timing.json";
 
-/// One line printed to stdout after the workflow body (`malvin code` / `malvin kpop` / `malvin do`).
+/// One line printed to stdout when [`finalize_and_emit_run_timing`] runs after a timed agent session.
 pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
 /// Which `session/prompt` turn to attribute LLM wait to (cumulative per label).
@@ -140,8 +140,8 @@ impl RunTiming {
 
 /// Installs a fresh [`RunTiming`] in `timing_slot` and records wall-clock start at [`Instant::now`].
 ///
-/// `malvin code`, `malvin kpop`, and `malvin do` use this via [`crate::acp::AgentClient::attach_run_timing_for_session`]
-/// so attachment stays consistent.
+/// Callers (`malvin code` via orchestrator, `malvin kpop`, `malvin do`) install timing through
+/// [`crate::acp::AgentClient::attach_run_timing_for_session`] before the LLM-bound RPC work they want metered.
 #[must_use]
 pub fn attach_new_run_timing(
     timing_slot: &mut Option<Arc<Mutex<RunTiming>>>,

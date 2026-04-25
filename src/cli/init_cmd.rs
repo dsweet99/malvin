@@ -148,7 +148,8 @@ fn create_initial_commit(root: &Path) -> Result<(), String> {
     }
     run_command_expect_success(Command::new("git").args(["add", "."]).current_dir(root), "`git add .` failed.")?;
     let has_staged = Command::new("git").args(["diff", "--cached", "--quiet"]).current_dir(root)
-        .status().map(|s| !s.success()).unwrap_or(false);
+        .status()
+        .is_ok_and(|s| !s.success());
     if has_staged {
         eprintln!("init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)");
         run_command_expect_success(
@@ -166,8 +167,7 @@ fn repo_already_has_commits(root: &Path) -> bool {
         .args(["rev-parse", "HEAD"])
         .current_dir(root)
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 fn ensure_branch_is_main(root: &Path) -> Result<(), String> {
@@ -326,7 +326,10 @@ mod tests {
 
     #[test]
     fn install_git_lfs_succeeds_when_available() {
-        let lfs_available = Command::new("git").args(["lfs", "version"]).status().map(|s| s.success()).unwrap_or(false);
+        let lfs_available = Command::new("git")
+            .args(["lfs", "version"])
+            .status()
+            .is_ok_and(|s| s.success());
         if !lfs_available {
             eprintln!("test skipped: git-lfs not installed");
             return;

@@ -218,6 +218,7 @@ async fn acp_full_session_with_notifications_and_credentials() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn mock agent acp");
@@ -249,6 +250,7 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn mock agent acp");
@@ -292,6 +294,7 @@ async fn acp_full_session_verbose_stdout_reader_path() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn verbose");
@@ -321,6 +324,7 @@ async fn acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts() 
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -375,6 +379,7 @@ async fn acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -425,6 +430,7 @@ async fn acp_prompt_do_trace_split_rejects_payload_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -469,6 +475,7 @@ async fn acp_prompt_do_trace_split_accepts_trailing_newline_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -506,6 +513,7 @@ async fn acp_prompt_do_trace_split_accepts_trailing_space_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -551,6 +559,7 @@ async fn acp_ui_idle_notify_shutdown_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -588,6 +597,7 @@ async fn acp_ui_idle_notify_cancel_ok_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -626,6 +636,7 @@ async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -660,6 +671,7 @@ async fn acp_prompt_fails_after_shutdown() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -699,6 +711,7 @@ async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     {
@@ -752,6 +765,7 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
@@ -824,6 +838,7 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
             force: false,
             tee_trace_stdout: false,
             raw_output: false,
+            emit_stdout_markdown: false,
         }),
     )
     .await;
@@ -858,6 +873,10 @@ fn kiss_stringify_session_b() {
     let _ = stringify!(AcpSession::send_rpc);
     let _ = stringify!(AcpSession::reset_prompt_inflight);
     let _ = stringify!(AcpSession::prompt_impl);
+    let _ = stringify!(super::rpc_session_prompt_text);
+    let _ = stringify!(super::is_prompt_payload_trailing_ws);
+    let _ = stringify!(super::trim_prompt_payload_trailing_ws);
+    let _ = stringify!(super::do_split_trace_preamble);
 }
 
 #[test]

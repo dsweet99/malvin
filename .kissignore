@@ -10,6 +10,10 @@ src/child_health/linux.rs
 src/child_health/macos.rs
 src/child_health/other.rs
 
+# line budget (mod.rs) — tests + stringify! stay in these modules
+src/cli/repo_checks.rs
+src/output/terminal_wrap.rs
+
 # Entry point
 src/main.rs
 

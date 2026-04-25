@@ -74,3 +74,12 @@ pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String
     let rules_expanded = render_template(&rules_raw, &render_context);
     merge_header_and_coding_rules(&header_expanded, &rules_expanded)
 }
+
+#[cfg(test)]
+mod template_kiss {
+    #[test]
+    fn kiss_stringify_template() {
+        let _ = stringify!(super::render_mbc2_for_scheduled_kpop_block);
+        let _ = stringify!(super::merged_coding_rules);
+    }
+}

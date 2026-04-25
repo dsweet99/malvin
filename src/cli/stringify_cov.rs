@@ -14,6 +14,7 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::SharedOpts);
     let _ = stringify!(crate::cli::Exit);
     let _ = stringify!(crate::cli::WorkflowCliOptions);
+    let _ = stringify!(crate::cli::AgentStdoutTeeFlags);
     let _ = stringify!(crate::cli::entrypoint);
     let _ = stringify!(crate::cli::run_code);
     let _ = stringify!(crate::cli::run_do);
@@ -28,9 +29,9 @@ fn kiss_stringify_cli_symbols_a() {
 fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::prepare_prompt_store);
     let _ = stringify!(crate::cli::prepare_kpop_prompt_store);
-    let _ = stringify!(crate::cli::echo_primary_to_stdout);
-    let _ = stringify!(crate::cli::emit_command_line);
-    let _ = stringify!(crate::cli::emit_run_startup_sequence);
+    let _ = stringify!(crate::cli::run_emit::echo_primary_to_stdout);
+    let _ = stringify!(crate::cli::run_emit::emit_command_line);
+    let _ = stringify!(crate::cli::run_emit::emit_run_startup_sequence);
     let _ = stringify!(malvin::log_paths::format_logs_dir);
     let _ = stringify!(crate::cli::build_agent);
     let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);
@@ -43,4 +44,8 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::repo_checks::warn_kissconfig_test_coverage_if_needed);
     let _ = stringify!(crate::cli::repo_checks::run_pre_commit_checks_or_warn);
     let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
+    let _ = stringify!(super::prepare_code_run);
+    let _ = stringify!(super::require_kiss_for_cli_command);
+    let _ = stringify!(super::print_command_error);
+    let _ = stringify!(super::tokio_runtime);
 }

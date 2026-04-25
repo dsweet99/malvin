@@ -75,8 +75,8 @@ impl AcpSession {
             Ok(Some(_)) => false,
             Ok(None) => true,
             Err(e) => {
-                warn!(error = %e, "child try_wait failed; treating as not alive");
-                false
+                warn!(error = %e, "child try_wait failed; assuming still alive");
+                true
             }
         }
     }
@@ -193,6 +193,9 @@ impl AcpSession {
             stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
             raw_output: trace_raw_output,
+            emit_stdout_markdown: self.0.emit_stdout_markdown
+                && !trace_raw_output
+                && !plain_lines,
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

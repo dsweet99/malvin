@@ -18,8 +18,7 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
     StdCommand::new(args[0])
         .args(&args[1..])
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
@@ -40,6 +39,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         force: client.io.force,
         tee_trace_stdout: !client.io.no_tee,
         raw_output: client.io.raw_output,
+        emit_stdout_markdown: client.io.emit_stdout_markdown,
     })
     .await
     .map_err(AgentError)

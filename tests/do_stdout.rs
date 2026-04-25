@@ -6,7 +6,9 @@ use std::process::Command;
 #[cfg(unix)]
 use common::{
     acp_mock_do_streaming_long_agent_msg_js, acp_mock_do_streaming_update_js,
-    acp_mock_do_streaming_wordy_long_msg_js, test_home_workspace, write_mock_executable,
+    acp_mock_do_streaming_wordy_long_msg_js, acp_mock_do_tampers_grounding_js,
+    command_output_with_timeout, test_home_workspace, write_mock_executable,
+    MALVIN_TEST_CMD_TIMEOUT,
 };
 #[cfg(unix)]
 use malvin::config::DEFAULT_CLI_MODEL;
@@ -15,40 +17,37 @@ use malvin::config::DEFAULT_CLI_MODEL;
 const DO_WRAP_COLUMNS: &str = "32";
 
 #[cfg(unix)]
-fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
-    let (root, home, workspace) = test_home_workspace();
-    let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
-    let mut args = vec!["do"];
-    args.extend_from_slice(extra_args);
-    args.push("say hi");
-    Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .args(args)
-        .output()
-        .expect("spawn malvin do")
-}
-
-#[cfg(unix)]
-fn run_do_with_columns_mock(mock_js: &str, extra_args: &[&str]) -> std::process::Output {
+fn run_do_with_mock_js(
+    mock_js: &str,
+    extra_args: &[&str],
+    columns: Option<&str>,
+) -> std::process::Output {
     let (root, home, workspace) = test_home_workspace();
     let mock = root.path().join("mock-agent-acp-do");
     write_mock_executable(&mock, mock_js);
     let mut args = vec!["do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
-    Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(&workspace)
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(&workspace)
         .env("HOME", &home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("COLUMNS", DO_WRAP_COLUMNS)
-        .args(args)
-        .output()
-        .expect("spawn malvin do")
+        .env("MALVIN_AGENT_ACP_BIN", &mock);
+    if let Some(c) = columns {
+        cmd.env("COLUMNS", c);
+    }
+    cmd.args(args);
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do")
+}
+
+#[cfg(unix)]
+fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
+    run_do_with_mock_js(&acp_mock_do_streaming_update_js(), extra_args, None)
+}
+
+#[cfg(unix)]
+fn run_do_with_columns_mock(mock_js: &str, extra_args: &[&str]) -> std::process::Output {
+    run_do_with_mock_js(mock_js, extra_args, Some(DO_WRAP_COLUMNS))
 }
 
 #[cfg(unix)]
@@ -75,15 +74,17 @@ fn run_malvin_with_captured_argv(malvin_args: &[&str]) -> (std::process::Output,
     let capture = root.path().join("captured-argv.txt");
     let mock = root.path().join("mock-agent-acp-do");
     write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("MALVIN_CAPTURE_ARGS_PATH", &capture)
-        .args(malvin_args)
-        .output()
-        .expect("spawn malvin");
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("MALVIN_CAPTURE_ARGS_PATH", &capture)
+            .args(malvin_args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin");
     let captured_args = std::fs::read_to_string(&capture)
         .unwrap_or_default()
         .lines()
@@ -101,15 +102,54 @@ fn stdout_lines_preserve_shape(stdout: &[u8]) -> Vec<String> {
 }
 
 #[cfg(unix)]
+fn assert_stdout_has_timing_and_done(lines: &[String]) {
+    assert!(
+        lines.iter().any(|l| l.contains("TIMING: ")),
+        "expected run timing summary line, got {lines:?}"
+    );
+    assert!(
+        lines.iter().any(|l| l.contains("]: DONE")),
+        "expected DONE announcement, got {lines:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn do_restores_workspace_grounding_after_mock_agent_overwrites() {
+    let (root, home, workspace) = test_home_workspace();
+    let mock = root.path().join("mock-agent-acp-do-grounding");
+    write_mock_executable(&mock, &acp_mock_do_tampers_grounding_js());
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .args(["do", "say hi"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin do");
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let restored = std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding");
+    assert_eq!(restored, "x");
+}
+
+#[cfg(unix)]
 #[test]
 fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
     let out = run_do_with_mock(&[]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert_eq!(
-        stdout_lines_preserve_shape(&out.stdout),
-        vec!["agent message", ""]
+    let lines = stdout_lines_preserve_shape(&out.stdout);
+    assert!(
+        lines.iter().any(|l| l == "agent message"),
+        "expected raw agent line, got {lines:?}"
     );
+    assert_stdout_has_timing_and_done(&lines);
     assert!(!stdout.contains("hidden thought"), "stdout was {stdout:?}");
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
@@ -129,18 +169,23 @@ fn do_wraps_long_raw_agent_line_when_columns_set() {
         .map(|l| l.trim_end_matches('\r'))
         .filter(|l| !l.is_empty())
         .collect();
+    let wrap_lines: Vec<&str> = text_lines
+        .iter()
+        .copied()
+        .filter(|l| l.chars().all(|c| c == 'a'))
+        .collect();
     assert!(
-        text_lines.len() > 1,
+        wrap_lines.len() > 1,
         "expected word-wrapped stdout (multiple non-empty lines), got {:?}",
         String::from_utf8_lossy(&out.stdout)
     );
-    let joined: String = text_lines.iter().copied().collect();
+    let joined: String = wrap_lines.iter().copied().collect();
     assert_eq!(joined.len(), 120);
     assert!(joined.chars().all(|c| c == 'a'));
     let col_n: usize = DO_WRAP_COLUMNS.parse().expect("columns");
     assert!(
-        text_lines.iter().all(|l| l.chars().count() <= col_n),
-        "each wrapped segment should fit COLUMNS: {text_lines:?}"
+        wrap_lines.iter().all(|l| l.chars().count() <= col_n),
+        "each wrapped segment should fit COLUMNS: {wrap_lines:?}"
     );
     assert!(!String::from_utf8_lossy(&out.stdout).contains("jsonrpc"));
 }
@@ -152,11 +197,16 @@ fn do_stdout_includes_thoughts_only_with_flag() {
     assert!(out.status.success(), "malvin do --thoughts failed: {out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     let lines = stdout_lines_preserve_shape(&out.stdout);
-    assert_eq!(lines.len(), 4, "unexpected stdout shape: {lines:?}");
-    assert!(lines[0].contains("do..."), "expected outgoing do bracket line, got: {lines:?}");
-    assert_eq!(lines[1], "agent message");
-    assert!(lines[2].contains("hidden thought"), "stdout was {stdout:?}");
-    assert_eq!(lines[3], "");
+    assert!(
+        lines.iter().any(|l| l.contains("do...")),
+        "expected outgoing do bracket line, got: {lines:?}"
+    );
+    assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
+    assert!(
+        lines.iter().any(|l| l.contains("hidden thought")),
+        "stdout was {stdout:?}"
+    );
+    assert_stdout_has_timing_and_done(&lines);
     assert!(stdout.contains("hidden thought"), "stdout was {stdout:?}");
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
@@ -231,17 +281,22 @@ fn do_wraps_wordy_long_text_at_word_boundaries() {
         .map(|l| l.trim_end_matches('\r'))
         .filter(|l| !l.is_empty())
         .collect();
+    let wrap_lines: Vec<&str> = text_lines
+        .iter()
+        .copied()
+        .filter(|l| l.split_whitespace().all(|w| w == "abcdefghij"))
+        .collect();
     assert!(
-        text_lines.len() > 1,
+        wrap_lines.len() > 1,
         "expected word-wrapped stdout, got {stdout_s:?}"
     );
     let col_n: usize = DO_WRAP_COLUMNS.parse().expect("columns");
     assert!(
-        text_lines.iter().all(|l| l.chars().count() <= col_n),
-        "each wrapped line should fit COLUMNS={col_n}: {text_lines:?}"
+        wrap_lines.iter().all(|l| l.chars().count() <= col_n),
+        "each wrapped line should fit COLUMNS={col_n}: {wrap_lines:?}"
     );
     let expected_word = "abcdefghij";
-    for line in &text_lines {
+    for line in &wrap_lines {
         for word in line.split_whitespace() {
             assert!(
                 word == expected_word,

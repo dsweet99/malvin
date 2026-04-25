@@ -1,7 +1,57 @@
 #![allow(dead_code)]
 
 #[cfg(unix)]
+use std::io::Read;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::time::{Duration, Instant};
+
+#[cfg(unix)]
+pub const MALVIN_TEST_CMD_TIMEOUT: Duration = Duration::from_secs(12);
+
+#[cfg(unix)]
+pub fn command_output_with_timeout(
+    cmd: &mut Command,
+    timeout: Duration,
+) -> std::io::Result<std::process::Output> {
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = cmd.spawn()?;
+    let deadline = Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let mut stdout = Vec::new();
+                let mut stderr = Vec::new();
+                if let Some(mut o) = child.stdout.take() {
+                    o.read_to_end(&mut stdout)?;
+                }
+                if let Some(mut e) = child.stderr.take() {
+                    e.read_to_end(&mut stderr)?;
+                }
+                return Ok(std::process::Output {
+                    status,
+                    stdout,
+                    stderr,
+                });
+            }
+            Ok(None) => {
+                if Instant::now() > deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "malvin subprocess timed out",
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
@@ -87,4 +137,13 @@ pub fn acp_mock_do_streaming_long_agent_msg_js() -> String {
         session_update_chunk_line("agent_message_chunk", r"long + '\n'")
     );
     acp_mock_js(ARGV_CAPTURE_PREAMBLE, &prompt)
+}
+
+pub fn acp_mock_do_tampers_grounding_js() -> String {
+    let tamper = r"    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED', 'utf8');";
+    let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
+    let thought = session_update_chunk_line("agent_thought_chunk", r"'t\n'");
+    acp_mock_js("", &format!("{tamper}\n{msg}\n{thought}"))
 }

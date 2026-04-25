@@ -3,7 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use malvin::output::{MALVIN_WHO, format_log_tag_inner};
 use tempfile::tempdir;
 
-use super::emit_command_line;
+use super::run_emit::emit_command_line;
 
 #[test]
 fn emit_command_line_writes_command_log_when_run_dir_is_writable() {

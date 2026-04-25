@@ -355,6 +355,7 @@ async fn write_trace_line_coalesced_writes_non_chunk_lines() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -394,6 +395,7 @@ async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
         stdout_replacement: Some("<suppressed>"),
         placeholder_emitted: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -431,6 +433,7 @@ async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     };
     let mut c = TraceChunkCoalescer::default();
     super::trace_line_write::write_trace_line_coalesced(
@@ -469,6 +472,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(&mut writer, "hello", false, None).await;
     drop(writer);
@@ -498,6 +502,7 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -543,6 +548,7 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
+        emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -574,6 +580,7 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,

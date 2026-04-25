@@ -1,5 +1,6 @@
 //! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
+pub use super::acp_tee_markdown::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
 use super::{ANSI_DIM, ANSI_RESET};
 use super::{format_log_tag_inner, stdout_use_color, timestamp_now_string};
 
@@ -25,6 +26,15 @@ pub struct AcpTeeLineFmt<'a> {
     pub dim_payload: bool,
 }
 
+/// Parameters for [`print_stdout_acp_tee_line_with_timestamp`].
+pub struct AcpTeeStdoutEvent<'a> {
+    pub direction: AcpTeeDirection,
+    pub who: &'a str,
+    pub line: &'a str,
+    pub ts: &'a str,
+    pub emit_stdout_markdown: bool,
+}
+
 /// ANSI ACP tee line prefix (outbound vs inbound bracket colors).
 ///
 /// Differs from [`super::format_line_with_timestamp_ansi`] (default cyan `who`). Prefer
@@ -46,7 +56,7 @@ pub fn format_line_with_timestamp_acp_ansi(
 }
 
 #[must_use]
-fn format_line_with_timestamp_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
+pub fn format_line_with_timestamp_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     let inner = format_log_tag_inner(ctx.who);
     let bracket = match ctx.direction {
         AcpTeeDirection::ToAgent => ANSI_BRIGHT_GREEN,
@@ -66,26 +76,28 @@ fn format_line_with_timestamp_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> Strin
 }
 
 /// Stdout tee for ACP trace lines: when color is enabled, outbound (`>`) vs inbound (`<`) use
-/// different ANSI colors for the `[who]:` prefix; payload text stays unstyled.
+/// different ANSI colors for the `[who]:` prefix; the payload is plain, dim, or `termimad` per mode.
 pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &str) {
     let ts = timestamp_now_string();
-    print_stdout_acp_tee_line_with_timestamp(direction, who, line, &ts);
-}
-
-/// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
-pub fn print_stdout_acp_tee_line_with_timestamp(
-    direction: AcpTeeDirection,
-    who: &str,
-    line: &str,
-    ts: &str,
-) {
-    print_stdout_acp_tee_line_with_timestamp_payload(&AcpTeeLineFmt {
-        ts,
+    print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction,
         who,
         line,
-        dim_payload: false,
+        ts: &ts,
+        emit_stdout_markdown: false,
     });
+}
+
+/// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
+pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
+    let ctx = AcpTeeLineFmt {
+        ts: ev.ts,
+        direction: ev.direction,
+        who: ev.who,
+        line: ev.line,
+        dim_payload: false,
+    };
+    print_stdout_acp_tee_line_with_timestamp_payload(&ctx, ev.emit_stdout_markdown);
 }
 
 /// Same as [`print_stdout_acp_tee_line_with_timestamp`], but dims the payload on colorized stdout.
@@ -95,13 +107,14 @@ pub fn print_stdout_acp_tee_line_with_timestamp_dim_payload(
     line: &str,
     ts: &str,
 ) {
-    print_stdout_acp_tee_line_with_timestamp_payload(&AcpTeeLineFmt {
+    let ctx = AcpTeeLineFmt {
         ts,
         direction,
         who,
         line,
         dim_payload: true,
-    });
+    };
+    print_stdout_acp_tee_line_with_timestamp_payload(&ctx, false);
 }
 
 fn acp_tee_log_prefix_len(ctx: &AcpTeeLineFmt<'_>) -> usize {
@@ -119,7 +132,31 @@ fn acp_tee_log_prefix_len(ctx: &AcpTeeLineFmt<'_>) -> usize {
     strip_ansi_escapes(&s).chars().count()
 }
 
-fn print_stdout_acp_tee_line_with_timestamp_payload(ctx: &AcpTeeLineFmt<'_>) {
+fn print_acp_tee_stdout_markdown_line(ctx: &AcpTeeLineFmt<'_>, rendered_payload: &str) {
+    if stdout_use_color() {
+        let prefix = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
+            ts: ctx.ts,
+            direction: ctx.direction,
+            who: ctx.who,
+            line: "",
+            dim_payload: ctx.dim_payload,
+        });
+        println!("{prefix}{rendered_payload}");
+    } else {
+        let prefix = super::format_line_with_timestamp(ctx.ts, ctx.who, "");
+        println!("{prefix}{rendered_payload}");
+    }
+}
+
+fn print_stdout_acp_tee_line_with_timestamp_payload(
+    ctx: &AcpTeeLineFmt<'_>,
+    emit_stdout_markdown: bool,
+) {
+    let line_gate = TermimadStdoutGate {
+        emit_stdout_markdown,
+        dim_payload: ctx.dim_payload,
+        color_stdout: stdout_use_color(),
+    };
     let prefix_len = acp_tee_log_prefix_len(ctx);
     let (max_payload, wrap) = super::terminal_wrap::line_wrap_for_prefix_len(
         prefix_len,
@@ -127,6 +164,12 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(ctx: &AcpTeeLineFmt<'_>) {
         super::terminal_wrap::stdout_allows_log_word_wrap(),
     );
     if !wrap {
+        if let Some(rendered) =
+            termimad_inline_payload_for_stdout(ctx.line, &line_gate)
+        {
+            print_acp_tee_stdout_markdown_line(ctx, &rendered);
+            return;
+        }
         let s = if stdout_use_color() {
             format_line_with_timestamp_acp_ansi_payload(ctx)
         } else {
@@ -136,6 +179,17 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(ctx: &AcpTeeLineFmt<'_>) {
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
+        if let Some(rendered) = termimad_inline_payload_for_stdout(&seg, &line_gate) {
+            let seg_ctx = AcpTeeLineFmt {
+                ts: ctx.ts,
+                direction: ctx.direction,
+                who: ctx.who,
+                line: &seg,
+                dim_payload: ctx.dim_payload,
+            };
+            print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered);
+            continue;
+        }
         let seg_ctx = AcpTeeLineFmt {
             ts: ctx.ts,
             direction: ctx.direction,
@@ -153,53 +207,11 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(ctx: &AcpTeeLineFmt<'_>) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{AcpTeeDirection, format_line_with_timestamp_acp_ansi};
-
+mod kiss_stringify_private {
     #[test]
-    fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
-        let to_line = format_line_with_timestamp_acp_ansi(
-            "20260413.121314.015",
-            AcpTeeDirection::ToAgent,
-            ">stem",
-            "out",
-        );
-        let from_line = format_line_with_timestamp_acp_ansi(
-            "20260413.121314.015",
-            AcpTeeDirection::FromAgent,
-            "<stem",
-            "in",
-        );
-        assert!(to_line.contains('\x1b'));
-        assert!(from_line.contains('\x1b'));
-        assert_ne!(to_line, from_line);
-        assert!(to_line.ends_with(" out"));
-        assert!(from_line.ends_with(" in"));
-    }
-
-    #[test]
-    fn ansi_acp_tee_can_dim_payload_text() {
-        let line = super::format_line_with_timestamp_acp_ansi_payload(&super::AcpTeeLineFmt {
-            ts: "20260413.121314.015",
-            direction: AcpTeeDirection::FromAgent,
-            who: "<stem",
-            line: "[thinking]",
-            dim_payload: true,
-        });
-        assert!(line.contains("\x1b[90m[thinking]\x1b[0m"));
-    }
-
-    #[test]
-    fn kiss_stringify_acp_tee() {
-        let _ = stringify!(AcpTeeDirection);
-        let _ = stringify!(AcpTeeDirection::ToAgent);
-        let _ = stringify!(AcpTeeDirection::FromAgent);
-        let _ = stringify!(super::AcpTeeLineFmt);
+    fn stringify_internal_acp_tee() {
         let _ = stringify!(super::acp_tee_log_prefix_len);
-        let _ = stringify!(super::format_line_with_timestamp_acp_ansi);
-        let _ = stringify!(super::format_line_with_timestamp_acp_ansi_payload);
-        let _ = stringify!(super::print_stdout_acp_tee_line);
-        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp);
-        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp_dim_payload);
+        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp_payload);
+        let _ = stringify!(super::print_acp_tee_stdout_markdown_line);
     }
 }

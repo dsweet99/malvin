@@ -238,13 +238,20 @@ mod tests {
 
     #[test]
     fn kiss_stringify_terminal_wrap_symbols() {
-        let _ = stringify!(super::line_wrap_for_prefix_len);
-        let _ = stringify!(super::terminal_columns);
-        let _ = stringify!(super::stdout_allows_log_word_wrap);
-        let _ = stringify!(super::stderr_allows_log_word_wrap);
-        let _ = stringify!(super::stdout_line_wrap_meta);
-        let _ = stringify!(super::stderr_line_wrap_meta);
-        let _ = stringify!(super::wrap_words_bounded);
-        let _ = stringify!(super::wrap_words_single_line_no_newlines);
+        let _ = (
+            stringify!(super::line_wrap_for_prefix_len),
+            stringify!(super::terminal_columns),
+            stringify!(super::stdout_allows_log_word_wrap),
+            stringify!(super::stderr_allows_log_word_wrap),
+            stringify!(super::stdout_line_wrap_meta),
+            stringify!(super::stderr_line_wrap_meta),
+            stringify!(super::wrap_words_bounded),
+            stringify!(super::wrap_words_single_line_no_newlines),
+            stringify!(super::columns_from_env),
+            stringify!(super::columns_from_tty),
+            stringify!(super::malvin_tagged_stdout_prefix_len),
+            stringify!(super::line_wrap_meta_tagged_malvin),
+            stringify!(super::line_wrap_meta_tagged_plain),
+        );
     }
 }

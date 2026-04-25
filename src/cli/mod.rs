@@ -3,6 +3,7 @@
 mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
+mod run_emit;
 mod do_flow;
 mod exit;
 mod init_cmd;
@@ -13,34 +14,19 @@ mod models_cmd;
 mod shared_opts;
 #[cfg(test)]
 mod stringify_cov;
+#[cfg(test)]
+mod markdown_flag_parse_tests;
 mod timing_merge;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
 pub use exit::Exit;
+pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 
 use clap::Parser;
 
 use malvin::env_path::require_kiss_for_malvin;
-use malvin::output::{
-    MALVIN_WHO, format_line, print_stderr_line, print_stdout_line, print_stdout_text,
-};
-use std::path::Path;
-
-/// Writes `command.log` under `run_dir`. When `echo_stdout` is true (tee on), also prints `Command: …` to stdout — same flag semantics as [`SharedOpts::tee_startup_stdout`].
-pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
-    malvin::invocation::init_from_env();
-    let cmd =
-        malvin::invocation::command_line().expect("init_from_env populates argv via OnceLock");
-    let line = format!("Command: {cmd}");
-    if echo_stdout {
-        print_stdout_line(MALVIN_WHO, &line);
-    }
-    let log_path = run_dir.join("command.log");
-    std::fs::write(&log_path, format!("{}\n", format_line(MALVIN_WHO, &line)))
-        .map_err(|e| format!("command.log: {e}"))?;
-    Ok(())
-}
+use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
 
 pub use do_flow::run_do;
 pub use kpop_flow::run_kpop;
@@ -48,9 +34,8 @@ use malvin::acp::AgentClient;
 
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
-    resolve_user_request, restore_workspace_grounding, startup_request_tag_label,
+    resolve_user_request, restore_workspace_grounding,
 };
-use malvin::log_paths::format_logs_dir;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
 
@@ -58,6 +43,12 @@ use malvin::prompts::{PromptError, PromptStore};
 pub struct WorkflowCliOptions {
     pub force: bool,
     pub run_learn: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AgentStdoutTeeFlags {
+    pub emit_stdout_markdown: bool,
+    pub raw_output: bool,
 }
 
 /// Skip learn phase if elapsed time is below 5 minutes (300,000 ms).
@@ -91,44 +82,14 @@ pub fn prepare_kpop_prompt_store(
     Ok(store)
 }
 
-pub fn echo_primary_to_stdout(
-    plan_path: &Path,
-    echo_plain: bool,
-    startup_tag_label: &str,
-) -> Result<(), String> {
-    if !echo_plain {
-        return Ok(());
-    }
-    let plan_text = std::fs::read_to_string(plan_path).map_err(|e| e.to_string())?;
-    print_stdout_text(startup_tag_label, &plan_text);
-    Ok(())
-}
-
-/// Write `command.log` / optional `Command:` line, echo the primary run artifact, then print `Logs: …`.
-///
-/// Shared by `malvin code` and `malvin kpop` so startup output stays consistent.
-pub fn emit_run_startup_sequence(
-    artifacts: &RunArtifacts,
-    tee_startup_stdout: bool,
-    cli_request: &str,
-) -> Result<(), String> {
-    emit_command_line(&artifacts.run_dir, tee_startup_stdout)?;
-    let tag = startup_request_tag_label(cli_request);
-    echo_primary_to_stdout(&artifacts.plan_path, tee_startup_stdout, &tag)?;
-    print_stdout_line(
-        MALVIN_WHO,
-        &format!("Logs: {}", format_logs_dir(&artifacts.run_dir)?),
-    );
-    Ok(())
-}
-
 fn prepare_code_run(
     code: &CodeArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
-    let client = build_agent(shared, workflow);
+    let emit_stdout_markdown = !shared.no_markdown;
+    let client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let (text, work_dir) = resolve_user_request(&code.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
@@ -170,18 +131,38 @@ pub async fn run_code(
     Ok(())
 }
 
-pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentClient {
+pub const fn agent_io_options(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    tee: AgentStdoutTeeFlags,
+) -> malvin::acp::AgentIoOptions {
+    malvin::acp::AgentIoOptions {
+        force: workflow.force,
+        no_tee: shared.no_tee,
+        raw_output: tee.raw_output,
+        emit_stdout_markdown: tee.emit_stdout_markdown,
+    }
+}
+
+pub fn build_agent(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    emit_stdout_markdown: bool,
+) -> AgentClient {
     AgentClient::new(
         shared.model.clone(),
-        malvin::acp::AgentIoOptions {
-            force: workflow.force,
-            no_tee: shared.no_tee,
-            raw_output: false,
-        },
+        agent_io_options(
+            shared,
+            workflow,
+            AgentStdoutTeeFlags {
+                emit_stdout_markdown,
+                raw_output: false,
+            },
+        ),
     )
 }
 
-/// `malvin code` needs `kiss` on `PATH`; check before stdout styling or async work.
+/// Only `malvin code` requires `kiss` on `PATH` before stdout styling or async work.
 fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
@@ -189,12 +170,8 @@ fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     }
 }
 
-fn print_command_error(is_do: bool, message: &str) {
-    if is_do {
-        eprintln!("{message}");
-    } else {
-        print_stderr_line(MALVIN_WHO, message);
-    }
+fn print_command_error(message: &str) {
+    print_stderr_line(MALVIN_WHO, message);
 }
 
 fn tokio_runtime() -> tokio::runtime::Runtime {
@@ -207,9 +184,8 @@ fn tokio_runtime() -> tokio::runtime::Runtime {
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
-    let is_do_command = matches!(&cli.command, Commands::Do(_));
     if let Err(e) = require_kiss_for_cli_command(&cli.command) {
-        print_command_error(is_do_command, &e);
+        print_command_error(&e);
         return Exit::Failure;
     }
     malvin::output::init_stdout_style(cli.global.no_color);
@@ -241,7 +217,7 @@ pub fn entrypoint() -> Exit {
     match res {
         Ok(()) => Exit::Success,
         Err(e) => {
-            print_command_error(is_do_command, &e);
+            print_command_error(&e);
             Exit::Failure
         }
     }

@@ -15,6 +15,7 @@ pub struct AgentError(pub String);
 pub struct AuthError(pub String);
 
 /// CLI flags that map to subprocess / logging behavior (grouped for `kiss` boolean-parameter limits).
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy)]
 pub struct AgentIoOptions {
     pub force: bool,
@@ -22,6 +23,8 @@ pub struct AgentIoOptions {
     pub no_tee: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true (default for code/kpop), render agent trace payloads as markdown on stdout.
+    pub emit_stdout_markdown: bool,
 }
 
 include!("pair.rs");

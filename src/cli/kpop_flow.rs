@@ -111,8 +111,10 @@ fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
     let exp_log_path = exp_log_path_for(&artifacts.run_dir);
-    std::fs::create_dir_all(exp_log_path.parent().expect("exp log parent"))
-        .map_err(|e| e.to_string())?;
+    let exp_parent = exp_log_path
+        .parent()
+        .ok_or_else(|| "kpop exp log path has no parent directory".to_string())?;
+    std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
     let mut context = workflow_context_paths_only(&artifacts);
     context.insert(
@@ -173,7 +175,8 @@ pub async fn run_kpop(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let store = kpop_schedule_and_store(&kpop, workflow)?;
-    let mut client = build_agent(shared, workflow);
+    let emit_stdout_markdown = !shared.no_markdown;
+    let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;

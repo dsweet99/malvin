@@ -10,7 +10,13 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     "/default_repo/gitignore"
 ));
 #[cfg(unix)]
-use common::{acp_mock_code_streaming_update_js, test_home_workspace, write_mock_executable};
+use common::{
+    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
+    write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+};
+
+#[cfg(unix)]
+const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review_1.md within max loops.";
 
 fn check_ignored(repo: &Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -44,15 +50,17 @@ fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output 
     if no_tee {
         args.insert(0, "--no-tee");
     }
-    Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("PATH", path)
-        .args(args)
-        .output()
-        .expect("spawn malvin code")
+    command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin code")
 }
 
 #[cfg(unix)]
@@ -75,13 +83,9 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    let lower = combined.to_lowercase();
     assert!(
-        lower.contains("max")
-            && lower.contains("loop")
-            && lower.contains("lgtm")
-            && combined.contains("review_1"),
-        "missing max-loops / review_1 / LGTM failure cues: {combined:?}"
+        combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected max_loops=0 review skip failure: {combined:?}"
     );
     assert_eq!(
         combined.matches("Implement").count(),
@@ -110,6 +114,25 @@ fn code_stdout_shows_plain_output_without_jsonrpc_lines() {
     );
 }
 
+
+#[test]
+fn help_lists_global_no_markdown_once() {
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .arg("--help")
+        .output()
+        .expect("malvin --help");
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(
+        s.matches("--no-markdown").count(),
+        1,
+        "expected exactly one --no-markdown in root help: {s}"
+    );
+}
 
 #[test]
 fn root_gitignore_ignores_malvin_logs_and_target() {

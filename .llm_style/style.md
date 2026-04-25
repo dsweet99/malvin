@@ -4,7 +4,7 @@ When `.cursorrules` says so, read this file **first** on the opening message—b
 - **`malvin_tooling.md`** — gates, ACP, `malvin do` (raw `workflow_context_paths_only` vs cooked `workflow_context`), `DoArgs` in `do_flow.rs` (not `args.rs`), `default_repo/` vs root `admin/check_untracked`, kiss, `cli_parity`, review sync, run timing, `malvin code`
 - **`malvin_debugging.md`** — KPOP HPF, falsify, `_malvin/**/plan.md` (gitignore—read by path), `ABORT:`, workspace `rg` fallback
 - **`malvin_kpop_schedule.md`** — multiturn, prompts, exact `LGTM` / `is_lgtm_str`
-- **`malvin_evaluations.md`** — eval harness patterns (`evaluations/`, temp repos, deterministic pass/fail oracles)
+- **`malvin_evaluations.md`** — `evaluations/*.sh`, temp `grounding.md`, **`HOME` outside worktree**, **`max_loops_exhausted_rs.sh`** / default `--max-loops` (5), `EVAL_PASS`, negative-control oracles, **`malvin init rust`** vs **`Cargo.toml`**, **`kiss`**/`bash -n`/`check_untracked` scope, calc wall time, stderr-on-success, post-`malvin code` gates
 - **`authoring_llm_style.md`** — index <100 lines; topic split
 
 ## Hard constraints
@@ -19,17 +19,13 @@ CONFIDENCE: 1
 
 TRIGGER: grounding.md never edit  
 ADVICE: **Never edit `grounding.md`**. Update tests instead if `cli_parity.rs` checks fail. See `malvin_tooling.md` § Tests.
-CONFIDENCE: 3
+CONFIDENCE: 4
 
 ## General methodology
 
-TRIGGER: Hypothesis vs Claim  
-ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders). Reserve Claim for cited evidence (code, logs, metrics).
+TRIGGER: Hypothesis minimal diff  
+ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders); reserve Claim for cited evidence (code, logs, metrics). Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
 CONFIDENCE: 1
-
-TRIGGER: minimal diff  
-ADVICE: Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
-CONFIDENCE: 0
 
 TRIGGER: review grounding  
 ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
@@ -78,7 +74,11 @@ ADVICE: `gen` is keyword; `set_var`/`remove_var` are `unsafe`. See `malvin_tooli
 CONFIDENCE: 0
 
 TRIGGER: evaluation scripts  
-ADVICE: Put harnesses in `evaluations/`; run in temp repos; assert stdout/stderr/exit code contracts; print `EVAL_PASS` only after all assertions pass. See `malvin_evaluations.md`.
+ADVICE: Put harnesses in `evaluations/`; run in temp repos; keep `HOME` outside the git worktree; assert stdout/stderr/exit code contracts; print `EVAL_PASS` only after all assertions pass. See `malvin_evaluations.md` (max-loops exhaustion harness, calc CI wall time, negative oracles, `malvin init rust` vs `Cargo.toml`, `kiss`/`bash -n`/`check_untracked` scope).
+CONFIDENCE: 1
+
+TRIGGER: eval HOME isolation  
+ADVICE: Never point `HOME` at a directory inside the temp git root; use two `mktemp -d` paths (workdir vs home). See `malvin_evaluations.md` § eval isolated repo, § eval max loops exhaustion.
 CONFIDENCE: 0
 
 ## KPOP, review, plans

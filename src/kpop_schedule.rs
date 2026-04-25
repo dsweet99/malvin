@@ -14,10 +14,28 @@ pub fn block_mean_from_p_creative(p_creative: f64) -> f64 {
     }
 }
 
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn poisson_large_mean_normal_approx(rng: &mut impl Rng, lambda: f64) -> usize {
+    let u1 = f64::max(f64::MIN_POSITIVE, rng.r#gen::<f64>());
+    let u2 = rng.r#gen::<f64>();
+    let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
+    let raw = (lambda + z * lambda.sqrt()).round();
+    if raw <= 0.0 {
+        return 0;
+    }
+    if raw > usize::MAX as f64 {
+        return usize::MAX;
+    }
+    raw as usize
+}
+
 #[must_use]
 pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
     let lambda = mean.max(1e-12);
     let l = (-lambda).exp();
+    if l == 0.0 {
+        return poisson_large_mean_normal_approx(rng, lambda);
+    }
     let mut k = 0_usize;
     let mut p = 1.0_f64;
     loop {
@@ -181,5 +199,16 @@ mod tests {
         let p = std::path::Path::new("/nonexistent/malvin_exp_log_read_test.md");
         let e = read_exp_log_text(p).expect_err("missing file");
         assert!(e.contains("failed to read exp log"));
+    }
+
+    #[test]
+    fn poisson_terminates_when_exp_neg_lambda_underflows_to_zero() {
+        let mut rng = StdRng::seed_from_u64(42);
+        for _ in 0..20 {
+            let n = poisson_block_size(&mut rng, 2000.0);
+            assert_ne!(n, usize::MAX);
+        }
+        let _ = stringify!(super::poisson_large_mean_normal_approx);
+        let _ = stringify!(super::step_kind);
     }
 }

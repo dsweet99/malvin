@@ -114,28 +114,46 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
         Some(rep) => {
             if !writer.placeholder_emitted {
                 crate::output::print_stdout_acp_tee_line_with_timestamp(
-                    crate::output::AcpTeeDirection::FromAgent,
-                    &writer.who,
-                    rep,
-                    ctx.ts,
+                    &crate::output::AcpTeeStdoutEvent {
+                        direction: crate::output::AcpTeeDirection::FromAgent,
+                        who: &writer.who,
+                        line: rep,
+                        ts: ctx.ts,
+                        emit_stdout_markdown: false,
+                    },
                 );
                 writer.placeholder_emitted = true;
             }
         }
         None => {
             if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                crate::output::print_stdout_acp_tee_line_with_timestamp_dim_payload(
-                    crate::output::AcpTeeDirection::FromAgent,
-                    &writer.who,
-                    line,
-                    ctx.ts,
-                );
+                if writer.emit_stdout_markdown {
+                    crate::output::print_stdout_acp_tee_line_with_timestamp(
+                        &crate::output::AcpTeeStdoutEvent {
+                            direction: crate::output::AcpTeeDirection::FromAgent,
+                            who: &writer.who,
+                            line,
+                            ts: ctx.ts,
+                            emit_stdout_markdown: true,
+                        },
+                    );
+                } else {
+                    crate::output::print_stdout_acp_tee_line_with_timestamp_dim_payload(
+                        crate::output::AcpTeeDirection::FromAgent,
+                        &writer.who,
+                        line,
+                        ctx.ts,
+                    );
+                }
             } else {
                 crate::output::print_stdout_acp_tee_line_with_timestamp(
-                    crate::output::AcpTeeDirection::FromAgent,
-                    &writer.who,
-                    line,
-                    ctx.ts,
+                    &crate::output::AcpTeeStdoutEvent {
+                        direction: crate::output::AcpTeeDirection::FromAgent,
+                        who: &writer.who,
+                        line,
+                        ts: ctx.ts,
+                        emit_stdout_markdown: writer.emit_stdout_markdown,
+                    },
                 );
             }
         }
@@ -160,8 +178,11 @@ pub async fn trace_file_write_line(
     };
     if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
-    } else if let Err(e) = writer.file.write_all(b"\n").await {
+        return;
+    }
+    if let Err(e) = writer.file.write_all(b"\n").await {
         warn!(error = %e, "trace newline failed");
+        return;
     }
     trace_tee_stdout_line(
         writer,
@@ -202,4 +223,6 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(WriteTraceLineCoalescedOpts);
+    let _ = stringify!(raw_output_should_skip_chunk);
+    let _ = stringify!(trace_tee_stdout_line);
 }

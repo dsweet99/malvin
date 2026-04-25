@@ -1,21 +1,24 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
+mod acp_tee_markdown;
 mod acp_tee;
 pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
-    AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
-    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_payload,
+    AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
+    print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
+    print_stdout_acp_tee_line_with_timestamp_dim_payload, termimad_inline_payload_for_stdout,
 };
+
+#[cfg(test)]
+mod acp_tee_tests;
 
 use std::io::{IsTerminal, stdout};
 use std::sync::OnceLock;
 
 use chrono::Local;
 
-use self::terminal_wrap::{
-    stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
-};
+use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";

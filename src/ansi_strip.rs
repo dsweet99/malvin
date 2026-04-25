@@ -78,5 +78,7 @@ mod tests {
     #[test]
     fn kiss_stringify_ansi_strip() {
         let _ = stringify!(super::strip_ansi_escapes);
+        let _ = stringify!(super::consume_csi_sequence);
+        let _ = stringify!(super::consume_osc_sequence);
     }
 }

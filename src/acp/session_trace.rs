@@ -143,6 +143,12 @@ fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_write_outgoing_prompt);
     let _ = stringify!(trace_write_outgoing_prompt_do);
     let _ = stringify!(DoOutgoingTraceParts);
+    let _ = stringify!(trace_write_tagged_body);
+    let _ = stringify!(trace_write_plain_body);
+    let _ = stringify!(compose_do_split_prompt_text);
+    let _ = stringify!(trace_write_tagged_body_writes_prefixed_lines);
+    let _ = stringify!(trace_write_outgoing_prompt_do_writes_plain_lines_without_tags);
+    let _ = stringify!(trace_write_outgoing_prompt_do_preserves_header_user_separator);
 }
 
 #[tokio::test]

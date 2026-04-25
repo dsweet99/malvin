@@ -22,6 +22,7 @@ Malvin drives a structured **implementation and review** workflow for software w
 - constraint: (kpop + mbc2) <= --max_hypotheses 
 
 - **`malvin do`**
+- do_header
 - prompt
 
 - **`malvin init`**

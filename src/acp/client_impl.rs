@@ -75,7 +75,7 @@ impl AgentClient {
         self.timing = timing;
     }
 
-    /// Installs [`crate::run_timing::RunTiming`] for this session (`malvin code`, `malvin kpop`, and `malvin do`).
+    /// Installs [`crate::run_timing::RunTiming`] for this client before a timed prompt or multiturn run.
     #[must_use]
     pub fn attach_run_timing_for_session(
         &mut self,
