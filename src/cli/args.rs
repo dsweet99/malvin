@@ -19,6 +19,8 @@ pub use super::shared_opts::GlobalOpts;
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
+    #[command(flatten)]
+    pub shared: SharedOpts,
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -39,8 +41,6 @@ pub enum Commands {
 
 #[derive(Args, Debug)]
 pub struct CodeArgs {
-    #[command(flatten)]
-    pub shared: SharedOpts,
     /// Implement → review → learn loop budget.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
@@ -56,8 +56,6 @@ pub struct CodeArgs {
 
 #[derive(Args, Debug)]
 pub struct KpopArgs {
-    #[command(flatten)]
-    pub shared: SharedOpts,
     /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
     #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,

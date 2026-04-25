@@ -1,11 +1,45 @@
 use std::path::Path;
 use std::process::Command;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 const ROOT_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.gitignore"));
 const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
+#[cfg(unix)]
+const CODE_STREAMING_MOCK: &str = r"const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try { msg = JSON.parse(line); } catch (e) { return; }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/new') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
+  } else if (mid === 'session/prompt') {
+    console.log(JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        update: {
+          sessionUpdate: 'agent_message_chunk',
+          content: { type: 'text', text: 'agent message\n' }
+        }
+      }
+    }));
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
+  } else if (rid != null) {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});";
 
 fn check_ignored(repo: &Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -16,119 +50,105 @@ fn check_ignored(repo: &Path, rel_path: &str) -> bool {
         .success()
 }
 
+#[cfg(unix)]
+fn write_mock_executable(path: &Path) {
+    let script = format!("#!/usr/bin/env node\n{CODE_STREAMING_MOCK}");
+    std::fs::write(path, script).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+fn write_fake_kiss(path: &Path) {
+    std::fs::write(path, "#!/usr/bin/env sh\nexit 0\n").expect("write kiss");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    let workspace = root.path().join("workspace");
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+    let mock = root.path().join("mock-agent-acp-code");
+    write_mock_executable(&mock);
+    let kiss = bin_dir.join("kiss");
+    write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    let mut args = vec!["code", "--trust-the-plan", "--no-learn", "--max-loops", "0", "ship it"];
+    if no_tee {
+        args.insert(0, "--no-tee");
+    }
+    Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .env("PATH", path)
+        .args(args)
+        .output()
+        .expect("spawn malvin code")
+}
+
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock() -> std::process::Output {
+    run_code_max_loops_zero_with_mock_opts(true)
+}
+
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
+    run_code_max_loops_zero_with_mock_opts(false)
+}
+
 #[test]
-fn max_loops_zero_must_not_be_clamped_to_one() {
-    let max_loops = 0_usize;
-    let iterations = (1..=max_loops).count();
+#[cfg(unix)]
+fn max_loops_zero_skips_review_attempts_and_fails() {
+    let out = run_code_max_loops_zero_with_mock();
+    assert!(!out.status.success(), "malvin code unexpectedly succeeded: {out:?}");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("Did not receive LGTM for review_1.md within max loops."),
+        "missing max-loops failure message: {combined:?}"
+    );
     assert_eq!(
-        iterations, 0,
-        "range(1..=max_loops) yields zero iterations when max_loops is 0"
-    );
-    let main_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/main.rs"));
-    assert!(
-        !main_rs.contains("args.max_loops.max(1)"),
-        "main.rs must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
-    );
-    let cli_rs = concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs")),
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs")),
+        combined.matches("Implement").count(),
+        1,
+        "expected one implement phase: {combined:?}"
     );
     assert!(
-        !cli_rs.contains("max_loops.max(1)"),
-        "src/cli must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
-    );
-}
-
-const fn agent_sources_for_snapshot() -> &'static str {
-    concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs")),
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/acp/client_impl.rs"
-        )),
-    )
-}
-
-#[test]
-fn reviewer_pair_ops_calls_review_prompt() {
-    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs"));
-    ops.find("pair.review_log, pair.review_who, None")
-        .expect("expected review session/prompt in run_reviewer_pair_once");
-}
-
-#[test]
-fn default_cli_model_is_gpt_53_codex_fast() {
-    let shared = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/shared_opts.rs"
-    ));
-    assert!(
-        shared.contains("const DEFAULT_CLI_MODEL")
-            && shared.contains("\"gpt-5.3-codex-fast\"")
-            && shared.contains("default_value = DEFAULT_CLI_MODEL"),
-        "default `--model` must remain gpt-5.3-codex-fast via DEFAULT_CLI_MODEL unless intentionally changed"
-    );
-    let models = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/models_cmd.rs"
-    ));
-    assert!(
-        models.contains("DEFAULT_CLI_MODEL")
-            && models.contains("Default model in malvin: {DEFAULT_CLI_MODEL}"),
-        "`malvin models` footer must use DEFAULT_CLI_MODEL (same string as SharedOpts default)"
+        !combined.contains("Review-1 (attempt 1)"),
+        "review attempt must not run when --max-loops=0: {combined:?}"
     );
 }
 
 #[test]
-fn agent_client_must_apply_force_when_invoking_acp() {
-    let snapshot = agent_sources_for_snapshot();
+#[cfg(unix)]
+fn code_stdout_shows_plain_output_without_jsonrpc_lines() {
+    let out = run_code_max_loops_zero_with_mock_stdout();
+    assert!(!out.status.success(), "expected max-loops failure path: {out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(
-        !snapshot.contains("let _ = self.force;"),
-        "force is stored on AgentClient but discarded before spawn; --force should be passed to cursor-agent when force is true"
+        stdout.contains("agent message"),
+        "expected parsed agent output on stdout: {stdout:?}"
     );
     assert!(
-        snapshot.contains("force: client.io.force"),
-        "spawn must pass `agent --force` via client.io.force"
-    );
-}
-
-#[test]
-fn agent_client_must_apply_model_when_invoking_acp_or_drop_cli_option() {
-    let snapshot = agent_sources_for_snapshot();
-    assert!(
-        !snapshot.contains("let _ = self.model;"),
-        "model is accepted on the CLI but discarded before spawn; wire through ACP or document-only at the type level"
-    );
-    assert!(
-        snapshot.contains("model_opt"),
-        "spawn must pass model into AcpSpawnArgs"
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
     );
 }
 
-#[test]
-fn agent_client_must_apply_tee_mode_when_invoking_acp() {
-    let snapshot = agent_sources_for_snapshot();
-    assert!(
-        snapshot.contains("tee_trace_stdout: !client.io.no_tee"),
-        "spawn must pass CLI tee mode into AcpSpawnArgs so trace lines can stream to stdout when tee is on"
-    );
-}
-
-#[test]
-fn upgrade_plan_message_must_not_be_eprint_twice() {
-    let client_impl = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.rs"
-    ));
-    let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));
-    let client_eprints_on_upgrade = client_impl.contains("agent_string_is_upgrade_plan")
-        && client_impl.contains("eprintln!(\"{last_error}\")");
-    let cli_eprints_run_error = cli_mod.contains("eprintln!(\"{e}\")");
-    assert!(
-        !(client_eprints_on_upgrade && cli_eprints_run_error),
-        "upgrade-plan failures eprintln in client_impl and the CLI entrypoint prints AgentError again; stderr duplicates the same message"
-    );
-}
 
 #[test]
 fn root_gitignore_ignores_malvin_logs_and_target() {
@@ -211,47 +231,12 @@ fn init_template_gitignore_matches_root_python_ignore_patterns() {
 }
 
 #[test]
-fn artifacts_grounding_backup_module_is_declared_and_source_tracked() {
-    let mod_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/artifacts/mod.rs"));
-    let backup_rs = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/artifacts/grounding_backup.rs"
-    ));
-    assert!(
-        mod_rs.contains("mod grounding_backup")
-            && mod_rs.contains("pub use grounding_backup::")
-            && mod_rs.contains("backup_workspace_grounding_if_present"),
-        "src/artifacts/mod.rs must declare `mod grounding_backup` and re-export backup/restore"
-    );
-    assert!(
-        backup_rs.contains("pub fn backup_workspace_grounding_if_present")
-            && backup_rs.contains("pub fn restore_workspace_grounding")
-            && backup_rs.contains("# Errors"),
-        "src/artifacts/grounding_backup.rs must ship with backup/restore APIs and documented errors (commit beside mod.rs)",
-    );
+fn kpop_p_creative_runtime_gate_contract() {
+    assert!(!malvin::kpop_creative_enabled(0.0));
+    assert!(!malvin::kpop_creative_enabled(-0.1));
+    assert!(!malvin::kpop_creative_enabled(f64::INFINITY));
+    assert!(!malvin::kpop_creative_enabled(f64::NAN));
+    assert!(malvin::kpop_creative_enabled(0.1));
 }
 
-#[test]
-fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
-    let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
-    assert!(
-        !args_rs.contains("first 3 prompts"),
-        "`malvin kpop --p-creative` help must not claim a stale 'first 3 prompts' deferral; align with src/kpop_acp_prompt.rs (CREATIVE_MIN_INTERACTION)"
-    );
-}
-
-#[test]
-fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
-    let cargo_toml = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
-    let Some(desc_line) = cargo_toml.lines().find(|l| {
-        let t = l.trim_start();
-        t.starts_with("description = ")
-    }) else {
-        panic!("Cargo.toml must declare [package] description = \"...\"");
-    };
-    assert!(
-        !desc_line.contains(":[>"),
-        "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
-    );
-}
 

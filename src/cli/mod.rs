@@ -106,7 +106,7 @@ pub fn echo_primary_to_stdout(
 
 /// Write `command.log` / optional `Command:` line, echo the primary run artifact, then print `Logs: …`.
 ///
-/// Shared by `malvin code`, `malvin kpop`, and `malvin do` so startup output stays consistent.
+/// Shared by `malvin code` and `malvin kpop` so startup output stays consistent.
 pub fn emit_run_startup_sequence(
     artifacts: &RunArtifacts,
     tee_startup_stdout: bool,
@@ -124,10 +124,11 @@ pub fn emit_run_startup_sequence(
 
 fn prepare_code_run(
     code: &CodeArgs,
+    shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
-    let client = build_agent(&code.shared, workflow);
+    let client = build_agent(shared, workflow);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let (text, work_dir) = resolve_user_request(&code.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
@@ -135,14 +136,15 @@ fn prepare_code_run(
     Ok((store, client, artifacts))
 }
 
-pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
-    let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
-
+pub async fn run_code(
+    code: CodeArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
+    let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
     repo_checks::run_repo_workspace_gates(&artifacts.work_dir, repo_checks::RepoGateOutput::Tagged)?;
-
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
-
-    emit_run_startup_sequence(&artifacts, code.shared.tee_startup_stdout(), &code.request)?;
+    emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
 
     let mut orch = Orchestrator {
         client: &mut client,
@@ -179,12 +181,11 @@ pub fn build_agent(shared: &SharedOpts, workflow: WorkflowCliOptions) -> AgentCl
     )
 }
 
-/// `malvin code` / `malvin kpop` need `kiss` on `PATH`; check before stdout styling or async work.
+/// `malvin code` needs `kiss` on `PATH`; check before stdout styling or async work.
 fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
-        Commands::Kpop(_) => require_kiss_for_malvin("kpop"),
-        Commands::Do(_) | Commands::Init(_) | Commands::Models(_) => Ok(()),
+        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }
 }
 
@@ -215,24 +216,24 @@ pub fn entrypoint() -> Exit {
     let res = match cli.command {
         Commands::Code(code) => {
             let workflow = WorkflowCliOptions {
-                force: !code.shared.no_force,
+                force: !cli.shared.no_force,
                 run_learn: !code.no_learn,
             };
-            tokio_runtime().block_on(run_code(code, workflow))
+            tokio_runtime().block_on(run_code(code, &cli.shared, workflow))
         }
         Commands::Kpop(kpop) => {
             let workflow = WorkflowCliOptions {
-                force: !kpop.shared.no_force,
+                force: !cli.shared.no_force,
                 run_learn: !kpop.no_learn,
             };
-            tokio_runtime().block_on(run_kpop(kpop, workflow))
+            tokio_runtime().block_on(run_kpop(kpop, &cli.shared, workflow))
         }
         Commands::Do(do_cmd) => {
             let workflow = WorkflowCliOptions {
-                force: !do_cmd.shared.no_force,
+                force: !cli.shared.no_force,
                 run_learn: false,
             };
-            tokio_runtime().block_on(run_do(do_cmd, workflow))
+            tokio_runtime().block_on(run_do(do_cmd, &cli.shared, workflow))
         }
         Commands::Init(init) => init_cmd::run_init(init.path, init.force, &init.languages),
         Commands::Models(_) => models_cmd::run_models(),

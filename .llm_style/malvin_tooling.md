@@ -195,6 +195,10 @@ TRIGGER: source-shape regression tests
 ADVICE: After changing ACP prompt signatures or include-body call shapes, check string-based tests like `tests/review_ops_order.rs` and docs-parity tests that `include_str!` source files—they may need updates even when runtime behavior is correct.
 CONFIDENCE: 0
 
+TRIGGER: code stdout regression  
+ADVICE: Guard protocol-leak fixes with behavior tests in `tests/cli_parity.rs` (for `malvin code`) and `tests/do_stdout.rs` (for `malvin do`): assert parsed agent text appears and raw `"jsonrpc"` lines do not.
+CONFIDENCE: 0
+
 TRIGGER: lib test_utils binary  
 ADVICE: `malvin::test_utils` is lib `#[cfg(test)]` only—binary tests use `tests/*.rs` + `env!("CARGO_BIN_EXE_malvin")` (see `init_pre_commit.rs`).
 CONFIDENCE: 0

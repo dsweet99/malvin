@@ -20,7 +20,7 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
-use super::repo_checks;
+use super::shared_opts::SharedOpts;
 use super::LEARN_MIN_ELAPSED_MS;
 use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
 
@@ -48,6 +48,30 @@ pub struct KpopTurnPrompts<'a> {
     request_text: &'a str,
 }
 
+impl KpopTurnPrompts<'_> {
+    fn render_turn_with_body(
+        &self,
+        body_file: &str,
+        ctx: &HashMap<String, String>,
+    ) -> Result<String, String> {
+        let common = self
+            .store
+            .render_prompt_only("kpop_common.md", ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let body = self
+            .store
+            .render_prompt_only(body_file, ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let rules = merged_coding_rules(self.store, ctx);
+        Ok(format!(
+            "{}\n\n{}\n\n{}",
+            rules.trim_end(),
+            common.trim_end(),
+            body.trim_end()
+        ))
+    }
+}
+
 impl KpopMultiturnPrompts for KpopTurnPrompts<'_> {
     fn kpop_block(&mut self, want: usize, remaining_after_this_turn: usize) -> Result<String, String> {
         let mut ctx = self.base.clone();
@@ -57,41 +81,13 @@ impl KpopMultiturnPrompts for KpopTurnPrompts<'_> {
             remaining_after_this_turn.to_string(),
         );
         ctx.insert("user_request".to_string(), self.request_text.to_string());
-        let common = self
-            .store
-            .render_prompt_only("kpop_common.md", &ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let body = self
-            .store
-            .render_prompt_only("kpop_block.md", &ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let rules = merged_coding_rules(self.store, &ctx);
-        Ok(format!(
-            "{}\n\n{}\n\n{}",
-            common.trim_end(),
-            rules.trim_end(),
-            body.trim_end()
-        ))
+        self.render_turn_with_body("kpop_block.md", &ctx)
     }
 
     fn mbc2_pure(&mut self) -> Result<String, String> {
         let mut ctx = self.base.clone();
         ctx.insert("user_request".to_string(), self.request_text.to_string());
-        let common = self
-            .store
-            .render_prompt_only("kpop_common.md", &ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let body = self
-            .store
-            .render_prompt_only("mbc2_pure.md", &ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let rules = merged_coding_rules(self.store, &ctx);
-        Ok(format!(
-            "{}\n\n{}\n\n{}",
-            common.trim_end(),
-            rules.trim_end(),
-            body.trim_end()
-        ))
+        self.render_turn_with_body("mbc2_pure.md", &ctx)
     }
 }
 
@@ -171,21 +167,20 @@ pub async fn kpop_run_acp_multiturn(
     )
 }
 
-pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
+pub async fn run_kpop(
+    kpop: KpopArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
     let store = kpop_schedule_and_store(&kpop, workflow)?;
-    let mut client = build_agent(&kpop.shared, workflow);
+    let mut client = build_agent(shared, workflow);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;
 
-    repo_checks::run_repo_workspace_gates(
-        &prepared.artifacts.work_dir,
-        repo_checks::RepoGateOutput::Tagged,
-    )?;
-
     let grounding_backup = backup_workspace_grounding_if_present(&prepared.artifacts.work_dir)?;
 
-    kpop_emit_startup(&kpop, &prepared.artifacts)?;
+    kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
     let builder = KpopTurnPrompts {
         store: &store,
@@ -218,8 +213,12 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
     Ok(())
 }
 
-pub fn kpop_emit_startup(kpop: &KpopArgs, artifacts: &RunArtifacts) -> Result<(), String> {
-    emit_run_startup_sequence(artifacts, kpop.shared.tee_startup_stdout(), &kpop.request)
+pub fn kpop_emit_startup(
+    kpop: &KpopArgs,
+    shared: &SharedOpts,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
+    emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &kpop.request)
 }
 
 pub fn kpop_learn_bundle(
@@ -287,10 +286,28 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         request_text: "do the thing",
     };
     let kpop = turn.kpop_block(2, 10).unwrap();
+    let kpop_header = kpop.find("AFTER EVERY REQUEST").expect("header marker");
+    let kpop_common = kpop
+        .find("### KPop: Apply this method to the user's problem.")
+        .expect("common marker");
+    let kpop_body = kpop.find("# This KPOP turn").expect("body marker");
+    assert!(
+        kpop_header < kpop_common && kpop_common < kpop_body,
+        "kpop prompt section order must be header, common, body"
+    );
     assert!(kpop.contains("Restate the problem clearly"));
     assert!(kpop.contains("Hypothesize"));
     assert!(kpop.contains("_malvin/run42/_kpop/exp_log_run42.md"));
     let mbc2 = turn.mbc2_pure().unwrap();
+    let mbc2_header = mbc2.find("AFTER EVERY REQUEST").expect("header marker");
+    let mbc2_common = mbc2
+        .find("### KPop: Apply this method to the user's problem.")
+        .expect("common marker");
+    let mbc2_body = mbc2.find("# Pure MBC2 turn").expect("body marker");
+    assert!(
+        mbc2_header < mbc2_common && mbc2_common < mbc2_body,
+        "mbc2 prompt section order must be header, common, body"
+    );
     assert!(mbc2.contains("Restate the problem clearly"));
     assert!(mbc2.contains("_malvin/run42/_kpop/exp_log_run42.md"));
 }

@@ -30,8 +30,6 @@ const fn do_mode_flags(cooked: bool, thoughts: bool) -> (bool, bool) {
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
 pub struct DoArgs {
-    #[command(flatten)]
-    pub shared: SharedOpts,
     /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
@@ -61,13 +59,17 @@ pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
     prepare_do_prompt_store_validating(DO_HEADER_MD)
 }
 
-pub async fn run_do(do_args: DoArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
+pub async fn run_do(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
     let (raw_mode, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
     let mut client = AgentClient::new(
-        do_args.shared.model.clone(),
+        shared.model.clone(),
         AgentIoOptions {
             force: workflow.force,
-            no_tee: do_args.shared.no_tee,
+            no_tee: shared.no_tee,
             raw_output: raw_mode,
         },
     );
@@ -111,7 +113,7 @@ fn combine_do_prompt_file_and_user(
         .render_prompt_only(template_file, context)
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
-    let user = text.trim_end().to_string();
+    let user = text.to_string();
     let combined = format!("{header}\n\n{user}");
     Ok((combined, header, user))
 }
@@ -237,9 +239,9 @@ mod do_tests {
             combine_do_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n")
                 .expect("combine");
         assert_eq!(header, "DO_TOKEN");
-        assert_eq!(user, "USER_RAW_TOKEN");
-        assert_eq!(combined, "DO_TOKEN\n\nUSER_RAW_TOKEN");
-        assert_eq!(combined.split("\n\n").count(), 2);
+        assert_eq!(user, "USER_RAW_TOKEN\n\n");
+        assert_eq!(combined, "DO_TOKEN\n\nUSER_RAW_TOKEN\n\n");
+        assert_eq!(combined.split("\n\n").count(), 3);
         assert_eq!(combined.matches("DO_TOKEN").count(), 1);
         assert_eq!(combined.matches("USER_RAW_TOKEN").count(), 1);
     }
@@ -305,6 +307,30 @@ mod do_tests {
                 assert!(d.thoughts);
                 assert_eq!(d.request, "z");
             }
+            _ => panic!("expected Do subcommand"),
+        }
+    }
+
+    #[test]
+    fn cli_accepts_all_shared_flags_before_subcommand() {
+        use crate::cli::Cli;
+        use crate::cli::Commands;
+
+        let cli = Cli::try_parse_from([
+            "malvin",
+            "--model",
+            "composer-2",
+            "--no-force",
+            "--no-tee",
+            "do",
+            "z",
+        ])
+        .expect("parse");
+        assert_eq!(cli.shared.model, "composer-2");
+        assert!(cli.shared.no_tee);
+        assert!(cli.shared.no_force);
+        match cli.command {
+            Commands::Do(d) => assert_eq!(d.request, "z"),
             _ => panic!("expected Do subcommand"),
         }
     }

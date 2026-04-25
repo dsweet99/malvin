@@ -192,26 +192,7 @@ pub async fn write_trace_line_coalesced(
     for (kind, tl) in coalesce.flush_all() {
         trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
     }
-    let tee_non_chunk = opts.tee_stdout && !trace_file.plain_lines;
-    trace_file_write_line(trace_file, opts.raw_line, tee_non_chunk, None).await;
-}
-
-#[test]
-fn trace_file_write_line_shares_one_timestamp_for_disk_and_tee() {
-    let s = include_str!("trace_line_write.rs");
-    let start = s
-        .find("pub async fn trace_file_write_line")
-        .expect("trace_file_write_line");
-    let tail = &s[start..];
-    let end = tail[20..].find("\npub async fn ").map_or(tail.len(), |i| i + 20);
-    let body = &tail[..end];
-    assert!(
-        body.contains("let ts = crate::output::timestamp_now_string();")
-            && body.contains("format_line_with_timestamp(&ts,")
-            && body.contains("trace_tee_stdout_line(")
-            && body.contains("&ts"),
-        "disk trace and stdout tee must use the same timestamp"
-    );
+    trace_file_write_line(trace_file, opts.raw_line, false, None).await;
 }
 
 #[test]

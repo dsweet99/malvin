@@ -2,6 +2,8 @@ use crate::acp::ResponseTx;
 use crate::acp::*;
 use serde_json::{Value, json};
 use std::collections::HashMap;
+#[cfg(unix)]
+use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -13,11 +15,23 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-// Standard locations: other tests mutate process-global `PATH` under `test_env_lock`; do not rely on lookup.
-const SLEEP_BIN: &str = "/bin/sleep";
-const TRUE_BIN: &str = "/bin/true";
+const SLEEP_BIN: &str = "sleep";
+const TRUE_BIN: &str = "true";
 #[cfg(unix)]
-const CAT_BIN: &str = "/bin/cat";
+const CAT_BIN: &str = "cat";
+
+#[cfg(unix)]
+fn unix_bin_with_fallback(name: &str) -> String {
+    let bin = format!("/bin/{name}");
+    if Path::new(&bin).is_file() {
+        return bin;
+    }
+    let usr_bin = format!("/usr/bin/{name}");
+    if Path::new(&usr_bin).is_file() {
+        return usr_bin;
+    }
+    name.to_string()
+}
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -81,6 +95,7 @@ async fn dispatch_resolves_pending_when_response_id_is_decimal_string() {
     assert_eq!(rx.await.unwrap().unwrap()["v"], 42);
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_handle_incoming_line_parse_error_and_extension_method() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
@@ -342,6 +357,43 @@ async fn write_trace_line_coalesced_writes_non_chunk_lines() {
 }
 
 #[tokio::test]
+async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("coalesce-trace-no-tee.log");
+    let f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file: f,
+        who: "kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: Some("<suppressed>"),
+        placeholder_emitted: false,
+        raw_output: false,
+    };
+    let mut c = TraceChunkCoalescer::default();
+    let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: Some(&parsed),
+            raw_line: r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#,
+            tee_stdout: true,
+        },
+    )
+    .await;
+    assert!(
+        !writer.placeholder_emitted,
+        "parsed non-chunk ACP protocol lines must not be tee'd to stdout"
+    );
+}
+
+#[tokio::test]
 async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace-malformed.log");
@@ -573,16 +625,20 @@ fn test_permission_reply_shape() {
     assert!(body.get("result").is_some());
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_handle_session_update_and_permission_replies() {
+    use tokio::io::AsyncReadExt;
+
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(SLEEP_BIN)
-        .arg("5")
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()
-        .expect("sleep");
+        .expect("cat");
     let stdin = Arc::new(Mutex::new(child.stdin.take().expect("stdin")));
+    let mut stdout = child.stdout.take().expect("stdout");
 
     handle_incoming_line(
         r#"{"jsonrpc":"2.0","method":"session/update","params":{"t":1}}"#,
@@ -610,8 +666,24 @@ async fn test_handle_session_update_and_permission_replies() {
     )
     .await;
 
-    let _ = child.kill().await;
-    let _ = child.wait().await;
+    drop(stdin);
+    let mut received = Vec::new();
+    stdout
+        .read_to_end(&mut received)
+        .await
+        .expect("read stdout");
+    let _ = child.wait().await.expect("wait cat");
+    let line = String::from_utf8_lossy(&received);
+    assert!(
+        line.contains("allow-always")
+            && (line.contains(r#""id":42"#) || line.contains(r#""id": 42"#)),
+        "expected allow-always reply echoing id 42; got {line:?}"
+    );
+    assert_eq!(
+        acp_activity_seq.load(Ordering::SeqCst),
+        2,
+        "both JSON messages should count as ACP activity"
+    );
 }
 
 /// KPOP: `session/request_permission` with no correlation id anywhere still skips `write_rpc_line`.
@@ -622,7 +694,7 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(CAT_BIN)
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -665,7 +737,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(CAT_BIN)
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -701,6 +773,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
     );
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_permission_json_or_write_failure_is_logged() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
@@ -723,8 +796,18 @@ async fn test_permission_json_or_write_failure_is_logged() {
         },
     )
     .await;
+    assert_eq!(
+        acp_activity_seq.load(Ordering::SeqCst),
+        1,
+        "permission request should count as ACP activity even when reply write fails"
+    );
+    assert!(
+        pending.lock().await.is_empty(),
+        "permission write failure must not leak pending RPC state"
+    );
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_reader_loop_drains_pending_on_stdout_eof() {
     let mut child = Command::new(TRUE_BIN)
@@ -793,27 +876,21 @@ async fn dispatch_clears_prompt_cleanup_when_id_matches() {
     assert!(trace_writer.lock().await.is_none());
 }
 
-/// KPOP scaling probe: `_malvin/20260411_193120_ikaqf1nv/_kpop/exp_log_coalesce_flush_cap_scaling.md`.
 #[test]
-fn time_ratio_when_doubling_buffer_len_coalesce_flush_cap() {
+fn coalesce_flush_cap_emissions_scale_linearly_with_input_size() {
     let cap = ACP_VERBOSE_COALESCE_MAX;
-    let measure = |units: usize| {
+    let emission_count = |units: usize| {
         let n = cap * units;
         let mut buf = "a".repeat(n);
         let mut buf_chars = buf.chars().count();
         let mut emissions = Vec::new();
-        let t0 = std::time::Instant::now();
         coalesce_flush_cap(&mut buf, &mut buf_chars, &mut emissions);
-        (t0.elapsed(), emissions.len())
+        emissions.len()
     };
-    let (t_small, e_small) = measure(500);
-    let (t_large, e_large) = measure(1000);
-    let r = t_large.as_secs_f64() / t_small.as_secs_f64().max(1e-12);
-    eprintln!(
-        "coalesce_flush_cap probe: t(500×cap)={t_small:?} emissions={e_small} | t(1000×cap)={t_large:?} emissions={e_large} | ratio={r:.3}"
-    );
+    let e_small = emission_count(500);
+    let e_large = emission_count(1000);
     assert!(
-        e_large > e_small,
-        "expected more chunks when buffer doubles"
+        e_small == 500 && e_large == 1000,
+        "unexpected emission counts for fixed-size flush: small={e_small}, large={e_large}"
     );
 }
