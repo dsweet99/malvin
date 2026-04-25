@@ -303,7 +303,7 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_skips_non_chunk_lines() {
+async fn write_trace_line_coalesced_writes_non_chunk_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace.log");
     let f = tokio::fs::OpenOptions::new()
@@ -316,15 +316,67 @@ async fn write_trace_line_coalesced_skips_non_chunk_lines() {
     let mut writer = PromptTraceWriter {
         file: f,
         who: "kpop".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
     };
     let mut c = TraceChunkCoalescer::default();
-    super::trace_line_write::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
+    let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: Some(&parsed),
+            raw_line: r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#,
+            tee_stdout: false,
+        },
+    )
+    .await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
-    assert!(s.is_empty(), "non-chunk lines should not be written");
+    assert!(
+        s.contains(r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#),
+        "non-chunk ACP lines should be preserved in trace output"
+    );
+}
+
+#[tokio::test]
+async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("coalesce-trace-malformed.log");
+    let f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file: f,
+        who: "kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: false,
+    };
+    let mut c = TraceChunkCoalescer::default();
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: None,
+            raw_line: "not-json {{{",
+            tee_stdout: false,
+        },
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains("not-json {{{"),
+        "malformed non-JSON ACP lines should still be preserved in trace output"
+    );
 }
 
 #[tokio::test]
@@ -341,6 +393,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
     let mut writer = PromptTraceWriter {
         file,
         who: "review_1".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
@@ -369,6 +422,7 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
     let mut writer = PromptTraceWriter {
         file,
         who: "raw".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
@@ -400,6 +454,37 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
 }
 
 #[tokio::test]
+async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-plain.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "<do".to_string(),
+        plain_lines: true,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: true,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "assistant response",
+        false,
+        Some(SessionUpdateChunkKind::Message),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert_eq!(s, "assistant response\n");
+}
+
+#[tokio::test]
 async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-thought.log");
@@ -413,6 +498,7 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     let mut writer = PromptTraceWriter {
         file,
         who: "review_1".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,

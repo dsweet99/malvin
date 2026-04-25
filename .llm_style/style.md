@@ -19,7 +19,7 @@ CONFIDENCE: 0
 
 TRIGGER: grounding.md never edit  
 ADVICE: **Never edit `grounding.md`**. Update tests instead if `cli_parity.rs` checks fail. See `malvin_tooling.md` § Tests.
-CONFIDENCE: 1
+CONFIDENCE: 2
 
 ## General methodology
 
@@ -43,7 +43,7 @@ CONFIDENCE: 0
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: kiss check and limits  
 ADVICE: `kiss check .` (full project). See `malvin_tooling.md` § kiss.
@@ -93,4 +93,4 @@ CONFIDENCE: 1
 
 TRIGGER: plan grounding search  
 ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.
-CONFIDENCE: 0
+CONFIDENCE: 1

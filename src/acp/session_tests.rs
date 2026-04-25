@@ -72,8 +72,62 @@ console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
 });
 "#;
 
+const MOCK_DO_SPLIT_STREAMING: &str = r#"const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try { msg = JSON.parse(line); } catch (e) { return; }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/new') {
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
+  } else if (mid === 'session/cancel') {
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/prompt') {
+console.log(JSON.stringify({
+  jsonrpc: '2.0',
+  method: 'session/update',
+  params: {
+    update: {
+      sessionUpdate: 'agent_message_chunk',
+      content: { type: 'text', text: 'agent message\n' }
+    }
+  }
+}));
+console.log(JSON.stringify({
+  jsonrpc: '2.0',
+  method: 'session/update',
+  params: {
+    update: {
+      sessionUpdate: 'agent_thought_chunk',
+      content: { type: 'text', text: 'hidden thought\n' }
+    }
+  }
+}));
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
+  } else if (rid != null) {
+console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});
+"#;
+
 async fn write_mock_executable(path: &Path) {
     let script = format!("#!/usr/bin/env node\n{}", EXTENDED_MOCK_AGENT);
+    tokio::fs::write(path, script.as_bytes()).await.unwrap();
+    let mut p = std::fs::metadata(path).unwrap().permissions();
+    p.set_mode(0o755);
+    std::fs::set_permissions(path, p).unwrap();
+    crate::test_utils::sync_test_executable(path);
+}
+
+async fn write_do_split_streaming_mock_executable(path: &Path) {
+    let script = format!("#!/usr/bin/env node\n{}", MOCK_DO_SPLIT_STREAMING);
     tokio::fs::write(path, script.as_bytes()).await.unwrap();
     let mut p = std::fs::metadata(path).unwrap().permissions();
     p.set_mode(0o755);
@@ -245,6 +299,209 @@ async fn acp_full_session_verbose_stdout_reader_path() {
     s.prompt("hi", &trace, "implement", None)
         .await
         .expect("prompt");
+    s.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts() {
+    let tmp = workspace_with_prompt_stub();
+    let bin = tmp.path().join("mock-agent-acp-do-split");
+    write_do_split_streaming_mock_executable(&bin).await;
+    let s = AcpSession::spawn(AcpSpawnArgs {
+        cwd: tmp.path(),
+        bin_override: Some(&bin),
+        api_key: Some("test-api-key"),
+        auth_token: None,
+        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        acp_verbose: false,
+        george_acp_lane: None,
+        ui_idle_notify: None,
+        model: None,
+        force: false,
+        tee_trace_stdout: false,
+        raw_output: true,
+    })
+    .await
+    .expect("spawn");
+    let trace = tmp.path().join("do-split-trace.log");
+    s.prompt_do_trace_split(
+        "STYLE\n\nHEADER\n\nUSER",
+        &trace,
+        super::outgoing_prompt_trace::DoPromptTraceSplit {
+            style_text: Some("STYLE"),
+            header: "HEADER",
+            user: "USER",
+        },
+    )
+    .await
+    .expect("prompt");
+    s.shutdown().await.expect("shutdown");
+    let text = std::fs::read_to_string(&trace).expect("trace");
+    assert!(text.contains("STYLE\n\nHEADER\n\nUSER\n"), "trace was {text:?}");
+    assert!(text.contains("agent message\n"), "trace was {text:?}");
+    assert!(!text.contains("hidden thought"), "trace was {text:?}");
+    assert!(!text.contains(":["));
+    assert!(!text.contains("<do"));
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace() {
+    let tmp = workspace_with_prompt_stub();
+    let bin = tmp.path().join("mock-agent-acp-do-split-cooked");
+    write_do_split_streaming_mock_executable(&bin).await;
+    let s = AcpSession::spawn(AcpSpawnArgs {
+        cwd: tmp.path(),
+        bin_override: Some(&bin),
+        api_key: Some("test-api-key"),
+        auth_token: None,
+        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        acp_verbose: false,
+        george_acp_lane: None,
+        ui_idle_notify: None,
+        model: None,
+        force: false,
+        tee_trace_stdout: false,
+        raw_output: false,
+    })
+    .await
+    .expect("spawn");
+    let trace = tmp.path().join("do-split-cooked-trace.log");
+    s.prompt_do_trace_split(
+        "STYLE\n\nHEADER\n\nUSER",
+        &trace,
+        super::outgoing_prompt_trace::DoPromptTraceSplit {
+            style_text: Some("STYLE"),
+            header: "HEADER",
+            user: "USER",
+        },
+    )
+    .await
+    .expect("prompt");
+    s.shutdown().await.expect("shutdown");
+    let text = std::fs::read_to_string(&trace).expect("trace");
+    assert!(text.contains("agent message\n"), "trace was {text:?}");
+    assert!(text.contains("[hidden thought]"), "trace was {text:?}");
+    assert!(!text.contains(":["));
+    assert!(!text.contains("<do"));
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn acp_prompt_do_trace_split_rejects_payload_mismatch() {
+    let tmp = workspace_with_prompt_stub();
+    let bin = tmp.path().join("mock-agent-acp-do-split-mismatch");
+    write_do_split_streaming_mock_executable(&bin).await;
+    let s = AcpSession::spawn(AcpSpawnArgs {
+        cwd: tmp.path(),
+        bin_override: Some(&bin),
+        api_key: Some("test-api-key"),
+        auth_token: None,
+        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        acp_verbose: false,
+        george_acp_lane: None,
+        ui_idle_notify: None,
+        model: None,
+        force: false,
+        tee_trace_stdout: false,
+        raw_output: true,
+    })
+    .await
+    .expect("spawn");
+    let trace = tmp.path().join("do-split-mismatch.log");
+    let res = s
+        .prompt_do_trace_split(
+            "STYLE\nHEADER\n\nDIFFERENT_USER",
+            &trace,
+            super::outgoing_prompt_trace::DoPromptTraceSplit {
+                style_text: Some("STYLE"),
+                header: "HEADER",
+                user: "USER",
+            },
+        )
+        .await;
+    assert!(res.is_err(), "expected mismatch error");
+    assert!(
+        res.expect_err("error")
+            .contains("text does not match split parts"),
+        "unexpected mismatch error"
+    );
+    assert!(!s.is_busy(), "mismatch should fail before prompt dispatch");
+    s.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn acp_prompt_do_trace_split_accepts_trailing_newline_mismatch() {
+    let tmp = workspace_with_prompt_stub();
+    let bin = tmp.path().join("mock-agent-acp-do-split-trailing-newline");
+    write_do_split_streaming_mock_executable(&bin).await;
+    let s = AcpSession::spawn(AcpSpawnArgs {
+        cwd: tmp.path(),
+        bin_override: Some(&bin),
+        api_key: Some("test-api-key"),
+        auth_token: None,
+        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        acp_verbose: false,
+        george_acp_lane: None,
+        ui_idle_notify: None,
+        model: None,
+        force: false,
+        tee_trace_stdout: false,
+        raw_output: true,
+    })
+    .await
+    .expect("spawn");
+    let trace = tmp.path().join("do-split-trailing-newline.log");
+    s.prompt_do_trace_split(
+        "STYLE\n\nHEADER\n\nUSER\n",
+        &trace,
+        super::outgoing_prompt_trace::DoPromptTraceSplit {
+            style_text: Some("STYLE"),
+            header: "HEADER",
+            user: "USER",
+        },
+    )
+    .await
+    .expect("prompt");
+    s.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+#[allow(clippy::await_holding_lock)]
+async fn acp_prompt_do_trace_split_accepts_trailing_space_mismatch() {
+    let tmp = workspace_with_prompt_stub();
+    let bin = tmp.path().join("mock-agent-acp-do-split-trailing-space");
+    write_do_split_streaming_mock_executable(&bin).await;
+    let s = AcpSession::spawn(AcpSpawnArgs {
+        cwd: tmp.path(),
+        bin_override: Some(&bin),
+        api_key: Some("test-api-key"),
+        auth_token: None,
+        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        acp_verbose: false,
+        george_acp_lane: None,
+        ui_idle_notify: None,
+        model: None,
+        force: false,
+        tee_trace_stdout: false,
+        raw_output: true,
+    })
+    .await
+    .expect("spawn");
+    let trace = tmp.path().join("do-split-trailing-space.log");
+    s.prompt_do_trace_split(
+        "STYLE\n\nHEADER\n\nUSER   ",
+        &trace,
+        super::outgoing_prompt_trace::DoPromptTraceSplit {
+            style_text: Some("STYLE"),
+            header: "HEADER",
+            user: "USER",
+        },
+    )
+    .await
+    .expect("prompt");
     s.shutdown().await.expect("shutdown");
 }
 

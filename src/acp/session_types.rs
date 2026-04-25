@@ -14,6 +14,7 @@ pub struct PromptTraceWriter {
     pub file: tokio::fs::File,
     /// Raw tag label before fixed-width padding (e.g. `<implement`, `malvin`).
     pub who: String,
+    pub plain_lines: bool,
     pub stdout_replacement: Option<&'static str>,
     /// For learn tee: emit [`crate::output::LEARNING_PLACEHOLDER`] at most once to stdout.
     pub placeholder_emitted: bool,

@@ -30,6 +30,14 @@ async fn rpc_session_prompt_text(session: &AcpSession, text: &str, id: u64) -> R
     .map(|_| ())
 }
 
+const fn is_prompt_payload_trailing_ws(ch: char) -> bool {
+    ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+}
+
+fn trim_prompt_payload_trailing_ws(s: &str) -> &str {
+    s.trim_end_matches(is_prompt_payload_trailing_ws)
+}
+
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///
@@ -102,7 +110,7 @@ impl AcpSession {
         .await
     }
 
-    /// Like [`Self::prompt`], but records `malvin do` trace segments (`>style`, `>header`, `>prompt`).
+    /// Like [`Self::prompt`], but records `malvin do` trace text as plain lines (style, header, request).
     ///
     /// `text` must be the exact payload sent on `session/prompt` (including any prepended style text).
     ///
@@ -115,7 +123,17 @@ impl AcpSession {
         trace_path: &Path,
         split: DoPromptTraceSplit<'_>,
     ) -> Result<(), String> {
-        self.prompt_impl(text, trace_path, OutgoingPromptTrace::DoSplit(split))
+        let expected = compose_do_split_prompt_text(&DoOutgoingTraceParts {
+            style_text: split.style_text,
+            header_text: split.header,
+            user_text: split.user,
+        });
+        let normalized_text = trim_prompt_payload_trailing_ws(text);
+        let normalized_expected = trim_prompt_payload_trailing_ws(&expected);
+        if normalized_text != normalized_expected {
+            return Err("prompt_do_trace_split: text does not match split parts".to_string());
+        }
+        self.prompt_impl(&expected, trace_path, OutgoingPromptTrace::DoSplit(split))
             .await
     }
 
@@ -128,9 +146,9 @@ impl AcpSession {
         let _prompt_turn = self.0.prompt_singleflight.lock().await;
         trace_prepare_file(trace_path).await?;
         let mut file = trace_open_truncated(trace_path).await?;
-        trace_write_invocation_header(&mut file).await?;
-        let (incoming_tag, stdout_replacement_who, trace_raw_output) = match &trace {
+        let (incoming_tag, stdout_replacement_who, trace_raw_output, plain_lines) = match &trace {
             OutgoingPromptTrace::Uniform(u) => {
+                trace_write_invocation_header(&mut file).await?;
                 trace_write_outgoing_prompt(&mut file, u.trace_who, text).await?;
                 if !self.0.raw_output {
                     let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
@@ -140,6 +158,7 @@ impl AcpSession {
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
                     self.0.raw_output,
+                    false,
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
@@ -155,6 +174,7 @@ impl AcpSession {
                 (
                     crate::output::format_acp_directional_tag_prefix('<', "do"),
                     "do",
+                    self.0.raw_output,
                     true,
                 )
             }
@@ -162,6 +182,7 @@ impl AcpSession {
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
             file,
             who: incoming_tag,
+            plain_lines,
             stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
             raw_output: trace_raw_output,
@@ -191,12 +212,7 @@ impl AcpSession {
         let params = json!({ "sessionId": &self.0.session_id });
         let r = self.send_rpc("session/cancel", params).await;
         if r.is_ok() {
-            self.0.busy.store(false, Ordering::SeqCst);
-            *self.0.trace_writer.lock().await = None;
-            self.0.prompt_rpc_id.store(0, Ordering::SeqCst);
-            if let Some(n) = &self.0.ui_idle_notify {
-                n.notify_waiters();
-            }
+            self.reset_prompt_inflight().await;
         }
         r.map(|_| ())
     }
@@ -207,12 +223,7 @@ impl AcpSession {
     ///
     /// Returns `Err` if waiting on the child after kill fails.
     pub async fn shutdown(&self) -> Result<(), String> {
-        self.0.busy.store(false, Ordering::SeqCst);
-        *self.0.trace_writer.lock().await = None;
-        self.0.prompt_rpc_id.store(0, Ordering::SeqCst);
-        if let Some(n) = &self.0.ui_idle_notify {
-            n.notify_waiters();
-        }
+        self.reset_prompt_inflight().await;
         let mut ch = self.0.child.lock().await;
         let _ = ch.kill().await;
         ch.wait()

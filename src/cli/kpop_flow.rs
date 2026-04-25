@@ -178,7 +178,10 @@ pub async fn run_kpop(kpop: KpopArgs, workflow: WorkflowCliOptions) -> Result<()
 
     let prepared = prepare_kpop_run(&kpop)?;
 
-    repo_checks::run_repo_workspace_gates(&prepared.artifacts.work_dir)?;
+    repo_checks::run_repo_workspace_gates(
+        &prepared.artifacts.work_dir,
+        repo_checks::RepoGateOutput::Tagged,
+    )?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&prepared.artifacts.work_dir)?;
 

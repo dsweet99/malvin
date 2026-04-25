@@ -138,7 +138,7 @@ fn prepare_code_run(
 pub async fn run_code(code: CodeArgs, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, workflow)?;
 
-    repo_checks::run_repo_workspace_gates(&artifacts.work_dir)?;
+    repo_checks::run_repo_workspace_gates(&artifacts.work_dir, repo_checks::RepoGateOutput::Tagged)?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
 
@@ -188,6 +188,14 @@ fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     }
 }
 
+fn print_command_error(is_do: bool, message: &str) {
+    if is_do {
+        eprintln!("{message}");
+    } else {
+        print_stderr_line(MALVIN_WHO, message);
+    }
+}
+
 fn tokio_runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -198,8 +206,9 @@ fn tokio_runtime() -> tokio::runtime::Runtime {
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
+    let is_do_command = matches!(&cli.command, Commands::Do(_));
     if let Err(e) = require_kiss_for_cli_command(&cli.command) {
-        print_stderr_line(MALVIN_WHO, &e);
+        print_command_error(is_do_command, &e);
         return Exit::Failure;
     }
     malvin::output::init_stdout_style(cli.global.no_color);
@@ -231,7 +240,7 @@ pub fn entrypoint() -> Exit {
     match res {
         Ok(()) => Exit::Success,
         Err(e) => {
-            print_stderr_line(MALVIN_WHO, &e);
+            print_command_error(is_do_command, &e);
             Exit::Failure
         }
     }

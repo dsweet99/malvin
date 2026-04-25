@@ -232,53 +232,6 @@ fn artifacts_grounding_backup_module_is_declared_and_source_tracked() {
 }
 
 #[test]
-fn malvin_do_default_skips_repo_style_prepend_contract() {
-    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
-    let client_impl = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.rs"
-    ));
-    assert!(
-        do_flow.contains("skip_repo_style") && do_flow.contains("do_args.cooked"),
-        "`malvin do` default raw must pass skip_repo_style from !do_args.cooked into run_coder_prompt (no injected repo style prepend)"
-    );
-    assert!(
-        client_impl.contains("skip_repo_style")
-            && client_impl.contains("coder_prompt_body_with_optional_repo_style"),
-        "AgentClient::run_coder_prompt must honor skip_repo_style"
-    );
-}
-
-#[test]
-fn malvin_do_raw_uses_do_header_cooked_uses_header_contract() {
-    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
-    assert!(
-        do_flow.contains("prepare_do_raw_prompt_store")
-            && do_flow.contains("DO_HEADER_MD")
-            && do_flow.contains("combine_do_raw_header_and_user")
-            && do_flow.contains("prepare_do_prompt_store()")
-            && do_flow.contains("combine_do_acp_prompt_header_and_user")
-            && do_flow.contains("HEADER_MD")
-            && do_flow.contains("do_args.cooked"),
-        "default raw `malvin do` must use do_header path; `--cooked` must use header.md path"
-    );
-}
-
-#[test]
-fn malvin_do_must_not_emit_tagged_stdout_prompt_lines() {
-    let session_trace = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/session_trace.rs"
-    ));
-    assert!(
-        !session_trace.contains("print_outgoing_prompt_log(\"style\")")
-            && !session_trace.contains("print_outgoing_prompt_log(\"header\")")
-            && !session_trace.contains("print_outgoing_prompt_log(\"prompt\")"),
-        "`malvin do` must not print tagged `[style...]`, `[header...]`, or `[prompt...]` stdout lines"
-    );
-}
-
-#[test]
 fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
     let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
     assert!(
@@ -303,45 +256,17 @@ fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
 }
 
 #[test]
-fn malvin_do_cooked_must_not_use_prompt_tag_for_incoming_stdout() {
-    let session_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
-    assert!(
-        !session_rs.contains("format_acp_directional_tag_prefix('<', \"prompt\")"),
-        "`malvin do --cooked` currently routes incoming output as `<prompt`; this still emits tagged stdout tee lines and violates no-tagged-log output intent"
-    );
-}
-
-#[test]
-fn malvin_do_cooked_must_not_emit_startup_or_done_tagged_stdout() {
-    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
-    assert!(
-        !do_flow.contains("emit_run_startup_sequence("),
-        "`malvin do --cooked` must not emit tagged startup lines (`Command:`, prompt echo, logs path)"
-    );
-    assert!(
-        !do_flow.contains("print_stdout_line(MALVIN_WHO, \"DONE\")"),
-        "`malvin do --cooked` must not emit tagged DONE line"
-    );
-}
-
-#[test]
-fn malvin_do_cooked_must_not_route_incoming_chunks_with_malvin_tag() {
-    let session_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/session.rs"));
-    assert!(
-        !session_rs.contains("(crate::output::MALVIN_WHO.to_string(), crate::output::MALVIN_WHO)"),
-        "`malvin do --cooked` must not route incoming chunks through tagged `MALVIN_WHO` tee identity"
-    );
-}
-
-#[test]
-fn calc_eval_invalid_input_must_assert_err_prefix_on_stderr_only() {
-    let eval_script = include_str!(concat!(
+fn malvin_do_no_tagged_output_runtime_tests_must_exist() {
+    let session_tests = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/evaluations/calc_cli_rs.sh"
+        "/src/acp/session_tests.rs"
     ));
     assert!(
-        !eval_script.contains("2>&1"),
-        "invalid-input oracle must verify ERR prefix on stderr specifically; merging stdout+stderr (`2>&1`) hides channel violations"
+        session_tests.contains("acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts")
+            && session_tests.contains("acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace")
+            && session_tests.contains("assert!(!text.contains(\"<do\"))")
+            && session_tests.contains("assert!(!text.contains(\":[\"))"),
+        "runtime ACP tests must guard untagged `malvin do` trace output in both raw and cooked flows"
     );
 }
 

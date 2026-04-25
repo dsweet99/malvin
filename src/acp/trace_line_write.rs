@@ -17,6 +17,12 @@ pub struct ReaderTraceLineOpts {
     pub tee_trace_stdout: bool,
 }
 
+pub struct WriteTraceLineCoalescedOpts<'a> {
+    pub parsed: Option<&'a Value>,
+    pub raw_line: &'a str,
+    pub tee_stdout: bool,
+}
+
 pub async fn reader_loop_verbose_and_trace_line(
     line: &str,
     opts: &ReaderTraceLineOpts,
@@ -48,8 +54,16 @@ pub async fn reader_loop_verbose_and_trace_line(
 
     let mut g = trace_writer.lock().await;
     if let Some(ref mut f) = *g {
-        write_trace_line_coalesced(f, coalescers.trace, parsed.as_ref(), opts.tee_trace_stdout)
-            .await;
+        write_trace_line_coalesced(
+            f,
+            coalescers.trace,
+            WriteTraceLineCoalescedOpts {
+                parsed: parsed.as_ref(),
+                raw_line: line,
+                tee_stdout: opts.tee_trace_stdout,
+            },
+        )
+        .await;
     }
 }
 
@@ -78,6 +92,10 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
         return;
     }
     if raw_output_should_skip_chunk(ctx.kind, writer) {
+        return;
+    }
+    if writer.plain_lines {
+        println!("{line}");
         return;
     }
     if writer.raw_output {
@@ -136,7 +154,11 @@ pub async fn trace_file_write_line(
     }
     let display_line = format_trace_display_line(line, kind);
     let ts = crate::output::timestamp_now_string();
-    let formatted = crate::output::format_line_with_timestamp(&ts, &writer.who, &display_line);
+    let formatted = if writer.plain_lines {
+        display_line.clone()
+    } else {
+        crate::output::format_line_with_timestamp(&ts, &writer.who, &display_line)
+    };
     if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
         warn!(error = %e, "trace write failed");
         return;
@@ -159,18 +181,18 @@ pub async fn trace_file_write_line(
 pub async fn write_trace_line_coalesced(
     trace_file: &mut PromptTraceWriter,
     coalesce: &mut TraceChunkCoalescer,
-    parsed: Option<&Value>,
-    tee_stdout: bool,
+    opts: WriteTraceLineCoalescedOpts<'_>,
 ) {
-    if let Some((kind, text)) = parsed.and_then(session_update_chunk_parts) {
+    if let Some((kind, text)) = opts.parsed.and_then(session_update_chunk_parts) {
         for (kind, tl) in coalesce.feed(kind, text.as_str()) {
-            trace_file_write_line(trace_file, &tl, tee_stdout, Some(kind)).await;
+            trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
         }
         return;
     }
     for (kind, tl) in coalesce.flush_all() {
-        trace_file_write_line(trace_file, &tl, tee_stdout, Some(kind)).await;
+        trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
     }
+    trace_file_write_line(trace_file, opts.raw_line, opts.tee_stdout, None).await;
 }
 
 #[test]
@@ -199,4 +221,5 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(format_trace_display_line);
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
+    let _ = stringify!(WriteTraceLineCoalescedOpts);
 }

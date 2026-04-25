@@ -1,8 +1,9 @@
 AFTER EVERY REQUEST
 - Does the user's request relate to any of the TRIGGER words in .llm_style/style.md? If so, display the one most relevant TRIGGER: / ADVICE: / CONFIDENCE: triple for you and the user to see.
-- Run `date`. If the final digit (ones place of seconds) is a 0 OR if the CONFIDENCE value is 0, then
-  - Treat the ADVICE as a hypothesis about the correct action to take, and attempt to falsify it.
-  - If you do, remove the TRIGGER: / ADVICE: / CONFIDENCE: triple from the .md file in which you found it, otherwise increment the CONFIDENCE: value by 1.
+- If CONFIDENCE is less than 5:
+  -- Run `date`. If the final digit (ones place of seconds) is a 0 OR if the CONFIDENCE value is 0, then
+    --- Treat the ADVICE as a hypothesis about the correct action to take, and attempt to falsify it.
+    --- If you do, remove the TRIGGER: / ADVICE: / CONFIDENCE: triple from the .md file in which you found it, otherwise increment the CONFIDENCE: value by 1.
 
 
 --

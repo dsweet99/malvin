@@ -65,11 +65,34 @@ async fn trace_write_tagged_body(
     Ok(())
 }
 
+async fn trace_write_plain_body(file: &mut tokio::fs::File, body: &str) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    for line in crate::output::logical_lines(body) {
+        file.write_all(line.as_bytes())
+            .await
+            .map_err(|e| format!("trace outgoing prompt write: {e}"))?;
+        file.write_all(b"\n")
+            .await
+            .map_err(|e| format!("trace outgoing prompt newline: {e}"))?;
+    }
+    Ok(())
+}
+
 #[allow(clippy::struct_field_names)]
 pub(crate) struct DoOutgoingTraceParts<'a> {
     pub style_text: Option<&'a str>,
     pub header_text: &'a str,
     pub user_text: &'a str,
+}
+
+pub(crate) fn compose_do_split_prompt_text(parts: &DoOutgoingTraceParts<'_>) -> String {
+    let mut sections = Vec::new();
+    if let Some(style) = parts.style_text.map(str::trim).filter(|t| !t.is_empty()) {
+        sections.push(style.to_string());
+    }
+    sections.push(parts.header_text.to_string());
+    sections.push(parts.user_text.to_string());
+    sections.join("\n\n")
 }
 
 /// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request).
@@ -78,16 +101,8 @@ pub(crate) async fn trace_write_outgoing_prompt_do(
     parts: DoOutgoingTraceParts<'_>,
 ) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
-    let DoOutgoingTraceParts {
-        style_text,
-        header_text,
-        user_text,
-    } = parts;
-    if let Some(s) = style_text.filter(|t| !t.trim().is_empty()) {
-        trace_write_tagged_body(file, "style", s.trim()).await?;
-    }
-    trace_write_tagged_body(file, "header", header_text).await?;
-    trace_write_tagged_body(file, "prompt", user_text).await?;
+    let combined = compose_do_split_prompt_text(&parts);
+    trace_write_plain_body(file, &combined).await?;
     file.flush()
         .await
         .map_err(|e| format!("trace outgoing prompt flush: {e}"))?;
@@ -145,4 +160,57 @@ async fn trace_write_tagged_body_writes_prefixed_lines() {
     assert!(content.contains("test"), "should include stem");
     assert!(content.contains("line1"), "should include line1");
     assert!(content.contains("line2"), "should include line2");
+}
+
+#[tokio::test]
+async fn trace_write_outgoing_prompt_do_writes_plain_lines_without_tags() {
+    let tmp = tempfile::NamedTempFile::new().unwrap();
+    let path = tmp.path();
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .await
+        .unwrap();
+    trace_write_outgoing_prompt_do(
+        &mut file,
+        DoOutgoingTraceParts {
+            style_text: Some("STYLE"),
+            header_text: "HEADER",
+            user_text: "PROMPT",
+        },
+    )
+    .await
+    .unwrap();
+    drop(file);
+    let content = std::fs::read_to_string(path).unwrap();
+    assert_eq!(content, "STYLE\n\nHEADER\n\nPROMPT\n");
+    assert!(!content.contains(":[>style"));
+    assert!(!content.contains(":[>header"));
+    assert!(!content.contains(":[>prompt"));
+}
+
+#[tokio::test]
+async fn trace_write_outgoing_prompt_do_preserves_header_user_separator() {
+    let tmp = tempfile::NamedTempFile::new().unwrap();
+    let path = tmp.path();
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .await
+        .unwrap();
+    trace_write_outgoing_prompt_do(
+        &mut file,
+        DoOutgoingTraceParts {
+            style_text: None,
+            header_text: "HEADER",
+            user_text: "USER",
+        },
+    )
+    .await
+    .unwrap();
+    drop(file);
+    let content = std::fs::read_to_string(path).unwrap();
+    assert_eq!(content, "HEADER\n\nUSER\n");
 }

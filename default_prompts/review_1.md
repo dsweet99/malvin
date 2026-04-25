@@ -2,13 +2,14 @@
 ---
 {{ kpop }}
 
-MANDATORY: Use the Task tool to launch up to 3 parallel subagents for:
+MANDATORY: Prefer parallel investigation. If the Task tool is available, launch up to 3 parallel subagents to:
 - Exploring different areas of the codebase simultaneously
 - Testing multiple hypotheses in parallel
-Do NOT use sequential tool calls where parallel subagents would work.
+If the Task tool is unavailable, use parallel non-Task tools where possible; otherwise proceed sequentially and explicitly note the fallback and any resulting coverage limits.
+Do NOT choose sequential execution when a parallel option is available.
 ---
 KPop: Please review the codebase. Pay special attention to code that differs from branch main/.
-- Is the code consistent with grounding.md and `{{ plan_path }}`?
+- Is the code consistent with grounding.md (if it exists and is not empty) and `{{ plan_path }}` (if it exists and is not empty)?
 - Are there bugs?
 - Is there avoidable redundancy or wasted work?
 - Is the code well-tested?
