@@ -54,14 +54,21 @@ fn kiss_stringify_acp_tee() {
 }
 
 #[test]
-fn termimad_inline_bold_when_emit_and_color_forced() {
+fn termimad_inline_bold_when_emit_and_tty_forced() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,
         dim_payload: false,
-        color_stdout: true,
+        allow_inline_styling: true,
     };
     let s = termimad_inline_payload_for_stdout("**m**", &gate).expect("render");
-    assert_ne!(s, "**m**");
+    assert!(
+        s.contains('\x1b'),
+        "expected termimad ANSI styling in rendered payload: {s:?}"
+    );
+    assert!(
+        !s.contains("**m**"),
+        "expected markdown markers to be consumed: {s:?}"
+    );
 }
 
 #[test]
@@ -69,18 +76,18 @@ fn termimad_inline_plain_when_no_markdown_syntax() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,
         dim_payload: false,
-        color_stdout: true,
+        allow_inline_styling: true,
     };
     let rendered = termimad_inline_payload_for_stdout("plain", &gate).expect("render");
     assert_eq!(rendered, "plain");
 }
 
 #[test]
-fn termimad_inline_none_when_emit_false_even_if_color() {
+fn termimad_inline_none_when_emit_false_even_if_tty() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: false,
         dim_payload: false,
-        color_stdout: true,
+        allow_inline_styling: true,
     };
     assert!(termimad_inline_payload_for_stdout("**m**", &gate).is_none());
 }
@@ -90,17 +97,17 @@ fn termimad_inline_none_when_dim_even_if_emit() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,
         dim_payload: true,
-        color_stdout: true,
+        allow_inline_styling: true,
     };
     assert!(termimad_inline_payload_for_stdout("**m**", &gate).is_none());
 }
 
 #[test]
-fn termimad_inline_none_when_color_false() {
+fn termimad_inline_none_when_styling_disabled() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,
         dim_payload: false,
-        color_stdout: false,
+        allow_inline_styling: false,
     };
     assert!(termimad_inline_payload_for_stdout("**m**", &gate).is_none());
 }

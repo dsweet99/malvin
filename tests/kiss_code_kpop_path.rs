@@ -1,12 +1,25 @@
 //! `malvin code` fails fast when `kiss` is not on `PATH`.
 
+#[cfg(unix)]
+mod common;
+
 use std::process::Command;
+
+#[cfg(unix)]
+use common::{command_output_with_timeout, MALVIN_TEST_CMD_TIMEOUT};
 
 fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
 
+    #[cfg(unix)]
+    let out = {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+        cmd.env("PATH", &isolated_bin).args(args);
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+    };
+    #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
         .args(args)
@@ -38,6 +51,18 @@ fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
+    #[cfg(unix)]
+    let out = {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+        cmd.env("PATH", &isolated_bin)
+            .env_remove("CURSOR_AGENT_API_KEY")
+            .env_remove("CURSOR_API_KEY")
+            .env_remove("AGENT_API_KEY")
+            .env_remove("MALVIN_AGENT_ACP_BIN")
+            .args(["kpop", "x"]);
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+    };
+    #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
         .env_remove("CURSOR_AGENT_API_KEY")

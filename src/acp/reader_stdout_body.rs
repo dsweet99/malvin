@@ -177,11 +177,11 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
     let mut lines = BufReader::new(stdout).lines();
     let mut verbose_coalesce = VerboseIoCoalescer::default();
     let mut trace_coalesce = TraceChunkCoalescer::default();
+    let mut coalescers = VerboseTraceCoalesceState {
+        verbose: &mut verbose_coalesce,
+        trace: &mut trace_coalesce,
+    };
     while let Ok(Some(line)) = lines.next_line().await {
-        let mut coalescers = VerboseTraceCoalesceState {
-            verbose: &mut verbose_coalesce,
-            trace: &mut trace_coalesce,
-        };
         reader_loop_verbose_and_trace_line(
             &line,
             &trace_opts,

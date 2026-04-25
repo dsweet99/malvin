@@ -88,7 +88,7 @@ pub async fn run_do(
         .map_err(|e| e.to_string())?;
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Plain)?;
+        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
     }
 
     let (combined, header_user) = if do_args.cooked {
@@ -107,8 +107,8 @@ pub async fn run_do(
         header_user_for_trace: header_user,
         skip_repo_style,
     };
-    super::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &do_args.request)?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    super::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &do_args.request)?;
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
     let restore_res = grounding_backup
         .as_ref()

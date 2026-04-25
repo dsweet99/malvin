@@ -1,4 +1,4 @@
-//! Shared CLI flags for `code`, `kpop`, and `do` (model, force, tee, and global `--no-markdown`).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand; some fields only affect `code`, `kpop`, and `do` (model, force, tee, `--no-markdown`) and are no-ops elsewhere (for example `init`, `models`).
 //! `malvin do` still forces plain markdown-off ACP stdout regardless of `--no-markdown`.
 
 use clap::Args;
@@ -6,7 +6,7 @@ pub use malvin::config::DEFAULT_CLI_MODEL;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
 const NO_MARKDOWN_HELPTEXT: &str =
-    "Disable styled markdown on stdout for `malvin code` / `malvin kpop` trace lines [default: markdown on].";
+    "Disable styled markdown on stdout for `malvin code` / `malvin kpop` trace lines [default: markdown on]. No effect on `malvin do` (ACP stdout stays plain).";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]

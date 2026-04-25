@@ -7,6 +7,8 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::process::{Command, Stdio};
 #[cfg(unix)]
+use std::thread;
+#[cfg(unix)]
 use std::time::{Duration, Instant};
 
 #[cfg(unix)]
@@ -19,18 +21,30 @@ pub fn command_output_with_timeout(
 ) -> std::io::Result<std::process::Output> {
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = cmd.spawn()?;
+    let stdout = child.stdout.take().expect("stdout piped");
+    let stderr = child.stderr.take().expect("stderr piped");
+    let stdout_jh = thread::spawn(move || {
+        let mut stdout = stdout;
+        let mut v = Vec::new();
+        let _ = stdout.read_to_end(&mut v);
+        v
+    });
+    let stderr_jh = thread::spawn(move || {
+        let mut stderr = stderr;
+        let mut v = Vec::new();
+        let _ = stderr.read_to_end(&mut v);
+        v
+    });
     let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
-                let mut stdout = Vec::new();
-                let mut stderr = Vec::new();
-                if let Some(mut o) = child.stdout.take() {
-                    o.read_to_end(&mut stdout)?;
-                }
-                if let Some(mut e) = child.stderr.take() {
-                    e.read_to_end(&mut stderr)?;
-                }
+                let stdout = stdout_jh.join().map_err(|_| {
+                    std::io::Error::other("malvin subprocess stdout reader panicked")
+                })?;
+                let stderr = stderr_jh.join().map_err(|_| {
+                    std::io::Error::other("malvin subprocess stderr reader panicked")
+                })?;
                 return Ok(std::process::Output {
                     status,
                     stdout,
@@ -41,6 +55,8 @@ pub fn command_output_with_timeout(
                 if Instant::now() > deadline {
                     let _ = child.kill();
                     let _ = child.wait();
+                    let _ = stdout_jh.join();
+                    let _ = stderr_jh.join();
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
                         "malvin subprocess timed out",
@@ -48,7 +64,11 @@ pub fn command_output_with_timeout(
                 }
                 std::thread::sleep(Duration::from_millis(20));
             }
-            Err(e) => return Err(e),
+            Err(e) => {
+                let _ = stdout_jh.join();
+                let _ = stderr_jh.join();
+                return Err(e);
+            }
         }
     }
 }
@@ -61,6 +81,14 @@ pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::pat
     std::fs::create_dir_all(&workspace).expect("mkdir workspace");
     std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
     (root, home, workspace)
+}
+
+#[cfg(unix)]
+pub fn write_fake_kiss(path: &std::path::Path) {
+    std::fs::write(path, "#!/usr/bin/env sh\nexit 0\n").expect("write kiss");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
 }
 
 #[cfg(unix)]
@@ -114,6 +142,11 @@ fn session_update_chunk_line(kind: &str, text_expr: &str) -> String {
 
 pub fn acp_mock_code_streaming_update_js() -> String {
     let prompt = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_code_streaming_bold_markdown_js() -> String {
+    let prompt = session_update_chunk_line("agent_message_chunk", r"'**boldline**\n'");
     acp_mock_js("", &prompt)
 }
 

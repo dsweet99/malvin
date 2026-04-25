@@ -33,7 +33,7 @@ CONFIDENCE: 5
 
 TRIGGER: user communication  
 ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 ## Tooling (detail in malvin_tooling.md)
 
@@ -63,7 +63,7 @@ CONFIDENCE: 1
 
 TRIGGER: kiss check and limits  
 ADVICE: `kiss check .` (full project). See `malvin_tooling.md` § kiss.
-CONFIDENCE: 0
+CONFIDENCE: 1
 
 TRIGGER: malvin do CLI  
 ADVICE: Default raw vs `--cooked`; raw `do_header` uses `workflow_context_paths_only` (no `kpop_common` preload), cooked `header` uses `workflow_context` for `{{ kpop }}` in custom templates. See `malvin_tooling.md` § CLI.

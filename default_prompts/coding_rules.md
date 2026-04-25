@@ -22,6 +22,7 @@ and all applicable unit tests pass:
 - If Cargo.toml exists: cargo test
 - If .py files exist: pytest -sv tests
 
+- Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
 - Do not write "documentation parity guards". Do not write comments. NEVER EDIT grounding.md.
 - Keep each unit test's running time under 10 seconds.

@@ -311,6 +311,8 @@ fn verbose_io_coalescer_feed_and_flush_all_covers_paths() {
     c.feed(SessionUpdateChunkKind::Message, "hello");
     c.feed(SessionUpdateChunkKind::Thought, "think");
     c.flush_all();
+    assert!(c.message.is_empty(), "message buffer should flush");
+    assert!(c.thought.is_empty(), "thought buffer should flush");
 }
 
 #[test]
@@ -321,6 +323,36 @@ fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
     assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "hello".to_string()));
+}
+
+#[test]
+fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_then_message() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
+    assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
+    let fin = c.flush_all();
+    assert_eq!(
+        fin,
+        vec![
+            (SessionUpdateChunkKind::Thought, "t".to_string()),
+            (SessionUpdateChunkKind::Message, "m".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_message_then_thought() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
+    assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
+    let fin = c.flush_all();
+    assert_eq!(
+        fin,
+        vec![
+            (SessionUpdateChunkKind::Message, "m".to_string()),
+            (SessionUpdateChunkKind::Thought, "t".to_string()),
+        ]
+    );
 }
 
 #[test]

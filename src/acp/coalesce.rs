@@ -59,12 +59,26 @@ pub(crate) fn coalesce_flush_cap(buf: &mut String, buf_chars: &mut usize, emissi
 
 fn coalesce_word_split_points(buf: &str, hard_end: usize) -> (usize, usize, usize) {
     let region = &buf[..hard_end];
-    if let Some(last_sp) = region.rfind(' ') {
-        let emit_chars = buf[..last_sp].chars().count();
+    let mut last_ws_start: Option<usize> = None;
+    for (i, ch) in region.char_indices() {
+        if ch.is_whitespace() {
+            last_ws_start = Some(i);
+        }
+    }
+    if let Some(ws_start) = last_ws_start {
+        let mut drain_end = ws_start;
+        for ch in buf[ws_start..hard_end].chars() {
+            if ch.is_whitespace() {
+                drain_end += ch.len_utf8();
+            } else {
+                break;
+            }
+        }
+        let emit_end = ws_start;
+        let emit_chars = buf[..emit_end].chars().count();
         if emit_chars > 0 {
-            let drain_end = last_sp + 1;
-            let drained_chars = emit_chars + 1;
-            return (last_sp, drain_end, drained_chars);
+            let drained_chars = buf[..drain_end].chars().count();
+            return (emit_end, drain_end, drained_chars);
         }
     }
     (hard_end, hard_end, ACP_VERBOSE_COALESCE_MAX)
@@ -83,10 +97,12 @@ pub(crate) struct VerboseIoCoalescer {
     pub thought: String,
     message_chars: usize,
     thought_chars: usize,
+    last_feed_kind: Option<SessionUpdateChunkKind>,
 }
 
 impl VerboseIoCoalescer {
     pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) {
+        self.last_feed_kind = Some(kind);
         match kind {
             SessionUpdateChunkKind::Message => {
                 Self::feed_buf(&mut self.message, &mut self.message_chars, chunk, "acp message");
@@ -98,8 +114,23 @@ impl VerboseIoCoalescer {
     }
 
     pub fn flush_all(&mut self) {
-        Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
-        Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
+        let msg_empty = self.message.is_empty();
+        let th_empty = self.thought.is_empty();
+        if !msg_empty && !th_empty {
+            match self.last_feed_kind {
+                Some(SessionUpdateChunkKind::Message) => {
+                    Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
+                    Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
+                }
+                Some(SessionUpdateChunkKind::Thought) | None => {
+                    Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
+                    Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
+                }
+            }
+        } else {
+            Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
+            Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
+        }
     }
 
     fn feed_buf(buf: &mut String, buf_chars: &mut usize, chunk: &str, label: &'static str) {
@@ -120,7 +151,9 @@ impl VerboseIoCoalescer {
 }
 
 /// `session/update` streaming chunks (`agent_message_chunk`, `agent_thought_chunk`).
-pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChunkKind, String)> {
+pub(crate) fn session_update_chunk_parts(
+    v: &Value,
+) -> Option<(SessionUpdateChunkKind, &str)> {
     if v.get("method").and_then(Value::as_str) != Some("session/update") {
         return None;
     }
@@ -133,63 +166,8 @@ pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChun
     let text = update
         .pointer("/content/text")
         .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
+        .unwrap_or("");
     Some((kind, text))
-}
-
-#[derive(Default)]
-pub(crate) struct TraceChunkCoalescer {
-    pub message: String,
-    pub thought: String,
-    message_chars: usize,
-    thought_chars: usize,
-}
-
-impl TraceChunkCoalescer {
-    pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) -> Vec<(SessionUpdateChunkKind, String)> {
-        let (buf, buf_chars) = match kind {
-            SessionUpdateChunkKind::Message => (&mut self.message, &mut self.message_chars),
-            SessionUpdateChunkKind::Thought => (&mut self.thought, &mut self.thought_chars),
-        };
-        let mut emissions = Vec::new();
-        coalesce_append_chunk(buf, buf_chars, chunk, &mut emissions);
-        emissions.into_iter().map(|line| (kind, line)).collect()
-    }
-
-    pub fn flush_all(&mut self) -> Vec<(SessionUpdateChunkKind, String)> {
-        let mut out = Vec::new();
-        Self::flush_stream(
-            SessionUpdateChunkKind::Message,
-            &mut self.message,
-            &mut self.message_chars,
-            &mut out,
-        );
-        Self::flush_stream(
-            SessionUpdateChunkKind::Thought,
-            &mut self.thought,
-            &mut self.thought_chars,
-            &mut out,
-        );
-        out
-    }
-
-    fn flush_stream(
-        kind: SessionUpdateChunkKind,
-        buf: &mut String,
-        buf_chars: &mut usize,
-        out: &mut Vec<(SessionUpdateChunkKind, String)>,
-    ) {
-        if !buf.is_empty() {
-            out.push((kind, std::mem::take(buf)));
-            *buf_chars = 0;
-        }
-    }
-}
-
-pub(crate) struct VerboseTraceCoalesceState<'a> {
-    pub verbose: &'a mut VerboseIoCoalescer,
-    pub trace: &'a mut TraceChunkCoalescer,
 }
 
 #[test]
@@ -205,12 +183,4 @@ fn kiss_stringify_coalesce_a() {
     let _ = stringify!(VerboseIoCoalescer::feed);
     let _ = stringify!(VerboseIoCoalescer::flush_all);
     let _ = stringify!(session_update_chunk_parts);
-}
-
-#[test]
-fn kiss_stringify_coalesce_b() {
-    let _ = stringify!(TraceChunkCoalescer);
-    let _ = stringify!(TraceChunkCoalescer::feed);
-    let _ = stringify!(TraceChunkCoalescer::flush_all);
-    let _ = stringify!(VerboseTraceCoalesceState);
 }

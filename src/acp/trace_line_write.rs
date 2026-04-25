@@ -39,7 +39,7 @@ pub async fn reader_loop_verbose_and_trace_line(
 
     if opts.acp_verbose {
         if let Some((kind, text)) = parsed.as_ref().and_then(session_update_chunk_parts) {
-            coalescers.verbose.feed(kind, text.as_str());
+            coalescers.verbose.feed(kind, text);
         } else {
             coalescers.verbose.flush_all();
             info!(
@@ -101,9 +101,6 @@ fn print_tee_unprefixed_wrapped_line(line: &str) {
 
 fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
     if !ctx.tee_stdout {
-        return;
-    }
-    if raw_output_should_skip_chunk(ctx.kind, writer) {
         return;
     }
     if writer.plain_lines || writer.raw_output {
@@ -176,12 +173,10 @@ pub async fn trace_file_write_line(
     } else {
         crate::output::format_line_with_timestamp(&ts, &writer.who, &display_line)
     };
-    if let Err(e) = writer.file.write_all(formatted.as_bytes()).await {
+    let mut record = formatted.into_bytes();
+    record.push(b'\n');
+    if let Err(e) = writer.file.write_all(&record).await {
         warn!(error = %e, "trace write failed");
-        return;
-    }
-    if let Err(e) = writer.file.write_all(b"\n").await {
-        warn!(error = %e, "trace newline failed");
         return;
     }
     trace_tee_stdout_line(
@@ -201,7 +196,7 @@ pub async fn write_trace_line_coalesced(
     opts: WriteTraceLineCoalescedOpts<'_>,
 ) {
     if let Some((kind, text)) = opts.parsed.and_then(session_update_chunk_parts) {
-        for (kind, tl) in coalesce.feed(kind, text.as_str()) {
+        for (kind, tl) in coalesce.feed(kind, text) {
             trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
         }
         return;

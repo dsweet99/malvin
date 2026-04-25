@@ -11,8 +11,9 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
 ));
 #[cfg(unix)]
 use common::{
-    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+    acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_update_js,
+    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
+    MALVIN_TEST_CMD_TIMEOUT,
 };
 
 #[cfg(unix)]
@@ -25,14 +26,6 @@ fn check_ignored(repo: &Path, rel_path: &str) -> bool {
         .status()
         .unwrap_or_else(|e| panic!("git check-ignore spawn failed: {e}"))
         .success()
-}
-
-#[cfg(unix)]
-fn write_fake_kiss(path: &Path) {
-    std::fs::write(path, "#!/usr/bin/env sh\nexit 0\n").expect("write kiss");
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
 }
 
 #[cfg(unix)]
@@ -114,9 +107,97 @@ fn code_stdout_shows_plain_output_without_jsonrpc_lines() {
     );
 }
 
+#[cfg(all(unix, target_os = "linux"))]
+fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
+    let (root, home, workspace) = test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-code-md");
+    write_mock_executable(&mock, &acp_mock_code_streaming_bold_markdown_js());
+    let kiss = bin_dir.join("kiss");
+    write_fake_kiss(&kiss);
+    let malvin = env!("CARGO_BIN_EXE_malvin");
+    let sh = root.path().join("run-code.sh");
+    let mut args_line = String::from("code --trust-the-plan --no-learn --max-loops 0 ship");
+    for a in extra_args {
+        args_line.push(' ');
+        args_line.push_str(a);
+    }
+    let body = format!(
+        "#!/bin/sh\nunset NO_COLOR\nexport PATH=\"{}:$PATH\"\nexport HOME=\"{}\"\nexport CURSOR_AGENT_API_KEY=test\nexport MALVIN_AGENT_ACP_BIN=\"{}\"\ncd \"{}\"\nexec \"{}\" {}\n",
+        bin_dir.display(),
+        home.display(),
+        mock.display(),
+        workspace.display(),
+        malvin,
+        args_line
+    );
+    std::fs::write(&sh, body).expect("write run-code.sh");
+    let mut perms = std::fs::metadata(&sh).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&sh, perms).expect("chmod");
+    let mut cmd = Command::new("script");
+    cmd.args([
+        "-q",
+        "-e",
+        "-c",
+        sh.to_str().expect("run-code.sh utf8"),
+        "/dev/null",
+    ]);
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin code")
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_pty_markdown_strips_bold_markers_without_no_markdown() {
+    let out = run_code_max_loops_zero_under_script(&[]);
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("**boldline**"),
+        "expected termimad to consume ** markers on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected termimad bold ANSI on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_pty_no_markdown_preserves_bold_markers() {
+    let out = run_code_max_loops_zero_under_script(&["--no-markdown"]);
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected plain stdout to preserve markdown markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
 
 #[test]
 fn help_lists_global_no_markdown_once() {
+    #[cfg(unix)]
+    let out = {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+        cmd.arg("--help");
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("malvin --help")
+    };
+    #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .arg("--help")
         .output()

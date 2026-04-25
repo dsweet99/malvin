@@ -2,12 +2,16 @@
 pub struct TermimadStdoutGate {
     pub emit_stdout_markdown: bool,
     pub dim_payload: bool,
-    pub color_stdout: bool,
+    pub allow_inline_styling: bool,
 }
 
 #[must_use]
 pub fn termimad_inline_payload_for_stdout(line: &str, gate: &TermimadStdoutGate) -> Option<String> {
-    if !gate.emit_stdout_markdown || gate.dim_payload || line.is_empty() || !gate.color_stdout {
+    if !gate.emit_stdout_markdown
+        || gate.dim_payload
+        || line.is_empty()
+        || !gate.allow_inline_styling
+    {
         return None;
     }
     Some(termimad::inline(line).to_string())

@@ -16,6 +16,7 @@ pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
+include!("coalesce_trace.rs");
 mod trace_line_write;
 pub(crate) use trace_line_write::{
     ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,

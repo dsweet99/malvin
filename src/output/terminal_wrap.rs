@@ -47,6 +47,7 @@ fn malvin_tagged_stdout_prefix_len(ts: &str, who: &str) -> usize {
     strip_ansi_escapes(&s).chars().count()
 }
 
+#[must_use]
 pub fn line_wrap_for_prefix_len(
     prefix_len: usize,
     line: &str,

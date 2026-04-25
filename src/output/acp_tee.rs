@@ -133,19 +133,14 @@ fn acp_tee_log_prefix_len(ctx: &AcpTeeLineFmt<'_>) -> usize {
 }
 
 fn print_acp_tee_stdout_markdown_line(ctx: &AcpTeeLineFmt<'_>, rendered_payload: &str) {
-    if stdout_use_color() {
-        let prefix = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
-            ts: ctx.ts,
-            direction: ctx.direction,
-            who: ctx.who,
-            line: "",
-            dim_payload: ctx.dim_payload,
-        });
-        println!("{prefix}{rendered_payload}");
-    } else {
-        let prefix = super::format_line_with_timestamp(ctx.ts, ctx.who, "");
-        println!("{prefix}{rendered_payload}");
-    }
+    let prefix = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
+        ts: ctx.ts,
+        direction: ctx.direction,
+        who: ctx.who,
+        line: "",
+        dim_payload: ctx.dim_payload,
+    });
+    println!("{prefix}{rendered_payload}");
 }
 
 fn print_stdout_acp_tee_line_with_timestamp_payload(
@@ -155,7 +150,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
     let line_gate = TermimadStdoutGate {
         emit_stdout_markdown,
         dim_payload: ctx.dim_payload,
-        color_stdout: stdout_use_color(),
+        allow_inline_styling: stdout_use_color(),
     };
     let prefix_len = acp_tee_log_prefix_len(ctx);
     let (max_payload, wrap) = super::terminal_wrap::line_wrap_for_prefix_len(

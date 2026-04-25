@@ -6,6 +6,7 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
+    #[allow(dead_code)]
     Plain,
 }
 
