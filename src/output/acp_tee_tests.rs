@@ -93,13 +93,25 @@ fn termimad_inline_none_when_emit_false_even_if_tty() {
 }
 
 #[test]
-fn termimad_inline_none_when_dim_even_if_emit() {
+fn termimad_inline_wraps_dim_when_dim_with_emit() {
     let gate = TermimadStdoutGate {
         emit_stdout_markdown: true,
         dim_payload: true,
         allow_inline_styling: true,
     };
-    assert!(termimad_inline_payload_for_stdout("**m**", &gate).is_none());
+    let s = termimad_inline_payload_for_stdout("**m**", &gate).expect("render");
+    assert!(
+        s.starts_with("\x1b[90m"),
+        "expected outer dim wrap: {s:?}"
+    );
+    assert!(
+        s.ends_with("\x1b[0m"),
+        "expected reset after dim wrap: {s:?}"
+    );
+    assert!(
+        !s.contains("**m**"),
+        "expected markdown consumed: {s:?}"
+    );
 }
 
 #[test]

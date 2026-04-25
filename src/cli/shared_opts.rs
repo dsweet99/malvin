@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand; some fields only affect `code`, `kpop`, and `do` (model, force, tee, `--no-markdown`) and are no-ops elsewhere (for example `init`, `models`).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, and `malvin do`. `--no-markdown` affects only `malvin code` / `malvin kpop` trace stdout; it is a no-op for other subcommands (for example `init`, `models`).
 //! `malvin do` still forces plain markdown-off ACP stdout regardless of `--no-markdown`.
 
 use clap::Args;
@@ -44,5 +44,10 @@ impl SharedOpts {
     #[must_use]
     pub(crate) const fn tee_startup_stdout(&self) -> bool {
         !self.no_tee
+    }
+
+    #[must_use]
+    pub(crate) const fn acp_stdout_markdown_enabled(&self) -> bool {
+        !self.no_markdown
     }
 }

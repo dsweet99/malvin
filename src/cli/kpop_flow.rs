@@ -20,6 +20,7 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
+use super::repo_checks;
 use super::shared_opts::SharedOpts;
 use super::LEARN_MIN_ELAPSED_MS;
 use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
@@ -175,11 +176,15 @@ pub async fn run_kpop(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let store = kpop_schedule_and_store(&kpop, workflow)?;
-    let emit_stdout_markdown = !shared.no_markdown;
+    let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;
+    repo_checks::run_repo_workspace_gates(
+        &prepared.artifacts.work_dir,
+        repo_checks::RepoGateOutput::Tagged,
+    )?;
 
     let grounding_backup = backup_workspace_grounding_if_present(&prepared.artifacts.work_dir)?;
 

@@ -4,7 +4,6 @@
 use super::session_types::AcpSessionInner;
 use super::*;
 use serde_json::json;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -117,21 +116,28 @@ console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
 });
 "#;
 
-async fn write_mock_executable(path: &Path) {
-    let script = format!("#!/usr/bin/env node\n{}", EXTENDED_MOCK_AGENT);
-    tokio::fs::write(path, script.as_bytes()).await.unwrap();
+#[cfg(unix)]
+fn chmod755_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
     let mut p = std::fs::metadata(path).unwrap().permissions();
     p.set_mode(0o755);
     std::fs::set_permissions(path, p).unwrap();
+}
+
+#[cfg(not(unix))]
+const fn chmod755_executable(_path: &Path) {}
+
+async fn write_mock_executable(path: &Path) {
+    let script = format!("#!/usr/bin/env node\n{}", EXTENDED_MOCK_AGENT);
+    tokio::fs::write(path, script.as_bytes()).await.unwrap();
+    chmod755_executable(path);
     crate::test_utils::sync_test_executable(path);
 }
 
 async fn write_do_split_streaming_mock_executable(path: &Path) {
     let script = format!("#!/usr/bin/env node\n{}", MOCK_DO_SPLIT_STREAMING);
     tokio::fs::write(path, script.as_bytes()).await.unwrap();
-    let mut p = std::fs::metadata(path).unwrap().permissions();
-    p.set_mode(0o755);
-    std::fs::set_permissions(path, p).unwrap();
+    chmod755_executable(path);
     crate::test_utils::sync_test_executable(path);
 }
 
@@ -205,23 +211,9 @@ async fn acp_full_session_with_notifications_and_credentials() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp");
     write_mock_executable(&bin).await;
-    let s = AcpSession::spawn(AcpSpawnArgs {
-        cwd: tmp.path(),
-        bin_override: Some(&bin),
-        api_key: Some("george-test-api-key"),
-        auth_token: Some("george-test-auth"),
-        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
-        acp_verbose: false,
-        george_acp_lane: None,
-        ui_idle_notify: None,
-        model: None,
-        force: false,
-        tee_trace_stdout: false,
-        raw_output: false,
-        emit_stdout_markdown: false,
-    })
-    .await
-    .expect("spawn mock agent acp");
+    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin))
+        .await
+        .expect("spawn mock agent acp");
     let trace = tmp.path().join("t.jsonl");
     s.prompt("hello", &trace, "implement", None)
         .await
@@ -237,23 +229,9 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp");
     write_mock_executable(&bin).await;
-    let s = AcpSession::spawn(AcpSpawnArgs {
-        cwd: tmp.path(),
-        bin_override: Some(&bin),
-        api_key: Some("george-test-api-key"),
-        auth_token: Some("george-test-auth"),
-        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
-        acp_verbose: false,
-        george_acp_lane: None,
-        ui_idle_notify: None,
-        model: None,
-        force: false,
-        tee_trace_stdout: false,
-        raw_output: false,
-        emit_stdout_markdown: false,
-    })
-    .await
-    .expect("spawn mock agent acp");
+    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin))
+        .await
+        .expect("spawn mock agent acp");
     let trace = tmp.path().join("trace.jsonl");
     s.prompt("hello", &trace, "implement", None)
         .await
@@ -307,7 +285,7 @@ async fn acp_full_session_verbose_stdout_reader_path() {
 
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
-async fn acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts() {
+async fn acp_prompt_do_trace_split_writes_plain_trace_keeps_thoughts_in_file() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp-do-split");
     write_do_split_streaming_mock_executable(&bin).await;
@@ -354,7 +332,10 @@ async fn acp_prompt_do_trace_split_writes_plain_trace_and_suppresses_thoughts() 
     );
     assert!(text.contains("STYLE\n\nHEADER\n\nUSER\n"), "trace was {text:?}");
     assert!(text.contains("agent message\n"), "trace was {text:?}");
-    assert!(!text.contains("hidden thought"), "trace was {text:?}");
+    assert!(
+        text.contains("[hidden thought"),
+        "trace file should include bracketed thought when stdout hides it, trace was {text:?}"
+    );
     assert!(!text.contains(":[>"), "no ACP-style outgoing `>stem` log lines in plain do trace");
     assert!(!text.contains(":[<"), "no ACP-style incoming log lines in plain do trace");
     assert!(!text.contains("<do"));
@@ -693,9 +674,7 @@ async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
     tokio::fs::write(bin.as_path(), bad_script.as_bytes())
         .await
         .unwrap();
-    let mut p = std::fs::metadata(&bin).unwrap().permissions();
-    p.set_mode(0o755);
-    std::fs::set_permissions(&bin, p).unwrap();
+    chmod755_executable(bin.as_path());
     crate::test_utils::sync_test_executable(&bin);
 
     let err = match AcpSession::spawn(AcpSpawnArgs {
@@ -818,9 +797,7 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
     tokio::fs::write(bin.as_path(), b"#!/bin/sh\nexec sleep 3600\n")
         .await
         .unwrap();
-    let mut p = std::fs::metadata(&bin).unwrap().permissions();
-    p.set_mode(0o755);
-    std::fs::set_permissions(&bin, p).unwrap();
+    chmod755_executable(bin.as_path());
     crate::test_utils::sync_test_executable(&bin);
 
     let outer = tokio::time::timeout(
@@ -856,6 +833,7 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
 
 #[test]
 fn kiss_stringify_session_a() {
+    let _ = stringify!(chmod755_executable);
     let _ = stringify!(super::prompt_stdout_replacement);
     let _ = stringify!(super::outgoing_prompt_trace::OutgoingPromptTrace::Uniform);
     let _ = stringify!(super::outgoing_prompt_trace::OutgoingPromptTrace::DoSplit);

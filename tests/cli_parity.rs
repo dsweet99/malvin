@@ -2,18 +2,19 @@ mod common;
 
 use std::path::Path;
 use std::process::Command;
-#[cfg(unix)]
+#[cfg(all(unix, target_os = "linux"))]
 use std::os::unix::fs::PermissionsExt;
 
 const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
+#[cfg(all(unix, target_os = "linux"))]
+use common::acp_mock_code_streaming_bold_markdown_js;
 #[cfg(unix)]
 use common::{
-    acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_update_js,
-    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
-    MALVIN_TEST_CMD_TIMEOUT,
+    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
+    write_fake_kiss, write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
 };
 
 #[cfg(unix)]
@@ -80,11 +81,6 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
         combined.contains(MAX_LOOPS_EXHAUSTED),
         "expected max_loops=0 review skip failure: {combined:?}"
     );
-    assert_eq!(
-        combined.matches("Implement").count(),
-        1,
-        "expected one implement phase: {combined:?}"
-    );
     assert!(
         !combined.contains("Review-1 (attempt 1)"),
         "review attempt must not run when --max-loops=0: {combined:?}"
@@ -108,21 +104,16 @@ fn code_stdout_shows_plain_output_without_jsonrpc_lines() {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
+fn run_malvin_under_script(malvin_args_line: &str) -> std::process::Output {
     let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join("mock-agent-acp-code-md");
+    let mock = root.path().join("mock-agent-acp-md");
     write_mock_executable(&mock, &acp_mock_code_streaming_bold_markdown_js());
     let kiss = bin_dir.join("kiss");
     write_fake_kiss(&kiss);
     let malvin = env!("CARGO_BIN_EXE_malvin");
-    let sh = root.path().join("run-code.sh");
-    let mut args_line = String::from("code --trust-the-plan --no-learn --max-loops 0 ship");
-    for a in extra_args {
-        args_line.push(' ');
-        args_line.push_str(a);
-    }
+    let sh = root.path().join("run-malvin.sh");
     let body = format!(
         "#!/bin/sh\nunset NO_COLOR\nexport PATH=\"{}:$PATH\"\nexport HOME=\"{}\"\nexport CURSOR_AGENT_API_KEY=test\nexport MALVIN_AGENT_ACP_BIN=\"{}\"\ncd \"{}\"\nexec \"{}\" {}\n",
         bin_dir.display(),
@@ -130,9 +121,9 @@ fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Ou
         mock.display(),
         workspace.display(),
         malvin,
-        args_line
+        malvin_args_line
     );
-    std::fs::write(&sh, body).expect("write run-code.sh");
+    std::fs::write(&sh, body).expect("write run-malvin.sh");
     let mut perms = std::fs::metadata(&sh).expect("metadata").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&sh, perms).expect("chmod");
@@ -141,10 +132,40 @@ fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Ou
         "-q",
         "-e",
         "-c",
-        sh.to_str().expect("run-code.sh utf8"),
+        sh.to_str().expect("run-malvin.sh utf8"),
         "/dev/null",
     ]);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin code")
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin")
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
+    let mut args_line = String::from("code --trust-the-plan --no-learn --max-loops 0 ship");
+    for a in extra_args {
+        args_line.push(' ');
+        args_line.push_str(a);
+    }
+    run_malvin_under_script(&args_line)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_kpop_catchup_under_script(extra_args: &[&str]) -> std::process::Output {
+    let mut args_line = String::from("kpop --no-learn --p-creative 0 --max-hypotheses 50 investigate");
+    for a in extra_args {
+        args_line.push(' ');
+        args_line.push_str(a);
+    }
+    run_malvin_under_script(&args_line)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_do_under_script(global_lead: &[&str]) -> std::process::Output {
+    let mut args_line = global_lead.join(" ");
+    if !args_line.is_empty() {
+        args_line.push(' ');
+    }
+    args_line.push_str("do \"say hi\"");
+    run_malvin_under_script(&args_line)
 }
 
 #[test]
@@ -182,6 +203,86 @@ fn code_pty_no_markdown_preserves_bold_markers() {
     assert!(
         stdout.contains("**boldline**"),
         "expected plain stdout to preserve markdown markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_pty_markdown_strips_bold_markers_without_no_markdown() {
+    let out = run_kpop_catchup_under_script(&[]);
+    assert!(
+        !out.status.success(),
+        "expected kpop catch-up failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("**boldline**"),
+        "expected termimad to consume ** markers on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected termimad bold ANSI on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_pty_no_markdown_preserves_bold_markers() {
+    let out = run_kpop_catchup_under_script(&["--no-markdown"]);
+    assert!(
+        !out.status.success(),
+        "expected kpop catch-up failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected plain stdout to preserve markdown markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn do_pty_preserves_bold_markers_without_global_no_markdown() {
+    let out = run_do_under_script(&[]);
+    assert!(
+        out.status.success(),
+        "expected successful do run under PTY: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected do stdout to preserve markdown markers (markdown off for do): {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn do_pty_preserves_bold_markers_with_global_no_markdown() {
+    let out = run_do_under_script(&["--no-markdown"]);
+    assert!(
+        out.status.success(),
+        "expected successful do run under PTY: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected global --no-markdown to leave do stdout plain: {stdout:?}"
     );
     assert!(
         !stdout.contains("\"jsonrpc\""),

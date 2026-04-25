@@ -15,8 +15,6 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-const SLEEP_BIN: &str = "sleep";
-const TRUE_BIN: &str = "true";
 #[cfg(unix)]
 const CAT_BIN: &str = "cat";
 
@@ -100,8 +98,8 @@ async fn dispatch_resolves_pending_when_response_id_is_decimal_string() {
 async fn test_handle_incoming_line_parse_error_and_extension_method() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(SLEEP_BIN)
-        .arg("30")
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
+        .arg("8")
         .stdin(Stdio::piped())
         .spawn()
         .expect("sleep");
@@ -517,7 +515,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
 }
 
 #[tokio::test]
-async fn raw_trace_file_write_line_skips_thought_chunks() {
+async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_stdout_only() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-raw-thought.log");
     let file = tokio::fs::OpenOptions::new()
@@ -553,8 +551,8 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     assert!(
-        !s.contains("internal reasoning"),
-        "raw output should suppress thought chunks, got {s:?}"
+        s.contains("[internal reasoning]"),
+        "trace file should record thought chunks when raw_output, got {s:?}"
     );
     assert!(
         s.contains("final answer"),
@@ -837,7 +835,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 async fn test_permission_json_or_write_failure_is_logged() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(TRUE_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("true"))
         .stdin(Stdio::piped())
         .spawn()
         .expect("true");
@@ -869,7 +867,7 @@ async fn test_permission_json_or_write_failure_is_logged() {
 #[cfg(unix)]
 #[tokio::test]
 async fn test_reader_loop_drains_pending_on_stdout_eof() {
-    let mut child = Command::new(TRUE_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("true"))
         .stdout(Stdio::piped())
         .spawn()
         .expect("true");
@@ -877,8 +875,8 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (tx, rx) = oneshot::channel();
     pending.lock().await.insert(7, tx);
-    let mut stdin_holder = Command::new(SLEEP_BIN)
-        .arg("2")
+    let mut stdin_holder = Command::new(unix_bin_with_fallback("sleep"))
+        .arg("1")
         .stdin(Stdio::piped())
         .spawn()
         .expect("sleep");

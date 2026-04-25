@@ -72,6 +72,9 @@ mod transport_tests;
 mod reader_tests;
 
 #[cfg(test)]
+mod spawn_test_args;
+
+#[cfg(test)]
 #[path = "session_tests.rs"]
 mod tests;
 

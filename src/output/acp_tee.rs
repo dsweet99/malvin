@@ -33,6 +33,7 @@ pub struct AcpTeeStdoutEvent<'a> {
     pub line: &'a str,
     pub ts: &'a str,
     pub emit_stdout_markdown: bool,
+    pub dim_payload: bool,
 }
 
 /// ANSI ACP tee line prefix (outbound vs inbound bracket colors).
@@ -85,6 +86,7 @@ pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &s
         line,
         ts: &ts,
         emit_stdout_markdown: false,
+        dim_payload: false,
     });
 }
 
@@ -95,7 +97,7 @@ pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
         direction: ev.direction,
         who: ev.who,
         line: ev.line,
-        dim_payload: false,
+        dim_payload: ev.dim_payload,
     };
     print_stdout_acp_tee_line_with_timestamp_payload(&ctx, ev.emit_stdout_markdown);
 }
@@ -107,14 +109,14 @@ pub fn print_stdout_acp_tee_line_with_timestamp_dim_payload(
     line: &str,
     ts: &str,
 ) {
-    let ctx = AcpTeeLineFmt {
-        ts,
+    print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction,
         who,
         line,
+        ts,
+        emit_stdout_markdown: false,
         dim_payload: true,
-    };
-    print_stdout_acp_tee_line_with_timestamp_payload(&ctx, false);
+    });
 }
 
 fn acp_tee_log_prefix_len(ctx: &AcpTeeLineFmt<'_>) -> usize {
@@ -174,17 +176,6 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
-        if let Some(rendered) = termimad_inline_payload_for_stdout(&seg, &line_gate) {
-            let seg_ctx = AcpTeeLineFmt {
-                ts: ctx.ts,
-                direction: ctx.direction,
-                who: ctx.who,
-                line: &seg,
-                dim_payload: ctx.dim_payload,
-            };
-            print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered);
-            continue;
-        }
         let seg_ctx = AcpTeeLineFmt {
             ts: ctx.ts,
             direction: ctx.direction,
@@ -192,6 +183,10 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             line: &seg,
             dim_payload: ctx.dim_payload,
         };
+        if let Some(rendered) = termimad_inline_payload_for_stdout(&seg, &line_gate) {
+            print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered);
+            continue;
+        }
         let s = if stdout_use_color() {
             format_line_with_timestamp_acp_ansi_payload(&seg_ctx)
         } else {

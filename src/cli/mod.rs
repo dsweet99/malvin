@@ -88,7 +88,7 @@ fn prepare_code_run(
     workflow: WorkflowCliOptions,
 ) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
-    let emit_stdout_markdown = !shared.no_markdown;
+    let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let (text, work_dir) = resolve_user_request(&code.request)?;

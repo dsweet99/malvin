@@ -1,3 +1,5 @@
+use super::{ANSI_DIM, ANSI_RESET};
+
 #[derive(Clone, Copy, Debug)]
 pub struct TermimadStdoutGate {
     pub emit_stdout_markdown: bool,
@@ -7,14 +9,15 @@ pub struct TermimadStdoutGate {
 
 #[must_use]
 pub fn termimad_inline_payload_for_stdout(line: &str, gate: &TermimadStdoutGate) -> Option<String> {
-    if !gate.emit_stdout_markdown
-        || gate.dim_payload
-        || line.is_empty()
-        || !gate.allow_inline_styling
-    {
+    if !gate.emit_stdout_markdown || line.is_empty() || !gate.allow_inline_styling {
         return None;
     }
-    Some(termimad::inline(line).to_string())
+    let inner = termimad::inline(line).to_string();
+    if gate.dim_payload {
+        Some(format!("{ANSI_DIM}{inner}{ANSI_RESET}"))
+    } else {
+        Some(inner)
+    }
 }
 
 #[cfg(test)]

@@ -64,7 +64,7 @@ pub async fn reader_loop_verbose_and_trace_line(
     }
 }
 
-const fn raw_output_should_skip_chunk(
+const fn raw_output_suppress_thought_stdout(
     kind: Option<SessionUpdateChunkKind>,
     writer: &PromptTraceWriter,
 ) -> bool {
@@ -116,7 +116,8 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
                         who: &writer.who,
                         line: rep,
                         ts: ctx.ts,
-                        emit_stdout_markdown: false,
+                        emit_stdout_markdown: writer.emit_stdout_markdown,
+                        dim_payload: false,
                     },
                 );
                 writer.placeholder_emitted = true;
@@ -124,24 +125,16 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
         }
         None => {
             if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                if writer.emit_stdout_markdown {
-                    crate::output::print_stdout_acp_tee_line_with_timestamp(
-                        &crate::output::AcpTeeStdoutEvent {
-                            direction: crate::output::AcpTeeDirection::FromAgent,
-                            who: &writer.who,
-                            line,
-                            ts: ctx.ts,
-                            emit_stdout_markdown: true,
-                        },
-                    );
-                } else {
-                    crate::output::print_stdout_acp_tee_line_with_timestamp_dim_payload(
-                        crate::output::AcpTeeDirection::FromAgent,
-                        &writer.who,
+                crate::output::print_stdout_acp_tee_line_with_timestamp(
+                    &crate::output::AcpTeeStdoutEvent {
+                        direction: crate::output::AcpTeeDirection::FromAgent,
+                        who: &writer.who,
                         line,
-                        ctx.ts,
-                    );
-                }
+                        ts: ctx.ts,
+                        emit_stdout_markdown: writer.emit_stdout_markdown,
+                        dim_payload: true,
+                    },
+                );
             } else {
                 crate::output::print_stdout_acp_tee_line_with_timestamp(
                     &crate::output::AcpTeeStdoutEvent {
@@ -150,6 +143,7 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
                         line,
                         ts: ctx.ts,
                         emit_stdout_markdown: writer.emit_stdout_markdown,
+                        dim_payload: false,
                     },
                 );
             }
@@ -163,9 +157,6 @@ pub async fn trace_file_write_line(
     tee_stdout: bool,
     kind: Option<SessionUpdateChunkKind>,
 ) {
-    if raw_output_should_skip_chunk(kind, writer) {
-        return;
-    }
     let display_line = format_trace_display_line(line, kind);
     let ts = crate::output::timestamp_now_string();
     let formatted = if writer.plain_lines {
@@ -177,6 +168,9 @@ pub async fn trace_file_write_line(
     record.push(b'\n');
     if let Err(e) = writer.file.write_all(&record).await {
         warn!(error = %e, "trace write failed");
+        return;
+    }
+    if raw_output_suppress_thought_stdout(kind, writer) {
         return;
     }
     trace_tee_stdout_line(
@@ -218,6 +212,6 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(trace_file_write_line);
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(WriteTraceLineCoalescedOpts);
-    let _ = stringify!(raw_output_should_skip_chunk);
+    let _ = stringify!(raw_output_suppress_thought_stdout);
     let _ = stringify!(trace_tee_stdout_line);
 }
