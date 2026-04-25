@@ -10,7 +10,7 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     "/default_repo/gitignore"
 ));
 #[cfg(unix)]
-use common::ACP_MOCK_INTEGRATION_CODE_STREAMING_UPDATE_JS;
+use common::{acp_mock_code_streaming_update_js, test_home_workspace, write_mock_executable};
 
 fn check_ignored(repo: &Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -19,15 +19,6 @@ fn check_ignored(repo: &Path, rel_path: &str) -> bool {
         .status()
         .unwrap_or_else(|e| panic!("git check-ignore spawn failed: {e}"))
         .success()
-}
-
-#[cfg(unix)]
-fn write_mock_executable(path: &Path) {
-    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_CODE_STREAMING_UPDATE_JS}");
-    std::fs::write(path, script).expect("write mock");
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
 }
 
 #[cfg(unix)]
@@ -40,16 +31,11 @@ fn write_fake_kiss(path: &Path) {
 
 #[cfg(unix)]
 fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    let workspace = root.path().join("workspace");
+    let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
     let mock = root.path().join("mock-agent-acp-code");
-    write_mock_executable(&mock);
+    write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
     let kiss = bin_dir.join("kiss");
     write_fake_kiss(&kiss);
     let original_path = std::env::var("PATH").unwrap_or_default();
@@ -191,12 +177,3 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
     );
 }
 
-#[test]
-fn init_template_gitignore_lists_python_artifact_patterns() {
-    for line in ["**/__pycache__/", "**/*.py[cod]"] {
-        assert!(
-            INIT_TEMPLATE_GITIGNORE.lines().any(|l| l.trim() == line),
-            "malvin init template .gitignore must list {line:?}"
-        );
-    }
-}

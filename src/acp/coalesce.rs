@@ -47,10 +47,27 @@ pub(crate) fn coalesce_char_boundary_at(s: &str, n_chars: usize) -> usize {
 
 pub(crate) fn coalesce_flush_cap(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
     while *buf_chars >= ACP_VERBOSE_COALESCE_MAX {
-        let end = coalesce_char_boundary_at(buf, ACP_VERBOSE_COALESCE_MAX);
-        emissions.push(buf.drain(..end).collect());
-        *buf_chars -= ACP_VERBOSE_COALESCE_MAX;
+        let hard_end = coalesce_char_boundary_at(buf, ACP_VERBOSE_COALESCE_MAX);
+        let (emit_end, drain_end, drained_chars) =
+            coalesce_word_split_points(buf, hard_end);
+        let emitted = buf[..emit_end].to_string();
+        buf.drain(..drain_end);
+        *buf_chars -= drained_chars;
+        emissions.push(emitted);
     }
+}
+
+fn coalesce_word_split_points(buf: &str, hard_end: usize) -> (usize, usize, usize) {
+    let region = &buf[..hard_end];
+    if let Some(last_sp) = region.rfind(' ') {
+        let emit_chars = buf[..last_sp].chars().count();
+        if emit_chars > 0 {
+            let drain_end = last_sp + 1;
+            let drained_chars = emit_chars + 1;
+            return (last_sp, drain_end, drained_chars);
+        }
+    }
+    (hard_end, hard_end, ACP_VERBOSE_COALESCE_MAX)
 }
 
 pub(crate) fn coalesce_flush_nonempty(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
@@ -182,6 +199,7 @@ fn kiss_stringify_coalesce_a() {
     let _ = stringify!(coalesce_append_chunk);
     let _ = stringify!(coalesce_char_boundary_at);
     let _ = stringify!(coalesce_flush_cap);
+    let _ = stringify!(coalesce_word_split_points);
     let _ = stringify!(coalesce_flush_nonempty);
     let _ = stringify!(VerboseIoCoalescer);
     let _ = stringify!(VerboseIoCoalescer::feed);

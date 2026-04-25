@@ -250,8 +250,8 @@ CONFIDENCE: 0
 ### Terminal wrap (TTY)
 
 TRIGGER: terminal_wrap module  
-ADVICE: **`src/output/terminal_wrap.rs`** — **`terminal_columns()`** = **`columns_from_env()`** (valid **`COLUMNS`** **20–500**) **or** **`columns_from_tty()`** (**`terminal_size::terminal_size()`**, width **≥20** capped at **500**; **`None`** if query fails or too narrow) **or** **80**. **`stdout_line_wrap_meta`** / **`line_wrap_meta`** use that width; **`acp_tee.rs`** tees with same wrap; **`trace_line_write.rs`** uses **`terminal_columns()`** for raw stdout wrap. **`stdout_is_wrappable_terminal()`**, **`wrap_words_bounded`**. **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
-CONFIDENCE: 0
+ADVICE: **`src/output/terminal_wrap.rs`** — **`terminal_columns()`** = **`columns_from_env()`** (valid **`COLUMNS`** **20–500**) **or** **`columns_from_tty()`** (**`terminal_size::terminal_size()`**, width **≥20** capped at **500**; **`None`** if query fails or too narrow) **or** **80**. **`stdout_line_wrap_meta`** / **`line_wrap_meta`** use that width; **`acp_tee.rs`** tees with same wrap; **`trace_line_write.rs`** uses **`terminal_columns()`** for raw stdout wrap. **`stdout_allows_log_word_wrap()`**, **`wrap_words_bounded`**. **`pub(crate) mod`** under `output/`; **`clippy::redundant_pub_crate`** → **`pub fn`** inside the private child module.
+CONFIDENCE: 1
 
 TRIGGER: terminal_size crate  
 ADVICE: Dependency **`terminal_size`** (see **`Cargo.toml`**). **`terminal_size()`** returns **`Option<(Width, Height)>`**; use **`usize::from(w.0)`** for column count (**`Width`** is a **`u16`** newtype—do not cast the tuple element incorrectly).
@@ -270,8 +270,8 @@ ADVICE: **`trace_tee_stdout_line`** (`src/acp/trace_line_write.rs`): if **`write
 CONFIDENCE: 0
 
 TRIGGER: coalesce not TTY wrap  
-ADVICE: **`ACP_VERBOSE_COALESCE_MAX`** and **`coalesce_append_chunk`** (`coalesce.rs`) buffer **JSON `session/update` chunks** for trace + verbose **`tracing`**; **do not** treat flush-at-125-scalars as terminal width—TTY reflow is **`wrap_words_bounded`** only.
-CONFIDENCE: 0
+ADVICE: **`ACP_VERBOSE_COALESCE_MAX`** and **`coalesce_append_chunk`** (`coalesce.rs`) buffer **JSON `session/update` chunks** for trace + verbose **`tracing`**; **`coalesce_flush_cap`** splits at the last **word boundary** (space) before the 125-scalar cap via **`coalesce_word_split_points`** so downstream **`wrap_words_bounded`** never sees mid-word hard clips. The cap is **not** terminal width—TTY reflow is **`wrap_words_bounded`** only.
+CONFIDENCE: 1
 
 TRIGGER: kiss static coverage per module  
 ADVICE: If **`kiss check`** reports **test_coverage** gaps for a file, add **`#[cfg(test)]`** **`stringify!`** (and minimal smoke calls) **in that same source file**—not only **`src/coverage_kiss.rs`**—so static coverage attributes to the implementation module.

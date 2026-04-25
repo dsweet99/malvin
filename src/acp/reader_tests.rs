@@ -286,6 +286,26 @@ fn coalesce_append_splits_on_unicode_scalar_count() {
 }
 
 #[test]
+fn coalesce_flush_cap_splits_at_word_boundary() {
+    let max = crate::acp::ACP_VERBOSE_COALESCE_MAX;
+    let mut buf = String::new();
+    let mut buf_chars = 0usize;
+    let mut out = Vec::new();
+    let word = "abcdefghij ";
+    let repeated = word.repeat(max);
+    coalesce_append_chunk(&mut buf, &mut buf_chars, &repeated, &mut out);
+    assert!(!out.is_empty(), "should have emitted at least one segment");
+    for segment in &out {
+        for w in segment.split_whitespace() {
+            assert_eq!(w, "abcdefghij", "word should not be split: {w:?}");
+        }
+    }
+    for w in buf.split_whitespace() {
+        assert_eq!(w, "abcdefghij", "remainder should not contain partial words: {w:?}");
+    }
+}
+
+#[test]
 fn verbose_io_coalescer_feed_and_flush_all_covers_paths() {
     let mut c = VerboseIoCoalescer::default();
     c.feed(SessionUpdateChunkKind::Message, "hello");

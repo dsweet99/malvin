@@ -1,13 +1,12 @@
 mod common;
 
 #[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
 use std::process::Command;
 
 #[cfg(unix)]
 use common::{
-    ACP_MOCK_INTEGRATION_DO_STREAMING_LONG_AGENT_MSG_JS, ACP_MOCK_INTEGRATION_DO_STREAMING_UPDATE_JS,
+    acp_mock_do_streaming_long_agent_msg_js, acp_mock_do_streaming_update_js,
+    acp_mock_do_streaming_wordy_long_msg_js, test_home_workspace, write_mock_executable,
 };
 #[cfg(unix)]
 use malvin::config::DEFAULT_CLI_MODEL;
@@ -16,39 +15,10 @@ use malvin::config::DEFAULT_CLI_MODEL;
 const DO_WRAP_COLUMNS: &str = "32";
 
 #[cfg(unix)]
-fn do_test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    let workspace = root.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
-    (root, home, workspace)
-}
-
-#[cfg(unix)]
-fn write_mock_executable(path: &std::path::Path) {
-    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_DO_STREAMING_UPDATE_JS}");
-    std::fs::write(path, script).expect("write mock");
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
-}
-
-#[cfg(unix)]
-fn write_long_agent_mock(path: &Path) {
-    let script = format!("#!/usr/bin/env node\n{ACP_MOCK_INTEGRATION_DO_STREAMING_LONG_AGENT_MSG_JS}");
-    std::fs::write(path, script).expect("write mock");
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
-}
-
-#[cfg(unix)]
 fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
-    let (root, home, workspace) = do_test_home_workspace();
+    let (root, home, workspace) = test_home_workspace();
     let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock);
+    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
     let mut args = vec!["do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -63,10 +33,10 @@ fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
 }
 
 #[cfg(unix)]
-fn run_do_long_text_mock(extra_args: &[&str]) -> std::process::Output {
-    let (root, home, workspace) = do_test_home_workspace();
+fn run_do_with_columns_mock(mock_js: &str, extra_args: &[&str]) -> std::process::Output {
+    let (root, home, workspace) = test_home_workspace();
     let mock = root.path().join("mock-agent-acp-do");
-    write_long_agent_mock(&mock);
+    write_mock_executable(&mock, mock_js);
     let mut args = vec!["do"];
     args.extend_from_slice(extra_args);
     args.push("say hi");
@@ -82,6 +52,16 @@ fn run_do_long_text_mock(extra_args: &[&str]) -> std::process::Output {
 }
 
 #[cfg(unix)]
+fn run_do_long_text_mock(extra_args: &[&str]) -> std::process::Output {
+    run_do_with_columns_mock(&acp_mock_do_streaming_long_agent_msg_js(), extra_args)
+}
+
+#[cfg(unix)]
+fn run_do_wordy_long_mock(extra_args: &[&str]) -> std::process::Output {
+    run_do_with_columns_mock(&acp_mock_do_streaming_wordy_long_msg_js(), extra_args)
+}
+
+#[cfg(unix)]
 fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<String>) {
     let mut args: Vec<&str> = vec!["do"];
     args.extend_from_slice(extra_args);
@@ -91,10 +71,10 @@ fn run_do_with_mock_and_argv(extra_args: &[&str]) -> (std::process::Output, Vec<
 
 #[cfg(unix)]
 fn run_malvin_with_captured_argv(malvin_args: &[&str]) -> (std::process::Output, Vec<String>) {
-    let (root, home, workspace) = do_test_home_workspace();
+    let (root, home, workspace) = test_home_workspace();
     let capture = root.path().join("captured-argv.txt");
     let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock);
+    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .current_dir(&workspace)
         .env("HOME", &home)
@@ -234,4 +214,39 @@ fn do_respects_no_force_and_explicit_model_flags() {
         !argv.iter().any(|arg| arg == "--no-force"),
         "did not expect forwarded --no-force; argv={argv:?}"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn do_wraps_wordy_long_text_at_word_boundaries() {
+    let out = run_do_wordy_long_mock(&[]);
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout_s = String::from_utf8_lossy(&out.stdout);
+    let text_lines: Vec<&str> = stdout_s
+        .lines()
+        .map(|l| l.trim_end_matches('\r'))
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        text_lines.len() > 1,
+        "expected word-wrapped stdout, got {stdout_s:?}"
+    );
+    let col_n: usize = DO_WRAP_COLUMNS.parse().expect("columns");
+    assert!(
+        text_lines.iter().all(|l| l.chars().count() <= col_n),
+        "each wrapped line should fit COLUMNS={col_n}: {text_lines:?}"
+    );
+    let expected_word = "abcdefghij";
+    for line in &text_lines {
+        for word in line.split_whitespace() {
+            assert!(
+                word == expected_word,
+                "word-wrap should not split words; found partial word {word:?} in line {line:?}"
+            );
+        }
+    }
 }

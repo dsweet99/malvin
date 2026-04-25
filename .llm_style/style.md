@@ -47,22 +47,26 @@ CONFIDENCE: 1
 
 TRIGGER: behavioral tests first
 ADVICE: Prefer runtime behavior assertions over `include_str(...).contains(...)` guards. For `malvin do` and `malvin code`, assert exact stdout line order/content and absence of protocol/tag leakage (`"jsonrpc"`, `<do`, `:[`); avoid `--no-tee` when validating stdout behavior.
-CONFIDENCE: 0
+CONFIDENCE: 1
+
+TRIGGER: test mock helpers  
+ADVICE: `tests/common/mod.rs` has `test_home_workspace()`, `write_mock_executable(path, js)`, and `acp_mock_js(preamble, prompt_handler)` builder. Use these; do not duplicate setup/shebang/chmod in test files.
+CONFIDENCE: 1
+
+TRIGGER: cfg unix test gating  
+ADVICE: ACP mock tests and `write_mock_executable` / `PermissionsExt` are `#[cfg(unix)]`-only. Gate all imports used exclusively by unix tests with `#[cfg(unix)]`.
+CONFIDENCE: 1
+
+TRIGGER: coalesce word split  
+ADVICE: `coalesce_flush_cap` splits at last word boundary (space) before 125-scalar cap via `coalesce_word_split_points`. See `malvin_tooling.md` § coalesce not TTY wrap. Regression: `reader_tests::coalesce_flush_cap_splits_at_word_boundary` + integration `do_stdout::do_wraps_wordy_long_text_at_word_boundaries`.
+CONFIDENCE: 1
+
+TRIGGER: malvin do output pipeline  
+ADVICE: Agent chunks → `coalesce_append_chunk` (buffer 125) → `trace_file_write_line` → `trace_tee_stdout_line` → `print_tee_unprefixed_wrapped_line` → `wrap_words_bounded`. Coalescer is upstream of word-wrap. See `malvin_tooling.md` § Terminal wrap.
+CONFIDENCE: 1
 
 TRIGGER: kiss check and limits  
 ADVICE: `kiss check .` (full project). See `malvin_tooling.md` § kiss.
-CONFIDENCE: 0
-
-TRIGGER: child health ACP silence  
-ADVICE: `src/child_health/` module. See `malvin_tooling.md` § Child health.
-CONFIDENCE: 0
-
-TRIGGER: run timing  
-ADVICE: `run_timing.json` + stdout `TIMING: ` line. See `malvin_tooling.md` § Run timing.
-CONFIDENCE: 0
-
-TRIGGER: stdout stderr log header  
-ADVICE: Route through `src/output/mod.rs`. See `malvin_tooling.md` § Prefixed log lines.
 CONFIDENCE: 0
 
 TRIGGER: malvin do CLI  
@@ -71,14 +75,6 @@ CONFIDENCE: 2
 
 TRIGGER: Rust 2024 edition  
 ADVICE: `gen` is keyword; `set_var`/`remove_var` are `unsafe`. See `malvin_tooling.md` § Rust edition 2024.
-CONFIDENCE: 0
-
-TRIGGER: ACP include layout  
-ADVICE: `src/acp/` uses `include!` for kiss limits. See `malvin_tooling.md` § ACP.
-CONFIDENCE: 0
-
-TRIGGER: malvin init and kiss gate  
-ADVICE: `init_cmd.rs`, `default_repo/`, and `require_kiss_for_malvin` / `require_kiss_for_cli_command` (`init`, `code`, `kpop`). See `malvin_tooling.md` § `malvin init` and § CLI kiss gate.
 CONFIDENCE: 0
 
 TRIGGER: evaluation scripts  

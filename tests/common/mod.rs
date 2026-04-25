@@ -1,118 +1,90 @@
 #![allow(dead_code)]
 
-pub const ACP_MOCK_INTEGRATION_CODE_STREAMING_UPDATE_JS: &str = r"const readline = require('readline');
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on('line', (line) => {
-  line = line.trim();
-  if (!line) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch (e) { return; }
-  const mid = msg.method;
-  const rid = msg.id;
-  if (mid === 'initialize') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'authenticate') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'session/new') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
-  } else if (mid === 'session/prompt') {
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          content: { type: 'text', text: 'agent message\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
-  } else if (rid != null) {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  }
-});";
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
-pub const ACP_MOCK_INTEGRATION_DO_STREAMING_UPDATE_JS: &str = r"const fs = require('fs');
+pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    let workspace = root.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
+    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+    (root, home, workspace)
+}
+
+#[cfg(unix)]
+pub fn write_mock_executable(path: &std::path::Path, js: &str) {
+    let script = format!("#!/usr/bin/env node\n{js}");
+    std::fs::write(path, script).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+const ARGV_CAPTURE_PREAMBLE: &str = r"const fs = require('fs');
 const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
 if (capturePath) {
   fs.writeFileSync(capturePath, process.argv.slice(2).join('\n'));
 }
-const readline = require('readline');
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on('line', (line) => {
-  line = line.trim();
-  if (!line) return;
-  let msg;
-  try { msg = JSON.parse(line); } catch (e) { return; }
-  const mid = msg.method;
-  const rid = msg.id;
-  if (mid === 'initialize') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'authenticate') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'session/new') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
-  } else if (mid === 'session/prompt') {
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          content: { type: 'text', text: 'agent message\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_thought_chunk',
-          content: { type: 'text', text: 'hidden thought\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
-  } else if (rid != null) {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  }
-});";
+";
 
-pub const ACP_MOCK_INTEGRATION_DO_STREAMING_LONG_AGENT_MSG_JS: &str = r"const fs = require('fs');
-const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
-if (capturePath) {
-  fs.writeFileSync(capturePath, process.argv.slice(2).join('\n'));
-}
-const readline = require('readline');
-const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-rl.on('line', (line) => {
+fn acp_mock_js(preamble: &str, prompt_handler: &str) -> String {
+    format!(
+        r"{preamble}const readline = require('readline');
+const rl = readline.createInterface({{ input: process.stdin, crlfDelay: Infinity }});
+rl.on('line', (line) => {{
   line = line.trim();
   if (!line) return;
   let msg;
-  try { msg = JSON.parse(line); } catch (e) { return; }
+  try {{ msg = JSON.parse(line); }} catch (e) {{ return; }}
   const mid = msg.method;
   const rid = msg.id;
-  if (mid === 'initialize') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'authenticate') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  } else if (mid === 'session/new') {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
-  } else if (mid === 'session/prompt') {
-    const long = 'a'.repeat(120);
-    console.log(JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'session/update',
-      params: {
-        update: {
-          sessionUpdate: 'agent_message_chunk',
-          content: { type: 'text', text: long + '\n' }
-        }
-      }
-    }));
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
-  } else if (rid != null) {
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
-  }
-});";
+  if (mid === 'initialize') {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }} else if (mid === 'authenticate') {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }} else if (mid === 'session/new') {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ sessionId: 't1' }} }}));
+  }} else if (mid === 'session/prompt') {{
+{prompt_handler}
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{ stopReason: 'end' }} }}));
+  }} else if (rid != null) {{
+    console.log(JSON.stringify({{ jsonrpc: '2.0', id: rid, result: {{}} }}));
+  }}
+}});"
+    )
+}
+
+fn session_update_chunk_line(kind: &str, text_expr: &str) -> String {
+    format!(
+        r"    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: '{kind}', content: {{ type: 'text', text: {text_expr} }} }} }} }}));"
+    )
+}
+
+pub fn acp_mock_code_streaming_update_js() -> String {
+    let prompt = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_do_streaming_update_js() -> String {
+    let msg = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");
+    let thought = session_update_chunk_line("agent_thought_chunk", r"'hidden thought\n'");
+    acp_mock_js(ARGV_CAPTURE_PREAMBLE, &format!("{msg}\n{thought}"))
+}
+
+pub fn acp_mock_do_streaming_wordy_long_msg_js() -> String {
+    let prompt = format!(
+        "    const words = Array(15).fill('abcdefghij').join(' ');\n{}",
+        session_update_chunk_line("agent_message_chunk", r"words + '\n'")
+    );
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_do_streaming_long_agent_msg_js() -> String {
+    let prompt = format!(
+        "    const long = 'a'.repeat(120);\n{}",
+        session_update_chunk_line("agent_message_chunk", r"long + '\n'")
+    );
+    acp_mock_js(ARGV_CAPTURE_PREAMBLE, &prompt)
+}

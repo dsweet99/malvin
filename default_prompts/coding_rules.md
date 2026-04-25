@@ -27,6 +27,7 @@ and all applicable unit tests pass:
 - Keep each unit test's running time under 10 seconds.
 - Write code to fail fast. Assert liberally. DRY.
 - Don't name files ".inc".  .rs and .py are the correct extensions.
+- Keep code consistent with grounding.md and {{ plan_path }} (if applicable).
 
 ## Nota Bene
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
