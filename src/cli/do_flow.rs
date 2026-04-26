@@ -13,23 +13,16 @@ use super::timing_merge;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
-    resolve_user_request, restore_workspace_grounding,
+    resolve_user_request,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
-use malvin::prompts::{
-    DO_HEADER_MD, HEADER_MD, PromptError, PromptStore, enforce_no_unresolved_braces,
-};
+use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
 struct DoCoderRun {
     combined: String,
     header_user_for_trace: (String, String),
     skip_repo_style: bool,
-}
-
-const fn do_mode_flags(cooked: bool) -> (bool, bool) {
-    const DO_RAW_OUTPUT: bool = true;
-    (DO_RAW_OUTPUT, !cooked)
 }
 
 /// Arguments for [`run_do`].
@@ -69,7 +62,8 @@ pub async fn run_do(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let (raw_output, skip_repo_style) = do_mode_flags(do_args.cooked);
+    let raw_output = true;
+    let skip_repo_style = !do_args.cooked;
     let mut client = AgentClient::new(
         shared.model.clone(),
         super::agent_io_options(
@@ -82,15 +76,14 @@ pub async fn run_do(
             },
         ),
     );
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-
     let (text, work_dir) = resolve_user_request(&do_args.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Plain)?;
+        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Stderr)?;
     }
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let (combined, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
@@ -111,8 +104,7 @@ pub async fn run_do(
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    let restore_res = restore_workspace_grounding(&artifacts.work_dir, &grounding_backup);
-    timing_merge::prefer_primary_string_errors(acp_res, restore_res)?;
+    timing_merge::merge_acp_with_grounding_restore(acp_res, &artifacts.work_dir, &grounding_backup)?;
     Ok(())
 }
 
@@ -128,7 +120,6 @@ fn combine_do_prompt_file_and_user(
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
     let combined = format!("{header}\n\n{user}");
-    enforce_no_unresolved_braces(&combined).map_err(|e: PromptError| e.0)?;
     Ok((combined, header, user))
 }
 
@@ -184,16 +175,18 @@ async fn run_do_acp(
         .await
         .map_err(|e| e.to_string());
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = match (&run_res, &end_res) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(e), _) | (Ok(()), Err(e)) => Err(e.clone()),
+    let merged = if let Err(e) = run_res {
+        Err(e)
+    } else if let Err(e) = end_res {
+        Err(e)
+    } else {
+        Ok(())
     };
     timing_merge::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
 }
 
 #[test]
 fn stringify_do_flow_helpers() {
-    let _ = stringify!(crate::cli::do_flow::do_mode_flags);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::do_flow::run_do);
     let _ = stringify!(crate::cli::do_flow::DoArgs);
@@ -356,17 +349,4 @@ mod do_tests {
         }
     }
 
-    #[test]
-    fn do_mode_flags_default_hides_thoughts() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(false);
-        assert!(raw_output);
-        assert!(skip_repo_style);
-    }
-
-    #[test]
-    fn do_mode_flags_cooked_keeps_thoughts_hidden_without_flag() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(true);
-        assert!(raw_output);
-        assert!(!skip_repo_style);
-    }
 }

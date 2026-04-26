@@ -1,12 +1,12 @@
 //! KPOP subcommand: artifacts, prompt assembly, and ACP dispatch.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
-    create_kpop_run_artifacts, resolve_user_request, restore_workspace_grounding,
+    RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
+    resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
 use malvin::kpop_multiturn::KpopMultiturnState;
@@ -23,16 +23,7 @@ use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
 use super::repo_checks;
 use super::shared_opts::SharedOpts;
-use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
-
-fn merge_kpop_acp_with_grounding_restore(
-    primary: Result<(), String>,
-    work_dir: &Path,
-    grounding_backup: &GroundingBackup,
-) -> Result<(), String> {
-    let restore_res = restore_workspace_grounding(work_dir, grounding_backup);
-    prefer_primary_string_errors(primary, restore_res)
-}
+use super::timing_merge::{emit_run_timing_after_acp, merge_acp_with_grounding_restore};
 
 fn kpop_schedule_and_store(
     kpop: &KpopArgs,
@@ -200,7 +191,7 @@ pub async fn run_kpop(
     })
     .await;
 
-    merge_kpop_acp_with_grounding_restore(
+    merge_acp_with_grounding_restore(
         acp_result,
         &prepared.artifacts.work_dir,
         &grounding_backup,
@@ -236,7 +227,7 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::cli::kpop_flow::merge_kpop_acp_with_grounding_restore);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_grounding_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_schedule_and_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
     let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
@@ -247,7 +238,7 @@ fn stringify_kpop_flow_helpers() {
 }
 
 #[test]
-fn hypothesis_legacy_timing_after_hint_masks_acp_when_both_fail() {
+fn legacy_timing_error_order_masks_acp_when_both_fail() {
     let acp: Result<(), String> = Err("acp".into());
     let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
     let legacy = (|| {

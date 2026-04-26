@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::cli::repo_checks::{RepoGateOutput, emit_repo_gate_stdout_line};
+use crate::cli::repo_checks::{RepoGateOutput, emit_repo_gate_line};
 
 /// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
 fn has_source_files(dir: &Path) -> bool {
@@ -58,7 +58,7 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> R
     if !has_source_files(work_dir) {
         return Ok(());
     }
-    emit_repo_gate_stdout_line(
+    emit_repo_gate_line(
         output,
         "Running `kiss clamp` (existing code without .kissconfig)",
     );
@@ -138,6 +138,6 @@ mod tests {
     #[test]
     fn ensure_kiss_clamp_skips_when_no_source_files() {
         let tmp = tempfile::tempdir().unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Plain).is_ok());
+        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Stderr).is_ok());
     }
 }

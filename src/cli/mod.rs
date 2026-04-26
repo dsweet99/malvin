@@ -34,7 +34,7 @@ use malvin::acp::AgentClient;
 
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
-    resolve_user_request, restore_workspace_grounding,
+    resolve_user_request,
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
@@ -91,7 +91,6 @@ fn prepare_code_run(
     let store = prepare_prompt_store(workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let client = build_agent(shared, workflow, emit_stdout_markdown);
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
     let (text, work_dir) = resolve_user_request(&code.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
@@ -108,6 +107,7 @@ pub async fn run_code(
         &artifacts.work_dir,
         repo_checks::RepoGateOutput::Tagged,
     )?;
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
 
@@ -127,8 +127,11 @@ pub async fn run_code(
         grounding_backup: grounding_backup.clone(),
     };
     let workflow_res = orch.run().await.map_err(|e: WorkflowError| e.0);
-    let restore_res = restore_workspace_grounding(&artifacts.work_dir, &grounding_backup);
-    timing_merge::prefer_primary_string_errors(workflow_res, restore_res)?;
+    timing_merge::merge_acp_with_grounding_restore(
+        workflow_res,
+        &artifacts.work_dir,
+        &grounding_backup,
+    )?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
@@ -178,11 +181,20 @@ fn print_command_error(message: &str) {
     print_stderr_line(MALVIN_WHO, message);
 }
 
-fn tokio_runtime() -> tokio::runtime::Runtime {
+fn try_tokio_runtime() -> Result<tokio::runtime::Runtime, String> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .expect("tokio runtime")
+        .map_err(|e| format!("failed to create Tokio runtime: {e}"))
+}
+
+fn run_async_cli<F, Fut>(f: F) -> Result<(), String>
+where
+    F: FnOnce() -> Fut,
+    Fut: std::future::Future<Output = Result<(), String>> + Send,
+{
+    let rt = try_tokio_runtime()?;
+    rt.block_on(f())
 }
 
 pub fn entrypoint() -> Exit {
@@ -199,21 +211,21 @@ pub fn entrypoint() -> Exit {
                 force: !cli.shared.no_force,
                 run_learn: !code.no_learn,
             };
-            tokio_runtime().block_on(run_code(code, &cli.shared, workflow))
+            run_async_cli(|| run_code(code, &cli.shared, workflow))
         }
         Commands::Kpop(kpop) => {
             let workflow = WorkflowCliOptions {
                 force: !cli.shared.no_force,
                 run_learn: !kpop.no_learn,
             };
-            tokio_runtime().block_on(run_kpop(kpop, &cli.shared, workflow))
+            run_async_cli(|| run_kpop(kpop, &cli.shared, workflow))
         }
         Commands::Do(do_cmd) => {
             let workflow = WorkflowCliOptions {
                 force: !cli.shared.no_force,
                 run_learn: false,
             };
-            tokio_runtime().block_on(run_do(do_cmd, &cli.shared, workflow))
+            run_async_cli(|| run_do(do_cmd, &cli.shared, workflow))
         }
         Commands::Init(init) => init_cmd::run_init(init.path, init.force, &init.languages),
         Commands::Models(_) => models_cmd::run_models(),

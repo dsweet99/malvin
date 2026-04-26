@@ -6,21 +6,20 @@ use std::process::Command;
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
-    #[allow(dead_code)]
-    Plain,
+    Stderr,
 }
 
-pub fn emit_repo_gate_stdout_line(output: RepoGateOutput, line: &str) {
+pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
     match output {
         RepoGateOutput::Tagged => print_stdout_line(MALVIN_WHO, line),
-        RepoGateOutput::Plain => println!("{line}"),
+        RepoGateOutput::Stderr => eprintln!("{line}"),
     }
 }
 
 pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
     kiss_clamp::ensure_kiss_clamp_if_needed(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
-    run_pre_commit_checks_or_warn(work_dir, output)
+    run_pre_commit_all_files(work_dir, output)
 }
 
 /// Touch `<work_dir>/grounding.md` and `<work_dir>/.llm_style/style.md` when missing.
@@ -49,7 +48,7 @@ fn touch_if_missing(path: &Path, output: RepoGateOutput) -> Result<(), String> {
         return Err(format!("{} exists but is not a file", path.display()));
     }
     std::fs::File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
-    emit_repo_gate_stdout_line(
+    emit_repo_gate_line(
         output,
         &format!("Touched empty {} (was missing)", path.display()),
     );
@@ -64,7 +63,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
-            emit_repo_gate_stdout_line(
+            emit_repo_gate_line(
                 output,
                 &format!("Warning: could not read .kissconfig: {e}"),
             );
@@ -74,7 +73,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     let value = match text.parse::<toml::Value>() {
         Ok(v) => v,
         Err(e) => {
-            emit_repo_gate_stdout_line(
+            emit_repo_gate_line(
                 output,
                 &format!("Warning: could not parse .kissconfig as TOML: {e}"),
             );
@@ -84,7 +83,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     if !should_warn_low_test_coverage(&value) {
         return;
     }
-    emit_repo_gate_stdout_line(
+    emit_repo_gate_line(
         output,
         "Warning: .kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
     );
@@ -120,39 +119,48 @@ fn format_pre_commit_failure(output: &std::process::Output) -> String {
     format!("`pre-commit run --all-files` failed (exit {exit}): {detail}")
 }
 
-fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
+fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
     value
         .get("gate")
         .and_then(|g| g.get("test_coverage_threshold"))
-        .and_then(toml::Value::as_integer)
-        .is_none_or(|t| t < 90)
+        .and_then(|v| {
+            v.as_integer().or_else(|| {
+                v.as_float()
+                    .filter(|f| f.is_finite() && f.fract() == 0.0)
+                    .and_then(|f| f.to_string().parse::<i64>().ok())
+            })
+        })
 }
 
-pub fn run_pre_commit_checks_or_warn(
+fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
+    gate_test_coverage_threshold_i64(value).is_none_or(|t| t < 90)
+}
+
+pub fn run_pre_commit_all_files(
     work_dir: &Path,
     output: RepoGateOutput,
 ) -> Result<(), String> {
     let config = work_dir.join(".pre-commit-config.yaml");
     if !config.is_file() {
-        emit_repo_gate_stdout_line(
+        emit_repo_gate_line(
             output,
             "Warning: no .pre-commit-config.yaml; editing code without configured linters is risky.",
         );
         return Ok(());
     }
-    emit_repo_gate_stdout_line(
+    emit_repo_gate_line(
         output,
         "Running `pre-commit run --all-files` (repo-configured hooks)",
     );
-    let output = Command::new("pre-commit")
+    let pcm = Command::new("pre-commit")
         .args(["run", "--all-files"])
         .current_dir(work_dir)
         .output()
         .map_err(|e| format!("`pre-commit` failed to start: {e}"))?;
-    if output.status.success() {
+    if pcm.status.success() {
         Ok(())
     } else {
-        Err(format_pre_commit_failure(&output))
+        Err(format_pre_commit_failure(&pcm))
     }
 }
 
@@ -164,12 +172,15 @@ mod tests {
     };
 
     #[test]
+    fn repo_checks_kiss_stringify_internal_helpers() {
+        let _ = stringify!(super::RepoGateOutput);
+        let _ = stringify!(super::emit_repo_gate_line);
+        let _ = stringify!(super::touch_if_missing);
+        let _ = stringify!(super::trim_detail_chars);
+    }
+
+    #[test]
     fn pre_commit_failure_includes_exit_and_streams() {
-        let _ = (
-            stringify!(super::emit_repo_gate_stdout_line),
-            stringify!(super::touch_if_missing),
-            stringify!(super::trim_detail_chars),
-        );
         let out = std::process::Command::new("sh")
             .args(["-c", "echo out; echo err >&2; exit 7"])
             .output()
@@ -211,6 +222,18 @@ mod tests {
     }
 
     #[test]
+    fn coverage_ok_at_90_whole_float() {
+        let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 90.0\n").unwrap();
+        assert!(!should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
+    fn coverage_warn_when_threshold_is_fractional_float() {
+        let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 90.5\n").unwrap();
+        assert!(should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
     fn style_markers_are_touched_when_missing() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
@@ -246,7 +269,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         std::fs::write(work.join("grounding.md"), b"ORIGINAL\n").unwrap();
-        ensure_workspace_style_markers(work, RepoGateOutput::Plain).unwrap();
+        ensure_workspace_style_markers(work, RepoGateOutput::Stderr).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
             "ORIGINAL\n"
@@ -262,7 +285,7 @@ mod tests {
         let work = tmp.path();
         std::fs::create_dir(work.join("grounding.md")).unwrap();
         assert!(
-            ensure_workspace_style_markers(work, RepoGateOutput::Plain)
+            ensure_workspace_style_markers(work, RepoGateOutput::Stderr)
                 .unwrap_err()
                 .contains("exists but is not a file")
         );
@@ -272,7 +295,7 @@ mod tests {
     fn repo_workspace_gates_do_not_create_missing_style_markers() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
-        run_repo_workspace_gates(work, RepoGateOutput::Plain).unwrap();
+        run_repo_workspace_gates(work, RepoGateOutput::Stderr).unwrap();
         assert!(!work.join("grounding.md").exists());
         assert!(!work.join(".llm_style").join("style.md").exists());
     }

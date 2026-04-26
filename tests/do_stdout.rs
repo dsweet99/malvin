@@ -17,13 +17,18 @@ use malvin::config::DEFAULT_CLI_MODEL;
 const DO_WRAP_COLUMNS: &str = "32";
 
 #[cfg(unix)]
-fn run_do_with_mock_js(
+fn run_do_with_named_mock_bin(
+    mock_bin_name: &str,
     mock_js: &str,
     extra_args: &[&str],
     columns: Option<&str>,
-) -> std::process::Output {
+) -> (
+    std::process::Output,
+    tempfile::TempDir,
+    std::path::PathBuf,
+) {
     let (root, home, workspace) = test_home_workspace();
-    let mock = root.path().join("mock-agent-acp-do");
+    let mock = root.path().join(mock_bin_name);
     write_mock_executable(&mock, mock_js);
     let mut args = vec!["do"];
     args.extend_from_slice(extra_args);
@@ -37,7 +42,19 @@ fn run_do_with_mock_js(
         cmd.env("COLUMNS", c);
     }
     cmd.args(args);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do")
+    let out = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do");
+    (out, root, workspace)
+}
+
+#[cfg(unix)]
+fn run_do_with_mock_js(
+    mock_js: &str,
+    extra_args: &[&str],
+    columns: Option<&str>,
+) -> std::process::Output {
+    let (out, root, _) = run_do_with_named_mock_bin("mock-agent-acp-do", mock_js, extra_args, columns);
+    drop(root);
+    out
 }
 
 #[cfg(unix)]
@@ -102,6 +119,24 @@ fn stdout_lines_preserve_shape(stdout: &[u8]) -> Vec<String> {
 }
 
 #[cfg(unix)]
+fn nonempty_stdout_lines(stdout: &[u8]) -> Vec<String> {
+    stdout_lines_preserve_shape(stdout)
+        .into_iter()
+        .filter(|l| !l.is_empty())
+        .collect()
+}
+
+#[cfg(unix)]
+fn first_do_log_path(workspace: &std::path::Path) -> std::path::PathBuf {
+    let sub = std::fs::read_dir(workspace.join("_malvin"))
+        .expect("_malvin")
+        .flatten()
+        .find(|e| e.path().is_dir())
+        .expect("run dir");
+    sub.path().join("do.log")
+}
+
+#[cfg(unix)]
 fn assert_stdout_has_no_chrome(lines: &[String]) {
     assert!(
         lines
@@ -118,19 +153,12 @@ fn assert_stdout_has_no_chrome(lines: &[String]) {
 #[cfg(unix)]
 #[test]
 fn do_restores_workspace_grounding_after_mock_agent_overwrites() {
-    let (root, home, workspace) = test_home_workspace();
-    let mock = root.path().join("mock-agent-acp-do-grounding");
-    write_mock_executable(&mock, &acp_mock_do_tampers_grounding_js());
-    let out = command_output_with_timeout(
-        Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .current_dir(&workspace)
-            .env("HOME", &home)
-            .env("CURSOR_AGENT_API_KEY", "test-key")
-            .env("MALVIN_AGENT_ACP_BIN", &mock)
-            .args(["do", "say hi"]),
-        MALVIN_TEST_CMD_TIMEOUT,
-    )
-    .expect("spawn malvin do");
+    let (out, _root, workspace) = run_do_with_named_mock_bin(
+        "mock-agent-acp-do-grounding",
+        &acp_mock_do_tampers_grounding_js(),
+        &[],
+        None,
+    );
     assert!(
         out.status.success(),
         "malvin do failed: {:?}",
@@ -158,7 +186,30 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
 
 #[cfg(unix)]
 #[test]
-fn do_repo_gates_stdout_stays_plain_without_tagged_chrome() {
+fn do_trace_log_contains_thought_when_hidden_from_stdout() {
+    let (out, _root, workspace) = run_do_with_named_mock_bin(
+        "mock-agent-acp-do",
+        &acp_mock_do_streaming_update_js(),
+        &[],
+        None,
+    );
+    assert!(out.status.success(), "{out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("hidden thought"),
+        "default do should hide thought on stdout: {stdout:?}"
+    );
+    let log_path = first_do_log_path(&workspace);
+    let log = std::fs::read_to_string(&log_path).expect("do.log");
+    assert!(
+        log.contains("hidden thought"),
+        "trace log should retain thought text; path={log_path:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn do_repo_gates_keeps_gate_diagnostics_off_stdout() {
     let out = run_do_with_mock(&["--repo-gates"]);
     assert!(
         out.status.success(),
@@ -183,21 +234,15 @@ fn do_wraps_long_raw_agent_line_when_columns_set() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let stdout_s = String::from_utf8_lossy(&out.stdout);
-    let text_lines: Vec<&str> = stdout_s
-        .lines()
-        .map(|l| l.trim_end_matches('\r'))
-        .filter(|l| !l.is_empty())
-        .collect();
+    let text_lines = nonempty_stdout_lines(&out.stdout);
     let wrap_lines: Vec<&str> = text_lines
         .iter()
-        .copied()
+        .map(String::as_str)
         .filter(|l| l.chars().all(|c| c == 'a'))
         .collect();
     assert!(
         wrap_lines.len() > 1,
-        "expected word-wrapped stdout (multiple non-empty lines), got {:?}",
-        String::from_utf8_lossy(&out.stdout)
+        "expected word-wrapped stdout (multiple non-empty lines), got {text_lines:?}"
     );
     let joined: String = wrap_lines.iter().copied().collect();
     assert_eq!(joined.len(), 120);
@@ -298,20 +343,15 @@ fn do_wraps_wordy_long_text_at_word_boundaries() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let stdout_s = String::from_utf8_lossy(&out.stdout);
-    let text_lines: Vec<&str> = stdout_s
-        .lines()
-        .map(|l| l.trim_end_matches('\r'))
-        .filter(|l| !l.is_empty())
-        .collect();
+    let text_lines = nonempty_stdout_lines(&out.stdout);
     let wrap_lines: Vec<&str> = text_lines
         .iter()
-        .copied()
+        .map(String::as_str)
         .filter(|l| l.split_whitespace().all(|w| w == "abcdefghij"))
         .collect();
     assert!(
         wrap_lines.len() > 1,
-        "expected word-wrapped stdout, got {stdout_s:?}"
+        "expected word-wrapped stdout, got {text_lines:?}"
     );
     let col_n: usize = DO_WRAP_COLUMNS.parse().expect("columns");
     assert!(
