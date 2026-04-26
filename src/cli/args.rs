@@ -40,7 +40,7 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// List available models.
     Models(ModelsArgs),
-    /// Review-only workflow (`review_1`, `review_2`, `concerns`), optional learn.
+    /// Synchronize code with grounding.md and learn.
     Sync {
         /// Review loop budget.
         #[arg(long, default_value_t = 5)]
