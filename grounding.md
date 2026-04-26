@@ -15,6 +15,13 @@ Malvin drives a structured **implementation and review** workflow for software w
 - header; learn (unless the run is short)
 - TF TYPE I
 
+- **`malvin sync`**
+- If there is existing code but no .kissconfig, run `kiss clamp`.
+- header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
+- header; review_2; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
+- header; learn (unless the run is short)
+- TF TYPE I
+
 - **`malvin kpop`**
 - header; coding_rules
 - kpop; break if agent declares success

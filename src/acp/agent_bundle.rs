@@ -159,6 +159,17 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn grpc_unavailable_is_retriable() {
+        assert!(agent_string_is_retriable("Error: S: [unavailable] Error"));
+    }
+
+    #[test]
+    fn plan_retry_sleeps_on_grpc_unavailable() {
+        let r = plan_agent_retry("Error: S: [unavailable] Error", 1).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::Sleep(_)));
+    }
+
+    #[test]
     fn session_init_failure_is_retriable() {
         assert!(
             agent_string_is_retriable(

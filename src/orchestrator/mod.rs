@@ -4,9 +4,8 @@
 //! attribute coverage consistently; see `.kissignore`.
 
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::{GroundingBackup, RunArtifacts, restore_workspace_grounding};
+use crate::artifacts::{GroundingBackup, RunArtifacts};
 use crate::prompts::{PromptError, PromptStore};
-use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -14,6 +13,7 @@ use std::sync::{Arc, Mutex};
 
 include!("helpers.rs");
 
+mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
 
@@ -136,28 +136,6 @@ impl Orchestrator<'_> {
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
-    }
-
-    async fn run_check_plan(
-        &mut self,
-        context: &HashMap<String, String>,
-    ) -> Result<(), WorkflowError> {
-        let review_path = self.artifacts.artifact_review_md();
-        clear_review_file(&review_path)
-            .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
-        (self.progress_callback)("CheckPlan");
-        self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
-            .await?;
-        restore_workspace_grounding(&self.artifacts.work_dir, &self.grounding_backup)
-            .map_err(WorkflowError)?;
-
-        let contents = std::fs::read_to_string(&review_path)
-            .map_err(|e| WorkflowError(format!("failed to read review file: {e}")))?;
-        if !is_lgtm_str(&contents) {
-            (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
-            return Err(WorkflowError("check_plan did not pass".to_string()));
-        }
-        self.finish_check_plan_after_lgtm()
     }
 
     async fn run_with_coder_session(

@@ -30,6 +30,7 @@ and all applicable unit tests pass:
 - Write code to fail fast. Assert liberally. DRY.
 - Don't name files ".inc".  .rs and .py are the correct extensions.
 - Keep code consistent with grounding.md and {{ plan_path }} (if applicable).
+- Use (up to 4) parallel subagents whereven possible.
 
 ## Nota Bene
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
