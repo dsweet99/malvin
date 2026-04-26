@@ -6,7 +6,6 @@ use super::do_flow::DoArgs;
 use super::init_cmd::InitArgs;
 use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
-use super::schedule_args::ScheduleArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::shared_opts::GlobalOpts;
@@ -52,8 +51,6 @@ pub enum Commands {
         /// Request or `@file` → `_malvin/.../plan.md`.
         request: String,
     },
-    /// Schedule jobs from a JSON file and render execution order.
-    Schedule(ScheduleArgs),
 }
 
 #[derive(Args, Debug)]

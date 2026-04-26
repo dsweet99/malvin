@@ -1,74 +1,51 @@
-# Malvin — grounding
+# Malvin
 
-## Purpose
+Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cursor ACP (`agent acp`, via JSON-RPC over stdio).
 
-Malvin drives a structured **implementation and review** workflow for software work: it coordinates plan-driven development and review using Cursor's **Agent Client Protocol** (`agent acp`).
+## Concepts
+
+- **Prompt templates** live in `default_prompts/`. Template keys such as `{{ plan_path }}` are resolved at render time, and no prompt may be sent to ACP if unresolved `{{` remains.
+- **Run artifacts** are stored under `_malvin/YYYYMMDD_HHMMSS_<id>/`. Each run records its primary inputs and outputs there, including `plan.md`, `review.md`, `result.md`, and trace logs.
+- **Protected files** are `grounding.md` and `.kissconfig`. They are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`.
+- **`kiss clamp`** runs automatically before the first agent call when source files exist but `.kissconfig` does not.
+- **Learning** is a post-run phase for runs that are long enough to justify it (at least 5 minutes). It records TRIGGER/ADVICE/CONFIDENCE triples under `.malvin_memory/`.
 
 ## Workflows
 
-- **`malvin code`**
-- If there is existing code but no .kissconfig, run `kiss clamp`.
-- header; check_plan (skip with --trust-the-plan)
-- header; coding_rules; implement
-- header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
-- header; review_2; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
-- header; learn (unless the run is short)
-- TF TYPE I
+Unless noted otherwise, a workflow consists of named prompt-template phases sent sequentially within a single ACP coder session.
 
-- **`malvin sync`**
-- If there is existing code but no .kissconfig, run `kiss clamp`.
-- header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
-- header; review_2; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
-- header; learn (unless the run is short)
-- TF TYPE I
+| Workflow | Phases |
+|---|---|
+| `code <request>` | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then run `learn` |
+| `sync <request>` | Run `kiss clamp` if needed; run the `review_1` and `review_2` review/fix loops; then run `learn` |
+| `tidy` | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then run `learn` |
+| `kpop <request>` | Run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then run `learn`. Total budget: `--max-hypotheses` (default 10) |
+| `do <request>` | Send one prompt and print raw output, with no review or learn phase |
+| `init` | Bootstrap pre-commit hooks and Git LFS configuration |
 
-- **`malvin kpop`**
-- header; coding_rules
-- kpop; break if agent declares success
-- mbc2 between kpop blocks (rate controlled by --p-creative)
-- learn (unless the run is short)
-- constraint: (kpop + mbc2) <= --max_hypotheses
-- TF TYPE I
+- **Review loops** work by having a reviewer write either `LGTM` or a list of issues to `review.md`. If the review is not `LGTM`, the `concerns` phase reads that file, applies fixes, and the loop repeats. Any `ABORT:` line in `result.md` stops the workflow immediately.
+- **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
+- `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, and `kpop`. `do_header.md` is used instead for `do`.
+- `coding_rules.md` is prepended to implement, review, concerns, tidy, learn, and kpop prompts.
 
-- **`malvin do`**
-- do_header
-- prompt
-- No logging chrome to stdout. Just write the agent text.
-- TF TYPE II
+## Output formatting
 
-- **`malvin init`**
-- Bootstraps a new project with pre-commit hooks and Git LFS configuration
-- TF TYPE I
-
-- **`malvin tidy`**
-- If there is existing code but no .kissconfig, run `kiss clamp`.
-- header; coding_rules; tidy
-- header; learn (unless the run is short)
-- TF TYPE I
-
-## Other constraints
-- No "documentation parity guards"
-- All template keys (`{{ key }}`) in prompts must be resolved to their values. Assert "{{" does not appear in a prompt before sending it to the ACP.
-- grounding.md and .kissconfig cannot be changed by agents. Before the first agent call in any workflow (after optionally calling `kiss clamp`), back up both files. After each agent call, silently restore both files from the backup.
-
-
-## Text formatting (TF)
-TYPE I:
-- Transform from json and coalesce.
-- Use word wrap.
-- Format the Markdown.
-- Use gray for thought text and white for regular text.
-- Use colors to differentiate "from agent" tags from "to agent" tags.
-
-TYPE II:
-- Transform from json and coalesce.
-- Use word wrap
-- Do not format Markdown. No colors, either.
-- Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output. Use gray for thought text and white for regular text.
-
+| | code, sync, tidy, kpop, init | do |
+|---|---|---|
+| Markdown rendering | yes | no |
+| Colors | yes; thought text is gray and directional tags are color-coded | no |
+| Thought text on stdout | always | only with `--thoughts` |
+| Word wrap and JSON coalescing | yes | yes |
 
 ## Reliability
-- JSON-RPC retry (all ACP calls): up to 3 attempts with 1s/3s backoff
-   when the error string matches a known transient pattern (timeout,
-   deadline exceeded, closed iterables, dead child, session init failure,
-   gRPC `[unavailable]`). "Upgrade your plan" errors fail fast.
+
+- **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with 1 second and then 3 second backoff, when the error matches a known transient class such as timeout, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failure, or gRPC `[unavailable]`. Errors of the form "Upgrade your plan" fail fast and are not retried.
+- **Silent-failure retry** covers the case where a prompt succeeds at the RPC layer but the agent never produces the expected review file. In that case, Malvin retries the prompt up to 3 times with a 1 second delay. Review loops are already resilient to missing review files because a missing file is treated as non-`LGTM` and the loop continues.
+
+## Quality gates
+
+The implementation is only acceptable if all applicable checks pass:
+- `cargo clippy --all-targets --all-features -- -D warnings` (plus pedantic/nursery/cargo)
+- `cargo test`
+- `kiss check`
+- `ruff check` and `pytest -sv tests` (if Python files exist)

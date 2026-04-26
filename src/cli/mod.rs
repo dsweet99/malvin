@@ -11,8 +11,6 @@ mod command_log_tests;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
 mod models_cmd;
-mod schedule_args;
-mod schedule_flow;
 mod repo_checks;
 mod run_emit;
 mod shared_opts;
@@ -30,7 +28,6 @@ pub use do_flow::run_do;
 pub use sync_flow::run_sync;
 pub use kpop_flow::run_kpop;
 pub use tidy_flow::run_tidy;
-pub use schedule_flow::run_schedule;
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
@@ -148,8 +145,7 @@ fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Init(_)
         | Commands::Kpop(_)
         | Commands::Models(_)
-        | Commands::Sync { .. }
-        | Commands::Schedule(_) => Ok(()),
+        | Commands::Sync { .. } => Ok(()),
     }
 }
 fn print_command_error(message: &str) {
@@ -203,9 +199,6 @@ pub fn entrypoint() -> Exit {
                 run_learn: !tidy.no_learn,
             };
             run_async_cli(|| run_tidy(tidy, &cli.shared, workflow))
-        }
-        Commands::Schedule(schedule) => {
-            run_async_cli(|| async move { run_schedule(&schedule) })
         }
         Commands::Do(do_cmd) => {
             let workflow = WorkflowCliOptions {
