@@ -16,7 +16,7 @@ mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod kpop_multiturn_prompts;
 pub use kpop_multiturn_prompts::KpopMultiturnPrompts;
-pub mod kpop_schedule;
+pub mod kpop_progression;
 pub mod kpop_multiturn;
 mod multiturn_prompt;
 pub use kpop_multiturn::{KpopMultiturnParams, KpopMultiturnState};

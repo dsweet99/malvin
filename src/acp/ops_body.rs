@@ -195,9 +195,9 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             let _ = s.shutdown().await;
             return Err(e);
         }
-        let exp_text = crate::kpop_schedule::read_exp_log_text(state.exp_log_path())
+        let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
             .map_err(AgentError)?;
-        let n = crate::kpop_schedule::hypotheses_emitted(&exp_text);
+        let n = crate::kpop_progression::hypotheses_emitted(&exp_text);
         if n > state.max_hypotheses {
             let _ = s.shutdown().await;
             return Err(AgentError(format!(

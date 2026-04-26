@@ -5,7 +5,7 @@ use rand::rngs::StdRng;
 
 use crate::kpop_acp_prompt::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use crate::kpop_schedule::{
+use crate::kpop_progression::{
     KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_mbc2_entries,
     hypotheses_emitted, poisson_block_size, read_exp_log_text,
 };

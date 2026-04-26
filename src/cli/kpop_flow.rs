@@ -25,7 +25,7 @@ use super::repo_checks;
 use super::shared_opts::SharedOpts;
 use super::timing_merge::{emit_run_timing_after_acp, merge_acp_with_grounding_restore};
 
-fn kpop_schedule_and_store(
+fn kpop_prompt_store(
     kpop: &KpopArgs,
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
@@ -155,7 +155,7 @@ pub async fn run_kpop(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let store = kpop_schedule_and_store(&kpop, workflow)?;
+    let store = kpop_prompt_store(&kpop, workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
@@ -228,7 +228,7 @@ pub fn kpop_learn_bundle(
 #[test]
 fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::timing_merge::merge_acp_with_grounding_restore);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_schedule_and_store);
+    let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
     let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);

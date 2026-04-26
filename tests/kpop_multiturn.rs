@@ -7,7 +7,7 @@ use std::rc::Rc;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn::{KpopMultiturnParams, KpopMultiturnState};
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use malvin::kpop_schedule::{
+use malvin::kpop_progression::{
     KPOP_CATCHUP_CAP, block_mean_from_p_creative, count_mbc2_entries, hypotheses_emitted,
     poisson_block_size,
 };

@@ -129,15 +129,15 @@ fn kiss_stringify_kpop_acp_prompt() {
 }
 
 #[test]
-fn kiss_stringify_kpop_schedule() {
-    let _ = stringify!(crate::kpop_schedule::KPOP_CATCHUP_CAP);
-    let _ = stringify!(crate::kpop_schedule::block_mean_from_p_creative);
-    let _ = stringify!(crate::kpop_schedule::poisson_block_size);
-    let _ = stringify!(crate::kpop_schedule::count_kpop_entries);
-    let _ = stringify!(crate::kpop_schedule::count_mbc2_entries);
-    let _ = stringify!(crate::kpop_schedule::hypotheses_emitted);
-    let _ = stringify!(crate::kpop_schedule::agent_declared_success);
-    let _ = stringify!(crate::kpop_schedule::read_exp_log_text);
+fn kiss_stringify_kpop_progression() {
+    let _ = stringify!(crate::kpop_progression::KPOP_CATCHUP_CAP);
+    let _ = stringify!(crate::kpop_progression::block_mean_from_p_creative);
+    let _ = stringify!(crate::kpop_progression::poisson_block_size);
+    let _ = stringify!(crate::kpop_progression::count_kpop_entries);
+    let _ = stringify!(crate::kpop_progression::count_mbc2_entries);
+    let _ = stringify!(crate::kpop_progression::hypotheses_emitted);
+    let _ = stringify!(crate::kpop_progression::agent_declared_success);
+    let _ = stringify!(crate::kpop_progression::read_exp_log_text);
     let _ = stringify!(crate::kpop_multiturn_prompts::KpopMultiturnPrompts);
     let _ = stringify!(crate::kpop_multiturn::KpopMultiturnParams::<()>);
     let _ = stringify!(crate::multiturn_prompt::MultiturnPrompt);
