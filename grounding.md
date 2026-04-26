@@ -13,33 +13,38 @@ Malvin drives a structured **implementation and review** workflow for software w
 - header; review_1; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
 - header; review_2; break if LGTM; concerns (check result.md for ABORT); up to max_loops times
 - header; learn (unless the run is short)
+- TF TYPE I
 
 - **`malvin kpop`**
-- header
+- header; coding_rules
 - kpop; break if agent declares success
 - mbc2 between kpop blocks (rate controlled by --p-creative)
 - learn (unless the run is short)
-- constraint: (kpop + mbc2) <= --max_hypotheses 
+- constraint: (kpop + mbc2) <= --max_hypotheses
+- TF TYPE I
 
 - **`malvin do`**
 - do_header
 - prompt
 - No logging chrome to stdout. Just write the agent text.
+- TF TYPE II
 
 - **`malvin init`**
 - Bootstraps a new project with pre-commit hooks and Git LFS configuration
+- TF TYPE I
 
 - **`malvin tidy`**
 - If there is existing code but no .kissconfig, run `kiss clamp`.
 - header; coding_rules; tidy
 - header; learn (unless the run is short)
+- TF TYPE I
 
 ## Other constraints
 - No "documentation parity guards"
 - All template keys (`{{ key }}`) in prompts must be resolved to their values. Assert "{{" does not appear in a prompt before sending it to the ACP.
 
 
-## Text formatting
+## Text formatting (TF)
 When logging agent output to stdout in `malvin code` or `malvin kpop`
 - Format the Markdown.
 - Use gray for thought text and white for regular text.
