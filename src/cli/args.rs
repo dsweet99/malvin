@@ -28,19 +28,19 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Templates, kiss, pre-commit, Git LFS.
+    /// Prep a workspace (repo)
     Init(InitArgs),
-    /// Send a prompt to the agent.
+    /// Respond to a single request
     Do(DoArgs),
-    /// Implement → review → learn.
+    /// Implement a plan
     Code(CodeArgs),
-    /// KPOP investigation loop.
+    /// KPOP investigation loop
     Kpop(KpopArgs),
-    /// Run tidy prompt and learn.
+    /// Run tidy prompt
     Tidy(TidyArgs),
-    /// List available models.
+    /// List available models
     Models(ModelsArgs),
-    /// Synchronize code with grounding.md and learn.
+    /// Synchronize code with grounding.md
     Sync {
         /// Review loop budget.
         #[arg(long, default_value_t = 5)]
