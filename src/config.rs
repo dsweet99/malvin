@@ -1,7 +1,7 @@
 //! Runtime configuration shared with the vendored ACP client.
 
 /// Default for `malvin` `--model` when the flag is omitted.
-pub const DEFAULT_CLI_MODEL: &str = "composer-2";
+pub const DEFAULT_CLI_MODEL: &str = "gpt-5.3-codex-spark-preview-low";
 
 /// Default JSON-RPC wait for `agent acp` (seconds). Override with `MALVIN_ACP_RPC_TIMEOUT_SECS`.
 pub const DEFAULT_ACP_RPC_TIMEOUT_SECS: u64 = 600;
