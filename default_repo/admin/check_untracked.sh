@@ -1,3 +1,4 @@
+#!/bin/bash
 # Pre-commit hook: fail if any .rs or .py files are untracked, or if
 # default_prompts/do_header.md exists but is not tracked (required when
 # the project depends on include_str! for this prompt).
