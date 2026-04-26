@@ -52,6 +52,3 @@ When logging agent output to stdout in `malvin code` or `malvin kpop` or `malvin
 When logging agent output to stdout in `malvin do`
 - Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output.
 
-
-## Testing
-- Each unit test finishes in <= 10 seconds.

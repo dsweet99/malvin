@@ -22,16 +22,16 @@ pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Resu
     run_pre_commit_all_files(work_dir, output)
 }
 
-/// Touch `<work_dir>/grounding.md` and `<work_dir>/.llm_style/style.md` when missing.
+/// Touch `<work_dir>/grounding.md` and `<work_dir>/.malvin/memory/style.md` when missing.
 /// Existing files are never touched.
-/// Returns an error string if a file or the `.llm_style` directory cannot be created.
+/// Returns an error string if a file or the `.malvin/memory` directory cannot be created.
 #[cfg(test)]
 pub fn ensure_workspace_style_markers(
     work_dir: &Path,
     output: RepoGateOutput,
 ) -> Result<(), String> {
     touch_if_missing(&work_dir.join("grounding.md"), output)?;
-    let style_dir = work_dir.join(".llm_style");
+    let style_dir = work_dir.join(".malvin/memory");
     if !style_dir.is_dir() {
         std::fs::create_dir_all(&style_dir)
             .map_err(|e| format!("create {}: {e}", style_dir.display()))?;
@@ -239,7 +239,7 @@ mod tests {
         let work = tmp.path();
         ensure_workspace_style_markers(work, RepoGateOutput::Tagged).unwrap();
         let grounding = work.join("grounding.md");
-        let style = work.join(".llm_style").join("style.md");
+        let style = work.join(".malvin/memory").join("style.md");
         assert!(grounding.is_file(), "grounding.md not created");
         assert!(style.is_file(), "style.md not created");
         assert_eq!(std::fs::read(&grounding).unwrap(), Vec::<u8>::new());
@@ -250,16 +250,16 @@ mod tests {
     fn style_markers_preserve_existing_content() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
-        std::fs::create_dir_all(work.join(".llm_style")).unwrap();
+        std::fs::create_dir_all(work.join(".malvin/memory")).unwrap();
         std::fs::write(work.join("grounding.md"), b"KEEP ME\n").unwrap();
-        std::fs::write(work.join(".llm_style").join("style.md"), b"STYLE STAYS\n").unwrap();
+        std::fs::write(work.join(".malvin/memory").join("style.md"), b"STYLE STAYS\n").unwrap();
         ensure_workspace_style_markers(work, RepoGateOutput::Tagged).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
             "KEEP ME\n"
         );
         assert_eq!(
-            std::fs::read_to_string(work.join(".llm_style").join("style.md")).unwrap(),
+            std::fs::read_to_string(work.join(".malvin/memory").join("style.md")).unwrap(),
             "STYLE STAYS\n"
         );
     }
@@ -274,7 +274,7 @@ mod tests {
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
             "ORIGINAL\n"
         );
-        let style = work.join(".llm_style").join("style.md");
+        let style = work.join(".malvin/memory").join("style.md");
         assert!(style.is_file());
         assert_eq!(std::fs::read(&style).unwrap(), Vec::<u8>::new());
     }
@@ -297,6 +297,6 @@ mod tests {
         let work = tmp.path();
         run_repo_workspace_gates(work, RepoGateOutput::Stderr).unwrap();
         assert!(!work.join("grounding.md").exists());
-        assert!(!work.join(".llm_style").join("style.md").exists());
+        assert!(!work.join(".malvin/memory").join("style.md").exists());
     }
 }

@@ -11,6 +11,7 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::init_cmd::InitArgs);
     let _ = stringify!(crate::cli::models_cmd::ModelsArgs);
     let _ = stringify!(crate::cli::KpopArgs);
+    let _ = stringify!(crate::cli::TidyArgs);
     let _ = stringify!(crate::cli::SharedOpts);
     let _ = stringify!(crate::cli::Exit);
     let _ = stringify!(crate::cli::WorkflowCliOptions);
@@ -18,6 +19,7 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::entrypoint);
     let _ = stringify!(crate::cli::run_code);
     let _ = stringify!(crate::cli::run_do);
+    let _ = stringify!(crate::cli::run_tidy);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
     let _ = stringify!(crate::cli::kpop_flow::KpopPrepared);

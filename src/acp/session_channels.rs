@@ -78,10 +78,8 @@ impl SessionChannelState {
         rpc_timeout: std::time::Duration,
         telemetry: SessionReaderTelemetry,
     ) -> AcpSessionInner {
-        let child_pid = child.id().unwrap_or(0);
         AcpSessionInner {
             child: Mutex::new(child),
-            child_pid,
             stdin: self.stdin,
             pending: self.pending,
             acp_activity_seq: self.acp_activity_seq,

@@ -1,7 +1,7 @@
 //! Review phase loop: reviewer, concerns.
 
 use crate::acp::{AgentError, ReviewerPromptPair};
-use crate::review_sync::sync_review_then_is_lgtm;
+use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{ReviewPairId, TimingPhase};
 
 use super::Orchestrator;
@@ -17,7 +17,6 @@ impl Orchestrator<'_> {
         phase: ReviewPhaseArgs<'_>,
     ) -> Result<(), WorkflowError> {
         let review_path = self.artifacts.artifact_review_md();
-        let workspace_review_path = self.artifacts.workspace_review_md();
 
         for attempt in 1..=self.config.max_loops {
             let ctx = ReviewAttemptCtx {
@@ -25,7 +24,6 @@ impl Orchestrator<'_> {
                 progress_label: phase.progress_label,
                 phase_id: phase.phase_id,
                 attempt,
-                workspace_review_path: &workspace_review_path,
                 review_path: &review_path,
                 context: phase.context,
             };
@@ -53,8 +51,6 @@ impl Orchestrator<'_> {
 
         clear_review_file(ctx.review_path)
             .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
-        clear_review_file(ctx.workspace_review_path)
-            .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
 
         let review_body = self
             .prompts
@@ -68,8 +64,9 @@ impl Orchestrator<'_> {
         self.run_reviewer_pair_for_attempt(&ctx, &review_body, pair_id)
             .await?;
 
-        let lgtm = sync_review_then_is_lgtm(ctx.workspace_review_path, ctx.review_path)
-            .map_err(|e| WorkflowError(format!("review.md sync: {e}")))?;
+        let lgtm = std::fs::read_to_string(ctx.review_path)
+            .map(|s| is_lgtm_str(&s))
+            .unwrap_or(false);
         if lgtm {
             return Ok(true);
         }
@@ -107,7 +104,7 @@ impl Orchestrator<'_> {
 
         let pair = ReviewerPromptPair {
             cwd: &self.artifacts.work_dir,
-            workspace_review_path: ctx.workspace_review_path,
+            workspace_review_path: ctx.review_path,
             artifact_review_path: ctx.review_path,
             review_body,
             review_who: stem,

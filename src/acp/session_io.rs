@@ -19,7 +19,6 @@ pub fn acp_stdio(s: &AcpSessionInner) -> super::AcpStdioRpc {
         acp_activity_seq: s.acp_activity_seq.clone(),
         acp_activity_notify: s.acp_activity_notify.clone(),
         acp_verbose: s.acp_verbose,
-        child_pid: s.child_pid,
     }
 }
 

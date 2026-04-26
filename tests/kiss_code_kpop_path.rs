@@ -47,6 +47,11 @@ fn malvin_code_fails_fast_when_kiss_missing_from_path() {
 }
 
 #[test]
+fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
+}
+
+#[test]
 fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");

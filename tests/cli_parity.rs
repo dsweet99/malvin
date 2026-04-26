@@ -18,8 +18,8 @@ use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_abort_after_implement_js,
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
-    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_fake_kiss, write_mock_executable,
+    acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_streaming_update_js,
+    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 #[cfg(all(unix, target_os = "linux"))]
 use common::{
@@ -215,6 +215,29 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
     assert!(
         !combined.contains("Review-1 (attempt 1)"),
         "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn review_loop_accepts_lgtm_written_to_artifact_path() {
+    let out = run_code_with_mock_js(
+        &acp_mock_code_review_lgtm_to_artifact_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains(MAX_LOOPS_EXHAUSTED),
+        "review loop should accept LGTM from artifact path: {combined:?}"
+    );
+    assert!(
+        out.status.success(),
+        "malvin code should succeed when reviewer writes LGTM to artifact: {combined:?}"
     );
 }
 

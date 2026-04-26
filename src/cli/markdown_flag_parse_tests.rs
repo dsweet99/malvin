@@ -33,3 +33,38 @@ fn do_parses_with_global_no_markdown_without_do_local_flag() {
         _ => panic!("expected Do"),
     }
 }
+
+#[test]
+fn tidy_parses_with_global_no_markdown_and_without_request() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "tidy"]).expect("parse");
+    assert!(cli.shared.no_markdown);
+    assert!(matches!(cli.command, crate::cli::Commands::Tidy(_)));
+}
+
+#[test]
+fn tidy_parses_without_request_and_runs_learn() {
+    let cli = Cli::try_parse_from(["malvin", "tidy", "--no-learn"]).expect("parse");
+    match cli.command {
+        crate::cli::Commands::Tidy(tidy) => assert!(tidy.no_learn),
+        _ => panic!("expected tidy"),
+    }
+}
+
+#[test]
+fn schedule_parses_workers_and_file_path() {
+    let cli = Cli::try_parse_from([
+        "malvin",
+        "schedule",
+        "--workers",
+        "4",
+        "/tmp/jobs_ok.json",
+    ])
+    .expect("parse");
+    match cli.command {
+        crate::cli::Commands::Schedule(schedule) => {
+            assert_eq!(schedule.workers, 4);
+            assert_eq!(schedule.jobs_json_path, "/tmp/jobs_ok.json");
+        }
+        _ => panic!("expected schedule"),
+    }
+}

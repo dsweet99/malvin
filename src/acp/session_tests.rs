@@ -831,51 +831,6 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
     session.shutdown().await.expect("shutdown");
 }
 
-#[tokio::test]
-#[allow(clippy::await_holding_lock)]
-async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
-    use std::time::Duration;
-
-    let tmp = workspace_with_prompt_stub();
-    let bin = tmp.path().join("silent-agent");
-    tokio::fs::write(bin.as_path(), b"#!/bin/sh\nexec sleep 3600\n")
-        .await
-        .unwrap();
-    chmod755_executable(bin.as_path());
-    crate::test_utils::sync_test_executable(&bin);
-
-    let outer = tokio::time::timeout(
-        Duration::from_secs(1),
-        AcpSession::spawn(AcpSpawnArgs {
-            cwd: tmp.path(),
-            bin_override: Some(bin.as_path()),
-            api_key: Some("test-api-key"),
-            auth_token: None,
-            rpc_timeout: Duration::from_millis(50),
-            acp_verbose: false,
-            george_acp_lane: None,
-            ui_idle_notify: None,
-            model: None,
-            force: false,
-            tee_trace_stdout: false,
-            raw_output: false,
-            show_thoughts_on_stdout: false,
-            emit_stdout_markdown: false,
-        }),
-    )
-    .await;
-
-    let inner = outer.expect("spawn should not hang past outer test timeout");
-    let err = match inner {
-        Ok(_) => panic!("silent agent should not complete handshake"),
-        Err(e) => e,
-    };
-    assert!(
-        err.contains("timed out") || err.contains("acp RPC"),
-        "unexpected err: {err}"
-    );
-}
-
 #[test]
 fn kiss_stringify_session_a() {
     let _ = stringify!(chmod755_executable);

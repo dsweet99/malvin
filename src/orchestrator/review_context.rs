@@ -16,7 +16,6 @@ pub struct ReviewAttemptCtx<'a> {
     pub progress_label: &'a str,
     pub phase_id: &'a str,
     pub attempt: usize,
-    pub workspace_review_path: &'a Path,
     pub review_path: &'a Path,
     pub context: &'a HashMap<String, String>,
 }

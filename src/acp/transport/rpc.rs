@@ -8,8 +8,6 @@ pub(crate) struct AcpStdioRpc {
     pub acp_activity_seq: Arc<AtomicU64>,
     pub acp_activity_notify: Arc<tokio::sync::Notify>,
     pub acp_verbose: bool,
-    /// 0 = skip [`crate::child_health`] (tests); live sessions use the agent child PID.
-    pub child_pid: u32,
 }
 
 pub(crate) async fn write_rpc_line(
@@ -43,6 +41,7 @@ pub(crate) async fn write_rpc_line(
 }
 
 /// One outbound JSON-RPC request (correlation id chosen by caller).
+#[allow(dead_code)]
 pub(crate) struct RpcOutgoing<'a> {
     pub io: &'a AcpStdioRpc,
     pub id: u64,
@@ -52,6 +51,7 @@ pub(crate) struct RpcOutgoing<'a> {
 }
 
 /// Next-id JSON-RPC request (`id` from [`AtomicU64`]).
+#[allow(dead_code)]
 pub(crate) struct RpcRequestNext<'a> {
     pub io: &'a AcpStdioRpc,
     pub next_id: &'a Arc<AtomicU64>,
@@ -60,13 +60,12 @@ pub(crate) struct RpcRequestNext<'a> {
     pub rpc_timeout: std::time::Duration,
 }
 
+#[allow(dead_code)]
 pub(crate) struct RpcWaitArgs<'a> {
-    pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub _pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: &'a Arc<AtomicU64>,
     pub acp_activity_notify: &'a Arc<tokio::sync::Notify>,
-    pub id: u64,
-    pub rpc_timeout: std::time::Duration,
-    pub child_pid: u32,
+    pub _id: u64,
     pub rx: oneshot::Receiver<Result<Value, String>>,
 }
 
@@ -95,12 +94,10 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
         return Err(e);
     }
     rpc_wait_response(RpcWaitArgs {
-        pending: &io.pending,
+        _pending: &io.pending,
         acp_activity_seq: &io.acp_activity_seq,
         acp_activity_notify: &io.acp_activity_notify,
-        id: o.id,
-        rpc_timeout: o.rpc_timeout,
-        child_pid: io.child_pid,
+        _id: o.id,
         rx,
     })
     .await
@@ -135,8 +132,6 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
             seen_activity = latest;
             continue;
         }
-        let timeout = tokio::time::sleep(args.rpc_timeout);
-        tokio::pin!(timeout);
         tokio::select! {
             ready_recv = &mut rx => {
                 return ready_recv
@@ -146,42 +141,6 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
                 seen_activity = args
                     .acp_activity_seq
                     .load(std::sync::atomic::Ordering::SeqCst);
-            }
-            () = &mut timeout => {
-                if args.child_pid == 0 {
-                    args.pending.lock().await.remove(&args.id);
-                    return Err("acp RPC timed out".into());
-                }
-                let grace =
-                    crate::child_health::silence_grace_for_rpc_timeout(args.rpc_timeout);
-                // Race the inbound JSON-RPC result against child-health sampling so a response that
-                // arrives during the grace sleep is not mistaken for a hang.
-                tokio::select! {
-                    ready_recv = &mut rx => {
-                        return ready_recv
-                            .map_err(|_| "acp request canceled (session dropped)".to_string())?;
-                    }
-                    outcome = crate::child_health::evaluate_after_acp_silence(
-                        args.child_pid,
-                        grace,
-                    ) => {
-                        match outcome {
-                            crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp child process is not running".into());
-                            }
-                            crate::child_health::SilenceHealthOutcome::ChildZombie => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp child process is zombie".into());
-                            }
-                            crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {}
-                            crate::child_health::SilenceHealthOutcome::AppearsHung => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp RPC timed out".into());
-                            }
-                        }
-                    }
-                }
             }
         }
     }

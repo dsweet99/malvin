@@ -1,5 +1,4 @@
 //! Subcommand dispatch and async entrypoints for the `malvin` binary.
-
 mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
@@ -8,6 +7,9 @@ mod exit;
 mod init_cmd;
 mod kiss_clamp;
 mod kpop_flow;
+mod schedule_args;
+mod schedule_flow;
+mod tidy_flow;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
 mod models_cmd;
@@ -17,44 +19,36 @@ mod shared_opts;
 #[cfg(test)]
 mod stringify_cov;
 mod timing_merge;
-
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
 pub use exit::Exit;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
-
 use clap::Parser;
-
 use malvin::env_path::require_kiss_for_malvin;
 use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
-
 pub use do_flow::run_do;
 pub use kpop_flow::run_kpop;
+pub use schedule_flow::run_schedule;
+pub use tidy_flow::run_tidy;
 use malvin::acp::AgentClient;
-
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
-
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
     pub force: bool,
     pub run_learn: bool,
 }
-
 #[derive(Debug, Clone, Copy)]
 pub struct AgentStdoutTeeFlags {
     pub emit_stdout_markdown: bool,
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,
 }
-
-/// Skip learn phase if elapsed time is below 5 minutes (300,000 ms).
 pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
-
 pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
@@ -66,8 +60,6 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
     }
     Ok(store)
 }
-
-/// Like [`prepare_prompt_store`] but only checks prompts used by `malvin kpop` (not the full workflow set).
 pub fn prepare_kpop_prompt_store(
     workflow: WorkflowCliOptions,
     require_mbc2: bool,
@@ -82,7 +74,6 @@ pub fn prepare_kpop_prompt_store(
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
-
 fn prepare_code_run(
     code: &CodeArgs,
     shared: &SharedOpts,
@@ -96,7 +87,6 @@ fn prepare_code_run(
         .map_err(|e| e.to_string())?;
     Ok((store, client, artifacts))
 }
-
 pub async fn run_code(
     code: CodeArgs,
     shared: &SharedOpts,
@@ -110,7 +100,6 @@ pub async fn run_code(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
-
     let mut orch = Orchestrator {
         client: &mut client,
         prompts: &store,
@@ -135,7 +124,6 @@ pub async fn run_code(
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
-
 pub const fn agent_io_options(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
@@ -149,7 +137,6 @@ pub const fn agent_io_options(
         emit_stdout_markdown: tee.emit_stdout_markdown,
     }
 }
-
 pub fn build_agent(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
@@ -168,26 +155,25 @@ pub fn build_agent(
         ),
     )
 }
-
-/// Only `malvin code` requires `kiss` on `PATH` before stdout styling or async work.
 fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
-        Commands::Code(_) => require_kiss_for_malvin("code"),
-        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
+        Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
+        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) | Commands::Schedule(_) => Ok(()),
     }
 }
-
 fn print_command_error(message: &str) {
+    if message.starts_with("ERR:") {
+        eprintln!("{message}");
+        return;
+    }
     print_stderr_line(MALVIN_WHO, message);
 }
-
 fn try_tokio_runtime() -> Result<tokio::runtime::Runtime, String> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .map_err(|e| format!("failed to create Tokio runtime: {e}"))
 }
-
 fn run_async_cli<F, Fut>(f: F) -> Result<(), String>
 where
     F: FnOnce() -> Fut,
@@ -196,7 +182,6 @@ where
     let rt = try_tokio_runtime()?;
     rt.block_on(f())
 }
-
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
@@ -220,6 +205,14 @@ pub fn entrypoint() -> Exit {
             };
             run_async_cli(|| run_kpop(kpop, &cli.shared, workflow))
         }
+        Commands::Tidy(tidy) => {
+            let workflow = WorkflowCliOptions {
+                force: !cli.shared.no_force,
+                run_learn: !tidy.no_learn,
+            };
+            run_async_cli(|| run_tidy(tidy, &cli.shared, workflow))
+        }
+        Commands::Schedule(args) => run_schedule(&args),
         Commands::Do(do_cmd) => {
             let workflow = WorkflowCliOptions {
                 force: !cli.shared.no_force,

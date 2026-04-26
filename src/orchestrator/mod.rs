@@ -6,7 +6,7 @@
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::{GroundingBackup, RunArtifacts, restore_workspace_grounding};
 use crate::prompts::{PromptError, PromptStore};
-use crate::review_sync::{is_lgtm_str, sync_review_file};
+use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -102,11 +102,8 @@ impl Orchestrator<'_> {
         Ok(())
     }
 
-    fn finish_check_plan_after_lgtm(&self, review_path: &Path) -> Result<(), WorkflowError> {
-        self.fail_on_abort_result()?;
-        sync_review_file(review_path, &self.artifacts.artifact_review_md())
-            .map_err(|e| WorkflowError(format!("sync review after check_plan: {e}")))?;
-        Ok(())
+    fn finish_check_plan_after_lgtm(&self) -> Result<(), WorkflowError> {
+        self.fail_on_abort_result()
     }
 
     /// Drive the full workflow.
@@ -160,7 +157,7 @@ impl Orchestrator<'_> {
             (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
             return Err(WorkflowError("check_plan did not pass".to_string()));
         }
-        self.finish_check_plan_after_lgtm(&review_path)
+        self.finish_check_plan_after_lgtm()
     }
 
     async fn run_with_coder_session(

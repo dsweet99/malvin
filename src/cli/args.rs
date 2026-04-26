@@ -5,7 +5,9 @@ use clap::{Args, Parser, Subcommand};
 use super::do_flow::DoArgs;
 use super::init_cmd::InitArgs;
 use super::models_cmd::ModelsArgs;
+use super::schedule_args::ScheduleArgs;
 use super::shared_opts::SharedOpts;
+use super::tidy_flow::TidyArgs;
 
 pub use super::shared_opts::GlobalOpts;
 
@@ -35,8 +37,12 @@ pub enum Commands {
     Code(CodeArgs),
     /// KPOP investigation loop.
     Kpop(KpopArgs),
+    /// Run tidy prompt and learn.
+    Tidy(TidyArgs),
     /// List available models.
     Models(ModelsArgs),
+    /// Schedule jobs from a dependency DAG.
+    Schedule(ScheduleArgs),
 }
 
 #[derive(Args, Debug)]

@@ -24,8 +24,9 @@ and all applicable unit tests pass:
 
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
+  - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating. (You'll need to run all unit tests at some point, though.)
 - Do not write "documentation parity guards". Do not write comments. NEVER EDIT grounding.md.
-- Keep each unit test's running time under 10 seconds.
+- Keep each unit test's running time under 10 seconds (<1s would be great).
 - Write code to fail fast. Assert liberally. DRY.
 - Don't name files ".inc".  .rs and .py are the correct extensions.
 - Keep code consistent with grounding.md and {{ plan_path }} (if applicable).

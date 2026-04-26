@@ -103,8 +103,6 @@ fn kiss_stringify_log_paths() {
 #[test]
 fn kiss_stringify_review_sync() {
     let _ = stringify!(crate::review_sync::is_lgtm_str);
-    let _ = stringify!(crate::review_sync::sync_review_file);
-    let _ = stringify!(crate::review_sync::sync_review_then_is_lgtm);
 }
 
 #[test]

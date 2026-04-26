@@ -202,50 +202,89 @@ pub fn acp_mock_code_abort_after_implement_js() -> String {
     acp_mock_js("", prompt)
 }
 
-pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
-    let prompt = r"    const fs = require('fs');
+fn acp_mock_code_with_run_dir_js(body: &str) -> String {
+    let prompt = format!(
+        r"    const fs = require('fs');
     const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
     const runRoot = path.join(process.cwd(), '_malvin');
-    const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    const runDirNames = fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
     const runDir = path.join(runRoot, runDirNames[0]);
-    if (promptText.includes('write ONLY the four characters')) {
-      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+{body}"
+    );
+    acp_mock_js("", &prompt)
+}
+
+fn chunk_line(text: &str) -> String {
+    format!(
+        r"      console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: '{text}\n' }} }} }} }}));"
+    )
+}
+
+fn write_artifact_lgtm() -> String {
+    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+}
+
+pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('write ONLY the four characters')) {{
+{lgtm}
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: after check plan\n', 'utf8');
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'check_plan_done\n' } } } }));
-    } else if (promptText.includes('Implement the plan in')) {
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement_phase_ran\n' } } } }));
-    } else {
-      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
-    }";
-    acp_mock_js("", prompt)
+{check_done}
+    }} else if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else {{
+{lgtm}
+{reviewed}
+    }}",
+        check_done = chunk_line("check_plan_done"),
+        implement = chunk_line("implement_phase_ran"),
+        reviewed = chunk_line("reviewed"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
 }
 
 pub fn acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js() -> String {
-    let prompt = r#"    const fs = require('fs');
-    const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const runRoot = path.join(process.cwd(), '_malvin');
-    const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-    const runDir = path.join(runRoot, runDirNames[0]);
-    if (promptText.includes('write ONLY the four characters "LGTM"')) {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r#"    if (promptText.includes('write ONLY the four characters "LGTM"')) {{
       fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED\n', 'utf8');
-      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'checked\n' } } } }));
-    } else if (promptText.includes('Implement the plan in')) {
+{lgtm}
+{checked}
+    }} else if (promptText.includes('Implement the plan in')) {{
       const grounding = fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8');
-      if (grounding === 'x') {
-        console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement ok\n' } } } }));
-      } else {
+      if (grounding === 'x') {{
+{implement_ok}
+      }} else {{
         fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: grounding leaked into implement\n', 'utf8');
-        console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement saw tampered grounding\n' } } } }));
-      }
-    } else {
-      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
-    }"#;
-    acp_mock_js("", prompt)
+{implement_tampered}
+      }}
+    }} else {{
+{lgtm}
+{reviewed}
+    }}"#,
+        checked = chunk_line("checked"),
+        implement_ok = chunk_line("implement ok"),
+        implement_tampered = chunk_line("implement saw tampered grounding"),
+        reviewed = chunk_line("reviewed"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_code_review_lgtm_to_artifact_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else {{
+{lgtm}
+{reviewed}
+    }}",
+        implement = chunk_line("implemented"),
+        reviewed = chunk_line("lgtm"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
 }
 
 pub fn acp_mock_do_streaming_update_js() -> String {

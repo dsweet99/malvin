@@ -23,6 +23,7 @@ pub use multiturn_prompt::MultiturnPrompt;
 pub mod env_path;
 pub mod invocation;
 pub mod kpop_schedule;
+pub mod schedule;
 pub mod log_paths;
 pub mod orchestrator;
 pub mod output;
@@ -41,3 +42,6 @@ mod orchestrator_check_plan_tests;
 
 #[cfg(test)]
 pub mod test_utils;
+
+#[cfg(test)]
+mod schedule_tests;
