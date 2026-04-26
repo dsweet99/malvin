@@ -1,22 +1,14 @@
-use std::fs::read_to_string;
+use std::fs;
 
-use malvin::schedule;
+use malvin::schedule::{render_schedule_json, run_schedule_json};
 
-use crate::cli::schedule_args::ScheduleArgs;
+use super::schedule_args::ScheduleArgs;
 
 pub fn run_schedule(args: &ScheduleArgs) -> Result<(), String> {
-    let jobs_json = read_to_string(&args.jobs_json_path)
-        .map_err(|e| format!("ERR:failed to read jobs file {}: {e}", args.jobs_json_path))?;
-    let scheduled = schedule::run_schedule_json(&jobs_json, args.workers)?;
-    let serialized = schedule::render_schedule_json(&scheduled);
-    println!("{serialized}");
+    let input =
+        fs::read_to_string(&args.jobs_path).map_err(|e| format!("ERR:failed to read input: {e}"))?;
+    let scheduled = run_schedule_json(&input, args.workers)?;
+    print!("{}", render_schedule_json(&scheduled));
     Ok(())
 }
 
-#[cfg(test)]
-mod coverage_tests {
-    #[test]
-    fn kiss_stringify_schedule_flow_units() {
-        let _ = stringify!(crate::cli::schedule_flow::run_schedule);
-    }
-}

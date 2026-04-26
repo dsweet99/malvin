@@ -2,17 +2,9 @@ use clap::Args;
 
 #[derive(Args, Debug)]
 pub struct ScheduleArgs {
-    /// Number of parallel workers.
-    #[arg(long)]
+    /// JSON file containing job definitions.
+    pub jobs_path: String,
+    #[arg(short, long, default_value_t = 1)]
     pub workers: usize,
-    /// Input JSON job graph file.
-    pub jobs_json_path: String,
 }
 
-#[cfg(test)]
-mod coverage_tests {
-    #[test]
-    fn kiss_stringify_schedule_args_units() {
-        let _ = stringify!(crate::cli::schedule_args::ScheduleArgs);
-    }
-}

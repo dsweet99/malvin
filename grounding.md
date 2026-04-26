@@ -66,3 +66,9 @@ TYPE II:
 - Do not format Markdown. No colors, either.
 - Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output. Use gray for thought text and white for regular text.
 
+
+## Reliability
+- JSON-RPC retry (all ACP calls): up to 3 attempts with 1s/3s backoff
+   when the error string matches a known transient pattern (timeout,
+   deadline exceeded, closed iterables, dead child, session init failure,
+   gRPC `[unavailable]`). "Upgrade your plan" errors fail fast.

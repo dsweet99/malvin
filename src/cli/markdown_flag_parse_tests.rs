@@ -71,20 +71,21 @@ fn sync_parses_with_global_no_markdown_and_request() {
 }
 
 #[test]
-fn schedule_parses_workers_and_file_path() {
+fn schedule_parses_with_workers_and_job_file() {
     let cli = Cli::try_parse_from([
         "malvin",
         "schedule",
         "--workers",
-        "4",
-        "/tmp/jobs_ok.json",
+        "2",
+        "/tmp/jobs.json",
     ])
     .expect("parse");
     match cli.command {
         crate::cli::Commands::Schedule(schedule) => {
-            assert_eq!(schedule.workers, 4);
-            assert_eq!(schedule.jobs_json_path, "/tmp/jobs_ok.json");
+            assert_eq!(schedule.workers, 2);
+            assert_eq!(schedule.jobs_path, "/tmp/jobs.json");
         }
-        _ => panic!("expected schedule"),
+        _ => panic!("expected Schedule"),
     }
 }
+
