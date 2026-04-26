@@ -31,6 +31,7 @@ Malvin drives a structured **implementation and review** workflow for software w
 
 ## Other constraints
 - No "documentation parity guards"
+- All template keys (`{{ key }}`) in prompts must be resolved to their values. Assert "{{" does not appear in a prompt before sending it to the ACP.
 
 
 ## Text formatting
