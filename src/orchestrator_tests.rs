@@ -89,7 +89,7 @@ fn sync_review_file_copies_nonempty_workspace_to_artifact() {
 }
 
 #[test]
-fn workflow_context_review_path_must_point_to_workspace_not_artifact() {
+fn workflow_context_review_path_points_to_artifact() {
     let t = tempfile::tempdir().unwrap();
     let run_dir = t.path().join("_malvin").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
@@ -108,19 +108,13 @@ fn workflow_context_review_path_must_point_to_workspace_not_artifact() {
         .get("review_path")
         .expect("review_path must be in context");
 
-    // The review_path should point to workspace review.md (./review.md),
-    // NOT the artifact review.md (./_malvin/run123/review.md).
-    // This is critical because sync_review_file reads from workspace and writes to artifact.
-    // If the prompt tells the agent to write to the artifact path, sync will clear it
-    // because the workspace file doesn't exist.
     assert!(
-        !review_path.contains("_malvin"),
-        "review_path must point to workspace (./review.md), not artifact (./_malvin/.../review.md); \
-         got: {review_path}"
+        review_path.contains("_malvin"),
+        "review_path must point to artifact (./_malvin/.../review.md); got: {review_path}"
     );
     assert_eq!(
-        review_path, "./review.md",
-        "review_path should be ./review.md (workspace path)"
+        review_path, "./_malvin/run123/review.md",
+        "review_path should be the artifact path"
     );
 }
 

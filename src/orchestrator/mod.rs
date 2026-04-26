@@ -145,7 +145,7 @@ impl Orchestrator<'_> {
         &mut self,
         context: &HashMap<String, String>,
     ) -> Result<(), WorkflowError> {
-        let review_path = self.artifacts.workspace_review_md();
+        let review_path = self.artifacts.artifact_review_md();
         clear_review_file(&review_path)
             .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
         (self.progress_callback)("CheckPlan");

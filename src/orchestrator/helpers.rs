@@ -12,7 +12,7 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         .canonicalize()
         .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
     insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
-    insert_formatted(context, "review_path", &artifacts.workspace_review_md(), base);
+    insert_formatted(context, "review_path", &artifacts.artifact_review_md(), base);
     insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
 }

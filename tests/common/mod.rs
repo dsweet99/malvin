@@ -206,16 +206,17 @@ pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
     let prompt = r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const runRoot = path.join(process.cwd(), '_malvin');
+    const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    const runDir = path.join(runRoot, runDirNames[0]);
     if (promptText.includes('write ONLY the four characters')) {
-      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
-      const runRoot = path.join(process.cwd(), '_malvin');
-      const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-      fs.writeFileSync(path.join(runRoot, runDirNames[0], 'result.md'), 'ABORT: after check plan\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: after check plan\n', 'utf8');
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'check_plan_done\n' } } } }));
     } else if (promptText.includes('Implement the plan in')) {
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement_phase_ran\n' } } } }));
     } else {
-      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
     }";
     acp_mock_js("", prompt)
@@ -225,22 +226,23 @@ pub fn acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restor
     let prompt = r#"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const runRoot = path.join(process.cwd(), '_malvin');
+    const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    const runDir = path.join(runRoot, runDirNames[0]);
     if (promptText.includes('write ONLY the four characters "LGTM"')) {
       fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED\n', 'utf8');
-      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'checked\n' } } } }));
     } else if (promptText.includes('Implement the plan in')) {
       const grounding = fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8');
       if (grounding === 'x') {
         console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement ok\n' } } } }));
       } else {
-        const runRoot = path.join(process.cwd(), '_malvin');
-        const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-        fs.writeFileSync(path.join(runRoot, runDirNames[0], 'result.md'), 'ABORT: grounding leaked into implement\n', 'utf8');
+        fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: grounding leaked into implement\n', 'utf8');
         console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement saw tampered grounding\n' } } } }));
       }
     } else {
-      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
       console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
     }"#;
     acp_mock_js("", prompt)
