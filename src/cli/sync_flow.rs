@@ -21,9 +21,17 @@ pub struct SyncRunSpec {
     pub no_learn: bool,
 }
 
-fn prepare_sync_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
+fn prepare_sync_prompt_store(run_learn: bool) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
+    prepare_sync_prompt_store_for(&store, run_learn)?;
+    Ok(store)
+}
+
+fn prepare_sync_prompt_store_for(
+    store: &PromptStore,
+    run_learn: bool,
+) -> Result<(), String> {
     store
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
@@ -36,18 +44,19 @@ fn prepare_sync_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore
     store
         .validate_exists("concerns.md")
         .map_err(|e: PromptError| e.0)?;
-    if workflow.run_learn {
+    if run_learn {
         store
             .validate_exists("learn.md")
             .map_err(|e: PromptError| e.0)?;
     }
-    Ok(store)
+    Ok(())
 }
 
 fn prepare_sync_artifacts(
     _spec: &SyncRunSpec,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
+    run_learn: bool,
 ) -> Result<(AgentClient, RunArtifacts, PromptStore, GroundingBackup), String> {
     let client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
@@ -58,14 +67,14 @@ fn prepare_sync_artifacts(
 
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "sync")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
-    let store = prepare_sync_prompt_store(workflow)?;
+    let store = prepare_sync_prompt_store(run_learn)?;
 
     Ok((client, artifacts, store, grounding_backup))
 }
 
 #[cfg(test)]
 mod coverage_tests {
-    use super::SyncRunSpec;
+    use super::{prepare_sync_prompt_store_for, PromptStore, SyncRunSpec};
 
     #[test]
     fn kiss_stringify_sync_flow_units() {
@@ -84,6 +93,26 @@ mod coverage_tests {
         assert_eq!(spec.max_loops, 7);
         assert!(spec.no_learn);
     }
+
+    #[test]
+    fn prepare_sync_prompt_store_bypasses_learn_check_when_no_learn_requested() {
+        let tmp = tempfile::tempdir().unwrap();
+        let prompts_dir = tmp.path().join(".malvin").join("prompts");
+        let store = PromptStore::with_root(prompts_dir.clone());
+        std::fs::create_dir_all(&prompts_dir).unwrap();
+        let _ = std::fs::write(prompts_dir.join(super::HEADER_MD), "h");
+        let _ = std::fs::write(prompts_dir.join("review_1.md"), "r1");
+        let _ = std::fs::write(prompts_dir.join("review_2.md"), "r2");
+        let _ = std::fs::write(prompts_dir.join("concerns.md"), "c");
+        let _ = std::fs::remove_file(prompts_dir.join("learn.md"));
+
+        assert!(
+            prepare_sync_prompt_store_for(&store, false).is_ok()
+        );
+        assert!(
+            prepare_sync_prompt_store_for(&store, true).is_err()
+        );
+    }
 }
 
 pub async fn run_sync(
@@ -93,7 +122,7 @@ pub async fn run_sync(
 ) -> Result<(), String> {
     let run_learn = workflow.run_learn && !spec.no_learn;
     let (mut client, artifacts, store, grounding_backup) =
-        prepare_sync_artifacts(&spec, shared, workflow)?;
+        prepare_sync_artifacts(&spec, shared, workflow, run_learn)?;
     let mut orch = Orchestrator {
         client: &mut client,
         prompts: &store,

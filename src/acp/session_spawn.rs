@@ -12,6 +12,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
 ) -> Result<(Child, String), String> {
     let mut child = pipes.child;
     let stdout = pipes.stdout;
+    let child_pid = child.id();
     let prompt_cleanup = Arc::new(PromptRpcCleanup {
         busy: io.busy.clone(),
         trace_writer: io.trace_writer.clone(),
@@ -45,6 +46,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
         cwd: cont.cwd,
         rpc_timeout: cont.rpc_timeout,
         require_cursor_login_auth: cont.session.require_cursor_login_auth,
+        child_pid,
     })
     .await
     {

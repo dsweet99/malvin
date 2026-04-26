@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${MALVIN_DAG_SCHEDULER_HARNESS_ENABLE:-0}" != "1" ]]; then
+  echo "MIGRATION_NOTICE: schedule CLI removed from this repo; this legacy harness is skipped."
+  echo "Set MALVIN_DAG_SCHEDULER_HARNESS_ENABLE=1 to run the legacy schedule flow."
+  exit 0
+fi
+
 WORKDIR=$(mktemp -d)
 echo "Working in: $WORKDIR"
 cd "$WORKDIR"

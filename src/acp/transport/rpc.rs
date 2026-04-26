@@ -48,6 +48,7 @@ pub(crate) struct RpcOutgoing<'a> {
     pub method: &'a str,
     pub params: Value,
     pub rpc_timeout: std::time::Duration,
+    pub child_pid: Option<u32>,
 }
 
 /// Next-id JSON-RPC request (`id` from [`AtomicU64`]).
@@ -58,6 +59,7 @@ pub(crate) struct RpcRequestNext<'a> {
     pub method: &'a str,
     pub params: Value,
     pub rpc_timeout: std::time::Duration,
+    pub child_pid: Option<u32>,
 }
 
 #[allow(dead_code)]
@@ -67,6 +69,7 @@ pub(crate) struct RpcWaitArgs<'a> {
     pub acp_activity_notify: &'a Arc<tokio::sync::Notify>,
     pub _id: u64,
     pub rx: oneshot::Receiver<Result<Value, String>>,
+    pub child_pid: Option<u32>,
 }
 
 pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Result<Value, String> {
@@ -93,15 +96,85 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
         io.pending.lock().await.remove(&o.id);
         return Err(e);
     }
-    rpc_wait_response(RpcWaitArgs {
+    let args = RpcWaitArgs {
         _pending: &io.pending,
         acp_activity_seq: &io.acp_activity_seq,
         acp_activity_notify: &io.acp_activity_notify,
         _id: o.id,
         rx,
-    })
+        child_pid: o.child_pid,
+    };
+    let wait_state = (
+        &io.acp_activity_seq,
+        &io.acp_activity_notify,
+        &io.pending,
+        o.child_pid,
+    );
+    rpc_wait_with_timeout(
+        o.id,
+        o.rpc_timeout,
+        rpc_wait_response(args),
+        wait_state,
+    )
     .await
 }
+
+async fn rpc_wait_with_timeout(
+    id: u64,
+    timeout: std::time::Duration,
+    wait: impl std::future::Future<Output = Result<Value, String>>,
+    state: RpcWaitContext<'_>,
+) -> Result<Value, String> {
+    let (acp_activity_seq, acp_activity_notify, pending, child_pid) = state;
+    tokio::pin!(wait);
+    loop {
+        tokio::select! {
+            ready_recv = &mut wait => {
+                let result = ready_recv
+                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                pending.lock().await.remove(&id);
+                return Ok(result);
+            }
+            () = tokio::time::sleep(timeout) => {
+                let timeout_err = if let Some(child_pid) = child_pid {
+                    let grace = crate::child_health::silence_grace_for_rpc_timeout(timeout);
+                    match crate::child_health::evaluate_after_acp_silence(child_pid, grace).await {
+                        crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
+                            Err("acp child process is not running".to_string())
+                        }
+                        crate::child_health::SilenceHealthOutcome::ChildZombie => {
+                            Err("acp child process is zombie".to_string())
+                        }
+                        crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
+                            Ok(())
+                        }
+                        crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
+                            "acp request id {id} timed out after {timeout:?}"
+                        )),
+                    }
+                } else {
+                    Err(format!("acp request id {id} timed out after {timeout:?}"))
+                };
+                if timeout_err.is_ok() {
+                    continue;
+                }
+                pending.lock().await.remove(&id);
+                return Err(timeout_err.expect_err("timeout outcome must be Err"));
+            }
+            () = acp_activity_notify.notified() => {
+                let _ = acp_activity_seq
+                    .load(std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+type RpcWaitContext<'a> = (
+    &'a Arc<AtomicU64>,
+    &'a Arc<tokio::sync::Notify>,
+    &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    Option<u32>,
+);
 
 pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> {
     let id = n
@@ -113,6 +186,7 @@ pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> 
         method: n.method,
         params: n.params,
         rpc_timeout: n.rpc_timeout,
+        child_pid: n.child_pid,
     })
     .await
 }

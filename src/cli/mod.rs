@@ -215,7 +215,7 @@ pub fn entrypoint() -> Exit {
         } => {
             let workflow = WorkflowCliOptions {
                 force: !cli.shared.no_force,
-                run_learn: true,
+                run_learn: !no_learn,
             };
             run_async_cli(|| {
                 run_sync(

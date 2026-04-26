@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use super::AcpSpawnArgs;
 
-#[must_use]
+#[cfg(test)]
 pub(super) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpawnArgs<'a> {
     AcpSpawnArgs {
         cwd,
@@ -25,5 +25,6 @@ pub(super) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpa
 
 #[test]
 fn kiss_stringify_george_mock_spawn_args() {
+    let _ = george_mock_spawn_args(Path::new("."), Path::new("agent"));
     let _ = stringify!(george_mock_spawn_args);
 }

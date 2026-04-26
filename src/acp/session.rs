@@ -19,12 +19,19 @@ async fn rpc_session_prompt_text(session: &AcpSession, text: &str, id: u64) -> R
         "prompt": [{ "type": "text", "text": text }]
     });
     let io = acp_stdio(&session.0);
+    let child_pid = session
+        .0
+        .child
+        .lock()
+        .await
+        .id();
     rpc_request_with_correlation_id(RpcOutgoing {
         io: &io,
         id,
         method: "session/prompt",
         params,
         rpc_timeout: session.0.rpc_timeout,
+        child_pid,
     })
     .await
     .map(|_| ())
@@ -80,12 +87,14 @@ impl AcpSession {
 
     async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
         let io = acp_stdio(&self.0);
+        let child_pid = self.0.child.lock().await.id();
         rpc_request(RpcRequestNext {
             io: &io,
             next_id: &self.0.next_id,
             method,
             params,
             rpc_timeout: self.0.rpc_timeout,
+            child_pid,
         })
         .await
     }
@@ -235,12 +244,3 @@ impl AcpSession {
     }
 }
 
-#[cfg(test)]
-mod coverage_tests {
-    #[test]
-    fn kiss_stringify_acp_session_units() {
-        let _ = stringify!(crate::acp::session::prompt_stdout_replacement);
-        let _ = stringify!(crate::acp::session::rpc_session_prompt_text);
-        let _ = stringify!(crate::acp::session::do_split_trace_preamble);
-    }
-}

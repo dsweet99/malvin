@@ -6,6 +6,7 @@ pub(crate) struct HandshakeParams<'a> {
     pub cwd: &'a Path,
     pub rpc_timeout: std::time::Duration,
     pub require_cursor_login_auth: bool,
+    pub child_pid: Option<u32>,
 }
 
 pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, String> {
@@ -23,6 +24,7 @@ pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, St
         method: "initialize",
         params: init,
         rpc_timeout: p.rpc_timeout,
+        child_pid: p.child_pid,
     })
     .await
     .map_err(|e| format!("ACP `initialize` failed: {e}"))?;
@@ -33,6 +35,7 @@ pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, St
             method: "authenticate",
             params: json!({ "methodId": "cursor_login" }),
             rpc_timeout: p.rpc_timeout,
+            child_pid: p.child_pid,
         })
         .await
         .map_err(|e| format!("ACP `authenticate` (methodId=cursor_login) failed: {e}"))?;
@@ -47,6 +50,7 @@ pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, St
         method: "session/new",
         params: new_params,
         rpc_timeout: p.rpc_timeout,
+        child_pid: p.child_pid,
     })
         .await
         .map_err(|e| format!("ACP `session/new` failed: {e}"))?;
