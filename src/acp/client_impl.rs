@@ -192,6 +192,8 @@ impl AgentClient {
             skip_repo_style,
             &self.style_prompt_path,
         );
+        crate::prompts::enforce_no_unresolved_braces(&full_prompt)
+            .map_err(|e| AgentError(e.0))?;
 
         let style_for_do_trace = if do_trace_split.is_some() {
             repo_style.as_deref()

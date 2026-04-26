@@ -43,10 +43,11 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(RunArtifacts::artifact_review_md);
     let _ = stringify!(RunArtifacts::artifact_result_md);
     let _ = stringify!(RunArtifacts::workspace_review_md);
+    let _ = stringify!(RunArtifacts::exp_log_path);
     let _ = stringify!(create_run_artifacts);
-    let _ = stringify!(crate::artifacts::create_run_dir);
-    let _ = stringify!(crate::artifacts::build_identifier);
-    let _ = stringify!(crate::artifacts::random_alnum);
+    let _ = stringify!(crate::artifacts::run_id::create_run_dir);
+    let _ = stringify!(crate::artifacts::run_id::build_identifier);
+    let _ = stringify!(crate::artifacts::run_id::random_alnum);
     let _ = stringify!(crate::artifacts::create_kpop_run_artifacts);
     let _ = stringify!(crate::artifacts::resolve_user_request);
     let _ = stringify!(crate::artifacts::startup_request_tag_label);

@@ -16,7 +16,9 @@ use malvin::artifacts::{
     resolve_user_request, restore_workspace_grounding,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
-use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+use malvin::prompts::{
+    DO_HEADER_MD, HEADER_MD, PromptError, PromptStore, enforce_no_unresolved_braces,
+};
 use malvin::run_timing::TimingPhase;
 
 struct DoCoderRun {
@@ -126,6 +128,7 @@ fn combine_do_prompt_file_and_user(
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
     let combined = format!("{header}\n\n{user}");
+    enforce_no_unresolved_braces(&combined).map_err(|e: PromptError| e.0)?;
     Ok((combined, header, user))
 }
 

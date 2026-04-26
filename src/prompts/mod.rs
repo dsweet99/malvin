@@ -12,6 +12,17 @@ pub use defaults::{DO_HEADER_MD, HEADER_MD};
 
 pub(crate) use defaults::default_file;
 
+pub fn enforce_no_unresolved_braces(text: &str) -> Result<(), PromptError> {
+    if text.contains("{{") {
+        Err(PromptError(
+            "prompt still contains \"{{\" before ACP; resolve every {{ key }} placeholder"
+                .to_string(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 /// User-facing prompt configuration error.
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
@@ -176,9 +187,11 @@ impl PromptStore {
         let mut render_context: HashMap<String, String> = context.clone();
         render_context.insert(
             "coding_rules".to_string(),
-            merged_coding_rules(self, context),
+            merged_coding_rules(self, context)?,
         );
-        Ok(render_template(&prompt_text, &render_context))
+        let out = render_template(&prompt_text, &render_context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
     }
 
     /// Expand a single prompt file with `context` (`{{ key }}` / `$key`) without injecting `coding_rules`.
@@ -198,7 +211,9 @@ impl PromptStore {
                 self.root.display()
             ))
         })?;
-        Ok(render_template(&prompt_text, context))
+        let out = render_template(&prompt_text, context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
     }
 
     pub(crate) fn load_coding_rules(&self) -> String {

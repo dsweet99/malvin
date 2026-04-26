@@ -1,14 +1,13 @@
 //! Run directories and log paths.
 
 mod grounding_backup;
+pub mod run_id;
 mod startup_tag;
 
 pub use grounding_backup::{
     GroundingBackup, backup_workspace_grounding_if_present, restore_workspace_grounding,
 };
 
-use chrono::Utc;
-use rand::Rng;
 use std::path::{Path, PathBuf};
 
 pub use startup_tag::startup_request_tag_label;
@@ -45,6 +44,16 @@ impl RunArtifacts {
     pub fn artifact_result_md(&self) -> PathBuf {
         self.run_dir.join("result.md")
     }
+
+    #[must_use]
+    pub fn exp_log_path(&self) -> PathBuf {
+        let slug = self
+            .run_dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("run");
+        self.run_dir.join("_kpop").join(format!("exp_log_{slug}.md"))
+    }
 }
 
 /// Copy `plan_source` into a fresh run directory under `base_dir`/`_malvin`/…
@@ -56,7 +65,7 @@ pub fn create_run_artifacts(
     plan_source: &Path,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    let run_dir = create_run_dir(base_dir)?;
+    let run_dir = run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::copy(plan_source, &plan_target)?;
     Ok(RunArtifacts {
@@ -79,7 +88,7 @@ pub fn create_run_artifacts_from_text(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = create_run_dir(base_dir)?;
+    let run_dir = run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::write(&plan_target, plan_text)?;
     Ok(RunArtifacts {
@@ -101,7 +110,7 @@ pub fn create_kpop_run_artifacts(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = create_run_dir(base_dir)?;
+    let run_dir = run_id::create_run_dir(base_dir)?;
     let request_target = run_dir.join("request.md");
     std::fs::write(&request_target, request_text)?;
     Ok(RunArtifacts {
@@ -140,33 +149,6 @@ pub fn resolve_user_request(arg: &str) -> Result<(String, PathBuf), String> {
         || Ok((arg.to_string(), PathBuf::from("."))),
         resolve_at_file,
     )
-}
-
-pub(crate) fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
-    let parent = base_dir.unwrap_or_else(|| Path::new("."));
-    let run_root = parent.join("_malvin");
-    std::fs::create_dir_all(&run_root)?;
-    let identifier = build_identifier();
-    let run_dir = run_root.join(&identifier);
-    std::fs::create_dir(&run_dir)?;
-    Ok(run_dir)
-}
-
-pub(crate) fn build_identifier() -> String {
-    let stamp = Utc::now().format("%Y%m%d_%H%M%S");
-    let token = random_alnum(8);
-    format!("{stamp}_{token}")
-}
-
-pub(crate) fn random_alnum(len: usize) -> String {
-    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
-    (0..len)
-        .map(|_| {
-            let i = rng.gen_range(0..ALPHABET.len());
-            ALPHABET[i] as char
-        })
-        .collect()
 }
 
 #[cfg(test)]

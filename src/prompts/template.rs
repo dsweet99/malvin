@@ -65,14 +65,18 @@ pub fn render_mbc2_for_scheduled_kpop_block(
     store.render_prompt_only("mbc2.md", &ctx)
 }
 
-#[allow(clippy::must_use_candidate)]
-pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String>) -> String {
+pub fn merged_coding_rules(
+    store: &PromptStore,
+    context: &HashMap<String, String>,
+) -> Result<String, PromptError> {
     let render_context: HashMap<String, String> = context.clone();
     let header_raw = store.load_header();
     let header_expanded = render_template(&header_raw, &render_context);
     let rules_raw = store.load_coding_rules();
     let rules_expanded = render_template(&rules_raw, &render_context);
-    merge_header_and_coding_rules(&header_expanded, &rules_expanded)
+    let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
+    super::enforce_no_unresolved_braces(&merged)?;
+    Ok(merged)
 }
 
 #[cfg(test)]

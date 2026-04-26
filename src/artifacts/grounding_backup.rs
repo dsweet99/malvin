@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::random_alnum;
+use super::run_id::random_alnum;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GroundingBackup {

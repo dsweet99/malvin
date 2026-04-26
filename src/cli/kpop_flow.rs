@@ -11,7 +11,7 @@ use malvin::artifacts::{
 use malvin::kpop_creative_enabled;
 use malvin::kpop_multiturn::KpopMultiturnState;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use malvin::orchestrator::{format_exp_log_relative, workflow_context_paths_only};
+use malvin::orchestrator::workflow_context_paths_only;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore, merged_coding_rules};
 
@@ -62,7 +62,7 @@ impl KpopTurnPrompts<'_> {
             .store
             .render_prompt_only(body_file, ctx)
             .map_err(|e: PromptError| e.0)?;
-        let rules = merged_coding_rules(self.store, ctx);
+        let rules = merged_coding_rules(self.store, ctx).map_err(|e: PromptError| e.0)?;
         Ok(format!(
             "{}\n\n{}\n\n{}",
             rules.trim_end(),
@@ -102,29 +102,17 @@ pub struct KpopPrepared {
     text: String,
 }
 
-fn exp_log_path_for(run_dir: &Path) -> PathBuf {
-    let slug = run_dir
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("run");
-    run_dir.join("_kpop").join(format!("exp_log_{slug}.md"))
-}
-
 fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let exp_log_path = exp_log_path_for(&artifacts.run_dir);
+    let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
         .ok_or_else(|| "kpop exp log path has no parent directory".to_string())?;
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
-    let mut context = workflow_context_paths_only(&artifacts);
-    context.insert(
-        "exp_log".to_string(),
-        format_exp_log_relative(&artifacts, &exp_log_path),
-    );
+    let context = workflow_context_paths_only(&artifacts);
     Ok(KpopPrepared {
         artifacts,
         exp_log_path,
@@ -251,7 +239,7 @@ fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::kpop_flow::merge_kpop_acp_with_grounding_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_schedule_and_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
-    let _ = stringify!(crate::cli::kpop_flow::exp_log_path_for);
+    let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
@@ -285,10 +273,19 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let store = PromptStore::with_root(tmp.path().to_path_buf());
     store.ensure_defaults().unwrap();
     let mut base = HashMap::new();
-    base.insert(
-        "exp_log".to_string(),
-        "_malvin/run42/_kpop/exp_log_run42.md".to_string(),
-    );
+    for (k, v) in [
+        ("plan_path", "./_malvin/run42/plan.md"),
+        ("grounding_path", "./grounding.md"),
+        ("kpop_log_dir", "./_malvin/run42/_kpop"),
+        ("review_path", "./review.md"),
+        ("result_path", "./_malvin/run42/result.md"),
+        (
+            "exp_log",
+            "_malvin/run42/_kpop/exp_log_run42.md",
+        ),
+    ] {
+        base.insert(k.to_string(), v.to_string());
+    }
     let mut turn = KpopTurnPrompts {
         store: &store,
         base: &base,

@@ -56,6 +56,7 @@ pub(crate) async fn run_reviewer_pair_once(
 
     let repo_style = read_coder_repo_style_text(&client.style_prompt_path);
     let review_full = prepend_coder_repo_style_to_prompt(pair.review_body, repo_style.as_deref());
+    crate::prompts::enforce_no_unresolved_braces(&review_full).map_err(|e| AgentError(e.0))?;
 
     let t_review = Instant::now();
     let review_out = s
@@ -94,6 +95,7 @@ async fn kpop_round(
     who: &str,
     phase: crate::run_timing::TimingPhase,
 ) -> Result<(), AgentError> {
+    crate::prompts::enforce_no_unresolved_braces(text).map_err(|e| AgentError(e.0))?;
     let t0 = Instant::now();
     match session.prompt(text, log, who, None).await {
         Ok(()) => {

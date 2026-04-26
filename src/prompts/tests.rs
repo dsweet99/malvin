@@ -207,6 +207,27 @@ fn render_prompt_only_skips_coding_rules_injection() {
 }
 
 #[test]
+fn render_fails_when_double_brace_remains() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "").unwrap();
+    std::fs::write(root.join("coding_rules.md"), "").unwrap();
+    std::fs::write(root.join("implement.md"), "x {{ not_in_context }} y").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.render("implement.md", &HashMap::new()).unwrap_err();
+    assert!(
+        err.0.contains("{{"),
+        "expected brace rejection, got {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn enforce_no_unresolved_braces_ok_when_clean() {
+    assert!(super::enforce_no_unresolved_braces("no templates").is_ok());
+}
+
+#[test]
 fn merge_header_and_coding_rules_combines_nonempty() {
     assert_eq!(
         merge_header_and_coding_rules("head", "rules"),
