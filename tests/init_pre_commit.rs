@@ -224,8 +224,8 @@ fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_r
     assert!(out.status.success(), "malvin init failed: {out:?}");
 
     assert!(
-        project.path().join(".malvin/memory/style.md").exists(),
-        "init should install .malvin/memory/style.md"
+        project.path().join(".malvin_memory/style.md").exists(),
+        "init should install .malvin_memory/style.md"
     );
 
     let head = Command::new("git")
@@ -270,8 +270,8 @@ fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_r
         "initial commit should include grounding.md"
     );
     assert!(
-        tracked_stdout.contains(".malvin/memory/style.md"),
-        "initial commit should include .malvin/memory/style.md"
+        tracked_stdout.contains(".malvin_memory/style.md"),
+        "initial commit should include .malvin_memory/style.md"
     );
 }
 

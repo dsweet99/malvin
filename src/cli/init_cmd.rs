@@ -172,7 +172,7 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
         ADMIN_CHECK_UNTRACKED,
         force,
     )?;
-    write_text_file(&root.join(".malvin/memory").join("style.md"), TPL_STYLE, force)
+    write_text_file(&root.join(".malvin_memory").join("style.md"), TPL_STYLE, force)
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
