@@ -57,7 +57,7 @@ pub struct CodeArgs {
 #[derive(Args, Debug)]
 pub struct KpopArgs {
     /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 10, alias = "max-loops")]
     pub max_hypotheses: usize,
     /// Drives mean KPOP block size and MBC2 interleave; higher = more frequent MBC2 turns and smaller KPOP blocks. Non-finite or ≤ 0 disables MBC2 turns (pure multiturn KPOP).
     #[arg(long, default_value_t = 0.10)]

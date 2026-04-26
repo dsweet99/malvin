@@ -610,6 +610,21 @@ fn kpop_timing_uses_kpop_label_not_implement() {
 
 #[test]
 #[cfg(all(unix, target_os = "linux"))]
+fn kpop_max_loops_alias_is_accepted() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_update_js(),
+        "kpop --no-learn --p-creative 0 --max-loops 1 investigate",
+        None,
+    );
+    let stderr = String::from_utf8_lossy(&run.output.stderr);
+    assert!(
+        !stderr.contains("unexpected argument '--max-loops'"),
+        "legacy --max-loops should be accepted as alias for --max-hypotheses: {stderr:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
 fn do_pty_preserves_bold_markers_without_global_no_markdown() {
     let out = run_do_under_script(&[]);
     assert!(

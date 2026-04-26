@@ -49,3 +49,19 @@ CONFIDENCE: 3
 TRIGGER: plan grounding search  
 ADVICE: Use root `plan.md` plus `_malvin/**/plan.md` and `grounding.md` as the workflow control path.  
 CONFIDENCE: 4
+
+TRIGGER: review concerns
+ADVICE: Handle `review.md` findings with targeted code fixes and direct regression tests in nearby test modules.
+CONFIDENCE: 3
+
+TRIGGER: compatibility alias
+ADVICE: Keep external CLI compatibility when renaming flags (e.g., add aliases and deprecation notes rather than hard breaks).
+CONFIDENCE: 3
+
+TRIGGER: plan evidence
+ADVICE: In review mode, prefer behavior assertions and concrete parse/runtime outcomes over structure-only checks.
+CONFIDENCE: 3
+
+TRIGGER: harness drift
+ADVICE: When adding evaluation scripts, mirror success-path semantics (`EVAL_PASS`) and deterministic oracle checks.
+CONFIDENCE: 3
