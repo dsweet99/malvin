@@ -1,92 +1,51 @@
-# LLM style — malvin (index)
+# LLM style — malvin
 
-When `.cursorrules` says so, read this file **first** on the opening message—before searches or other reads. **TRIGGER** index; detail in topic files:
-- **`malvin_tooling.md`** — gates, ACP, `malvin do` (raw `workflow_context_paths_only` vs cooked `workflow_context`), `DoArgs` in `do_flow.rs` (not `args.rs`), `default_repo/` vs root `admin/check_untracked`, kiss, `cli_parity`, review sync, run timing, `malvin code`
-- **`malvin_debugging.md`** — KPOP HPF, falsify, `_malvin/**/plan.md` (gitignore—read by path), `ABORT:`, workspace `rg` fallback
-- **`malvin_kpop_schedule.md`** — multiturn, prompts, exact `LGTM` / `is_lgtm_str`
-- **`malvin_evaluations.md`** — `evaluations/*.sh`, temp `grounding.md`, **`HOME` outside worktree**, **`max_loops_exhausted_rs.sh`** / default `--max-loops` (5), `EVAL_PASS`, negative-control oracles, **`malvin init rust`** vs **`Cargo.toml`**, **`kiss`**/`bash -n`/`check_untracked` scope, calc wall time, stderr-on-success, post-`malvin code` gates
-- **`authoring_llm_style.md`** — index <100 lines; topic split
+When `.cursorrules` says so, read this file first before any search or file read.
 
-## Hard constraints
+## Index (topic files)
+
+- `malvin_tooling.md`: command/quality gate matrix, Rust+Python checks, `malvin do`/`malvin code` behavior.
+- `malvin_debugging.md`: KPOP HPF, falsify, `_malvin/**/plan.md`, ABORT handling, workspace `rg` fallback.
+- `malvin_kpop_schedule.md`: KPOP cadence, review timing, exact `LGTM` / `is_lgtm_str`.
+- `malvin_evaluations.md`: `evaluations/` harness rules, `HOME` isolation, max-loops control.
+- `authoring_llm_style.md`: index maintenance and new TRIGGER/ADVICE additions.
 
 TRIGGER: .kissconfig  
-ADVICE: Never edit `.kissconfig`.
+ADVICE: Never edit `.kissconfig`.  
 CONFIDENCE: 0
-
-TRIGGER: NEVER CALL GIT  
-ADVICE: Do not run git commands; users stage/commit locally. See `malvin_tooling.md` § Untracked.
-CONFIDENCE: 1
 
 TRIGGER: grounding.md never edit  
-ADVICE: **Never edit `grounding.md`**. Update tests instead if `cli_parity.rs` checks fail. See `malvin_tooling.md` § Tests.
+ADVICE: Never edit `grounding.md`.  
 CONFIDENCE: 4
 
-## General methodology
-
-TRIGGER: Hypothesis minimal diff  
-ADVICE: Label uncertain reasoning Hypothesis (predictions/test/confounders); reserve Claim for cited evidence (code, logs, metrics). Change only what the task requires; match naming, layout, and comment level; avoid drive-by refactors.
-CONFIDENCE: 1
-
 TRIGGER: review grounding  
-ADVICE: Read `review.md` + `grounding.md`; update root `review.md` after fixes. See `malvin_tooling.md` § Review sync.
+ADVICE: Read `review.md` + `grounding.md`; keep root `review.md` in sync.  
 CONFIDENCE: 7
 
-TRIGGER: user communication  
-ADVICE: Precise prose; full paths/URLs; `startLine:endLine:path` citations; proportional length. Prefer running commands over instruction-only. See `malvin_debugging.md` § KPOP protocol completeness.
+TRIGGER: style md line budget  
+ADVICE: Keep `./.llm_style/style.md` under 100 lines; move longer ADVICE into topic files.  
+CONFIDENCE: 0
+
+TRIGGER: no git commands  
+ADVICE: Do not run git commands; user manages git state.  
 CONFIDENCE: 1
 
-## Tooling (detail in malvin_tooling.md)
+TRIGGER: chat learnings  
+ADVICE: When asked, return short bullets on new learnings: codebase structure, algorithms/methods/results, tooling constraints, user preferences, agent pacing, code quality.  
+CONFIDENCE: 1
 
 TRIGGER: all checks pre-commit  
-ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
+ADVICE: If a behavior-affecting change is made, run at least: `kiss check .`, `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`, `cargo test`, `ruff check`, `pytest -sv tests`.  
 CONFIDENCE: 3
 
-TRIGGER: behavioral tests first
-ADVICE: Prefer runtime behavior assertions over `include_str(...).contains(...)` guards. For `malvin do` and `malvin code`, assert exact stdout line order/content and absence of protocol/tag leakage (`"jsonrpc"`, `<do`, `:[`); avoid `--no-tee` when validating stdout behavior.
+TRIGGER: behavioral tests first  
+ADVICE: Prefer behavior-level assertions over structure-only checks. For `malvin do` and `malvin code`, validate exact stdout content and avoid leaked protocol chrome.  
 CONFIDENCE: 1
 
-TRIGGER: test mock helpers  
-ADVICE: `tests/common/mod.rs` has `test_home_workspace()`, `write_mock_executable(path, js)`, and `acp_mock_js(preamble, prompt_handler)` builder. Use these; do not duplicate setup/shebang/chmod in test files.
-CONFIDENCE: 1
-
-TRIGGER: cfg unix test gating  
-ADVICE: ACP mock tests and `write_mock_executable` / `PermissionsExt` are `#[cfg(unix)]`-only. Gate all imports used exclusively by unix tests with `#[cfg(unix)]`.
-CONFIDENCE: 1
-
-TRIGGER: coalesce word split  
-ADVICE: `coalesce_flush_cap` splits at last word boundary (space) before 125-scalar cap via `coalesce_word_split_points`. See `malvin_tooling.md` § coalesce not TTY wrap. Regression: `reader_tests::coalesce_flush_cap_splits_at_word_boundary` + integration `do_stdout::do_wraps_wordy_long_text_at_word_boundaries`.
-CONFIDENCE: 1
-
-TRIGGER: malvin do output pipeline  
-ADVICE: Agent chunks → `coalesce_append_chunk` (buffer 125) → `trace_file_write_line` → `trace_tee_stdout_line` → `print_tee_unprefixed_wrapped_line` → `wrap_words_bounded`. Coalescer is upstream of word-wrap. See `malvin_tooling.md` § Terminal wrap.
-CONFIDENCE: 1
-
-TRIGGER: kiss check and limits  
-ADVICE: `kiss check .` (full project). See `malvin_tooling.md` § kiss.
-CONFIDENCE: 1
-
-TRIGGER: malvin do CLI  
-ADVICE: Default raw vs `--cooked`; raw `do_header` uses `workflow_context_paths_only` (no `kpop_common` preload), cooked `header` uses `workflow_context` for `{{ kpop }}` in custom templates. See `malvin_tooling.md` § CLI.
-CONFIDENCE: 2
-
-TRIGGER: Rust 2024 edition  
-ADVICE: `gen` is keyword; `set_var`/`remove_var` are `unsafe`. See `malvin_tooling.md` § Rust edition 2024.
-CONFIDENCE: 0
-
-TRIGGER: evaluation scripts  
-ADVICE: Put harnesses in `evaluations/`; run in temp repos; keep `HOME` outside the git worktree; assert stdout/stderr/exit code contracts; print `EVAL_PASS` only after all assertions pass. See `malvin_evaluations.md` (max-loops exhaustion harness, calc CI wall time, negative oracles, `malvin init rust` vs `Cargo.toml`, `kiss`/`bash -n`/`check_untracked` scope).
-CONFIDENCE: 1
-
-TRIGGER: eval HOME isolation  
-ADVICE: Never point `HOME` at a directory inside the temp git root; use two `mktemp -d` paths (workdir vs home). See `malvin_evaluations.md` § eval isolated repo, § eval max loops exhaustion.
-CONFIDENCE: 0
-
-## KPOP, review, plans
-
-TRIGGER: KPOP HPF and review LGTM  
-ADVICE: Multiturn and HPF: `malvin_kpop_schedule.md` / `malvin_debugging.md`. `is_lgtm_str` / `sync_review_file` sharp edges; root `review.md` must be **exactly** `LGTM` (trim) for automation—`malvin_kpop_schedule.md` § `review.md is_lgtm exact`.
+TRIGGER: KPOP LGTM exact  
+ADVICE: Maintain `review.md` as exactly `LGTM` (trimmed) for successful automation handoff.  
 CONFIDENCE: 3
 
 TRIGGER: plan grounding search  
-ADVICE: Root `plan.md` vs `_malvin/**/plan.md` (cited path—may be gitignored), `ABORT:`, `grounding.md` one-line workflow vs full CLI in `.llm_style`, workspace **search/glob I/O** → `rg` from repo root. See `malvin_debugging.md` § plans, § plan vs grounding, § workspace search.
+ADVICE: Use root `plan.md` plus `_malvin/**/plan.md` and `grounding.md` as the workflow control path.  
 CONFIDENCE: 4
