@@ -1,6 +1,7 @@
 use std::io::{IsTerminal, stderr, stdout};
 
 use crate::ansi_strip::strip_ansi_escapes;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 fn columns_from_env() -> Option<usize> {
     std::env::var("COLUMNS")
@@ -20,9 +21,7 @@ fn columns_from_tty() -> Option<usize> {
 
 #[must_use]
 pub fn terminal_columns() -> usize {
-    columns_from_env()
-        .or_else(columns_from_tty)
-        .unwrap_or(80)
+    columns_from_env().or_else(columns_from_tty).unwrap_or(80)
 }
 
 /// True when stdout is a TTY, or `COLUMNS` parses to a column count in `20..=500`, so long log
@@ -54,16 +53,26 @@ pub fn line_wrap_for_prefix_len(
     allow_word_wrap: bool,
 ) -> (usize, bool) {
     let max_payload = terminal_columns().saturating_sub(prefix_len).max(1);
-    let wrap = allow_word_wrap && line.chars().count() > max_payload;
+    let wrap = allow_word_wrap && line.width() > max_payload;
     (max_payload, wrap)
 }
 
-fn line_wrap_meta_tagged_malvin(ts: &str, who: &str, line: &str, allow_word_wrap: bool) -> (usize, bool) {
+fn line_wrap_meta_tagged_malvin(
+    ts: &str,
+    who: &str,
+    line: &str,
+    allow_word_wrap: bool,
+) -> (usize, bool) {
     let prefix_len = malvin_tagged_stdout_prefix_len(ts, who);
     line_wrap_for_prefix_len(prefix_len, line, allow_word_wrap)
 }
 
-fn line_wrap_meta_tagged_plain(ts: &str, who: &str, line: &str, allow_word_wrap: bool) -> (usize, bool) {
+fn line_wrap_meta_tagged_plain(
+    ts: &str,
+    who: &str,
+    line: &str,
+    allow_word_wrap: bool,
+) -> (usize, bool) {
     let prefix_len = super::format_line_with_timestamp(ts, who, "")
         .chars()
         .count();
@@ -80,53 +89,50 @@ pub fn stderr_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
     line_wrap_meta_tagged_plain(ts, who, line, stderr_allows_log_word_wrap())
 }
 
-fn split_long_word(word: &str, max_payload_chars: usize) -> Vec<String> {
-    if max_payload_chars == 0 {
-        return vec![word.to_string()];
-    }
-    if word.chars().count() <= max_payload_chars {
-        return vec![word.to_string()];
-    }
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    let mut cur_len: usize = 0;
-    for ch in word.chars() {
-        if cur_len >= max_payload_chars {
-            out.push(std::mem::take(&mut cur));
-            cur_len = 0;
-        }
-        cur.push(ch);
-        cur_len += 1;
-    }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
+fn char_display_cell(ch: char) -> usize {
+    let w = UnicodeWidthChar::width(ch).unwrap_or(0);
+    if w == 0 && !ch.is_whitespace() { 1 } else { w }
 }
 
 #[must_use]
-fn wrap_words_single_line_no_newlines(max_payload_chars: usize, text: &str) -> Vec<String> {
-    let mut lines = Vec::new();
-    let mut cur_line = String::new();
-    let mut cur_len: usize = 0;
-    for word in text.split_whitespace() {
-        for chunk in split_long_word(word, max_payload_chars) {
-            let chunk_n = chunk.chars().count();
-            let can_extend = cur_line.is_empty() || cur_len + 1 + chunk_n <= max_payload_chars;
-            if !can_extend {
-                lines.push(std::mem::take(&mut cur_line));
-                cur_len = 0;
-            }
-            if !cur_line.is_empty() {
-                cur_line.push(' ');
-                cur_len += 1;
-            }
-            cur_line.push_str(&chunk);
-            cur_len += chunk_n;
-        }
+fn wrap_words_single_line_no_newlines(max_display_width: usize, text: &str) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut width_prefix: Vec<usize> = vec![0; chars.len() + 1];
+    for i in 0..chars.len() {
+        width_prefix[i + 1] = width_prefix[i].saturating_add(char_display_cell(chars[i]));
     }
-    if !cur_line.is_empty() || lines.is_empty() {
-        lines.push(cur_line);
+    let mut lines = Vec::new();
+    let mut start = 0;
+    while start < chars.len() {
+        if width_prefix[chars.len()] - width_prefix[start] <= max_display_width {
+            lines.push(chars[start..].iter().collect());
+            break;
+        }
+        let mut end = start;
+        while end < chars.len()
+            && width_prefix[end + 1].saturating_sub(width_prefix[start]) <= max_display_width
+        {
+            end += 1;
+        }
+        if end == start {
+            end = start + 1;
+        }
+        let split = chars[start..end]
+            .iter()
+            .rposition(|ch| ch.is_whitespace())
+            .map_or(end, |idx| {
+                let mut split = start + idx + 1;
+                while split < end && chars[split].is_whitespace() {
+                    split += 1;
+                }
+                split
+            });
+        let split = if split > start { split } else { end };
+        lines.push(chars[start..split].iter().collect());
+        start = split;
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
     }
     lines
 }
@@ -154,7 +160,7 @@ pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
 mod tests {
     use std::sync::Mutex;
 
-    use super::{split_long_word, terminal_columns, wrap_words_bounded};
+    use super::{terminal_columns, wrap_words_bounded};
 
     static COLUMNS_TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -173,8 +179,25 @@ mod tests {
     #[test]
     fn wrap_splits_at_word_boundary() {
         let v = wrap_words_bounded(10, "one two three four five");
-        assert!(v.iter().all(|s| s.chars().count() <= 10));
-        assert_eq!(v.join(" "), "one two three four five");
+        assert!(
+            v.iter()
+                .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
+        );
+        assert_eq!(v.concat(), "one two three four five");
+    }
+
+    #[test]
+    fn wrap_preserves_repeated_spaces() {
+        let v = wrap_words_bounded(6, "aa  bb  cc");
+        assert_eq!(v, vec!["aa  ", "bb  cc"]);
+        assert_eq!(v.concat(), "aa  bb  cc");
+    }
+
+    #[test]
+    fn wrap_preserves_leading_indent() {
+        let v = wrap_words_bounded(8, "    code block");
+        assert_eq!(v, vec!["    ", "code ", "block"]);
+        assert_eq!(v.concat(), "    code block");
     }
 
     #[test]
@@ -182,14 +205,29 @@ mod tests {
         let w = "a".repeat(25);
         let v = wrap_words_bounded(10, &w);
         assert_eq!(v.len(), 3);
-        assert!(v.iter().all(|s| s.chars().count() <= 10));
+        assert!(
+            v.iter()
+                .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10)
+        );
         assert_eq!(v.concat(), w);
     }
 
     #[test]
-    fn split_long_word_respects_boundary() {
-        let v = split_long_word("abcdefghij", 4);
-        assert_eq!(v, vec!["abcd", "efgh", "ij"]);
+    fn wrap_splits_wide_emoji_by_display_width() {
+        let cell = "😀";
+        assert_eq!(unicode_width::UnicodeWidthStr::width(cell), 2);
+        let line = [cell; 6].join("");
+        let v = wrap_words_bounded(10, &line);
+        assert!(
+            v.len() >= 2,
+            "six width-2 cells exceed width 10, expected multiple segments: {v:?}"
+        );
+        assert!(
+            v.iter()
+                .all(|s| unicode_width::UnicodeWidthStr::width(s.as_str()) <= 10),
+            "{v:?}"
+        );
+        assert_eq!(v.concat(), line);
     }
 
     #[allow(unsafe_code)]
@@ -248,6 +286,7 @@ mod tests {
             stringify!(super::stderr_line_wrap_meta),
             stringify!(super::wrap_words_bounded),
             stringify!(super::wrap_words_single_line_no_newlines),
+            stringify!(super::char_display_cell),
             stringify!(super::columns_from_env),
             stringify!(super::columns_from_tty),
             stringify!(super::malvin_tagged_stdout_prefix_len),

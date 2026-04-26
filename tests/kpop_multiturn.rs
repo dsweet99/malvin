@@ -4,13 +4,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn::{KpopMultiturnParams, KpopMultiturnState};
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_schedule::{
     KPOP_CATCHUP_CAP, block_mean_from_p_creative, count_mbc2_entries, hypotheses_emitted,
     poisson_block_size,
 };
-use malvin::MultiturnPrompt;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
@@ -152,9 +152,7 @@ fn kpop_block_finishes_after_agent_writes_enough_steps() {
     }
     let p2 = state.next_prompt().expect("second");
     assert!(p2.is_some());
-    assert!(
-        hypotheses_emitted(&std::fs::read_to_string(&path).unwrap()) >= want
-    );
+    assert!(hypotheses_emitted(&std::fs::read_to_string(&path).unwrap()) >= want);
 }
 
 #[test]
@@ -174,7 +172,9 @@ fn kpop_catch_up_exhausted_returns_error_when_log_stays_empty() {
         assert!(state.next_prompt().unwrap().is_some());
         state.record_kpop_block_prompt_completed();
     }
-    let err = state.next_prompt().expect_err("expected catch-up exhaustion");
+    let err = state
+        .next_prompt()
+        .expect_err("expected catch-up exhaustion");
     assert!(
         err.contains("initial attempt") && err.contains("catch-up attempts"),
         "unexpected error: {err}"
@@ -269,11 +269,7 @@ fn mbc2_pure_retries_once_when_no_new_mbc2_line() {
 fn kpop_solved_stops_before_mbc2_when_creative_enabled() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
-    std::fs::write(
-        &path,
-        "## Step 1 — KPOP test\n## KPOP_SOLVED\ndone\n",
-    )
-    .unwrap();
+    std::fs::write(&path, "## Step 1 — KPOP test\n## KPOP_SOLVED\ndone\n").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: StubPrompts,
         exp_log_path: path,

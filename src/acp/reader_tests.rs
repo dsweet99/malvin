@@ -299,7 +299,10 @@ fn coalesce_flush_cap_splits_at_word_boundary() {
         }
     }
     for w in buf.split_whitespace() {
-        assert_eq!(w, "abcdefghij", "remainder should not contain partial words: {w:?}");
+        assert_eq!(
+            w, "abcdefghij",
+            "remainder should not contain partial words: {w:?}"
+        );
     }
 }
 
@@ -314,27 +317,71 @@ fn verbose_io_coalescer_feed_and_flush_all_covers_paths() {
 }
 
 #[test]
+fn verbose_io_coalescer_switch_flushes_previous_kind_buffer() {
+    let mut c = VerboseIoCoalescer::default();
+    c.feed(SessionUpdateChunkKind::Message, "m1");
+    assert_eq!(c.message, "m1");
+    assert!(c.thought.is_empty());
+    c.feed(SessionUpdateChunkKind::Thought, "t1");
+    assert!(
+        c.message.is_empty(),
+        "message buffer should flush on kind switch"
+    );
+    assert_eq!(c.thought, "t1");
+    c.feed(SessionUpdateChunkKind::Message, "m2");
+    assert_eq!(c.message, "m2");
+    assert!(
+        c.thought.is_empty(),
+        "thought buffer should flush on kind switch"
+    );
+}
+
+#[test]
 fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     let mut c = TraceChunkCoalescer::default();
     assert!(c.feed(SessionUpdateChunkKind::Message, "hel").is_empty());
     assert!(c.feed(SessionUpdateChunkKind::Message, "lo").is_empty());
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
-    assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "hello".to_string()));
+    assert_eq!(
+        fin[0],
+        (SessionUpdateChunkKind::Message, "hello".to_string())
+    );
+}
+
+#[test]
+fn trace_chunk_coalescer_feed_preserves_repeated_interleaved_order() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Message, "m1").is_empty());
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Thought, "t1"),
+        vec![(SessionUpdateChunkKind::Message, "m1".to_string())]
+    );
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Message, "m2"),
+        vec![(SessionUpdateChunkKind::Thought, "t1".to_string())]
+    );
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Thought, "t2"),
+        vec![(SessionUpdateChunkKind::Message, "m2".to_string())]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Thought, "t2".to_string())]
+    );
 }
 
 #[test]
 fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_then_message() {
     let mut c = TraceChunkCoalescer::default();
     assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
-    assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
-    let fin = c.flush_all();
     assert_eq!(
-        fin,
-        vec![
-            (SessionUpdateChunkKind::Thought, "t".to_string()),
-            (SessionUpdateChunkKind::Message, "m".to_string()),
-        ]
+        c.feed(SessionUpdateChunkKind::Message, "m"),
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string()),]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Message, "m".to_string())]
     );
 }
 
@@ -342,14 +389,13 @@ fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_the
 fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_message_then_thought() {
     let mut c = TraceChunkCoalescer::default();
     assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
-    assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
-    let fin = c.flush_all();
     assert_eq!(
-        fin,
-        vec![
-            (SessionUpdateChunkKind::Message, "m".to_string()),
-            (SessionUpdateChunkKind::Thought, "t".to_string()),
-        ]
+        c.feed(SessionUpdateChunkKind::Thought, "t"),
+        vec![(SessionUpdateChunkKind::Message, "m".to_string()),]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string())]
     );
 }
 
@@ -385,7 +431,8 @@ async fn write_trace_line_coalesced_writes_non_chunk_lines() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
-        emit_stdout_markdown: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -425,7 +472,8 @@ async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
         stdout_replacement: Some("<suppressed>"),
         placeholder_emitted: false,
         raw_output: false,
-        emit_stdout_markdown: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -463,7 +511,8 @@ async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
-        emit_stdout_markdown: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     let mut c = TraceChunkCoalescer::default();
     super::trace_line_write::write_trace_line_coalesced(
@@ -502,7 +551,8 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
-        emit_stdout_markdown: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     crate::acp::trace_file_write_line(&mut writer, "hello", false, None).await;
     drop(writer);
@@ -532,6 +582,7 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
@@ -578,6 +629,7 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
@@ -610,7 +662,8 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
-        emit_stdout_markdown: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -624,6 +677,42 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     assert!(
         s.contains("[internal reasoning]"),
         "thought chunks should be bracketed in traces, got {s:?}"
+    );
+}
+
+#[tokio::test]
+async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-md-tee.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "<kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "**x**",
+        true,
+        Some(SessionUpdateChunkKind::Message),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains("**x**"),
+        "trace file keeps raw markdown regardless of stdout markdown flag: {s:?}"
     );
 }
 

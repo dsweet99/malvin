@@ -1,13 +1,14 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
-mod acp_tee_markdown;
 mod acp_tee;
+mod acp_tee_markdown;
 pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
     print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
-    print_stdout_acp_tee_line_with_timestamp_dim_payload, termimad_inline_payload_for_stdout,
+    print_stdout_acp_tee_line_with_timestamp_dim_plain, termimad_inline_payload_for_stdout,
+    termimad_text_lines_for_stdout,
 };
 
 #[cfg(test)]
@@ -159,8 +160,8 @@ mod tests {
     use super::{
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
         format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
-        format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
-        print_outgoing_prompt_log, print_stdout_line, print_stdout_text,
+        format_log_tag_inner, init_stdout_style, is_command_prelude_line,
+        print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_text,
     };
 
     #[test]

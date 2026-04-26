@@ -39,7 +39,7 @@ CONFIDENCE: 1
 
 TRIGGER: all checks pre-commit  
 ADVICE: Full suite in `malvin_tooling.md` § Required checks. Fix every failure; rerun mid-task.
-CONFIDENCE: 2
+CONFIDENCE: 3
 
 TRIGGER: behavioral tests first
 ADVICE: Prefer runtime behavior assertions over `include_str(...).contains(...)` guards. For `malvin do` and `malvin code`, assert exact stdout line order/content and absence of protocol/tag leakage (`"jsonrpc"`, `<do`, `:[`); avoid `--no-tee` when validating stdout behavior.

@@ -36,9 +36,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
         "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
         "review_2.md" => Some(include_str!("../../default_prompts/review_2.md")),
-        "kpop.md" | "kpop_common.md" => {
-            Some(include_str!("../../default_prompts/kpop_common.md"))
-        }
+        "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         "mbc2_pure.md" => Some(include_str!("../../default_prompts/mbc2_pure.md")),
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),

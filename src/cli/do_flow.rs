@@ -16,7 +16,6 @@ use malvin::artifacts::{
     resolve_user_request, restore_workspace_grounding,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
-use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
@@ -26,10 +25,9 @@ struct DoCoderRun {
     skip_repo_style: bool,
 }
 
-const fn do_mode_flags(cooked: bool, thoughts: bool) -> (bool, bool) {
-    let pass_through_raw_agent_stream = !thoughts;
-    let skip_repo_style = !cooked;
-    (pass_through_raw_agent_stream, skip_repo_style)
+const fn do_mode_flags(cooked: bool) -> (bool, bool) {
+    const DO_RAW_OUTPUT: bool = true;
+    (DO_RAW_OUTPUT, !cooked)
 }
 
 /// Arguments for [`run_do`].
@@ -69,7 +67,7 @@ pub async fn run_do(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let (raw_output, skip_repo_style) = do_mode_flags(do_args.cooked, do_args.thoughts);
+    let (raw_output, skip_repo_style) = do_mode_flags(do_args.cooked);
     let mut client = AgentClient::new(
         shared.model.clone(),
         super::agent_io_options(
@@ -78,6 +76,7 @@ pub async fn run_do(
             super::AgentStdoutTeeFlags {
                 emit_stdout_markdown: false,
                 raw_output,
+                show_thoughts_on_stdout: do_args.thoughts,
             },
         ),
     );
@@ -88,17 +87,17 @@ pub async fn run_do(
         .map_err(|e| e.to_string())?;
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Plain)?;
     }
 
     let (combined, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
-        let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
+        let (combined, header, user) =
+            combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
         (combined, (header, user))
     } else {
         let store = prepare_do_raw_prompt_store()?;
-        let (combined, header, user) =
-            combine_do_raw_header_and_user(&store, &artifacts, &text)?;
+        let (combined, header, user) = combine_do_raw_header_and_user(&store, &artifacts, &text)?;
         (combined, (header, user))
     };
 
@@ -108,13 +107,10 @@ pub async fn run_do(
         skip_repo_style,
     };
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
-    super::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &do_args.request)?;
+    super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    let restore_res = grounding_backup
-        .as_ref()
-        .map_or(Ok(()), |b| restore_workspace_grounding(&artifacts.work_dir, b));
+    let restore_res = restore_workspace_grounding(&artifacts.work_dir, &grounding_backup);
     timing_merge::prefer_primary_string_errors(acp_res, restore_res)?;
-    print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
@@ -139,7 +135,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts, store);
+    let context = workflow_context(artifacts, store).map_err(|e: PromptError| e.0)?;
     combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
 }
 
@@ -163,6 +159,10 @@ async fn run_do_acp(
         .await
         .map_err(|e| e.to_string())?;
     let timing = client.attach_run_timing_for_session();
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .set_implement_display_name("do");
     let log = artifacts.log_path("do");
     let (ref header, ref user) = coder.header_user_for_trace;
     let do_split = Some((header.as_str(), user.as_str()));
@@ -185,7 +185,7 @@ async fn run_do_acp(
         (Ok(()), Ok(())) => Ok(()),
         (Err(e), _) | (Ok(()), Err(e)) => Err(e.clone()),
     };
-    timing_merge::emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, merged)
+    timing_merge::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
 }
 
 #[test]
@@ -215,6 +215,7 @@ mod do_tests {
         let prompt_root = tmp.path().join("prompts");
         std::fs::create_dir_all(&prompt_root).expect("mkdir");
         std::fs::write(prompt_root.join(HEADER_MD), "HEADER_TOKEN\n").expect("header");
+        std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "ignored").expect("plan");
         let run_dir = tmp.path().join("_malvin").join("r");
@@ -354,22 +355,15 @@ mod do_tests {
 
     #[test]
     fn do_mode_flags_default_hides_thoughts() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(false, false);
+        let (raw_output, skip_repo_style) = super::do_mode_flags(false);
         assert!(raw_output);
         assert!(skip_repo_style);
     }
 
     #[test]
     fn do_mode_flags_cooked_keeps_thoughts_hidden_without_flag() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(true, false);
+        let (raw_output, skip_repo_style) = super::do_mode_flags(true);
         assert!(raw_output);
-        assert!(!skip_repo_style);
-    }
-
-    #[test]
-    fn do_mode_flags_thoughts_flag_enables_thoughts() {
-        let (raw_output, skip_repo_style) = super::do_mode_flags(true, true);
-        assert!(!raw_output);
         assert!(!skip_repo_style);
     }
 }

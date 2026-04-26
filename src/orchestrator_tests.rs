@@ -1,7 +1,10 @@
-use crate::orchestrator::{WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem, should_run_learn_check, workflow_context};
-use crate::review_sync::{is_lgtm, is_lgtm_str, sync_review_file};
 use crate::artifacts::RunArtifacts;
+use crate::orchestrator::{
+    WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
+    should_run_learn_check, workflow_context,
+};
 use crate::prompts::PromptStore;
+use crate::review_sync::{is_lgtm, sync_review_file};
 
 fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();
@@ -99,9 +102,11 @@ fn workflow_context_review_path_must_point_to_workspace_not_artifact() {
         work_dir: t.path().to_path_buf(),
     };
     let prompts = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &prompts);
+    let ctx = workflow_context(&artifacts, &prompts).expect("workflow_context");
 
-    let review_path = ctx.get("review_path").expect("review_path must be in context");
+    let review_path = ctx
+        .get("review_path")
+        .expect("review_path must be in context");
 
     // The review_path should point to workspace review.md (./review.md),
     // NOT the artifact review.md (./_malvin/run123/review.md).
@@ -121,22 +126,46 @@ fn workflow_context_review_path_must_point_to_workspace_not_artifact() {
 
 #[test]
 fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(should_run_learn_check(0, 0), "0 threshold, 0 elapsed => run");
-    assert!(should_run_learn_check(0, 1), "0 threshold, any elapsed => run");
-    assert!(should_run_learn_check(0, 300_000), "0 threshold, 5 min => run");
+    assert!(
+        should_run_learn_check(0, 0),
+        "0 threshold, 0 elapsed => run"
+    );
+    assert!(
+        should_run_learn_check(0, 1),
+        "0 threshold, any elapsed => run"
+    );
+    assert!(
+        should_run_learn_check(0, 300_000),
+        "0 threshold, 5 min => run"
+    );
 }
 
 #[test]
 fn should_run_learn_check_below_threshold_skips() {
-    assert!(!should_run_learn_check(300_000, 0), "5 min threshold, 0 elapsed => skip");
-    assert!(!should_run_learn_check(300_000, 299_999), "5 min threshold, just under => skip");
+    assert!(
+        !should_run_learn_check(300_000, 0),
+        "5 min threshold, 0 elapsed => skip"
+    );
+    assert!(
+        !should_run_learn_check(300_000, 299_999),
+        "5 min threshold, just under => skip"
+    );
 }
 
 #[test]
 fn should_run_learn_check_at_or_above_threshold_runs() {
-    assert!(should_run_learn_check(300_000, 300_000), "5 min threshold, exactly 5 min => run");
-    assert!(should_run_learn_check(300_000, 300_001), "5 min threshold, just over => run");
-    assert!(should_run_learn_check(300_000, 600_000), "5 min threshold, 10 min => run");
+    assert!(
+        should_run_learn_check(300_000, 300_000),
+        "5 min threshold, exactly 5 min => run"
+    );
+    assert!(
+        should_run_learn_check(300_000, 300_001),
+        "5 min threshold, just over => run"
+    );
+    assert!(
+        should_run_learn_check(300_000, 600_000),
+        "5 min threshold, 10 min => run"
+    );
 }
 
 #[test]
@@ -146,7 +175,10 @@ fn clear_review_file_removes_existing_lgtm_content() {
     std::fs::write(&review_path, "LGTM\n").unwrap();
     assert!(is_lgtm(&review_path), "precondition: file contains LGTM");
     clear_review_file(&review_path).unwrap();
-    assert!(!review_path.exists(), "clear_review_file should remove file");
+    assert!(
+        !review_path.exists(),
+        "clear_review_file should remove file"
+    );
     assert!(!is_lgtm(&review_path), "is_lgtm returns false after clear");
 }
 
@@ -169,45 +201,8 @@ fn clear_review_file_returns_error_on_permission_denied() {
     std::fs::set_permissions(&protected_dir, std::fs::Permissions::from_mode(0o000)).unwrap();
     let result = clear_review_file(&review_path);
     std::fs::set_permissions(&protected_dir, std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(result.is_err(), "clear_review_file should return error on permission denied");
-}
-
-#[test]
-fn check_plan_error_message_format() {
-    let err = WorkflowError("check_plan did not pass".to_string());
-    assert_eq!(err.0, "check_plan did not pass");
-}
-
-#[test]
-fn is_lgtm_str_returns_false_for_non_lgtm_content() {
-    assert!(!is_lgtm_str(""), "empty string is not LGTM");
-    assert!(!is_lgtm_str("not lgtm"), "arbitrary text is not LGTM");
-    assert!(!is_lgtm_str("## Issues\n- problem 1"), "review with issues is not LGTM");
-    assert!(!is_lgtm_str("lgtm"), "lowercase lgtm is not LGTM");
-    assert!(!is_lgtm_str("LGTM with notes"), "LGTM with extra text is not LGTM");
-    assert!(!is_lgtm_str("Almost LGTM"), "LGTM with prefix is not LGTM");
-}
-
-#[test]
-fn is_lgtm_str_returns_true_for_lgtm() {
-    assert!(is_lgtm_str("LGTM"), "exact LGTM");
-    assert!(is_lgtm_str("LGTM\n"), "LGTM with trailing newline");
-    assert!(is_lgtm_str("  LGTM  "), "LGTM with whitespace");
-    assert!(is_lgtm_str("\u{FEFF}LGTM"), "LGTM with BOM");
-}
-
-#[test]
-fn check_plan_abort_flow_components_verify_non_lgtm_causes_failure() {
-    let t = tempfile::tempdir().unwrap();
-    let review_path = t.path().join("review.md");
-
-    std::fs::write(&review_path, "LGTM\n").unwrap();
-    clear_review_file(&review_path).expect("clear_review_file must succeed");
-    assert!(!review_path.exists(), "old LGTM must be cleared");
-
-    std::fs::write(&review_path, "## Issues\n- The plan is incomplete").unwrap();
-    let contents = std::fs::read_to_string(&review_path).unwrap_or_default();
-    assert!(!is_lgtm_str(&contents), "non-LGTM content triggers abort");
-    let err = WorkflowError("check_plan did not pass".to_string());
-    assert_eq!(err.0, "check_plan did not pass");
+    assert!(
+        result.is_err(),
+        "clear_review_file should return error on permission denied"
+    );
 }

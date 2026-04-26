@@ -4,17 +4,21 @@ use std::path::{Path, PathBuf};
 
 use super::random_alnum;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GroundingBackup {
+    Missing,
+    Present(PathBuf),
+}
+
 /// When `work_dir/grounding.md` exists, copy it to `~/.malvin/groundings/<id>/grounding.md` and return that path.
-///
-/// Returns `None` when there is no workspace `grounding.md` to snapshot.
 ///
 /// # Errors
 ///
 /// Returns an error string if the destination directory cannot be created or the file cannot be copied.
-pub fn backup_workspace_grounding_if_present(work_dir: &Path) -> Result<Option<PathBuf>, String> {
+pub fn backup_workspace_grounding_if_present(work_dir: &Path) -> Result<GroundingBackup, String> {
     let src = work_dir.join("grounding.md");
     if !src.is_file() {
-        return Ok(None);
+        return Ok(GroundingBackup::Missing);
     }
     let id = random_alnum(5);
     let dest_dir = crate::prompts::user_home_dir()
@@ -24,7 +28,7 @@ pub fn backup_workspace_grounding_if_present(work_dir: &Path) -> Result<Option<P
     std::fs::create_dir_all(&dest_dir).map_err(|e| format!("grounding backup mkdir: {e}"))?;
     let dest = dest_dir.join("grounding.md");
     std::fs::copy(&src, &dest).map_err(|e| format!("grounding backup copy: {e}"))?;
-    Ok(Some(dest))
+    Ok(GroundingBackup::Present(dest))
 }
 
 /// Overwrite `work_dir/grounding.md` from a file returned by [`backup_workspace_grounding_if_present`].
@@ -32,24 +36,40 @@ pub fn backup_workspace_grounding_if_present(work_dir: &Path) -> Result<Option<P
 /// # Errors
 ///
 /// Returns an error string if the backup file cannot be read or `grounding.md` cannot be written.
-pub fn restore_workspace_grounding(work_dir: &Path, backup_file: &Path) -> Result<(), String> {
+pub fn restore_workspace_grounding(
+    work_dir: &Path,
+    backup: &GroundingBackup,
+) -> Result<(), String> {
     let dst = work_dir.join("grounding.md");
-    std::fs::copy(backup_file, &dst).map_err(|e| format!("grounding restore: {e}"))?;
-    Ok(())
+    match backup {
+        GroundingBackup::Missing => {
+            if dst.exists() {
+                std::fs::remove_file(&dst).map_err(|e| format!("grounding restore: {e}"))?;
+            }
+            Ok(())
+        }
+        GroundingBackup::Present(backup_file) => {
+            std::fs::copy(backup_file, &dst).map_err(|e| format!("grounding restore: {e}"))?;
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{backup_workspace_grounding_if_present, restore_workspace_grounding};
+    use super::{
+        GroundingBackup, backup_workspace_grounding_if_present, restore_workspace_grounding,
+    };
 
     #[test]
     fn grounding_backup_skips_when_workspace_file_missing() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path().join("empty");
         std::fs::create_dir_all(&work).unwrap();
-        assert!(backup_workspace_grounding_if_present(&work)
-            .unwrap()
-            .is_none());
+        assert_eq!(
+            backup_workspace_grounding_if_present(&work).unwrap(),
+            GroundingBackup::Missing
+        );
     }
 
     #[test]
@@ -66,11 +86,12 @@ mod tests {
         let work = tmp.path().join("repo");
         std::fs::create_dir_all(&work).unwrap();
         std::fs::write(work.join("grounding.md"), "ORIGINAL\n").unwrap();
-        let backup = backup_workspace_grounding_if_present(&work)
-            .unwrap()
-            .expect("backup path");
-        assert!(backup.starts_with(&home));
-        assert!(backup.is_file());
+        let backup = backup_workspace_grounding_if_present(&work).unwrap();
+        let GroundingBackup::Present(backup_path) = &backup else {
+            panic!("expected backup path");
+        };
+        assert!(backup_path.starts_with(&home));
+        assert!(backup_path.is_file());
         std::fs::write(work.join("grounding.md"), "MUTATED\n").unwrap();
         restore_workspace_grounding(&work, &backup).unwrap();
         assert_eq!(
@@ -83,5 +104,16 @@ mod tests {
                 None => std::env::remove_var("HOME"),
             }
         }
+    }
+
+    #[test]
+    fn grounding_backup_missing_restores_by_deleting_workspace_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path().join("repo");
+        std::fs::create_dir_all(&work).unwrap();
+        let backup = backup_workspace_grounding_if_present(&work).unwrap();
+        std::fs::write(work.join("grounding.md"), "CREATED\n").unwrap();
+        restore_workspace_grounding(&work, &backup).unwrap();
+        assert!(!work.join("grounding.md").exists());
     }
 }

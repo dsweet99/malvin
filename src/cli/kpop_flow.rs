@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
-    resolve_user_request, restore_workspace_grounding,
+    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    create_kpop_run_artifacts, resolve_user_request, restore_workspace_grounding,
 };
 use malvin::kpop_creative_enabled;
-use malvin::acp::AgentClient;
 use malvin::kpop_multiturn::KpopMultiturnState;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::orchestrator::{format_exp_log_relative, workflow_context_paths_only};
@@ -16,22 +16,21 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore, merged_coding_rules};
 
 use super::KpopArgs;
+use super::LEARN_MIN_ELAPSED_MS;
 use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
 use super::repo_checks;
 use super::shared_opts::SharedOpts;
-use super::LEARN_MIN_ELAPSED_MS;
 use super::timing_merge::{emit_run_timing_after_acp, prefer_primary_string_errors};
 
 fn merge_kpop_acp_with_grounding_restore(
     primary: Result<(), String>,
     work_dir: &Path,
-    grounding_backup: Option<&PathBuf>,
+    grounding_backup: &GroundingBackup,
 ) -> Result<(), String> {
-    let restore_res = grounding_backup
-        .map_or(Ok(()), |b| restore_workspace_grounding(work_dir, b));
+    let restore_res = restore_workspace_grounding(work_dir, grounding_backup);
     prefer_primary_string_errors(primary, restore_res)
 }
 
@@ -74,7 +73,11 @@ impl KpopTurnPrompts<'_> {
 }
 
 impl KpopMultiturnPrompts for KpopTurnPrompts<'_> {
-    fn kpop_block(&mut self, want: usize, remaining_after_this_turn: usize) -> Result<String, String> {
+    fn kpop_block(
+        &mut self,
+        want: usize,
+        remaining_after_this_turn: usize,
+    ) -> Result<String, String> {
         let mut ctx = self.base.clone();
         ctx.insert("want".to_string(), want.to_string());
         ctx.insert(
@@ -138,9 +141,7 @@ pub struct KpopAcpMultiturnCtx<'a, 'b> {
     pub store: &'a PromptStore,
 }
 
-pub async fn kpop_run_acp_multiturn(
-    ctx: KpopAcpMultiturnCtx<'_, '_>,
-) -> Result<(), String> {
+pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<(), String> {
     let learn_stored = kpop_learn_bundle(
         ctx.store,
         &ctx.prepared.context,
@@ -214,7 +215,7 @@ pub async fn run_kpop(
     merge_kpop_acp_with_grounding_restore(
         acp_result,
         &prepared.artifacts.work_dir,
-        grounding_backup.as_ref(),
+        &grounding_backup,
     )?;
 
     print_stdout_line(MALVIN_WHO, "DONE");

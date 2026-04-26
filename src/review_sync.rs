@@ -11,10 +11,9 @@ pub fn is_lgtm_str(content: &str) -> bool {
     t == "LGTM"
 }
 
-#[allow(dead_code, clippy::must_use_candidate)]
+#[cfg(test)]
 pub fn is_lgtm(review_path: &Path) -> bool {
-    std::fs::read_to_string(review_path)
-        .is_ok_and(|s| is_lgtm_str(&s))
+    std::fs::read_to_string(review_path).is_ok_and(|s| is_lgtm_str(&s))
 }
 
 fn clear_artifact_review(artifact_review_path: &Path) -> io::Result<()> {

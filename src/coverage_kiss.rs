@@ -101,7 +101,7 @@ fn kiss_stringify_log_paths() {
 
 #[test]
 fn kiss_stringify_review_sync() {
-    let _ = stringify!(crate::review_sync::is_lgtm);
+    let _ = stringify!(crate::review_sync::is_lgtm_str);
     let _ = stringify!(crate::review_sync::sync_review_file);
     let _ = stringify!(crate::review_sync::sync_review_then_is_lgtm);
 }
@@ -216,4 +216,3 @@ fn smoke_prompt_store_with_root() {
     ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
     let _ = store.render("implement.md", &ctx).expect("render");
 }
-

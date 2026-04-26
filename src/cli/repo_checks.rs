@@ -1,7 +1,7 @@
-use std::path::Path;
-use std::process::Command;
 use super::kiss_clamp;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
+use std::path::Path;
+use std::process::Command;
 
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
@@ -18,7 +18,6 @@ pub fn emit_repo_gate_stdout_line(output: RepoGateOutput, line: &str) {
 }
 
 pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    ensure_workspace_style_markers(work_dir, output)?;
     kiss_clamp::ensure_kiss_clamp_if_needed(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
     run_pre_commit_checks_or_warn(work_dir, output)
@@ -27,7 +26,11 @@ pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Resu
 /// Touch `<work_dir>/grounding.md` and `<work_dir>/.llm_style/style.md` when missing.
 /// Existing files are never touched.
 /// Returns an error string if a file or the `.llm_style` directory cannot be created.
-pub fn ensure_workspace_style_markers(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+#[cfg(test)]
+pub fn ensure_workspace_style_markers(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), String> {
     touch_if_missing(&work_dir.join("grounding.md"), output)?;
     let style_dir = work_dir.join(".llm_style");
     if !style_dir.is_dir() {
@@ -37,6 +40,7 @@ pub fn ensure_workspace_style_markers(work_dir: &Path, output: RepoGateOutput) -
     touch_if_missing(&style_dir.join("style.md"), output)
 }
 
+#[cfg(test)]
 fn touch_if_missing(path: &Path, output: RepoGateOutput) -> Result<(), String> {
     if path.exists() {
         if path.is_file() {
@@ -45,7 +49,10 @@ fn touch_if_missing(path: &Path, output: RepoGateOutput) -> Result<(), String> {
         return Err(format!("{} exists but is not a file", path.display()));
     }
     std::fs::File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
-    emit_repo_gate_stdout_line(output, &format!("Touched empty {} (was missing)", path.display()));
+    emit_repo_gate_stdout_line(
+        output,
+        &format!("Touched empty {} (was missing)", path.display()),
+    );
     Ok(())
 }
 
@@ -57,7 +64,10 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
-            emit_repo_gate_stdout_line(output, &format!("Warning: could not read .kissconfig: {e}"));
+            emit_repo_gate_stdout_line(
+                output,
+                &format!("Warning: could not read .kissconfig: {e}"),
+            );
             return;
         }
     };
@@ -118,7 +128,10 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
         .is_none_or(|t| t < 90)
 }
 
-pub fn run_pre_commit_checks_or_warn(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+pub fn run_pre_commit_checks_or_warn(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), String> {
     let config = work_dir.join(".pre-commit-config.yaml");
     if !config.is_file() {
         emit_repo_gate_stdout_line(
@@ -127,7 +140,10 @@ pub fn run_pre_commit_checks_or_warn(work_dir: &Path, output: RepoGateOutput) ->
         );
         return Ok(());
     }
-    emit_repo_gate_stdout_line(output, "Running `pre-commit run --all-files` (repo-configured hooks)");
+    emit_repo_gate_stdout_line(
+        output,
+        "Running `pre-commit run --all-files` (repo-configured hooks)",
+    );
     let output = Command::new("pre-commit")
         .args(["run", "--all-files"])
         .current_dir(work_dir)
@@ -144,7 +160,7 @@ pub fn run_pre_commit_checks_or_warn(work_dir: &Path, output: RepoGateOutput) ->
 mod tests {
     use super::{
         RepoGateOutput, ensure_workspace_style_markers, format_pre_commit_failure,
-        should_warn_low_test_coverage,
+        run_repo_workspace_gates, should_warn_low_test_coverage,
     };
 
     #[test]
@@ -250,5 +266,14 @@ mod tests {
                 .unwrap_err()
                 .contains("exists but is not a file")
         );
+    }
+
+    #[test]
+    fn repo_workspace_gates_do_not_create_missing_style_markers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        run_repo_workspace_gates(work, RepoGateOutput::Plain).unwrap();
+        assert!(!work.join("grounding.md").exists());
+        assert!(!work.join(".llm_style").join("style.md").exists());
     }
 }

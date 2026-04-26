@@ -18,6 +18,7 @@ pub(super) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpa
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     }
 }

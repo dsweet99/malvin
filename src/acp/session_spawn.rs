@@ -92,6 +92,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         SessionReaderTelemetry {
             acp_verbose: args.acp_verbose,
             raw_output: args.raw_output,
+            show_thoughts_on_stdout: args.show_thoughts_on_stdout,
             emit_stdout_markdown: args.emit_stdout_markdown,
         },
     ))))

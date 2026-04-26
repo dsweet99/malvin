@@ -30,14 +30,6 @@ async fn rpc_session_prompt_text(session: &AcpSession, text: &str, id: u64) -> R
     .map(|_| ())
 }
 
-const fn is_prompt_payload_trailing_ws(ch: char) -> bool {
-    ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
-}
-
-fn trim_prompt_payload_trailing_ws(s: &str) -> &str {
-    s.trim_end_matches(is_prompt_payload_trailing_ws)
-}
-
 async fn do_split_trace_preamble(
     file: &mut tokio::fs::File,
     raw_output: bool,
@@ -149,12 +141,10 @@ impl AcpSession {
             header_text: split.header,
             user_text: split.user,
         });
-        let normalized_text = trim_prompt_payload_trailing_ws(text);
-        let normalized_expected = trim_prompt_payload_trailing_ws(&expected);
-        if normalized_text != normalized_expected {
+        if text != expected {
             return Err("prompt_do_trace_split: text does not match split parts".to_string());
         }
-        self.prompt_impl(&expected, trace_path, OutgoingPromptTrace::DoSplit(split))
+        self.prompt_impl(text, trace_path, OutgoingPromptTrace::DoSplit(split))
             .await
     }
 
@@ -193,6 +183,7 @@ impl AcpSession {
             stdout_replacement: prompt_stdout_replacement(stdout_replacement_who),
             placeholder_emitted: false,
             raw_output: trace_raw_output,
+            show_thoughts_on_stdout: self.0.show_thoughts_on_stdout,
             emit_stdout_markdown: self.0.emit_stdout_markdown
                 && !trace_raw_output
                 && !plain_lines,

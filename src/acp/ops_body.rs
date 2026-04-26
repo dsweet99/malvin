@@ -39,6 +39,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         force: client.io.force,
         tee_trace_stdout: !client.io.no_tee,
         raw_output: client.io.raw_output,
+        show_thoughts_on_stdout: client.io.show_thoughts_on_stdout,
         emit_stdout_markdown: client.io.emit_stdout_markdown,
     })
     .await

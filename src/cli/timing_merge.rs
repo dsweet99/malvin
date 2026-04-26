@@ -46,6 +46,19 @@ pub fn emit_run_timing_after_acp(
     merge_acp_and_timing_results(acp_result, timing_result)
 }
 
+/// After ACP work: write `run_timing.json` without a stdout timing line, clear [`AgentClient`]
+/// timing slot, merge errors.
+pub fn emit_run_timing_json_only_after_acp(
+    client: &mut AgentClient,
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+    acp_result: Result<(), String>,
+) -> Result<(), String> {
+    let timing_result = malvin::run_timing::finalize_run_timing_json_only(run_dir, timing);
+    client.set_run_timing(None);
+    merge_acp_and_timing_results(acp_result, timing_result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::prefer_primary_string_errors;

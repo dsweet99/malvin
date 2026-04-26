@@ -14,7 +14,11 @@ pub fn block_mean_from_p_creative(p_creative: f64) -> f64 {
     }
 }
 
-#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 fn poisson_large_mean_normal_approx(rng: &mut impl Rng, lambda: f64) -> usize {
     let u1 = f64::max(f64::MIN_POSITIVE, rng.r#gen::<f64>());
     let u2 = rng.r#gen::<f64>();
@@ -48,12 +52,8 @@ pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
 }
 
 pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
-    std::fs::read_to_string(path).map_err(|e| {
-        format!(
-            "failed to read exp log {}: {e}",
-            path.display()
-        )
-    })
+    std::fs::read_to_string(path)
+        .map_err(|e| format!("failed to read exp log {}: {e}", path.display()))
 }
 
 fn step_kind(line: &str) -> Option<&'static str> {
@@ -74,12 +74,16 @@ fn step_kind(line: &str) -> Option<&'static str> {
 
 #[must_use]
 pub fn count_kpop_entries(text: &str) -> usize {
-    text.lines().filter(|line| step_kind(line) == Some("KPOP")).count()
+    text.lines()
+        .filter(|line| step_kind(line) == Some("KPOP"))
+        .count()
 }
 
 #[must_use]
 pub fn count_mbc2_entries(text: &str) -> usize {
-    text.lines().filter(|line| step_kind(line) == Some("MBC2")).count()
+    text.lines()
+        .filter(|line| step_kind(line) == Some("MBC2"))
+        .count()
 }
 
 #[must_use]
@@ -104,8 +108,8 @@ mod tests {
     use rand::rngs::StdRng;
 
     use super::{
-        agent_declared_success, block_mean_from_p_creative, count_kpop_entries,
-        count_mbc2_entries, hypotheses_emitted, poisson_block_size, read_exp_log_text,
+        agent_declared_success, block_mean_from_p_creative, count_kpop_entries, count_mbc2_entries,
+        hypotheses_emitted, poisson_block_size, read_exp_log_text,
     };
 
     #[test]
@@ -122,7 +126,10 @@ mod tests {
     fn poisson_seeded_stable() {
         let mut a = StdRng::seed_from_u64(7);
         let mut b = StdRng::seed_from_u64(7);
-        assert_eq!(poisson_block_size(&mut a, 9.0), poisson_block_size(&mut b, 9.0));
+        assert_eq!(
+            poisson_block_size(&mut a, 9.0),
+            poisson_block_size(&mut b, 9.0)
+        );
     }
 
     #[test]
@@ -190,7 +197,9 @@ mod tests {
 
     #[test]
     fn success_marker_rejects_non_empty_remainder_after_keyword() {
-        assert!(!agent_declared_success("## KPOP_SOLVED  not actually solved\n"));
+        assert!(!agent_declared_success(
+            "## KPOP_SOLVED  not actually solved\n"
+        ));
         assert!(!agent_declared_success("## KPOP_SOLVED\tstill working\n"));
     }
 

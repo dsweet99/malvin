@@ -2,7 +2,7 @@
 
 ---
 
-Read {{ review_path }}, and address the reviewer's concerns.
+Read {{ review_path }}, and address the reviewer's concerns. Be sure to also stay consistent with grounding.md and {{ plan_path }} (if they exist and are not empty).
 
 Never modify grounding.md. If the reviewer's concerns require changing grounding.md, write a line starting with `ABORT:` to {{ result_path }} explaining that grounding.md must not change, instead of editing grounding.md.
 

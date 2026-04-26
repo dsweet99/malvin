@@ -4,7 +4,7 @@ mod grounding_backup;
 mod startup_tag;
 
 pub use grounding_backup::{
-    backup_workspace_grounding_if_present, restore_workspace_grounding,
+    GroundingBackup, backup_workspace_grounding_if_present, restore_workspace_grounding,
 };
 
 use chrono::Utc;
@@ -180,8 +180,14 @@ mod tests {
             plan_path: PathBuf::from("/tmp/run/plan.md"),
             work_dir: PathBuf::from("/work"),
         };
-        assert_eq!(r.log_path("a/b").file_name(), Some(std::ffi::OsStr::new("a_b.log")));
-        assert_eq!(r.log_path("a\\b").file_name(), Some(std::ffi::OsStr::new("a_b.log")));
+        assert_eq!(
+            r.log_path("a/b").file_name(),
+            Some(std::ffi::OsStr::new("a_b.log"))
+        );
+        assert_eq!(
+            r.log_path("a\\b").file_name(),
+            Some(std::ffi::OsStr::new("a_b.log"))
+        );
     }
 
     #[test]

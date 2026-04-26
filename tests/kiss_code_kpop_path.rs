@@ -6,7 +6,7 @@ mod common;
 use std::process::Command;
 
 #[cfg(unix)]
-use common::{command_output_with_timeout, MALVIN_TEST_CMD_TIMEOUT};
+use common::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
 fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
     let path_root = tempfile::tempdir().unwrap();

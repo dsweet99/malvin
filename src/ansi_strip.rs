@@ -72,7 +72,11 @@ mod tests {
     #[test]
     fn strip_ansi_removes_osc_terminated_with_st() {
         let raw = "x\x1b]52;c;Z\x1b\\y";
-        assert_eq!(strip_ansi_escapes(raw), "xy", "OSC may end with ST (ESC \\) instead of BEL");
+        assert_eq!(
+            strip_ansi_escapes(raw),
+            "xy",
+            "OSC may end with ST (ESC \\) instead of BEL"
+        );
     }
 
     #[test]

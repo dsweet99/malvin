@@ -35,6 +35,14 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
     })
 }
 
+pub(super) fn write_json_only(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
+    let path = run_dir.join(RUN_TIMING_JSON_FILE);
+    let file = std::fs::File::create(&path)?;
+    let json = to_json_value(r);
+    serde_json::to_writer_pretty(file, &json)?;
+    Ok(())
+}
+
 /// Phase keys under `phases_ms` in [`to_json_value`] — keep order aligned with [`format_timing_stdout_line_from_json`].
 const PHASE_MS_KEYS_JSON_ORDER: [&str; 6] = [
     "check_plan",
@@ -222,7 +230,7 @@ mod format_tests {
 
     #[test]
     fn write_json_and_print_summary_creates_file() {
-        use crate::run_timing::{RunTiming, TimingPhase, RUN_TIMING_JSON_FILE};
+        use crate::run_timing::{RUN_TIMING_JSON_FILE, RunTiming, TimingPhase};
 
         let tmp = tempfile::tempdir().unwrap();
         let mut r = RunTiming::default();

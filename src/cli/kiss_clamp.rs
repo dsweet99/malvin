@@ -58,7 +58,10 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> R
     if !has_source_files(work_dir) {
         return Ok(());
     }
-    emit_repo_gate_stdout_line(output, "Running `kiss clamp` (existing code without .kissconfig)");
+    emit_repo_gate_stdout_line(
+        output,
+        "Running `kiss clamp` (existing code without .kissconfig)",
+    );
     let status = Command::new("kiss")
         .arg("clamp")
         .current_dir(work_dir)

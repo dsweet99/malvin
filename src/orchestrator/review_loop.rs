@@ -43,19 +43,18 @@ impl Orchestrator<'_> {
         &mut self,
         ctx: ReviewAttemptCtx<'_>,
     ) -> Result<bool, WorkflowError> {
-        if let Some(b) = &self.grounding_backup {
-            crate::artifacts::restore_workspace_grounding(&self.artifacts.work_dir, b)
-                .map_err(WorkflowError)?;
-        }
+        crate::artifacts::restore_workspace_grounding(
+            &self.artifacts.work_dir,
+            &self.grounding_backup,
+        )
+        .map_err(WorkflowError)?;
 
         (self.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
-        if ctx.review_prompt.starts_with("review_") {
-            clear_review_file(ctx.review_path)
-                .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
-            clear_review_file(ctx.workspace_review_path)
-                .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
-        }
+        clear_review_file(ctx.review_path)
+            .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
+        clear_review_file(ctx.workspace_review_path)
+            .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
 
         let review_body = self
             .prompts

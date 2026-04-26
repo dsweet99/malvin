@@ -1,6 +1,8 @@
 /// Repo-relative path (under the workflow working directory) for optional injected style text.
 ///
-/// [`AgentClient::new`](crate::AgentClient::new) sets [`AgentClient`](crate::AgentClient)’s
+/// [`AgentClient::new`](crate::AgentClient::new) seeds the client’s style prompt path with
+/// `PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL)` so [`AgentClient::run_coder_prompt`](crate::AgentClient::run_coder_prompt)
+/// can prepend that file when it exists and repo style injection is enabled.
 pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = "coder_style.md";
 
 /// Read optional repo-local style text (trimmed) with the same rules as coder prompt composition.
@@ -81,6 +83,16 @@ impl AgentClient {
         &mut self,
     ) -> std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>> {
         crate::run_timing::attach_new_run_timing(&mut self.timing)
+    }
+
+    fn set_timing_implement_display_name(&self, label: &'static str) {
+        let Some(timing) = self.timing.as_ref() else {
+            return;
+        };
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .set_implement_display_name(label);
     }
 
     /// Verify API key env or `agent` / `cursor-agent` auth probes.
@@ -294,6 +306,7 @@ impl AgentClient {
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
     ) -> Result<(), AgentError> {
+        self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
@@ -330,6 +343,7 @@ impl AgentClient {
         learn_min_elapsed_ms: u64,
         state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
     ) -> Result<(), AgentError> {
+        self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;

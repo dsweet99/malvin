@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 use crate::kpop_acp_prompt::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use crate::multiturn_prompt::MultiturnPrompt;
 use crate::kpop_schedule::{
     KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_mbc2_entries,
     hypotheses_emitted, poisson_block_size, read_exp_log_text,
 };
+use crate::multiturn_prompt::MultiturnPrompt;
 
 enum Phase {
     KpopBlock {
@@ -53,7 +53,12 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
         &self.exp_log_path
     }
 
-    pub fn new(builder: B, exp_log_path: PathBuf, max_hypotheses: usize, p_creative: f64) -> Result<Self, String> {
+    pub fn new(
+        builder: B,
+        exp_log_path: PathBuf,
+        max_hypotheses: usize,
+        p_creative: f64,
+    ) -> Result<Self, String> {
         Self::from_params(KpopMultiturnParams {
             builder,
             exp_log_path,
@@ -156,9 +161,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
                 "KPOP block still incomplete after the initial attempt and {KPOP_CATCHUP_CAP} catch-up attempts.",
             ));
         }
-        let remaining_budget = self
-            .max_hypotheses
-            .saturating_sub(hypotheses_emitted(text));
+        let remaining_budget = self.max_hypotheses.saturating_sub(hypotheses_emitted(text));
         let want = need.min(remaining_budget);
         if want == 0 {
             self.done = true;

@@ -21,10 +21,13 @@ pub struct PromptTraceWriter {
     pub placeholder_emitted: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
     /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
     /// OS PID for [`crate::child_health`] liveness checks (0 if unknown).
@@ -47,6 +50,8 @@ pub struct AcpSessionInner {
     pub ui_idle_notify: Option<Arc<Notify>>,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
     /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
 }
@@ -75,6 +80,8 @@ pub struct AcpSpawnArgs<'a> {
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
     /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
 }

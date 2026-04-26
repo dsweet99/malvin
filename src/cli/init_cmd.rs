@@ -7,17 +7,46 @@ use clap::Args;
 
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 
-const TPL_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/gitignore"));
-const TPL_KISSIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/kissignore"));
-const TPL_GROUNDING: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/grounding.md"));
-const ADMIN_CHECK_UNTRACKED: &str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/admin/check_untracked.sh"));
-const PRE_COMMIT_HEADER: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/header.yaml"));
-const HOOK_RUFF: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/ruff.yaml"));
-const HOOK_CLIPPY: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/clippy.yaml"));
-const HOOK_KISS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/kiss.yaml"));
-const HOOK_UNTRACKED: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/hooks/untracked.yaml"));
-const TPL_STYLE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_repo/llm_style/style.md"));
+const TPL_GITIGNORE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/gitignore"
+));
+const TPL_KISSIGNORE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/kissignore"
+));
+const TPL_GROUNDING: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/grounding.md"
+));
+const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/admin/check_untracked.sh"
+));
+const PRE_COMMIT_HEADER: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/hooks/header.yaml"
+));
+const HOOK_RUFF: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/hooks/ruff.yaml"
+));
+const HOOK_CLIPPY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/hooks/clippy.yaml"
+));
+const HOOK_KISS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/hooks/kiss.yaml"
+));
+const HOOK_UNTRACKED: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/hooks/untracked.yaml"
+));
+const TPL_STYLE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/llm_style/style.md"
+));
 
 /// Supported languages for `malvin init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,7 +122,11 @@ fn format_languages_for_grounding(languages: &[Language]) -> String {
         1 => format!("in {}", languages[0].display_name()),
         _ => {
             let names: Vec<&str> = languages.iter().map(|l| l.display_name()).collect();
-            format!("in {} and {}", names[..names.len() - 1].join(", "), names.last().unwrap())
+            format!(
+                "in {} and {}",
+                names[..names.len() - 1].join(", "),
+                names.last().unwrap()
+            )
         }
     }
 }
@@ -124,20 +157,38 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
     write_text_file(&root.join(".gitignore"), TPL_GITIGNORE, force)?;
     write_text_file(&root.join(".kissignore"), TPL_KISSIGNORE, force)?;
     let pre_commit_config = build_pre_commit_config(languages);
-    write_text_file(&root.join(".pre-commit-config.yaml"), &pre_commit_config, force)?;
-    let grounding = TPL_GROUNDING.replace("{{languages}}", &format_languages_for_grounding(languages));
+    write_text_file(
+        &root.join(".pre-commit-config.yaml"),
+        &pre_commit_config,
+        force,
+    )?;
+    let grounding =
+        TPL_GROUNDING.replace("{{languages}}", &format_languages_for_grounding(languages));
     write_text_file(&root.join("grounding.md"), &grounding, force)?;
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
-    write_shell_script(&admin_dir.join("check_untracked.sh"), ADMIN_CHECK_UNTRACKED, force)?;
+    write_shell_script(
+        &admin_dir.join("check_untracked.sh"),
+        ADMIN_CHECK_UNTRACKED,
+        force,
+    )?;
     write_text_file(&root.join(".llm_style").join("style.md"), TPL_STYLE, force)
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
-    require_on_path("pre-commit", "`pre-commit` is not installed; run `pip install pre-commit`.")?;
-    run_command_expect_success(Command::new("pre-commit").arg("install").current_dir(root), "`pre-commit install` failed.")?;
+    require_on_path(
+        "pre-commit",
+        "`pre-commit` is not installed; run `pip install pre-commit`.",
+    )?;
+    run_command_expect_success(
+        Command::new("pre-commit").arg("install").current_dir(root),
+        "`pre-commit install` failed.",
+    )?;
     require_kiss_for_malvin("init")?;
-    run_command_expect_success(Command::new("kiss").arg("init").current_dir(root), "`kiss init` failed.")?;
+    run_command_expect_success(
+        Command::new("kiss").arg("init").current_dir(root),
+        "`kiss init` failed.",
+    )?;
     install_git_lfs(root)?;
     create_initial_commit(root)
 }
@@ -146,15 +197,34 @@ fn create_initial_commit(root: &Path) -> Result<(), String> {
     if repo_already_has_commits(root) {
         return Ok(());
     }
-    run_command_expect_success(Command::new("git").args(["add", "."]).current_dir(root), "`git add .` failed.")?;
-    let has_staged = Command::new("git").args(["diff", "--cached", "--quiet"]).current_dir(root)
+    run_command_expect_success(
+        Command::new("git").args(["add", "."]).current_dir(root),
+        "`git add .` failed.",
+    )?;
+    let has_staged = Command::new("git")
+        .args(["diff", "--cached", "--quiet"])
+        .current_dir(root)
         .status()
         .is_ok_and(|s| !s.success());
     if has_staged {
-        eprintln!("init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)");
+        eprintln!(
+            "init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)"
+        );
         run_command_expect_success(
-            Command::new("git").args(["-c", "user.name=malvin", "-c", "user.email=malvin@localhost"])
-                .args(["commit", "--no-verify", "-m", "Initial commit from malvin init"]).current_dir(root),
+            Command::new("git")
+                .args([
+                    "-c",
+                    "user.name=malvin",
+                    "-c",
+                    "user.email=malvin@localhost",
+                ])
+                .args([
+                    "commit",
+                    "--no-verify",
+                    "-m",
+                    "Initial commit from malvin init",
+                ])
+                .current_dir(root),
             "`git commit` failed.",
         )?;
         ensure_branch_is_main(root)?;
@@ -181,45 +251,72 @@ fn ensure_branch_is_main(root: &Path) -> Result<(), String> {
         return Ok(());
     }
     run_command_expect_success(
-        Command::new("git").args(["branch", "-M", "main"]).current_dir(root),
+        Command::new("git")
+            .args(["branch", "-M", "main"])
+            .current_dir(root),
         "`git branch -M main` failed.",
     )
 }
 
 fn require_on_path(bin: &str, err: &str) -> Result<(), String> {
-    if lookup_bin_on_path(bin).is_none() { return Err(err.to_string()); }
+    if lookup_bin_on_path(bin).is_none() {
+        return Err(err.to_string());
+    }
     Ok(())
 }
 
 fn install_git_lfs(root: &Path) -> Result<(), String> {
     let err = "`git lfs` is not available. Install Git LFS so `git lfs version` succeeds.";
-    let status = Command::new("git").args(["lfs", "version"]).current_dir(root).status().map_err(|_| err.to_string())?;
-    if !status.success() { return Err(err.to_string()); }
-    run_command_expect_success(Command::new("git").args(["lfs", "install"]).current_dir(root), "`git lfs install` failed.")
+    let status = Command::new("git")
+        .args(["lfs", "version"])
+        .current_dir(root)
+        .status()
+        .map_err(|_| err.to_string())?;
+    if !status.success() {
+        return Err(err.to_string());
+    }
+    run_command_expect_success(
+        Command::new("git")
+            .args(["lfs", "install"])
+            .current_dir(root),
+        "`git lfs install` failed.",
+    )
 }
 
 fn run_command_expect_success(cmd: &mut Command, err: &str) -> Result<(), String> {
     let status = cmd.status().map_err(|e| format!("{err} ({e})"))?;
-    if status.success() { Ok(()) } else { Err(err.to_string()) }
+    if status.success() {
+        Ok(())
+    } else {
+        Err(err.to_string())
+    }
 }
 
 fn write_text_file(path: &Path, contents: &str, force: bool) -> Result<(), String> {
-    if path.exists() && !force { return Ok(()); }
+    if path.exists() && !force {
+        return Ok(());
+    }
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("init: mkdir {}: {e}", parent.display()))?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("init: mkdir {}: {e}", parent.display()))?;
     }
     std::fs::write(path, contents).map_err(|e| format!("init: write {}: {e}", path.display()))
 }
 
 fn write_shell_script(path: &Path, contents: &str, force: bool) -> Result<(), String> {
-    if path.exists() && !force { return Ok(()); }
+    if path.exists() && !force {
+        return Ok(());
+    }
     write_text_file(path, contents, force)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(path).map_err(|e| format!("init: stat {}: {e}", path.display()))?.permissions();
+        let mut perms = std::fs::metadata(path)
+            .map_err(|e| format!("init: stat {}: {e}", path.display()))?
+            .permissions();
         perms.set_mode(0o755);
-        std::fs::set_permissions(path, perms).map_err(|e| format!("init: chmod {}: {e}", path.display()))?;
+        std::fs::set_permissions(path, perms)
+            .map_err(|e| format!("init: chmod {}: {e}", path.display()))?;
     }
     Ok(())
 }
@@ -238,8 +335,14 @@ mod tests {
 
     #[test]
     fn parse_languages_accepts_valid_languages() {
-        assert_eq!(parse_languages(&["python".into()]).unwrap(), vec![Language::Python]);
-        assert_eq!(parse_languages(&["Python".into(), "rust".into()]).unwrap(), vec![Language::Python, Language::Rust]);
+        assert_eq!(
+            parse_languages(&["python".into()]).unwrap(),
+            vec![Language::Python]
+        );
+        assert_eq!(
+            parse_languages(&["Python".into(), "rust".into()]).unwrap(),
+            vec![Language::Python, Language::Rust]
+        );
     }
 
     #[test]
@@ -250,7 +353,10 @@ mod tests {
 
     #[test]
     fn format_languages_for_grounding_formats_correctly() {
-        assert_eq!(format_languages_for_grounding(&[Language::Python]), "in Python");
+        assert_eq!(
+            format_languages_for_grounding(&[Language::Python]),
+            "in Python"
+        );
     }
 
     #[test]
@@ -314,13 +420,34 @@ mod tests {
     #[test]
     fn ensure_branch_is_main_renames_to_main() {
         let tmp = tempfile::tempdir().unwrap();
-        Command::new("git").args(["init"]).current_dir(tmp.path()).output().unwrap();
-        Command::new("git").args(["-c", "user.name=t", "-c", "user.email=t@t"]).args(["commit", "--allow-empty", "-m", "i"]).current_dir(tmp.path()).output().unwrap();
-        Command::new("git").args(["branch", "-M", "main"]).current_dir(tmp.path()).output().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(["commit", "--allow-empty", "-m", "i"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["branch", "-M", "main"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
         ensure_branch_is_main(tmp.path()).unwrap();
-        Command::new("git").args(["branch", "-M", "master"]).current_dir(tmp.path()).output().unwrap();
+        Command::new("git")
+            .args(["branch", "-M", "master"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
         ensure_branch_is_main(tmp.path()).unwrap();
-        let branch = Command::new("git").args(["branch", "--show-current"]).current_dir(tmp.path()).output().unwrap();
+        let branch = Command::new("git")
+            .args(["branch", "--show-current"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
         assert_eq!(String::from_utf8_lossy(&branch.stdout).trim(), "main");
     }
 
@@ -335,7 +462,11 @@ mod tests {
             return;
         }
         let tmp = tempfile::tempdir().unwrap();
-        Command::new("git").args(["init"]).current_dir(tmp.path()).output().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
         install_git_lfs(tmp.path()).unwrap();
     }
 }

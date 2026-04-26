@@ -23,21 +23,14 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts) -> HashMap<String, 
     context
 }
 
-#[must_use]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
-) -> HashMap<String, String> {
+) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts);
-    match prompts.render_prompt_only("kpop_common.md", &context) {
-        Ok(kpop_content) => {
-            context.insert("kpop".to_string(), kpop_content);
-        }
-        Err(e) => {
-            eprintln!("warning: failed to render kpop_common.md template: {e}");
-        }
-    }
-    context
+    let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
+    context.insert("kpop".to_string(), kpop_content);
+    Ok(context)
 }
 
 pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {

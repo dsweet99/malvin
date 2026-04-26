@@ -23,6 +23,8 @@ pub struct AgentIoOptions {
     pub no_tee: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true, include thought chunks on stdout for raw/plain output.
+    pub show_thoughts_on_stdout: bool,
     /// When true (default for code/kpop), render agent trace payloads as markdown on stdout.
     pub emit_stdout_markdown: bool,
 }

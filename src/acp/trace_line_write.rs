@@ -68,7 +68,9 @@ const fn raw_output_suppress_thought_stdout(
     kind: Option<SessionUpdateChunkKind>,
     writer: &PromptTraceWriter,
 ) -> bool {
-    writer.raw_output && matches!(kind, Some(SessionUpdateChunkKind::Thought))
+    writer.raw_output
+        && matches!(kind, Some(SessionUpdateChunkKind::Thought))
+        && !writer.show_thoughts_on_stdout
 }
 
 struct TraceTeeStdoutCtx<'a> {
@@ -99,6 +101,22 @@ fn print_tee_unprefixed_wrapped_line(line: &str) {
     }
 }
 
+fn trace_tee_stdout_event<'a>(
+    writer: &'a PromptTraceWriter,
+    line: &'a str,
+    ts: &'a str,
+    dim_payload: bool,
+) -> crate::output::AcpTeeStdoutEvent<'a> {
+    crate::output::AcpTeeStdoutEvent {
+        direction: crate::output::AcpTeeDirection::FromAgent,
+        who: &writer.who,
+        line,
+        ts,
+        emit_stdout_markdown: writer.emit_stdout_markdown,
+        dim_payload,
+    }
+}
+
 fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
     if !ctx.tee_stdout {
         return;
@@ -110,42 +128,21 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
     match writer.stdout_replacement {
         Some(rep) => {
             if !writer.placeholder_emitted {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(
-                    &crate::output::AcpTeeStdoutEvent {
-                        direction: crate::output::AcpTeeDirection::FromAgent,
-                        who: &writer.who,
-                        line: rep,
-                        ts: ctx.ts,
-                        emit_stdout_markdown: writer.emit_stdout_markdown,
-                        dim_payload: false,
-                    },
-                );
+                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+                    writer, rep, ctx.ts, false,
+                ));
                 writer.placeholder_emitted = true;
             }
         }
         None => {
             if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(
-                    &crate::output::AcpTeeStdoutEvent {
-                        direction: crate::output::AcpTeeDirection::FromAgent,
-                        who: &writer.who,
-                        line,
-                        ts: ctx.ts,
-                        emit_stdout_markdown: writer.emit_stdout_markdown,
-                        dim_payload: true,
-                    },
-                );
+                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+                    writer, line, ctx.ts, true,
+                ));
             } else {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(
-                    &crate::output::AcpTeeStdoutEvent {
-                        direction: crate::output::AcpTeeDirection::FromAgent,
-                        who: &writer.who,
-                        line,
-                        ts: ctx.ts,
-                        emit_stdout_markdown: writer.emit_stdout_markdown,
-                        dim_payload: false,
-                    },
-                );
+                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+                    writer, line, ctx.ts, false,
+                ));
             }
         }
     }
@@ -173,9 +170,14 @@ pub async fn trace_file_write_line(
     if raw_output_suppress_thought_stdout(kind, writer) {
         return;
     }
+    let stdout_line = if writer.plain_lines || writer.raw_output {
+        line
+    } else {
+        &display_line
+    };
     trace_tee_stdout_line(
         writer,
-        &display_line,
+        stdout_line,
         &TraceTeeStdoutCtx {
             tee_stdout,
             kind,
@@ -213,5 +215,6 @@ fn kiss_stringify_trace_line_write() {
     let _ = stringify!(write_trace_line_coalesced);
     let _ = stringify!(WriteTraceLineCoalescedOpts);
     let _ = stringify!(raw_output_suppress_thought_stdout);
+    let _ = stringify!(trace_tee_stdout_event);
     let _ = stringify!(trace_tee_stdout_line);
 }

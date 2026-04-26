@@ -3,7 +3,8 @@ use clap::Parser;
 
 #[test]
 fn global_no_markdown_before_code_subcommand() {
-    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "code", "--no-learn", "x"]).expect("parse");
+    let cli =
+        Cli::try_parse_from(["malvin", "--no-markdown", "code", "--no-learn", "x"]).expect("parse");
     assert!(cli.shared.no_markdown);
 }
 

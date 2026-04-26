@@ -5,10 +5,10 @@ use std::process::Command;
 
 #[cfg(unix)]
 use common::{
-    acp_mock_do_streaming_long_agent_msg_js, acp_mock_do_streaming_update_js,
-    acp_mock_do_streaming_wordy_long_msg_js, acp_mock_do_tampers_grounding_js,
-    command_output_with_timeout, test_home_workspace, write_mock_executable,
-    MALVIN_TEST_CMD_TIMEOUT,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_long_agent_msg_js,
+    acp_mock_do_streaming_update_js, acp_mock_do_streaming_wordy_long_msg_js,
+    acp_mock_do_tampers_grounding_js, command_output_with_timeout, test_home_workspace,
+    write_mock_executable,
 };
 #[cfg(unix)]
 use malvin::config::DEFAULT_CLI_MODEL;
@@ -102,14 +102,16 @@ fn stdout_lines_preserve_shape(stdout: &[u8]) -> Vec<String> {
 }
 
 #[cfg(unix)]
-fn assert_stdout_has_timing_and_done(lines: &[String]) {
+fn assert_stdout_has_no_chrome(lines: &[String]) {
     assert!(
-        lines.iter().any(|l| l.contains("TIMING: ")),
-        "expected run timing summary line, got {lines:?}"
+        lines
+            .iter()
+            .all(|l| !l.contains("Command: ") && !l.contains("Logs: ") && !l.contains("TIMING: ")),
+        "expected do stdout without startup/timing chrome, got {lines:?}"
     );
     assert!(
-        lines.iter().any(|l| l.contains("]: DONE")),
-        "expected DONE announcement, got {lines:?}"
+        lines.iter().all(|l| !l.contains("]: DONE")),
+        "expected do stdout without DONE chrome, got {lines:?}"
     );
 }
 
@@ -149,8 +151,26 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
         lines.iter().any(|l| l == "agent message"),
         "expected raw agent line, got {lines:?}"
     );
-    assert_stdout_has_timing_and_done(&lines);
+    assert_stdout_has_no_chrome(&lines);
     assert!(!stdout.contains("hidden thought"), "stdout was {stdout:?}");
+    assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
+}
+
+#[cfg(unix)]
+#[test]
+fn do_repo_gates_stdout_stays_plain_without_tagged_chrome() {
+    let out = run_do_with_mock(&["--repo-gates"]);
+    assert!(
+        out.status.success(),
+        "malvin do --repo-gates failed: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let lines = stdout_lines_preserve_shape(&out.stdout);
+    assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
+    assert!(
+        lines.iter().all(|l| !l.contains(":[malvin]:")),
+        "did not expect tagged repo-gate stdout lines, got: {lines:?}"
+    );
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
 
@@ -198,15 +218,23 @@ fn do_stdout_includes_thoughts_only_with_flag() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     let lines = stdout_lines_preserve_shape(&out.stdout);
     assert!(
-        lines.iter().any(|l| l.contains("do...")),
-        "expected outgoing do bracket line, got: {lines:?}"
+        lines.iter().all(|l| !l.contains("do...")),
+        "did not expect do stdout chrome, got: {lines:?}"
     );
     assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
     assert!(
-        lines.iter().any(|l| l.contains("hidden thought")),
+        lines.iter().any(|l| l == "hidden thought"),
         "stdout was {stdout:?}"
     );
-    assert_stdout_has_timing_and_done(&lines);
+    assert!(
+        !stdout.contains("[hidden thought]"),
+        "stdout was {stdout:?}"
+    );
+    assert!(
+        lines.iter().all(|l| !l.contains(":[<do")),
+        "did not expect tagged do stdout lines, got: {lines:?}"
+    );
+    assert_stdout_has_no_chrome(&lines);
     assert!(stdout.contains("hidden thought"), "stdout was {stdout:?}");
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
 }
@@ -239,13 +267,8 @@ fn do_forwards_default_model_and_force_to_agent() {
 #[cfg(unix)]
 #[test]
 fn do_respects_no_force_and_explicit_model_flags() {
-    let (out, argv) = run_malvin_with_captured_argv(&[
-        "--no-force",
-        "--model",
-        "composer-x",
-        "do",
-        "say hi",
-    ]);
+    let (out, argv) =
+        run_malvin_with_captured_argv(&["--no-force", "--model", "composer-x", "do", "say hi"]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
     let model_values: Vec<&str> = argv
         .windows(2)

@@ -3,19 +3,19 @@
 mod args;
 #[cfg(all(test, unix))]
 mod command_log_tests;
-mod run_emit;
 mod do_flow;
 mod exit;
 mod init_cmd;
 mod kiss_clamp;
 mod kpop_flow;
-mod repo_checks;
+#[cfg(test)]
+mod markdown_flag_parse_tests;
 mod models_cmd;
+mod repo_checks;
+mod run_emit;
 mod shared_opts;
 #[cfg(test)]
 mod stringify_cov;
-#[cfg(test)]
-mod markdown_flag_parse_tests;
 mod timing_merge;
 
 pub use args::{Cli, CodeArgs, Commands, KpopArgs};
@@ -49,6 +49,7 @@ pub struct WorkflowCliOptions {
 pub struct AgentStdoutTeeFlags {
     pub emit_stdout_markdown: bool,
     pub raw_output: bool,
+    pub show_thoughts_on_stdout: bool,
 }
 
 /// Skip learn phase if elapsed time is below 5 minutes (300,000 ms).
@@ -103,7 +104,10 @@ pub async fn run_code(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
-    repo_checks::run_repo_workspace_gates(&artifacts.work_dir, repo_checks::RepoGateOutput::Tagged)?;
+    repo_checks::run_repo_workspace_gates(
+        &artifacts.work_dir,
+        repo_checks::RepoGateOutput::Tagged,
+    )?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
 
@@ -123,9 +127,7 @@ pub async fn run_code(
         grounding_backup: grounding_backup.clone(),
     };
     let workflow_res = orch.run().await.map_err(|e: WorkflowError| e.0);
-    let restore_res = grounding_backup
-        .as_ref()
-        .map_or(Ok(()), |b| restore_workspace_grounding(&artifacts.work_dir, b));
+    let restore_res = restore_workspace_grounding(&artifacts.work_dir, &grounding_backup);
     timing_merge::prefer_primary_string_errors(workflow_res, restore_res)?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
@@ -140,6 +142,7 @@ pub const fn agent_io_options(
         force: workflow.force,
         no_tee: shared.no_tee,
         raw_output: tee.raw_output,
+        show_thoughts_on_stdout: tee.show_thoughts_on_stdout,
         emit_stdout_markdown: tee.emit_stdout_markdown,
     }
 }
@@ -157,6 +160,7 @@ pub fn build_agent(
             AgentStdoutTeeFlags {
                 emit_stdout_markdown,
                 raw_output: false,
+                show_thoughts_on_stdout: false,
             },
         ),
     )

@@ -21,7 +21,7 @@ AFTER EVERY REQUEST
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
-
+- grounding.md overrides ADVICE. ADVICE is not binding.
 --
 
 TRIGGER: grounding.md

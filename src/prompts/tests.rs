@@ -118,12 +118,7 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
 fn validate_required_fails_when_header_or_coding_rules_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    for name in [
-        "implement.md",
-        "review_1.md",
-        "review_2.md",
-        "concerns.md",
-    ] {
+    for name in ["implement.md", "review_1.md", "review_2.md", "concerns.md"] {
         std::fs::write(root.join(name), "x").unwrap();
     }
     let store = PromptStore::with_root(root.to_path_buf());
@@ -213,8 +208,14 @@ fn render_prompt_only_skips_coding_rules_injection() {
 
 #[test]
 fn merge_header_and_coding_rules_combines_nonempty() {
-    assert_eq!(merge_header_and_coding_rules("head", "rules"), "head\n\nrules");
-    assert_eq!(merge_header_and_coding_rules("  head  ", "  rules  "), "head\n\nrules");
+    assert_eq!(
+        merge_header_and_coding_rules("head", "rules"),
+        "head\n\nrules"
+    );
+    assert_eq!(
+        merge_header_and_coding_rules("  head  ", "  rules  "),
+        "head\n\nrules"
+    );
 }
 
 #[test]

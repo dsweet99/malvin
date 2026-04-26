@@ -5,6 +5,10 @@ use std::io::Read;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
+use std::os::unix::process::CommandExt;
+#[cfg(unix)]
+use std::path::Path;
+#[cfg(unix)]
 use std::process::{Command, Stdio};
 #[cfg(unix)]
 use std::thread;
@@ -15,11 +19,28 @@ use std::time::{Duration, Instant};
 pub const MALVIN_TEST_CMD_TIMEOUT: Duration = Duration::from_secs(12);
 
 #[cfg(unix)]
+fn kill_bin() -> &'static Path {
+    if Path::new("/bin/kill").is_file() {
+        Path::new("/bin/kill")
+    } else {
+        Path::new("/usr/bin/kill")
+    }
+}
+
+#[cfg(unix)]
+fn kill_process_group(pid: u32) {
+    let _ = Command::new(kill_bin())
+        .args(["-KILL", &format!("-{pid}")])
+        .status();
+}
+
+#[cfg(unix)]
 pub fn command_output_with_timeout(
     cmd: &mut Command,
     timeout: Duration,
 ) -> std::io::Result<std::process::Output> {
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.process_group(0);
     let mut child = cmd.spawn()?;
     let stdout = child.stdout.take().expect("stdout piped");
     let stderr = child.stderr.take().expect("stderr piped");
@@ -53,7 +74,7 @@ pub fn command_output_with_timeout(
             }
             Ok(None) => {
                 if Instant::now() > deadline {
-                    let _ = child.kill();
+                    kill_process_group(child.id());
                     let _ = child.wait();
                     let _ = stdout_jh.join();
                     let _ = stderr_jh.join();
@@ -148,6 +169,81 @@ pub fn acp_mock_code_streaming_update_js() -> String {
 pub fn acp_mock_code_streaming_bold_markdown_js() -> String {
     let prompt = session_update_chunk_line("agent_message_chunk", r"'**boldline**\n'");
     acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_code_streaming_rich_markdown_js() -> String {
+    let heading = session_update_chunk_line("agent_message_chunk", r"'# md-heading-xyz\n'");
+    let list = session_update_chunk_line("agent_message_chunk", r"'- md-item-xyz\n'");
+    let bold = session_update_chunk_line("agent_message_chunk", r"'**md-bold-xyz**\n'");
+    acp_mock_js("", &format!("{heading}\n{list}\n{bold}"))
+}
+
+pub fn acp_mock_code_streaming_long_bold_markdown_js() -> String {
+    let prompt = format!(
+        "    const words = Array(12).fill('wrap-bold-xyz').join(' ');\n{}",
+        session_update_chunk_line("agent_message_chunk", r"'**' + words + '**\n'")
+    );
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_code_abort_after_implement_js() -> String {
+    let prompt = r"    const fs = require('fs');
+    const path = require('path');
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    if (promptText.includes('Implement the plan in')) {
+      const runRoot = path.join(process.cwd(), '_malvin');
+      const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+      fs.writeFileSync(path.join(runRoot, runDirNames[0], 'result.md'), 'ABORT: stop now\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implementing\n' } } } }));
+    } else {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
+    }";
+    acp_mock_js("", prompt)
+}
+
+pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
+    let prompt = r"    const fs = require('fs');
+    const path = require('path');
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    if (promptText.includes('write ONLY the four characters')) {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      const runRoot = path.join(process.cwd(), '_malvin');
+      const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+      fs.writeFileSync(path.join(runRoot, runDirNames[0], 'result.md'), 'ABORT: after check plan\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'check_plan_done\n' } } } }));
+    } else if (promptText.includes('Implement the plan in')) {
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement_phase_ran\n' } } } }));
+    } else {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
+    }";
+    acp_mock_js("", prompt)
+}
+
+pub fn acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js() -> String {
+    let prompt = r#"    const fs = require('fs');
+    const path = require('path');
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    if (promptText.includes('write ONLY the four characters "LGTM"')) {
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED\n', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'checked\n' } } } }));
+    } else if (promptText.includes('Implement the plan in')) {
+      const grounding = fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8');
+      if (grounding === 'x') {
+        console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement ok\n' } } } }));
+      } else {
+        const runRoot = path.join(process.cwd(), '_malvin');
+        const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+        fs.writeFileSync(path.join(runRoot, runDirNames[0], 'result.md'), 'ABORT: grounding leaked into implement\n', 'utf8');
+        console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'implement saw tampered grounding\n' } } } }));
+      }
+    } else {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'reviewed\n' } } } }));
+    }"#;
+    acp_mock_js("", prompt)
 }
 
 pub fn acp_mock_do_streaming_update_js() -> String {

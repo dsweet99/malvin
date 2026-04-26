@@ -211,9 +211,12 @@ async fn acp_full_session_with_notifications_and_credentials() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp");
     write_mock_executable(&bin).await;
-    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin))
-        .await
-        .expect("spawn mock agent acp");
+    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(
+        tmp.path(),
+        &bin,
+    ))
+    .await
+    .expect("spawn mock agent acp");
     let trace = tmp.path().join("t.jsonl");
     s.prompt("hello", &trace, "implement", None)
         .await
@@ -229,9 +232,12 @@ async fn acp_trace_starts_with_malvin_command_line_after_invocation_init() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp");
     write_mock_executable(&bin).await;
-    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin))
-        .await
-        .expect("spawn mock agent acp");
+    let s = AcpSession::spawn(super::spawn_test_args::george_mock_spawn_args(
+        tmp.path(),
+        &bin,
+    ))
+    .await
+    .expect("spawn mock agent acp");
     let trace = tmp.path().join("trace.jsonl");
     s.prompt("hello", &trace, "implement", None)
         .await
@@ -272,6 +278,7 @@ async fn acp_full_session_verbose_stdout_reader_path() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -302,6 +309,7 @@ async fn acp_prompt_do_trace_split_writes_plain_trace_keeps_thoughts_in_file() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -330,14 +338,23 @@ async fn acp_prompt_do_trace_split_writes_plain_trace_keeps_thoughts_in_file() {
         pos_cmd < pos_body,
         "invocation line must precede prompt body, trace was {text:?}"
     );
-    assert!(text.contains("STYLE\n\nHEADER\n\nUSER\n"), "trace was {text:?}");
+    assert!(
+        text.contains("STYLE\n\nHEADER\n\nUSER\n"),
+        "trace was {text:?}"
+    );
     assert!(text.contains("agent message\n"), "trace was {text:?}");
     assert!(
         text.contains("[hidden thought"),
         "trace file should include bracketed thought when stdout hides it, trace was {text:?}"
     );
-    assert!(!text.contains(":[>"), "no ACP-style outgoing `>stem` log lines in plain do trace");
-    assert!(!text.contains(":[<"), "no ACP-style incoming log lines in plain do trace");
+    assert!(
+        !text.contains(":[>"),
+        "no ACP-style outgoing `>stem` log lines in plain do trace"
+    );
+    assert!(
+        !text.contains(":[<"),
+        "no ACP-style incoming log lines in plain do trace"
+    );
     assert!(!text.contains("<do"));
 }
 
@@ -360,6 +377,7 @@ async fn acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -384,11 +402,20 @@ async fn acp_prompt_do_trace_split_cooked_keeps_thoughts_in_trace() {
     let pos_body = text
         .find("STYLE\n\nHEADER\n\nUSER\n")
         .expect("do-split body");
-    assert!(pos_cmd < pos_body, "invocation before body, trace was {text:?}");
+    assert!(
+        pos_cmd < pos_body,
+        "invocation before body, trace was {text:?}"
+    );
     assert!(text.contains("agent message\n"), "trace was {text:?}");
     assert!(text.contains("[hidden thought]"), "trace was {text:?}");
-    assert!(!text.contains(":[>"), "no ACP-style outgoing `>stem` log lines in plain do trace");
-    assert!(!text.contains(":[<"), "no ACP-style incoming log lines in plain do trace");
+    assert!(
+        !text.contains(":[>"),
+        "no ACP-style outgoing `>stem` log lines in plain do trace"
+    );
+    assert!(
+        !text.contains(":[<"),
+        "no ACP-style incoming log lines in plain do trace"
+    );
     assert!(!text.contains("<do"));
 }
 
@@ -411,6 +438,7 @@ async fn acp_prompt_do_trace_split_rejects_payload_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -439,7 +467,7 @@ async fn acp_prompt_do_trace_split_rejects_payload_mismatch() {
 
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
-async fn acp_prompt_do_trace_split_accepts_trailing_newline_mismatch() {
+async fn acp_prompt_do_trace_split_rejects_trailing_newline_mismatch() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp-do-split-trailing-newline");
     write_do_split_streaming_mock_executable(&bin).await;
@@ -456,28 +484,36 @@ async fn acp_prompt_do_trace_split_accepts_trailing_newline_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
     let trace = tmp.path().join("do-split-trailing-newline.log");
-    s.prompt_do_trace_split(
-        "STYLE\n\nHEADER\n\nUSER\n",
-        &trace,
-        super::outgoing_prompt_trace::DoPromptTraceSplit {
-            style_text: Some("STYLE"),
-            header: "HEADER",
-            user: "USER",
-        },
-    )
-    .await
-    .expect("prompt");
+    let res = s
+        .prompt_do_trace_split(
+            "STYLE\n\nHEADER\n\nUSER\n",
+            &trace,
+            super::outgoing_prompt_trace::DoPromptTraceSplit {
+                style_text: Some("STYLE"),
+                header: "HEADER",
+                user: "USER",
+            },
+        )
+        .await;
+    assert!(res.is_err(), "expected mismatch error");
+    assert!(
+        res.expect_err("error")
+            .contains("text does not match split parts"),
+        "unexpected mismatch error"
+    );
+    assert!(!s.is_busy(), "mismatch should fail before prompt dispatch");
     s.shutdown().await.expect("shutdown");
 }
 
 #[tokio::test]
 #[allow(clippy::await_holding_lock)]
-async fn acp_prompt_do_trace_split_accepts_trailing_space_mismatch() {
+async fn acp_prompt_do_trace_split_rejects_trailing_space_mismatch() {
     let tmp = workspace_with_prompt_stub();
     let bin = tmp.path().join("mock-agent-acp-do-split-trailing-space");
     write_do_split_streaming_mock_executable(&bin).await;
@@ -494,22 +530,30 @@ async fn acp_prompt_do_trace_split_accepts_trailing_space_mismatch() {
         force: false,
         tee_trace_stdout: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
     let trace = tmp.path().join("do-split-trailing-space.log");
-    s.prompt_do_trace_split(
-        "STYLE\n\nHEADER\n\nUSER   ",
-        &trace,
-        super::outgoing_prompt_trace::DoPromptTraceSplit {
-            style_text: Some("STYLE"),
-            header: "HEADER",
-            user: "USER",
-        },
-    )
-    .await
-    .expect("prompt");
+    let res = s
+        .prompt_do_trace_split(
+            "STYLE\n\nHEADER\n\nUSER   ",
+            &trace,
+            super::outgoing_prompt_trace::DoPromptTraceSplit {
+                style_text: Some("STYLE"),
+                header: "HEADER",
+                user: "USER",
+            },
+        )
+        .await;
+    assert!(res.is_err(), "expected mismatch error");
+    assert!(
+        res.expect_err("error")
+            .contains("text does not match split parts"),
+        "unexpected mismatch error"
+    );
+    assert!(!s.is_busy(), "mismatch should fail before prompt dispatch");
     s.shutdown().await.expect("shutdown");
 }
 
@@ -540,6 +584,7 @@ async fn acp_ui_idle_notify_shutdown_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -578,6 +623,7 @@ async fn acp_ui_idle_notify_cancel_ok_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -617,15 +663,13 @@ async fn acp_ui_idle_notify_prompt_rpc_error_wakes_waiter() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
     let trace = tmp.path().join("prompt_err.jsonl");
-    assert!(s
-        .prompt("x", &trace, "implement", None)
-        .await
-        .is_err());
+    assert!(s.prompt("x", &trace, "implement", None).await.is_err());
     tokio::time::timeout(std::time::Duration::from_secs(5), wait_task)
         .await
         .expect("wait task should finish")
@@ -652,16 +696,14 @@ async fn acp_prompt_fails_after_shutdown() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
     .expect("spawn");
     s.shutdown().await.expect("shutdown");
     let trace = tmp.path().join("x.jsonl");
-    assert!(s
-        .prompt("x", &trace, "implement", None)
-        .await
-        .is_err());
+    assert!(s.prompt("x", &trace, "implement", None).await.is_err());
 }
 
 #[cfg(unix)]
@@ -690,6 +732,7 @@ async fn acp_spawn_must_not_leave_child_running_after_handshake_failure() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -744,6 +787,7 @@ async fn acp_cancel_jsonrpc_error_must_not_clear_busy_while_prompt_inflight() {
         force: false,
         tee_trace_stdout: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
     })
     .await
@@ -815,6 +859,7 @@ async fn acp_spawn_errors_within_rpc_timeout_with_silent_agent() {
             force: false,
             tee_trace_stdout: false,
             raw_output: false,
+            show_thoughts_on_stdout: false,
             emit_stdout_markdown: false,
         }),
     )
@@ -852,8 +897,6 @@ fn kiss_stringify_session_b() {
     let _ = stringify!(AcpSession::reset_prompt_inflight);
     let _ = stringify!(AcpSession::prompt_impl);
     let _ = stringify!(super::rpc_session_prompt_text);
-    let _ = stringify!(super::is_prompt_payload_trailing_ws);
-    let _ = stringify!(super::trim_prompt_payload_trailing_ws);
     let _ = stringify!(super::do_split_trace_preamble);
 }
 
