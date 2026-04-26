@@ -36,6 +36,9 @@ fn prepare_sync_prompt_store_for(
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
     store
+        .validate_exists("check_sync.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
         .validate_exists("review_1.md")
         .map_err(|e: PromptError| e.0)?;
     store
@@ -101,6 +104,7 @@ mod coverage_tests {
         let store = PromptStore::with_root(prompts_dir.clone());
         std::fs::create_dir_all(&prompts_dir).unwrap();
         let _ = std::fs::write(prompts_dir.join(super::HEADER_MD), "h");
+        let _ = std::fs::write(prompts_dir.join("check_sync.md"), "c");
         let _ = std::fs::write(prompts_dir.join("review_1.md"), "r1");
         let _ = std::fs::write(prompts_dir.join("review_2.md"), "r2");
         let _ = std::fs::write(prompts_dir.join("concerns.md"), "c");

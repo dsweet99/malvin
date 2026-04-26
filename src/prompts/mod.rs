@@ -241,3 +241,5 @@ pub use template::{
 #[cfg(test)]
 #[allow(unsafe_code)]
 mod tests;
+#[cfg(test)]
+mod check_sync_tests;

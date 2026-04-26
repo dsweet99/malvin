@@ -16,10 +16,11 @@ include!("helpers.rs");
 mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
+mod session_mode;
+mod session_flow;
 
-use check_plan::run_check_plan;
-use review_loop::run_review_phase;
-use review_context::ReviewPhaseArgs;
+use session_mode::OrchestratorSessionMode;
+use session_flow::run_coder_session;
 
 use workflow_context as workflow_context_inner;
 
@@ -116,20 +117,20 @@ impl Orchestrator<'_> {
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts)
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, true).await
+        self.run_with_session(&context, OrchestratorSessionMode::Code).await
     }
 
     /// Run sync workflow only: review loops and optional learn.
     pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts)
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, false).await
+        self.run_with_session(&context, OrchestratorSessionMode::Sync).await
     }
 
     async fn run_with_session(
         &mut self,
         context: &HashMap<String, String>,
-        include_implement_phase: bool,
+        mode: OrchestratorSessionMode,
     ) -> Result<(), WorkflowError> {
         let timing = self.attach_run_timing();
         let begin_res = self
@@ -138,9 +139,7 @@ impl Orchestrator<'_> {
             .await;
         let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
-            Ok(()) => {
-                run_coder_session(self, context, include_implement_phase).await
-            }
+            Ok(()) => run_coder_session(self, context, mode).await,
             Err(e) => Err(WorkflowError(e.0)),
         };
         let timing_result = if coder_session_began {
@@ -186,59 +185,4 @@ impl Orchestrator<'_> {
             .map_err(|e: AgentError| WorkflowError(e.0))?;
         Ok(())
     }
-}
-
-async fn run_coder_session(
-    orchestrator: &mut Orchestrator<'_>,
-    context: &HashMap<String, String>,
-    include_implement_phase: bool,
-) -> Result<(), WorkflowError> {
-    if include_implement_phase && !orchestrator.config.skip_check_plan {
-        run_check_plan(orchestrator, context).await?;
-    }
-
-    if include_implement_phase {
-        (orchestrator.progress_callback)("Implement");
-        orchestrator
-            .run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
-            .await?;
-        orchestrator.fail_on_abort_result()?;
-    }
-
-    run_review_loop(orchestrator, context).await
-}
-
-async fn run_review_loop(
-    orchestrator: &mut Orchestrator<'_>,
-    context: &HashMap<String, String>,
-) -> Result<(), WorkflowError> {
-    run_review_phase(
-        orchestrator,
-        ReviewPhaseArgs {
-            review_prompt: "review_1.md",
-            progress_label: "Review-1",
-            phase_id: "review_1",
-            context,
-        },
-    )
-    .await?;
-
-    run_review_phase(
-        orchestrator,
-        ReviewPhaseArgs {
-            review_prompt: "review_2.md",
-            progress_label: "Review-2",
-            phase_id: "review_2",
-            context,
-        },
-    )
-    .await?;
-
-    if orchestrator.config.run_learn && orchestrator.should_run_learn() {
-        (orchestrator.progress_callback)("Learn");
-        orchestrator
-            .run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
-            .await?;
-    }
-    Ok(())
 }

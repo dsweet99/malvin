@@ -2,10 +2,9 @@
 ---
 {{ kpop }}
 
-MANDATORY: Prefer parallel investigation. If the Task tool is available, launch up to 3 parallel subagents to:
-- Exploring different areas of the codebase simultaneously
-- Testing multiple hypotheses in parallel
-If the Task tool is unavailable, use parallel non-Task tools where possible; otherwise proceed sequentially and explicitly note the fallback and any resulting coverage limits.
+Prefer parallel investigation. Launch up to 3 parallel subagents to:
+- Explore different areas of the codebase simultaneously
+- Test multiple hypotheses in parallel
 Do NOT choose sequential execution when a parallel option is available.
 ---
 KPop: Please review the codebase. Pay special attention to code that differs from branch main/.

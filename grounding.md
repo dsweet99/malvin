@@ -17,7 +17,7 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 | Workflow | Phases |
 |---|---|
 | `code <request>` | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then (optionally) run `learn` |
-| `sync` | Run `kiss clamp` if needed; run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn` |
+| `sync` | Run `kiss clamp` if needed; run `check_sync.md` and `concerns` in a loop until LGTM; then run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn` |
 | `tidy` | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then (optionally) run `learn` |
 | `kpop <request>` | Run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Total budget: `--max-hypotheses` (default 10) |
 | `do <request>` | Send one prompt and print raw output, with no review or learn phase |

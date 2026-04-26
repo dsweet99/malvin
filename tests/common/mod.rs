@@ -225,6 +225,10 @@ fn write_artifact_lgtm() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
 
+fn write_workspace_lgtm() -> String {
+    "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+}
+
 pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
     let lgtm = write_artifact_lgtm();
     let body = format!(
@@ -284,6 +288,54 @@ pub fn acp_mock_code_review_lgtm_to_artifact_js() -> String {
         implement = chunk_line("implemented"),
         reviewed = chunk_line("lgtm"),
     );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
+    let body = format!(
+        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');
+    }} else if (promptText.includes('Please review the codebase.')) {{
+{workspace_lgtm}
+    }} else if (promptText.includes('Concerns')) {{
+    }} else {{
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');
+    }}",
+        workspace_lgtm = write_workspace_lgtm(),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_code_check_sync_then_review_lgtm_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+      let attempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
+      this.syncAttempts = attempts + 1;
+      if (this.syncAttempts === 1) {{
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+      }} else {{
+{lgtm}
+      }}
+    }} else if (promptText.includes('Please review the codebase.')) {{
+{lgtm}
+      {reviewed}
+    }} else if (promptText.includes('Concerns')) {{
+    }}
+",
+        lgtm = lgtm,
+        reviewed = chunk_line("reviewed"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_code_workspace_review_only_lgtm_js() -> String {
+    let body = r"    if (!promptText.includes('Concerns')) {{
+      const workspaceReview = path.join(process.cwd(), 'review.md');
+      const runRootReview = path.join(runRoot, '..', '..', 'review.md');
+      fs.writeFileSync(workspaceReview, 'LGTM\\n', 'utf8');
+      fs.writeFileSync(runRootReview, 'LGTM\\n', 'utf8');
+    }".to_string();
     acp_mock_code_with_run_dir_js(&body)
 }
 

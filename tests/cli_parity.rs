@@ -19,12 +19,13 @@ use common::{
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_streaming_update_js,
-    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
+    command_output_with_timeout,
+    test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 #[cfg(all(unix, target_os = "linux"))]
 use common::{
     acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_long_bold_markdown_js,
-    acp_mock_code_streaming_rich_markdown_js,
+    acp_mock_code_streaming_rich_markdown_js, acp_mock_code_check_sync_then_review_lgtm_js,
 };
 
 #[cfg(unix)]
@@ -114,6 +115,15 @@ fn run_sync_with_mock_js(
     extra_args: &[&str],
     no_tee: bool,
 ) -> std::process::Output {
+    run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee).0
+}
+
+#[cfg(unix)]
+fn run_sync_with_mock_js_and_workspace(
+    mock_js: &str,
+    extra_args: &[&str],
+    no_tee: bool,
+) -> (std::process::Output, tempfile::TempDir, PathBuf) {
     let (root, home, workspace) = common::test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
@@ -128,7 +138,7 @@ fn run_sync_with_mock_js(
     if no_tee {
         args.insert(0, "--no-tee");
     }
-    command_output_with_timeout(
+    let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)
             .env("HOME", &home)
@@ -138,7 +148,8 @@ fn run_sync_with_mock_js(
             .args(args),
         MALVIN_TEST_CMD_TIMEOUT,
     )
-    .expect("spawn malvin sync")
+    .expect("spawn malvin sync");
+    (out, root, workspace)
 }
 
 #[cfg(unix)]
@@ -317,12 +328,52 @@ fn sync_max_loops_zero_skips_review_attempts_and_fails() {
     );
     assert!(!out.status.success(), "sync should fail without reviews: {combined:?}");
     assert!(
-        combined.contains(MAX_LOOPS_EXHAUSTED),
+        combined.contains("Did not receive LGTM for check_sync.md within max loops.")
+            || combined.contains(MAX_LOOPS_EXHAUSTED),
         "expected max_loops skip failure: {combined:?}"
     );
     assert!(
         !combined.contains("Review-1 (attempt 1)"),
         "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_runs_check_sync_before_review_1() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_code_check_sync_then_review_lgtm_js(),
+        &["--max-loops", "2"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.status.success(),
+        "sync should succeed when check_sync and review_1 both hit LGTM: {combined:?}"
+    );
+
+    let check_sync_index = combined
+        .find("CheckSync (attempt 1)")
+        .expect("check_sync progress line");
+    let review_index = combined
+        .find("Review-1 (attempt 1)")
+        .expect("review-1 progress line");
+    assert!(
+        check_sync_index < review_index,
+        "expected check_sync to run before review_1: {combined:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let has_check_sync_log = std::fs::read_dir(&run_dir)
+        .expect("run dir")
+        .filter_map(Result::ok)
+        .any(|entry| entry.file_name().to_string_lossy().contains("coder_check_sync"));
+    assert!(
+        has_check_sync_log,
+        "expected check_sync coder log to capture session/prompt request: {combined:?}"
     );
 }
 

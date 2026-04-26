@@ -5,6 +5,7 @@ pub const DO_HEADER_MD: &str = "do_header.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[
     "check_plan.md",
+    "check_sync.md",
     "implement.md",
     "review_1.md",
     "review_2.md",
@@ -15,6 +16,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "check_plan.md",
+    "check_sync.md",
     "implement.md",
     "review_1.md",
     "review_2.md",
@@ -34,6 +36,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
 pub fn default_file(name: &str) -> Option<&'static str> {
     match name {
         "check_plan.md" => Some(include_str!("../../default_prompts/check_plan.md")),
+        "check_sync.md" => Some(include_str!("../../default_prompts/check_sync.md")),
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
         "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
         "review_2.md" => Some(include_str!("../../default_prompts/review_2.md")),

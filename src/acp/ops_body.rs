@@ -72,7 +72,37 @@ pub(crate) async fn run_reviewer_pair_once(
         return Err(AgentError(e));
     }
 
+    sync_review_to_artifact(pair.workspace_review_path, pair.artifact_review_path)?;
+
     s.shutdown().await.map_err(AgentError)?;
+    Ok(())
+}
+
+fn sync_review_to_artifact(
+    workspace_review_path: &std::path::Path,
+    artifact_review_path: &std::path::Path,
+) -> Result<(), AgentError> {
+    let workspace_text = match std::fs::read_to_string(workspace_review_path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => {
+            return Err(AgentError(format!(
+                "failed to read workspace review path {}: {e}",
+                workspace_review_path.display()
+            )))
+        }
+    };
+
+    if workspace_text.trim().is_empty() {
+        return Ok(());
+    }
+
+    std::fs::write(artifact_review_path, &workspace_text).map_err(|e| {
+        AgentError(format!(
+            "failed to write artifact review path {}: {e}",
+            artifact_review_path.display()
+        ))
+    })?;
     Ok(())
 }
 
@@ -159,6 +189,30 @@ pub(crate) async fn run_kpop_flow_once(
     }
 
     s.shutdown().await.map_err(AgentError)
+}
+
+#[cfg(test)]
+mod ops_body_tests {
+    use super::sync_review_to_artifact;
+
+    #[test]
+    fn sync_review_to_artifact_copies_workspace_review_content() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let workspace_review = tmp.path().join("review.md");
+        let artifact_review = tmp.path().join("run").join("review.md");
+        std::fs::create_dir_all(
+            artifact_review
+                .parent()
+                .expect("artifact parent"),
+        )
+        .expect("artifact parent");
+
+        std::fs::write(&workspace_review, "LGTM\n").expect("write workspace review");
+
+        sync_review_to_artifact(&workspace_review, &artifact_review).expect("sync");
+        let synced = std::fs::read_to_string(&artifact_review).expect("artifact read");
+        assert_eq!(synced, "LGTM\n");
+    }
 }
 
 pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
