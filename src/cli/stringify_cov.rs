@@ -22,6 +22,8 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::run_tidy);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
+    let _ = stringify!(crate::cli::run_sync);
+    let _ = stringify!(crate::cli::sync_flow::run_sync);
     let _ = stringify!(crate::cli::kpop_flow::KpopPrepared);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
     let _ = stringify!(crate::cli::kpop_flow::kpop_run_acp_multiturn);

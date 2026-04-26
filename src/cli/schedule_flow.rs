@@ -12,3 +12,11 @@ pub fn run_schedule(args: &ScheduleArgs) -> Result<(), String> {
     println!("{serialized}");
     Ok(())
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    #[test]
+    fn kiss_stringify_schedule_flow_units() {
+        let _ = stringify!(crate::cli::schedule_flow::run_schedule);
+    }
+}

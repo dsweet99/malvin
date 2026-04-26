@@ -41,6 +41,17 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// List available models.
     Models(ModelsArgs),
+    /// Review-only workflow (`review_1`, `review_2`, `concerns`), optional learn.
+    Sync {
+        /// Review loop budget.
+        #[arg(long, default_value_t = 5)]
+        max_loops: usize,
+        /// Skip learning.
+        #[arg(long, default_value_t = false)]
+        no_learn: bool,
+        /// Request or `@file` → `_malvin/.../plan.md`.
+        request: String,
+    },
     /// Schedule jobs from a dependency DAG.
     Schedule(ScheduleArgs),
 }

@@ -68,3 +68,4 @@ fn schedules_lexicographically_smaller_job_before_equal_duration_job() {
     assert_eq!(out[3].job, "d".to_string());
 }
 
+

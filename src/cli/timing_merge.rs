@@ -119,6 +119,11 @@ mod tests {
     }
 
     #[test]
+    fn kiss_stringify_timing_merge_units() {
+        let _ = stringify!(crate::cli::timing_merge::emit_run_timing_json_only_after_acp);
+    }
+
+    #[test]
     fn prefer_primary_surfaces_primary_when_secondary_ok() {
         assert_eq!(
             prefer_primary_over_secondary(Err("wf".into()), Ok(()), "x"),

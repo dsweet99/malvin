@@ -41,18 +41,7 @@ fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
     );
 }
 
-#[test]
-fn malvin_code_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["code", "x"]);
-}
-
-#[test]
-fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
-}
-
-#[test]
-fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
+fn assert_malvin_subcommand_not_kiss_gated_without_auth(args: &[&str]) {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
@@ -64,7 +53,7 @@ fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
             .env_remove("CURSOR_API_KEY")
             .env_remove("AGENT_API_KEY")
             .env_remove("MALVIN_AGENT_ACP_BIN")
-            .args(["kpop", "x"]);
+            .args(args);
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
     };
     #[cfg(not(unix))]
@@ -74,7 +63,7 @@ fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
         .env_remove("CURSOR_API_KEY")
         .env_remove("AGENT_API_KEY")
         .env_remove("MALVIN_AGENT_ACP_BIN")
-        .args(["kpop", "x"])
+        .args(args)
         .output()
         .expect("spawn malvin");
     assert!(
@@ -93,6 +82,26 @@ fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
     assert!(
         !msg.contains("cargo install kiss-ai")
             && !msg.contains("`kiss` is not installed or not on PATH"),
-        "kpop should not fail on a kiss precheck; got: {msg:?}"
+        "expected auth failure path for no-kiss-gate subcommand; got: {msg:?}"
     );
+}
+
+#[test]
+fn malvin_code_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["code", "x"]);
+}
+
+#[test]
+fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
+}
+
+#[test]
+fn malvin_sync_is_not_kiss_gated_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["sync", "--no-learn", "x"]);
+}
+
+#[test]
+fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["kpop", "x"]);
 }

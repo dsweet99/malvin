@@ -108,6 +108,49 @@ fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
     run_code_max_loops_zero_with_mock_opts(false)
 }
 
+#[cfg(unix)]
+fn run_sync_with_mock_js(
+    mock_js: &str,
+    extra_args: &[&str],
+    no_tee: bool,
+) -> std::process::Output {
+    let (root, home, workspace) = common::test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-sync");
+    common::write_mock_executable(&mock, mock_js);
+    let kiss = bin_dir.join("kiss");
+    common::write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    let mut args = vec!["sync", "--no-learn"];
+    args.extend_from_slice(extra_args);
+    args.push("ship it");
+    if no_tee {
+        args.insert(0, "--no-tee");
+    }
+    command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin sync")
+}
+
+#[cfg(unix)]
+fn run_sync_with_mock_js_max_loops_zero() -> std::process::Output {
+    run_sync_with_mock_js(
+        &common::acp_mock_code_streaming_update_js(),
+        &["--max-loops", "0"],
+        true,
+    )
+}
+
 #[test]
 #[cfg(unix)]
 fn code_stops_when_implement_writes_abort_result() {
@@ -238,6 +281,49 @@ fn review_loop_accepts_lgtm_written_to_artifact_path() {
     assert!(
         out.status.success(),
         "malvin code should succeed when reviewer writes LGTM to artifact: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_accepts_review_lgtm_written_to_artifact_path() {
+    let out = run_sync_with_mock_js(
+        &common::acp_mock_code_review_lgtm_to_artifact_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains(MAX_LOOPS_EXHAUSTED),
+        "sync should succeed with LGTM from artifact: {combined:?}"
+    );
+    assert!(
+        out.status.success(),
+        "malvin sync should succeed when review writes LGTM: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_max_loops_zero_skips_review_attempts_and_fails() {
+    let out = run_sync_with_mock_js_max_loops_zero();
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!out.status.success(), "sync should fail without reviews: {combined:?}");
+    assert!(
+        combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected max_loops skip failure: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review-1 (attempt 1)"),
+        "review attempt must not run when --max-loops=0: {combined:?}"
     );
 }
 

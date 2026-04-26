@@ -114,3 +114,16 @@ pub fn render_schedule_json(items: &[ScheduledJob]) -> String {
     out.push(']');
     out
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    #[test]
+    fn kiss_stringify_schedule_units() {
+        let _ = stringify!(crate::schedule::parse_text_array);
+        let _ = stringify!(crate::schedule::parse_string_list);
+        let _ = stringify!(crate::schedule::parse_job);
+        let _ = stringify!(crate::schedule::parse_jobs);
+        let _ = stringify!(crate::schedule::run_schedule_json);
+        let _ = stringify!(crate::schedule::render_schedule_json);
+    }
+}

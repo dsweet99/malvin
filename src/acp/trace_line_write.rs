@@ -167,6 +167,10 @@ pub async fn trace_file_write_line(
         warn!(error = %e, "trace write failed");
         return;
     }
+    if let Err(e) = writer.file.sync_all().await {
+        warn!(error = %e, "trace fsync failed");
+        return;
+    }
     if raw_output_suppress_thought_stdout(kind, writer) {
         return;
     }

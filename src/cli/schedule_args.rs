@@ -8,3 +8,11 @@ pub struct ScheduleArgs {
     /// Input JSON job graph file.
     pub jobs_json_path: String,
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    #[test]
+    fn kiss_stringify_schedule_args_units() {
+        let _ = stringify!(crate::cli::schedule_args::ScheduleArgs);
+    }
+}

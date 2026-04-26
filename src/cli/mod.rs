@@ -1,15 +1,15 @@
-//! Subcommand dispatch and async entrypoints for the `malvin` binary.
 mod args;
-#[cfg(all(test, unix))]
-mod command_log_tests;
 mod do_flow;
 mod exit;
 mod init_cmd;
 mod kiss_clamp;
 mod kpop_flow;
+mod sync_flow;
 mod schedule_args;
 mod schedule_flow;
 mod tidy_flow;
+#[cfg(test)]
+mod command_log_tests;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
 mod models_cmd;
@@ -27,6 +27,7 @@ use clap::Parser;
 use malvin::env_path::require_kiss_for_malvin;
 use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
 pub use do_flow::run_do;
+pub use sync_flow::run_sync;
 pub use kpop_flow::run_kpop;
 pub use schedule_flow::run_schedule;
 pub use tidy_flow::run_tidy;
@@ -37,17 +38,9 @@ use malvin::artifacts::{
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::prompts::{PromptError, PromptStore};
-#[derive(Debug, Clone, Copy)]
-pub struct WorkflowCliOptions {
-    pub force: bool,
-    pub run_learn: bool,
-}
-#[derive(Debug, Clone, Copy)]
-pub struct AgentStdoutTeeFlags {
-    pub emit_stdout_markdown: bool,
-    pub raw_output: bool,
-    pub show_thoughts_on_stdout: bool,
-}
+use sync_flow::SyncRunSpec;
+#[derive(Debug, Clone, Copy)] pub struct WorkflowCliOptions { pub force: bool, pub run_learn: bool }
+#[derive(Debug, Clone, Copy)] pub struct AgentStdoutTeeFlags { pub emit_stdout_markdown: bool, pub raw_output: bool, pub show_thoughts_on_stdout: bool }
 pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
 pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
@@ -60,10 +53,7 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
     }
     Ok(store)
 }
-pub fn prepare_kpop_prompt_store(
-    workflow: WorkflowCliOptions,
-    require_mbc2: bool,
-) -> Result<PromptStore, String> {
+pub fn prepare_kpop_prompt_store(workflow: WorkflowCliOptions, require_mbc2: bool) -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
@@ -74,11 +64,7 @@ pub fn prepare_kpop_prompt_store(
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
-fn prepare_code_run(
-    code: &CodeArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
+fn prepare_code_run(code: &CodeArgs, shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let client = build_agent(shared, workflow, emit_stdout_markdown);
@@ -158,7 +144,12 @@ pub fn build_agent(
 fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
-        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) | Commands::Schedule(_) => Ok(()),
+        Commands::Do(_)
+        | Commands::Init(_)
+        | Commands::Kpop(_)
+        | Commands::Models(_)
+        | Commands::Schedule(_)
+        | Commands::Sync { .. } => Ok(()),
     }
 }
 fn print_command_error(message: &str) {
@@ -182,6 +173,7 @@ where
     let rt = try_tokio_runtime()?;
     rt.block_on(f())
 }
+
 pub fn entrypoint() -> Exit {
     malvin::invocation::init_from_env();
     let cli = Cli::parse();
@@ -222,6 +214,27 @@ pub fn entrypoint() -> Exit {
         }
         Commands::Init(init) => init_cmd::run_init(init.path, init.force, &init.languages),
         Commands::Models(_) => models_cmd::run_models(),
+        Commands::Sync {
+            max_loops,
+            no_learn,
+            request,
+        } => {
+            let workflow = WorkflowCliOptions {
+                force: !cli.shared.no_force,
+                run_learn: true,
+            };
+            run_async_cli(|| {
+                run_sync(
+                    SyncRunSpec {
+                        max_loops,
+                        no_learn,
+                        request,
+                    },
+                    &cli.shared,
+                    workflow,
+                )
+            })
+        }
     };
     match res {
         Ok(()) => Exit::Success,
@@ -231,3 +244,4 @@ pub fn entrypoint() -> Exit {
         }
     }
 }
+
