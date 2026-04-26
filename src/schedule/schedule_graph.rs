@@ -13,10 +13,38 @@ pub struct JobRecord {
     pub(crate) deps: Vec<String>,
 }
 
+#[derive(Clone, Eq)]
+struct ReadyJob {
+    id: String,
+    duration_ms: u64,
+}
+
+impl PartialEq for ReadyJob {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.duration_ms == other.duration_ms
+    }
+}
+
+impl Ord for ReadyJob {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.duration_ms == other.duration_ms {
+            other.id.cmp(&self.id)
+        } else {
+            self.id.cmp(&other.id)
+        }
+    }
+}
+
+impl PartialOrd for ReadyJob {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 struct ScheduleHeapState {
     dependents: Dependents,
     indegree: InDegree,
-    ready: BinaryHeap<String>,
+    ready: BinaryHeap<ReadyJob>,
     running: BinaryHeap<std::cmp::Reverse<(u64, usize, String)>>,
     free_workers: BinaryHeap<std::cmp::Reverse<usize>>,
 }
@@ -31,7 +59,7 @@ fn init_state(
     workers: usize,
     dependents: Dependents,
     indegree: InDegree,
-    ready: BinaryHeap<String>,
+    ready: BinaryHeap<ReadyJob>,
 ) -> ScheduleHeapState {
     ScheduleHeapState {
         dependents,
@@ -45,11 +73,14 @@ fn init_state(
 fn enqueue_ready(
     indegree: &InDegree,
     jobs: &Jobs,
-    ready: &mut BinaryHeap<String>,
+    ready: &mut BinaryHeap<ReadyJob>,
 ) {
-    for id in jobs.keys() {
+    for (id, record) in jobs {
         if indegree.get(id) == Some(&0) {
-            ready.push(id.clone());
+            ready.push(ReadyJob {
+                id: id.clone(),
+                duration_ms: record.duration_ms,
+            });
         }
     }
 }
@@ -64,7 +95,8 @@ fn mark_started(
         let job_id = state
             .ready
             .pop()
-            .ok_or_else(|| "ERR:ready queue corrupted".to_string())?;
+            .ok_or_else(|| "ERR:ready queue corrupted".to_string())?
+            .id;
         let std::cmp::Reverse(worker) = state
             .free_workers
             .pop()
@@ -113,10 +145,14 @@ fn release_finished(
             }
             *slot -= 1;
             if *slot == 0 {
-                let _ = jobs
+                let duration_ms = jobs
                     .get(dep)
+                    .map(|record| record.duration_ms)
                     .ok_or_else(|| format!("ERR:missing job {dep}"))?;
-                state.ready.push(dep.clone());
+                state.ready.push(ReadyJob {
+                    id: dep.clone(),
+                    duration_ms,
+                });
             }
         }
     }

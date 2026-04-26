@@ -57,3 +57,14 @@ fn detects_cycle() {
     assert!(run_schedule_json(jobs, 2).is_err());
 }
 
+#[test]
+fn schedules_lexicographically_smaller_job_before_equal_duration_job() {
+    let jobs =
+        r#"[{"id":"a","duration_ms":1,"deps":[]},{"id":"b","duration_ms":1,"deps":[]},{"id":"c","duration_ms":1,"deps":["a"]},{"id":"d","duration_ms":1,"deps":["b"]}]"#;
+    let out = run_schedule_json(jobs, 1).expect("schedule");
+    assert_eq!(out[0].job, "a".to_string());
+    assert_eq!(out[1].job, "b".to_string());
+    assert_eq!(out[2].job, "c".to_string());
+    assert_eq!(out[3].job, "d".to_string());
+}
+

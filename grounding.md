@@ -42,18 +42,20 @@ Malvin drives a structured **implementation and review** workflow for software w
 ## Other constraints
 - No "documentation parity guards"
 - All template keys (`{{ key }}`) in prompts must be resolved to their values. Assert "{{" does not appear in a prompt before sending it to the ACP.
+- grounding.md and .kissconfig cannot be changed by agents. Before the first agent call in any workflow (after optionally calling `kiss clamp`), back up both files. After each agent call, silently restore both files from the backup.
 
 
 ## Text formatting (TF)
-When logging agent output to stdout in `malvin code` or `malvin kpop`
+TYPE I:
+- Transform from json and coalesce.
+- Use word wrap.
 - Format the Markdown.
 - Use gray for thought text and white for regular text.
 - Use colors to differentiate "from agent" tags from "to agent" tags.
 
-When logging agent output to stdout in `malvin code` or `malvin kpop` or `malvin do`
+TYPE II:
 - Transform from json and coalesce.
-- Use word wrap.
-
-When logging agent output to stdout in `malvin do`
-- Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output.
+- Use word wrap
+- Do not format Markdown. No colors, either.
+- Only include thought text in stdout if `--thoughts` is specified. Always include thought text in log-file output. Use gray for thought text and white for regular text.
 
