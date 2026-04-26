@@ -300,6 +300,7 @@ fn run_malvin_under_script_with_mock(
         sh.to_str().expect("run-malvin.sh utf8"),
         "/dev/null",
     ]);
+    cmd.stdin(std::process::Stdio::null());
     let output =
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin");
     PtyRun {
