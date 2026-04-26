@@ -122,6 +122,14 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn arbitrary_errors_are_retriable() {
+        assert!(agent_string_is_retriable("some new transport failure"));
+        assert!(agent_string_is_retriable(
+            "ACP `session/new` failed: acp request canceled (session dropped)"
+        ));
+    }
+
+    #[test]
     fn dead_child_errors_are_retriable() {
         assert!(agent_string_is_retriable("acp child process is not running"));
         assert!(agent_string_is_retriable("acp child process is zombie"));
@@ -180,10 +188,10 @@ mod retry_policy_tests {
     }
 
     #[test]
-    fn validation_timeout_field_name_is_not_retriable() {
+    fn funds_exceeded_is_not_retriable() {
         assert!(
-            !agent_string_is_retriable("validation failed: timeout_ms must be positive"),
-            "config/validation errors mentioning timeout_* should not waste bounded retries"
+            !agent_string_is_retriable("Upgrade your plan to continue"),
+            "funds-exceeded errors should fail fast"
         );
     }
 

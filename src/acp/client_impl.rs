@@ -45,6 +45,7 @@ async fn backoff_after_agent_failure(
     last_error: &str,
     attempt: u32,
 ) -> Result<bool, AgentError> {
+    warn!(attempt, error = %last_error, "agent acp attempt failed");
     match plan_agent_retry(last_error, attempt) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
