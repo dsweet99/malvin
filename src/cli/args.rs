@@ -34,9 +34,9 @@ pub enum Commands {
     Do(DoArgs),
     /// Implement a plan
     Code(CodeArgs),
-    /// KPOP investigation loop
+    /// Popperian scientific investigator
     Kpop(KpopArgs),
-    /// Run tidy prompt
+    /// Ensure all checks pass
     Tidy(TidyArgs),
     /// List available models
     Models(ModelsArgs),
@@ -48,8 +48,6 @@ pub enum Commands {
         /// Skip learning.
         #[arg(long, default_value_t = false)]
         no_learn: bool,
-        /// Request or `@file` → `_malvin/.../plan.md`.
-        request: String,
     },
 }
 

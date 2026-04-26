@@ -212,7 +212,6 @@ pub fn entrypoint() -> Exit {
         Commands::Sync {
             max_loops,
             no_learn,
-            request,
         } => {
             let workflow = WorkflowCliOptions {
                 force: !cli.shared.no_force,
@@ -223,7 +222,6 @@ pub fn entrypoint() -> Exit {
                     SyncRunSpec {
                         max_loops,
                         no_learn,
-                        request,
                     },
                     &cli.shared,
                     workflow,

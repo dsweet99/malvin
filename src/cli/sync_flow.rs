@@ -1,13 +1,14 @@
 //! Sync subcommand: reviewer review-loop workflow (`review_1/review_2` + optional learn).
 
 use malvin::artifacts::{
-    backup_workspace_grounding_if_present, create_run_artifacts_from_text, resolve_user_request,
-    GroundingBackup, RunArtifacts,
+    backup_workspace_grounding_if_present, create_run_artifacts_from_text, GroundingBackup,
+    RunArtifacts,
 };
 use malvin::acp::AgentClient;
 use malvin::orchestrator::{Orchestrator, WorkflowConfig};
 use malvin::output::{print_stdout_line, MALVIN_WHO};
 use malvin::prompts::{PromptError, PromptStore, HEADER_MD};
+use std::path::Path;
 
 use super::repo_checks::RepoGateOutput;
 use super::{
@@ -18,7 +19,6 @@ use super::{
 pub struct SyncRunSpec {
     pub max_loops: usize,
     pub no_learn: bool,
-    pub request: String,
 }
 
 fn prepare_sync_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
@@ -45,19 +45,18 @@ fn prepare_sync_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore
 }
 
 fn prepare_sync_artifacts(
-    spec: &SyncRunSpec,
+    _spec: &SyncRunSpec,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(AgentClient, RunArtifacts, PromptStore, GroundingBackup), String> {
     let client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
-    let (text, work_dir) = resolve_user_request(&spec.request)?;
-    let artifacts =
-        create_run_artifacts_from_text(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    let artifacts = create_run_artifacts_from_text("sync", Some(Path::new(".")))
+        .map_err(|e| e.to_string())?;
     crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, RepoGateOutput::Tagged)?;
 
-    emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &spec.request)?;
+    emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "sync")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     let store = prepare_sync_prompt_store(workflow)?;
 
@@ -81,11 +80,9 @@ mod coverage_tests {
         let spec = SyncRunSpec {
             max_loops: 7,
             no_learn: true,
-            request: "x".to_string(),
         };
         assert_eq!(spec.max_loops, 7);
         assert!(spec.no_learn);
-        assert_eq!(spec.request, "x");
     }
 }
 

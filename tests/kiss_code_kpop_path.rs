@@ -98,7 +98,7 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 
 #[test]
 fn malvin_sync_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["sync", "--no-learn", "x"]);
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["sync", "--no-learn"]);
 }
 
 #[test]

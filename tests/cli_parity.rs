@@ -125,7 +125,6 @@ fn run_sync_with_mock_js(
     let path = format!("{}:{original_path}", bin_dir.display());
     let mut args = vec!["sync", "--no-learn"];
     args.extend_from_slice(extra_args);
-    args.push("ship it");
     if no_tee {
         args.insert(0, "--no-tee");
     }
