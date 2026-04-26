@@ -47,8 +47,7 @@ fn schedules_example_graph() {
 
 #[test]
 fn detects_bad_dependency() {
-    assert!(run_schedule_json(r#"[{"id":"a","duration_ms":1,"deps":["missing"]}]"#, 2)
-        .is_err());
+    assert!(run_schedule_json("[{\"id\":\"a\",\"duration_ms\":1,\"deps\":[\"missing\"]}]", 2).is_err());
 }
 
 #[test]

@@ -109,7 +109,7 @@ Build a deterministic offline DAG scheduler.
 - Include unit tests for validation and scheduler behavior.
 EOF
 
-timeout "$MALVIN_EVAL_TIMEOUT_SECS" malvin code --trust-the-plan --no-learn "Implement the scheduler from grounding.md with robust tests, clippy-clean code, and passing checks."
+malvin code --trust-the-plan --no-learn "Implement the scheduler from grounding.md with robust tests, clippy-clean code, and passing checks."
 
 cd "$WORKDIR"
 

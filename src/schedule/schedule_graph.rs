@@ -61,8 +61,7 @@ fn mark_started(
     output: &mut Vec<ScheduledJob>,
 ) -> Result<(), String> {
     while !state.ready.is_empty() && !state.free_workers.is_empty() {
-        let job_id =
-            state
+        let job_id = state
             .ready
             .pop()
             .ok_or_else(|| "ERR:ready queue corrupted".to_string())?;
@@ -101,7 +100,10 @@ fn release_finished(
         let _ = state.running.pop();
         completed = completed.saturating_add(1);
         state.free_workers.push(std::cmp::Reverse(worker));
-        for dep in state.dependents.get(&job_id).into_iter().flat_map(|deps| deps.iter()) {
+        let Some(dependents) = state.dependents.get(&job_id) else {
+            continue;
+        };
+        for dep in dependents {
             let slot = state
                 .indegree
                 .get_mut(dep)
