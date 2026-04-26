@@ -11,6 +11,7 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
     let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
     for key in [
         "check_plan",
+        "sync_check",
         "implement",
         "review_1_review",
         "review_2_review",
@@ -79,4 +80,15 @@ fn check_plan_phase_accumulates_timing() {
     let json = report::to_json_value(&r);
     let phases = json.get("phases_ms").unwrap();
     assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
+}
+
+#[test]
+fn sync_check_phase_accumulates_timing() {
+    let mut r = RunTiming::default();
+    r.mark_wall_start(std::time::Instant::now());
+    r.add_llm_phase(TimingPhase::SyncCheck, std::time::Duration::from_millis(80));
+    r.mark_wall_end(std::time::Instant::now());
+    let json = report::to_json_value(&r);
+    let phases = json.get("phases_ms").unwrap();
+    assert_eq!(phases.get("sync_check").unwrap().as_u64().unwrap(), 80);
 }

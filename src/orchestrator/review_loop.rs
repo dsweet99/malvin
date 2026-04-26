@@ -66,12 +66,6 @@ async fn review_phase_single_attempt(
     ctx: ReviewAttemptCtx<'_>,
 ) -> Result<bool, WorkflowError> {
     let workspace_review_path = orchestrator.artifacts.workspace_review_md();
-    crate::artifacts::restore_workspace_grounding(
-        &orchestrator.artifacts.work_dir,
-        &orchestrator.grounding_backup,
-    )
-    .map_err(WorkflowError)?;
-
     (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
     clear_review_file(ctx.review_path)
@@ -88,7 +82,13 @@ async fn review_phase_single_attempt(
         "review_2" => ReviewPairId::Two,
         _ => ReviewPairId::One,
     };
-    run_reviewer_pair_for_attempt(orchestrator, &ctx, &review_body, pair_id).await?;
+    run_reviewer_pair_for_attempt(
+        orchestrator,
+        &ctx,
+        &review_body,
+        pair_id,
+    )
+    .await?;
 
     let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)?;
     let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
@@ -122,12 +122,6 @@ async fn run_sync_check_single_attempt(
     ctx: ReviewAttemptCtx<'_>,
 ) -> Result<bool, WorkflowError> {
     let workspace_review_path = orchestrator.artifacts.workspace_review_md();
-    crate::artifacts::restore_workspace_grounding(
-        &orchestrator.artifacts.work_dir,
-        &orchestrator.grounding_backup,
-    )
-    .map_err(WorkflowError)?;
-
     (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
 
     clear_review_file(ctx.review_path)
@@ -140,7 +134,7 @@ async fn run_sync_check_single_attempt(
             ctx.review_prompt,
             ctx.context,
             &format!("{}_attempt_{}", ctx.phase_id, ctx.attempt),
-            TimingPhase::CheckPlan,
+            TimingPhase::SyncCheck,
         )
         .await?;
 
@@ -192,7 +186,11 @@ async fn run_reviewer_pair_for_attempt(
     };
     orchestrator
         .client
-        .run_reviewer_review(pair, pair_id)
+        .run_reviewer_review(
+            pair,
+            pair_id,
+            crate::acp::ReviewerRestorePolicy::RestoreWorkspace,
+        )
         .await
         .map_err(|e: AgentError| WorkflowError(e.0))?;
     Ok(())
@@ -220,7 +218,17 @@ fn sync_review_file_for_attempt(
         }
     }
 
-    Ok(std::fs::read_to_string(artifact_review_path)
-        .ok()
-        .filter(|content| !content.trim().is_empty()))
+    if artifact_review_path.exists() {
+        let artifact_text = std::fs::read_to_string(artifact_review_path).map_err(|e| {
+            WorkflowError(format!(
+                "failed to read artifact review file: {}: {e}",
+                artifact_review_path.display()
+            ))
+        })?;
+        if !artifact_text.trim().is_empty() {
+            return Ok(Some(artifact_text));
+        }
+    }
+
+    Ok(None)
 }

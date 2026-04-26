@@ -82,6 +82,11 @@ pub async fn run_do(
 
     if do_args.repo_gates {
         repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Stderr)?;
+    } else {
+        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(
+            &artifacts.work_dir,
+            RepoGateOutput::Stderr,
+        )?;
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 

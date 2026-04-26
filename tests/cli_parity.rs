@@ -18,6 +18,8 @@ use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_abort_after_implement_js,
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
+    acp_mock_kpop_tamper_then_restore_js, acp_mock_sync_reviewer_restore_between_attempts_js,
+    acp_mock_sync_tamper_and_review_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_streaming_update_js,
     command_output_with_timeout,
     test_home_workspace, write_fake_kiss, write_mock_executable,
@@ -115,7 +117,7 @@ fn run_sync_with_mock_js(
     extra_args: &[&str],
     no_tee: bool,
 ) -> std::process::Output {
-    run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee).0
+    run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee, false).0
 }
 
 #[cfg(unix)]
@@ -123,6 +125,7 @@ fn run_sync_with_mock_js_and_workspace(
     mock_js: &str,
     extra_args: &[&str],
     no_tee: bool,
+    with_kissconfig: bool,
 ) -> (std::process::Output, tempfile::TempDir, PathBuf) {
     let (root, home, workspace) = common::test_home_workspace();
     let bin_dir = root.path().join("bin");
@@ -133,6 +136,9 @@ fn run_sync_with_mock_js_and_workspace(
     common::write_fake_kiss(&kiss);
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
+    if with_kissconfig {
+        std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
+    }
     let mut args = vec!["sync", "--no-learn"];
     args.extend_from_slice(extra_args);
     if no_tee {
@@ -345,6 +351,7 @@ fn sync_runs_check_sync_before_review_1() {
         &acp_mock_code_check_sync_then_review_lgtm_js(),
         &["--max-loops", "2"],
         true,
+        false,
     );
     let combined = format!(
         "{}{}",
@@ -375,6 +382,54 @@ fn sync_runs_check_sync_before_review_1() {
         has_check_sync_log,
         "expected check_sync coder log to capture session/prompt request: {combined:?}"
     );
+}
+
+fn assert_sync_tamper_flow_restores_grounding_and_fails(output: &std::process::Output, workspace: &Path) {
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        !output.status.success(),
+        "sync should follow expected mock retry-exhaustion path: {combined:?}"
+    );
+    assert!(
+        combined.contains("Did not receive LGTM for check_sync.md within max loops."),
+        "sync should fail with expected check_sync exhaustion message: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "x"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "k\n"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_check_sync_tamper_and_restore_before_review_1() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_sync_tamper_and_review_restore_js(),
+        &["--max-loops", "2"],
+        true,
+        true,
+    );
+    assert_sync_tamper_flow_restores_grounding_and_fails(&out, &workspace);
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_reviewer_restores_between_reviewer_attempts() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_sync_reviewer_restore_between_attempts_js(),
+        &["--max-loops", "3"],
+        true,
+        true,
+    );
+    assert_sync_tamper_flow_restores_grounding_and_fails(&out, &workspace);
 }
 
 #[test]
@@ -776,10 +831,69 @@ fn kpop_max_loops_alias_is_accepted() {
         "kpop --no-learn --p-creative 0 --max-loops 1 investigate",
         None,
     );
+    assert_eq!(
+        run.output.status.code(),
+        Some(1),
+        "legacy --max-loops should fail along expected mocked flow: {0:?}",
+        run.output
+    );
     let stderr = String::from_utf8_lossy(&run.output.stderr);
     assert!(
         !stderr.contains("unexpected argument '--max-loops'"),
         "legacy --max-loops should be accepted as alias for --max-hypotheses: {stderr:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_multiturn_restores_before_each_new_turn() {
+    let (root, home, workspace) = common::test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-kpop");
+    common::write_mock_executable(&mock, &acp_mock_kpop_tamper_then_restore_js());
+    let kiss = bin_dir.join("kiss");
+    common::write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("write kissconfig");
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args([
+                "kpop",
+                "--no-learn",
+                "--p-creative",
+                "0",
+                "--max-hypotheses",
+                "1",
+                "investigate",
+            ]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin kpop");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains("ABORT:"),
+        "kpop should restore protected files before each prompt: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "x",
+        "kpop should restore grounding before each prompt: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "k = 1\n",
+        "kpop should restore kissconfig before each prompt: {combined:?}"
     );
 }
 

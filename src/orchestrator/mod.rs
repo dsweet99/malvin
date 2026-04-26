@@ -169,7 +169,8 @@ impl Orchestrator<'_> {
             .map_err(|e| WorkflowError(e.0))?;
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
-        self.client
+        let run_result = self
+            .client
             .run_coder_prompt(
                 &prompt,
                 &log,
@@ -182,7 +183,20 @@ impl Orchestrator<'_> {
                 },
             )
             .await
-            .map_err(|e: AgentError| WorkflowError(e.0))?;
-        Ok(())
+            .map_err(|e: AgentError| WorkflowError(e.0));
+        let restore_result = crate::artifacts::restore_workspace_grounding(
+            &self.artifacts.work_dir,
+            &self.grounding_backup,
+        )
+        .map_err(WorkflowError);
+
+        match (run_result, restore_result) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(run_err), Ok(())) => Err(run_err),
+            (Ok(()), Err(restore_err)) => Err(restore_err),
+            (Err(run_err), Err(restore_err)) => {
+                Err(WorkflowError(format!("{}, {}", run_err.0, restore_err.0)))
+            }
+        }
     }
 }

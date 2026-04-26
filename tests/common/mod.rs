@@ -369,3 +369,82 @@ pub fn acp_mock_do_tampers_grounding_js() -> String {
     let thought = session_update_chunk_line("agent_thought_chunk", r"'t\n'");
     acp_mock_js("", &format!("{tamper}\n{msg}\n{thought}"))
 }
+
+pub fn acp_mock_do_tamper_grounding_and_kissconfig_js() -> String {
+    let tamper = r"    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED', 'utf8');
+    fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');";
+    let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
+    acp_mock_js("", &format!("{tamper}\n{msg}"))
+}
+
+pub fn acp_mock_do_creates_grounding_and_kissconfig_js() -> String {
+    let create = r"    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED', 'utf8');
+    fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'CREATED', 'utf8');";
+    let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
+    acp_mock_js("", &format!("{create}\n{msg}"))
+}
+
+pub fn acp_mock_sync_tamper_and_review_restore_js() -> String {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {
+      const syncAttempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
+      this.syncAttempts = syncAttempts + 1;
+      if (syncAttempts === 0) {
+        fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED', 'utf8');
+        fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+      }
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\n', 'utf8');
+    } else if (promptText.includes('Please review the codebase.')) {
+      const grounding = (() => { try { return fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8'); } catch { return ''; } })();
+      const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+      if (grounding === 'x' && kiss === 'k') {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      } else {
+        fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review saw tampered files\n', 'utf8');
+      }
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+pub fn acp_mock_sync_reviewer_restore_between_attempts_js() -> String {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'x', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'k', 'utf8');
+    } else if (promptText.includes('Please review the codebase.')) {
+      const reviewAttempts = (typeof this.reviewAttempts === 'undefined') ? 0 : this.reviewAttempts;
+      this.reviewAttempts = reviewAttempts + 1;
+      if (reviewAttempts === 0) {
+        fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED', 'utf8');
+        fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'needs attention\n', 'utf8');
+      } else {
+        const grounding = (() => { try { return fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8'); } catch { return ''; } })();
+        const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+        if (grounding === 'x' && kiss === 'k') {
+          fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+        } else {
+          fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review still tampered\n', 'utf8');
+        }
+      }
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const kpopAttempts = (typeof this.kpopAttempts === 'undefined') ? 0 : this.kpopAttempts;
+    this.kpopAttempts = kpopAttempts + 1;
+    const grounding = (() => { try { return fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8'); } catch { return ''; } })();
+    const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+    if (kpopAttempts === 0) {
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+    } else if (grounding !== 'x' || kiss !== 'k') {
+      fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
+    }";
+    let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
+    acp_mock_js("", &format!("    {body}\n{done}"))
+}

@@ -1,4 +1,3 @@
-use crate::artifacts::restore_workspace_grounding;
 use crate::review_sync::is_lgtm_str;
 use crate::run_timing::TimingPhase;
 use std::collections::HashMap;
@@ -44,7 +43,41 @@ async fn run_check_plan_attempt(
     orchestrator
         .run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
         .await?;
-    restore_workspace_grounding(&orchestrator.artifacts.work_dir, &orchestrator.grounding_backup)
-        .map_err(WorkflowError)?;
-    Ok(std::fs::read_to_string(review_path).ok())
+    read_check_plan_review_file(review_path)
+}
+
+fn read_check_plan_review_file(review_path: &Path) -> Result<Option<String>, WorkflowError> {
+    if !review_path.exists() {
+        return Ok(None);
+    }
+    Ok(Some(
+        std::fs::read_to_string(review_path)
+            .map_err(|e| {
+                WorkflowError(format!(
+                    "failed to read review file: {}: {e}",
+                    review_path.display()
+                ))
+            })?,
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_check_plan_review_file;
+    #[test]
+    fn read_check_plan_review_file_returns_none_when_missing() {
+        let t = tempfile::tempdir().unwrap();
+        let review_path = t.path().join("missing.md");
+        assert!(read_check_plan_review_file(&review_path).unwrap().is_none());
+    }
+
+    #[test]
+    fn read_check_plan_review_file_returns_error_when_path_is_directory() {
+        let t = tempfile::tempdir().unwrap();
+        let dir = t.path().join("unsupported-file");
+        std::fs::create_dir(&dir).unwrap();
+        let review_path = dir;
+        let err = read_check_plan_review_file(&review_path).unwrap_err();
+        assert!(err.0.contains("failed to read review file"));
+    }
 }

@@ -7,6 +7,7 @@ use std::process::Command;
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_long_agent_msg_js,
     acp_mock_do_streaming_update_js, acp_mock_do_streaming_wordy_long_msg_js,
+    acp_mock_do_creates_grounding_and_kissconfig_js, acp_mock_do_tamper_grounding_and_kissconfig_js,
     acp_mock_do_tampers_grounding_js, command_output_with_timeout, test_home_workspace,
     write_mock_executable,
 };
@@ -170,6 +171,75 @@ fn do_restores_workspace_grounding_after_mock_agent_overwrites() {
 
 #[cfg(unix)]
 #[test]
+fn do_restores_missing_grounding_and_kissconfig_when_agent_creates_them() {
+    let (root, _home, workspace) = test_home_workspace();
+    let _ = std::fs::remove_file(workspace.join("grounding.md"));
+    let mock = root.path().join("mock-agent-acp-do-create-protected");
+    common::write_mock_executable(
+        &mock,
+        &acp_mock_do_creates_grounding_and_kissconfig_js(),
+    );
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", root.path().join("home"))
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .args(["do", "say hi"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin do");
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "CREATED"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "CREATED"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn do_restores_kissconfig_when_grounding_missing() {
+    let (root, _home, workspace) = test_home_workspace();
+    std::fs::write(workspace.join(".kissconfig"), "k\n",).expect("write kissconfig");
+    let _ = std::fs::remove_file(workspace.join("grounding.md"));
+    let mock = root.path().join("mock-agent-acp-do-tamper-kiss");
+    common::write_mock_executable(
+        &mock,
+        &acp_mock_do_tamper_grounding_and_kissconfig_js(),
+    );
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", root.path().join("home"))
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .args(["do", "say hi"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin do");
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let restored = std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig");
+    assert_eq!(restored, "k\n");
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "TAMPERED"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
     let out = run_do_with_mock(&[]);
     assert!(out.status.success(), "malvin do failed: {out:?}");
@@ -223,6 +293,127 @@ fn do_repo_gates_keeps_gate_diagnostics_off_stdout() {
         "did not expect tagged repo-gate stdout lines, got: {lines:?}"
     );
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
+}
+
+#[cfg(unix)]
+#[test]
+fn do_auto_runs_kiss_clamp_by_default_when_source_exists_and_kissconfig_missing() {
+    let (root, home, workspace) = test_home_workspace();
+    std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
+    std::fs::write(workspace.join("src/main.rs"), "fn main() {}",).expect("write source");
+    let _ = std::fs::remove_file(workspace.join(".kissconfig"));
+    let marker = workspace.join("kiss_clamp_called.txt");
+    let kissconfig = workspace.join(".kissconfig");
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let kiss = bin_dir.join("kiss");
+    std::fs::write(
+        &kiss,
+        format!(
+            "#!/usr/bin/env sh\nprintf 'k\\n' > '{}'\nprintf 'called' > '{}'\n",
+            kissconfig.display(),
+            marker.display()
+        ),
+    )
+    .expect("write fake kiss");
+    let mut perms = std::fs::metadata(&kiss)
+        .expect("kiss metadata")
+        .permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(0o755);
+    }
+    std::fs::set_permissions(&kiss, perms).expect("chmod kiss");
+
+    let mock = root.path().join("mock-agent-acp-do");
+    common::write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    bin_dir.display(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            )
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .args(["do", "say hi"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin do");
+
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(marker.exists(), "expected kiss clamp to run");
+    assert_eq!(std::fs::read_to_string(&kissconfig).expect("read kissconfig"), "k\n");
+}
+
+#[cfg(unix)]
+#[test]
+fn do_does_not_run_kiss_clamp_when_kissconfig_exists() {
+    let (root, home, workspace) = test_home_workspace();
+    std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
+    std::fs::write(workspace.join("src/main.rs"), "fn main() {}",).expect("write source");
+    let existing = "k\n";
+    std::fs::write(workspace.join(".kissconfig"), existing).expect("write kissconfig");
+    let marker = workspace.join("kiss_clamp_called.txt");
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let kiss = bin_dir.join("kiss");
+    std::fs::write(&kiss, format!("#!/usr/bin/env sh\nprintf 'bad' > '{}'\nexit 1\n", marker.display()))
+        .expect("write fake kiss");
+    let mut perms = std::fs::metadata(&kiss)
+        .expect("kiss metadata")
+        .permissions();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(0o755);
+    }
+    std::fs::set_permissions(&kiss, perms).expect("chmod kiss");
+
+    let mock = root.path().join("mock-agent-acp-do");
+    common::write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    bin_dir.display(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            )
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .args(["do", "say hi"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin do");
+
+    assert!(
+        out.status.success(),
+        "malvin do failed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !marker.exists(),
+        "did not expect kiss clamp to run when .kissconfig exists"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        existing
+    );
 }
 
 #[cfg(unix)]

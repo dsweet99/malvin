@@ -56,6 +56,11 @@ async fn backoff_after_agent_failure(
     }
 }
 
+pub enum ReviewerRestorePolicy {
+    RestoreWorkspace,
+    NoRestore,
+}
+
 impl AgentClient {
     #[must_use]
     pub fn new(model: String, io: AgentIoOptions) -> Self {
@@ -275,20 +280,40 @@ impl AgentClient {
         &mut self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
+        grounding_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
+        let backup = match grounding_restore {
+            ReviewerRestorePolicy::RestoreWorkspace => {
+                Some(
+                    crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
+                        .map_err(AgentError)?,
+                )
+            }
+            ReviewerRestorePolicy::NoRestore => None,
+        };
         let mut last_error = String::new();
-
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_reviewer_pair_once(self, &pair, pair_id).await {
-                Ok(()) => return Ok(()),
-                Err(e) => {
-                    last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
-                        break;
+            let prompt_result = run_reviewer_pair_once(self, &pair, pair_id).await;
+            match prompt_result {
+                Ok(()) => {
+                    if let Some(backup) = &backup {
+                        crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                            .map_err(AgentError)?;
                     }
+                    return Ok(());
                 }
+                Err(err) => {
+                    last_error = err.0;
+                }
+            }
+            if let Some(backup) = &backup {
+                crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                    .map_err(AgentError)?;
+            }
+            if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                break;
             }
         }
 
@@ -307,6 +332,7 @@ impl AgentClient {
     pub async fn run_kpop_flow(
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
+        grounding_backup: &crate::artifacts::GroundingBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -314,7 +340,7 @@ impl AgentClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_kpop_flow_once(self, flow).await {
+            match run_kpop_flow_once(self, flow, grounding_backup).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
@@ -344,6 +370,7 @@ impl AgentClient {
         learn: Option<(&str, &Path)>,
         learn_min_elapsed_ms: u64,
         state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+        grounding_backup: &crate::artifacts::GroundingBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -358,6 +385,7 @@ impl AgentClient {
                 learn,
                 learn_min_elapsed_ms,
                 state,
+                grounding_backup,
             )
             .await
             {

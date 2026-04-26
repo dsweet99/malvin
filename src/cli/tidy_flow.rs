@@ -4,6 +4,7 @@ use malvin::artifacts::{
     GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
     create_run_artifacts_from_text,
 };
+use malvin::artifacts;
 use malvin::output::{print_stdout_line, MALVIN_WHO};
 use malvin::orchestrator::{should_run_learn_check, workflow_context};
 use malvin::prompts::{merged_coding_rules, PromptError, PromptStore, HEADER_MD};
@@ -14,14 +15,7 @@ use std::path::Path;
 
 use super::{run_emit, SharedOpts, WorkflowCliOptions, build_agent, LEARN_MIN_ELAPSED_MS};
 
-type TidyRunPrep = (
-    AgentClient,
-    RunArtifacts,
-    GroundingBackup,
-    PromptStore,
-    HashMap<String, String>,
-    bool,
-);
+type TidyRunPrep = (AgentClient, RunArtifacts, GroundingBackup, PromptStore, HashMap<String, String>, bool);
 
 #[derive(Args, Debug)]
 pub struct TidyArgs {
@@ -35,6 +29,14 @@ struct TidyAcpInput<'a> {
     store: &'a PromptStore,
     context: &'a HashMap<String, String>,
     run_learn: bool,
+}
+
+struct TidyPromptRestore<'a> {
+    prompt: &'a str,
+    label: &'a str,
+    phase: TimingPhase,
+    grounding_backup: &'a GroundingBackup,
+    restore_context: &'a str,
 }
 
 fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
@@ -83,7 +85,11 @@ async fn run_tidy_prompt(
         .map_err(|e| e.to_string())
 }
 
-async fn run_tidy_acp(input: &mut TidyAcpInput<'_>, prompt: &str) -> Result<(), String> {
+async fn run_tidy_acp(
+    input: &mut TidyAcpInput<'_>,
+    prompt: &str,
+    grounding_backup: &GroundingBackup,
+) -> Result<(), String> {
     let timing = input.client.attach_run_timing_for_session();
     input
         .client
@@ -91,7 +97,13 @@ async fn run_tidy_acp(input: &mut TidyAcpInput<'_>, prompt: &str) -> Result<(), 
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut acp_result = run_tidy_and_learn(input, prompt, &timing).await;
+    let mut acp_result = run_tidy_and_learn(
+        input,
+        prompt,
+        &timing,
+        grounding_backup,
+    )
+    .await;
     let end_result = input
         .client
         .end_coder_session()
@@ -117,9 +129,20 @@ async fn run_tidy_and_learn(
     input: &mut TidyAcpInput<'_>,
     prompt: &str,
     timing: &std::sync::Arc<std::sync::Mutex<malvin::run_timing::RunTiming>>,
+    grounding_backup: &GroundingBackup,
 ) -> Result<(), String> {
-    let mut acp_result = run_tidy_prompt(input, prompt, "tidy", TimingPhase::Implement).await;
-    if acp_result.is_ok() && input.run_learn {
+    run_tidy_prompt_with_restore(
+        input,
+        TidyPromptRestore {
+            prompt,
+            label: "tidy",
+            phase: TimingPhase::Implement,
+            grounding_backup,
+            restore_context: "tidy",
+        },
+    )
+    .await?;
+    if input.run_learn {
         let elapsed_ms = timing
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -133,10 +156,33 @@ async fn run_tidy_and_learn(
                 .store
                 .render("learn.md", input.context)
                 .map_err(|e: PromptError| e.0)?;
-            acp_result = run_tidy_prompt(input, &learn_prompt, "learn", TimingPhase::Learn).await;
+            run_tidy_prompt_with_restore(
+                input,
+                TidyPromptRestore {
+                    prompt: &learn_prompt,
+                    label: "learn",
+                    phase: TimingPhase::Learn,
+                    grounding_backup,
+                    restore_context: "learn",
+                },
+            )
+            .await?;
         }
     }
-    acp_result
+    Ok(())
+}
+
+async fn run_tidy_prompt_with_restore(input: &mut TidyAcpInput<'_>, request: TidyPromptRestore<'_>) -> Result<(), String> {
+    let acp_result = run_tidy_prompt(input, request.prompt, request.label, request.phase).await;
+    let restore_result = artifacts::restore_workspace_grounding(&input.artifacts.work_dir, request.grounding_backup)
+        .map_err(|e| format!("tidy restore failed after {}: {e}", request.restore_context));
+    match (acp_result, restore_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
+        (Err(e), Err(restore_error)) => {
+            Err(format!("{e}; tidy restore failed after {}: {restore_error}", request.restore_context))
+        }
+    }
 }
 
 fn tidy_prompt_context(
@@ -176,11 +222,7 @@ fn prepare_tidy_run(
     ))
 }
 
-fn merge_tidy_timing(
-    result: Result<(), String>,
-    artifacts: &RunArtifacts,
-    grounding_backup: &GroundingBackup,
-) -> Result<(), String> {
+fn merge_tidy_timing(result: Result<(), String>, artifacts: &RunArtifacts, grounding_backup: &GroundingBackup) -> Result<(), String> {
     super::timing_merge::merge_acp_with_grounding_restore(
         result,
         &artifacts.work_dir,
@@ -188,11 +230,7 @@ fn merge_tidy_timing(
     )
 }
 
-pub async fn run_tidy(
-    tidy: TidyArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<(), String> {
+pub async fn run_tidy(tidy: TidyArgs, shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<(), String> {
     let (mut client, artifacts, grounding_backup, store, context, run_learn) =
         prepare_tidy_run(shared, workflow, &tidy)?;
     let prompt = compose_tidy_prompt(&store, &context)?;
@@ -203,26 +241,10 @@ pub async fn run_tidy(
         context: &context,
         run_learn,
     };
-    let result = run_tidy_acp(&mut input, prompt.trim_end()).await;
+    let result = run_tidy_acp(&mut input, prompt.trim_end(), &grounding_backup).await;
     merge_tidy_timing(result, &artifacts, &grounding_backup)?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
-#[cfg(test)]
-mod coverage_tests {
-    #[test]
-    fn kiss_stringify_tidy_flow_units() {
-        let _ = stringify!(crate::cli::tidy_flow::TidyArgs);
-        let _ = stringify!(crate::cli::tidy_flow::TidyAcpInput);
-        let _ = stringify!(crate::cli::tidy_flow::prepare_tidy_prompt_store);
-        let _ = stringify!(crate::cli::tidy_flow::compose_tidy_prompt);
-        let _ = stringify!(crate::cli::tidy_flow::run_tidy_prompt);
-        let _ = stringify!(crate::cli::tidy_flow::run_tidy_acp);
-        let _ = stringify!(crate::cli::tidy_flow::run_tidy_and_learn);
-        let _ = stringify!(crate::cli::tidy_flow::tidy_prompt_context);
-        let _ = stringify!(crate::cli::tidy_flow::prepare_tidy_run);
-        let _ = stringify!(crate::cli::tidy_flow::merge_tidy_timing);
-        let _ = stringify!(crate::cli::tidy_flow::run_tidy);
-    }
-}
+mod coverage_tests;

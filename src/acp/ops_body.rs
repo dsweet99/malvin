@@ -139,9 +139,25 @@ async fn kpop_round(
     }
 }
 
+fn restore_workspace_on_error(
+    cwd: &Path,
+    grounding_backup: &crate::artifacts::GroundingBackup,
+    primary_error: AgentError,
+    phase: &str,
+) -> AgentError {
+    match crate::artifacts::restore_workspace_grounding(cwd, grounding_backup) {
+        Ok(()) => primary_error,
+        Err(restore_error) => AgentError(format!(
+            "{}; grounding restore failed ({phase}): {restore_error}",
+            primary_error.0
+        )),
+    }
+}
+
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
+    grounding_backup: &crate::artifacts::GroundingBackup,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
@@ -157,8 +173,15 @@ pub(crate) async fn run_kpop_flow_once(
         .await
         {
             let _ = s.shutdown().await;
-            return Err(e);
+            return Err(restore_workspace_on_error(
+                args.cwd,
+                grounding_backup,
+                e,
+                "prompt",
+            ));
         }
+        crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+            .map_err(AgentError)?;
     }
 
     if let Some((learn_body, learn_log)) = args.learn {
@@ -183,8 +206,15 @@ pub(crate) async fn run_kpop_flow_once(
             .await
             {
                 let _ = s.shutdown().await;
-                return Err(e);
+                return Err(restore_workspace_on_error(
+                    args.cwd,
+                    grounding_backup,
+                    e,
+                    "learn",
+                ));
             }
+            crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+                .map_err(AgentError)?;
         }
     }
 
@@ -222,6 +252,7 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
     learn: Option<(&str, &std::path::Path)>,
     learn_min_elapsed_ms: u64,
     state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+    grounding_backup: &crate::artifacts::GroundingBackup,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, cwd).await?;
 
@@ -247,8 +278,14 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
         .await
         {
             let _ = s.shutdown().await;
-            return Err(e);
+            return Err(restore_workspace_on_error(
+                cwd,
+                grounding_backup,
+                e,
+                "prompt",
+            ));
         }
+        crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
         let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
             .map_err(AgentError)?;
         let n = crate::kpop_progression::hypotheses_emitted(&exp_text);
@@ -288,8 +325,14 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             .await
             {
                 let _ = s.shutdown().await;
-                return Err(e);
+                return Err(restore_workspace_on_error(
+                    cwd,
+                    grounding_backup,
+                    e,
+                    "learn",
+                ));
             }
+            crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
         }
     }
 

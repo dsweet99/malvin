@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
+    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
     resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
@@ -91,12 +91,14 @@ pub struct KpopPrepared {
     exp_log_path: PathBuf,
     context: HashMap<String, String>,
     text: String,
+    grounding_backup: GroundingBackup,
 }
 
 fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
@@ -109,6 +111,7 @@ fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
         exp_log_path,
         context,
         text,
+        grounding_backup,
     })
 }
 
@@ -139,6 +142,7 @@ pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<
             learn_ref,
             LEARN_MIN_ELAPSED_MS,
             ctx.state,
+            &ctx.prepared.grounding_backup,
         )
         .await
         .map_err(|e| e.0);
@@ -166,8 +170,6 @@ pub async fn run_kpop(
         repo_checks::RepoGateOutput::Tagged,
     )?;
 
-    let grounding_backup = backup_workspace_grounding_if_present(&prepared.artifacts.work_dir)?;
-
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
     let builder = KpopTurnPrompts {
@@ -194,7 +196,7 @@ pub async fn run_kpop(
     merge_acp_with_grounding_restore(
         acp_result,
         &prepared.artifacts.work_dir,
-        &grounding_backup,
+        &prepared.grounding_backup,
     )?;
 
     print_stdout_line(MALVIN_WHO, "DONE");
