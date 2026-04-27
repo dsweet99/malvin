@@ -10,11 +10,12 @@
 
 2) Summarize them as a short bullet list.
 
-3) Edit `./.llm_style/style.md` to incorporate the new info.
-- Store as TRIGGER:/ADVICE: pairs, in this format
+3) Edit `./.malvin_memory/style.md` to incorporate the new info.
+- Store as TRIGGER: / ADVICE: / CONFIDENCE: triples, in this format
 TRIGGER: 1-4 keywords or phrases, where phrases are 1-3 words
 ADVICE: A briefly-stated action to take, like "Read <file>" or "Use <tool/approach/method, with instructions>" or "Check for <problem/benefit>" etc.
-- Keep `./.llm_style/style.md` < 100 lines; focus on highest-priority rules and index entries.
-- Don't lose information: Consolidate into broader rules and/or move detail into `./.llm_style/<topic>.md`.
-- `./.llm_style/<topic>.md` files should also use the  TRIGGER:/ADVICE: format.
+CONFIDENCE: 0
+- Keep `./.malvin_memory/style.md` < 100 lines; focus on highest-priority rules and index entries.
+- Don't lose information: Consolidate into broader rules and/or move detail into `./.malvin_memory/<topic>.md`.
+- `./.malvin_memory/<topic>.md` files should also use the  TRIGGER: / ADVICE: / CONFIDENCE: format.
 - Keep commands and hard constraints exact.

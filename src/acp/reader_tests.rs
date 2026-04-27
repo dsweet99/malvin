@@ -2,6 +2,8 @@ use crate::acp::ResponseTx;
 use crate::acp::*;
 use serde_json::{Value, json};
 use std::collections::HashMap;
+#[cfg(unix)]
+use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -13,11 +15,21 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-// Standard locations: other tests mutate process-global `PATH` under `test_env_lock`; do not rely on lookup.
-const SLEEP_BIN: &str = "/bin/sleep";
-const TRUE_BIN: &str = "/bin/true";
 #[cfg(unix)]
-const CAT_BIN: &str = "/bin/cat";
+const CAT_BIN: &str = "cat";
+
+#[cfg(unix)]
+fn unix_bin_with_fallback(name: &str) -> String {
+    let bin = format!("/bin/{name}");
+    if Path::new(&bin).is_file() {
+        return bin;
+    }
+    let usr_bin = format!("/usr/bin/{name}");
+    if Path::new(&usr_bin).is_file() {
+        return usr_bin;
+    }
+    name.to_string()
+}
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -81,12 +93,13 @@ async fn dispatch_resolves_pending_when_response_id_is_decimal_string() {
     assert_eq!(rx.await.unwrap().unwrap()["v"], 42);
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_handle_incoming_line_parse_error_and_extension_method() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(SLEEP_BIN)
-        .arg("30")
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
+        .arg("8")
         .stdin(Stdio::piped())
         .spawn()
         .expect("sleep");
@@ -271,11 +284,56 @@ fn coalesce_append_splits_on_unicode_scalar_count() {
 }
 
 #[test]
+fn coalesce_flush_cap_splits_at_word_boundary() {
+    let max = crate::acp::ACP_VERBOSE_COALESCE_MAX;
+    let mut buf = String::new();
+    let mut buf_chars = 0usize;
+    let mut out = Vec::new();
+    let word = "abcdefghij ";
+    let repeated = word.repeat(max);
+    coalesce_append_chunk(&mut buf, &mut buf_chars, &repeated, &mut out);
+    assert!(!out.is_empty(), "should have emitted at least one segment");
+    for segment in &out {
+        for w in segment.split_whitespace() {
+            assert_eq!(w, "abcdefghij", "word should not be split: {w:?}");
+        }
+    }
+    for w in buf.split_whitespace() {
+        assert_eq!(
+            w, "abcdefghij",
+            "remainder should not contain partial words: {w:?}"
+        );
+    }
+}
+
+#[test]
 fn verbose_io_coalescer_feed_and_flush_all_covers_paths() {
     let mut c = VerboseIoCoalescer::default();
     c.feed(SessionUpdateChunkKind::Message, "hello");
     c.feed(SessionUpdateChunkKind::Thought, "think");
     c.flush_all();
+    assert!(c.message.is_empty(), "message buffer should flush");
+    assert!(c.thought.is_empty(), "thought buffer should flush");
+}
+
+#[test]
+fn verbose_io_coalescer_switch_flushes_previous_kind_buffer() {
+    let mut c = VerboseIoCoalescer::default();
+    c.feed(SessionUpdateChunkKind::Message, "m1");
+    assert_eq!(c.message, "m1");
+    assert!(c.thought.is_empty());
+    c.feed(SessionUpdateChunkKind::Thought, "t1");
+    assert!(
+        c.message.is_empty(),
+        "message buffer should flush on kind switch"
+    );
+    assert_eq!(c.thought, "t1");
+    c.feed(SessionUpdateChunkKind::Message, "m2");
+    assert_eq!(c.message, "m2");
+    assert!(
+        c.thought.is_empty(),
+        "thought buffer should flush on kind switch"
+    );
 }
 
 #[test]
@@ -285,7 +343,60 @@ fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     assert!(c.feed(SessionUpdateChunkKind::Message, "lo").is_empty());
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
-    assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "hello".to_string()));
+    assert_eq!(
+        fin[0],
+        (SessionUpdateChunkKind::Message, "hello".to_string())
+    );
+}
+
+#[test]
+fn trace_chunk_coalescer_feed_preserves_repeated_interleaved_order() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Message, "m1").is_empty());
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Thought, "t1"),
+        vec![(SessionUpdateChunkKind::Message, "m1".to_string())]
+    );
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Message, "m2"),
+        vec![(SessionUpdateChunkKind::Thought, "t1".to_string())]
+    );
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Thought, "t2"),
+        vec![(SessionUpdateChunkKind::Message, "m2".to_string())]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Thought, "t2".to_string())]
+    );
+}
+
+#[test]
+fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_then_message() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Message, "m"),
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string()),]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Message, "m".to_string())]
+    );
+}
+
+#[test]
+fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_message_then_thought() {
+    let mut c = TraceChunkCoalescer::default();
+    assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
+    assert_eq!(
+        c.feed(SessionUpdateChunkKind::Thought, "t"),
+        vec![(SessionUpdateChunkKind::Message, "m".to_string()),]
+    );
+    assert_eq!(
+        c.flush_all(),
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string())]
+    );
 }
 
 #[test]
@@ -303,7 +414,7 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_skips_non_chunk_lines() {
+async fn write_trace_line_coalesced_writes_non_chunk_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace.log");
     let f = tokio::fs::OpenOptions::new()
@@ -316,15 +427,110 @@ async fn write_trace_line_coalesced_skips_non_chunk_lines() {
     let mut writer = PromptTraceWriter {
         file: f,
         who: "kpop".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     let mut c = TraceChunkCoalescer::default();
-    super::trace_line_write::write_trace_line_coalesced(&mut writer, &mut c, None, false).await;
+    let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: Some(&parsed),
+            raw_line: r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#,
+            tee_stdout: false,
+        },
+    )
+    .await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
-    assert!(s.is_empty(), "non-chunk lines should not be written");
+    assert!(
+        s.contains(r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#),
+        "non-chunk ACP lines should be preserved in trace output"
+    );
+}
+
+#[tokio::test]
+async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("coalesce-trace-no-tee.log");
+    let f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file: f,
+        who: "kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: Some("<suppressed>"),
+        placeholder_emitted: false,
+        raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
+    };
+    let mut c = TraceChunkCoalescer::default();
+    let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: Some(&parsed),
+            raw_line: r#"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#,
+            tee_stdout: true,
+        },
+    )
+    .await;
+    assert!(
+        !writer.placeholder_emitted,
+        "parsed non-chunk ACP protocol lines must not be tee'd to stdout"
+    );
+}
+
+#[tokio::test]
+async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("coalesce-trace-malformed.log");
+    let f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file: f,
+        who: "kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
+    };
+    let mut c = TraceChunkCoalescer::default();
+    super::trace_line_write::write_trace_line_coalesced(
+        &mut writer,
+        &mut c,
+        super::trace_line_write::WriteTraceLineCoalescedOpts {
+            parsed: None,
+            raw_line: "not-json {{{",
+            tee_stdout: false,
+        },
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains("not-json {{{"),
+        "malformed non-JSON ACP lines should still be preserved in trace output"
+    );
 }
 
 #[tokio::test]
@@ -341,9 +547,12 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
     let mut writer = PromptTraceWriter {
         file,
         who: "review_1".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     crate::acp::trace_file_write_line(&mut writer, "hello", false, None).await;
     drop(writer);
@@ -356,7 +565,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
 }
 
 #[tokio::test]
-async fn raw_trace_file_write_line_skips_thought_chunks() {
+async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_stdout_only() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-raw-thought.log");
     let file = tokio::fs::OpenOptions::new()
@@ -369,9 +578,12 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
     let mut writer = PromptTraceWriter {
         file,
         who: "raw".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: true,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -390,13 +602,46 @@ async fn raw_trace_file_write_line_skips_thought_chunks() {
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     assert!(
-        !s.contains("internal reasoning"),
-        "raw output should suppress thought chunks, got {s:?}"
+        s.contains("[internal reasoning]"),
+        "trace file should record thought chunks when raw_output, got {s:?}"
     );
     assert!(
         s.contains("final answer"),
         "raw output should keep message chunks, got {s:?}"
     );
+}
+
+#[tokio::test]
+async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-plain.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "<do".to_string(),
+        plain_lines: true,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: true,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: false,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "assistant response",
+        false,
+        Some(SessionUpdateChunkKind::Message),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert_eq!(s, "assistant response\n");
 }
 
 #[tokio::test]
@@ -413,9 +658,12 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     let mut writer = PromptTraceWriter {
         file,
         who: "review_1".to_string(),
+        plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
         raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -429,6 +677,42 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     assert!(
         s.contains("[internal reasoning]"),
         "thought chunks should be bracketed in traces, got {s:?}"
+    );
+}
+
+#[tokio::test]
+async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("trace-md-tee.log");
+    let file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&path)
+        .await
+        .unwrap();
+    let mut writer = PromptTraceWriter {
+        file,
+        who: "<kpop".to_string(),
+        plain_lines: false,
+        stdout_replacement: None,
+        placeholder_emitted: false,
+        raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: true,
+    };
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "**x**",
+        true,
+        Some(SessionUpdateChunkKind::Message),
+    )
+    .await;
+    drop(writer);
+    let s = tokio::fs::read_to_string(&path).await.unwrap();
+    assert!(
+        s.contains("**x**"),
+        "trace file keeps raw markdown regardless of stdout markdown flag: {s:?}"
     );
 }
 
@@ -487,16 +771,20 @@ fn test_permission_reply_shape() {
     assert!(body.get("result").is_some());
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_handle_session_update_and_permission_replies() {
+    use tokio::io::AsyncReadExt;
+
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(SLEEP_BIN)
-        .arg("5")
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()
-        .expect("sleep");
+        .expect("cat");
     let stdin = Arc::new(Mutex::new(child.stdin.take().expect("stdin")));
+    let mut stdout = child.stdout.take().expect("stdout");
 
     handle_incoming_line(
         r#"{"jsonrpc":"2.0","method":"session/update","params":{"t":1}}"#,
@@ -524,8 +812,24 @@ async fn test_handle_session_update_and_permission_replies() {
     )
     .await;
 
-    let _ = child.kill().await;
-    let _ = child.wait().await;
+    drop(stdin);
+    let mut received = Vec::new();
+    stdout
+        .read_to_end(&mut received)
+        .await
+        .expect("read stdout");
+    let _ = child.wait().await.expect("wait cat");
+    let line = String::from_utf8_lossy(&received);
+    assert!(
+        line.contains("allow-always")
+            && (line.contains(r#""id":42"#) || line.contains(r#""id": 42"#)),
+        "expected allow-always reply echoing id 42; got {line:?}"
+    );
+    assert_eq!(
+        acp_activity_seq.load(Ordering::SeqCst),
+        2,
+        "both JSON messages should count as ACP activity"
+    );
 }
 
 /// KPOP: `session/request_permission` with no correlation id anywhere still skips `write_rpc_line`.
@@ -536,7 +840,7 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(CAT_BIN)
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -579,7 +883,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(CAT_BIN)
+    let mut child = Command::new(unix_bin_with_fallback(CAT_BIN))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -615,11 +919,12 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
     );
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_permission_json_or_write_failure_is_logged() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let mut child = Command::new(TRUE_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("true"))
         .stdin(Stdio::piped())
         .spawn()
         .expect("true");
@@ -637,11 +942,21 @@ async fn test_permission_json_or_write_failure_is_logged() {
         },
     )
     .await;
+    assert_eq!(
+        acp_activity_seq.load(Ordering::SeqCst),
+        1,
+        "permission request should count as ACP activity even when reply write fails"
+    );
+    assert!(
+        pending.lock().await.is_empty(),
+        "permission write failure must not leak pending RPC state"
+    );
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn test_reader_loop_drains_pending_on_stdout_eof() {
-    let mut child = Command::new(TRUE_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("true"))
         .stdout(Stdio::piped())
         .spawn()
         .expect("true");
@@ -649,8 +964,8 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
     let (tx, rx) = oneshot::channel();
     pending.lock().await.insert(7, tx);
-    let mut stdin_holder = Command::new(SLEEP_BIN)
-        .arg("2")
+    let mut stdin_holder = Command::new(unix_bin_with_fallback("sleep"))
+        .arg("1")
         .stdin(Stdio::piped())
         .spawn()
         .expect("sleep");
@@ -707,27 +1022,21 @@ async fn dispatch_clears_prompt_cleanup_when_id_matches() {
     assert!(trace_writer.lock().await.is_none());
 }
 
-/// KPOP scaling probe: `_malvin/20260411_193120_ikaqf1nv/_kpop/exp_log_coalesce_flush_cap_scaling.md`.
 #[test]
-fn time_ratio_when_doubling_buffer_len_coalesce_flush_cap() {
+fn coalesce_flush_cap_emissions_scale_linearly_with_input_size() {
     let cap = ACP_VERBOSE_COALESCE_MAX;
-    let measure = |units: usize| {
+    let emission_count = |units: usize| {
         let n = cap * units;
         let mut buf = "a".repeat(n);
         let mut buf_chars = buf.chars().count();
         let mut emissions = Vec::new();
-        let t0 = std::time::Instant::now();
         coalesce_flush_cap(&mut buf, &mut buf_chars, &mut emissions);
-        (t0.elapsed(), emissions.len())
+        emissions.len()
     };
-    let (t_small, e_small) = measure(500);
-    let (t_large, e_large) = measure(1000);
-    let r = t_large.as_secs_f64() / t_small.as_secs_f64().max(1e-12);
-    eprintln!(
-        "coalesce_flush_cap probe: t(500×cap)={t_small:?} emissions={e_small} | t(1000×cap)={t_large:?} emissions={e_large} | ratio={r:.3}"
-    );
+    let e_small = emission_count(500);
+    let e_large = emission_count(1000);
     assert!(
-        e_large > e_small,
-        "expected more chunks when buffer doubles"
+        e_small == 500 && e_large == 1000,
+        "unexpected emission counts for fixed-size flush: small={e_small}, large={e_large}"
     );
 }

@@ -1,5 +1,7 @@
 #!/bin/bash
-# Pre-commit hook: fail if any .rs or .py files are untracked
+# Pre-commit hook: fail if any .rs or .py files are untracked, or if
+# default_prompts/do_header.md exists but is not tracked (required when
+# the project depends on include_str! for this prompt).
 #
 # Untracked files that match .gitignore (and other standard Git excludes) are
 # ignored; we use --exclude-standard so behavior matches `git status`.
@@ -25,6 +27,12 @@ done < <(git ls-files --others --exclude-standard -z)
 if [ "$have_untracked" -eq 1 ]; then
     echo
     echo "Please add them with 'git add' or add to .gitignore"
+    exit 1
+fi
+
+req_md="default_prompts/do_header.md"
+if [ -f "$req_md" ] && [ -z "$(git ls-files -- "$req_md" 2>/dev/null || true)" ]; then
+    echo "Error: $req_md exists on disk but is not tracked. It is required for the build (include_str! in src/prompts/defaults.rs). Run: git add $req_md"
     exit 1
 fi
 

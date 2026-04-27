@@ -8,8 +8,6 @@ pub(crate) struct AcpStdioRpc {
     pub acp_activity_seq: Arc<AtomicU64>,
     pub acp_activity_notify: Arc<tokio::sync::Notify>,
     pub acp_verbose: bool,
-    /// 0 = skip [`crate::child_health`] (tests); live sessions use the agent child PID.
-    pub child_pid: u32,
 }
 
 pub(crate) async fn write_rpc_line(
@@ -43,31 +41,35 @@ pub(crate) async fn write_rpc_line(
 }
 
 /// One outbound JSON-RPC request (correlation id chosen by caller).
+#[allow(dead_code)]
 pub(crate) struct RpcOutgoing<'a> {
     pub io: &'a AcpStdioRpc,
     pub id: u64,
     pub method: &'a str,
     pub params: Value,
     pub rpc_timeout: std::time::Duration,
+    pub child_pid: Option<u32>,
 }
 
 /// Next-id JSON-RPC request (`id` from [`AtomicU64`]).
+#[allow(dead_code)]
 pub(crate) struct RpcRequestNext<'a> {
     pub io: &'a AcpStdioRpc,
     pub next_id: &'a Arc<AtomicU64>,
     pub method: &'a str,
     pub params: Value,
     pub rpc_timeout: std::time::Duration,
+    pub child_pid: Option<u32>,
 }
 
+#[allow(dead_code)]
 pub(crate) struct RpcWaitArgs<'a> {
-    pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    pub _pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: &'a Arc<AtomicU64>,
     pub acp_activity_notify: &'a Arc<tokio::sync::Notify>,
-    pub id: u64,
-    pub rpc_timeout: std::time::Duration,
-    pub child_pid: u32,
+    pub _id: u64,
     pub rx: oneshot::Receiver<Result<Value, String>>,
+    pub child_pid: Option<u32>,
 }
 
 pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Result<Value, String> {
@@ -94,17 +96,85 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
         io.pending.lock().await.remove(&o.id);
         return Err(e);
     }
-    rpc_wait_response(RpcWaitArgs {
-        pending: &io.pending,
+    let args = RpcWaitArgs {
+        _pending: &io.pending,
         acp_activity_seq: &io.acp_activity_seq,
         acp_activity_notify: &io.acp_activity_notify,
-        id: o.id,
-        rpc_timeout: o.rpc_timeout,
-        child_pid: io.child_pid,
+        _id: o.id,
         rx,
-    })
+        child_pid: o.child_pid,
+    };
+    let wait_state = (
+        &io.acp_activity_seq,
+        &io.acp_activity_notify,
+        &io.pending,
+        o.child_pid,
+    );
+    rpc_wait_with_timeout(
+        o.id,
+        o.rpc_timeout,
+        rpc_wait_response(args),
+        wait_state,
+    )
     .await
 }
+
+async fn rpc_wait_with_timeout(
+    id: u64,
+    timeout: std::time::Duration,
+    wait: impl std::future::Future<Output = Result<Value, String>>,
+    state: RpcWaitContext<'_>,
+) -> Result<Value, String> {
+    let (acp_activity_seq, acp_activity_notify, pending, child_pid) = state;
+    tokio::pin!(wait);
+    loop {
+        tokio::select! {
+            ready_recv = &mut wait => {
+                let result = ready_recv
+                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                pending.lock().await.remove(&id);
+                return Ok(result);
+            }
+            () = tokio::time::sleep(timeout) => {
+                let timeout_err = if let Some(child_pid) = child_pid {
+                    let grace = crate::child_health::silence_grace_for_rpc_timeout(timeout);
+                    match crate::child_health::evaluate_after_acp_silence(child_pid, grace).await {
+                        crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
+                            Err("acp child process is not running".to_string())
+                        }
+                        crate::child_health::SilenceHealthOutcome::ChildZombie => {
+                            Err("acp child process is zombie".to_string())
+                        }
+                        crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
+                            Ok(())
+                        }
+                        crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
+                            "acp request id {id} timed out after {timeout:?}"
+                        )),
+                    }
+                } else {
+                    Err(format!("acp request id {id} timed out after {timeout:?}"))
+                };
+                if timeout_err.is_ok() {
+                    continue;
+                }
+                pending.lock().await.remove(&id);
+                return Err(timeout_err.expect_err("timeout outcome must be Err"));
+            }
+            () = acp_activity_notify.notified() => {
+                let _ = acp_activity_seq
+                    .load(std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+type RpcWaitContext<'a> = (
+    &'a Arc<AtomicU64>,
+    &'a Arc<tokio::sync::Notify>,
+    &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    Option<u32>,
+);
 
 pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> {
     let id = n
@@ -116,6 +186,7 @@ pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> 
         method: n.method,
         params: n.params,
         rpc_timeout: n.rpc_timeout,
+        child_pid: n.child_pid,
     })
     .await
 }
@@ -135,8 +206,6 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
             seen_activity = latest;
             continue;
         }
-        let timeout = tokio::time::sleep(args.rpc_timeout);
-        tokio::pin!(timeout);
         tokio::select! {
             ready_recv = &mut rx => {
                 return ready_recv
@@ -146,42 +215,6 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
                 seen_activity = args
                     .acp_activity_seq
                     .load(std::sync::atomic::Ordering::SeqCst);
-            }
-            () = &mut timeout => {
-                if args.child_pid == 0 {
-                    args.pending.lock().await.remove(&args.id);
-                    return Err("acp RPC timed out".into());
-                }
-                let grace =
-                    crate::child_health::silence_grace_for_rpc_timeout(args.rpc_timeout);
-                // Race the inbound JSON-RPC result against child-health sampling so a response that
-                // arrives during the grace sleep is not mistaken for a hang.
-                tokio::select! {
-                    ready_recv = &mut rx => {
-                        return ready_recv
-                            .map_err(|_| "acp request canceled (session dropped)".to_string())?;
-                    }
-                    outcome = crate::child_health::evaluate_after_acp_silence(
-                        args.child_pid,
-                        grace,
-                    ) => {
-                        match outcome {
-                            crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp child process is not running".into());
-                            }
-                            crate::child_health::SilenceHealthOutcome::ChildZombie => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp child process is zombie".into());
-                            }
-                            crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {}
-                            crate::child_health::SilenceHealthOutcome::AppearsHung => {
-                                args.pending.lock().await.remove(&args.id);
-                                return Err("acp RPC timed out".into());
-                            }
-                        }
-                    }
-                }
             }
         }
     }

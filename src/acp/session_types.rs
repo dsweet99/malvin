@@ -10,21 +10,26 @@ use tokio::sync::{Mutex, Notify, oneshot};
 
 pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct PromptTraceWriter {
     pub file: tokio::fs::File,
     /// Raw tag label before fixed-width padding (e.g. `<implement`, `malvin`).
     pub who: String,
+    pub plain_lines: bool,
     pub stdout_replacement: Option<&'static str>,
     /// For learn tee: emit [`crate::output::LEARNING_PLACEHOLDER`] at most once to stdout.
     pub placeholder_emitted: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
+    /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
-    /// OS PID for [`crate::child_health`] liveness checks (0 if unknown).
-    pub child_pid: u32,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,
@@ -43,6 +48,10 @@ pub struct AcpSessionInner {
     pub ui_idle_notify: Option<Arc<Notify>>,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -69,6 +78,10 @@ pub struct AcpSpawnArgs<'a> {
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 #[test]

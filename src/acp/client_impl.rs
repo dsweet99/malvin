@@ -1,6 +1,8 @@
 /// Repo-relative path (under the workflow working directory) for optional injected style text.
 ///
-/// [`AgentClient::new`](crate::AgentClient::new) sets [`AgentClient`](crate::AgentClient)’s
+/// [`AgentClient::new`](crate::AgentClient::new) seeds the client’s style prompt path with
+/// `PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL)` so [`AgentClient::run_coder_prompt`](crate::AgentClient::run_coder_prompt)
+/// can prepend that file when it exists and repo style injection is enabled.
 pub const DEFAULT_REPO_STYLE_PROMPT_REL: &str = "coder_style.md";
 
 /// Read optional repo-local style text (trimmed) with the same rules as coder prompt composition.
@@ -43,6 +45,7 @@ async fn backoff_after_agent_failure(
     last_error: &str,
     attempt: u32,
 ) -> Result<bool, AgentError> {
+    warn!(attempt, error = %last_error, "agent acp attempt failed");
     match plan_agent_retry(last_error, attempt) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
@@ -52,6 +55,11 @@ async fn backoff_after_agent_failure(
             Ok(false)
         }
     }
+}
+
+pub enum ReviewerRestorePolicy {
+    RestoreWorkspace,
+    NoRestore,
 }
 
 impl AgentClient {
@@ -75,12 +83,22 @@ impl AgentClient {
         self.timing = timing;
     }
 
-    /// Installs [`crate::run_timing::RunTiming`] for this session (`malvin code`, `malvin kpop`, and `malvin do`).
+    /// Installs [`crate::run_timing::RunTiming`] for this client before a timed prompt or multiturn run.
     #[must_use]
     pub fn attach_run_timing_for_session(
         &mut self,
     ) -> std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>> {
         crate::run_timing::attach_new_run_timing(&mut self.timing)
+    }
+
+    fn set_timing_implement_display_name(&self, label: &'static str) {
+        let Some(timing) = self.timing.as_ref() else {
+            return;
+        };
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .set_implement_display_name(label);
     }
 
     /// Verify API key env or `agent` / `cursor-agent` auth probes.
@@ -180,6 +198,8 @@ impl AgentClient {
             skip_repo_style,
             &self.style_prompt_path,
         );
+        crate::prompts::enforce_no_unresolved_braces(&full_prompt)
+            .map_err(|e| AgentError(e.0))?;
 
         let style_for_do_trace = if do_trace_split.is_some() {
             repo_style.as_deref()
@@ -261,20 +281,40 @@ impl AgentClient {
         &mut self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
+        grounding_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
+        let backup = match grounding_restore {
+            ReviewerRestorePolicy::RestoreWorkspace => {
+                Some(
+                    crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
+                        .map_err(AgentError)?,
+                )
+            }
+            ReviewerRestorePolicy::NoRestore => None,
+        };
         let mut last_error = String::new();
-
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_reviewer_pair_once(self, &pair, pair_id).await {
-                Ok(()) => return Ok(()),
-                Err(e) => {
-                    last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
-                        break;
+            let prompt_result = run_reviewer_pair_once(self, &pair, pair_id).await;
+            match prompt_result {
+                Ok(()) => {
+                    if let Some(backup) = &backup {
+                        crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                            .map_err(AgentError)?;
                     }
+                    return Ok(());
                 }
+                Err(err) => {
+                    last_error = err.0;
+                }
+            }
+            if let Some(backup) = &backup {
+                crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                    .map_err(AgentError)?;
+            }
+            if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                break;
             }
         }
 
@@ -293,13 +333,15 @@ impl AgentClient {
     pub async fn run_kpop_flow(
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
+        grounding_backup: &crate::artifacts::GroundingBackup,
     ) -> Result<(), AgentError> {
+        self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_kpop_flow_once(self, flow).await {
+            match run_kpop_flow_once(self, flow, grounding_backup).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
@@ -314,6 +356,54 @@ impl AgentClient {
         let noun = retries_noun(retries);
         Err(AgentError(format!(
             "agent acp (kpop flow) failed after {retries} {noun}. Last error:\n{last_error}"
+        )))
+    }
+
+    /// Multiturn KPOP: one ACP session; each [`crate::kpop_multiturn::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AgentError`] when spawn or a prompt fails after retries.
+    pub async fn run_kpop_multiturn<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
+        &mut self,
+        cwd: &Path,
+        kpop_log: &Path,
+        learn: Option<(&str, &Path)>,
+        learn_min_elapsed_ms: u64,
+        state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+        grounding_backup: &crate::artifacts::GroundingBackup,
+    ) -> Result<(), AgentError> {
+        self.set_timing_implement_display_name("kpop");
+        let mut last_error = String::new();
+
+        let mut attempts_used = 0_u32;
+        for attempt in 1..=MAX_AGENT_ATTEMPTS {
+            attempts_used = attempt;
+            match run_kpop_multiturn_once(
+                self,
+                cwd,
+                kpop_log,
+                learn,
+                learn_min_elapsed_ms,
+                state,
+                grounding_backup,
+            )
+            .await
+            {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = e.0;
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let retries = attempts_used.saturating_sub(1);
+        let noun = retries_noun(retries);
+        Err(AgentError(format!(
+            "agent acp (kpop multiturn) failed after {retries} {noun}. Last error:\n{last_error}"
         )))
     }
 }

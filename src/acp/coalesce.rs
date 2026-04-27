@@ -47,10 +47,41 @@ pub(crate) fn coalesce_char_boundary_at(s: &str, n_chars: usize) -> usize {
 
 pub(crate) fn coalesce_flush_cap(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
     while *buf_chars >= ACP_VERBOSE_COALESCE_MAX {
-        let end = coalesce_char_boundary_at(buf, ACP_VERBOSE_COALESCE_MAX);
-        emissions.push(buf.drain(..end).collect());
-        *buf_chars -= ACP_VERBOSE_COALESCE_MAX;
+        let hard_end = coalesce_char_boundary_at(buf, ACP_VERBOSE_COALESCE_MAX);
+        let (emit_end, drain_end, drained_chars) =
+            coalesce_word_split_points(buf, hard_end);
+        let emitted = buf[..emit_end].to_string();
+        buf.drain(..drain_end);
+        *buf_chars -= drained_chars;
+        emissions.push(emitted);
     }
+}
+
+fn coalesce_word_split_points(buf: &str, hard_end: usize) -> (usize, usize, usize) {
+    let region = &buf[..hard_end];
+    let mut last_space_start: Option<usize> = None;
+    for (i, ch) in region.char_indices() {
+        if ch == ' ' {
+            last_space_start = Some(i);
+        }
+    }
+    if let Some(space_start) = last_space_start {
+        let mut drain_end = space_start;
+        for ch in buf[space_start..hard_end].chars() {
+            if ch == ' ' {
+                drain_end += ch.len_utf8();
+            } else {
+                break;
+            }
+        }
+        let emit_end = space_start;
+        let emit_chars = buf[..emit_end].chars().count();
+        if emit_chars > 0 {
+            let drained_chars = buf[..drain_end].chars().count();
+            return (emit_end, drain_end, drained_chars);
+        }
+    }
+    (hard_end, hard_end, ACP_VERBOSE_COALESCE_MAX)
 }
 
 pub(crate) fn coalesce_flush_nonempty(buf: &mut String, buf_chars: &mut usize, emissions: &mut Vec<String>) {
@@ -72,9 +103,11 @@ impl VerboseIoCoalescer {
     pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) {
         match kind {
             SessionUpdateChunkKind::Message => {
+                Self::flush_if_nonempty(&mut self.thought, &mut self.thought_chars, "acp thought");
                 Self::feed_buf(&mut self.message, &mut self.message_chars, chunk, "acp message");
             }
             SessionUpdateChunkKind::Thought => {
+                Self::flush_if_nonempty(&mut self.message, &mut self.message_chars, "acp message");
                 Self::feed_buf(&mut self.thought, &mut self.thought_chars, chunk, "acp thought");
             }
         }
@@ -103,7 +136,9 @@ impl VerboseIoCoalescer {
 }
 
 /// `session/update` streaming chunks (`agent_message_chunk`, `agent_thought_chunk`).
-pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChunkKind, String)> {
+pub(crate) fn session_update_chunk_parts(
+    v: &Value,
+) -> Option<(SessionUpdateChunkKind, &str)> {
     if v.get("method").and_then(Value::as_str) != Some("session/update") {
         return None;
     }
@@ -116,63 +151,8 @@ pub(crate) fn session_update_chunk_parts(v: &Value) -> Option<(SessionUpdateChun
     let text = update
         .pointer("/content/text")
         .and_then(Value::as_str)
-        .unwrap_or("")
-        .to_string();
+        .unwrap_or("");
     Some((kind, text))
-}
-
-#[derive(Default)]
-pub(crate) struct TraceChunkCoalescer {
-    pub message: String,
-    pub thought: String,
-    message_chars: usize,
-    thought_chars: usize,
-}
-
-impl TraceChunkCoalescer {
-    pub fn feed(&mut self, kind: SessionUpdateChunkKind, chunk: &str) -> Vec<(SessionUpdateChunkKind, String)> {
-        let (buf, buf_chars) = match kind {
-            SessionUpdateChunkKind::Message => (&mut self.message, &mut self.message_chars),
-            SessionUpdateChunkKind::Thought => (&mut self.thought, &mut self.thought_chars),
-        };
-        let mut emissions = Vec::new();
-        coalesce_append_chunk(buf, buf_chars, chunk, &mut emissions);
-        emissions.into_iter().map(|line| (kind, line)).collect()
-    }
-
-    pub fn flush_all(&mut self) -> Vec<(SessionUpdateChunkKind, String)> {
-        let mut out = Vec::new();
-        Self::flush_stream(
-            SessionUpdateChunkKind::Message,
-            &mut self.message,
-            &mut self.message_chars,
-            &mut out,
-        );
-        Self::flush_stream(
-            SessionUpdateChunkKind::Thought,
-            &mut self.thought,
-            &mut self.thought_chars,
-            &mut out,
-        );
-        out
-    }
-
-    fn flush_stream(
-        kind: SessionUpdateChunkKind,
-        buf: &mut String,
-        buf_chars: &mut usize,
-        out: &mut Vec<(SessionUpdateChunkKind, String)>,
-    ) {
-        if !buf.is_empty() {
-            out.push((kind, std::mem::take(buf)));
-            *buf_chars = 0;
-        }
-    }
-}
-
-pub(crate) struct VerboseTraceCoalesceState<'a> {
-    pub verbose: &'a mut VerboseIoCoalescer,
-    pub trace: &'a mut TraceChunkCoalescer,
 }
 
 #[test]
@@ -182,6 +162,7 @@ fn kiss_stringify_coalesce_a() {
     let _ = stringify!(coalesce_append_chunk);
     let _ = stringify!(coalesce_char_boundary_at);
     let _ = stringify!(coalesce_flush_cap);
+    let _ = stringify!(coalesce_word_split_points);
     let _ = stringify!(coalesce_flush_nonempty);
     let _ = stringify!(VerboseIoCoalescer);
     let _ = stringify!(VerboseIoCoalescer::feed);
@@ -189,10 +170,21 @@ fn kiss_stringify_coalesce_a() {
     let _ = stringify!(session_update_chunk_parts);
 }
 
-#[test]
-fn kiss_stringify_coalesce_b() {
-    let _ = stringify!(TraceChunkCoalescer);
-    let _ = stringify!(TraceChunkCoalescer::feed);
-    let _ = stringify!(TraceChunkCoalescer::flush_all);
-    let _ = stringify!(VerboseTraceCoalesceState);
+#[cfg(test)]
+mod coalesce_tests {
+    use super::{ACP_VERBOSE_COALESCE_MAX, coalesce_flush_cap};
+
+    #[test]
+    fn coalesce_flush_cap_preserves_tab_boundary_content() {
+        let original = format!("{}\t{}", "a".repeat(50), "b".repeat(100));
+        let mut buf = original.clone();
+        let mut buf_chars = buf.chars().count();
+        let mut emissions = Vec::new();
+        coalesce_flush_cap(&mut buf, &mut buf_chars, &mut emissions);
+        assert_eq!(emissions.len(), 1);
+        assert_eq!(emissions[0].chars().count(), ACP_VERBOSE_COALESCE_MAX);
+        let rebuilt = format!("{}{}", emissions.concat(), buf);
+        assert_eq!(rebuilt, original);
+        assert!(rebuilt.contains('\t'));
+    }
 }

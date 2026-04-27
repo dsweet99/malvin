@@ -1,21 +1,25 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
 mod acp_tee;
+mod acp_tee_markdown;
 pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
-    AcpTeeDirection, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
-    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_payload,
+    AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
+    print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
+    print_stdout_acp_tee_line_with_timestamp_dim_plain, termimad_inline_payload_for_stdout,
+    termimad_text_lines_for_stdout,
 };
+
+#[cfg(test)]
+mod acp_tee_tests;
 
 use std::io::{IsTerminal, stdout};
 use std::sync::OnceLock;
 
 use chrono::Local;
 
-use self::terminal_wrap::{
-    stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
-};
+use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
@@ -156,8 +160,8 @@ mod tests {
     use super::{
         LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
         format_line, format_line_with_timestamp, format_line_with_timestamp_ansi,
-        format_log_tag_inner, init_stdout_style, is_command_prelude_line, print_stderr_line,
-        print_outgoing_prompt_log, print_stdout_line, print_stdout_text,
+        format_log_tag_inner, init_stdout_style, is_command_prelude_line,
+        print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_text,
     };
 
     #[test]

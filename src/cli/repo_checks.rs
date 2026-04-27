@@ -1,47 +1,61 @@
+use super::kiss_clamp;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 use std::path::Path;
 use std::process::Command;
 
-use super::kiss_clamp;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
-
-pub fn run_repo_workspace_gates(work_dir: &Path) -> Result<(), String> {
-    ensure_workspace_style_markers(work_dir)?;
-    kiss_clamp::ensure_kiss_clamp_if_needed(work_dir)?;
-    warn_kissconfig_test_coverage_if_needed(work_dir);
-    run_pre_commit_checks_or_warn(work_dir)
+#[derive(Clone, Copy)]
+pub enum RepoGateOutput {
+    Tagged,
+    Stderr,
 }
 
-/// Touch `<work_dir>/grounding.md` and `<work_dir>/.llm_style/style.md` when missing.
-///
-/// Creating these as empty files gives coder/reviewer prompts a stable path to read
-/// instead of re-discovering their absence every phase. Existing files are never touched.
-///
-/// # Errors
-///
-/// Returns an error string if a file or the `.llm_style` directory cannot be created.
-pub fn ensure_workspace_style_markers(work_dir: &Path) -> Result<(), String> {
-    touch_if_missing(&work_dir.join("grounding.md"))?;
-    let style_dir = work_dir.join(".llm_style");
+pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
+    match output {
+        RepoGateOutput::Tagged => print_stdout_line(MALVIN_WHO, line),
+        RepoGateOutput::Stderr => eprintln!("{line}"),
+    }
+}
+
+pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    kiss_clamp::ensure_kiss_clamp_if_needed(work_dir, output)?;
+    warn_kissconfig_test_coverage_if_needed(work_dir, output);
+    run_pre_commit_all_files(work_dir, output)
+}
+
+/// Touch `<work_dir>/grounding.md` and `<work_dir>/.malvin_memory/style.md` when missing.
+/// Existing files are never touched.
+/// Returns an error string if a file or the `.malvin_memory` directory cannot be created.
+#[cfg(test)]
+pub fn ensure_workspace_style_markers(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), String> {
+    touch_if_missing(&work_dir.join("grounding.md"), output)?;
+    let style_dir = work_dir.join(".malvin_memory");
     if !style_dir.is_dir() {
         std::fs::create_dir_all(&style_dir)
             .map_err(|e| format!("create {}: {e}", style_dir.display()))?;
     }
-    touch_if_missing(&style_dir.join("style.md"))
+    touch_if_missing(&style_dir.join("style.md"), output)
 }
 
-fn touch_if_missing(path: &Path) -> Result<(), String> {
+#[cfg(test)]
+fn touch_if_missing(path: &Path, output: RepoGateOutput) -> Result<(), String> {
     if path.exists() {
-        return Ok(());
+        if path.is_file() {
+            return Ok(());
+        }
+        return Err(format!("{} exists but is not a file", path.display()));
     }
     std::fs::File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
-    print_stdout_line(
-        MALVIN_WHO,
+    emit_repo_gate_line(
+        output,
         &format!("Touched empty {} (was missing)", path.display()),
     );
     Ok(())
 }
 
-pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path) {
+pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGateOutput) {
     let path = work_dir.join(".kissconfig");
     if !path.is_file() {
         return;
@@ -49,8 +63,8 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path) {
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
-            print_stdout_line(
-                MALVIN_WHO,
+            emit_repo_gate_line(
+                output,
                 &format!("Warning: could not read .kissconfig: {e}"),
             );
             return;
@@ -59,8 +73,8 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path) {
     let value = match text.parse::<toml::Value>() {
         Ok(v) => v,
         Err(e) => {
-            print_stdout_line(
-                MALVIN_WHO,
+            emit_repo_gate_line(
+                output,
                 &format!("Warning: could not parse .kissconfig as TOML: {e}"),
             );
             return;
@@ -69,8 +83,8 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path) {
     if !should_warn_low_test_coverage(&value) {
         return;
     }
-    print_stdout_line(
-        MALVIN_WHO,
+    emit_repo_gate_line(
+        output,
         "Warning: .kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
     );
 }
@@ -105,44 +119,65 @@ fn format_pre_commit_failure(output: &std::process::Output) -> String {
     format!("`pre-commit run --all-files` failed (exit {exit}): {detail}")
 }
 
-fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
+fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
     value
         .get("gate")
         .and_then(|g| g.get("test_coverage_threshold"))
-        .and_then(toml::Value::as_integer)
-        .is_none_or(|t| t < 90)
+        .and_then(|v| {
+            v.as_integer().or_else(|| {
+                v.as_float()
+                    .filter(|f| f.is_finite() && f.fract() == 0.0)
+                    .and_then(|f| f.to_string().parse::<i64>().ok())
+            })
+        })
 }
 
-pub fn run_pre_commit_checks_or_warn(work_dir: &Path) -> Result<(), String> {
+fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
+    gate_test_coverage_threshold_i64(value).is_none_or(|t| t < 90)
+}
+
+pub fn run_pre_commit_all_files(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), String> {
     let config = work_dir.join(".pre-commit-config.yaml");
     if !config.is_file() {
-        print_stdout_line(
-            MALVIN_WHO,
+        emit_repo_gate_line(
+            output,
             "Warning: no .pre-commit-config.yaml; editing code without configured linters is risky.",
         );
         return Ok(());
     }
-    print_stdout_line(
-        MALVIN_WHO,
+    emit_repo_gate_line(
+        output,
         "Running `pre-commit run --all-files` (repo-configured hooks)",
     );
-    let output = Command::new("pre-commit")
+    let pcm = Command::new("pre-commit")
         .args(["run", "--all-files"])
         .current_dir(work_dir)
         .output()
         .map_err(|e| format!("`pre-commit` failed to start: {e}"))?;
-    if output.status.success() {
+    if pcm.status.success() {
         Ok(())
     } else {
-        Err(format_pre_commit_failure(&output))
+        Err(format_pre_commit_failure(&pcm))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        ensure_workspace_style_markers, format_pre_commit_failure, should_warn_low_test_coverage,
+        RepoGateOutput, ensure_workspace_style_markers, format_pre_commit_failure,
+        run_repo_workspace_gates, should_warn_low_test_coverage,
     };
+
+    #[test]
+    fn repo_checks_kiss_stringify_internal_helpers() {
+        let _ = stringify!(super::RepoGateOutput);
+        let _ = stringify!(super::emit_repo_gate_line);
+        let _ = stringify!(super::touch_if_missing);
+        let _ = stringify!(super::trim_detail_chars);
+    }
 
     #[test]
     fn pre_commit_failure_includes_exit_and_streams() {
@@ -187,12 +222,24 @@ mod tests {
     }
 
     #[test]
+    fn coverage_ok_at_90_whole_float() {
+        let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 90.0\n").unwrap();
+        assert!(!should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
+    fn coverage_warn_when_threshold_is_fractional_float() {
+        let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 90.5\n").unwrap();
+        assert!(should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
     fn style_markers_are_touched_when_missing() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
-        ensure_workspace_style_markers(work).unwrap();
+        ensure_workspace_style_markers(work, RepoGateOutput::Tagged).unwrap();
         let grounding = work.join("grounding.md");
-        let style = work.join(".llm_style").join("style.md");
+        let style = work.join(".malvin_memory").join("style.md");
         assert!(grounding.is_file(), "grounding.md not created");
         assert!(style.is_file(), "style.md not created");
         assert_eq!(std::fs::read(&grounding).unwrap(), Vec::<u8>::new());
@@ -203,16 +250,16 @@ mod tests {
     fn style_markers_preserve_existing_content() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
-        std::fs::create_dir_all(work.join(".llm_style")).unwrap();
+        std::fs::create_dir_all(work.join(".malvin_memory")).unwrap();
         std::fs::write(work.join("grounding.md"), b"KEEP ME\n").unwrap();
-        std::fs::write(work.join(".llm_style").join("style.md"), b"STYLE STAYS\n").unwrap();
-        ensure_workspace_style_markers(work).unwrap();
+        std::fs::write(work.join(".malvin_memory").join("style.md"), b"STYLE STAYS\n").unwrap();
+        ensure_workspace_style_markers(work, RepoGateOutput::Tagged).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
             "KEEP ME\n"
         );
         assert_eq!(
-            std::fs::read_to_string(work.join(".llm_style").join("style.md")).unwrap(),
+            std::fs::read_to_string(work.join(".malvin_memory").join("style.md")).unwrap(),
             "STYLE STAYS\n"
         );
     }
@@ -222,13 +269,34 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         std::fs::write(work.join("grounding.md"), b"ORIGINAL\n").unwrap();
-        ensure_workspace_style_markers(work).unwrap();
+        ensure_workspace_style_markers(work, RepoGateOutput::Stderr).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
             "ORIGINAL\n"
         );
-        let style = work.join(".llm_style").join("style.md");
+        let style = work.join(".malvin_memory").join("style.md");
         assert!(style.is_file());
         assert_eq!(std::fs::read(&style).unwrap(), Vec::<u8>::new());
+    }
+
+    #[test]
+    fn style_markers_error_when_grounding_path_is_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        std::fs::create_dir(work.join("grounding.md")).unwrap();
+        assert!(
+            ensure_workspace_style_markers(work, RepoGateOutput::Stderr)
+                .unwrap_err()
+                .contains("exists but is not a file")
+        );
+    }
+
+    #[test]
+    fn repo_workspace_gates_do_not_create_missing_style_markers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        run_repo_workspace_gates(work, RepoGateOutput::Stderr).unwrap();
+        assert!(!work.join("grounding.md").exists());
+        assert!(!work.join(".malvin_memory").join("style.md").exists());
     }
 }

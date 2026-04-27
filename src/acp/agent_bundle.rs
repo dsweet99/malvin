@@ -15,6 +15,7 @@ pub struct AgentError(pub String);
 pub struct AuthError(pub String);
 
 /// CLI flags that map to subprocess / logging behavior (grouped for `kiss` boolean-parameter limits).
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy)]
 pub struct AgentIoOptions {
     pub force: bool,
@@ -22,6 +23,10 @@ pub struct AgentIoOptions {
     pub no_tee: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
     pub raw_output: bool,
+    /// When true, include thought chunks on stdout for raw/plain output.
+    pub show_thoughts_on_stdout: bool,
+    /// When true (default for code/kpop), render agent trace payloads as markdown on stdout.
+    pub emit_stdout_markdown: bool,
 }
 
 include!("pair.rs");
@@ -117,6 +122,14 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn arbitrary_errors_are_retriable() {
+        assert!(agent_string_is_retriable("some new transport failure"));
+        assert!(agent_string_is_retriable(
+            "ACP `session/new` failed: acp request canceled (session dropped)"
+        ));
+    }
+
+    #[test]
     fn dead_child_errors_are_retriable() {
         assert!(agent_string_is_retriable("acp child process is not running"));
         assert!(agent_string_is_retriable("acp child process is zombie"));
@@ -154,6 +167,17 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn grpc_unavailable_is_retriable() {
+        assert!(agent_string_is_retriable("Error: S: [unavailable] Error"));
+    }
+
+    #[test]
+    fn plan_retry_sleeps_on_grpc_unavailable() {
+        let r = plan_agent_retry("Error: S: [unavailable] Error", 1).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::Sleep(_)));
+    }
+
+    #[test]
     fn session_init_failure_is_retriable() {
         assert!(
             agent_string_is_retriable(
@@ -164,10 +188,10 @@ mod retry_policy_tests {
     }
 
     #[test]
-    fn validation_timeout_field_name_is_not_retriable() {
+    fn funds_exceeded_is_not_retriable() {
         assert!(
-            !agent_string_is_retriable("validation failed: timeout_ms must be positive"),
-            "config/validation errors mentioning timeout_* should not waste bounded retries"
+            !agent_string_is_retriable("Upgrade your plan to continue"),
+            "funds-exceeded errors should fail fast"
         );
     }
 

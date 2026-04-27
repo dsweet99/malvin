@@ -4,9 +4,8 @@
 //! attribute coverage consistently; see `.kissignore`.
 
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::RunArtifacts;
-use crate::prompts::PromptStore;
-use crate::review_sync::is_lgtm_str;
+use crate::artifacts::{GroundingBackup, RunArtifacts};
+use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
@@ -14,10 +13,14 @@ use std::sync::{Arc, Mutex};
 
 include!("helpers.rs");
 
+mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
+mod session_mode;
+mod session_flow;
 
-use review_context::ReviewPhaseArgs;
+use session_mode::OrchestratorSessionMode;
+use session_flow::run_coder_session;
 
 use workflow_context as workflow_context_inner;
 
@@ -32,15 +35,11 @@ pub(crate) fn prefer_primary_errors_over_timing(
     end_result: Result<(), WorkflowError>,
     timing_result: Result<(), WorkflowError>,
 ) -> Result<(), WorkflowError> {
-    match (workflow_result, end_result) {
-        (Ok(()), Ok(())) => timing_result,
-        (wf, er) => {
-            let _ = timing_result;
-            match (wf, er) {
-                (Err(e), _) | (Ok(()), Err(e)) => Err(e),
-                (Ok(()), Ok(())) => unreachable!("outer match excludes both Ok"),
-            }
-        }
+    if matches!((&workflow_result, &end_result), (Ok(()), Ok(()))) {
+        timing_result
+    } else {
+        let _ = timing_result;
+        workflow_result.and(end_result)
     }
 }
 
@@ -64,7 +63,7 @@ pub struct Orchestrator<'a> {
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
     /// Snapshot path under `~/.malvin/groundings/`, restored before each review and after the workflow.
-    pub grounding_backup: Option<std::path::PathBuf>,
+    pub grounding_backup: GroundingBackup,
 }
 
 /// Returns true if learn should run given threshold and elapsed time.
@@ -99,85 +98,62 @@ impl Orchestrator<'_> {
         res.map_err(|e| WorkflowError(format!("run timing: {e}")))
     }
 
+    fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
+        if let Some(abort_msg) = check_abort(&self.artifacts.artifact_result_md()) {
+            return Err(WorkflowError(format!("ABORT: {abort_msg}")));
+        }
+        Ok(())
+    }
+
+    fn finish_check_plan_after_lgtm(&self) -> Result<(), WorkflowError> {
+        self.fail_on_abort_result()
+    }
+
     /// Drive the full workflow.
     ///
     /// # Errors
     ///
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts, self.prompts);
+        let context = workflow_context_inner(self.artifacts, self.prompts)
+            .map_err(|e: PromptError| WorkflowError(e.0))?;
+        self.run_with_session(&context, OrchestratorSessionMode::Code).await
+    }
+
+    /// Run sync workflow only: review loops and optional learn.
+    pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
+        let context = workflow_context_inner(self.artifacts, self.prompts)
+            .map_err(|e: PromptError| WorkflowError(e.0))?;
+        self.run_with_session(&context, OrchestratorSessionMode::Sync).await
+    }
+
+    async fn run_with_session(
+        &mut self,
+        context: &HashMap<String, String>,
+        mode: OrchestratorSessionMode,
+    ) -> Result<(), WorkflowError> {
         let timing = self.attach_run_timing();
         let begin_res = self
             .client
             .begin_coder_session(&self.artifacts.work_dir)
             .await;
+        let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
-            Ok(()) => self.run_with_coder_session(&context).await,
+            Ok(()) => run_coder_session(self, context, mode).await,
             Err(e) => Err(WorkflowError(e.0)),
         };
-        let timing_result = self.emit_run_timing_artifact(&timing);
+        let timing_result = if coder_session_began {
+            self.emit_run_timing_artifact(&timing)
+        } else {
+            self.client.set_run_timing(None);
+            Ok(())
+        };
         let end_result = self
             .client
             .end_coder_session()
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
-    }
-
-    async fn run_check_plan(
-        &mut self,
-        context: &HashMap<String, String>,
-    ) -> Result<(), WorkflowError> {
-        let review_path = self.artifacts.workspace_review_md();
-        clear_review_file(&review_path)
-            .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
-        (self.progress_callback)("CheckPlan");
-        self.run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
-            .await?;
-
-        let contents = std::fs::read_to_string(&review_path).map_err(|e| {
-            WorkflowError(format!("failed to read review file: {e}"))
-        })?;
-        if !is_lgtm_str(&contents) {
-            (self.progress_callback)(&format!("Plan check failed:\n{contents}"));
-            return Err(WorkflowError("check_plan did not pass".to_string()));
-        }
-        Ok(())
-    }
-
-    async fn run_with_coder_session(
-        &mut self,
-        context: &HashMap<String, String>,
-    ) -> Result<(), WorkflowError> {
-        if !self.config.skip_check_plan {
-            self.run_check_plan(context).await?;
-        }
-
-        (self.progress_callback)("Implement");
-        self.run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
-            .await?;
-
-        self.run_review_phase(ReviewPhaseArgs {
-            review_prompt: "review_1.md",
-            progress_label: "Review-1",
-            phase_id: "review_1",
-            context,
-        })
-        .await?;
-        self.run_review_phase(ReviewPhaseArgs {
-            review_prompt: "review_2.md",
-            progress_label: "Review-2",
-            phase_id: "review_2",
-            context,
-        })
-        .await?;
-
-        if self.config.run_learn && self.should_run_learn() {
-            (self.progress_callback)("Learn");
-            self.run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
-                .await?;
-        }
-        Ok(())
     }
 
     pub(super) async fn run_coder_prompt(
@@ -193,7 +169,8 @@ impl Orchestrator<'_> {
             .map_err(|e| WorkflowError(e.0))?;
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
-        self.client
+        let run_result = self
+            .client
             .run_coder_prompt(
                 &prompt,
                 &log,
@@ -206,7 +183,20 @@ impl Orchestrator<'_> {
                 },
             )
             .await
-            .map_err(|e: AgentError| WorkflowError(e.0))?;
-        Ok(())
+            .map_err(|e: AgentError| WorkflowError(e.0));
+        let restore_result = crate::artifacts::restore_workspace_grounding(
+            &self.artifacts.work_dir,
+            &self.grounding_backup,
+        )
+        .map_err(WorkflowError);
+
+        match (run_result, restore_result) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(run_err), Ok(())) => Err(run_err),
+            (Ok(()), Err(restore_err)) => Err(restore_err),
+            (Err(run_err), Err(restore_err)) => {
+                Err(WorkflowError(format!("{}, {}", run_err.0, restore_err.0)))
+            }
+        }
     }
 }

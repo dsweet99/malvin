@@ -1,4 +1,4 @@
-//! Prompt templates under `~/.malvin/prompts` with embedded defaults.
+//! Prompt templates sourced from embedded defaults, with optional custom root.
 
 mod defaults;
 mod template;
@@ -7,9 +7,21 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS};
-use template::merge_header_and_coding_rules;
+
+pub use defaults::{DO_HEADER_MD, HEADER_MD};
 
 pub(crate) use defaults::default_file;
+
+pub fn enforce_no_unresolved_braces(text: &str) -> Result<(), PromptError> {
+    if text.contains("{{") {
+        Err(PromptError(
+            "prompt still contains \"{{\" before ACP; resolve every {{ key }} placeholder"
+                .to_string(),
+        ))
+    } else {
+        Ok(())
+    }
+}
 
 /// User-facing prompt configuration error.
 #[derive(Debug, thiserror::Error)]
@@ -23,10 +35,9 @@ pub struct KpopPromptValidation {
     pub require_mbc2: bool,
 }
 
-/// Prompt files on disk (`~/.malvin/prompts` by default).
 #[derive(Debug, Clone)]
 pub struct PromptStore {
-    root: PathBuf,
+    root: Option<PathBuf>,
 }
 
 pub(crate) fn user_home_dir() -> PathBuf {
@@ -40,32 +51,54 @@ pub(crate) fn user_home_dir() -> PathBuf {
 }
 
 impl PromptStore {
+    fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
+        self.root.as_ref().map_or_else(
+            || {
+                default_file(filename)
+                    .map(str::to_string)
+                    .ok_or_else(|| PromptError(format!("Missing embedded prompt in binary: {filename}")))
+            },
+            |root| {
+                std::fs::read_to_string(root.join(filename)).map_err(|_| {
+                    PromptError(format!(
+                        "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
+                        root.display()
+                    ))
+                })
+            },
+        )
+    }
+
+    fn prompt_source_desc(&self) -> String {
+        self.root
+            .as_ref()
+            .map_or_else(|| "embedded prompts".to_string(), |root| root.display().to_string())
+    }
+}
+
+impl PromptStore {
     #[must_use]
-    pub fn default_store() -> Self {
-        Self {
-            root: user_home_dir().join(".malvin").join("prompts"),
-        }
+    pub const fn default_store() -> Self {
+        Self { root: None }
     }
 
     #[must_use]
     pub const fn with_root(root: PathBuf) -> Self {
-        Self { root }
+        Self { root: Some(root) }
     }
 
-    /// Create `root` and copy any missing default prompts from embedded templates.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] if a default file is missing from the binary or I/O fails.
     pub fn ensure_defaults(&self) -> Result<(), PromptError> {
-        std::fs::create_dir_all(&self.root).map_err(|e| {
+        let Some(root) = &self.root else {
+            return Ok(());
+        };
+        std::fs::create_dir_all(root).map_err(|e| {
             PromptError(format!(
                 "failed to create prompt directory {}: {e}",
-                self.root.display()
+                root.display()
             ))
         })?;
         for name in DEFAULT_PROMPTS {
-            let target = self.root.join(name);
+            let target = root.join(name);
             if target.exists() {
                 continue;
             }
@@ -82,47 +115,45 @@ impl PromptStore {
         Ok(())
     }
 
-    /// Ensure all workflow prompts exist.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] listing any missing required files.
     pub fn validate_required(&self) -> Result<(), PromptError> {
+        let has_file = |name: &str| -> bool {
+            self.root
+                .as_ref()
+                .map_or_else(|| default_file(name).is_some(), |root| root.join(name).exists())
+        };
         let missing: Vec<&str> = REQUIRED_PROMPTS
             .iter()
             .copied()
-            .filter(|n| !self.root.join(n).exists())
+            .filter(|name| !has_file(name))
             .collect();
         if missing.is_empty() {
             return Ok(());
         }
         Err(PromptError(format!(
             "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
-            self.root.display(),
+            self.prompt_source_desc(),
             missing.join(", ")
         )))
     }
 
-    /// Ensure prompts needed for standalone `malvin kpop` exist (`header.md`, `kpop.md`, and `learn.md` when learning runs).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] listing any missing files.
     pub fn validate_kpop_prompts(
         &self,
         validation: KpopPromptValidation,
     ) -> Result<(), PromptError> {
         let mut missing: Vec<&str> = Vec::new();
-        if !self.root.join("header.md").exists() {
-            missing.push("header.md");
+        if self.prompt_text(HEADER_MD).is_err() {
+            missing.push(HEADER_MD);
         }
-        if !self.root.join("kpop.md").exists() {
-            missing.push("kpop.md");
+        if self.prompt_text("kpop_common.md").is_err() {
+            missing.push("kpop_common.md");
         }
-        if validation.require_mbc2 && !self.root.join("mbc2.md").exists() {
-            missing.push("mbc2.md");
+        if self.prompt_text("kpop_block.md").is_err() {
+            missing.push("kpop_block.md");
         }
-        if validation.run_learn && !self.root.join("learn.md").exists() {
+        if validation.require_mbc2 && self.prompt_text("mbc2_pure.md").is_err() {
+            missing.push("mbc2_pure.md");
+        }
+        if validation.run_learn && self.prompt_text("learn.md").is_err() {
             missing.push("learn.md");
         }
         if missing.is_empty() {
@@ -130,118 +161,72 @@ impl PromptStore {
         }
         Err(PromptError(format!(
             "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
-            self.root.display(),
+            self.prompt_source_desc(),
             missing.join(", ")
         )))
     }
 
-    /// Ensure a single file exists (e.g. `learn.md`).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] if the file is missing.
     pub fn validate_exists(&self, filename: &str) -> Result<(), PromptError> {
-        if self.root.join(filename).exists() {
+        if self.prompt_text(filename).is_ok() {
             return Ok(());
         }
         Err(PromptError(format!(
             "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
-            self.root.display()
+            self.prompt_source_desc()
         )))
     }
 
-    /// Load `filename`, substitute `{{ key }}` → `$key`, then substitute.
-    /// The same expansion is applied to `header.md` and `coding_rules.md`; the results are concatenated
-    /// (header first) and injected as `coding_rules` into the main template.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] if the file cannot be read.
     pub fn render(
         &self,
         filename: &str,
         context: &HashMap<String, String>,
     ) -> Result<String, PromptError> {
-        let path = self.root.join(filename);
-        let prompt_text = std::fs::read_to_string(&path).map_err(|_| {
-            PromptError(format!(
-                "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
-                self.root.display()
-            ))
-        })?;
+        let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
         render_context.insert(
             "coding_rules".to_string(),
-            merged_coding_rules(self, context),
+            merged_coding_rules(self, context)?,
         );
-        Ok(render_template(&prompt_text, &render_context))
+        let out = render_template(&prompt_text, &render_context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
     }
 
-    /// Expand a single prompt file with `context` (`{{ key }}` / `$key`) without injecting `coding_rules`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PromptError`] if the file cannot be read.
     pub fn render_prompt_only(
         &self,
         filename: &str,
         context: &HashMap<String, String>,
     ) -> Result<String, PromptError> {
-        let path = self.root.join(filename);
-        let prompt_text = std::fs::read_to_string(&path).map_err(|_| {
-            PromptError(format!(
-                "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
-                self.root.display()
-            ))
-        })?;
-        Ok(render_template(&prompt_text, context))
+        let prompt_text = self.prompt_text(filename)?;
+        let out = render_template(&prompt_text, context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
     }
 
-    fn load_coding_rules(&self) -> String {
-        let p = self.root.join("coding_rules.md");
-        std::fs::read_to_string(p)
+    pub(crate) fn load_coding_rules(&self) -> String {
+        self.prompt_text("coding_rules.md")
             .unwrap_or_default()
             .trim()
             .to_string()
     }
 
-    fn load_header(&self) -> String {
-        let p = self.root.join("header.md");
-        std::fs::read_to_string(p)
+    pub(crate) fn load_header(&self) -> String {
+        self.prompt_text(HEADER_MD)
             .unwrap_or_default()
             .trim()
             .to_string()
     }
 }
 
-#[allow(clippy::implicit_hasher)]
-pub fn render_mbc2_for_scheduled_kpop_block(
-    store: &PromptStore,
-    context: &HashMap<String, String>,
-) -> Result<String, PromptError> {
-    let mut ctx = context.clone();
-    ctx.insert("coding_rules".to_string(), String::new());
-    store.render_prompt_only("mbc2.md", &ctx)
-}
-
-/// Merged `header.md` + `coding_rules.md` text that [`PromptStore::render`] injects as `coding_rules`.
-///
-/// Use when assembling a prompt without [`PromptStore::render`] (for example prepending rules to a
-/// [`PromptStore::render_prompt_only`] body so embedding contexts do not duplicate `{{ coding_rules }}`).
-#[allow(clippy::implicit_hasher, clippy::must_use_candidate)]
-pub fn merged_coding_rules(store: &PromptStore, context: &HashMap<String, String>) -> String {
-    let render_context: HashMap<String, String> = context.clone();
-    let header_raw = store.load_header();
-    let header_expanded = render_template(&header_raw, &render_context);
-    let rules_raw = store.load_coding_rules();
-    let rules_expanded = render_template(&rules_raw, &render_context);
-    merge_header_and_coding_rules(&header_expanded, &rules_expanded)
-}
-
-#[allow(unused_imports)]
-// `substitute_template`: tests / coverage only (not used in this module body).
-pub(crate) use template::{render_template, substitute_template};
+pub use template::{
+    merge_header_and_coding_rules, merged_coding_rules, render_mbc2_for_scheduled_kpop_block,
+    render_template, substitute_template,
+};
 
 #[cfg(test)]
 #[allow(unsafe_code)]
 mod tests;
+#[cfg(test)]
+mod embedded_defaults_tests;
+#[cfg(test)]
+mod check_sync_tests;

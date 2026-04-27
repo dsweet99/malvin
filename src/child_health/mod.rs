@@ -2,6 +2,7 @@
 //!
 //! Policy ([`evaluate_after_acp_silence`]) is platform-agnostic; [`sample_child_health`] is
 //! OS-specific.
+#![allow(dead_code)]
 
 use std::time::{Duration, Instant};
 

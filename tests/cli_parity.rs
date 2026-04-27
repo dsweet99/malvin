@@ -1,11 +1,47 @@
-use std::path::Path;
-use std::process::Command;
+mod common;
 
-const ROOT_GITIGNORE: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/.gitignore"));
+#[cfg(all(unix, target_os = "linux"))]
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
+#[cfg(all(unix, target_os = "linux"))]
+use std::path::PathBuf;
+use std::process::Command;
+#[cfg(all(unix, target_os = "linux"))]
+use std::process::Output;
+
 const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
+#[cfg(unix)]
+use common::{
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_abort_after_implement_js,
+    acp_mock_code_abort_result_after_check_plan_lgtm_js,
+    acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
+    acp_mock_kpop_tamper_then_restore_js, acp_mock_sync_reviewer_restore_between_attempts_js,
+    acp_mock_sync_tamper_and_review_restore_js,
+    acp_mock_code_review_lgtm_to_artifact_js,
+    acp_mock_code_review_lgtm_with_abort_js,
+    acp_mock_code_streaming_update_js,
+    command_output_with_timeout,
+    test_home_workspace, write_fake_kiss, write_mock_executable,
+};
+#[cfg(all(unix, target_os = "linux"))]
+use common::{
+    acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_long_bold_markdown_js,
+    acp_mock_code_streaming_rich_markdown_js, acp_mock_code_check_sync_then_review_lgtm_js,
+    acp_mock_sync_review_lgtm_with_abort_js,
+};
+
+#[cfg(unix)]
+const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review_1.md within max loops.";
+
+#[cfg(all(unix, target_os = "linux"))]
+struct PtyRun {
+    _root: tempfile::TempDir,
+    workspace: PathBuf,
+    output: Output,
+}
 
 fn check_ignored(repo: &Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -16,117 +52,958 @@ fn check_ignored(repo: &Path, rel_path: &str) -> bool {
         .success()
 }
 
-#[test]
-fn max_loops_zero_must_not_be_clamped_to_one() {
-    let max_loops = 0_usize;
-    let iterations = (1..=max_loops).count();
-    assert_eq!(
-        iterations, 0,
-        "range(1..=max_loops) yields zero iterations when max_loops is 0"
-    );
-    let main_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/main.rs"));
-    assert!(
-        !main_rs.contains("args.max_loops.max(1)"),
-        "main.rs must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
-    );
-    let cli_rs = concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs")),
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs")),
-    );
-    assert!(
-        !cli_rs.contains("max_loops.max(1)"),
-        "src/cli must not clamp max_loops with .max(1); that breaks the intended zero-iteration behavior"
-    );
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
+    run_code_with_mock_js(
+        &acp_mock_code_streaming_update_js(),
+        &["--max-loops", "0"],
+        no_tee,
+    )
 }
 
-const fn agent_sources_for_snapshot() -> &'static str {
-    concat!(
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs")),
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/acp/client_impl.rs"
-        )),
+#[cfg(unix)]
+fn run_code_with_mock_js(mock_js: &str, extra_args: &[&str], no_tee: bool) -> std::process::Output {
+    run_code_with_mock_js_trust_plan(mock_js, extra_args, no_tee, true)
+}
+
+#[cfg(unix)]
+fn run_code_with_mock_js_trust_plan(
+    mock_js: &str,
+    extra_args: &[&str],
+    no_tee: bool,
+    trust_plan: bool,
+) -> std::process::Output {
+    let (root, home, workspace) = test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-code");
+    write_mock_executable(&mock, mock_js);
+    let kiss = bin_dir.join("kiss");
+    write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    let mut args = vec!["code", "--no-learn"];
+    if trust_plan {
+        args.push("--trust-the-plan");
+    }
+    args.extend_from_slice(extra_args);
+    args.push("ship it");
+    if no_tee {
+        args.insert(0, "--no-tee");
+    }
+    command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin code")
+}
+
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock() -> std::process::Output {
+    run_code_max_loops_zero_with_mock_opts(true)
+}
+
+#[cfg(unix)]
+fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
+    run_code_max_loops_zero_with_mock_opts(false)
+}
+
+#[cfg(unix)]
+fn run_sync_with_mock_js(
+    mock_js: &str,
+    extra_args: &[&str],
+    no_tee: bool,
+) -> std::process::Output {
+    run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee, false).0
+}
+
+#[cfg(unix)]
+fn run_sync_with_mock_js_and_workspace(
+    mock_js: &str,
+    extra_args: &[&str],
+    no_tee: bool,
+    with_kissconfig: bool,
+) -> (std::process::Output, tempfile::TempDir, PathBuf) {
+    let (root, home, workspace) = common::test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-sync");
+    common::write_mock_executable(&mock, mock_js);
+    let kiss = bin_dir.join("kiss");
+    common::write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    if with_kissconfig {
+        std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
+    }
+    let mut args = vec!["sync", "--no-learn"];
+    args.extend_from_slice(extra_args);
+    if no_tee {
+        args.insert(0, "--no-tee");
+    }
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin sync");
+    (out, root, workspace)
+}
+
+#[cfg(unix)]
+fn run_sync_with_mock_js_max_loops_zero() -> std::process::Output {
+    run_sync_with_mock_js(
+        &common::acp_mock_code_streaming_update_js(),
+        &["--max-loops", "0"],
+        true,
     )
 }
 
 #[test]
-fn reviewer_pair_ops_calls_review_prompt() {
-    let ops = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/ops_body.rs"));
-    ops.find("pair.review_log, pair.review_who, None")
-        .expect("expected review session/prompt in run_reviewer_pair_once");
-}
-
-#[test]
-fn default_cli_model_is_composer_2_fast() {
-    let shared = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/shared_opts.rs"
-    ));
-    assert!(
-        shared.contains("const DEFAULT_CLI_MODEL")
-            && shared.contains("\"composer-2-fast\"")
-            && shared.contains("default_value = DEFAULT_CLI_MODEL"),
-        "default `--model` must remain composer-2-fast via DEFAULT_CLI_MODEL unless intentionally changed"
+#[cfg(unix)]
+fn code_stops_when_implement_writes_abort_result() {
+    let out = run_code_with_mock_js(
+        &acp_mock_code_abort_after_implement_js(),
+        &["--max-loops", "1"],
+        true,
     );
-    let models = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/models_cmd.rs"
-    ));
     assert!(
-        models.contains("DEFAULT_CLI_MODEL")
-            && models.contains("Default model in malvin: {DEFAULT_CLI_MODEL}"),
-        "`malvin models` footer must use DEFAULT_CLI_MODEL (same string as SharedOpts default)"
+        !out.status.success(),
+        "expected ABORT failure path: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("ABORT: stop now"),
+        "expected implement ABORT to stop the workflow: {combined:?}"
+    );
+    assert!(
+        !combined.contains(MAX_LOOPS_EXHAUSTED),
+        "workflow should stop on ABORT before review exhaustion: {combined:?}"
     );
 }
 
 #[test]
-fn agent_client_must_apply_force_when_invoking_acp() {
-    let snapshot = agent_sources_for_snapshot();
-    assert!(
-        !snapshot.contains("let _ = self.force;"),
-        "force is stored on AgentClient but discarded before spawn; --force should be passed to cursor-agent when force is true"
+#[cfg(unix)]
+fn code_stops_when_check_plan_writes_abort_result_with_lgtm_review() {
+    let out = run_code_with_mock_js_trust_plan(
+        &acp_mock_code_abort_result_after_check_plan_lgtm_js(),
+        &["--max-loops", "1"],
+        true,
+        false,
     );
     assert!(
-        snapshot.contains("force: client.io.force"),
-        "spawn must pass `agent --force` via client.io.force"
+        !out.status.success(),
+        "expected ABORT failure path: {out:?}"
     );
-}
-
-#[test]
-fn agent_client_must_apply_model_when_invoking_acp_or_drop_cli_option() {
-    let snapshot = agent_sources_for_snapshot();
-    assert!(
-        !snapshot.contains("let _ = self.model;"),
-        "model is accepted on the CLI but discarded before spawn; wire through ACP or document-only at the type level"
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        snapshot.contains("model_opt"),
-        "spawn must pass model into AcpSpawnArgs"
+        combined.contains("ABORT: after check plan"),
+        "expected check_plan ABORT to stop the workflow: {combined:?}"
     );
-}
-
-#[test]
-fn agent_client_must_apply_tee_mode_when_invoking_acp() {
-    let snapshot = agent_sources_for_snapshot();
     assert!(
-        snapshot.contains("tee_trace_stdout: !client.io.no_tee"),
-        "spawn must pass CLI tee mode into AcpSpawnArgs so trace lines can stream to stdout when tee is on"
+        !combined.contains("implement_phase_ran"),
+        "implement must not run after ABORT in result.md from check_plan: {combined:?}"
     );
 }
 
 #[test]
-fn upgrade_plan_message_must_not_be_eprint_twice() {
-    let client_impl = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.rs"
-    ));
-    let cli_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/mod.rs"));
-    let client_eprints_on_upgrade = client_impl.contains("agent_string_is_upgrade_plan")
-        && client_impl.contains("eprintln!(\"{last_error}\")");
-    let cli_eprints_run_error = cli_mod.contains("eprintln!(\"{e}\")");
+#[cfg(unix)]
+fn check_plan_grounding_restore_happens_before_implement() {
+    let out = run_code_with_mock_js_trust_plan(
+        &acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js(),
+        &["--max-loops", "0"],
+        false,
+        false,
+    );
     assert!(
-        !(client_eprints_on_upgrade && cli_eprints_run_error),
-        "upgrade-plan failures eprintln in client_impl and the CLI entrypoint prints AgentError again; stderr duplicates the same message"
+        !out.status.success(),
+        "expected max-loops failure path: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("implement ok"),
+        "expected implement to see restored grounding: {combined:?}"
+    );
+    assert!(
+        !combined.contains("ABORT: grounding leaked into implement"),
+        "check_plan grounding mutation must not leak into implement: {combined:?}"
+    );
+    assert!(
+        combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected workflow to continue past implement into normal max-loops failure: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn max_loops_zero_skips_review_attempts_and_fails() {
+    let out = run_code_max_loops_zero_with_mock();
+    assert!(
+        !out.status.success(),
+        "malvin code unexpectedly succeeded: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected max_loops=0 review skip failure: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review-1 (attempt 1)"),
+        "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn review_loop_accepts_lgtm_written_to_artifact_path() {
+    let out = run_code_with_mock_js(
+        &acp_mock_code_review_lgtm_to_artifact_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains(MAX_LOOPS_EXHAUSTED),
+        "review loop should accept LGTM from artifact path: {combined:?}"
+    );
+    assert!(
+        out.status.success(),
+        "malvin code should succeed when reviewer writes LGTM to artifact: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn code_stops_when_review_lgtm_also_writes_abort_result() {
+    let out = run_code_with_mock_js(
+        &acp_mock_code_review_lgtm_with_abort_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    assert_review_abort_behavior(&out, "ABORT: review lgtm abort test", "Review-2 (attempt 1)");
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_stops_when_review_lgtm_also_writes_abort_result() {
+    let out = run_sync_with_mock_js(
+        &acp_mock_sync_review_lgtm_with_abort_js(),
+        &["--max-loops", "2"],
+        true,
+    );
+    assert_review_abort_behavior(&out, "ABORT: sync review LGTM abort test", "Review-2 (attempt 1)");
+}
+
+#[cfg(unix)]
+fn assert_review_abort_behavior(out: &std::process::Output, abort_snippet: &str, should_stop_prompt: &str) {
+    assert!(
+        !out.status.success(),
+        "expected ABORT failure path: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains(abort_snippet),
+        "expected review-path ABORT to stop the workflow: {combined:?}"
+    );
+    assert!(
+        !combined.contains(should_stop_prompt),
+        "ABORT should stop before Review-2 after Review-1 LGTM: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_accepts_review_lgtm_written_to_artifact_path() {
+    let out = run_sync_with_mock_js(
+        &common::acp_mock_code_review_lgtm_to_artifact_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains(MAX_LOOPS_EXHAUSTED),
+        "sync should succeed with LGTM from artifact: {combined:?}"
+    );
+    assert!(
+        out.status.success(),
+        "malvin sync should succeed when review writes LGTM: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_max_loops_zero_skips_review_attempts_and_fails() {
+    let out = run_sync_with_mock_js_max_loops_zero();
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!out.status.success(), "sync should fail without reviews: {combined:?}");
+    assert!(
+        combined.contains("Did not receive LGTM for check_sync.md within max loops.")
+            || combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected max_loops skip failure: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review-1 (attempt 1)"),
+        "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_runs_check_sync_before_review_1() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_code_check_sync_then_review_lgtm_js(),
+        &["--max-loops", "2"],
+        true,
+        false,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.status.success(),
+        "sync should succeed when check_sync and review_1 both hit LGTM: {combined:?}"
+    );
+
+    let check_sync_index = combined
+        .find("CheckSync (attempt 1)")
+        .expect("check_sync progress line");
+    let review_index = combined
+        .find("Review-1 (attempt 1)")
+        .expect("review-1 progress line");
+    assert!(
+        check_sync_index < review_index,
+        "expected check_sync to run before review_1: {combined:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let has_check_sync_log = std::fs::read_dir(&run_dir)
+        .expect("run dir")
+        .filter_map(Result::ok)
+        .any(|entry| entry.file_name().to_string_lossy().contains("coder_check_sync"));
+    assert!(
+        has_check_sync_log,
+        "expected check_sync coder log to capture session/prompt request: {combined:?}"
+    );
+}
+
+fn assert_sync_tamper_flow_restores_grounding_and_fails(output: &std::process::Output, workspace: &Path) {
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        !output.status.success(),
+        "sync should follow expected mock retry-exhaustion path: {combined:?}"
+    );
+    assert!(
+        combined.contains("Did not receive LGTM for check_sync.md within max loops."),
+        "sync should fail with expected check_sync exhaustion message: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "x"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "k\n"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_check_sync_tamper_and_restore_before_review_1() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_sync_tamper_and_review_restore_js(),
+        &["--max-loops", "2"],
+        true,
+        true,
+    );
+    assert_sync_tamper_flow_restores_grounding_and_fails(&out, &workspace);
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_reviewer_restores_between_reviewer_attempts() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_sync_reviewer_restore_between_attempts_js(),
+        &["--max-loops", "3"],
+        true,
+        true,
+    );
+    assert_sync_tamper_flow_restores_grounding_and_fails(&out, &workspace);
+}
+
+#[test]
+#[cfg(unix)]
+fn code_stdout_shows_plain_output_without_jsonrpc_lines() {
+    let out = run_code_max_loops_zero_with_mock_stdout();
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure path: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("agent message"),
+        "expected parsed agent output on stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_malvin_under_script_with_mock(
+    mock_js: &str,
+    malvin_args_line: &str,
+    columns: Option<&str>,
+) -> PtyRun {
+    let (root, home, workspace) = test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-md");
+    write_mock_executable(&mock, mock_js);
+    let kiss = bin_dir.join("kiss");
+    write_fake_kiss(&kiss);
+    let malvin = env!("CARGO_BIN_EXE_malvin");
+    let sh = root.path().join("run-malvin.sh");
+    let columns_export = columns
+        .map(|value| format!("export COLUMNS=\"{value}\"\n"))
+        .unwrap_or_default();
+    let body = format!(
+        "#!/bin/sh\nunset NO_COLOR\nexport PATH=\"{}:$PATH\"\nexport HOME=\"{}\"\nexport CURSOR_AGENT_API_KEY=test\nexport MALVIN_AGENT_ACP_BIN=\"{}\"\n{}cd \"{}\"\nexec \"{}\" {}\n",
+        bin_dir.display(),
+        home.display(),
+        mock.display(),
+        columns_export,
+        workspace.display(),
+        malvin,
+        malvin_args_line
+    );
+    std::fs::write(&sh, body).expect("write run-malvin.sh");
+    let mut perms = std::fs::metadata(&sh).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&sh, perms).expect("chmod");
+    let mut cmd = Command::new("script");
+    cmd.args([
+        "-q",
+        "-e",
+        "-c",
+        sh.to_str().expect("run-malvin.sh utf8"),
+        "/dev/null",
+    ]);
+    cmd.stdin(std::process::Stdio::null());
+    let output =
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin");
+    PtyRun {
+        _root: root,
+        workspace,
+        output,
+    }
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_malvin_under_script(malvin_args_line: &str) -> std::process::Output {
+    run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_bold_markdown_js(),
+        malvin_args_line,
+        None,
+    )
+    .output
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
+    let mut args_line = String::from("code --trust-the-plan --no-learn --max-loops 0 ship");
+    for a in extra_args {
+        args_line.push(' ');
+        args_line.push_str(a);
+    }
+    run_malvin_under_script(&args_line)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_kpop_catchup_under_script(extra_args: &[&str]) -> std::process::Output {
+    let mut args_line =
+        String::from("kpop --no-learn --p-creative 0 --max-hypotheses 50 investigate");
+    for a in extra_args {
+        args_line.push(' ');
+        args_line.push_str(a);
+    }
+    run_malvin_under_script(&args_line)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn run_do_under_script(global_lead: &[&str]) -> std::process::Output {
+    let mut args_line = global_lead.join(" ");
+    if !args_line.is_empty() {
+        args_line.push(' ');
+    }
+    args_line.push_str("do \"say hi\"");
+    run_malvin_under_script(&args_line)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn only_run_dir(workspace: &Path) -> PathBuf {
+    let run_root = workspace.join("_malvin");
+    let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
+        .expect("read _malvin")
+        .map(|entry| entry.expect("dir entry").path())
+        .filter(|path| path.is_dir())
+        .collect();
+    assert_eq!(dirs.len(), 1, "expected exactly one run dir, got {dirs:?}");
+    dirs.into_iter().next().expect("run dir")
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn read_all_logs(run_dir: &Path) -> String {
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(run_dir)
+        .expect("read run dir")
+        .map(|entry| entry.expect("dir entry").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "log"))
+        .collect();
+    paths.sort();
+    let chunks: Vec<String> = paths
+        .into_iter()
+        .map(|path| std::fs::read_to_string(path).expect("read log"))
+        .collect();
+    chunks.join("\n")
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn assert_markdown_stdout_and_logs(run: &PtyRun, failure_context: &str) {
+    assert!(
+        !run.output.status.success(),
+        "{failure_context}: {:?}",
+        run.output
+    );
+    let stdout = String::from_utf8_lossy(&run.output.stdout);
+    assert!(
+        !stdout.contains("# md-heading-xyz"),
+        "expected stdout markdown rendering to consume heading markers: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("md-item-xyz"),
+        "expected stdout markdown rendering to keep list item text visible: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("**md-bold-xyz**"),
+        "expected styled stdout to consume bold markers: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected bold ANSI on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+    let run_dir = only_run_dir(&run.workspace);
+    let logs = read_all_logs(&run_dir);
+    assert!(
+        logs.contains("# md-heading-xyz"),
+        "expected raw heading markdown in logs: {logs:?}"
+    );
+    assert!(
+        logs.contains("- md-item-xyz"),
+        "expected raw list markdown in logs: {logs:?}"
+    );
+    assert!(
+        logs.contains("**md-bold-xyz**"),
+        "expected raw bold markdown in logs: {logs:?}"
+    );
+    assert!(
+        !logs.contains("\x1b[1m"),
+        "run logs must stay raw without ANSI styling: {logs:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_pty_markdown_strips_bold_markers_without_no_markdown() {
+    let out = run_code_max_loops_zero_under_script(&[]);
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("**boldline**"),
+        "expected termimad to consume ** markers on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected termimad bold ANSI on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_pty_no_markdown_preserves_bold_markers() {
+    let out = run_code_max_loops_zero_under_script(&["--no-markdown"]);
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected plain stdout to preserve markdown markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_pty_no_color_disables_markdown_styling() {
+    let out = run_code_max_loops_zero_under_script(&["--no-color"]);
+    assert!(
+        !out.status.success(),
+        "expected max-loops failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected --no-color to leave markdown markers plain on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\x1b[1m"),
+        "expected --no-color to suppress ANSI styling on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_stdout_markdown_styles_stdout_but_logs_stay_raw() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_rich_markdown_js(),
+        "code --trust-the-plan --no-learn --max-loops 0 ship",
+        None,
+    );
+    assert_markdown_stdout_and_logs(&run, "expected max-loops failure exit from script -e");
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_stdout_markdown_styles_stdout_but_logs_stay_raw() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_rich_markdown_js(),
+        "kpop --no-learn --p-creative 0 --max-hypotheses 50 investigate",
+        None,
+    );
+    assert_markdown_stdout_and_logs(&run, "expected kpop catch-up failure exit from script -e");
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn code_stdout_markdown_wrap_keeps_long_bold_span_styled() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_long_bold_markdown_js(),
+        "code --trust-the-plan --no-learn --max-loops 0 ship",
+        Some("40"),
+    );
+    assert!(
+        !run.output.status.success(),
+        "expected max-loops failure exit from script -e: {:?}",
+        run.output
+    );
+    let stdout = String::from_utf8_lossy(&run.output.stdout);
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected bold ANSI on wrapped TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("**wrap-bold-xyz"),
+        "expected wrapped stdout to avoid leaking opening bold markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("wrap-bold-xyz**"),
+        "expected wrapped stdout to avoid leaking closing bold markers: {stdout:?}"
+    );
+    let run_dir = only_run_dir(&run.workspace);
+    let logs = read_all_logs(&run_dir);
+    assert!(
+        logs.contains("**wrap-bold-xyz wrap-bold-xyz"),
+        "expected raw wrapped-bold markdown in logs: {logs:?}"
+    );
+    assert!(
+        !logs.contains("\x1b[1m"),
+        "run logs must stay raw without ANSI styling: {logs:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_pty_markdown_strips_bold_markers_without_no_markdown() {
+    let out = run_kpop_catchup_under_script(&[]);
+    assert!(
+        !out.status.success(),
+        "expected kpop catch-up failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !stdout.contains("**boldline**"),
+        "expected termimad to consume ** markers on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1b[1m"),
+        "expected termimad bold ANSI on TTY stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_pty_no_markdown_preserves_bold_markers() {
+    let out = run_kpop_catchup_under_script(&["--no-markdown"]);
+    assert!(
+        !out.status.success(),
+        "expected kpop catch-up failure exit from script -e: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected plain stdout to preserve markdown markers: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_timing_uses_kpop_label_not_implement() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_update_js(),
+        "kpop --no-learn --p-creative 0 --max-hypotheses 1 investigate",
+        None,
+    );
+    assert!(
+        !run.output.status.success(),
+        "expected kpop failure exit from script -e: {:?}",
+        run.output
+    );
+    let stdout = String::from_utf8_lossy(&run.output.stdout);
+    assert!(
+        stdout.contains("TIMING: "),
+        "expected timing summary: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("kpop = "),
+        "expected kpop timing label: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("implement = "),
+        "did not expect implement timing label in kpop output: {stdout:?}"
+    );
+    let run_dir = only_run_dir(&run.workspace);
+    let timing_path = run_dir.join("run_timing.json");
+    let timing_text = std::fs::read_to_string(&timing_path).expect("read run_timing.json");
+    assert!(
+        timing_text.contains("\"implement\": \"kpop\""),
+        "expected kpop alias in run_timing.json: {timing_text:?}"
+    );
+    assert!(
+        timing_text.contains("\"implement\":"),
+        "expected implement phase bucket to remain present in run_timing.json: {timing_text:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_max_loops_alias_is_accepted() {
+    let run = run_malvin_under_script_with_mock(
+        &acp_mock_code_streaming_update_js(),
+        "kpop --no-learn --p-creative 0 --max-loops 1 investigate",
+        None,
+    );
+    assert_eq!(
+        run.output.status.code(),
+        Some(1),
+        "legacy --max-loops should fail along expected mocked flow: {0:?}",
+        run.output
+    );
+    let stderr = String::from_utf8_lossy(&run.output.stderr);
+    assert!(
+        !stderr.contains("unexpected argument '--max-loops'"),
+        "legacy --max-loops should be accepted as alias for --max-hypotheses: {stderr:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn kpop_multiturn_restores_before_each_new_turn() {
+    let (root, home, workspace) = common::test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-kpop");
+    common::write_mock_executable(&mock, &acp_mock_kpop_tamper_then_restore_js());
+    let kiss = bin_dir.join("kiss");
+    common::write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("write kissconfig");
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args([
+                "kpop",
+                "--no-learn",
+                "--p-creative",
+                "0",
+                "--max-hypotheses",
+                "1",
+                "investigate",
+            ]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin kpop");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains("ABORT:"),
+        "kpop should restore protected files before each prompt: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "x",
+        "kpop should restore grounding before each prompt: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "k = 1\n",
+        "kpop should restore kissconfig before each prompt: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn do_pty_preserves_bold_markers_without_global_no_markdown() {
+    let out = run_do_under_script(&[]);
+    assert!(
+        out.status.success(),
+        "expected successful do run under PTY: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected do stdout to preserve markdown markers (markdown off for do): {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn do_pty_preserves_bold_markers_with_global_no_markdown() {
+    let out = run_do_under_script(&["--no-markdown"]);
+    assert!(
+        out.status.success(),
+        "expected successful do run under PTY: {out:?}"
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("**boldline**"),
+        "expected global --no-markdown to leave do stdout plain: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\"jsonrpc\""),
+        "stdout leaked JSON-RPC protocol lines: {stdout:?}"
+    );
+}
+
+#[test]
+fn help_lists_global_no_markdown_once() {
+    #[cfg(unix)]
+    let out = {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+        cmd.arg("--help");
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("malvin --help")
+    };
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .arg("--help")
+        .output()
+        .expect("malvin --help");
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(
+        s.matches("--no-markdown").count(),
+        1,
+        "expected exactly one --no-markdown in root help: {s}"
     );
 }
 
@@ -195,81 +1072,3 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
         "template should ignore .pyc via **/*.py[cod]"
     );
 }
-
-#[test]
-fn init_template_gitignore_matches_root_python_ignore_patterns() {
-    for line in ["**/__pycache__/", "**/*.py[cod]"] {
-        assert!(
-            ROOT_GITIGNORE.lines().any(|l| l.trim() == line),
-            "repo root .gitignore must list {line:?}"
-        );
-        assert!(
-            INIT_TEMPLATE_GITIGNORE.lines().any(|l| l.trim() == line),
-            "malvin init template .gitignore must list {line:?} so new repos match Malvin's own ignores"
-        );
-    }
-}
-
-#[test]
-fn artifacts_grounding_backup_module_is_declared_and_source_tracked() {
-    let mod_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/artifacts/mod.rs"));
-    let backup_rs = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/artifacts/grounding_backup.rs"
-    ));
-    assert!(
-        mod_rs.contains("mod grounding_backup")
-            && mod_rs.contains("pub use grounding_backup::")
-            && mod_rs.contains("backup_workspace_grounding_if_present"),
-        "src/artifacts/mod.rs must declare `mod grounding_backup` and re-export backup/restore"
-    );
-    assert!(
-        backup_rs.contains("pub fn backup_workspace_grounding_if_present")
-            && backup_rs.contains("pub fn restore_workspace_grounding")
-            && backup_rs.contains("# Errors"),
-        "src/artifacts/grounding_backup.rs must ship with backup/restore APIs and documented errors (commit beside mod.rs)",
-    );
-}
-
-#[test]
-fn malvin_do_default_skips_repo_style_prepend_contract() {
-    let do_flow = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/do_flow.rs"));
-    let client_impl = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/acp/client_impl.rs"
-    ));
-    assert!(
-        do_flow.contains("skip_repo_style") && do_flow.contains("do_args.cooked"),
-        "`malvin do` default raw must pass skip_repo_style from !do_args.cooked into run_coder_prompt (no injected repo style prepend)"
-    );
-    assert!(
-        client_impl.contains("skip_repo_style")
-            && client_impl.contains("coder_prompt_body_with_optional_repo_style"),
-        "AgentClient::run_coder_prompt must honor skip_repo_style"
-    );
-}
-
-#[test]
-fn kpop_p_creative_help_text_matches_creative_min_interaction_contract() {
-    let args_rs = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/cli/args.rs"));
-    assert!(
-        !args_rs.contains("first 3 prompts"),
-        "`malvin kpop --p-creative` help must not claim a stale 'first 3 prompts' deferral; align with src/kpop_acp_prompt.rs (CREATIVE_MIN_INTERACTION)"
-    );
-}
-
-#[test]
-fn cargo_package_description_must_not_embed_acp_trace_or_log_artifacts() {
-    let cargo_toml = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
-    let Some(desc_line) = cargo_toml.lines().find(|l| {
-        let t = l.trim_start();
-        t.starts_with("description = ")
-    }) else {
-        panic!("Cargo.toml must declare [package] description = \"...\"");
-    };
-    assert!(
-        !desc_line.contains(":[>"),
-        "package description must be human-facing crate metadata, not a pasted ACP tee / log line (found `:[>` in {desc_line:?})"
-    );
-}
-

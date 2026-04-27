@@ -1,8 +1,5 @@
 //! Shared `review.md` workspace ↔ run artifact sync and LGTM detection.
 
-use std::io;
-use std::path::Path;
-
 /// Check if the given string content represents an LGTM approval.
 #[must_use]
 pub fn is_lgtm_str(content: &str) -> bool {
@@ -11,27 +8,24 @@ pub fn is_lgtm_str(content: &str) -> bool {
     t == "LGTM"
 }
 
-#[allow(dead_code, clippy::must_use_candidate)]
-pub fn is_lgtm(review_path: &Path) -> bool {
-    std::fs::read_to_string(review_path)
-        .map(|s| is_lgtm_str(&s))
-        .unwrap_or(false)
+#[cfg(test)]
+pub fn is_lgtm(review_path: &std::path::Path) -> bool {
+    std::fs::read_to_string(review_path).is_ok_and(|s| is_lgtm_str(&s))
 }
 
-fn clear_artifact_review(artifact_review_path: &Path) -> io::Result<()> {
+#[cfg(test)]
+fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Result<()> {
     if let Some(parent) = artifact_review_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
     std::fs::write(artifact_review_path, "")
 }
 
-/// Syncs the workspace review file to the artifact location, returning the content synced.
-///
-/// Returns `None` if the workspace file does not exist or is whitespace-only.
+#[cfg(test)]
 pub fn sync_review_file(
-    workspace_review_path: &Path,
-    artifact_review_path: &Path,
-) -> io::Result<Option<String>> {
+    workspace_review_path: &std::path::Path,
+    artifact_review_path: &std::path::Path,
+) -> std::io::Result<Option<String>> {
     if !workspace_review_path.exists() {
         clear_artifact_review(artifact_review_path)?;
         return Ok(None);
@@ -45,15 +39,11 @@ pub fn sync_review_file(
     Ok(Some(text))
 }
 
-/// Sync workspace `review.md` into the run artifact, then return whether the artifact reads as LGTM.
-///
-/// Returns an error when the workspace file cannot be read or the artifact cannot be written.
-///
-/// Used by the ACP reviewer pair (`run_reviewer_pair_once` in `ops_body.rs`) so the post-review sequence stays one API surface.
-pub fn sync_review_then_is_lgtm(
-    workspace_review_path: &Path,
-    artifact_review_path: &Path,
-) -> io::Result<bool> {
+#[cfg(test)]
+fn sync_review_then_is_lgtm(
+    workspace_review_path: &std::path::Path,
+    artifact_review_path: &std::path::Path,
+) -> std::io::Result<bool> {
     let content = sync_review_file(workspace_review_path, artifact_review_path)?;
     Ok(content.as_deref().is_some_and(is_lgtm_str))
 }

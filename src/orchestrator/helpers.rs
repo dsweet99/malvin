@@ -1,3 +1,5 @@
+const CHECK_PLAN_MAX_ATTEMPTS: u32 = 3;
+
 fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }
@@ -12,8 +14,9 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         .canonicalize()
         .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
     insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
-    insert_formatted(context, "review_path", &artifacts.workspace_review_md(), base);
+    insert_formatted(context, "review_path", &artifacts.artifact_review_md(), base);
     insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
+    insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
 }
 
 #[must_use]
@@ -23,21 +26,14 @@ pub fn workflow_context_paths_only(artifacts: &RunArtifacts) -> HashMap<String, 
     context
 }
 
-#[must_use]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
-) -> HashMap<String, String> {
+) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts);
-    match prompts.render_prompt_only("kpop.md", &context) {
-        Ok(kpop_content) => {
-            context.insert("kpop".to_string(), kpop_content);
-        }
-        Err(e) => {
-            eprintln!("warning: failed to render kpop.md template: {e}");
-        }
-    }
-    context
+    let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
+    context.insert("kpop".to_string(), kpop_content);
+    Ok(context)
 }
 
 pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {
@@ -73,6 +69,11 @@ pub(crate) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
         |_| path.display().to_string(),
         |r| format!("./{}", r.display()),
     )
+}
+
+#[must_use]
+pub fn format_exp_log_relative(artifacts: &crate::artifacts::RunArtifacts, exp_log: &Path) -> String {
+    format_prompt_path(exp_log, &artifacts.work_dir)
 }
 
 #[cfg(test)]

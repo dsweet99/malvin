@@ -17,9 +17,11 @@ pub fn agent_or_cursor_agent_bin() -> Option<PathBuf> {
     lookup_bin_on_path("agent").or_else(|| lookup_bin_on_path("cursor-agent"))
 }
 
-/// Fail when `kiss` is not on `PATH` (used by `malvin init`, `malvin code`, `malvin kpop`).
+/// Fail when `kiss` is not on `PATH` (used by `malvin init` and the `malvin code` early gate).
 ///
-/// `subcommand` is only for the error text (`init`, `code`, `kpop`).
+/// Other subcommands (for example `malvin kpop`) are not required to call this helper; see `src/cli/mod.rs` dispatch.
+///
+/// `subcommand` is only for the error text (`init`, `code`, …).
 ///
 /// # Errors
 ///

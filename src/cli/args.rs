@@ -6,6 +6,7 @@ use super::do_flow::DoArgs;
 use super::init_cmd::InitArgs;
 use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
+use super::tidy_flow::TidyArgs;
 
 pub use super::shared_opts::GlobalOpts;
 
@@ -19,28 +20,39 @@ pub use super::shared_opts::GlobalOpts;
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
+    #[command(flatten)]
+    pub shared: SharedOpts,
     #[command(subcommand)]
     pub command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Templates, kiss, pre-commit, Git LFS.
+    /// Prep a workspace (repo)
     Init(InitArgs),
-    /// Send a prompt to the agent.
+    /// Respond to a single request
     Do(DoArgs),
-    /// Implement → review → learn.
+    /// Implement a plan
     Code(CodeArgs),
-    /// KPOP investigation loop.
+    /// Popperian scientific investigator
     Kpop(KpopArgs),
-    /// List available models.
+    /// Ensure all checks pass
+    Tidy(TidyArgs),
+    /// List available models
     Models(ModelsArgs),
+    /// Synchronize code with grounding.md
+    Sync {
+        /// Review loop budget.
+        #[arg(long, default_value_t = 5)]
+        max_loops: usize,
+        /// Skip learning.
+        #[arg(long, default_value_t = false)]
+        no_learn: bool,
+    },
 }
 
 #[derive(Args, Debug)]
 pub struct CodeArgs {
-    #[command(flatten)]
-    pub shared: SharedOpts,
     /// Implement → review → learn loop budget.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
@@ -56,12 +68,10 @@ pub struct CodeArgs {
 
 #[derive(Args, Debug)]
 pub struct KpopArgs {
-    #[command(flatten)]
-    pub shared: SharedOpts,
-    /// KPOP loop budget.
-    #[arg(long, default_value_t = 10)]
-    pub max_loops: usize,
-    /// Probability (0–1) that each budget iteration is scheduled as an MBC2 generate-then-falsify pair (vs plain KPOP). Ignored when `p_creative` is non-finite or ≤ 0.
+    /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
+    #[arg(long, default_value_t = 10, alias = "max-loops")]
+    pub max_hypotheses: usize,
+    /// Drives mean KPOP block size and MBC2 interleave; higher = more frequent MBC2 turns and smaller KPOP blocks. Non-finite or ≤ 0 disables MBC2 turns (pure multiturn KPOP).
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
     /// Skip learning.

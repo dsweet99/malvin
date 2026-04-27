@@ -8,11 +8,16 @@ use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
 /// Verbose logging for ACP (bundled for [`SessionChannelState::into_session_inner`]).
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy)]
 pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,
+    /// When true, raw/plain stdout includes thought chunks.
+    pub show_thoughts_on_stdout: bool,
+    /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
+    pub emit_stdout_markdown: bool,
 }
 
 pub struct SessionChannelState {
@@ -73,10 +78,8 @@ impl SessionChannelState {
         rpc_timeout: std::time::Duration,
         telemetry: SessionReaderTelemetry,
     ) -> AcpSessionInner {
-        let child_pid = child.id().unwrap_or(0);
         AcpSessionInner {
             child: Mutex::new(child),
-            child_pid,
             stdin: self.stdin,
             pending: self.pending,
             acp_activity_seq: self.acp_activity_seq,
@@ -92,6 +95,8 @@ impl SessionChannelState {
             acp_verbose: telemetry.acp_verbose,
             ui_idle_notify: self.ui_idle_notify,
             raw_output: telemetry.raw_output,
+            show_thoughts_on_stdout: telemetry.show_thoughts_on_stdout,
+            emit_stdout_markdown: telemetry.emit_stdout_markdown,
         }
     }
 }

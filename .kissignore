@@ -10,12 +10,20 @@ src/child_health/linux.rs
 src/child_health/macos.rs
 src/child_health/other.rs
 
+# line budget (mod.rs) — tests + stringify! stay in these modules
+src/cli/repo_checks.rs
+src/output/terminal_wrap.rs
+
 # Entry point
 src/main.rs
+
+# Trait-only shim (kiss interface_types_per_file threshold is zero)
+src/kpop_multiturn_prompts.rs
 
 # CLI integration code (hard to unit test, requires integration tests)
 src/cli/init_cmd.rs
 src/cli/do_flow.rs
+src/cli/kpop_flow.rs
 
 # Included module files (complex ACP implementation code)
 src/acp/retry_policy.rs
@@ -29,3 +37,5 @@ src/acp/tee_strip_tests.rs
 src/acp/pair.rs
 src/acp/ops_inline_tests.rs
 src/acp/reader_inline.rs
+
+evaluations/

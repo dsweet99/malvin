@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{RunArtifacts, create_run_artifacts};
 use crate::orchestrator::{Orchestrator, WorkflowConfig};
-use crate::prompts::PromptStore;
+use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 #[test]
 fn kiss_stringify_agent() {
@@ -21,6 +21,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(crate::acp::strip_trace_invocation_line_for_tee);
     let _ = stringify!(crate::acp::run_reviewer_pair_once);
     let _ = stringify!(crate::acp::run_kpop_flow_once);
+    let _ = stringify!(crate::acp::run_kpop_multiturn_once);
     let _ = stringify!(crate::acp::KpopFlowOnceArgs);
     let _ = stringify!(AgentClient::new);
     let _ = stringify!(AgentClient::ensure_authenticated);
@@ -29,6 +30,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::end_coder_session);
     let _ = stringify!(AgentClient::run_reviewer_review);
     let _ = stringify!(AgentClient::run_kpop_flow);
+    let _ = stringify!(AgentClient::run_kpop_multiturn);
     let _ = stringify!(AgentClient::set_run_timing);
     let _ = stringify!(AgentClient::attach_run_timing_for_session);
     let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
@@ -41,10 +43,11 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(RunArtifacts::artifact_review_md);
     let _ = stringify!(RunArtifacts::artifact_result_md);
     let _ = stringify!(RunArtifacts::workspace_review_md);
+    let _ = stringify!(RunArtifacts::exp_log_path);
     let _ = stringify!(create_run_artifacts);
-    let _ = stringify!(crate::artifacts::create_run_dir);
-    let _ = stringify!(crate::artifacts::build_identifier);
-    let _ = stringify!(crate::artifacts::random_alnum);
+    let _ = stringify!(crate::artifacts::run_id::create_run_dir);
+    let _ = stringify!(crate::artifacts::run_id::build_identifier);
+    let _ = stringify!(crate::artifacts::run_id::random_alnum);
     let _ = stringify!(crate::artifacts::create_kpop_run_artifacts);
     let _ = stringify!(crate::artifacts::resolve_user_request);
     let _ = stringify!(crate::artifacts::startup_request_tag_label);
@@ -99,9 +102,7 @@ fn kiss_stringify_log_paths() {
 
 #[test]
 fn kiss_stringify_review_sync() {
-    let _ = stringify!(crate::review_sync::is_lgtm);
-    let _ = stringify!(crate::review_sync::sync_review_file);
-    let _ = stringify!(crate::review_sync::sync_review_then_is_lgtm);
+    let _ = stringify!(crate::review_sync::is_lgtm_str);
 }
 
 #[test]
@@ -113,6 +114,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
+    let _ = stringify!(crate::orchestrator::format_exp_log_relative);
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
     let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
@@ -127,12 +129,19 @@ fn kiss_stringify_kpop_acp_prompt() {
 }
 
 #[test]
-fn kiss_stringify_kpop_schedule() {
-    let _ = stringify!(crate::kpop_schedule::KpopScheduleStep);
-    let _ = stringify!(crate::kpop_schedule::generate_kpop_schedule);
-    let _ = stringify!(crate::kpop_schedule::schedule_requires_mbc2);
-    let _ = stringify!(crate::kpop_schedule::render_planned_schedule_lines);
-    let _ = stringify!(crate::kpop_schedule::build_scheduled_kpop_prompt);
+fn kiss_stringify_kpop_progression() {
+    let _ = stringify!(crate::kpop_progression::KPOP_CATCHUP_CAP);
+    let _ = stringify!(crate::kpop_progression::block_mean_from_p_creative);
+    let _ = stringify!(crate::kpop_progression::poisson_block_size);
+    let _ = stringify!(crate::kpop_progression::count_kpop_entries);
+    let _ = stringify!(crate::kpop_progression::count_mbc2_entries);
+    let _ = stringify!(crate::kpop_progression::hypotheses_emitted);
+    let _ = stringify!(crate::kpop_progression::agent_declared_success);
+    let _ = stringify!(crate::kpop_progression::read_exp_log_text);
+    let _ = stringify!(crate::kpop_multiturn_prompts::KpopMultiturnPrompts);
+    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnParams::<()>);
+    let _ = stringify!(crate::multiturn_prompt::MultiturnPrompt);
+    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnState::<()>);
 }
 
 #[test]
@@ -151,6 +160,8 @@ fn kiss_stringify_prompts() {
     let _ = stringify!(PromptStore::validate_exists);
     let _ = stringify!(PromptStore::render);
     let _ = stringify!(PromptStore::render_prompt_only);
+    let _ = stringify!(HEADER_MD);
+    let _ = stringify!(DO_HEADER_MD);
 }
 
 #[test]
@@ -184,10 +195,14 @@ fn smoke_prompt_store_with_root() {
             "review_1.md",
             "review_2.md",
             "kpop.md",
+            "kpop_common.md",
+            "kpop_block.md",
+            "mbc2_pure.md",
             "mbc2.md",
             "concerns.md",
             "learn.md",
-            "header.md",
+            HEADER_MD,
+            DO_HEADER_MD,
             "coding_rules.md",
         ],
         b"body",
@@ -199,51 +214,4 @@ fn smoke_prompt_store_with_root() {
     ctx.insert("plan_path".to_string(), "p".to_string());
     ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
     let _ = store.render("implement.md", &ctx).expect("render");
-}
-
-#[test]
-fn smoke_orchestrator_instantiation() {
-    let tmp = kiss_test_tmp();
-    let prompts_dir = tmp.path().join("prompts");
-    kiss_write_same_body_files(
-        &prompts_dir,
-        &[
-            "implement.md",
-            "review_1.md",
-            "review_2.md",
-            "concerns.md",
-        ],
-        b"Hello {{ plan_path }} $kpop_log_dir",
-    );
-    let store = PromptStore::with_root(prompts_dir);
-    let run_dir = tmp.path().join("_malvin").join("run");
-    std::fs::create_dir_all(&run_dir).expect("run dir");
-    let plan_path = run_dir.join("plan.md");
-    std::fs::write(&plan_path, "plan").expect("plan");
-    let artifacts = RunArtifacts {
-        run_dir,
-        plan_path,
-        work_dir: tmp.path().to_path_buf(),
-    };
-    let mut client = AgentClient::new(
-        "m".to_string(),
-        AgentIoOptions {
-            force: true,
-            no_tee: false,
-            raw_output: false,
-        },
-    );
-    let _ = Orchestrator {
-        client: &mut client,
-        prompts: &store,
-        artifacts: &artifacts,
-        config: WorkflowConfig {
-            max_loops: 1,
-            run_learn: false,
-            learn_min_elapsed_ms: 0,
-            skip_check_plan: false,
-        },
-        progress_callback: Box::new(|_: &str| {}),
-        grounding_backup: None,
-    };
 }

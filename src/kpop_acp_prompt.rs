@@ -1,10 +1,9 @@
-//! Standalone KPOP: [`kpop_creative_enabled`] gates pre-generated schedule MBC2 slots.
+//! Standalone KPOP: [`kpop_creative_enabled`] gates MBC2 interleave turns in the multiturn driver.
 
 #[allow(dead_code)]
 pub const CREATIVE_MIN_INTERACTION: u32 = 0;
 
-/// `true` when `p_creative` may place [`crate::kpop_schedule::KpopScheduleStep::Mbc2ThenFalsify`]
-/// steps in the pre-generated schedule.
+/// `true` when `p_creative` may interleave pure MBC2 turns between KPOP blocks.
 ///
 /// Non-finite or non-positive `p_creative` values disable MBC2 scheduling (unlike raw `p_creative >
 /// 0.0`, which is true for `+∞`).

@@ -18,8 +18,7 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
     StdCommand::new(args[0])
         .args(&args[1..])
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
@@ -40,6 +39,8 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         force: client.io.force,
         tee_trace_stdout: !client.io.no_tee,
         raw_output: client.io.raw_output,
+        show_thoughts_on_stdout: client.io.show_thoughts_on_stdout,
+        emit_stdout_markdown: client.io.emit_stdout_markdown,
     })
     .await
     .map_err(AgentError)
@@ -55,6 +56,7 @@ pub(crate) async fn run_reviewer_pair_once(
 
     let repo_style = read_coder_repo_style_text(&client.style_prompt_path);
     let review_full = prepend_coder_repo_style_to_prompt(pair.review_body, repo_style.as_deref());
+    crate::prompts::enforce_no_unresolved_braces(&review_full).map_err(|e| AgentError(e.0))?;
 
     let t_review = Instant::now();
     let review_out = s
@@ -70,14 +72,44 @@ pub(crate) async fn run_reviewer_pair_once(
         return Err(AgentError(e));
     }
 
+    sync_review_to_artifact(pair.workspace_review_path, pair.artifact_review_path)?;
+
     s.shutdown().await.map_err(AgentError)?;
     Ok(())
 }
 
-/// Inputs for [`run_kpop_flow_once`] and [`AgentClient::run_kpop_flow`](crate::AgentClient::run_kpop_flow).
+fn sync_review_to_artifact(
+    workspace_review_path: &std::path::Path,
+    artifact_review_path: &std::path::Path,
+) -> Result<(), AgentError> {
+    let workspace_text = match std::fs::read_to_string(workspace_review_path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => {
+            return Err(AgentError(format!(
+                "failed to read workspace review path {}: {e}",
+                workspace_review_path.display()
+            )))
+        }
+    };
+
+    if workspace_text.trim().is_empty() {
+        return Ok(());
+    }
+
+    std::fs::write(artifact_review_path, &workspace_text).map_err(|e| {
+        AgentError(format!(
+            "failed to write artifact review path {}: {e}",
+            artifact_review_path.display()
+        ))
+    })?;
+    Ok(())
+}
+
+/// Inputs for [`run_kpop_flow_once`].
 pub struct KpopFlowOnceArgs<'a> {
     pub cwd: &'a Path,
-    pub kpop_prompt: &'a str,
+    pub kpop_prompts: &'a [&'a str],
     pub kpop_log: &'a Path,
     pub learn: Option<(&'a str, &'a Path)>,
     /// Skip learn if elapsed time is below this threshold (milliseconds).
@@ -85,48 +117,74 @@ pub struct KpopFlowOnceArgs<'a> {
     pub learn_min_elapsed_ms: u64,
 }
 
+async fn kpop_round(
+    session: &AcpSession,
+    client: &AgentClient,
+    text: &str,
+    log: &Path,
+    who: &str,
+    phase: crate::run_timing::TimingPhase,
+) -> Result<(), AgentError> {
+    crate::prompts::enforce_no_unresolved_braces(text).map_err(|e| AgentError(e.0))?;
+    let t0 = Instant::now();
+    match session.prompt(text, log, who, None).await {
+        Ok(()) => {
+            crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
+            Ok(())
+        }
+        Err(e) => {
+            crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
+            Err(AgentError(e))
+        }
+    }
+}
+
+fn restore_workspace_on_error(
+    cwd: &Path,
+    grounding_backup: &crate::artifacts::GroundingBackup,
+    primary_error: AgentError,
+    phase: &str,
+) -> AgentError {
+    match crate::artifacts::restore_workspace_grounding(cwd, grounding_backup) {
+        Ok(()) => primary_error,
+        Err(restore_error) => AgentError(format!(
+            "{}; grounding restore failed ({phase}): {restore_error}",
+            primary_error.0
+        )),
+    }
+}
+
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
+    grounding_backup: &crate::artifacts::GroundingBackup,
 ) -> Result<(), AgentError> {
-    async fn round(
-        session: &AcpSession,
-        client: &AgentClient,
-        text: &str,
-        log: &Path,
-        who: &str,
-        phase: crate::run_timing::TimingPhase,
-    ) -> Result<(), AgentError> {
-        let t0 = Instant::now();
-        match session.prompt(text, log, who, None).await {
-            Ok(()) => {
-                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
-                Ok(())
-            }
-            Err(e) => {
-                crate::run_timing::record_llm(client.timing.as_ref(), phase, t0.elapsed());
-                Err(AgentError(e))
-            }
-        }
-    }
-
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
-    if let Err(e) = round(
-        &s,
-        client,
-        args.kpop_prompt,
-        args.kpop_log,
-        "kpop",
-        crate::run_timing::TimingPhase::Implement,
-    )
-    .await
-    {
-        let _ = s.shutdown().await;
-        return Err(e);
+    for prompt in args.kpop_prompts {
+        if let Err(e) = kpop_round(
+            &s,
+            client,
+            prompt,
+            args.kpop_log,
+            "kpop",
+            crate::run_timing::TimingPhase::Implement,
+        )
+        .await
+        {
+            let _ = s.shutdown().await;
+            return Err(restore_workspace_on_error(
+                args.cwd,
+                grounding_backup,
+                e,
+                "prompt",
+            ));
+        }
+        crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+            .map_err(AgentError)?;
     }
 
-    let outbound_prompts: u32 = if let Some((learn_body, learn_log)) = args.learn {
+    if let Some((learn_body, learn_log)) = args.learn {
         let elapsed_ms = client.timing.as_ref().map_or(0, |t| {
             let d = t
                 .lock()
@@ -137,7 +195,7 @@ pub(crate) async fn run_kpop_flow_once(
         let should_learn =
             crate::orchestrator::should_run_learn_check(args.learn_min_elapsed_ms, elapsed_ms);
         if should_learn {
-            if let Err(e) = round(
+            if let Err(e) = kpop_round(
                 &s,
                 client,
                 learn_body,
@@ -148,20 +206,135 @@ pub(crate) async fn run_kpop_flow_once(
             .await
             {
                 let _ = s.shutdown().await;
-                return Err(e);
+                return Err(restore_workspace_on_error(
+                    args.cwd,
+                    grounding_backup,
+                    e,
+                    "learn",
+                ));
             }
-            2
-        } else {
-            1
+            crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+                .map_err(AgentError)?;
         }
-    } else {
-        1
-    };
+    }
 
-    debug_assert!(
-        outbound_prompts == 1 || outbound_prompts == 2,
-        "standalone KPOP: 1 (main only) or 2 (main + learn)"
-    );
+    s.shutdown().await.map_err(AgentError)
+}
+
+#[cfg(test)]
+mod ops_body_tests {
+    use super::sync_review_to_artifact;
+
+    #[test]
+    fn sync_review_to_artifact_copies_workspace_review_content() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let workspace_review = tmp.path().join("review.md");
+        let artifact_review = tmp.path().join("run").join("review.md");
+        std::fs::create_dir_all(
+            artifact_review
+                .parent()
+                .expect("artifact parent"),
+        )
+        .expect("artifact parent");
+
+        std::fs::write(&workspace_review, "LGTM\n").expect("write workspace review");
+
+        sync_review_to_artifact(&workspace_review, &artifact_review).expect("sync");
+        let synced = std::fs::read_to_string(&artifact_review).expect("artifact read");
+        assert_eq!(synced, "LGTM\n");
+    }
+}
+
+pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
+    client: &AgentClient,
+    cwd: &std::path::Path,
+    kpop_log: &std::path::Path,
+    learn: Option<(&str, &std::path::Path)>,
+    learn_min_elapsed_ms: u64,
+    state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+    grounding_backup: &crate::artifacts::GroundingBackup,
+) -> Result<(), AgentError> {
+    let s = spawn_agent_acp_session(client, cwd).await?;
+
+    loop {
+        let prompt = match state.next_prompt() {
+            Ok(Some(p)) => p,
+            Ok(None) => break,
+            Err(e) => {
+                let _ = s.shutdown().await;
+                return Err(AgentError(e));
+            }
+        };
+        let is_kpop_block = matches!(prompt, crate::multiturn_prompt::MultiturnPrompt::KpopBlock(_));
+        let text = prompt.as_str();
+        if let Err(e) = kpop_round(
+            &s,
+            client,
+            text,
+            kpop_log,
+            "kpop",
+            crate::run_timing::TimingPhase::Implement,
+        )
+        .await
+        {
+            let _ = s.shutdown().await;
+            return Err(restore_workspace_on_error(
+                cwd,
+                grounding_backup,
+                e,
+                "prompt",
+            ));
+        }
+        crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
+        let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
+            .map_err(AgentError)?;
+        let n = crate::kpop_progression::hypotheses_emitted(&exp_text);
+        if n > state.max_hypotheses {
+            let _ = s.shutdown().await;
+            return Err(AgentError(format!(
+                "experiment log counts {n} hypothesis steps, exceeding --max-hypotheses ({})",
+                state.max_hypotheses
+            )));
+        }
+        if is_kpop_block {
+            state.record_kpop_block_prompt_completed();
+        } else {
+            state.record_mbc2_prompt_completed();
+        }
+    }
+
+    if let Some((learn_body, learn_log)) = learn {
+        let elapsed_ms = client.timing.as_ref().map_or(0, |t| {
+            let d = t
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .elapsed_so_far();
+            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
+        });
+        let should_learn =
+            crate::orchestrator::should_run_learn_check(learn_min_elapsed_ms, elapsed_ms);
+        if should_learn {
+            if let Err(e) = kpop_round(
+                &s,
+                client,
+                learn_body,
+                learn_log,
+                "learn",
+                crate::run_timing::TimingPhase::Learn,
+            )
+            .await
+            {
+                let _ = s.shutdown().await;
+                return Err(restore_workspace_on_error(
+                    cwd,
+                    grounding_backup,
+                    e,
+                    "learn",
+                ));
+            }
+            crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
+        }
+    }
 
     s.shutdown().await.map_err(AgentError)
 }

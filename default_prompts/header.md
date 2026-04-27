@@ -1,4 +1,14 @@
-AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words in .llm_style/style.md? If so, display the one most relevant TRIGGER: / ADVICE: pair for you and the user to see.
+AFTER EVERY REQUEST
+- Does the user's request relate to any of the TRIGGER words in ./.malvin_memory/style.md? If so, display the one most relevant TRIGGER: / ADVICE: / CONFIDENCE: triple for you and the user to see.
+- If (CONFIDENCE < 3) AND (the ones-place digit of seconds returned by `date` < 3):
+   -- Treat the ADVICE as a hypothesis about the correct action to take, and attempt to falsify it.
+   -- If you do, remove the TRIGGER: / ADVICE: / CONFIDENCE: triple from the .md file in which you found it, otherwise increment the CONFIDENCE: value by 1.
+- Consider following any un-falsified ADVICE.
+
+
+--
+
+If the user seems to be referring to an in-progress conversation, look in recent logs, `_malvin/YYYYMMDD_HHMMSS_*/do.log` for helpful context.
 
 --
 
@@ -15,10 +25,24 @@ AFTER EVERY REQUEST: Does the user's request relate to any of the TRIGGER words 
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
-
+- grounding.md overrides ADVICE. ADVICE is not binding.
 --
 
 TRIGGER: grounding.md
 ADVICE: Never modify grounding unless explicitly asked to by the user.
+CONFIDENCE: 3
 
+TRIGGER: .kissconfig
+ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
+CONFIDENCE: 3
+
+TRIGGER: head, tail, url, long job, large file
+ADVICE: Consider redirecting the output to a temp file then studying that to lower the risk of having to rerun a long job or refetch a file over the network.
+CONFIDENCE: 3
+
+
+TRIGGER: large task, many tasks
+ADVICE: Consider improving efficiency with ad hoc use of CS/engineering algorithm methods like: caching, hashing, divide-and-conquer, timing/analyzing a small subset, parallelization, planning.
+CONFIDENCE: 3
 --
+
