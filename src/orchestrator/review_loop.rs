@@ -93,6 +93,7 @@ async fn review_phase_single_attempt(
     let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)?;
     let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
     if lgtm {
+        orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
     run_concerns_and_check_abort(orchestrator, &ctx).await
@@ -141,6 +142,7 @@ async fn run_sync_check_single_attempt(
     let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)?;
     let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
     if lgtm {
+        orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
     run_sync_concerns_and_check_abort(orchestrator, &ctx).await

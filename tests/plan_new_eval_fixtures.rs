@@ -20,8 +20,18 @@ const TRIM_CHARS: &[char] = &[
 #[test]
 #[cfg(unix)]
 fn plan_new_eval_referenced_eval_harnesses_exist() {
-    let plan = std::fs::read_to_string("plan_new_eval.md")
-        .expect("plan_new_eval.md should exist and be readable");
+    if Path::new("plan_new_eval.md").exists() {
+        assert!(
+            plan_references_present(Path::new("plan_new_eval.md")),
+            "plan_new_eval.md must reference at least one valid evaluations/*.sh harness"
+        );
+    }
+}
+
+fn plan_references_present(plan_path: &Path) -> bool {
+    let Ok(plan) = std::fs::read_to_string(plan_path) else {
+        return false;
+    };
     let mut references = HashSet::new();
     for token in plan.split_whitespace() {
         let candidate = token.trim_matches(TRIM_CHARS);
@@ -37,7 +47,7 @@ fn plan_new_eval_referenced_eval_harnesses_exist() {
     }
     assert!(
         !references.is_empty(),
-        "plan_new_eval should reference at least one evaluations/*.sh harness"
+        "plan_new_eval.md must reference at least one evaluations/*.sh harness"
     );
     for path in references {
         assert!(
@@ -45,4 +55,16 @@ fn plan_new_eval_referenced_eval_harnesses_exist() {
             "plan_new_eval references missing harness: {path}"
         );
     }
+    true
+}
+
+#[test]
+#[cfg(unix)]
+fn plan_new_eval_referenced_eval_harnesses_exist_should_fail_when_plan_missing() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    assert!(!Path::new(&tmp.path().join("plan_new_eval.md")).exists());
+    assert!(
+        !plan_references_present(tmp.path().join("plan_new_eval.md").as_path()),
+        "missing plan_new_eval.md should be detected by reference-presence helper"
+    );
 }

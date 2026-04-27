@@ -133,7 +133,7 @@ pub fn build_agent(
             AgentStdoutTeeFlags {
                 emit_stdout_markdown,
                 raw_output: false,
-                show_thoughts_on_stdout: false,
+                show_thoughts_on_stdout: true,
             },
         ),
     )

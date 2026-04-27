@@ -62,6 +62,7 @@ async fn run_review_loop(
         orchestrator
             .run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
             .await?;
+        orchestrator.fail_on_abort_result()?;
     }
     Ok(())
 }

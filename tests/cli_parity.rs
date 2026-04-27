@@ -20,7 +20,9 @@ use common::{
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
     acp_mock_kpop_tamper_then_restore_js, acp_mock_sync_reviewer_restore_between_attempts_js,
     acp_mock_sync_tamper_and_review_restore_js,
-    acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_streaming_update_js,
+    acp_mock_code_review_lgtm_to_artifact_js,
+    acp_mock_code_review_lgtm_with_abort_js,
+    acp_mock_code_streaming_update_js,
     command_output_with_timeout,
     test_home_workspace, write_fake_kiss, write_mock_executable,
 };
@@ -28,6 +30,7 @@ use common::{
 use common::{
     acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_long_bold_markdown_js,
     acp_mock_code_streaming_rich_markdown_js, acp_mock_code_check_sync_then_review_lgtm_js,
+    acp_mock_sync_review_lgtm_with_abort_js,
 };
 
 #[cfg(unix)]
@@ -297,6 +300,49 @@ fn review_loop_accepts_lgtm_written_to_artifact_path() {
     assert!(
         out.status.success(),
         "malvin code should succeed when reviewer writes LGTM to artifact: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn code_stops_when_review_lgtm_also_writes_abort_result() {
+    let out = run_code_with_mock_js(
+        &acp_mock_code_review_lgtm_with_abort_js(),
+        &["--max-loops", "1"],
+        true,
+    );
+    assert_review_abort_behavior(&out, "ABORT: review lgtm abort test", "Review-2 (attempt 1)");
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_stops_when_review_lgtm_also_writes_abort_result() {
+    let out = run_sync_with_mock_js(
+        &acp_mock_sync_review_lgtm_with_abort_js(),
+        &["--max-loops", "2"],
+        true,
+    );
+    assert_review_abort_behavior(&out, "ABORT: sync review LGTM abort test", "Review-2 (attempt 1)");
+}
+
+#[cfg(unix)]
+fn assert_review_abort_behavior(out: &std::process::Output, abort_snippet: &str, should_stop_prompt: &str) {
+    assert!(
+        !out.status.success(),
+        "expected ABORT failure path: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains(abort_snippet),
+        "expected review-path ABORT to stop the workflow: {combined:?}"
+    );
+    assert!(
+        !combined.contains(should_stop_prompt),
+        "ABORT should stop before Review-2 after Review-1 LGTM: {combined:?}"
     );
 }
 

@@ -4,7 +4,7 @@ Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cur
 
 ## Concepts
 
-- **Prompt templates** live in `default_prompts/`. Template keys such as `{{ plan_path }}` are resolved at render time, and no prompt may be sent to ACP if unresolved `{{` remains.
+- **Prompt templates** live in `default_prompts/` and are compiled into the `malvin` binary. `~/.malvin/prompts` is not supported. Template keys such as `{{ plan_path }}` are resolved at render time, and no prompt may be sent to ACP if unresolved `{{` remains.
 - **Run artifacts** are stored under `_malvin/YYYYMMDD_HHMMSS_<id>/`. Each run records its primary inputs and outputs there, including `plan.md`, `review.md`, `result.md`, and trace logs.
 - **Protected files** are `grounding.md` and `.kissconfig`. They are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`.
 - **`kiss clamp`** runs automatically before the first agent call when source files exist but `.kissconfig` does not.
@@ -52,3 +52,5 @@ The implementation is only acceptable if all applicable checks pass:
 - `cargo test`
 - `kiss check`
 - `ruff check` and `pytest -sv tests` (if Python files exist)
+
+

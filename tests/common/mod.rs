@@ -291,6 +291,21 @@ pub fn acp_mock_code_review_lgtm_to_artifact_js() -> String {
     acp_mock_code_with_run_dir_js(&body)
 }
 
+pub fn acp_mock_code_review_lgtm_with_abort_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');
+    }} else if (promptText.includes('Please review the codebase.')) {{
+{lgtm}
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review lgtm abort test\\n', 'utf8');
+    }} else {{
+      // no-op for unexpected prompt shapes
+    }}",
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
 pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
@@ -325,6 +340,26 @@ pub fn acp_mock_code_check_sync_then_review_lgtm_js() -> String {
 ",
         lgtm = lgtm,
         reviewed = chunk_line("reviewed"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_sync_review_lgtm_with_abort_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+      let attempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
+      this.syncAttempts = attempts + 1;
+      if (this.syncAttempts === 1) {{
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+      }} else {{
+{lgtm}
+      }}
+    }} else if (promptText.includes('Please review the codebase.')) {{
+{lgtm}
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: sync review LGTM abort test\\n', 'utf8');
+    }} else if (promptText.includes('Concerns')) {{
+    }}",
     );
     acp_mock_code_with_run_dir_js(&body)
 }

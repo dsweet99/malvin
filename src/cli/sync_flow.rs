@@ -47,6 +47,9 @@ fn prepare_sync_prompt_store_for(
     store
         .validate_exists("concerns.md")
         .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("coding_rules.md")
+        .map_err(|e: PromptError| e.0)?;
     if run_learn {
         store
             .validate_exists("learn.md")
@@ -108,11 +111,17 @@ mod coverage_tests {
         let _ = std::fs::write(prompts_dir.join("review_1.md"), "r1");
         let _ = std::fs::write(prompts_dir.join("review_2.md"), "r2");
         let _ = std::fs::write(prompts_dir.join("concerns.md"), "c");
+        let _ = std::fs::write(prompts_dir.join("coding_rules.md"), "rules");
         let _ = std::fs::remove_file(prompts_dir.join("learn.md"));
 
         assert!(
             prepare_sync_prompt_store_for(&store, false).is_ok()
         );
+        let _ = std::fs::remove_file(prompts_dir.join("coding_rules.md"));
+        assert!(
+            prepare_sync_prompt_store_for(&store, false).is_err()
+        );
+        let _ = std::fs::write(prompts_dir.join("coding_rules.md"), "rules");
         assert!(
             prepare_sync_prompt_store_for(&store, true).is_err()
         );
