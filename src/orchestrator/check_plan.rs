@@ -12,7 +12,11 @@ pub(super) async fn run_check_plan(
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
-    for attempt in 0..super::CHECK_PLAN_MAX_ATTEMPTS {
+    if orchestrator.config.max_loops == 0 {
+        return Ok(());
+    }
+    let max_attempts = orchestrator.config.max_loops;
+    for attempt in 0..max_attempts {
         if attempt > 0 {
             (orchestrator.progress_callback)(
                 "CheckPlan: agent did not write review file, retrying",
@@ -21,14 +25,17 @@ pub(super) async fn run_check_plan(
         }
         let Some(contents) = run_check_plan_attempt(orchestrator, context, &review_path).await?
         else {
+            orchestrator.fail_on_abort_result()?;
             continue;
         };
         if is_lgtm_str(&contents) {
             return orchestrator.finish_check_plan_after_lgtm();
         }
+        orchestrator.fail_on_abort_result()?;
         (orchestrator.progress_callback)(&format!("Plan check failed:\n{contents}"));
         return Err(WorkflowError("check_plan did not pass".to_string()));
     }
+    orchestrator.fail_on_abort_result()?;
     Err(WorkflowError(
         "check_plan: agent did not write review file after retries".to_string(),
     ))
@@ -52,14 +59,18 @@ fn read_check_plan_review_file(review_path: &Path) -> Result<Option<String>, Wor
     if !review_path.exists() {
         return Ok(None);
     }
-    Ok(Some(std::fs::read_to_string(review_path).map_err(|e| {
+    let contents = std::fs::read_to_string(review_path).map_err(|e| {
         WorkflowError(format!(
             "failed to read review file: {}: {e}",
             review_path.display()
         ))
-    })?))
+    })?;
+    if contents.trim().is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(contents))
+    }
 }
-
 #[cfg(test)]
 mod tests {
     use super::read_check_plan_review_file;
@@ -67,6 +78,14 @@ mod tests {
     fn read_check_plan_review_file_returns_none_when_missing() {
         let t = tempfile::tempdir().unwrap();
         let review_path = t.path().join("missing.md");
+        assert!(read_check_plan_review_file(&review_path).unwrap().is_none());
+    }
+
+    #[test]
+    fn read_check_plan_review_file_returns_none_when_empty() {
+        let t = tempfile::tempdir().unwrap();
+        let review_path = t.path().join("empty.md");
+        std::fs::write(&review_path, " \n\t").unwrap();
         assert!(read_check_plan_review_file(&review_path).unwrap().is_none());
     }
 

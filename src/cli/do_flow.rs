@@ -106,10 +106,11 @@ pub async fn run_do(
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    timing_merge::merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
         acp_res,
         &artifacts.work_dir,
         &grounding_backup,
+        &artifacts.artifact_result_md(),
     )?;
     Ok(())
 }
@@ -154,11 +155,11 @@ async fn run_do_acp(
     artifacts: &RunArtifacts,
     coder: DoCoderRun,
 ) -> Result<(), String> {
-    client
-        .begin_coder_session(&artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
     let timing = client.attach_run_timing_for_session();
+    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
+        client.set_run_timing(None);
+        return Err(e.to_string());
+    }
     timing
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

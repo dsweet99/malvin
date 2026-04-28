@@ -57,14 +57,17 @@ async fn run_ground_acp(
     prompt: &str,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
+    let begin_res = client
+        .begin_coder_session(&artifacts.work_dir)
+        .await;
+    if let Err(e) = begin_res {
+        client.set_run_timing(None);
+        return Err(e.to_string());
+    }
     timing
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .set_implement_display_name("ground");
-    client
-        .begin_coder_session(&artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
     let acp_result = client
         .run_coder_prompt(
             prompt,
@@ -101,10 +104,11 @@ pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Re
         GROUND_REQUEST,
     )?;
     let result = run_ground_acp(&mut client, &session.artifacts, &session.prompt).await;
-    timing_merge::merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
         result,
         &session.artifacts.work_dir,
         &session.grounding_backup,
+        &session.artifacts.artifact_result_md(),
     )?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())

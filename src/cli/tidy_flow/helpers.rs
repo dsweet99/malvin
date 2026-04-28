@@ -105,11 +105,14 @@ pub async fn run_tidy_acp(
     grounding_backup: &GroundingBackup,
 ) -> Result<(), String> {
     let timing = input.client.attach_run_timing_for_session();
-    input
+    let begin_res = input
         .client
         .begin_coder_session(&input.artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await;
+    if let Err(e) = begin_res {
+        input.client.set_run_timing(None);
+        return Err(e.to_string());
+    }
 
     let mut acp_result = run_tidy_and_learn(input, prompt, &timing, grounding_backup).await;
     let end_result = input
@@ -235,9 +238,11 @@ pub fn merge_tidy_timing(
     artifacts: &RunArtifacts,
     grounding_backup: &GroundingBackup,
 ) -> Result<(), String> {
-    timing_merge::merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
         result,
         &artifacts.work_dir,
         grounding_backup,
-    )
+        &artifacts.artifact_result_md(),
+    )?;
+    Ok(())
 }

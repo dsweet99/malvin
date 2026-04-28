@@ -117,45 +117,40 @@ mod retry_policy_tests {
     }
 
     #[test]
-    fn rpc_timeout_is_retriable() {
+    fn timeout_errors_are_retriable() {
         assert!(agent_string_is_retriable("acp RPC timed out"));
     }
 
     #[test]
-    fn arbitrary_errors_are_retriable() {
-        assert!(agent_string_is_retriable("some new transport failure"));
+    fn session_new_initialize_errors_are_retriable() {
         assert!(agent_string_is_retriable(
             "ACP `session/new` failed: acp request canceled (session dropped)"
         ));
     }
 
     #[test]
-    fn dead_child_errors_are_retriable() {
-        assert!(agent_string_is_retriable("acp child process is not running"));
-        assert!(agent_string_is_retriable("acp child process is zombie"));
-    }
-
-    #[test]
-    fn context_deadline_exceeded_is_retriable() {
+    fn deadline_and_transport_errors_are_retriable() {
         assert!(
             agent_string_is_retriable("code=-32000; message=\"context deadline exceeded\""),
             "common RPC timeout phrasing should be retried per bounded retry policy"
         );
+        assert!(agent_string_is_retriable("code = DeadlineExceeded desc = stream closed"));
+        assert!(agent_string_is_retriable("Error: S: WritableIterable is closed"));
+        assert!(agent_string_is_retriable("Error: S: ReadableIterable is closed"));
+        assert!(agent_string_is_retriable("Error: S: [unavailable] Error"));
+        assert!(agent_string_is_retriable("acp RPC timed out"));
+        assert!(agent_string_is_retriable("acp child process is not running"));
     }
 
     #[test]
-    fn grpc_deadline_exceeded_token_is_retriable() {
-        let msg = "code = DeadlineExceeded desc = stream closed";
-        assert!(
-            agent_string_is_retriable(msg),
-            "gRPC-style errors often use DeadlineExceeded without a space in 'deadline exceeded'"
-        );
-    }
-
-    #[test]
-    fn writable_iterable_closed_is_retriable() {
-        assert!(agent_string_is_retriable(
-            "Error: S: WritableIterable is closed"
+    fn non_transient_errors_are_not_retriable() {
+        assert!(!agent_string_is_retriable("some new transport failure"));
+        assert!(!agent_string_is_retriable("invalid request: unknown route"));
+        assert!(!agent_string_is_retriable("permission denied: insufficient privileges"));
+        assert!(!agent_string_is_retriable("request timeout_ms exceeded"));
+        assert!(!agent_string_is_retriable("acp request timed_out"));
+        assert!(!agent_string_is_retriable(
+            "preinitialize session manager rejected request for maintenance mode"
         ));
     }
 
@@ -164,11 +159,6 @@ mod retry_policy_tests {
         assert!(agent_string_is_retriable(
             "Error: S: ReadableIterable is closed"
         ));
-    }
-
-    #[test]
-    fn grpc_unavailable_is_retriable() {
-        assert!(agent_string_is_retriable("Error: S: [unavailable] Error"));
     }
 
     #[test]
@@ -206,6 +196,15 @@ mod retry_policy_tests {
         let r = plan_agent_retry("acp RPC timed out", 1).expect("retry");
         assert!(matches!(r, AgentRetryOutcome::Sleep(_)));
         let r = plan_agent_retry("acp RPC timed out", MAX_AGENT_ATTEMPTS).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::StopRetrying));
+        let r = plan_agent_retry("acp RPC timed out", MAX_AGENT_ATTEMPTS + 1).expect("retry");
+        assert!(matches!(r, AgentRetryOutcome::StopRetrying));
+    }
+
+    #[test]
+    fn plan_retry_stops_on_non_transient_error() {
+        let r = plan_agent_retry("invalid request: unknown route", 1)
+            .expect("policy must decide stop immediately");
         assert!(matches!(r, AgentRetryOutcome::StopRetrying));
     }
 

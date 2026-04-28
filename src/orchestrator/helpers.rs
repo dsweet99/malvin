@@ -1,5 +1,3 @@
-const CHECK_PLAN_MAX_ATTEMPTS: u32 = 3;
-
 fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }

@@ -23,7 +23,8 @@ use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
 use super::repo_checks::{self, RepoGateOutput};
 use super::shared_opts::SharedOpts;
-use super::timing_merge::{emit_run_timing_after_acp, merge_acp_with_grounding_restore};
+use super::timing_merge;
+use super::timing_merge::emit_run_timing_after_acp;
 
 fn kpop_prompt_store(kpop: &KpopArgs, workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let needs_mbc2 = kpop_creative_enabled(kpop.p_creative);
@@ -187,12 +188,12 @@ pub async fn run_kpop(
     })
     .await;
 
-    merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
         &prepared.grounding_backup,
+        &prepared.artifacts.artifact_result_md(),
     )?;
-
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
