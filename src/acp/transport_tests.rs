@@ -837,10 +837,7 @@ async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
     .await
     .expect("rpc request should complete with internal timeout")
     .expect_err("peer never responds");
-    assert!(
-        timeout_err.contains("timed out"),
-        "{timeout_err}"
-    );
+    assert!(timeout_err.contains("timed out"), "{timeout_err}");
     assert!(
         io.pending.lock().await.is_empty(),
         "pending should be cleared after timeout; stale entries: {:?}",
@@ -887,13 +884,13 @@ async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
 
 #[tokio::test]
 async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive() {
+    let request_id = 3u64;
     let mut child = Command::new(SLEEP_BIN)
         .arg("5")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
         .expect("sleep");
-    let child_pid = child.id();
     let stdin = Arc::new(Mutex::new(child.stdin.take().expect("stdin")));
     let mut stdout = child.stdout.take().expect("stdout");
     let drain = tokio::spawn(async move {
@@ -901,16 +898,18 @@ async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive()
         while stdout.read(&mut buf).await.unwrap_or(0) > 0 {}
     });
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (pending_tx, _pending_rx) = tokio::sync::oneshot::channel::<Result<Value, String>>();
+    pending.lock().await.insert(request_id, pending_tx);
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
     let (tx, rx) = tokio::sync::oneshot::channel();
     let seq = acp_activity_seq.clone();
     let notify = acp_activity_notify.clone();
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
         note_acp_json_activity(&seq, &notify);
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
         note_acp_json_activity(&seq, &notify);
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
         let _ = tx.send(Ok(json!({"ok": true})));
     });
     let io = AcpStdioRpc {
@@ -922,22 +921,37 @@ async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive()
         acp_verbose: false,
     };
 
+    let start = tokio::time::Instant::now();
     let res = rpc_wait_with_timeout(
-        3,
-        std::time::Duration::from_millis(25),
+        request_id,
+        Duration::from_millis(25),
         rpc_wait_response(RpcWaitArgs {
             _pending: &io.pending,
             acp_activity_seq: &io.acp_activity_seq,
             acp_activity_notify: &io.acp_activity_notify,
-            _id: 3,
+            _id: request_id,
             rx,
-            child_pid,
+            child_pid: None,
         }),
-        (&io.acp_activity_seq, &io.acp_activity_notify, &io.pending, child_pid),
+        (
+            &io.acp_activity_seq,
+            &io.acp_activity_notify,
+            &io.pending,
+            None,
+        ),
     )
     .await
     .expect("ACP activity should extend the timeout window");
     assert_eq!(res["ok"], true);
+    assert!(
+        start.elapsed() >= Duration::from_millis(60),
+        "response arrived before timeout extensions should have run: {:?}",
+        start.elapsed()
+    );
+    assert!(
+        !io.pending.lock().await.contains_key(&request_id),
+        "request should be removed from pending after completion"
+    );
     let _ = child.kill().await;
     let _ = child.wait().await;
     let _ = drain.await;
@@ -978,7 +992,10 @@ async fn rpc_wait_response_reports_dead_child_after_silence() {
         note_acp_json_activity(&seq, &notify);
         tokio::time::sleep(std::time::Duration::from_millis(30)).await;
         if let Some(pid) = kill_pid {
-            let _ = std::process::Command::new("kill").arg("-KILL").arg(pid.to_string()).status();
+            let _ = std::process::Command::new("kill")
+                .arg("-KILL")
+                .arg(pid.to_string())
+                .status();
         }
     });
 
@@ -995,18 +1012,23 @@ async fn rpc_wait_response_reports_dead_child_after_silence() {
                 rx,
                 child_pid,
             }),
-            (&io.acp_activity_seq, &io.acp_activity_notify, &io.pending, child_pid),
+            (
+                &io.acp_activity_seq,
+                &io.acp_activity_notify,
+                &io.pending,
+                child_pid,
+            ),
         ),
     )
     .await
     .expect("timed out waiting for request completion")
     .expect_err("expected child-health timeout");
     assert!(
-        err.contains("acp child process is not running") || err.contains("acp child process is zombie"),
+        err.contains("acp child process is not running")
+            || err.contains("acp child process is zombie"),
         "{err}"
     );
     let _ = child.kill().await;
     let _ = child.wait().await;
     let _ = drain.await;
 }
-

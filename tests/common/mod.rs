@@ -370,7 +370,8 @@ pub fn acp_mock_code_workspace_review_only_lgtm_js() -> String {
       const runRootReview = path.join(runRoot, '..', '..', 'review.md');
       fs.writeFileSync(workspaceReview, 'LGTM\\n', 'utf8');
       fs.writeFileSync(runRootReview, 'LGTM\\n', 'utf8');
-    }".to_string();
+    }"
+    .to_string();
     acp_mock_code_with_run_dir_js(&body)
 }
 

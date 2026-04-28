@@ -52,8 +52,8 @@ fn tidy_parses_without_request_and_runs_learn() {
 
 #[test]
 fn sync_parses_with_global_no_markdown_without_request() {
-    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "sync", "--no-learn"])
-        .expect("parse");
+    let cli =
+        Cli::try_parse_from(["malvin", "--no-markdown", "sync", "--no-learn"]).expect("parse");
     assert!(cli.shared.no_markdown);
     match cli.command {
         crate::cli::Commands::Sync {
@@ -68,3 +68,9 @@ fn sync_parses_with_global_no_markdown_without_request() {
     }
 }
 
+#[test]
+fn ground_parses_with_global_no_markdown() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "ground"]).expect("parse");
+    assert!(cli.shared.no_markdown);
+    assert!(matches!(cli.command, crate::cli::Commands::Ground));
+}

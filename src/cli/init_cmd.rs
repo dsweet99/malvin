@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Args;
-
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
+use malvin::artifacts::create_run_artifacts_from_text;
 
 const TPL_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -72,7 +72,7 @@ impl Language {
     }
 }
 
-/// Arguments for [`run_init`].
+/// `--force` overwrites files installed from `default_repo/` and refreshes `admin/check_untracked.sh`.
 #[derive(Args, Debug)]
 pub struct InitArgs {
     /// Overwrite `default_repo/` installs; refresh `admin/check_untracked.sh`.
@@ -86,16 +86,24 @@ pub struct InitArgs {
     pub path: Option<PathBuf>,
 }
 
-/// `--force` overwrites files installed from `default_repo/` and refreshes `admin/check_untracked.sh`.
 pub fn run_init(
     path: Option<PathBuf>,
     force: bool,
     language_args: &[String],
+    tee_startup_stdout: bool,
 ) -> Result<(), String> {
     let languages = parse_languages(language_args)?;
     let root = resolve_init_root(path)?;
+    emit_init_startup(&root, tee_startup_stdout)?;
     write_init_templates(&root, force, &languages)?;
     bootstrap_repo_tooling(&root)
+}
+
+fn emit_init_startup(root: &Path, tee_startup_stdout: bool) -> Result<(), String> {
+    let artifacts =
+        create_run_artifacts_from_text("init", Some(root)).map_err(|e| format!("init: {e}"))?;
+    super::run_emit::emit_run_startup_sequence(&artifacts, tee_startup_stdout, "init")?;
+    Ok(())
 }
 
 fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
@@ -172,7 +180,11 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
         ADMIN_CHECK_UNTRACKED,
         force,
     )?;
-    write_text_file(&root.join(".malvin_memory").join("style.md"), TPL_STYLE, force)
+    write_text_file(
+        &root.join(".malvin_memory").join("style.md"),
+        TPL_STYLE,
+        force,
+    )
 }
 
 fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {

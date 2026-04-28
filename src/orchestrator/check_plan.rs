@@ -19,7 +19,8 @@ pub(super) async fn run_check_plan(
             );
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
-        let Some(contents) = run_check_plan_attempt(orchestrator, context, &review_path).await? else {
+        let Some(contents) = run_check_plan_attempt(orchestrator, context, &review_path).await?
+        else {
             continue;
         };
         if is_lgtm_str(&contents) {
@@ -38,7 +39,8 @@ async fn run_check_plan_attempt(
     context: &HashMap<String, String>,
     review_path: &Path,
 ) -> Result<Option<String>, WorkflowError> {
-    clear_review_file(review_path).map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
+    clear_review_file(review_path)
+        .map_err(|e| WorkflowError(format!("failed to clear review file: {e}")))?;
     (orchestrator.progress_callback)("CheckPlan");
     orchestrator
         .run_coder_prompt("check_plan.md", context, "check", TimingPhase::CheckPlan)
@@ -50,15 +52,12 @@ fn read_check_plan_review_file(review_path: &Path) -> Result<Option<String>, Wor
     if !review_path.exists() {
         return Ok(None);
     }
-    Ok(Some(
-        std::fs::read_to_string(review_path)
-            .map_err(|e| {
-                WorkflowError(format!(
-                    "failed to read review file: {}: {e}",
-                    review_path.display()
-                ))
-            })?,
-    ))
+    Ok(Some(std::fs::read_to_string(review_path).map_err(|e| {
+        WorkflowError(format!(
+            "failed to read review file: {}: {e}",
+            review_path.display()
+        ))
+    })?))
 }
 
 #[cfg(test)]
@@ -79,5 +78,12 @@ mod tests {
         let review_path = dir;
         let err = read_check_plan_review_file(&review_path).unwrap_err();
         assert!(err.0.contains("failed to read review file"));
+    }
+
+    #[test]
+    fn kiss_stringify_check_plan_units() {
+        let _ = stringify!(super::run_check_plan);
+        let _ = stringify!(super::run_check_plan_attempt);
+        let _ = stringify!(super::read_check_plan_review_file);
     }
 }

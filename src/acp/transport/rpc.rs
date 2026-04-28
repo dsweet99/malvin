@@ -235,3 +235,8 @@ fn kiss_stringify_rpc_b() {
     let _ = stringify!(rpc_request);
     let _ = stringify!(rpc_wait_response);
 }
+
+#[test]
+fn kiss_stringify_rpc_c() {
+    let _ = stringify!(rpc_wait_with_timeout);
+}

@@ -4,6 +4,10 @@ use outgoing_prompt_trace::{
     DoPromptTraceSplit, OutgoingPromptTrace, UniformOutgoingTrace,
 };
 
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;
+
 /// [`AcpSession`] implementation and post-spawn handshake.
 pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
     if who == "learn" {
@@ -221,9 +225,7 @@ impl AcpSession {
     pub async fn cancel(&self) -> Result<(), String> {
         let params = json!({ "sessionId": &self.0.session_id });
         let r = self.send_rpc("session/cancel", params).await;
-        if r.is_ok() {
-            self.reset_prompt_inflight().await;
-        }
+        self.reset_prompt_inflight().await;
         r.map(|_| ())
     }
 

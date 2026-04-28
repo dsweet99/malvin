@@ -2,19 +2,7 @@ use std::collections::HashSet;
 use std::path::{self, Path};
 
 const TRIM_CHARS: &[char] = &[
-    '`',
-    ',',
-    '\n',
-    '\r',
-    ';',
-    ')',
-    '(',
-    '"',
-    '\'',
-    '.',
-    ':',
-    '!',
-    '?',
+    '`', ',', '\n', '\r', ';', ')', '(', '"', '\'', '.', ':', '!', '?', '[', ']',
 ];
 
 #[test]
@@ -34,15 +22,26 @@ fn plan_references_present(plan_path: &Path) -> bool {
     };
     let mut references = HashSet::new();
     for token in plan.split_whitespace() {
-        let candidate = token.trim_matches(TRIM_CHARS);
+        let mut token = token.trim().to_string();
+        if let Some(link_start) = token.find("](") {
+            if let Some(end) = token.rfind(')') {
+                token = token[link_start + 2..end].to_string();
+            }
+        }
+        let mut candidate = token.trim_matches(TRIM_CHARS).to_string();
+        if let (Some(start), Some(end)) = (candidate.find('('), candidate.rfind(')')) {
+            if start < end {
+                candidate = candidate[start + 1..end].to_string();
+            }
+        }
         if !candidate.starts_with("evaluations/") {
             continue;
         }
-        if path::Path::new(candidate)
+        if path::Path::new(&candidate)
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("sh"))
         {
-            references.insert(candidate.to_string());
+            references.insert(candidate.clone());
         }
     }
     assert!(
@@ -67,4 +66,20 @@ fn plan_new_eval_referenced_eval_harnesses_exist_should_fail_when_plan_missing()
         !plan_references_present(tmp.path().join("plan_new_eval.md").as_path()),
         "missing plan_new_eval.md should be detected by reference-presence helper"
     );
+}
+
+#[test]
+#[cfg(unix)]
+fn plan_new_eval_references_markdown_link_form_harness() {
+    let tmp = tempfile::tempdir().expect("tmpdir");
+    let plan = tmp.path().join("plan_new_eval.md");
+    let harness = "evaluations/markdown_link.sh";
+    std::fs::create_dir_all(tmp.path().join("evaluations")).unwrap();
+    std::fs::write(&plan, format!("Run with [markdown link]({harness})\n")).unwrap();
+    std::fs::write(tmp.path().join(harness), "#!/usr/bin/env sh\nexit 0\n").unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    let present = plan_references_present(&plan);
+    std::env::set_current_dir(old_cwd).unwrap();
+    assert!(present);
 }

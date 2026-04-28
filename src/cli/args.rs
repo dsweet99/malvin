@@ -2,11 +2,12 @@
 
 use clap::{Args, Parser, Subcommand};
 
-use super::do_flow::DoArgs;
-use super::init_cmd::InitArgs;
-use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
+
+pub use super::do_flow::DoArgs;
+pub use super::init_cmd::InitArgs;
+pub use super::models_cmd::ModelsArgs;
 
 pub use super::shared_opts::GlobalOpts;
 
@@ -49,6 +50,8 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         no_learn: bool,
     },
+    /// Author grounding.md from `write_grounding.md`
+    Ground,
 }
 
 #[derive(Args, Debug)]
@@ -66,7 +69,7 @@ pub struct CodeArgs {
     pub request: String,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
     /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
     #[arg(long, default_value_t = 10, alias = "max-loops")]

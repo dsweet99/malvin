@@ -15,7 +15,7 @@ pub struct GlobalOpts {
     pub no_color: bool,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct SharedOpts {
     /// Model id.
     #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]

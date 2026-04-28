@@ -52,7 +52,9 @@ impl RunArtifacts {
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("run");
-        self.run_dir.join("_kpop").join(format!("exp_log_{slug}.md"))
+        self.run_dir
+            .join("_kpop")
+            .join(format!("exp_log_{slug}.md"))
     }
 }
 

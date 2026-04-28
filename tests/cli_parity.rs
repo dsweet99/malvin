@@ -6,30 +6,42 @@ use std::path::Path;
 #[cfg(all(unix, target_os = "linux"))]
 use std::path::PathBuf;
 use std::process::Command;
-#[cfg(all(unix, target_os = "linux"))]
 use std::process::Output;
 
 const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
+
+#[cfg(unix)]
+fn run_root_help_output() -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.arg("--help");
+    common::command_output_with_timeout(&mut cmd, common::MALVIN_TEST_CMD_TIMEOUT)
+        .expect("malvin --help")
+}
+
+#[cfg(not(unix))]
+fn run_root_help_output() -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .arg("--help")
+        .output()
+        .expect("malvin --help")
+}
 #[cfg(unix)]
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_abort_after_implement_js,
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
-    acp_mock_kpop_tamper_then_restore_js, acp_mock_sync_reviewer_restore_between_attempts_js,
-    acp_mock_sync_tamper_and_review_restore_js,
-    acp_mock_code_review_lgtm_to_artifact_js,
-    acp_mock_code_review_lgtm_with_abort_js,
-    acp_mock_code_streaming_update_js,
-    command_output_with_timeout,
-    test_home_workspace, write_fake_kiss, write_mock_executable,
+    acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
+    acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
+    acp_mock_sync_reviewer_restore_between_attempts_js, acp_mock_sync_tamper_and_review_restore_js,
+    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 #[cfg(all(unix, target_os = "linux"))]
 use common::{
-    acp_mock_code_streaming_bold_markdown_js, acp_mock_code_streaming_long_bold_markdown_js,
-    acp_mock_code_streaming_rich_markdown_js, acp_mock_code_check_sync_then_review_lgtm_js,
+    acp_mock_code_check_sync_then_review_lgtm_js, acp_mock_code_streaming_bold_markdown_js,
+    acp_mock_code_streaming_long_bold_markdown_js, acp_mock_code_streaming_rich_markdown_js,
     acp_mock_sync_review_lgtm_with_abort_js,
 };
 
@@ -115,11 +127,7 @@ fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
 }
 
 #[cfg(unix)]
-fn run_sync_with_mock_js(
-    mock_js: &str,
-    extra_args: &[&str],
-    no_tee: bool,
-) -> std::process::Output {
+fn run_sync_with_mock_js(mock_js: &str, extra_args: &[&str], no_tee: bool) -> std::process::Output {
     run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee, false).0
 }
 
@@ -311,7 +319,11 @@ fn code_stops_when_review_lgtm_also_writes_abort_result() {
         &["--max-loops", "1"],
         true,
     );
-    assert_review_abort_behavior(&out, "ABORT: review lgtm abort test", "Review-2 (attempt 1)");
+    assert_review_abort_behavior(
+        &out,
+        "ABORT: review lgtm abort test",
+        "Review-2 (attempt 1)",
+    );
 }
 
 #[test]
@@ -322,11 +334,19 @@ fn sync_stops_when_review_lgtm_also_writes_abort_result() {
         &["--max-loops", "2"],
         true,
     );
-    assert_review_abort_behavior(&out, "ABORT: sync review LGTM abort test", "Review-2 (attempt 1)");
+    assert_review_abort_behavior(
+        &out,
+        "ABORT: sync review LGTM abort test",
+        "Review-2 (attempt 1)",
+    );
 }
 
 #[cfg(unix)]
-fn assert_review_abort_behavior(out: &std::process::Output, abort_snippet: &str, should_stop_prompt: &str) {
+fn assert_review_abort_behavior(
+    out: &std::process::Output,
+    abort_snippet: &str,
+    should_stop_prompt: &str,
+) {
     assert!(
         !out.status.success(),
         "expected ABORT failure path: {out:?}"
@@ -378,7 +398,10 @@ fn sync_max_loops_zero_skips_review_attempts_and_fails() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(!out.status.success(), "sync should fail without reviews: {combined:?}");
+    assert!(
+        !out.status.success(),
+        "sync should fail without reviews: {combined:?}"
+    );
     assert!(
         combined.contains("Did not receive LGTM for check_sync.md within max loops.")
             || combined.contains(MAX_LOOPS_EXHAUSTED),
@@ -423,14 +446,22 @@ fn sync_runs_check_sync_before_review_1() {
     let has_check_sync_log = std::fs::read_dir(&run_dir)
         .expect("run dir")
         .filter_map(Result::ok)
-        .any(|entry| entry.file_name().to_string_lossy().contains("coder_check_sync"));
+        .any(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .contains("coder_check_sync")
+        });
     assert!(
         has_check_sync_log,
         "expected check_sync coder log to capture session/prompt request: {combined:?}"
     );
 }
 
-fn assert_sync_tamper_flow_restores_grounding_and_fails(output: &std::process::Output, workspace: &Path) {
+fn assert_sync_tamper_flow_restores_grounding_and_fails(
+    output: &std::process::Output,
+    workspace: &Path,
+) {
     let combined = format!(
         "{}{}",
         String::from_utf8_lossy(&output.stdout),
@@ -983,27 +1014,39 @@ fn do_pty_preserves_bold_markers_with_global_no_markdown() {
 
 #[test]
 fn help_lists_global_no_markdown_once() {
-    #[cfg(unix)]
-    let out = {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-        cmd.arg("--help");
-        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("malvin --help")
-    };
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .arg("--help")
-        .output()
-        .expect("malvin --help");
+    let out = run_root_help_output();
     assert!(
         out.status.success(),
         "help failed: stderr={}",
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
+    let no_markdown_option_lines = s
+        .lines()
+        .filter(|line| line.trim_start().starts_with("--no-markdown"))
+        .count();
     assert_eq!(
-        s.matches("--no-markdown").count(),
+        no_markdown_option_lines,
         1,
         "expected exactly one --no-markdown in root help: {s}"
+    );
+}
+
+#[test]
+fn help_lists_ground_command() {
+    let out = run_root_help_output();
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    let has_ground_command = s
+        .lines()
+        .any(|line| line.split_whitespace().next() == Some("ground"));
+    assert!(
+        has_ground_command,
+        "expected help text to include ground command: {s}"
     );
 }
 

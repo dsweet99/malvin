@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
-    resolve_user_request,
+    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
 use malvin::kpop_multiturn::KpopMultiturnState;
@@ -21,14 +21,11 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
-use super::repo_checks;
+use super::repo_checks::{self, RepoGateOutput};
 use super::shared_opts::SharedOpts;
 use super::timing_merge::{emit_run_timing_after_acp, merge_acp_with_grounding_restore};
 
-fn kpop_prompt_store(
-    kpop: &KpopArgs,
-    workflow: WorkflowCliOptions,
-) -> Result<PromptStore, String> {
+fn kpop_prompt_store(kpop: &KpopArgs, workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let needs_mbc2 = kpop_creative_enabled(kpop.p_creative);
     prepare_kpop_prompt_store(workflow, needs_mbc2)
 }
@@ -165,10 +162,7 @@ pub async fn run_kpop(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;
-    repo_checks::run_repo_workspace_gates(
-        &prepared.artifacts.work_dir,
-        repo_checks::RepoGateOutput::Tagged,
-    )?;
+    repo_checks::run_repo_workspace_gates(&prepared.artifacts.work_dir, RepoGateOutput::Tagged)?;
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
@@ -272,10 +266,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         ("kpop_log_dir", "./_malvin/run42/_kpop"),
         ("review_path", "./review.md"),
         ("result_path", "./_malvin/run42/result.md"),
-        (
-            "exp_log",
-            "_malvin/run42/_kpop/exp_log_run42.md",
-        ),
+        ("exp_log", "_malvin/run42/_kpop/exp_log_run42.md"),
     ] {
         base.insert(k.to_string(), v.to_string());
     }

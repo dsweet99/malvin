@@ -5,9 +5,9 @@ use std::process::Command;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_long_agent_msg_js,
-    acp_mock_do_streaming_update_js, acp_mock_do_streaming_wordy_long_msg_js,
-    acp_mock_do_creates_grounding_and_kissconfig_js, acp_mock_do_tamper_grounding_and_kissconfig_js,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_creates_grounding_and_kissconfig_js,
+    acp_mock_do_streaming_long_agent_msg_js, acp_mock_do_streaming_update_js,
+    acp_mock_do_streaming_wordy_long_msg_js, acp_mock_do_tamper_grounding_and_kissconfig_js,
     acp_mock_do_tampers_grounding_js, command_output_with_timeout, test_home_workspace,
     write_mock_executable,
 };
@@ -23,11 +23,7 @@ fn run_do_with_named_mock_bin(
     mock_js: &str,
     extra_args: &[&str],
     columns: Option<&str>,
-) -> (
-    std::process::Output,
-    tempfile::TempDir,
-    std::path::PathBuf,
-) {
+) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
     let mock = root.path().join(mock_bin_name);
     write_mock_executable(&mock, mock_js);
@@ -43,7 +39,8 @@ fn run_do_with_named_mock_bin(
         cmd.env("COLUMNS", c);
     }
     cmd.args(args);
-    let out = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do");
+    let out =
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do");
     (out, root, workspace)
 }
 
@@ -53,7 +50,8 @@ fn run_do_with_mock_js(
     extra_args: &[&str],
     columns: Option<&str>,
 ) -> std::process::Output {
-    let (out, root, _) = run_do_with_named_mock_bin("mock-agent-acp-do", mock_js, extra_args, columns);
+    let (out, root, _) =
+        run_do_with_named_mock_bin("mock-agent-acp-do", mock_js, extra_args, columns);
     drop(root);
     out
 }
@@ -175,10 +173,7 @@ fn do_restores_missing_grounding_and_kissconfig_when_agent_creates_them() {
     let (root, _home, workspace) = test_home_workspace();
     let _ = std::fs::remove_file(workspace.join("grounding.md"));
     let mock = root.path().join("mock-agent-acp-do-create-protected");
-    common::write_mock_executable(
-        &mock,
-        &acp_mock_do_creates_grounding_and_kissconfig_js(),
-    );
+    common::write_mock_executable(&mock, &acp_mock_do_creates_grounding_and_kissconfig_js());
     let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)
@@ -208,13 +203,10 @@ fn do_restores_missing_grounding_and_kissconfig_when_agent_creates_them() {
 #[test]
 fn do_restores_kissconfig_when_grounding_missing() {
     let (root, _home, workspace) = test_home_workspace();
-    std::fs::write(workspace.join(".kissconfig"), "k\n",).expect("write kissconfig");
+    std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
     let _ = std::fs::remove_file(workspace.join("grounding.md"));
     let mock = root.path().join("mock-agent-acp-do-tamper-kiss");
-    common::write_mock_executable(
-        &mock,
-        &acp_mock_do_tamper_grounding_and_kissconfig_js(),
-    );
+    common::write_mock_executable(&mock, &acp_mock_do_tamper_grounding_and_kissconfig_js());
     let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)
@@ -300,7 +292,7 @@ fn do_repo_gates_keeps_gate_diagnostics_off_stdout() {
 fn do_auto_runs_kiss_clamp_by_default_when_source_exists_and_kissconfig_missing() {
     let (root, home, workspace) = test_home_workspace();
     std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
-    std::fs::write(workspace.join("src/main.rs"), "fn main() {}",).expect("write source");
+    std::fs::write(workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     let _ = std::fs::remove_file(workspace.join(".kissconfig"));
     let marker = workspace.join("kiss_clamp_called.txt");
     let kissconfig = workspace.join(".kissconfig");
@@ -353,7 +345,10 @@ fn do_auto_runs_kiss_clamp_by_default_when_source_exists_and_kissconfig_missing(
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(marker.exists(), "expected kiss clamp to run");
-    assert_eq!(std::fs::read_to_string(&kissconfig).expect("read kissconfig"), "k\n");
+    assert_eq!(
+        std::fs::read_to_string(&kissconfig).expect("read kissconfig"),
+        "k\n"
+    );
 }
 
 #[cfg(unix)]
@@ -361,15 +356,21 @@ fn do_auto_runs_kiss_clamp_by_default_when_source_exists_and_kissconfig_missing(
 fn do_does_not_run_kiss_clamp_when_kissconfig_exists() {
     let (root, home, workspace) = test_home_workspace();
     std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
-    std::fs::write(workspace.join("src/main.rs"), "fn main() {}",).expect("write source");
+    std::fs::write(workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     let existing = "k\n";
     std::fs::write(workspace.join(".kissconfig"), existing).expect("write kissconfig");
     let marker = workspace.join("kiss_clamp_called.txt");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let kiss = bin_dir.join("kiss");
-    std::fs::write(&kiss, format!("#!/usr/bin/env sh\nprintf 'bad' > '{}'\nexit 1\n", marker.display()))
-        .expect("write fake kiss");
+    std::fs::write(
+        &kiss,
+        format!(
+            "#!/usr/bin/env sh\nprintf 'bad' > '{}'\nexit 1\n",
+            marker.display()
+        ),
+    )
+    .expect("write fake kiss");
     let mut perms = std::fs::metadata(&kiss)
         .expect("kiss metadata")
         .permissions();

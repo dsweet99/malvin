@@ -16,11 +16,11 @@ include!("helpers.rs");
 mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
-mod session_mode;
 mod session_flow;
+mod session_mode;
 
-use session_mode::OrchestratorSessionMode;
 use session_flow::run_coder_session;
+use session_mode::OrchestratorSessionMode;
 
 use workflow_context as workflow_context_inner;
 
@@ -117,14 +117,16 @@ impl Orchestrator<'_> {
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts)
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, OrchestratorSessionMode::Code).await
+        self.run_with_session(&context, OrchestratorSessionMode::Code)
+            .await
     }
 
     /// Run sync workflow only: review loops and optional learn.
     pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts)
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, OrchestratorSessionMode::Sync).await
+        self.run_with_session(&context, OrchestratorSessionMode::Sync)
+            .await
     }
 
     async fn run_with_session(

@@ -1,5 +1,5 @@
-use super::kiss_clamp;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
+use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
 
@@ -17,9 +17,167 @@ pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
 }
 
 pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    kiss_clamp::ensure_kiss_clamp_if_needed(work_dir, output)?;
+    ensure_kiss_clamp_if_needed(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
-    run_pre_commit_all_files(work_dir, output)
+    run_pre_commit_all_files(work_dir, output)?;
+    run_quality_gates(work_dir, output)
+}
+
+fn ensure_kiss_clamp_if_needed(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), String> {
+    let kissconfig = work_dir.join(".kissconfig");
+    if kissconfig.exists() || !source_like_files_present(work_dir) {
+        return Ok(());
+    }
+    emit_repo_gate_line(
+        output,
+        "Running `kiss clamp` (existing code without .kissconfig)",
+    );
+    let status = std::process::Command::new("kiss")
+        .arg("clamp")
+        .current_dir(work_dir)
+        .status()
+        .map_err(|e| format!("`kiss clamp` failed to start: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("`kiss clamp` failed".to_string())
+    }
+}
+
+fn source_like_files_present(root: &Path) -> bool {
+    if has_path(root.join("Cargo.toml"))
+        || has_path(root.join("pyproject.toml"))
+        || has_path(root.join("requirements.txt"))
+    {
+        return true;
+    }
+    has_python_file(root) || scan_for_extension(root, "rs")
+}
+
+fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    if has_path(work_dir.join(".git")) {
+        run_check_command(work_dir, output, &["kiss", "check"], "kiss check")?;
+    }
+    if has_path(work_dir.join("Cargo.toml")) {
+        run_check_command(
+            work_dir,
+            output,
+            &[
+                "cargo",
+                "clippy",
+                "--all-targets",
+                "--all-features",
+                "--",
+                "-D",
+                "warnings",
+                "-W",
+                "clippy::pedantic",
+                "-W",
+                "clippy::nursery",
+                "-W",
+                "clippy::cargo",
+                "-A",
+                "clippy::must_use_candidate",
+                "-A",
+                "clippy::missing_errors_doc",
+                "-A",
+                "clippy::missing_panics_doc",
+            ],
+            "cargo clippy",
+        )?;
+        run_check_command(work_dir, output, &["cargo", "test"], "cargo test")?;
+    }
+    if has_python_file(work_dir) {
+        run_check_command(
+            work_dir,
+            output,
+            &["ruff", "check", "."],
+            "ruff check",
+        )?;
+        run_check_command(
+            work_dir,
+            output,
+            &["pytest", "-sv", "tests"],
+            "pytest -sv tests",
+        )?;
+    }
+    Ok(())
+}
+
+fn has_path(path: impl AsRef<Path>) -> bool {
+    let path = path.as_ref();
+    path.is_file() || path.is_dir()
+}
+
+fn has_python_file(root: &Path) -> bool {
+    scan_for_extension(root, "py")
+}
+
+fn scan_for_extension(root: &Path, ext: &str) -> bool {
+    let mut stack = vec![root.to_path_buf()];
+    let mut seen = HashSet::new();
+    while let Some(path) = stack.pop() {
+        let Ok(canonical) = path.canonicalize() else {
+            continue;
+        };
+        if !seen.insert(canonical) {
+            continue;
+        }
+        let Ok(metadata) = path.metadata() else {
+            continue;
+        };
+        if metadata.is_dir() {
+            if path.ends_with(".git") {
+                continue;
+            }
+            let Ok(entries) = std::fs::read_dir(&path) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path
+                    .file_name()
+                    .is_some_and(|name| name == ".git" || name == ".jj" || name == "target")
+                {
+                    continue;
+                }
+                stack.push(entry_path);
+            }
+        } else if path.extension().is_some_and(|extn| extn == ext) {
+            return true;
+        }
+    }
+    false
+}
+
+fn run_check_command(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    command_args: &[&str],
+    friendly_label: &str,
+) -> Result<(), String> {
+    if command_args.is_empty() {
+        return Err("invalid check command".to_string());
+    }
+    emit_repo_gate_line(output, &format!("Running `{friendly_label}`"));
+    let status = Command::new(command_args[0])
+        .args(&command_args[1..])
+        .current_dir(work_dir)
+        .status()
+        .map_err(|e| format!("`{friendly_label}` failed to start: {e}"))?;
+    if status.success() {
+        return Ok(());
+    }
+    Err(format!(
+        "`{friendly_label}` failed (exit {}): {}",
+        status
+            .code()
+            .map_or_else(|| "signal".to_string(), |code| code.to_string()),
+        friendly_label
+    ))
 }
 
 /// Touch `<work_dir>/grounding.md` and `<work_dir>/.malvin_memory/style.md` when missing.
@@ -63,10 +221,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
-            emit_repo_gate_line(
-                output,
-                &format!("Warning: could not read .kissconfig: {e}"),
-            );
+            emit_repo_gate_line(output, &format!("Warning: could not read .kissconfig: {e}"));
             return;
         }
     };
@@ -136,10 +291,7 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
     gate_test_coverage_threshold_i64(value).is_none_or(|t| t < 90)
 }
 
-pub fn run_pre_commit_all_files(
-    work_dir: &Path,
-    output: RepoGateOutput,
-) -> Result<(), String> {
+pub fn run_pre_commit_all_files(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
     let config = work_dir.join(".pre-commit-config.yaml");
     if !config.is_file() {
         emit_repo_gate_line(
@@ -168,8 +320,9 @@ pub fn run_pre_commit_all_files(
 mod tests {
     use super::{
         RepoGateOutput, ensure_workspace_style_markers, format_pre_commit_failure,
-        run_repo_workspace_gates, should_warn_low_test_coverage,
+        run_repo_workspace_gates, scan_for_extension, should_warn_low_test_coverage,
     };
+    use std::time::Duration;
 
     #[test]
     fn repo_checks_kiss_stringify_internal_helpers() {
@@ -252,7 +405,11 @@ mod tests {
         let work = tmp.path();
         std::fs::create_dir_all(work.join(".malvin_memory")).unwrap();
         std::fs::write(work.join("grounding.md"), b"KEEP ME\n").unwrap();
-        std::fs::write(work.join(".malvin_memory").join("style.md"), b"STYLE STAYS\n").unwrap();
+        std::fs::write(
+            work.join(".malvin_memory").join("style.md"),
+            b"STYLE STAYS\n",
+        )
+        .unwrap();
         ensure_workspace_style_markers(work, RepoGateOutput::Tagged).unwrap();
         assert_eq!(
             std::fs::read_to_string(work.join("grounding.md")).unwrap(),
@@ -298,5 +455,22 @@ mod tests {
         run_repo_workspace_gates(work, RepoGateOutput::Stderr).unwrap();
         assert!(!work.join("grounding.md").exists());
         assert!(!work.join(".malvin_memory").join("style.md").exists());
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn scan_for_extension_handles_symlink_cycles() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().to_path_buf();
+        std::fs::create_dir(root.join("src")).unwrap();
+        std::os::unix::fs::symlink(&root, root.join("src").join("cycle")).unwrap();
+
+        let scan = tokio::task::spawn_blocking(move || scan_for_extension(&root, "rs"));
+        let found = tokio::time::timeout(Duration::from_secs(1), scan)
+            .await
+            .expect("scan_for_extension must finish even with symlink cycles")
+            .expect("scan_for_extension panicked");
+
+        assert!(!found);
     }
 }

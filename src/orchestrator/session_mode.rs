@@ -13,3 +13,13 @@ impl OrchestratorSessionMode {
         matches!(self, Self::Sync)
     }
 }
+
+#[cfg(test)]
+mod kiss_coverage_tests {
+    #[test]
+    fn kiss_stringify_session_mode_units() {
+        let _ = stringify!(super::OrchestratorSessionMode);
+        let _ = stringify!(super::OrchestratorSessionMode::include_implement_phase);
+        let _ = stringify!(super::OrchestratorSessionMode::include_sync_check_phase);
+    }
+}

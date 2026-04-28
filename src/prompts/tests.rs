@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+mod user_home_dir_tests;
 
 use super::*;
 
@@ -83,6 +84,20 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
         "expected missing header + coding_rules in error: {}",
         err.0
     );
+}
+
+#[test]
+fn validate_required_rejects_directory_in_place_of_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    for &name in super::REQUIRED_PROMPTS {
+        std::fs::create_dir_all(root.join(name)).unwrap();
+    }
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_required().unwrap_err();
+    for name in super::REQUIRED_PROMPTS {
+        assert!(err.0.contains(name), "missing required prompt {name} in {err:?}");
+    }
 }
 
 #[test]
@@ -201,3 +216,4 @@ fn merge_header_and_coding_rules_handles_empty() {
     assert_eq!(merge_header_and_coding_rules("", "rules"), "rules");
     assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
 }
+

@@ -75,10 +75,6 @@ mod reader_tests;
 mod spawn_test_args;
 
 #[cfg(test)]
-#[path = "session_tests.rs"]
-mod tests;
-
-#[cfg(test)]
 mod cursor_credentials_tests_inline {
     #![allow(unsafe_code)]
     use super::{

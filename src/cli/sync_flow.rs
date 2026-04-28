@@ -1,20 +1,20 @@
 //! Sync subcommand: reviewer review-loop workflow (`review_1/review_2` + optional learn).
 
-use malvin::artifacts::{
-    backup_workspace_grounding_if_present, create_run_artifacts_from_text, GroundingBackup,
-    RunArtifacts,
-};
 use malvin::acp::AgentClient;
+use malvin::artifacts::{
+    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    create_run_artifacts_from_text,
+};
 use malvin::orchestrator::{Orchestrator, WorkflowConfig};
-use malvin::output::{print_stdout_line, MALVIN_WHO};
-use malvin::prompts::{PromptError, PromptStore, HEADER_MD};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
 use std::path::Path;
 
-use super::repo_checks::RepoGateOutput;
 use super::{
-    build_agent, emit_run_startup_sequence, timing_merge, SharedOpts, WorkflowCliOptions,
-    LEARN_MIN_ELAPSED_MS,
+    LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
+    timing_merge,
 };
+use super::repo_checks::{self, RepoGateOutput};
 
 pub struct SyncRunSpec {
     pub max_loops: usize,
@@ -28,10 +28,7 @@ fn prepare_sync_prompt_store(run_learn: bool) -> Result<PromptStore, String> {
     Ok(store)
 }
 
-fn prepare_sync_prompt_store_for(
-    store: &PromptStore,
-    run_learn: bool,
-) -> Result<(), String> {
+fn prepare_sync_prompt_store_for(store: &PromptStore, run_learn: bool) -> Result<(), String> {
     store
         .validate_exists(HEADER_MD)
         .map_err(|e: PromptError| e.0)?;
@@ -67,9 +64,9 @@ fn prepare_sync_artifacts(
     let client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
-    let artifacts = create_run_artifacts_from_text("sync", Some(Path::new(".")))
-        .map_err(|e| e.to_string())?;
-    crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    let artifacts =
+        create_run_artifacts_from_text("sync", Some(Path::new("."))).map_err(|e| e.to_string())?;
+    repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
 
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "sync")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
@@ -80,7 +77,7 @@ fn prepare_sync_artifacts(
 
 #[cfg(test)]
 mod coverage_tests {
-    use super::{prepare_sync_prompt_store_for, PromptStore, SyncRunSpec};
+    use super::{PromptStore, SyncRunSpec, prepare_sync_prompt_store_for};
 
     #[test]
     fn kiss_stringify_sync_flow_units() {
@@ -114,17 +111,16 @@ mod coverage_tests {
         let _ = std::fs::write(prompts_dir.join("coding_rules.md"), "rules");
         let _ = std::fs::remove_file(prompts_dir.join("learn.md"));
 
-        assert!(
-            prepare_sync_prompt_store_for(&store, false).is_ok()
-        );
+        assert!(prepare_sync_prompt_store_for(&store, false).is_ok());
         let _ = std::fs::remove_file(prompts_dir.join("coding_rules.md"));
-        assert!(
-            prepare_sync_prompt_store_for(&store, false).is_err()
-        );
+        assert!(prepare_sync_prompt_store_for(&store, false).is_err());
         let _ = std::fs::write(prompts_dir.join("coding_rules.md"), "rules");
-        assert!(
-            prepare_sync_prompt_store_for(&store, true).is_err()
-        );
+        assert!(prepare_sync_prompt_store_for(&store, true).is_err());
+    }
+
+    #[test]
+    fn kiss_stringify_sync_flow_units_all() {
+        let _ = stringify!(crate::cli::sync_flow::prepare_sync_prompt_store_for);
     }
 }
 

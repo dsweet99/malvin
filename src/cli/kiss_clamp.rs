@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::cli::repo_checks::{RepoGateOutput, emit_repo_gate_line};
+use malvin::output::{print_stdout_line, MALVIN_WHO};
 
 /// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
 fn has_source_files(dir: &Path) -> bool {
@@ -50,7 +50,7 @@ fn has_source_files(dir: &Path) -> bool {
 }
 
 /// If existing code is detected but `.kissconfig` is absent, run `kiss clamp`.
-pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output_tagged: bool) -> Result<(), String> {
     let kissconfig = work_dir.join(".kissconfig");
     if kissconfig.exists() {
         return Ok(());
@@ -58,10 +58,11 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> R
     if !has_source_files(work_dir) {
         return Ok(());
     }
-    emit_repo_gate_line(
-        output,
-        "Running `kiss clamp` (existing code without .kissconfig)",
-    );
+    if output_tagged {
+        print_stdout_line(MALVIN_WHO, "Running `kiss clamp` (existing code without .kissconfig)");
+    } else {
+        eprintln!("Running `kiss clamp` (existing code without .kissconfig)");
+    }
     let status = Command::new("kiss")
         .arg("clamp")
         .current_dir(work_dir)
@@ -132,12 +133,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         std::fs::write(tmp.path().join(".kissconfig"), "").unwrap();
         std::fs::write(tmp.path().join("main.rs"), "fn main() {}").unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Tagged).is_ok());
+        assert!(ensure_kiss_clamp_if_needed(tmp.path(), true).is_ok());
     }
 
     #[test]
     fn ensure_kiss_clamp_skips_when_no_source_files() {
         let tmp = tempfile::tempdir().unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Stderr).is_ok());
+        assert!(ensure_kiss_clamp_if_needed(tmp.path(), false).is_ok());
     }
 }

@@ -47,7 +47,7 @@ pub(crate) fn user_home_dir() -> PathBuf {
     if let Some(h) = std::env::var_os("USERPROFILE").filter(|s| !s.is_empty()) {
         return PathBuf::from(h);
     }
-    PathBuf::from(".")
+    std::env::temp_dir()
 }
 
 impl PromptStore {
@@ -70,9 +70,10 @@ impl PromptStore {
     }
 
     fn prompt_source_desc(&self) -> String {
-        self.root
-            .as_ref()
-            .map_or_else(|| "embedded prompts".to_string(), |root| root.display().to_string())
+        self.root.as_ref().map_or_else(
+            || "embedded prompts".to_string(),
+            |root| root.display().to_string(),
+        )
     }
 }
 
@@ -117,9 +118,10 @@ impl PromptStore {
 
     pub fn validate_required(&self) -> Result<(), PromptError> {
         let has_file = |name: &str| -> bool {
-            self.root
-                .as_ref()
-                .map_or_else(|| default_file(name).is_some(), |root| root.join(name).exists())
+            self.root.as_ref().map_or_else(
+                || default_file(name).is_some(),
+                |root| root.join(name).is_file(),
+            )
         };
         let missing: Vec<&str> = REQUIRED_PROMPTS
             .iter()
@@ -224,9 +226,9 @@ pub use template::{
 };
 
 #[cfg(test)]
-#[allow(unsafe_code)]
-mod tests;
+mod check_sync_tests;
 #[cfg(test)]
 mod embedded_defaults_tests;
 #[cfg(test)]
-mod check_sync_tests;
+#[allow(unsafe_code)]
+mod tests;
