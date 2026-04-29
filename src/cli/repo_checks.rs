@@ -1,7 +1,8 @@
 use malvin::output::{MALVIN_WHO, print_stdout_line};
-use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
+#[cfg(test)]
+use std::sync::{LazyLock, Mutex};
 
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
@@ -19,7 +20,6 @@ pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
 pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
     ensure_kiss_clamp_if_needed(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
-    run_pre_commit_all_files(work_dir, output)?;
     run_quality_gates(work_dir, output)
 }
 
@@ -35,7 +35,7 @@ fn ensure_kiss_clamp_if_needed(
         output,
         "Running `kiss clamp` (existing code without .kissconfig)",
     );
-    let status = std::process::Command::new("kiss")
+    let status = std::process::Command::new(run_command_for("kiss"))
         .arg("clamp")
         .current_dir(work_dir)
         .status()
@@ -48,13 +48,7 @@ fn ensure_kiss_clamp_if_needed(
 }
 
 fn source_like_files_present(root: &Path) -> bool {
-    if has_path(root.join("Cargo.toml"))
-        || has_path(root.join("pyproject.toml"))
-        || has_path(root.join("requirements.txt"))
-    {
-        return true;
-    }
-    has_python_file(root) || scan_for_extension(root, "rs")
+    super::kiss_clamp::has_source_files(root)
 }
 
 fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
@@ -113,44 +107,55 @@ fn has_path(path: impl AsRef<Path>) -> bool {
 }
 
 fn has_python_file(root: &Path) -> bool {
-    scan_for_extension(root, "py")
+    super::kiss_clamp::has_extension_files(root, "py")
 }
 
+#[allow(dead_code)]
 fn scan_for_extension(root: &Path, ext: &str) -> bool {
-    let mut stack = vec![root.to_path_buf()];
-    let mut seen = HashSet::new();
-    while let Some(path) = stack.pop() {
-        let Ok(canonical) = path.canonicalize() else {
-            continue;
-        };
-        if !seen.insert(canonical) {
-            continue;
-        }
-        let Ok(metadata) = path.metadata() else {
-            continue;
-        };
-        if metadata.is_dir() {
-            if path.ends_with(".git") {
-                continue;
-            }
-            let Ok(entries) = std::fs::read_dir(&path) else {
-                continue;
-            };
-            for entry in entries.flatten() {
-                let entry_path = entry.path();
-                if entry_path
-                    .file_name()
-                    .is_some_and(|name| name == ".git" || name == ".jj" || name == "target")
-                {
-                    continue;
-                }
-                stack.push(entry_path);
-            }
-        } else if path.extension().is_some_and(|extn| extn == ext) {
-            return true;
-        }
+    super::kiss_clamp::has_extension_files(root, ext)
+}
+
+#[cfg(test)]
+static TEST_FAKE_COMMAND_DIR: LazyLock<Mutex<Option<std::path::PathBuf>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+#[cfg(test)]
+fn test_fake_command_path(command: &str) -> Option<std::path::PathBuf> {
+    TEST_FAKE_COMMAND_DIR
+        .lock()
+        .ok()
+        .and_then(|dir| dir.as_ref().map(|d| d.join(command)))
+        .filter(|path| path.is_file())
+}
+
+#[cfg(not(test))]
+const fn test_fake_command_path(_: &str) -> Option<std::path::PathBuf> {
+    None
+}
+
+#[cfg(test)]
+struct FakeCommandDirGuard {
+    previous: Option<std::path::PathBuf>,
+}
+
+#[cfg(test)]
+impl Drop for FakeCommandDirGuard {
+    fn drop(&mut self) {
+        let mut dir = TEST_FAKE_COMMAND_DIR.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        *dir = self.previous.take();
     }
-    false
+}
+
+#[cfg(test)]
+fn set_fake_command_dir(path: &Path) -> FakeCommandDirGuard {
+    let mut dir = TEST_FAKE_COMMAND_DIR.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let previous = dir.replace(path.to_path_buf());
+    drop(dir);
+    FakeCommandDirGuard { previous }
+}
+
+fn run_command_for(command: &str) -> std::path::PathBuf {
+    test_fake_command_path(command).unwrap_or_else(|| command.into())
 }
 
 fn run_check_command(
@@ -163,7 +168,8 @@ fn run_check_command(
         return Err("invalid check command".to_string());
     }
     emit_repo_gate_line(output, &format!("Running `{friendly_label}`"));
-    let status = Command::new(command_args[0])
+    let command_binary = run_command_for(command_args[0]);
+    let status = Command::new(command_binary)
         .args(&command_args[1..])
         .current_dir(work_dir)
         .status()
@@ -244,36 +250,6 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     );
 }
 
-fn trim_detail_chars(s: &str, max_chars: usize) -> String {
-    if s.chars().count() <= max_chars {
-        return s.to_string();
-    }
-    s.chars().take(max_chars).collect::<String>() + "…"
-}
-
-fn format_pre_commit_failure(output: &std::process::Output) -> String {
-    let exit = output
-        .status
-        .code()
-        .map_or_else(|| "signal".to_string(), |c| c.to_string());
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
-    let mut parts: Vec<String> = Vec::new();
-    if !out.trim().is_empty() {
-        parts.push(format!("stdout:\n{out}"));
-    }
-    if !err.trim().is_empty() {
-        parts.push(format!("stderr:\n{err}"));
-    }
-    let merged = if parts.is_empty() {
-        "(no output)".to_string()
-    } else {
-        parts.join("\n")
-    };
-    let detail = trim_detail_chars(&merged, 4000);
-    format!("`pre-commit run --all-files` failed (exit {exit}): {detail}")
-}
-
 fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
     value
         .get("gate")
@@ -291,37 +267,15 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
     gate_test_coverage_threshold_i64(value).is_none_or(|t| t < 90)
 }
 
-pub fn run_pre_commit_all_files(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    let config = work_dir.join(".pre-commit-config.yaml");
-    if !config.is_file() {
-        emit_repo_gate_line(
-            output,
-            "Warning: no .pre-commit-config.yaml; editing code without configured linters is risky.",
-        );
-        return Ok(());
-    }
-    emit_repo_gate_line(
-        output,
-        "Running `pre-commit run --all-files` (repo-configured hooks)",
-    );
-    let pcm = Command::new("pre-commit")
-        .args(["run", "--all-files"])
-        .current_dir(work_dir)
-        .output()
-        .map_err(|e| format!("`pre-commit` failed to start: {e}"))?;
-    if pcm.status.success() {
-        Ok(())
-    } else {
-        Err(format_pre_commit_failure(&pcm))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        RepoGateOutput, ensure_workspace_style_markers, format_pre_commit_failure,
+        RepoGateOutput, ensure_workspace_style_markers,
         run_repo_workspace_gates, scan_for_extension, should_warn_low_test_coverage,
     };
+    use std::fs;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
     use std::time::Duration;
 
     #[test]
@@ -329,19 +283,7 @@ mod tests {
         let _ = stringify!(super::RepoGateOutput);
         let _ = stringify!(super::emit_repo_gate_line);
         let _ = stringify!(super::touch_if_missing);
-        let _ = stringify!(super::trim_detail_chars);
-    }
-
-    #[test]
-    fn pre_commit_failure_includes_exit_and_streams() {
-        let out = std::process::Command::new("sh")
-            .args(["-c", "echo out; echo err >&2; exit 7"])
-            .output()
-            .expect("sh");
-        let msg = format_pre_commit_failure(&out);
-        assert!(msg.contains("exit 7"), "{msg}");
-        assert!(msg.contains("out"), "{msg}");
-        assert!(msg.contains("err"), "{msg}");
+        let _ = stringify!(super::should_warn_low_test_coverage);
     }
 
     #[test]
@@ -457,6 +399,17 @@ mod tests {
         assert!(!work.join(".malvin_memory").join("style.md").exists());
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn source_like_files_present_does_not_follow_external_symlink_dirs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(outside.path().join("src")).unwrap();
+        std::fs::write(outside.path().join("src/main.rs"), "fn main() {}").unwrap();
+        std::os::unix::fs::symlink(outside.path(), tmp.path().join("src")).unwrap();
+        assert!(!super::source_like_files_present(tmp.path()));
+    }
+
     #[tokio::test]
     #[cfg(unix)]
     async fn scan_for_extension_handles_symlink_cycles() {
@@ -473,4 +426,67 @@ mod tests {
 
         assert!(!found);
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_repo_workspace_gates_invokes_expected_quality_commands() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(work.join("Cargo.toml"), "[package]\nname = 'm'\nversion = '0.1.0'\n")
+            .unwrap();
+        fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+        fs::write(work.join("script.py"), "print('ok')").unwrap();
+        fs::create_dir(work.join("tests")).unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let make_script = |name: &str, body: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(&path, body).unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script(
+            "kiss",
+            &format!("#!/bin/sh\necho \"kiss $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
+            "cargo",
+            &format!("#!/bin/sh\necho \"cargo $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
+            "ruff",
+            &format!("#!/bin/sh\necho \"ruff $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
+            "pytest",
+            &format!("#!/bin/sh\necho \"pytest $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log.contains("kiss clamp"));
+        assert!(log.contains("kiss check"));
+        assert!(log.contains("cargo clippy"));
+        assert!(log.contains("cargo test"));
+        assert!(log_contains_command(&log, "ruff check"));
+        assert!(log_contains_command(&log, "pytest -sv tests"));
+    }
+
+    #[cfg(unix)]
+    fn log_contains_command(log: &str, expected: &str) -> bool {
+        log.split('\n').any(|line| {
+            line.split_whitespace()
+                .collect::<Vec<_>>()
+                .windows(expected.split_whitespace().count())
+                .any(|window| window.join(" ") == expected)
+        })
+    }
+
 }

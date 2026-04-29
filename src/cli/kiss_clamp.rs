@@ -6,7 +6,42 @@ use std::process::Command;
 use malvin::output::{print_stdout_line, MALVIN_WHO};
 
 /// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
-fn has_source_files(dir: &Path) -> bool {
+pub fn has_extension_files(dir: &Path, ext: &str) -> bool {
+    fn check_dir(dir: &Path, ext: &str) -> bool {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return false;
+        };
+        for entry in entries.flatten() {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_file() {
+                if let Some(file_ext) = path.extension().and_then(|e| e.to_str()) {
+                    if file_ext == ext {
+                        return true;
+                    }
+                }
+            } else if file_type.is_dir() {
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with('.') || name == "target" || name == "__pycache__" {
+                        continue;
+                    }
+                }
+                if check_dir(&path, ext) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    check_dir(dir, ext)
+}
+
+pub fn has_source_files(dir: &Path) -> bool {
     fn check_dir(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return false;
@@ -20,16 +55,16 @@ fn has_source_files(dir: &Path) -> bool {
             }
             let path = entry.path();
             if file_type.is_file() {
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if ext == "rs" || ext == "py" {
-                        return true;
-                    }
-                }
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     if name == "Cargo.toml"
                         || name == "pyproject.toml"
                         || name == "requirements.txt"
                     {
+                        return true;
+                    }
+                }
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if ext == "rs" || ext == "py" {
                         return true;
                     }
                 }
@@ -107,6 +142,13 @@ mod tests {
     }
 
     #[test]
+    fn has_extension_files_ignores_marker_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]").unwrap();
+        assert!(!has_extension_files(tmp.path(), "rs"));
+    }
+
+    #[test]
     fn has_source_files_ignores_hidden_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let hidden = tmp.path().join(".hidden");
@@ -125,6 +167,18 @@ mod tests {
         std::fs::create_dir(&real).unwrap();
         std::fs::write(real.join("main.rs"), "fn main() {}").unwrap();
         symlink(&real, tmp.path().join("link")).unwrap();
+        assert!(!has_source_files(tmp.path()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn has_source_files_ignores_symlink_dir_pointing_outside_workspace() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("main.rs"), "fn main() {}").unwrap();
+        symlink(outside.path(), tmp.path().join("outside")).unwrap();
         assert!(!has_source_files(tmp.path()));
     }
 
