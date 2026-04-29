@@ -18,17 +18,22 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
 }
 
 #[must_use]
-pub fn workflow_context_paths_only(artifacts: &RunArtifacts) -> HashMap<String, String> {
+pub fn workflow_context_paths_only(
+    artifacts: &RunArtifacts,
+    malvin_command: &str,
+) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
+    context.insert("malvin_command".to_string(), malvin_command.to_string());
     context
 }
 
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
+    malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts);
+    let mut context = workflow_context_paths_only(artifacts, malvin_command);
     let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)
@@ -134,13 +139,13 @@ mod helper_tests {
             plan_path,
             work_dir: tmp.path().to_path_buf(),
         };
-        let mut ctx = HashMap::new();
-        insert_artifact_paths(&mut ctx, &artifacts);
+        let ctx = workflow_context_paths_only(&artifacts, "ground");
         assert!(ctx.contains_key("plan_path"));
         assert!(ctx.contains_key("grounding_path"));
         assert!(ctx.contains_key("kpop_log_dir"));
         assert!(ctx.contains_key("review_path"));
         assert!(ctx.contains_key("result_path"));
+        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("ground"));
     }
 }
 

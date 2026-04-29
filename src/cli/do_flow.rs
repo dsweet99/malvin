@@ -136,7 +136,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts, store).map_err(|e: PromptError| e.0)?;
+    let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
     combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
 }
 
@@ -146,7 +146,7 @@ pub fn combine_do_raw_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context_paths_only(artifacts);
+    let context = workflow_context_paths_only(artifacts, "do");
     combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
 }
 

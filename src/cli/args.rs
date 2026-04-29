@@ -41,7 +41,7 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// List available models
     Models(ModelsArgs),
-    /// Synchronize code with grounding.md
+    /// Synchronize code to grounding.md
     Sync {
         /// Review loop budget.
         #[arg(long, default_value_t = 5)]
@@ -50,7 +50,7 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         no_learn: bool,
     },
-    /// Author grounding.md from `write_grounding.md`
+    /// Synchronize grounding.md to code
     Ground,
 }
 

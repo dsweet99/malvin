@@ -102,7 +102,7 @@ fn workflow_context_review_path_points_to_artifact() {
         work_dir: t.path().to_path_buf(),
     };
     let prompts = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &prompts).expect("workflow_context");
+    let ctx = workflow_context(&artifacts, &prompts, "code").expect("workflow_context");
 
     let review_path = ctx
         .get("review_path")
@@ -116,6 +116,23 @@ fn workflow_context_review_path_points_to_artifact() {
         review_path, "./_malvin/run123/review.md",
         "review_path should be the artifact path"
     );
+}
+
+#[test]
+fn workflow_context_includes_malvin_command() {
+    let t = tempfile::tempdir().unwrap();
+    let run_dir = t.path().join("_malvin").join("run123");
+    std::fs::create_dir_all(&run_dir).unwrap();
+    let plan_path = run_dir.join("plan.md");
+    std::fs::write(&plan_path, "test plan").unwrap();
+    let artifacts = RunArtifacts {
+        run_dir,
+        plan_path,
+        work_dir: t.path().to_path_buf(),
+    };
+    let prompts = PromptStore::default_store();
+    let ctx = workflow_context(&artifacts, &prompts, "sync").expect("workflow_context");
+    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("sync"));
 }
 
 #[test]

@@ -115,7 +115,7 @@ impl Orchestrator<'_> {
     ///
     /// Returns [`WorkflowError`] when a prompt or review step fails.
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts, self.prompts)
+        let context = workflow_context_inner(self.artifacts, self.prompts, "code")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
         self.run_with_session(&context, OrchestratorSessionMode::Code)
             .await
@@ -123,7 +123,7 @@ impl Orchestrator<'_> {
 
     /// Run sync workflow only: review loops and optional learn.
     pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts, self.prompts)
+        let context = workflow_context_inner(self.artifacts, self.prompts, "sync")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
         self.run_with_session(&context, OrchestratorSessionMode::Sync)
             .await

@@ -103,7 +103,7 @@ fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
         .ok_or_else(|| "kpop exp log path has no parent directory".to_string())?;
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
-    let context = workflow_context_paths_only(&artifacts);
+    let context = workflow_context_paths_only(&artifacts, "kpop");
     Ok(KpopPrepared {
         artifacts,
         exp_log_path,

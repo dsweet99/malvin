@@ -204,7 +204,7 @@ pub fn tidy_prompt_context(
     artifacts: &RunArtifacts,
 ) -> Result<(PromptStore, HashMap<String, String>), String> {
     let store = prepare_tidy_prompt_store()?;
-    let context = workflow_context(artifacts, &store).map_err(|e: PromptError| e.0)?;
+    let context = workflow_context(artifacts, &store, "tidy").map_err(|e: PromptError| e.0)?;
     Ok((store, context))
 }
 

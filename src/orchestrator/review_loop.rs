@@ -1,5 +1,3 @@
-//! Review phase loop: reviewer, concerns.
-
 use crate::acp::{AgentError, ReviewerPromptPair};
 use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{ReviewPairId, TimingPhase};
@@ -97,6 +95,9 @@ async fn run_concerns_and_check_abort(
     orchestrator: &mut Orchestrator<'_>,
     ctx: &ReviewAttemptCtx<'_>,
 ) -> Result<bool, WorkflowError> {
+    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
+        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
+    }
     (orchestrator.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
     orchestrator
         .run_coder_prompt(
@@ -146,6 +147,9 @@ async fn run_sync_concerns_and_check_abort(
     orchestrator: &mut Orchestrator<'_>,
     ctx: &ReviewAttemptCtx<'_>,
 ) -> Result<bool, WorkflowError> {
+    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
+        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
+    }
     (orchestrator.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
     orchestrator
         .run_coder_prompt(

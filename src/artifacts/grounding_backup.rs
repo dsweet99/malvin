@@ -51,6 +51,18 @@ pub fn restore_workspace_grounding(
     }
 }
 
+pub fn restore_workspace_kissconfig(
+    work_dir: &Path,
+    backup: &GroundingBackup,
+) -> Result<(), String> {
+    match backup {
+        GroundingBackup::Missing => Ok(()),
+        GroundingBackup::Present(backup_files) => {
+            restore_workspace_file(work_dir, ".kissconfig", backup_files.kissconfig.as_deref())
+        }
+    }
+}
+
 fn restore_workspace_file(
     work_dir: &Path,
     filename: &str,

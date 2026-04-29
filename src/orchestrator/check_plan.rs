@@ -2,26 +2,27 @@ use crate::review_sync::is_lgtm_str;
 use crate::run_timing::TimingPhase;
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Duration;
 
 use super::Orchestrator;
 use super::WorkflowError;
 use super::clear_review_file;
+
+const CHECK_PLAN_MAX_LOOPS: usize = 3;
 
 pub(super) async fn run_check_plan(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
-    if orchestrator.config.max_loops == 0 {
-        return Ok(());
-    }
-    let max_attempts = orchestrator.config.max_loops;
+    let max_attempts = CHECK_PLAN_MAX_LOOPS;
     for attempt in 0..max_attempts {
         if attempt > 0 {
             (orchestrator.progress_callback)(
                 "CheckPlan: agent did not write review file, retrying",
             );
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let retry_secs = if attempt == 1 { 1 } else { 3 };
+            tokio::time::sleep(Duration::from_secs(retry_secs)).await;
         }
         let Some(contents) = run_check_plan_attempt(orchestrator, context, &review_path).await?
         else {
