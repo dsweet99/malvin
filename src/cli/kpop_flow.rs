@@ -268,6 +268,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         ("review_path", "./review.md"),
         ("result_path", "./_malvin/run42/result.md"),
         ("exp_log", "_malvin/run42/_kpop/exp_log_run42.md"),
+        ("malvin_command", "kpop"),
     ] {
         base.insert(k.to_string(), v.to_string());
     }

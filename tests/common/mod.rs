@@ -308,7 +308,7 @@ pub fn acp_mock_code_review_lgtm_with_abort_js() -> String {
 
 pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
     let body = format!(
-        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+        r"    if (promptText.includes('Find a discrepancy between the codebase and')) {{
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');
     }} else if (promptText.includes('Please review the codebase.')) {{
 {workspace_lgtm}
@@ -324,7 +324,7 @@ pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
 pub fn acp_mock_code_check_sync_then_review_lgtm_js() -> String {
     let lgtm = write_artifact_lgtm();
     let body = format!(
-        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+        r"    if (promptText.includes('Find a discrepancy between the codebase and')) {{
       let attempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
       this.syncAttempts = attempts + 1;
       if (this.syncAttempts === 1) {{
@@ -347,7 +347,7 @@ pub fn acp_mock_code_check_sync_then_review_lgtm_js() -> String {
 pub fn acp_mock_sync_review_lgtm_with_abort_js() -> String {
     let lgtm = write_artifact_lgtm();
     let body = format!(
-        r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {{
+        r"    if (promptText.includes('Find a discrepancy between the codebase and')) {{
       let attempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
       this.syncAttempts = attempts + 1;
       if (this.syncAttempts === 1) {{
@@ -425,7 +425,7 @@ pub fn acp_mock_do_creates_grounding_and_kissconfig_js() -> String {
 }
 
 pub fn acp_mock_sync_tamper_and_review_restore_js() -> String {
-    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and')) {
       const syncAttempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
       this.syncAttempts = syncAttempts + 1;
       if (syncAttempts === 0) {
@@ -446,7 +446,7 @@ pub fn acp_mock_sync_tamper_and_review_restore_js() -> String {
 }
 
 pub fn acp_mock_sync_reviewer_restore_between_attempts_js() -> String {
-    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and grounding.md.')) {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and')) {
       fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'x', 'utf8');
       fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'k', 'utf8');
     } else if (promptText.includes('Please review the codebase.')) {
