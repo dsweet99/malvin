@@ -4,7 +4,7 @@ Use parallelized subagents (at most 4).
 Work until the end without asking for user input. If you are uncertain about an implementation
 detail, use your best judgement. There will always be an opportunity to revise later on.
 
-Some projects are Rust. Some are Python. Some are both. You are not required to have both languages. Consult grounding.md, .pre-commit-config.yaml, and the existing codebase to determine which language(s) apply to this project. Do NOT add a language that is not already present in the project.
+Some projects are Rust. Some are Python. Some are both. You are not required to have both languages. Consult `{{ grounding_path }}`, .pre-commit-config.yaml, and the existing codebase to determine which language(s) apply to this project. Do NOT add a language that is not already present in the project.
 
 Be sure that all applicable checks pass. Only run checks for languages that are actually used in this project:
 - If Cargo.toml exists: cargo clippy --all-targets --all-features -- \
@@ -25,11 +25,11 @@ and all applicable unit tests pass:
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
   - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating. (You'll need to run all unit tests at some point, though.)
-- Do not write "documentation parity guards". Do not write comments. NEVER EDIT grounding.md.
+- Do not write "documentation parity guards". Do not write comments. NEVER EDIT `{{ grounding_path }}`.
 - Keep each unit test's running time under 10 seconds (<1s would be great).
 - Write code to fail fast. Assert liberally. DRY.
 - Don't name files ".inc".  .rs and .py are the correct extensions.
-- Keep code consistent with grounding.md and {{ plan_path }} (if applicable).
+- Keep code consistent with `{{ grounding_path }}` and `{{ plan_path }}` (if applicable).
 - Use (up to 4) parallel subagents whereven possible.
 
 ## Nota Bene

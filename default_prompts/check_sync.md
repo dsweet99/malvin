@@ -5,7 +5,7 @@ Prefer parallel investigation. Launch up to 3 parallel subagents to:
 - Test multiple hypotheses in parallel
 Do NOT choose sequential execution when a parallel option is available.
 ---
-KPop: Find a discrepancy between the codebase and grounding.md.
+KPop: Find a discrepancy between the codebase and `{{ grounding_path }}`.
 
 Write the discrepancy to {{ review_path }}.
 
