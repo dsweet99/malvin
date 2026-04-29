@@ -6,7 +6,7 @@ Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cur
 
 - **Prompt templates** live in `default_prompts/` and are compiled into the `malvin` binary. `~/.malvin/prompts` is not supported. Template keys such as `{{ plan_path }}` are resolved at render time, and no prompt may be sent to ACP if unresolved `{{` remains.
 - **Run artifacts** are stored under `_malvin/YYYYMMDD_HHMMSS_<id>/`. Each run records its primary inputs and outputs there, including `plan.md`, `review.md`, `result.md`, and trace logs.
-- **Protected files** are `grounding.md` and `.kissconfig`. Outside the `ground` workflow, they are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`. The `ground` workflow is the explicit exception for `grounding.md`: it may author and refine that file.
+- **Protected files** are `grounding.md` and `.kissconfig`. Outside the `ground` workflow, they are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`. In the `ground` workflow, `grounding.md` may be authored and refined, and `.kissconfig` is restored at the end of the workflow.
 - **`kiss clamp`** runs automatically before the first agent call when source files exist but `.kissconfig` does not.
 - **Learning** is a post-run phase for runs that are long enough to justify it (at least 5 minutes). It records TRIGGER/ADVICE/CONFIDENCE triples under `.malvin_memory/`.
 - **`ground`** creates `grounding.md` with `write_grounding.md` if it does not already exist, then repeatedly runs `check_sync.md` and `improve_grounding.md` until `check_sync.md` reports `LGTM`.
@@ -44,7 +44,7 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 
 ## Reliability
 
-- **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for any error except "Upgrade your plan", in which case we fail fast and alert the user.
+- **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for transient errors such as timeouts, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failures, or gRPC `[unavailable]`. Errors such as "Upgrade your plan" fail fast.
 
 ## Quality gates
 
