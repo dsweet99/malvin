@@ -8,14 +8,12 @@ use super::Orchestrator;
 use super::WorkflowError;
 use super::clear_review_file;
 
-const CHECK_PLAN_MAX_LOOPS: usize = 3;
-
 pub(super) async fn run_check_plan(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
-    let max_attempts = CHECK_PLAN_MAX_LOOPS;
+    let max_attempts = orchestrator.config.max_loops.max(1);
     for attempt in 0..max_attempts {
         if attempt > 0 {
             (orchestrator.progress_callback)(
