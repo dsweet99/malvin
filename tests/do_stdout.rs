@@ -189,14 +189,8 @@ fn do_restores_missing_grounding_and_kissconfig_when_agent_creates_them() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    assert_eq!(
-        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
-        "CREATED"
-    );
-    assert_eq!(
-        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
-        "CREATED"
-    );
+    assert!(!workspace.join("grounding.md").exists());
+    assert!(!workspace.join(".kissconfig").exists());
 }
 
 #[cfg(unix)]

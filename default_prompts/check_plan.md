@@ -1,3 +1,5 @@
+{{ coding_rules }}
+
 {{ kpop }}
 ---
 KPop: Check {{ plan_path }} for blocking issues. This is a READ-ONLY review — do NOT edit source code, do NOT run tests, do NOT implement anything. Falsify by reading code, not by writing it.

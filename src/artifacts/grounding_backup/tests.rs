@@ -6,6 +6,7 @@ use super::{
     GroundingBackup,
     backup_workspace_grounding_if_present,
     restore_workspace_grounding,
+    restore_workspace_kissconfig,
     backup_workspace_grounding_if_present_with_id,
 };
 
@@ -84,7 +85,7 @@ fn kissconfig_backup_round_trip_restores_workspace_file() {
 }
 
 #[test]
-fn grounding_backup_missing_restores_by_preserving_workspace_files() {
+fn grounding_backup_missing_restores_by_removing_created_workspace_files() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path().join("repo");
     std::fs::create_dir_all(&work).unwrap();
@@ -92,14 +93,34 @@ fn grounding_backup_missing_restores_by_preserving_workspace_files() {
     std::fs::write(work.join("grounding.md"), "CREATED\n").unwrap();
     std::fs::write(work.join(".kissconfig"), "CREATED\n").unwrap();
     restore_workspace_grounding(&work, &backup).unwrap();
-    assert_eq!(
-        std::fs::read_to_string(work.join("grounding.md")).unwrap(),
-        "CREATED\n"
-    );
-    assert_eq!(
-        std::fs::read_to_string(work.join(".kissconfig")).unwrap(),
-        "CREATED\n"
-    );
+    assert!(!work.join("grounding.md").exists());
+    assert!(!work.join(".kissconfig").exists());
+}
+
+#[test]
+fn restore_workspace_kissconfig_missing_backup_removes_created_kissconfig() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path().join("repo");
+    std::fs::create_dir_all(&work).unwrap();
+    let backup = backup_workspace_grounding_if_present(&work).unwrap();
+    std::fs::write(work.join(".kissconfig"), "CREATED\n").unwrap();
+    restore_workspace_kissconfig(&work, &backup).unwrap();
+    assert!(!work.join(".kissconfig").exists());
+}
+
+#[test]
+fn restore_workspace_grounding_removes_created_directory_paths() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path().join("repo");
+    std::fs::create_dir_all(&work).unwrap();
+    let backup = backup_workspace_grounding_if_present(&work).unwrap();
+    let grounding = work.join("grounding.md");
+    let kissconfig = work.join(".kissconfig");
+    std::fs::create_dir(&grounding).unwrap();
+    std::fs::create_dir(&kissconfig).unwrap();
+    restore_workspace_grounding(&work, &backup).unwrap();
+    assert!(!grounding.exists());
+    assert!(!kissconfig.exists());
 }
 
 #[test]

@@ -36,6 +36,11 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
     let mut i = 0usize;
     while i < chars.len() {
         if chars[i] == '$' && i + 1 < chars.len() {
+            if chars[i + 1] == '$' {
+                out.push('$');
+                i += 2;
+                continue;
+            }
             let start = i + 1;
             let mut end = start;
             while end < chars.len() && (chars[end].is_ascii_alphanumeric() || chars[end] == '_') {
@@ -88,5 +93,15 @@ mod template_kiss {
     fn kiss_stringify_template() {
         let _ = stringify!(super::render_mbc2_for_scheduled_kpop_block);
         let _ = stringify!(super::merged_coding_rules);
+    }
+
+    #[test]
+    fn substitute_template_treats_double_dollar_as_literal() {
+        let mut ctx = std::collections::HashMap::new();
+        ctx.insert("plan_path".to_string(), "/tmp/plan".to_string());
+        assert_eq!(
+            super::substitute_template("use $$plan_path", &ctx),
+            "use $plan_path"
+        );
     }
 }

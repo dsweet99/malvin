@@ -32,7 +32,7 @@ If the user seems to be referring to an in-progress conversation, look in recent
 --
 
 TRIGGER: grounding.md
-ADVICE: Never modify grounding unless explicitly asked to by the user.
+ADVICE: Never modify grounding unless explicitly asked to by the user (including by running **`malvin ground`**, whose sole job is to create or refine `./grounding.md` via bundled prompts).
 CONFIDENCE: 3
 
 TRIGGER: .kissconfig

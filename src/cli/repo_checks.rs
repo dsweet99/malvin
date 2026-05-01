@@ -52,6 +52,9 @@ fn source_like_files_present(root: &Path) -> bool {
 }
 
 fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    if has_path(work_dir.join(".pre-commit-config.yaml")) {
+        return run_pre_commit_checks(work_dir, output);
+    }
     if has_path(work_dir.join(".git")) {
         run_check_command(work_dir, output, &["kiss", "check"], "kiss check")?;
     }
@@ -86,14 +89,30 @@ fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), Stri
     }
     if has_python_file(work_dir) {
         run_check_command(work_dir, output, &["ruff", "check", "."], "ruff check")?;
-        run_check_command(
-            work_dir,
-            output,
-            &["pytest", "-sv", "tests"],
-            "pytest -sv tests",
-        )?;
+        if has_tests_dir(work_dir) {
+            run_check_command(
+                work_dir,
+                output,
+                &["pytest", "-sv", "tests"],
+                "pytest -sv tests",
+            )?;
+        }
     }
     Ok(())
+}
+
+fn run_pre_commit_checks(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    emit_repo_gate_line(output, "Running `pre-commit run --all-files`");
+    let status = Command::new(run_command_for("pre-commit"))
+        .args(["run", "--all-files"])
+        .current_dir(work_dir)
+        .status()
+        .map_err(|e| format!("`pre-commit run --all-files` failed to start: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("`pre-commit run --all-files` failed".to_string())
+    }
 }
 
 fn has_path(path: impl AsRef<Path>) -> bool {
@@ -103,6 +122,10 @@ fn has_path(path: impl AsRef<Path>) -> bool {
 
 fn has_python_file(root: &Path) -> bool {
     super::kiss_clamp::has_extension_files(root, "py")
+}
+
+fn has_tests_dir(root: &Path) -> bool {
+    root.join("tests").is_dir()
 }
 
 #[allow(dead_code)]
@@ -469,6 +492,10 @@ mod tests {
             &format!("#!/bin/sh\necho \"cargo $@\" >> \"{trace_for_script}\"\nexit 0\n"),
         );
         make_script(
+            "kiss",
+            &format!("#!/bin/sh\necho \"kiss $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
             "ruff",
             &format!("#!/bin/sh\necho \"ruff $@\" >> \"{trace_for_script}\"\nexit 0\n"),
         );
@@ -488,6 +515,89 @@ mod tests {
         assert!(log.contains("cargo test"));
         assert!(log_contains_command(&log, "ruff check"));
         assert!(log_contains_command(&log, "pytest -sv tests"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_repo_workspace_gates_uses_pre_commit_when_config_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").unwrap();
+        fs::write(work.join("Cargo.toml"), "[package]\nname = 'm'\nversion = '0.1.0'\n").unwrap();
+        fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+        fs::write(work.join("script.py"), "print('ok')").unwrap();
+        fs::create_dir(work.join("tests")).unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let pre_commit = bin_dir.path().join("pre-commit");
+        fs::write(
+            &pre_commit,
+            format!(
+                "#!/bin/sh\necho \"pre-commit $@\" >> \"{trace_for_script}\"\nexit 0\n"
+            ),
+        )
+        .unwrap();
+        let mut perms = fs::metadata(&pre_commit).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&pre_commit, perms).unwrap();
+        let kiss = bin_dir.path().join("kiss");
+        fs::write(
+            &kiss,
+            format!("#!/bin/sh\necho \"kiss $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        )
+        .unwrap();
+        let mut kiss_perms = fs::metadata(&kiss).unwrap().permissions();
+        kiss_perms.set_mode(0o755);
+        fs::set_permissions(&kiss, kiss_perms).unwrap();
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "pre-commit run --all-files"));
+        assert!(!log_contains_command(&log, "kiss check"));
+        assert!(!log_contains_command(&log, "cargo clippy"));
+        assert!(!log_contains_command(&log, "ruff check"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_repo_workspace_gates_skips_pytest_when_tests_dir_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(work.join("script.py"), "print('ok')\n").unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let make_script = |name: &str, body: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(&path, body).unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script(
+            "ruff",
+            &format!("#!/bin/sh\necho \"ruff $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
+            "pytest",
+            &format!("#!/bin/sh\necho \"pytest $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "ruff check"));
+        assert!(!log_contains_command(&log, "pytest -sv tests"));
     }
 
     #[cfg(unix)]

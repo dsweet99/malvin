@@ -24,6 +24,10 @@ pub fn workflow_context_paths_only(
 ) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
+    context.insert(
+        "memories".to_string(),
+        memory_context::build_memories_value(&artifacts.work_dir),
+    );
     context.insert("malvin_command".to_string(), malvin_command.to_string());
     context
 }
@@ -98,15 +102,8 @@ mod helper_tests {
     fn check_abort_returns_message_after_prefix_not_entire_file() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().join("result.md");
-        std::fs::write(
-            &p,
-            "context line\nABORT: stop here\nmore\n",
-        )
-        .unwrap();
-        assert_eq!(
-            check_abort(&p).as_deref(),
-            Some("stop here")
-        );
+        std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
+        assert_eq!(check_abort(&p).as_deref(), Some("stop here"));
     }
 
     #[test]
@@ -145,7 +142,7 @@ mod helper_tests {
         assert!(ctx.contains_key("kpop_log_dir"));
         assert!(ctx.contains_key("review_path"));
         assert!(ctx.contains_key("result_path"));
+        assert!(ctx.contains_key("memories"));
         assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("ground"));
     }
 }
-

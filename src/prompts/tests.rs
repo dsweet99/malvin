@@ -251,3 +251,22 @@ fn merge_header_and_coding_rules_handles_empty() {
     assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
 }
 
+#[test]
+fn learn_prompt_has_consistent_memory_target_guidance() {
+    let learn = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_prompts/learn.md"));
+    assert!(
+        learn.contains("Edit an `.malvin_memory/*.md` file"),
+        "expected consistent memory-path guidance in learn prompt"
+    );
+    assert!(
+        learn.contains("in one of `./.malvin_memory/*.md`"),
+        "expected fallback memory file guidance in learn prompt"
+    );
+}
+
+#[test]
+fn learn_prompt_has_no_obvious_typo() {
+    let learn = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_prompts/learn.md"));
+    assert!(!learn.contains("oncrement"), "expected learn typo to be fixed");
+}
+

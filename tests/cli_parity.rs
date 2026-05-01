@@ -28,6 +28,19 @@ fn run_root_help_output() -> std::process::Output {
         .output()
         .expect("malvin --help")
 }
+
+#[cfg(unix)]
+fn contains_help_subcommand(help: &str, subcommand: &str) -> bool {
+    help.lines().any(|line| line.split_whitespace().next() == Some(subcommand))
+}
+
+#[cfg(unix)]
+fn help_option_count(help: &str, option: &str) -> usize {
+    help
+        .lines()
+        .filter(|line| line.split_whitespace().any(|token| token == option))
+        .count()
+}
 #[cfg(unix)]
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_abort_after_implement_js,
@@ -35,6 +48,10 @@ use common::{
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
     acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
+    acp_mock_ground_check_abort_js, acp_mock_ground_check_tamper_kissconfig_js,
+    acp_mock_ground_loop_converges_with_missing_grounding_js,
+    run_ground_with_mock_js_with_setup,
+    acp_mock_ground_write_tamper_kissconfig_js,
     acp_mock_sync_reviewer_restore_between_attempts_js, acp_mock_sync_tamper_and_review_restore_js,
     command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
 };
@@ -127,6 +144,16 @@ fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
 }
 
 #[cfg(unix)]
+fn run_code_max_loops_zero_with_mock_without_trust_plan() -> std::process::Output {
+    run_code_with_mock_js_trust_plan(
+        &acp_mock_code_streaming_update_js(),
+        &["--max-loops", "0"],
+        true,
+        false,
+    )
+}
+
+#[cfg(unix)]
 fn run_sync_with_mock_js(mock_js: &str, extra_args: &[&str], no_tee: bool) -> std::process::Output {
     run_sync_with_mock_js_and_workspace(mock_js, extra_args, no_tee, false).0
 }
@@ -167,6 +194,24 @@ fn run_sync_with_mock_js_and_workspace(
     )
     .expect("spawn malvin sync");
     (out, root, workspace)
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+fn write_fake_command_trace(path: &Path, trace: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let name = path.file_name().unwrap().to_string_lossy();
+    std::fs::write(
+        path,
+        format!(
+            "#!/usr/bin/env sh\necho \"{name} $@\" >> \"{}\"\nexit 0\n",
+            trace.display()
+        ),
+    )
+    .expect("write fake command");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
 }
 
 #[cfg(unix)]
@@ -238,13 +283,9 @@ fn code_stops_when_check_plan_writes_abort_result_with_lgtm_review() {
 fn check_plan_grounding_restore_happens_before_implement() {
     let out = run_code_with_mock_js_trust_plan(
         &acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js(),
-        &["--max-loops", "0"],
+        &["--max-loops", "1"],
         false,
         false,
-    );
-    assert!(
-        !out.status.success(),
-        "expected max-loops failure path: {out:?}"
     );
     let combined = format!(
         "{}{}",
@@ -260,8 +301,8 @@ fn check_plan_grounding_restore_happens_before_implement() {
         "check_plan grounding mutation must not leak into implement: {combined:?}"
     );
     assert!(
-        combined.contains(MAX_LOOPS_EXHAUSTED),
-        "expected workflow to continue past implement into normal max-loops failure: {combined:?}"
+        out.status.success(),
+        "expected successful exit when check_plan + implement restore path converges: {combined:?}"
     );
 }
 
@@ -285,6 +326,33 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
     assert!(
         !combined.contains("Review-1 (attempt 1)"),
         "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn max_loops_zero_skips_check_plan_attempt() {
+    let out = run_code_max_loops_zero_with_mock_without_trust_plan();
+    assert!(
+        !out.status.success(),
+        "malvin code unexpectedly succeeded: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("CheckPlan"),
+        "check_plan should run at least once when max_loops=0: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review-1 (attempt 1)"),
+        "review attempt must not run when --max-loops=0: {combined:?}"
+    );
+    assert!(
+        combined.contains("check_plan: agent did not write review file after retries"),
+        "expected check_plan missing-review failure path: {combined:?}"
     );
 }
 
@@ -507,6 +575,197 @@ fn sync_reviewer_restores_between_reviewer_attempts() {
         true,
     );
     assert_sync_tamper_flow_restores_grounding_and_fails(&out, &workspace);
+}
+
+#[test]
+#[cfg(unix)]
+fn ground_converges_when_grounding_missing_and_loop_runs_check_improve_cycle() {
+    let (out, _root, workspace) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_loop_converges_with_missing_grounding_js(),
+        true,
+        false,
+        |workspace| {
+            std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
+        },
+    );
+    assert!(
+        out.status.success(),
+        "ground command should converge after converging mock flow: {out:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let review = std::fs::read_to_string(run_dir.join("review.md")).expect("read review");
+    assert_eq!(review, "LGTM\n");
+    assert_eq!(
+        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
+        "CREATED\n"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn ground_aborts_from_check_prompt_result() {
+    let (out, _root, workspace) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_check_abort_js(),
+        true,
+        true,
+        |_| {},
+    );
+    assert!(
+        !out.status.success(),
+        "ground command should fail on check result ABORT: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("ABORT: reviewer requested stop"),
+        "expected check ABORT visibility in ground output: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
+        "k\n"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn ground_restores_kissconfig_on_write_and_check_paths() {
+    let (out_write, _root_write, workspace_write) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_write_tamper_kissconfig_js(),
+        true,
+        true,
+        |workspace| {
+            std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
+        },
+    );
+    assert!(
+        out_write.status.success(),
+        "ground write-path flow with tampered kissconfig should restore and succeed: {out_write:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace_write.join(".kissconfig")).expect("read kissconfig"),
+        "k\n",
+        "write-path restoration should restore kissconfig"
+    );
+
+    let (out_check, _root_check, workspace_check) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_check_tamper_kissconfig_js(),
+        true,
+        true,
+        |_| {},
+    );
+    assert!(
+        out_check.status.success(),
+        "ground check-path tampering flow should restore and succeed: {out_check:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace_check.join(".kissconfig")).expect("read kissconfig"),
+        "k\n",
+        "check-path restoration should restore kissconfig"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace_check.join("grounding.md")).expect("read grounding"),
+        "x"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn ground_write_improve_and_check_prompts_are_reachable_and_rendered() {
+    let (out, _root, workspace) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_loop_converges_with_missing_grounding_js(),
+        true,
+        true,
+        |workspace| {
+            std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
+        },
+    );
+    assert!(
+        out.status.success(),
+        "ground prompt render coverage should succeed: {out:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let markers = std::fs::read_to_string(run_dir.join("ground_prompt_visits.txt"))
+        .expect("read marker file");
+    assert!(markers.contains("write"), "expected write prompt path: {markers:?}");
+    assert!(markers.contains("check"), "expected check prompt path: {markers:?}");
+    assert!(markers.contains("improve"), "expected improve prompt path: {markers:?}");
+    assert!(
+        !run_dir.join("result.md").exists(),
+        "unrendered placeholder should fail test via result.md"
+    );
+}
+
+#[test]
+#[cfg(all(unix, target_os = "linux"))]
+fn ground_runs_repo_workspace_gates_when_source_repo_markers_exist() {
+    let (root, home, workspace) = test_home_workspace();
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+
+    let mock = root.path().join("mock-agent-acp-ground-gates");
+    write_mock_executable(&mock, &acp_mock_ground_loop_converges_with_missing_grounding_js());
+
+    let trace = root.path().join("quality-trace.log");
+    for name in ["kiss", "cargo", "ruff", "pytest"] {
+        write_fake_command_trace(&bin_dir.join(name), &trace);
+    }
+
+    std::fs::create_dir_all(workspace.join(".git")).expect("mkdir .git");
+    std::fs::write(
+        workspace.join("Cargo.toml"),
+        "[package]\nname = 'm'\nversion = '0.1.0'\n",
+    )
+    .expect("write cargo");
+    std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
+    std::fs::write(workspace.join("src/main.rs"), "fn main() {}\n").expect("write src");
+    std::fs::write(workspace.join("script.py"), "print('ok')\n").expect("write python");
+    std::fs::create_dir_all(workspace.join("tests")).expect("mkdir tests");
+    std::fs::write(workspace.join("tests/test.py"), "print('ok')\n").expect("write test");
+    std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
+
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(["ground"]),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin ground");
+
+    assert!(out.status.success(), "ground run with gates should succeed: {out:?}");
+    let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
+    assert!(
+        trace_log.contains("kiss clamp"),
+        "pre-run quality gates should include kiss clamp: {trace_log:?}"
+    );
+    assert!(
+        trace_log.contains("kiss check"),
+        "pre-run quality gates should include kiss check: {trace_log:?}"
+    );
+    assert!(
+        trace_log.contains("cargo clippy"),
+        "pre-run quality gates should include cargo clippy: {trace_log:?}"
+    );
+    assert!(
+        trace_log.contains("cargo test"),
+        "pre-run quality gates should include cargo test: {trace_log:?}"
+    );
+    assert!(
+        trace_log.contains("ruff check"),
+        "pre-run quality gates should include ruff check: {trace_log:?}"
+    );
+    assert!(
+        trace_log.contains("pytest -sv tests"),
+        "pre-run quality gates should include pytest -sv tests: {trace_log:?}"
+    );
 }
 
 #[test]
@@ -1021,10 +1280,7 @@ fn help_lists_global_no_markdown_once() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let no_markdown_option_lines = s
-        .lines()
-        .filter(|line| line.trim_start().starts_with("--no-markdown"))
-        .count();
+    let no_markdown_option_lines = help_option_count(&s, "--no-markdown");
     assert_eq!(
         no_markdown_option_lines,
         1,
@@ -1041,9 +1297,7 @@ fn help_lists_ground_command() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let has_ground_command = s
-        .lines()
-        .any(|line| line.split_whitespace().next() == Some("ground"));
+    let has_ground_command = contains_help_subcommand(&s, "ground");
     assert!(
         has_ground_command,
         "expected help text to include ground command: {s}"

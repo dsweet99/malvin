@@ -7,7 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 #[cfg(unix)]
-use std::path::Path;
+use std::path::{Path, PathBuf};
 #[cfg(unix)]
 use std::process::{Command, Stdio};
 #[cfg(unix)]
@@ -17,6 +17,56 @@ use std::time::{Duration, Instant};
 
 #[cfg(unix)]
 pub const MALVIN_TEST_CMD_TIMEOUT: Duration = Duration::from_secs(12);
+
+#[cfg(unix)]
+pub fn run_ground_with_mock_js_with_setup<F>(
+    mock_js: &str,
+    no_tee: bool,
+    with_kissconfig: bool,
+    setup: F,
+) -> (std::process::Output, tempfile::TempDir, PathBuf)
+where
+    F: FnOnce(&Path),
+{
+    let (root, home, workspace) = test_home_workspace();
+    setup(&workspace);
+    let bin_dir = root.path().join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    let mock = root.path().join("mock-agent-acp-ground");
+    write_mock_executable(&mock, mock_js);
+    let kiss = bin_dir.join("kiss");
+    write_fake_kiss(&kiss);
+    let original_path = std::env::var("PATH").unwrap_or_default();
+    let path = format!("{}:{original_path}", bin_dir.display());
+    if with_kissconfig {
+        std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
+    }
+    let mut args = vec!["ground"];
+    if no_tee {
+        args.insert(0, "--no-tee");
+    }
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args(args),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+    .expect("spawn malvin ground");
+    (out, root, workspace)
+}
+
+#[cfg(unix)]
+pub fn run_ground_with_mock_js(
+    mock_js: &str,
+    no_tee: bool,
+    with_kissconfig: bool,
+) -> (std::process::Output, tempfile::TempDir, PathBuf) {
+    run_ground_with_mock_js_with_setup(mock_js, no_tee, with_kissconfig, |_| {})
+}
 
 #[cfg(unix)]
 fn kill_bin() -> &'static Path {
@@ -75,12 +125,20 @@ pub fn command_output_with_timeout(
             Ok(None) => {
                 if Instant::now() > deadline {
                     kill_process_group(child.id());
-                    let _ = child.wait();
-                    let _ = stdout_jh.join();
-                    let _ = stderr_jh.join();
+                let _ = child.wait();
+                let stdout = stdout_jh.join().map_err(|_| {
+                    std::io::Error::other("malvin subprocess stdout reader panicked")
+                })?;
+                let stderr = stderr_jh.join().map_err(|_| {
+                    std::io::Error::other("malvin subprocess stderr reader panicked")
+                })?;
+                let stdout_text = String::from_utf8_lossy(&stdout);
+                let stderr_text = String::from_utf8_lossy(&stderr);
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
-                        "malvin subprocess timed out",
+                    format!(
+                        "malvin subprocess timed out; stdout={stdout_text:?}; stderr={stderr_text:?}"
+                    ),
                     ));
                 }
                 std::thread::sleep(Duration::from_millis(20));
@@ -468,6 +526,144 @@ pub fn acp_mock_sync_reviewer_restore_between_attempts_js() -> String {
     acp_mock_code_with_run_dir_js(&format!("    {body}"))
 }
 
+#[cfg(unix)]
+pub fn acp_mock_ground_loop_converges_with_missing_grounding_js() -> String {
+    let body = r"    const marker = path.join(runDir, 'ground_prompt_visits.txt');
+    const mark = (name) => {
+      const current = (() => { try { return fs.readFileSync(marker, 'utf8'); } catch { return ''; } })();
+      fs.writeFileSync(marker, `${current}${name}\n`, 'utf8');
+    };
+    if (promptText.includes('{{') || promptText.includes('}}')) {
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unrendered prompt placeholder\\n', 'utf8');
+      return;
+    }
+    if (promptText.includes('write a new grounding file')) {
+      mark('write');
+      const syncAttempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
+      this.syncAttempts = syncAttempts + 1;
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\n', 'utf8');
+      if (this.syncAttempts > 1) {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      }
+    } else if (promptText.includes('Find a discrepancy between the codebase and')) {
+      mark('check');
+      const reviewAttempts = (typeof this.reviewAttempts === 'undefined') ? 0 : this.reviewAttempts;
+      this.reviewAttempts = reviewAttempts + 1;
+      if (this.reviewAttempts === 1) {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\n', 'utf8');
+      } else {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      }
+    } else if (promptText.includes('improve the existing grounding file')) {
+      mark('improve');
+      const reviewAttempts = (typeof this.reviewAttempts === 'undefined') ? 0 : this.reviewAttempts;
+      if (reviewAttempts === 1) {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      }
+    } else {
+      mark('unexpected');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+#[cfg(unix)]
+pub fn acp_mock_ground_check_abort_js() -> String {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and')) {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'needs attention\n', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: reviewer requested stop\n', 'utf8');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+#[cfg(unix)]
+pub fn acp_mock_ground_write_tamper_kissconfig_js() -> String {
+    let body = r"    if (promptText.includes('write a new grounding file')) {
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\n', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+    } else if (promptText.includes('Find a discrepancy between the codebase and')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+#[cfg(unix)]
+pub fn acp_mock_ground_check_tamper_kissconfig_js() -> String {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and')) {
+      const reviewAttempts = (typeof this.reviewAttempts === 'undefined') ? 0 : this.reviewAttempts;
+      this.reviewAttempts = reviewAttempts + 1;
+      if (this.reviewAttempts === 1) {
+        fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\n', 'utf8');
+      } else {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+      }
+    } else if (promptText.includes('improve the existing grounding file')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+#[cfg(unix)]
+pub fn acp_mock_ground_prompt_render_paths_js() -> String {
+    let body = r"    const marker = path.join(runDir, 'ground_prompt_visits.txt');
+    const mark = (name) => {
+      const current = (() => { try { return fs.readFileSync(marker, 'utf8'); } catch { return ''; } })();
+      fs.writeFileSync(marker, `${current}${name}\n`, 'utf8');
+    };
+    const failIfUnrendered = () => {
+      if (promptText.includes('{{') || promptText.includes('}}')) {
+        fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unrendered prompt placeholder\\n', 'utf8');
+        return true;
+      }
+      return false;
+    };
+    if (failIfUnrendered()) {
+      return;
+    }
+    if (promptText.includes('write a new grounding file')) {
+      mark('write');
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\\n', 'utf8');
+      return;
+    }
+    if (promptText.includes('Find a discrepancy between the codebase and')) {
+      mark('check');
+      const checkAttempts = (typeof this.groundCheckAttempts === 'undefined') ? 0 : this.groundCheckAttempts;
+      this.groundCheckAttempts = checkAttempts + 1;
+      if (this.groundCheckAttempts === 1) {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+      } else {
+        fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');
+      }
+      return;
+    }
+    if (promptText.includes('improve the existing grounding file')) {
+      mark('improve');
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');
+      return;
+    }";
+    let abort = r"    fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unexpected ground prompt\\n', 'utf8');
+    return;";
+    acp_mock_code_with_run_dir_js(&format!("{body}\n{abort}"))
+}
+
+#[cfg(unix)]
+pub fn acp_mock_ground_never_lgtm_loop_js() -> String {
+    let body = r"    if (promptText.includes('write a new grounding file')) {
+      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\\n', 'utf8');
+      return;
+    }
+    if (promptText.includes('Find a discrepancy between the codebase and')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+      return;
+    }
+    if (promptText.includes('improve the existing grounding file')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
+#[cfg(unix)]
 pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');

@@ -5,12 +5,13 @@ use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
     restore_workspace_kissconfig,
 };
-use malvin::orchestrator::workflow_context_paths_only;
+use malvin::orchestrator::workflow_context;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
 use super::{SharedOpts, WorkflowCliOptions, run_emit, timing_merge};
+use super::repo_checks;
 
 const GROUND_REQUEST: &str = "ground";
 struct GroundSession {
@@ -41,7 +42,7 @@ fn build_write_grounding_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
 ) -> Result<String, String> {
-    let context = workflow_context_paths_only(artifacts, "ground");
+    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("write_grounding.md", &context)
         .map_err(|e: PromptError| e.0)
@@ -51,14 +52,14 @@ fn build_improve_grounding_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
 ) -> Result<String, String> {
-    let context = workflow_context_paths_only(artifacts, "ground");
+    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("improve_grounding.md", &context)
         .map_err(|e: PromptError| e.0)
 }
 
 fn build_check_sync_prompt(store: &PromptStore, artifacts: &RunArtifacts) -> Result<String, String> {
-    let context = workflow_context_paths_only(artifacts, "ground");
+    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("check_sync.md", &context)
         .map_err(|e: PromptError| e.0)
@@ -169,8 +170,41 @@ async fn run_ground_acp(
     )
     .await;
     let end_result = client.end_coder_session().await.map_err(|e| e.to_string());
-    let result = acp_result.or(end_result);
+    let result = merge_ground_acp_results(acp_result, end_result);
     timing_merge::emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, result)
+}
+
+fn merge_with_abort_check(
+    primary: Result<(), String>,
+    restore_result: Result<(), String>,
+    artifact_result_path: &Path,
+) -> Result<(), String> {
+    let merged_result = timing_merge::prefer_primary_over_secondary(
+        primary,
+        restore_result,
+        "kissconfig restore failed",
+    );
+    if let Some(abort) = abort_message_from_result_md(artifact_result_path) {
+        return match merged_result {
+            Ok(()) => Err(format!("ABORT: {abort}")),
+            Err(merge_error) => Err(format!("ABORT: {abort}; {merge_error}")),
+        };
+    }
+    merged_result
+}
+
+fn merge_ground_acp_results(
+    primary: Result<(), String>,
+    end_result: Result<(), String>,
+) -> Result<(), String> {
+    match (primary, end_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Ok(()), Err(end_err)) => Err(format!("failed to end coder session: {end_err}")),
+        (Err(primary_err), Ok(())) => Err(primary_err),
+        (Err(primary_err), Err(end_err)) => {
+            Err(format!("{primary_err}; failed to end coder session: {end_err}"))
+        }
+    }
 }
 
 async fn run_grounding_discrepancy_loop(
@@ -273,7 +307,10 @@ async fn run_grounding_check_attempt(
 
 pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<(), String> {
     let session = prepare_ground_session()?;
-    crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&session.artifacts.work_dir, true)?;
+    repo_checks::run_repo_workspace_gates(
+        &session.artifacts.work_dir,
+        repo_checks::RepoGateOutput::Tagged,
+    )?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     run_emit::emit_run_startup_sequence(
@@ -290,12 +327,12 @@ pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Re
         session.grounding_exists,
     )
     .await;
-    let result = timing_merge::prefer_primary_over_secondary(
+    let result = merge_with_abort_check(
         result,
         restore_workspace_kissconfig(&session.artifacts.work_dir, &session.grounding_backup),
-        "kissconfig restore failed",
+        &session.artifacts.artifact_result_md(),
     );
-    fail_on_abort_result(&session.artifacts.artifact_result_md()).or(result)?;
+    result?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
@@ -316,4 +353,64 @@ fn stringify_ground_flow_helpers() {
     let _ = stringify!(crate::cli::ground_cmd::run_grounding_write_attempt);
     let _ = stringify!(crate::cli::ground_cmd::run_grounding_improve_attempt);
     let _ = stringify!(crate::cli::ground_cmd::run_ground);
+}
+
+#[test]
+fn build_check_sync_prompt_includes_kpop_from_workflow_context() {
+    let tmp = tempfile::tempdir().unwrap();
+    let prompts = tmp.path().join(".malvin").join("prompts");
+    std::fs::create_dir_all(&prompts).unwrap();
+    std::fs::write(prompts.join("check_sync.md"), "{{ kpop }}").unwrap();
+    std::fs::write(prompts.join("kpop_common.md"), "KPOP_PLACEHOLDER_CONTENT").unwrap();
+    std::fs::write(
+        prompts.join("write_grounding.md"),
+        "write grounding prompt",
+    )
+    .unwrap();
+    std::fs::write(
+        prompts.join("improve_grounding.md"),
+        "improve grounding prompt",
+    )
+    .unwrap();
+
+    let artifacts =
+        create_run_artifacts_from_text(GROUND_REQUEST, Some(tmp.path())).expect("run artifacts");
+    let store = PromptStore::with_root(prompts);
+
+    let prompt = build_check_sync_prompt(&store, &artifacts).expect("build check_sync");
+    assert_eq!(prompt.trim(), "KPOP_PLACEHOLDER_CONTENT");
+}
+
+#[test]
+fn merge_with_abort_check_preserves_abort_over_restore_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let result_file = tmp.path().join("artifact_result.md");
+    std::fs::write(&result_file, "ABORT: user requested stop\n").unwrap();
+
+    let merged = merge_with_abort_check(
+        Err("acp failure".into()),
+        Err("restore failure".into()),
+        &result_file,
+    );
+
+    let error = merged.expect_err("should fail with abort");
+    assert_eq!(error, "ABORT: user requested stop; acp failure; kissconfig restore failed: restore failure");
+}
+
+#[test]
+fn merge_ground_acp_results_surfaces_end_session_errors() {
+    assert_eq!(
+        merge_ground_acp_results(
+            Ok(()),
+            Err("end session failed".to_string()),
+        ),
+        Err("failed to end coder session: end session failed".to_string())
+    );
+    assert_eq!(
+        merge_ground_acp_results(
+            Err("acp failed".to_string()),
+            Err("end session failed".to_string()),
+        ),
+        Err("acp failed; failed to end coder session: end session failed".to_string())
+    );
 }

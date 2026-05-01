@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+mod memory_context;
+
 include!("helpers.rs");
 
 mod check_plan;

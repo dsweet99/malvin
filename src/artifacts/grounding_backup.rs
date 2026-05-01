@@ -42,7 +42,11 @@ pub fn restore_workspace_grounding(
     backup: &GroundingBackup,
 ) -> Result<(), String> {
     match backup {
-        GroundingBackup::Missing => Ok(()),
+        GroundingBackup::Missing => {
+            remove_if_exists(&work_dir.join("grounding.md"))?;
+            remove_if_exists(&work_dir.join(".kissconfig"))?;
+            Ok(())
+        }
         GroundingBackup::Present(backup_files) => {
             restore_workspace_file(work_dir, "grounding.md", backup_files.grounding.as_deref())?;
             restore_workspace_file(work_dir, ".kissconfig", backup_files.kissconfig.as_deref())?;
@@ -56,7 +60,10 @@ pub fn restore_workspace_kissconfig(
     backup: &GroundingBackup,
 ) -> Result<(), String> {
     match backup {
-        GroundingBackup::Missing => Ok(()),
+        GroundingBackup::Missing => {
+            remove_if_exists(&work_dir.join(".kissconfig"))?;
+            Ok(())
+        }
         GroundingBackup::Present(backup_files) => {
             restore_workspace_file(work_dir, ".kissconfig", backup_files.kissconfig.as_deref())
         }
@@ -71,6 +78,18 @@ fn restore_workspace_file(
     let dst = work_dir.join(filename);
     if let Some(backup_path) = backup {
         std::fs::copy(backup_path, &dst).map_err(|e| format!("grounding restore: {e}"))?;
+    }
+    Ok(())
+}
+
+fn remove_if_exists(path: &Path) -> Result<(), String> {
+    if path.exists() {
+        let metadata = std::fs::metadata(path).map_err(|e| format!("grounding restore: {e}"))?;
+        if metadata.is_dir() {
+            std::fs::remove_dir_all(path).map_err(|e| format!("grounding restore: {e}"))?;
+        } else {
+            std::fs::remove_file(path).map_err(|e| format!("grounding restore: {e}"))?;
+        }
     }
     Ok(())
 }

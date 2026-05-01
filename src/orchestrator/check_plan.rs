@@ -13,8 +13,8 @@ pub(super) async fn run_check_plan(
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
-    let max_attempts = orchestrator.config.max_loops.max(1);
-    for attempt in 0..max_attempts {
+    let max_loops = orchestrator.config.max_loops.max(1);
+    for attempt in 0..max_loops {
         if attempt > 0 {
             (orchestrator.progress_callback)(
                 "CheckPlan: agent did not write review file, retrying",

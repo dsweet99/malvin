@@ -22,7 +22,7 @@ pub struct DoArgs {
     /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
-    /// Run kiss clamp + configured pre-commit hooks before the prompt (coding-style runs).
+    /// Run kiss clamp then repository quality gates before the prompt (coding-style runs).
     #[arg(long, default_value_t = false)]
     pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
