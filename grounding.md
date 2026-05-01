@@ -20,15 +20,14 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 | `code <request>` | Required | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then (optionally) run `learn` | Required |
 | `sync` | Required | Run `kiss clamp` if needed; run `check_sync.md` and `concerns` in a loop until LGTM or the `--max-loops` budget is exhausted (default 5); then run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn` | Required |
 | `tidy` | Not required | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then (optionally) run `learn` | Required |
-| `kpop <request>` | Not required | No quality gates or `kiss clamp`; run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Total budget: `--max-hypotheses` (default 10) | Not required |
+| `kpop <request>` | Not required | No `kiss clamp`; run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Display the executive summary and tl;dr in the logs and stdout logs. Total budget: `--max-hypotheses` (default 10) | Not required |
 | `do <request>` | Not required | Send one prompt and print raw output, with no review or learn phase | Not required |
 | `init` | Not required | Bootstrap pre-commit hooks and Git LFS configuration | Not required |
 | `ground` | Required | If `grounding.md` is missing, create it with `write_grounding.md`; then run `check_sync.md`, and when it is not `LGTM`, run `improve_grounding.md`; repeat until `check_sync.md` reports `LGTM` | Not required; `ground` does not change source code |
 
 - **Review loops** work by having a reviewer write either `LGTM` or a list of issues to `review.md`. If the review is not `LGTM`, the `concerns` phase reads that file, applies fixes, and the loop repeats. Any `ABORT:` line in `result.md` stops the workflow immediately.
 - **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
-- `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, and `kpop`. `do_header.md` is used instead for `do`.
-- `coding_rules.md` is prepended to implement, review, concerns, tidy, learn, and kpop prompts.
+- `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, `ground`, and `kpop`. `do_header.md` is used instead for `do`.
 - "quality gates" are described in `tidy.md`. The same gates are used pre-run and post-run.
 
 ## Output formatting

@@ -1,5 +1,7 @@
 {{ coding_rules }}
 
+## Learning
+
 1) What *new*, interesting/surprising things did you learn in this chat about?:
 - Codebase structure (where things live)
 - Algorithms/methods + notable results
@@ -12,10 +14,15 @@
 
 3) Edit `./.malvin_memory/index.md` to incorporate the new info.
 - Store as TRIGGER: / ADVICE: / CONFIDENCE: triples, in this format
+```
 TRIGGER: 1-4 keywords or phrases, where phrases are 1-3 words
 ADVICE: A briefly-stated action to take, like "Read <file>" or "Use <tool/approach/method, with instructions>" or "Check for <problem/benefit>" etc.
 CONFIDENCE: 0
-- Keep `./.malvin_memory/index.md` < 100 lines; focus on highest-priority rules and index entries.
-- Don't lose information: Consolidate into broader rules and/or move detail into `./.malvin_memory/<topic>.md`.
-- `./.malvin_memory/<topic>.md` files should also use the  TRIGGER: / ADVICE: / CONFIDENCE: format.
-- Keep commands and hard constraints exact.
+```
+in one of `./.malvin_memory/*.md`. If no file name (subject area) seems appropriate, create a new file with an appropriate file name (subject area).
+
+## Forgetting
+
+Each TRIGGER: / ADVICE: / CONFIDENCE: triple is implicitly hypothesizing that it will be "good advice".
+
+Can you find a piece of ADVICE: that was followed during this session that was not good advice? For example, did it lead to a bad outcome or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from ./.malvin_memory/*.md.

@@ -69,7 +69,10 @@ pub fn merged_coding_rules(
     store: &PromptStore,
     context: &HashMap<String, String>,
 ) -> Result<String, PromptError> {
-    let render_context: HashMap<String, String> = context.clone();
+    let mut render_context: HashMap<String, String> = context.clone();
+    render_context
+        .entry("memories".to_string())
+        .or_default();
     let header_raw = store.load_header();
     let header_expanded = render_template(&header_raw, &render_context);
     let rules_raw = store.load_coding_rules();

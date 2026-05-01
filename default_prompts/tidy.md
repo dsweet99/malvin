@@ -1,3 +1,7 @@
+{{ coding_rules }}
+---
+
+
 Get the codebase to pass all of the quality gates:
 
 - `pre-commit run --all-files`

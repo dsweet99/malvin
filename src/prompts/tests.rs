@@ -71,6 +71,40 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
 }
 
 #[test]
+fn kpop_validation_may_omit_coding_rules_without_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "H").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let validation = store.validate_kpop_prompts(super::KpopPromptValidation {
+        run_learn: false,
+        require_mbc2: false,
+    });
+    assert!(validation.is_ok(), "kpop validation should unexpectedly pass: {validation:?}");
+    let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
+    assert_eq!(out, "H");
+}
+
+#[test]
+fn load_coding_rules_swallows_missing_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "H").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    assert_eq!(store.load_coding_rules(), "");
+}
+
+#[test]
+fn load_header_swallows_missing_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    let store = PromptStore::with_root(root.to_path_buf());
+    assert_eq!(store.load_header(), "");
+}
+
+#[test]
 fn validate_required_fails_when_header_or_coding_rules_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
