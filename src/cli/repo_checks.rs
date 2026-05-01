@@ -1,8 +1,6 @@
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use std::path::Path;
 use std::process::Command;
-#[cfg(test)]
-use std::sync::{LazyLock, Mutex};
 
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
@@ -113,16 +111,20 @@ fn scan_for_extension(root: &Path, ext: &str) -> bool {
 }
 
 #[cfg(test)]
-static TEST_FAKE_COMMAND_DIR: LazyLock<Mutex<Option<std::path::PathBuf>>> =
-    LazyLock::new(|| Mutex::new(None));
+thread_local! {
+    static TEST_FAKE_COMMAND_DIR: std::cell::RefCell<Option<std::path::PathBuf>> =
+        const { std::cell::RefCell::new(None) };
+}
 
 #[cfg(test)]
 fn test_fake_command_path(command: &str) -> Option<std::path::PathBuf> {
     TEST_FAKE_COMMAND_DIR
-        .lock()
-        .ok()
-        .and_then(|dir| dir.as_ref().map(|d| d.join(command)))
-        .filter(|path| path.is_file())
+        .with(|dir| {
+            dir.borrow()
+                .as_ref()
+                .map(|d| d.join(command))
+                .filter(|path| path.is_file())
+        })
 }
 
 #[cfg(not(test))]
@@ -133,26 +135,31 @@ const fn test_fake_command_path(_: &str) -> Option<std::path::PathBuf> {
 #[cfg(test)]
 struct FakeCommandDirGuard {
     previous: Option<std::path::PathBuf>,
+    thread_id: std::thread::ThreadId,
 }
 
 #[cfg(test)]
 impl Drop for FakeCommandDirGuard {
     fn drop(&mut self) {
-        let mut dir = TEST_FAKE_COMMAND_DIR
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        *dir = self.previous.take();
+        // Protect against tests on other threads reading unrelated state.
+        if self.thread_id == std::thread::current().id() {
+            TEST_FAKE_COMMAND_DIR.with(|dir| {
+                *dir.borrow_mut() = self.previous.take();
+            });
+        }
     }
 }
 
 #[cfg(test)]
 fn set_fake_command_dir(path: &Path) -> FakeCommandDirGuard {
-    let mut dir = TEST_FAKE_COMMAND_DIR
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let previous = dir.replace(path.to_path_buf());
-    drop(dir);
-    FakeCommandDirGuard { previous }
+    let previous = TEST_FAKE_COMMAND_DIR.with(|dir| {
+        let mut guard = dir.borrow_mut();
+        guard.replace(path.to_path_buf())
+    });
+    FakeCommandDirGuard {
+        previous,
+        thread_id: std::thread::current().id(),
+    }
 }
 
 fn run_command_for(command: &str) -> std::path::PathBuf {

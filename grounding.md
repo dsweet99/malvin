@@ -29,6 +29,7 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 - **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
 - `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, and `kpop`. `do_header.md` is used instead for `do`.
 - `coding_rules.md` is prepended to implement, review, concerns, tidy, learn, and kpop prompts.
+- "quality gates" are described in `tidy.md`. The same gates are used pre-run and post-run.
 
 ## Output formatting
 
@@ -46,16 +47,6 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 
 - **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for transient errors such as timeouts, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failures, or gRPC `[unavailable]`. Errors such as "Upgrade your plan" fail fast.
 
-## Quality gates
 
-- `pre-commit run --all-files`
-
-Also run any applicable checks not already covered by an equivalent pre-commit hook:
-
-- Rust: `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`
-- Rust: `cargo test`
-- Rust & Python: `kiss check`
-- Python: `ruff check`
-- Python: `pytest -sv tests`
 
 
