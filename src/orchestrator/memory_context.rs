@@ -20,9 +20,11 @@ struct MemoryState {
 }
 
 fn emit_if_complete(state: &mut MemoryState, out: &mut Vec<MemoryRecord>) {
-    if let (Some(trigger), Some(advice), Some(confidence)) =
-        (state.trigger.take(), state.advice.take(), state.confidence.take())
-    {
+    if let (Some(trigger), Some(advice), Some(confidence)) = (
+        state.trigger.take(),
+        state.advice.take(),
+        state.confidence.take(),
+    ) {
         if !trigger.is_empty() && !advice.is_empty() {
             out.push(MemoryRecord {
                 trigger,
@@ -94,8 +96,8 @@ fn collect_memory_records(work_dir: &Path) -> Vec<MemoryRecord> {
 fn format_memories(records: &[MemoryRecord]) -> String {
     let escape_template = |value: &str| {
         value
-            .replace("{{", "{{{{")
-            .replace("}}", "}}}}")
+            .replace("{{", "{ {")
+            .replace("}}", "} }")
             .replace('$', "$$")
     };
     records
