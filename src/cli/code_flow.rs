@@ -129,6 +129,7 @@ pub async fn run_code(
         &artifacts.work_dir,
         &grounding_backup,
     )?;
+    run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

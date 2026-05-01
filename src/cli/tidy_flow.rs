@@ -26,6 +26,10 @@ pub async fn run_tidy(
     };
     let result = run_tidy_acp(&mut input, prompt.trim_end(), &grounding_backup).await;
     merge_tidy_timing(result, &artifacts, &grounding_backup)?;
+    crate::cli::repo_checks::run_repo_workspace_gates(
+        &artifacts.work_dir,
+        crate::cli::repo_checks::RepoGateOutput::Tagged,
+    )?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

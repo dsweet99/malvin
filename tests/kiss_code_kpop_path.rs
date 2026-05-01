@@ -121,7 +121,7 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 
 #[test]
 #[cfg(unix)]
-fn malvin_tidy_does_not_run_quality_gates_before_acp() {
+fn malvin_tidy_runs_quality_gates_after_acp() {
     let (root, home, workspace) = test_home_workspace();
     std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
     std::fs::write(
@@ -157,13 +157,14 @@ fn malvin_tidy_does_not_run_quality_gates_before_acp() {
     let out = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin");
 
     assert!(
-        out.status.success(),
-        "expected tidy to reach ACP despite broken quality gates: {out:?}"
+        !out.status.success(),
+        "expected tidy to fail when post-ACP quality gates fail: {out:?}"
     );
+    let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
+    assert!(!trace_log.is_empty(), "expected quality gates to run after ACP: {trace_log}");
     assert!(
-        !trace.exists(),
-        "tidy must not run pre-ACP quality commands: {}",
-        std::fs::read_to_string(&trace).unwrap_or_default()
+        trace_log.contains("kiss"),
+        "expected at least one post-ACP quality gate command to run: {trace_log}"
     );
 }
 
