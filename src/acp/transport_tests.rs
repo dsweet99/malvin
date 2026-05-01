@@ -1032,3 +1032,78 @@ async fn rpc_wait_response_reports_dead_child_after_silence() {
     let _ = child.wait().await;
     let _ = drain.await;
 }
+
+#[tokio::test]
+async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
+    let mut child = Command::new(SLEEP_BIN)
+        .arg("10")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("sleep");
+    let child_pid = child.id();
+    let stdin = Arc::new(Mutex::new(child.stdin.take().expect("stdin")));
+    let mut stdout = child.stdout.take().expect("stdout");
+    let drain = tokio::spawn(async move {
+        let mut buf = [0_u8; 64];
+        while stdout.read(&mut buf).await.unwrap_or(0) > 0 {}
+    });
+    let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
+    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<Value, String>>();
+    let (pending_tx, _pending_rx) = tokio::sync::oneshot::channel::<Result<Value, String>>();
+    let request_id = 99_u64;
+    pending.lock().await.insert(request_id, pending_tx);
+    let timeout = Duration::from_millis(100);
+    let grace = crate::child_health::silence_grace_for_rpc_timeout(timeout);
+    let response_time = timeout + grace / 2;
+    tokio::spawn({
+        let tx = tx;
+        async move {
+            tokio::time::sleep(response_time).await;
+            let _ = tx.send(Ok(json!({"ok": true})));
+        }
+    });
+    let io = AcpStdioRpc {
+        reader_dead: Arc::new(AtomicBool::new(false)),
+        stdin,
+        pending,
+        acp_activity_seq,
+        acp_activity_notify,
+        acp_verbose: false,
+    };
+    let start = tokio::time::Instant::now();
+    let res = tokio::time::timeout(
+        std::time::Duration::from_secs(1),
+        rpc_wait_with_timeout(
+            request_id,
+            timeout,
+            rpc_wait_response(RpcWaitArgs {
+                _pending: &io.pending,
+                acp_activity_seq: &io.acp_activity_seq,
+                acp_activity_notify: &io.acp_activity_notify,
+                _id: request_id,
+                rx,
+                child_pid,
+            }),
+            (
+                &io.acp_activity_seq,
+                &io.acp_activity_notify,
+                &io.pending,
+                child_pid,
+            ),
+        ),
+    )
+    .await
+    .expect("request wait timed out")
+    .expect("response should arrive before health grace expires");
+    assert!(start.elapsed() >= response_time);
+    assert_eq!(res["ok"], true);
+    assert!(
+        !io.pending.lock().await.contains_key(&request_id),
+        "request should be removed from pending after completion"
+    );
+    let _ = child.kill().await;
+    let _ = child.wait().await;
+    let _ = drain.await;
+}

@@ -138,19 +138,31 @@ async fn rpc_wait_with_timeout(
             () = tokio::time::sleep(timeout) => {
                 let timeout_err = if let Some(child_pid) = child_pid {
                     let grace = crate::child_health::silence_grace_for_rpc_timeout(timeout);
-                    match crate::child_health::evaluate_after_acp_silence(child_pid, grace).await {
-                        crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
-                            Err("acp child process is not running".to_string())
+                    let health = crate::child_health::evaluate_after_acp_silence(child_pid, grace);
+                    tokio::pin!(health);
+                    tokio::select! {
+                        ready_recv = &mut wait => {
+                            let result = ready_recv
+                                .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                            pending.lock().await.remove(&id);
+                            return Ok(result);
                         }
-                        crate::child_health::SilenceHealthOutcome::ChildZombie => {
-                            Err("acp child process is zombie".to_string())
+                        outcome = &mut health => {
+                            match outcome {
+                                crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
+                                    Err("acp child process is not running".to_string())
+                                }
+                                crate::child_health::SilenceHealthOutcome::ChildZombie => {
+                                    Err("acp child process is zombie".to_string())
+                                }
+                                crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
+                                    Ok(())
+                                }
+                                crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
+                                    "acp request id {id} timed out after {timeout:?}"
+                                )),
+                            }
                         }
-                        crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
-                            Ok(())
-                        }
-                        crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
-                            "acp request id {id} timed out after {timeout:?}"
-                        )),
                     }
                 } else {
                     Err(format!("acp request id {id} timed out after {timeout:?}"))
