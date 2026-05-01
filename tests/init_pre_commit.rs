@@ -25,8 +25,14 @@ fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(msg.contains("Command:"), "expected startup command prelude: {msg:?}");
-    assert!(msg.contains("Logs:"), "expected startup Logs header: {msg:?}");
+    assert!(
+        msg.contains("Command:"),
+        "expected startup command prelude: {msg:?}"
+    );
+    assert!(
+        msg.contains("Logs:"),
+        "expected startup Logs header: {msg:?}"
+    );
     assert!(
         msg.contains("pre-commit"),
         "expected explicit pre-commit hint; got: {msg:?}"

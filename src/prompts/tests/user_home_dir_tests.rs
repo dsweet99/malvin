@@ -10,7 +10,10 @@ fn user_home_dir_prefers_home_then_userprofile() {
         std::env::set_var("HOME", "/tmp/custom-home");
         std::env::remove_var("USERPROFILE");
     }
-    assert_eq!(super::super::user_home_dir(), std::path::PathBuf::from("/tmp/custom-home"));
+    assert_eq!(
+        super::super::user_home_dir(),
+        std::path::PathBuf::from("/tmp/custom-home")
+    );
 
     unsafe {
         std::env::set_var("USERPROFILE", "/tmp/fallback-userprofile");
@@ -66,4 +69,3 @@ fn user_home_dir_falls_back_to_temp_dir() {
         }
     }
 }
-

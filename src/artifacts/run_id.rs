@@ -74,4 +74,3 @@ mod tests {
         assert!(run_dir.is_dir());
     }
 }
-

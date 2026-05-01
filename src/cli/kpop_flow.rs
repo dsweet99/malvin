@@ -306,7 +306,10 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert!(kpop.contains("_malvin/run42/_kpop/exp_log_run42.md"));
     let mbc2 = turn.mbc2_pure().unwrap();
     let mbc2_header = mbc2.find("AFTER EVERY REQUEST");
-    assert!(mbc2_header.is_none(), "mbc2 should not include header/coding rules");
+    assert!(
+        mbc2_header.is_none(),
+        "mbc2 should not include header/coding rules"
+    );
     let mbc2_common = mbc2
         .find("### KPop: Apply this method to the user's problem.")
         .expect("common marker");

@@ -7,8 +7,8 @@ use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 
+use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::{CodeArgs, SharedOpts};
-use super::repo_checks::{run_repo_workspace_gates, RepoGateOutput};
 use super::{run_emit, timing_merge};
 
 #[derive(Debug, Clone, Copy)]
@@ -133,5 +133,3 @@ pub async fn run_code(
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
-
-

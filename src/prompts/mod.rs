@@ -185,9 +185,7 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context
-            .entry("memories".to_string())
-            .or_default();
+        render_context.entry("memories".to_string()).or_default();
         render_context.insert(
             "coding_rules".to_string(),
             merged_coding_rules(self, context)?,
@@ -204,9 +202,7 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context
-            .entry("memories".to_string())
-            .or_default();
+        render_context.entry("memories".to_string()).or_default();
         let out = render_template(&prompt_text, &render_context);
         enforce_no_unresolved_braces(&out)?;
         Ok(out)

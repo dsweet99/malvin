@@ -1,6 +1,6 @@
 use crate::orchestrator::memory_context::{
-    build_memories_value, format_memories, parse_memories, sample_memories, sample_seed,
-    MemoryRecord, MAX_MEMORIES_PER_RUN,
+    MAX_MEMORIES_PER_RUN, MemoryRecord, build_memories_value, format_memories, parse_memories,
+    sample_memories, sample_seed,
 };
 use crate::prompts::PromptStore;
 use std::collections::HashSet;
@@ -21,8 +21,8 @@ fn parse_memories_requires_valid_confidence_number() {
 #[test]
 fn parse_memories_collects_multiple_triples() {
     let out = parse_memories(
-            "TRIGGER: one\nADVICE: do thing\nCONFIDENCE: 2\n\nTRIGGER: two\nADVICE: do more\nCONFIDENCE: 0",
-        );
+        "TRIGGER: one\nADVICE: do thing\nCONFIDENCE: 2\n\nTRIGGER: two\nADVICE: do more\nCONFIDENCE: 0",
+    );
     assert_eq!(out.len(), 2);
     assert_eq!(out[0].trigger, "one");
     assert_eq!(out[1].advice, "do more");

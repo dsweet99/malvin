@@ -1,6 +1,6 @@
+use super::{GroundingBackup, ProtectedWorkspaceFiles};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use super::{GroundingBackup, ProtectedWorkspaceFiles};
 
 pub(super) fn backup_workspace_grounding_if_present_with_id(
     work_dir: &Path,
@@ -15,7 +15,8 @@ pub(super) fn backup_workspace_grounding_if_present_with_id(
         .join(".malvin")
         .join("groundings");
     let dest_dir = allocate_grounding_backup_dir(&grounding_root, &mut generate_id)?;
-    let (grounding, kissconfig) = backup_workspace_files(&grounding_src, &kissconfig_src, &dest_dir)?;
+    let (grounding, kissconfig) =
+        backup_workspace_files(&grounding_src, &kissconfig_src, &dest_dir)?;
     Ok(GroundingBackup::Present(ProtectedWorkspaceFiles {
         grounding,
         kissconfig,
@@ -80,4 +81,3 @@ fn backup_workspace_file(
 fn cleanup_partial_backup_dir(dest_dir: &Path) {
     let _ = std::fs::remove_dir_all(dest_dir);
 }
-

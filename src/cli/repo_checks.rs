@@ -141,13 +141,12 @@ thread_local! {
 
 #[cfg(test)]
 fn test_fake_command_path(command: &str) -> Option<std::path::PathBuf> {
-    TEST_FAKE_COMMAND_DIR
-        .with(|dir| {
-            dir.borrow()
-                .as_ref()
-                .map(|d| d.join(command))
-                .filter(|path| path.is_file())
-        })
+    TEST_FAKE_COMMAND_DIR.with(|dir| {
+        dir.borrow()
+            .as_ref()
+            .map(|d| d.join(command))
+            .filter(|path| path.is_file())
+    })
 }
 
 #[cfg(not(test))]
@@ -524,7 +523,11 @@ mod tests {
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
         fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").unwrap();
-        fs::write(work.join("Cargo.toml"), "[package]\nname = 'm'\nversion = '0.1.0'\n").unwrap();
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
         fs::write(work.join("main.rs"), "fn main() {}").unwrap();
         fs::write(work.join("script.py"), "print('ok')").unwrap();
         fs::create_dir(work.join("tests")).unwrap();
@@ -535,9 +538,7 @@ mod tests {
         let pre_commit = bin_dir.path().join("pre-commit");
         fs::write(
             &pre_commit,
-            format!(
-                "#!/bin/sh\necho \"pre-commit $@\" >> \"{trace_for_script}\"\nexit 0\n"
-            ),
+            format!("#!/bin/sh\necho \"pre-commit $@\" >> \"{trace_for_script}\"\nexit 0\n"),
         )
         .unwrap();
         let mut perms = fs::metadata(&pre_commit).unwrap().permissions();

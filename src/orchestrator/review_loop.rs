@@ -17,7 +17,7 @@ pub(super) async fn run_review_phase(
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
 
-    for attempt in 1..=orchestrator.config.max_loops {
+    for attempt in 1..=orchestrator.config.max_loops.max(1) {
         let ctx = ReviewAttemptCtx {
             review_prompt: phase.review_prompt,
             progress_label: phase.progress_label,
@@ -41,7 +41,7 @@ pub(super) async fn run_sync_check_loop(
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
-    for attempt in 1..=orchestrator.config.max_loops {
+    for attempt in 1..=orchestrator.config.max_loops.max(1) {
         let ctx = ReviewAttemptCtx {
             review_prompt: "check_sync.md",
             progress_label: "CheckSync",

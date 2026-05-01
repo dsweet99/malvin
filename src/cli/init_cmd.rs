@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Args;
-use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 use malvin::artifacts::create_run_artifacts_from_text;
+use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 
 const TPL_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),

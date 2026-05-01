@@ -10,11 +10,11 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
 use std::path::Path;
 
+use super::repo_checks::{self, RepoGateOutput};
 use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
     timing_merge,
 };
-use super::repo_checks::{self, RepoGateOutput};
 
 pub struct SyncRunSpec {
     pub max_loops: usize,

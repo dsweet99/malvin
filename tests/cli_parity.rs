@@ -50,6 +50,7 @@ use common::{
     acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
     acp_mock_ground_check_abort_js, acp_mock_ground_check_tamper_kissconfig_js,
     acp_mock_ground_loop_converges_with_missing_grounding_js,
+    acp_mock_ground_never_lgtm_loop_js,
     run_ground_with_mock_js_with_setup,
     acp_mock_ground_write_tamper_kissconfig_js,
     acp_mock_sync_reviewer_restore_between_attempts_js, acp_mock_sync_tamper_and_review_restore_js,
@@ -324,8 +325,8 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
         "expected max_loops=0 review skip failure: {combined:?}"
     );
     assert!(
-        !combined.contains("Review-1 (attempt 1)"),
-        "review attempt must not run when --max-loops=0: {combined:?}"
+        combined.contains("Review-1 (attempt 1)"),
+        "review-1 should run at least once when --max-loops=0: {combined:?}"
     );
 }
 
@@ -598,6 +599,49 @@ fn ground_converges_when_grounding_missing_and_loop_runs_check_improve_cycle() {
     assert_eq!(
         std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
         "CREATED\n"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn ground_max_loops_bounds_non_lgtm_grounding_loop() {
+    let (out, _root, workspace) = run_ground_with_mock_js_with_setup(
+        &acp_mock_ground_never_lgtm_loop_js(),
+        true,
+        false,
+        |_| {},
+    );
+    assert!(
+        !out.status.success(),
+        "ground command should fail after exhausting max loops without LGTM: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("Did not receive LGTM for check_sync.md within max loops."),
+        "non-convergent ground loop should emit max loop failure: {combined:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let has_log = |label: &str| -> bool {
+        std::fs::read_dir(&run_dir)
+            .expect("read run dir")
+            .filter_map(Result::ok)
+            .any(|entry| entry.file_name().to_string_lossy().contains(label))
+    };
+    assert!(
+        has_log("check_sync_attempt_1"),
+        "expected first check_sync attempt log"
+    );
+    assert!(
+        has_log("check_sync_attempt_5"),
+        "expected final check_sync attempt log at configured loop limit"
+    );
+    assert!(
+        !has_log("check_sync_attempt_6"),
+        "grounding loop should stop at loop limit and not run attempt 6"
     );
 }
 

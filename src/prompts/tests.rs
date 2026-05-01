@@ -82,7 +82,10 @@ fn kpop_validation_may_omit_coding_rules_without_error() {
         run_learn: false,
         require_mbc2: false,
     });
-    assert!(validation.is_ok(), "kpop validation should unexpectedly pass: {validation:?}");
+    assert!(
+        validation.is_ok(),
+        "kpop validation should unexpectedly pass: {validation:?}"
+    );
     let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
     assert_eq!(out, "H");
 }
@@ -130,7 +133,10 @@ fn validate_required_rejects_directory_in_place_of_prompt_file() {
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store.validate_required().unwrap_err();
     for name in super::REQUIRED_PROMPTS {
-        assert!(err.0.contains(name), "missing required prompt {name} in {err:?}");
+        assert!(
+            err.0.contains(name),
+            "missing required prompt {name} in {err:?}"
+        );
     }
 }
 
@@ -253,7 +259,10 @@ fn merge_header_and_coding_rules_handles_empty() {
 
 #[test]
 fn learn_prompt_has_consistent_memory_target_guidance() {
-    let learn = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_prompts/learn.md"));
+    let learn = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/default_prompts/learn.md"
+    ));
     assert!(
         learn.contains("Edit an `.malvin_memory/*.md` file"),
         "expected consistent memory-path guidance in learn prompt"
@@ -266,7 +275,12 @@ fn learn_prompt_has_consistent_memory_target_guidance() {
 
 #[test]
 fn learn_prompt_has_no_obvious_typo() {
-    let learn = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/default_prompts/learn.md"));
-    assert!(!learn.contains("oncrement"), "expected learn typo to be fixed");
+    let learn = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/default_prompts/learn.md"
+    ));
+    assert!(
+        !learn.contains("oncrement"),
+        "expected learn typo to be fixed"
+    );
 }
-

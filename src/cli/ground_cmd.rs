@@ -10,10 +10,11 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
-use super::{SharedOpts, WorkflowCliOptions, run_emit, timing_merge};
 use super::repo_checks;
+use super::{SharedOpts, WorkflowCliOptions, run_emit, timing_merge};
 
 const GROUND_REQUEST: &str = "ground";
+const GROUND_MAX_LOOPS: usize = 5;
 struct GroundSession {
     artifacts: RunArtifacts,
     grounding_backup: malvin::artifacts::GroundingBackup,
@@ -42,7 +43,8 @@ fn build_write_grounding_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
 ) -> Result<String, String> {
-    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
+    let context =
+        workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("write_grounding.md", &context)
         .map_err(|e: PromptError| e.0)
@@ -52,14 +54,19 @@ fn build_improve_grounding_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
 ) -> Result<String, String> {
-    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
+    let context =
+        workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("improve_grounding.md", &context)
         .map_err(|e: PromptError| e.0)
 }
 
-fn build_check_sync_prompt(store: &PromptStore, artifacts: &RunArtifacts) -> Result<String, String> {
-    let context = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
+fn build_check_sync_prompt(
+    store: &PromptStore,
+    artifacts: &RunArtifacts,
+) -> Result<String, String> {
+    let context =
+        workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
     store
         .render("check_sync.md", &context)
         .map_err(|e: PromptError| e.0)
@@ -149,9 +156,7 @@ async fn run_ground_acp(
     grounding_exists: bool,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
-    let begin_res = client
-        .begin_coder_session(&artifacts.work_dir)
-        .await;
+    let begin_res = client.begin_coder_session(&artifacts.work_dir).await;
     if let Err(e) = begin_res {
         client.set_run_timing(None);
         return Err(e.to_string());
@@ -201,9 +206,9 @@ fn merge_ground_acp_results(
         (Ok(()), Ok(())) => Ok(()),
         (Ok(()), Err(end_err)) => Err(format!("failed to end coder session: {end_err}")),
         (Err(primary_err), Ok(())) => Err(primary_err),
-        (Err(primary_err), Err(end_err)) => {
-            Err(format!("{primary_err}; failed to end coder session: {end_err}"))
-        }
+        (Err(primary_err), Err(end_err)) => Err(format!(
+            "{primary_err}; failed to end coder session: {end_err}"
+        )),
     }
 }
 
@@ -220,8 +225,7 @@ async fn run_grounding_discrepancy_loop(
         fail_on_abort_result(&artifacts.artifact_result_md())?;
     }
 
-    let mut attempt: usize = 1;
-    loop {
+    for attempt in 1..=GROUND_MAX_LOOPS {
         run_grounding_check_attempt(client, artifacts, check_sync_prompt, attempt).await?;
         fail_on_abort_result(&artifacts.artifact_result_md())?;
         let review_text = sync_review_file_for_attempt(
@@ -231,10 +235,13 @@ async fn run_grounding_discrepancy_loop(
         if review_text.as_deref().is_some_and(is_lgtm_str) {
             return Ok(());
         }
+        if attempt == GROUND_MAX_LOOPS {
+            break;
+        }
         run_grounding_improve_attempt(client, artifacts, improve_prompt, attempt).await?;
         fail_on_abort_result(&artifacts.artifact_result_md())?;
-        attempt += 1;
     }
+    Err("Did not receive LGTM for check_sync.md within max loops.".to_string())
 }
 
 async fn run_grounding_write_attempt(
@@ -362,11 +369,7 @@ fn build_check_sync_prompt_includes_kpop_from_workflow_context() {
     std::fs::create_dir_all(&prompts).unwrap();
     std::fs::write(prompts.join("check_sync.md"), "{{ kpop }}").unwrap();
     std::fs::write(prompts.join("kpop_common.md"), "KPOP_PLACEHOLDER_CONTENT").unwrap();
-    std::fs::write(
-        prompts.join("write_grounding.md"),
-        "write grounding prompt",
-    )
-    .unwrap();
+    std::fs::write(prompts.join("write_grounding.md"), "write grounding prompt").unwrap();
     std::fs::write(
         prompts.join("improve_grounding.md"),
         "improve grounding prompt",
@@ -394,16 +397,16 @@ fn merge_with_abort_check_preserves_abort_over_restore_error() {
     );
 
     let error = merged.expect_err("should fail with abort");
-    assert_eq!(error, "ABORT: user requested stop; acp failure; kissconfig restore failed: restore failure");
+    assert_eq!(
+        error,
+        "ABORT: user requested stop; acp failure; kissconfig restore failed: restore failure"
+    );
 }
 
 #[test]
 fn merge_ground_acp_results_surfaces_end_session_errors() {
     assert_eq!(
-        merge_ground_acp_results(
-            Ok(()),
-            Err("end session failed".to_string()),
-        ),
+        merge_ground_acp_results(Ok(()), Err("end session failed".to_string()),),
         Err("failed to end coder session: end session failed".to_string())
     );
     assert_eq!(

@@ -19,9 +19,10 @@ fn command_output_with_timeout_drains_large_stdout_without_deadlock() {
 #[test]
 fn command_output_with_timeout_surfaces_captured_streams_on_timeout() {
     let mut cmd = Command::new("sh");
-    cmd.arg("-c").arg("printf 'stdout-seen\\n'; printf 'stderr-seen\\n' >&2; sleep 2");
-    let err = command_output_with_timeout(&mut cmd, Duration::from_millis(250))
-        .expect_err("timed out");
+    cmd.arg("-c")
+        .arg("printf 'stdout-seen\\n'; printf 'stderr-seen\\n' >&2; sleep 2");
+    let err =
+        command_output_with_timeout(&mut cmd, Duration::from_millis(250)).expect_err("timed out");
     assert_eq!(err.kind(), std::io::ErrorKind::TimedOut);
     let msg = err.to_string();
     assert!(

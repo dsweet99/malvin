@@ -3,11 +3,9 @@
 use std::path::Path;
 
 use super::{
-    GroundingBackup,
-    backup_workspace_grounding_if_present,
-    restore_workspace_grounding,
+    GroundingBackup, backup_workspace_grounding_if_present,
+    backup_workspace_grounding_if_present_with_id, restore_workspace_grounding,
     restore_workspace_kissconfig,
-    backup_workspace_grounding_if_present_with_id,
 };
 
 fn with_isolated_home<F>(f: F)

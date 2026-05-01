@@ -125,20 +125,20 @@ pub fn command_output_with_timeout(
             Ok(None) => {
                 if Instant::now() > deadline {
                     kill_process_group(child.id());
-                let _ = child.wait();
-                let stdout = stdout_jh.join().map_err(|_| {
-                    std::io::Error::other("malvin subprocess stdout reader panicked")
-                })?;
-                let stderr = stderr_jh.join().map_err(|_| {
-                    std::io::Error::other("malvin subprocess stderr reader panicked")
-                })?;
-                let stdout_text = String::from_utf8_lossy(&stdout);
-                let stderr_text = String::from_utf8_lossy(&stderr);
+                    let _ = child.wait();
+                    let stdout = stdout_jh.join().map_err(|_| {
+                        std::io::Error::other("malvin subprocess stdout reader panicked")
+                    })?;
+                    let stderr = stderr_jh.join().map_err(|_| {
+                        std::io::Error::other("malvin subprocess stderr reader panicked")
+                    })?;
+                    let stdout_text = String::from_utf8_lossy(&stdout);
+                    let stderr_text = String::from_utf8_lossy(&stderr);
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::TimedOut,
-                    format!(
-                        "malvin subprocess timed out; stdout={stdout_text:?}; stderr={stderr_text:?}"
-                    ),
+                        format!(
+                            "malvin subprocess timed out; stdout={stdout_text:?}; stderr={stderr_text:?}"
+                        ),
                     ));
                 }
                 std::thread::sleep(Duration::from_millis(20));
@@ -619,14 +619,11 @@ pub fn acp_mock_ground_prompt_render_paths_js() -> String {
       return false;
     };
     if (failIfUnrendered()) {
-      return;
-    }
-    if (promptText.includes('write a new grounding file')) {
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unrendered prompt placeholder\\n', 'utf8');
+    } else if (promptText.includes('write a new grounding file')) {
       mark('write');
       fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\\n', 'utf8');
-      return;
-    }
-    if (promptText.includes('Find a discrepancy between the codebase and')) {
+    } else if (promptText.includes('Find a discrepancy between the codebase and')) {
       mark('check');
       const checkAttempts = (typeof this.groundCheckAttempts === 'undefined') ? 0 : this.groundCheckAttempts;
       this.groundCheckAttempts = checkAttempts + 1;
@@ -635,29 +632,22 @@ pub fn acp_mock_ground_prompt_render_paths_js() -> String {
       } else {
         fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');
       }
-      return;
-    }
-    if (promptText.includes('improve the existing grounding file')) {
+    } else if (promptText.includes('improve the existing grounding file')) {
       mark('improve');
       fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');
-      return;
+    } else {
+      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unexpected ground prompt\\n', 'utf8');
     }";
-    let abort = r"    fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: unexpected ground prompt\\n', 'utf8');
-    return;";
-    acp_mock_code_with_run_dir_js(&format!("{body}\n{abort}"))
+    acp_mock_code_with_run_dir_js(body)
 }
 
 #[cfg(unix)]
 pub fn acp_mock_ground_never_lgtm_loop_js() -> String {
     let body = r"    if (promptText.includes('write a new grounding file')) {
       fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'CREATED\\n', 'utf8');
-      return;
-    }
-    if (promptText.includes('Find a discrepancy between the codebase and')) {
+    } else if (promptText.includes('Find a discrepancy between the codebase and')) {
       fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
-      return;
-    }
-    if (promptText.includes('improve the existing grounding file')) {
+    } else if (promptText.includes('improve the existing grounding file')) {
       fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
     }";
     acp_mock_code_with_run_dir_js(&format!("    {body}"))

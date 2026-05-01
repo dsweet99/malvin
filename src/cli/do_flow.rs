@@ -3,10 +3,10 @@
 
 use std::collections::HashMap;
 
-use clap::Args;
-use super::{repo_checks, WorkflowCliOptions};
 use super::shared_opts::SharedOpts;
 use super::timing_merge;
+use super::{WorkflowCliOptions, repo_checks};
+use clap::Args;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
@@ -78,12 +78,12 @@ pub async fn run_do(
         .map_err(|e| e.to_string())?;
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, repo_checks::RepoGateOutput::Stderr)?;
-    } else {
-        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(
+        repo_checks::run_repo_workspace_gates(
             &artifacts.work_dir,
-            false,
+            repo_checks::RepoGateOutput::Stderr,
         )?;
+    } else {
+        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, false)?;
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 

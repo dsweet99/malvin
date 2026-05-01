@@ -1,18 +1,22 @@
 use clap::Parser;
 
 use super::{
-    run_do, run_ground, run_kpop, run_sync, run_tidy, Cli, Commands, CodeArgs, Exit,
-    SharedOpts, SyncRunSpec, WorkflowCliOptions,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, SyncRunSpec, WorkflowCliOptions, run_do, run_ground,
+    run_kpop, run_sync, run_tidy,
 };
 use super::{init_cmd, models_cmd};
 use malvin::env_path::require_kiss_for_malvin;
-use malvin::output::{print_stderr_line, MALVIN_WHO};
+use malvin::output::{MALVIN_WHO, print_stderr_line};
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
-        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_)
-        | Commands::Ground | Commands::Sync { .. } => Ok(()),
+        Commands::Do(_)
+        | Commands::Init(_)
+        | Commands::Kpop(_)
+        | Commands::Models(_)
+        | Commands::Ground
+        | Commands::Sync { .. } => Ok(()),
     }
 }
 
@@ -74,17 +78,15 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
                 )
             })
         }
-        Commands::Ground => {
-            run_async_cli(|| {
-                run_ground(
-                    &cli.shared,
-                    WorkflowCliOptions {
-                        force: !cli.shared.no_force,
-                        run_learn: false,
-                    },
-                )
-            })
-        }
+        Commands::Ground => run_async_cli(|| {
+            run_ground(
+                &cli.shared,
+                WorkflowCliOptions {
+                    force: !cli.shared.no_force,
+                    run_learn: false,
+                },
+            )
+        }),
         Commands::Tidy(tidy) => {
             let run_learn = !tidy.no_learn;
             run_async_cli(|| {
@@ -108,9 +110,12 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
                 },
             )
         }),
-        Commands::Init(init) => {
-            init_cmd::run_init(init.path, init.force, &init.languages, cli.shared.tee_startup_stdout())
-        }
+        Commands::Init(init) => init_cmd::run_init(
+            init.path,
+            init.force,
+            &init.languages,
+            cli.shared.tee_startup_stdout(),
+        ),
         Commands::Models(_) => models_cmd::run_models(),
         Commands::Sync {
             max_loops,

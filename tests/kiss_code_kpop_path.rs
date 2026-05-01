@@ -161,7 +161,10 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
         "expected tidy to fail when post-ACP quality gates fail: {out:?}"
     );
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
-    assert!(!trace_log.is_empty(), "expected quality gates to run after ACP: {trace_log}");
+    assert!(
+        !trace_log.is_empty(),
+        "expected quality gates to run after ACP: {trace_log}"
+    );
     assert!(
         trace_log.contains("kiss"),
         "expected at least one post-ACP quality gate command to run: {trace_log}"

@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use malvin::output::{print_stdout_line, MALVIN_WHO};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 /// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
 pub fn has_extension_files(dir: &Path, ext: &str) -> bool {
@@ -94,7 +94,10 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output_tagged: bool) -> Resu
         return Ok(());
     }
     if output_tagged {
-        print_stdout_line(MALVIN_WHO, "Running `kiss clamp` (existing code without .kissconfig)");
+        print_stdout_line(
+            MALVIN_WHO,
+            "Running `kiss clamp` (existing code without .kissconfig)",
+        );
     } else {
         eprintln!("Running `kiss clamp` (existing code without .kissconfig)");
     }
