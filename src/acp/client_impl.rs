@@ -16,7 +16,10 @@ pub(crate) fn read_coder_repo_style_text(style_prompt_path: &Path) -> Option<Str
 }
 
 /// Prefix non-empty trimmed style before `prompt`, matching [`coder_prompt_body_with_optional_repo_style`].
-pub(crate) fn prepend_coder_repo_style_to_prompt(prompt: &str, style_trimmed: Option<&str>) -> String {
+pub(crate) fn prepend_coder_repo_style_to_prompt(
+    prompt: &str,
+    style_trimmed: Option<&str>,
+) -> String {
     style_trimmed
         .filter(|t| !t.is_empty())
         .map_or_else(|| prompt.to_string(), |t| format!("{t}\n\n{prompt}"))
@@ -51,7 +54,7 @@ async fn backoff_after_agent_failure(
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {
             crate::run_timing::record_backoff(timing, d);
-            sleep(d).await;
+            tokio_sleep(d).await;
             Ok(false)
         }
     }
@@ -146,7 +149,9 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -198,8 +203,7 @@ impl AgentClient {
             skip_repo_style,
             &self.style_prompt_path,
         );
-        crate::prompts::enforce_no_unresolved_braces(&full_prompt)
-            .map_err(|e| AgentError(e.0))?;
+        crate::prompts::enforce_no_unresolved_braces(&full_prompt).map_err(|e| AgentError(e.0))?;
 
         let style_for_do_trace = if do_trace_split.is_some() {
             repo_style.as_deref()
@@ -217,9 +221,11 @@ impl AgentClient {
             attempts_used = attempt;
             let t0 = Instant::now();
             let prompt_res = match do_trace_split {
-                None => session
-                    .prompt(&full_prompt, log_path, who, stdout_bracket_label)
-                    .await,
+                None => {
+                    session
+                        .prompt(&full_prompt, log_path, who, stdout_bracket_label)
+                        .await
+                }
                 Some((header, user)) => {
                     session
                         .prompt_do_trace_split(
@@ -246,7 +252,9 @@ impl AgentClient {
                         crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());
                     }
                     last_error = e;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -284,12 +292,10 @@ impl AgentClient {
         grounding_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
         let backup = match grounding_restore {
-            ReviewerRestorePolicy::RestoreWorkspace => {
-                Some(
-                    crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
-                        .map_err(AgentError)?,
-                )
-            }
+            ReviewerRestorePolicy::RestoreWorkspace => Some(
+                crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
+                    .map_err(AgentError)?,
+            ),
             ReviewerRestorePolicy::NoRestore => None,
         };
         let mut last_error = String::new();
@@ -345,7 +351,9 @@ impl AgentClient {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -393,7 +401,9 @@ impl AgentClient {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }

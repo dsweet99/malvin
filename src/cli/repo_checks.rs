@@ -18,15 +18,17 @@ pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
 }
 
 pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    ensure_kiss_clamp_if_needed(work_dir, output)?;
-    warn_kissconfig_test_coverage_if_needed(work_dir, output);
+    prepare_repo_workspace(work_dir, output)?;
     run_quality_gates(work_dir, output)
 }
 
-fn ensure_kiss_clamp_if_needed(
-    work_dir: &Path,
-    output: RepoGateOutput,
-) -> Result<(), String> {
+pub fn prepare_repo_workspace(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    ensure_kiss_clamp_if_needed(work_dir, output)?;
+    warn_kissconfig_test_coverage_if_needed(work_dir, output);
+    Ok(())
+}
+
+fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
     let kissconfig = work_dir.join(".kissconfig");
     if kissconfig.exists() || !source_like_files_present(work_dir) {
         return Ok(());
@@ -85,12 +87,7 @@ fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), Stri
         run_check_command(work_dir, output, &["cargo", "test"], "cargo test")?;
     }
     if has_python_file(work_dir) {
-        run_check_command(
-            work_dir,
-            output,
-            &["ruff", "check", "."],
-            "ruff check",
-        )?;
+        run_check_command(work_dir, output, &["ruff", "check", "."], "ruff check")?;
         run_check_command(
             work_dir,
             output,
@@ -141,14 +138,18 @@ struct FakeCommandDirGuard {
 #[cfg(test)]
 impl Drop for FakeCommandDirGuard {
     fn drop(&mut self) {
-        let mut dir = TEST_FAKE_COMMAND_DIR.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut dir = TEST_FAKE_COMMAND_DIR
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         *dir = self.previous.take();
     }
 }
 
 #[cfg(test)]
 fn set_fake_command_dir(path: &Path) -> FakeCommandDirGuard {
-    let mut dir = TEST_FAKE_COMMAND_DIR.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut dir = TEST_FAKE_COMMAND_DIR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let previous = dir.replace(path.to_path_buf());
     drop(dir);
     FakeCommandDirGuard { previous }
@@ -270,7 +271,7 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        RepoGateOutput, ensure_workspace_style_markers,
+        RepoGateOutput, ensure_workspace_style_markers, prepare_repo_workspace,
         run_repo_workspace_gates, scan_for_extension, should_warn_low_test_coverage,
     };
     use std::fs;
@@ -433,8 +434,11 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
-        fs::write(work.join("Cargo.toml"), "[package]\nname = 'm'\nversion = '0.1.0'\n")
-            .unwrap();
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
         fs::write(work.join("main.rs"), "fn main() {}").unwrap();
         fs::write(work.join("script.py"), "print('ok')").unwrap();
         fs::create_dir(work.join("tests")).unwrap();
@@ -480,6 +484,54 @@ mod tests {
     }
 
     #[cfg(unix)]
+    #[test]
+    fn prepare_repo_workspace_skips_quality_commands() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(
+            work.join(".kissconfig"),
+            "[gate]\ntest_coverage_threshold = 90\n",
+        )
+        .unwrap();
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
+        fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+        fs::write(work.join("script.py"), "print('ok')").unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let make_script = |name: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(
+                &path,
+                format!("#!/bin/sh\necho \"{name} $@\" >> \"{trace_for_script}\"\nexit 1\n"),
+            )
+            .unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script("kiss");
+        make_script("cargo");
+        make_script("ruff");
+        make_script("pytest");
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = prepare_repo_workspace(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        assert!(
+            !trace.exists(),
+            "workspace preparation must not run quality commands"
+        );
+    }
+
+    #[cfg(unix)]
     fn log_contains_command(log: &str, expected: &str) -> bool {
         log.split('\n').any(|line| {
             line.split_whitespace()
@@ -488,5 +540,4 @@ mod tests {
                 .any(|window| window.join(" ") == expected)
         })
     }
-
 }

@@ -4,18 +4,18 @@ use std::path::Path;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    create_run_artifacts_from_text,
 };
 use malvin::orchestrator::{should_run_learn_check, workflow_context};
-use malvin::prompts::{PromptError, PromptStore, HEADER_MD, merged_coding_rules};
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 use malvin::run_timing::TimingPhase;
 
-use super::{
-    LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent,
-    emit_run_startup_sequence,
-};
+use super::repo_checks::{RepoGateOutput, prepare_repo_workspace};
 use super::timing_merge;
-use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use super::{
+    LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
+};
 
 type TidyRunPrep = (
     AgentClient,
@@ -188,8 +188,9 @@ pub async fn run_tidy_prompt_with_restore(
     request: TidyPromptRestore<'_>,
 ) -> Result<(), String> {
     let acp_result = run_tidy_prompt(input, request.prompt, request.label, request.phase).await;
-    let restore_result = artifacts::restore_workspace_grounding(&input.artifacts.work_dir, request.grounding_backup)
-        .map_err(|e| format!("tidy restore failed after {}: {e}", request.restore_context));
+    let restore_result =
+        artifacts::restore_workspace_grounding(&input.artifacts.work_dir, request.grounding_backup)
+            .map_err(|e| format!("tidy restore failed after {}: {e}", request.restore_context));
     match (acp_result, restore_result) {
         (Ok(()), Ok(())) => Ok(()),
         (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
@@ -218,7 +219,7 @@ pub fn prepare_tidy_run(
 
     let artifacts =
         create_run_artifacts_from_text("tidy", Some(Path::new("."))).map_err(|e| e.to_string())?;
-    run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    prepare_repo_workspace(&artifacts.work_dir, RepoGateOutput::Tagged)?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     let (store, context) = tidy_prompt_context(&artifacts)?;

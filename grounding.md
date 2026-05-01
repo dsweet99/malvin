@@ -15,15 +15,15 @@ Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cur
 
 Unless noted otherwise, a workflow consists of named prompt-template phases sent sequentially within a single ACP coder session.
 
-| Workflow | Phases |
-|---|---|
-| `code <request>` | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then (optionally) run `learn` |
-| `sync` | Run `kiss clamp` if needed; run `check_sync.md` and `concerns` in a loop until LGTM or the `--max-loops` budget is exhausted (default 5); then run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn` |
-| `tidy` | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then (optionally) run `learn` |
-| `kpop <request>` | No quality gates or `kiss clamp`; run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Total budget: `--max-hypotheses` (default 10) |
-| `do <request>` | Send one prompt and print raw output, with no review or learn phase |
-| `init` | Bootstrap pre-commit hooks and Git LFS configuration |
-| `ground` | If `grounding.md` is missing, create it with `write_grounding.md`; then run `check_sync.md`, and when it is not `LGTM`, run `improve_grounding.md`; repeat until `check_sync.md` reports `LGTM` |
+| Workflow | Pre-run quality gates | Phases | Post-run quality gates |
+|---|---|---|---|
+| `code <request>` | Required | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then (optionally) run `learn` | Required |
+| `sync` | Required | Run `kiss clamp` if needed; run `check_sync.md` and `concerns` in a loop until LGTM or the `--max-loops` budget is exhausted (default 5); then run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn` | Required |
+| `tidy` | Not required | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then (optionally) run `learn` | Required |
+| `kpop <request>` | Not required | No quality gates or `kiss clamp`; run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Total budget: `--max-hypotheses` (default 10) | Not required |
+| `do <request>` | Not required | Send one prompt and print raw output, with no review or learn phase | Not required |
+| `init` | Not required | Bootstrap pre-commit hooks and Git LFS configuration | Not required |
+| `ground` | Required | If `grounding.md` is missing, create it with `write_grounding.md`; then run `check_sync.md`, and when it is not `LGTM`, run `improve_grounding.md`; repeat until `check_sync.md` reports `LGTM` | Not required; `ground` does not change source code |
 
 - **Review loops** work by having a reviewer write either `LGTM` or a list of issues to `review.md`. If the review is not `LGTM`, the `concerns` phase reads that file, applies fixes, and the loop repeats. Any `ABORT:` line in `result.md` stops the workflow immediately.
 - **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
@@ -48,10 +48,14 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 
 ## Quality gates
 
-The implementation is only acceptable if all applicable checks pass:
-- `cargo clippy --all-targets --all-features -- -D warnings` (plus pedantic/nursery/cargo)
-- `cargo test`
-- `kiss check`
-- `ruff check` and `pytest -sv tests` (if Python files exist)
+- `pre-commit run --all-files`
+
+Also run any applicable checks not already covered by an equivalent pre-commit hook:
+
+- Rust: `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`
+- Rust: `cargo test`
+- Rust & Python: `kiss check`
+- Python: `ruff check`
+- Python: `pytest -sv tests`
 
 
