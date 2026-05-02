@@ -25,15 +25,26 @@ pub(super) async fn run_coder_session(
     }
 
     if mode.include_sync_check_phase() {
-        super::review_loop::run_sync_check_loop(orchestrator, context).await?;
+        super::review_loop::run_sync_check_loop(
+            orchestrator,
+            context,
+            mode.include_sync_check_phase(),
+        )
+        .await?;
     }
 
-    run_review_loop(orchestrator, context).await
+    run_review_loop(
+        orchestrator,
+        context,
+        mode.include_sync_check_phase(),
+    )
+    .await
 }
 
 async fn run_review_loop(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
+    prepend_sync_header: bool,
 ) -> Result<(), WorkflowError> {
     run_review_phase(
         orchestrator,
@@ -43,6 +54,7 @@ async fn run_review_loop(
             phase_id: "review_1",
             context,
         },
+        prepend_sync_header,
     )
     .await?;
 
@@ -54,6 +66,7 @@ async fn run_review_loop(
             phase_id: "review_2",
             context,
         },
+        prepend_sync_header,
     )
     .await?;
 

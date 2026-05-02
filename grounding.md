@@ -9,6 +9,7 @@ Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cur
 - **Run artifacts** are stored under `_malvin/YYYYMMDD_HHMMSS_<id>/`. Each run records its primary inputs and outputs there, including `plan.md`, `review.md`, `result.md`, and trace logs.
 - **Protected files** are `grounding.md` and `.kissconfig`. Outside the `ground` workflow, they are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`. In the `ground` workflow, `grounding.md` may be authored and refined, and `.kissconfig` is restored at the end of the workflow.
 - **`kiss clamp`** runs automatically before the first agent call when source files exist but `.kissconfig` does not.
+- **`.malvin_checks`** is the user-owned quality-gate file. It contains one shell command per non-empty line and nothing else. If it exists, Malvin never overwrites, edits, sorts, formats, or appends to it. If it is missing, Malvin creates it once with `kiss check`, plus Python checks (`ruff check`, `pytest -sv tests`) when Python code exists or `grounding.md` specifies Python, plus Rust checks (`cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`, `cargo test`) when Rust code exists or `grounding.md` specifies Rust.
 - **Learning** is a post-run phase for runs that are long enough to justify it (at least 5 minutes). It records TRIGGER/ADVICE/CONFIDENCE triples under `.malvin_memory/`.
 - **`ground`** creates `grounding.md` with `write_grounding.md` if it does not already exist, then repeatedly runs `check_sync.md` and `improve_grounding.md` until `check_sync.md` reports `LGTM`.
 
@@ -29,7 +30,8 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 - **Review loops** work by having a reviewer write either `LGTM` or a list of issues to `review.md`. If the review is not `LGTM`, the `concerns` phase reads that file, applies fixes, and the loop repeats. Any `ABORT:` line in `result.md` stops the workflow immediately.
 - **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
 - `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, `ground`, and `kpop`. `do_header.md` is used instead for `do`.
-- "quality gates" are described in `tidy.md`. The same gates are used pre-run and post-run.
+- "quality gates" means running every command in `.malvin_checks`, in order, from the workspace root. The same gates are used pre-run and post-run, and `tidy.md` refers to `.malvin_checks` rather than spelling out separate check commands.
+- If a required post-run quality gate fails, Malvin captures the failing gate command, exit status, stdout, and stderr, sends one additional `tidy.md` prompt with those details, then reruns the post-run quality gates. If the rerun fails, the workflow fails.
 
 ## Output formatting
 

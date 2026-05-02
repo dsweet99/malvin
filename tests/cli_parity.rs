@@ -216,6 +216,69 @@ fn write_fake_command_trace(path: &Path, trace: &Path) {
 }
 
 #[cfg(unix)]
+fn acp_mock_sync_header_capture_js() -> String {
+    let body = r"const fs = require('fs');
+const path = require('path');
+const readline = require('readline');
+let syncCheckAttempts = 0;
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', (line) => {
+  line = line.trim();
+  if (!line) {
+    return;
+  }
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch (e) {
+    return;
+  }
+  const mid = msg.method;
+  const rid = msg.id;
+  if (mid === 'initialize') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'authenticate') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  } else if (mid === 'session/new') {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { sessionId: 't1' } }));
+  } else if (mid === 'session/prompt') {
+    const runRoot = path.join(process.cwd(), '_malvin');
+    const runDirs = fs
+      .readdirSync(runRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    const markerPath = path.join(runRoot, runDirs[0], 'sync_prompt_headers.txt');
+    const promptText = ((((msg.params || {}).prompt || [])[0]) || {}).text || '';
+    const hadHeader = promptText.includes('You are') && promptText.includes('command');
+    const existing = (() => {
+      try {
+        return fs.readFileSync(markerPath, 'utf8');
+      } catch (_) {
+        return '';
+      }
+    })();
+    fs.writeFileSync(markerPath, `${existing}${hadHeader ? 'header\n' : 'missing\n'}`, 'utf8');
+    if (promptText.includes('KPop: Find a discrepancy between the codebase and')) {
+      syncCheckAttempts = syncCheckAttempts + 1;
+      if (syncCheckAttempts === 1) {
+        fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'needs attention\n', 'utf8');
+      } else {
+        fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+      }
+    } else {
+      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
+    }
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: { stopReason: 'end' } }));
+  } else if (rid != null) {
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
+  }
+});
+";
+    body.to_string()
+}
+
+#[cfg(unix)]
 fn run_sync_with_mock_js_max_loops_zero() -> std::process::Output {
     run_sync_with_mock_js(
         &common::acp_mock_code_streaming_update_js(),
@@ -524,6 +587,39 @@ fn sync_runs_check_sync_before_review_1() {
     assert!(
         has_check_sync_log,
         "expected check_sync coder log to capture session/prompt request: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_prepends_header_to_review_prompts() {
+    let (out, _root, workspace) = run_sync_with_mock_js_and_workspace(
+        &acp_mock_sync_header_capture_js(),
+        &["--max-loops", "2"],
+        true,
+        false,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        out.status.success(),
+        "sync should succeed when sync prompts all include header and reviews reach LGTM: {combined:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let marker = std::fs::read_to_string(run_dir.join("sync_prompt_headers.txt"))
+        .expect("read sync_prompt_headers marker");
+    let lines: Vec<&str> = marker.lines().collect();
+    assert!(!lines.is_empty(), "expected header markers to be emitted: {marker:?}");
+    assert!(
+        lines.iter().all(|line| *line == "header"),
+        "expected header prepended to every sync prompt: {marker:?}"
+    );
+    assert!(
+        !marker.contains("missing"),
+        "expected no missing-header prompts: {marker:?}"
     );
 }
 

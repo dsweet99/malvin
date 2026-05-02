@@ -171,6 +171,17 @@ impl Orchestrator<'_> {
             .prompts
             .render(filename, context)
             .map_err(|e| WorkflowError(e.0))?;
+        self.run_coder_prompt_body(prompt, filename, suffix, llm_phase)
+            .await
+    }
+
+    pub(super) async fn run_coder_prompt_body(
+        &mut self,
+        prompt: String,
+        filename: &str,
+        suffix: &str,
+        llm_phase: TimingPhase,
+    ) -> Result<(), WorkflowError> {
         let stem = prompt_md_stem(filename);
         let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
         let run_result = self

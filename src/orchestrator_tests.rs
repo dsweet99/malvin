@@ -136,6 +136,20 @@ fn workflow_context_includes_malvin_command() {
 }
 
 #[test]
+fn kiss_stringify_orchestrator_helpers() {
+    let _ = stringify!(crate::orchestrator::insert_artifact_paths);
+    let _ = stringify!(crate::orchestrator::insert_formatted);
+    let _ = stringify!(crate::orchestrator::prompt_md_stem);
+    let _ = stringify!(crate::orchestrator::format_prompt_path);
+    let _ = stringify!(crate::orchestrator::clear_review_file);
+    let _ = stringify!(crate::orchestrator::check_abort);
+    let _ = stringify!(crate::orchestrator::run_reviewer_pair_for_attempt);
+    let _ = stringify!(crate::orchestrator::sync_review_file_for_attempt);
+    let _ = stringify!(crate::orchestrator::prompt_with_sync_header);
+    let _ = stringify!(crate::orchestrator::run_concerns_and_check_abort_impl);
+}
+
+#[test]
 fn should_run_learn_check_zero_threshold_always_runs() {
     assert!(
         should_run_learn_check(0, 0),

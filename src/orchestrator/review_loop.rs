@@ -1,19 +1,23 @@
-use crate::acp::{AgentError, ReviewerPromptPair};
 use crate::review_sync::is_lgtm_str;
 use crate::run_timing::{ReviewPairId, TimingPhase};
 use std::collections::HashMap;
-use std::path::Path;
 
 use super::Orchestrator;
 use super::WorkflowError;
-use super::check_abort;
 use super::clear_review_file;
-use super::prompt_md_stem;
+use crate::orchestrator_review_loop_helpers::{
+    run_concerns_and_check_abort_impl,
+    run_reviewer_pair_for_attempt,
+    sync_review_file_for_attempt,
+    SyncConcernsContext,
+    prompt_with_sync_header,
+};
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
 
 pub(super) async fn run_review_phase(
     orchestrator: &mut Orchestrator<'_>,
     phase: ReviewPhaseArgs<'_>,
+    prepend_sync_header: bool,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
 
@@ -26,7 +30,7 @@ pub(super) async fn run_review_phase(
             review_path: &review_path,
             context: phase.context,
         };
-        if review_phase_single_attempt(orchestrator, ctx).await? {
+        if review_phase_single_attempt(orchestrator, ctx, prepend_sync_header).await? {
             return Ok(());
         }
     }
@@ -39,6 +43,7 @@ pub(super) async fn run_review_phase(
 pub(super) async fn run_sync_check_loop(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
+    prepend_sync_header: bool,
 ) -> Result<(), WorkflowError> {
     let review_path = orchestrator.artifacts.artifact_review_md();
     for attempt in 1..=orchestrator.config.max_loops.max(1) {
@@ -50,7 +55,7 @@ pub(super) async fn run_sync_check_loop(
             review_path: &review_path,
             context,
         };
-        if run_sync_check_single_attempt(orchestrator, ctx).await? {
+        if run_sync_check_single_attempt(orchestrator, ctx, prepend_sync_header).await? {
             return Ok(());
         }
     }
@@ -62,6 +67,7 @@ pub(super) async fn run_sync_check_loop(
 async fn review_phase_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: ReviewAttemptCtx<'_>,
+    prepend_sync_header: bool,
 ) -> Result<bool, WorkflowError> {
     let workspace_review_path = orchestrator.artifacts.workspace_review_md();
     (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
@@ -71,10 +77,12 @@ async fn review_phase_single_attempt(
     clear_review_file(&workspace_review_path)
         .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
 
-    let review_body = orchestrator
-        .prompts
-        .render(ctx.review_prompt, ctx.context)
-        .map_err(|e| WorkflowError(e.0))?;
+    let review_body = prompt_with_sync_header(
+        orchestrator,
+        ctx.review_prompt,
+        ctx.context,
+        prepend_sync_header,
+    )?;
 
     let pair_id = match ctx.phase_id {
         "review_2" => ReviewPairId::Two,
@@ -88,34 +96,32 @@ async fn review_phase_single_attempt(
         orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
-    run_concerns_and_check_abort(orchestrator, &ctx).await
+    run_concerns_and_check_abort(orchestrator, &ctx, "attempt", prepend_sync_header).await
 }
 
 async fn run_concerns_and_check_abort(
     orchestrator: &mut Orchestrator<'_>,
     ctx: &ReviewAttemptCtx<'_>,
+    concern_suffix_kind: &str,
+    prepend_sync_header: bool,
 ) -> Result<bool, WorkflowError> {
-    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
-        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-    }
-    (orchestrator.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
-    orchestrator
-        .run_coder_prompt(
-            "concerns.md",
-            ctx.context,
-            &format!("{}_attempt_{}", ctx.phase_id, ctx.attempt),
-            TimingPhase::Concerns,
-        )
-        .await?;
-    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
-        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-    }
-    Ok(false)
+    let concern_suffix = format!("{0}_{1}_{2}", ctx.phase_id, concern_suffix_kind, ctx.attempt);
+    run_concerns_and_check_abort_impl(
+        orchestrator,
+        &SyncConcernsContext {
+            attempt: ctx.attempt,
+            concern_suffix: &concern_suffix,
+            context: ctx.context,
+            prepend_sync_header,
+        },
+    )
+    .await
 }
 
 async fn run_sync_check_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: ReviewAttemptCtx<'_>,
+    prepend_sync_header: bool,
 ) -> Result<bool, WorkflowError> {
     let workspace_review_path = orchestrator.artifacts.workspace_review_md();
     (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
@@ -125,10 +131,16 @@ async fn run_sync_check_single_attempt(
     clear_review_file(&workspace_review_path)
         .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
 
+    let check_prompt = prompt_with_sync_header(
+        orchestrator,
+        ctx.review_prompt,
+        ctx.context,
+        prepend_sync_header,
+    )?;
     orchestrator
-        .run_coder_prompt(
+        .run_coder_prompt_body(
+            check_prompt,
             ctx.review_prompt,
-            ctx.context,
             &format!("{}_attempt_{}", ctx.phase_id, ctx.attempt),
             TimingPhase::SyncCheck,
         )
@@ -140,97 +152,13 @@ async fn run_sync_check_single_attempt(
         orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
-    run_sync_concerns_and_check_abort(orchestrator, &ctx).await
-}
-
-async fn run_sync_concerns_and_check_abort(
-    orchestrator: &mut Orchestrator<'_>,
-    ctx: &ReviewAttemptCtx<'_>,
-) -> Result<bool, WorkflowError> {
-    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
-        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-    }
-    (orchestrator.progress_callback)(&format!("Concerns (attempt {})", ctx.attempt));
-    orchestrator
-        .run_coder_prompt(
-            "concerns.md",
-            ctx.context,
-            &format!("{}_concerns_{}", ctx.phase_id, ctx.attempt),
-            TimingPhase::Concerns,
-        )
-        .await?;
-    if let Some(abort_msg) = check_abort(&orchestrator.artifacts.artifact_result_md()) {
-        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-    }
-    Ok(false)
-}
-
-async fn run_reviewer_pair_for_attempt(
-    orchestrator: &mut Orchestrator<'_>,
-    ctx: &ReviewAttemptCtx<'_>,
-    review_body: &str,
-    pair_id: ReviewPairId,
-) -> Result<(), WorkflowError> {
-    let stem = prompt_md_stem(ctx.review_prompt);
-    let review_log = orchestrator
-        .artifacts
-        .log_path(&format!("reviewer_{stem}_attempt_{}", ctx.attempt));
-
-    let pair = ReviewerPromptPair {
-        cwd: &orchestrator.artifacts.work_dir,
-        workspace_review_path: &orchestrator.artifacts.workspace_review_md(),
-        artifact_review_path: ctx.review_path,
-        review_body,
-        review_who: stem,
-        review_log: &review_log,
-    };
-    orchestrator
-        .client
-        .run_reviewer_review(
-            pair,
-            pair_id,
-            crate::acp::ReviewerRestorePolicy::RestoreWorkspace,
-        )
-        .await
-        .map_err(|e: AgentError| WorkflowError(e.0))?;
-    Ok(())
-}
-
-fn sync_review_file_for_attempt(
-    artifact_review_path: &Path,
-    workspace_review_path: &Path,
-) -> Result<Option<String>, WorkflowError> {
-    if workspace_review_path.exists() {
-        let workspace_text = std::fs::read_to_string(workspace_review_path).map_err(|e| {
-            WorkflowError(format!(
-                "failed to read workspace review file: {}: {e}",
-                workspace_review_path.display()
-            ))
-        })?;
-        if !workspace_text.trim().is_empty() {
-            std::fs::write(artifact_review_path, &workspace_text).map_err(|e| {
-                WorkflowError(format!(
-                    "failed to sync workspace review into artifact: {}: {e}",
-                    artifact_review_path.display()
-                ))
-            })?;
-            return Ok(Some(workspace_text));
-        }
-    }
-
-    if artifact_review_path.exists() {
-        let artifact_text = std::fs::read_to_string(artifact_review_path).map_err(|e| {
-            WorkflowError(format!(
-                "failed to read artifact review file: {}: {e}",
-                artifact_review_path.display()
-            ))
-        })?;
-        if !artifact_text.trim().is_empty() {
-            return Ok(Some(artifact_text));
-        }
-    }
-
-    Ok(None)
+    run_concerns_and_check_abort(
+        orchestrator,
+        &ctx,
+        "concerns",
+        prepend_sync_header,
+    )
+    .await
 }
 
 #[cfg(test)]
@@ -240,10 +168,7 @@ mod kiss_coverage_tests {
         let _ = stringify!(super::run_review_phase);
         let _ = stringify!(super::run_sync_check_loop);
         let _ = stringify!(super::review_phase_single_attempt);
-        let _ = stringify!(super::run_concerns_and_check_abort);
         let _ = stringify!(super::run_sync_check_single_attempt);
-        let _ = stringify!(super::run_sync_concerns_and_check_abort);
-        let _ = stringify!(super::run_reviewer_pair_for_attempt);
-        let _ = stringify!(super::sync_review_file_for_attempt);
+        let _ = stringify!(super::run_concerns_and_check_abort);
     }
 }

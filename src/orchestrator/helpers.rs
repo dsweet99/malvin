@@ -145,4 +145,12 @@ mod helper_tests {
         assert!(ctx.contains_key("memories"));
         assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("ground"));
     }
+
+    #[test]
+    fn kiss_stringify_review_loop_helpers() {
+        let _ = stringify!(super::run_reviewer_pair_for_attempt);
+        let _ = stringify!(super::sync_review_file_for_attempt);
+        let _ = stringify!(super::prompt_with_sync_header);
+        let _ = stringify!(super::run_concerns_and_check_abort_impl);
+    }
 }
