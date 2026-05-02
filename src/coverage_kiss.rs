@@ -166,6 +166,7 @@ fn kiss_stringify_prompts() {
 
 #[test]
 fn kiss_stringify_repo_gates() {
+    let _ = stringify!(crate::repo_gates::KISS_CHECK_COMMAND);
     let _ = stringify!(crate::repo_gates::should_run_workspace_gates);
     let _ = stringify!(crate::repo_gates::gate_command_lines);
     let _ = stringify!(crate::repo_gates::prompt_quality_gates_markdown);

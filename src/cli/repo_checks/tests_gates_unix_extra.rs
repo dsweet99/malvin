@@ -54,6 +54,27 @@ fn run_repo_workspace_gates_does_not_create_malvin_checks() {
 }
 
 #[test]
+fn run_repo_workspace_gates_runs_tree_builtins_without_git_or_malvin_checks() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path();
+    fs::write(
+        work.join("Cargo.toml"),
+        "[package]\nname = 'm'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
+    let bin_dir = tempfile::tempdir().unwrap();
+    let trace = bin_dir.path().join("trace.log");
+    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo"], 0);
+    let _guard = set_fake_command_dir(bin_dir.path());
+    let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
+    assert!(result.is_ok());
+    let log = fs::read_to_string(&trace).unwrap();
+    assert!(log_contains_command(&log, "kiss check"));
+    assert!(log_contains_command(&log, "cargo clippy"));
+    assert!(log_contains_command(&log, "cargo test"));
+}
+
+#[test]
 fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();

@@ -12,8 +12,9 @@ use super::types::{RepoGateFailure, RepoGateOutput};
 /// Workspace quality gates for CLI workflows (`code`, `sync`, `tidy`, `ground`, …).
 ///
 /// Calls [`prepare_repo_workspace`] first (`kiss clamp` when applicable).
-/// Runs Malvin's built-in gate commands for the workspace, then non-empty lines from
-/// `.malvin_checks` when that file exists. Does not run `pre-commit`. Never creates or edits `.malvin_checks`.
+/// Runs [`repo_gates::gate_command_lines`] in order: built-ins from the workspace tree, then non-empty
+/// lines from `.malvin_checks` when that file exists. Does not run `pre-commit`. Never creates or edits
+/// `.malvin_checks`.
 /// With `run_log_dir: Some(path)`, each gate line is also appended to `path/quality_checks.log`.
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
@@ -88,10 +89,8 @@ fn run_quality_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    if !repo_gates::should_run_workspace_gates(work_dir) {
-        return Ok(());
-    }
-    let commands = repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
+    let commands =
+        repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
     run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }
 

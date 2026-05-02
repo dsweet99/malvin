@@ -4,6 +4,8 @@ use std::path::Path;
 
 pub const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
+pub const KISS_CHECK_COMMAND: &str = "kiss check";
+
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
 pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc";
@@ -16,7 +18,7 @@ pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
-    let mut out = vec!["kiss check".to_string()];
+    let mut out = vec![KISS_CHECK_COMMAND.to_string()];
     let (has_py, has_pytest) = python_ruff_and_pytest_flags(work_dir);
     if has_py {
         out.push("ruff check .".to_string());
@@ -35,11 +37,7 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
 }
 
 pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> {
-    let lines = if should_run_workspace_gates(work_dir) {
-        gate_command_lines(work_dir)?
-    } else {
-        Vec::new()
-    };
+    let lines = gate_command_lines(work_dir)?;
     Ok(format_quality_gates_markdown(&lines))
 }
 
@@ -134,7 +132,7 @@ mod tests {
         )
         .unwrap();
         let g = gate_command_lines(w).unwrap();
-        assert!(g.iter().any(|c| c == "kiss check"));
+        assert!(g.iter().any(|c| c == KISS_CHECK_COMMAND));
         assert!(!g.iter().any(|c| c.starts_with("ruff")));
         assert!(g.iter().any(|c| c.starts_with("cargo clippy")));
     }
@@ -161,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn prompt_quality_gates_empty_without_git_or_malvin_checks() {
+    fn prompt_quality_gates_includes_rust_builtin_without_git_when_cargo_toml_present() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
         fs::write(
@@ -169,6 +167,9 @@ mod tests {
             "[package]\nname='x'\nversion='0.1.0'\n",
         )
         .unwrap();
-        assert_eq!(prompt_quality_gates_markdown(w).unwrap(), "");
+        let md = prompt_quality_gates_markdown(w).unwrap();
+        assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
+        assert!(md.contains("cargo clippy"));
+        assert!(md.contains("cargo test"));
     }
 }
