@@ -2,6 +2,17 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use std::path::Path;
 use std::process::Command;
 
+const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
+
+const DEFAULT_MALVIN_CHECKS: [&str; 1] = ["kiss check"];
+
+const DEFAULT_RUST_CHECKS: [&str; 2] = [
+    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc",
+    "cargo test",
+];
+
+const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
+
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
@@ -55,50 +66,108 @@ fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), Stri
     if has_path(work_dir.join(".pre-commit-config.yaml")) {
         return run_pre_commit_checks(work_dir, output);
     }
-    if has_path(work_dir.join(".git")) {
-        run_check_command(work_dir, output, &["kiss", "check"], "kiss check")?;
-    }
-    if has_path(work_dir.join("Cargo.toml")) {
-        run_check_command(
-            work_dir,
-            output,
-            &[
-                "cargo",
-                "clippy",
-                "--all-targets",
-                "--all-features",
-                "--",
-                "-D",
-                "warnings",
-                "-W",
-                "clippy::pedantic",
-                "-W",
-                "clippy::nursery",
-                "-W",
-                "clippy::cargo",
-                "-A",
-                "clippy::must_use_candidate",
-                "-A",
-                "clippy::missing_errors_doc",
-                "-A",
-                "clippy::missing_panics_doc",
-            ],
-            "cargo clippy",
-        )?;
-        run_check_command(work_dir, output, &["cargo", "test"], "cargo test")?;
-    }
-    if has_python_file(work_dir) {
-        run_check_command(work_dir, output, &["ruff", "check", "."], "ruff check")?;
-        if has_tests_dir(work_dir) {
-            run_check_command(
-                work_dir,
-                output,
-                &["pytest", "-sv", "tests"],
-                "pytest -sv tests",
-            )?;
+    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    let commands = if checks_path.is_file() {
+        load_malvin_checks(&checks_path)?
+    } else {
+        if !has_path(work_dir.join(".git")) {
+            return Ok(());
         }
+        let checks = default_malvin_checks(work_dir);
+        write_default_malvin_checks(&checks_path, &checks, output)?;
+        checks
+    };
+    run_malvin_checks(work_dir, output, &commands)
+}
+
+fn run_malvin_checks(work_dir: &Path, output: RepoGateOutput, commands: &[String]) -> Result<(), String> {
+    for command in commands.iter().filter(|c| !c.trim().is_empty()) {
+        run_shell_command_line(work_dir, output, command)?;
     }
     Ok(())
+}
+
+fn default_malvin_checks(work_dir: &Path) -> Vec<String> {
+    let mut checks: Vec<String> = DEFAULT_MALVIN_CHECKS.iter().map(|cmd| (*cmd).to_string()).collect();
+    if has_path(work_dir.join("Cargo.toml")) {
+        checks.extend(DEFAULT_RUST_CHECKS.iter().map(|check| (*check).to_string()));
+    }
+    if has_python_file(work_dir) {
+        checks.push("ruff check .".to_string());
+        if has_tests_dir(work_dir) {
+            checks.push(DEFAULT_PYTEST_CHECK.to_string());
+        }
+    }
+    checks
+}
+
+fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
+    let raw = std::fs::read_to_string(checks_path)
+        .map_err(|e| format!("read {}: {e}", checks_path.display()))?;
+    Ok(raw
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(std::string::ToString::to_string)
+        .collect())
+}
+
+fn write_default_malvin_checks(path: &Path, checks: &[String], output: RepoGateOutput) -> Result<(), String> {
+    let contents = checks.join("\n") + "\n";
+    std::fs::write(path, contents)
+        .map_err(|e| format!("create {}: {e}", path.display()))?;
+    emit_repo_gate_line(output, &format!("Created {} with default quality checks", path.display()));
+    Ok(())
+}
+
+const fn shell_binary() -> (&'static str, &'static str) {
+    if cfg!(windows) {
+        ("cmd", "/C")
+    } else {
+        ("sh", "-c")
+    }
+}
+
+fn run_shell_command_line(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    command: &str,
+) -> Result<(), String> {
+    let command_line = command.trim();
+    if command_line.is_empty() {
+        return Ok(());
+    }
+    emit_repo_gate_line(output, &format!("Running `{command_line}`"));
+    let (shell, arg) = shell_binary();
+    let mut command = Command::new(shell);
+    command.arg(arg).arg(command_line).current_dir(work_dir);
+    #[cfg(test)]
+    apply_fake_path_if_present(&mut command);
+    let status = command
+        .status()
+        .map_err(|e| format!("`{command_line}` failed to start: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "`{command_line}` failed (exit {}): {command_line}",
+            status
+                .code()
+                .map_or_else(|| "signal".to_string(), |code| code.to_string()),
+        ))
+    }
+}
+
+#[cfg(test)]
+fn apply_fake_path_if_present(command: &mut Command) {
+    if let Some(fake_dir) = TEST_FAKE_COMMAND_DIR.with(|dir| dir.borrow().as_ref().cloned()) {
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        let path = std::env::var("PATH").unwrap_or_default();
+        let mut path_with_fake = fake_dir.display().to_string();
+        path_with_fake.push(separator);
+        path_with_fake.push_str(&path);
+        command.env("PATH", path_with_fake);
+    }
 }
 
 fn run_pre_commit_checks(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
@@ -186,34 +255,6 @@ fn set_fake_command_dir(path: &Path) -> FakeCommandDirGuard {
 
 fn run_command_for(command: &str) -> std::path::PathBuf {
     test_fake_command_path(command).unwrap_or_else(|| command.into())
-}
-
-fn run_check_command(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    command_args: &[&str],
-    friendly_label: &str,
-) -> Result<(), String> {
-    if command_args.is_empty() {
-        return Err("invalid check command".to_string());
-    }
-    emit_repo_gate_line(output, &format!("Running `{friendly_label}`"));
-    let command_binary = run_command_for(command_args[0]);
-    let status = Command::new(command_binary)
-        .args(&command_args[1..])
-        .current_dir(work_dir)
-        .status()
-        .map_err(|e| format!("`{friendly_label}` failed to start: {e}"))?;
-    if status.success() {
-        return Ok(());
-    }
-    Err(format!(
-        "`{friendly_label}` failed (exit {}): {}",
-        status
-            .code()
-            .map_or_else(|| "signal".to_string(), |code| code.to_string()),
-        friendly_label
-    ))
 }
 
 /// Touch `<work_dir>/grounding.md` and `<work_dir>/.malvin_memory/style.md` when missing.
@@ -523,6 +564,7 @@ mod tests {
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
         fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").unwrap();
+        fs::write(work.join(".malvin_checks"), "echo should not run\n").unwrap();
         fs::write(
             work.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -563,6 +605,104 @@ mod tests {
         assert!(!log_contains_command(&log, "kiss check"));
         assert!(!log_contains_command(&log, "cargo clippy"));
         assert!(!log_contains_command(&log, "ruff check"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_repo_workspace_gates_executes_custom_malvin_checks() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(
+            work.join(".malvin_checks"),
+            "kiss check\ncustom --option\n",
+        )
+        .unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let make_script = |name: &str, body: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(&path, body).unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script(
+            "kiss",
+            &format!("#!/bin/sh\necho \"kiss $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
+            "custom",
+            &format!(
+                "#!/bin/sh\necho \"custom $@\" >> \"{trace_for_script}\"\nexit 0\n"
+            ),
+        );
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "kiss check"));
+        assert!(log_contains_command(&log, "custom --option"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_repo_workspace_gates_creates_default_malvin_checks_when_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
+        fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+        fs::write(work.join("script.py"), "print('ok')\n").unwrap();
+        fs::create_dir(work.join("tests")).unwrap();
+        let default_checks = work.join(".malvin_checks");
+        let before = std::fs::metadata(&default_checks).is_ok();
+        assert!(!before);
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        let trace_for_script = trace.to_string_lossy().to_string();
+        let make_script = |name: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(
+                &path,
+                format!("#!/bin/sh\necho \"{name} $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+            )
+            .unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script("kiss");
+        make_script("ruff");
+        make_script("pytest");
+        make_script("cargo");
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+
+        assert!(result.is_ok());
+        assert!(default_checks.is_file());
+        let checks = fs::read_to_string(&default_checks).unwrap();
+        assert!(checks.contains("kiss check"));
+        assert!(checks.contains("ruff check ."));
+        assert!(checks.contains("pytest -sv tests"));
+        assert!(checks.contains("cargo clippy --all-targets --all-features -- -D warnings"));
+        assert!(checks.contains("cargo test"));
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "kiss check"));
+        assert!(log_contains_command(&log, "ruff check ."));
+        assert!(log_contains_command(&log, "pytest -sv tests"));
+        assert!(log_contains_command(&log, "cargo clippy --all-targets --all-features --"));
+        assert!(log_contains_command(&log, "cargo test"));
     }
 
     #[cfg(unix)]
