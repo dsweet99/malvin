@@ -5,14 +5,11 @@ use std::collections::HashMap;
 use super::Orchestrator;
 use super::WorkflowError;
 use super::clear_review_file;
-use crate::orchestrator_review_loop_helpers::{
-    run_concerns_and_check_abort_impl,
-    run_reviewer_pair_for_attempt,
-    sync_review_file_for_attempt,
-    SyncConcernsContext,
-    prompt_with_sync_header,
-};
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
+use crate::orchestrator_review_loop_helpers::{
+    SyncConcernsContext, prompt_with_sync_header, run_concerns_and_check_abort_impl,
+    run_reviewer_pair_for_attempt, sync_review_file_for_attempt,
+};
 
 pub(super) async fn run_review_phase(
     orchestrator: &mut Orchestrator<'_>,
@@ -105,7 +102,10 @@ async fn run_concerns_and_check_abort(
     concern_suffix_kind: &str,
     prepend_sync_header: bool,
 ) -> Result<bool, WorkflowError> {
-    let concern_suffix = format!("{0}_{1}_{2}", ctx.phase_id, concern_suffix_kind, ctx.attempt);
+    let concern_suffix = format!(
+        "{0}_{1}_{2}",
+        ctx.phase_id, concern_suffix_kind, ctx.attempt
+    );
     run_concerns_and_check_abort_impl(
         orchestrator,
         &SyncConcernsContext {
@@ -152,13 +152,7 @@ async fn run_sync_check_single_attempt(
         orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
-    run_concerns_and_check_abort(
-        orchestrator,
-        &ctx,
-        "concerns",
-        prepend_sync_header,
-    )
-    .await
+    run_concerns_and_check_abort(orchestrator, &ctx, "concerns", prepend_sync_header).await
 }
 
 #[cfg(test)]

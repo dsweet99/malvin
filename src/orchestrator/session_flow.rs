@@ -33,12 +33,7 @@ pub(super) async fn run_coder_session(
         .await?;
     }
 
-    run_review_loop(
-        orchestrator,
-        context,
-        mode.include_sync_check_phase(),
-    )
-    .await
+    run_review_loop(orchestrator, context, mode.include_sync_check_phase()).await
 }
 
 async fn run_review_loop(

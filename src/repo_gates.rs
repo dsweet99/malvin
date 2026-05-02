@@ -122,7 +122,11 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
         fs::create_dir(w.join(".git")).unwrap();
-        fs::write(w.join("Cargo.toml"), "[package]\nname = 'm'\nversion = '0.1.0'\n").unwrap();
+        fs::write(
+            w.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
         let g = gate_command_lines(w).unwrap();
         assert!(g.iter().any(|c| c == "kiss check"));
         assert!(!g.iter().any(|c| c.starts_with("ruff")));
@@ -154,7 +158,11 @@ mod tests {
     fn prompt_quality_gates_empty_without_git_or_malvin_checks() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
-        fs::write(w.join("Cargo.toml"), "[package]\nname='x'\nversion='0.1.0'\n").unwrap();
+        fs::write(
+            w.join("Cargo.toml"),
+            "[package]\nname='x'\nversion='0.1.0'\n",
+        )
+        .unwrap();
         assert_eq!(prompt_quality_gates_markdown(w).unwrap(), "");
     }
 }

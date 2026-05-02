@@ -68,7 +68,10 @@ pub fn prepare_repo_workspace(work_dir: &Path, output: RepoGateOutput) -> Result
     prepare_repo_workspace_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
 }
 
-fn prepare_repo_workspace_with_details(work_dir: &Path, output: RepoGateOutput) -> Result<(), RepoGateFailure> {
+fn prepare_repo_workspace_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), RepoGateFailure> {
     ensure_kiss_clamp_if_needed_with_details(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
     Ok(())
@@ -104,7 +107,10 @@ fn source_like_files_present(root: &Path) -> bool {
     super::kiss_clamp::has_source_files(root)
 }
 
-fn run_quality_gates_with_details(work_dir: &Path, output: RepoGateOutput) -> Result<(), RepoGateFailure> {
+fn run_quality_gates_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), RepoGateFailure> {
     if !repo_gates::should_run_workspace_gates(work_dir) {
         return Ok(());
     }
@@ -311,7 +317,10 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{prepare_repo_workspace, run_repo_workspace_gates, RepoGateOutput, ensure_workspace_style_markers};
+    use super::{
+        RepoGateOutput, ensure_workspace_style_markers, prepare_repo_workspace,
+        run_repo_workspace_gates,
+    };
     use malvin::repo_gates;
     use std::fs;
     #[cfg(unix)]
@@ -574,11 +583,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
-        fs::write(
-            work.join(".malvin_checks"),
-            "custom --option\n",
-        )
-        .unwrap();
+        fs::write(work.join(".malvin_checks"), "custom --option\n").unwrap();
 
         let bin_dir = tempfile::tempdir().unwrap();
         let trace = bin_dir.path().join("trace.log");
@@ -596,9 +601,7 @@ mod tests {
         );
         make_script(
             "custom",
-            &format!(
-                "#!/bin/sh\necho \"custom $@\" >> \"{trace_for_script}\"\nexit 0\n"
-            ),
+            &format!("#!/bin/sh\necho \"custom $@\" >> \"{trace_for_script}\"\nexit 0\n"),
         );
         let _guard = super::set_fake_command_dir(bin_dir.path());
 

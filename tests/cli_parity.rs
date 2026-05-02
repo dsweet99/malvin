@@ -35,13 +35,13 @@ fn run_root_help_output() -> std::process::Output {
 
 #[cfg(unix)]
 fn contains_help_subcommand(help: &str, subcommand: &str) -> bool {
-    help.lines().any(|line| line.split_whitespace().next() == Some(subcommand))
+    help.lines()
+        .any(|line| line.split_whitespace().next() == Some(subcommand))
 }
 
 #[cfg(unix)]
 fn help_option_count(help: &str, option: &str) -> usize {
-    help
-        .lines()
+    help.lines()
         .filter(|line| line.split_whitespace().any(|token| token == option))
         .count()
 }
@@ -51,15 +51,14 @@ use common::{
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
-    acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
-    acp_mock_ground_check_abort_js, acp_mock_ground_check_tamper_kissconfig_js,
-    acp_mock_ground_loop_converges_with_missing_grounding_js,
-    acp_mock_ground_never_lgtm_loop_js,
-    run_ground_with_mock_js_with_setup,
-    acp_mock_ground_write_tamper_kissconfig_js,
+    acp_mock_code_streaming_update_js, acp_mock_ground_check_abort_js,
+    acp_mock_ground_check_tamper_kissconfig_js,
+    acp_mock_ground_loop_converges_with_missing_grounding_js, acp_mock_ground_never_lgtm_loop_js,
+    acp_mock_ground_write_tamper_kissconfig_js, acp_mock_kpop_tamper_then_restore_js,
     acp_mock_sync_check_sync_non_exact_lgtm_js, acp_mock_sync_reviewer_restore_between_attempts_js,
-    acp_mock_sync_tamper_and_review_restore_js,
-    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
+    acp_mock_sync_tamper_and_review_restore_js, command_output_with_timeout,
+    run_ground_with_mock_js_with_setup, test_home_workspace, write_fake_kiss,
+    write_mock_executable,
 };
 #[cfg(all(unix, target_os = "linux"))]
 use common::{
@@ -653,7 +652,10 @@ fn sync_prepends_header_to_review_prompts() {
     let marker = std::fs::read_to_string(run_dir.join("sync_prompt_headers.txt"))
         .expect("read sync_prompt_headers marker");
     let lines: Vec<&str> = marker.lines().collect();
-    assert!(!lines.is_empty(), "expected header markers to be emitted: {marker:?}");
+    assert!(
+        !lines.is_empty(),
+        "expected header markers to be emitted: {marker:?}"
+    );
     assert!(
         lines.iter().all(|line| *line == "header"),
         "expected header prepended to every sync prompt: {marker:?}"
@@ -785,12 +787,8 @@ fn ground_max_loops_bounds_non_lgtm_grounding_loop() {
 #[test]
 #[cfg(unix)]
 fn ground_aborts_from_check_prompt_result() {
-    let (out, _root, workspace) = run_ground_with_mock_js_with_setup(
-        &acp_mock_ground_check_abort_js(),
-        true,
-        true,
-        |_| {},
-    );
+    let (out, _root, workspace) =
+        run_ground_with_mock_js_with_setup(&acp_mock_ground_check_abort_js(), true, true, |_| {});
     assert!(
         !out.status.success(),
         "ground command should fail on check result ABORT: {out:?}"
@@ -870,9 +868,18 @@ fn ground_write_improve_and_check_prompts_are_reachable_and_rendered() {
     let run_dir = only_run_dir(&workspace);
     let markers = std::fs::read_to_string(run_dir.join("ground_prompt_visits.txt"))
         .expect("read marker file");
-    assert!(markers.contains("write"), "expected write prompt path: {markers:?}");
-    assert!(markers.contains("check"), "expected check prompt path: {markers:?}");
-    assert!(markers.contains("improve"), "expected improve prompt path: {markers:?}");
+    assert!(
+        markers.contains("write"),
+        "expected write prompt path: {markers:?}"
+    );
+    assert!(
+        markers.contains("check"),
+        "expected check prompt path: {markers:?}"
+    );
+    assert!(
+        markers.contains("improve"),
+        "expected improve prompt path: {markers:?}"
+    );
     assert!(
         !run_dir.join("result.md").exists(),
         "unrendered placeholder should fail test via result.md"
@@ -887,7 +894,10 @@ fn ground_runs_repo_workspace_gates_when_source_repo_markers_exist() {
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
 
     let mock = root.path().join("mock-agent-acp-ground-gates");
-    write_mock_executable(&mock, &acp_mock_ground_loop_converges_with_missing_grounding_js());
+    write_mock_executable(
+        &mock,
+        &acp_mock_ground_loop_converges_with_missing_grounding_js(),
+    );
 
     let trace = root.path().join("quality-trace.log");
     for name in ["kiss", "cargo", "ruff", "pytest"] {
@@ -904,7 +914,11 @@ fn ground_runs_repo_workspace_gates_when_source_repo_markers_exist() {
     std::fs::write(workspace.join("src/main.rs"), "fn main() {}\n").expect("write src");
     std::fs::write(workspace.join("script.py"), "print('ok')\n").expect("write python");
     std::fs::create_dir_all(workspace.join("tests")).expect("mkdir tests");
-    std::fs::write(workspace.join("tests/test_m.py"), "def test_x():\n    pass\n").expect("write test");
+    std::fs::write(
+        workspace.join("tests/test_m.py"),
+        "def test_x():\n    pass\n",
+    )
+    .expect("write test");
     std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
 
     let original_path = std::env::var("PATH").unwrap_or_default();
@@ -921,7 +935,10 @@ fn ground_runs_repo_workspace_gates_when_source_repo_markers_exist() {
     )
     .expect("spawn malvin ground");
 
-    assert!(out.status.success(), "ground run with gates should succeed: {out:?}");
+    assert!(
+        out.status.success(),
+        "ground run with gates should succeed: {out:?}"
+    );
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(
         trace_log.contains("kiss clamp"),
@@ -1463,8 +1480,7 @@ fn help_lists_global_no_markdown_once() {
     let s = String::from_utf8_lossy(&out.stdout);
     let no_markdown_option_lines = help_option_count(&s, "--no-markdown");
     assert_eq!(
-        no_markdown_option_lines,
-        1,
+        no_markdown_option_lines, 1,
         "expected exactly one --no-markdown in root help: {s}"
     );
 }

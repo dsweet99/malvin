@@ -7,10 +7,13 @@ use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 
-use super::repo_checks::{RepoGateFailure, RepoGateOutput, run_repo_workspace_gates, run_repo_workspace_gates_with_details};
+use super::repo_checks::{
+    RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
+    run_repo_workspace_gates_with_details,
+};
+use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 use super::{CodeArgs, SharedOpts};
 use super::{run_emit, timing_merge};
-use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
@@ -142,9 +145,9 @@ pub async fn run_code(
                 &failure,
             )
             .await?;
-            run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged).map_err(
-                |e| format!("post-run gates still failing after one tidy.md retry: {e}"),
-            )?;
+            run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged).map_err(|e| {
+                format!("post-run gates still failing after one tidy.md retry: {e}")
+            })?;
         }
         Err(RepoGateFailure::Message(err)) => return Err(err),
     }

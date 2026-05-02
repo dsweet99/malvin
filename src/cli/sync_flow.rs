@@ -11,11 +11,11 @@ use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
 use std::path::Path;
 
 use super::repo_checks::{self, RepoGateFailure, RepoGateOutput};
+use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
     timing_merge,
 };
-use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 
 pub struct SyncRunSpec {
     pub max_loops: usize,
@@ -152,8 +152,15 @@ pub async fn run_sync(
         };
         orch.run_sync().await.map_err(|e| e.0)
     };
-    timing_merge::merge_acp_with_grounding_restore(sync_result, &artifacts.work_dir, &grounding_backup)?;
-    match repo_checks::run_repo_workspace_gates_with_details(&artifacts.work_dir, RepoGateOutput::Tagged) {
+    timing_merge::merge_acp_with_grounding_restore(
+        sync_result,
+        &artifacts.work_dir,
+        &grounding_backup,
+    )?;
+    match repo_checks::run_repo_workspace_gates_with_details(
+        &artifacts.work_dir,
+        RepoGateOutput::Tagged,
+    ) {
         Ok(()) => {}
         Err(RepoGateFailure::Command(failure)) => {
             run_tidy_prompt_after_post_run_gate_failure(
@@ -164,7 +171,9 @@ pub async fn run_sync(
             )
             .await?;
             repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)
-                .map_err(|e| format!("post-run gates still failing after one tidy.md retry: {e}"))?;
+                .map_err(|e| {
+                    format!("post-run gates still failing after one tidy.md retry: {e}")
+                })?;
         }
         Err(RepoGateFailure::Message(err)) => return Err(err),
     }
