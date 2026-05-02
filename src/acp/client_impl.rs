@@ -71,6 +71,7 @@ impl AgentClient {
         Self {
             model,
             io,
+            prompts_log_run_dir: None,
             style_prompt_path: PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL),
             coder_session: None,
             coder_style_on_next_prompt: false,

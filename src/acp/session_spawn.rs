@@ -94,6 +94,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             raw_output: args.raw_output,
             show_thoughts_on_stdout: args.show_thoughts_on_stdout,
             emit_stdout_markdown: args.emit_stdout_markdown,
+            prompts_log_run_dir: args.prompts_log_run_dir.map(std::path::Path::to_path_buf),
         },
     ))))
 }

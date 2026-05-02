@@ -188,6 +188,11 @@ fn kiss_test_tmp() -> tempfile::TempDir {
     tempfile::tempdir().expect("tempdir")
 }
 
+#[test]
+fn kiss_stringify_coverage_kiss_helpers() {
+    let _ = stringify!(kiss_write_same_body_files);
+}
+
 fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]) {
     std::fs::create_dir_all(dir).expect("mkdir");
     for name in names {

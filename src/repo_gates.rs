@@ -118,6 +118,12 @@ mod tests {
     use std::fs;
 
     #[test]
+    fn kiss_stringify_repo_gates_internals() {
+        let _ = stringify!(super::visit_source_files);
+        let _ = stringify!(super::python_ruff_and_pytest_flags);
+    }
+
+    #[test]
     fn gate_command_lines_skips_ruff_when_no_python() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();

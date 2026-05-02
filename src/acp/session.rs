@@ -45,17 +45,12 @@ async fn do_split_trace_preamble(
     file: &mut tokio::fs::File,
     raw_output: bool,
     split: &DoPromptTraceSplit<'_>,
-) -> Result<(String, &'static str, bool, bool), String> {
+) -> Result<(), String> {
     trace_write_invocation_and_do_split_prompt(file, split).await?;
     if !raw_output {
         crate::output::print_outgoing_prompt_log("do");
     }
-    Ok((
-        crate::output::format_acp_directional_tag_prefix('<', "do"),
-        "do",
-        raw_output,
-        true,
-    ))
+    Ok(())
 }
 
 impl AcpSession {
@@ -177,7 +172,15 @@ impl AcpSession {
                 if !self.0.raw_output {
                     let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
                     crate::output::print_outgoing_prompt_log(outgoing_label);
+                    let who_line = crate::output::format_acp_directional_tag_prefix('>', u.trace_who);
+                    crate::output::print_stdout_text(&who_line, text);
                 }
+                append_prompts_log_uniform(
+                    self.0.prompts_log_run_dir.as_deref(),
+                    u.trace_who,
+                    text,
+                )
+                .await?;
                 (
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
@@ -186,7 +189,24 @@ impl AcpSession {
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
-                do_split_trace_preamble(&mut file, self.0.raw_output, split).await?
+                do_split_trace_preamble(&mut file, self.0.raw_output, split).await?;
+                let parts = DoOutgoingTraceParts {
+                    style_text: split.style_text,
+                    header_text: split.header,
+                    user_text: split.user,
+                };
+                let combined = compose_do_split_prompt_text(&parts);
+                if !self.0.raw_output {
+                    let who_line = crate::output::format_acp_directional_tag_prefix('>', "do");
+                    crate::output::print_stdout_text(&who_line, &combined);
+                }
+                append_prompts_log_do_plain(self.0.prompts_log_run_dir.as_deref(), &parts).await?;
+                (
+                    crate::output::format_acp_directional_tag_prefix('<', "do"),
+                    "do",
+                    self.0.raw_output,
+                    true,
+                )
             }
         };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {

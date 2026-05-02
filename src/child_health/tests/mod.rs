@@ -16,6 +16,11 @@ fn health_snapshot(t0: Instant, cpu: u64, threads: u32, ctxt: Option<u64>) -> Ch
 }
 
 #[test]
+fn kiss_stringify_silence_outcome_from_pair() {
+    let _ = stringify!(super::silence_outcome_from_pair);
+}
+
+#[test]
 fn health_progress_sees_cpu_or_ctxt_changes() {
     let t0 = Instant::now();
     assert!(health_indicates_progress(

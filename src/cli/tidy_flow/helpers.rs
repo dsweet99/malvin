@@ -109,6 +109,7 @@ pub async fn run_tidy_acp(
     grounding_backup: &GroundingBackup,
 ) -> Result<(), String> {
     let timing = input.client.attach_run_timing_for_session();
+    input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
     let begin_res = input
         .client
         .begin_coder_session(&input.artifacts.work_dir)
@@ -218,11 +219,12 @@ pub fn prepare_tidy_run(
     workflow: WorkflowCliOptions,
     run_learn: bool,
 ) -> Result<TidyRunPrep, String> {
-    let client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+    let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let artifacts =
         create_run_artifacts_from_text("tidy", Some(Path::new("."))).map_err(|e| e.to_string())?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     prepare_repo_workspace(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,
@@ -292,6 +294,7 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         timing_guard.set_implement_display_name("tidy");
     }
+    input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
     let begin_result = input.client.begin_coder_session(&input.artifacts.work_dir).await;
     if let Err(e) = begin_result {
         input.client.set_run_timing(None);

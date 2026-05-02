@@ -4,6 +4,12 @@ mod user_home_dir_tests;
 use super::*;
 
 #[test]
+fn kiss_stringify_prompts_guards() {
+    let _ = stringify!(super::enforce_no_unresolved_braces);
+    let _ = stringify!(super::KpopPromptValidation);
+}
+
+#[test]
 fn substitute_replaces_dollar_keys() {
     let mut m = HashMap::new();
     m.insert("plan_path".to_string(), "/p".to_string());

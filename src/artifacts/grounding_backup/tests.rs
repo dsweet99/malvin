@@ -144,6 +144,7 @@ fn kiss_stringify_grounding_backup_units() {
     let _ = stringify!(crate::artifacts::grounding_backup::ProtectedWorkspaceFiles);
     let _ = stringify!(crate::artifacts::grounding_backup::backup_workspace_file);
     let _ = stringify!(crate::artifacts::grounding_backup::restore_workspace_file);
+    let _ = stringify!(super::remove_if_exists);
 }
 
 #[test]

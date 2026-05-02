@@ -62,11 +62,12 @@ fn prepare_sync_artifacts(
     workflow: WorkflowCliOptions,
     run_learn: bool,
 ) -> Result<(AgentClient, RunArtifacts, PromptStore, GroundingBackup), String> {
-    let client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+    let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let artifacts =
         create_run_artifacts_from_text("sync", Some(Path::new("."))).map_err(|e| e.to_string())?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     repo_checks::run_repo_workspace_gates(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,

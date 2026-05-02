@@ -321,6 +321,7 @@ pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Re
     )?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
+    client.prompts_log_run_dir = Some(session.artifacts.run_dir.clone());
     run_emit::emit_run_startup_sequence(
         &session.artifacts,
         shared.tee_startup_stdout(),

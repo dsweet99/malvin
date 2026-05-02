@@ -180,6 +180,7 @@ pub async fn run_kpop(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;
+    client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 

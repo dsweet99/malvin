@@ -7,6 +7,14 @@ use std::collections::HashSet;
 use std::path::Path;
 
 #[test]
+fn kiss_stringify_memory_context_internals() {
+    let _ = stringify!(super::MemoryState);
+    let _ = stringify!(super::emit_if_complete);
+    let _ = stringify!(super::process_memory_line);
+    let _ = stringify!(super::collect_memory_records);
+}
+
+#[test]
 fn parse_memories_skips_incomplete_triples() {
     let out = parse_memories("TRIGGER: one\nADVICE: do thing");
     assert!(out.is_empty());

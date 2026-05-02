@@ -2,6 +2,7 @@
 use super::handshake_types::AcpHandshakeIo;
 use super::session_types::{AcpSessionInner, AcpSpawnArgs, PromptTraceWriter, ResponseTx};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use tokio::process::{Child, ChildStdin, ChildStdout};
@@ -9,7 +10,7 @@ use tokio::sync::{Mutex, Notify};
 
 /// Verbose logging for ACP (bundled for [`SessionChannelState::into_session_inner`]).
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct SessionReaderTelemetry {
     pub acp_verbose: bool,
     /// When true, print raw output without timestamps/prefixes.
@@ -18,6 +19,7 @@ pub struct SessionReaderTelemetry {
     pub show_thoughts_on_stdout: bool,
     /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
+    pub prompts_log_run_dir: Option<PathBuf>,
 }
 
 pub struct SessionChannelState {
@@ -97,6 +99,7 @@ impl SessionChannelState {
             raw_output: telemetry.raw_output,
             show_thoughts_on_stdout: telemetry.show_thoughts_on_stdout,
             emit_stdout_markdown: telemetry.emit_stdout_markdown,
+            prompts_log_run_dir: telemetry.prompts_log_run_dir,
         }
     }
 }

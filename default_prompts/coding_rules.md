@@ -11,6 +11,8 @@ Be sure that all applicable checks pass.
 
 {{ quality_gates }}
 
+When presented with failures or violations, respond to them earnestly. Improve the code in a way that respects the spirit of the quality-gate feedback.
+
 # Tips and Soft Requirements
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
@@ -28,6 +30,7 @@ ALL checks and tests should pass on ALL	files (not just the ones you modified). 
  about "pre-existing" problems. We're here to work. To fix. Be tenacious. There's no excuse
  for not getting ALL checks and tests to pass on ALL files.
 Don't touch .kissconfig ever.
+- Don't touch .kissignore unless you think you've found a bug in `kiss check`.
 Don't add `# noqa` except to ensure correct functioning of the code.
 Don't cheat the tests. Make earnest attempts to pass the linters and unit tests in the spirit
  in which they were designed.

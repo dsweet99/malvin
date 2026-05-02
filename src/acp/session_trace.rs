@@ -136,6 +136,72 @@ pub(crate) async fn trace_write_outgoing_prompt(
     Ok(())
 }
 
+pub(crate) const PROMPTS_LOG_FILE_NAME: &str = "prompts.log";
+
+pub(crate) async fn append_prompts_log_uniform(
+    run_dir: Option<&std::path::Path>,
+    trace_stem: &str,
+    prompt_text: &str,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let Some(dir) = run_dir else {
+        return Ok(());
+    };
+    let path = dir.join(PROMPTS_LOG_FILE_NAME);
+    let mut f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await
+        .map_err(|e| format!("prompts.log open: {e}"))?;
+    let tag = crate::output::format_acp_directional_tag_prefix('>', trace_stem);
+    for line in crate::output::logical_lines(prompt_text) {
+        let l = crate::output::format_line(&tag, line);
+        f.write_all(l.as_bytes())
+            .await
+            .map_err(|e| format!("prompts.log write: {e}"))?;
+        f.write_all(b"\n")
+            .await
+            .map_err(|e| format!("prompts.log nl: {e}"))?;
+    }
+    f.flush()
+        .await
+        .map_err(|e| format!("prompts.log flush: {e}"))?;
+    Ok(())
+}
+
+pub(crate) async fn append_prompts_log_do_plain(
+    run_dir: Option<&std::path::Path>,
+    parts: &DoOutgoingTraceParts<'_>,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let Some(dir) = run_dir else {
+        return Ok(());
+    };
+    let combined = compose_do_split_prompt_text(parts);
+    let path = dir.join(PROMPTS_LOG_FILE_NAME);
+    let mut f = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await
+        .map_err(|e| format!("prompts.log open: {e}"))?;
+    let tag = crate::output::format_acp_directional_tag_prefix('>', "do");
+    for line in crate::output::logical_lines(&combined) {
+        let l = crate::output::format_line(&tag, line);
+        f.write_all(l.as_bytes())
+            .await
+            .map_err(|e| format!("prompts.log write: {e}"))?;
+        f.write_all(b"\n")
+            .await
+            .map_err(|e| format!("prompts.log nl: {e}"))?;
+    }
+    f.flush()
+        .await
+        .map_err(|e| format!("prompts.log flush: {e}"))?;
+    Ok(())
+}
+
 #[test]
 fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_prepare_file);
@@ -152,6 +218,9 @@ fn kiss_stringify_session_trace() {
     let _ = stringify!(trace_write_tagged_body_writes_prefixed_lines);
     let _ = stringify!(trace_write_outgoing_prompt_do_writes_plain_lines_without_tags);
     let _ = stringify!(trace_write_outgoing_prompt_do_preserves_header_user_separator);
+    let _ = stringify!(PROMPTS_LOG_FILE_NAME);
+    let _ = stringify!(append_prompts_log_uniform);
+    let _ = stringify!(append_prompts_log_do_plain);
 }
 
 #[tokio::test]
@@ -198,6 +267,52 @@ async fn trace_write_outgoing_prompt_do_writes_plain_lines_without_tags() {
     assert!(!content.contains(":[>style"));
     assert!(!content.contains(":[>header"));
     assert!(!content.contains(":[>prompt"));
+}
+
+#[tokio::test]
+async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
+    let tmp = tempfile::tempdir().unwrap();
+    let run_dir = tmp.path().join("_malvin").join("r");
+    tokio::fs::create_dir_all(&run_dir).await.unwrap();
+    append_prompts_log_uniform(Some(&run_dir), "implement", "a\nb")
+        .await
+        .unwrap();
+    append_prompts_log_uniform(Some(&run_dir), "implement", "c")
+        .await
+        .unwrap();
+    let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
+        .await
+        .unwrap();
+    assert_eq!(content.matches(">implement").count(), 3);
+    assert!(content.contains("]: a"));
+    assert!(content.contains("]: b"));
+    assert!(content.contains("]: c"));
+}
+
+#[tokio::test]
+async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
+    let tmp = tempfile::tempdir().unwrap();
+    let run_dir = tmp.path().join("_malvin").join("do_run");
+    tokio::fs::create_dir_all(&run_dir).await.unwrap();
+    append_prompts_log_do_plain(
+        Some(&run_dir),
+        &DoOutgoingTraceParts {
+            style_text: None,
+            header_text: "H",
+            user_text: "U",
+        },
+    )
+    .await
+    .unwrap();
+    let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
+        .await
+        .unwrap();
+    assert!(
+        content.contains(">do"),
+        "prompts.log should match stdout directional stem for do: {content}"
+    );
+    assert!(content.contains("]: H"));
+    assert!(content.contains("]: U"));
 }
 
 #[tokio::test]

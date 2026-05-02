@@ -106,6 +106,7 @@ pub async fn run_do(
     };
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
     timing_merge::merge_acp_with_grounding_restore_and_check_abort(
         acp_res,

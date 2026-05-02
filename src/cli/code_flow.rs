@@ -62,10 +62,11 @@ pub fn prepare_code_run(
 ) -> Result<(PromptStore, AgentClient, RunArtifacts), String> {
     let store = prepare_prompt_store(workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
-    let client = build_agent(shared, workflow, emit_stdout_markdown);
+    let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     let (text, work_dir) = resolve_user_request(&code.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     Ok((store, client, artifacts))
 }
 

@@ -9,6 +9,7 @@
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,
+    pub prompts_log_run_dir: Option<std::path::PathBuf>,
     pub(crate) style_prompt_path: PathBuf,
     coder_session: Option<AcpSession>,
     /// When true, the next [`Self::run_coder_prompt`] prepends injected repo style (first turn only).
