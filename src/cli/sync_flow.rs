@@ -67,7 +67,11 @@ fn prepare_sync_artifacts(
 
     let artifacts =
         create_run_artifacts_from_text("sync", Some(Path::new("."))).map_err(|e| e.to_string())?;
-    repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    repo_checks::run_repo_workspace_gates(
+        &artifacts.work_dir,
+        RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
+    )?;
 
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "sync")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
@@ -160,6 +164,7 @@ pub async fn run_sync(
     match repo_checks::run_repo_workspace_gates_with_details(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
     ) {
         Ok(()) => {}
         Err(RepoGateFailure::Command(failure)) => {
@@ -170,10 +175,14 @@ pub async fn run_sync(
                 &failure,
             )
             .await?;
-            repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)
-                .map_err(|e| {
-                    format!("post-run gates still failing after one tidy.md retry: {e}")
-                })?;
+            repo_checks::run_repo_workspace_gates(
+                &artifacts.work_dir,
+                RepoGateOutput::Tagged,
+                Some(&artifacts.run_dir),
+            )
+            .map_err(|e| {
+                format!("post-run gates still failing after one tidy.md retry: {e}")
+            })?;
         }
         Err(RepoGateFailure::Message(err)) => return Err(err),
     }

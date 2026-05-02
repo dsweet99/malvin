@@ -1,5 +1,5 @@
 
-## Learning
+## Observation
 
 1) What *new*, interesting/surprising things did you learn in this chat about?:
 - Codebase structure (where things live)
@@ -24,6 +24,6 @@ in one of `./.malvin_memory/*.md`. If no file name (subject area) seems appropri
 
 Each TRIGGER: / ADVICE: / CONFIDENCE: triple is implicitly hypothesizing that it will be "good advice".
 
-BAD: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from ./.malvin_memory/*.md.
+BAD: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome, repeat a stock malvin prompt, or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from ./.malvin_memory/*.md.
 
-NOT BAD: Pick one piece of ADVICE: that wasn't bad, if there was one. Find it in ./.malvin_memory/*.md and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum of 3.
+NOT BAD: Pick one piece of ADVICE: that wasn't bad and had CONFIDENCE: < 3 -- if there was one. Find it in ./.malvin_memory/*.md and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum value of 3.

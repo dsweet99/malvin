@@ -1,4 +1,4 @@
-use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::output::{format_line, MALVIN_WHO, print_stdout_line};
 use malvin::repo_gates;
 use std::path::Path;
 use std::process::{Command, Output};
@@ -45,41 +45,72 @@ pub enum RepoGateOutput {
 /// Calls [`prepare_repo_workspace`] first (`kiss clamp` when applicable).
 /// Runs Malvin's built-in gate commands for the workspace, then non-empty lines from
 /// `.malvin_checks` when that file exists. Does not run `pre-commit`. Never creates or edits `.malvin_checks`.
-pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    run_repo_workspace_gates_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+/// With `run_log_dir: Some(path)`, each gate line is also appended to `path/quality_checks.log`.
+pub fn run_repo_workspace_gates(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
+) -> Result<(), String> {
+    run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
+        .map_err(RepoGateFailure::into_error)
 }
 
-pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
+fn append_quality_checks_log_line(run_dir: &Path, line: &str) -> std::io::Result<()> {
+    let path = run_dir.join("quality_checks.log");
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    let s = format!("{}\n", format_line(MALVIN_WHO, line));
+    std::io::Write::write_all(&mut f, s.as_bytes())
+}
+
+pub fn emit_repo_gate_line(
+    output: RepoGateOutput,
+    line: &str,
+    run_log_dir: Option<&Path>,
+) {
     match output {
         RepoGateOutput::Tagged => print_stdout_line(MALVIN_WHO, line),
         RepoGateOutput::Stderr => eprintln!("{line}"),
+    }
+    if let Some(dir) = run_log_dir {
+        let _ = append_quality_checks_log_line(dir, line);
     }
 }
 
 pub fn run_repo_workspace_gates_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    prepare_repo_workspace_with_details(work_dir, output)?;
-    run_quality_gates_with_details(work_dir, output)
+    prepare_repo_workspace_with_details(work_dir, output, run_log_dir)?;
+    run_quality_gates_with_details(work_dir, output, run_log_dir)
 }
 
-pub fn prepare_repo_workspace(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    prepare_repo_workspace_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+pub fn prepare_repo_workspace(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
+) -> Result<(), String> {
+    prepare_repo_workspace_with_details(work_dir, output, run_log_dir)
+        .map_err(RepoGateFailure::into_error)
 }
 
 fn prepare_repo_workspace_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    ensure_kiss_clamp_if_needed_with_details(work_dir, output)?;
-    warn_kissconfig_test_coverage_if_needed(work_dir, output);
+    ensure_kiss_clamp_if_needed_with_details(work_dir, output, run_log_dir)?;
+    warn_kissconfig_test_coverage_if_needed(work_dir, output, run_log_dir);
     Ok(())
 }
 
 fn ensure_kiss_clamp_if_needed_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
     let kissconfig = work_dir.join(".kissconfig");
     if kissconfig.exists() || !source_like_files_present(work_dir) {
@@ -88,6 +119,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
     emit_repo_gate_line(
         output,
         "Running `kiss clamp` (existing code without .kissconfig)",
+        run_log_dir,
     );
     let mut command = Command::new(run_command_for("kiss"));
     command.arg("clamp").current_dir(work_dir);
@@ -110,21 +142,23 @@ fn source_like_files_present(root: &Path) -> bool {
 fn run_quality_gates_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
     if !repo_gates::should_run_workspace_gates(work_dir) {
         return Ok(());
     }
     let commands = repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
-    run_malvin_checks_with_details(work_dir, output, &commands)
+    run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }
 
 fn run_malvin_checks_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
     commands: &[String],
 ) -> Result<(), RepoGateFailure> {
     for command in commands.iter().filter(|c| !c.trim().is_empty()) {
-        run_shell_command_line_with_details(work_dir, output, command)?;
+        run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
     }
     Ok(())
 }
@@ -140,13 +174,18 @@ const fn shell_binary() -> (&'static str, &'static str) {
 fn run_shell_command_line_with_details(
     work_dir: &Path,
     output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
     command: &str,
 ) -> Result<(), RepoGateFailure> {
     let command_line = command.trim();
     if command_line.is_empty() {
         return Ok(());
     }
-    emit_repo_gate_line(output, &format!("Running `{command_line}`"));
+    emit_repo_gate_line(
+        output,
+        &format!("Running `{command_line}`"),
+        run_log_dir,
+    );
     let (shell, arg) = shell_binary();
     let mut command = Command::new(shell);
     command.arg(arg).arg(command_line).current_dir(work_dir);
@@ -263,11 +302,16 @@ fn touch_if_missing(path: &Path, output: RepoGateOutput) -> Result<(), String> {
     emit_repo_gate_line(
         output,
         &format!("Touched empty {} (was missing)", path.display()),
+        None,
     );
     Ok(())
 }
 
-pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGateOutput) {
+pub fn warn_kissconfig_test_coverage_if_needed(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
+) {
     let path = work_dir.join(".kissconfig");
     if !path.is_file() {
         return;
@@ -275,7 +319,11 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
         Err(e) => {
-            emit_repo_gate_line(output, &format!("Warning: could not read .kissconfig: {e}"));
+            emit_repo_gate_line(
+                output,
+                &format!("Warning: could not read .kissconfig: {e}"),
+                run_log_dir,
+            );
             return;
         }
     };
@@ -285,6 +333,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
             emit_repo_gate_line(
                 output,
                 &format!("Warning: could not parse .kissconfig as TOML: {e}"),
+                run_log_dir,
             );
             return;
         }
@@ -295,6 +344,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(work_dir: &Path, output: RepoGate
     emit_repo_gate_line(
         output,
         "Warning: .kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
+        run_log_dir,
     );
 }
 
@@ -443,7 +493,7 @@ mod tests {
     fn repo_workspace_gates_do_not_create_missing_style_markers() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
-        run_repo_workspace_gates(work, RepoGateOutput::Stderr).unwrap();
+        run_repo_workspace_gates(work, RepoGateOutput::Stderr, None).unwrap();
         assert!(!work.join("grounding.md").exists());
         assert!(!work.join(".malvin_memory").join("style.md").exists());
     }
@@ -516,7 +566,7 @@ mod tests {
         );
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
@@ -567,7 +617,7 @@ mod tests {
         );
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
@@ -605,7 +655,7 @@ mod tests {
         );
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
@@ -653,7 +703,7 @@ mod tests {
         make_script("cargo");
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         assert!(!malvin_checks.exists());
@@ -693,12 +743,46 @@ mod tests {
         );
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
         assert!(log_contains_command(&log, "ruff check"));
         assert!(!log_contains_command(&log, "pytest -sv tests"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn quality_checks_log_records_gate_lines_when_run_log_dir_set() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        let run_dir = work.join("malvin_run");
+        fs::create_dir_all(&run_dir).unwrap();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
+        fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+
+        let bin_dir = tempfile::tempdir().unwrap();
+        let make_script = |name: &str| {
+            let path = bin_dir.path().join(name);
+            fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+            let mut perms = fs::metadata(&path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&path, perms).unwrap();
+        };
+        make_script("kiss");
+        make_script("cargo");
+        let _guard = super::set_fake_command_dir(bin_dir.path());
+
+        run_repo_workspace_gates(work, RepoGateOutput::Tagged, Some(&run_dir)).unwrap();
+
+        let qlog = fs::read_to_string(run_dir.join("quality_checks.log")).unwrap();
+        assert!(qlog.contains("Running `kiss check`"));
+        assert!(qlog.contains("Running `cargo test`"));
     }
 
     #[cfg(unix)]
@@ -740,7 +824,7 @@ mod tests {
         make_script("pytest");
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
-        let result = prepare_repo_workspace(work, RepoGateOutput::Tagged);
+        let result = prepare_repo_workspace(work, RepoGateOutput::Tagged, None);
 
         assert!(result.is_ok());
         assert!(

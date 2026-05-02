@@ -317,6 +317,7 @@ pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Re
     repo_checks::run_repo_workspace_gates(
         &session.artifacts.work_dir,
         repo_checks::RepoGateOutput::Tagged,
+        Some(&session.artifacts.run_dir),
     )?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;

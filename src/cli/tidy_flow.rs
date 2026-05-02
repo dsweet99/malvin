@@ -29,6 +29,7 @@ pub async fn run_tidy(
     match crate::cli::repo_checks::run_repo_workspace_gates_with_details(
         &artifacts.work_dir,
         crate::cli::repo_checks::RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
     ) {
         Ok(()) => {}
         Err(crate::cli::repo_checks::RepoGateFailure::Command(failure)) => {
@@ -42,6 +43,7 @@ pub async fn run_tidy(
             crate::cli::repo_checks::run_repo_workspace_gates(
                 &artifacts.work_dir,
                 crate::cli::repo_checks::RepoGateOutput::Tagged,
+                Some(&artifacts.run_dir),
             )
             .map_err(|e| format!("post-run gates still failing after one tidy.md retry: {e}"))?;
         }

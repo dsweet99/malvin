@@ -81,6 +81,7 @@ pub async fn run_do(
         repo_checks::run_repo_workspace_gates(
             &artifacts.work_dir,
             repo_checks::RepoGateOutput::Stderr,
+            Some(&artifacts.run_dir),
         )?;
     } else {
         crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, false)?;

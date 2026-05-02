@@ -223,7 +223,11 @@ pub fn prepare_tidy_run(
 
     let artifacts =
         create_run_artifacts_from_text("tidy", Some(Path::new("."))).map_err(|e| e.to_string())?;
-    prepare_repo_workspace(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    prepare_repo_workspace(
+        &artifacts.work_dir,
+        RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
+    )?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     let (store, context) = tidy_prompt_context(&artifacts)?;

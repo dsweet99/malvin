@@ -108,7 +108,11 @@ pub async fn run_code(
     workflow: super::WorkflowCliOptions,
 ) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
-    run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    run_repo_workspace_gates(
+        &artifacts.work_dir,
+        RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
+    )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
@@ -135,7 +139,11 @@ pub async fn run_code(
         &artifacts.work_dir,
         &grounding_backup,
     )?;
-    match run_repo_workspace_gates_with_details(&artifacts.work_dir, RepoGateOutput::Tagged) {
+    match run_repo_workspace_gates_with_details(
+        &artifacts.work_dir,
+        RepoGateOutput::Tagged,
+        Some(&artifacts.run_dir),
+    ) {
         Ok(()) => {}
         Err(RepoGateFailure::Command(failure)) => {
             run_tidy_prompt_after_post_run_gate_failure(
@@ -145,7 +153,12 @@ pub async fn run_code(
                 &failure,
             )
             .await?;
-            run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged).map_err(|e| {
+            run_repo_workspace_gates(
+                &artifacts.work_dir,
+                RepoGateOutput::Tagged,
+                Some(&artifacts.run_dir),
+            )
+            .map_err(|e| {
                 format!("post-run gates still failing after one tidy.md retry: {e}")
             })?;
         }

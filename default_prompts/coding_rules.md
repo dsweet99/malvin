@@ -4,12 +4,14 @@ Use parallelized subagents (at most 4).
 Work until the end without asking for user input. If you are uncertain about an implementation
 detail, use your best judgement. There will always be an opportunity to revise later on.
 
-`{{ quality_gates }}` lists the exact shell commands Malvin runs for this workspace (built-in gates plus optional `.malvin_checks` lines). Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
+The Quality Gates section lists the exact shell commands Malvin runs for this workspace (built-in gates plus optional `.malvin_checks` lines). Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
 
+# Quality Gates
 Be sure that all applicable checks pass.
 
 {{ quality_gates }}
 
+# Tips and Soft Requirements
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
   - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating.
@@ -21,7 +23,7 @@ Be sure that all applicable checks pass.
 - Keep code consistent with `{{ grounding_path }}` and `{{ plan_path }}` (if applicable).
 - Use (up to 4) parallel subagents whereven possible.
 
-## Nota Bene
+## Nota Bene & Hard Requirements
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
  about "pre-existing" problems. We're here to work. To fix. Be tenacious. There's no excuse
  for not getting ALL checks and tests to pass on ALL files.
