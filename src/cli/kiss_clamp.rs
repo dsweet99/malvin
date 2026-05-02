@@ -5,42 +5,6 @@ use std::process::Command;
 
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 
-/// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
-pub fn has_extension_files(dir: &Path, ext: &str) -> bool {
-    fn check_dir(dir: &Path, ext: &str) -> bool {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return false;
-        };
-        for entry in entries.flatten() {
-            let Ok(file_type) = entry.file_type() else {
-                continue;
-            };
-            if file_type.is_symlink() {
-                continue;
-            }
-            let path = entry.path();
-            if file_type.is_file() {
-                if let Some(file_ext) = path.extension().and_then(|e| e.to_str()) {
-                    if file_ext == ext {
-                        return true;
-                    }
-                }
-            } else if file_type.is_dir() {
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with('.') || name == "target" || name == "__pycache__" {
-                        continue;
-                    }
-                }
-                if check_dir(&path, ext) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-    check_dir(dir, ext)
-}
-
 pub fn has_source_files(dir: &Path) -> bool {
     fn check_dir(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
@@ -116,6 +80,42 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output_tagged: bool) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
+    fn has_extension_files(dir: &Path, ext: &str) -> bool {
+        fn check_dir(dir: &Path, ext: &str) -> bool {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return false;
+            };
+            for entry in entries.flatten() {
+                let Ok(file_type) = entry.file_type() else {
+                    continue;
+                };
+                if file_type.is_symlink() {
+                    continue;
+                }
+                let path = entry.path();
+                if file_type.is_file() {
+                    if let Some(file_ext) = path.extension().and_then(|e| e.to_str()) {
+                        if file_ext == ext {
+                            return true;
+                        }
+                    }
+                } else if file_type.is_dir() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with('.') || name == "target" || name == "__pycache__" {
+                            continue;
+                        }
+                    }
+                    if check_dir(&path, ext) {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        check_dir(dir, ext)
+    }
 
     #[test]
     fn has_source_files_returns_false_for_empty_dir() {

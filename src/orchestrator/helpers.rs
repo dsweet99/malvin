@@ -38,6 +38,11 @@ pub fn workflow_context(
     malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts, malvin_command);
+    context.insert(
+        "quality_gates".to_string(),
+        crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)
+            .map_err(PromptError)?,
+    );
     let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)

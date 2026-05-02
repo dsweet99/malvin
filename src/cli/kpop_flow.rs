@@ -116,7 +116,11 @@ fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
         .ok_or_else(|| "kpop exp log path has no parent directory".to_string())?;
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
-    let context = workflow_context_paths_only(&artifacts, "kpop");
+    let mut context = workflow_context_paths_only(&artifacts, "kpop");
+    context.insert(
+        "quality_gates".to_string(),
+        malvin::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)?,
+    );
     Ok(KpopPrepared {
         artifacts,
         exp_log_path,
@@ -282,6 +286,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         ("result_path", "./_malvin/run42/result.md"),
         ("exp_log", "_malvin/run42/_kpop/exp_log_run42.md"),
         ("malvin_command", "kpop"),
+        ("quality_gates", ""),
     ] {
         base.insert(k.to_string(), v.to_string());
     }

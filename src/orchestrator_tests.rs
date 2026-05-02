@@ -116,6 +116,7 @@ fn workflow_context_review_path_points_to_artifact() {
         review_path, "./_malvin/run123/review.md",
         "review_path should be the artifact path"
     );
+    assert!(ctx.contains_key("quality_gates"), "quality_gates must be in context");
 }
 
 #[test]

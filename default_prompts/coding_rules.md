@@ -4,7 +4,7 @@ Use parallelized subagents (at most 4).
 Work until the end without asking for user input. If you are uncertain about an implementation
 detail, use your best judgement. There will always be an opportunity to revise later on.
 
-Some projects are Rust. Some are Python. Some are both. You are not required to have both languages. Consult `{{ grounding_path }}`, .pre-commit-config.yaml, and the existing codebase to determine which language(s) apply to this project. Do NOT add a language that is not already present in the project.
+`{{ quality_gates }}` lists the exact shell commands Malvin runs for this workspace (built-in gates plus optional `.malvin_checks` lines). Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
 
 Be sure that all applicable checks pass.
 

@@ -904,7 +904,7 @@ fn ground_runs_repo_workspace_gates_when_source_repo_markers_exist() {
     std::fs::write(workspace.join("src/main.rs"), "fn main() {}\n").expect("write src");
     std::fs::write(workspace.join("script.py"), "print('ok')\n").expect("write python");
     std::fs::create_dir_all(workspace.join("tests")).expect("mkdir tests");
-    std::fs::write(workspace.join("tests/test.py"), "print('ok')\n").expect("write test");
+    std::fs::write(workspace.join("tests/test_m.py"), "def test_x():\n    pass\n").expect("write test");
     std::fs::remove_file(workspace.join("grounding.md")).expect("remove grounding");
 
     let original_path = std::env::var("PATH").unwrap_or_default();

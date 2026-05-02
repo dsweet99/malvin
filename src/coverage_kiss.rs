@@ -165,6 +165,17 @@ fn kiss_stringify_prompts() {
 }
 
 #[test]
+fn kiss_stringify_repo_gates() {
+    let _ = stringify!(crate::repo_gates::should_run_workspace_gates);
+    let _ = stringify!(crate::repo_gates::gate_command_lines);
+    let _ = stringify!(crate::repo_gates::prompt_quality_gates_markdown);
+    let _ = stringify!(crate::repo_gates::format_quality_gates_markdown);
+    let _ = stringify!(crate::repo_gates::load_malvin_checks);
+    let _ = stringify!(kiss_smoke_prompt_store);
+    let _ = stringify!(kiss_smoke_render_context);
+}
+
+#[test]
 fn smoke_create_run_artifacts() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -184,34 +195,43 @@ fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]
     }
 }
 
+const SMOKE_EMBEDDED_PROMPT_NAMES: &[&str] = &[
+    "implement.md",
+    "review_1.md",
+    "review_2.md",
+    "kpop.md",
+    "kpop_common.md",
+    "kpop_block.md",
+    "mbc2_pure.md",
+    "mbc2.md",
+    "concerns.md",
+    "learn.md",
+    HEADER_MD,
+    DO_HEADER_MD,
+    "coding_rules.md",
+];
+
+fn kiss_smoke_prompt_store(prompts_dir: &std::path::Path) -> PromptStore {
+    kiss_write_same_body_files(prompts_dir, SMOKE_EMBEDDED_PROMPT_NAMES, b"body");
+    let store = PromptStore::with_root(prompts_dir.to_path_buf());
+    store.ensure_defaults().expect("defaults");
+    store.validate_required().expect("required");
+    store
+}
+
+fn kiss_smoke_render_context() -> HashMap<String, String> {
+    HashMap::from([
+        ("plan_path".to_string(), "p".to_string()),
+        ("kpop_log_dir".to_string(), "./_kpop".to_string()),
+        ("quality_gates".to_string(), String::new()),
+    ])
+}
+
 #[test]
 fn smoke_prompt_store_with_root() {
     let tmp = kiss_test_tmp();
     let prompts = tmp.path().join("prompts");
-    kiss_write_same_body_files(
-        &prompts,
-        &[
-            "implement.md",
-            "review_1.md",
-            "review_2.md",
-            "kpop.md",
-            "kpop_common.md",
-            "kpop_block.md",
-            "mbc2_pure.md",
-            "mbc2.md",
-            "concerns.md",
-            "learn.md",
-            HEADER_MD,
-            DO_HEADER_MD,
-            "coding_rules.md",
-        ],
-        b"body",
-    );
-    let store = PromptStore::with_root(prompts);
-    store.ensure_defaults().expect("defaults");
-    store.validate_required().expect("required");
-    let mut ctx = HashMap::new();
-    ctx.insert("plan_path".to_string(), "p".to_string());
-    ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
+    let store = kiss_smoke_prompt_store(&prompts);
+    let ctx = kiss_smoke_render_context();
     let _ = store.render("implement.md", &ctx).expect("render");
 }

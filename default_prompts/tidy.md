@@ -1,18 +1,6 @@
 {{ coding_rules }}
 ---
 
-
-Get the codebase to pass all of the quality gates:
-
-- `pre-commit run --all-files`
-
-Also run any applicable checks not already covered by an equivalent pre-commit hook:
-
-- Rust: `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`
-- Rust: `cargo test`
-- Rust & Python: `kiss check`
-- Python: `ruff check`
-- Python: `pytest -sv tests`
-
+Get the codebase to pass every quality gate Malvin uses for this workspace. The exact shell commands are listed in the `{{ quality_gates }}` section inside the coding rules above (Malvin's built-in checks, in order, plus each non-empty line from `.malvin_checks` when that file exists). Run them from the repository root and fix failures until each succeeds.
 
 Do not introduce any new discrepancies from `{{ grounding_path }}`. (Also, don't fix existing discrepancies from `{{ grounding_path }}`.)

@@ -48,6 +48,7 @@ fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String
         ("grounding_path".to_string(), "/g".to_string()),
         ("result_path".to_string(), "/r".to_string()),
         ("malvin_command".to_string(), "code".to_string()),
+        ("quality_gates".to_string(), String::new()),
     ]);
     (store, context)
 }

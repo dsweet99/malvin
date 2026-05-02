@@ -175,6 +175,7 @@ fn coding_rules_nested_placeholders_expand() {
     let store = PromptStore::with_root(root.to_path_buf());
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/P".to_string());
+    ctx.insert("quality_gates".to_string(), String::new());
     let out = store.render("implement.md", &ctx).unwrap();
     assert!(
         out.contains("/P") && !out.contains("{{ plan_path }}"),
@@ -196,6 +197,7 @@ fn header_prepends_coding_rules_placeholder() {
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/x".to_string());
     ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
+    ctx.insert("quality_gates".to_string(), String::new());
     let out = store.render("implement.md", &ctx).unwrap();
     assert!(
         out.starts_with("OPENING\n\nRULES"),
