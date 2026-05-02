@@ -172,13 +172,17 @@ impl AcpSession {
                 if !self.0.raw_output {
                     let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
                     crate::output::print_outgoing_prompt_log(outgoing_label);
-                    let who_line = crate::output::format_acp_directional_tag_prefix('>', u.trace_who);
-                    crate::output::print_stdout_text(&who_line, text);
+                    if self.0.log_full_outgoing_prompts {
+                        let who_line =
+                            crate::output::format_acp_directional_tag_prefix('>', u.trace_who);
+                        crate::output::print_stdout_text(&who_line, text);
+                    }
                 }
                 append_prompts_log_uniform(
                     self.0.prompts_log_run_dir.as_deref(),
                     u.trace_who,
-                    text,
+                    u.stdout_bracket_label.unwrap_or(u.trace_who),
+                    self.0.log_full_outgoing_prompts.then_some(text),
                 )
                 .await?;
                 (
@@ -196,11 +200,16 @@ impl AcpSession {
                     user_text: split.user,
                 };
                 let combined = compose_do_split_prompt_text(&parts);
-                if !self.0.raw_output {
+                if !self.0.raw_output && self.0.log_full_outgoing_prompts {
                     let who_line = crate::output::format_acp_directional_tag_prefix('>', "do");
                     crate::output::print_stdout_text(&who_line, &combined);
                 }
-                append_prompts_log_do_plain(self.0.prompts_log_run_dir.as_deref(), &parts).await?;
+                append_prompts_log_do_plain(
+                    self.0.prompts_log_run_dir.as_deref(),
+                    &parts,
+                    self.0.log_full_outgoing_prompts,
+                )
+                .await?;
                 (
                     crate::output::format_acp_directional_tag_prefix('<', "do"),
                     "do",

@@ -49,6 +49,8 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 | Logging headers*                      | yes                                                            | no                     |
 | First log line is user's command line | yes                                                            | no                     |
 
+- **Outgoing prompts:** By default Malvin logs only a short label for each outbound prompt on stdout and a one-line summary in `prompts.log` under the run directory. Pass **`--verbose`** (**`-v`**) to log full outgoing prompt bodies in `prompts.log` and, for workflows with tagged stdout (`code`, `sync`, `tidy`, `kpop`, `ground`), on the terminal as well; `do` keeps raw agent stdout, but verbose still expands `prompts.log`. Per-phase trace files under `_malvin/...` always record the full outgoing text.
+
 ## Constraints
 
 - **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for transient errors such as timeouts, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failures, or gRPC `[unavailable]`. Errors such as "Upgrade your plan" fail fast.

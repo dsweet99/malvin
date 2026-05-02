@@ -141,7 +141,8 @@ pub(crate) const PROMPTS_LOG_FILE_NAME: &str = "prompts.log";
 pub(crate) async fn append_prompts_log_uniform(
     run_dir: Option<&std::path::Path>,
     trace_stem: &str,
-    prompt_text: &str,
+    bracket_label: &str,
+    prompt_text: Option<&str>,
 ) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     let Some(dir) = run_dir else {
@@ -155,8 +156,19 @@ pub(crate) async fn append_prompts_log_uniform(
         .await
         .map_err(|e| format!("prompts.log open: {e}"))?;
     let tag = crate::output::format_acp_directional_tag_prefix('>', trace_stem);
-    for line in crate::output::logical_lines(prompt_text) {
-        let l = crate::output::format_line(&tag, line);
+    if let Some(body) = prompt_text {
+        for line in crate::output::logical_lines(body) {
+            let l = crate::output::format_line(&tag, line);
+            f.write_all(l.as_bytes())
+                .await
+                .map_err(|e| format!("prompts.log write: {e}"))?;
+            f.write_all(b"\n")
+                .await
+                .map_err(|e| format!("prompts.log nl: {e}"))?;
+        }
+    } else {
+        let summary = format!("[{bracket_label}...]");
+        let l = crate::output::format_line(&tag, &summary);
         f.write_all(l.as_bytes())
             .await
             .map_err(|e| format!("prompts.log write: {e}"))?;
@@ -173,12 +185,12 @@ pub(crate) async fn append_prompts_log_uniform(
 pub(crate) async fn append_prompts_log_do_plain(
     run_dir: Option<&std::path::Path>,
     parts: &DoOutgoingTraceParts<'_>,
+    include_full_combined: bool,
 ) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     let Some(dir) = run_dir else {
         return Ok(());
     };
-    let combined = compose_do_split_prompt_text(parts);
     let path = dir.join(PROMPTS_LOG_FILE_NAME);
     let mut f = tokio::fs::OpenOptions::new()
         .create(true)
@@ -187,8 +199,20 @@ pub(crate) async fn append_prompts_log_do_plain(
         .await
         .map_err(|e| format!("prompts.log open: {e}"))?;
     let tag = crate::output::format_acp_directional_tag_prefix('>', "do");
-    for line in crate::output::logical_lines(&combined) {
-        let l = crate::output::format_line(&tag, line);
+    if include_full_combined {
+        let combined = compose_do_split_prompt_text(parts);
+        for line in crate::output::logical_lines(&combined) {
+            let l = crate::output::format_line(&tag, line);
+            f.write_all(l.as_bytes())
+                .await
+                .map_err(|e| format!("prompts.log write: {e}"))?;
+            f.write_all(b"\n")
+                .await
+                .map_err(|e| format!("prompts.log nl: {e}"))?;
+        }
+    } else {
+        let summary = "[do...]".to_string();
+        let l = crate::output::format_line(&tag, &summary);
         f.write_all(l.as_bytes())
             .await
             .map_err(|e| format!("prompts.log write: {e}"))?;
@@ -274,10 +298,10 @@ async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
     let tmp = tempfile::tempdir().unwrap();
     let run_dir = tmp.path().join("_malvin").join("r");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
-    append_prompts_log_uniform(Some(&run_dir), "implement", "a\nb")
+    append_prompts_log_uniform(Some(&run_dir), "implement", "implement.md", Some("a\nb"))
         .await
         .unwrap();
-    append_prompts_log_uniform(Some(&run_dir), "implement", "c")
+    append_prompts_log_uniform(Some(&run_dir), "implement", "implement.md", Some("c"))
         .await
         .unwrap();
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
@@ -301,6 +325,7 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
             header_text: "H",
             user_text: "U",
         },
+        true,
     )
     .await
     .unwrap();
@@ -313,6 +338,45 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
     );
     assert!(content.contains("]: H"));
     assert!(content.contains("]: U"));
+}
+
+#[tokio::test]
+async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
+    let tmp = tempfile::tempdir().unwrap();
+    let run_dir = tmp.path().join("_malvin").join("r");
+    tokio::fs::create_dir_all(&run_dir).await.unwrap();
+    append_prompts_log_uniform(Some(&run_dir), "learn", "learn.md", None)
+        .await
+        .unwrap();
+    let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
+        .await
+        .unwrap();
+    assert_eq!(content.matches(">learn").count(), 1);
+    assert!(content.contains("]: [learn.md...]"));
+}
+
+#[tokio::test]
+async fn append_prompts_log_do_plain_name_only_writes_do_summary() {
+    let tmp = tempfile::tempdir().unwrap();
+    let run_dir = tmp.path().join("_malvin").join("do_run");
+    tokio::fs::create_dir_all(&run_dir).await.unwrap();
+    append_prompts_log_do_plain(
+        Some(&run_dir),
+        &DoOutgoingTraceParts {
+            style_text: None,
+            header_text: "SECRET",
+            user_text: "PRIVATE",
+        },
+        false,
+    )
+    .await
+    .unwrap();
+    let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
+        .await
+        .unwrap();
+    assert!(content.contains(">do"));
+    assert!(content.contains("]: [do...]"));
+    assert!(!content.contains("SECRET"));
 }
 
 #[tokio::test]

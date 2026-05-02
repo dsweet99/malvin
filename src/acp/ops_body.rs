@@ -42,6 +42,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         show_thoughts_on_stdout: client.io.show_thoughts_on_stdout,
         emit_stdout_markdown: client.io.emit_stdout_markdown,
         prompts_log_run_dir: client.prompts_log_run_dir.as_deref(),
+        log_full_outgoing_prompts: client.io.log_full_outgoing_prompts,
     })
     .await
     .map_err(AgentError)

@@ -41,6 +41,7 @@ async fn acp_session_cancel_clears_busy_state_after_rpc_error() {
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         prompts_log_run_dir: None,
+        log_full_outgoing_prompts: false,
     }));
 
     let err = session.cancel().await.expect_err("cancel should fail on dead transport");

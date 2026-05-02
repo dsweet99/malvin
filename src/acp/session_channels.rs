@@ -20,6 +20,7 @@ pub struct SessionReaderTelemetry {
     /// When true, allow styled markdown on stdout for tagged trace lines (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
     pub prompts_log_run_dir: Option<PathBuf>,
+    pub log_full_outgoing_prompts: bool,
 }
 
 pub struct SessionChannelState {
@@ -100,6 +101,7 @@ impl SessionChannelState {
             show_thoughts_on_stdout: telemetry.show_thoughts_on_stdout,
             emit_stdout_markdown: telemetry.emit_stdout_markdown,
             prompts_log_run_dir: telemetry.prompts_log_run_dir,
+            log_full_outgoing_prompts: telemetry.log_full_outgoing_prompts,
         }
     }
 }

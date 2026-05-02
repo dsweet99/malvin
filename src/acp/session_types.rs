@@ -54,6 +54,8 @@ pub struct AcpSessionInner {
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<PathBuf>,
+    /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
+    pub log_full_outgoing_prompts: bool,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -86,6 +88,8 @@ pub struct AcpSpawnArgs<'a> {
     pub emit_stdout_markdown: bool,
     /// When set, each outgoing prompt appends timestamped lines to `prompts.log` under this directory.
     pub prompts_log_run_dir: Option<&'a Path>,
+    /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
+    pub log_full_outgoing_prompts: bool,
 }
 
 #[test]

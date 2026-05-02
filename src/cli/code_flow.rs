@@ -81,6 +81,7 @@ pub const fn agent_io_options(
         raw_output: tee.raw_output,
         show_thoughts_on_stdout: tee.show_thoughts_on_stdout,
         emit_stdout_markdown: tee.emit_stdout_markdown,
+        log_full_outgoing_prompts: shared.verbose,
     }
 }
 

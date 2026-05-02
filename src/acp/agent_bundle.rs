@@ -33,6 +33,8 @@ pub struct AgentIoOptions {
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,
     pub emit_stdout_markdown: bool,
+    /// When true, echo each outgoing prompt body on stdout and in `prompts.log`; when false, only the `[name...]` line is logged there.
+    pub log_full_outgoing_prompts: bool,
 }
 
 include!("agent_client_struct.rs");

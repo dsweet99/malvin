@@ -1,4 +1,4 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, and `malvin do`. `--no-markdown` affects only `malvin code` / `malvin kpop` trace stdout; it is a no-op for other subcommands (for example `init`, `models`).
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` affects only `malvin code` / `malvin kpop` trace stdout; it is a no-op for other subcommands (for example `init`, `models`).
 //! `malvin do` still forces plain markdown-off ACP stdout regardless of `--no-markdown`.
 
 use clap::Args;
@@ -16,6 +16,7 @@ pub struct GlobalOpts {
 }
 
 #[derive(Args, Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SharedOpts {
     /// Model id.
     #[arg(long, global = true, default_value = DEFAULT_CLI_MODEL)]
@@ -37,6 +38,9 @@ pub struct SharedOpts {
         help = NO_MARKDOWN_HELPTEXT
     )]
     pub no_markdown: bool,
+    /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
+    #[arg(short, long, global = true, default_value_t = false)]
+    pub verbose: bool,
 }
 
 impl SharedOpts {

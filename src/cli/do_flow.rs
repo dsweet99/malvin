@@ -357,4 +357,24 @@ mod do_tests {
             _ => panic!("expected Do subcommand"),
         }
     }
+
+    #[test]
+    fn cli_accepts_verbose_short_and_long_global_flags() {
+        use crate::cli::Cli;
+        use crate::cli::Commands;
+
+        let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
+        assert!(cli.shared.verbose);
+        match &cli.command {
+            Commands::Do(d) => assert_eq!(d.request, "x"),
+            _ => panic!("expected Do subcommand"),
+        }
+
+        let cli = Cli::try_parse_from(["malvin", "do", "--verbose", "y"]).expect("parse");
+        assert!(cli.shared.verbose);
+        match cli.command {
+            Commands::Do(d) => assert_eq!(d.request, "y"),
+            _ => panic!("expected Do subcommand"),
+        }
+    }
 }

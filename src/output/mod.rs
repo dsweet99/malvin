@@ -28,11 +28,12 @@ pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
 
 /// Announce one outgoing prompt on stdout with a single bracket line `[{label}...]`.
 ///
-/// The ACP session then prints the full rendered prompt when not in raw-output mode: one
-/// timestamped stdout line per [`logical_lines`] slice, with the same `>` stem as used for that
-/// mode’s stdout lines. Optional `prompts.log` uses the same directional stem as stdout; for
-/// uniform prompts that matches the trace **file** tags, while `malvin do` split traces keep a
-/// plain body on disk but still use the `>do` stem on stdout and in `prompts.log`.
+/// With `--verbose`, the ACP session also prints the full rendered prompt when not in raw-output
+/// mode: one timestamped stdout line per [`logical_lines`] slice, with the same `>` stem as used
+/// for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or name-only line);
+/// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
+/// split traces keep a plain body on disk but use the `>do` stem on stdout and in `prompts.log`
+/// when verbose.
 pub fn print_outgoing_prompt_log(label: &str) {
     let directional_tag = format_acp_directional_tag_prefix('>', label);
     let bracket_payload = format!("[{label}...]");
