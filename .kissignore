@@ -59,11 +59,8 @@ src/cli/command_log_tests.rs
 src/cli/entrypoint.rs
 src/cli/exit.rs
 src/cli/ground_cmd.rs
-src/cli/init_cmd.rs
 src/cli/kiss_clamp.rs
-src/cli/kpop_flow.rs
 src/cli/models_cmd.rs
-src/cli/repo_checks.rs
 src/cli/run_emit.rs
 src/cli/shared_opts.rs
 src/cli/stringify_cov.rs

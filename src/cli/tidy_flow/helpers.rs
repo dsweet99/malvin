@@ -11,7 +11,11 @@ use malvin::orchestrator::{should_run_learn_check, workflow_context};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 use malvin::run_timing::TimingPhase;
 
-use super::repo_checks::{RepoGateOutput, prepare_repo_workspace};
+use super::repo_checks::{
+    RepoGateCommandFailure,
+    RepoGateOutput,
+    prepare_repo_workspace,
+};
 use super::timing_merge;
 use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
@@ -246,4 +250,70 @@ pub fn merge_tidy_timing(
         &artifacts.artifact_result_md(),
     )?;
     Ok(())
+}
+
+fn post_run_gate_failure_details(failure: &RepoGateCommandFailure) -> String {
+    let exit = failure
+        .exit_code
+        .map_or_else(|| "signal".to_string(), |code| code.to_string());
+    format!(
+        "The post-run quality gate check failed with:\ncommand: {}\nexit code: {}\nstdout:\n{}\nstderr:\n{}",
+        failure.command, exit, failure.stdout, failure.stderr
+    )
+}
+
+pub async fn run_tidy_prompt_after_post_run_gate_failure(
+    client: &mut AgentClient,
+    artifacts: &RunArtifacts,
+    grounding_backup: &GroundingBackup,
+    failure: &RepoGateCommandFailure,
+) -> Result<(), String> {
+    let (store, context) = tidy_prompt_context(artifacts)?;
+    let mut prompt = compose_tidy_prompt(&store, &context)?;
+    prompt.push('\n');
+    prompt.push('\n');
+    prompt.push_str("Additional context from post-run quality gate failure:\n");
+    prompt.push_str(&post_run_gate_failure_details(failure));
+    let mut input = TidyAcpInput {
+        client,
+        artifacts,
+        store: &store,
+        context: &context,
+        run_learn: false,
+    };
+    let timing = input.client.attach_run_timing_for_session();
+    {
+        let mut timing_guard = timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        timing_guard.set_implement_display_name("tidy");
+    }
+    let begin_result = input.client.begin_coder_session(&input.artifacts.work_dir).await;
+    if let Err(e) = begin_result {
+        input.client.set_run_timing(None);
+        return Err(e.to_string());
+    }
+    let acp_result = run_tidy_prompt_with_restore(
+        &mut input,
+        TidyPromptRestore {
+            prompt: &prompt,
+            label: "tidy",
+            phase: TimingPhase::Implement,
+            grounding_backup,
+            restore_context: "post-run gate failure",
+        },
+    )
+    .await;
+    let end_result = input.client.end_coder_session().await.map_err(|e| e.to_string());
+    let acp_result = timing_merge::prefer_primary_over_secondary(
+        acp_result,
+        end_result,
+        "end_coder_session",
+    );
+    timing_merge::emit_run_timing_after_acp(
+        input.client,
+        &input.artifacts.run_dir,
+        &timing,
+        acp_result,
+    )
 }

@@ -10,11 +10,12 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
 use std::path::Path;
 
-use super::repo_checks::{self, RepoGateOutput};
+use super::repo_checks::{self, RepoGateFailure, RepoGateOutput};
 use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
     timing_merge,
 };
+use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 
 pub struct SyncRunSpec {
     pub max_loops: usize,
@@ -132,29 +133,41 @@ pub async fn run_sync(
     let run_learn = workflow.run_learn && !spec.no_learn;
     let (mut client, artifacts, store, grounding_backup) =
         prepare_sync_artifacts(&spec, shared, workflow, run_learn)?;
-    let mut orch = Orchestrator {
-        client: &mut client,
-        prompts: &store,
-        artifacts: &artifacts,
-        config: WorkflowConfig {
-            max_loops: spec.max_loops,
-            run_learn,
-            learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
-            skip_check_plan: true,
-        },
-        progress_callback: Box::new(|msg: &str| {
-            print_stdout_line(MALVIN_WHO, msg);
-        }),
-        grounding_backup: grounding_backup.clone(),
-    };
 
-    let sync_result = orch.run_sync().await;
-    timing_merge::merge_acp_with_grounding_restore(
-        sync_result.map_err(|e| e.0),
-        &artifacts.work_dir,
-        &grounding_backup,
-    )?;
-    repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    let sync_result = {
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: spec.max_loops,
+                run_learn,
+                learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
+                skip_check_plan: true,
+            },
+            progress_callback: Box::new(|msg: &str| {
+                print_stdout_line(MALVIN_WHO, msg);
+            }),
+            grounding_backup: grounding_backup.clone(),
+        };
+        orch.run_sync().await.map_err(|e| e.0)
+    };
+    timing_merge::merge_acp_with_grounding_restore(sync_result, &artifacts.work_dir, &grounding_backup)?;
+    match repo_checks::run_repo_workspace_gates_with_details(&artifacts.work_dir, RepoGateOutput::Tagged) {
+        Ok(()) => {}
+        Err(RepoGateFailure::Command(failure)) => {
+            run_tidy_prompt_after_post_run_gate_failure(
+                &mut client,
+                &artifacts,
+                &grounding_backup,
+                &failure,
+            )
+            .await?;
+            repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)
+                .map_err(|e| format!("post-run gates still failing after one tidy.md retry: {e}"))?;
+        }
+        Err(RepoGateFailure::Message(err)) => return Err(err),
+    }
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

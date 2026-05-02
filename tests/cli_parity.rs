@@ -12,6 +12,10 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/gitignore"
 ));
+const CHECK_SYNC_PROMPT: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_prompts/check_sync.md"
+));
 
 #[cfg(unix)]
 fn run_root_help_output() -> std::process::Output {
@@ -53,7 +57,8 @@ use common::{
     acp_mock_ground_never_lgtm_loop_js,
     run_ground_with_mock_js_with_setup,
     acp_mock_ground_write_tamper_kissconfig_js,
-    acp_mock_sync_reviewer_restore_between_attempts_js, acp_mock_sync_tamper_and_review_restore_js,
+    acp_mock_sync_check_sync_non_exact_lgtm_js, acp_mock_sync_reviewer_restore_between_attempts_js,
+    acp_mock_sync_tamper_and_review_restore_js,
     command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 #[cfg(all(unix, target_os = "linux"))]
@@ -587,6 +592,42 @@ fn sync_runs_check_sync_before_review_1() {
     assert!(
         has_check_sync_log,
         "expected check_sync coder log to capture session/prompt request: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn sync_rejects_non_exact_lgtm_from_check_sync() {
+    let out = run_sync_with_mock_js(
+        &acp_mock_sync_check_sync_non_exact_lgtm_js(),
+        &["--max-loops", "2"],
+        true,
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !out.status.success(),
+        "non-exact check_sync LGTM text should fail: {combined:?}"
+    );
+    assert!(
+        combined.contains("Did not receive LGTM for check_sync.md within max loops."),
+        "expected strict check_sync parsing behavior: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review-1 (attempt 1)"),
+        "check_sync should fail before review_1 on invalid LGTM: {combined:?}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn check_sync_prompt_requires_exact_lgtm_instruction() {
+    assert!(
+        CHECK_SYNC_PROMPT.contains("write *only* and *exactly* LGTM"),
+        "check_sync prompt should require exact LGTM wording"
     );
 }
 

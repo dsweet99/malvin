@@ -26,10 +26,29 @@ pub async fn run_tidy(
     };
     let result = run_tidy_acp(&mut input, prompt.trim_end(), &grounding_backup).await;
     merge_tidy_timing(result, &artifacts, &grounding_backup)?;
-    crate::cli::repo_checks::run_repo_workspace_gates(
+    match crate::cli::repo_checks::run_repo_workspace_gates_with_details(
         &artifacts.work_dir,
         crate::cli::repo_checks::RepoGateOutput::Tagged,
-    )?;
+    ) {
+        Ok(()) => {}
+        Err(crate::cli::repo_checks::RepoGateFailure::Command(failure)) => {
+            run_tidy_prompt_after_post_run_gate_failure(
+                input.client,
+                &artifacts,
+                &grounding_backup,
+                &failure,
+            )
+            .await?;
+            crate::cli::repo_checks::run_repo_workspace_gates(
+                &artifacts.work_dir,
+                crate::cli::repo_checks::RepoGateOutput::Tagged,
+            )
+            .map_err(|e| format!("post-run gates still failing after one tidy.md retry: {e}"))?;
+        }
+        Err(crate::cli::repo_checks::RepoGateFailure::Message(error)) => {
+            return Err(error);
+        }
+    }
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

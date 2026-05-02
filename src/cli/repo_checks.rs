@@ -1,6 +1,6 @@
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 
 const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
@@ -13,10 +13,50 @@ const DEFAULT_RUST_CHECKS: [&str; 2] = [
 
 const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
+#[derive(Debug, Clone)]
+pub struct RepoGateCommandFailure {
+    pub command: String,
+    pub exit_code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+#[derive(Debug)]
+pub enum RepoGateFailure {
+    Command(RepoGateCommandFailure),
+    Message(String),
+}
+
+impl RepoGateFailure {
+    fn into_error(self) -> String {
+        match self {
+            Self::Message(message) => message,
+            Self::Command(failure) => {
+                let exit = failure
+                    .exit_code
+                    .map_or_else(|| "signal".to_string(), |code| code.to_string());
+                format!(
+                    "`{}` failed (exit {}):\nstdout:\n{}\nstderr:\n{}",
+                    failure.command, exit, failure.stdout, failure.stderr
+                )
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum RepoGateOutput {
     Tagged,
     Stderr,
+}
+
+/// Workspace quality gates for CLI workflows (`code`, `sync`, `tidy`, `ground`, …).
+///
+/// Calls [`prepare_repo_workspace`] first (`kiss clamp` when applicable).
+/// When `.pre-commit-config.yaml` exists, runs `pre-commit run --all-files`.
+/// Then runs each non-empty line of `.malvin_checks` in order, creating that file with defaults when it is missing and the workspace has `.git`.
+pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    run_repo_workspace_gates_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
 }
 
 pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
@@ -26,18 +66,33 @@ pub fn emit_repo_gate_line(output: RepoGateOutput, line: &str) {
     }
 }
 
-pub fn run_repo_workspace_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    prepare_repo_workspace(work_dir, output)?;
-    run_quality_gates(work_dir, output)
+pub fn run_repo_workspace_gates_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), RepoGateFailure> {
+    prepare_repo_workspace_with_details(work_dir, output)?;
+    run_quality_gates_with_details(work_dir, output)
 }
 
 pub fn prepare_repo_workspace(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
-    ensure_kiss_clamp_if_needed(work_dir, output)?;
+    prepare_repo_workspace_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+}
+
+fn prepare_repo_workspace_with_details(work_dir: &Path, output: RepoGateOutput) -> Result<(), RepoGateFailure> {
+    ensure_kiss_clamp_if_needed_with_details(work_dir, output)?;
     warn_kissconfig_test_coverage_if_needed(work_dir, output);
     Ok(())
 }
 
+#[allow(dead_code)]
 fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    ensure_kiss_clamp_if_needed_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+}
+
+fn ensure_kiss_clamp_if_needed_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+) -> Result<(), RepoGateFailure> {
     let kissconfig = work_dir.join(".kissconfig");
     if kissconfig.exists() || !source_like_files_present(work_dir) {
         return Ok(());
@@ -46,15 +101,17 @@ fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> Resul
         output,
         "Running `kiss clamp` (existing code without .kissconfig)",
     );
-    let status = std::process::Command::new(run_command_for("kiss"))
-        .arg("clamp")
-        .current_dir(work_dir)
-        .status()
-        .map_err(|e| format!("`kiss clamp` failed to start: {e}"))?;
-    if status.success() {
+    let mut command = Command::new(run_command_for("kiss"));
+    command.arg("clamp").current_dir(work_dir);
+    #[cfg(test)]
+    apply_fake_path_if_present(&mut command);
+    let output = command
+        .output()
+        .map_err(|e| RepoGateFailure::Message(format!("`kiss clamp` failed to start: {e}")))?;
+    if output.status.success() {
         Ok(())
     } else {
-        Err("`kiss clamp` failed".to_string())
+        Err(run_command_failure("kiss clamp", &output))
     }
 }
 
@@ -62,43 +119,113 @@ fn source_like_files_present(root: &Path) -> bool {
     super::kiss_clamp::has_source_files(root)
 }
 
+#[allow(dead_code)]
 fn run_quality_gates(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    run_quality_gates_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+}
+
+fn run_quality_gates_with_details(work_dir: &Path, output: RepoGateOutput) -> Result<(), RepoGateFailure> {
     if has_path(work_dir.join(".pre-commit-config.yaml")) {
-        return run_pre_commit_checks(work_dir, output);
+        run_pre_commit_checks_with_details(work_dir, output)?;
     }
     let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
     let commands = if checks_path.is_file() {
-        load_malvin_checks(&checks_path)?
+        load_malvin_checks(&checks_path).map_err(RepoGateFailure::Message)?
     } else {
         if !has_path(work_dir.join(".git")) {
             return Ok(());
         }
         let checks = default_malvin_checks(work_dir);
-        write_default_malvin_checks(&checks_path, &checks, output)?;
+        write_default_malvin_checks(&checks_path, &checks, output).map_err(RepoGateFailure::Message)?;
         checks
     };
-    run_malvin_checks(work_dir, output, &commands)
+    run_malvin_checks_with_details(work_dir, output, &commands)?;
+    Ok(())
 }
 
-fn run_malvin_checks(work_dir: &Path, output: RepoGateOutput, commands: &[String]) -> Result<(), String> {
+#[allow(dead_code)]
+fn run_malvin_checks(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    commands: &[String],
+) -> Result<(), String> {
+    run_malvin_checks_with_details(work_dir, output, commands).map_err(RepoGateFailure::into_error)
+}
+
+fn run_malvin_checks_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    commands: &[String],
+) -> Result<(), RepoGateFailure> {
     for command in commands.iter().filter(|c| !c.trim().is_empty()) {
-        run_shell_command_line(work_dir, output, command)?;
+        run_shell_command_line_with_details(work_dir, output, command)?;
     }
     Ok(())
 }
 
 fn default_malvin_checks(work_dir: &Path) -> Vec<String> {
     let mut checks: Vec<String> = DEFAULT_MALVIN_CHECKS.iter().map(|cmd| (*cmd).to_string()).collect();
-    if has_path(work_dir.join("Cargo.toml")) {
+    let (grounding_declares_rust, grounding_declares_python) = parse_grounding_languages_for_defaults(work_dir);
+    let include_rust = has_path(work_dir.join("Cargo.toml")) || grounding_declares_rust;
+    let include_python = has_python_file(work_dir) || grounding_declares_python;
+    if include_rust {
         checks.extend(DEFAULT_RUST_CHECKS.iter().map(|check| (*check).to_string()));
     }
-    if has_python_file(work_dir) {
+    if include_python {
         checks.push("ruff check .".to_string());
-        if has_tests_dir(work_dir) {
-            checks.push(DEFAULT_PYTEST_CHECK.to_string());
-        }
+        checks.push(DEFAULT_PYTEST_CHECK.to_string());
     }
     checks
+}
+
+fn parse_grounding_languages_for_defaults(work_dir: &Path) -> (bool, bool) {
+    let Ok(content) = std::fs::read_to_string(work_dir.join("grounding.md")) else {
+        return (false, false);
+    };
+    (
+        grounding_mentions_language(&content, "rust"),
+        grounding_mentions_language(&content, "python"),
+    )
+}
+
+fn grounding_mentions_language(grounding: &str, language: &str) -> bool {
+    grounding
+        .lines()
+        .any(|line| {
+            let lowered_line = line.to_ascii_lowercase();
+            let words: Vec<&str> = lowered_line
+                .split(|c: char| !c.is_ascii_alphanumeric())
+                .filter(|word| !word.is_empty())
+                .collect();
+            has_word_case_insensitive_words(&words, language) && has_context_token(&words)
+        })
+}
+
+fn has_word_case_insensitive_words(words: &[&str], target: &str) -> bool {
+    let target = target.to_ascii_lowercase();
+    let target = target.as_str();
+    words.contains(&target)
+}
+
+fn has_context_token(words: &[&str]) -> bool {
+    const CONTEXT_TOKENS: &[&str] = &[
+        "language",
+        "languages",
+        "written",
+        "implementation",
+        "implemented",
+        "implements",
+        "uses",
+        "used",
+        "using",
+        "tech",
+        "stack",
+        "repository",
+        "repo",
+        "project",
+        "code",
+    ];
+    words.iter().any(|word| CONTEXT_TOKENS.contains(word))
 }
 
 fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
@@ -128,11 +255,20 @@ const fn shell_binary() -> (&'static str, &'static str) {
     }
 }
 
+#[allow(dead_code)]
 fn run_shell_command_line(
     work_dir: &Path,
     output: RepoGateOutput,
     command: &str,
 ) -> Result<(), String> {
+    run_shell_command_line_with_details(work_dir, output, command).map_err(RepoGateFailure::into_error)
+}
+
+fn run_shell_command_line_with_details(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    command: &str,
+) -> Result<(), RepoGateFailure> {
     let command_line = command.trim();
     if command_line.is_empty() {
         return Ok(());
@@ -143,19 +279,23 @@ fn run_shell_command_line(
     command.arg(arg).arg(command_line).current_dir(work_dir);
     #[cfg(test)]
     apply_fake_path_if_present(&mut command);
-    let status = command
-        .status()
-        .map_err(|e| format!("`{command_line}` failed to start: {e}"))?;
-    if status.success() {
+    let output = command
+        .output()
+        .map_err(|e| RepoGateFailure::Message(format!("`{command_line}` failed to start: {e}")))?;
+    if output.status.success() {
         Ok(())
     } else {
-        Err(format!(
-            "`{command_line}` failed (exit {}): {command_line}",
-            status
-                .code()
-                .map_or_else(|| "signal".to_string(), |code| code.to_string()),
-        ))
+        Err(run_command_failure(command_line, &output))
     }
+}
+
+fn run_command_failure(command: &str, output: &Output) -> RepoGateFailure {
+    RepoGateFailure::Command(RepoGateCommandFailure {
+        command: command.to_string(),
+        exit_code: output.status.code(),
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -170,17 +310,25 @@ fn apply_fake_path_if_present(command: &mut Command) {
     }
 }
 
+#[allow(dead_code)]
 fn run_pre_commit_checks(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+    run_pre_commit_checks_with_details(work_dir, output).map_err(RepoGateFailure::into_error)
+}
+
+fn run_pre_commit_checks_with_details(work_dir: &Path, output: RepoGateOutput) -> Result<(), RepoGateFailure> {
     emit_repo_gate_line(output, "Running `pre-commit run --all-files`");
-    let status = Command::new(run_command_for("pre-commit"))
+    let mut command = Command::new(run_command_for("pre-commit"));
+    command
         .args(["run", "--all-files"])
-        .current_dir(work_dir)
-        .status()
-        .map_err(|e| format!("`pre-commit run --all-files` failed to start: {e}"))?;
-    if status.success() {
+        .current_dir(work_dir);
+    #[cfg(test)]
+    apply_fake_path_if_present(&mut command);
+    let output = command.output()
+        .map_err(|e| RepoGateFailure::Message(format!("`pre-commit run --all-files` failed to start: {e}")))?;
+    if output.status.success() {
         Ok(())
     } else {
-        Err("`pre-commit run --all-files` failed".to_string())
+        Err(run_command_failure("pre-commit run --all-files", &output))
     }
 }
 
@@ -191,10 +339,6 @@ fn has_path(path: impl AsRef<Path>) -> bool {
 
 fn has_python_file(root: &Path) -> bool {
     super::kiss_clamp::has_extension_files(root, "py")
-}
-
-fn has_tests_dir(root: &Path) -> bool {
-    root.join("tests").is_dir()
 }
 
 #[allow(dead_code)]
@@ -341,8 +485,9 @@ fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        RepoGateOutput, ensure_workspace_style_markers, prepare_repo_workspace,
-        run_repo_workspace_gates, scan_for_extension, should_warn_low_test_coverage,
+        default_malvin_checks, grounding_mentions_language, RepoGateOutput, ensure_workspace_style_markers,
+        prepare_repo_workspace, run_repo_workspace_gates, scan_for_extension,
+        should_warn_low_test_coverage,
     };
     use std::fs;
     #[cfg(unix)]
@@ -385,6 +530,35 @@ mod tests {
     fn coverage_ok_above_90() {
         let v: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 100\n").unwrap();
         assert!(!should_warn_low_test_coverage(&v));
+    }
+
+    #[test]
+    fn grounding_mentions_language_accepts_non_written_forms() {
+        assert!(grounding_mentions_language("Language: Rust", "rust"));
+        assert!(grounding_mentions_language("Repository uses Python heavily", "python"));
+        assert!(grounding_mentions_language("This project is implemented in Rust and Python", "rust"));
+        assert!(grounding_mentions_language("Tech stack: Rust, Python", "python"));
+    }
+
+    #[test]
+    fn grounding_mentions_language_rejects_py_like_wording_without_language_context() {
+        assert!(!grounding_mentions_language("Pythonic naming in comments", "python"));
+    }
+
+    #[test]
+    fn default_malvin_checks_uses_grounding_language_declarations() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        fs::create_dir(work.join(".git")).unwrap();
+        fs::write(
+            work.join("grounding.md"),
+            "Language: This repository is implemented in Python.\n",
+        )
+        .unwrap();
+
+        let checks = default_malvin_checks(work);
+        assert!(checks.iter().any(|command| command == "ruff check ."));
+        assert!(checks.iter().any(|command| command == super::DEFAULT_PYTEST_CHECK));
     }
 
     #[test]
@@ -564,7 +738,7 @@ mod tests {
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
         fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").unwrap();
-        fs::write(work.join(".malvin_checks"), "echo should not run\n").unwrap();
+        fs::write(work.join(".malvin_checks"), "kiss check\n").unwrap();
         fs::write(
             work.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -602,7 +776,7 @@ mod tests {
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
         assert!(log_contains_command(&log, "pre-commit run --all-files"));
-        assert!(!log_contains_command(&log, "kiss check"));
+        assert!(log_contains_command(&log, "kiss check"));
         assert!(!log_contains_command(&log, "cargo clippy"));
         assert!(!log_contains_command(&log, "ruff check"));
     }
@@ -655,6 +829,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
+        fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").unwrap();
         fs::write(
             work.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -685,6 +860,7 @@ mod tests {
         make_script("ruff");
         make_script("pytest");
         make_script("cargo");
+        make_script("pre-commit");
         let _guard = super::set_fake_command_dir(bin_dir.path());
 
         let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged);
@@ -698,6 +874,7 @@ mod tests {
         assert!(checks.contains("cargo clippy --all-targets --all-features -- -D warnings"));
         assert!(checks.contains("cargo test"));
         let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "pre-commit run --all-files"));
         assert!(log_contains_command(&log, "kiss check"));
         assert!(log_contains_command(&log, "ruff check ."));
         assert!(log_contains_command(&log, "pytest -sv tests"));
@@ -707,7 +884,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn run_repo_workspace_gates_skips_pytest_when_tests_dir_missing() {
+    fn run_repo_workspace_gates_runs_pytest_when_python_without_tests_dir() {
         let tmp = tempfile::tempdir().unwrap();
         let work = tmp.path();
         fs::create_dir(work.join(".git")).unwrap();
@@ -724,6 +901,10 @@ mod tests {
             fs::set_permissions(&path, perms).unwrap();
         };
         make_script(
+            "kiss",
+            &format!("#!/bin/sh\necho \"kiss $@\" >> \"{trace_for_script}\"\nexit 0\n"),
+        );
+        make_script(
             "ruff",
             &format!("#!/bin/sh\necho \"ruff $@\" >> \"{trace_for_script}\"\nexit 0\n"),
         );
@@ -738,7 +919,7 @@ mod tests {
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
         assert!(log_contains_command(&log, "ruff check"));
-        assert!(!log_contains_command(&log, "pytest -sv tests"));
+        assert!(log_contains_command(&log, "pytest -sv tests"));
     }
 
     #[cfg(unix)]

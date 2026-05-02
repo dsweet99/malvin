@@ -11,4 +11,4 @@ KPop: Find a discrepancy between the codebase and `{{ grounding_path }}`.
 
 Write the discrepancy to {{ review_path }}.
 
-If you cannot find one, just write LGTM in {{ review_path }}.
+If everything is ok, write *only* and *exactly* LGTM in {{ review_path }}.

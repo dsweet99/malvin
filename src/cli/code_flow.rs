@@ -7,9 +7,10 @@ use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 
-use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use super::repo_checks::{RepoGateFailure, RepoGateOutput, run_repo_workspace_gates, run_repo_workspace_gates_with_details};
 use super::{CodeArgs, SharedOpts};
 use super::{run_emit, timing_merge};
+use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
 
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
@@ -108,28 +109,45 @@ pub async fn run_code(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
-    let mut orch = Orchestrator {
-        client: &mut client,
-        prompts: &store,
-        artifacts: &artifacts,
-        config: WorkflowConfig {
-            max_loops: code.max_loops,
-            run_learn: workflow.run_learn,
-            learn_min_elapsed_ms: 300_000,
-            skip_check_plan: code.trust_the_plan,
-        },
-        progress_callback: Box::new(|msg: &str| {
-            print_stdout_line(MALVIN_WHO, msg);
-        }),
-        grounding_backup: grounding_backup.clone(),
+    let workflow_res = {
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: code.max_loops,
+                run_learn: workflow.run_learn,
+                learn_min_elapsed_ms: 300_000,
+                skip_check_plan: code.trust_the_plan,
+            },
+            progress_callback: Box::new(|msg: &str| {
+                print_stdout_line(MALVIN_WHO, msg);
+            }),
+            grounding_backup: grounding_backup.clone(),
+        };
+        orch.run().await.map_err(|e: WorkflowError| e.0)
     };
-    let workflow_res = orch.run().await.map_err(|e: WorkflowError| e.0);
     timing_merge::merge_acp_with_grounding_restore(
         workflow_res,
         &artifacts.work_dir,
         &grounding_backup,
     )?;
-    run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged)?;
+    match run_repo_workspace_gates_with_details(&artifacts.work_dir, RepoGateOutput::Tagged) {
+        Ok(()) => {}
+        Err(RepoGateFailure::Command(failure)) => {
+            run_tidy_prompt_after_post_run_gate_failure(
+                &mut client,
+                &artifacts,
+                &grounding_backup,
+                &failure,
+            )
+            .await?;
+            run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Tagged).map_err(
+                |e| format!("post-run gates still failing after one tidy.md retry: {e}"),
+            )?;
+        }
+        Err(RepoGateFailure::Message(err)) => return Err(err),
+    }
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

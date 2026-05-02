@@ -15,4 +15,4 @@ KPop: Please review the codebase. Pay special attention to code that differs fro
 
 Write your review (problems only) to {{ review_path }}.
 
-If everything is ok, just write LGTM in {{ review_path }}.
+If everything is ok, write *only* and *exactly* LGTM in {{ review_path }}.

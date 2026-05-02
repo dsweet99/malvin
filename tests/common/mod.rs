@@ -526,6 +526,15 @@ pub fn acp_mock_sync_reviewer_restore_between_attempts_js() -> String {
     acp_mock_code_with_run_dir_js(&format!("    {body}"))
 }
 
+pub fn acp_mock_sync_check_sync_non_exact_lgtm_js() -> String {
+    let body = r"    if (promptText.includes('Find a discrepancy between the codebase and')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM with notes\\n', 'utf8');
+    } else if (promptText.includes('Please review the codebase.')) {
+      fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
+    }";
+    acp_mock_code_with_run_dir_js(&format!("    {body}"))
+}
+
 #[cfg(unix)]
 pub fn acp_mock_ground_loop_converges_with_missing_grounding_js() -> String {
     let body = r"    const marker = path.join(runDir, 'ground_prompt_visits.txt');
