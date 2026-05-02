@@ -49,8 +49,8 @@ Unless noted otherwise, a workflow consists of named prompt-template phases sent
 | Logging headers*                      | yes                                                            | no                     |
 | First log line is user's command line | yes                                                            | no                     |
 
-
-## Reliability
+## Constraints
 
 - **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for transient errors such as timeouts, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failures, or gRPC `[unavailable]`. Errors such as "Upgrade your plan" fail fast.
-
+- "Upgrade your plan to continue" causes an immediate abort and explains to the user.
+- The default model is "auto".

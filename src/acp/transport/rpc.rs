@@ -130,8 +130,7 @@ async fn rpc_wait_with_timeout(
     loop {
         tokio::select! {
             ready_recv = &mut wait => {
-                let result = ready_recv
-                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                let result = ready_recv?;
                 pending.lock().await.remove(&id);
                 return Ok(result);
             }
@@ -142,8 +141,7 @@ async fn rpc_wait_with_timeout(
                     tokio::pin!(health);
                     tokio::select! {
                         ready_recv = &mut wait => {
-                            let result = ready_recv
-                                .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                            let result = ready_recv?;
                             pending.lock().await.remove(&id);
                             return Ok(result);
                         }
@@ -220,8 +218,10 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
         }
         tokio::select! {
             ready_recv = &mut rx => {
-                return ready_recv
-                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                return ready_recv.map_err(|_| {
+                    "no ACP JSON-RPC reply; response channel closed (agent exit, stdout EOF, or request canceled)"
+                        .to_string()
+                })?;
             }
             () = &mut activity => {
                 seen_activity = args
