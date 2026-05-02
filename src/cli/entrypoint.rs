@@ -119,11 +119,13 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
         }
         Commands::Models(_) => models_cmd::run_models(),
         Commands::Sync {
+            dry_run,
             max_loops,
             no_learn,
         } => run_async_cli(|| {
             run_sync(
                 SyncRunSpec {
+                    dry_run,
                     max_loops,
                     no_learn,
                 },

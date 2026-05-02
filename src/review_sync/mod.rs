@@ -102,6 +102,19 @@ mod tests {
     }
 
     #[test]
+    fn sync_review_file_for_attempt_whitespace_workspace_clears_stale_lgtm_artifact() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("run").join("review.md");
+        std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        std::fs::write(&workspace, "  \n\t\n").unwrap();
+        std::fs::write(&artifact, "LGTM\n").unwrap();
+        let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
+        assert_eq!(out, None);
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    }
+
+    #[test]
     fn sync_review_file_returns_content_when_copied() {
         let t = tempfile::tempdir().unwrap();
         let workspace = t.path().join("review.md");

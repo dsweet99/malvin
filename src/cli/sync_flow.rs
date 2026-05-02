@@ -6,7 +6,8 @@ use malvin::artifacts::{
     create_run_artifacts_from_text,
 };
 use malvin::orchestrator::{
-    Orchestrator, OrchestratorSessionMode, WorkflowConfig, WorkflowError, workflow_context,
+    Orchestrator, OrchestratorSessionMode, WorkflowConfig, WorkflowError, session_flow,
+    workflow_context,
 };
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
@@ -19,6 +20,7 @@ use super::{
 };
 
 pub struct SyncRunSpec {
+    pub dry_run: bool,
     pub max_loops: usize,
     pub no_learn: bool,
 }
@@ -100,6 +102,7 @@ mod coverage_tests {
     #[test]
     fn build_sync_spec_defaults() {
         let spec = SyncRunSpec {
+            dry_run: false,
             max_loops: 7,
             no_learn: true,
         };
@@ -140,7 +143,7 @@ pub async fn run_sync(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let run_learn = workflow.run_learn && !spec.no_learn;
+    let run_learn = workflow.run_learn && !spec.no_learn && !spec.dry_run;
     let (mut client, artifacts, store, grounding_backup) =
         prepare_sync_artifacts(&spec, shared, workflow, run_learn)?;
     let ctx = workflow_context(&artifacts, &store, "sync").map_err(|e: PromptError| e.0)?;
@@ -161,14 +164,18 @@ pub async fn run_sync(
             }),
             grounding_backup: grounding_backup.clone(),
         };
-        orch
-            .run_with_pre_summary_gap(
-                &ctx,
-                OrchestratorSessionMode::Sync,
-                crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
-            )
-            .await
-            .map_err(|e: WorkflowError| e.0)
+        if spec.dry_run {
+            session_flow::run_sync_dry_run(&mut orch, &ctx).await
+        } else {
+            orch
+                .run_with_pre_summary_gap(
+                    &ctx,
+                    OrchestratorSessionMode::Sync,
+                    crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
+                )
+                .await
+        }
+        .map_err(|e: WorkflowError| e.0)
     };
     timing_merge::merge_acp_with_grounding_restore(
         sync_result,

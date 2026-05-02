@@ -43,6 +43,9 @@ pub enum Commands {
     Models(ModelsArgs),
     /// (Beta) Synchronize code to grounding.md
     Sync {
+        /// Run `check_sync.md` once only; skip concerns, reviews, learn, summary, and pre-summary gates.
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
         /// Review loop budget.
         #[arg(long, default_value_t = 5)]
         max_loops: usize,

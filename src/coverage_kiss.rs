@@ -114,6 +114,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(Orchestrator::run);
     let _ = stringify!(crate::orchestrator::OrchestratorSessionMode);
     let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
+    let _ = stringify!(crate::orchestrator::session_flow::run_sync_dry_run);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);

@@ -239,5 +239,6 @@ fn clear_review_file_returns_error_on_permission_denied() {
 #[test]
 fn stringify_orchestrator_sync_method() {
     let _ = stringify!(crate::orchestrator::Orchestrator::run_sync);
+    let _ = stringify!(crate::orchestrator::session_flow::run_sync_dry_run);
     let _ = stringify!(crate::orchestrator::Orchestrator::run);
 }

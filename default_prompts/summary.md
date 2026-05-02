@@ -5,7 +5,9 @@ Output your summary in the format
 ```
 ---
 
-*Executive Summary* <EXECUTIVE_SUMMARY>
+# SUMMARY
+
+*Executive* <EXECUTIVE_SUMMARY>
 
 *tl;dr* <TLDR>
 ```

@@ -28,7 +28,7 @@ pub(super) async fn run_check_plan(
             continue;
         };
         if is_lgtm_str(&contents) {
-            return orchestrator.finish_check_plan_after_lgtm();
+            return orchestrator.fail_on_abort_result();
         }
         orchestrator.fail_on_abort_result()?;
         (orchestrator.progress_callback)(&format!("Plan check failed:\n{contents}"));

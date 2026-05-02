@@ -23,7 +23,7 @@ Order matches `malvin --help` (`Commands` in `src/cli/args.rs`):
 | `kpop` | Hypothesis-driven investigation; `request` → `_malvin/.../request.md`; exp logs under `_kpop/`. |
 | `tidy` | Bring checks to green via tidy prompt + gates. |
 | `models` | List / parse model metadata. |
-| `sync` *(beta)* | Align implementation with this contract file. |
+| `sync` *(beta)* | Align implementation with **`grounding.md`** (default run). **`--dry-run`** runs the grounding↔code discrepancy check **only**: report gaps **without** implement / review / concern remediation. |
 | `ground` *(beta)* | Author or refine **`./grounding.md`** until `check_sync` review is **LGTM**; **does not target application source** for edits (see `check_sync` / grounding prompts). |
 
 - **`kiss` on PATH** is required before **`malvin code`** and **`malvin tidy`** start (`require_kiss_for_cli_command` in `src/cli/entrypoint.rs`). Other subcommands do not perform that preflight.

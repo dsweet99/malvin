@@ -19,7 +19,7 @@ include!("helpers.rs");
 mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
-mod session_flow;
+pub mod session_flow;
 mod session_mode;
 
 use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
@@ -92,7 +92,7 @@ pub const fn should_run_learn_check(threshold_ms: u64, elapsed_ms: u64) -> bool 
 }
 
 impl Orchestrator<'_> {
-    fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
+    pub(super) fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
         self.client.attach_run_timing_for_session()
     }
 
@@ -107,7 +107,7 @@ impl Orchestrator<'_> {
         should_run_learn_check(self.config.learn_min_elapsed_ms, elapsed_ms)
     }
 
-    fn emit_run_timing_artifact(
+    pub(super) fn emit_run_timing_artifact(
         &mut self,
         timing: &Arc<Mutex<RunTiming>>,
     ) -> Result<(), WorkflowError> {
@@ -121,10 +121,6 @@ impl Orchestrator<'_> {
             return Err(WorkflowError(format!("ABORT: {abort_msg}")));
         }
         Ok(())
-    }
-
-    fn finish_check_plan_after_lgtm(&self) -> Result<(), WorkflowError> {
-        self.fail_on_abort_result()
     }
 
     /// Drive the full workflow.

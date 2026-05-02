@@ -11,6 +11,11 @@ use crate::orchestrator_review_loop_helpers::{
     run_reviewer_pair_for_attempt,
 };
 
+pub(super) enum SyncCheckAfterNonLgtm {
+    RunConcerns,
+    DryRunStop,
+}
+
 pub(super) async fn run_review_phase(
     orchestrator: &mut Orchestrator<'_>,
     phase: ReviewPhaseArgs<'_>,
@@ -52,13 +57,44 @@ pub(super) async fn run_sync_check_loop(
             review_path: &review_path,
             context,
         };
-        if run_sync_check_single_attempt(orchestrator, ctx, prepend_sync_header).await? {
+        if run_sync_check_single_attempt(
+            orchestrator,
+            ctx,
+            prepend_sync_header,
+            SyncCheckAfterNonLgtm::RunConcerns,
+        )
+        .await?
+        {
             return Ok(());
         }
     }
     Err(WorkflowError(
         "Did not receive LGTM for check_sync.md within max loops.".to_string(),
     ))
+}
+
+pub(super) async fn run_sync_check_dry_run_once(
+    orchestrator: &mut Orchestrator<'_>,
+    context: &HashMap<String, String>,
+    prepend_sync_header: bool,
+) -> Result<(), WorkflowError> {
+    let review_path = orchestrator.artifacts.artifact_review_md();
+    let ctx = ReviewAttemptCtx {
+        review_prompt: "check_sync.md",
+        progress_label: "CheckSync",
+        phase_id: "check_sync",
+        attempt: 1,
+        review_path: &review_path,
+        context,
+    };
+    let _ = run_sync_check_single_attempt(
+        orchestrator,
+        ctx,
+        prepend_sync_header,
+        SyncCheckAfterNonLgtm::DryRunStop,
+    )
+    .await?;
+    Ok(())
 }
 
 async fn review_phase_single_attempt(
@@ -123,6 +159,7 @@ async fn run_sync_check_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: ReviewAttemptCtx<'_>,
     prepend_sync_header: bool,
+    after_non_lgtm: SyncCheckAfterNonLgtm,
 ) -> Result<bool, WorkflowError> {
     let workspace_review_path = orchestrator.artifacts.workspace_review_md();
     (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
@@ -154,7 +191,15 @@ async fn run_sync_check_single_attempt(
         orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
-    run_concerns_and_check_abort(orchestrator, &ctx, "concerns", prepend_sync_header).await
+    match after_non_lgtm {
+        SyncCheckAfterNonLgtm::DryRunStop => {
+            orchestrator.fail_on_abort_result()?;
+            Ok(false)
+        }
+        SyncCheckAfterNonLgtm::RunConcerns => {
+            run_concerns_and_check_abort(orchestrator, &ctx, "concerns", prepend_sync_header).await
+        }
+    }
 }
 
 #[cfg(test)]
@@ -165,6 +210,8 @@ mod kiss_coverage_tests {
         let _ = stringify!(super::run_sync_check_loop);
         let _ = stringify!(super::review_phase_single_attempt);
         let _ = stringify!(super::run_sync_check_single_attempt);
+        let _ = stringify!(super::SyncCheckAfterNonLgtm);
+        let _ = stringify!(super::run_sync_check_dry_run_once);
         let _ = stringify!(super::run_concerns_and_check_abort);
     }
 }
