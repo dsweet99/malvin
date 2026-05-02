@@ -1,4 +1,4 @@
-use crate::review_sync::is_lgtm_str;
+use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
 use crate::run_timing::{ReviewPairId, TimingPhase};
 use std::collections::HashMap;
 
@@ -8,7 +8,7 @@ use super::clear_review_file;
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
 use crate::orchestrator_review_loop_helpers::{
     SyncConcernsContext, prompt_with_sync_header, run_concerns_and_check_abort_impl,
-    run_reviewer_pair_for_attempt, sync_review_file_for_attempt,
+    run_reviewer_pair_for_attempt,
 };
 
 pub(super) async fn run_review_phase(
@@ -87,7 +87,8 @@ async fn review_phase_single_attempt(
     };
     run_reviewer_pair_for_attempt(orchestrator, &ctx, &review_body, pair_id).await?;
 
-    let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)?;
+    let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)
+        .map_err(WorkflowError)?;
     let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
     if lgtm {
         orchestrator.fail_on_abort_result()?;
@@ -146,7 +147,8 @@ async fn run_sync_check_single_attempt(
         )
         .await?;
 
-    let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)?;
+    let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)
+        .map_err(WorkflowError)?;
     let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
     if lgtm {
         orchestrator.fail_on_abort_result()?;

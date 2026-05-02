@@ -58,6 +58,9 @@ pub fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
     store
         .validate_exists("coding_rules.md")
         .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("summary.md")
+        .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
@@ -185,6 +188,30 @@ pub async fn run_tidy_and_learn(
             .await?;
         }
     }
+    let header_only = input
+        .store
+        .render_prompt_only(HEADER_MD, input.context)
+        .map_err(|e: PromptError| e.0)?;
+    let summary_only = input
+        .store
+        .render("summary.md", input.context)
+        .map_err(|e: PromptError| e.0)?;
+    let summary_prompt = format!(
+        "{}\n\n{}",
+        header_only.trim_end(),
+        summary_only.trim_end()
+    );
+    run_tidy_prompt_with_restore(
+        input,
+        TidyPromptRestore {
+            prompt: &summary_prompt,
+            label: "summary",
+            phase: TimingPhase::Summary,
+            grounding_backup,
+            restore_context: "summary",
+        },
+    )
+    .await?;
     Ok(())
 }
 

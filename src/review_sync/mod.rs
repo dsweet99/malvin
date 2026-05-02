@@ -1,6 +1,9 @@
 //! Shared `review.md` workspace ↔ run artifact sync and LGTM detection.
 
-/// Check if the given string content represents an LGTM approval.
+mod attempt;
+
+pub use attempt::sync_review_file_for_attempt;
+
 #[must_use]
 pub fn is_lgtm_str(content: &str) -> bool {
     let t = content.trim();
@@ -74,6 +77,28 @@ mod tests {
         assert!(!is_lgtm_str("LGTM!"));
         assert!(!is_lgtm_str("Not LGTM"));
         assert!(!is_lgtm_str("## Concerns\n- issue"));
+    }
+
+    #[test]
+    fn sync_review_file_for_attempt_writes_workspace_text_to_artifact() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("review.md");
+        let artifact = t.path().join("run").join("review.md");
+        std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+        std::fs::write(&workspace, "LGTM\n").unwrap();
+        let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
+        assert_eq!(out.as_deref(), Some("LGTM\n"));
+        assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
+    }
+
+    #[test]
+    fn sync_review_file_for_attempt_falls_back_to_nonempty_artifact() {
+        let t = tempfile::tempdir().unwrap();
+        let workspace = t.path().join("missing.md");
+        let artifact = t.path().join("review.md");
+        std::fs::write(&artifact, "LGTM\n").unwrap();
+        let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
+        assert_eq!(out.as_deref(), Some("LGTM\n"));
     }
 
     #[test]

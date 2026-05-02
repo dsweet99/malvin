@@ -15,6 +15,7 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     insert_formatted(context, "review_path", &artifacts.artifact_review_md(), base);
     insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
+    insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
 }
 
 #[must_use]
@@ -154,7 +155,7 @@ mod helper_tests {
     #[test]
     fn kiss_stringify_review_loop_helpers() {
         let _ = stringify!(super::run_reviewer_pair_for_attempt);
-        let _ = stringify!(super::sync_review_file_for_attempt);
+        let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
         let _ = stringify!(super::prompt_with_sync_header);
         let _ = stringify!(super::run_concerns_and_check_abort_impl);
     }

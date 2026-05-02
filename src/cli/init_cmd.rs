@@ -4,8 +4,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Args;
-use malvin::artifacts::create_run_artifacts_from_text;
+use malvin::acp::CoderPromptOptions;
+use malvin::artifacts::{backup_workspace_grounding_if_present, create_run_artifacts_from_text};
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
+use malvin::orchestrator::workflow_context;
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
+use malvin::run_timing::TimingPhase;
 
 const TPL_GITIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -86,24 +90,102 @@ pub struct InitArgs {
     pub path: Option<PathBuf>,
 }
 
-pub fn run_init(
+pub async fn run_init(
     path: Option<PathBuf>,
     force: bool,
     language_args: &[String],
+    shared: &super::SharedOpts,
     tee_startup_stdout: bool,
 ) -> Result<(), String> {
     let languages = parse_languages(language_args)?;
     let root = resolve_init_root(path)?;
-    emit_init_startup(&root, tee_startup_stdout)?;
+    let artifacts = emit_init_startup(&root, tee_startup_stdout)?;
     write_init_templates(&root, force, &languages)?;
-    bootstrap_repo_tooling(&root)
+    bootstrap_repo_tooling(&root)?;
+    run_init_summary_phase(shared, &artifacts).await
 }
 
-fn emit_init_startup(root: &Path, tee_startup_stdout: bool) -> Result<(), String> {
+fn emit_init_startup(
+    root: &Path,
+    tee_startup_stdout: bool,
+) -> Result<malvin::artifacts::RunArtifacts, String> {
     let artifacts =
         create_run_artifacts_from_text("init", Some(root)).map_err(|e| format!("init: {e}"))?;
     super::run_emit::emit_run_startup_sequence(&artifacts, tee_startup_stdout, "init")?;
-    Ok(())
+    Ok(artifacts)
+}
+
+async fn run_init_summary_phase(
+    shared: &super::SharedOpts,
+    artifacts: &malvin::artifacts::RunArtifacts,
+) -> Result<(), String> {
+    let workflow = super::WorkflowCliOptions {
+        force: !shared.no_force,
+        run_learn: false,
+    };
+    let store = PromptStore::default_store();
+    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("summary.md")
+        .map_err(|e: PromptError| e.0)?;
+    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
+    let ctx = workflow_context(artifacts, &store, "init").map_err(|e: PromptError| e.0)?;
+    let header_body = store
+        .render_prompt_only(HEADER_MD, &ctx)
+        .map_err(|e: PromptError| e.0)?;
+    let summary_only = store
+        .render("summary.md", &ctx)
+        .map_err(|e: PromptError| e.0)?;
+    let body = format!(
+        "{}\n\n{}",
+        header_body.trim_end(),
+        summary_only.trim_end()
+    );
+    let timing = client.attach_run_timing_for_session();
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .set_implement_display_name("init");
+    let begin_res = client.begin_coder_session(&artifacts.work_dir).await;
+    if let Err(e) = begin_res {
+        client.set_run_timing(None);
+        return Err(e.to_string());
+    }
+    let prompt_res = client
+        .run_coder_prompt(
+            &body,
+            &artifacts.log_path("summary"),
+            "summary",
+            CoderPromptOptions {
+                llm_phase: Some(TimingPhase::Summary),
+                skip_repo_style: true,
+                do_trace_split: None,
+                stdout_bracket_label: None,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string());
+    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
+    let merged = super::timing_merge::prefer_primary_over_secondary(
+        prompt_res,
+        end_res,
+        "failed to end coder session",
+    );
+    let timing_out = super::timing_merge::emit_run_timing_after_acp(
+        &mut client,
+        &artifacts.run_dir,
+        &timing,
+        merged,
+    );
+    super::timing_merge::merge_acp_with_grounding_restore_and_check_abort(
+        timing_out,
+        &artifacts.work_dir,
+        &grounding_backup,
+        &artifacts.artifact_result_md(),
+    )
 }
 
 fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {

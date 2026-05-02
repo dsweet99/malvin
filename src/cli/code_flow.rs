@@ -32,6 +32,9 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store.validate_required().map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("summary.md")
+        .map_err(|e: PromptError| e.0)?;
     if workflow.run_learn {
         store
             .validate_exists("learn.md")

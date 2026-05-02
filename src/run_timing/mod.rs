@@ -20,6 +20,7 @@ pub enum TimingPhase {
     Review2Review,
     Concerns,
     Learn,
+    Summary,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,6 +53,7 @@ pub struct RunTiming {
     review_2_review: Duration,
     concerns: Duration,
     learn: Duration,
+    summary: Duration,
 }
 
 impl Default for RunTiming {
@@ -69,6 +71,7 @@ impl Default for RunTiming {
             review_2_review: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
+            summary: Duration::ZERO,
         }
     }
 }
@@ -101,6 +104,7 @@ impl RunTiming {
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
+            TimingPhase::Summary => self.summary = self.summary.saturating_add(d),
         }
     }
 

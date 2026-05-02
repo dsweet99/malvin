@@ -110,12 +110,13 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
                 },
             )
         }),
-        Commands::Init(init) => init_cmd::run_init(
-            init.path,
-            init.force,
-            &init.languages,
-            cli.shared.tee_startup_stdout(),
-        ),
+        Commands::Init(init) => {
+            let shared = cli.shared.clone();
+            let tee = cli.shared.tee_startup_stdout();
+            run_async_cli(|| async move {
+                init_cmd::run_init(init.path, init.force, &init.languages, &shared, tee).await
+            })
+        }
         Commands::Models(_) => models_cmd::run_models(),
         Commands::Sync {
             max_loops,

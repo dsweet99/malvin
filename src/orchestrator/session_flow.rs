@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::run_timing::TimingPhase;
 
+use crate::orchestrator_review_loop_helpers::prompt_with_sync_header;
+
 use super::review_context::ReviewPhaseArgs;
 use super::review_loop::run_review_phase;
 use super::session_mode::OrchestratorSessionMode;
@@ -72,6 +74,22 @@ async fn run_review_loop(
             .await?;
         orchestrator.fail_on_abort_result()?;
     }
+    (orchestrator.progress_callback)("Summary");
+    let summary_body = prompt_with_sync_header(
+        orchestrator,
+        "summary.md",
+        context,
+        prepend_sync_header,
+    )?;
+    orchestrator
+        .run_coder_prompt_body(
+            summary_body,
+            "summary.md",
+            "summary",
+            TimingPhase::Summary,
+        )
+        .await?;
+    orchestrator.fail_on_abort_result()?;
     Ok(())
 }
 

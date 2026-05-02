@@ -29,6 +29,7 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "review_2_review": ms(r.review_2_review),
             "concerns": ms(r.concerns),
             "learn": ms(r.learn),
+            "summary": ms(r.summary),
         }
     })
 }
@@ -42,7 +43,7 @@ pub(super) fn write_json_only(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
 }
 
 /// Phase keys under `phases_ms` in [`to_json_value`] — keep order aligned with [`format_timing_stdout_line_from_json`].
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 8] = [
     "check_plan",
     "sync_check",
     "implement",
@@ -50,6 +51,7 @@ const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
     "review_2_review",
     "concerns",
     "learn",
+    "summary",
 ];
 
 /// Writes `run_timing.json` and prints one stdout summary line (timestamp-prefixed).
@@ -201,6 +203,7 @@ fn timing_line_uses_one_decimal_and_includes_all_buckets() {
     assert!(line.contains("llm_wait = "));
     assert!(line.contains("implement = "));
     assert!(line.contains("learn = "));
+    assert!(line.contains("summary = "));
     assert!(line.contains(&format_ms_one_decimal_s(100)));
 }
 

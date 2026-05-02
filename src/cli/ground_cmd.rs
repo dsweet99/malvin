@@ -6,8 +6,9 @@ use malvin::artifacts::{
     restore_workspace_kissconfig,
 };
 use malvin::orchestrator::workflow_context;
+use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::prompts::{PromptError, PromptStore};
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
 
 use super::repo_checks;
@@ -16,6 +17,7 @@ use super::{SharedOpts, WorkflowCliOptions, run_emit, timing_merge};
 const GROUND_REQUEST: &str = "ground";
 const GROUND_MAX_LOOPS: usize = 5;
 struct GroundSession {
+    store: PromptStore,
     artifacts: RunArtifacts,
     grounding_backup: malvin::artifacts::GroundingBackup,
     write_prompt: String,
@@ -35,6 +37,9 @@ fn prepare_ground_prompt_store() -> Result<PromptStore, String> {
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("check_sync.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
@@ -80,36 +85,6 @@ fn clear_review_file(path: &Path) -> Result<(), String> {
     }
 }
 
-fn sync_review_file_for_attempt(
-    artifact_review_path: &Path,
-    workspace_review_path: &Path,
-) -> Result<Option<String>, String> {
-    if workspace_review_path.exists() {
-        let workspace_text = std::fs::read_to_string(workspace_review_path)
-            .map_err(|e| format!("failed to read workspace review file: {e}"))?;
-        if !workspace_text.trim().is_empty() {
-            std::fs::write(artifact_review_path, &workspace_text)
-                .map_err(|e| format!("failed to sync workspace review into artifact: {e}"))?;
-            return Ok(Some(workspace_text));
-        }
-    }
-
-    if artifact_review_path.exists() {
-        let artifact_text = std::fs::read_to_string(artifact_review_path)
-            .map_err(|e| format!("failed to read artifact review file: {e}"))?;
-        if !artifact_text.trim().is_empty() {
-            return Ok(Some(artifact_text));
-        }
-    }
-
-    Ok(None)
-}
-
-fn is_lgtm_str(text: &str) -> bool {
-    let trimmed = text.trim().strip_prefix('\u{FEFF}').unwrap_or(text).trim();
-    trimmed == "LGTM"
-}
-
 fn abort_message_from_result_md(result_path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(result_path).ok()?;
     let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
@@ -138,6 +113,7 @@ fn prepare_ground_session() -> Result<GroundSession, String> {
     let improve_prompt = build_improve_grounding_prompt(&store, &artifacts)?;
     let check_sync_prompt = build_check_sync_prompt(&store, &artifacts)?;
     Ok(GroundSession {
+        store,
         artifacts,
         grounding_backup,
         write_prompt,
@@ -150,6 +126,7 @@ fn prepare_ground_session() -> Result<GroundSession, String> {
 async fn run_ground_acp(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
+    store: &PromptStore,
     write_prompt: &str,
     improve_prompt: &str,
     check_sync_prompt: &str,
@@ -165,14 +142,45 @@ async fn run_ground_acp(
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .set_implement_display_name("ground");
-    let acp_result = run_grounding_discrepancy_loop(
-        client,
-        artifacts,
-        write_prompt,
-        improve_prompt,
-        check_sync_prompt,
-        grounding_exists,
-    )
+    let acp_result = async {
+        run_grounding_discrepancy_loop(
+            client,
+            artifacts,
+            write_prompt,
+            improve_prompt,
+            check_sync_prompt,
+            grounding_exists,
+        )
+        .await?;
+        let ctx = workflow_context(artifacts, store, GROUND_REQUEST).map_err(|e: PromptError| e.0)?;
+        let header_body = store
+            .render_prompt_only(HEADER_MD, &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let summary_only = store
+            .render("summary.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let summary_body = format!(
+            "{}\n\n{}",
+            header_body.trim_end(),
+            summary_only.trim_end()
+        );
+        client
+            .run_coder_prompt(
+                &summary_body,
+                &artifacts.log_path("summary"),
+                "summary",
+                CoderPromptOptions {
+                    llm_phase: Some(TimingPhase::Summary),
+                    skip_repo_style: true,
+                    do_trace_split: None,
+                    stdout_bracket_label: None,
+                },
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        fail_on_abort_result(&artifacts.artifact_result_md())?;
+        Ok(())
+    }
     .await;
     let end_result = client.end_coder_session().await.map_err(|e| e.to_string());
     let result = merge_ground_acp_results(acp_result, end_result);
@@ -330,6 +338,7 @@ pub async fn run_ground(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Re
     let result = run_ground_acp(
         &mut client,
         &session.artifacts,
+        &session.store,
         &session.write_prompt,
         &session.improve_prompt,
         &session.check_sync_prompt,
@@ -353,7 +362,7 @@ fn stringify_ground_flow_helpers() {
     let _ = stringify!(crate::cli::ground_cmd::build_improve_grounding_prompt);
     let _ = stringify!(crate::cli::ground_cmd::build_check_sync_prompt);
     let _ = stringify!(crate::cli::ground_cmd::clear_review_file);
-    let _ = stringify!(crate::cli::ground_cmd::sync_review_file_for_attempt);
+    let _ = stringify!(malvin::review_sync::sync_review_file_for_attempt);
     let _ = stringify!(crate::cli::ground_cmd::fail_on_abort_result);
     let _ = stringify!(crate::cli::ground_cmd::abort_message_from_result_md);
     let _ = stringify!(crate::cli::ground_cmd::prepare_ground_session);

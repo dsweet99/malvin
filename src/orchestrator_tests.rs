@@ -148,7 +148,7 @@ fn kiss_stringify_orchestrator_helpers() {
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::run_reviewer_pair_for_attempt);
-    let _ = stringify!(crate::orchestrator::sync_review_file_for_attempt);
+    let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
     let _ = stringify!(crate::orchestrator::prompt_with_sync_header);
     let _ = stringify!(crate::orchestrator::run_concerns_and_check_abort_impl);
 }

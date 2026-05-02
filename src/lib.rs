@@ -29,7 +29,7 @@ mod orchestrator_review_loop_helpers;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
-mod review_sync;
+pub mod review_sync;
 pub mod run_timing;
 
 #[cfg(test)]
