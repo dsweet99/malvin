@@ -188,6 +188,12 @@ pub async fn run_tidy_and_learn(
             .await?;
         }
     }
+    super::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry(
+        input.client,
+        input.artifacts,
+        grounding_backup,
+    )
+    .await?;
     let header_only = input
         .store
         .render_prompt_only(HEADER_MD, input.context)

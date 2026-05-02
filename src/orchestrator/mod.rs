@@ -9,6 +9,7 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 mod memory_context;
@@ -21,10 +22,25 @@ mod review_loop;
 mod session_flow;
 mod session_mode;
 
-use session_flow::run_coder_session;
-use session_mode::OrchestratorSessionMode;
+use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
+
+pub use session_mode::OrchestratorSessionMode;
 
 use workflow_context as workflow_context_inner;
+
+pub type PreSummaryMidFn = for<'a> fn(
+    &'a mut AgentClient,
+    &'a RunArtifacts,
+    &'a GroundingBackup,
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+
+fn mid_noop<'a>(
+    _: &'a mut AgentClient,
+    _: &'a RunArtifacts,
+    _: &'a GroundingBackup,
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
+    Box::pin(async { Ok(()) })
+}
 
 /// Workflow stopped after `max_loops` without LGTM.
 #[derive(Debug, thiserror::Error)]
@@ -119,7 +135,7 @@ impl Orchestrator<'_> {
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts, "code")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, OrchestratorSessionMode::Code)
+        self.run_with_pre_summary_gap(&context, OrchestratorSessionMode::Code, mid_noop)
             .await
     }
 
@@ -127,14 +143,15 @@ impl Orchestrator<'_> {
     pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts, "sync")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_session(&context, OrchestratorSessionMode::Sync)
+        self.run_with_pre_summary_gap(&context, OrchestratorSessionMode::Sync, mid_noop)
             .await
     }
 
-    async fn run_with_session(
+    pub async fn run_with_pre_summary_gap(
         &mut self,
         context: &HashMap<String, String>,
         mode: OrchestratorSessionMode,
+        mid: PreSummaryMidFn,
     ) -> Result<(), WorkflowError> {
         let timing = self.attach_run_timing();
         let begin_res = self
@@ -143,7 +160,14 @@ impl Orchestrator<'_> {
             .await;
         let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
-            Ok(()) => run_coder_session(self, context, mode).await,
+            Ok(()) => async {
+                run_coder_session_until_pre_summary(self, context, mode).await?;
+                mid(self.client, self.artifacts, &self.grounding_backup)
+                    .await
+                    .map_err(WorkflowError)?;
+                run_coder_session_summary_only(self, context, mode.include_sync_check_phase()).await
+            }
+            .await,
             Err(e) => Err(WorkflowError(e.0)),
         };
         let timing_result = if coder_session_began {

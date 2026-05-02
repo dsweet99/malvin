@@ -3,15 +3,13 @@ use malvin::artifacts::{
     RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
-use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError};
+use malvin::orchestrator::{
+    Orchestrator, OrchestratorSessionMode, WorkflowConfig, WorkflowError, workflow_context,
+};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 
-use super::repo_checks::{
-    RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
-    run_repo_workspace_gates_with_details,
-};
-use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
+use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::{CodeArgs, SharedOpts};
 use super::{run_emit, timing_merge};
 
@@ -121,6 +119,7 @@ pub async fn run_code(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
     run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
+    let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
     let workflow_res = {
         let mut orch = Orchestrator {
             client: &mut client,
@@ -137,38 +136,20 @@ pub async fn run_code(
             }),
             grounding_backup: grounding_backup.clone(),
         };
-        orch.run().await.map_err(|e: WorkflowError| e.0)
+        orch
+            .run_with_pre_summary_gap(
+                &ctx,
+                OrchestratorSessionMode::Code,
+                crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
+            )
+            .await
+            .map_err(|e: WorkflowError| e.0)
     };
     timing_merge::merge_acp_with_grounding_restore(
         workflow_res,
         &artifacts.work_dir,
         &grounding_backup,
     )?;
-    match run_repo_workspace_gates_with_details(
-        &artifacts.work_dir,
-        RepoGateOutput::Tagged,
-        Some(&artifacts.run_dir),
-    ) {
-        Ok(()) => {}
-        Err(RepoGateFailure::Command(failure)) => {
-            run_tidy_prompt_after_post_run_gate_failure(
-                &mut client,
-                &artifacts,
-                &grounding_backup,
-                &failure,
-            )
-            .await?;
-            run_repo_workspace_gates(
-                &artifacts.work_dir,
-                RepoGateOutput::Tagged,
-                Some(&artifacts.run_dir),
-            )
-            .map_err(|e| {
-                format!("post-run gates still failing after one tidy.md retry: {e}")
-            })?;
-        }
-        Err(RepoGateFailure::Message(err)) => return Err(err),
-    }
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

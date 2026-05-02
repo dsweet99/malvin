@@ -11,6 +11,7 @@ mod kiss_clamp;
 mod kpop_flow;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
+mod mid_session_gates;
 mod models_cmd;
 mod repo_checks;
 mod run_emit;
