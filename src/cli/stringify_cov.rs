@@ -50,6 +50,7 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed);
     let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
     let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
+    let _ = stringify!(crate::cli::mid_session_gates::pre_summary_repo_gates_tidy_retry_flow);
     let _ = stringify!(super::prepare_code_run);
     let _ = stringify!(super::require_kiss_for_cli_command);
     let _ = stringify!(super::print_command_error);

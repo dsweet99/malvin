@@ -203,3 +203,34 @@ fn sample_memories_uses_deterministic_seed() {
     let second = sample_memories(&mut second_records, 1, seed_b);
     assert_eq!(first, second);
 }
+
+#[test]
+fn sample_memories_weights_by_one_plus_confidence() {
+    let low = MemoryRecord {
+        trigger: "L".into(),
+        advice: "x".into(),
+        confidence: 0,
+    };
+    let high = MemoryRecord {
+        trigger: "H".into(),
+        advice: "y".into(),
+        confidence: 99,
+    };
+    let mut high_wins = 0_usize;
+    for seed in 0u64..8000 {
+        let mut recs = vec![low.clone(), high.clone()];
+        let out = sample_memories(&mut recs, 1, seed);
+        assert_eq!(out.len(), 1);
+        if out[0].trigger == "H" {
+            high_wins += 1;
+        }
+    }
+    assert!(
+        high_wins > 7600,
+        "expected ~100/101 mass on high-confidence record, got {high_wins}/8000"
+    );
+    assert!(
+        high_wins < 8000,
+        "low-confidence record should win occasionally (weight 1 vs 100): {high_wins}/8000"
+    );
+}
