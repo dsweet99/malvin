@@ -116,7 +116,14 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
     let mut child = spawn_agent_acp_child(&mut cmd)
         .await
         .map_err(|e| format!("failed to spawn agent acp: {e}"))?;
-    let (stdin, stdout) = take_stdio_pipes(&mut child).await?;
+    let (stdin, stdout) = match take_stdio_pipes(&mut child).await {
+        Ok(pipes) => pipes,
+        Err(e) => {
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+            return Err(e);
+        }
+    };
     session_after_stdio(SessionAfterStdioIn {
         args,
         rpc_timeout,

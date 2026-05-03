@@ -254,7 +254,7 @@ rl.on('line', (line) => {
       .sort();
     const markerPath = path.join(runRoot, runDirs[0], 'sync_prompt_headers.txt');
     const promptText = ((((msg.params || {}).prompt || [])[0]) || {}).text || '';
-    const hadHeader = promptText.includes('You are') && promptText.includes('command');
+    const hadHeader = promptText.includes('Speak in the first person as malvin');
     const existing = (() => {
       try {
         return fs.readFileSync(markerPath, 'utf8');

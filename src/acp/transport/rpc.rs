@@ -129,10 +129,15 @@ async fn rpc_wait_with_timeout(
     tokio::pin!(wait);
     loop {
         tokio::select! {
+            biased;
             ready_recv = &mut wait => {
                 let result = ready_recv?;
                 pending.lock().await.remove(&id);
                 return Ok(result);
+            }
+            () = acp_activity_notify.notified() => {
+                let _ = acp_activity_seq
+                    .load(std::sync::atomic::Ordering::SeqCst);
             }
             () = tokio::time::sleep(timeout) => {
                 let timeout_err = if let Some(child_pid) = child_pid {
@@ -140,6 +145,7 @@ async fn rpc_wait_with_timeout(
                     let health = crate::child_health::evaluate_after_acp_silence(child_pid, grace);
                     tokio::pin!(health);
                     tokio::select! {
+                        biased;
                         ready_recv = &mut wait => {
                             let result = ready_recv?;
                             pending.lock().await.remove(&id);
@@ -170,10 +176,6 @@ async fn rpc_wait_with_timeout(
                 }
                 pending.lock().await.remove(&id);
                 return Err(timeout_err.expect_err("timeout outcome must be Err"));
-            }
-            () = acp_activity_notify.notified() => {
-                let _ = acp_activity_seq
-                    .load(std::sync::atomic::Ordering::SeqCst);
             }
         }
     }
