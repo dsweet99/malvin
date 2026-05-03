@@ -53,7 +53,7 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         no_learn: bool,
     },
-    /// (Beta) Author or refine `grounding.md` until `check_sync` is LGTM (does not edit source)
+    /// (Beta) Synchronize grounding.md to code
     Ground,
 }
 
