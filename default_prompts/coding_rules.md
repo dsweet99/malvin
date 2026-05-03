@@ -17,12 +17,11 @@ When presented with failures or violations, respond to them earnestly. Improve t
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
   - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating.
-- Do not write "documentation parity guards". Do not write comments. NEVER EDIT `{{ grounding_path }}`
-  outside the **`malvin ground`** workflow (`write_grounding.md` may create `{{ grounding_path }}` when it is missing and only that file may be written; `improve_grounding.md` may edit `{{ grounding_path }}` alone when malvin invokes it).
+- Do not write "documentation parity guards". Do not write comments.
 - Keep each unit test's running time under 10 seconds (<1s would be great).
 - Write code to fail fast. Assert liberally. DRY.
 - Don't name files ".inc".  .rs and .py are the correct extensions.
-- Keep code consistent with `{{ grounding_path }}` and `{{ plan_path }}` (if applicable).
+- Keep code consistent with `{{ plan_path }}` when this run includes a plan file.
 - Use (up to 4) parallel subagents whereven possible.
 
 ## Nota Bene & Hard Requirements

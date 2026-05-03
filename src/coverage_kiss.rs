@@ -53,8 +53,8 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::startup_request_tag_label);
     let _ = stringify!(crate::artifacts::work_dir_for_path);
     let _ = stringify!(crate::artifacts::resolve_at_file);
-    let _ = stringify!(crate::artifacts::backup_workspace_grounding_if_present);
-    let _ = stringify!(crate::artifacts::restore_workspace_grounding);
+    let _ = stringify!(crate::artifacts::backup_workspace_kissconfig_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_kissconfig_backup);
 }
 
 #[test]
@@ -112,9 +112,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(WorkflowConfig);
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
-    let _ = stringify!(crate::orchestrator::OrchestratorSessionMode);
     let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
-    let _ = stringify!(crate::orchestrator::session_flow::run_sync_dry_run);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);

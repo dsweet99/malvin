@@ -14,7 +14,6 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
     CheckPlan,
-    SyncCheck,
     Implement,
     Review1Review,
     Review2Review,
@@ -46,7 +45,6 @@ pub struct RunTiming {
     llm_wait: Duration,
     agent_retry_backoff: Duration,
     check_plan: Duration,
-    sync_check: Duration,
     implement: Duration,
     implement_display_name: &'static str,
     review_1_review: Duration,
@@ -64,7 +62,6 @@ impl Default for RunTiming {
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
             check_plan: Duration::ZERO,
-            sync_check: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
             review_1_review: Duration::ZERO,
@@ -94,7 +91,6 @@ impl RunTiming {
         self.llm_wait = self.llm_wait.saturating_add(d);
         match phase {
             TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
-            TimingPhase::SyncCheck => self.sync_check = self.sync_check.saturating_add(d),
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
             TimingPhase::Review1Review => {
                 self.review_1_review = self.review_1_review.saturating_add(d);

@@ -51,26 +51,8 @@ fn tidy_parses_without_request_and_runs_learn() {
 }
 
 #[test]
-fn sync_parses_with_global_no_markdown_without_request() {
-    let cli =
-        Cli::try_parse_from(["malvin", "--no-markdown", "sync", "--no-learn"]).expect("parse");
+fn models_parses_with_global_no_markdown() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "models"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    match cli.command {
-        crate::cli::Commands::Sync {
-            no_learn,
-            max_loops,
-            ..
-        } => {
-            assert!(no_learn);
-            assert_eq!(max_loops, 5);
-        }
-        _ => panic!("expected Sync"),
-    }
-}
-
-#[test]
-fn ground_parses_with_global_no_markdown() {
-    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "ground"]).expect("parse");
-    assert!(cli.shared.no_markdown);
-    assert!(matches!(cli.command, crate::cli::Commands::Ground));
+    assert!(matches!(cli.command, crate::cli::Commands::Models(_)));
 }

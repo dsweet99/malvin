@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    KissConfigBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
     create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
@@ -102,14 +102,14 @@ pub struct KpopPrepared {
     exp_log_path: PathBuf,
     context: HashMap<String, String>,
     text: String,
-    grounding_backup: GroundingBackup,
+    kissconfig_backup: KissConfigBackup,
 }
 
 fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
@@ -126,7 +126,7 @@ fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
         exp_log_path,
         context,
         text,
-        grounding_backup,
+        kissconfig_backup,
     })
 }
 
@@ -157,7 +157,7 @@ pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<
             learn_ref,
             LEARN_MIN_ELAPSED_MS,
             ctx.state,
-            &ctx.prepared.grounding_backup,
+            &ctx.prepared.kissconfig_backup,
         )
         .await
         .map_err(|e| e.0);
@@ -206,10 +206,10 @@ pub async fn run_kpop(
     })
     .await;
 
-    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
+    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
-        &prepared.grounding_backup,
+        &prepared.kissconfig_backup,
         &prepared.artifacts.artifact_result_md(),
     )?;
     print_stdout_line(MALVIN_WHO, "DONE");
@@ -242,7 +242,7 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_grounding_restore);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
     let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
@@ -281,7 +281,6 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let mut base = HashMap::new();
     for (k, v) in [
         ("plan_path", "./_malvin/run42/plan.md"),
-        ("grounding_path", "./grounding.md"),
         ("kpop_log_dir", "./_malvin/run42/_kpop"),
         ("review_path", "./review.md"),
         ("result_path", "./_malvin/run42/result.md"),

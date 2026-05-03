@@ -5,7 +5,7 @@ use std::process::Command;
 
 use clap::Args;
 use malvin::acp::CoderPromptOptions;
-use malvin::artifacts::{backup_workspace_grounding_if_present, create_run_artifacts_from_text};
+use malvin::artifacts::{backup_workspace_kissconfig_if_present, create_run_artifacts_from_text};
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 use malvin::orchestrator::workflow_context;
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
@@ -18,10 +18,6 @@ const TPL_GITIGNORE: &str = include_str!(concat!(
 const TPL_KISSIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/kissignore"
-));
-const TPL_GROUNDING: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/grounding.md"
 ));
 const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -68,12 +64,6 @@ impl Language {
         }
     }
 
-    const fn display_name(self) -> &'static str {
-        match self {
-            Self::Python => "Python",
-            Self::Rust => "Rust",
-        }
-    }
 }
 
 /// `--force` overwrites files installed from `default_repo/` and refreshes `admin/check_untracked.sh`.
@@ -128,7 +118,7 @@ async fn run_init_summary_phase(
     store
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
@@ -180,10 +170,10 @@ async fn run_init_summary_phase(
         &timing,
         merged,
     );
-    super::timing_merge::merge_acp_with_grounding_restore_and_check_abort(
+    super::timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         timing_out,
         &artifacts.work_dir,
-        &grounding_backup,
+        &kissconfig_backup,
         &artifacts.artifact_result_md(),
     )
 }
@@ -204,21 +194,6 @@ fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
         }
     }
     Ok(languages)
-}
-
-fn format_languages_for_grounding(languages: &[Language]) -> String {
-    match languages.len() {
-        0 => String::new(),
-        1 => format!("in {}", languages[0].display_name()),
-        _ => {
-            let names: Vec<&str> = languages.iter().map(|l| l.display_name()).collect();
-            format!(
-                "in {} and {}",
-                names[..names.len() - 1].join(", "),
-                names.last().unwrap()
-            )
-        }
-    }
 }
 
 fn build_pre_commit_config(languages: &[Language]) -> String {
@@ -252,9 +227,6 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
         &pre_commit_config,
         force,
     )?;
-    let grounding =
-        TPL_GROUNDING.replace("{{languages}}", &format_languages_for_grounding(languages));
-    write_text_file(&root.join("grounding.md"), &grounding, force)?;
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
     write_shell_script(
@@ -447,14 +419,6 @@ mod tests {
     fn parse_languages_rejects_invalid() {
         assert!(parse_languages(&["javascript".into()]).is_err());
         assert!(parse_languages(&[]).is_err());
-    }
-
-    #[test]
-    fn format_languages_for_grounding_formats_correctly() {
-        assert_eq!(
-            format_languages_for_grounding(&[Language::Python]),
-            "in Python"
-        );
     }
 
     #[test]

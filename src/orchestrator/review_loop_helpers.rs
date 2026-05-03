@@ -1,35 +1,27 @@
 use super::review_context::ReviewAttemptCtx;
 use super::{Orchestrator, WorkflowError};
-use crate::prompts::HEADER_MD;
 use crate::run_timing::ReviewPairId;
 use std::collections::HashMap;
 
-pub struct SyncConcernsContext<'a> {
-    pub attempt: usize,
-    pub concern_suffix: &'a str,
-    pub context: &'a HashMap<String, String>,
-    pub prepend_sync_header: bool,
-}
-
 pub async fn run_concerns_and_check_abort_impl(
     orchestrator: &mut Orchestrator<'_>,
-    concerns_ctx: &SyncConcernsContext<'_>,
+    attempt: usize,
+    concern_suffix: &str,
+    context: &HashMap<String, String>,
 ) -> Result<bool, WorkflowError> {
     if let Some(abort_msg) = super::check_abort(&orchestrator.artifacts.artifact_result_md()) {
         return Err(WorkflowError(format!("ABORT: {abort_msg}")));
     }
-    (orchestrator.progress_callback)(&format!("Concerns (attempt {})", concerns_ctx.attempt));
-    let concerns_body = prompt_with_sync_header(
-        orchestrator,
-        "concerns.md",
-        concerns_ctx.context,
-        concerns_ctx.prepend_sync_header,
-    )?;
+    (orchestrator.progress_callback)(&format!("Concerns (attempt {attempt})"));
+    let concerns_body = orchestrator
+        .prompts
+        .render("concerns.md", context)
+        .map_err(|e| WorkflowError(e.0))?;
     orchestrator
         .run_coder_prompt_body(
             concerns_body,
             "concerns.md",
-            concerns_ctx.concern_suffix,
+            concern_suffix,
             crate::run_timing::TimingPhase::Concerns,
         )
         .await?;
@@ -70,42 +62,12 @@ pub async fn run_reviewer_pair_for_attempt(
     Ok(())
 }
 
-pub fn prompt_with_sync_header(
-    orchestrator: &Orchestrator<'_>,
-    prompt_filename: &str,
-    context: &HashMap<String, String>,
-    prepend_sync_header: bool,
-) -> Result<String, WorkflowError> {
-    let prompt = orchestrator
-        .prompts
-        .render(prompt_filename, context)
-        .map_err(|e| WorkflowError(e.0))?;
-    if !prepend_sync_header {
-        return Ok(prompt);
-    }
-    let header = orchestrator
-        .prompts
-        .render_prompt_only(HEADER_MD, context)
-        .map_err(|e| WorkflowError(e.0))?;
-    let header = header.trim();
-    let prompt = prompt.trim();
-    if header.is_empty() {
-        return Ok(prompt.to_string());
-    }
-    if prompt.is_empty() {
-        return Ok(header.to_string());
-    }
-    Ok(format!("{header}\n\n{prompt}"))
-}
-
 #[cfg(test)]
 mod kiss_coverage_tests {
     #[test]
     fn kiss_stringify_review_loop_helpers() {
-        let _ = stringify!(super::SyncConcernsContext);
         let _ = stringify!(super::run_concerns_and_check_abort_impl);
         let _ = stringify!(super::run_reviewer_pair_for_attempt);
         let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-        let _ = stringify!(super::prompt_with_sync_header);
     }
 }

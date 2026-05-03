@@ -1,12 +1,11 @@
 //! Run directories and log paths.
 
-mod grounding_backup;
+mod kiss_config_backup;
 pub mod run_id;
 mod startup_tag;
 
-pub use grounding_backup::{
-    GroundingBackup, backup_workspace_grounding_if_present, restore_workspace_grounding,
-    restore_workspace_kissconfig,
+pub use kiss_config_backup::{
+    KissConfigBackup, backup_workspace_kissconfig_if_present, restore_workspace_kissconfig_backup,
 };
 
 use std::path::{Path, PathBuf};

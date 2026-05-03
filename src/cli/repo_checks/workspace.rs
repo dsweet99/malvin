@@ -9,7 +9,7 @@ use super::emit::emit_repo_gate_line;
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput};
 
-/// Workspace quality gates for CLI workflows (`code`, `sync`, `tidy`, `ground`, …).
+/// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `tidy`, …).
 ///
 /// Calls [`prepare_repo_workspace`] first (`kiss clamp` when applicable).
 /// Runs [`repo_gates::gate_command_lines`] in order: built-ins from the workspace tree, then non-empty

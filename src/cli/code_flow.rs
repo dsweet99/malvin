@@ -1,11 +1,9 @@
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
-use malvin::orchestrator::{
-    Orchestrator, OrchestratorSessionMode, WorkflowConfig, WorkflowError, workflow_context,
-};
+use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
 
@@ -117,7 +115,7 @@ pub async fn run_code(
         Some(&artifacts.run_dir),
     )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
     let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
     let workflow_res = {
@@ -134,21 +132,17 @@ pub async fn run_code(
             progress_callback: Box::new(|msg: &str| {
                 print_stdout_line(MALVIN_WHO, msg);
             }),
-            grounding_backup: grounding_backup.clone(),
+            kissconfig_backup: kissconfig_backup.clone(),
         };
         orch
-            .run_with_pre_summary_gap(
-                &ctx,
-                OrchestratorSessionMode::Code,
-                crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
-            )
+            .run_with_pre_summary_gap(&ctx, crate::cli::mid_session_gates::mid_pre_summary_repo_gates)
             .await
             .map_err(|e: WorkflowError| e.0)
     };
-    timing_merge::merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_kissconfig_restore(
         workflow_res,
         &artifacts.work_dir,
-        &grounding_backup,
+        &kissconfig_backup,
     )?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())

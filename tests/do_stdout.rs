@@ -2,17 +2,17 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    acp_mock_do_creates_grounding_and_kissconfig_js, acp_mock_do_streaming_update_js,
-    acp_mock_do_tamper_grounding_and_kissconfig_js, acp_mock_do_tampers_grounding_js,
+    acp_mock_do_creates_kissconfig_js, acp_mock_do_streaming_update_js,
+    acp_mock_do_tampers_kissconfig_js, acp_mock_do_tampers_kissconfig_js_only,
     assert_stdout_has_no_chrome, first_do_log_path, run_do_with_mock, run_do_with_named_mock_bin,
     run_malvin_do_home_workspace, stdout_lines_preserve_shape, test_home_workspace,
 };
 
 #[cfg_attr(unix, test)]
-fn do_restores_workspace_grounding_after_mock_agent_overwrites() {
+fn do_restores_workspace_kissconfig_after_mock_agent_overwrites() {
     let (out, _root, workspace) = run_do_with_named_mock_bin(
-        "mock-agent-acp-do-grounding",
-        &acp_mock_do_tampers_grounding_js(),
+        "mock-agent-acp-do-kissconfig",
+        &acp_mock_do_tampers_kissconfig_js(),
         &[],
         None,
     );
@@ -21,33 +21,31 @@ fn do_restores_workspace_grounding_after_mock_agent_overwrites() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let restored = std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding");
+    let restored = std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig");
     assert_eq!(restored, "x");
 }
 
 #[cfg_attr(unix, test)]
-fn do_restores_missing_grounding_and_kissconfig_when_agent_creates_them() {
+fn do_restores_missing_kissconfig_when_agent_creates_it() {
     let (root, _home, workspace) = test_home_workspace();
-    let _ = std::fs::remove_file(workspace.join("grounding.md"));
+    let _ = std::fs::remove_file(workspace.join(".kissconfig"));
     let mock = root.path().join("mock-agent-acp-do-create-protected");
-    common::write_mock_executable(&mock, &acp_mock_do_creates_grounding_and_kissconfig_js());
+    common::write_mock_executable(&mock, &acp_mock_do_creates_kissconfig_js());
     let out = run_malvin_do_home_workspace(&workspace, &root.path().join("home"), &mock);
     assert!(
         out.status.success(),
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(!workspace.join("grounding.md").exists());
     assert!(!workspace.join(".kissconfig").exists());
 }
 
 #[cfg_attr(unix, test)]
-fn do_restores_kissconfig_when_grounding_missing() {
+fn do_restores_kissconfig_after_tamper_when_present_at_start() {
     let (root, _home, workspace) = test_home_workspace();
     std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
-    let _ = std::fs::remove_file(workspace.join("grounding.md"));
     let mock = root.path().join("mock-agent-acp-do-tamper-kiss");
-    common::write_mock_executable(&mock, &acp_mock_do_tamper_grounding_and_kissconfig_js());
+    common::write_mock_executable(&mock, &acp_mock_do_tampers_kissconfig_js_only());
     let out = run_malvin_do_home_workspace(&workspace, &root.path().join("home"), &mock);
     assert!(
         out.status.success(),
@@ -56,10 +54,6 @@ fn do_restores_kissconfig_when_grounding_missing() {
     );
     let restored = std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig");
     assert_eq!(restored, "k\n");
-    assert_eq!(
-        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
-        "TAMPERED"
-    );
 }
 
 #[cfg_attr(unix, test)]

@@ -14,7 +14,7 @@ pub async fn run_tidy(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let (mut client, artifacts, grounding_backup, store, context, run_learn) =
+    let (mut client, artifacts, kissconfig_backup, store, context, run_learn) =
         prepare_tidy_run(shared, workflow, !tidy.no_learn)?;
     let prompt = compose_tidy_prompt(&store, &context)?;
     let mut input = TidyAcpInput {
@@ -24,8 +24,8 @@ pub async fn run_tidy(
         context: &context,
         run_learn,
     };
-    let result = run_tidy_acp(&mut input, prompt.trim_end(), &grounding_backup).await;
-    merge_tidy_timing(result, &artifacts, &grounding_backup)?;
+    let result = run_tidy_acp(&mut input, prompt.trim_end(), &kissconfig_backup).await;
+    merge_tidy_timing(result, &artifacts, &kissconfig_backup)?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }

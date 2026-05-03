@@ -201,8 +201,8 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
 }
 
 #[test]
-fn malvin_sync_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["sync", "--no-learn"]);
+fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["do", "hello"]);
 }
 
 #[test]

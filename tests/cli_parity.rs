@@ -54,7 +54,7 @@ fn help_lists_global_no_markdown_once() {
 }
 
 #[cfg_attr(unix, test)]
-fn help_lists_ground_command() {
+fn help_omits_removed_ground_and_sync_commands() {
     let out = run_root_help_output();
     assert!(
         out.status.success(),
@@ -62,10 +62,13 @@ fn help_lists_ground_command() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let has_ground_command = contains_help_subcommand(&s, "ground");
     assert!(
-        has_ground_command,
-        "expected help text to include ground command: {s}"
+        !contains_help_subcommand(&s, "ground"),
+        "ground was removed; help was: {s}"
+    );
+    assert!(
+        !contains_help_subcommand(&s, "sync"),
+        "sync was removed; help was: {s}"
     );
 }
 

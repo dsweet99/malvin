@@ -1,6 +1,4 @@
 #[cfg(unix)]
-use std::path::PathBuf;
-#[cfg(unix)]
 use std::process::Command;
 
 #[cfg(unix)]
@@ -26,12 +24,6 @@ pub fn check_ignored(repo: &std::path::Path, rel_path: &str) -> bool {
 pub struct CodeRunOpts {
     pub no_tee: bool,
     pub trust_plan: bool,
-}
-
-#[cfg(unix)]
-pub struct SyncRunOpts {
-    pub no_tee: bool,
-    pub with_kissconfig: bool,
 }
 
 #[cfg(unix)]
@@ -84,6 +76,31 @@ pub fn run_code_with_mock_js_trust_plan(
 }
 
 #[cfg(unix)]
+pub fn assert_review_abort_behavior(
+    out: &std::process::Output,
+    abort_snippet: &str,
+    should_stop_prompt: &str,
+) {
+    assert!(
+        !out.status.success(),
+        "expected ABORT failure path: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains(abort_snippet),
+        "expected review-path ABORT to stop the workflow: {combined:?}"
+    );
+    assert!(
+        !combined.contains(should_stop_prompt),
+        "ABORT should stop before Review-2 after Review-1 LGTM: {combined:?}"
+    );
+}
+
+#[cfg(unix)]
 pub fn run_code_with_mock_js(
     mock_js: &str,
     extra_args: &[&str],
@@ -127,61 +144,5 @@ pub fn run_code_max_loops_zero_with_mock_without_trust_plan() -> std::process::O
             no_tee: true,
             trust_plan: false,
         },
-    )
-}
-
-#[cfg(unix)]
-pub fn run_sync_with_mock_js_and_workspace(
-    mock_js: &str,
-    extra_args: &[&str],
-    opts: &SyncRunOpts,
-) -> (std::process::Output, tempfile::TempDir, PathBuf) {
-    let (root, home, workspace) = test_home_workspace();
-    let (_bin_dir, mock, path) = prep_acp_mock_on_path(&root, "mock-agent-acp-sync", mock_js);
-    if opts.with_kissconfig {
-        std::fs::write(workspace.join(".kissconfig"), "k\n").expect("write kissconfig");
-    }
-    let mut args = vec!["sync", "--no-learn"];
-    args.extend_from_slice(extra_args);
-    if opts.no_tee {
-        args.insert(0, "--no-tee");
-    }
-    let out = command_output_with_timeout(
-        Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .current_dir(&workspace)
-            .env("HOME", &home)
-            .env("CURSOR_AGENT_API_KEY", "test-key")
-            .env("MALVIN_AGENT_ACP_BIN", &mock)
-            .env("PATH", path)
-            .args(args),
-        MALVIN_TEST_CMD_TIMEOUT,
-    )
-    .expect("spawn malvin sync");
-    (out, root, workspace)
-}
-
-#[cfg(unix)]
-pub fn run_sync_with_mock_js(
-    mock_js: &str,
-    extra_args: &[&str],
-    no_tee: bool,
-) -> std::process::Output {
-    run_sync_with_mock_js_and_workspace(
-        mock_js,
-        extra_args,
-        &SyncRunOpts {
-            no_tee,
-            with_kissconfig: false,
-        },
-    )
-    .0
-}
-
-#[cfg(unix)]
-pub fn run_sync_with_mock_js_max_loops_zero() -> std::process::Output {
-    run_sync_with_mock_js(
-        &acp_mock_code_streaming_update_js(),
-        &["--max-loops", "0"],
-        true,
     )
 }

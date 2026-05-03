@@ -97,15 +97,11 @@ fn malvin_init_creates_expected_files_for_python_only() {
         "should always have check-untracked hook"
     );
 
-    let grounding = w.read_rel("grounding.md");
     assert!(
-        grounding.contains("in Python"),
-        "grounding should mention Python"
+        !w.path().join("grounding.md").exists(),
+        "init should not create grounding.md"
     );
-    assert!(
-        !grounding.contains("{{languages}}"),
-        "grounding should not have unreplaced placeholder"
-    );
+    assert!(w.path().join(".malvin_memory/style.md").exists());
 
     assert!(w.path().join(".gitignore").exists());
     assert!(w.path().join(".kissignore").exists());
@@ -125,11 +121,7 @@ fn malvin_init_creates_expected_files_for_rust_only() {
         "rust-only should have clippy hook"
     );
 
-    let grounding = w.read_rel("grounding.md");
-    assert!(
-        grounding.contains("in Rust"),
-        "grounding should mention Rust"
-    );
+    assert!(!w.path().join("grounding.md").exists());
 }
 
 #[test]
@@ -145,11 +137,7 @@ fn malvin_init_creates_expected_files_for_both_languages() {
         "both languages should have clippy hook"
     );
 
-    let grounding = w.read_rel("grounding.md");
-    assert!(
-        grounding.contains("in Python and Rust"),
-        "grounding should mention both languages"
-    );
+    assert!(!w.path().join("grounding.md").exists());
 }
 
 #[test]
@@ -162,17 +150,13 @@ fn malvin_init_language_args_are_case_insensitive() {
         "malvin init with mixed case should succeed: {out:?}"
     );
 
-    let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
-    assert!(
-        grounding.contains("in Python and Rust"),
-        "grounding should have proper casing"
-    );
+    assert!(!project.path().join("grounding.md").exists());
 }
 
 #[test]
 fn malvin_init_git_ls_tree_head_lists_expected_paths() {
     let w = InitOk::new(&["python"]);
     let tree = git_stdout(w.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
-    assert!(tree.contains("grounding.md"));
+    assert!(!tree.contains("grounding.md"));
     assert!(tree.contains(".malvin_memory/style.md"));
 }

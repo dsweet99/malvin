@@ -11,10 +11,6 @@ If you want or need to learn more about `malvin` (about yourself!), run `malvin 
 
 {{ memories }}
 
-TRIGGER: grounding.md
-ADVICE: Never modify grounding unless explicitly asked to by the user (unless the user ran **`malvin ground`**, the sole job of which is to modify `./grounding.md` via bundled prompts).
-CONFIDENCE: 3
-
 TRIGGER: .kissconfig
 ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
 CONFIDENCE: 3
@@ -47,7 +43,7 @@ CONFIDENCE: 3
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
-- `{{ grounding_path }}` overrides ADVICE. ADVICE is not binding.
+- `{{ plan_path }}` (when present) overrides ADVICE. ADVICE is not binding.
 
 ---
 

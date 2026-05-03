@@ -7,7 +7,6 @@ pub fn ensure_workspace_style_markers(
     work_dir: &Path,
     output: RepoGateOutput,
 ) -> Result<(), String> {
-    touch_if_missing(&work_dir.join("grounding.md"), output)?;
     let style_dir = work_dir.join(".malvin_memory");
     if !style_dir.is_dir() {
         std::fs::create_dir_all(&style_dir)

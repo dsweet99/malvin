@@ -1,8 +1,7 @@
 use clap::Parser;
 
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, SyncRunSpec, WorkflowCliOptions, run_do, run_ground,
-    run_kpop, run_sync, run_tidy,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 use super::{init_cmd, models_cmd};
 use malvin::env_path::require_kiss_for_malvin;
@@ -11,12 +10,7 @@ use malvin::output::{MALVIN_WHO, print_stderr_line};
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
-        Commands::Do(_)
-        | Commands::Init(_)
-        | Commands::Kpop(_)
-        | Commands::Models(_)
-        | Commands::Ground
-        | Commands::Sync { .. } => Ok(()),
+        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }
 }
 
@@ -78,15 +72,6 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
                 )
             })
         }
-        Commands::Ground => run_async_cli(|| {
-            run_ground(
-                &cli.shared,
-                WorkflowCliOptions {
-                    force: !cli.shared.no_force,
-                    run_learn: false,
-                },
-            )
-        }),
         Commands::Tidy(tidy) => {
             let run_learn = !tidy.no_learn;
             run_async_cli(|| {
@@ -118,24 +103,6 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             })
         }
         Commands::Models(_) => models_cmd::run_models(),
-        Commands::Sync {
-            dry_run,
-            max_loops,
-            no_learn,
-        } => run_async_cli(|| {
-            run_sync(
-                SyncRunSpec {
-                    dry_run,
-                    max_loops,
-                    no_learn,
-                },
-                &cli.shared,
-                WorkflowCliOptions {
-                    force: !cli.shared.no_force,
-                    run_learn: !no_learn,
-                },
-            )
-        }),
     }
 }
 

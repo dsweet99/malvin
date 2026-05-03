@@ -1,4 +1,4 @@
-/// ACP-backed agent with grounding-aligned session lifetimes.
+/// ACP-backed agent with session-scoped coder and reviewer lifetimes.
 ///
 /// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
 /// (unless skipped), `implement`, optional `learn`, and `concerns` prompts that run only inside

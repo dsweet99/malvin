@@ -4,7 +4,7 @@ use std::path::Path;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present,
+    KissConfigBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
     create_run_artifacts_from_text,
 };
 use malvin::orchestrator::{should_run_learn_check, workflow_context};
@@ -24,7 +24,7 @@ use super::{
 type TidyRunPrep = (
     AgentClient,
     RunArtifacts,
-    GroundingBackup,
+    KissConfigBackup,
     PromptStore,
     HashMap<String, String>,
     bool,
@@ -42,7 +42,7 @@ pub struct TidyPromptRestore<'a> {
     pub(crate) prompt: &'a str,
     pub(crate) label: &'a str,
     pub(crate) phase: TimingPhase,
-    pub(crate) grounding_backup: &'a GroundingBackup,
+    pub(crate) kissconfig_backup: &'a KissConfigBackup,
     pub(crate) restore_context: &'a str,
 }
 
@@ -109,7 +109,7 @@ pub async fn run_tidy_prompt(
 pub async fn run_tidy_acp(
     input: &mut TidyAcpInput<'_>,
     prompt: &str,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
     let timing = input.client.attach_run_timing_for_session();
     input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
@@ -122,7 +122,7 @@ pub async fn run_tidy_acp(
         return Err(e.to_string());
     }
 
-    let mut acp_result = run_tidy_and_learn(input, prompt, &timing, grounding_backup).await;
+    let mut acp_result = run_tidy_and_learn(input, prompt, &timing, kissconfig_backup).await;
     let end_result = input
         .client
         .end_coder_session()
@@ -148,7 +148,7 @@ pub async fn run_tidy_and_learn(
     input: &mut TidyAcpInput<'_>,
     prompt: &str,
     timing: &std::sync::Arc<std::sync::Mutex<malvin::run_timing::RunTiming>>,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
     run_tidy_prompt_with_restore(
         input,
@@ -156,7 +156,7 @@ pub async fn run_tidy_and_learn(
             prompt,
             label: "tidy",
             phase: TimingPhase::Implement,
-            grounding_backup,
+            kissconfig_backup,
             restore_context: "tidy",
         },
     )
@@ -181,7 +181,7 @@ pub async fn run_tidy_and_learn(
                     prompt: &learn_prompt,
                     label: "learn",
                     phase: TimingPhase::Learn,
-                    grounding_backup,
+                    kissconfig_backup,
                     restore_context: "learn",
                 },
             )
@@ -191,7 +191,7 @@ pub async fn run_tidy_and_learn(
     super::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry(
         input.client,
         input.artifacts,
-        grounding_backup,
+        kissconfig_backup,
     )
     .await?;
     let header_only = input
@@ -213,7 +213,7 @@ pub async fn run_tidy_and_learn(
             prompt: &summary_prompt,
             label: "summary",
             phase: TimingPhase::Summary,
-            grounding_backup,
+            kissconfig_backup,
             restore_context: "summary",
         },
     )
@@ -227,7 +227,7 @@ pub async fn run_tidy_prompt_with_restore(
 ) -> Result<(), String> {
     let acp_result = run_tidy_prompt(input, request.prompt, request.label, request.phase).await;
     let restore_result =
-        artifacts::restore_workspace_grounding(&input.artifacts.work_dir, request.grounding_backup)
+        artifacts::restore_workspace_kissconfig_backup(&input.artifacts.work_dir, request.kissconfig_backup)
             .map_err(|e| format!("tidy restore failed after {}: {e}", request.restore_context));
     match (acp_result, restore_result) {
         (Ok(()), Ok(())) => Ok(()),
@@ -264,13 +264,13 @@ pub fn prepare_tidy_run(
         Some(&artifacts.run_dir),
     )?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let (store, context) = tidy_prompt_context(&artifacts)?;
 
     Ok((
         client,
         artifacts,
-        grounding_backup,
+        kissconfig_backup,
         store,
         context,
         run_learn,
@@ -280,12 +280,12 @@ pub fn prepare_tidy_run(
 pub fn merge_tidy_timing(
     result: Result<(), String>,
     artifacts: &RunArtifacts,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
-    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
+    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         result,
         &artifacts.work_dir,
-        grounding_backup,
+        kissconfig_backup,
         &artifacts.artifact_result_md(),
     )?;
     Ok(())
@@ -304,7 +304,7 @@ fn post_run_gate_failure_details(failure: &RepoGateCommandFailure) -> String {
 pub async fn run_tidy_prompt_after_post_run_gate_failure(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
     failure: &RepoGateCommandFailure,
 ) -> Result<(), String> {
     let (store, context) = tidy_prompt_context(artifacts)?;
@@ -339,7 +339,7 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
             prompt: &prompt,
             label: "tidy",
             phase: TimingPhase::Implement,
-            grounding_backup,
+            kissconfig_backup,
             restore_context: "post-run gate failure",
         },
     )

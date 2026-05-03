@@ -35,8 +35,6 @@ pub use template::{
 };
 
 #[cfg(test)]
-mod check_sync_tests;
-#[cfg(test)]
 mod embedded_defaults_tests;
 #[cfg(test)]
 #[allow(unsafe_code)]

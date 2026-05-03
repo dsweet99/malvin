@@ -78,11 +78,6 @@ fn kpop_multiturn_restores_before_each_new_turn() {
         "kpop should restore protected files before each prompt: {combined:?}"
     );
     assert_eq!(
-        std::fs::read_to_string(workspace.join("grounding.md")).expect("read grounding"),
-        "x",
-        "kpop should restore grounding before each prompt: {combined:?}"
-    );
-    assert_eq!(
         std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
         "k = 1\n",
         "kpop should restore kissconfig before each prompt: {combined:?}"

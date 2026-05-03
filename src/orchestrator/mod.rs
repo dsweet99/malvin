@@ -4,7 +4,7 @@
 //! attribute coverage consistently; see `.kissignore`.
 
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::{GroundingBackup, RunArtifacts};
+use crate::artifacts::{KissConfigBackup, RunArtifacts};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
@@ -22,24 +22,21 @@ mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;
 pub mod session_flow;
-mod session_mode;
 
 use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
-
-pub use session_mode::OrchestratorSessionMode;
 
 use workflow_context as workflow_context_inner;
 
 pub type PreSummaryMidFn = for<'a> fn(
     &'a mut AgentClient,
     &'a RunArtifacts,
-    &'a GroundingBackup,
+    &'a KissConfigBackup,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
-    _: &'a GroundingBackup,
+    _: &'a KissConfigBackup,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(async { Ok(()) })
 }
@@ -82,8 +79,8 @@ pub struct Orchestrator<'a> {
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
-    /// Snapshot path under `~/.malvin/groundings/`, restored before each review and after the workflow.
-    pub grounding_backup: GroundingBackup,
+    /// Snapshot of workspace `.kissconfig` under `~/.malvin/kissconfigs/`, restored after each coder prompt and reviewer work.
+    pub kissconfig_backup: KissConfigBackup,
 }
 
 /// Returns true if learn should run given threshold and elapsed time.
@@ -133,23 +130,10 @@ impl Orchestrator<'_> {
     pub async fn run(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts, "code")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_pre_summary_gap(&context, OrchestratorSessionMode::Code, mid_noop)
-            .await
+        self.run_with_pre_summary_gap(&context, mid_noop).await
     }
 
-    /// Run sync workflow only: review loops and optional learn.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`WorkflowError`] when a prompt, review, gate, or ACP step fails.
-    pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts, self.prompts, "sync")
-            .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_pre_summary_gap(&context, OrchestratorSessionMode::Sync, mid_noop)
-            .await
-    }
-
-    /// Runs coder prompts up to the pre-summary gap, executes `mid`, then summary (and sync check when configured).
+    /// Runs coder prompts up to the pre-summary gap, executes `mid`, then summary.
     ///
     /// # Errors
     ///
@@ -157,7 +141,6 @@ impl Orchestrator<'_> {
     pub async fn run_with_pre_summary_gap(
         &mut self,
         context: &HashMap<String, String>,
-        mode: OrchestratorSessionMode,
         mid: PreSummaryMidFn,
     ) -> Result<(), WorkflowError> {
         let timing = self.attach_run_timing();
@@ -168,11 +151,11 @@ impl Orchestrator<'_> {
         let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
             Ok(()) => async {
-                run_coder_session_until_pre_summary(self, context, mode).await?;
-                mid(self.client, self.artifacts, &self.grounding_backup)
+                run_coder_session_until_pre_summary(self, context).await?;
+                mid(self.client, self.artifacts, &self.kissconfig_backup)
                     .await
                     .map_err(WorkflowError)?;
-                run_coder_session_summary_only(self, context, mode.include_sync_check_phase()).await
+                run_coder_session_summary_only(self, context).await
             }
             .await,
             Err(e) => Err(WorkflowError(e.0)),
@@ -230,9 +213,9 @@ impl Orchestrator<'_> {
             )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-        let restore_result = crate::artifacts::restore_workspace_grounding(
+        let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
             &self.artifacts.work_dir,
-            &self.grounding_backup,
+            &self.kissconfig_backup,
         )
         .map_err(WorkflowError);
 

@@ -22,19 +22,19 @@ pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
     acp_mock_code_with_run_dir_js(&body)
 }
 
-pub fn acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js() -> String {
+pub fn acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js() -> String {
     let lgtm = write_artifact_lgtm();
     let body = format!(
         r#"    if (promptText.includes('write ONLY the four characters "LGTM"')) {{
-      fs.writeFileSync(path.join(process.cwd(), 'grounding.md'), 'TAMPERED\n', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED\n', 'utf8');
 {lgtm}
 {checked}
     }} else if (promptText.includes('Implement the plan in')) {{
-      const grounding = fs.readFileSync(path.join(process.cwd(), 'grounding.md'), 'utf8');
-      if (grounding === 'x') {{
+      const k = fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8');
+      if (k === 'x') {{
 {implement_ok}
       }} else {{
-        fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: grounding leaked into implement\n', 'utf8');
+        fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: kissconfig leaked into implement\n', 'utf8');
 {implement_tampered}
       }}
     }} else {{
@@ -43,7 +43,7 @@ pub fn acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restor
     }}"#,
         checked = chunk_line("checked"),
         implement_ok = chunk_line("implement ok"),
-        implement_tampered = chunk_line("implement saw tampered grounding"),
+        implement_tampered = chunk_line("implement saw tampered kissconfig"),
         reviewed = chunk_line("reviewed"),
     );
     acp_mock_code_with_run_dir_js(&body)
@@ -90,29 +90,6 @@ pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');
     }}",
         workspace_lgtm = write_workspace_lgtm(),
-    );
-    acp_mock_code_with_run_dir_js(&body)
-}
-
-pub fn acp_mock_code_check_sync_then_review_lgtm_js() -> String {
-    let lgtm = write_artifact_lgtm();
-    let body = format!(
-        r"    if (promptText.includes('Find a discrepancy between the codebase and')) {{
-      let attempts = (typeof this.syncAttempts === 'undefined') ? 0 : this.syncAttempts;
-      this.syncAttempts = attempts + 1;
-      if (this.syncAttempts === 1) {{
-        fs.writeFileSync(path.join(runDir, 'review.md'), 'needs attention\\n', 'utf8');
-      }} else {{
-{lgtm}
-      }}
-    }} else if (promptText.includes('Please review the codebase.')) {{
-{lgtm}
-      {reviewed}
-    }} else if (promptText.includes('Concerns')) {{
-    }}
-",
-        lgtm = lgtm,
-        reviewed = chunk_line("reviewed"),
     );
     acp_mock_code_with_run_dir_js(&body)
 }

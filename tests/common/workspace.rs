@@ -9,7 +9,7 @@ pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::pat
     let workspace = root.path().join("workspace");
     std::fs::create_dir_all(&home).expect("mkdir home");
     std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join("grounding.md"), "x").expect("grounding");
+    std::fs::write(workspace.join(".kissconfig"), "x").expect("kissconfig");
     (root, home, workspace)
 }
 

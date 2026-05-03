@@ -9,7 +9,7 @@ use super::{WorkflowCliOptions, repo_checks};
 use clap::Args;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
@@ -104,14 +104,14 @@ pub async fn run_do(
         header_user_for_trace: header_user,
         skip_repo_style,
     };
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    timing_merge::merge_acp_with_grounding_restore_and_check_abort(
+    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         acp_res,
         &artifacts.work_dir,
-        &grounding_backup,
+        &kissconfig_backup,
         &artifacts.artifact_result_md(),
     )?;
     Ok(())

@@ -5,7 +5,6 @@ fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, b
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     let base = &artifacts.work_dir;
     insert_formatted(context, "plan_path", &artifacts.plan_path, base);
-    insert_formatted(context, "grounding_path", &base.join("grounding.md"), base);
     let kpop_dir = artifacts
         .run_dir
         .join("_kpop")
@@ -147,21 +146,19 @@ mod helper_tests {
             plan_path,
             work_dir: tmp.path().to_path_buf(),
         };
-        let ctx = workflow_context_paths_only(&artifacts, "ground");
+        let ctx = workflow_context_paths_only(&artifacts, "code");
         assert!(ctx.contains_key("plan_path"));
-        assert!(ctx.contains_key("grounding_path"));
         assert!(ctx.contains_key("kpop_log_dir"));
         assert!(ctx.contains_key("review_path"));
         assert!(ctx.contains_key("result_path"));
         assert!(ctx.contains_key("memories"));
-        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("ground"));
+        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
     }
 
     #[test]
     fn kiss_stringify_review_loop_helpers() {
-        let _ = stringify!(super::run_reviewer_pair_for_attempt);
+        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
         let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-        let _ = stringify!(super::prompt_with_sync_header);
-        let _ = stringify!(super::run_concerns_and_check_abort_impl);
+        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
     }
 }

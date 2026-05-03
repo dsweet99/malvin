@@ -1,4 +1,4 @@
-//! CLI entry: `malvin init`, `malvin do`, `malvin code`, `malvin kpop`, `malvin sync`, `malvin models`, `malvin ground`.
+//! CLI entry: `malvin init`, `malvin do`, `malvin code`, `malvin kpop`, `malvin tidy`, `malvin models`.
 // Match `lib.rs`: allow duplicate transitive versions under `clippy::cargo`.
 #![allow(clippy::multiple_crate_versions)]
 

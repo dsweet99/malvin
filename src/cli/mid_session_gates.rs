@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{GroundingBackup, RunArtifacts};
+use malvin::artifacts::{KissConfigBackup, RunArtifacts};
 
 use super::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
@@ -35,19 +35,19 @@ where
 pub fn mid_pre_summary_repo_gates<'a>(
     client: &'a mut AgentClient,
     artifacts: &'a RunArtifacts,
-    grounding_backup: &'a GroundingBackup,
+    kissconfig_backup: &'a KissConfigBackup,
 ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(run_pre_summary_repo_gates_with_tidy_retry(
         client,
         artifacts,
-        grounding_backup,
+        kissconfig_backup,
     ))
 }
 
 pub async fn run_pre_summary_repo_gates_with_tidy_retry(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.clone();
     let run_dir = artifacts.run_dir.clone();
@@ -63,7 +63,7 @@ pub async fn run_pre_summary_repo_gates_with_tidy_retry(
             run_tidy_prompt_after_post_run_gate_failure(
                 client,
                 artifacts,
-                grounding_backup,
+                kissconfig_backup,
                 &failure,
             )
             .await

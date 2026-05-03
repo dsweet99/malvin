@@ -4,7 +4,7 @@ mod common;
 use common::{
     acp_mock_code_abort_after_implement_js,
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
-    acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js,
+    acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js,
     acp_mock_code_review_lgtm_with_abort_js,
     assert_review_abort_behavior, run_code_max_loops_zero_with_mock,
@@ -68,9 +68,9 @@ fn code_stops_when_check_plan_writes_abort_result_with_lgtm_review() {
 }
 
 #[cfg_attr(unix, test)]
-fn check_plan_grounding_restore_happens_before_implement() {
+fn check_plan_kissconfig_restore_happens_before_implement() {
     let out = run_code_with_mock_js_trust_plan(
-        &acp_mock_code_check_plan_tampers_grounding_then_implement_verifies_restore_js(),
+        &acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js(),
         &["--max-loops", "1"],
         &CodeRunOpts {
             no_tee: false,
@@ -84,11 +84,11 @@ fn check_plan_grounding_restore_happens_before_implement() {
     );
     assert!(
         combined.contains("implement ok"),
-        "expected implement to see restored grounding: {combined:?}"
+        "expected implement to see restored kissconfig: {combined:?}"
     );
     assert!(
-        !combined.contains("ABORT: grounding leaked into implement"),
-        "check_plan grounding mutation must not leak into implement: {combined:?}"
+        !combined.contains("ABORT: kissconfig leaked into implement"),
+        "check_plan kissconfig mutation must not leak into implement: {combined:?}"
     );
     assert!(
         out.status.success(),

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{GroundingBackup, restore_workspace_grounding};
+use malvin::artifacts::{KissConfigBackup, restore_workspace_kissconfig_backup};
 use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
@@ -34,22 +34,22 @@ pub fn prefer_primary_over_secondary(
     }
 }
 
-pub fn merge_acp_with_grounding_restore(
+pub fn merge_acp_with_kissconfig_restore(
     primary: Result<(), String>,
     work_dir: &Path,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
-    let restore_res = restore_workspace_grounding(work_dir, grounding_backup);
-    prefer_primary_over_secondary(primary, restore_res, "grounding restore failed")
+    let restore_res = restore_workspace_kissconfig_backup(work_dir, kissconfig_backup);
+    prefer_primary_over_secondary(primary, restore_res, "kissconfig restore failed")
 }
 
-pub fn merge_acp_with_grounding_restore_and_check_abort(
+pub fn merge_acp_with_kissconfig_restore_and_check_abort(
     primary: Result<(), String>,
     work_dir: &Path,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result = merge_acp_with_grounding_restore(primary, work_dir, grounding_backup);
+    let merge_result = merge_acp_with_kissconfig_restore(primary, work_dir, kissconfig_backup);
     if let Some(abort) = abort_message_from_result_md(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
@@ -63,10 +63,10 @@ pub fn merge_acp_with_grounding_restore_and_check_abort(
 }
 
 fn duplicate_safe_restore_error(merge_error: &str) -> String {
-    if merge_error.contains("grounding restore failed:") {
+    if merge_error.contains("kissconfig restore failed:") {
         merge_error.to_string()
     } else {
-        format!("grounding restore failed: {merge_error}")
+        format!("kissconfig restore failed: {merge_error}")
     }
 }
 
@@ -139,9 +139,9 @@ mod tests {
             prefer_primary_over_secondary(
                 Err("wf".into()),
                 Err("restore".into()),
-                "grounding restore failed",
+                "kissconfig restore failed",
             ),
-            Err("wf; grounding restore failed: restore".into())
+            Err("wf; kissconfig restore failed: restore".into())
         );
     }
 
@@ -174,8 +174,8 @@ mod tests {
     #[test]
     fn duplicate_safe_restore_error_does_not_repeat_restore_prefix() {
         assert_eq!(
-            duplicate_safe_restore_error("wf failed; grounding restore failed: restore").as_str(),
-            "wf failed; grounding restore failed: restore"
+            duplicate_safe_restore_error("wf failed; kissconfig restore failed: restore").as_str(),
+            "wf failed; kissconfig restore failed: restore"
         );
     }
 
@@ -183,7 +183,7 @@ mod tests {
     fn duplicate_safe_restore_error_adds_restore_prefix_when_missing() {
         assert_eq!(
             duplicate_safe_restore_error("wf failed"),
-            "grounding restore failed: wf failed"
+            "kissconfig restore failed: wf failed"
         );
     }
 }

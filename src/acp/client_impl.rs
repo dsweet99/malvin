@@ -290,11 +290,11 @@ impl AgentClient {
         &mut self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
-        grounding_restore: ReviewerRestorePolicy,
+        workspace_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
-        let backup = match grounding_restore {
+        let backup = match workspace_restore {
             ReviewerRestorePolicy::RestoreWorkspace => Some(
-                crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
+                crate::artifacts::backup_workspace_kissconfig_if_present(pair.cwd)
                     .map_err(AgentError)?,
             ),
             ReviewerRestorePolicy::NoRestore => None,
@@ -307,7 +307,7 @@ impl AgentClient {
             match prompt_result {
                 Ok(()) => {
                     if let Some(backup) = &backup {
-                        crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                        crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
                             .map_err(AgentError)?;
                     }
                     return Ok(());
@@ -317,7 +317,7 @@ impl AgentClient {
                 }
             }
             if let Some(backup) = &backup {
-                crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
                     .map_err(AgentError)?;
             }
             if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
@@ -340,7 +340,7 @@ impl AgentClient {
     pub async fn run_kpop_flow(
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
-        grounding_backup: &crate::artifacts::GroundingBackup,
+        kissconfig_backup: &crate::artifacts::KissConfigBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -348,7 +348,7 @@ impl AgentClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_kpop_flow_once(self, flow, grounding_backup).await {
+            match run_kpop_flow_once(self, flow, kissconfig_backup).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
@@ -380,7 +380,7 @@ impl AgentClient {
         learn: Option<(&str, &Path)>,
         learn_min_elapsed_ms: u64,
         state: &mut crate::kpop_progression::KpopMultiturnState<B>,
-        grounding_backup: &crate::artifacts::GroundingBackup,
+        kissconfig_backup: &crate::artifacts::KissConfigBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -395,7 +395,7 @@ impl AgentClient {
                 learn,
                 learn_min_elapsed_ms,
                 state,
-                grounding_backup,
+                kissconfig_backup,
             )
             .await
             {
