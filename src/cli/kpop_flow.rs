@@ -9,7 +9,7 @@ use malvin::artifacts::{
     create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
-use malvin::kpop_multiturn::KpopMultiturnState;
+use malvin::kpop_progression::KpopMultiturnState;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::output::{MALVIN_WHO, print_stdout_line};

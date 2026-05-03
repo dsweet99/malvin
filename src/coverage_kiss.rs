@@ -143,9 +143,9 @@ fn kiss_stringify_kpop_progression() {
     let _ = stringify!(crate::kpop_progression::agent_declared_success);
     let _ = stringify!(crate::kpop_progression::read_exp_log_text);
     let _ = stringify!(crate::kpop_multiturn_prompts::KpopMultiturnPrompts);
-    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnParams::<()>);
+    let _ = stringify!(crate::kpop_progression::KpopMultiturnParams::<()>);
     let _ = stringify!(crate::multiturn_prompt::MultiturnPrompt);
-    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnState::<()>);
+    let _ = stringify!(crate::kpop_progression::KpopMultiturnState::<()>);
 }
 
 #[test]

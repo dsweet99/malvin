@@ -253,7 +253,7 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
     kpop_log: &std::path::Path,
     learn: Option<(&str, &std::path::Path)>,
     learn_min_elapsed_ms: u64,
-    state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+    state: &mut crate::kpop_progression::KpopMultiturnState<B>,
     grounding_backup: &crate::artifacts::GroundingBackup,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, cwd).await?;

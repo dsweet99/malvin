@@ -5,8 +5,7 @@ const TRIM_CHARS: &[char] = &[
     '`', ',', '\n', '\r', ';', ')', '(', '"', '\'', '.', ':', '!', '?', '[', ']',
 ];
 
-#[test]
-#[cfg(unix)]
+#[cfg_attr(unix, test)]
 fn plan_new_eval_referenced_eval_harnesses_exist() {
     if Path::new("plan_new_eval.md").exists() {
         assert!(
@@ -57,8 +56,16 @@ fn plan_references_present(plan_path: &Path) -> bool {
     true
 }
 
-#[test]
-#[cfg(unix)]
+fn setup_tmp_plan_with_markdown_eval_link(tmp: &tempfile::TempDir) -> std::path::PathBuf {
+    let plan = tmp.path().join("plan_new_eval.md");
+    let rel = "evaluations/markdown_link.sh";
+    std::fs::create_dir_all(tmp.path().join("evaluations")).unwrap();
+    std::fs::write(&plan, format!("Run with [markdown link]({rel})\n")).unwrap();
+    std::fs::write(tmp.path().join(rel), "#!/usr/bin/env sh\nexit 0\n").unwrap();
+    plan
+}
+
+#[cfg_attr(unix, test)]
 fn plan_new_eval_referenced_eval_harnesses_exist_should_fail_when_plan_missing() {
     let tmp = tempfile::tempdir().expect("tmpdir");
     assert!(!Path::new(&tmp.path().join("plan_new_eval.md")).exists());
@@ -68,15 +75,10 @@ fn plan_new_eval_referenced_eval_harnesses_exist_should_fail_when_plan_missing()
     );
 }
 
-#[test]
-#[cfg(unix)]
+#[cfg_attr(unix, test)]
 fn plan_new_eval_references_markdown_link_form_harness() {
     let tmp = tempfile::tempdir().expect("tmpdir");
-    let plan = tmp.path().join("plan_new_eval.md");
-    let harness = "evaluations/markdown_link.sh";
-    std::fs::create_dir_all(tmp.path().join("evaluations")).unwrap();
-    std::fs::write(&plan, format!("Run with [markdown link]({harness})\n")).unwrap();
-    std::fs::write(tmp.path().join(harness), "#!/usr/bin/env sh\nexit 0\n").unwrap();
+    let plan = setup_tmp_plan_with_markdown_eval_link(&tmp);
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(tmp.path()).unwrap();
     let present = plan_references_present(&plan);

@@ -368,7 +368,7 @@ impl AgentClient {
         )))
     }
 
-    /// Multiturn KPOP: one ACP session; each [`crate::kpop_multiturn::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
+    /// Multiturn KPOP: one ACP session; each [`crate::kpop_progression::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
     ///
     /// # Errors
     ///
@@ -379,7 +379,7 @@ impl AgentClient {
         kpop_log: &Path,
         learn: Option<(&str, &Path)>,
         learn_min_elapsed_ms: u64,
-        state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
+        state: &mut crate::kpop_progression::KpopMultiturnState<B>,
         grounding_backup: &crate::artifacts::GroundingBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");

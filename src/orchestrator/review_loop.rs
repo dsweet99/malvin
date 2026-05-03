@@ -6,7 +6,7 @@ use super::Orchestrator;
 use super::WorkflowError;
 use super::clear_review_file;
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
-use crate::orchestrator_review_loop_helpers::{
+use super::review_loop_helpers::{
     SyncConcernsContext, prompt_with_sync_header, run_concerns_and_check_abort_impl,
     run_reviewer_pair_for_attempt,
 };

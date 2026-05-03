@@ -1,5 +1,5 @@
-use crate::orchestrator::review_context::ReviewAttemptCtx;
-use crate::orchestrator::{Orchestrator, WorkflowError};
+use super::review_context::ReviewAttemptCtx;
+use super::{Orchestrator, WorkflowError};
 use crate::prompts::HEADER_MD;
 use crate::run_timing::ReviewPairId;
 use std::collections::HashMap;
@@ -15,9 +15,7 @@ pub async fn run_concerns_and_check_abort_impl(
     orchestrator: &mut Orchestrator<'_>,
     concerns_ctx: &SyncConcernsContext<'_>,
 ) -> Result<bool, WorkflowError> {
-    if let Some(abort_msg) =
-        crate::orchestrator::check_abort(&orchestrator.artifacts.artifact_result_md())
-    {
+    if let Some(abort_msg) = super::check_abort(&orchestrator.artifacts.artifact_result_md()) {
         return Err(WorkflowError(format!("ABORT: {abort_msg}")));
     }
     (orchestrator.progress_callback)(&format!("Concerns (attempt {})", concerns_ctx.attempt));
@@ -35,9 +33,7 @@ pub async fn run_concerns_and_check_abort_impl(
             crate::run_timing::TimingPhase::Concerns,
         )
         .await?;
-    if let Some(abort_msg) =
-        crate::orchestrator::check_abort(&orchestrator.artifacts.artifact_result_md())
-    {
+    if let Some(abort_msg) = super::check_abort(&orchestrator.artifacts.artifact_result_md()) {
         return Err(WorkflowError(format!("ABORT: {abort_msg}")));
     }
     Ok(false)
@@ -49,7 +45,7 @@ pub async fn run_reviewer_pair_for_attempt(
     review_body: &str,
     pair_id: ReviewPairId,
 ) -> Result<(), WorkflowError> {
-    let stem = crate::orchestrator::prompt_md_stem(ctx.review_prompt);
+    let stem = super::prompt_md_stem(ctx.review_prompt);
     let review_log = orchestrator
         .artifacts
         .log_path(&format!("reviewer_{stem}_attempt_{}", ctx.attempt));

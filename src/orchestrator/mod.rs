@@ -16,6 +16,8 @@ mod memory_context;
 
 include!("helpers.rs");
 
+mod review_loop_helpers;
+
 mod check_plan;
 pub(crate) mod review_context;
 mod review_loop;

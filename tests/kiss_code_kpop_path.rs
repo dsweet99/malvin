@@ -15,17 +15,34 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::path::Path;
 
+#[cfg(unix)]
+fn clear_agent_api_env(cmd: &mut Command) {
+    cmd.env_remove("CURSOR_AGENT_API_KEY")
+        .env_remove("CURSOR_API_KEY")
+        .env_remove("AGENT_API_KEY")
+        .env_remove("MALVIN_AGENT_ACP_BIN");
+}
+
+#[cfg(unix)]
+fn run_malvin_path_timed(
+    path_bin: &std::path::Path,
+    configure: impl FnOnce(&mut Command),
+) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.env("PATH", path_bin);
+    configure(&mut cmd);
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+}
+
 fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
 
     #[cfg(unix)]
-    let out = {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-        cmd.env("PATH", &isolated_bin).args(args);
-        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-    };
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        c.args(args);
+    });
     #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
@@ -53,16 +70,10 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(args: &[&str]) {
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
     #[cfg(unix)]
-    let out = {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-        cmd.env("PATH", &isolated_bin)
-            .env_remove("CURSOR_AGENT_API_KEY")
-            .env_remove("CURSOR_API_KEY")
-            .env_remove("AGENT_API_KEY")
-            .env_remove("MALVIN_AGENT_ACP_BIN")
-            .args(args);
-        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-    };
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        clear_agent_api_env(c);
+        c.args(args);
+    });
     #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
@@ -94,6 +105,13 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(args: &[&str]) {
 }
 
 #[cfg(unix)]
+fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
+    for name in ["kiss", "cargo", "ruff", "pytest"] {
+        write_failing_command(&bin_dir.join(name), trace);
+    }
+}
+
+#[cfg(unix)]
 fn write_failing_command(path: &Path, trace: &Path) {
     let name = path.file_name().unwrap().to_string_lossy();
     std::fs::write(
@@ -119,10 +137,8 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
 }
 
-#[test]
 #[cfg(unix)]
-fn malvin_tidy_runs_quality_gates_after_acp() {
-    let (root, home, workspace) = test_home_workspace();
+fn seed_tidy_workspace(workspace: &Path) {
     std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
     std::fs::write(
         workspace.join(".kissconfig"),
@@ -135,26 +151,39 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
     )
     .expect("write cargo manifest");
     std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
+}
 
+#[cfg(unix)]
+fn spawn_malvin_tidy_with_mock_path(
+    workspace: &Path,
+    home: &Path,
+    mock: &Path,
+    path: &str,
+) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(workspace)
+        .env("HOME", home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", mock)
+        .env("PATH", path)
+        .args(["tidy", "--no-learn"]);
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+}
+
+#[cfg_attr(unix, test)]
+fn malvin_tidy_runs_quality_gates_after_acp() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_tidy_workspace(&workspace);
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let trace = root.path().join("quality-trace.log");
-    for name in ["kiss", "cargo", "ruff", "pytest"] {
-        write_failing_command(&bin_dir.join(name), &trace);
-    }
+    write_failing_gate_tools(&bin_dir, &trace);
     let mock = root.path().join("mock-agent-acp-tidy");
     write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
 
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(&workspace)
-        .env("HOME", &home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
-    let out = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin");
+    let out = spawn_malvin_tidy_with_mock_path(&workspace, &home, &mock, &path);
 
     assert!(
         !out.status.success(),

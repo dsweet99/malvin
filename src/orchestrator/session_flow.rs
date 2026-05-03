@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::acp::AgentError;
 use crate::run_timing::TimingPhase;
 
-use crate::orchestrator_review_loop_helpers::prompt_with_sync_header;
+use super::review_loop_helpers::prompt_with_sync_header;
 
 use super::review_context::ReviewPhaseArgs;
 use super::review_loop::{run_review_phase, run_sync_check_dry_run_once};

@@ -1,89 +1,61 @@
-# Malvin — project contract
+# Malvin
 
-## Purpose
+Malvin is a Rust CLI that orchestrates non-interactive coding workflows over Cursor ACP (`agent acp`, via JSON-RPC over stdio).
 
-- **malvin** is a non-interactive CLI that drives a coding agent over **Cursor ACP** (stdio JSON-RPC), for workflows like one-shot `do`, plan-driven `code`, repo hygiene `tidy`, Popper-style `kpop`, and beta `sync` / `ground`.
-- Crate: **Rust 2024**, `unsafe_code = "deny"` (see `Cargo.toml`). Library + `malvin` binary.
+## Concepts
 
-## Languages & tools (this tree)
+- **Prompt templates** live in `default_prompts/` and are compiled into the `malvin` binary. `~/.malvin/prompts` is not supported. Template keys such as `{{ plan_path }}` and `**{{ quality_gates }}`** are resolved at render time, and no prompt may be sent to ACP if unresolved `{{` remains.
+- **Memories** The `{{ memories }}` key is computed once per malvin command run by sampling up to 100 valid `TRIGGER:` / `ADVICE:` / `CONFIDENCE:` triples without replacement from `.malvin_memory/*.md`, weighted by `1 + CONFIDENCE`, and rendering the selected triples with one blank line between them.
+- **Run artifacts** are stored under `_malvin/YYYYMMDD_HHMMSS_<id>/`. Each run records its primary inputs and outputs there, including `plan.md`, `review.md`, `result.md`, and trace logs.
+- **Protected files** are `grounding.md` and `.kissconfig`. Outside the `ground` workflow, they are backed up before the first agent call and silently restored after every agent call. Agents must never edit them directly; if a task would require changing one, the agent writes `ABORT: <reason>` to `result.md`. In the `ground` workflow, `grounding.md` may be authored and refined, and `.kissconfig` is restored at the end of the workflow.
+- `**kiss clamp`** runs automatically before the first agent call when source files exist but `.kissconfig` does not.
+- **Quality gates (built-in)** Malvin always runs `**kiss check`**. It runs `**ruff check .`** only when Python source files exist in the workspace. It runs pytest only when Malvin detects Python tests (per its heuristics). It runs Rust `cargo clippy` and `cargo test` only when a Rust workspace applies (e.g. `Cargo.toml` present). Malvin does not run `**pre-commit run --all-files**` as part of quality gates; users who want pre-commit can add it as a line in `.malvin_checks`. Language and test detection for these built-ins are driven by the tree (and Malvin’s rules), not by agents inferring check lists from `grounding.md` or `.pre-commit-config.yaml`.
+- `**.malvin_checks**` is an optional, user-owned overlay. If it exists, it contains one shell command per non-empty line and nothing else; Malvin runs those lines **in file order** as part of the same gate **sequence** (after the built-in checks). Malvin never creates, overwrites, edits, sorts, formats, or appends to `.malvin_checks`.
+- `**{{ quality_gates }}`** Malvin computes the **full ordered list** of shell commands it will run for that gate phase (built-ins that apply, then each non-empty `.malvin_checks` line when the file exists—exact `**cargo clippy`** flags match the implementation). It uses that list for pre- and post-run execution and injects the same list into prompts so agents are not asked to re-derive which checks apply.
+- **Learning** is a post-run phase for runs that are long enough to justify it (at least 5 minutes). 
+- `**ground`** creates `grounding.md` with `write_grounding.md` if it does not already exist, then repeatedly runs `check_sync.md` and `improve_grounding.md` until `check_sync.md` reports `LGTM`.
 
-- **Primary:** Rust (`cargo`, `clippy`, `test`). **kiss** enforces structural limits on Rust (and would on Python if present under the workspace walk rules in `src/repo_gates.rs`).
-- **Conditional:** If the workspace contains `.py` files (excluding skipped dirs such as `target` and dot-directories per `visit_source_files` in `src/repo_gates.rs`), built-in gates also include `ruff check .` and, when pytest-style test modules exist, `pytest -sv tests`.
-- **This repository** (sources outside `target/`): **Rust only** for built-in gate lines; no `ruff` / `pytest` unless you add Python sources or `.malvin_checks` lines.
+## Workflows
 
-## CLI commands (stable surface)
+Unless noted otherwise, a workflow consists of named prompt-template phases sent sequentially within a single ACP coder session.
 
-Order matches `malvin --help` (`Commands` in `src/cli/args.rs`):
 
-| Command | Role |
-|--------|------|
-| `init` | Prepare a workspace (repo). |
-| `do` | Single request / payload. |
-| `code` | Implement → reviews → learn loop from `request` / `@file` → `_malvin/.../plan.md`. |
-| `kpop` | Hypothesis-driven investigation; `request` → `_malvin/.../request.md`; exp logs under `_kpop/`. |
-| `tidy` | Bring checks to green via tidy prompt + gates. |
-| `models` | List / parse model metadata. |
-| `sync` *(beta)* | Align implementation with **`grounding.md`** (default run). **`--dry-run`** runs the grounding↔code discrepancy check **only**: report gaps **without** implement / review / concern remediation. |
-| `ground` *(beta)* | Author or refine **`./grounding.md`** until `check_sync` review is **LGTM**; **does not target application source** for edits (see `check_sync` / grounding prompts). |
+| Workflow         | Pre-run quality gates | Phases                                                                                                                                                                                                                                                                                           | Post-run quality gates                             | `summary.md` |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ------------ |
+| `code <request>` | Required              | Run `kiss clamp` if needed; validate the plan with `check_plan` unless `--trust-the-plan` is set; implement; run `review_1` and a `concerns` fix loop until LGTM or the `--max-loops` budget is exhausted (default 5); then do the same for `review_2`; then (optionally) run `learn`            | Required                                           | Yes — last, after `learn` when learn runs |
+| `sync`           | Required              | Run `kiss clamp` if needed; run `check_sync.md` and `concerns` in a loop until LGTM or the `--max-loops` budget is exhausted (default 5); then run the `review_1` and `review_2` review/fix loops; then (optionally) run `learn`                                                                 | Required                                           | Yes — last, after `learn` when learn runs |
+| `tidy`           | Not required          | Run `kiss clamp` if needed; run `tidy` to get the repo passing its checks; then (optionally) run `learn`                                                                                                                                                                                         | Required                                           | Yes — last, after `learn` when learn runs |
+| `kpop <request>` | Not required          | No `kiss clamp`; run a hypothesis-and-falsification loop, interleaving MBC2 boundary-exploration turns at a rate controlled by `--p-creative`; then (optionally) run `learn`. Display the executive summary and tl;dr in the logs and stdout logs. Total budget: `--max-hypotheses` (default 10) | Not required                                       | No           |
+| `do <request>`   | Not required          | Send one prompt and print raw output, with no review or learn phase                                                                                                                                                                                                                              | Not required                                       | No           |
+| `init`           | Not required          | Bootstrap pre-commit hooks and Git LFS configuration                                                                                                                                                                                                                                             | Not required                                       | Yes — last   |
+| `ground`         | Required              | If `grounding.md` is missing, create it with `write_grounding.md`; then run `check_sync.md`, and when it is not `LGTM`, run `improve_grounding.md`; repeat until `check_sync.md` reports `LGTM`                                                                                                  | Not required; `ground` does not change source code | Yes — last   |
 
-- **`kiss` on PATH** is required before **`malvin code`** and **`malvin tidy`** start (`require_kiss_for_cli_command` in `src/cli/entrypoint.rs`). Other subcommands do not perform that preflight.
 
-## Artifacts & paths
+- **`summary.md`** is the final coder prompt for `code`, `sync`, `tidy`, `init`, and `ground`: it runs **after** every other phase in that command, including **`learn.md`** when the learn phase runs. It is **not** run for `do` or `kpop`.
+- **Review loops** work by having a reviewer write either `LGTM` or a list of issues to `review.md`. If the review is not `LGTM`, the `concerns` phase reads that file, applies fixes, and the loop repeats. Any `ABORT:` line in `result.md` stops the workflow immediately.
+- **KPOP** is multi-turn. Each turn appends a new `## Step K` section to an experiment log. A `KPOP_SOLVED` marker ends the run early. MBC2 turns are meant to force structurally distant hypotheses rather than local variations.
+- `header.md` is prepended before the first prompt in `code`, `sync`, `tidy`, `ground`, and `kpop`. `do_header.md` is used instead for `do`.
+- **Quality gates** are the built-in checks that apply to the workspace, **in Malvin’s execution order**, plus each non-empty line of `.malvin_checks` when that file exists. The same gate sequence is used pre-run and post-run; `tidy.md` and coding rules refer to that sequence via `**{{ quality_gates }}`** and to passing those commands from the workspace root, not to rediscovering checks from prose or from `.pre-commit-config.yaml`.
+- If a required post-run quality gate fails, Malvin captures the failing gate command, exit status, stdout, and stderr, sends one additional `tidy.md` prompt with those details, then reruns the post-run quality gates. If the rerun fails, the workflow fails.
 
-- Each run uses **`{work_dir}/_malvin/<run_id>/`**: e.g. `plan.md` or `request.md`, `review.md`, `result.md`, phase logs, optional `_kpop/exp_log_*.md`.
-- Workspace review file: **`review.md`** under the working tree where applicable (`RunArtifacts` / artifact helpers in `src/artifacts/`).
+## Output formatting
 
-## Review & abort semantics
 
-- **LGTM:** After trim, body must be exactly `LGTM` (leading UTF-8 BOM allowed); other text is not accepted (`is_lgtm_str` in `src/review_sync/`).
-- **`ground`:** Up to **5** `check_sync` attempts (`GROUND_MAX_LOOPS` in `src/cli/ground_cmd.rs`). Exhaustion error: `Did not receive LGTM for check_sync.md within max loops.`
-- **`result.md`:** A line starting with **`ABORT:`** fails the workflow after the phase that reads it (`ground_cmd.rs` and shared abort handling).
+|                                       | code, sync, tidy, kpop, init, ground                           | do                     |
+| ------------------------------------- | -------------------------------------------------------------- | ---------------------- |
+| Markdown rendering                    | yes                                                            | no                     |
+| Colors                                | yes; thought text is gray and directional tags are color-coded | no                     |
+| Thought text on stdout                | always                                                         | only with `--thoughts` |
+| Word wrap and JSON coalescing         | yes                                                            | yes                    |
+| Logging headers*                      | yes                                                            | no                     |
+| First log line is user's command line | yes                                                            | no                     |
 
-## Quality gates (workspace)
 
-**Built-in command list** comes from `repo_gates::gate_command_lines` (`src/repo_gates.rs`), in order:
+- **Outgoing prompts:** By default Malvin logs only a short label for each outbound prompt on stdout and a one-line summary in `prompts.log` under the run directory. Pass `**--verbose`** (`**-v**`) to log full outgoing prompt bodies in `prompts.log` and, for workflows with tagged stdout (`code`, `sync`, `tidy`, `kpop`, `ground`), on the terminal as well; `do` keeps raw agent stdout, but verbose still expands `prompts.log`. Per-phase trace files under `_malvin/...` always record the full outgoing text.
 
-1. `kiss check`
-2. `ruff check .` — if any `.py` discovered (see above)
-3. `pytest -sv tests` — if pytest-style `test_*.py` / `*_test.py` modules exist
-4. If `Cargo.toml` exists:
-   - `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`
-   - `cargo test`
-5. **Append** non-empty trimmed lines from **`.malvin_checks`** if that file exists (Malvin **never** creates or edits `.malvin_checks`).
+## Constraints
 
-**Workspace gate runner** (`run_repo_workspace_gates` in `src/cli/repo_checks/workspace.rs`):
+- **JSON-RPC retry** applies to all ACP calls. Malvin makes up to 3 attempts, with some delay backoff, for transient errors such as timeouts, deadline exceeded, closed iterables, dead or zombie child processes, session initialization failures, or gRPC `[unavailable]`. Errors such as "Upgrade your plan" fail fast.
+- "Upgrade your plan to continue" causes an immediate abort and explains to the user.
+- The default model is "auto".
 
-- Runs **`kiss clamp`** during prepare **only when** `.kissconfig` is missing **and** the tree has source-like files (`kiss_clamp::has_source_files`). If `.kissconfig` is present, Malvin does not run `kiss clamp` for that reason.
-- **Does not** run **`pre-commit`**; tests assert the gate log never contains `pre-commit run --all-files` even when `.pre-commit-config.yaml` exists.
-
-**When full gates run (summary):**
-
-- **`do`:** Default path runs only **`kiss_clamp::ensure_kiss_clamp_if_needed`** (clamp when `.kissconfig` is missing and source-like files exist — **no** `prepare_repo_workspace` / `warn_kissconfig_test_coverage_if_needed`, **no** `kiss check` / `cargo clippy` / `cargo test`). With **`--repo-gates`**, runs **`run_repo_workspace_gates`** first (full prepare + all `gate_command_lines`; `RepoGateOutput::Stderr` in `src/cli/do_flow.rs`). There is no pre-summary gate pass after the single `do` ACP prompt.
-- **`code` / `sync`:** gates at workflow start; then after implement/review/learn path and **before** the summary ACP phase, **`run_pre_summary_repo_gates_with_tidy_retry`** may run `tidy`-on-failure then re-gates (`src/cli/mid_session_gates.rs`, `Orchestrator::run_with_pre_summary_gap` in `src/orchestrator/mod.rs`).
-- **`tidy`:** startup uses **prepare only** (clamp path + warnings, no quality shell commands); **after** the tidy (and optional learn) body, the same pre-summary gate + tidy-retry block runs, then summary (`src/cli/tidy_flow/helpers.rs`).
-- **`ground`:** runs **`run_repo_workspace_gates`** before the grounding ACP session (`src/cli/ground_cmd.rs`).
-- **`kpop`:** does **not** call `run_repo_workspace_gates`; templates still receive **`quality_gates`** markdown from `prompt_quality_gates_markdown` for the agent to follow manually (`src/cli/kpop_flow.rs` — no `run_repo_workspace_gates` in that module).
-
-**Optional extra gates:** add shell lines to **`.malvin_checks`** at repo root (one command per non-empty line).
-
-## Hard constraints & non-goals
-
-- **`./grounding.md`:** Only the **`malvin ground`** workflow should create or edit this file (via bundled prompts `write_grounding.md` / `improve_grounding.md`). Other commands must not rewrite it as part of their normal path.
-- **`.kissconfig`:** Treat as project-owned configuration; do not modify it from Malvin features unless explicitly intended product behavior (operators edit it directly).
-- Malvin is **not** a generic `pre-commit` runner; use `.malvin_checks` if you need extra hooks.
-
-## Required checks (operator / agent expectation)
-
-For a Rust workspace matching this repo, a green tree means at least:
-
-- `kiss check`
-- `cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc`
-- `cargo test`
-
-Plus any lines in **`.malvin_checks`** if present. Run **`kiss rules`** before large edits to avoid structural violations.
-
-## Operational assumptions
-
-- **ACP:** Requires a working Cursor ACP agent binary and environment (e.g. `CURSOR_AGENT_API_KEY` where applicable). Failures surface as CLI / workflow errors, not interactive prompts.
-- **Paths:** Commands run relative to the chosen workspace directory; artifact paths are resolved under `_malvin/<run_id>/` there.
-- **Beta:** `sync` and `ground` behavior may evolve; this file should track what the code in `src/cli/sync_flow.rs`, `src/cli/ground_cmd.rs`, and orchestrator modules actually do.
