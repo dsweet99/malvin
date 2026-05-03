@@ -27,6 +27,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "learn.md",
     "summary.md",
     "tidy.md",
+    "review_plan.md",
     HEADER_MD,
     DO_HEADER_MD,
     "coding_rules.md",
@@ -46,10 +47,22 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
         "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
         "tidy.md" => Some(include_str!("../../default_prompts/tidy.md")),
+        "review_plan.md" => Some(include_str!("../../default_prompts/review_plan.md")),
         HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
         DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
         "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod review_plan_embed_tests {
+    use super::default_file;
+
+    #[test]
+    fn embedded_review_plan_starts_with_kpop_placeholder_line() {
+        let s = default_file("review_plan.md").expect("review_plan must be embedded");
+        assert!(s.contains("{{ kpop }}"));
     }
 }
 

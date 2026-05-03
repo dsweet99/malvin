@@ -1,5 +1,7 @@
 //! CLI argument structs for the `malvin` binary.
 
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
@@ -39,8 +41,22 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
+    /// Write or review a plan file with the default reviewer prompt
+    Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct PlanArgs {
+    #[arg(
+        long = "plan_path",
+        visible_alias = "plan-path",
+        value_name = "PATH"
+    )]
+    pub plan_path: Option<PathBuf>,
+    #[arg(value_name = "TEXT")]
+    pub text: Option<String>,
 }
 
 #[derive(Args, Debug)]

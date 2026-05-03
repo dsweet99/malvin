@@ -12,6 +12,7 @@ mod kpop_flow;
 mod markdown_flag_parse_tests;
 mod mid_session_gates;
 mod models_cmd;
+mod plan_flow;
 mod repo_checks;
 mod run_emit;
 mod shared_opts;
@@ -19,7 +20,7 @@ mod shared_opts;
 mod stringify_cov;
 mod tidy_flow;
 mod timing_merge;
-pub use args::{Cli, CodeArgs, Commands, KpopArgs};
+pub use args::{Cli, CodeArgs, Commands, KpopArgs, PlanArgs};
 pub use code_flow::{
     AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, build_agent,
     prepare_kpop_prompt_store, run_code,
@@ -30,6 +31,7 @@ pub use exit::Exit;
 pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
+pub use plan_flow::run_plan;
 pub use tidy_flow::run_tidy;
 pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
 

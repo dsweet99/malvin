@@ -79,7 +79,8 @@ pub(crate) fn prompt_md_stem(filename: &str) -> &str {
     filename.strip_suffix(".md").unwrap_or(filename)
 }
 
-pub(crate) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
+#[must_use]
+pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
     let path_r = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let base_r = base_dir.canonicalize().unwrap_or_else(|_| base_dir.to_path_buf());
     path_r.strip_prefix(&base_r).map_or_else(

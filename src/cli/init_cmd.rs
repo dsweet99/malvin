@@ -19,6 +19,10 @@ const TPL_KISSIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/kissignore"
 ));
+const TPL_GROUNDING: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/grounding.md"
+));
 const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/admin/check_untracked.sh"
@@ -64,6 +68,27 @@ impl Language {
         }
     }
 
+    const fn display_name(self) -> &'static str {
+        match self {
+            Self::Python => "Python",
+            Self::Rust => "Rust",
+        }
+    }
+}
+
+fn format_languages_for_grounding(languages: &[Language]) -> String {
+    match languages.len() {
+        0 => String::new(),
+        1 => format!("in {}", languages[0].display_name()),
+        _ => {
+            let names: Vec<&str> = languages.iter().map(|l| l.display_name()).collect();
+            format!(
+                "in {} and {}",
+                names[..names.len() - 1].join(", "),
+                names.last().unwrap()
+            )
+        }
+    }
 }
 
 /// `--force` overwrites files installed from `default_repo/` and refreshes `admin/check_untracked.sh`.
@@ -227,6 +252,9 @@ fn write_init_templates(root: &Path, force: bool, languages: &[Language]) -> Res
         &pre_commit_config,
         force,
     )?;
+    let grounding =
+        TPL_GROUNDING.replace("{{languages}}", &format_languages_for_grounding(languages));
+    write_text_file(&root.join("grounding.md"), &grounding, force)?;
     let admin_dir = root.join("admin");
     std::fs::create_dir_all(&admin_dir).map_err(|e| format!("init: mkdir admin: {e}"))?;
     write_shell_script(
@@ -394,6 +422,7 @@ mod tests {
     #[test]
     fn templates_are_nonempty() {
         assert!(!TPL_GITIGNORE.trim().is_empty());
+        assert!(!TPL_GROUNDING.trim().is_empty());
         assert!(
             ADMIN_CHECK_UNTRACKED.starts_with("#!/bin/bash\n"),
             "check_untracked.sh must have a bash shebang for pre-commit exec"
@@ -419,6 +448,18 @@ mod tests {
     fn parse_languages_rejects_invalid() {
         assert!(parse_languages(&["javascript".into()]).is_err());
         assert!(parse_languages(&[]).is_err());
+    }
+
+    #[test]
+    fn format_languages_for_grounding_formats_correctly() {
+        assert_eq!(
+            format_languages_for_grounding(&[Language::Python]),
+            "in Python"
+        );
+        assert_eq!(
+            format_languages_for_grounding(&[Language::Python, Language::Rust]),
+            "in Python and Rust"
+        );
     }
 
     #[test]

@@ -1,7 +1,8 @@
 use clap::Parser;
 
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_plan,
+    run_tidy,
 };
 use super::{init_cmd, models_cmd};
 use malvin::env_path::require_kiss_for_malvin;
@@ -10,6 +11,7 @@ use malvin::output::{MALVIN_WHO, print_stderr_line};
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
+        Commands::Plan(_) => require_kiss_for_malvin("plan"),
         Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }
 }
@@ -85,6 +87,16 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
                 )
             })
         }
+        Commands::Plan(plan) => run_async_cli(|| {
+            run_plan(
+                plan,
+                &cli.shared,
+                WorkflowCliOptions {
+                    force: !cli.shared.no_force,
+                    run_learn: false,
+                },
+            )
+        }),
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,

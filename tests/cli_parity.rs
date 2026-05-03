@@ -8,6 +8,11 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     "/default_repo/gitignore"
 ));
 
+const DEFAULT_PROMPTS_REVIEW_PLAN: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_prompts/review_plan.md"
+));
+
 #[cfg(unix)]
 fn run_root_help_output() -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -69,6 +74,28 @@ fn help_omits_removed_ground_and_sync_commands() {
     assert!(
         !contains_help_subcommand(&s, "sync"),
         "sync was removed; help was: {s}"
+    );
+    assert!(
+        contains_help_subcommand(&s, "plan"),
+        "expected plan in root help: {s}"
+    );
+}
+
+#[test]
+fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
+    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ kpop }}"));
+    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ plan_path }}"));
+}
+
+#[test]
+fn init_cmd_embeds_default_repo_grounding_template() {
+    let init_src = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/cli/init_cmd.rs"
+    ));
+    assert!(
+        init_src.contains("/default_repo/grounding.md"),
+        "init_cmd should include_str default_repo/grounding.md"
     );
 }
 

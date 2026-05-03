@@ -4,8 +4,6 @@ mod common;
 
 use std::process::Command;
 
-const REMOVED_CONTRACT_MD: &str = concat!("ground", "ing.md");
-
 use common::InitOk;
 use common::{git_init, git_stdout, malvin_init_output};
 
@@ -99,9 +97,10 @@ fn malvin_init_creates_expected_files_for_python_only() {
         "should always have check-untracked hook"
     );
 
+    assert!(w.path().join("grounding.md").exists());
     assert!(
-        !w.path().join(REMOVED_CONTRACT_MD).exists(),
-        "init should not create removed contract markdown at repo root"
+        w.read_rel("grounding.md").contains("in Python"),
+        "grounding should list selected languages"
     );
     assert!(w.path().join(".malvin_memory/style.md").exists());
 
@@ -123,7 +122,8 @@ fn malvin_init_creates_expected_files_for_rust_only() {
         "rust-only should have clippy hook"
     );
 
-    assert!(!w.path().join(REMOVED_CONTRACT_MD).exists());
+    assert!(w.path().join("grounding.md").exists());
+    assert!(w.read_rel("grounding.md").contains("in Rust"));
 }
 
 #[test]
@@ -139,7 +139,12 @@ fn malvin_init_creates_expected_files_for_both_languages() {
         "both languages should have clippy hook"
     );
 
-    assert!(!w.path().join(REMOVED_CONTRACT_MD).exists());
+    assert!(w.path().join("grounding.md").exists());
+    let g = w.read_rel("grounding.md");
+    assert!(
+        g.contains("in Python and Rust"),
+        "expected combined language line: {g}"
+    );
 }
 
 #[test]
@@ -152,13 +157,13 @@ fn malvin_init_language_args_are_case_insensitive() {
         "malvin init with mixed case should succeed: {out:?}"
     );
 
-    assert!(!project.path().join(REMOVED_CONTRACT_MD).exists());
+    assert!(project.path().join("grounding.md").exists());
 }
 
 #[test]
 fn malvin_init_git_ls_tree_head_lists_expected_paths() {
     let w = InitOk::new(&["python"]);
     let tree = git_stdout(w.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
-    assert!(!tree.contains(REMOVED_CONTRACT_MD));
+    assert!(tree.contains("grounding.md"));
     assert!(tree.contains(".malvin_memory/style.md"));
 }

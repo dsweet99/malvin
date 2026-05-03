@@ -137,6 +137,11 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
 }
 
+#[test]
+fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["plan"]);
+}
+
 #[cfg(unix)]
 fn seed_tidy_workspace(workspace: &Path) {
     std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
