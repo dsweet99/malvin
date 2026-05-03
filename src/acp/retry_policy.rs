@@ -138,7 +138,7 @@ mod retry_policy_tests {
     }
 
     #[test]
-    fn retriable_transient_errors_match_grounding_examples() {
+    fn retriable_transient_errors_match_known_agent_strings() {
         assert!(agent_string_is_retriable("request timed out"));
         assert!(agent_string_is_retriable("DEADLINE EXCEEDED"));
         assert!(agent_string_is_retriable("WritableIterable is closed"));

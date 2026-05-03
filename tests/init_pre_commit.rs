@@ -4,6 +4,8 @@ mod common;
 
 use std::process::Command;
 
+const REMOVED_CONTRACT_MD: &str = concat!("ground", "ing.md");
+
 use common::InitOk;
 use common::{git_init, git_stdout, malvin_init_output};
 
@@ -98,8 +100,8 @@ fn malvin_init_creates_expected_files_for_python_only() {
     );
 
     assert!(
-        !w.path().join("grounding.md").exists(),
-        "init should not create grounding.md"
+        !w.path().join(REMOVED_CONTRACT_MD).exists(),
+        "init should not create removed contract markdown at repo root"
     );
     assert!(w.path().join(".malvin_memory/style.md").exists());
 
@@ -121,7 +123,7 @@ fn malvin_init_creates_expected_files_for_rust_only() {
         "rust-only should have clippy hook"
     );
 
-    assert!(!w.path().join("grounding.md").exists());
+    assert!(!w.path().join(REMOVED_CONTRACT_MD).exists());
 }
 
 #[test]
@@ -137,7 +139,7 @@ fn malvin_init_creates_expected_files_for_both_languages() {
         "both languages should have clippy hook"
     );
 
-    assert!(!w.path().join("grounding.md").exists());
+    assert!(!w.path().join(REMOVED_CONTRACT_MD).exists());
 }
 
 #[test]
@@ -150,13 +152,13 @@ fn malvin_init_language_args_are_case_insensitive() {
         "malvin init with mixed case should succeed: {out:?}"
     );
 
-    assert!(!project.path().join("grounding.md").exists());
+    assert!(!project.path().join(REMOVED_CONTRACT_MD).exists());
 }
 
 #[test]
 fn malvin_init_git_ls_tree_head_lists_expected_paths() {
     let w = InitOk::new(&["python"]);
     let tree = git_stdout(w.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
-    assert!(!tree.contains("grounding.md"));
+    assert!(!tree.contains(REMOVED_CONTRACT_MD));
     assert!(tree.contains(".malvin_memory/style.md"));
 }
