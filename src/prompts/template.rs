@@ -4,8 +4,9 @@
 use std::collections::HashMap;
 
 use super::PromptError;
-use super::PromptStore;
+use super::store::PromptStore;
 
+#[must_use]
 pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str) -> String {
     let h = header_expanded.trim();
     let r = rules_expanded.trim();
@@ -17,6 +18,7 @@ pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str
     }
 }
 
+#[must_use]
 pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
     let mut keys: Vec<&String> = context.keys().collect();
     keys.sort_unstable();
@@ -30,6 +32,7 @@ pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> 
 }
 
 /// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
+#[must_use]
 pub fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
     let mut out = String::with_capacity(template.len());
     let chars: Vec<char> = template.chars().collect();
@@ -61,6 +64,11 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
     out
 }
 
+/// Renders `mbc2.md` for a scheduled KPOP block with coding rules cleared in the render context.
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when `mbc2.md` cannot be loaded or rendered.
 pub fn render_mbc2_for_scheduled_kpop_block(
     store: &PromptStore,
     context: &HashMap<String, String>,
@@ -70,6 +78,11 @@ pub fn render_mbc2_for_scheduled_kpop_block(
     store.render_prompt_only("mbc2.md", &ctx)
 }
 
+/// Expands header and coding rules, merges them, and rejects unresolved `{{` placeholders.
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when loading prompts, rendering, or brace validation fails.
 pub fn merged_coding_rules(
     store: &PromptStore,
     context: &HashMap<String, String>,

@@ -8,7 +8,7 @@ pub const KISS_CHECK_COMMAND: &str = "kiss check";
 
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
-pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc";
+pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo";
 
 const DEFAULT_RUST_CHECKS: [&str; 2] = [DEFAULT_RUST_CLIPPY, "cargo test"];
 

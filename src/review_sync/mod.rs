@@ -12,9 +12,18 @@ pub fn is_lgtm_str(content: &str) -> bool {
 }
 
 #[cfg(test)]
-pub fn is_lgtm(review_path: &std::path::Path) -> bool {
-    std::fs::read_to_string(review_path).is_ok_and(|s| is_lgtm_str(&s))
+mod is_lgtm_path {
+    #![allow(clippy::must_use_candidate)]
+
+    use std::path::Path;
+
+    pub fn is_lgtm(review_path: &Path) -> bool {
+        std::fs::read_to_string(review_path).is_ok_and(|s| super::is_lgtm_str(&s))
+    }
 }
+
+#[cfg(test)]
+pub use is_lgtm_path::is_lgtm;
 
 #[cfg(test)]
 fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Result<()> {
@@ -25,6 +34,11 @@ fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Res
 }
 
 #[cfg(test)]
+/// Test helper: mirrors production sync semantics using [`std::io::Error`].
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when reading or writing review files fails.
 pub fn sync_review_file(
     workspace_review_path: &std::path::Path,
     artifact_review_path: &std::path::Path,

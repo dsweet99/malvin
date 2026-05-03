@@ -55,6 +55,11 @@ pub fn restore_workspace_grounding(
     }
 }
 
+/// Restores workspace `.kissconfig` from `backup`, or removes it when the backup had no file.
+///
+/// # Errors
+///
+/// Returns `Err` with a message when filesystem copy or removal fails.
 pub fn restore_workspace_kissconfig(
     work_dir: &Path,
     backup: &GroundingBackup,

@@ -103,6 +103,11 @@ async fn run_review_phases_until_pre_summary(
     Ok(())
 }
 
+/// Runs a single sync check phase inside a coder session for dry-run tooling.
+///
+/// # Errors
+///
+/// Returns [`WorkflowError`] when the ACP session, sync check, or timing artifact write fails.
 #[allow(clippy::implicit_hasher)]
 pub async fn run_sync_dry_run(
     orchestrator: &mut Orchestrator<'_>,

@@ -11,7 +11,7 @@ use crate::kpop_acp_prompt::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
-enum Phase {
+pub enum Phase {
     KpopBlock {
         target_n: usize,
         hypotheses_before: usize,
@@ -23,7 +23,7 @@ enum Phase {
     },
 }
 
-enum NextStep {
+pub enum NextStep {
     Stop,
     Again,
     Emit(MultiturnPrompt),
@@ -47,12 +47,16 @@ pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
     phase: Phase,
     done: bool,
 }
-
 impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     pub fn exp_log_path(&self) -> &std::path::Path {
         &self.exp_log_path
     }
 
+    /// Constructs state after reading the experiment log on disk.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
     pub fn new(
         builder: B,
         exp_log_path: PathBuf,
@@ -68,6 +72,11 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
         })
     }
 
+    /// Same as [`Self::new`] but accepts an explicit RNG and builder bundle.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
     pub fn from_params(mut params: KpopMultiturnParams<B>) -> Result<Self, String> {
         let text = read_exp_log_text(&params.exp_log_path)?;
         let hypotheses_before = hypotheses_emitted(&text);
@@ -90,6 +99,11 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
         })
     }
 
+    /// Returns the next prompt to send, or `None` when the multiturn session should stop.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when reading the log or building prompt text fails.
     pub fn next_prompt(&mut self) -> Result<Option<MultiturnPrompt>, String> {
         if self.done {
             return Ok(None);
@@ -232,14 +246,5 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
             attempts: 0,
         };
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod kpop_multiturn_kiss {
-    #[test]
-    fn kiss_stringify_phase_and_next() {
-        let _ = stringify!(super::Phase);
-        let _ = stringify!(super::NextStep);
     }
 }

@@ -130,10 +130,20 @@ impl RunTiming {
         })
     }
 
+    /// Writes timing JSON and prints the human-readable summary line.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_and_print_summary(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_and_print_summary(self, run_dir)
     }
 
+    /// Writes timing JSON without printing a summary line.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_only(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_only(self, run_dir)
     }
@@ -178,6 +188,11 @@ fn finalize_snapshot(timing: &Arc<Mutex<RunTiming>>) -> RunTiming {
     g.clone()
 }
 
+/// Finalizes wall clock end time and writes JSON plus the printed summary.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_and_emit_run_timing(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
@@ -185,6 +200,11 @@ pub fn finalize_and_emit_run_timing(
     finalize_snapshot(timing).write_json_and_print_summary(run_dir)
 }
 
+/// Finalizes wall clock end time and writes JSON only.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_run_timing_json_only(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,

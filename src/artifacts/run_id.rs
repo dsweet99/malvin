@@ -3,6 +3,11 @@ use rand::Rng;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
+/// Creates `_malvin/<timestamp>_<id>/` under `base_dir` (or the current directory).
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] if directory creation fails or unique id allocation exhausts retries.
 pub fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
     let parent = base_dir.unwrap_or_else(|| Path::new("."));
     let run_root = parent.join("_malvin");
@@ -10,12 +15,14 @@ pub fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
     create_run_dir_with_id(&run_root, |_| build_identifier())
 }
 
+#[must_use]
 pub fn build_identifier() -> String {
     let stamp = Utc::now().format("%Y%m%d_%H%M%S");
     let token = random_alnum(8);
     format!("{stamp}_{token}")
 }
 
+#[must_use]
 pub fn random_alnum(len: usize) -> String {
     const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::thread_rng();

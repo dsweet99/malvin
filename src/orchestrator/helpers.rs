@@ -33,6 +33,11 @@ pub fn workflow_context_paths_only(
     context
 }
 
+/// Builds the full workflow render context (paths, memories, quality gates, `kpop` slot).
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when quality gate markdown or `kpop_common.md` rendering fails.
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,

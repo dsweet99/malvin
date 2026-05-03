@@ -22,6 +22,11 @@ fn clear_artifact_review_to_empty(path: &Path) -> Result<(), String> {
     })
 }
 
+/// Copies workspace `review.md` into the run artifact path for one review attempt.
+///
+/// # Errors
+///
+/// Returns `Err` when reading the workspace file or writing the artifact fails.
 pub fn sync_review_file_for_attempt(
     artifact_review_path: &Path,
     workspace_review_path: &Path,

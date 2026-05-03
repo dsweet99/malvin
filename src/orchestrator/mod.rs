@@ -138,6 +138,10 @@ impl Orchestrator<'_> {
     }
 
     /// Run sync workflow only: review loops and optional learn.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorkflowError`] when a prompt, review, gate, or ACP step fails.
     pub async fn run_sync(&mut self) -> Result<(), WorkflowError> {
         let context = workflow_context_inner(self.artifacts, self.prompts, "sync")
             .map_err(|e: PromptError| WorkflowError(e.0))?;
@@ -145,6 +149,11 @@ impl Orchestrator<'_> {
             .await
     }
 
+    /// Runs coder prompts up to the pre-summary gap, executes `mid`, then summary (and sync check when configured).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorkflowError`] when session setup, a workflow step, `mid`, or timing emission fails.
     pub async fn run_with_pre_summary_gap(
         &mut self,
         context: &HashMap<String, String>,
