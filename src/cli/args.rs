@@ -41,7 +41,7 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Write or review a plan file with the default reviewer prompt
+    /// Write or review a plan file (BETA)
     Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),
