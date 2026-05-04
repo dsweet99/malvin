@@ -88,14 +88,14 @@ fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
 }
 
 #[test]
-fn init_cmd_embeds_default_repo_grounding_template() {
+fn init_cmd_does_not_reference_grounding_template() {
     let init_src = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/src/cli/init_cmd.rs"
     ));
     assert!(
-        init_src.contains("/default_repo/grounding.md"),
-        "init_cmd should include_str default_repo/grounding.md"
+        !init_src.contains("grounding.md"),
+        "init must not install or embed grounding.md"
     );
 }
 
