@@ -95,16 +95,16 @@ fn print_parsed_or_fallback(text: &str) {
     }
 }
 
-const DASHED_MODEL_NAME_MAX_TOKENS: usize = 4;
-
 /// Best-effort parse: `name — description`, `name - description`, or two-column spacing.
 fn parse_model_line(line: &str) -> Option<(&str, String)> {
     if let Some((a, b)) = line.split_once(" — ") {
         return Some((a.trim(), b.trim().to_string()));
     }
     if let Some((a, b)) = line.split_once(" - ") {
-        if a.split_whitespace().count() <= DASHED_MODEL_NAME_MAX_TOKENS && !b.trim().is_empty() {
-            return Some((a.trim(), b.trim().to_string()));
+        let a = a.trim();
+        let b = b.trim();
+        if !a.is_empty() && !b.is_empty() {
+            return Some((a, b.to_string()));
         }
     }
     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -155,6 +155,14 @@ mod tests {
         let (n, d) = parse_model_line("composer-2 — Fast").expect("parse");
         assert_eq!(n, "composer-2");
         assert_eq!(d, "Fast");
+    }
+
+    #[test]
+    fn parse_model_line_splits_ascii_hyphen_when_name_has_many_words() {
+        let line = "my production inference tier one model id - Claude via API";
+        let (n, d) = parse_model_line(line).expect("parse");
+        assert_eq!(n, "my production inference tier one model id");
+        assert_eq!(d, "Claude via API");
     }
 
     #[test]
