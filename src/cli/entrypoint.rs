@@ -10,7 +10,8 @@ use malvin::output::{MALVIN_WHO, print_stderr_line};
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
-        Commands::Code(_) | Commands::Tidy(_) => require_kiss_for_malvin("code"),
+        Commands::Code(_) => require_kiss_for_malvin("code"),
+        Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
         Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }

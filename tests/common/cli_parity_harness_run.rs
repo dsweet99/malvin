@@ -46,11 +46,15 @@ fn prep_acp_mock_on_path(
 }
 
 #[cfg(unix)]
-pub fn run_code_with_mock_js_trust_plan(
+pub fn run_code_with_mock_js_trust_plan_in_workspace(
     mock_js: &str,
     extra_args: &[&str],
     opts: &CodeRunOpts,
-) -> std::process::Output {
+) -> (
+    std::process::Output,
+    tempfile::TempDir,
+    std::path::PathBuf,
+) {
     let (root, home, workspace) = test_home_workspace();
     let (_bin_dir, mock, path) = prep_acp_mock_on_path(&root, "mock-agent-acp-code", mock_js);
     let mut args = vec!["code", "--no-learn"];
@@ -62,7 +66,7 @@ pub fn run_code_with_mock_js_trust_plan(
     if opts.no_tee {
         args.insert(0, "--no-tee");
     }
-    command_output_with_timeout(
+    let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)
             .env("HOME", &home)
@@ -72,7 +76,16 @@ pub fn run_code_with_mock_js_trust_plan(
             .args(args),
         MALVIN_TEST_CMD_TIMEOUT,
     )
-    .expect("spawn malvin code")
+    .expect("spawn malvin code");
+    (out, root, workspace)
+}
+
+pub fn run_code_with_mock_js_trust_plan(
+    mock_js: &str,
+    extra_args: &[&str],
+    opts: &CodeRunOpts,
+) -> std::process::Output {
+    run_code_with_mock_js_trust_plan_in_workspace(mock_js, extra_args, opts).0
 }
 
 #[cfg(unix)]

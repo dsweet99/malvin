@@ -138,6 +138,37 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 }
 
 #[test]
+fn malvin_tidy_kiss_missing_error_cites_tidy_subcommand() {
+    let path_root = tempfile::tempdir().unwrap();
+    let isolated_bin = path_root.path().join("bin");
+    std::fs::create_dir_all(&isolated_bin).unwrap();
+    #[cfg(unix)]
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        c.arg("tidy");
+    });
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", &isolated_bin)
+        .arg("tidy")
+        .output()
+        .expect("spawn malvin");
+    assert!(!out.status.success());
+    let msg = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        msg.contains("`malvin tidy`"),
+        "expected error to name the tidy subcommand; got: {msg:?}"
+    );
+    assert!(
+        !msg.contains("`malvin code`"),
+        "expected tidy path not to reuse code subcommand text; got: {msg:?}"
+    );
+}
+
+#[test]
 fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["plan"]);
 }

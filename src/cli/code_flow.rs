@@ -109,11 +109,13 @@ pub async fn run_code(
     workflow: super::WorkflowCliOptions,
 ) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
-    run_repo_workspace_gates(
-        &artifacts.work_dir,
-        RepoGateOutput::Tagged,
-        Some(&artifacts.run_dir),
-    )?;
+    if !code.skip_pre_checks {
+        run_repo_workspace_gates(
+            &artifacts.work_dir,
+            RepoGateOutput::Tagged,
+            Some(&artifacts.run_dir),
+        )?;
+    }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;

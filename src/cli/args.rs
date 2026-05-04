@@ -70,6 +70,9 @@ pub struct CodeArgs {
     /// Skip plan validation step.
     #[arg(long, default_value_t = false)]
     pub trust_the_plan: bool,
+    /// Skip workspace quality gates before the ACP session starts.
+    #[arg(long, default_value_t = false)]
+    pub skip_pre_checks: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }

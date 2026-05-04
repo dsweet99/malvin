@@ -7,9 +7,10 @@ use common::{
     acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js,
     acp_mock_code_review_lgtm_with_abort_js,
-    assert_review_abort_behavior, run_code_max_loops_zero_with_mock,
+    assert_review_abort_behavior, only_run_dir, run_code_max_loops_zero_with_mock,
     run_code_max_loops_zero_with_mock_without_trust_plan, run_code_with_mock_js,
-    run_code_with_mock_js_trust_plan, CodeRunOpts, MAX_LOOPS_EXHAUSTED,
+    run_code_with_mock_js_trust_plan, run_code_with_mock_js_trust_plan_in_workspace,
+    CodeRunOpts, MAX_LOOPS_EXHAUSTED,
 };
 
 #[cfg_attr(unix, test)]
@@ -177,5 +178,42 @@ fn code_stops_when_review_lgtm_also_writes_abort_result() {
         &out,
         "ABORT: review lgtm abort test",
         "Review-2 (attempt 1)",
+    );
+}
+
+#[cfg_attr(unix, test)]
+fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
+    let js = acp_mock_code_review_lgtm_to_artifact_js();
+    let opts = CodeRunOpts {
+        no_tee: true,
+        trust_plan: true,
+    };
+    let (out, _root, workspace) = run_code_with_mock_js_trust_plan_in_workspace(
+        &js,
+        &["--max-loops", "1", "--skip-pre-checks"],
+        &opts,
+    );
+    assert!(
+        out.status.success(),
+        "malvin code should succeed: {:?}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let log = std::fs::read_to_string(only_run_dir(&workspace).join("quality_checks.log"))
+        .expect("quality_checks.log");
+    assert_eq!(
+        log.matches("Running `kiss check`").count(),
+        1,
+        "expected one gate pass (pre-summary only): {log}"
+    );
+
+    let (out2, _root2, workspace2) =
+        run_code_with_mock_js_trust_plan_in_workspace(&js, &["--max-loops", "1"], &opts);
+    assert!(out2.status.success(), "baseline malvin code should succeed");
+    let log2 = std::fs::read_to_string(only_run_dir(&workspace2).join("quality_checks.log"))
+        .expect("quality_checks.log baseline");
+    assert_eq!(
+        log2.matches("Running `kiss check`").count(),
+        2,
+        "expected initial plus pre-summary gate passes: {log2}"
     );
 }
