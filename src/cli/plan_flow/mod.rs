@@ -13,7 +13,6 @@ use malvin::run_timing::{RunTiming, TimingPhase};
 
 use super::PlanArgs;
 use super::code_flow::{WorkflowCliOptions, build_agent};
-use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::run_emit;
 use super::timing_merge;
 use super::SharedOpts;
@@ -75,11 +74,6 @@ fn start_plan_workspace_session(
     shared: &SharedOpts,
     user_plan_path: &Path,
 ) -> Result<KissConfigBackup, String> {
-    run_repo_workspace_gates(
-        &artifacts.work_dir,
-        RepoGateOutput::Tagged,
-        Some(&artifacts.run_dir),
-    )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let startup_tag = user_plan_path.display().to_string();
