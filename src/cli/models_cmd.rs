@@ -78,20 +78,34 @@ fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
     false
 }
 
-fn print_parsed_or_fallback(text: &str) {
-    let mut printed = false;
+fn models_display_lines(text: &str) -> Option<Vec<String>> {
+    let mut out = Vec::new();
     for line in text.lines() {
         let t = line.trim();
         if t.is_empty() {
             continue;
         }
         if let Some((name, rest)) = parse_model_line(t) {
-            print_stdout_line(MALVIN_WHO, &format!("{name}\t{rest}"));
-            printed = true;
+            out.push(format!("{name}\t{rest}"));
+        } else {
+            out.push(t.to_string());
         }
     }
-    if !printed {
-        print_stdout_text(MALVIN_WHO, text);
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
+fn print_parsed_or_fallback(text: &str) {
+    match models_display_lines(text) {
+        Some(lines) => {
+            for line in lines {
+                print_stdout_line(MALVIN_WHO, &line);
+            }
+        }
+        None => print_stdout_text(MALVIN_WHO, text),
     }
 }
 
@@ -166,6 +180,20 @@ mod tests {
     }
 
     #[test]
+    fn models_display_lines_keeps_unparsed_single_token_between_parsed_rows() {
+        let text = "composer-2 — Fast\nHEADERS\ngpt-4.1 — Stable";
+        let lines = models_display_lines(text).expect("non-empty");
+        assert_eq!(
+            lines,
+            vec![
+                "composer-2\tFast".to_string(),
+                "HEADERS".to_string(),
+                "gpt-4.1\tStable".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn kiss_stringify_models_cmd() {
         let _ = stringify!(ModelsArgs);
         let _ = stringify!(run_models);
@@ -174,6 +202,7 @@ mod tests {
         let _ = stringify!(trim_trailing_tip_lines);
         let _ = stringify!(looks_like_tip_banner_line);
         let _ = stringify!(print_parsed_or_fallback);
+        let _ = stringify!(models_display_lines);
         let _ = stringify!(parse_model_line);
     }
 }
