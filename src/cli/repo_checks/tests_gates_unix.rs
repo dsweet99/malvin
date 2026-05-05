@@ -65,13 +65,13 @@ fn run_repo_workspace_gates_skips_pre_commit_when_config_present() {
     workspace_git_precommit_malvin_checks_cargo_main(work);
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
-    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo", "custom"], 0);
+    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "custom"], 0);
     let _guard = set_fake_command_dir(bin_dir.path());
     let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
     assert!(result.is_ok());
     let log = fs::read_to_string(&trace).unwrap();
     assert!(!log_contains_command(&log, "pre-commit run --all-files"));
-    assert!(log_contains_command(&log, "kiss check"));
-    assert!(log_contains_command(&log, "cargo clippy"));
+    assert!(!log_contains_command(&log, "kiss check"));
+    assert!(!log_contains_command(&log, "cargo clippy"));
     assert!(log_contains_command(&log, "custom --only"));
 }

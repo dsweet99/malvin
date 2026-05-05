@@ -18,6 +18,10 @@ pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
+    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    if checks_path.is_file() {
+        return load_malvin_checks(&checks_path);
+    }
     let mut out = vec![KISS_CHECK_COMMAND.to_string()];
     let (has_py, has_pytest) = python_ruff_and_pytest_flags(work_dir);
     if has_py {
@@ -28,10 +32,6 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
     }
     if work_dir.join("Cargo.toml").is_file() {
         out.extend(DEFAULT_RUST_CHECKS.iter().map(|s| (*s).to_string()));
-    }
-    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
-    if checks_path.is_file() {
-        out.extend(load_malvin_checks(&checks_path)?);
     }
     Ok(out)
 }
@@ -156,6 +156,22 @@ mod tests {
         fs::write(w.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
         let g = gate_command_lines(w).unwrap();
         assert!(g.iter().any(|c| c == DEFAULT_PYTEST_CHECK));
+    }
+
+    #[test]
+    fn gate_command_lines_uses_only_malvin_checks_when_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        fs::create_dir(w.join(".git")).unwrap();
+        fs::write(
+            w.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
+        fs::write(w.join(".malvin_checks"), "custom-a\ncustom-b\n").unwrap();
+        let g = gate_command_lines(w).unwrap();
+        assert_eq!(g, vec!["custom-a".to_string(), "custom-b".to_string()]);
+        assert!(!g.iter().any(|c| c == KISS_CHECK_COMMAND));
     }
 
     #[test]

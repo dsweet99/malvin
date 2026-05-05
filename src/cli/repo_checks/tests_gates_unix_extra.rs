@@ -12,23 +12,20 @@ use super::tests_gates_helpers::{
 use super::{prepare_repo_workspace, run_repo_workspace_gates, RepoGateOutput};
 
 #[test]
-fn run_repo_workspace_gates_executes_custom_malvin_checks_after_builtins() {
+fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     workspace_git_malvin_checks_line(work, "custom --option\n");
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
-    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "custom"], 0);
+    install_trace_echo_bins(bin_dir.path(), &trace, &["custom"], 0);
     let _guard = set_fake_command_dir(bin_dir.path());
     let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
     assert!(result.is_ok());
     let log = fs::read_to_string(&trace).unwrap();
-    let kiss_check_pos = log.find("kiss check").expect("kiss check");
-    let custom_pos = log.find("custom --option").expect("custom");
-    assert!(
-        kiss_check_pos < custom_pos,
-        "built-ins should run before .malvin_checks lines"
-    );
+    assert!(log_contains_command(&log, "custom --option"));
+    assert!(!log_contains_command(&log, "kiss check"));
+    assert!(!log_contains_command(&log, "cargo clippy"));
 }
 
 #[test]
