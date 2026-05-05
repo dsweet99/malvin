@@ -20,6 +20,8 @@ mod cli_parity_tty;
 mod cli_parity_tty_kpop;
 mod process;
 mod workspace;
+#[cfg(unix)]
+mod kiss_failing_gates;
 
 pub use cli_parity_harness_run::*;
 #[cfg(all(unix, target_os = "linux"))]
@@ -33,7 +35,12 @@ pub use acp_code_streaming::*;
 pub use acp_core::*;
 pub use acp_do::*;
 pub use process::{command_output_with_timeout, MALVIN_TEST_CMD_TIMEOUT};
-pub use workspace::{only_run_dir, test_home_workspace, write_fake_kiss, write_mock_executable};
+pub use workspace::{
+    only_run_dir, seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_fake_kiss,
+    write_mock_executable,
+};
+#[cfg(unix)]
+pub use kiss_failing_gates::write_failing_gate_tools;
 
 #[cfg(unix)]
 pub use do_stdout_harness::*;

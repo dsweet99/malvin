@@ -13,6 +13,7 @@ use malvin::run_timing::{RunTiming, TimingPhase};
 
 use super::PlanArgs;
 use super::code_flow::{WorkflowCliOptions, build_agent};
+use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::run_emit;
 use super::timing_merge;
 use super::SharedOpts;
@@ -177,6 +178,13 @@ pub async fn run_plan(
     write_plan_source(&plan, &user_plan_path)?;
     let artifacts = plan_run_artifacts(&user_plan_path)?;
     let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+    if !plan.skip_pre_checks {
+        run_repo_workspace_gates(
+            &artifacts.work_dir,
+            RepoGateOutput::Tagged,
+            Some(&artifacts.run_dir),
+        )?;
+    }
     let kissconfig_backup =
         start_plan_workspace_session(&mut client, &artifacts, shared, &user_plan_path)?;
     let prompt = build_rendered_plan_prompt(&artifacts, &user_plan_path)?;

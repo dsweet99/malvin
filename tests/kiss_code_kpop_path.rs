@@ -8,10 +8,9 @@ use std::process::Command;
 #[cfg(unix)]
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
-    test_home_workspace, write_mock_executable,
+    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_failing_gate_tools,
+    write_mock_executable,
 };
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
 use std::path::Path;
 
@@ -104,29 +103,6 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(args: &[&str]) {
     );
 }
 
-#[cfg(unix)]
-fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
-    for name in ["kiss", "cargo", "ruff", "pytest"] {
-        write_failing_command(&bin_dir.join(name), trace);
-    }
-}
-
-#[cfg(unix)]
-fn write_failing_command(path: &Path, trace: &Path) {
-    let name = path.file_name().unwrap().to_string_lossy();
-    std::fs::write(
-        path,
-        format!(
-            "#!/usr/bin/env sh\necho \"{name} $@\" >> \"{}\"\nexit 1\n",
-            trace.display()
-        ),
-    )
-    .expect("write failing command");
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
-}
-
 #[test]
 fn malvin_code_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["code", "x"]);
@@ -175,17 +151,7 @@ fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
 
 #[cfg(unix)]
 fn seed_tidy_workspace(workspace: &Path) {
-    std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
-    std::fs::write(
-        workspace.join(".kissconfig"),
-        "[gate]\ntest_coverage_threshold = 90\n",
-    )
-    .expect("write kissconfig");
-    std::fs::write(
-        workspace.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .expect("write cargo manifest");
+    seed_git_kiss_cargo_gate_workspace(workspace);
     std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
 }
 

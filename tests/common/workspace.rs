@@ -14,6 +14,21 @@ pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::pat
 }
 
 #[cfg(unix)]
+pub fn seed_git_kiss_cargo_gate_workspace(workspace: &Path) {
+    std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
+    std::fs::write(
+        workspace.join(".kissconfig"),
+        "[gate]\ntest_coverage_threshold = 90\n",
+    )
+    .expect("write kissconfig");
+    std::fs::write(
+        workspace.join("Cargo.toml"),
+        "[package]\nname = 'm'\nversion = '0.1.0'\n",
+    )
+    .expect("write cargo manifest");
+}
+
+#[cfg(unix)]
 pub fn write_fake_kiss(path: &std::path::Path) {
     std::fs::write(path, "#!/usr/bin/env sh\nexit 0\n").expect("write kiss");
     let mut perms = std::fs::metadata(path).expect("metadata").permissions();

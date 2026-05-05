@@ -55,6 +55,9 @@ pub struct PlanArgs {
         value_name = "PATH"
     )]
     pub plan_path: Option<PathBuf>,
+    /// Skip workspace quality gates before the ACP session starts.
+    #[arg(long, default_value_t = false)]
+    pub skip_pre_checks: bool,
     #[arg(value_name = "TEXT")]
     pub text: Option<String>,
 }
