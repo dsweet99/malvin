@@ -1,3 +1,5 @@
+//! `malvin plan` does not run workspace quality gates before ACP (unlike `code` / `tidy` / `do`).
+
 #[cfg(unix)]
 mod common;
 
@@ -34,12 +36,12 @@ mod unix_tests {
     }
 
     #[test]
-    fn malvin_plan_runs_workspace_quality_gates_before_acp() {
+    fn malvin_plan_skips_workspace_quality_gates_before_acp() {
         let (root, home, workspace) = test_home_workspace();
         seed_git_kiss_cargo_gate_workspace(&workspace);
         let bin_dir = root.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-        let trace = root.path().join("plan-gate-trace.log");
+        let trace = root.path().join("plan-no-gate-trace.log");
         write_failing_gate_tools(&bin_dir, &trace);
         let mock = root.path().join("mock-agent-acp-plan");
         write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
@@ -55,45 +57,13 @@ mod unix_tests {
         let out = spawn_malvin_plan_mock(&sp, &["minimal plan"]);
 
         assert!(
-            !out.status.success(),
-            "expected plan to fail when pre-session quality gates fail: {out:?}"
-        );
-        let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
-        assert!(
-            trace_log.contains("kiss"),
-            "expected pre-ACP workspace gates to invoke kiss: {trace_log}"
-        );
-    }
-
-    #[test]
-    fn malvin_plan_skip_pre_checks_skips_workspace_gates() {
-        let (root, home, workspace) = test_home_workspace();
-        seed_git_kiss_cargo_gate_workspace(&workspace);
-        let bin_dir = root.path().join("bin");
-        std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-        let trace = root.path().join("plan-skip-gate-trace.log");
-        write_failing_gate_tools(&bin_dir, &trace);
-        let mock = root.path().join("mock-agent-acp-plan-skip");
-        write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
-        let original_path = std::env::var("PATH").unwrap_or_default();
-        let path = format!("{}:{original_path}", bin_dir.display());
-
-        let sp = PlanMockSpawn {
-            workspace: &workspace,
-            home: &home,
-            mock_agent: &mock,
-            path: &path,
-        };
-        let out = spawn_malvin_plan_mock(&sp, &["--skip-pre-checks", "minimal plan"]);
-
-        assert!(
             out.status.success(),
-            "expected plan to pass when pre-checks skipped: {out:?}"
+            "expected plan to succeed without pre-session quality gates: {out:?}"
         );
         let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
         assert!(
             trace_log.is_empty(),
-            "expected no gate tool invocations when --skip-pre-checks: {trace_log:?}"
+            "expected no gate tool invocations before plan ACP: {trace_log:?}"
         );
     }
 }
