@@ -174,6 +174,10 @@ fn kiss_stringify_repo_gates() {
     let _ = stringify!(crate::repo_gates::prompt_quality_gates_markdown);
     let _ = stringify!(crate::repo_gates::format_quality_gates_markdown);
     let _ = stringify!(crate::repo_gates::load_malvin_checks);
+    let _ = stringify!(crate::repo_gates::ensure_default_malvin_checks_file);
+    let _ = stringify!(crate::repo_gates::gate_command_lines_for_workspace_run);
+    let _ = stringify!(crate::repo_gates::discover_py::visit_source_files);
+    let _ = stringify!(crate::repo_gates::discover_py::python_ruff_and_pytest_flags);
     let _ = stringify!(kiss_smoke_prompt_store);
     let _ = stringify!(kiss_smoke_render_context);
 }
