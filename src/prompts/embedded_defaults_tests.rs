@@ -35,10 +35,7 @@ fn default_store_with_unset_home() -> String {
 
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
     let _lock = crate::test_utils::test_env_lock();
-    let profile = tempfile::tempdir()
-        .unwrap()
-        .path()
-        .join("profile");
+    let profile = tempfile::tempdir().unwrap().path().join("profile");
     std::fs::create_dir_all(&profile).unwrap();
     let _guard = with_unset_home_profile(profile);
     let store = {
@@ -48,8 +45,9 @@ fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String
     };
     let context = HashMap::from([
         ("plan_path".to_string(), "/p".to_string()),
-        ("grounding_path".to_string(), "/g".to_string()),
         ("result_path".to_string(), "/r".to_string()),
+        ("malvin_command".to_string(), "code".to_string()),
+        ("quality_gates".to_string(), String::new()),
     ]);
     (store, context)
 }
@@ -66,7 +64,18 @@ fn with_unset_home_profile(profile: std::path::PathBuf) -> EnvHomeGuard {
     guard
 }
 
-fn render_default_implement(store: &super::PromptStore, context: &HashMap<String, String>) -> String {
+fn render_default_implement(
+    store: &super::PromptStore,
+    context: &HashMap<String, String>,
+) -> String {
     store.render("implement.md", context).expect("render")
 }
 
+#[test]
+fn kiss_stringify_embedded_defaults_units() {
+    let _ = stringify!(crate::prompts::embedded_defaults_tests::EnvHomeGuard);
+    let _ =
+        stringify!(crate::prompts::embedded_defaults_tests::default_prompt_store_with_unset_home);
+    let _ = stringify!(crate::prompts::embedded_defaults_tests::with_unset_home_profile);
+    let _ = stringify!(crate::prompts::embedded_defaults_tests::render_default_implement);
+}

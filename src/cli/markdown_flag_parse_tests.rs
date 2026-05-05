@@ -51,20 +51,64 @@ fn tidy_parses_without_request_and_runs_learn() {
 }
 
 #[test]
-fn sync_parses_with_global_no_markdown_without_request() {
-    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "sync", "--no-learn"])
-        .expect("parse");
+fn models_parses_with_global_no_markdown() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "models"]).expect("parse");
     assert!(cli.shared.no_markdown);
+    assert!(matches!(cli.command, crate::cli::Commands::Models(_)));
+}
+
+#[test]
+fn plan_parses_text_after_plan_path_flag() {
+    let cli = Cli::try_parse_from([
+        "malvin",
+        "plan",
+        "--plan_path",
+        "/tmp/p.md",
+        "hello",
+    ])
+    .expect("parse");
     match cli.command {
-        crate::cli::Commands::Sync {
-            no_learn,
-            max_loops,
-            ..
-        } => {
-            assert!(no_learn);
-            assert_eq!(max_loops, 5);
+        crate::cli::Commands::Plan(p) => {
+            assert_eq!(
+                p.plan_path.as_deref(),
+                Some(std::path::Path::new("/tmp/p.md"))
+            );
+            assert_eq!(p.text.as_deref(), Some("hello"));
         }
-        _ => panic!("expected Sync"),
+        _ => panic!("expected plan"),
     }
 }
 
+#[test]
+fn plan_parses_plan_path_alias_before_text() {
+    let cli = Cli::try_parse_from([
+        "malvin",
+        "plan",
+        "--plan-path",
+        "notes/plan.md",
+        "x",
+    ])
+    .expect("parse");
+    match cli.command {
+        crate::cli::Commands::Plan(p) => {
+            assert_eq!(
+                p.plan_path.as_ref().map(|x| x.as_os_str()),
+                Some(std::ffi::OsStr::new("notes/plan.md"))
+            );
+            assert_eq!(p.text.as_deref(), Some("x"));
+        }
+        _ => panic!("expected plan"),
+    }
+}
+
+#[test]
+fn plan_parses_without_positional() {
+    let cli = Cli::try_parse_from(["malvin", "plan"]).expect("parse");
+    match cli.command {
+        crate::cli::Commands::Plan(p) => {
+            assert!(p.plan_path.is_none());
+            assert!(p.text.is_none());
+        }
+        _ => panic!("expected plan"),
+    }
+}

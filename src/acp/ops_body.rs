@@ -41,6 +41,8 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         raw_output: client.io.raw_output,
         show_thoughts_on_stdout: client.io.show_thoughts_on_stdout,
         emit_stdout_markdown: client.io.emit_stdout_markdown,
+        prompts_log_run_dir: client.prompts_log_run_dir.as_deref(),
+        log_full_outgoing_prompts: client.io.log_full_outgoing_prompts,
     })
     .await
     .map_err(AgentError)
@@ -112,8 +114,7 @@ pub struct KpopFlowOnceArgs<'a> {
     pub kpop_prompts: &'a [&'a str],
     pub kpop_log: &'a Path,
     pub learn: Option<(&'a str, &'a Path)>,
-    /// Skip learn if elapsed time is below this threshold (milliseconds).
-    /// Uses `grounding.md` "unless short" rule. Set to 0 to always run learn.
+    /// Skip learn if elapsed time is below this threshold (milliseconds). Set to 0 to always run learn.
     pub learn_min_elapsed_ms: u64,
 }
 
@@ -141,14 +142,14 @@ async fn kpop_round(
 
 fn restore_workspace_on_error(
     cwd: &Path,
-    grounding_backup: &crate::artifacts::GroundingBackup,
+    kissconfig_backup: &crate::artifacts::KissConfigBackup,
     primary_error: AgentError,
     phase: &str,
 ) -> AgentError {
-    match crate::artifacts::restore_workspace_grounding(cwd, grounding_backup) {
+    match crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup) {
         Ok(()) => primary_error,
         Err(restore_error) => AgentError(format!(
-            "{}; grounding restore failed ({phase}): {restore_error}",
+            "{}; kissconfig restore failed ({phase}): {restore_error}",
             primary_error.0
         )),
     }
@@ -157,7 +158,7 @@ fn restore_workspace_on_error(
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
-    grounding_backup: &crate::artifacts::GroundingBackup,
+    kissconfig_backup: &crate::artifacts::KissConfigBackup,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
@@ -175,12 +176,12 @@ pub(crate) async fn run_kpop_flow_once(
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 args.cwd,
-                grounding_backup,
+                kissconfig_backup,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+        crate::artifacts::restore_workspace_kissconfig_backup(args.cwd, kissconfig_backup)
             .map_err(AgentError)?;
     }
 
@@ -208,12 +209,12 @@ pub(crate) async fn run_kpop_flow_once(
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     args.cwd,
-                    grounding_backup,
+                    kissconfig_backup,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_grounding(args.cwd, grounding_backup)
+            crate::artifacts::restore_workspace_kissconfig_backup(args.cwd, kissconfig_backup)
                 .map_err(AgentError)?;
         }
     }
@@ -251,8 +252,8 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
     kpop_log: &std::path::Path,
     learn: Option<(&str, &std::path::Path)>,
     learn_min_elapsed_ms: u64,
-    state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
-    grounding_backup: &crate::artifacts::GroundingBackup,
+    state: &mut crate::kpop_progression::KpopMultiturnState<B>,
+    kissconfig_backup: &crate::artifacts::KissConfigBackup,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, cwd).await?;
 
@@ -280,12 +281,12 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 cwd,
-                grounding_backup,
+                kissconfig_backup,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
+        crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup).map_err(AgentError)?;
         let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
             .map_err(AgentError)?;
         let n = crate::kpop_progression::hypotheses_emitted(&exp_text);
@@ -327,12 +328,12 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     cwd,
-                    grounding_backup,
+                    kissconfig_backup,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_grounding(cwd, grounding_backup).map_err(AgentError)?;
+            crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup).map_err(AgentError)?;
         }
     }
 

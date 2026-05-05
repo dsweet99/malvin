@@ -1,12 +1,15 @@
 //! CLI argument structs for the `malvin` binary.
 
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand};
 
-use super::do_flow::DoArgs;
-use super::init_cmd::InitArgs;
-use super::models_cmd::ModelsArgs;
 use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
+
+pub use super::do_flow::DoArgs;
+pub use super::init_cmd::InitArgs;
+pub use super::models_cmd::ModelsArgs;
 
 pub use super::shared_opts::GlobalOpts;
 
@@ -38,17 +41,22 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
+    /// Write or review a plan file (BETA)
+    Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),
-    /// Synchronize code with grounding.md
-    Sync {
-        /// Review loop budget.
-        #[arg(long, default_value_t = 5)]
-        max_loops: usize,
-        /// Skip learning.
-        #[arg(long, default_value_t = false)]
-        no_learn: bool,
-    },
+}
+
+#[derive(Args, Debug)]
+pub struct PlanArgs {
+    #[arg(
+        long = "plan_path",
+        visible_alias = "plan-path",
+        value_name = "PATH"
+    )]
+    pub plan_path: Option<PathBuf>,
+    #[arg(value_name = "TEXT")]
+    pub text: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -62,11 +70,14 @@ pub struct CodeArgs {
     /// Skip plan validation step.
     #[arg(long, default_value_t = false)]
     pub trust_the_plan: bool,
+    /// Skip workspace quality gates before the ACP session starts.
+    #[arg(long, default_value_t = false)]
+    pub skip_pre_checks: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
     /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
     #[arg(long, default_value_t = 10, alias = "max-loops")]

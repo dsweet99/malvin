@@ -1,0 +1,58 @@
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::path::{Path, PathBuf};
+
+pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    let workspace = root.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    std::fs::create_dir_all(&workspace).expect("mkdir workspace");
+    std::fs::write(workspace.join(".kissconfig"), "x").expect("kissconfig");
+    (root, home, workspace)
+}
+
+#[cfg(unix)]
+pub fn seed_git_kiss_cargo_gate_workspace(workspace: &Path) {
+    std::fs::create_dir(workspace.join(".git")).expect("mkdir git marker");
+    std::fs::write(
+        workspace.join(".kissconfig"),
+        "[gate]\ntest_coverage_threshold = 90\n",
+    )
+    .expect("write kissconfig");
+    std::fs::write(
+        workspace.join("Cargo.toml"),
+        "[package]\nname = 'm'\nversion = '0.1.0'\n",
+    )
+    .expect("write cargo manifest");
+}
+
+#[cfg(unix)]
+pub fn write_fake_kiss(path: &std::path::Path) {
+    std::fs::write(path, "#!/usr/bin/env sh\nexit 0\n").expect("write kiss");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+pub fn write_mock_executable(path: &std::path::Path, js: &str) {
+    let script = format!("#!/usr/bin/env node\n{js}");
+    std::fs::write(path, script).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+pub fn only_run_dir(workspace: &Path) -> PathBuf {
+    let run_root = workspace.join("_malvin");
+    let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
+        .expect("read _malvin")
+        .map(|entry| entry.expect("dir entry").path())
+        .filter(|path| path.is_dir())
+        .collect();
+    assert_eq!(dirs.len(), 1, "expected exactly one run dir, got {dirs:?}");
+    dirs.into_iter().next().expect("run dir")
+}

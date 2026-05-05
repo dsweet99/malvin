@@ -1,5 +1,3 @@
-const CHECK_PLAN_MAX_ATTEMPTS: u32 = 3;
-
 fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }
@@ -7,7 +5,6 @@ fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, b
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     let base = &artifacts.work_dir;
     insert_formatted(context, "plan_path", &artifacts.plan_path, base);
-    insert_formatted(context, "grounding_path", &base.join("grounding.md"), base);
     let kpop_dir = artifacts
         .run_dir
         .join("_kpop")
@@ -17,20 +14,40 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     insert_formatted(context, "review_path", &artifacts.artifact_review_md(), base);
     insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
+    insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
 }
 
 #[must_use]
-pub fn workflow_context_paths_only(artifacts: &RunArtifacts) -> HashMap<String, String> {
+pub fn workflow_context_paths_only(
+    artifacts: &RunArtifacts,
+    malvin_command: &str,
+) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
+    context.insert(
+        "memories".to_string(),
+        memory_context::build_memories_value(&artifacts.work_dir),
+    );
+    context.insert("malvin_command".to_string(), malvin_command.to_string());
     context
 }
 
+/// Builds the full workflow render context (paths, memories, quality gates, `kpop` slot).
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when quality gate markdown or `kpop_common.md` rendering fails.
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
+    malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
-    let mut context = workflow_context_paths_only(artifacts);
+    let mut context = workflow_context_paths_only(artifacts, malvin_command);
+    context.insert(
+        "quality_gates".to_string(),
+        crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)
+            .map_err(PromptError)?,
+    );
     let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)
@@ -62,7 +79,8 @@ pub(crate) fn prompt_md_stem(filename: &str) -> &str {
     filename.strip_suffix(".md").unwrap_or(filename)
 }
 
-pub(crate) fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
+#[must_use]
+pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
     let path_r = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let base_r = base_dir.canonicalize().unwrap_or_else(|_| base_dir.to_path_buf());
     path_r.strip_prefix(&base_r).map_or_else(
@@ -95,15 +113,8 @@ mod helper_tests {
     fn check_abort_returns_message_after_prefix_not_entire_file() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().join("result.md");
-        std::fs::write(
-            &p,
-            "context line\nABORT: stop here\nmore\n",
-        )
-        .unwrap();
-        assert_eq!(
-            check_abort(&p).as_deref(),
-            Some("stop here")
-        );
+        std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
+        assert_eq!(check_abort(&p).as_deref(), Some("stop here"));
     }
 
     #[test]
@@ -136,13 +147,19 @@ mod helper_tests {
             plan_path,
             work_dir: tmp.path().to_path_buf(),
         };
-        let mut ctx = HashMap::new();
-        insert_artifact_paths(&mut ctx, &artifacts);
+        let ctx = workflow_context_paths_only(&artifacts, "code");
         assert!(ctx.contains_key("plan_path"));
-        assert!(ctx.contains_key("grounding_path"));
         assert!(ctx.contains_key("kpop_log_dir"));
         assert!(ctx.contains_key("review_path"));
         assert!(ctx.contains_key("result_path"));
+        assert!(ctx.contains_key("memories"));
+        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
+    }
+
+    #[test]
+    fn kiss_stringify_review_loop_helpers() {
+        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
+        let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
+        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
     }
 }
-

@@ -5,11 +5,11 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    GroundingBackup, RunArtifacts, backup_workspace_grounding_if_present, create_kpop_run_artifacts,
-    resolve_user_request,
+    KissConfigBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
+    create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
-use malvin::kpop_multiturn::KpopMultiturnState;
+use malvin::kpop_progression::KpopMultiturnState;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::orchestrator::workflow_context_paths_only;
 use malvin::output::{MALVIN_WHO, print_stdout_line};
@@ -21,14 +21,11 @@ use super::WorkflowCliOptions;
 use super::build_agent;
 use super::emit_run_startup_sequence;
 use super::prepare_kpop_prompt_store;
-use super::repo_checks;
 use super::shared_opts::SharedOpts;
-use super::timing_merge::{emit_run_timing_after_acp, merge_acp_with_grounding_restore};
+use super::timing_merge;
+use super::timing_merge::emit_run_timing_after_acp;
 
-fn kpop_prompt_store(
-    kpop: &KpopArgs,
-    workflow: WorkflowCliOptions,
-) -> Result<PromptStore, String> {
+fn kpop_prompt_store(kpop: &KpopArgs, workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
     let needs_mbc2 = kpop_creative_enabled(kpop.p_creative);
     prepare_kpop_prompt_store(workflow, needs_mbc2)
 }
@@ -37,6 +34,7 @@ pub struct KpopTurnPrompts<'a> {
     store: &'a PromptStore,
     base: &'a HashMap<String, String>,
     request_text: &'a str,
+    prepend_rules_once: bool,
 }
 
 impl KpopTurnPrompts<'_> {
@@ -44,6 +42,7 @@ impl KpopTurnPrompts<'_> {
         &self,
         body_file: &str,
         ctx: &HashMap<String, String>,
+        with_rules: bool,
     ) -> Result<String, String> {
         let common = self
             .store
@@ -53,13 +52,22 @@ impl KpopTurnPrompts<'_> {
             .store
             .render_prompt_only(body_file, ctx)
             .map_err(|e: PromptError| e.0)?;
-        let rules = merged_coding_rules(self.store, ctx).map_err(|e: PromptError| e.0)?;
-        Ok(format!(
-            "{}\n\n{}\n\n{}",
-            rules.trim_end(),
-            common.trim_end(),
-            body.trim_end()
-        ))
+        let rules = if with_rules {
+            Some(merged_coding_rules(self.store, ctx).map_err(|e: PromptError| e.0)?)
+        } else {
+            None
+        };
+        rules.map_or_else(
+            || Ok(format!("{}\n\n{}", common.trim_end(), body.trim_end())),
+            |rules| {
+                Ok(format!(
+                    "{}\n\n{}\n\n{}",
+                    rules.trim_end(),
+                    common.trim_end(),
+                    body.trim_end()
+                ))
+            },
+        )
     }
 }
 
@@ -76,13 +84,16 @@ impl KpopMultiturnPrompts for KpopTurnPrompts<'_> {
             remaining_after_this_turn.to_string(),
         );
         ctx.insert("user_request".to_string(), self.request_text.to_string());
-        self.render_turn_with_body("kpop_block.md", &ctx)
+        let with_rules = self.prepend_rules_once;
+        let prompt = self.render_turn_with_body("kpop_block.md", &ctx, with_rules)?;
+        self.prepend_rules_once = false;
+        Ok(prompt)
     }
 
     fn mbc2_pure(&mut self) -> Result<String, String> {
         let mut ctx = self.base.clone();
         ctx.insert("user_request".to_string(), self.request_text.to_string());
-        self.render_turn_with_body("mbc2_pure.md", &ctx)
+        self.render_turn_with_body("mbc2_pure.md", &ctx, false)
     }
 }
 
@@ -91,27 +102,31 @@ pub struct KpopPrepared {
     exp_log_path: PathBuf,
     context: HashMap<String, String>,
     text: String,
-    grounding_backup: GroundingBackup,
+    kissconfig_backup: KissConfigBackup,
 }
 
 fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
         .ok_or_else(|| "kpop exp log path has no parent directory".to_string())?;
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
-    let context = workflow_context_paths_only(&artifacts);
+    let mut context = workflow_context_paths_only(&artifacts, "kpop");
+    context.insert(
+        "quality_gates".to_string(),
+        malvin::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)?,
+    );
     Ok(KpopPrepared {
         artifacts,
         exp_log_path,
         context,
         text,
-        grounding_backup,
+        kissconfig_backup,
     })
 }
 
@@ -142,7 +157,7 @@ pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<
             learn_ref,
             LEARN_MIN_ELAPSED_MS,
             ctx.state,
-            &ctx.prepared.grounding_backup,
+            &ctx.prepared.kissconfig_backup,
         )
         .await
         .map_err(|e| e.0);
@@ -165,10 +180,7 @@ pub async fn run_kpop(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
     let prepared = prepare_kpop_run(&kpop)?;
-    repo_checks::run_repo_workspace_gates(
-        &prepared.artifacts.work_dir,
-        repo_checks::RepoGateOutput::Tagged,
-    )?;
+    client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
@@ -176,6 +188,7 @@ pub async fn run_kpop(
         store: &store,
         base: &prepared.context,
         request_text: &prepared.text,
+        prepend_rules_once: true,
     };
     let mut state = KpopMultiturnState::new(
         builder,
@@ -193,12 +206,12 @@ pub async fn run_kpop(
     })
     .await;
 
-    merge_acp_with_grounding_restore(
+    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
-        &prepared.grounding_backup,
+        &prepared.kissconfig_backup,
+        &prepared.artifacts.artifact_result_md(),
     )?;
-
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
@@ -229,7 +242,7 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_grounding_restore);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
     let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
@@ -268,14 +281,12 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let mut base = HashMap::new();
     for (k, v) in [
         ("plan_path", "./_malvin/run42/plan.md"),
-        ("grounding_path", "./grounding.md"),
         ("kpop_log_dir", "./_malvin/run42/_kpop"),
         ("review_path", "./review.md"),
         ("result_path", "./_malvin/run42/result.md"),
-        (
-            "exp_log",
-            "_malvin/run42/_kpop/exp_log_run42.md",
-        ),
+        ("exp_log", "_malvin/run42/_kpop/exp_log_run42.md"),
+        ("malvin_command", "kpop"),
+        ("quality_gates", ""),
     ] {
         base.insert(k.to_string(), v.to_string());
     }
@@ -283,6 +294,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         store: &store,
         base: &base,
         request_text: "do the thing",
+        prepend_rules_once: true,
     };
     let kpop = turn.kpop_block(2, 10).unwrap();
     let kpop_header = kpop.find("AFTER EVERY REQUEST").expect("header marker");
@@ -298,14 +310,18 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert!(kpop.contains("Hypothesize"));
     assert!(kpop.contains("_malvin/run42/_kpop/exp_log_run42.md"));
     let mbc2 = turn.mbc2_pure().unwrap();
-    let mbc2_header = mbc2.find("AFTER EVERY REQUEST").expect("header marker");
+    let mbc2_header = mbc2.find("AFTER EVERY REQUEST");
+    assert!(
+        mbc2_header.is_none(),
+        "mbc2 should not include header/coding rules"
+    );
     let mbc2_common = mbc2
         .find("### KPop: Apply this method to the user's problem.")
         .expect("common marker");
     let mbc2_body = mbc2.find("# Pure MBC2 turn").expect("body marker");
     assert!(
-        mbc2_header < mbc2_common && mbc2_common < mbc2_body,
-        "mbc2 prompt section order must be header, common, body"
+        mbc2_common < mbc2_body,
+        "mbc2 prompt section order must be common, body"
     );
     assert!(mbc2.contains("Restate the problem clearly"));
     assert!(mbc2.contains("_malvin/run42/_kpop/exp_log_run42.md"));

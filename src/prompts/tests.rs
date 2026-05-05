@@ -1,6 +1,13 @@
 use std::collections::HashMap;
+mod user_home_dir_tests;
 
 use super::*;
+
+#[test]
+fn kiss_stringify_prompts_guards() {
+    let _ = stringify!(super::enforce_no_unresolved_braces);
+    let _ = stringify!(super::KpopPromptValidation);
+}
 
 #[test]
 fn substitute_replaces_dollar_keys() {
@@ -70,6 +77,43 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
 }
 
 #[test]
+fn kpop_validation_may_omit_coding_rules_without_error() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "H").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
+    std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let validation = store.validate_kpop_prompts(super::KpopPromptValidation {
+        run_learn: false,
+        require_mbc2: false,
+    });
+    assert!(
+        validation.is_ok(),
+        "kpop validation should unexpectedly pass: {validation:?}"
+    );
+    let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
+    assert_eq!(out, "H");
+}
+
+#[test]
+fn load_coding_rules_swallows_missing_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::fs::write(root.join("header.md"), "H").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    assert_eq!(store.load_coding_rules(), "");
+}
+
+#[test]
+fn load_header_swallows_missing_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    let store = PromptStore::with_root(root.to_path_buf());
+    assert_eq!(store.load_header(), "");
+}
+
+#[test]
 fn validate_required_fails_when_header_or_coding_rules_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
@@ -83,6 +127,23 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
         "expected missing header + coding_rules in error: {}",
         err.0
     );
+}
+
+#[test]
+fn validate_required_rejects_directory_in_place_of_prompt_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    for &name in super::REQUIRED_PROMPTS {
+        std::fs::create_dir_all(root.join(name)).unwrap();
+    }
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_required().unwrap_err();
+    for name in super::REQUIRED_PROMPTS {
+        assert!(
+            err.0.contains(name),
+            "missing required prompt {name} in {err:?}"
+        );
+    }
 }
 
 #[test]
@@ -120,6 +181,7 @@ fn coding_rules_nested_placeholders_expand() {
     let store = PromptStore::with_root(root.to_path_buf());
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/P".to_string());
+    ctx.insert("quality_gates".to_string(), String::new());
     let out = store.render("implement.md", &ctx).unwrap();
     assert!(
         out.contains("/P") && !out.contains("{{ plan_path }}"),
@@ -141,6 +203,7 @@ fn header_prepends_coding_rules_placeholder() {
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/x".to_string());
     ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
+    ctx.insert("quality_gates".to_string(), String::new());
     let out = store.render("implement.md", &ctx).unwrap();
     assert!(
         out.starts_with("OPENING\n\nRULES"),
@@ -200,4 +263,32 @@ fn merge_header_and_coding_rules_handles_empty() {
     assert_eq!(merge_header_and_coding_rules("head", ""), "head");
     assert_eq!(merge_header_and_coding_rules("", "rules"), "rules");
     assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
+}
+
+#[test]
+fn learn_prompt_has_consistent_memory_target_guidance() {
+    let learn = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/default_prompts/learn.md"
+    ));
+    assert!(
+        learn.contains("Edit an `.malvin_memory/*.md` file"),
+        "expected consistent memory-path guidance in learn prompt"
+    );
+    assert!(
+        learn.contains("in one of `./.malvin_memory/*.md`"),
+        "expected fallback memory file guidance in learn prompt"
+    );
+}
+
+#[test]
+fn learn_prompt_has_no_obvious_typo() {
+    let learn = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/default_prompts/learn.md"
+    ));
+    assert!(
+        !learn.contains("oncrement"),
+        "expected learn typo to be fixed"
+    );
 }

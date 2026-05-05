@@ -14,12 +14,12 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
     CheckPlan,
-    SyncCheck,
     Implement,
     Review1Review,
     Review2Review,
     Concerns,
     Learn,
+    Summary,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -45,13 +45,13 @@ pub struct RunTiming {
     llm_wait: Duration,
     agent_retry_backoff: Duration,
     check_plan: Duration,
-    sync_check: Duration,
     implement: Duration,
     implement_display_name: &'static str,
     review_1_review: Duration,
     review_2_review: Duration,
     concerns: Duration,
     learn: Duration,
+    summary: Duration,
 }
 
 impl Default for RunTiming {
@@ -62,13 +62,13 @@ impl Default for RunTiming {
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
             check_plan: Duration::ZERO,
-            sync_check: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
             review_1_review: Duration::ZERO,
             review_2_review: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
+            summary: Duration::ZERO,
         }
     }
 }
@@ -91,7 +91,6 @@ impl RunTiming {
         self.llm_wait = self.llm_wait.saturating_add(d);
         match phase {
             TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
-            TimingPhase::SyncCheck => self.sync_check = self.sync_check.saturating_add(d),
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
             TimingPhase::Review1Review => {
                 self.review_1_review = self.review_1_review.saturating_add(d);
@@ -101,6 +100,7 @@ impl RunTiming {
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
+            TimingPhase::Summary => self.summary = self.summary.saturating_add(d),
         }
     }
 
@@ -126,10 +126,20 @@ impl RunTiming {
         })
     }
 
+    /// Writes timing JSON and prints the human-readable summary line.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_and_print_summary(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_and_print_summary(self, run_dir)
     }
 
+    /// Writes timing JSON without printing a summary line.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::Error`] when writing under `run_dir` fails.
     pub fn write_json_only(&self, run_dir: &Path) -> std::io::Result<()> {
         report::write_json_only(self, run_dir)
     }
@@ -174,6 +184,11 @@ fn finalize_snapshot(timing: &Arc<Mutex<RunTiming>>) -> RunTiming {
     g.clone()
 }
 
+/// Finalizes wall clock end time and writes JSON plus the printed summary.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_and_emit_run_timing(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
@@ -181,6 +196,11 @@ pub fn finalize_and_emit_run_timing(
     finalize_snapshot(timing).write_json_and_print_summary(run_dir)
 }
 
+/// Finalizes wall clock end time and writes JSON only.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
 pub fn finalize_run_timing_json_only(
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,

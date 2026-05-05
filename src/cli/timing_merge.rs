@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{GroundingBackup, restore_workspace_grounding};
+use malvin::artifacts::{KissConfigBackup, restore_workspace_kissconfig_backup};
 use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
@@ -34,13 +34,51 @@ pub fn prefer_primary_over_secondary(
     }
 }
 
-pub fn merge_acp_with_grounding_restore(
+pub fn merge_acp_with_kissconfig_restore(
     primary: Result<(), String>,
     work_dir: &Path,
-    grounding_backup: &GroundingBackup,
+    kissconfig_backup: &KissConfigBackup,
 ) -> Result<(), String> {
-    let restore_res = restore_workspace_grounding(work_dir, grounding_backup);
-    prefer_primary_over_secondary(primary, restore_res, "grounding restore failed")
+    let restore_res = restore_workspace_kissconfig_backup(work_dir, kissconfig_backup);
+    prefer_primary_over_secondary(primary, restore_res, "kissconfig restore failed")
+}
+
+pub fn merge_acp_with_kissconfig_restore_and_check_abort(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    kissconfig_backup: &KissConfigBackup,
+    result_path: &Path,
+) -> Result<(), String> {
+    let merge_result = merge_acp_with_kissconfig_restore(primary, work_dir, kissconfig_backup);
+    if let Some(abort) = abort_message_from_result_md(result_path) {
+        return match merge_result {
+            Ok(()) => Err(format!("ABORT: {abort}")),
+            Err(merge_error) => Err(format!(
+                "ABORT: {abort}; {}",
+                duplicate_safe_restore_error(&merge_error)
+            )),
+        };
+    }
+    merge_result
+}
+
+fn duplicate_safe_restore_error(merge_error: &str) -> String {
+    if merge_error.contains("kissconfig restore failed:") {
+        merge_error.to_string()
+    } else {
+        format!("kissconfig restore failed: {merge_error}")
+    }
+}
+
+fn abort_message_from_result_md(result_path: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(result_path).ok()?;
+    let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("ABORT:") {
+            return Some(rest.trim_start().to_string());
+        }
+    }
+    None
 }
 
 /// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`malvin::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
@@ -70,7 +108,9 @@ pub fn emit_run_timing_json_only_after_acp(
 
 #[cfg(test)]
 mod tests {
-    use super::{merge_acp_and_timing_results, prefer_primary_over_secondary};
+    use super::{
+        duplicate_safe_restore_error, merge_acp_and_timing_results, prefer_primary_over_secondary,
+    };
 
     #[test]
     fn merge_timing_ok_acp_ok_propagates_timing_err() {
@@ -99,9 +139,9 @@ mod tests {
             prefer_primary_over_secondary(
                 Err("wf".into()),
                 Err("restore".into()),
-                "grounding restore failed",
+                "kissconfig restore failed",
             ),
-            Err("wf; grounding restore failed: restore".into())
+            Err("wf; kissconfig restore failed: restore".into())
         );
     }
 
@@ -128,6 +168,22 @@ mod tests {
         assert_eq!(
             prefer_primary_over_secondary(Err("wf".into()), Ok(()), "x"),
             Err("wf".into())
+        );
+    }
+
+    #[test]
+    fn duplicate_safe_restore_error_does_not_repeat_restore_prefix() {
+        assert_eq!(
+            duplicate_safe_restore_error("wf failed; kissconfig restore failed: restore").as_str(),
+            "wf failed; kissconfig restore failed: restore"
+        );
+    }
+
+    #[test]
+    fn duplicate_safe_restore_error_adds_restore_prefix_when_missing() {
+        assert_eq!(
+            duplicate_safe_restore_error("wf failed"),
+            "kissconfig restore failed: wf failed"
         );
     }
 }

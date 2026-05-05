@@ -17,9 +17,8 @@ pub use kpop_acp_prompt::kpop_creative_enabled;
 pub mod kpop_multiturn_prompts;
 pub use kpop_multiturn_prompts::KpopMultiturnPrompts;
 pub mod kpop_progression;
-pub mod kpop_multiturn;
 mod multiturn_prompt;
-pub use kpop_multiturn::{KpopMultiturnParams, KpopMultiturnState};
+pub use kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 pub use multiturn_prompt::MultiturnPrompt;
 pub mod env_path;
 pub mod invocation;
@@ -27,7 +26,8 @@ pub mod log_paths;
 pub mod orchestrator;
 pub mod output;
 pub mod prompts;
-mod review_sync;
+pub mod repo_gates;
+pub mod review_sync;
 pub mod run_timing;
 
 #[cfg(test)]

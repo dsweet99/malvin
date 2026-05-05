@@ -102,7 +102,7 @@ fn workflow_context_review_path_points_to_artifact() {
         work_dir: t.path().to_path_buf(),
     };
     let prompts = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &prompts).expect("workflow_context");
+    let ctx = workflow_context(&artifacts, &prompts, "code").expect("workflow_context");
 
     let review_path = ctx
         .get("review_path")
@@ -116,6 +116,40 @@ fn workflow_context_review_path_points_to_artifact() {
         review_path, "./_malvin/run123/review.md",
         "review_path should be the artifact path"
     );
+    assert!(
+        ctx.contains_key("quality_gates"),
+        "quality_gates must be in context"
+    );
+}
+
+#[test]
+fn workflow_context_includes_malvin_command() {
+    let t = tempfile::tempdir().unwrap();
+    let run_dir = t.path().join("_malvin").join("run123");
+    std::fs::create_dir_all(&run_dir).unwrap();
+    let plan_path = run_dir.join("plan.md");
+    std::fs::write(&plan_path, "test plan").unwrap();
+    let artifacts = RunArtifacts {
+        run_dir,
+        plan_path,
+        work_dir: t.path().to_path_buf(),
+    };
+    let prompts = PromptStore::default_store();
+    let ctx = workflow_context(&artifacts, &prompts, "tidy").expect("workflow_context");
+    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+}
+
+#[test]
+fn kiss_stringify_orchestrator_helpers() {
+    let _ = stringify!(crate::orchestrator::insert_artifact_paths);
+    let _ = stringify!(crate::orchestrator::insert_formatted);
+    let _ = stringify!(crate::orchestrator::prompt_md_stem);
+    let _ = stringify!(crate::orchestrator::format_prompt_path);
+    let _ = stringify!(crate::orchestrator::clear_review_file);
+    let _ = stringify!(crate::orchestrator::check_abort);
+    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
+    let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
+    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
 }
 
 #[test]
@@ -202,7 +236,7 @@ fn clear_review_file_returns_error_on_permission_denied() {
 }
 
 #[test]
-fn stringify_orchestrator_sync_method() {
-    let _ = stringify!(crate::orchestrator::Orchestrator::run_sync);
+fn stringify_orchestrator_run_methods() {
+    let _ = stringify!(crate::orchestrator::Orchestrator::run_with_pre_summary_gap);
     let _ = stringify!(crate::orchestrator::Orchestrator::run);
 }

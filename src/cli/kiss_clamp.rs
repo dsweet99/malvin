@@ -3,10 +3,9 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::cli::repo_checks::{RepoGateOutput, emit_repo_gate_line};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 
-/// Returns true if the directory contains source files (`.rs`, `.py`) or project markers.
-fn has_source_files(dir: &Path) -> bool {
+pub fn has_source_files(dir: &Path) -> bool {
     fn check_dir(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return false;
@@ -20,16 +19,16 @@ fn has_source_files(dir: &Path) -> bool {
             }
             let path = entry.path();
             if file_type.is_file() {
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if ext == "rs" || ext == "py" {
-                        return true;
-                    }
-                }
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     if name == "Cargo.toml"
                         || name == "pyproject.toml"
                         || name == "requirements.txt"
                     {
+                        return true;
+                    }
+                }
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if ext == "rs" || ext == "py" {
                         return true;
                     }
                 }
@@ -50,7 +49,7 @@ fn has_source_files(dir: &Path) -> bool {
 }
 
 /// If existing code is detected but `.kissconfig` is absent, run `kiss clamp`.
-pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> Result<(), String> {
+pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output_tagged: bool) -> Result<(), String> {
     let kissconfig = work_dir.join(".kissconfig");
     if kissconfig.exists() {
         return Ok(());
@@ -58,10 +57,14 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> R
     if !has_source_files(work_dir) {
         return Ok(());
     }
-    emit_repo_gate_line(
-        output,
-        "Running `kiss clamp` (existing code without .kissconfig)",
-    );
+    if output_tagged {
+        print_stdout_line(
+            MALVIN_WHO,
+            "Running `kiss clamp` (existing code without .kissconfig)",
+        );
+    } else {
+        eprintln!("Running `kiss clamp` (existing code without .kissconfig)");
+    }
     let status = Command::new("kiss")
         .arg("clamp")
         .current_dir(work_dir)
@@ -77,6 +80,42 @@ pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output: RepoGateOutput) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
+    fn has_extension_files(dir: &Path, ext: &str) -> bool {
+        fn check_dir(dir: &Path, ext: &str) -> bool {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return false;
+            };
+            for entry in entries.flatten() {
+                let Ok(file_type) = entry.file_type() else {
+                    continue;
+                };
+                if file_type.is_symlink() {
+                    continue;
+                }
+                let path = entry.path();
+                if file_type.is_file() {
+                    if let Some(file_ext) = path.extension().and_then(|e| e.to_str()) {
+                        if file_ext == ext {
+                            return true;
+                        }
+                    }
+                } else if file_type.is_dir() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with('.') || name == "target" || name == "__pycache__" {
+                            continue;
+                        }
+                    }
+                    if check_dir(&path, ext) {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        check_dir(dir, ext)
+    }
 
     #[test]
     fn has_source_files_returns_false_for_empty_dir() {
@@ -106,6 +145,13 @@ mod tests {
     }
 
     #[test]
+    fn has_extension_files_ignores_marker_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]").unwrap();
+        assert!(!has_extension_files(tmp.path(), "rs"));
+    }
+
+    #[test]
     fn has_source_files_ignores_hidden_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let hidden = tmp.path().join(".hidden");
@@ -127,17 +173,29 @@ mod tests {
         assert!(!has_source_files(tmp.path()));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn has_source_files_ignores_symlink_dir_pointing_outside_workspace() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("main.rs"), "fn main() {}").unwrap();
+        symlink(outside.path(), tmp.path().join("outside")).unwrap();
+        assert!(!has_source_files(tmp.path()));
+    }
+
     #[test]
     fn ensure_kiss_clamp_skips_when_kissconfig_exists() {
         let tmp = tempfile::tempdir().unwrap();
         std::fs::write(tmp.path().join(".kissconfig"), "").unwrap();
         std::fs::write(tmp.path().join("main.rs"), "fn main() {}").unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Tagged).is_ok());
+        assert!(ensure_kiss_clamp_if_needed(tmp.path(), true).is_ok());
     }
 
     #[test]
     fn ensure_kiss_clamp_skips_when_no_source_files() {
         let tmp = tempfile::tempdir().unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), RepoGateOutput::Stderr).is_ok());
+        assert!(ensure_kiss_clamp_if_needed(tmp.path(), false).is_ok());
     }
 }

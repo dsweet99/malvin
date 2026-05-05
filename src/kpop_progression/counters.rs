@@ -51,6 +51,11 @@ pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
     }
 }
 
+/// Reads the experiment log at `path` into a string.
+///
+/// # Errors
+///
+/// Returns `Err` when the file cannot be read.
 pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
     std::fs::read_to_string(path)
         .map_err(|e| format!("failed to read exp log {}: {e}", path.display()))

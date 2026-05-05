@@ -12,6 +12,7 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::models_cmd::ModelsArgs);
     let _ = stringify!(crate::cli::KpopArgs);
     let _ = stringify!(crate::cli::TidyArgs);
+    let _ = stringify!(crate::cli::PlanArgs);
     let _ = stringify!(crate::cli::SharedOpts);
     let _ = stringify!(crate::cli::Exit);
     let _ = stringify!(crate::cli::WorkflowCliOptions);
@@ -20,10 +21,11 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::run_code);
     let _ = stringify!(crate::cli::run_do);
     let _ = stringify!(crate::cli::run_tidy);
+    let _ = stringify!(crate::cli::run_plan);
+    let _ = stringify!(crate::cli::plan_flow::plan_prompt::prepare_plan_prompt_store);
+    let _ = stringify!(crate::cli::plan_flow::plan_prompt::compose_plan_prompt);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
-    let _ = stringify!(crate::cli::run_sync);
-    let _ = stringify!(crate::cli::sync_flow::run_sync);
     let _ = stringify!(crate::cli::kpop_flow::KpopPrepared);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
     let _ = stringify!(crate::cli::kpop_flow::kpop_run_acp_multiturn);
@@ -45,10 +47,11 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
     let _ = stringify!(crate::cli::timing_merge::prefer_primary_over_secondary);
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_grounding_restore);
-    let _ = stringify!(crate::cli::repo_checks::warn_kissconfig_test_coverage_if_needed);
-    let _ = stringify!(crate::cli::repo_checks::run_pre_commit_all_files);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
+    let _ = stringify!(crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed);
     let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
+    let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
+    let _ = stringify!(crate::cli::mid_session_gates::pre_summary_repo_gates_tidy_retry_flow);
     let _ = stringify!(super::prepare_code_run);
     let _ = stringify!(super::require_kiss_for_cli_command);
     let _ = stringify!(super::print_command_error);

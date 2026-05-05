@@ -1,0 +1,242 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+use super::defaults::{default_file, DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS};
+use super::enforce_no_unresolved_braces;
+use super::template::{merged_coding_rules, render_template};
+use super::PromptError;
+
+#[derive(Debug, Clone, Copy)]
+pub struct KpopPromptValidation {
+    pub run_learn: bool,
+    pub require_mbc2: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct PromptStore {
+    root: Option<PathBuf>,
+}
+
+#[must_use]
+pub fn user_home_dir() -> PathBuf {
+    if let Some(h) = std::env::var_os("HOME").filter(|s| !s.is_empty()) {
+        return PathBuf::from(h);
+    }
+    if let Some(h) = std::env::var_os("USERPROFILE").filter(|s| !s.is_empty()) {
+        return PathBuf::from(h);
+    }
+    std::env::temp_dir()
+}
+
+impl PromptStore {
+    fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
+        self.root.as_ref().map_or_else(
+            || {
+                default_file(filename)
+                    .map(str::to_string)
+                    .ok_or_else(|| {
+                        PromptError(format!(
+                            "Missing embedded prompt in binary: {filename}"
+                        ))
+                    })
+            },
+            |root| {
+                std::fs::read_to_string(root.join(filename)).map_err(|_| {
+                    PromptError(format!(
+                        "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
+                        root.display()
+                    ))
+                })
+            },
+        )
+    }
+
+    fn prompt_source_desc(&self) -> String {
+        self.root.as_ref().map_or_else(
+            || "embedded prompts".to_string(),
+            |root| root.display().to_string(),
+        )
+    }
+}
+
+impl PromptStore {
+    #[must_use]
+    pub const fn default_store() -> Self {
+        Self { root: None }
+    }
+
+    #[must_use]
+    pub const fn with_root(root: PathBuf) -> Self {
+        Self { root: Some(root) }
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when the prompt root cannot be created or defaults cannot be written.
+    pub fn ensure_defaults(&self) -> Result<(), PromptError> {
+        let Some(root) = &self.root else {
+            return Ok(());
+        };
+        std::fs::create_dir_all(root).map_err(|e| {
+            PromptError(format!(
+                "failed to create prompt directory {}: {e}",
+                root.display()
+            ))
+        })?;
+        for name in DEFAULT_PROMPTS {
+            let target = root.join(name);
+            if target.exists() {
+                continue;
+            }
+            let body = default_file(name).ok_or_else(|| {
+                PromptError(format!("internal: missing embedded default for {name}"))
+            })?;
+            std::fs::write(&target, body).map_err(|e| {
+                PromptError(format!(
+                    "failed to write default prompt {}: {e}",
+                    target.display()
+                ))
+            })?;
+        }
+        Ok(())
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when any required prompt file is absent.
+    pub fn validate_required(&self) -> Result<(), PromptError> {
+        let has_file = |name: &str| -> bool {
+            self.root.as_ref().map_or_else(
+                || default_file(name).is_some(),
+                |root| root.join(name).is_file(),
+            )
+        };
+        let missing: Vec<&str> = REQUIRED_PROMPTS
+            .iter()
+            .copied()
+            .filter(|name| !has_file(name))
+            .collect();
+        if missing.is_empty() {
+            return Ok(());
+        }
+        Err(PromptError(format!(
+            "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
+            self.prompt_source_desc(),
+            missing.join(", ")
+        )))
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when KPOP-required prompts are missing for `validation`.
+    pub fn validate_kpop_prompts(
+        &self,
+        validation: KpopPromptValidation,
+    ) -> Result<(), PromptError> {
+        let mut missing: Vec<&str> = Vec::new();
+        if self.prompt_text(HEADER_MD).is_err() {
+            missing.push(HEADER_MD);
+        }
+        if self.prompt_text("kpop_common.md").is_err() {
+            missing.push("kpop_common.md");
+        }
+        if self.prompt_text("kpop_block.md").is_err() {
+            missing.push("kpop_block.md");
+        }
+        if validation.require_mbc2 && self.prompt_text("mbc2_pure.md").is_err() {
+            missing.push("mbc2_pure.md");
+        }
+        if validation.run_learn && self.prompt_text("learn.md").is_err() {
+            missing.push("learn.md");
+        }
+        if missing.is_empty() {
+            return Ok(());
+        }
+        Err(PromptError(format!(
+            "Missing required prompt files in {}: {}. Reinstall malvin or copy the missing files there.",
+            self.prompt_source_desc(),
+            missing.join(", ")
+        )))
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when `filename` is not readable from this store.
+    pub fn validate_exists(&self, filename: &str) -> Result<(), PromptError> {
+        if self.prompt_text(filename).is_ok() {
+            return Ok(());
+        }
+        Err(PromptError(format!(
+            "Missing prompt file in {}: {filename}. Reinstall malvin or copy the missing file there.",
+            self.prompt_source_desc()
+        )))
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when the prompt is missing, merge fails, or braces stay unresolved.
+    pub fn render(
+        &self,
+        filename: &str,
+        context: &HashMap<String, String>,
+    ) -> Result<String, PromptError> {
+        let prompt_text = self.prompt_text(filename)?;
+        let mut render_context: HashMap<String, String> = context.clone();
+        render_context.entry("memories".to_string()).or_default();
+        render_context.insert(
+            "coding_rules".to_string(),
+            merged_coding_rules(self, context)?,
+        );
+        let out = render_template(&prompt_text, &render_context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
+    }
+
+    /// # Errors
+    ///
+    /// Returns [`PromptError`] when the prompt is missing or braces stay unresolved after render.
+    pub fn render_prompt_only(
+        &self,
+        filename: &str,
+        context: &HashMap<String, String>,
+    ) -> Result<String, PromptError> {
+        let prompt_text = self.prompt_text(filename)?;
+        let mut render_context: HashMap<String, String> = context.clone();
+        render_context.entry("memories".to_string()).or_default();
+        let out = render_template(&prompt_text, &render_context);
+        enforce_no_unresolved_braces(&out)?;
+        Ok(out)
+    }
+
+    pub(crate) fn load_coding_rules(&self) -> String {
+        self.prompt_text("coding_rules.md")
+            .unwrap_or_default()
+            .trim()
+            .to_string()
+    }
+
+    pub(crate) fn load_header(&self) -> String {
+        self.prompt_text(HEADER_MD)
+            .unwrap_or_default()
+            .trim()
+            .to_string()
+    }
+}
+
+#[cfg(test)]
+mod store_kiss {
+    #[test]
+    fn kiss_stringify_store() {
+        let _ = stringify!(super::KpopPromptValidation);
+        let _ = stringify!(super::PromptStore);
+        let _ = stringify!(super::user_home_dir);
+        let _ = stringify!(super::PromptStore::default_store);
+        let _ = stringify!(super::PromptStore::with_root);
+        let _ = stringify!(super::PromptStore::ensure_defaults);
+        let _ = stringify!(super::PromptStore::validate_required);
+        let _ = stringify!(super::PromptStore::validate_kpop_prompts);
+        let _ = stringify!(super::PromptStore::validate_exists);
+        let _ = stringify!(super::PromptStore::render);
+        let _ = stringify!(super::PromptStore::render_prompt_only);
+    }
+}

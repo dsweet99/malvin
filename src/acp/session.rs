@@ -4,6 +4,10 @@ use outgoing_prompt_trace::{
     DoPromptTraceSplit, OutgoingPromptTrace, UniformOutgoingTrace,
 };
 
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod tests;
+
 /// [`AcpSession`] implementation and post-spawn handshake.
 pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
     if who == "learn" {
@@ -41,17 +45,12 @@ async fn do_split_trace_preamble(
     file: &mut tokio::fs::File,
     raw_output: bool,
     split: &DoPromptTraceSplit<'_>,
-) -> Result<(String, &'static str, bool, bool), String> {
+) -> Result<(), String> {
     trace_write_invocation_and_do_split_prompt(file, split).await?;
     if !raw_output {
         crate::output::print_outgoing_prompt_log("do");
     }
-    Ok((
-        crate::output::format_acp_directional_tag_prefix('<', "do"),
-        "do",
-        raw_output,
-        true,
-    ))
+    Ok(())
 }
 
 impl AcpSession {
@@ -173,7 +172,19 @@ impl AcpSession {
                 if !self.0.raw_output {
                     let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
                     crate::output::print_outgoing_prompt_log(outgoing_label);
+                    if self.0.log_full_outgoing_prompts {
+                        let who_line =
+                            crate::output::format_acp_directional_tag_prefix('>', u.trace_who);
+                        crate::output::print_stdout_text(&who_line, text);
+                    }
                 }
+                append_prompts_log_uniform(
+                    self.0.prompts_log_run_dir.as_deref(),
+                    u.trace_who,
+                    u.stdout_bracket_label.unwrap_or(u.trace_who),
+                    self.0.log_full_outgoing_prompts.then_some(text),
+                )
+                .await?;
                 (
                     crate::output::format_acp_directional_tag_prefix('<', u.trace_who),
                     u.trace_who,
@@ -182,7 +193,29 @@ impl AcpSession {
                 )
             }
             OutgoingPromptTrace::DoSplit(split) => {
-                do_split_trace_preamble(&mut file, self.0.raw_output, split).await?
+                do_split_trace_preamble(&mut file, self.0.raw_output, split).await?;
+                let parts = DoOutgoingTraceParts {
+                    style_text: split.style_text,
+                    header_text: split.header,
+                    user_text: split.user,
+                };
+                let combined = compose_do_split_prompt_text(&parts);
+                if !self.0.raw_output && self.0.log_full_outgoing_prompts {
+                    let who_line = crate::output::format_acp_directional_tag_prefix('>', "do");
+                    crate::output::print_stdout_text(&who_line, &combined);
+                }
+                append_prompts_log_do_plain(
+                    self.0.prompts_log_run_dir.as_deref(),
+                    &parts,
+                    self.0.log_full_outgoing_prompts,
+                )
+                .await?;
+                (
+                    crate::output::format_acp_directional_tag_prefix('<', "do"),
+                    "do",
+                    self.0.raw_output,
+                    true,
+                )
             }
         };
         *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
@@ -221,9 +254,7 @@ impl AcpSession {
     pub async fn cancel(&self) -> Result<(), String> {
         let params = json!({ "sessionId": &self.0.session_id });
         let r = self.send_rpc("session/cancel", params).await;
-        if r.is_ok() {
-            self.reset_prompt_inflight().await;
-        }
+        self.reset_prompt_inflight().await;
         r.map(|_| ())
     }
 

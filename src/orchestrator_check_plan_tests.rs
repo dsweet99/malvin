@@ -49,9 +49,8 @@ fn check_plan_abort_flow_components_verify_non_lgtm_causes_failure() {
 
 #[test]
 fn check_plan_missing_review_file_exhausted_retries_message() {
-    let err = WorkflowError(
-        "check_plan: agent did not write review file after retries".to_string(),
-    );
+    let err =
+        WorkflowError("check_plan: agent did not write review file after retries".to_string());
     assert!(
         err.0.contains("retries"),
         "exhausted-retry error mentions retries"

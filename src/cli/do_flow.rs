@@ -3,27 +3,18 @@
 
 use std::collections::HashMap;
 
-use clap::Args;
-
-use super::WorkflowCliOptions;
-use super::repo_checks;
-use super::repo_checks::RepoGateOutput;
 use super::shared_opts::SharedOpts;
 use super::timing_merge;
+use super::{WorkflowCliOptions, repo_checks};
+use clap::Args;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_grounding_if_present, create_run_artifacts_from_text,
+    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
 use malvin::run_timing::TimingPhase;
-
-struct DoCoderRun {
-    combined: String,
-    header_user_for_trace: (String, String),
-    skip_repo_style: bool,
-}
 
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
@@ -31,13 +22,19 @@ pub struct DoArgs {
     /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
-    /// Run kiss clamp + configured pre-commit hooks before the prompt (coding-style runs).
+    /// Run kiss clamp then repository quality gates before the prompt (coding-style runs).
     #[arg(long, default_value_t = false)]
     pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
+}
+
+struct DoCoderRun {
+    combined: String,
+    header_user_for_trace: (String, String),
+    skip_repo_style: bool,
 }
 
 fn prepare_do_prompt_store_validating(required_template: &str) -> Result<PromptStore, String> {
@@ -81,12 +78,13 @@ pub async fn run_do(
         .map_err(|e| e.to_string())?;
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(&artifacts.work_dir, RepoGateOutput::Stderr)?;
-    } else {
-        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(
+        repo_checks::run_repo_workspace_gates(
             &artifacts.work_dir,
-            RepoGateOutput::Stderr,
+            repo_checks::RepoGateOutput::Stderr,
+            Some(&artifacts.run_dir),
         )?;
+    } else {
+        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, false)?;
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
@@ -106,10 +104,16 @@ pub async fn run_do(
         header_user_for_trace: header_user,
         skip_repo_style,
     };
-    let grounding_backup = backup_workspace_grounding_if_present(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    timing_merge::merge_acp_with_grounding_restore(acp_res, &artifacts.work_dir, &grounding_backup)?;
+    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+        acp_res,
+        &artifacts.work_dir,
+        &kissconfig_backup,
+        &artifacts.artifact_result_md(),
+    )?;
     Ok(())
 }
 
@@ -134,7 +138,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts, store).map_err(|e: PromptError| e.0)?;
+    let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
     combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
 }
 
@@ -144,7 +148,7 @@ pub fn combine_do_raw_header_and_user(
     artifacts: &RunArtifacts,
     text: &str,
 ) -> Result<(String, String, String), String> {
-    let context = workflow_context_paths_only(artifacts);
+    let context = workflow_context_paths_only(artifacts, "do");
     combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
 }
 
@@ -153,11 +157,11 @@ async fn run_do_acp(
     artifacts: &RunArtifacts,
     coder: DoCoderRun,
 ) -> Result<(), String> {
-    client
-        .begin_coder_session(&artifacts.work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
     let timing = client.attach_run_timing_for_session();
+    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
+        client.set_run_timing(None);
+        return Err(e.to_string());
+    }
     timing
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -194,7 +198,7 @@ async fn run_do_acp(
 fn stringify_do_flow_helpers() {
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::do_flow::run_do);
-    let _ = stringify!(crate::cli::do_flow::DoArgs);
+    let _ = stringify!(crate::cli::DoArgs);
     let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
     let _ = stringify!(crate::cli::do_flow::combine_do_raw_header_and_user);
     let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
@@ -354,4 +358,23 @@ mod do_tests {
         }
     }
 
+    #[test]
+    fn cli_accepts_verbose_short_and_long_global_flags() {
+        use crate::cli::Cli;
+        use crate::cli::Commands;
+
+        let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
+        assert!(cli.shared.verbose);
+        match &cli.command {
+            Commands::Do(d) => assert_eq!(d.request, "x"),
+            _ => panic!("expected Do subcommand"),
+        }
+
+        let cli = Cli::try_parse_from(["malvin", "do", "--verbose", "y"]).expect("parse");
+        assert!(cli.shared.verbose);
+        match cli.command {
+            Commands::Do(d) => assert_eq!(d.request, "y"),
+            _ => panic!("expected Do subcommand"),
+        }
+    }
 }

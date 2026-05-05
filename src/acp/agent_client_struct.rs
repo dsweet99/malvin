@@ -1,4 +1,4 @@
-/// ACP-backed agent with grounding-aligned session lifetimes.
+/// ACP-backed agent with session-scoped coder and reviewer lifetimes.
 ///
 /// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
 /// (unless skipped), `implement`, optional `learn`, and `concerns` prompts that run only inside
@@ -9,6 +9,7 @@
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,
+    pub prompts_log_run_dir: Option<std::path::PathBuf>,
     pub(crate) style_prompt_path: PathBuf,
     coder_session: Option<AcpSession>,
     /// When true, the next [`Self::run_coder_prompt`] prepends injected repo style (first turn only).

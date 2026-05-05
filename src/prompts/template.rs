@@ -4,8 +4,9 @@
 use std::collections::HashMap;
 
 use super::PromptError;
-use super::PromptStore;
+use super::store::PromptStore;
 
+#[must_use]
 pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str) -> String {
     let h = header_expanded.trim();
     let r = rules_expanded.trim();
@@ -17,6 +18,7 @@ pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str
     }
 }
 
+#[must_use]
 pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
     let mut keys: Vec<&String> = context.keys().collect();
     keys.sort_unstable();
@@ -30,12 +32,18 @@ pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> 
 }
 
 /// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
+#[must_use]
 pub fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
     let mut out = String::with_capacity(template.len());
     let chars: Vec<char> = template.chars().collect();
     let mut i = 0usize;
     while i < chars.len() {
         if chars[i] == '$' && i + 1 < chars.len() {
+            if chars[i + 1] == '$' {
+                out.push('$');
+                i += 2;
+                continue;
+            }
             let start = i + 1;
             let mut end = start;
             while end < chars.len() && (chars[end].is_ascii_alphanumeric() || chars[end] == '_') {
@@ -56,6 +64,11 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
     out
 }
 
+/// Renders `mbc2.md` for a scheduled KPOP block with coding rules cleared in the render context.
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when `mbc2.md` cannot be loaded or rendered.
 pub fn render_mbc2_for_scheduled_kpop_block(
     store: &PromptStore,
     context: &HashMap<String, String>,
@@ -65,11 +78,17 @@ pub fn render_mbc2_for_scheduled_kpop_block(
     store.render_prompt_only("mbc2.md", &ctx)
 }
 
+/// Expands header and coding rules, merges them, and rejects unresolved `{{` placeholders.
+///
+/// # Errors
+///
+/// Returns [`PromptError`] when loading prompts, rendering, or brace validation fails.
 pub fn merged_coding_rules(
     store: &PromptStore,
     context: &HashMap<String, String>,
 ) -> Result<String, PromptError> {
-    let render_context: HashMap<String, String> = context.clone();
+    let mut render_context: HashMap<String, String> = context.clone();
+    render_context.entry("memories".to_string()).or_default();
     let header_raw = store.load_header();
     let header_expanded = render_template(&header_raw, &render_context);
     let rules_raw = store.load_coding_rules();
@@ -85,5 +104,15 @@ mod template_kiss {
     fn kiss_stringify_template() {
         let _ = stringify!(super::render_mbc2_for_scheduled_kpop_block);
         let _ = stringify!(super::merged_coding_rules);
+    }
+
+    #[test]
+    fn substitute_template_treats_double_dollar_as_literal() {
+        let mut ctx = std::collections::HashMap::new();
+        ctx.insert("plan_path".to_string(), "/tmp/plan".to_string());
+        assert_eq!(
+            super::substitute_template("use $$plan_path", &ctx),
+            "use $plan_path"
+        );
     }
 }

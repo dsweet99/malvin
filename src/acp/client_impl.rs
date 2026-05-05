@@ -16,7 +16,10 @@ pub(crate) fn read_coder_repo_style_text(style_prompt_path: &Path) -> Option<Str
 }
 
 /// Prefix non-empty trimmed style before `prompt`, matching [`coder_prompt_body_with_optional_repo_style`].
-pub(crate) fn prepend_coder_repo_style_to_prompt(prompt: &str, style_trimmed: Option<&str>) -> String {
+pub(crate) fn prepend_coder_repo_style_to_prompt(
+    prompt: &str,
+    style_trimmed: Option<&str>,
+) -> String {
     style_trimmed
         .filter(|t| !t.is_empty())
         .map_or_else(|| prompt.to_string(), |t| format!("{t}\n\n{prompt}"))
@@ -51,7 +54,7 @@ async fn backoff_after_agent_failure(
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {
             crate::run_timing::record_backoff(timing, d);
-            sleep(d).await;
+            tokio_sleep(d).await;
             Ok(false)
         }
     }
@@ -68,6 +71,7 @@ impl AgentClient {
         Self {
             model,
             io,
+            prompts_log_run_dir: None,
             style_prompt_path: PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL),
             coder_session: None,
             coder_style_on_next_prompt: false,
@@ -146,7 +150,9 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -198,8 +204,7 @@ impl AgentClient {
             skip_repo_style,
             &self.style_prompt_path,
         );
-        crate::prompts::enforce_no_unresolved_braces(&full_prompt)
-            .map_err(|e| AgentError(e.0))?;
+        crate::prompts::enforce_no_unresolved_braces(&full_prompt).map_err(|e| AgentError(e.0))?;
 
         let style_for_do_trace = if do_trace_split.is_some() {
             repo_style.as_deref()
@@ -217,9 +222,11 @@ impl AgentClient {
             attempts_used = attempt;
             let t0 = Instant::now();
             let prompt_res = match do_trace_split {
-                None => session
-                    .prompt(&full_prompt, log_path, who, stdout_bracket_label)
-                    .await,
+                None => {
+                    session
+                        .prompt(&full_prompt, log_path, who, stdout_bracket_label)
+                        .await
+                }
                 Some((header, user)) => {
                     session
                         .prompt_do_trace_split(
@@ -246,7 +253,9 @@ impl AgentClient {
                         crate::run_timing::record_llm(self.timing.as_ref(), ph, t0.elapsed());
                     }
                     last_error = e;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -281,15 +290,13 @@ impl AgentClient {
         &mut self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
-        grounding_restore: ReviewerRestorePolicy,
+        workspace_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
-        let backup = match grounding_restore {
-            ReviewerRestorePolicy::RestoreWorkspace => {
-                Some(
-                    crate::artifacts::backup_workspace_grounding_if_present(pair.cwd)
-                        .map_err(AgentError)?,
-                )
-            }
+        let backup = match workspace_restore {
+            ReviewerRestorePolicy::RestoreWorkspace => Some(
+                crate::artifacts::backup_workspace_kissconfig_if_present(pair.cwd)
+                    .map_err(AgentError)?,
+            ),
             ReviewerRestorePolicy::NoRestore => None,
         };
         let mut last_error = String::new();
@@ -300,7 +307,7 @@ impl AgentClient {
             match prompt_result {
                 Ok(()) => {
                     if let Some(backup) = &backup {
-                        crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                        crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
                             .map_err(AgentError)?;
                     }
                     return Ok(());
@@ -310,7 +317,7 @@ impl AgentClient {
                 }
             }
             if let Some(backup) = &backup {
-                crate::artifacts::restore_workspace_grounding(pair.cwd, backup)
+                crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
                     .map_err(AgentError)?;
             }
             if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
@@ -333,7 +340,7 @@ impl AgentClient {
     pub async fn run_kpop_flow(
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
-        grounding_backup: &crate::artifacts::GroundingBackup,
+        kissconfig_backup: &crate::artifacts::KissConfigBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -341,11 +348,13 @@ impl AgentClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_kpop_flow_once(self, flow, grounding_backup).await {
+            match run_kpop_flow_once(self, flow, kissconfig_backup).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }
@@ -359,7 +368,7 @@ impl AgentClient {
         )))
     }
 
-    /// Multiturn KPOP: one ACP session; each [`crate::kpop_multiturn::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
+    /// Multiturn KPOP: one ACP session; each [`crate::kpop_progression::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
     ///
     /// # Errors
     ///
@@ -370,8 +379,8 @@ impl AgentClient {
         kpop_log: &Path,
         learn: Option<(&str, &Path)>,
         learn_min_elapsed_ms: u64,
-        state: &mut crate::kpop_multiturn::KpopMultiturnState<B>,
-        grounding_backup: &crate::artifacts::GroundingBackup,
+        state: &mut crate::kpop_progression::KpopMultiturnState<B>,
+        kissconfig_backup: &crate::artifacts::KissConfigBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -386,14 +395,16 @@ impl AgentClient {
                 learn,
                 learn_min_elapsed_ms,
                 state,
-                grounding_backup,
+                kissconfig_backup,
             )
             .await
             {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
+                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
+                        .await?
+                    {
                         break;
                     }
                 }

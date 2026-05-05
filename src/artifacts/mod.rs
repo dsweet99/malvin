@@ -1,11 +1,11 @@
 //! Run directories and log paths.
 
-mod grounding_backup;
+mod kiss_config_backup;
 pub mod run_id;
 mod startup_tag;
 
-pub use grounding_backup::{
-    GroundingBackup, backup_workspace_grounding_if_present, restore_workspace_grounding,
+pub use kiss_config_backup::{
+    KissConfigBackup, backup_workspace_kissconfig_if_present, restore_workspace_kissconfig_backup,
 };
 
 use std::path::{Path, PathBuf};
@@ -52,7 +52,9 @@ impl RunArtifacts {
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("run");
-        self.run_dir.join("_kpop").join(format!("exp_log_{slug}.md"))
+        self.run_dir
+            .join("_kpop")
+            .join(format!("exp_log_{slug}.md"))
     }
 }
 

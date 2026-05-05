@@ -4,14 +4,12 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use clap::Args;
-
 use malvin::ansi_strip::strip_ansi_escapes;
 use malvin::env_path::agent_or_cursor_agent_bin;
 use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 use malvin::config::DEFAULT_CLI_MODEL;
 
-/// Arguments for [`run_models`].
 #[derive(Args, Debug)]
 pub struct ModelsArgs {}
 
@@ -80,24 +78,36 @@ fn looks_like_tip_banner_line(lowercase_trimmed: &str) -> bool {
     false
 }
 
-fn print_parsed_or_fallback(text: &str) {
-    let mut printed = false;
+fn models_display_lines(text: &str) -> Option<Vec<String>> {
+    let mut out = Vec::new();
     for line in text.lines() {
         let t = line.trim();
         if t.is_empty() {
             continue;
         }
         if let Some((name, rest)) = parse_model_line(t) {
-            print_stdout_line(MALVIN_WHO, &format!("{name}\t{rest}"));
-            printed = true;
+            out.push(format!("{name}\t{rest}"));
+        } else {
+            out.push(t.to_string());
         }
     }
-    if !printed {
-        print_stdout_text(MALVIN_WHO, text);
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
     }
 }
 
-const DASHED_MODEL_NAME_MAX_TOKENS: usize = 4;
+fn print_parsed_or_fallback(text: &str) {
+    match models_display_lines(text) {
+        Some(lines) => {
+            for line in lines {
+                print_stdout_line(MALVIN_WHO, &line);
+            }
+        }
+        None => print_stdout_text(MALVIN_WHO, text),
+    }
+}
 
 /// Best-effort parse: `name — description`, `name - description`, or two-column spacing.
 fn parse_model_line(line: &str) -> Option<(&str, String)> {
@@ -105,8 +115,10 @@ fn parse_model_line(line: &str) -> Option<(&str, String)> {
         return Some((a.trim(), b.trim().to_string()));
     }
     if let Some((a, b)) = line.split_once(" - ") {
-        if a.split_whitespace().count() <= DASHED_MODEL_NAME_MAX_TOKENS && !b.trim().is_empty() {
-            return Some((a.trim(), b.trim().to_string()));
+        let a = a.trim();
+        let b = b.trim();
+        if !a.is_empty() && !b.is_empty() {
+            return Some((a, b.to_string()));
         }
     }
     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -160,6 +172,28 @@ mod tests {
     }
 
     #[test]
+    fn parse_model_line_splits_ascii_hyphen_when_name_has_many_words() {
+        let line = "my production inference tier one model id - Claude via API";
+        let (n, d) = parse_model_line(line).expect("parse");
+        assert_eq!(n, "my production inference tier one model id");
+        assert_eq!(d, "Claude via API");
+    }
+
+    #[test]
+    fn models_display_lines_keeps_unparsed_single_token_between_parsed_rows() {
+        let text = "composer-2 — Fast\nHEADERS\ngpt-4.1 — Stable";
+        let lines = models_display_lines(text).expect("non-empty");
+        assert_eq!(
+            lines,
+            vec![
+                "composer-2\tFast".to_string(),
+                "HEADERS".to_string(),
+                "gpt-4.1\tStable".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn kiss_stringify_models_cmd() {
         let _ = stringify!(ModelsArgs);
         let _ = stringify!(run_models);
@@ -168,6 +202,7 @@ mod tests {
         let _ = stringify!(trim_trailing_tip_lines);
         let _ = stringify!(looks_like_tip_banner_line);
         let _ = stringify!(print_parsed_or_fallback);
+        let _ = stringify!(models_display_lines);
         let _ = stringify!(parse_model_line);
     }
 }

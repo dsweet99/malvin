@@ -129,28 +129,44 @@ async fn rpc_wait_with_timeout(
     tokio::pin!(wait);
     loop {
         tokio::select! {
+            biased;
             ready_recv = &mut wait => {
-                let result = ready_recv
-                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                let result = ready_recv?;
                 pending.lock().await.remove(&id);
                 return Ok(result);
+            }
+            () = acp_activity_notify.notified() => {
+                let _ = acp_activity_seq
+                    .load(std::sync::atomic::Ordering::SeqCst);
             }
             () = tokio::time::sleep(timeout) => {
                 let timeout_err = if let Some(child_pid) = child_pid {
                     let grace = crate::child_health::silence_grace_for_rpc_timeout(timeout);
-                    match crate::child_health::evaluate_after_acp_silence(child_pid, grace).await {
-                        crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
-                            Err("acp child process is not running".to_string())
+                    let health = crate::child_health::evaluate_after_acp_silence(child_pid, grace);
+                    tokio::pin!(health);
+                    tokio::select! {
+                        biased;
+                        ready_recv = &mut wait => {
+                            let result = ready_recv?;
+                            pending.lock().await.remove(&id);
+                            return Ok(result);
                         }
-                        crate::child_health::SilenceHealthOutcome::ChildZombie => {
-                            Err("acp child process is zombie".to_string())
+                        outcome = &mut health => {
+                            match outcome {
+                                crate::child_health::SilenceHealthOutcome::ChildNotRunning => {
+                                    Err("acp child process is not running".to_string())
+                                }
+                                crate::child_health::SilenceHealthOutcome::ChildZombie => {
+                                    Err("acp child process is zombie".to_string())
+                                }
+                                crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
+                                    Ok(())
+                                }
+                                crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
+                                    "acp request id {id} timed out after {timeout:?}"
+                                )),
+                            }
                         }
-                        crate::child_health::SilenceHealthOutcome::StillBusyExtendWait => {
-                            Ok(())
-                        }
-                        crate::child_health::SilenceHealthOutcome::AppearsHung => Err(format!(
-                            "acp request id {id} timed out after {timeout:?}"
-                        )),
                     }
                 } else {
                     Err(format!("acp request id {id} timed out after {timeout:?}"))
@@ -160,10 +176,6 @@ async fn rpc_wait_with_timeout(
                 }
                 pending.lock().await.remove(&id);
                 return Err(timeout_err.expect_err("timeout outcome must be Err"));
-            }
-            () = acp_activity_notify.notified() => {
-                let _ = acp_activity_seq
-                    .load(std::sync::atomic::Ordering::SeqCst);
             }
         }
     }
@@ -208,8 +220,10 @@ pub(crate) async fn rpc_wait_response(args: RpcWaitArgs<'_>) -> Result<Value, St
         }
         tokio::select! {
             ready_recv = &mut rx => {
-                return ready_recv
-                    .map_err(|_| "acp request canceled (session dropped)".to_string())?;
+                return ready_recv.map_err(|_| {
+                    "no ACP JSON-RPC reply; response channel closed (agent exit, stdout EOF, or request canceled)"
+                        .to_string()
+                })?;
             }
             () = &mut activity => {
                 seen_activity = args
@@ -234,4 +248,9 @@ fn kiss_stringify_rpc_b() {
     let _ = stringify!(rpc_request_with_correlation_id);
     let _ = stringify!(rpc_request);
     let _ = stringify!(rpc_wait_response);
+}
+
+#[test]
+fn kiss_stringify_rpc_c() {
+    let _ = stringify!(rpc_wait_with_timeout);
 }

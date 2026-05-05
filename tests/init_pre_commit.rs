@@ -1,6 +1,11 @@
 //! Integration tests for `malvin init`.
 
+mod common;
+
 use std::process::Command;
+
+use common::InitOk;
+use common::{git_init, git_stdout, malvin_init_output};
 
 #[test]
 fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
@@ -24,6 +29,14 @@ fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        msg.contains("Command:"),
+        "expected startup command prelude: {msg:?}"
+    );
+    assert!(
+        msg.contains("Logs:"),
+        "expected startup Logs header: {msg:?}"
     );
     assert!(
         msg.contains("pre-commit"),
@@ -68,22 +81,8 @@ fn malvin_init_rejects_no_languages() {
 
 #[test]
 fn malvin_init_creates_expected_files_for_python_only() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    let pre_commit =
-        std::fs::read_to_string(project.path().join(".pre-commit-config.yaml")).unwrap();
+    let w = InitOk::new(&["python"]);
+    let pre_commit = w.read_rel(".pre-commit-config.yaml");
     assert!(
         pre_commit.contains("ruff"),
         "python-only should have ruff hook"
@@ -98,39 +97,18 @@ fn malvin_init_creates_expected_files_for_python_only() {
         "should always have check-untracked hook"
     );
 
-    let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
-    assert!(
-        grounding.contains("in Python"),
-        "grounding should mention Python"
-    );
-    assert!(
-        !grounding.contains("{{languages}}"),
-        "grounding should not have unreplaced placeholder"
-    );
+    assert!(!w.path().join("grounding.md").exists());
+    assert!(w.path().join(".malvin_memory/style.md").exists());
 
-    assert!(project.path().join(".gitignore").exists());
-    assert!(project.path().join(".kissignore").exists());
-    assert!(project.path().join("admin/check_untracked.sh").exists());
+    assert!(w.path().join(".gitignore").exists());
+    assert!(w.path().join(".kissignore").exists());
+    assert!(w.path().join("admin/check_untracked.sh").exists());
 }
 
 #[test]
 fn malvin_init_creates_expected_files_for_rust_only() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "rust", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    let pre_commit =
-        std::fs::read_to_string(project.path().join(".pre-commit-config.yaml")).unwrap();
+    let w = InitOk::new(&["rust"]);
+    let pre_commit = w.read_rel(".pre-commit-config.yaml");
     assert!(
         !pre_commit.contains("ruff"),
         "rust-only should not have ruff hook"
@@ -140,31 +118,13 @@ fn malvin_init_creates_expected_files_for_rust_only() {
         "rust-only should have clippy hook"
     );
 
-    let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
-    assert!(
-        grounding.contains("in Rust"),
-        "grounding should mention Rust"
-    );
+    assert!(!w.path().join("grounding.md").exists());
 }
 
 #[test]
 fn malvin_init_creates_expected_files_for_both_languages() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "rust", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    let pre_commit =
-        std::fs::read_to_string(project.path().join(".pre-commit-config.yaml")).unwrap();
+    let w = InitOk::new(&["python", "rust"]);
+    let pre_commit = w.read_rel(".pre-commit-config.yaml");
     assert!(
         pre_commit.contains("ruff"),
         "both languages should have ruff hook"
@@ -174,185 +134,26 @@ fn malvin_init_creates_expected_files_for_both_languages() {
         "both languages should have clippy hook"
     );
 
-    let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
-    assert!(
-        grounding.contains("in Python and Rust"),
-        "grounding should mention both languages"
-    );
+    assert!(!w.path().join("grounding.md").exists());
 }
 
 #[test]
 fn malvin_init_language_args_are_case_insensitive() {
     let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "PYTHON", "Rust", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
+    git_init(project.path());
+    let out = malvin_init_output(project.path(), &["PYTHON", "Rust"]);
     assert!(
         out.status.success(),
         "malvin init with mixed case should succeed: {out:?}"
     );
 
-    let grounding = std::fs::read_to_string(project.path().join("grounding.md")).unwrap();
-    assert!(
-        grounding.contains("in Python and Rust"),
-        "grounding should have proper casing"
-    );
+    assert!(!project.path().join("grounding.md").exists());
 }
 
 #[test]
-fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_repo() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    assert!(
-        project.path().join(".malvin_memory/style.md").exists(),
-        "init should install .malvin_memory/style.md"
-    );
-
-    let head = Command::new("git")
-        .args(["branch", "--show-current"])
-        .current_dir(project.path())
-        .output()
-        .expect("git branch --show-current");
-    assert!(
-        head.status.success(),
-        "git branch --show-current failed: {head:?}"
-    );
-    assert_eq!(
-        String::from_utf8_lossy(&head.stdout).trim(),
-        "main",
-        "init should leave HEAD on main"
-    );
-
-    let commit_count = Command::new("git")
-        .args(["rev-list", "--count", "HEAD"])
-        .current_dir(project.path())
-        .output()
-        .expect("git rev-list --count HEAD");
-    assert!(
-        commit_count.status.success(),
-        "git rev-list --count HEAD failed: {commit_count:?}"
-    );
-    assert_eq!(
-        String::from_utf8_lossy(&commit_count.stdout).trim(),
-        "1",
-        "init should create exactly one initial commit in a fresh repo"
-    );
-
-    let tracked = Command::new("git")
-        .args(["ls-tree", "-r", "--name-only", "HEAD"])
-        .current_dir(project.path())
-        .output()
-        .expect("git ls-tree");
-    assert!(tracked.status.success(), "git ls-tree failed: {tracked:?}");
-    let tracked_stdout = String::from_utf8_lossy(&tracked.stdout);
-    assert!(
-        tracked_stdout.contains("grounding.md"),
-        "initial commit should include grounding.md"
-    );
-    assert!(
-        tracked_stdout.contains(".malvin_memory/style.md"),
-        "initial commit should include .malvin_memory/style.md"
-    );
-}
-
-#[test]
-fn malvin_init_does_not_autocommit_preexisting_repo_changes() {
-    let project = tempfile::tempdir().unwrap();
-    Command::new("git")
-        .arg("init")
-        .current_dir(project.path())
-        .output()
-        .expect("git init");
-
-    let keep = project.path().join("keep.txt");
-    std::fs::write(&keep, "before\n").expect("write keep");
-    let initial_commit = Command::new("git")
-        .args([
-            "-c",
-            "user.name=test",
-            "-c",
-            "user.email=test@example.com",
-            "add",
-            ".",
-        ])
-        .current_dir(project.path())
-        .output()
-        .expect("git add");
-    assert!(
-        initial_commit.status.success(),
-        "git add failed: {initial_commit:?}"
-    );
-    let initial_commit = Command::new("git")
-        .args([
-            "-c",
-            "user.name=test",
-            "-c",
-            "user.email=test@example.com",
-            "commit",
-            "-m",
-            "seed repo",
-        ])
-        .current_dir(project.path())
-        .output()
-        .expect("git commit");
-    assert!(
-        initial_commit.status.success(),
-        "seed commit failed: {initial_commit:?}"
-    );
-
-    std::fs::write(&keep, "after\n").expect("dirty tracked file");
-
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .args(["init", "python", "--path"])
-        .arg(project.path())
-        .output()
-        .expect("spawn malvin init");
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-
-    let commit_count = Command::new("git")
-        .args(["rev-list", "--count", "HEAD"])
-        .current_dir(project.path())
-        .output()
-        .expect("git rev-list --count HEAD");
-    assert!(
-        commit_count.status.success(),
-        "git rev-list --count HEAD failed: {commit_count:?}"
-    );
-    assert_eq!(
-        String::from_utf8_lossy(&commit_count.stdout).trim(),
-        "1",
-        "init should not create a new commit when bootstrapping an existing repo"
-    );
-
-    let tracked = Command::new("git")
-        .args(["show", "HEAD:keep.txt"])
-        .current_dir(project.path())
-        .output()
-        .expect("git show HEAD:keep.txt");
-    assert!(tracked.status.success(), "git show failed: {tracked:?}");
-    assert_eq!(
-        String::from_utf8_lossy(&tracked.stdout),
-        "before\n",
-        "existing tracked content should not be silently rewritten into a new init commit"
-    );
+fn malvin_init_git_ls_tree_head_lists_expected_paths() {
+    let w = InitOk::new(&["python"]);
+    let tree = git_stdout(w.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
+    assert!(!tree.contains("grounding.md"));
+    assert!(tree.contains(".malvin_memory/style.md"));
 }

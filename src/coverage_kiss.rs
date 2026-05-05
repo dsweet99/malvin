@@ -53,8 +53,8 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::startup_request_tag_label);
     let _ = stringify!(crate::artifacts::work_dir_for_path);
     let _ = stringify!(crate::artifacts::resolve_at_file);
-    let _ = stringify!(crate::artifacts::backup_workspace_grounding_if_present);
-    let _ = stringify!(crate::artifacts::restore_workspace_grounding);
+    let _ = stringify!(crate::artifacts::backup_workspace_kissconfig_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_kissconfig_backup);
 }
 
 #[test]
@@ -103,6 +103,7 @@ fn kiss_stringify_log_paths() {
 #[test]
 fn kiss_stringify_review_sync() {
     let _ = stringify!(crate::review_sync::is_lgtm_str);
+    let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
 }
 
 #[test]
@@ -111,6 +112,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(WorkflowConfig);
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
+    let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
@@ -139,9 +141,9 @@ fn kiss_stringify_kpop_progression() {
     let _ = stringify!(crate::kpop_progression::agent_declared_success);
     let _ = stringify!(crate::kpop_progression::read_exp_log_text);
     let _ = stringify!(crate::kpop_multiturn_prompts::KpopMultiturnPrompts);
-    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnParams::<()>);
+    let _ = stringify!(crate::kpop_progression::KpopMultiturnParams::<()>);
     let _ = stringify!(crate::multiturn_prompt::MultiturnPrompt);
-    let _ = stringify!(crate::kpop_multiturn::KpopMultiturnState::<()>);
+    let _ = stringify!(crate::kpop_progression::KpopMultiturnState::<()>);
 }
 
 #[test]
@@ -165,6 +167,18 @@ fn kiss_stringify_prompts() {
 }
 
 #[test]
+fn kiss_stringify_repo_gates() {
+    let _ = stringify!(crate::repo_gates::KISS_CHECK_COMMAND);
+    let _ = stringify!(crate::repo_gates::should_run_workspace_gates);
+    let _ = stringify!(crate::repo_gates::gate_command_lines);
+    let _ = stringify!(crate::repo_gates::prompt_quality_gates_markdown);
+    let _ = stringify!(crate::repo_gates::format_quality_gates_markdown);
+    let _ = stringify!(crate::repo_gates::load_malvin_checks);
+    let _ = stringify!(kiss_smoke_prompt_store);
+    let _ = stringify!(kiss_smoke_render_context);
+}
+
+#[test]
 fn smoke_create_run_artifacts() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -177,6 +191,11 @@ fn kiss_test_tmp() -> tempfile::TempDir {
     tempfile::tempdir().expect("tempdir")
 }
 
+#[test]
+fn kiss_stringify_coverage_kiss_helpers() {
+    let _ = stringify!(kiss_write_same_body_files);
+}
+
 fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]) {
     std::fs::create_dir_all(dir).expect("mkdir");
     for name in names {
@@ -184,34 +203,43 @@ fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]
     }
 }
 
+const SMOKE_EMBEDDED_PROMPT_NAMES: &[&str] = &[
+    "implement.md",
+    "review_1.md",
+    "review_2.md",
+    "kpop.md",
+    "kpop_common.md",
+    "kpop_block.md",
+    "mbc2_pure.md",
+    "mbc2.md",
+    "concerns.md",
+    "learn.md",
+    HEADER_MD,
+    DO_HEADER_MD,
+    "coding_rules.md",
+];
+
+fn kiss_smoke_prompt_store(prompts_dir: &std::path::Path) -> PromptStore {
+    kiss_write_same_body_files(prompts_dir, SMOKE_EMBEDDED_PROMPT_NAMES, b"body");
+    let store = PromptStore::with_root(prompts_dir.to_path_buf());
+    store.ensure_defaults().expect("defaults");
+    store.validate_required().expect("required");
+    store
+}
+
+fn kiss_smoke_render_context() -> HashMap<String, String> {
+    HashMap::from([
+        ("plan_path".to_string(), "p".to_string()),
+        ("kpop_log_dir".to_string(), "./_kpop".to_string()),
+        ("quality_gates".to_string(), String::new()),
+    ])
+}
+
 #[test]
 fn smoke_prompt_store_with_root() {
     let tmp = kiss_test_tmp();
     let prompts = tmp.path().join("prompts");
-    kiss_write_same_body_files(
-        &prompts,
-        &[
-            "implement.md",
-            "review_1.md",
-            "review_2.md",
-            "kpop.md",
-            "kpop_common.md",
-            "kpop_block.md",
-            "mbc2_pure.md",
-            "mbc2.md",
-            "concerns.md",
-            "learn.md",
-            HEADER_MD,
-            DO_HEADER_MD,
-            "coding_rules.md",
-        ],
-        b"body",
-    );
-    let store = PromptStore::with_root(prompts);
-    store.ensure_defaults().expect("defaults");
-    store.validate_required().expect("required");
-    let mut ctx = HashMap::new();
-    ctx.insert("plan_path".to_string(), "p".to_string());
-    ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
+    let store = kiss_smoke_prompt_store(&prompts);
+    let ctx = kiss_smoke_render_context();
     let _ = store.render("implement.md", &ctx).expect("render");
 }
