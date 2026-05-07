@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_plan,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop, run_plan,
     run_tidy,
 };
 use super::{init_cmd, models_cmd};
@@ -13,6 +13,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
+        Commands::Bug(_) => require_kiss_for_malvin("bug"),
         Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }
 }
@@ -67,6 +68,19 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             run_async_cli(|| {
                 run_kpop(
                     kpop.clone(),
+                    &cli.shared,
+                    WorkflowCliOptions {
+                        force: !cli.shared.no_force,
+                        run_learn,
+                    },
+                )
+            })
+        }
+        Commands::Bug(bug) => {
+            let run_learn = !bug.no_learn;
+            run_async_cli(|| {
+                run_bug(
+                    bug.clone(),
                     &cli.shared,
                     WorkflowCliOptions {
                         force: !cli.shared.no_force,

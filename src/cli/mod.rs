@@ -1,4 +1,5 @@
 mod args;
+mod bug_flow;
 mod code_flow;
 #[cfg(test)]
 mod command_log_tests;
@@ -20,10 +21,11 @@ mod shared_opts;
 mod stringify_cov;
 mod tidy_flow;
 mod timing_merge;
-pub use args::{Cli, CodeArgs, Commands, KpopArgs, PlanArgs};
+pub use args::{BugArgs, Cli, CodeArgs, Commands, KpopArgs, PlanArgs};
+pub use bug_flow::run_bug;
 pub use code_flow::{
     AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, build_agent,
-    prepare_kpop_prompt_store, run_code,
+    prepare_bug_prompt_store, prepare_kpop_prompt_store, run_code,
 };
 pub use do_flow::run_do;
 pub use entrypoint::entrypoint;

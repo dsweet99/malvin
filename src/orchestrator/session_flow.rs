@@ -23,6 +23,28 @@ pub(super) async fn run_coder_session_until_pre_summary(
     run_review_phases_until_pre_summary(orchestrator, context).await
 }
 
+pub(super) async fn run_bug_remediation_until_pre_summary(
+    orchestrator: &mut Orchestrator<'_>,
+    context: &HashMap<String, String>,
+) -> Result<(), WorkflowError> {
+    (orchestrator.progress_callback)("Bug regression test");
+    orchestrator
+        .run_coder_prompt(
+            "bug_regression_test.md",
+            context,
+            "test",
+            TimingPhase::Implement,
+        )
+        .await?;
+    orchestrator.fail_on_abort_result()?;
+    (orchestrator.progress_callback)("Bug fix");
+    orchestrator
+        .run_coder_prompt("bug_fix.md", context, "fix", TimingPhase::Implement)
+        .await?;
+    orchestrator.fail_on_abort_result()?;
+    Ok(())
+}
+
 pub(super) async fn run_coder_session_summary_only(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
@@ -85,6 +107,7 @@ mod kiss_coverage_tests {
     #[test]
     fn kiss_stringify_session_flow_units() {
         let _ = stringify!(super::run_coder_session_until_pre_summary);
+        let _ = stringify!(super::run_bug_remediation_until_pre_summary);
         let _ = stringify!(super::run_coder_session_summary_only);
     }
 }

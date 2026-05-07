@@ -39,6 +39,17 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
     Ok(store)
 }
 
+pub fn prepare_bug_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
+    let store = prepare_prompt_store(workflow)?;
+    store
+        .validate_exists("bug_regression_test.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("bug_fix.md")
+        .map_err(|e: PromptError| e.0)?;
+    Ok(store)
+}
+
 pub fn prepare_kpop_prompt_store(
     workflow: WorkflowCliOptions,
     require_mbc2: bool,

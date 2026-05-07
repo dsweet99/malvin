@@ -25,6 +25,13 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
 }
 
 #[test]
+fn global_no_markdown_before_bug_subcommand() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "bug", "--no-learn"]).expect("parse");
+    assert!(cli.shared.no_markdown);
+    assert!(matches!(cli.command, crate::cli::Commands::Bug(_)));
+}
+
+#[test]
 fn do_parses_with_global_no_markdown_without_do_local_flag() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "do", "hi"]).expect("parse");
     assert!(cli.shared.no_markdown);

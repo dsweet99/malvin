@@ -23,6 +23,8 @@ pub(crate) mod review_context;
 mod review_loop;
 pub mod session_flow;
 
+mod bug_remediation;
+
 use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
 
 use workflow_context as workflow_context_inner;
@@ -172,6 +174,19 @@ impl Orchestrator<'_> {
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
+    }
+
+    /// KPOP already finished; run regression-test then fix coder prompts, optional mid hook, summary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorkflowError`] when session setup, a bug phase, `mid`, or timing emission fails.
+    pub async fn run_bug_remediation_gap(
+        &mut self,
+        context: &HashMap<String, String>,
+        mid: PreSummaryMidFn,
+    ) -> Result<(), WorkflowError> {
+        bug_remediation::run_bug_remediation_gap(self, context, mid).await
     }
 
     pub(super) async fn run_coder_prompt(

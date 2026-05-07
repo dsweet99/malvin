@@ -149,6 +149,42 @@ fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["plan"]);
 }
 
+#[test]
+fn malvin_bug_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["bug"]);
+}
+
+#[test]
+fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
+    let path_root = tempfile::tempdir().unwrap();
+    let isolated_bin = path_root.path().join("bin");
+    std::fs::create_dir_all(&isolated_bin).unwrap();
+    #[cfg(unix)]
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        c.arg("bug");
+    });
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", &isolated_bin)
+        .arg("bug")
+        .output()
+        .expect("spawn malvin");
+    assert!(!out.status.success());
+    let msg = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        msg.contains("`malvin bug`"),
+        "expected error to name the bug subcommand; got: {msg:?}"
+    );
+    assert!(
+        !msg.contains("`malvin code`"),
+        "expected bug path not to reuse code subcommand text; got: {msg:?}"
+    );
+}
+
 #[cfg(unix)]
 fn seed_tidy_workspace(workspace: &Path) {
     seed_git_kiss_cargo_gate_workspace(workspace);

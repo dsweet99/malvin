@@ -25,16 +25,19 @@ use super::shared_opts::SharedOpts;
 use super::timing_merge;
 use super::timing_merge::emit_run_timing_after_acp;
 
-fn kpop_prompt_store(kpop: &KpopArgs, workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
+pub(in crate::cli) fn kpop_prompt_store(
+    kpop: &KpopArgs,
+    workflow: WorkflowCliOptions,
+) -> Result<PromptStore, String> {
     let needs_mbc2 = kpop_creative_enabled(kpop.p_creative);
     prepare_kpop_prompt_store(workflow, needs_mbc2)
 }
 
 pub struct KpopTurnPrompts<'a> {
-    store: &'a PromptStore,
-    base: &'a HashMap<String, String>,
-    request_text: &'a str,
-    prepend_rules_once: bool,
+    pub(super) store: &'a PromptStore,
+    pub(super) base: &'a HashMap<String, String>,
+    pub(super) request_text: &'a str,
+    pub(super) prepend_rules_once: bool,
 }
 
 impl KpopTurnPrompts<'_> {
@@ -98,14 +101,31 @@ impl KpopMultiturnPrompts for KpopTurnPrompts<'_> {
 }
 
 pub struct KpopPrepared {
-    artifacts: RunArtifacts,
-    exp_log_path: PathBuf,
-    context: HashMap<String, String>,
-    text: String,
-    kissconfig_backup: KissConfigBackup,
+    pub(super) artifacts: RunArtifacts,
+    pub(super) exp_log_path: PathBuf,
+    pub(super) context: HashMap<String, String>,
+    pub(super) text: String,
+    pub(super) kissconfig_backup: KissConfigBackup,
 }
 
-fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
+impl KpopPrepared {
+    pub(in crate::cli) fn into_bug_followup_artifacts(
+        self,
+        plan_body: &str,
+    ) -> Result<(RunArtifacts, KissConfigBackup), String> {
+        let Self {
+            mut artifacts,
+            kissconfig_backup,
+            ..
+        } = self;
+        let plan_path = artifacts.run_dir.join("plan.md");
+        std::fs::write(&plan_path, plan_body).map_err(|e| e.to_string())?;
+        artifacts.plan_path = plan_path;
+        Ok((artifacts, kissconfig_backup))
+    }
+}
+
+pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;

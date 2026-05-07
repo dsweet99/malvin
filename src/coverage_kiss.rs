@@ -113,6 +113,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
     let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
+    let _ = stringify!(Orchestrator::run_bug_remediation_gap);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
