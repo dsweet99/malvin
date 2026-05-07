@@ -1,4 +1,6 @@
 
+# Repo Coding Rules
+
 Use parallelized subagents (at most 4).
 
 Work until the end without asking for user input. If you are uncertain about an implementation
@@ -6,14 +8,14 @@ detail, use your best judgement. There will always be an opportunity to revise l
 
 The Quality Gates section lists the exact shell commands Malvin runs for this workspace: built-in gates from the repo layout, or if `.malvin_checks` exists, only the non-empty lines in that file (in order). Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
 
-# Quality Gates
+## Quality Gates
 Be sure that all applicable checks pass.
 
 {{ quality_gates }}
 
 When presented with failures or violations, respond to them earnestly. Improve the code in a way that respects the spirit of the quality-gate feedback.
 
-# Tips and Soft Requirements
+## Tips and Soft Requirements
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run checks & tests frequently to avoid a big cleanup at the end.
   - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating.
