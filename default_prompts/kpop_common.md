@@ -1,8 +1,14 @@
-### KPop: Apply this method to the user's problem.
+# Definition: KPop
+
+[
+KPop is short for "Karl Popper".
+You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
+KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+]
+
+Apply this method to the user's problem.
 
 Restate the problem clearly.
-
-(You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.)
 
 Repeat until you think you've solved the problem:
 
