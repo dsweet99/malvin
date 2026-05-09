@@ -319,7 +319,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let kpop = turn.kpop_block(2, 10).unwrap();
     let kpop_header = kpop.find("AFTER EVERY REQUEST").expect("header marker");
     let kpop_common = kpop
-        .find("### KPop: Apply this method to the user's problem.")
+        .find("# Definition: KPop")
         .expect("common marker");
     let kpop_body = kpop.find("# This KPOP turn").expect("body marker");
     assert!(
@@ -336,7 +336,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         "mbc2 should not include header/coding rules"
     );
     let mbc2_common = mbc2
-        .find("### KPop: Apply this method to the user's problem.")
+        .find("# Definition: KPop")
         .expect("common marker");
     let mbc2_body = mbc2.find("# Pure MBC2 turn").expect("body marker");
     assert!(
