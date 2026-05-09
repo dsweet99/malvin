@@ -176,19 +176,27 @@ pub async fn run_plan(
     let user_plan_path = resolve_user_plan_path(plan.plan_path.clone())?;
     write_plan_source(&plan, &user_plan_path)?;
     let artifacts = plan_run_artifacts(&user_plan_path)?;
-    let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
-    let kissconfig_backup =
-        start_plan_workspace_session(&mut client, &artifacts, shared, &user_plan_path)?;
-    let prompt = build_rendered_plan_prompt(&artifacts, &user_plan_path)?;
-    let wf_res = run_plan_review_once(&mut client, &artifacts, &kissconfig_backup, &prompt).await;
-    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
-        wf_res,
-        &artifacts.work_dir,
-        &kissconfig_backup,
-        &artifacts.artifact_result_md(),
-    )?;
-    print_stdout_line(MALVIN_WHO, "DONE");
-    Ok(())
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let r = async {
+        let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+        let kissconfig_backup =
+            start_plan_workspace_session(&mut client, &artifacts, shared, &user_plan_path)?;
+        let prompt = build_rendered_plan_prompt(&artifacts, &user_plan_path)?;
+        let wf_res = run_plan_review_once(&mut client, &artifacts, &kissconfig_backup, &prompt).await;
+        timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+            wf_res,
+            &artifacts.work_dir,
+            &kissconfig_backup,
+            &artifacts.artifact_result_md(),
+        )?;
+        print_stdout_line(MALVIN_WHO, "DONE");
+        Ok(())
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }
 
 #[cfg(test)]

@@ -33,7 +33,7 @@ fn kiss_stringify_agent() {
     let _ = stringify!(AgentClient::run_kpop_multiturn);
     let _ = stringify!(AgentClient::set_run_timing);
     let _ = stringify!(AgentClient::attach_run_timing_for_session);
-    let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
+    let _ = stringify!(AgentClient::has_open_coder_session); let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
 }
 
 #[test]

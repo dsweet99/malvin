@@ -320,6 +320,22 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
         context: &context,
         run_learn: false,
     };
+    input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
+    // `malvin code` / `malvin tidy` / `malvin bug` already hold a coder session when pre-summary
+    // gates run; opening a second session used to error with "coder ACP session is already open".
+    if input.client.has_open_coder_session() {
+        return run_tidy_prompt_with_restore(
+            &mut input,
+            TidyPromptRestore {
+                prompt: &prompt,
+                label: "tidy",
+                phase: TimingPhase::Implement,
+                kissconfig_backup,
+                restore_context: "post-run gate failure",
+            },
+        )
+        .await;
+    }
     let timing = input.client.attach_run_timing_for_session();
     {
         let mut timing_guard = timing
@@ -327,7 +343,6 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         timing_guard.set_implement_display_name("tidy");
     }
-    input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
     let begin_result = input.client.begin_coder_session(&input.artifacts.work_dir).await;
     if let Err(e) = begin_result {
         input.client.set_run_timing(None);
@@ -356,4 +371,23 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
         &timing,
         acp_result,
     )
+}
+
+#[cfg(test)]
+mod post_run_gate_nested_begin_regression {
+    #[test]
+    fn post_run_gate_tidy_skips_second_begin_when_coder_session_open() {
+        let src = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/cli/tidy_flow/helpers.rs"
+        ));
+        assert!(
+            src.contains("has_open_coder_session()"),
+            "regression: post-run gate tidy must branch on an open coder session"
+        );
+        assert!(
+            src.contains("second session"),
+            "expected rationale comment for nested-session guard"
+        );
+    }
 }

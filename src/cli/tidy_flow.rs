@@ -16,18 +16,26 @@ pub async fn run_tidy(
 ) -> Result<(), String> {
     let (mut client, artifacts, kissconfig_backup, store, context, run_learn) =
         prepare_tidy_run(shared, workflow, !tidy.no_learn)?;
-    let prompt = compose_tidy_prompt(&store, &context)?;
-    let mut input = TidyAcpInput {
-        client: &mut client,
-        artifacts: &artifacts,
-        store: &store,
-        context: &context,
-        run_learn,
-    };
-    let result = run_tidy_acp(&mut input, prompt.trim_end(), &kissconfig_backup).await;
-    merge_tidy_timing(result, &artifacts, &kissconfig_backup)?;
-    print_stdout_line(MALVIN_WHO, "DONE");
-    Ok(())
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let r = async {
+        let prompt = compose_tidy_prompt(&store, &context)?;
+        let mut input = TidyAcpInput {
+            client: &mut client,
+            artifacts: &artifacts,
+            store: &store,
+            context: &context,
+            run_learn,
+        };
+        let result = run_tidy_acp(&mut input, prompt.trim_end(), &kissconfig_backup).await;
+        merge_tidy_timing(result, &artifacts, &kissconfig_backup)?;
+        print_stdout_line(MALVIN_WHO, "DONE");
+        Ok(())
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }
 
 mod coverage_tests;

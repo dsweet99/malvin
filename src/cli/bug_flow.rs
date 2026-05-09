@@ -47,6 +47,7 @@ struct BugKpopPhase<'a> {
 async fn run_bug_kpop_multiturn(phase: BugKpopPhase<'_>) -> Result<KpopPrepared, String> {
     let prepared = prepare_kpop_run(phase.kpop)?;
     phase.client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
+    super::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
     kpop_emit_startup(phase.kpop, phase.shared, &prepared.artifacts)?;
     let builder = KpopTurnPrompts {
         store: phase.store_kpop,
@@ -100,6 +101,7 @@ async fn finish_bug_after_kpop(
 ) -> Result<(), String> {
     ensure_kpop_solved(&prepared)?;
     let (artifacts, _) = prepared.into_bug_followup_artifacts(BUG_FOLLOWUP_PLAN)?;
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
 
     if !tail.bug.skip_pre_checks {
         run_repo_workspace_gates(
@@ -169,25 +171,32 @@ pub async fn run_bug(
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
-    let prepared = run_bug_kpop_multiturn(BugKpopPhase {
-        kpop: &kpop,
-        workflow,
-        store_kpop: &store_kpop,
-        client: &mut client,
-        shared,
-    })
-    .await?;
-
-    finish_bug_after_kpop(
-        BugRunTail {
-            bug: &bug,
-            shared,
+    let r = async {
+        let prepared = run_bug_kpop_multiturn(BugKpopPhase {
+            kpop: &kpop,
             workflow,
-        },
-        prepared,
-        &mut client,
-    )
-    .await
+            store_kpop: &store_kpop,
+            client: &mut client,
+            shared,
+        })
+        .await?;
+
+        finish_bug_after_kpop(
+            BugRunTail {
+                bug: &bug,
+                shared,
+                workflow,
+            },
+            prepared,
+            &mut client,
+        )
+        .await
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }
 
 #[cfg(test)]

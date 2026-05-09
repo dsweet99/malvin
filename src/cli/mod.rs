@@ -5,6 +5,7 @@ mod code_flow;
 mod command_log_tests;
 mod do_flow;
 mod entrypoint;
+mod error_run_log;
 mod exit;
 mod init_cmd;
 mod kiss_clamp;

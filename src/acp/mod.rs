@@ -66,6 +66,9 @@ include!("session.rs");
 include!("agent_bundle.rs");
 
 #[cfg(test)]
+mod test_captive_session;
+
+#[cfg(test)]
 mod transport_tests;
 
 #[cfg(test)]

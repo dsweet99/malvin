@@ -89,9 +89,17 @@ pub async fn run_init(
     let languages = parse_languages(language_args)?;
     let root = resolve_init_root(path)?;
     let artifacts = emit_init_startup(&root, tee_startup_stdout)?;
-    write_init_templates(&root, force, &languages)?;
-    bootstrap_repo_tooling(&root)?;
-    run_init_summary_phase(shared, &artifacts).await
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let r = async {
+        write_init_templates(&root, force, &languages)?;
+        bootstrap_repo_tooling(&root)?;
+        run_init_summary_phase(shared, &artifacts).await
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }
 
 fn emit_init_startup(

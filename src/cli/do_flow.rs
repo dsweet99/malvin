@@ -76,6 +76,7 @@ pub async fn run_do(
     let (text, work_dir) = resolve_user_request(&do_args.request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
 
     if do_args.repo_gates {
         repo_checks::run_repo_workspace_gates(
@@ -108,12 +109,16 @@ pub async fn run_do(
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    let r = timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         acp_res,
         &artifacts.work_dir,
         &kissconfig_backup,
         &artifacts.artifact_result_md(),
-    )?;
+    );
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r?;
     Ok(())
 }
 

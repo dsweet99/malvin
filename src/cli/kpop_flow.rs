@@ -201,6 +201,7 @@ pub async fn run_kpop(
 
     let prepared = prepare_kpop_run(&kpop)?;
     client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
+    super::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
@@ -226,12 +227,16 @@ pub async fn run_kpop(
     })
     .await;
 
-    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    let r = timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
         &prepared.kissconfig_backup,
         &prepared.artifacts.artifact_result_md(),
-    )?;
+    );
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r?;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
