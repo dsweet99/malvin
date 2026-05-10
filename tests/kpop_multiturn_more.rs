@@ -3,14 +3,12 @@ mod common;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use common::{
-    append_kpop_line, append_mbc2_line, parse_kpop_want, MtStubPrompts,
-};
+use common::{MtStubPrompts, append_kpop_line, append_mbc2_line, parse_kpop_want};
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{
-    block_mean_from_p_creative, count_mbc2_entries, poisson_block_size, KpopMultiturnParams,
-    KpopMultiturnState,
+    KpopMultiturnParams, KpopMultiturnState, block_mean_from_p_creative, count_mbc2_entries,
+    poisson_block_size,
 };
 use rand::SeedableRng;
 use rand::rngs::StdRng;
@@ -182,11 +180,7 @@ fn overshoot_two_block_wants(seed: u64) -> (usize, usize, Vec<usize>) {
     let mut ctx = overshoot_open(seed);
     overshoot_assert_first(&mut ctx);
     overshoot_assert_second(&mut ctx);
-    (
-        ctx.tn1,
-        ctx.expected_n2,
-        ctx.wants.borrow().to_vec(),
-    )
+    (ctx.tn1, ctx.expected_n2, ctx.wants.borrow().to_vec())
 }
 
 #[test]

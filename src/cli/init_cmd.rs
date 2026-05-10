@@ -136,11 +136,7 @@ async fn run_init_summary_phase(
     let summary_only = store
         .render("summary.md", &ctx)
         .map_err(|e: PromptError| e.0)?;
-    let body = format!(
-        "{}\n\n{}",
-        header_body.trim_end(),
-        summary_only.trim_end()
-    );
+    let body = format!("{}\n\n{}", header_body.trim_end(), summary_only.trim_end());
     let timing = client.attach_run_timing_for_session();
     timing
         .lock()

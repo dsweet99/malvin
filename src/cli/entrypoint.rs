@@ -1,8 +1,8 @@
 use clap::Parser;
 
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop, run_plan,
-    run_tidy,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
+    run_plan, run_tidy,
 };
 use super::{init_cmd, models_cmd};
 use malvin::env_path::require_kiss_for_malvin;

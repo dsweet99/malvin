@@ -7,7 +7,7 @@ use super::tests_gates_helpers::{
     install_trace_echo_bins, workspace_git_minimal_cargo_rs_py_tests,
     workspace_git_precommit_malvin_checks_cargo_main,
 };
-use super::{run_repo_workspace_gates, RepoGateOutput};
+use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn source_like_files_present_does_not_follow_external_symlink_dirs() {

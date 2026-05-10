@@ -1,4 +1,4 @@
-use super::acp_core::{acp_mock_js, session_update_chunk_line, ARGV_CAPTURE_PREAMBLE};
+use super::acp_core::{ARGV_CAPTURE_PREAMBLE, acp_mock_js, session_update_chunk_line};
 
 pub fn acp_mock_do_streaming_update_js() -> String {
     let msg = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");

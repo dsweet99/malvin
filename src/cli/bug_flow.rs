@@ -163,10 +163,8 @@ pub async fn run_bug(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let kpop = kpop_args_from_bug(&bug);
-    let store_kpop = super::prepare_kpop_prompt_store(
-        workflow,
-        kpop_creative_enabled(kpop.p_creative),
-    )?;
+    let store_kpop =
+        super::prepare_kpop_prompt_store(workflow, kpop_creative_enabled(kpop.p_creative))?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);
     client.ensure_authenticated().map_err(|e| e.to_string())?;

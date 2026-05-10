@@ -1,5 +1,5 @@
-use super::{RepoGateOutput, run_repo_workspace_gates};
 use super::style_markers::ensure_workspace_style_markers;
+use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn style_markers_are_touched_when_missing() {

@@ -50,9 +50,9 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
         "tidy.md" => Some(include_str!("../../default_prompts/tidy.md")),
         "review_plan.md" => Some(include_str!("../../default_prompts/review_plan.md")),
-        "bug_regression_test.md" => Some(include_str!(
-            "../../default_prompts/bug_regression_test.md"
-        )),
+        "bug_regression_test.md" => {
+            Some(include_str!("../../default_prompts/bug_regression_test.md"))
+        }
         "bug_fix.md" => Some(include_str!("../../default_prompts/bug_fix.md")),
         HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
         DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),

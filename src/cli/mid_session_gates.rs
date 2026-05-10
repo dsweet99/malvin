@@ -52,13 +52,7 @@ pub async fn run_pre_summary_repo_gates_with_tidy_retry(
     let work_dir = artifacts.work_dir.clone();
     let run_dir = artifacts.run_dir.clone();
     pre_summary_repo_gates_tidy_retry_flow(
-        || {
-            run_repo_workspace_gates_with_details(
-                &work_dir,
-                RepoGateOutput::Tagged,
-                Some(&run_dir),
-            )
-        },
+        || run_repo_workspace_gates_with_details(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
         |failure| async move {
             run_tidy_prompt_after_post_run_gate_failure(
                 client,
@@ -68,13 +62,7 @@ pub async fn run_pre_summary_repo_gates_with_tidy_retry(
             )
             .await
         },
-        || {
-            run_repo_workspace_gates(
-                &work_dir,
-                RepoGateOutput::Tagged,
-                Some(&run_dir),
-            )
-        },
+        || run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
     )
     .await
 }

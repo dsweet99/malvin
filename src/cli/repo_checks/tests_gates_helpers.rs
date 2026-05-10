@@ -18,7 +18,12 @@ pub(super) fn write_trace_echo_script(bin_dir: &Path, name: &str, trace: &Path, 
     write_executable_script(bin_dir, name, &body);
 }
 
-pub(super) fn install_trace_echo_bins(bin_dir: &Path, trace: &Path, names: &[&str], exit_code: i32) {
+pub(super) fn install_trace_echo_bins(
+    bin_dir: &Path,
+    trace: &Path,
+    names: &[&str],
+    exit_code: i32,
+) {
     for name in names {
         write_trace_echo_script(bin_dir, name, trace, exit_code);
     }

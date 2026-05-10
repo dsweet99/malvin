@@ -55,12 +55,7 @@ pub(super) async fn run_coder_session_summary_only(
         .render("summary.md", context)
         .map_err(|e| WorkflowError(e.0))?;
     orchestrator
-        .run_coder_prompt_body(
-            summary_body,
-            "summary.md",
-            "summary",
-            TimingPhase::Summary,
-        )
+        .run_coder_prompt_body(summary_body, "summary.md", "summary", TimingPhase::Summary)
         .await?;
     orchestrator.fail_on_abort_result()?;
     Ok(())

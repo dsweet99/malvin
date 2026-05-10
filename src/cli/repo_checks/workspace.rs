@@ -2,9 +2,7 @@ use malvin::repo_gates;
 use std::path::Path;
 use std::process::Command;
 
-use super::command_support::{
-    apply_fake_path_if_present, run_command_failure, run_command_for,
-};
+use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
 use super::emit::emit_repo_gate_line;
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput};
@@ -124,11 +122,7 @@ fn run_shell_command_line_with_details(
     if command_line.is_empty() {
         return Ok(());
     }
-    emit_repo_gate_line(
-        output,
-        &format!("Running `{command_line}`"),
-        run_log_dir,
-    );
+    emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
     let mut command = Command::new(shell);
     command.arg(arg).arg(command_line).current_dir(work_dir);

@@ -66,14 +66,8 @@ fn models_parses_with_global_no_markdown() {
 
 #[test]
 fn plan_parses_text_after_plan_path_flag() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "plan",
-        "--plan_path",
-        "/tmp/p.md",
-        "hello",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "plan", "--plan_path", "/tmp/p.md", "hello"])
+        .expect("parse");
     match cli.command {
         crate::cli::Commands::Plan(p) => {
             assert_eq!(
@@ -88,14 +82,8 @@ fn plan_parses_text_after_plan_path_flag() {
 
 #[test]
 fn plan_parses_plan_path_alias_before_text() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "plan",
-        "--plan-path",
-        "notes/plan.md",
-        "x",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "plan", "--plan-path", "notes/plan.md", "x"])
+        .expect("parse");
     match cli.command {
         crate::cli::Commands::Plan(p) => {
             assert_eq!(

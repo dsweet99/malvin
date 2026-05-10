@@ -3,13 +3,12 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_fake_kiss, write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
+    test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 
 #[cfg(unix)]
-pub const MAX_LOOPS_EXHAUSTED: &str =
-    "Did not receive LGTM for review_1.md within max loops.";
+pub const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review_1.md within max loops.";
 
 pub fn check_ignored(repo: &std::path::Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -50,11 +49,7 @@ pub fn run_code_with_mock_js_trust_plan_in_workspace(
     mock_js: &str,
     extra_args: &[&str],
     opts: &CodeRunOpts,
-) -> (
-    std::process::Output,
-    tempfile::TempDir,
-    std::path::PathBuf,
-) {
+) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
     let (_bin_dir, mock, path) = prep_acp_mock_on_path(&root, "mock-agent-acp-code", mock_js);
     let mut args = vec!["code", "--no-learn"];

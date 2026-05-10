@@ -81,4 +81,3 @@ fn check_plan_phase_accumulates_timing() {
     let phases = json.get("phases_ms").unwrap();
     assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
 }
-

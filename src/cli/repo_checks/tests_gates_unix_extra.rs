@@ -5,11 +5,11 @@ use malvin::repo_gates;
 use super::command_support::set_fake_command_dir;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
-    install_trace_echo_bins, workspace_git_cargo_main_only, workspace_git_kissconfig_90_cargo_rs_py,
-    workspace_git_malvin_checks_line, workspace_git_minimal_cargo_rs_py_tests,
-    write_executable_script, write_trace_echo_script,
+    install_trace_echo_bins, workspace_git_cargo_main_only,
+    workspace_git_kissconfig_90_cargo_rs_py, workspace_git_malvin_checks_line,
+    workspace_git_minimal_cargo_rs_py_tests, write_executable_script, write_trace_echo_script,
 };
-use super::{prepare_repo_workspace, run_repo_workspace_gates, RepoGateOutput};
+use super::{RepoGateOutput, prepare_repo_workspace, run_repo_workspace_gates};
 
 #[test]
 fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {

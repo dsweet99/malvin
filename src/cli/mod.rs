@@ -32,9 +32,9 @@ pub use do_flow::run_do;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;
 pub use kpop_flow::run_kpop;
+pub use plan_flow::run_plan;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
-pub use plan_flow::run_plan;
 pub use tidy_flow::run_tidy;
 pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
 

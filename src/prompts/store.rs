@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use super::defaults::{default_file, DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS};
+use super::PromptError;
+use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
 use super::enforce_no_unresolved_braces;
 use super::template::{merged_coding_rules, render_template};
-use super::PromptError;
 
 #[derive(Debug, Clone, Copy)]
 pub struct KpopPromptValidation {

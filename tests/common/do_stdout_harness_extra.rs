@@ -5,13 +5,13 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    acp_mock_do_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js, command_output_with_timeout,
+    test_home_workspace, write_mock_executable,
 };
 
 #[cfg(unix)]
-pub fn prepare_do_workspace_src_remove_kissconfig(
-) -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+pub fn prepare_do_workspace_src_remove_kissconfig()
+-> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
     std::fs::create_dir_all(workspace.join("src")).expect("mkdir src");
     std::fs::write(workspace.join("src/main.rs"), "fn main() {}").expect("write source");

@@ -48,7 +48,11 @@ fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-fn pty_write_malvin_runner_script(env: &PtyEnv, malvin_args_line: &str, columns: Option<&str>) -> PathBuf {
+fn pty_write_malvin_runner_script(
+    env: &PtyEnv,
+    malvin_args_line: &str,
+    columns: Option<&str>,
+) -> PathBuf {
     let malvin = env!("CARGO_BIN_EXE_malvin");
     let sh = env.root.path().join("run-malvin.sh");
     let columns_export = columns
@@ -75,7 +79,7 @@ pub fn run_malvin_under_script_with_mock(
     malvin_args_line: &str,
     columns: Option<&str>,
 ) -> PtyRun {
-    use super::{command_output_with_timeout, MALVIN_TEST_CMD_TIMEOUT};
+    use super::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
     let env = pty_malvin_workspace(mock_js);
     let sh = pty_write_malvin_runner_script(&env, malvin_args_line, columns);

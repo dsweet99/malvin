@@ -91,11 +91,7 @@ fn models_display_lines(text: &str) -> Option<Vec<String>> {
             out.push(t.to_string());
         }
     }
-    if out.is_empty() {
-        None
-    } else {
-        Some(out)
-    }
+    if out.is_empty() { None } else { Some(out) }
 }
 
 fn print_parsed_or_fallback(text: &str) {

@@ -59,7 +59,10 @@ pub fn tempdir_seeded_dirty_keep() -> tempfile::TempDir {
 }
 
 pub fn assert_git_branch_main(project: &Path) {
-    assert_eq!(git_stdout(project, &["branch", "--show-current"]).trim(), "main");
+    assert_eq!(
+        git_stdout(project, &["branch", "--show-current"]).trim(),
+        "main"
+    );
 }
 
 pub fn assert_git_head_commit_count(project: &Path, expected: &str) {

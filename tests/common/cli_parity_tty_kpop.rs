@@ -24,12 +24,8 @@ fn kpop_multiturn_prep(mock_js: &str) -> (tempfile::TempDir, PathBuf, PathBuf, P
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_kpop_multiturn_investigate(
     mock_js: &str,
-) -> (
-    std::process::Output,
-    tempfile::TempDir,
-    std::path::PathBuf,
-) {
-    use super::{command_output_with_timeout, MALVIN_TEST_CMD_TIMEOUT};
+) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
+    use super::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
     let (root, home, workspace, mock, path) = kpop_multiturn_prep(mock_js);
     std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("write kissconfig");

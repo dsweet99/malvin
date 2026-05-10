@@ -12,19 +12,15 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::run_timing::{RunTiming, TimingPhase};
 
 use super::PlanArgs;
+use super::SharedOpts;
 use super::code_flow::{WorkflowCliOptions, build_agent};
 use super::run_emit;
 use super::timing_merge;
-use super::SharedOpts;
 
 fn resolve_user_plan_path(plan_path: Option<PathBuf>) -> Result<PathBuf, String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let p = plan_path.unwrap_or_else(|| cwd.join("plan.md"));
-    Ok(if p.is_absolute() {
-        p
-    } else {
-        cwd.join(p)
-    })
+    Ok(if p.is_absolute() { p } else { cwd.join(p) })
 }
 
 fn normalized_plan_file_bytes(text: &str) -> Result<Vec<u8>, String> {
@@ -65,7 +61,8 @@ fn artifacts_work_dir_for_run(user_plan_path: &Path) -> PathBuf {
 
 fn plan_run_artifacts(user_plan_path: &Path) -> Result<RunArtifacts, String> {
     let work_dir_for_run = artifacts_work_dir_for_run(user_plan_path);
-    create_run_artifacts(user_plan_path, Some(work_dir_for_run.as_path())).map_err(|e| e.to_string())
+    create_run_artifacts(user_plan_path, Some(work_dir_for_run.as_path()))
+        .map_err(|e| e.to_string())
 }
 
 fn start_plan_workspace_session(
@@ -82,7 +79,10 @@ fn start_plan_workspace_session(
     Ok(kissconfig_backup)
 }
 
-fn build_rendered_plan_prompt(artifacts: &RunArtifacts, user_plan_path: &Path) -> Result<String, String> {
+fn build_rendered_plan_prompt(
+    artifacts: &RunArtifacts,
+    user_plan_path: &Path,
+) -> Result<String, String> {
     let store = plan_prompt::prepare_plan_prompt_store()?;
     let context = plan_prompt::plan_prompt_context(artifacts, user_plan_path, &store)?;
     plan_prompt::compose_plan_prompt(&store, &context)
@@ -160,11 +160,8 @@ async fn run_plan_review_once(
     let acp_result = pair_run_and_restore(run_res, restore_res);
 
     let end_result = client.end_coder_session().await.map_err(|e| e.to_string());
-    let acp_result = timing_merge::prefer_primary_over_secondary(
-        acp_result,
-        end_result,
-        "end_coder_session",
-    );
+    let acp_result =
+        timing_merge::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
     timing_merge::emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, acp_result)
 }
 
@@ -182,7 +179,8 @@ pub async fn run_plan(
         let kissconfig_backup =
             start_plan_workspace_session(&mut client, &artifacts, shared, &user_plan_path)?;
         let prompt = build_rendered_plan_prompt(&artifacts, &user_plan_path)?;
-        let wf_res = run_plan_review_once(&mut client, &artifacts, &kissconfig_backup, &prompt).await;
+        let wf_res =
+            run_plan_review_once(&mut client, &artifacts, &kissconfig_backup, &prompt).await;
         timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
             wf_res,
             &artifacts.work_dir,

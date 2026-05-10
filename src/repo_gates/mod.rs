@@ -63,8 +63,19 @@ pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<Strin
     load_malvin_checks(&work_dir.join(MALVIN_CHECKS_FILE))
 }
 
+/// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
+///
+/// Reads **only** [`MALVIN_CHECKS_FILE`]. Returns an error if that file is not a regular file.
+/// Callers that need defaults materialized first should run [`ensure_default_malvin_checks_file`].
 pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> {
-    let lines = gate_command_lines(work_dir)?;
+    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    if !checks_path.is_file() {
+        return Err(format!(
+            "{} is missing (expected a regular file before expanding {{ quality_gates }})",
+            checks_path.display()
+        ));
+    }
+    let lines = load_malvin_checks(&checks_path)?;
     Ok(format_quality_gates_markdown(&lines))
 }
 
@@ -201,9 +212,21 @@ mod tests {
             "[package]\nname='x'\nversion='0.1.0'\n",
         )
         .unwrap();
+        ensure_default_malvin_checks_file(w).unwrap();
         let md = prompt_quality_gates_markdown(w).unwrap();
         assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
         assert!(md.contains("cargo clippy"));
         assert!(md.contains("cargo test"));
+    }
+
+    #[test]
+    fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        let err = prompt_quality_gates_markdown(w).unwrap_err();
+        assert!(
+            err.contains("is missing"),
+            "unexpected error message: {err}"
+        );
     }
 }

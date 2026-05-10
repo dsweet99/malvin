@@ -51,11 +51,7 @@ pub enum Commands {
 
 #[derive(Args, Debug)]
 pub struct PlanArgs {
-    #[arg(
-        long = "plan_path",
-        visible_alias = "plan-path",
-        value_name = "PATH"
-    )]
+    #[arg(long = "plan_path", visible_alias = "plan-path", value_name = "PATH")]
     pub plan_path: Option<PathBuf>,
     #[arg(value_name = "TEXT")]
     pub text: Option<String>,

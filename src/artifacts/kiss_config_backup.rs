@@ -198,7 +198,10 @@ mod tests {
     #[test]
     fn kiss_stringify_kiss_config_backup_units() {
         let _ = stringify!(crate::artifacts::kiss_config_backup::KissConfigBackup);
-        let _ = stringify!(crate::artifacts::kiss_config_backup::backup_workspace_kissconfig_if_present);
-        let _ = stringify!(crate::artifacts::kiss_config_backup::restore_workspace_kissconfig_backup);
+        let _ = stringify!(
+            crate::artifacts::kiss_config_backup::backup_workspace_kissconfig_if_present
+        );
+        let _ =
+            stringify!(crate::artifacts::kiss_config_backup::restore_workspace_kissconfig_backup);
     }
 }

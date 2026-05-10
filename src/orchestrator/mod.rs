@@ -29,11 +29,12 @@ use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_s
 
 use workflow_context as workflow_context_inner;
 
-pub type PreSummaryMidFn = for<'a> fn(
-    &'a mut AgentClient,
-    &'a RunArtifacts,
-    &'a KissConfigBackup,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+pub type PreSummaryMidFn =
+    for<'a> fn(
+        &'a mut AgentClient,
+        &'a RunArtifacts,
+        &'a KissConfigBackup,
+    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
@@ -152,14 +153,16 @@ impl Orchestrator<'_> {
             .await;
         let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
-            Ok(()) => async {
-                run_coder_session_until_pre_summary(self, context).await?;
-                mid(self.client, self.artifacts, &self.kissconfig_backup)
-                    .await
-                    .map_err(WorkflowError)?;
-                run_coder_session_summary_only(self, context).await
+            Ok(()) => {
+                async {
+                    run_coder_session_until_pre_summary(self, context).await?;
+                    mid(self.client, self.artifacts, &self.kissconfig_backup)
+                        .await
+                        .map_err(WorkflowError)?;
+                    run_coder_session_summary_only(self, context).await
+                }
+                .await
             }
-            .await,
             Err(e) => Err(WorkflowError(e.0)),
         };
         let timing_result = if coder_session_began {

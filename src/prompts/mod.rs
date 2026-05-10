@@ -7,7 +7,7 @@ mod template;
 pub use defaults::{DO_HEADER_MD, HEADER_MD};
 
 #[allow(unused_imports)]
-pub(crate) use defaults::{default_file, DEFAULT_PROMPTS, REQUIRED_PROMPTS};
+pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
 
 /// # Errors
 ///

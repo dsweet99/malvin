@@ -5,7 +5,9 @@ use super::Orchestrator;
 use super::WorkflowError;
 use super::clear_review_file;
 use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
-use super::review_loop_helpers::{run_concerns_and_check_abort_impl, run_reviewer_pair_for_attempt};
+use super::review_loop_helpers::{
+    run_concerns_and_check_abort_impl, run_reviewer_pair_for_attempt,
+};
 
 pub(super) async fn run_review_phase(
     orchestrator: &mut Orchestrator<'_>,
@@ -74,13 +76,7 @@ async fn run_concerns_and_check_abort(
         "{0}_{1}_{2}",
         ctx.phase_id, concern_suffix_kind, ctx.attempt
     );
-    run_concerns_and_check_abort_impl(
-        orchestrator,
-        ctx.attempt,
-        &concern_suffix,
-        ctx.context,
-    )
-    .await
+    run_concerns_and_check_abort_impl(orchestrator, ctx.attempt, &concern_suffix, ctx.context).await
 }
 
 #[cfg(test)]

@@ -51,7 +51,9 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
     let _ = stringify!(crate::cli::timing_merge::prefer_primary_over_secondary);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
-    let _ = stringify!(crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed);
+    let _ = stringify!(
+        crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed
+    );
     let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
     let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
     let _ = stringify!(crate::cli::mid_session_gates::pre_summary_repo_gates_tidy_retry_flow);

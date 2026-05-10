@@ -131,7 +131,11 @@ pub async fn run_code(
         }
         client.ensure_authenticated().map_err(|e| e.to_string())?;
         let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-        run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
+        run_emit::emit_run_startup_sequence(
+            &artifacts,
+            shared.tee_startup_stdout(),
+            &code.request,
+        )?;
         let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
         let workflow_res = {
             let mut orch = Orchestrator {
@@ -149,13 +153,12 @@ pub async fn run_code(
                 }),
                 kissconfig_backup: kissconfig_backup.clone(),
             };
-            orch
-                .run_with_pre_summary_gap(
-                    &ctx,
-                    crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
-                )
-                .await
-                .map_err(|e: WorkflowError| e.0)
+            orch.run_with_pre_summary_gap(
+                &ctx,
+                crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
+            )
+            .await
+            .map_err(|e: WorkflowError| e.0)
         };
         timing_merge::merge_acp_with_kissconfig_restore(
             workflow_res,

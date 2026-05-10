@@ -6,7 +6,7 @@ Use parallelized subagents (at most 4).
 Work until the end without asking for user input. If you are uncertain about an implementation
 detail, use your best judgement. There will always be an opportunity to revise later on.
 
-The Quality Gates section lists the exact shell commands Malvin runs for this workspace: built-in gates from the repo layout, or if `.malvin_checks` exists, only the non-empty lines in that file (in order). Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
+The Quality Gates section lists the exact shell commands from `.malvin_checks` (non-empty lines, in order). Malvin creates that file with layout-appropriate defaults when it is missing. Use that list as the source of truth for which languages and checks apply. Do NOT add a language that is not already present in the project.
 
 ## Quality Gates
 Be sure that all applicable checks pass.
