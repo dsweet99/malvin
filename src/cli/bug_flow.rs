@@ -1,6 +1,7 @@
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present, backup_workspace_malvin_checks_if_present,
+    RunArtifacts, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
 };
 use malvin::kpop_creative_enabled;
 use malvin::kpop_progression::{KpopMultiturnState, agent_declared_success};
@@ -71,11 +72,10 @@ async fn run_bug_kpop_multiturn(phase: BugKpopPhase<'_>) -> Result<KpopPrepared,
         store: phase.store_kpop,
     })
     .await;
-    timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
-        &prepared.kissconfig_backup,
-        &prepared.malvin_checks_backup,
+        &prepared.session_dotfile_backups,
         &prepared.artifacts.artifact_result_md(),
     )?;
     Ok(prepared)
@@ -103,7 +103,7 @@ async fn finish_bug_after_kpop(
     client: &mut AgentClient,
 ) -> Result<(), String> {
     ensure_kpop_solved(&prepared)?;
-    let (artifacts, _) = prepared.into_bug_followup_artifacts(BUG_FOLLOWUP_PLAN)?;
+    let artifacts = prepared.into_bug_followup_artifacts(BUG_FOLLOWUP_PLAN)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
 
     if !tail.bug.skip_pre_checks {
@@ -132,9 +132,15 @@ async fn run_bug_remediation_orchestrator(
     store: &PromptStore,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    let ctx = workflow_context(artifacts, store, "bug").map_err(|e: PromptError| e.0)?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-    let ctx = workflow_context(artifacts, store, "bug").map_err(|e: PromptError| e.0)?;
+    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+    let session_dotfile_backups = malvin::artifacts::SessionDotfileBackups::from_parts(
+        kissconfig_backup.clone(),
+        malvin_checks_backup.clone(),
+        kissignore_backup.clone(),
+    );
     let mut orch = Orchestrator {
         client,
         prompts: store,
@@ -148,18 +154,16 @@ async fn run_bug_remediation_orchestrator(
         progress_callback: Box::new(|msg: &str| {
             print_stdout_line(MALVIN_WHO, msg);
         }),
-        kissconfig_backup: kissconfig_backup.clone(),
-        malvin_checks_backup: malvin_checks_backup.clone(),
+        session_dotfile_backups: session_dotfile_backups.clone(),
     };
     let workflow_res = orch
         .run_bug_remediation_gap(&ctx, mid_pre_summary_repo_gates)
         .await
         .map_err(|e: WorkflowError| e.0);
-    timing_merge::merge_acp_with_kissconfig_restore(
+    timing_merge::merge_acp_with_workspace_session_restore(
         workflow_res,
         &artifacts.work_dir,
-        &kissconfig_backup,
-        &malvin_checks_backup,
+        &session_dotfile_backups,
     )
 }
 

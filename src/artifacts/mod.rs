@@ -1,17 +1,17 @@
 //! Run directories and log paths.
 
 mod dotfile_backup;
-mod kiss_config_backup;
-mod malvin_checks_backup;
 pub mod run_id;
+mod session_dotfiles;
 mod startup_tag;
 
-pub use kiss_config_backup::{
-    KissConfigBackup, backup_workspace_kissconfig_if_present, restore_workspace_kissconfig_backup,
-};
-pub use malvin_checks_backup::{
-    MalvinChecksBackup, backup_workspace_malvin_checks_if_present,
-    restore_workspace_malvin_checks_backup,
+pub use session_dotfiles::{
+    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+    backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
+    backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
+    restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
+    restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
 };
 
 use std::path::{Path, PathBuf};
@@ -144,27 +144,6 @@ pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
     }
     let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     Ok((text, work_dir_for_path(path)))
-}
-
-/// Restore workspace `.kissconfig` and `.malvin_checks` from session backups (see [`backup_workspace_kissconfig_if_present`], [`backup_workspace_malvin_checks_if_present`]).
-///
-/// Both restores are attempted; if both fail, errors are joined with `; `.
-///
-/// # Errors
-///
-/// Returns [`Err`] when either underlying restore fails; see those functions for failure cases.
-pub fn restore_workspace_session_dotfiles(
-    work_dir: &Path,
-    kissconfig_backup: &KissConfigBackup,
-    malvin_checks_backup: &MalvinChecksBackup,
-) -> Result<(), String> {
-    let k = restore_workspace_kissconfig_backup(work_dir, kissconfig_backup);
-    let m = restore_workspace_malvin_checks_backup(work_dir, malvin_checks_backup);
-    match (k, m) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
-        (Err(ke), Err(me)) => Err(format!("{ke}; {me}")),
-    }
 }
 
 /// Resolve CLI `request`: `@path` reads an existing file; otherwise treat as literal text.

@@ -64,3 +64,23 @@ pub fn acp_mock_do_tampers_malvin_checks_js_only() -> String {
     let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
     acp_mock_js("", &format!("{tamper}\n{msg}"))
 }
+
+pub fn acp_mock_do_tampers_kissignore_js() -> String {
+    acp_mock_do_tampers_dotfile_js(".kissignore")
+}
+
+pub fn acp_mock_do_tampers_kissignore_js_only() -> String {
+    let tamper = r"    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(process.cwd(), '.kissignore'), 'TAMPERED', 'utf8');";
+    let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
+    acp_mock_js("", &format!("{tamper}\n{msg}"))
+}
+
+pub fn acp_mock_do_creates_kissignore_js() -> String {
+    let create = r"    const fs = require('fs');
+    const path = require('path');
+    fs.writeFileSync(path.join(process.cwd(), '.kissignore'), 'CREATED', 'utf8');";
+    let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
+    acp_mock_js("", &format!("{create}\n{msg}"))
+}

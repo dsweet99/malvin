@@ -142,16 +142,11 @@ async fn kpop_round(
 
 fn restore_workspace_on_error(
     cwd: &Path,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
-    malvin_checks_backup: &crate::artifacts::MalvinChecksBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     primary_error: AgentError,
     phase: &str,
 ) -> AgentError {
-    match crate::artifacts::restore_workspace_session_dotfiles(
-        cwd,
-        kissconfig_backup,
-        malvin_checks_backup,
-    ) {
+    match crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups) {
         Ok(()) => primary_error,
         Err(restore_error) => AgentError(format!(
             "{}; workspace session restore failed ({phase}): {restore_error}",
@@ -163,8 +158,7 @@ fn restore_workspace_on_error(
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
-    malvin_checks_backup: &crate::artifacts::MalvinChecksBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
@@ -182,18 +176,13 @@ pub(crate) async fn run_kpop_flow_once(
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 args.cwd,
-                kissconfig_backup,
-                malvin_checks_backup,
+                session_dotfile_backups,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_session_dotfiles(
-            args.cwd,
-            kissconfig_backup,
-            malvin_checks_backup,
-        )
-        .map_err(AgentError)?;
+        crate::artifacts::restore_workspace_session_dotfiles(args.cwd, session_dotfile_backups)
+            .map_err(AgentError)?;
     }
 
     if let Some((learn_body, learn_log)) = args.learn {
@@ -220,18 +209,13 @@ pub(crate) async fn run_kpop_flow_once(
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     args.cwd,
-                    kissconfig_backup,
-                    malvin_checks_backup,
+                    session_dotfile_backups,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_session_dotfiles(
-                args.cwd,
-                kissconfig_backup,
-                malvin_checks_backup,
-            )
-            .map_err(AgentError)?;
+            crate::artifacts::restore_workspace_session_dotfiles(args.cwd, session_dotfile_backups)
+                .map_err(AgentError)?;
         }
     }
 
@@ -262,7 +246,7 @@ mod ops_body_tests {
     }
 }
 
-// Mirrors `run_kpop_flow_once`: ACP session plus per-prompt workspace restores for two dotfiles.
+// Mirrors `run_kpop_flow_once`: ACP session plus per-prompt workspace restores for session dotfiles.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
     client: &AgentClient,
@@ -271,8 +255,7 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
     learn: Option<(&str, &std::path::Path)>,
     learn_min_elapsed_ms: u64,
     state: &mut crate::kpop_progression::KpopMultiturnState<B>,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
-    malvin_checks_backup: &crate::artifacts::MalvinChecksBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, cwd).await?;
 
@@ -300,13 +283,12 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 cwd,
-                kissconfig_backup,
-                malvin_checks_backup,
+                session_dotfile_backups,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_session_dotfiles(cwd, kissconfig_backup, malvin_checks_backup)
+        crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups)
             .map_err(AgentError)?;
         let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
             .map_err(AgentError)?;
@@ -349,13 +331,12 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     cwd,
-                    kissconfig_backup,
-                    malvin_checks_backup,
+                    session_dotfile_backups,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_session_dotfiles(cwd, kissconfig_backup, malvin_checks_backup)
+            crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups)
                 .map_err(AgentError)?;
         }
     }

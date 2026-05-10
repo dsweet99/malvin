@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    KissConfigBackup, MalvinChecksBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
-    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts, resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
+    create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
@@ -105,24 +106,19 @@ pub struct KpopPrepared {
     pub(super) exp_log_path: PathBuf,
     pub(super) context: HashMap<String, String>,
     pub(super) text: String,
-    pub(super) kissconfig_backup: KissConfigBackup,
-    pub(super) malvin_checks_backup: MalvinChecksBackup,
+    pub(super) session_dotfile_backups: SessionDotfileBackups,
 }
 
 impl KpopPrepared {
     pub(in crate::cli) fn into_bug_followup_artifacts(
         self,
         plan_body: &str,
-    ) -> Result<(RunArtifacts, KissConfigBackup), String> {
-        let Self {
-            mut artifacts,
-            kissconfig_backup,
-            ..
-        } = self;
+    ) -> Result<RunArtifacts, String> {
+        let Self { mut artifacts, .. } = self;
         let plan_path = artifacts.run_dir.join("plan.md");
         std::fs::write(&plan_path, plan_body).map_err(|e| e.to_string())?;
         artifacts.plan_path = plan_path;
-        Ok((artifacts, kissconfig_backup))
+        Ok(artifacts)
     }
 }
 
@@ -130,7 +126,6 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
@@ -138,7 +133,14 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
     malvin::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+    let session_dotfile_backups = SessionDotfileBackups::from_parts(
+        kissconfig_backup,
+        malvin_checks_backup,
+        kissignore_backup,
+    );
     let mut context = workflow_context_paths_only(&artifacts, "kpop");
     context.insert(
         "quality_gates".to_string(),
@@ -149,8 +151,7 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
         exp_log_path,
         context,
         text,
-        kissconfig_backup,
-        malvin_checks_backup,
+        session_dotfile_backups,
     })
 }
 
@@ -181,8 +182,7 @@ pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<
             learn_ref,
             LEARN_MIN_ELAPSED_MS,
             ctx.state,
-            &ctx.prepared.kissconfig_backup,
-            &ctx.prepared.malvin_checks_backup,
+            &ctx.prepared.session_dotfile_backups,
         )
         .await
         .map_err(|e| e.0);
@@ -232,11 +232,10 @@ pub async fn run_kpop(
     })
     .await;
 
-    let r = timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    let r = timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
-        &prepared.kissconfig_backup,
-        &prepared.malvin_checks_backup,
+        &prepared.session_dotfile_backups,
         &prepared.artifacts.artifact_result_md(),
     );
     if r.is_ok() {
@@ -273,7 +272,7 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
     let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);

@@ -4,7 +4,10 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{KissConfigBackup, MalvinChecksBackup, restore_workspace_session_dotfiles};
+use malvin::artifacts::{
+    KissConfigBackup, SessionDotfileBackups, restore_workspace_kissconfig_backup,
+    restore_workspace_session_dotfiles,
+};
 use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
@@ -38,25 +41,30 @@ pub fn merge_acp_with_kissconfig_restore(
     primary: Result<(), String>,
     work_dir: &Path,
     kissconfig_backup: &KissConfigBackup,
-    malvin_checks_backup: &MalvinChecksBackup,
 ) -> Result<(), String> {
-    let restore_res =
-        restore_workspace_session_dotfiles(work_dir, kissconfig_backup, malvin_checks_backup);
+    let restore_res = restore_workspace_kissconfig_backup(work_dir, kissconfig_backup);
+    prefer_primary_over_secondary(primary, restore_res, "kissconfig restore failed")
+}
+
+pub fn merge_acp_with_workspace_session_restore(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    session_dotfile_backups: &SessionDotfileBackups,
+) -> Result<(), String> {
+    let restore_res = restore_workspace_session_dotfiles(work_dir, session_dotfile_backups);
     prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed")
 }
 
-pub fn merge_acp_with_kissconfig_restore_and_check_abort(
+pub fn merge_acp_with_workspace_session_restore_and_check_abort(
     primary: Result<(), String>,
     work_dir: &Path,
-    kissconfig_backup: &KissConfigBackup,
-    malvin_checks_backup: &MalvinChecksBackup,
+    session_dotfile_backups: &SessionDotfileBackups,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result = merge_acp_with_kissconfig_restore(
+    let merge_result = merge_acp_with_workspace_session_restore(
         primary,
         work_dir,
-        kissconfig_backup,
-        malvin_checks_backup,
+        session_dotfile_backups,
     );
     if let Some(abort) = abort_message_from_result_md(result_path) {
         return match merge_result {
@@ -73,6 +81,8 @@ pub fn merge_acp_with_kissconfig_restore_and_check_abort(
 fn duplicate_safe_restore_error(merge_error: &str) -> String {
     if merge_error.contains("workspace session restore failed:")
         || merge_error.contains("kissconfig restore failed:")
+        || merge_error.contains("malvin_checks restore failed:")
+        || merge_error.contains("kissignore restore failed:")
     {
         merge_error.to_string()
     } else {
@@ -171,6 +181,7 @@ mod tests {
     #[test]
     fn kiss_stringify_timing_merge_units() {
         let _ = stringify!(crate::cli::timing_merge::emit_run_timing_json_only_after_acp);
+        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     }
 
     #[test]

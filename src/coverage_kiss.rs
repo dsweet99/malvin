@@ -28,7 +28,11 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::restore_workspace_kissconfig_backup);
     let _ = stringify!(crate::artifacts::backup_workspace_malvin_checks_if_present);
     let _ = stringify!(crate::artifacts::restore_workspace_malvin_checks_backup);
+    let _ = stringify!(crate::artifacts::backup_workspace_kissignore_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_kissignore_backup);
     let _ = stringify!(crate::artifacts::restore_workspace_session_dotfiles);
+    let _ = stringify!(crate::artifacts::SessionDotfileBackups::snapshot);
+    let _ = stringify!(crate::artifacts::SessionDotfileBackups::from_parts);
 }
 
 #[test]

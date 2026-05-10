@@ -5,9 +5,9 @@ use std::sync::{Arc, Mutex};
 
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
-    KissConfigBackup, MalvinChecksBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
-    backup_workspace_malvin_checks_if_present, create_run_artifacts,
-    restore_workspace_session_dotfiles,
+    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
+    create_run_artifacts, restore_workspace_session_dotfiles,
 };
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::run_timing::{RunTiming, TimingPhase};
@@ -71,14 +71,20 @@ fn start_plan_workspace_session(
     artifacts: &RunArtifacts,
     shared: &SharedOpts,
     user_plan_path: &Path,
-) -> Result<(KissConfigBackup, MalvinChecksBackup), String> {
+) -> Result<SessionDotfileBackups, String> {
     client.ensure_authenticated().map_err(|e| e.to_string())?;
+    malvin::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
     let startup_tag = user_plan_path.display().to_string();
     run_emit::emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &startup_tag)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    Ok((kissconfig_backup, malvin_checks_backup))
+    Ok(SessionDotfileBackups::from_parts(
+        kissconfig_backup,
+        malvin_checks_backup,
+        kissignore_backup,
+    ))
 }
 
 fn build_rendered_plan_prompt(
@@ -99,11 +105,10 @@ fn set_plan_timing_label(timing: &Arc<Mutex<RunTiming>>) {
 
 fn restore_after_plan_prompt(
     work_dir: &Path,
-    kissconfig_backup: &KissConfigBackup,
-    malvin_checks_backup: &MalvinChecksBackup,
+    session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    restore_workspace_session_dotfiles(work_dir, kissconfig_backup, malvin_checks_backup)
-        .map_err(|e| format!("workspace session restore failed after plan prompt: {e}"))
+    restore_workspace_session_dotfiles(work_dir, session_dotfile_backups)
+    .map_err(|e| format!("workspace session restore failed after plan prompt: {e}"))
 }
 
 fn pair_run_and_restore(
@@ -142,8 +147,7 @@ async fn plan_coder_prompt(
 
 struct PlanReviewOnce<'a> {
     artifacts: &'a RunArtifacts,
-    kissconfig_backup: &'a KissConfigBackup,
-    malvin_checks_backup: &'a MalvinChecksBackup,
+    session_dotfile_backups: &'a SessionDotfileBackups,
     prompt: &'a str,
 }
 
@@ -166,8 +170,7 @@ async fn run_plan_review_once(
     let run_res = plan_coder_prompt(client, request.artifacts, request.prompt).await;
     let restore_res = restore_after_plan_prompt(
         &request.artifacts.work_dir,
-        request.kissconfig_backup,
-        request.malvin_checks_backup,
+        request.session_dotfile_backups,
     );
     let acp_result = pair_run_and_restore(run_res, restore_res);
 
@@ -188,24 +191,22 @@ pub async fn run_plan(
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
-        let (kissconfig_backup, malvin_checks_backup) =
+        let session_dotfile_backups =
             start_plan_workspace_session(&mut client, &artifacts, shared, &user_plan_path)?;
         let prompt = build_rendered_plan_prompt(&artifacts, &user_plan_path)?;
         let wf_res = run_plan_review_once(
             &mut client,
             PlanReviewOnce {
                 artifacts: &artifacts,
-                kissconfig_backup: &kissconfig_backup,
-                malvin_checks_backup: &malvin_checks_backup,
+                session_dotfile_backups: &session_dotfile_backups,
                 prompt: &prompt,
             },
         )
         .await;
-        timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+        timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
             wf_res,
             &artifacts.work_dir,
-            &kissconfig_backup,
-            &malvin_checks_backup,
+            &session_dotfile_backups,
             &artifacts.artifact_result_md(),
         )?;
         print_stdout_line(MALVIN_WHO, "DONE");

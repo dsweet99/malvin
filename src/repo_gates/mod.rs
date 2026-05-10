@@ -8,6 +8,10 @@ use discover_py::python_ruff_and_pytest_flags;
 
 pub const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
+pub const KISSIGNORE_FILE: &str = ".kissignore";
+
+pub const KISSCONFIG_FILE: &str = ".kissconfig";
+
 pub const KISS_CHECK_COMMAND: &str = "kiss check";
 
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";

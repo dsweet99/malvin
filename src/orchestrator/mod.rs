@@ -1,5 +1,5 @@
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::{KissConfigBackup, MalvinChecksBackup, RunArtifacts};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
@@ -24,19 +24,16 @@ use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_s
 
 use workflow_context as workflow_context_inner;
 
-pub type PreSummaryMidFn =
-    for<'a> fn(
-        &'a mut AgentClient,
-        &'a RunArtifacts,
-        &'a KissConfigBackup,
-        &'a MalvinChecksBackup,
-    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+pub type PreSummaryMidFn = for<'a> fn(
+    &'a mut AgentClient,
+    &'a RunArtifacts,
+    &'a SessionDotfileBackups,
+) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
-    _: &'a KissConfigBackup,
-    _: &'a MalvinChecksBackup,
+    _: &'a SessionDotfileBackups,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(async { Ok(()) })
 }
@@ -75,8 +72,7 @@ pub struct Orchestrator<'a> {
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
-    pub kissconfig_backup: KissConfigBackup,
-    pub malvin_checks_backup: MalvinChecksBackup,
+    pub session_dotfile_backups: SessionDotfileBackups,
 }
 
 /// Returns true if learn should run given threshold and elapsed time.
@@ -152,8 +148,7 @@ impl Orchestrator<'_> {
                     mid(
                         self.client,
                         self.artifacts,
-                        &self.kissconfig_backup,
-                        &self.malvin_checks_backup,
+                        &self.session_dotfile_backups,
                     )
                     .await
                     .map_err(WorkflowError)?;
@@ -229,10 +224,9 @@ impl Orchestrator<'_> {
             )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-        let restore_result = crate::artifacts::restore_workspace_session_dotfiles(
+        let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
             &self.artifacts.work_dir,
-            &self.kissconfig_backup,
-            &self.malvin_checks_backup,
+            &self.session_dotfile_backups.kissconfig,
         )
         .map_err(WorkflowError);
 

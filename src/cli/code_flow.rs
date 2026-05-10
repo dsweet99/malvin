@@ -1,8 +1,8 @@
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present,
-    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
-    resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
+    create_run_artifacts_from_text, resolve_user_request,
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
@@ -123,7 +123,6 @@ pub async fn run_code(
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
-        let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
         if !code.skip_pre_checks {
             run_repo_workspace_gates(
                 &artifacts.work_dir,
@@ -132,13 +131,20 @@ pub async fn run_code(
             )?;
         }
         client.ensure_authenticated().map_err(|e| e.to_string())?;
+        let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
+        let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
         let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+        let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+        let session_dotfile_backups = SessionDotfileBackups::from_parts(
+            kissconfig_backup.clone(),
+            malvin_checks_backup.clone(),
+            kissignore_backup.clone(),
+        );
         run_emit::emit_run_startup_sequence(
             &artifacts,
             shared.tee_startup_stdout(),
             &code.request,
         )?;
-        let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
         let workflow_res = {
             let mut orch = Orchestrator {
                 client: &mut client,
@@ -153,8 +159,7 @@ pub async fn run_code(
                 progress_callback: Box::new(|msg: &str| {
                     print_stdout_line(MALVIN_WHO, msg);
                 }),
-                kissconfig_backup: kissconfig_backup.clone(),
-                malvin_checks_backup: malvin_checks_backup.clone(),
+                session_dotfile_backups: session_dotfile_backups.clone(),
             };
             orch.run_with_pre_summary_gap(
                 &ctx,
@@ -166,8 +171,7 @@ pub async fn run_code(
         timing_merge::merge_acp_with_kissconfig_restore(
             workflow_res,
             &artifacts.work_dir,
-            &kissconfig_backup,
-            &malvin_checks_backup,
+            &session_dotfile_backups.kissconfig,
         )?;
         print_stdout_line(MALVIN_WHO, "DONE");
         Ok(())

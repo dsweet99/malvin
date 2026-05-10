@@ -50,6 +50,7 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
     let _ = stringify!(crate::cli::timing_merge::prefer_primary_over_secondary);
+    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     let _ = stringify!(
         crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed

@@ -28,10 +28,10 @@ When presented with failures or violations, respond to them earnestly. Improve t
 
 ## Nota Bene & Hard Requirements
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
- about "pre-existing" problems. We're here to work. To fix. Be tenacious. There's no excuse
+ about "pre-existing" problems. We're here to work. To fix. Be tenacious and intrepid. There's no excuse
  for not getting ALL checks and tests to pass on ALL files.
-Don't touch .kissconfig ever.
-- Don't touch .kissignore unless you think you've found a bug in `kiss check`.
+Do not modify protected workspace files: `.kissconfig`, `.kissignore`, or `.malvin_checks`. Malvin snapshots them before agent work and restores them after each coder step, so edits to those files will not stick; fix violations in application code instead.
+Once in a while, `kiss check` will show *many* violations. Don't get overwhelmed or intimidated by that. Keep your composure. Maybe use your TODO list. Maybe make a plan. Remember that a journey of a thousand miles begins with a single step.
 Don't add `# noqa` except to ensure correct functioning of the code.
 Don't cheat the tests. Make earnest attempts to pass the linters and unit tests in the spirit
  in which they were designed.

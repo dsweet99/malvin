@@ -9,9 +9,9 @@ use super::{WorkflowCliOptions, repo_checks};
 use clap::Args;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present,
-    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
-    resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
+    create_run_artifacts_from_text, resolve_user_request,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
 use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
@@ -90,7 +90,6 @@ pub async fn run_do(
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let (combined, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
         let (combined, header, user) =
@@ -102,20 +101,26 @@ pub async fn run_do(
         (combined, (header, user))
     };
 
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let coder = DoCoderRun {
         combined,
         header_user_for_trace: header_user,
         skip_repo_style,
     };
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+    let session_dotfile_backups = SessionDotfileBackups::from_parts(
+        kissconfig_backup,
+        malvin_checks_backup,
+        kissignore_backup,
+    );
     super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    let r = timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    let r = timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
         &artifacts.work_dir,
-        &kissconfig_backup,
-        &malvin_checks_backup,
+        &session_dotfile_backups,
         &artifacts.artifact_result_md(),
     );
     if r.is_ok() {
