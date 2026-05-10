@@ -9,7 +9,8 @@ use super::tests_gates_helpers::{
     workspace_git_kissconfig_90_cargo_rs_py, workspace_git_malvin_checks_line,
     workspace_git_minimal_cargo_rs_py_tests, write_executable_script, write_trace_echo_script,
 };
-use super::{RepoGateOutput, prepare_repo_workspace, run_repo_workspace_gates};
+use super::workspace::prepare_repo_workspace;
+use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {

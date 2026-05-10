@@ -3,6 +3,7 @@ fn kiss_stringify_tidy_flow_units() {
     let _ = stringify!(crate::cli::tidy_flow::TidyArgs);
     let _ = stringify!(crate::cli::tidy_flow::TidyAcpInput);
     let _ = stringify!(crate::cli::tidy_flow::prepare_tidy_prompt_store);
+    let _ = stringify!(crate::cli::tidy_flow::TidyStartup);
     let _ = stringify!(crate::cli::tidy_flow::compose_tidy_prompt);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_prompt);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_acp);

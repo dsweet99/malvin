@@ -12,7 +12,7 @@ use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 use malvin::run_timing::TimingPhase;
 
 use super::repo_checks::{
-    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, prepare_repo_workspace,
+    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
     run_repo_workspace_gates_with_details,
 };
 use super::timing_merge;
@@ -20,14 +20,21 @@ use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
 };
 
-type TidyRunPrep = (
-    AgentClient,
-    RunArtifacts,
-    SessionDotfileBackups,
-    PromptStore,
-    HashMap<String, String>,
-    bool,
-);
+pub enum TidyStartup {
+    /// Workspace gates (`kiss check`, `.malvin_checks`, …) already passed; skip coder session.
+    SkipAgent {
+        artifacts: RunArtifacts,
+        session_dotfile_backups: SessionDotfileBackups,
+    },
+    RunAgent {
+        client: AgentClient,
+        artifacts: RunArtifacts,
+        session_dotfile_backups: SessionDotfileBackups,
+        store: PromptStore,
+        context: HashMap<String, String>,
+        run_learn: bool,
+    },
+}
 
 pub struct TidyAcpInput<'a> {
     pub(crate) client: &'a mut AgentClient,
@@ -338,39 +345,56 @@ pub fn prepare_tidy_run(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     run_learn: bool,
-) -> Result<TidyRunPrep, String> {
-    let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-
+) -> Result<TidyStartup, String> {
     let artifacts =
         create_run_artifacts_from_text("tidy", Some(Path::new("."))).map_err(|e| e.to_string())?;
-    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     malvin::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
-    prepare_repo_workspace(
+
+    let gates_ok = run_repo_workspace_gates(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,
         Some(&artifacts.run_dir),
-    )?;
+    )
+    .is_ok();
+
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
+
+    if gates_ok {
+        emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
+        let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+        let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+        let session_dotfile_backups = SessionDotfileBackups::from_parts(
+            kissconfig_backup,
+            malvin_checks_backup,
+            kissignore_backup,
+        );
+        return Ok(TidyStartup::SkipAgent {
+            artifacts,
+            session_dotfile_backups,
+        });
+    }
+
+    let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
     emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
-    let (store, context) = tidy_prompt_context(&artifacts)?;
     let session_dotfile_backups = SessionDotfileBackups::from_parts(
         kissconfig_backup,
         malvin_checks_backup,
         kissignore_backup,
     );
-
-    Ok((
+    let (store, context) = tidy_prompt_context(&artifacts)?;
+    Ok(TidyStartup::RunAgent {
         client,
         artifacts,
         session_dotfile_backups,
         store,
         context,
         run_learn,
-    ))
+    })
 }
 
 pub fn merge_tidy_timing(
