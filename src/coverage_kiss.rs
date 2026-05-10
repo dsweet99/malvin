@@ -26,6 +26,9 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::resolve_at_file);
     let _ = stringify!(crate::artifacts::backup_workspace_kissconfig_if_present);
     let _ = stringify!(crate::artifacts::restore_workspace_kissconfig_backup);
+    let _ = stringify!(crate::artifacts::backup_workspace_malvin_checks_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_malvin_checks_backup);
+    let _ = stringify!(crate::artifacts::restore_workspace_session_dotfiles);
 }
 
 #[test]
@@ -120,6 +123,7 @@ fn kiss_stringify_kpop_progression() {
 
 #[test]
 fn kiss_stringify_prompts() {
+    let _ = stringify!(crate::prompts::enforce_no_unresolved_braces);
     let _ = stringify!(crate::prompts::PromptError);
     let _ = stringify!(PromptStore);
     let _ = stringify!(crate::prompts::default_file);

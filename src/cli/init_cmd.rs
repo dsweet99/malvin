@@ -5,7 +5,10 @@ use std::process::Command;
 
 use clap::Args;
 use malvin::acp::CoderPromptOptions;
-use malvin::artifacts::{backup_workspace_kissconfig_if_present, create_run_artifacts_from_text};
+use malvin::artifacts::{
+    backup_workspace_kissconfig_if_present, backup_workspace_malvin_checks_if_present,
+    create_run_artifacts_from_text,
+};
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 use malvin::orchestrator::workflow_context;
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
@@ -125,6 +128,7 @@ async fn run_init_summary_phase(
     store
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
@@ -177,6 +181,7 @@ async fn run_init_summary_phase(
         timing_out,
         &artifacts.work_dir,
         &kissconfig_backup,
+        &malvin_checks_backup,
         &artifacts.artifact_result_md(),
     )
 }

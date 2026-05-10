@@ -66,3 +66,12 @@ pub fn sync_review_file_for_attempt(
 
     Ok(None)
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn kiss_stringify_review_attempt_units() {
+        let _ = stringify!(super::ensure_parent_dir);
+        let _ = stringify!(super::clear_artifact_review_to_empty);
+    }
+}

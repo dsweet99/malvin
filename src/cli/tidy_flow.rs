@@ -17,7 +17,7 @@ pub async fn run_tidy(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let (mut client, artifacts, kissconfig_backup, store, context, run_learn) =
+    let (mut client, artifacts, kissconfig_backup, malvin_checks_backup, store, context, run_learn) =
         prepare_tidy_run(shared, workflow, !tidy.no_learn)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
@@ -36,10 +36,16 @@ pub async fn run_tidy(
             &mut input,
             prompt.trim_end(),
             &kissconfig_backup,
+            &malvin_checks_backup,
             tidy.max_loops,
         )
         .await;
-        merge_tidy_timing(result, &artifacts, &kissconfig_backup)?;
+        merge_tidy_timing(
+            result,
+            &artifacts,
+            &kissconfig_backup,
+            &malvin_checks_backup,
+        )?;
         print_stdout_line(MALVIN_WHO, "DONE");
         Ok(())
     }

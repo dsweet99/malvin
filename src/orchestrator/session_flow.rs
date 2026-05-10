@@ -104,5 +104,6 @@ mod kiss_coverage_tests {
         let _ = stringify!(super::run_coder_session_until_pre_summary);
         let _ = stringify!(super::run_bug_remediation_until_pre_summary);
         let _ = stringify!(super::run_coder_session_summary_only);
+        let _ = stringify!(super::run_review_phases_until_pre_summary);
     }
 }

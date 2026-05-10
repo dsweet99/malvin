@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    KissConfigBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
-    create_kpop_run_artifacts, resolve_user_request,
+    KissConfigBackup, MalvinChecksBackup, RunArtifacts, backup_workspace_kissconfig_if_present,
+    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts, resolve_user_request,
 };
 use malvin::kpop_creative_enabled;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
@@ -106,6 +106,7 @@ pub struct KpopPrepared {
     pub(super) context: HashMap<String, String>,
     pub(super) text: String,
     pub(super) kissconfig_backup: KissConfigBackup,
+    pub(super) malvin_checks_backup: MalvinChecksBackup,
 }
 
 impl KpopPrepared {
@@ -129,7 +130,7 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path
         .parent()
@@ -137,6 +138,7 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     std::fs::create_dir_all(exp_parent).map_err(|e| e.to_string())?;
     std::fs::write(&exp_log_path, "").map_err(|e| e.to_string())?;
     malvin::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
+    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let mut context = workflow_context_paths_only(&artifacts, "kpop");
     context.insert(
         "quality_gates".to_string(),
@@ -148,6 +150,7 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
         context,
         text,
         kissconfig_backup,
+        malvin_checks_backup,
     })
 }
 
@@ -179,6 +182,7 @@ pub async fn kpop_run_acp_multiturn(ctx: KpopAcpMultiturnCtx<'_, '_>) -> Result<
             LEARN_MIN_ELAPSED_MS,
             ctx.state,
             &ctx.prepared.kissconfig_backup,
+            &ctx.prepared.malvin_checks_backup,
         )
         .await
         .map_err(|e| e.0);
@@ -232,6 +236,7 @@ pub async fn run_kpop(
         acp_result,
         &prepared.artifacts.work_dir,
         &prepared.kissconfig_backup,
+        &prepared.malvin_checks_backup,
         &prepared.artifacts.artifact_result_md(),
     );
     if r.is_ok() {

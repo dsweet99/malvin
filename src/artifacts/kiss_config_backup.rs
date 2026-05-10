@@ -1,9 +1,18 @@
 //! Snapshot and restore workspace `.kissconfig` for long-running CLI workflows.
 
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
+use super::dotfile_backup::{
+    DotfileBackupLabels, allocate_backup_dir as allocate_dotfile_backup_dir,
+    remove_if_exists as remove_dotfile_if_exists,
+};
 use super::run_id::random_alnum;
+
+const LABELS: DotfileBackupLabels = DotfileBackupLabels {
+    mkdir: "kissconfig backup mkdir",
+    collision: "kissconfig backup mkdir",
+    restore: "kissconfig restore",
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KissConfigBackup {
@@ -28,30 +37,11 @@ pub fn backup_workspace_kissconfig_if_present_with_id(
     let root = crate::prompts::user_home_dir()
         .join(".malvin")
         .join("kissconfigs");
-    let dest_dir = allocate_backup_dir(&root, &mut generate_id)?;
+    let dest_dir = allocate_dotfile_backup_dir(&root, &mut generate_id, &LABELS)?;
     let dest_file = dest_dir.join(".kissconfig");
     std::fs::copy(&kissconfig_src, &dest_file)
         .map_err(|e| format!(".kissconfig backup copy: {e}"))?;
     Ok(KissConfigBackup::Present(dest_file))
-}
-
-fn allocate_backup_dir(
-    root: &Path,
-    generate_id: &mut impl FnMut(usize) -> String,
-) -> Result<PathBuf, String> {
-    std::fs::create_dir_all(root).map_err(|e| format!("kissconfig backup mkdir: {e}"))?;
-    let mut tries = 0usize;
-    while tries < 16 {
-        let candidate = root.join(generate_id(tries));
-        match std::fs::create_dir(&candidate) {
-            Ok(()) => return Ok(candidate),
-            Err(err) if err.kind() == ErrorKind::AlreadyExists => {
-                tries += 1;
-            }
-            Err(err) => return Err(format!("kissconfig backup mkdir: {err}")),
-        }
-    }
-    Err("kissconfig backup mkdir: too many id collisions".to_string())
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -60,25 +50,15 @@ pub fn restore_workspace_kissconfig_backup(
     backup: &KissConfigBackup,
 ) -> Result<(), String> {
     match backup {
-        KissConfigBackup::Missing => remove_if_exists(&work_dir.join(".kissconfig")),
+        KissConfigBackup::Missing => {
+            remove_dotfile_if_exists(&work_dir.join(".kissconfig"), LABELS.restore)
+        }
         KissConfigBackup::Present(backup_path) => {
             let dst = work_dir.join(".kissconfig");
             std::fs::copy(backup_path, &dst).map_err(|e| format!("kissconfig restore: {e}"))?;
             Ok(())
         }
     }
-}
-
-fn remove_if_exists(path: &Path) -> Result<(), String> {
-    if path.exists() {
-        let metadata = std::fs::metadata(path).map_err(|e| format!("kissconfig restore: {e}"))?;
-        if metadata.is_dir() {
-            std::fs::remove_dir_all(path).map_err(|e| format!("kissconfig restore: {e}"))?;
-        } else {
-            std::fs::remove_file(path).map_err(|e| format!("kissconfig restore: {e}"))?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -91,29 +71,7 @@ mod tests {
         KissConfigBackup, backup_workspace_kissconfig_if_present,
         backup_workspace_kissconfig_if_present_with_id, restore_workspace_kissconfig_backup,
     };
-
-    fn with_isolated_home<F>(f: F)
-    where
-        F: FnOnce(&Path),
-    {
-        let _lock = crate::test_utils::test_env_lock();
-        let tmp = tempfile::tempdir().unwrap();
-        let home = tmp.path().join("home");
-        std::fs::create_dir_all(&home).unwrap();
-        let old_home = std::env::var_os("HOME");
-        unsafe {
-            std::env::set_var("HOME", &home);
-        }
-        let work = tmp.path().join("repo");
-        std::fs::create_dir_all(&work).unwrap();
-        f(&work);
-        unsafe {
-            match old_home {
-                Some(h) => std::env::set_var("HOME", h),
-                None => std::env::remove_var("HOME"),
-            }
-        }
-    }
+    use crate::artifacts::dotfile_backup::test_support::with_isolated_home;
 
     #[test]
     fn kissconfig_backup_skips_when_workspace_file_missing() {
@@ -201,6 +159,8 @@ mod tests {
         let _ = stringify!(
             crate::artifacts::kiss_config_backup::backup_workspace_kissconfig_if_present
         );
+        let _ = stringify!(crate::artifacts::kiss_config_backup::allocate_backup_dir);
+        let _ = stringify!(crate::artifacts::kiss_config_backup::remove_if_exists);
         let _ =
             stringify!(crate::artifacts::kiss_config_backup::restore_workspace_kissconfig_backup);
     }

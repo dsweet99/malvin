@@ -9,7 +9,8 @@ use super::{WorkflowCliOptions, repo_checks};
 use clap::Args;
 use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
+    RunArtifacts, backup_workspace_kissconfig_if_present,
+    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
 use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
@@ -89,6 +90,7 @@ pub async fn run_do(
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let (combined, header_user) = if do_args.cooked {
         let store = prepare_do_prompt_store()?;
         let (combined, header, user) =
@@ -113,6 +115,7 @@ pub async fn run_do(
         acp_res,
         &artifacts.work_dir,
         &kissconfig_backup,
+        &malvin_checks_backup,
         &artifacts.artifact_result_md(),
     );
     if r.is_ok() {

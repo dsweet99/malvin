@@ -1,6 +1,7 @@
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
+    RunArtifacts, backup_workspace_kissconfig_if_present,
+    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     resolve_user_request,
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
@@ -122,6 +123,7 @@ pub async fn run_code(
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
+        let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
         if !code.skip_pre_checks {
             run_repo_workspace_gates(
                 &artifacts.work_dir,
@@ -152,6 +154,7 @@ pub async fn run_code(
                     print_stdout_line(MALVIN_WHO, msg);
                 }),
                 kissconfig_backup: kissconfig_backup.clone(),
+                malvin_checks_backup: malvin_checks_backup.clone(),
             };
             orch.run_with_pre_summary_gap(
                 &ctx,
@@ -164,6 +167,7 @@ pub async fn run_code(
             workflow_res,
             &artifacts.work_dir,
             &kissconfig_backup,
+            &malvin_checks_backup,
         )?;
         print_stdout_line(MALVIN_WHO, "DONE");
         Ok(())

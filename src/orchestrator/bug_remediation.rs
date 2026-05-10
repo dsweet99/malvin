@@ -24,6 +24,7 @@ pub async fn run_bug_remediation_gap(
                     orchestrator.client,
                     orchestrator.artifacts,
                     &orchestrator.kissconfig_backup,
+                    &orchestrator.malvin_checks_backup,
                 )
                 .await
                 .map_err(WorkflowError)?;

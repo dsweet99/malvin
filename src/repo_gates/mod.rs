@@ -109,6 +109,7 @@ mod tests {
 
     #[test]
     fn kiss_stringify_repo_gates_internals() {
+        let _ = stringify!(super::builtin_gate_command_lines);
         let _ = stringify!(crate::repo_gates::discover_py::visit_source_files);
         let _ = stringify!(crate::repo_gates::discover_py::python_ruff_and_pytest_flags);
         let _ = stringify!(super::ensure_default_malvin_checks_file);

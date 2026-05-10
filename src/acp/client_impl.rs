@@ -299,10 +299,12 @@ impl AgentClient {
         workspace_restore: ReviewerRestorePolicy,
     ) -> Result<(), AgentError> {
         let backup = match workspace_restore {
-            ReviewerRestorePolicy::RestoreWorkspace => Some(
+            ReviewerRestorePolicy::RestoreWorkspace => Some((
                 crate::artifacts::backup_workspace_kissconfig_if_present(pair.cwd)
                     .map_err(AgentError)?,
-            ),
+                crate::artifacts::backup_workspace_malvin_checks_if_present(pair.cwd)
+                    .map_err(AgentError)?,
+            )),
             ReviewerRestorePolicy::NoRestore => None,
         };
         let mut last_error = String::new();
@@ -312,9 +314,13 @@ impl AgentClient {
             let prompt_result = run_reviewer_pair_once(self, &pair, pair_id).await;
             match prompt_result {
                 Ok(()) => {
-                    if let Some(backup) = &backup {
-                        crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
-                            .map_err(AgentError)?;
+                    if let Some((kiss_b, malvin_b)) = &backup {
+                        crate::artifacts::restore_workspace_session_dotfiles(
+                            pair.cwd,
+                            kiss_b,
+                            malvin_b,
+                        )
+                        .map_err(AgentError)?;
                     }
                     return Ok(());
                 }
@@ -322,8 +328,8 @@ impl AgentClient {
                     last_error = err.0;
                 }
             }
-            if let Some(backup) = &backup {
-                crate::artifacts::restore_workspace_kissconfig_backup(pair.cwd, backup)
+            if let Some((kiss_b, malvin_b)) = &backup {
+                crate::artifacts::restore_workspace_session_dotfiles(pair.cwd, kiss_b, malvin_b)
                     .map_err(AgentError)?;
             }
             if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt).await? {
@@ -347,6 +353,7 @@ impl AgentClient {
         &mut self,
         flow: &KpopFlowOnceArgs<'_>,
         kissconfig_backup: &crate::artifacts::KissConfigBackup,
+        malvin_checks_backup: &crate::artifacts::MalvinChecksBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -354,7 +361,7 @@ impl AgentClient {
         let mut attempts_used = 0_u32;
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
-            match run_kpop_flow_once(self, flow, kissconfig_backup).await {
+            match run_kpop_flow_once(self, flow, kissconfig_backup, malvin_checks_backup).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
@@ -379,6 +386,7 @@ impl AgentClient {
     /// # Errors
     ///
     /// Returns [`AgentError`] when spawn or a prompt fails after retries.
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_kpop_multiturn<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
         &mut self,
         cwd: &Path,
@@ -387,6 +395,7 @@ impl AgentClient {
         learn_min_elapsed_ms: u64,
         state: &mut crate::kpop_progression::KpopMultiturnState<B>,
         kissconfig_backup: &crate::artifacts::KissConfigBackup,
+        malvin_checks_backup: &crate::artifacts::MalvinChecksBackup,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
         let mut last_error = String::new();
@@ -402,6 +411,7 @@ impl AgentClient {
                 learn_min_elapsed_ms,
                 state,
                 kissconfig_backup,
+                malvin_checks_backup,
             )
             .await
             {

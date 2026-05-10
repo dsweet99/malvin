@@ -18,6 +18,7 @@ fn health_snapshot(t0: Instant, cpu: u64, threads: u32, ctxt: Option<u64>) -> Ch
 #[test]
 fn kiss_stringify_silence_outcome_from_pair() {
     let _ = stringify!(super::silence_outcome_from_pair);
+    let _ = stringify!(crate::child_health::silence_outcome_from_pair);
 }
 
 #[test]

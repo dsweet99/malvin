@@ -1,10 +1,5 @@
-//! Implement → review loops.
-//!
-//! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
-//! attribute coverage consistently; see `.kissignore`.
-
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::{KissConfigBackup, RunArtifacts};
+use crate::artifacts::{KissConfigBackup, MalvinChecksBackup, RunArtifacts};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
@@ -34,22 +29,22 @@ pub type PreSummaryMidFn =
         &'a mut AgentClient,
         &'a RunArtifacts,
         &'a KissConfigBackup,
+        &'a MalvinChecksBackup,
     ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
     _: &'a KissConfigBackup,
+    _: &'a MalvinChecksBackup,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(async { Ok(()) })
 }
 
-/// Workflow stopped after `max_loops` without LGTM.
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
 pub struct WorkflowError(pub String);
 
-/// Prefer workflow or session-teardown errors over run-timing artifact errors.
 pub(crate) fn prefer_primary_errors_over_timing(
     workflow_result: Result<(), WorkflowError>,
     end_result: Result<(), WorkflowError>,
@@ -63,7 +58,6 @@ pub(crate) fn prefer_primary_errors_over_timing(
     }
 }
 
-/// Review loop configuration.
 #[derive(Debug, Clone)]
 pub struct WorkflowConfig {
     pub max_loops: usize,
@@ -75,15 +69,14 @@ pub struct WorkflowConfig {
     pub skip_check_plan: bool,
 }
 
-/// Runs implement, two review phases, and optional learn pass.
 pub struct Orchestrator<'a> {
     pub client: &'a mut AgentClient,
     pub prompts: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
-    /// Snapshot of workspace `.kissconfig` under `~/.malvin/kissconfigs/`, restored after each coder prompt and reviewer work.
     pub kissconfig_backup: KissConfigBackup,
+    pub malvin_checks_backup: MalvinChecksBackup,
 }
 
 /// Returns true if learn should run given threshold and elapsed time.
@@ -156,9 +149,14 @@ impl Orchestrator<'_> {
             Ok(()) => {
                 async {
                     run_coder_session_until_pre_summary(self, context).await?;
-                    mid(self.client, self.artifacts, &self.kissconfig_backup)
-                        .await
-                        .map_err(WorkflowError)?;
+                    mid(
+                        self.client,
+                        self.artifacts,
+                        &self.kissconfig_backup,
+                        &self.malvin_checks_backup,
+                    )
+                    .await
+                    .map_err(WorkflowError)?;
                     run_coder_session_summary_only(self, context).await
                 }
                 .await
@@ -231,9 +229,10 @@ impl Orchestrator<'_> {
             )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-        let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
+        let restore_result = crate::artifacts::restore_workspace_session_dotfiles(
             &self.artifacts.work_dir,
             &self.kissconfig_backup,
+            &self.malvin_checks_backup,
         )
         .map_err(WorkflowError);
 

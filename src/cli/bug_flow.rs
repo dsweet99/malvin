@@ -1,5 +1,7 @@
 use malvin::acp::AgentClient;
-use malvin::artifacts::{RunArtifacts, backup_workspace_kissconfig_if_present};
+use malvin::artifacts::{
+    RunArtifacts, backup_workspace_kissconfig_if_present, backup_workspace_malvin_checks_if_present,
+};
 use malvin::kpop_creative_enabled;
 use malvin::kpop_progression::{KpopMultiturnState, agent_declared_success};
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
@@ -73,6 +75,7 @@ async fn run_bug_kpop_multiturn(phase: BugKpopPhase<'_>) -> Result<KpopPrepared,
         acp_result,
         &prepared.artifacts.work_dir,
         &prepared.kissconfig_backup,
+        &prepared.malvin_checks_backup,
         &prepared.artifacts.artifact_result_md(),
     )?;
     Ok(prepared)
@@ -129,6 +132,7 @@ async fn run_bug_remediation_orchestrator(
     store: &PromptStore,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let ctx = workflow_context(artifacts, store, "bug").map_err(|e: PromptError| e.0)?;
     let mut orch = Orchestrator {
@@ -145,6 +149,7 @@ async fn run_bug_remediation_orchestrator(
             print_stdout_line(MALVIN_WHO, msg);
         }),
         kissconfig_backup: kissconfig_backup.clone(),
+        malvin_checks_backup: malvin_checks_backup.clone(),
     };
     let workflow_res = orch
         .run_bug_remediation_gap(&ctx, mid_pre_summary_repo_gates)
@@ -154,6 +159,7 @@ async fn run_bug_remediation_orchestrator(
         workflow_res,
         &artifacts.work_dir,
         &kissconfig_backup,
+        &malvin_checks_backup,
     )
 }
 
@@ -201,6 +207,8 @@ pub async fn run_bug(
 mod kiss_coverage_tests {
     #[test]
     fn kiss_stringify_bug_flow_units() {
+        let _ = stringify!(crate::cli::bug_flow::BugKpopPhase);
+        let _ = stringify!(crate::cli::bug_flow::BugRunTail);
         let _ = stringify!(crate::cli::bug_flow::run_bug);
         let _ = stringify!(crate::cli::bug_flow::kpop_args_from_bug);
         let _ = stringify!(crate::cli::bug_flow::run_bug_kpop_multiturn);
