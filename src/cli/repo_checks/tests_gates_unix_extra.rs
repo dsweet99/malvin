@@ -5,11 +5,12 @@ use malvin::repo_gates;
 use super::command_support::set_fake_command_dir;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
-    install_trace_echo_bins, workspace_git_cargo_main_only, workspace_git_kissconfig_90_cargo_rs_py,
-    workspace_git_malvin_checks_line, workspace_git_minimal_cargo_rs_py_tests,
-    write_executable_script, write_trace_echo_script,
+    install_trace_echo_bins, workspace_git_cargo_main_only,
+    workspace_git_kissconfig_90_cargo_rs_py, workspace_git_malvin_checks_line,
+    workspace_git_minimal_cargo_rs_py_tests, write_executable_script, write_trace_echo_script,
 };
-use super::{prepare_repo_workspace, run_repo_workspace_gates, RepoGateOutput};
+use super::workspace::prepare_repo_workspace;
+use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
@@ -29,19 +30,24 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
 }
 
 #[test]
-fn run_repo_workspace_gates_does_not_create_malvin_checks() {
+fn run_repo_workspace_gates_materializes_default_malvin_checks() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     workspace_git_minimal_cargo_rs_py_tests(work);
     let malvin_checks = work.join(repo_gates::MALVIN_CHECKS_FILE);
     assert!(!malvin_checks.exists());
+    let expected = repo_gates::gate_command_lines(work).unwrap();
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
     install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "ruff", "cargo"], 0);
     let _guard = set_fake_command_dir(bin_dir.path());
     let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
     assert!(result.is_ok());
-    assert!(!malvin_checks.exists());
+    assert!(malvin_checks.is_file());
+    assert_eq!(
+        repo_gates::load_malvin_checks(&malvin_checks).unwrap(),
+        expected
+    );
     let log = fs::read_to_string(&trace).unwrap();
     assert!(!log_contains_command(&log, "pre-commit run --all-files"));
     assert!(log_contains_command(&log, "kiss check"));

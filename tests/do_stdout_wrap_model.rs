@@ -2,9 +2,9 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    assert_stdout_has_no_chrome, nonempty_stdout_lines, run_do_long_text_mock, run_do_wordy_long_mock,
-    run_do_with_mock, run_do_with_mock_and_argv, run_malvin_with_captured_argv,
-    stdout_lines_preserve_shape, DEFAULT_CLI_MODEL, DO_WRAP_COLUMNS,
+    DEFAULT_CLI_MODEL, DO_WRAP_COLUMNS, assert_stdout_has_no_chrome, nonempty_stdout_lines,
+    run_do_long_text_mock, run_do_with_mock, run_do_with_mock_and_argv, run_do_wordy_long_mock,
+    run_malvin_with_captured_argv, stdout_lines_preserve_shape,
 };
 
 #[cfg_attr(unix, test)]

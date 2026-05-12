@@ -89,10 +89,7 @@ impl Drop for FakeCommandDirGuard {
     fn drop(&mut self) {
         if self.thread_id == std::thread::current().id() {
             TEST_FAKE_COMMAND_DIR.with(|dir| {
-                *dir.borrow_mut() = self
-                    .previous
-                    .take()
-                    .and_then(|p| p.is_dir().then_some(p));
+                *dir.borrow_mut() = self.previous.take().and_then(|p| p.is_dir().then_some(p));
             });
         }
     }
@@ -141,7 +138,7 @@ mod stale_fake_command_path_tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
-    use super::{run_command_for, set_fake_command_dir, TEST_FAKE_COMMAND_DIR};
+    use super::{TEST_FAKE_COMMAND_DIR, run_command_for, set_fake_command_dir};
 
     #[test]
     fn removed_fake_dir_is_cleared_and_command_falls_back_to_name() {

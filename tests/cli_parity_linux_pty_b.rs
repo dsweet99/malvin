@@ -119,4 +119,3 @@ fn do_pty_preserves_bold_markers_with_global_no_markdown() {
         "stdout leaked JSON-RPC protocol lines: {stdout:?}"
     );
 }
-

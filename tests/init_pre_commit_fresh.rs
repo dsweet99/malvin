@@ -3,8 +3,8 @@
 mod common;
 
 use common::{
-    assert_git_branch_main, assert_git_head_commit_count, git_show_rev_path, malvin_init_output,
-    tempdir_seeded_dirty_keep, InitOk,
+    InitOk, assert_git_branch_main, assert_git_head_commit_count, git_show_rev_path,
+    malvin_init_output, tempdir_seeded_dirty_keep,
 };
 
 #[test]

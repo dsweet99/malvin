@@ -43,6 +43,7 @@ pub fn workflow_context(
     malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts, malvin_command);
+    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir).map_err(PromptError)?;
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)

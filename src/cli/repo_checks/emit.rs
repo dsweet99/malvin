@@ -1,4 +1,4 @@
-use malvin::output::{format_line, MALVIN_WHO, print_stdout_line};
+use malvin::output::{MALVIN_WHO, format_line, print_stdout_line};
 use std::path::Path;
 
 use super::types::RepoGateOutput;

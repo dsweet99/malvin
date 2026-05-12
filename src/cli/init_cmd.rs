@@ -5,7 +5,11 @@ use std::process::Command;
 
 use clap::Args;
 use malvin::acp::CoderPromptOptions;
-use malvin::artifacts::{backup_workspace_kissconfig_if_present, create_run_artifacts_from_text};
+use malvin::artifacts::{
+    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
+    backup_workspace_malvin_checks_if_present,
+    create_run_artifacts_from_text,
+};
 use malvin::env_path::{lookup_bin_on_path, require_kiss_for_malvin};
 use malvin::orchestrator::workflow_context;
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
@@ -89,9 +93,17 @@ pub async fn run_init(
     let languages = parse_languages(language_args)?;
     let root = resolve_init_root(path)?;
     let artifacts = emit_init_startup(&root, tee_startup_stdout)?;
-    write_init_templates(&root, force, &languages)?;
-    bootstrap_repo_tooling(&root)?;
-    run_init_summary_phase(shared, &artifacts).await
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let r = async {
+        write_init_templates(&root, force, &languages)?;
+        bootstrap_repo_tooling(&root)?;
+        run_init_summary_phase(shared, &artifacts).await
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }
 
 fn emit_init_startup(
@@ -117,22 +129,25 @@ async fn run_init_summary_phase(
     store
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
+    let ctx = workflow_context(artifacts, &store, "init").map_err(|e: PromptError| e.0)?;
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+    let session_dotfile_backups = malvin::artifacts::SessionDotfileBackups::from_parts(
+        kissconfig_backup,
+        malvin_checks_backup,
+        kissignore_backup,
+    );
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    let ctx = workflow_context(artifacts, &store, "init").map_err(|e: PromptError| e.0)?;
     let header_body = store
         .render_prompt_only(HEADER_MD, &ctx)
         .map_err(|e: PromptError| e.0)?;
     let summary_only = store
         .render("summary.md", &ctx)
         .map_err(|e: PromptError| e.0)?;
-    let body = format!(
-        "{}\n\n{}",
-        header_body.trim_end(),
-        summary_only.trim_end()
-    );
+    let body = format!("{}\n\n{}", header_body.trim_end(), summary_only.trim_end());
     let timing = client.attach_run_timing_for_session();
     timing
         .lock()
@@ -169,10 +184,10 @@ async fn run_init_summary_phase(
         &timing,
         merged,
     );
-    super::timing_merge::merge_acp_with_kissconfig_restore_and_check_abort(
+    super::timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
         timing_out,
         &artifacts.work_dir,
-        &kissconfig_backup,
+        &session_dotfile_backups,
         &artifacts.artifact_result_md(),
     )
 }

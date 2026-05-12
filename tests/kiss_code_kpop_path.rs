@@ -6,13 +6,7 @@ mod common;
 use std::process::Command;
 
 #[cfg(unix)]
-use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
-    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_failing_gate_tools,
-    write_mock_executable,
-};
-#[cfg(unix)]
-use std::path::Path;
+use common::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
 #[cfg(unix)]
 fn clear_agent_api_env(cmd: &mut Command) {
@@ -149,56 +143,39 @@ fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["plan"]);
 }
 
-#[cfg(unix)]
-fn seed_tidy_workspace(workspace: &Path) {
-    seed_git_kiss_cargo_gate_workspace(workspace);
-    std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
+#[test]
+fn malvin_bug_fails_fast_when_kiss_missing_from_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["bug"]);
 }
 
-#[cfg(unix)]
-fn spawn_malvin_tidy_with_mock_path(
-    workspace: &Path,
-    home: &Path,
-    mock: &Path,
-    path: &str,
-) -> std::process::Output {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(workspace)
-        .env("HOME", home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", mock)
-        .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-}
-
-#[cfg_attr(unix, test)]
-fn malvin_tidy_runs_quality_gates_after_acp() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_tidy_workspace(&workspace);
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let trace = root.path().join("quality-trace.log");
-    write_failing_gate_tools(&bin_dir, &trace);
-    let mock = root.path().join("mock-agent-acp-tidy");
-    write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
-    let original_path = std::env::var("PATH").unwrap_or_default();
-    let path = format!("{}:{original_path}", bin_dir.display());
-
-    let out = spawn_malvin_tidy_with_mock_path(&workspace, &home, &mock, &path);
-
-    assert!(
-        !out.status.success(),
-        "expected tidy to fail when post-ACP quality gates fail: {out:?}"
-    );
-    let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
-    assert!(
-        !trace_log.is_empty(),
-        "expected quality gates to run after ACP: {trace_log}"
+#[test]
+fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
+    let path_root = tempfile::tempdir().unwrap();
+    let isolated_bin = path_root.path().join("bin");
+    std::fs::create_dir_all(&isolated_bin).unwrap();
+    #[cfg(unix)]
+    let out = run_malvin_path_timed(&isolated_bin, |c| {
+        c.arg("bug");
+    });
+    #[cfg(not(unix))]
+    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", &isolated_bin)
+        .arg("bug")
+        .output()
+        .expect("spawn malvin");
+    assert!(!out.status.success());
+    let msg = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        trace_log.contains("kiss"),
-        "expected at least one post-ACP quality gate command to run: {trace_log}"
+        msg.contains("`malvin bug`"),
+        "expected error to name the bug subcommand; got: {msg:?}"
+    );
+    assert!(
+        !msg.contains("`malvin code`"),
+        "expected bug path not to reuse code subcommand text; got: {msg:?}"
     );
 }
 

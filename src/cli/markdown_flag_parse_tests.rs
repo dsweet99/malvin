@@ -25,6 +25,13 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
 }
 
 #[test]
+fn global_no_markdown_before_bug_subcommand() {
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "bug", "--no-learn"]).expect("parse");
+    assert!(cli.shared.no_markdown);
+    assert!(matches!(cli.command, crate::cli::Commands::Bug(_)));
+}
+
+#[test]
 fn do_parses_with_global_no_markdown_without_do_local_flag() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "do", "hi"]).expect("parse");
     assert!(cli.shared.no_markdown);
@@ -59,14 +66,8 @@ fn models_parses_with_global_no_markdown() {
 
 #[test]
 fn plan_parses_text_after_plan_path_flag() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "plan",
-        "--plan_path",
-        "/tmp/p.md",
-        "hello",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "plan", "--plan_path", "/tmp/p.md", "hello"])
+        .expect("parse");
     match cli.command {
         crate::cli::Commands::Plan(p) => {
             assert_eq!(
@@ -81,14 +82,8 @@ fn plan_parses_text_after_plan_path_flag() {
 
 #[test]
 fn plan_parses_plan_path_alias_before_text() {
-    let cli = Cli::try_parse_from([
-        "malvin",
-        "plan",
-        "--plan-path",
-        "notes/plan.md",
-        "x",
-    ])
-    .expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "plan", "--plan-path", "notes/plan.md", "x"])
+        .expect("parse");
     match cli.command {
         crate::cli::Commands::Plan(p) => {
             assert_eq!(

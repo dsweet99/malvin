@@ -15,10 +15,5 @@ pub fn command_output_with_timeout(
     timeout: std::time::Duration,
 ) -> std::io::Result<std::process::Output> {
     let (child, stdout_jh, stderr_jh) = spawn_piped_process_group(cmd)?;
-    wait_child_with_timeout(
-        child,
-        stdout_jh,
-        stderr_jh,
-        Instant::now() + timeout,
-    )
+    wait_child_with_timeout(child, stdout_jh, stderr_jh, Instant::now() + timeout)
 }

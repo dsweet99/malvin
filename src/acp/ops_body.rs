@@ -142,14 +142,14 @@ async fn kpop_round(
 
 fn restore_workspace_on_error(
     cwd: &Path,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     primary_error: AgentError,
     phase: &str,
 ) -> AgentError {
-    match crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup) {
+    match crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups) {
         Ok(()) => primary_error,
         Err(restore_error) => AgentError(format!(
-            "{}; kissconfig restore failed ({phase}): {restore_error}",
+            "{}; workspace session restore failed ({phase}): {restore_error}",
             primary_error.0
         )),
     }
@@ -158,7 +158,7 @@ fn restore_workspace_on_error(
 pub(crate) async fn run_kpop_flow_once(
     client: &AgentClient,
     args: &KpopFlowOnceArgs<'_>,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, args.cwd).await?;
 
@@ -176,12 +176,12 @@ pub(crate) async fn run_kpop_flow_once(
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 args.cwd,
-                kissconfig_backup,
+                session_dotfile_backups,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_kissconfig_backup(args.cwd, kissconfig_backup)
+        crate::artifacts::restore_workspace_session_dotfiles(args.cwd, session_dotfile_backups)
             .map_err(AgentError)?;
     }
 
@@ -209,12 +209,12 @@ pub(crate) async fn run_kpop_flow_once(
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     args.cwd,
-                    kissconfig_backup,
+                    session_dotfile_backups,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_kissconfig_backup(args.cwd, kissconfig_backup)
+            crate::artifacts::restore_workspace_session_dotfiles(args.cwd, session_dotfile_backups)
                 .map_err(AgentError)?;
         }
     }
@@ -246,6 +246,8 @@ mod ops_body_tests {
     }
 }
 
+// Mirrors `run_kpop_flow_once`: ACP session plus per-prompt workspace restores for session dotfiles.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::KpopMultiturnPrompts>(
     client: &AgentClient,
     cwd: &std::path::Path,
@@ -253,7 +255,7 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
     learn: Option<(&str, &std::path::Path)>,
     learn_min_elapsed_ms: u64,
     state: &mut crate::kpop_progression::KpopMultiturnState<B>,
-    kissconfig_backup: &crate::artifacts::KissConfigBackup,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
 ) -> Result<(), AgentError> {
     let s = spawn_agent_acp_session(client, cwd).await?;
 
@@ -281,12 +283,13 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
             let _ = s.shutdown().await;
             return Err(restore_workspace_on_error(
                 cwd,
-                kissconfig_backup,
+                session_dotfile_backups,
                 e,
                 "prompt",
             ));
         }
-        crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup).map_err(AgentError)?;
+        crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups)
+            .map_err(AgentError)?;
         let exp_text = crate::kpop_progression::read_exp_log_text(state.exp_log_path())
             .map_err(AgentError)?;
         let n = crate::kpop_progression::hypotheses_emitted(&exp_text);
@@ -328,12 +331,13 @@ pub(crate) async fn run_kpop_multiturn_once<B: crate::kpop_multiturn_prompts::Kp
                 let _ = s.shutdown().await;
                 return Err(restore_workspace_on_error(
                     cwd,
-                    kissconfig_backup,
+                    session_dotfile_backups,
                     e,
                     "learn",
                 ));
             }
-            crate::artifacts::restore_workspace_kissconfig_backup(cwd, kissconfig_backup).map_err(AgentError)?;
+            crate::artifacts::restore_workspace_session_dotfiles(cwd, session_dotfile_backups)
+                .map_err(AgentError)?;
         }
     }
 

@@ -1,4 +1,12 @@
-### KPop: Apply this method to the user's problem.
+# Definition: KPop
+
+[
+KPop is short for "Karl Popper".
+You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
+KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+]
+
+Apply this method to the user's problem.
 
 Restate the problem clearly.
 
@@ -11,3 +19,4 @@ Repeat until you think you've solved the problem:
 Log your hypotheses and test results -- as they become available -- to {{ exp_log }}.
 
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
+

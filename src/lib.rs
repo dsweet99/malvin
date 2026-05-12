@@ -32,6 +32,7 @@ pub mod run_timing;
 
 #[cfg(test)]
 mod coverage_kiss;
+mod coverage_kiss_agent;
 
 #[cfg(test)]
 mod orchestrator_tests;

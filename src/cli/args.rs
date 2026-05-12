@@ -39,6 +39,8 @@ pub enum Commands {
     Code(CodeArgs),
     /// Popperian scientific investigator
     Kpop(KpopArgs),
+    /// KPOP bug hunt, then regression test, then fix
+    Bug(BugArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
     /// Write or review a plan file (BETA)
@@ -49,11 +51,7 @@ pub enum Commands {
 
 #[derive(Args, Debug)]
 pub struct PlanArgs {
-    #[arg(
-        long = "plan_path",
-        visible_alias = "plan-path",
-        value_name = "PATH"
-    )]
+    #[arg(long = "plan_path", visible_alias = "plan-path", value_name = "PATH")]
     pub plan_path: Option<PathBuf>,
     #[arg(value_name = "TEXT")]
     pub text: Option<String>,
@@ -75,6 +73,22 @@ pub struct CodeArgs {
     pub skip_pre_checks: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct BugArgs {
+    /// Total KPOP + MBC2 hypothesis steps before stopping (same as `malvin kpop`).
+    #[arg(long, default_value_t = 10, alias = "max-loops")]
+    pub max_hypotheses: usize,
+    /// MBC2 interleave density (same as `malvin kpop`).
+    #[arg(long, default_value_t = 0.10)]
+    pub p_creative: f64,
+    /// Skip learning after KPOP.
+    #[arg(long, default_value_t = false)]
+    pub no_learn: bool,
+    /// Skip workspace quality gates before the post-KPOP coder session.
+    #[arg(long, default_value_t = false)]
+    pub skip_pre_checks: bool,
 }
 
 #[derive(Args, Debug, Clone)]

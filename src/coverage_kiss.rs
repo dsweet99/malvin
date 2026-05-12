@@ -3,38 +3,9 @@
 
 use std::collections::HashMap;
 
-use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{RunArtifacts, create_run_artifacts};
 use crate::orchestrator::{Orchestrator, WorkflowConfig};
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
-
-#[test]
-fn kiss_stringify_agent() {
-    let _ = stringify!(AgentClient);
-    let _ = stringify!(crate::acp::AgentError);
-    let _ = stringify!(crate::acp::AuthError);
-    let _ = stringify!(crate::acp::ReviewerPromptPair);
-    let _ = stringify!(AgentIoOptions);
-    let _ = stringify!(crate::acp::has_api_key);
-    let _ = stringify!(crate::acp::auth_probe);
-    let _ = stringify!(crate::acp::spawn_agent_acp_session);
-    let _ = stringify!(crate::acp::strip_trace_invocation_line_for_tee);
-    let _ = stringify!(crate::acp::run_reviewer_pair_once);
-    let _ = stringify!(crate::acp::run_kpop_flow_once);
-    let _ = stringify!(crate::acp::run_kpop_multiturn_once);
-    let _ = stringify!(crate::acp::KpopFlowOnceArgs);
-    let _ = stringify!(AgentClient::new);
-    let _ = stringify!(AgentClient::ensure_authenticated);
-    let _ = stringify!(AgentClient::begin_coder_session);
-    let _ = stringify!(AgentClient::run_coder_prompt);
-    let _ = stringify!(AgentClient::end_coder_session);
-    let _ = stringify!(AgentClient::run_reviewer_review);
-    let _ = stringify!(AgentClient::run_kpop_flow);
-    let _ = stringify!(AgentClient::run_kpop_multiturn);
-    let _ = stringify!(AgentClient::set_run_timing);
-    let _ = stringify!(AgentClient::attach_run_timing_for_session);
-    let _ = stringify!(crate::acp::DEFAULT_REPO_STYLE_PROMPT_REL);
-}
 
 #[test]
 fn kiss_stringify_artifacts() {
@@ -55,6 +26,13 @@ fn kiss_stringify_artifacts() {
     let _ = stringify!(crate::artifacts::resolve_at_file);
     let _ = stringify!(crate::artifacts::backup_workspace_kissconfig_if_present);
     let _ = stringify!(crate::artifacts::restore_workspace_kissconfig_backup);
+    let _ = stringify!(crate::artifacts::backup_workspace_malvin_checks_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_malvin_checks_backup);
+    let _ = stringify!(crate::artifacts::backup_workspace_kissignore_if_present);
+    let _ = stringify!(crate::artifacts::restore_workspace_kissignore_backup);
+    let _ = stringify!(crate::artifacts::restore_workspace_session_dotfiles);
+    let _ = stringify!(crate::artifacts::SessionDotfileBackups::snapshot);
+    let _ = stringify!(crate::artifacts::SessionDotfileBackups::from_parts);
 }
 
 #[test]
@@ -113,6 +91,7 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(Orchestrator);
     let _ = stringify!(Orchestrator::run);
     let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
+    let _ = stringify!(Orchestrator::run_bug_remediation_gap);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
@@ -148,6 +127,7 @@ fn kiss_stringify_kpop_progression() {
 
 #[test]
 fn kiss_stringify_prompts() {
+    let _ = stringify!(crate::prompts::enforce_no_unresolved_braces);
     let _ = stringify!(crate::prompts::PromptError);
     let _ = stringify!(PromptStore);
     let _ = stringify!(crate::prompts::default_file);
@@ -174,6 +154,10 @@ fn kiss_stringify_repo_gates() {
     let _ = stringify!(crate::repo_gates::prompt_quality_gates_markdown);
     let _ = stringify!(crate::repo_gates::format_quality_gates_markdown);
     let _ = stringify!(crate::repo_gates::load_malvin_checks);
+    let _ = stringify!(crate::repo_gates::ensure_default_malvin_checks_file);
+    let _ = stringify!(crate::repo_gates::gate_command_lines_for_workspace_run);
+    let _ = stringify!(crate::repo_gates::discover_py::visit_source_files);
+    let _ = stringify!(crate::repo_gates::discover_py::python_ruff_and_pytest_flags);
     let _ = stringify!(kiss_smoke_prompt_store);
     let _ = stringify!(kiss_smoke_render_context);
 }

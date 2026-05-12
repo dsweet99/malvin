@@ -2,19 +2,17 @@ use malvin::repo_gates;
 use std::path::Path;
 use std::process::Command;
 
-use super::command_support::{
-    apply_fake_path_if_present, run_command_failure, run_command_for,
-};
+use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
 use super::emit::emit_repo_gate_line;
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput};
 
-/// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `tidy`, …).
+/// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `bug`, `tidy`, …).
 ///
-/// Calls [`prepare_repo_workspace`] first (`kiss clamp` when applicable).
-/// Runs [`repo_gates::gate_command_lines`]: when `.malvin_checks` exists, only non-empty lines from
-/// that file (in order); otherwise built-ins derived from the workspace tree. Does not run `pre-commit`.
-/// Never creates or edits `.malvin_checks`.
+/// Runs workspace preparation (`kiss clamp` when applicable) before gate lines.
+/// When `.malvin_checks` is absent, writes the same default gate lines that
+/// [`repo_gates::gate_command_lines`] would return for a missing file, then runs each non-empty
+/// line from `.malvin_checks` in order. Does not run `pre-commit`.
 /// With `run_log_dir: Some(path)`, each gate line is also appended to `path/quality_checks.log`.
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
@@ -34,6 +32,7 @@ pub fn run_repo_workspace_gates_with_details(
     run_quality_gates_with_details(work_dir, output, run_log_dir)
 }
 
+#[cfg(test)]
 pub fn prepare_repo_workspace(
     work_dir: &Path,
     output: RepoGateOutput,
@@ -89,8 +88,8 @@ fn run_quality_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    let commands =
-        repo_gates::gate_command_lines(work_dir).map_err(RepoGateFailure::Message)?;
+    let commands = repo_gates::gate_command_lines_for_workspace_run(work_dir)
+        .map_err(RepoGateFailure::Message)?;
     run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }
 
@@ -124,11 +123,7 @@ fn run_shell_command_line_with_details(
     if command_line.is_empty() {
         return Ok(());
     }
-    emit_repo_gate_line(
-        output,
-        &format!("Running `{command_line}`"),
-        run_log_dir,
-    );
+    emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
     let mut command = Command::new(shell);
     command.arg(arg).arg(command_line).current_dir(work_dir);

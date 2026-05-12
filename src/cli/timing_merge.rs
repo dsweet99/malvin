@@ -4,7 +4,10 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{KissConfigBackup, restore_workspace_kissconfig_backup};
+use malvin::artifacts::{
+    KissConfigBackup, SessionDotfileBackups, restore_workspace_kissconfig_backup,
+    restore_workspace_session_dotfiles,
+};
 use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
@@ -43,13 +46,26 @@ pub fn merge_acp_with_kissconfig_restore(
     prefer_primary_over_secondary(primary, restore_res, "kissconfig restore failed")
 }
 
-pub fn merge_acp_with_kissconfig_restore_and_check_abort(
+pub fn merge_acp_with_workspace_session_restore(
     primary: Result<(), String>,
     work_dir: &Path,
-    kissconfig_backup: &KissConfigBackup,
+    session_dotfile_backups: &SessionDotfileBackups,
+) -> Result<(), String> {
+    let restore_res = restore_workspace_session_dotfiles(work_dir, session_dotfile_backups);
+    prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed")
+}
+
+pub fn merge_acp_with_workspace_session_restore_and_check_abort(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    session_dotfile_backups: &SessionDotfileBackups,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result = merge_acp_with_kissconfig_restore(primary, work_dir, kissconfig_backup);
+    let merge_result = merge_acp_with_workspace_session_restore(
+        primary,
+        work_dir,
+        session_dotfile_backups,
+    );
     if let Some(abort) = abort_message_from_result_md(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
@@ -63,10 +79,14 @@ pub fn merge_acp_with_kissconfig_restore_and_check_abort(
 }
 
 fn duplicate_safe_restore_error(merge_error: &str) -> String {
-    if merge_error.contains("kissconfig restore failed:") {
+    if merge_error.contains("workspace session restore failed:")
+        || merge_error.contains("kissconfig restore failed:")
+        || merge_error.contains("malvin_checks restore failed:")
+        || merge_error.contains("kissignore restore failed:")
+    {
         merge_error.to_string()
     } else {
-        format!("kissconfig restore failed: {merge_error}")
+        format!("workspace session restore failed: {merge_error}")
     }
 }
 
@@ -139,9 +159,9 @@ mod tests {
             prefer_primary_over_secondary(
                 Err("wf".into()),
                 Err("restore".into()),
-                "kissconfig restore failed",
+                "workspace session restore failed",
             ),
-            Err("wf; kissconfig restore failed: restore".into())
+            Err("wf; workspace session restore failed: restore".into())
         );
     }
 
@@ -161,6 +181,7 @@ mod tests {
     #[test]
     fn kiss_stringify_timing_merge_units() {
         let _ = stringify!(crate::cli::timing_merge::emit_run_timing_json_only_after_acp);
+        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     }
 
     #[test]
@@ -174,8 +195,9 @@ mod tests {
     #[test]
     fn duplicate_safe_restore_error_does_not_repeat_restore_prefix() {
         assert_eq!(
-            duplicate_safe_restore_error("wf failed; kissconfig restore failed: restore").as_str(),
-            "wf failed; kissconfig restore failed: restore"
+            duplicate_safe_restore_error("wf failed; workspace session restore failed: restore")
+                .as_str(),
+            "wf failed; workspace session restore failed: restore"
         );
     }
 
@@ -183,7 +205,7 @@ mod tests {
     fn duplicate_safe_restore_error_adds_restore_prefix_when_missing() {
         assert_eq!(
             duplicate_safe_restore_error("wf failed"),
-            "kissconfig restore failed: wf failed"
+            "workspace session restore failed: wf failed"
         );
     }
 }

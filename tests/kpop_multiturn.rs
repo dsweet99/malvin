@@ -3,11 +3,11 @@
 
 mod common;
 
-use common::{append_kpop_line, parse_kpop_want, MtStubPrompts, MBC2_SEEK_MAX_STEPS};
+use common::{MBC2_SEEK_MAX_STEPS, MtStubPrompts, append_kpop_line, parse_kpop_want};
 use malvin::MultiturnPrompt;
-use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{KPOP_CATCHUP_CAP, hypotheses_emitted};
+use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 

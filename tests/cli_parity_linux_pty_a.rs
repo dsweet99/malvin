@@ -3,8 +3,9 @@ mod common;
 #[cfg(all(unix, target_os = "linux"))]
 use common::{
     acp_mock_code_streaming_long_bold_markdown_js, acp_mock_code_streaming_rich_markdown_js,
-    assert_markdown_stdout_and_logs, only_run_dir, read_all_logs, run_code_max_loops_zero_under_script,
-    run_kpop_catchup_under_script, run_malvin_under_script_with_mock,
+    assert_markdown_stdout_and_logs, only_run_dir, read_all_logs,
+    run_code_max_loops_zero_under_script, run_kpop_catchup_under_script,
+    run_malvin_under_script_with_mock,
 };
 #[cfg_attr(all(unix, target_os = "linux"), test)]
 fn code_pty_markdown_strips_bold_markers_without_no_markdown() {

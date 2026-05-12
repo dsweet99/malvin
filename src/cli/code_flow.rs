@@ -1,7 +1,8 @@
 use malvin::acp::AgentClient;
 use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present, create_run_artifacts_from_text,
-    resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
+    create_run_artifacts_from_text, resolve_user_request,
 };
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
@@ -36,6 +37,17 @@ pub fn prepare_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore,
             .validate_exists("learn.md")
             .map_err(|e: PromptError| e.0)?;
     }
+    Ok(store)
+}
+
+pub fn prepare_bug_prompt_store(workflow: WorkflowCliOptions) -> Result<PromptStore, String> {
+    let store = prepare_prompt_store(workflow)?;
+    store
+        .validate_exists("bug_regression_test.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("bug_fix.md")
+        .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
@@ -109,43 +121,64 @@ pub async fn run_code(
     workflow: super::WorkflowCliOptions,
 ) -> Result<(), String> {
     let (store, mut client, artifacts) = prepare_code_run(&code, shared, workflow)?;
-    if !code.skip_pre_checks {
-        run_repo_workspace_gates(
-            &artifacts.work_dir,
-            RepoGateOutput::Tagged,
-            Some(&artifacts.run_dir),
+    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let r = async {
+        if !code.skip_pre_checks {
+            run_repo_workspace_gates(
+                &artifacts.work_dir,
+                RepoGateOutput::Tagged,
+                Some(&artifacts.run_dir),
+            )?;
+        }
+        client.ensure_authenticated().map_err(|e| e.to_string())?;
+        let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
+        let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
+        let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
+        let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+        let session_dotfile_backups = SessionDotfileBackups::from_parts(
+            kissconfig_backup.clone(),
+            malvin_checks_backup.clone(),
+            kissignore_backup.clone(),
+        );
+        run_emit::emit_run_startup_sequence(
+            &artifacts,
+            shared.tee_startup_stdout(),
+            &code.request,
         )?;
-    }
-    client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-    run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), &code.request)?;
-    let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
-    let workflow_res = {
-        let mut orch = Orchestrator {
-            client: &mut client,
-            prompts: &store,
-            artifacts: &artifacts,
-            config: WorkflowConfig {
-                max_loops: code.max_loops,
-                run_learn: workflow.run_learn,
-                learn_min_elapsed_ms: 300_000,
-                skip_check_plan: code.trust_the_plan,
-            },
-            progress_callback: Box::new(|msg: &str| {
-                print_stdout_line(MALVIN_WHO, msg);
-            }),
-            kissconfig_backup: kissconfig_backup.clone(),
-        };
-        orch
-            .run_with_pre_summary_gap(&ctx, crate::cli::mid_session_gates::mid_pre_summary_repo_gates)
+        let workflow_res = {
+            let mut orch = Orchestrator {
+                client: &mut client,
+                prompts: &store,
+                artifacts: &artifacts,
+                config: WorkflowConfig {
+                    max_loops: code.max_loops,
+                    run_learn: workflow.run_learn,
+                    learn_min_elapsed_ms: 300_000,
+                    skip_check_plan: code.trust_the_plan,
+                },
+                progress_callback: Box::new(|msg: &str| {
+                    print_stdout_line(MALVIN_WHO, msg);
+                }),
+                session_dotfile_backups: session_dotfile_backups.clone(),
+            };
+            orch.run_with_pre_summary_gap(
+                &ctx,
+                crate::cli::mid_session_gates::mid_pre_summary_repo_gates,
+            )
             .await
             .map_err(|e: WorkflowError| e.0)
-    };
-    timing_merge::merge_acp_with_kissconfig_restore(
-        workflow_res,
-        &artifacts.work_dir,
-        &kissconfig_backup,
-    )?;
-    print_stdout_line(MALVIN_WHO, "DONE");
-    Ok(())
+        };
+        timing_merge::merge_acp_with_kissconfig_restore(
+            workflow_res,
+            &artifacts.work_dir,
+            &session_dotfile_backups.kissconfig,
+        )?;
+        print_stdout_line(MALVIN_WHO, "DONE");
+        Ok(())
+    }
+    .await;
+    if r.is_ok() {
+        super::error_run_log::clear_command_error_run_dir();
+    }
+    r
 }

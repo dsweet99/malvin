@@ -1,23 +1,26 @@
 use clap::Parser;
 
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_plan,
-    run_tidy,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
+    run_plan, run_tidy,
 };
 use super::{init_cmd, models_cmd};
 use malvin::env_path::require_kiss_for_malvin;
-use malvin::output::{MALVIN_WHO, print_stderr_line};
+use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
+        Commands::Bug(_) => require_kiss_for_malvin("bug"),
         Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
     }
 }
 
 pub fn print_command_error(message: &str) {
+    super::error_run_log::append_command_error_to_run_log(message);
+    print_stdout_line(MALVIN_WHO, message);
     if message.starts_with("ERR:") {
         eprintln!("{message}");
         return;
@@ -51,9 +54,13 @@ pub fn entrypoint() -> Exit {
     malvin::output::init_stdout_style(cli.global.no_color);
     let res = dispatch_command(cli);
     match res {
-        Ok(()) => Exit::Success,
+        Ok(()) => {
+            super::error_run_log::clear_command_error_run_dir();
+            Exit::Success
+        }
         Err(e) => {
             print_command_error(&e);
+            super::error_run_log::clear_command_error_run_dir();
             Exit::Failure
         }
     }
@@ -67,6 +74,19 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             run_async_cli(|| {
                 run_kpop(
                     kpop.clone(),
+                    &cli.shared,
+                    WorkflowCliOptions {
+                        force: !cli.shared.no_force,
+                        run_learn,
+                    },
+                )
+            })
+        }
+        Commands::Bug(bug) => {
+            let run_learn = !bug.no_learn;
+            run_async_cli(|| {
+                run_bug(
+                    bug.clone(),
                     &cli.shared,
                     WorkflowCliOptions {
                         force: !cli.shared.no_force,

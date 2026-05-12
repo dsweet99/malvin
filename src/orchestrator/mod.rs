@@ -1,10 +1,5 @@
-//! Implement → review loops.
-//!
-//! Helper-focused unit tests live in [`crate::orchestrator_tests`] (crate root) so `kiss` can
-//! attribute coverage consistently; see `.kissignore`.
-
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
-use crate::artifacts::{KissConfigBackup, RunArtifacts};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
@@ -23,6 +18,8 @@ pub(crate) mod review_context;
 mod review_loop;
 pub mod session_flow;
 
+mod bug_remediation;
+
 use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
 
 use workflow_context as workflow_context_inner;
@@ -30,23 +27,21 @@ use workflow_context as workflow_context_inner;
 pub type PreSummaryMidFn = for<'a> fn(
     &'a mut AgentClient,
     &'a RunArtifacts,
-    &'a KissConfigBackup,
+    &'a SessionDotfileBackups,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
-    _: &'a KissConfigBackup,
+    _: &'a SessionDotfileBackups,
 ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(async { Ok(()) })
 }
 
-/// Workflow stopped after `max_loops` without LGTM.
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
 pub struct WorkflowError(pub String);
 
-/// Prefer workflow or session-teardown errors over run-timing artifact errors.
 pub(crate) fn prefer_primary_errors_over_timing(
     workflow_result: Result<(), WorkflowError>,
     end_result: Result<(), WorkflowError>,
@@ -60,7 +55,6 @@ pub(crate) fn prefer_primary_errors_over_timing(
     }
 }
 
-/// Review loop configuration.
 #[derive(Debug, Clone)]
 pub struct WorkflowConfig {
     pub max_loops: usize,
@@ -72,15 +66,13 @@ pub struct WorkflowConfig {
     pub skip_check_plan: bool,
 }
 
-/// Runs implement, two review phases, and optional learn pass.
 pub struct Orchestrator<'a> {
     pub client: &'a mut AgentClient,
     pub prompts: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
     pub config: WorkflowConfig,
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
-    /// Snapshot of workspace `.kissconfig` under `~/.malvin/kissconfigs/`, restored after each coder prompt and reviewer work.
-    pub kissconfig_backup: KissConfigBackup,
+    pub session_dotfile_backups: SessionDotfileBackups,
 }
 
 /// Returns true if learn should run given threshold and elapsed time.
@@ -150,14 +142,20 @@ impl Orchestrator<'_> {
             .await;
         let coder_session_began = begin_res.is_ok();
         let workflow_result = match begin_res {
-            Ok(()) => async {
-                run_coder_session_until_pre_summary(self, context).await?;
-                mid(self.client, self.artifacts, &self.kissconfig_backup)
+            Ok(()) => {
+                async {
+                    run_coder_session_until_pre_summary(self, context).await?;
+                    mid(
+                        self.client,
+                        self.artifacts,
+                        &self.session_dotfile_backups,
+                    )
                     .await
                     .map_err(WorkflowError)?;
-                run_coder_session_summary_only(self, context).await
+                    run_coder_session_summary_only(self, context).await
+                }
+                .await
             }
-            .await,
             Err(e) => Err(WorkflowError(e.0)),
         };
         let timing_result = if coder_session_began {
@@ -172,6 +170,19 @@ impl Orchestrator<'_> {
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
+    }
+
+    /// KPOP already finished; run regression-test then fix coder prompts, optional mid hook, summary.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WorkflowError`] when session setup, a bug phase, `mid`, or timing emission fails.
+    pub async fn run_bug_remediation_gap(
+        &mut self,
+        context: &HashMap<String, String>,
+        mid: PreSummaryMidFn,
+    ) -> Result<(), WorkflowError> {
+        bug_remediation::run_bug_remediation_gap(self, context, mid).await
     }
 
     pub(super) async fn run_coder_prompt(
@@ -215,7 +226,7 @@ impl Orchestrator<'_> {
             .map_err(|e: AgentError| WorkflowError(e.0));
         let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
             &self.artifacts.work_dir,
-            &self.kissconfig_backup,
+            &self.session_dotfile_backups.kissconfig,
         )
         .map_err(WorkflowError);
 

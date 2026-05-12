@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{KissConfigBackup, RunArtifacts};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 
 use super::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
@@ -35,46 +35,34 @@ where
 pub fn mid_pre_summary_repo_gates<'a>(
     client: &'a mut AgentClient,
     artifacts: &'a RunArtifacts,
-    kissconfig_backup: &'a KissConfigBackup,
+    session_dotfile_backups: &'a SessionDotfileBackups,
 ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
     Box::pin(run_pre_summary_repo_gates_with_tidy_retry(
         client,
         artifacts,
-        kissconfig_backup,
+        session_dotfile_backups,
     ))
 }
 
 pub async fn run_pre_summary_repo_gates_with_tidy_retry(
     client: &mut AgentClient,
     artifacts: &RunArtifacts,
-    kissconfig_backup: &KissConfigBackup,
+    session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.clone();
     let run_dir = artifacts.run_dir.clone();
     pre_summary_repo_gates_tidy_retry_flow(
-        || {
-            run_repo_workspace_gates_with_details(
-                &work_dir,
-                RepoGateOutput::Tagged,
-                Some(&run_dir),
-            )
-        },
+        || run_repo_workspace_gates_with_details(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
         |failure| async move {
             run_tidy_prompt_after_post_run_gate_failure(
                 client,
                 artifacts,
-                kissconfig_backup,
+                session_dotfile_backups,
                 &failure,
             )
             .await
         },
-        || {
-            run_repo_workspace_gates(
-                &work_dir,
-                RepoGateOutput::Tagged,
-                Some(&run_dir),
-            )
-        },
+        || run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
     )
     .await
 }
@@ -86,6 +74,13 @@ mod tests {
 
     use super::pre_summary_repo_gates_tidy_retry_flow;
     use crate::cli::repo_checks::{RepoGateCommandFailure, RepoGateFailure};
+
+    #[test]
+    fn kiss_stringify_mid_session_gate_units() {
+        let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
+        let _ =
+            stringify!(crate::cli::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry);
+    }
 
     #[tokio::test]
     async fn tidy_retry_flow_ok_when_first_gates_pass() {

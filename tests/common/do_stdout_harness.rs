@@ -5,8 +5,8 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    acp_mock_do_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js, command_output_with_timeout,
+    test_home_workspace, write_mock_executable,
 };
 
 #[cfg(unix)]
