@@ -82,11 +82,18 @@ pub fn prepare_do_bin_streaming_mock(mock_js: &str) -> DoBinCtx {
 
 #[cfg(unix)]
 pub fn run_do_say_hi_path_prefixed(ctx: &DoBinCtx) -> std::process::Output {
+    run_do_say_hi_path_prefixed_mid(ctx, &[])
+}
+
+pub fn run_do_say_hi_path_prefixed_mid(ctx: &DoBinCtx, mid: &[&str]) -> std::process::Output {
     let path = format!(
         "{}:{}",
         ctx.bin_dir.display(),
         std::env::var("PATH").unwrap_or_default()
     );
+    let mut args: Vec<&str> = vec!["do"];
+    args.extend_from_slice(mid);
+    args.push("say hi");
     command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&ctx.workspace)
@@ -94,7 +101,7 @@ pub fn run_do_say_hi_path_prefixed(ctx: &DoBinCtx) -> std::process::Output {
             .env("PATH", path)
             .env("CURSOR_AGENT_API_KEY", "test-key")
             .env("MALVIN_AGENT_ACP_BIN", &ctx.mock)
-            .args(["do", "say hi"]),
+            .args(args),
         MALVIN_TEST_CMD_TIMEOUT,
     )
     .expect("spawn malvin do")

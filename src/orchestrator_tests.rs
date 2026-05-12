@@ -120,6 +120,11 @@ fn workflow_context_review_path_points_to_artifact() {
         ctx.contains_key("quality_gates"),
         "quality_gates must be in context"
     );
+    assert_eq!(
+        ctx.get("quality_gates_log").map(String::as_str),
+        Some("./_malvin/run123/quality_gates.log"),
+        "quality_gates_log should point to the run artifact log"
+    );
 }
 
 #[test]

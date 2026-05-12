@@ -196,8 +196,8 @@ fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
         "malvin code should succeed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let log = std::fs::read_to_string(only_run_dir(&workspace).join("quality_checks.log"))
-        .expect("quality_checks.log");
+    let log = std::fs::read_to_string(only_run_dir(&workspace).join("quality_gates.log"))
+        .expect("quality_gates.log");
     assert_eq!(
         log.matches("Running `kiss check`").count(),
         1,
@@ -207,8 +207,8 @@ fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
     let (out2, _root2, workspace2) =
         run_code_with_mock_js_trust_plan_in_workspace(&js, &["--max-loops", "1"], &opts);
     assert!(out2.status.success(), "baseline malvin code should succeed");
-    let log2 = std::fs::read_to_string(only_run_dir(&workspace2).join("quality_checks.log"))
-        .expect("quality_checks.log baseline");
+    let log2 = std::fs::read_to_string(only_run_dir(&workspace2).join("quality_gates.log"))
+        .expect("quality_gates.log baseline");
     assert_eq!(
         log2.matches("Running `kiss check`").count(),
         2,

@@ -112,13 +112,13 @@ pub async fn run_tidy_prompt(
         .map_err(|e| e.to_string())
 }
 
-fn post_run_gate_failure_details(failure: &RepoGateCommandFailure) -> String {
+fn post_run_gate_failure_details(failure: &RepoGateCommandFailure, log_path: &str) -> String {
     let exit = failure
         .exit_code
         .map_or_else(|| "signal".to_string(), |code| code.to_string());
     format!(
-        "The post-run quality gate check failed with:\ncommand: {}\nexit code: {}\nstdout:\n{}\nstderr:\n{}",
-        failure.command, exit, failure.stdout, failure.stderr
+        "The post-run quality gate check failed with:\ncommand: {}\nexit code: {}\nfull output log: {}",
+        failure.command, exit, log_path
     )
 }
 
@@ -155,9 +155,13 @@ async fn run_tidy_implement_md_loop(
             Err(RepoGateFailure::Message(msg)) => return Err(msg),
             Err(RepoGateFailure::Command(failure)) => {
                 if attempt == max_loops {
+                    let log_path = malvin::orchestrator::format_prompt_path(
+                        &input.artifacts.quality_gates_log_path(),
+                        &work_dir,
+                    );
                     return Err(format!(
                         "quality gates still failing after {max_loops} tidy.md iterations:\n{}",
-                        post_run_gate_failure_details(&failure)
+                        post_run_gate_failure_details(&failure, &log_path)
                     ));
                 }
             }
@@ -419,10 +423,13 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
 ) -> Result<(), String> {
     let (store, context) = tidy_prompt_context(artifacts)?;
     let mut prompt = compose_tidy_prompt(&store, &context)?;
+    let log_path = context
+        .get("quality_gates_log")
+        .map_or("./_malvin/.../quality_gates.log", String::as_str);
     prompt.push('\n');
     prompt.push('\n');
     prompt.push_str("Additional context from post-run quality gate failure:\n");
-    prompt.push_str(&post_run_gate_failure_details(failure));
+    prompt.push_str(&post_run_gate_failure_details(failure, log_path));
     let mut input = TidyAcpInput {
         client,
         artifacts,

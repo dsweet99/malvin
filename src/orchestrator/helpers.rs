@@ -15,6 +15,12 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
+    insert_formatted(
+        context,
+        "quality_gates_log",
+        &artifacts.quality_gates_log_path(),
+        base,
+    );
 }
 
 #[must_use]
@@ -153,6 +159,7 @@ mod helper_tests {
         assert!(ctx.contains_key("kpop_log_dir"));
         assert!(ctx.contains_key("review_path"));
         assert!(ctx.contains_key("result_path"));
+        assert!(ctx.contains_key("quality_gates_log"));
         assert!(ctx.contains_key("memories"));
         assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
     }

@@ -56,6 +56,7 @@ fn kiss_stringify_cli_symbols_b() {
         crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed
     );
     let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates);
+    let _ = stringify!(crate::cli::repo_checks::run_repo_workspace_gates_no_kiss_clamp);
     let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
     let _ = stringify!(crate::cli::mid_session_gates::pre_summary_repo_gates_tidy_retry_flow);
     let _ = stringify!(super::prepare_code_run);

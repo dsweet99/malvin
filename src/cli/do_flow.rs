@@ -23,7 +23,7 @@ pub struct DoArgs {
     /// Prepend `header.md` and allow optional injected repo style
     #[arg(long, default_value_t = false)]
     pub cooked: bool,
-    /// Run kiss clamp then repository quality gates before the prompt (coding-style runs).
+    /// Run repository quality gates before the prompt (coding-style runs).
     #[arg(long, default_value_t = false)]
     pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
@@ -80,13 +80,11 @@ pub async fn run_do(
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
 
     if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates(
+        repo_checks::run_repo_workspace_gates_no_kiss_clamp(
             &artifacts.work_dir,
             repo_checks::RepoGateOutput::Stderr,
             Some(&artifacts.run_dir),
         )?;
-    } else {
-        crate::cli::kiss_clamp::ensure_kiss_clamp_if_needed(&artifacts.work_dir, false)?;
     }
     client.ensure_authenticated().map_err(|e| e.to_string())?;
 

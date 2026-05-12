@@ -18,6 +18,8 @@ use std::path::{Path, PathBuf};
 
 pub use startup_tag::startup_request_tag_label;
 
+pub const QUALITY_GATES_LOG: &str = "quality_gates.log";
+
 /// One workflow run: isolated `_malvin/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
@@ -61,6 +63,11 @@ impl RunArtifacts {
         self.run_dir
             .join("_kpop")
             .join(format!("exp_log_{slug}.md"))
+    }
+
+    #[must_use]
+    pub fn quality_gates_log_path(&self) -> PathBuf {
+        self.run_dir.join(QUALITY_GATES_LOG)
     }
 }
 

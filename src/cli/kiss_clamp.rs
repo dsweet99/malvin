@@ -1,9 +1,7 @@
-//! Auto-run `kiss clamp` when existing code lacks `.kissconfig`.
+//! Shared detection for whether a workspace looks like it contains project source
+//! (used by repo gate prep to decide whether `kiss clamp` may be needed).
 
 use std::path::Path;
-use std::process::Command;
-
-use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 pub fn has_source_files(dir: &Path) -> bool {
     fn check_dir(dir: &Path) -> bool {
@@ -46,35 +44,6 @@ pub fn has_source_files(dir: &Path) -> bool {
         false
     }
     check_dir(dir)
-}
-
-/// If existing code is detected but `.kissconfig` is absent, run `kiss clamp`.
-pub fn ensure_kiss_clamp_if_needed(work_dir: &Path, output_tagged: bool) -> Result<(), String> {
-    let kissconfig = work_dir.join(".kissconfig");
-    if kissconfig.exists() {
-        return Ok(());
-    }
-    if !has_source_files(work_dir) {
-        return Ok(());
-    }
-    if output_tagged {
-        print_stdout_line(
-            MALVIN_WHO,
-            "Running `kiss clamp` (existing code without .kissconfig)",
-        );
-    } else {
-        eprintln!("Running `kiss clamp` (existing code without .kissconfig)");
-    }
-    let status = Command::new("kiss")
-        .arg("clamp")
-        .current_dir(work_dir)
-        .status()
-        .map_err(|e| format!("`kiss clamp` failed to start: {e}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err("`kiss clamp` failed".to_string())
-    }
 }
 
 #[cfg(test)]
@@ -185,17 +154,4 @@ mod tests {
         assert!(!has_source_files(tmp.path()));
     }
 
-    #[test]
-    fn ensure_kiss_clamp_skips_when_kissconfig_exists() {
-        let tmp = tempfile::tempdir().unwrap();
-        std::fs::write(tmp.path().join(".kissconfig"), "").unwrap();
-        std::fs::write(tmp.path().join("main.rs"), "fn main() {}").unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), true).is_ok());
-    }
-
-    #[test]
-    fn ensure_kiss_clamp_skips_when_no_source_files() {
-        let tmp = tempfile::tempdir().unwrap();
-        assert!(ensure_kiss_clamp_if_needed(tmp.path(), false).is_ok());
-    }
 }

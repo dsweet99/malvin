@@ -1,5 +1,5 @@
 
-Review the files in {{ malvin_output_path }}.  Summarize your activity over the session logged in those files.
+Review the files in {{ malvin_output_path }}.  Summarize the activity over the session logged in those files. Recall that *you* are malvin, and *you* did the work in those files. Write the summary from the perspective of malvin (you) who did the work.
 
 Output your summary in the format
 ```

@@ -95,7 +95,7 @@ fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
 }
 
 #[test]
-fn quality_checks_log_records_gate_lines_when_run_log_dir_set() {
+fn quality_gates_log_records_gate_output_when_run_log_dir_set() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     let run_dir = work.join("malvin_run");
@@ -103,13 +103,21 @@ fn quality_checks_log_records_gate_lines_when_run_log_dir_set() {
     workspace_git_cargo_main_only(work);
     let bin_dir = tempfile::tempdir().unwrap();
     for name in ["kiss", "cargo"] {
-        write_executable_script(bin_dir.path(), name, "#!/bin/sh\nexit 0\n");
+        write_executable_script(
+            bin_dir.path(),
+            name,
+            "#!/bin/sh\necho \"stdout from $0\"\necho \"stderr from $0\" >&2\nexit 0\n",
+        );
     }
     let _guard = set_fake_command_dir(bin_dir.path());
     run_repo_workspace_gates(work, RepoGateOutput::Tagged, Some(&run_dir)).unwrap();
-    let qlog = fs::read_to_string(run_dir.join("quality_checks.log")).unwrap();
+    let qlog = fs::read_to_string(run_dir.join("quality_gates.log")).unwrap();
     assert!(qlog.contains("Running `kiss check`"));
     assert!(qlog.contains("Running `cargo test`"));
+    assert!(qlog.contains("[stdout]"));
+    assert!(qlog.contains("[stderr]"));
+    assert!(qlog.contains("stdout from"));
+    assert!(qlog.contains("stderr from"));
 }
 
 #[test]

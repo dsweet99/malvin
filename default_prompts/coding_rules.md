@@ -10,6 +10,7 @@ The Quality Gates section lists the exact shell commands from `.malvin_checks` (
 
 ## Quality Gates
 Be sure that all applicable checks pass.
+Malvin writes quality-gate command output to `{{ quality_gates_log }}`; inspect that log when you need failure details.
 
 {{ quality_gates }}
 
