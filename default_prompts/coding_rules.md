@@ -22,7 +22,7 @@ When presented with failures or violations, respond to them earnestly. Improve t
 - Do not write "documentation parity guards". Do not write comments.
 - Keep each unit test's running time under 10 seconds (<1s would be great).
 - Write code to fail fast. Assert liberally. DRY.
-- Don't name files ".inc".  .rs and .py are the correct extensions.
+- Don't name source code files ".inc".  .rs and .py are the correct extensions.
 - Keep code consistent with `{{ plan_path }}` when this run includes a plan file.
 - Use (up to 4) parallel subagents whereven possible.
 
