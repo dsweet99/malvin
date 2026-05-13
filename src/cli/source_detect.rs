@@ -1,5 +1,5 @@
-//! Shared detection for whether a workspace looks like it contains project source
-//! (used by repo gate prep to decide whether `kiss clamp` may be needed).
+//! Heuristic detection for whether a workspace tree looks like it contains project source.
+//! Used by [`crate::cli::repo_checks::workspace`] when deciding whether `kiss clamp` may be needed.
 
 use std::path::Path;
 
@@ -154,4 +154,8 @@ mod tests {
         assert!(!has_source_files(tmp.path()));
     }
 
+    #[test]
+    fn kiss_stringify_source_detect() {
+        let _ = stringify!(super::has_source_files);
+    }
 }

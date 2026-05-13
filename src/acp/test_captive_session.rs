@@ -1,5 +1,7 @@
 //! Minimal live stdio session (`cat`) for tests that need `coder_session: Some(...)` without `agent acp`.
 
+#![allow(clippy::must_use_candidate)]
+
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -22,6 +24,7 @@ fn spawn_cat_child_with_stdin(cwd: &Path) -> (Child, tokio::process::ChildStdin)
     (child, stdin)
 }
 
+#[allow(clippy::missing_const_for_fn)]
 fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
     AcpSpawnArgs {
         cwd,
@@ -54,8 +57,9 @@ fn telemetry_for_test_args(args: &AcpSpawnArgs<'_>) -> SessionReaderTelemetry {
     }
 }
 
-/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for guard tests only.
-pub(super) fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
+/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
+#[doc(hidden)]
+pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
     let (child, stdin) = spawn_cat_child_with_stdin(cwd);
     let args = default_test_spawn_args(cwd);
     let ch = SessionChannelState::new(stdin, &args);

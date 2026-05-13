@@ -8,7 +8,7 @@ mod entrypoint;
 mod error_run_log;
 mod exit;
 mod init_cmd;
-mod kiss_clamp;
+mod source_detect;
 mod kpop_flow;
 #[cfg(test)]
 mod markdown_flag_parse_tests;

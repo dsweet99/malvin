@@ -23,6 +23,9 @@ pub fn run_repo_workspace_gates(
         .map_err(RepoGateFailure::into_error)
 }
 
+/// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
+///
+/// Used by `malvin do --repo-gates`, which must not create or rewrite `.kissconfig` implicitly.
 pub fn run_repo_workspace_gates_no_kiss_clamp(
     work_dir: &Path,
     output: RepoGateOutput,
@@ -104,7 +107,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
 }
 
 pub fn source_like_files_present(root: &Path) -> bool {
-    crate::cli::kiss_clamp::has_source_files(root)
+    crate::cli::source_detect::has_source_files(root)
 }
 
 fn run_quality_gates_with_details(
@@ -177,5 +180,6 @@ mod kiss_stringify_workspace {
         let _ = stringify!(super::run_malvin_checks_with_details);
         let _ = stringify!(super::shell_binary);
         let _ = stringify!(super::run_shell_command_line_with_details);
+        let _ = stringify!(crate::cli::source_detect::has_source_files);
     }
 }

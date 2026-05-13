@@ -426,6 +426,13 @@ impl AgentClient {
     }
 }
 
+#[doc(hidden)]
+impl AgentClient {
+    pub fn replace_coder_session_slot_for_tests(&mut self, session: AcpSession) {
+        self.coder_session = Some(session);
+    }
+}
+
 #[cfg(test)]
 mod begin_coder_session_guard_tests {
     use super::{AgentClient, AgentIoOptions};

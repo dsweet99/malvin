@@ -60,7 +60,12 @@ pub fn workflow_context(
     Ok(context)
 }
 
-pub(crate) fn clear_review_file(p: &Path) -> std::io::Result<()> {
+/// Removes a review file when it exists; succeeds when `p` is absent.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when removal fails for reasons other than [`NotFound`](std::io::ErrorKind::NotFound).
+pub fn clear_review_file(p: &Path) -> std::io::Result<()> {
     match std::fs::remove_file(p) {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),

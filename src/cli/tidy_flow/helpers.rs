@@ -1,20 +1,20 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
 
-use malvin::acp::{AgentClient, CoderPromptOptions};
+use malvin::acp::{AgentClient, CoderPromptOptions, ReviewerRestorePolicy};
 use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
-use malvin::orchestrator::{should_run_learn_check, workflow_context};
+use malvin::orchestrator::{clear_review_file, should_run_learn_check, workflow_context};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
-use malvin::run_timing::TimingPhase;
+use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
+use malvin::run_timing::{ReviewPairId, TimingPhase};
+use malvin::ReviewerPromptPair;
 
-use super::repo_checks::{
-    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
-    run_repo_workspace_gates_with_details,
-};
+use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::timing_merge;
 use super::{
     LEARN_MIN_ELAPSED_MS, SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence,
@@ -67,6 +67,12 @@ pub fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
     store
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("review_tidy.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("tidy_concerns.md")
+        .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
@@ -112,33 +118,88 @@ pub async fn run_tidy_prompt(
         .map_err(|e| e.to_string())
 }
 
-fn post_run_gate_failure_details(failure: &RepoGateCommandFailure, log_path: &str) -> String {
-    let exit = failure
-        .exit_code
-        .map_or_else(|| "signal".to_string(), |code| code.to_string());
-    format!(
-        "The post-run quality gate check failed with:\ncommand: {}\nexit code: {}\nfull output log: {}",
-        failure.command, exit, log_path
-    )
+pub fn compose_tidy_concerns_prompt(
+    store: &PromptStore,
+    context: &HashMap<String, String>,
+) -> Result<String, String> {
+    store
+        .render("tidy_concerns.md", context)
+        .map_err(|e: PromptError| e.0)
 }
 
-async fn run_tidy_implement_md_loop(
+pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(), String> {
+    if let Some(parent) = review_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "failed to create parent dirs for {}: {e}",
+                review_path.display()
+            )
+        })?;
+    }
+    std::fs::write(review_path, b"Checks do not pass\n").map_err(|e| {
+        format!(
+            "failed to write checks-do-not-pass marker {}: {e}",
+            review_path.display()
+        )
+    })
+}
+
+pub async fn run_review_tidy_turn(
     input: &mut TidyAcpInput<'_>,
-    prompt: &str,
+    attempt: usize,
+) -> Result<bool, String> {
+    let artifact = input.artifacts.artifact_review_md();
+    let workspace = input.artifacts.workspace_review_md();
+    clear_review_file(&artifact).map_err(|e| format!("failed to clear artifact review: {e}"))?;
+    clear_review_file(&workspace).map_err(|e| format!("failed to clear workspace review: {e}"))?;
+
+    let review_body = input
+        .store
+        .render("review_tidy.md", input.context)
+        .map_err(|e: PromptError| e.0)?;
+    let review_log = input.artifacts.log_path(&format!("reviewer_review_tidy_attempt_{attempt}"));
+    let pair = ReviewerPromptPair {
+        cwd: &input.artifacts.work_dir,
+        workspace_review_path: &workspace,
+        artifact_review_path: &artifact,
+        review_body: review_body.as_str(),
+        review_who: "review_tidy",
+        review_log: &review_log,
+    };
+    input
+        .client
+        .run_reviewer_review(pair, ReviewPairId::One, ReviewerRestorePolicy::NoRestore)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let lgtm_text = sync_review_file_for_attempt(&artifact, &workspace)
+        .map_err(|e| format!("sync review after tidy reviewer: {e}"))?;
+    Ok(lgtm_text.as_deref().is_some_and(is_lgtm_str))
+}
+
+pub async fn run_tidy_interleaved_loop(
+    input: &mut TidyAcpInput<'_>,
+    initial_tidy_prompt: &str,
     session_dotfile_backups: &SessionDotfileBackups,
     max_loops: usize,
 ) -> Result<(), String> {
+    let max_attempts = max_loops.max(1);
     let work_dir = input.artifacts.work_dir.clone();
     let run_dir = input.artifacts.run_dir.clone();
-    for attempt in 1..=max_loops {
+    for attempt in 1..=max_attempts {
         print_stdout_line(
             MALVIN_WHO,
-            &format!("tidy.md iteration {attempt}/{max_loops} (re-run while gates fail)"),
+            &format!("tidy iteration {attempt}/{max_attempts}"),
         );
+        let coder_prompt: Cow<'_, str> = if attempt == 1 {
+            Cow::Borrowed(initial_tidy_prompt)
+        } else {
+            Cow::Owned(compose_tidy_concerns_prompt(input.store, input.context)?)
+        };
         run_tidy_prompt_with_restore(
             input,
             TidyPromptRestore {
-                prompt,
+                prompt: coder_prompt.as_ref(),
                 label: "tidy",
                 phase: TimingPhase::Implement,
                 session_dotfile_backups,
@@ -146,28 +207,22 @@ async fn run_tidy_implement_md_loop(
             },
         )
         .await?;
-        match run_repo_workspace_gates_with_details(
-            &work_dir,
-            RepoGateOutput::Tagged,
-            Some(&run_dir),
-        ) {
-            Ok(()) => break,
-            Err(RepoGateFailure::Message(msg)) => return Err(msg),
-            Err(RepoGateFailure::Command(failure)) => {
-                if attempt == max_loops {
-                    let log_path = malvin::orchestrator::format_prompt_path(
-                        &input.artifacts.quality_gates_log_path(),
-                        &work_dir,
-                    );
-                    return Err(format!(
-                        "quality gates still failing after {max_loops} tidy.md iterations:\n{}",
-                        post_run_gate_failure_details(&failure, &log_path)
-                    ));
+
+        let lgtm = run_review_tidy_turn(input, attempt).await?;
+        if lgtm {
+            match run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)) {
+                Ok(()) => return Ok(()),
+                Err(_) => {
+                    write_checks_do_not_pass_to_review_path(
+                        &input.artifacts.artifact_review_md(),
+                    )?;
                 }
             }
         }
     }
-    Ok(())
+    Err(format!(
+        "tidy did not converge within {max_attempts} iterations"
+    ))
 }
 
 async fn run_tidy_learn_mid_gates_and_summary(
@@ -202,12 +257,11 @@ async fn run_tidy_learn_mid_gates_and_summary(
             .await?;
         }
     }
-    super::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry(
-        input.client,
-        input.artifacts,
-        session_dotfile_backups,
-    )
-    .await?;
+    super::repo_checks::run_repo_workspace_gates(
+        &input.artifacts.work_dir,
+        RepoGateOutput::Tagged,
+        Some(&input.artifacts.run_dir),
+    )?;
     let header_only = input
         .store
         .render_prompt_only(HEADER_MD, input.context)
@@ -252,14 +306,21 @@ pub async fn run_tidy_acp(
         return Err(e.to_string());
     }
 
-    let mut acp_result = run_tidy_and_learn(
+    let mut acp_result = run_tidy_interleaved_loop(
         input,
         prompt,
-        &timing,
         session_dotfile_backups,
         max_loops,
     )
     .await;
+    if acp_result.is_ok() {
+        acp_result = run_tidy_learn_mid_gates_and_summary(
+            input,
+            &timing,
+            session_dotfile_backups,
+        )
+        .await;
+    }
     let end_result = input
         .client
         .end_coder_session()
@@ -279,42 +340,6 @@ pub async fn run_tidy_acp(
         &timing,
         acp_result,
     )
-}
-
-pub async fn run_tidy_and_learn(
-    input: &mut TidyAcpInput<'_>,
-    prompt: &str,
-    timing: &std::sync::Arc<std::sync::Mutex<malvin::run_timing::RunTiming>>,
-    session_dotfile_backups: &SessionDotfileBackups,
-    max_loops: usize,
-) -> Result<(), String> {
-    if max_loops <= 1 {
-        run_tidy_prompt_with_restore(
-            input,
-            TidyPromptRestore {
-                prompt,
-                label: "tidy",
-                phase: TimingPhase::Implement,
-                session_dotfile_backups,
-                restore_context: "tidy",
-            },
-        )
-        .await?;
-    } else {
-        run_tidy_implement_md_loop(
-            input,
-            prompt,
-            session_dotfile_backups,
-            max_loops,
-        )
-        .await?;
-    }
-    run_tidy_learn_mid_gates_and_summary(
-        input,
-        timing,
-        session_dotfile_backups,
-    )
-    .await
 }
 
 pub async fn run_tidy_prompt_with_restore(
@@ -413,98 +438,4 @@ pub fn merge_tidy_timing(
         &artifacts.artifact_result_md(),
     )?;
     Ok(())
-}
-
-pub async fn run_tidy_prompt_after_post_run_gate_failure(
-    client: &mut AgentClient,
-    artifacts: &RunArtifacts,
-    session_dotfile_backups: &SessionDotfileBackups,
-    failure: &RepoGateCommandFailure,
-) -> Result<(), String> {
-    let (store, context) = tidy_prompt_context(artifacts)?;
-    let mut prompt = compose_tidy_prompt(&store, &context)?;
-    let log_path = context
-        .get("quality_gates_log")
-        .map_or("./_malvin/.../quality_gates.log", String::as_str);
-    prompt.push('\n');
-    prompt.push('\n');
-    prompt.push_str("Additional context from post-run quality gate failure:\n");
-    prompt.push_str(&post_run_gate_failure_details(failure, log_path));
-    let mut input = TidyAcpInput {
-        client,
-        artifacts,
-        store: &store,
-        context: &context,
-        run_learn: false,
-    };
-    input.client.prompts_log_run_dir = Some(input.artifacts.run_dir.clone());
-    // `malvin code` / `malvin tidy` / `malvin bug` already hold a coder session when pre-summary
-    // gates run; opening a second session used to error with "coder ACP session is already open".
-    if input.client.has_open_coder_session() {
-        return run_tidy_prompt_with_restore(
-            &mut input,
-            TidyPromptRestore {
-                prompt: &prompt,
-                label: "tidy",
-                phase: TimingPhase::Implement,
-                session_dotfile_backups,
-                restore_context: "post-run gate failure",
-            },
-        )
-        .await;
-    }
-    let timing = input.client.attach_run_timing_for_session();
-    {
-        let mut timing_guard = timing
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        timing_guard.set_implement_display_name("tidy");
-    }
-    let begin_result = input.client.begin_coder_session(&input.artifacts.work_dir).await;
-    if let Err(e) = begin_result {
-        input.client.set_run_timing(None);
-        return Err(e.to_string());
-    }
-    let acp_result = run_tidy_prompt_with_restore(
-        &mut input,
-        TidyPromptRestore {
-            prompt: &prompt,
-            label: "tidy",
-            phase: TimingPhase::Implement,
-            session_dotfile_backups,
-            restore_context: "post-run gate failure",
-        },
-    )
-    .await;
-    let end_result = input.client.end_coder_session().await.map_err(|e| e.to_string());
-    let acp_result = timing_merge::prefer_primary_over_secondary(
-        acp_result,
-        end_result,
-        "end_coder_session",
-    );
-    timing_merge::emit_run_timing_after_acp(
-        input.client,
-        &input.artifacts.run_dir,
-        &timing,
-        acp_result,
-    )
-}
-
-#[cfg(test)]
-mod post_run_gate_nested_begin_regression {
-    #[test]
-    fn post_run_gate_tidy_skips_second_begin_when_coder_session_open() {
-        let src = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/cli/tidy_flow/helpers.rs"
-        ));
-        assert!(
-            src.contains("has_open_coder_session()"),
-            "regression: post-run gate tidy must branch on an open coder session"
-        );
-        assert!(
-            src.contains("second session"),
-            "expected rationale comment for nested-session guard"
-        );
-    }
 }

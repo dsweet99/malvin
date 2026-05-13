@@ -65,8 +65,12 @@ include!("session.rs");
 
 include!("agent_bundle.rs");
 
-#[cfg(test)]
-mod test_captive_session;
+/// Hidden harness: spawns `cat` as a stand-in coder session for the `malvin` binary crate’s unit tests.
+///
+/// The library is built **without** `cfg(test)` when linked from the binary target, so this stays
+/// unconditional; normal callers should not use it.
+#[doc(hidden)]
+pub mod test_captive_session;
 
 #[cfg(test)]
 mod transport_tests;

@@ -18,6 +18,8 @@ mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod init_harness;
 #[cfg(unix)]
+mod acp_tidy_interleaved;
+#[cfg(unix)]
 mod kiss_failing_gates;
 mod kpop_multiturn_support;
 mod process;
@@ -33,6 +35,8 @@ pub use acp_code_run::*;
 pub use acp_code_streaming::*;
 pub use acp_core::*;
 pub use acp_do::*;
+#[cfg(unix)]
+pub use acp_tidy_interleaved::acp_mock_tidy_reviewer_lgtm_js;
 #[cfg(unix)]
 pub use kiss_failing_gates::write_failing_gate_tools;
 pub use kpop_multiturn_support::*;

@@ -8,7 +8,10 @@ use super::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
     run_repo_workspace_gates_with_details,
 };
-use super::tidy_flow::run_tidy_prompt_after_post_run_gate_failure;
+
+mod mid_session_post_run_tidy;
+
+pub use mid_session_post_run_tidy::run_tidy_prompt_after_post_run_gate_failure;
 
 pub(super) async fn pre_summary_repo_gates_tidy_retry_flow<F, G, Fut, S>(
     first_gates: F,
@@ -73,7 +76,8 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::pre_summary_repo_gates_tidy_retry_flow;
-    use crate::cli::repo_checks::{RepoGateCommandFailure, RepoGateFailure};
+    use crate::cli::repo_checks::RepoGateCommandFailure;
+    use crate::cli::repo_checks::RepoGateFailure;
 
     #[test]
     fn kiss_stringify_mid_session_gate_units() {

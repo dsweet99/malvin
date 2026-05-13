@@ -7,14 +7,16 @@ Prefer parallel investigation. Launch up to 3 parallel subagents to:
 - Test multiple hypotheses in parallel
 Do NOT choose sequential execution when a parallel option is available.
 
+<!-- malvin:review_tidy_turn_v1 -->
+
 ---
 
-KPop: Please review the codebase. Pay special attention to code that differs from branch main/.
+KPop: Please review uncommitted code, even unadded files.
 - Is the code consistent with `{{ plan_path }}` when a plan file exists for this run, and with the Quality Gates section?
 - Is there evidence of cheating to avoid violations of kiss metrics (run `kiss stats` to see a table of kiss metrics)?
-- Are there bugs?
+- Are new unit tests legitimate unit tests? Are there any that cheat to game kiss's code-coverage rules?
+- Were any new bugs introduced?
 - Is there avoidable redundancy or wasted work?
-- Is the code well-tested?
 
 For every bug you find, write a failing regression test that exposes it.
 

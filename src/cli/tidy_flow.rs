@@ -5,8 +5,8 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
-    /// Re-run the tidy.md coder turn up to this many times while workspace gates still fail after each tidy (`kiss check` etc.), before learn and summary.
-    #[arg(long, default_value_t = 1)]
+    /// Maximum coder iterations in the tidy/review loop. Each iteration runs one coder turn (`tidy.md` on attempt 1, `tidy_concerns.md` afterwards), one reviewer turn (`review_tidy.md`), and a gates check after LGTM. The loop exits early on LGTM plus gates pass. A value of `0` is treated as `1` (same effective semantics as `malvin code` review budgets).
+    #[arg(long, default_value_t = 3)]
     pub max_loops: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
@@ -17,9 +17,6 @@ pub async fn run_tidy(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    if tidy.max_loops == 0 {
-        return Err("max-loops must be at least 1".to_string());
-    }
     let startup = prepare_tidy_run(shared, workflow, !tidy.no_learn)?;
     let run_dir = match &startup {
         TidyStartup::SkipAgent { artifacts, .. } | TidyStartup::RunAgent { artifacts, .. } => {
@@ -74,3 +71,7 @@ pub async fn run_tidy(
 }
 
 mod coverage_tests;
+
+#[cfg(test)]
+#[path = "tidy_flow/helpers/tests.rs"]
+mod tidy_flow_helpers_tests;
