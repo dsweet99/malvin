@@ -3,7 +3,9 @@
 
 ---
 
-## Step 1: Maybe restate plan
+Don't change code.
+
+## Step 1: (Maybe) Restate plan
 
 If the plan in {{ plan_path }} is brief or simplistic, then:
 - Restate the user's request clearly, writing to {{ plan_path }}. Append any questions you might have to the end of the file.
@@ -17,6 +19,8 @@ KPop: Please review the plan in {{ plan_path }}.
 - Is the plan self-consistent?
 - Is the plan implementable?
 
+Use up to 3 subagents if you think that could speed things up without sacrificing quality.
+
 
 ## Step 3: (Always) Revise plan
 
@@ -27,3 +31,5 @@ If there are *really* still lingering questions, leave them at the bottom of {{ 
 ---
 [malvin] Ready for implementation.
 ```
+
+Don't change code.
