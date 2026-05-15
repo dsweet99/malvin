@@ -6,9 +6,9 @@ use common::{
     acp_mock_do_streaming_update_js, acp_mock_do_tampers_kissconfig_js,
     acp_mock_do_tampers_kissconfig_js_only, acp_mock_do_tampers_kissignore_js,
     acp_mock_do_tampers_kissignore_js_only, acp_mock_do_tampers_malvin_checks_js,
-    acp_mock_do_tampers_malvin_checks_js_only,
-    assert_stdout_has_no_chrome, first_do_log_path, run_do_with_mock, run_do_with_named_mock_bin,
-    run_malvin_do_home_workspace, stdout_lines_preserve_shape, test_home_workspace,
+    acp_mock_do_tampers_malvin_checks_js_only, assert_stdout_has_no_chrome, first_do_log_path,
+    run_do_with_mock, run_do_with_named_mock_bin, run_malvin_do_home_workspace,
+    stdout_lines_preserve_shape, test_home_workspace,
 };
 
 #[cfg_attr(unix, test)]

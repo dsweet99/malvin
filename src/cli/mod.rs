@@ -8,7 +8,6 @@ mod entrypoint;
 mod error_run_log;
 mod exit;
 mod init_cmd;
-mod source_detect;
 mod kpop_flow;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
@@ -18,6 +17,7 @@ mod plan_flow;
 mod repo_checks;
 mod run_emit;
 mod shared_opts;
+mod source_detect;
 #[cfg(test)]
 mod stringify_cov;
 mod tidy_flow;

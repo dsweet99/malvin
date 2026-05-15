@@ -5,7 +5,7 @@ mod common;
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, acp_mock_tidy_reviewer_lgtm_js,
     command_output_with_timeout, only_run_dir, seed_git_kiss_cargo_gate_workspace,
-    test_home_workspace, write_fake_kiss, write_failing_gate_tools, write_mock_executable,
+    test_home_workspace, write_failing_gate_tools, write_fake_kiss, write_mock_executable,
 };
 #[cfg(unix)]
 use malvin::orchestrator::clear_review_file;

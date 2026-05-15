@@ -108,7 +108,7 @@ fn restore_after_plan_prompt(
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
     restore_workspace_session_dotfiles(work_dir, session_dotfile_backups)
-    .map_err(|e| format!("workspace session restore failed after plan prompt: {e}"))
+        .map_err(|e| format!("workspace session restore failed after plan prompt: {e}"))
 }
 
 fn pair_run_and_restore(
@@ -168,10 +168,8 @@ async fn run_plan_review_once(
     }
 
     let run_res = plan_coder_prompt(client, request.artifacts, request.prompt).await;
-    let restore_res = restore_after_plan_prompt(
-        &request.artifacts.work_dir,
-        request.session_dotfile_backups,
-    );
+    let restore_res =
+        restore_after_plan_prompt(&request.artifacts.work_dir, request.session_dotfile_backups);
     let acp_result = pair_run_and_restore(run_res, restore_res);
 
     let end_result = client.end_coder_session().await.map_err(|e| e.to_string());

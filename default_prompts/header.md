@@ -33,6 +33,12 @@ CONFIDENCE: 3
 ## AFTER EVERY REQUEST
 - Does the user's request relate to any of the TRIGGER words? If so, display the one most relevant TRIGGER: / ADVICE: / CONFIDENCE: triple for you and the user to see.
 
+
+## Subagents
+- Subagents may not run large-scale or long-running processes, especially tests and checks. Leave those tasks to the main agent.
+  - GOOD: pytest on up to 3 tests
+  - BAD: pytest on a directory or many tests
+
 ---
 
 ## Definition: Claims vs Hypotheses

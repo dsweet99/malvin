@@ -66,6 +66,7 @@ pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
     let telemetry = telemetry_for_test_args(&args);
     AcpSession(Arc::new(ch.into_session_inner(
         child,
+        None,
         "test-session-id".into(),
         args.rpc_timeout,
         telemetry,

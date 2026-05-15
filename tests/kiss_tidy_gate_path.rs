@@ -6,8 +6,8 @@ mod common;
 #[cfg(unix)]
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
-    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_fake_kiss,
-    write_failing_gate_tools, write_mock_executable,
+    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_failing_gate_tools,
+    write_fake_kiss, write_mock_executable,
 };
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;

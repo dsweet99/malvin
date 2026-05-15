@@ -30,6 +30,7 @@ pub struct PromptTraceWriter {
 #[allow(clippy::struct_excessive_bools)]
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
+    pub process_group_id: Option<u32>,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,

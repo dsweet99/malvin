@@ -61,11 +61,8 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
     session_dotfile_backups: &SessionDotfileBackups,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result = merge_acp_with_workspace_session_restore(
-        primary,
-        work_dir,
-        session_dotfile_backups,
-    );
+    let merge_result =
+        merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
     if let Some(abort) = abort_message_from_result_md(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),

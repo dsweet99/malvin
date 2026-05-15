@@ -69,6 +69,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         stdin,
         stdout,
     } = inp;
+    let process_group_id = child.id();
     let ch = SessionChannelState::new(stdin, &args);
     let hs_io = ch.handshake_io();
     let (child, session_id) = acp_spawn_start_reader_and_handshake(
@@ -87,6 +88,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
     .await?;
     Ok(AcpSession(Arc::new(ch.into_session_inner(
         child,
+        process_group_id,
         session_id,
         rpc_timeout,
         SessionReaderTelemetry {

@@ -24,11 +24,12 @@ use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_s
 
 use workflow_context as workflow_context_inner;
 
-pub type PreSummaryMidFn = for<'a> fn(
-    &'a mut AgentClient,
-    &'a RunArtifacts,
-    &'a SessionDotfileBackups,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+pub type PreSummaryMidFn =
+    for<'a> fn(
+        &'a mut AgentClient,
+        &'a RunArtifacts,
+        &'a SessionDotfileBackups,
+    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
 fn mid_noop<'a>(
     _: &'a mut AgentClient,
@@ -145,13 +146,9 @@ impl Orchestrator<'_> {
             Ok(()) => {
                 async {
                     run_coder_session_until_pre_summary(self, context).await?;
-                    mid(
-                        self.client,
-                        self.artifacts,
-                        &self.session_dotfile_backups,
-                    )
-                    .await
-                    .map_err(WorkflowError)?;
+                    mid(self.client, self.artifacts, &self.session_dotfile_backups)
+                        .await
+                        .map_err(WorkflowError)?;
                     run_coder_session_summary_only(self, context).await
                 }
                 .await

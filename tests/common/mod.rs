@@ -5,6 +5,8 @@ mod acp_code_run;
 mod acp_code_streaming;
 mod acp_core;
 mod acp_do;
+#[cfg(unix)]
+mod acp_tidy_interleaved;
 mod child_wait;
 mod cli_parity_harness_run;
 #[cfg(all(unix, target_os = "linux"))]
@@ -17,8 +19,6 @@ mod do_stdout_harness;
 mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod init_harness;
-#[cfg(unix)]
-mod acp_tidy_interleaved;
 #[cfg(unix)]
 mod kiss_failing_gates;
 mod kpop_multiturn_support;

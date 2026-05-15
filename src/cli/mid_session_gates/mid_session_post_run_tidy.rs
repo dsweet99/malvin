@@ -82,7 +82,10 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         timing_guard.set_implement_display_name("tidy");
     }
-    let begin_result = input.client.begin_coder_session(&input.artifacts.work_dir).await;
+    let begin_result = input
+        .client
+        .begin_coder_session(&input.artifacts.work_dir)
+        .await;
     if let Err(e) = begin_result {
         input.client.set_run_timing(None);
         return Err(e.to_string());
@@ -98,12 +101,13 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
         },
     )
     .await;
-    let end_result = input.client.end_coder_session().await.map_err(|e| e.to_string());
-    let acp_result = timing_merge::prefer_primary_over_secondary(
-        acp_result,
-        end_result,
-        "end_coder_session",
-    );
+    let end_result = input
+        .client
+        .end_coder_session()
+        .await
+        .map_err(|e| e.to_string());
+    let acp_result =
+        timing_merge::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
     timing_merge::emit_run_timing_after_acp(
         input.client,
         &input.artifacts.run_dir,
@@ -114,12 +118,12 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
 
 #[cfg(test)]
 mod tests {
+    use crate::cli::repo_checks::RepoGateCommandFailure;
     use malvin::acp::test_captive_session::captive_cat_acp_session_for_tests;
     use malvin::acp::{AgentClient, AgentIoOptions};
     use malvin::artifacts::{
         KissConfigBackup, SessionDotfileBackups, create_run_artifacts_from_text,
     };
-    use crate::cli::repo_checks::RepoGateCommandFailure;
 
     use super::run_tidy_prompt_after_post_run_gate_failure;
 

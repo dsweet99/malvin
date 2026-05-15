@@ -77,12 +77,14 @@ impl SessionChannelState {
     pub(crate) fn into_session_inner(
         self,
         child: Child,
+        process_group_id: Option<u32>,
         session_id: String,
         rpc_timeout: std::time::Duration,
         telemetry: SessionReaderTelemetry,
     ) -> AcpSessionInner {
         AcpSessionInner {
             child: Mutex::new(child),
+            process_group_id,
             stdin: self.stdin,
             pending: self.pending,
             acp_activity_seq: self.acp_activity_seq,

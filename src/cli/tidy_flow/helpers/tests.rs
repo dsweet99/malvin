@@ -30,12 +30,12 @@ fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
         "quality_gates_log".to_string(),
         "./_malvin/run/quality_gates.log".to_string(),
     );
-    ctx.insert(
-        "quality_gates".to_string(),
-        "- `kiss check`\n".to_string(),
-    );
+    ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());
-    ctx.insert("review_path".to_string(), "./_malvin/run/review.md".to_string());
+    ctx.insert(
+        "review_path".to_string(),
+        "./_malvin/run/review.md".to_string(),
+    );
     let out = super::compose_tidy_concerns_prompt(&store, &ctx).expect("compose");
     assert!(
         out.contains("./_malvin/run/review.md"),

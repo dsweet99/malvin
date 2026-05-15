@@ -9,10 +9,15 @@ pub(super) fn visit_source_files(root: &Path, f: &mut impl FnMut(&Path)) {
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
+            let path = entry.path();
             if file_type.is_symlink() {
+                if let Ok(md) = std::fs::metadata(&path) {
+                    if md.is_file() {
+                        f(&path);
+                    }
+                }
                 continue;
             }
-            let path = entry.path();
             if file_type.is_file() {
                 f(&path);
             } else if file_type.is_dir() {
@@ -44,4 +49,48 @@ pub(super) fn python_ruff_and_pytest_flags(root: &Path) -> (bool, bool) {
         }
     });
     (has_py, has_pytest)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::python_ruff_and_pytest_flags;
+
+    #[test]
+    fn kiss_stringify_discover_py_units() {
+        let _ = stringify!(super::visit_source_files);
+        let _ = stringify!(python_ruff_and_pytest_flags);
+        #[cfg(unix)]
+        {
+            let _ = stringify!(python_flags_see_symlinked_py_file);
+            let _ = stringify!(python_pytest_flag_sees_symlinked_test_module);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn python_flags_see_symlinked_py_file() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        std::fs::write(w.join("real.py"), "x = 1\n").unwrap();
+        symlink(w.join("real.py"), w.join("linked.py")).unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(w);
+        assert!(has_py);
+        assert!(!has_pytest);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn python_pytest_flag_sees_symlinked_test_module() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        std::fs::write(w.join("impl.py"), "def test_x():\n    assert True\n").unwrap();
+        symlink(w.join("impl.py"), w.join("test_linked.py")).unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(w);
+        assert!(has_py);
+        assert!(has_pytest);
+    }
 }

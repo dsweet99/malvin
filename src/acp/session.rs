@@ -4,6 +4,34 @@ use outgoing_prompt_trace::{
     DoPromptTraceSplit, OutgoingPromptTrace, UniformOutgoingTrace,
 };
 
+#[cfg(unix)]
+fn signal_process_group(process_group_id: u32, signal: i32) {
+    let Ok(pgid) = i32::try_from(process_group_id) else {
+        return;
+    };
+    let target = format!("-{pgid}");
+    let signal = format!("-{signal}");
+    let _ = std::process::Command::new("kill")
+        .arg(signal)
+        .arg("--")
+        .arg(target)
+        .stderr(std::process::Stdio::null())
+        .status();
+}
+
+#[cfg(unix)]
+async fn terminate_process_group(process_group_id: Option<u32>) {
+    let Some(process_group_id) = process_group_id else {
+        return;
+    };
+    signal_process_group(process_group_id, 15);
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    signal_process_group(process_group_id, 9);
+}
+
+#[cfg(not(unix))]
+async fn terminate_process_group(_: Option<u32>) {}
+
 #[cfg(test)]
 #[path = "session_tests.rs"]
 mod tests;
@@ -265,6 +293,7 @@ impl AcpSession {
     /// Returns `Err` if waiting on the child after kill fails.
     pub async fn shutdown(&self) -> Result<(), String> {
         self.reset_prompt_inflight().await;
+        terminate_process_group(self.0.process_group_id).await;
         let mut ch = self.0.child.lock().await;
         let _ = ch.kill().await;
         ch.wait()

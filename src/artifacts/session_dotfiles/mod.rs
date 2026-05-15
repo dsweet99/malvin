@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::dotfile_backup::{
-    DotfileBackupLabels, allocate_backup_dir, remove_if_exists,
-};
+use super::dotfile_backup::{DotfileBackupLabels, allocate_backup_dir, remove_if_exists};
 use super::run_id::random_alnum;
 
 struct DotfileSpecRow {
@@ -90,11 +88,7 @@ fn backup_slot(
     Ok(DotfileBackupState::Present(dest_file))
 }
 
-fn restore_slot(
-    work_dir: &Path,
-    backup: &DotfileBackupState,
-    slot: usize,
-) -> Result<(), String> {
+fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
     let dst = work_dir.join(spec.rel);
     let lbls = labels(spec);

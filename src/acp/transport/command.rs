@@ -98,8 +98,17 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
     }
     apply_acp_tail(&mut cmd, args.cwd, args.george_acp_lane);
     prepend_standard_path_for_child(&mut cmd);
+    isolate_agent_process_group(&mut cmd);
     cmd
 }
+
+#[cfg(unix)]
+fn isolate_agent_process_group(cmd: &mut Command) {
+    cmd.process_group(0);
+}
+
+#[cfg(not(unix))]
+fn isolate_agent_process_group(_: &mut Command) {}
 
 pub(crate) async fn spawn_agent_acp_child(cmd: &mut Command) -> Result<Child, io::Error> {
     const ATTEMPTS: u32 = 16;
@@ -147,6 +156,7 @@ fn kiss_stringify_command_a() {
 #[test]
 fn kiss_stringify_command_b() {
     let _ = stringify!(build_agent_acp_command);
+    let _ = stringify!(isolate_agent_process_group);
     let _ = stringify!(spawn_agent_acp_child);
     let _ = stringify!(executable_text_busy);
 }

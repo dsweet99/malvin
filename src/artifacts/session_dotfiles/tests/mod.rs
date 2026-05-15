@@ -1,5 +1,5 @@
 mod bundle;
+mod kiss_stringify;
 mod kissconfig;
 mod kissignore;
-mod kiss_stringify;
 mod malvin_checks;
