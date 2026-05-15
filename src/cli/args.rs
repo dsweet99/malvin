@@ -43,7 +43,7 @@ pub enum Commands {
     Bug(BugArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Write or review a plan file (BETA)
+    /// Write or review a plan file (EXPERIMENTAL)
     Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),

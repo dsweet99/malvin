@@ -18,8 +18,7 @@ When presented with failures or violations, respond to them earnestly. Improve t
 
 ## Tips and Soft Requirements
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
-- Run checks & tests frequently to avoid a big cleanup at the end.
-  - You can save time by running the subset of tests reported by `kiss show-tests [FILE_OF_INTEREST [FILE_OF_INTEREST [...]]]]` while iterating.
+- Run `kiss --help` to familiarize yourself with kiss's coding tools, like `test` and `mv`. `kiss test` can be especially helpful in reducing the unit test burden in a coding loop.
 - Do not write "documentation parity guards". Do not write comments.
 - Keep each unit test's running time under 10 seconds (<1s would be great).
 - Write code to fail fast. Assert liberally. DRY.
