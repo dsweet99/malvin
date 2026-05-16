@@ -22,8 +22,9 @@ mod review_fanout_write;
 mod review_loop_helpers;
 
 pub use review_attempt_kernel::{
-    ReviewAttemptKernelInput, load_review_descriptions_for_kernel, review_attempt_is_lgtm,
-    run_review_fanout_prefix,
+    ReviewAttemptKernelInput, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
+    ensure_artifact_review_after_review_write, load_review_descriptions_for_kernel,
+    review_attempt_is_lgtm, run_review_fanout_prefix,
 };
 
 mod check_plan;

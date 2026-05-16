@@ -117,6 +117,18 @@ pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
     acp_mock_code_with_run_dir_js(&body)
 }
 
+pub fn acp_mock_code_review_write_workspace_only_lgtm_js() -> String {
+    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_workspace_lgtm());
+    let body = format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }}
+{review_tail}",
+        implement = chunk_line("implemented"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
 pub fn acp_mock_code_workspace_review_only_lgtm_js() -> String {
     let body = r"    if (!promptText.includes('Concerns')) {
       const workspaceReview = path.join(process.cwd(), 'review.md');

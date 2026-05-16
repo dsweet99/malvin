@@ -10,7 +10,8 @@ use malvin::artifacts::{
 };
 use malvin::orchestrator::{
     ReviewAttemptKernelInput, format_prompt_path, load_review_descriptions_for_kernel,
-    review_attempt_is_lgtm, run_review_fanout_prefix, should_run_learn_check, workflow_context,
+    ensure_artifact_review_after_review_write, review_attempt_is_lgtm,
+    run_review_fanout_prefix, should_run_learn_check, workflow_context,
 };
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 use malvin::run_timing::TimingPhase;
@@ -234,6 +235,7 @@ pub async fn run_tidy_review_attempt(
         session_dotfile_backups,
     })
     .await?;
+    ensure_artifact_review_after_review_write(input.artifacts).map_err(|e| e.0)?;
     review_attempt_is_lgtm(input.artifacts).map_err(|e| e.0)
 }
 

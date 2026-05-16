@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use crate::acp::AgentClient;
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
-use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
+use crate::review_sync::{is_lgtm_str, read_artifact_review_for_fanout_attempt};
+
+pub const REVIEW_WRITE_MISSING_ARTIFACT_MSG: &str = "review_write did not write artifact review";
 
 use super::review_fanout_desc::{
     load_review_description_lines, reviewers_attempt_dir, verify_reviewer_output_files,
@@ -66,11 +68,27 @@ pub async fn run_review_fanout_prefix(
 
 /// # Errors
 ///
-/// Returns [`WorkflowError`] when review files cannot be synced.
+/// Returns [`WorkflowError`] when the artifact review file cannot be read.
+pub fn ensure_artifact_review_after_review_write(
+    artifacts: &RunArtifacts,
+) -> Result<(), WorkflowError> {
+    let artifact_review = artifacts.artifact_review_md();
+    let review_text = read_artifact_review_for_fanout_attempt(&artifact_review)
+        .map_err(WorkflowError)?;
+    if review_text.is_none() {
+        return Err(WorkflowError(
+            REVIEW_WRITE_MISSING_ARTIFACT_MSG.to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// # Errors
+///
+/// Returns [`WorkflowError`] when the artifact review file cannot be read.
 pub fn review_attempt_is_lgtm(artifacts: &RunArtifacts) -> Result<bool, WorkflowError> {
     let artifact_review = artifacts.artifact_review_md();
-    let workspace_review = artifacts.workspace_review_md();
-    let review_text = sync_review_file_for_attempt(&artifact_review, &workspace_review)
+    let review_text = read_artifact_review_for_fanout_attempt(&artifact_review)
         .map_err(WorkflowError)?;
     Ok(review_text.as_deref().is_some_and(is_lgtm_str))
 }
@@ -80,8 +98,6 @@ mod tests {
     use super::super::review_fanout_desc::parse_review_description_lines;
     use crate::artifacts::create_run_artifacts_from_text;
     use crate::prompts::PromptStore;
-    use crate::review_sync::sync_review_file_for_attempt;
-
     use super::*;
 
     #[test]
@@ -143,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn review_attempt_is_lgtm_after_workspace_sync() {
+    fn ensure_artifact_review_after_review_write_errors_when_artifact_missing() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
@@ -151,13 +167,39 @@ mod tests {
             .expect("artifacts");
         let workspace = artifacts.workspace_review_md();
         std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
-        assert!(review_attempt_is_lgtm(&artifacts).expect("sync"));
-        let synced = sync_review_file_for_attempt(
-            &artifacts.artifact_review_md(),
-            &workspace,
-        )
-        .expect("sync");
-        assert!(synced.as_deref().is_some_and(is_lgtm_str));
+        let err = ensure_artifact_review_after_review_write(&artifacts).expect_err("missing");
+        assert_eq!(err.0, REVIEW_WRITE_MISSING_ARTIFACT_MSG);
+    }
+
+    #[test]
+    fn ensure_artifact_review_after_review_write_ok_when_artifact_nonempty() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "plan").expect("write plan");
+        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
+            .expect("artifacts");
+        std::fs::write(artifacts.artifact_review_md(), "problems\n").expect("artifact");
+        ensure_artifact_review_after_review_write(&artifacts).expect("present");
+    }
+
+    #[test]
+    fn review_attempt_is_lgtm_false_when_only_workspace_lgtm() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "plan").expect("write plan");
+        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
+            .expect("artifacts");
+        let artifact = artifacts.artifact_review_md();
+        let workspace = artifacts.workspace_review_md();
+        std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
+        assert!(
+            !review_attempt_is_lgtm(&artifacts).expect("read"),
+            "empty artifact with workspace LGTM must not count as LGTM after fan-out"
+        );
+        assert!(
+            !artifact.exists() || std::fs::read_to_string(&artifact).unwrap().trim().is_empty(),
+            "workspace LGTM must not be promoted into artifact for fan-out LGTM"
+        );
     }
 
     #[test]
@@ -175,6 +217,8 @@ mod tests {
     #[test]
     fn kiss_stringify_review_attempt_kernel_units() {
         let _ = stringify!(super::run_review_fanout_prefix);
+        let _ = stringify!(super::ensure_artifact_review_after_review_write);
+        let _ = stringify!(super::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
         let _ = stringify!(super::review_attempt_is_lgtm);
         let _ = stringify!(super::load_review_descriptions_for_kernel);
         let _ = stringify!(super::ReviewAttemptKernelInput);

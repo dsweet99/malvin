@@ -9,6 +9,7 @@ fn kiss_stringify_tidy_flow_units() {
     let _ = stringify!(crate::cli::tidy_flow::write_checks_do_not_pass_to_review_path);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_interleaved_loop);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_review_attempt);
+    let _ = stringify!(crate::orchestrator::ensure_artifact_review_after_review_write);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_prompt);
     let _ = stringify!(crate::cli::tidy_flow::run_tidy_acp);
     let _ = stringify!(crate::cli::tidy_flow::tidy_prompt_context);

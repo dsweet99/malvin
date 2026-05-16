@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use super::review_attempt_kernel::{
-    ReviewAttemptKernelInput, load_review_descriptions_for_kernel, review_attempt_is_lgtm,
-    run_review_fanout_prefix,
+    ReviewAttemptKernelInput, ensure_artifact_review_after_review_write,
+    load_review_descriptions_for_kernel, review_attempt_is_lgtm, run_review_fanout_prefix,
 };
 use super::review_fanout_write::{ReviewWriteCoderSession, run_review_write_coder_session};
 use super::review_loop_helpers::run_concerns_and_check_abort_impl;
@@ -59,6 +59,7 @@ async fn code_review_single_attempt(
         attempt: ctx.attempt,
     })
     .await?;
+    ensure_artifact_review_after_review_write(orchestrator.artifacts)?;
     let lgtm = review_attempt_is_lgtm(orchestrator.artifacts)?;
 
     if lgtm {

@@ -39,7 +39,7 @@ pub enum Commands {
     Code(CodeArgs),
     /// Popperian scientific investigator
     Kpop(KpopArgs),
-    /// KPOP bug hunt, then regression test, then fix (EXPERIMENTAL)
+    /// KPOP bug hunter: find, regression test, fix (EXPERIMENTAL)
     Bug(BugArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),

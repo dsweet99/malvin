@@ -76,6 +76,7 @@ fn kiss_stringify_log_paths() {
 #[test]
 fn kiss_stringify_review_sync() {
     let _ = stringify!(crate::review_sync::is_lgtm_str);
+    let _ = stringify!(crate::review_sync::read_artifact_review_for_fanout_attempt);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
 }
 
@@ -98,6 +99,8 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt);
     let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt_body);
     let _ = stringify!(crate::orchestrator::run_review_fanout_prefix);
+    let _ = stringify!(crate::orchestrator::ensure_artifact_review_after_review_write);
+    let _ = stringify!(crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
     let _ = stringify!(crate::orchestrator::review_attempt_is_lgtm);
     let _ = stringify!(crate::orchestrator::load_review_descriptions_for_kernel);
     let _ = stringify!(crate::orchestrator::review_fanout_write::run_review_write_coder_session);

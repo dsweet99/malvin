@@ -36,12 +36,21 @@ fn read_nonempty_review(path: &Path, label: &str) -> Result<Option<String>, Stri
     }
 }
 
-/// Resolves review text for one fan-out attempt; run artifact `review.md` is authoritative.
+/// Non-empty artifact `review.md` after fan-out + `review_write` (no workspace fallback).
 ///
-/// Non-empty artifact text is always returned as-is (including `LGTM` written by `review_write`
-/// when workspace `./review.md` is whitespace-only). Stale workspace `LGTM` cannot mask
-/// artifact gate markers or reviewer findings. When the artifact is empty, non-empty workspace
-/// text is copied into the artifact; whitespace-only workspace leaves the artifact empty.
+/// # Errors
+///
+/// Returns `Err` when reading the artifact review file fails.
+pub fn read_artifact_review_for_fanout_attempt(
+    artifact_review_path: &Path,
+) -> Result<Option<String>, String> {
+    read_nonempty_review(artifact_review_path, "artifact")
+}
+
+/// Copies workspace review into the artifact when the artifact is empty.
+///
+/// Used by tests and legacy sync helpers; fan-out LGTM uses
+/// [`read_artifact_review_for_fanout_attempt`] only.
 ///
 /// # Errors
 ///
@@ -85,5 +94,6 @@ mod tests {
         let _ = stringify!(super::ensure_parent_dir);
         let _ = stringify!(super::clear_artifact_review_to_empty);
         let _ = stringify!(super::read_nonempty_review);
+        let _ = stringify!(super::read_artifact_review_for_fanout_attempt);
     }
 }

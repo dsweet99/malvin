@@ -2,7 +2,9 @@
 
 mod attempt;
 
-pub use attempt::sync_review_file_for_attempt;
+pub use attempt::{
+    read_artifact_review_for_fanout_attempt, sync_review_file_for_attempt,
+};
 
 #[must_use]
 pub fn is_lgtm_str(content: &str) -> bool {
