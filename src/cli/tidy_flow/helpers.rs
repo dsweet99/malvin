@@ -2,17 +2,18 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
 
-use malvin::acp::{AgentClient, CoderPromptOptions, ReviewerRestorePolicy};
+use malvin::acp::{AgentClient, CoderPromptOptions};
 use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
-use malvin::orchestrator::{clear_review_file, should_run_learn_check, workflow_context};
+use malvin::orchestrator::{
+    ReviewAttemptKernelInput, format_prompt_path, load_review_descriptions_for_kernel,
+    review_attempt_is_lgtm, run_review_fanout_prefix, should_run_learn_check, workflow_context,
+};
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
-use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
-use malvin::run_timing::{ReviewPairId, TimingPhase};
-use malvin::ReviewerPromptPair;
+use malvin::run_timing::TimingPhase;
 
 use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::timing_merge;
@@ -68,7 +69,13 @@ pub fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists("review_tidy.md")
+        .validate_exists("review_descriptions.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("reviewer_template.md")
+        .map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("review_write.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("tidy_concerns.md")
@@ -144,38 +151,137 @@ pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(),
     })
 }
 
-pub async fn run_review_tidy_turn(
-    input: &TidyAcpInput<'_>,
-    attempt: usize,
-) -> Result<bool, String> {
-    let artifact = input.artifacts.artifact_review_md();
-    let workspace = input.artifacts.workspace_review_md();
-    clear_review_file(&artifact).map_err(|e| format!("failed to clear artifact review: {e}"))?;
-    clear_review_file(&workspace).map_err(|e| format!("failed to clear workspace review: {e}"))?;
+pub fn write_checks_do_not_pass_for_artifacts(artifacts: &RunArtifacts) -> Result<(), String> {
+    write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())?;
+    write_checks_do_not_pass_to_review_path(&artifacts.workspace_review_md())
+}
 
-    let review_body = input
-        .store
-        .render("review_tidy.md", input.context)
+pub struct TidyReviewWriteSession<'a> {
+    pub client: &'a mut AgentClient,
+    pub store: &'a PromptStore,
+    pub artifacts: &'a RunArtifacts,
+    pub context: &'a HashMap<String, String>,
+    pub reviewers_subdir: &'a Path,
+    pub attempt: usize,
+    pub session_dotfile_backups: &'a SessionDotfileBackups,
+}
+
+pub async fn run_tidy_review_write(session: TidyReviewWriteSession<'_>) -> Result<(), String> {
+    let TidyReviewWriteSession {
+        client,
+        store,
+        artifacts,
+        context,
+        reviewers_subdir,
+        attempt,
+        session_dotfile_backups,
+    } = session;
+    let mut write_ctx = context.clone();
+    write_ctx.insert(
+        "reviewers_subdir".to_string(),
+        format_prompt_path(reviewers_subdir, &artifacts.work_dir),
+    );
+    let prompt = store
+        .render("review_write.md", &write_ctx)
         .map_err(|e: PromptError| e.0)?;
-    let review_log = input.artifacts.log_path(&format!("reviewer_review_tidy_attempt_{attempt}"));
-    let pair = ReviewerPromptPair {
-        cwd: &input.artifacts.work_dir,
-        workspace_review_path: &workspace,
-        artifact_review_path: Some(&artifact),
-        review_body: review_body.as_str(),
-        review_who: "review_tidy",
-        review_log: &review_log,
-        sync_workspace_review: true,
-    };
-    input
-        .client
-        .run_reviewer_review(pair, ReviewPairId::Tidy, ReviewerRestorePolicy::NoRestore)
+    let label = format!("review_write_attempt_{attempt}");
+    let run_result = client
+        .run_coder_prompt(
+            prompt.as_str(),
+            &artifacts.log_path(label.as_str()),
+            label.as_str(),
+            CoderPromptOptions {
+                llm_phase: Some(TimingPhase::ReviewWrite),
+                skip_repo_style: true,
+                do_trace_split: None,
+                stdout_bracket_label: None,
+            },
+        )
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string());
+    let restore_result =
+        restore_workspace_session_dotfiles(&artifacts.work_dir, session_dotfile_backups);
+    match (run_result, restore_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
+        (Err(run_err), Err(restore_err)) => Err(format!("{run_err}, {restore_err}")),
+    }
+}
 
-    let lgtm_text = sync_review_file_for_attempt(&artifact, &workspace)
-        .map_err(|e| format!("sync review after tidy reviewer: {e}"))?;
-    Ok(lgtm_text.as_deref().is_some_and(is_lgtm_str))
+pub async fn run_tidy_review_attempt(
+    input: &mut TidyAcpInput<'_>,
+    descriptions: &[String],
+    attempt: usize,
+    session_dotfile_backups: &SessionDotfileBackups,
+) -> Result<bool, String> {
+    let kernel = ReviewAttemptKernelInput {
+        store: input.store,
+        artifacts: input.artifacts,
+        context: input.context,
+        descriptions,
+        attempt,
+    };
+    let reviewers_subdir = run_review_fanout_prefix(&*input.client, &kernel)
+        .await
+        .map_err(|e| e.0)?;
+    run_tidy_review_write(TidyReviewWriteSession {
+        client: input.client,
+        store: input.store,
+        artifacts: input.artifacts,
+        context: input.context,
+        reviewers_subdir: &reviewers_subdir,
+        attempt,
+        session_dotfile_backups,
+    })
+    .await?;
+    review_attempt_is_lgtm(input.artifacts).map_err(|e| e.0)
+}
+
+async fn run_tidy_concerns_coder_turn(
+    input: &mut TidyAcpInput<'_>,
+    session_dotfile_backups: &SessionDotfileBackups,
+) -> Result<(), String> {
+    let concerns = compose_tidy_concerns_prompt(input.store, input.context)?;
+    run_tidy_prompt_with_restore(
+        input,
+        TidyPromptRestore {
+            prompt: concerns.as_str(),
+            label: "tidy",
+            phase: TimingPhase::Implement,
+            session_dotfile_backups,
+            restore_context: "tidy",
+        },
+    )
+    .await
+}
+
+async fn run_tidy_bonus_gate_recovery(
+    input: &mut TidyAcpInput<'_>,
+    descriptions: &[String],
+    attempt: usize,
+    session_dotfile_backups: &SessionDotfileBackups,
+    work_dir: &Path,
+    run_dir: &Path,
+) -> Result<bool, String> {
+    run_tidy_concerns_coder_turn(input, session_dotfile_backups).await?;
+    if run_repo_workspace_gates(work_dir, RepoGateOutput::Tagged, Some(run_dir)).is_err() {
+        return Ok(false);
+    }
+    let lgtm = run_tidy_review_attempt(
+        input,
+        descriptions,
+        attempt,
+        session_dotfile_backups,
+    )
+    .await?;
+    if !lgtm {
+        return Ok(false);
+    }
+    if run_repo_workspace_gates(work_dir, RepoGateOutput::Tagged, Some(run_dir)).is_ok() {
+        return Ok(true);
+    }
+    write_checks_do_not_pass_for_artifacts(input.artifacts)?;
+    Ok(false)
 }
 
 pub async fn run_tidy_interleaved_loop(
@@ -187,6 +293,7 @@ pub async fn run_tidy_interleaved_loop(
     let max_attempts = max_loops.max(1);
     let work_dir = input.artifacts.work_dir.clone();
     let run_dir = input.artifacts.run_dir.clone();
+    let descriptions = load_review_descriptions_for_kernel(input.store).map_err(|e| e.0)?;
     for attempt in 1..=max_attempts {
         print_stdout_line(
             MALVIN_WHO,
@@ -209,15 +316,39 @@ pub async fn run_tidy_interleaved_loop(
         )
         .await?;
 
-        let lgtm = run_review_tidy_turn(input, attempt).await?;
+        let lgtm = run_tidy_review_attempt(
+            input,
+            &descriptions,
+            attempt,
+            session_dotfile_backups,
+        )
+        .await?;
+        if lgtm
+            && run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)).is_ok()
+        {
+            return Ok(());
+        }
         if lgtm {
-            match run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)) {
-                Ok(()) => return Ok(()),
-                Err(_) => {
-                    write_checks_do_not_pass_to_review_path(
-                        &input.artifacts.artifact_review_md(),
-                    )?;
-                }
+            write_checks_do_not_pass_for_artifacts(input.artifacts)?;
+            if attempt < max_attempts {
+                continue;
+            }
+            let bonus = max_attempts + 1;
+            print_stdout_line(
+                MALVIN_WHO,
+                &format!("tidy iteration {bonus}/{max_attempts}"),
+            );
+            if run_tidy_bonus_gate_recovery(
+                input,
+                &descriptions,
+                attempt,
+                session_dotfile_backups,
+                &work_dir,
+                &run_dir,
+            )
+            .await?
+            {
+                return Ok(());
             }
         }
     }

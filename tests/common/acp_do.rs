@@ -1,4 +1,8 @@
-use super::acp_core::{ARGV_CAPTURE_PREAMBLE, acp_mock_js, session_update_chunk_line};
+use super::acp_core::{
+    ARGV_CAPTURE_PREAMBLE, acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line,
+    session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
+    write_fanout_reviewer_output,
+};
 
 pub fn acp_mock_do_streaming_update_js() -> String {
     let msg = session_update_chunk_line("agent_message_chunk", r"'agent message\n'");
@@ -85,21 +89,54 @@ pub fn acp_mock_do_creates_kissignore_js() -> String {
     acp_mock_js("", &format!("{create}\n{msg}"))
 }
 
-#[allow(clippy::needless_raw_string_hashes)]
-const TIDY_REVIEWER_LGTM_HANDLER: &str = r#"    const fs = require('fs');
-    const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const runRoot = path.join(process.cwd(), '_malvin');
-    const runDirNames = fs.readdirSync(runRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-    const runDir = path.join(runRoot, runDirNames[runDirNames.length - 1]);
-    if (promptText.includes('<!-- malvin:review_tidy_turn_v1 -->')) {
-      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\n', 'utf8');
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'review\n' } } } }));
-    } else {
-      console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'coder\n' } } } }));
-    }"#;
+fn acp_mock_tidy_fanout_body(review_write_tail: &str) -> String {
+    let reviewer = write_fanout_reviewer_output();
+    let coder = chunk_line("coder");
+    format!(
+        r"    if (promptText.includes('Write your executive summary and tl;dr to')) {{
+{reviewer}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+{review_write_tail}
+    }} else {{
+{coder}
+    }}"
+    )
+}
 
 #[must_use]
-pub fn acp_mock_tidy_reviewer_lgtm_js() -> String {
-    acp_mock_js("", TIDY_REVIEWER_LGTM_HANDLER)
+pub fn acp_mock_tidy_fanout_lgtm_js() -> String {
+    let body = acp_mock_tidy_fanout_body(&format!(
+        "{}\n      {}",
+        write_artifact_lgtm(),
+        chunk_line("review")
+    ));
+    acp_mock_code_with_run_dir_js(&body)
 }
+
+#[must_use]
+pub fn acp_mock_tidy_fanout_non_lgtm_js() -> String {
+    let body = acp_mock_tidy_fanout_body(&format!(
+        "{}\n      {}",
+        write_artifact_non_lgtm(),
+        chunk_line("review")
+    ));
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+#[must_use]
+pub fn acp_mock_tidy_fanout_skips_reviewer_outputs_js() -> String {
+    let body = format!(
+        r"    if (promptText.includes('Write your executive summary and tl;dr to')) {{
+      {}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+      {}
+    }} else {{
+      {}
+    }}",
+        chunk_line("reviewer"),
+        write_artifact_lgtm(),
+        chunk_line("coder"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+

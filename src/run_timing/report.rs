@@ -26,7 +26,6 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "implement": ms(r.implement),
             "review_fanout": ms(r.review_fanout),
             "review_write": ms(r.review_write),
-            "review_tidy": ms(r.review_tidy),
             "concerns": ms(r.concerns),
             "learn": ms(r.learn),
             "summary": ms(r.summary),
@@ -43,12 +42,11 @@ pub(super) fn write_json_only(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
 }
 
 /// Phase keys under `phases_ms` in [`to_json_value`] — keep order aligned with [`format_timing_stdout_line_from_json`].
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 8] = [
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
     "check_plan",
     "implement",
     "review_fanout",
     "review_write",
-    "review_tidy",
     "concerns",
     "learn",
     "summary",

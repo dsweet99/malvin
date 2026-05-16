@@ -3,86 +3,19 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, acp_mock_tidy_reviewer_lgtm_js,
-    command_output_with_timeout, only_run_dir, seed_git_kiss_cargo_gate_workspace,
-    test_home_workspace, write_failing_gate_tools, write_fake_kiss, write_mock_executable,
+    TidySpawn, acp_mock_tidy_fanout_lgtm_js, acp_mock_tidy_fanout_non_lgtm_js,
+    bin_path_with_failing_gates, bin_path_with_fake_kiss, bin_path_with_kiss_fail_until_n_passes,
+    only_run_dir,
+    seed_git_kiss_cargo_gate_workspace, spawn_tidy, test_home_workspace, workspace_kiss_check_only,
+    write_mock_executable,
 };
 #[cfg(unix)]
-use malvin::orchestrator::clear_review_file;
-#[cfg(unix)]
-use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
-#[cfg(unix)]
-use std::path::{Path, PathBuf};
-#[cfg(unix)]
-use std::process::Command;
-
-#[cfg(unix)]
-struct TidySpawn<'a> {
-    workspace: &'a Path,
-    home: &'a Path,
-    mock: &'a Path,
-    path_var: &'a str,
-    extra_args: &'a [&'a str],
-}
-
-#[cfg(unix)]
-fn spawn_tidy(t: &TidySpawn<'_>) -> std::process::Output {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(t.workspace)
-        .env("HOME", t.home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", t.mock)
-        .env("PATH", t.path_var);
-    let mut args: Vec<&str> = vec!["tidy", "--no-learn"];
-    args.extend_from_slice(t.extra_args);
-    cmd.args(args);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-}
+use std::path::Path;
 
 #[cfg(unix)]
 fn seed_tidy_workspace(workspace: &Path) {
     seed_git_kiss_cargo_gate_workspace(workspace);
     std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
-}
-
-#[cfg(unix)]
-fn workspace_kiss_check_only(workspace: &Path) {
-    std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("checks");
-}
-
-#[cfg(unix)]
-fn bin_path_with_fake_kiss(root: &tempfile::TempDir) -> String {
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    write_fake_kiss(&bin_dir.join("kiss"));
-    format!(
-        "{}:{}",
-        bin_dir.display(),
-        std::env::var("PATH").unwrap_or_default()
-    )
-}
-
-#[cfg(unix)]
-fn plan_item5_stale_lgtm_review_paths() -> (tempfile::TempDir, PathBuf, PathBuf) {
-    let t = tempfile::tempdir().expect("tempdir");
-    let artifact = t.path().join("_malvin").join("run").join("review.md");
-    let workspace = t.path().join("review.md");
-    std::fs::create_dir_all(artifact.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&artifact, "LGTM\n").expect("artifact");
-    std::fs::write(&workspace, "LGTM\n").expect("workspace");
-    (t, artifact, workspace)
-}
-
-#[cfg(unix)]
-fn bin_path_with_failing_gates(root: &tempfile::TempDir, trace: &Path) -> String {
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    write_failing_gate_tools(&bin_dir, trace);
-    format!(
-        "{}:{}",
-        bin_dir.display(),
-        std::env::var("PATH").unwrap_or_default()
-    )
 }
 
 #[cfg_attr(unix, test)]
@@ -92,7 +25,7 @@ fn tidy_interleaved_succeeds_when_reviewer_lgtm_and_gates_pass() {
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = root.path().join("mock-tidy-lgtm-pass");
-    write_mock_executable(&mock, &acp_mock_tidy_reviewer_lgtm_js());
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
@@ -117,7 +50,7 @@ fn tidy_interleaved_writes_checks_marker_when_lgtm_and_in_loop_gates_fail() {
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = root.path().join("mock-tidy-lgtm-fail-gates");
-    write_mock_executable(&mock, &acp_mock_tidy_reviewer_lgtm_js());
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
@@ -144,7 +77,7 @@ fn tidy_interleaved_one_iteration_exhausts_when_reviewer_never_lgtm() {
     let trace = root.path().join("gate-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = root.path().join("mock-tidy-no-lgtm");
-    write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_non_lgtm_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
@@ -172,7 +105,7 @@ fn tidy_interleaved_second_iteration_runs_after_checks_marker_with_max_loops_two
     let trace = root.path().join("kiss-trace-two.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = root.path().join("mock-tidy-lgtm-two-iters");
-    write_mock_executable(&mock, &acp_mock_tidy_reviewer_lgtm_js());
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,
@@ -196,13 +129,92 @@ fn tidy_interleaved_second_iteration_runs_after_checks_marker_with_max_loops_two
 }
 
 #[cfg_attr(unix, test)]
-fn tidy_interleaved_plan_item5_stale_lgtm_cleared_before_reviewer_sync_contract() {
-    let (_t, artifact, workspace) = plan_item5_stale_lgtm_review_paths();
-    clear_review_file(&artifact).expect("clear artifact");
-    clear_review_file(&workspace).expect("clear workspace");
-    let synced = sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
-    assert!(
-        !synced.as_deref().is_some_and(is_lgtm_str),
-        "plan section 5: stale LGTM must not survive the same double-clear prelude as run_review_tidy_turn"
+fn tidy_regression_last_budgeted_iteration_gate_fail_schedules_concerns_pass() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let trace = root.path().join("kiss-trace-last-iter-gates.log");
+    let path = bin_path_with_failing_gates(&root, &trace);
+    let mock = root.path().join("mock-tidy-lgtm-gates-three-iters");
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "3"],
+    });
+    assert!(!out.status.success(), "expected tidy failure when gates never pass: {out:?}");
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
     );
+    assert!(
+        combined.contains("tidy iteration 3/3"),
+        "plan: after LGTM plus failed in-loop gates on the last budgeted iteration, run another tidy_concerns coder pass (expect a third iteration line before exit): {combined:?}"
+    );
+    assert!(
+        combined.contains("tidy iteration 4/"),
+        "expected an extra concerns-only iteration after the final budgeted review+gates failure: {combined:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
+fn tidy_regression_bonus_concerns_reruns_gates_and_can_exit_zero() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let trace = root.path().join("kiss-fail-once.log");
+    let path = bin_path_with_kiss_fail_until_n_passes(&root, &trace, 2);
+    let mock = root.path().join("mock-tidy-lgtm-gates-recover");
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1"],
+    });
+    assert!(
+        out.status.success(),
+        "after bonus concerns fixes gate failures, tidy must re-run gates and exit 0: {out:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
+fn tidy_regression_bonus_gate_recovery_artifact_review_is_lgtm_on_success() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let trace = root.path().join("kiss-fail-bonus-review.log");
+    let path = bin_path_with_kiss_fail_until_n_passes(&root, &trace, 2);
+    let mock = root.path().join("mock-tidy-lgtm-gates-recover-review");
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1"],
+    });
+    assert!(
+        out.status.success(),
+        "expected tidy success after bonus concerns and gate recovery: {out:?}"
+    );
+    let run_dir = only_run_dir(&workspace);
+    let artifact_path = run_dir.join("review.md");
+    let artifact = std::fs::read_to_string(&artifact_path).expect("read artifact review");
+    assert!(
+        malvin::review_sync::is_lgtm_str(&artifact),
+        "bonus gate recovery must re-run review before exit 0; artifact review was: {artifact:?}"
+    );
+    let workspace_review = workspace.join("review.md");
+    if workspace_review.exists() {
+        let ws = std::fs::read_to_string(&workspace_review).expect("read workspace review");
+        assert!(
+            !ws.contains("Checks do not pass"),
+            "workspace review must not keep gate-failure marker after success: {ws:?}"
+        );
+    }
 }

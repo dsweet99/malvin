@@ -9,7 +9,6 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
     "review_descriptions.md",
     "reviewer_template.md",
     "review_write.md",
-    "review_tidy.md",
     "concerns.md",
     HEADER_MD,
     "coding_rules.md",
@@ -32,7 +31,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "summary.md",
     "tidy.md",
     "tidy_concerns.md",
-    "review_tidy.md",
     "review_plan.md",
     "bug_regression_test.md",
     "bug_fix.md",
@@ -59,7 +57,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
         "tidy.md" => Some(include_str!("../../default_prompts/tidy.md")),
         "tidy_concerns.md" => Some(include_str!("../../default_prompts/tidy_concerns.md")),
-        "review_tidy.md" => Some(include_str!("../../default_prompts/review_tidy.md")),
         "review_plan.md" => Some(include_str!("../../default_prompts/review_plan.md")),
         "bug_regression_test.md" => {
             Some(include_str!("../../default_prompts/bug_regression_test.md"))
@@ -84,20 +81,6 @@ mod review_plan_embed_tests {
 }
 
 #[cfg(test)]
-mod review_tidy_embed_tests {
-    use super::default_file;
-
-    #[test]
-    fn embedded_review_tidy_spells_uncommitted_correctly() {
-        let s = default_file("review_tidy.md").expect("review_tidy must be embedded");
-        assert!(
-            !s.contains("uncommited"),
-            "embedded review_tidy must not contain the common misspelling"
-        );
-    }
-}
-
-#[cfg(test)]
 mod review_write_embed_tests {
     use super::default_file;
 
@@ -109,8 +92,8 @@ mod review_write_embed_tests {
             "review_write must target review_path"
         );
         assert!(
-            !s.to_ascii_lowercase().contains("regression test"),
-            "review_write must not ask for regression tests during aggregation"
+            s.to_ascii_lowercase().contains("regression test"),
+            "review_write must ask for regression tests for remaining bug findings"
         );
     }
 }

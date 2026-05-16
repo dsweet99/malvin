@@ -95,6 +95,12 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::workflow_context);
     let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
     let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
+    let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt);
+    let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt_body);
+    let _ = stringify!(crate::orchestrator::run_review_fanout_prefix);
+    let _ = stringify!(crate::orchestrator::review_attempt_is_lgtm);
+    let _ = stringify!(crate::orchestrator::load_review_descriptions_for_kernel);
+    let _ = stringify!(crate::orchestrator::review_fanout_write::run_review_write_coder_session);
     let _ = stringify!(crate::orchestrator::constants::REVIEWER_FANOUT_CONCURRENCY);
     let _ = stringify!(crate::orchestrator::constants::fanout_wave_count);
 }

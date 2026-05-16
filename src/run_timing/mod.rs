@@ -17,7 +17,6 @@ pub enum TimingPhase {
     Implement,
     ReviewFanout,
     ReviewWrite,
-    ReviewTidy,
     Concerns,
     Learn,
     Summary,
@@ -26,16 +25,13 @@ pub enum TimingPhase {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReviewPairId {
     Fanout,
-    Tidy,
 }
 
 impl ReviewPairId {
     #[must_use]
     pub const fn review_phase(self) -> TimingPhase {
-        match self {
-            Self::Fanout => TimingPhase::ReviewFanout,
-            Self::Tidy => TimingPhase::ReviewTidy,
-        }
+        let Self::Fanout = self;
+        TimingPhase::ReviewFanout
     }
 }
 
@@ -50,7 +46,6 @@ pub struct RunTiming {
     implement_display_name: &'static str,
     review_fanout: Duration,
     review_write: Duration,
-    review_tidy: Duration,
     concerns: Duration,
     learn: Duration,
     summary: Duration,
@@ -68,7 +63,6 @@ impl Default for RunTiming {
             implement_display_name: "implement",
             review_fanout: Duration::ZERO,
             review_write: Duration::ZERO,
-            review_tidy: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
             summary: Duration::ZERO,
@@ -100,9 +94,6 @@ impl RunTiming {
             }
             TimingPhase::ReviewWrite => {
                 self.review_write = self.review_write.saturating_add(d);
-            }
-            TimingPhase::ReviewTidy => {
-                self.review_tidy = self.review_tidy.saturating_add(d);
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),

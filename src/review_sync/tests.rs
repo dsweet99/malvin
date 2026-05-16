@@ -49,6 +49,22 @@ fn sync_review_file_for_attempt_writes_workspace_text_to_artifact() {
 }
 
 #[test]
+fn sync_review_file_for_attempt_prefers_artifact_over_stale_workspace_lgtm() {
+    let t = tempfile::tempdir().unwrap();
+    let workspace = t.path().join("review.md");
+    let artifact = t.path().join("run").join("review.md");
+    std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+    std::fs::write(&workspace, "LGTM\n").unwrap();
+    std::fs::write(&artifact, "Checks do not pass\n").unwrap();
+    let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
+    assert_eq!(out.as_deref(), Some("Checks do not pass\n"));
+    assert_eq!(
+        std::fs::read_to_string(&artifact).unwrap(),
+        "Checks do not pass\n"
+    );
+}
+
+#[test]
 fn sync_review_file_for_attempt_falls_back_to_nonempty_artifact() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("missing.md");
@@ -59,16 +75,38 @@ fn sync_review_file_for_attempt_falls_back_to_nonempty_artifact() {
 }
 
 #[test]
-fn sync_review_file_for_attempt_whitespace_workspace_clears_stale_lgtm_artifact() {
+fn sync_review_file_for_attempt_preserves_artifact_lgtm_when_workspace_whitespace_only() {
+    let t = tempfile::tempdir().unwrap();
+    let workspace = t.path().join("review.md");
+    let artifact = t.path().join("run").join("review.md");
+    std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
+    std::fs::write(&artifact, "LGTM\n").unwrap();
+    std::fs::write(&workspace, "\n").unwrap();
+    let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
+    assert!(
+        out.as_deref().is_some_and(is_lgtm_str),
+        "fresh artifact LGTM after review_write must survive whitespace-only workspace file"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&artifact).unwrap(),
+        "LGTM\n",
+        "sync must not clear artifact LGTM when workspace is whitespace-only"
+    );
+}
+
+#[test]
+fn sync_review_file_for_attempt_whitespace_workspace_yields_none_when_artifact_empty() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     std::fs::write(&workspace, "  \n\t\n").unwrap();
-    std::fs::write(&artifact, "LGTM\n").unwrap();
     let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
     assert_eq!(out, None);
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    assert!(
+        !artifact.exists() || std::fs::read_to_string(&artifact).unwrap().is_empty(),
+        "whitespace workspace with empty artifact must not produce review text"
+    );
 }
 
 #[test]
@@ -194,7 +232,7 @@ fn tidy_reviewer_turn_double_clear_prevents_stale_lgtm_on_sync_attempt() {
     let synced = super::sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
     assert!(
         !synced.as_deref().is_some_and(is_lgtm_str),
-        "stale LGTM must not survive the same double-clear prelude as run_review_tidy_turn"
+        "stale LGTM must not survive the same double-clear prelude as run_tidy_review_attempt"
     );
 }
 

@@ -6,8 +6,12 @@ fn kiss_stringify_tidy_helpers() {
     let _ = stringify!(super::run_tidy_prompt_with_restore);
     let _ = stringify!(super::compose_tidy_concerns_prompt);
     let _ = stringify!(super::write_checks_do_not_pass_to_review_path);
+    let _ = stringify!(super::write_checks_do_not_pass_for_artifacts);
     let _ = stringify!(super::run_tidy_interleaved_loop);
-    let _ = stringify!(super::run_review_tidy_turn);
+    let _ = stringify!(super::run_tidy_review_attempt);
+    let _ = stringify!(super::run_tidy_bonus_gate_recovery);
+    let _ = stringify!(super::run_tidy_review_write);
+    let _ = stringify!(super::TidyReviewWriteSession);
 }
 
 #[test]
@@ -18,6 +22,27 @@ fn write_checks_do_not_pass_writes_marker_line() {
     assert_eq!(
         std::fs::read_to_string(&p).expect("read"),
         "Checks do not pass\n"
+    );
+}
+
+#[test]
+fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
+    use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
+
+    let t = tempfile::tempdir().expect("tempdir");
+    let artifacts = malvin::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
+        .expect("artifacts");
+    let artifact = artifacts.artifact_review_md();
+    let workspace = artifacts.workspace_review_md();
+    std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
+    super::write_checks_do_not_pass_for_artifacts(&artifacts).expect("markers");
+    let synced = sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
+    assert!(
+        synced
+            .as_deref()
+            .is_some_and(|text| !is_lgtm_str(text) && text.contains("Checks do not pass")),
+        "after in-loop gate failure, sync must not treat stale workspace LGTM as authoritative \
+         over the artifact gate-failure marker (got {synced:?})"
     );
 }
 

@@ -96,7 +96,7 @@ pub fn check_abort(result_path: &Path) -> Option<String> {
     None
 }
 
-/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`reviewer_template.md`, `review_tidy.md`, …).
+/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`reviewer_template.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {

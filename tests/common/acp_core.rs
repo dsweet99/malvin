@@ -65,6 +65,44 @@ pub fn write_artifact_non_lgtm() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'problems\\n', 'utf8');".to_string()
 }
 
+pub fn review_write_regression_test_body() -> String {
+    r"      const fs = require('fs');
+      const path = require('path');
+      const testPath = path.join(process.cwd(), 'tests', 'review_write_fanout_regression.rs');
+      fs.mkdirSync(path.dirname(testPath), { recursive: true });
+      fs.writeFileSync(
+        testPath,
+        '#[test]\nfn review_write_fanout_exposes_bug() { assert!(false); }\n',
+        'utf8'
+      );"
+        .to_string()
+}
+
+pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
+    let reviewer = write_fanout_reviewer_output();
+    let write_tail = format!(
+        "{}\n      {}\n{}",
+        review_write_regression_test_body(),
+        write_artifact_non_lgtm(),
+        chunk_line("reviewed")
+    );
+    format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else if (promptText.includes('Write your executive summary and tl;dr to')) {{
+{reviewer}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+{write_tail}
+    }} else if (promptText.includes('Concerns')) {{
+    }} else {{
+      // learn, summary, and other coder prompts
+    }}",
+        implement = chunk_line("implemented"),
+        reviewer = reviewer,
+        write_tail = write_tail,
+    )
+}
+
 pub fn write_workspace_lgtm() -> String {
     "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
@@ -80,6 +118,24 @@ pub fn write_fanout_reviewer_output() -> String {
         fs.writeFileSync(outPath, 'Executive summary: ok\n\ntl;dr: ok\n', 'utf8');
       }"
         .to_string()
+}
+
+pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
+    let body = format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else if (promptText.includes('Write your executive summary and tl;dr to')) {{
+{reviewer_skip}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+{write_lgtm}
+    }} else {{
+      // learn, summary
+    }}",
+        implement = chunk_line("implemented"),
+        reviewer_skip = chunk_line("skipped"),
+        write_lgtm = write_artifact_lgtm(),
+    );
+    acp_mock_code_with_run_dir_js(&body)
 }
 
 pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {

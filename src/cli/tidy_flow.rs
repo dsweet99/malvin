@@ -5,7 +5,7 @@ use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
-    /// Maximum coder iterations in the tidy/review loop. Each iteration runs one coder turn (`tidy.md` on attempt 1, `tidy_concerns.md` afterwards), one reviewer turn (`review_tidy.md`), and a gates check after LGTM. The loop exits early on LGTM plus gates pass. A value of `0` is treated as `1` (same effective semantics as `malvin code` review budgets).
+    /// Maximum coder iterations in the tidy/review loop. Each iteration runs one coder turn (`tidy.md` on attempt 1, `tidy_concerns.md` afterwards), reviewer fan-out plus `review_write` aggregation, then workspace quality gates after LGTM. The loop exits early on LGTM plus gates pass. A value of `0` is treated as `1` (same effective semantics as `malvin code` review budgets).
     #[arg(long, default_value_t = 3)]
     pub max_loops: usize,
     #[arg(long, default_value_t = false)]

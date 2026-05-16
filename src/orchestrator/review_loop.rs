@@ -1,41 +1,30 @@
 use std::collections::HashMap;
-use std::path::Path;
 
-use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
-
-use super::review_fanout_desc::{
-    load_review_description_lines, reviewers_attempt_dir, verify_reviewer_output_files,
+use super::review_attempt_kernel::{
+    ReviewAttemptKernelInput, load_review_descriptions_for_kernel, review_attempt_is_lgtm,
+    run_review_fanout_prefix,
 };
-use super::review_fanout_run::{FanoutPrepareInput, run_review_fanout_jobs};
-use super::review_fanout_write::run_review_write_prompt;
+use super::review_fanout_write::{ReviewWriteCoderSession, run_review_write_coder_session};
 use super::review_loop_helpers::run_concerns_and_check_abort_impl;
-use super::{Orchestrator, WorkflowError, clear_review_file};
+use super::{Orchestrator, WorkflowError};
 
 struct CodeReviewAttempt<'a> {
     context: &'a HashMap<String, String>,
     descriptions: &'a [String],
     attempt: usize,
-    review_path: &'a Path,
 }
 
 pub(super) async fn run_code_review_phase(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
-    let review_path = orchestrator.artifacts.artifact_review_md();
-    let descriptions = load_review_description_lines(orchestrator.prompts)?;
-    if descriptions.is_empty() {
-        return Err(WorkflowError(
-            "review_descriptions.md has no non-empty lines".to_string(),
-        ));
-    }
+    let descriptions = load_review_descriptions_for_kernel(orchestrator.prompts)?;
 
     for attempt in 1..=orchestrator.config.max_loops.max(1) {
         let ctx = CodeReviewAttempt {
             context,
             descriptions: &descriptions,
             attempt,
-            review_path: &review_path,
         };
         if code_review_single_attempt(orchestrator, ctx).await? {
             return Ok(());
@@ -50,30 +39,29 @@ async fn code_review_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: CodeReviewAttempt<'_>,
 ) -> Result<bool, WorkflowError> {
-    let workspace_review_path = orchestrator.artifacts.workspace_review_md();
     (orchestrator.progress_callback)(&format!("Review (attempt {})", ctx.attempt));
 
-    clear_review_file(ctx.review_path)
-        .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
-    clear_review_file(&workspace_review_path)
-        .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
-
-    let reviewers_subdir = reviewers_attempt_dir(&orchestrator.artifacts.run_dir, ctx.attempt);
-    let fanout = FanoutPrepareInput {
+    let kernel = ReviewAttemptKernelInput {
         store: orchestrator.prompts,
         artifacts: orchestrator.artifacts,
         context: ctx.context,
         descriptions: ctx.descriptions,
-        reviewers_subdir: &reviewers_subdir,
         attempt: ctx.attempt,
     };
-    run_review_fanout_jobs(&*orchestrator.client, fanout).await?;
-    verify_reviewer_output_files(&reviewers_subdir, ctx.descriptions.len())?;
-    run_review_write_prompt(orchestrator, ctx.context, &reviewers_subdir, ctx.attempt).await?;
+    let reviewers_subdir = run_review_fanout_prefix(&*orchestrator.client, &kernel).await?;
+    run_review_write_coder_session(ReviewWriteCoderSession {
+        client: orchestrator.client,
+        prompts: orchestrator.prompts,
+        artifacts: orchestrator.artifacts,
+        session_dotfile_backups: &orchestrator.session_dotfile_backups,
+        context: ctx.context,
+        reviewers_subdir: &reviewers_subdir,
+        attempt: ctx.attempt,
+    })
+    .await?;
+    let lgtm = review_attempt_is_lgtm(orchestrator.artifacts)?;
 
-    let review_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)
-        .map_err(WorkflowError)?;
-    if review_text.as_deref().is_some_and(is_lgtm_str) {
+    if lgtm {
         orchestrator.fail_on_abort_result()?;
         return Ok(true);
     }
@@ -127,29 +115,13 @@ mod tests {
             !artifact.exists(),
             "test setup: artifact review must be absent"
         );
-        let synced =
-            super::sync_review_file_for_attempt(&artifact, &workspace).expect("sync after write");
+        let synced = crate::review_sync::sync_review_file_for_attempt(&artifact, &workspace)
+            .expect("sync after write");
         assert_eq!(synced, None, "missing review files must not be a read error");
         assert!(
             !synced.as_deref().is_some_and(is_lgtm_str),
             "absent review must not count as LGTM"
         );
-    }
-
-    #[test]
-    fn regression_workspace_lgtm_syncs_into_artifact_before_lgtm_gate() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let artifact = dir.path().join("run").join("review.md");
-        let workspace = dir.path().join("workspace_review.md");
-        std::fs::create_dir_all(artifact.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
-        let synced =
-            super::sync_review_file_for_attempt(&artifact, &workspace).expect("sync workspace");
-        assert!(
-            synced.as_deref().is_some_and(is_lgtm_str),
-            "workspace LGTM must be visible through sync: {synced:?}"
-        );
-        assert_eq!(std::fs::read_to_string(&artifact).expect("artifact"), "LGTM\n");
     }
 
     #[test]

@@ -18,6 +18,8 @@ mod do_stdout_harness_extra;
 mod init_harness;
 mod kpop_multiturn_support;
 mod process;
+#[cfg(unix)]
+mod tidy_harness;
 mod workspace;
 
 pub use cli_parity_harness_run::*;
@@ -34,6 +36,12 @@ pub use process::{MALVIN_TEST_CMD_TIMEOUT, PlanSpawn, command_output_with_timeou
 pub use workspace::{
     only_run_dir, seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_failing_gate_tools,
     write_fake_kiss, write_mock_executable,
+};
+#[cfg(unix)]
+pub use tidy_harness::{
+    TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
+    bin_path_with_kiss_fail_until_n_passes, spawn_tidy,
+    workspace_kiss_check_only,
 };
 
 #[cfg(unix)]
