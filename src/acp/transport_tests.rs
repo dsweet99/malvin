@@ -21,8 +21,17 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
 }
 
 /// Parallel tests mutate global `PATH`; use a fixed path (see `reader_tests` / `ops_inline_tests.inc`).
-const SLEEP_BIN: &str = "/bin/sleep";
-const TRUE_BIN: &str = "/bin/true";
+fn unix_bin_with_fallback(name: &str) -> String {
+    let bin = format!("/bin/{name}");
+    if Path::new(&bin).is_file() {
+        return bin;
+    }
+    let usr_bin = format!("/usr/bin/{name}");
+    if Path::new(&usr_bin).is_file() {
+        return usr_bin;
+    }
+    name.to_string()
+}
 
 fn clear_cursor_env_for_test() {
     unsafe {
@@ -419,7 +428,7 @@ fn test_cursor_credentials_skips_empty_token_only() {
 
 #[tokio::test]
 async fn test_write_rpc_line_fails_after_child_stdin_closed() {
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("60")
         .stdin(Stdio::piped())
         .spawn()
@@ -689,7 +698,7 @@ async fn handshake_can_skip_cursor_login_when_api_key_mode_is_used() {
 
 #[tokio::test]
 async fn test_rpc_cancel_when_pending_sender_dropped() {
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("60")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -751,7 +760,7 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
 /// the process (e.g. stdin closed before `write_rpc_line`).
 #[tokio::test]
 async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
-    let mut child = Command::new(TRUE_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("true"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -800,7 +809,7 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
 
 #[tokio::test]
 async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("15")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -850,7 +859,7 @@ async fn rpc_request_with_correlation_id_times_out_when_stdout_silent() {
 #[tokio::test]
 async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
     let reader_dead = Arc::new(AtomicBool::new(true));
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("2")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -885,7 +894,7 @@ async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
 #[tokio::test]
 async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive() {
     let request_id = 3u64;
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("5")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -959,7 +968,7 @@ async fn rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive()
 
 #[tokio::test]
 async fn rpc_wait_response_reports_dead_child_after_silence() {
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("10")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -1035,7 +1044,7 @@ async fn rpc_wait_response_reports_dead_child_after_silence() {
 
 #[tokio::test]
 async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
-    let mut child = Command::new(SLEEP_BIN)
+    let mut child = Command::new(unix_bin_with_fallback("sleep"))
         .arg("10")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

@@ -91,10 +91,34 @@ pub(crate) fn prompt_md_stem(filename: &str) -> &str {
     filename.strip_suffix(".md").unwrap_or(filename)
 }
 
+fn resolve_path_against_base(path: &Path, base_r: &Path) -> PathBuf {
+    if let Ok(p) = path.canonicalize() {
+        return p;
+    }
+    let abs = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_r.join(path)
+    };
+    if let Ok(p) = abs.canonicalize() {
+        return p;
+    }
+    let Some(parent) = abs.parent() else {
+        return abs;
+    };
+    let Some(name) = abs.file_name() else {
+        return abs;
+    };
+    parent
+        .canonicalize()
+        .map(|p| p.join(name))
+        .unwrap_or(abs)
+}
+
 #[must_use]
 pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
-    let path_r = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let base_r = base_dir.canonicalize().unwrap_or_else(|_| base_dir.to_path_buf());
+    let path_r = resolve_path_against_base(path, &base_r);
     path_r.strip_prefix(&base_r).map_or_else(
         |_| path.display().to_string(),
         |r| format!("./{}", r.display()),
@@ -119,6 +143,18 @@ mod helper_tests {
         let mut ctx = HashMap::new();
         insert_formatted(&mut ctx, "key", &path, tmp.path());
         assert!(ctx.get("key").unwrap().contains("file.md"));
+    }
+
+    #[test]
+    fn format_prompt_path_relative_when_target_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let run_dir = tmp.path().join("_malvin").join("run123");
+        std::fs::create_dir_all(&run_dir).unwrap();
+        let review = run_dir.join("review.md");
+        assert_eq!(
+            format_prompt_path(&review, tmp.path()),
+            "./_malvin/run123/review.md"
+        );
     }
 
     #[test]
