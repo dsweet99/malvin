@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use futures::future::try_join_all;
+
 use crate::acp::{AgentClient, AgentError, ReviewerPromptPair, ReviewerRestorePolicy};
 use crate::artifacts::RunArtifacts;
 use crate::prompts::PromptStore;
@@ -108,28 +110,15 @@ async fn run_fanout_chunk(env: &FanoutChunkEnv<'_>, jobs: &[FanoutReviewerJob]) 
             jobs.len()
         )));
     }
-    match jobs.len() {
-        0 => Ok(()),
-        1 => run_one_fanout_reviewer(env, &jobs[0]).await,
-        2 => {
-            tokio::try_join!(
-                run_one_fanout_reviewer(env, &jobs[0]),
-                run_one_fanout_reviewer(env, &jobs[1]),
-            )?;
-            Ok(())
-        }
-        3 => {
-            tokio::try_join!(
-                run_one_fanout_reviewer(env, &jobs[0]),
-                run_one_fanout_reviewer(env, &jobs[1]),
-                run_one_fanout_reviewer(env, &jobs[2]),
-            )?;
-            Ok(())
-        }
-        n => Err(WorkflowError(format!(
-            "internal: unhandled fan-out chunk size {n} (extend run_fanout_chunk when raising REVIEWER_FANOUT_CONCURRENCY above 3)"
-        ))),
+    if jobs.is_empty() {
+        return Ok(());
     }
+    let futs: Vec<_> = jobs
+        .iter()
+        .map(|job| run_one_fanout_reviewer(env, job))
+        .collect();
+    try_join_all(futs).await?;
+    Ok(())
 }
 
 pub async fn run_review_fanout_jobs(

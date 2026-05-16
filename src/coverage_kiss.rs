@@ -101,9 +101,12 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::run_review_fanout_prefix);
     let _ = stringify!(crate::orchestrator::ensure_artifact_review_after_review_write);
     let _ = stringify!(crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
+    let _ = stringify!(crate::orchestrator::is_missing_artifact_review_error);
     let _ = stringify!(crate::orchestrator::review_attempt_is_lgtm);
     let _ = stringify!(crate::orchestrator::load_review_descriptions_for_kernel);
     let _ = stringify!(crate::orchestrator::review_fanout_write::run_review_write_coder_session);
+    let _ = stringify!(crate::orchestrator::merge_string_run_and_restore);
+    let _ = stringify!(crate::orchestrator::workflow_merge::merge_workflow_run_and_restore);
     let _ = stringify!(crate::orchestrator::constants::REVIEWER_FANOUT_CONCURRENCY);
     let _ = stringify!(crate::orchestrator::constants::fanout_wave_count);
 }

@@ -8,6 +8,11 @@ use crate::review_sync::{is_lgtm_str, read_artifact_review_for_fanout_attempt};
 
 pub const REVIEW_WRITE_MISSING_ARTIFACT_MSG: &str = "review_write did not write artifact review";
 
+#[must_use]
+pub fn is_missing_artifact_review_error(err: &WorkflowError) -> bool {
+    err.0 == REVIEW_WRITE_MISSING_ARTIFACT_MSG
+}
+
 use super::review_fanout_desc::{
     load_review_description_lines, reviewers_attempt_dir, verify_reviewer_output_files,
 };
@@ -219,6 +224,7 @@ mod tests {
         let _ = stringify!(super::run_review_fanout_prefix);
         let _ = stringify!(super::ensure_artifact_review_after_review_write);
         let _ = stringify!(super::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
+        let _ = stringify!(super::is_missing_artifact_review_error);
         let _ = stringify!(super::review_attempt_is_lgtm);
         let _ = stringify!(super::load_review_descriptions_for_kernel);
         let _ = stringify!(super::ReviewAttemptKernelInput);

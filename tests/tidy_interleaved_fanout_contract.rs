@@ -4,7 +4,8 @@ mod common;
 #[cfg(unix)]
 use common::{
     TidySpawn, acp_mock_tidy_fanout_lgtm_js, acp_mock_tidy_fanout_non_lgtm_js,
-    acp_mock_tidy_fanout_skips_reviewer_outputs_js, bin_path_with_fake_kiss,
+    acp_mock_tidy_fanout_skips_reviewer_outputs_js,
+    acp_mock_tidy_review_write_succeeds_on_second_attempt_js, bin_path_with_fake_kiss,
     bin_path_with_kiss_fail_until_n_passes, only_run_dir, seed_git_kiss_cargo_gate_workspace,
     spawn_tidy,
     test_home_workspace, workspace_kiss_check_only, write_mock_executable,
@@ -84,6 +85,36 @@ fn assert_run_timing_has_review_phases(run_dir: &std::path::Path) {
         .expect("review_write ms");
     assert!(fanout_ms > 0, "expected non-zero review_fanout timing: {timing_text}");
     assert!(write_ms > 0, "expected non-zero review_write timing: {timing_text}");
+}
+
+#[cfg_attr(unix, test)]
+fn tidy_review_write_missing_artifact_retries_within_max_loops() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = root.path().join("mock-tidy-review-write-retry");
+    write_mock_executable(&mock, &acp_mock_tidy_review_write_succeeds_on_second_attempt_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "2"],
+    });
+    assert!(
+        out.status.success(),
+        "expected tidy to recover when review_write omits artifact on first try: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        !combined.contains("review: review_write did not write artifact review after retries"),
+        "tidy retry should recover from missing artifact on first review_write: {combined:?}"
+    );
 }
 
 #[cfg_attr(unix, test)]

@@ -1,7 +1,7 @@
 use super::acp_core::{
     acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line, code_review_fanout_branches,
     session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_workspace_lgtm,
+    write_fanout_reviewer_output, write_workspace_lgtm,
 };
 
 pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
@@ -113,18 +113,6 @@ pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
     }}
 {review_tail}",
-    );
-    acp_mock_code_with_run_dir_js(&body)
-}
-
-pub fn acp_mock_code_review_write_workspace_only_lgtm_js() -> String {
-    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_workspace_lgtm());
-    let body = format!(
-        r"    if (promptText.includes('Implement the plan in')) {{
-{implement}
-    }}
-{review_tail}",
-        implement = chunk_line("implemented"),
     );
     acp_mock_code_with_run_dir_js(&body)
 }

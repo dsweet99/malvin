@@ -20,12 +20,14 @@ mod review_fanout_desc;
 mod review_fanout_run;
 mod review_fanout_write;
 mod review_loop_helpers;
+mod workflow_merge;
 
 pub use review_attempt_kernel::{
     ReviewAttemptKernelInput, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
-    ensure_artifact_review_after_review_write, load_review_descriptions_for_kernel,
-    review_attempt_is_lgtm, run_review_fanout_prefix,
+    ensure_artifact_review_after_review_write, is_missing_artifact_review_error,
+    load_review_descriptions_for_kernel, review_attempt_is_lgtm, run_review_fanout_prefix,
 };
+pub use workflow_merge::merge_string_run_and_restore;
 
 mod check_plan;
 mod review_loop;

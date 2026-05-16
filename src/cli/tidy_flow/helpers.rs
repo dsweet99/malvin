@@ -10,7 +10,8 @@ use malvin::artifacts::{
 };
 use malvin::orchestrator::{
     ReviewAttemptKernelInput, format_prompt_path, load_review_descriptions_for_kernel,
-    ensure_artifact_review_after_review_write, review_attempt_is_lgtm,
+    ensure_artifact_review_after_review_write, is_missing_artifact_review_error,
+    merge_string_run_and_restore, review_attempt_is_lgtm, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
     run_review_fanout_prefix, should_run_learn_check, workflow_context,
 };
 use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
@@ -202,11 +203,36 @@ pub async fn run_tidy_review_write(session: TidyReviewWriteSession<'_>) -> Resul
         .map_err(|e| e.to_string());
     let restore_result =
         restore_workspace_session_dotfiles(&artifacts.work_dir, session_dotfile_backups);
-    match (run_result, restore_result) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(e), Ok(())) | (Ok(()), Err(e)) => Err(e),
-        (Err(run_err), Err(restore_err)) => Err(format!("{run_err}, {restore_err}")),
+    merge_string_run_and_restore(run_result, restore_result)
+}
+
+async fn tidy_review_attempt_with_retries(
+    input: &mut TidyAcpInput<'_>,
+    descriptions: &[String],
+    attempt: usize,
+    session_dotfile_backups: &SessionDotfileBackups,
+    max_review_retries: usize,
+) -> Result<bool, String> {
+    let cap = max_review_retries.max(1);
+    for review_try in 0..cap {
+        if let Some(lgtm) =
+            run_tidy_review_attempt(input, descriptions, attempt, session_dotfile_backups).await?
+        {
+            return Ok(lgtm);
+        }
+        if review_try + 1 >= cap {
+            return Err(format!(
+                "review: {REVIEW_WRITE_MISSING_ARTIFACT_MSG} after retries"
+            ));
+        }
+        print_stdout_line(
+            MALVIN_WHO,
+            "Review: review_write did not write artifact review, retrying",
+        );
     }
+    Err(format!(
+        "review: {REVIEW_WRITE_MISSING_ARTIFACT_MSG} after retries"
+    ))
 }
 
 pub async fn run_tidy_review_attempt(
@@ -214,7 +240,7 @@ pub async fn run_tidy_review_attempt(
     descriptions: &[String],
     attempt: usize,
     session_dotfile_backups: &SessionDotfileBackups,
-) -> Result<bool, String> {
+) -> Result<Option<bool>, String> {
     let kernel = ReviewAttemptKernelInput {
         store: input.store,
         artifacts: input.artifacts,
@@ -235,23 +261,32 @@ pub async fn run_tidy_review_attempt(
         session_dotfile_backups,
     })
     .await?;
-    ensure_artifact_review_after_review_write(input.artifacts).map_err(|e| e.0)?;
-    review_attempt_is_lgtm(input.artifacts).map_err(|e| e.0)
+    if let Err(err) = ensure_artifact_review_after_review_write(input.artifacts) {
+        if is_missing_artifact_review_error(&err) {
+            return Ok(None);
+        }
+        return Err(err.0);
+    }
+    Ok(Some(
+        review_attempt_is_lgtm(input.artifacts).map_err(|e| e.0)?,
+    ))
 }
 
 async fn run_tidy_concerns_coder_turn(
     input: &mut TidyAcpInput<'_>,
+    attempt: usize,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
+    print_stdout_line(MALVIN_WHO, &format!("Concerns (attempt {attempt})"));
     let concerns = compose_tidy_concerns_prompt(input.store, input.context)?;
     run_tidy_prompt_with_restore(
         input,
         TidyPromptRestore {
             prompt: concerns.as_str(),
-            label: "tidy",
-            phase: TimingPhase::Implement,
+            label: "tidy_concerns",
+            phase: TimingPhase::Concerns,
             session_dotfile_backups,
-            restore_context: "tidy",
+            restore_context: "tidy_concerns",
         },
     )
     .await
@@ -264,16 +299,18 @@ async fn run_tidy_bonus_gate_recovery(
     session_dotfile_backups: &SessionDotfileBackups,
     work_dir: &Path,
     run_dir: &Path,
+    max_review_retries: usize,
 ) -> Result<bool, String> {
-    run_tidy_concerns_coder_turn(input, session_dotfile_backups).await?;
+    run_tidy_concerns_coder_turn(input, attempt, session_dotfile_backups).await?;
     if run_repo_workspace_gates(work_dir, RepoGateOutput::Tagged, Some(run_dir)).is_err() {
         return Ok(false);
     }
-    let lgtm = run_tidy_review_attempt(
+    let lgtm = tidy_review_attempt_with_retries(
         input,
         descriptions,
         attempt,
         session_dotfile_backups,
+        max_review_retries,
     )
     .await?;
     if !lgtm {
@@ -318,11 +355,12 @@ pub async fn run_tidy_interleaved_loop(
         )
         .await?;
 
-        let lgtm = run_tidy_review_attempt(
+        let lgtm = tidy_review_attempt_with_retries(
             input,
             &descriptions,
             attempt,
             session_dotfile_backups,
+            max_attempts,
         )
         .await?;
         if lgtm
@@ -347,11 +385,14 @@ pub async fn run_tidy_interleaved_loop(
                 session_dotfile_backups,
                 &work_dir,
                 &run_dir,
+                max_attempts,
             )
             .await?
             {
                 return Ok(());
             }
+        } else {
+            run_tidy_concerns_coder_turn(input, attempt, session_dotfile_backups).await?;
         }
     }
     Err(format!(

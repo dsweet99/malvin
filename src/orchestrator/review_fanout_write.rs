@@ -7,6 +7,7 @@ use crate::prompts::PromptStore;
 use crate::run_timing::TimingPhase;
 
 use super::constants::REVIEW_WRITE_FILE;
+use super::workflow_merge::merge_workflow_run_and_restore;
 use super::{WorkflowError, format_prompt_path, prompt_md_stem};
 
 pub struct ReviewWriteCoderSession<'a> {
@@ -17,20 +18,6 @@ pub struct ReviewWriteCoderSession<'a> {
     pub context: &'a HashMap<String, String>,
     pub reviewers_subdir: &'a Path,
     pub attempt: usize,
-}
-
-fn merge_coder_run_and_restore(
-    run_result: Result<(), WorkflowError>,
-    restore_result: Result<(), WorkflowError>,
-) -> Result<(), WorkflowError> {
-    match (run_result, restore_result) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(run_err), Ok(())) => Err(run_err),
-        (Ok(()), Err(restore_err)) => Err(restore_err),
-        (Err(run_err), Err(restore_err)) => {
-            Err(WorkflowError(format!("{}, {}", run_err.0, restore_err.0)))
-        }
-    }
 }
 
 pub async fn run_review_write_coder_session(
@@ -73,7 +60,7 @@ pub async fn run_review_write_coder_session(
     let restore_result =
         restore_workspace_session_dotfiles(&artifacts.work_dir, session_dotfile_backups)
             .map_err(WorkflowError);
-    merge_coder_run_and_restore(run_result, restore_result)
+    merge_workflow_run_and_restore(run_result, restore_result)
 }
 
 #[cfg(test)]
@@ -82,6 +69,6 @@ mod tests {
     fn kiss_stringify_review_fanout_write_units() {
         let _ = stringify!(super::run_review_write_coder_session);
         let _ = stringify!(super::ReviewWriteCoderSession);
-        let _ = stringify!(super::merge_coder_run_and_restore);
+        let _ = stringify!(super::workflow_merge::merge_workflow_run_and_restore);
     }
 }

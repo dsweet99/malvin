@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use super::review_attempt_kernel::{
-    ReviewAttemptKernelInput, ensure_artifact_review_after_review_write,
+    ReviewAttemptKernelInput, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
+    ensure_artifact_review_after_review_write, is_missing_artifact_review_error,
     load_review_descriptions_for_kernel, review_attempt_is_lgtm, run_review_fanout_prefix,
 };
 use super::review_fanout_write::{ReviewWriteCoderSession, run_review_write_coder_session};
@@ -20,14 +21,26 @@ pub(super) async fn run_code_review_phase(
 ) -> Result<(), WorkflowError> {
     let descriptions = load_review_descriptions_for_kernel(orchestrator.prompts)?;
 
-    for attempt in 1..=orchestrator.config.max_loops.max(1) {
+    let max_loops = orchestrator.config.max_loops.max(1);
+    for attempt in 1..=max_loops {
         let ctx = CodeReviewAttempt {
             context,
             descriptions: &descriptions,
             attempt,
         };
-        if code_review_single_attempt(orchestrator, ctx).await? {
-            return Ok(());
+        match code_review_single_attempt(orchestrator, ctx).await? {
+            CodeReviewAttemptOutcome::Lgtm => return Ok(()),
+            CodeReviewAttemptOutcome::NotLgtm => {}
+            CodeReviewAttemptOutcome::MissingArtifactReview => {
+                if attempt >= max_loops {
+                    return Err(WorkflowError(format!(
+                        "review: {REVIEW_WRITE_MISSING_ARTIFACT_MSG} after retries"
+                    )));
+                }
+                (orchestrator.progress_callback)(
+                    "Review: review_write did not write artifact review, retrying",
+                );
+            }
         }
     }
     Err(WorkflowError(
@@ -35,10 +48,16 @@ pub(super) async fn run_code_review_phase(
     ))
 }
 
+enum CodeReviewAttemptOutcome {
+    Lgtm,
+    NotLgtm,
+    MissingArtifactReview,
+}
+
 async fn code_review_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: CodeReviewAttempt<'_>,
-) -> Result<bool, WorkflowError> {
+) -> Result<CodeReviewAttemptOutcome, WorkflowError> {
     (orchestrator.progress_callback)(&format!("Review (attempt {})", ctx.attempt));
 
     let kernel = ReviewAttemptKernelInput {
@@ -59,12 +78,18 @@ async fn code_review_single_attempt(
         attempt: ctx.attempt,
     })
     .await?;
-    ensure_artifact_review_after_review_write(orchestrator.artifacts)?;
+    if let Err(err) = ensure_artifact_review_after_review_write(orchestrator.artifacts) {
+        if is_missing_artifact_review_error(&err) {
+            orchestrator.fail_on_abort_result()?;
+            return Ok(CodeReviewAttemptOutcome::MissingArtifactReview);
+        }
+        return Err(err);
+    }
     let lgtm = review_attempt_is_lgtm(orchestrator.artifacts)?;
 
     if lgtm {
         orchestrator.fail_on_abort_result()?;
-        return Ok(true);
+        return Ok(CodeReviewAttemptOutcome::Lgtm);
     }
 
     let concern_suffix = format!("review_attempt_{}", ctx.attempt);
@@ -74,7 +99,8 @@ async fn code_review_single_attempt(
         &concern_suffix,
         ctx.context,
     )
-    .await
+    .await?;
+    Ok(CodeReviewAttemptOutcome::NotLgtm)
 }
 
 #[cfg(test)]

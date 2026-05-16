@@ -71,6 +71,34 @@ fn tidy_interleaved_writes_checks_marker_when_lgtm_and_in_loop_gates_fail() {
 }
 
 #[cfg_attr(unix, test)]
+fn tidy_max_loops_one_runs_concerns_after_non_lgtm_review() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_tidy_workspace(&workspace);
+    let trace = root.path().join("gate-trace-concerns.log");
+    let path = bin_path_with_failing_gates(&root, &trace);
+    let mock = root.path().join("mock-tidy-concerns-one-iter");
+    write_mock_executable(&mock, &acp_mock_tidy_fanout_non_lgtm_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1"],
+    });
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("Concerns (attempt 1)")
+            || combined.contains("tidy_concerns")
+            || combined.contains(">tidy_concerns"),
+        "malvin tidy must run concerns after non-LGTM review even with --max-loops 1: {combined:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
 fn tidy_interleaved_one_iteration_exhausts_when_reviewer_never_lgtm() {
     let (root, home, workspace) = test_home_workspace();
     seed_tidy_workspace(&workspace);

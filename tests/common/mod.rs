@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+mod acp_code_fanout_mocks;
 mod acp_code_run;
 mod acp_core;
 mod acp_do;
@@ -28,6 +29,7 @@ pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty_kpop::run_kpop_multiturn_investigate;
 
+pub use acp_code_fanout_mocks::*;
 pub use acp_code_run::*;
 pub use acp_core::*;
 pub use acp_do::*;

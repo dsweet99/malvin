@@ -1,7 +1,7 @@
 use super::acp_core::{
     ARGV_CAPTURE_PREAMBLE, acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line,
     session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_fanout_reviewer_output,
+    write_fanout_reviewer_output, write_workspace_lgtm,
 };
 
 pub fn acp_mock_do_streaming_update_js() -> String {
@@ -120,6 +120,33 @@ pub fn acp_mock_tidy_fanout_non_lgtm_js() -> String {
         write_artifact_non_lgtm(),
         chunk_line("review")
     ));
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+#[must_use]
+pub fn acp_mock_tidy_review_write_succeeds_on_second_attempt_js() -> String {
+    let reviewer = write_fanout_reviewer_output();
+    let body = format!(
+        r"    let reviewWriteCalls = 0;
+    if (promptText.includes('Write your executive summary and tl;dr to')) {{
+{reviewer}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+      reviewWriteCalls += 1;
+      if (reviewWriteCalls === 1) {{
+{workspace_only}
+      }} else {{
+{artifact_lgtm}
+      }}
+{reviewed}
+    }} else {{
+{coder}
+    }}",
+        reviewer = reviewer,
+        workspace_only = write_workspace_lgtm(),
+        artifact_lgtm = write_artifact_lgtm(),
+        reviewed = chunk_line("review"),
+        coder = chunk_line("coder"),
+    );
     acp_mock_code_with_run_dir_js(&body)
 }
 

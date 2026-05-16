@@ -19,6 +19,7 @@ tempfile = "3"
 terminal_size = "0.4"
 thiserror = "1"
 toml = "0.8"
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 tokio = { version = "1", features = [
     "fs",
     "io-util",
