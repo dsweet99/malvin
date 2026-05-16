@@ -56,3 +56,26 @@ pub fn only_run_dir(workspace: &Path) -> PathBuf {
     assert_eq!(dirs.len(), 1, "expected exactly one run dir, got {dirs:?}");
     dirs.into_iter().next().expect("run dir")
 }
+
+#[cfg(unix)]
+pub fn write_failing_command(path: &Path, trace: &Path) {
+    let name = path.file_name().unwrap().to_string_lossy();
+    std::fs::write(
+        path,
+        format!(
+            "#!/usr/bin/env sh\necho \"{name} $@\" >> \"{}\"\nexit 1\n",
+            trace.display()
+        ),
+    )
+    .expect("write failing command");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+pub fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
+    for name in ["kiss", "cargo", "ruff", "pytest"] {
+        write_failing_command(&bin_dir.join(name), trace);
+    }
+}

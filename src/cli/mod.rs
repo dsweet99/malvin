@@ -26,7 +26,8 @@ pub use args::{BugArgs, Cli, CodeArgs, Commands, KpopArgs, PlanArgs};
 pub use bug_flow::run_bug;
 pub use code_flow::{
     AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, build_agent,
-    prepare_bug_prompt_store, prepare_kpop_prompt_store, run_code,
+    format_workspace_gate_failure, prepare_bug_prompt_store,
+    prepare_kpop_prompt_store, run_code,
 };
 pub use do_flow::run_do;
 pub use entrypoint::entrypoint;
@@ -36,7 +37,7 @@ pub use plan_flow::run_plan;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use tidy_flow::run_tidy;
-pub const LEARN_MIN_ELAPSED_MS: u64 = 300_000;
+pub const LEARN_MIN_ELAPSED_MS: u64 = malvin::orchestrator::DEFAULT_LEARN_MIN_ELAPSED_MS;
 
 #[cfg(test)]
 mod kiss_coverage_tests {

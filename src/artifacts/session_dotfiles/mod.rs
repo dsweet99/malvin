@@ -84,7 +84,10 @@ fn backup_slot(
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);
-    std::fs::copy(&src, &dest_file).map_err(|e| format!("{}: {e}", spec.copy_err))?;
+    if let Err(e) = std::fs::copy(&src, &dest_file) {
+        let _ = std::fs::remove_dir_all(&dest_dir);
+        return Err(format!("{}: {e}", spec.copy_err));
+    }
     Ok(DotfileBackupState::Present(dest_file))
 }
 
@@ -207,24 +210,9 @@ pub fn restore_workspace_session_dotfiles(
     work_dir: &Path,
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    let k = restore_slot(work_dir, &bundle.kissconfig, 0);
-    let m = restore_slot(work_dir, &bundle.malvin_checks, 1);
-    let i = restore_slot(work_dir, &bundle.kissignore, 2);
-    let mut errs = Vec::new();
-    if let Err(e) = k {
-        errs.push(e);
-    }
-    if let Err(e) = m {
-        errs.push(e);
-    }
-    if let Err(e) = i {
-        errs.push(e);
-    }
-    if errs.is_empty() {
-        Ok(())
-    } else {
-        Err(errs.join("; "))
-    }
+    restore_slot(work_dir, &bundle.kissconfig, 0)?;
+    restore_slot(work_dir, &bundle.malvin_checks, 1)?;
+    restore_slot(work_dir, &bundle.kissignore, 2)
 }
 
 #[cfg(test)]

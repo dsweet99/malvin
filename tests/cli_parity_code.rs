@@ -211,7 +211,7 @@ fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
         .expect("quality_gates.log baseline");
     assert_eq!(
         log2.matches("Running `kiss check`").count(),
-        2,
-        "expected initial plus pre-summary gate passes: {log2}"
+        1,
+        "expected pre-summary gate pass in quality_gates.log (initial pre-check runs before run dir exists): {log2}"
     );
 }

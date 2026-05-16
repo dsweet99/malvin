@@ -25,6 +25,12 @@ fn kiss_stringify_cli_symbols_a() {
     let _ = stringify!(crate::cli::run_plan);
     let _ = stringify!(crate::cli::plan_flow::plan_prompt::prepare_plan_prompt_store);
     let _ = stringify!(crate::cli::plan_flow::plan_prompt::compose_plan_prompt);
+    let _ = stringify!(crate::cli::plan_flow::resolve_plan_destination);
+    let _ = stringify!(crate::cli::plan_flow::apply_plan_source);
+    let _ = stringify!(crate::cli::plan_flow::plan_session_work_dir);
+    let _ = stringify!(crate::cli::code_flow::format_code_pre_check_failure);
+    let _ = stringify!(crate::cli::code_flow::format_pre_check_gate_failure);
+    let _ = stringify!(crate::cli::code_flow::format_workspace_gate_failure);
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
     let _ = stringify!(crate::cli::run_kpop);
     let _ = stringify!(crate::cli::run_bug);
@@ -41,17 +47,16 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(crate::cli::run_emit::echo_primary_to_stdout);
     let _ = stringify!(crate::cli::run_emit::emit_command_line);
     let _ = stringify!(crate::cli::run_emit::emit_run_startup_sequence);
-    let _ = stringify!(malvin::log_paths::format_logs_dir);
+    let _ = stringify!(malvin::format_logs_dir);
     let _ = stringify!(crate::cli::build_agent);
     let _ = stringify!(crate::cli::shared_opts::SharedOpts::tee_startup_stdout);
     let _ = stringify!(crate::cli::init_cmd::run_init);
     let _ = stringify!(crate::cli::models_cmd::run_models);
-    let _ = stringify!(malvin::env_path::lookup_bin_on_path);
+    let _ = stringify!(malvin::lookup_bin_on_path);
     let _ = stringify!(crate::cli::timing_merge::emit_run_timing_after_acp);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_and_timing_results);
     let _ = stringify!(crate::cli::timing_merge::prefer_primary_over_secondary);
     let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
     let _ = stringify!(
         crate::cli::repo_checks::kissconfig_warn::warn_kissconfig_test_coverage_if_needed
     );

@@ -10,7 +10,7 @@ pub(super) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpa
         bin_override: Some(bin),
         api_key: Some("george-test-api-key"),
         auth_token: Some("george-test-auth"),
-        rpc_timeout: Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS),
+        rpc_timeout: Duration::from_secs(crate::support_paths::DEFAULT_ACP_RPC_TIMEOUT_SECS),
         acp_verbose: false,
         george_acp_lane: None,
         ui_idle_notify: None,

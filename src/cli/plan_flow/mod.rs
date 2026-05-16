@@ -1,6 +1,6 @@
 mod plan_prompt;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::{AgentClient, CoderPromptOptions};
@@ -18,50 +18,8 @@ use super::code_flow::{WorkflowCliOptions, build_agent};
 use super::run_emit;
 use super::timing_merge;
 
-fn resolve_user_plan_path(plan_path: Option<PathBuf>) -> Result<PathBuf, String> {
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let p = plan_path.unwrap_or_else(|| cwd.join("plan.md"));
-    Ok(if p.is_absolute() { p } else { cwd.join(p) })
-}
-
-fn normalized_plan_file_bytes(text: &str) -> Result<Vec<u8>, String> {
-    if text.trim().is_empty() {
-        return Err("ERR: plan text is empty (after trimming).".to_string());
-    }
-    let core = text.trim_end_matches(['\r', '\n']);
-    let mut s = String::with_capacity(core.len() + 1);
-    s.push_str(core);
-    s.push('\n');
-    Ok(s.into_bytes())
-}
-
-fn write_plan_source(plan: &PlanArgs, user_plan_path: &Path) -> Result<(), String> {
-    if let Some(ref t) = plan.text {
-        let bytes = normalized_plan_file_bytes(t)?;
-        if let Some(parent) = user_plan_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        std::fs::write(user_plan_path, bytes).map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-    if !user_plan_path.exists() {
-        return Err(format!(
-            "ERR: plan file does not exist: {}",
-            user_plan_path.display()
-        ));
-    }
-    Ok(())
-}
-
-fn artifacts_work_dir_for_run(user_plan_path: &Path) -> PathBuf {
-    user_plan_path
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
-}
-
-fn plan_run_artifacts(user_plan_path: &Path) -> Result<RunArtifacts, String> {
-    let work_dir_for_run = artifacts_work_dir_for_run(user_plan_path);
+fn plan_run_artifacts(plan: &PlanArgs, user_plan_path: &Path) -> Result<RunArtifacts, String> {
+    let work_dir_for_run = plan_session_work_dir(plan, user_plan_path);
     create_run_artifacts(user_plan_path, Some(work_dir_for_run.as_path()))
         .map_err(|e| e.to_string())
 }
@@ -183,9 +141,9 @@ pub async fn run_plan(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let user_plan_path = resolve_user_plan_path(plan.plan_path.clone())?;
-    write_plan_source(&plan, &user_plan_path)?;
-    let artifacts = plan_run_artifacts(&user_plan_path)?;
+    let user_plan_path = resolve_plan_destination(&plan)?;
+    apply_plan_source(&plan, &user_plan_path)?;
+    let artifacts = plan_run_artifacts(&plan, &user_plan_path)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
@@ -216,6 +174,8 @@ pub async fn run_plan(
     }
     r
 }
+
+include!("plan_resolve.rs");
 
 #[cfg(test)]
 mod tests;

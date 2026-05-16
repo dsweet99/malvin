@@ -39,10 +39,10 @@ include!("transport/command.rs");
 include!("transport/rpc.rs");
 include!("transport/handshake.rs");
 
-/// Per-request wait helper for unit tests (matches [`crate::config::acp_rpc_timeout_secs_from_env`]).
+/// Per-request wait helper for unit tests (matches [`crate::support_paths::acp_rpc_timeout_secs_from_env`]).
 #[cfg(test)]
 pub(crate) fn acp_rpc_timeout() -> std::time::Duration {
-    std::time::Duration::from_secs(crate::config::acp_rpc_timeout_secs_from_env())
+    std::time::Duration::from_secs(crate::support_paths::acp_rpc_timeout_secs_from_env())
 }
 
 pub(crate) fn requires_cursor_login_auth(

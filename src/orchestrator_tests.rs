@@ -1,7 +1,7 @@
 use crate::artifacts::RunArtifacts;
 use crate::orchestrator::{
     WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
-    should_run_learn_check, workflow_context,
+    workflow_context,
 };
 use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
@@ -80,6 +80,26 @@ fn prefer_primary_errors_surfaces_timing_when_workflow_and_end_succeed() {
 }
 
 #[test]
+fn prefer_primary_errors_drops_timing_when_end_fails() {
+    let r = prefer_primary_errors_over_timing(
+        Ok(()),
+        Err(WorkflowError("end".into())),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "end");
+}
+
+#[test]
+fn prefer_primary_errors_surfaces_workflow_when_end_also_fails() {
+    let r = prefer_primary_errors_over_timing(
+        Err(WorkflowError("workflow".into())),
+        Err(WorkflowError("end".into())),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "workflow");
+}
+
+#[test]
 fn sync_review_file_copies_nonempty_workspace_to_artifact() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "LGTM\n").unwrap();
@@ -144,6 +164,10 @@ fn workflow_context_includes_malvin_command() {
     assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
 }
 
+#[cfg(test)]
+#[path = "orchestrator_learn_tests.rs"]
+mod orchestrator_learn_tests;
+
 #[test]
 fn kiss_stringify_orchestrator_helpers() {
     let _ = stringify!(crate::orchestrator::insert_artifact_paths);
@@ -152,53 +176,10 @@ fn kiss_stringify_orchestrator_helpers() {
     let _ = stringify!(crate::orchestrator::format_prompt_path);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::check_abort);
+    let _ = stringify!(crate::orchestrator::DEFAULT_LEARN_MIN_ELAPSED_MS);
     let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
     let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
-}
-
-#[test]
-fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(
-        should_run_learn_check(0, 0),
-        "0 threshold, 0 elapsed => run"
-    );
-    assert!(
-        should_run_learn_check(0, 1),
-        "0 threshold, any elapsed => run"
-    );
-    assert!(
-        should_run_learn_check(0, 300_000),
-        "0 threshold, 5 min => run"
-    );
-}
-
-#[test]
-fn should_run_learn_check_below_threshold_skips() {
-    assert!(
-        !should_run_learn_check(300_000, 0),
-        "5 min threshold, 0 elapsed => skip"
-    );
-    assert!(
-        !should_run_learn_check(300_000, 299_999),
-        "5 min threshold, just under => skip"
-    );
-}
-
-#[test]
-fn should_run_learn_check_at_or_above_threshold_runs() {
-    assert!(
-        should_run_learn_check(300_000, 300_000),
-        "5 min threshold, exactly 5 min => run"
-    );
-    assert!(
-        should_run_learn_check(300_000, 300_001),
-        "5 min threshold, just over => run"
-    );
-    assert!(
-        should_run_learn_check(300_000, 600_000),
-        "5 min threshold, 10 min => run"
-    );
 }
 
 #[test]

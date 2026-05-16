@@ -65,6 +65,31 @@ pub fn write_workspace_lgtm() -> String {
     "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
 
+pub fn acp_mock_bug_kpop_solved_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const root = path.join(process.cwd(), '_malvin');
+    if (fs.existsSync(root)) {
+      const runs = fs.readdirSync(root, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort()
+        .reverse();
+      outer: for (const run of runs) {
+        const kpopDir = path.join(root, run, '_kpop');
+        if (!fs.existsSync(kpopDir)) continue;
+        for (const name of fs.readdirSync(kpopDir)) {
+          if (name.startsWith('exp_log_') && name.endsWith('.md')) {
+            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
+            break outer;
+          }
+        }
+      }
+    }";
+    let done = session_update_chunk_line("agent_message_chunk", r"'kpop solved\n'");
+    acp_mock_js("", &format!("{body}\n{done}"))
+}
+
 #[cfg(all(unix, target_os = "linux"))]
 pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     let body = r"    const fs = require('fs');

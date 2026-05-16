@@ -20,9 +20,11 @@ pub mod kpop_progression;
 mod multiturn_prompt;
 pub use kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 pub use multiturn_prompt::MultiturnPrompt;
-pub mod env_path;
-pub mod invocation;
-pub mod log_paths;
+pub mod support_paths;
+pub use support_paths::{
+    agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
+    require_kiss_for_malvin,
+};
 pub mod orchestrator;
 pub mod output;
 pub mod prompts;
@@ -32,6 +34,8 @@ pub mod run_timing;
 
 #[cfg(test)]
 mod coverage_kiss;
+
+#[cfg(test)]
 mod coverage_kiss_agent;
 
 #[cfg(test)]

@@ -76,6 +76,9 @@ pub struct Orchestrator<'a> {
     pub session_dotfile_backups: SessionDotfileBackups,
 }
 
+/// Default learn-phase skip threshold (5 minutes), shared with CLI wiring.
+pub const DEFAULT_LEARN_MIN_ELAPSED_MS: u64 = 300_000;
+
 /// Returns true if learn should run given threshold and elapsed time.
 /// Threshold of 0 means always run. Otherwise, run only if elapsed >= threshold.
 #[must_use]
@@ -221,9 +224,9 @@ impl Orchestrator<'_> {
             )
             .await
             .map_err(|e: AgentError| WorkflowError(e.0));
-        let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
+        let restore_result = crate::artifacts::restore_workspace_session_dotfiles(
             &self.artifacts.work_dir,
-            &self.session_dotfile_backups.kissconfig,
+            &self.session_dotfile_backups,
         )
         .map_err(WorkflowError);
 

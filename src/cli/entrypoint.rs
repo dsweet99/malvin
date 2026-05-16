@@ -5,7 +5,7 @@ use super::{
     run_plan, run_tidy,
 };
 use super::{init_cmd, models_cmd};
-use malvin::env_path::require_kiss_for_malvin;
+use malvin::require_kiss_for_malvin;
 use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
@@ -20,9 +20,8 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
 
 pub fn print_command_error(message: &str) {
     super::error_run_log::append_command_error_to_run_log(message);
-    print_stdout_line(MALVIN_WHO, message);
     if message.starts_with("ERR:") {
-        eprintln!("{message}");
+        print_stdout_line(MALVIN_WHO, message);
         return;
     }
     print_stderr_line(MALVIN_WHO, message);
@@ -45,7 +44,7 @@ where
 }
 
 pub fn entrypoint() -> Exit {
-    malvin::invocation::init_from_env();
+    malvin::init_from_env();
     let cli = Cli::parse();
     if let Err(e) = require_kiss_for_cli_command(&cli.command) {
         print_command_error(&e);

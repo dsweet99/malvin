@@ -2,7 +2,7 @@ pub(crate) fn resolve_agent_bin() -> Option<PathBuf> {
     std::env::var_os("MALVIN_AGENT_ACP_BIN")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
-        .or_else(crate::env_path::agent_or_cursor_agent_bin)
+        .or_else(crate::support_paths::agent_or_cursor_agent_bin)
 }
 
 pub(crate) fn has_api_key() -> bool {
@@ -23,7 +23,7 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
 
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
     let bin = resolve_agent_bin();
-    let rpc_secs = crate::config::acp_rpc_timeout_secs_from_env();
+    let rpc_secs = crate::support_paths::acp_rpc_timeout_secs_from_env();
     let model = client.model.trim();
     let model_opt = (!model.is_empty()).then_some(model);
     AcpSession::spawn(AcpSpawnArgs {

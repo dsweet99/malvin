@@ -1,6 +1,6 @@
 // Trace file setup for [`crate::acp::AcpSession::prompt`].
 pub(crate) async fn trace_prepare_file(trace_path: &Path) -> Result<(), String> {
-    crate::invocation::init_from_env();
+    crate::support_paths::init_from_env();
     if let Some(parent) = trace_path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
@@ -24,7 +24,7 @@ pub(crate) async fn trace_open_truncated(
 pub(crate) async fn trace_write_invocation_header(
     file: &mut tokio::fs::File,
 ) -> Result<(), String> {
-    if let Some(cmd) = crate::invocation::command_line() {
+    if let Some(cmd) = crate::support_paths::command_line() {
         use tokio::io::AsyncWriteExt;
         let header = format!(
             "{}\n",

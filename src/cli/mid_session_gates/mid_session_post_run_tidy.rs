@@ -138,9 +138,12 @@ mod tests {
         let artifacts =
             create_run_artifacts_from_text("plan\n", Some(tmp.path())).expect("artifacts");
         std::fs::write(artifacts.work_dir.join(".malvin_checks"), "kiss check\n").expect("checks");
+        let malvin_checks_backup =
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(&artifacts.work_dir)
+                .expect("backup malvin_checks");
         let backups = SessionDotfileBackups::from_parts(
             KissConfigBackup::Missing,
-            KissConfigBackup::Missing,
+            malvin_checks_backup,
             KissConfigBackup::Missing,
         );
         let failure = RepoGateCommandFailure {

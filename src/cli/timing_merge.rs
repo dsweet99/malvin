@@ -4,10 +4,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use malvin::acp::AgentClient;
-use malvin::artifacts::{
-    KissConfigBackup, SessionDotfileBackups, restore_workspace_kissconfig_backup,
-    restore_workspace_session_dotfiles,
-};
+use malvin::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
 use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
@@ -37,15 +34,6 @@ pub fn prefer_primary_over_secondary(
     }
 }
 
-pub fn merge_acp_with_kissconfig_restore(
-    primary: Result<(), String>,
-    work_dir: &Path,
-    kissconfig_backup: &KissConfigBackup,
-) -> Result<(), String> {
-    let restore_res = restore_workspace_kissconfig_backup(work_dir, kissconfig_backup);
-    prefer_primary_over_secondary(primary, restore_res, "kissconfig restore failed")
-}
-
 pub fn merge_acp_with_workspace_session_restore(
     primary: Result<(), String>,
     work_dir: &Path,
@@ -63,39 +51,35 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 ) -> Result<(), String> {
     let merge_result =
         merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
-    if let Some(abort) = abort_message_from_result_md(result_path) {
+    if let Some(abort) = malvin::orchestrator::check_abort(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
-            Err(merge_error) => Err(format!(
-                "ABORT: {abort}; {}",
-                duplicate_safe_restore_error(&merge_error)
-            )),
+            Err(merge_error) => {
+                let detail = if merge_error.contains("workspace session restore failed:") {
+                    duplicate_safe_restore_error(&merge_error)
+                } else {
+                    merge_error
+                };
+                Err(format!("ABORT: {abort}; {detail}"))
+            }
         };
     }
     merge_result
 }
 
+fn merge_error_mentions_restore(merge_error: &str) -> bool {
+    merge_error.contains("workspace session restore failed:")
+        || merge_error.contains("kissconfig restore:")
+        || merge_error.contains("malvin_checks restore:")
+        || merge_error.contains("kissignore restore:")
+}
+
 fn duplicate_safe_restore_error(merge_error: &str) -> String {
-    if merge_error.contains("workspace session restore failed:")
-        || merge_error.contains("kissconfig restore failed:")
-        || merge_error.contains("malvin_checks restore failed:")
-        || merge_error.contains("kissignore restore failed:")
-    {
+    if merge_error_mentions_restore(merge_error) {
         merge_error.to_string()
     } else {
         format!("workspace session restore failed: {merge_error}")
     }
-}
-
-fn abort_message_from_result_md(result_path: &Path) -> Option<String> {
-    let content = std::fs::read_to_string(result_path).ok()?;
-    let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
-    for line in text.lines() {
-        if let Some(rest) = line.strip_prefix("ABORT:") {
-            return Some(rest.trim_start().to_string());
-        }
-    }
-    None
 }
 
 /// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`malvin::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
@@ -178,7 +162,8 @@ mod tests {
     #[test]
     fn kiss_stringify_timing_merge_units() {
         let _ = stringify!(crate::cli::timing_merge::emit_run_timing_json_only_after_acp);
-        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_kissconfig_restore);
+        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
+        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore_and_check_abort);
     }
 
     #[test]
@@ -204,5 +189,82 @@ mod tests {
             duplicate_safe_restore_error("wf failed"),
             "workspace session restore failed: wf failed"
         );
+    }
+
+    #[test]
+    fn merge_with_abort_after_successful_restore() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = tmp.path().join("result.md");
+        std::fs::write(&result, "ABORT: stop\n").unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let empty = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        );
+        let err = super::merge_acp_with_workspace_session_restore_and_check_abort(
+            Ok(()),
+            work.path(),
+            &empty,
+            &result,
+        )
+        .unwrap_err();
+        assert_eq!(err, "ABORT: stop");
+    }
+
+    #[test]
+    fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = tmp.path().join("result.md");
+        std::fs::write(&result, "ABORT: stop\n").unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let empty = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        );
+        let err = super::merge_acp_with_workspace_session_restore_and_check_abort(
+            Err("wf failed".into()),
+            work.path(),
+            &empty,
+            &result,
+        )
+        .unwrap_err();
+        assert!(err.contains("ABORT: stop"));
+        assert!(err.contains("wf failed"));
+        assert!(
+            !err.contains("workspace session restore failed"),
+            "restore succeeded; got: {err}"
+        );
+    }
+
+    #[test]
+    fn duplicate_safe_restore_error_recognizes_slot_restore_prefix() {
+        let err = "wf failed; malvin_checks restore: permission denied";
+        assert_eq!(duplicate_safe_restore_error(err), err);
+    }
+
+    #[test]
+    fn merge_with_abort_combines_restore_failure() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = tmp.path().join("result.md");
+        std::fs::write(&result, "ABORT: stop\n").unwrap();
+        let work = tempfile::tempdir().unwrap();
+        std::fs::write(work.path().join(".malvin_checks"), "x\n").unwrap();
+        let backups = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        );
+        std::fs::write(work.path().join(".malvin_checks"), "changed\n").unwrap();
+        let err = super::merge_acp_with_workspace_session_restore_and_check_abort(
+            Err("wf failed".into()),
+            work.path(),
+            &backups,
+            &result,
+        )
+        .unwrap_err();
+        assert!(err.contains("ABORT: stop"));
+        assert!(err.contains("wf failed"));
     }
 }

@@ -1,5 +1,6 @@
 mod common;
 
+use common::check_ignored;
 use std::path::Path;
 use std::process::Command;
 
@@ -91,23 +92,23 @@ fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
 fn root_gitignore_ignores_malvin_logs_and_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     assert!(
-        common::check_ignored(root, "_malvin/dummy_stamp/plan.md"),
+        check_ignored(root, "_malvin/dummy_stamp/plan.md"),
         "expected _malvin/ run dirs to be ignored"
     );
     assert!(
-        common::check_ignored(root, "log"),
+        check_ignored(root, "log"),
         "expected root log file to be ignored"
     );
     assert!(
-        common::check_ignored(root, "log_2"),
+        check_ignored(root, "log_2"),
         "expected root log_2 to be ignored"
     );
     assert!(
-        common::check_ignored(root, "target/debug/malvin"),
+        check_ignored(root, "target/debug/malvin"),
         "expected Rust target/ tree to be ignored"
     );
     assert!(
-        !common::check_ignored(root, "README.md"),
+        !check_ignored(root, "README.md"),
         "expected README.md not to be ignored"
     );
 }
@@ -124,31 +125,31 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
         .expect("git init");
     assert!(st.success(), "git init failed");
     assert!(
-        common::check_ignored(tmp.path(), "_malvin/x/plan.md"),
+        check_ignored(tmp.path(), "_malvin/x/plan.md"),
         "template should ignore _malvin/ runs"
     );
     assert!(
-        common::check_ignored(tmp.path(), "log"),
+        check_ignored(tmp.path(), "log"),
         "template should ignore root log"
     );
     assert!(
-        common::check_ignored(tmp.path(), "log_2"),
+        check_ignored(tmp.path(), "log_2"),
         "template should ignore root log_2"
     );
     assert!(
-        common::check_ignored(tmp.path(), "target/release/foo"),
+        check_ignored(tmp.path(), "target/release/foo"),
         "template should ignore Rust target/"
     );
     assert!(
-        !common::check_ignored(tmp.path(), "src/lib.rs"),
+        !check_ignored(tmp.path(), "src/lib.rs"),
         "template should not ignore normal sources"
     );
     assert!(
-        common::check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
+        check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
         "template should ignore sources under nested __pycache__ dirs (not only *.pyc)"
     );
     assert!(
-        common::check_ignored(tmp.path(), "lib/foo.pyc"),
+        check_ignored(tmp.path(), "lib/foo.pyc"),
         "template should ignore .pyc via **/*.py[cod]"
     );
 }

@@ -48,7 +48,7 @@ fn test_acp_rpc_timeout_parsing() {
     }
     assert_eq!(
         crate::acp::acp_rpc_timeout(),
-        std::time::Duration::from_secs(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS)
+        std::time::Duration::from_secs(crate::support_paths::DEFAULT_ACP_RPC_TIMEOUT_SECS)
     );
     unsafe {
         std::env::set_var("MALVIN_ACP_RPC_TIMEOUT_SECS", "5");

@@ -67,3 +67,36 @@ fn resolve_user_request_at_empty_path_errors() {
     let err = resolve_user_request("@").unwrap_err();
     assert_eq!(err, "Empty path after `@`.");
 }
+
+#[test]
+fn resolve_user_at_path_rejects_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().join("plans");
+    std::fs::create_dir_all(&dir).unwrap();
+    let err = resolve_user_at_path(dir.to_str().unwrap()).unwrap_err();
+    assert!(
+        err.contains("directory") || err.contains("not a file"),
+        "unexpected err: {err}"
+    );
+}
+
+#[test]
+fn resolve_user_at_path_joins_relative_to_cwd() {
+    struct RestoreCwd(std::path::PathBuf);
+    impl Drop for RestoreCwd {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
+
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let _restore = RestoreCwd(std::env::current_dir().unwrap());
+    std::env::set_current_dir(tmp.path()).unwrap();
+    std::fs::write("p.md", "x").unwrap();
+    let path = resolve_user_at_path("p.md").expect("path");
+    assert_eq!(
+        path.canonicalize().expect("canonical"),
+        tmp.path().join("p.md").canonicalize().expect("canonical")
+    );
+}

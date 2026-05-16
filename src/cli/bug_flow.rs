@@ -17,7 +17,8 @@ use super::mid_session_gates::mid_pre_summary_repo_gates;
 use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::timing_merge;
 use super::{
-    BugArgs, KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_bug_prompt_store,
+    BugArgs, KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, format_workspace_gate_failure,
+    prepare_bug_prompt_store,
 };
 use super::{LEARN_MIN_ELAPSED_MS, emit_run_startup_sequence};
 
@@ -111,7 +112,8 @@ async fn finish_bug_after_kpop(
             &artifacts.work_dir,
             RepoGateOutput::Tagged,
             Some(&artifacts.run_dir),
-        )?;
+        )
+        .map_err(|e| format_workspace_gate_failure("malvin bug", &e))?;
     }
 
     let store = prepare_bug_prompt_store(tail.workflow)?;

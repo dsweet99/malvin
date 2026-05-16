@@ -1,21 +1,16 @@
 //! Static references and smoke calls so `kiss check` test-coverage sees code units (see `style.md` TRIGGER: kiss Rust test refs).
-#![allow(unused_imports)] // imports exist only so symbols appear in `stringify!(Type)` lines
-
-use std::collections::HashMap;
-
-use crate::artifacts::{RunArtifacts, create_run_artifacts};
-use crate::orchestrator::{Orchestrator, WorkflowConfig};
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 #[test]
 fn kiss_stringify_artifacts() {
-    let _ = stringify!(RunArtifacts);
-    let _ = stringify!(RunArtifacts::log_path);
-    let _ = stringify!(RunArtifacts::artifact_review_md);
-    let _ = stringify!(RunArtifacts::artifact_result_md);
-    let _ = stringify!(RunArtifacts::workspace_review_md);
-    let _ = stringify!(RunArtifacts::exp_log_path);
-    let _ = stringify!(create_run_artifacts);
+    let _ = stringify!(crate::artifacts::RunArtifacts);
+    let _ = stringify!(crate::artifacts::RunArtifacts::log_path);
+    let _ = stringify!(crate::artifacts::RunArtifacts::artifact_review_md);
+    let _ = stringify!(crate::artifacts::RunArtifacts::artifact_result_md);
+    let _ = stringify!(crate::artifacts::RunArtifacts::workspace_review_md);
+    let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
+    let _ = stringify!(crate::artifacts::RunArtifacts::quality_gates_log_path);
+    let _ = stringify!(crate::artifacts::QUALITY_GATES_LOG);
+    let _ = stringify!(crate::artifacts::create_run_artifacts);
     let _ = stringify!(crate::artifacts::run_id::create_run_dir);
     let _ = stringify!(crate::artifacts::run_id::build_identifier);
     let _ = stringify!(crate::artifacts::run_id::random_alnum);
@@ -37,8 +32,8 @@ fn kiss_stringify_artifacts() {
 
 #[test]
 fn kiss_stringify_config() {
-    let _ = stringify!(crate::config::DEFAULT_ACP_RPC_TIMEOUT_SECS);
-    let _ = stringify!(crate::config::acp_rpc_timeout_secs_from_env);
+    let _ = stringify!(crate::support_paths::DEFAULT_ACP_RPC_TIMEOUT_SECS);
+    let _ = stringify!(crate::support_paths::acp_rpc_timeout_secs_from_env);
 }
 
 #[test]
@@ -53,9 +48,9 @@ fn kiss_stringify_child_health() {
 
 #[test]
 fn kiss_stringify_env_path() {
-    let _ = stringify!(crate::env_path::lookup_bin_on_path);
-    let _ = stringify!(crate::env_path::agent_or_cursor_agent_bin);
-    let _ = stringify!(crate::env_path::require_kiss_for_malvin);
+    let _ = stringify!(crate::support_paths::lookup_bin_on_path);
+    let _ = stringify!(crate::support_paths::agent_or_cursor_agent_bin);
+    let _ = stringify!(crate::support_paths::require_kiss_for_malvin);
 }
 
 #[test]
@@ -69,13 +64,13 @@ fn kiss_stringify_run_timing() {
 
 #[test]
 fn kiss_stringify_invocation() {
-    let _ = stringify!(crate::invocation::init_from_env);
-    let _ = stringify!(crate::invocation::command_line);
+    let _ = stringify!(crate::support_paths::init_from_env);
+    let _ = stringify!(crate::support_paths::command_line);
 }
 
 #[test]
 fn kiss_stringify_log_paths() {
-    let _ = stringify!(crate::log_paths::format_logs_dir);
+    let _ = stringify!(crate::support_paths::format_logs_dir);
 }
 
 #[test]
@@ -87,11 +82,11 @@ fn kiss_stringify_review_sync() {
 #[test]
 fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::WorkflowError);
-    let _ = stringify!(WorkflowConfig);
-    let _ = stringify!(Orchestrator);
-    let _ = stringify!(Orchestrator::run);
-    let _ = stringify!(Orchestrator::run_with_pre_summary_gap);
-    let _ = stringify!(Orchestrator::run_bug_remediation_gap);
+    let _ = stringify!(crate::orchestrator::WorkflowConfig);
+    let _ = stringify!(crate::orchestrator::Orchestrator);
+    let _ = stringify!(crate::orchestrator::Orchestrator::run);
+    let _ = stringify!(crate::orchestrator::Orchestrator::run_with_pre_summary_gap);
+    let _ = stringify!(crate::orchestrator::Orchestrator::run_bug_remediation_gap);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::format_prompt_path);
@@ -129,21 +124,21 @@ fn kiss_stringify_kpop_progression() {
 fn kiss_stringify_prompts() {
     let _ = stringify!(crate::prompts::enforce_no_unresolved_braces);
     let _ = stringify!(crate::prompts::PromptError);
-    let _ = stringify!(PromptStore);
+    let _ = stringify!(crate::prompts::PromptStore);
     let _ = stringify!(crate::prompts::default_file);
     let _ = stringify!(crate::prompts::user_home_dir);
     let _ = stringify!(crate::prompts::render_template);
     let _ = stringify!(crate::prompts::substitute_template);
-    let _ = stringify!(PromptStore::default_store);
-    let _ = stringify!(PromptStore::with_root);
-    let _ = stringify!(PromptStore::ensure_defaults);
-    let _ = stringify!(PromptStore::validate_required);
-    let _ = stringify!(PromptStore::validate_kpop_prompts);
-    let _ = stringify!(PromptStore::validate_exists);
-    let _ = stringify!(PromptStore::render);
-    let _ = stringify!(PromptStore::render_prompt_only);
-    let _ = stringify!(HEADER_MD);
-    let _ = stringify!(DO_HEADER_MD);
+    let _ = stringify!(crate::prompts::PromptStore::default_store);
+    let _ = stringify!(crate::prompts::PromptStore::with_root);
+    let _ = stringify!(crate::prompts::PromptStore::ensure_defaults);
+    let _ = stringify!(crate::prompts::PromptStore::validate_required);
+    let _ = stringify!(crate::prompts::PromptStore::validate_kpop_prompts);
+    let _ = stringify!(crate::prompts::PromptStore::validate_exists);
+    let _ = stringify!(crate::prompts::PromptStore::render);
+    let _ = stringify!(crate::prompts::PromptStore::render_prompt_only);
+    let _ = stringify!(crate::prompts::HEADER_MD);
+    let _ = stringify!(crate::prompts::DO_HEADER_MD);
 }
 
 #[test]
@@ -167,7 +162,7 @@ fn smoke_create_run_artifacts() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "x").expect("write plan");
-    let art = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let art = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     assert!(art.run_dir.exists());
 }
 
@@ -198,21 +193,21 @@ const SMOKE_EMBEDDED_PROMPT_NAMES: &[&str] = &[
     "mbc2.md",
     "concerns.md",
     "learn.md",
-    HEADER_MD,
-    DO_HEADER_MD,
+    crate::prompts::HEADER_MD,
+    crate::prompts::DO_HEADER_MD,
     "coding_rules.md",
 ];
 
-fn kiss_smoke_prompt_store(prompts_dir: &std::path::Path) -> PromptStore {
+fn kiss_smoke_prompt_store(prompts_dir: &std::path::Path) -> crate::prompts::PromptStore {
     kiss_write_same_body_files(prompts_dir, SMOKE_EMBEDDED_PROMPT_NAMES, b"body");
-    let store = PromptStore::with_root(prompts_dir.to_path_buf());
+    let store = crate::prompts::PromptStore::with_root(prompts_dir.to_path_buf());
     store.ensure_defaults().expect("defaults");
     store.validate_required().expect("required");
     store
 }
 
-fn kiss_smoke_render_context() -> HashMap<String, String> {
-    HashMap::from([
+fn kiss_smoke_render_context() -> std::collections::HashMap<String, String> {
+    std::collections::HashMap::from([
         ("plan_path".to_string(), "p".to_string()),
         ("kpop_log_dir".to_string(), "./_kpop".to_string()),
         ("quality_gates".to_string(), String::new()),

@@ -73,7 +73,8 @@ pub fn clear_review_file(p: &Path) -> std::io::Result<()> {
     }
 }
 
-pub(crate) fn check_abort(result_path: &Path) -> Option<String> {
+#[must_use]
+pub fn check_abort(result_path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(result_path).ok()?;
     let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
     for line in text.lines() {
@@ -92,9 +93,6 @@ pub(crate) fn prompt_md_stem(filename: &str) -> &str {
 }
 
 fn resolve_path_against_base(path: &Path, base_r: &Path) -> PathBuf {
-    if let Ok(p) = path.canonicalize() {
-        return p;
-    }
     let abs = if path.is_absolute() {
         path.to_path_buf()
     } else {
@@ -154,6 +152,25 @@ mod helper_tests {
         assert_eq!(
             format_prompt_path(&review, tmp.path()),
             "./_malvin/run123/review.md"
+        );
+    }
+
+    #[test]
+    fn format_prompt_path_relative_existing_file_resolves_against_base_not_cwd() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path().join("workspace");
+        let other = tmp.path().join("other");
+        std::fs::create_dir_all(&work).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        std::fs::write(work.join("review.md"), "").unwrap();
+        std::fs::write(other.join("review.md"), "").unwrap();
+        let original = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(&other).expect("chdir other");
+        let formatted = format_prompt_path(Path::new("review.md"), &work);
+        std::env::set_current_dir(original).expect("restore cwd");
+        assert_eq!(
+            formatted, "./review.md",
+            "relative paths must resolve against base_dir, not process cwd"
         );
     }
 
