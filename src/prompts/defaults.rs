@@ -6,8 +6,9 @@ pub const DO_HEADER_MD: &str = "do_header.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "review_1.md",
-    "review_2.md",
+    "review_descriptions.md",
+    "reviewer_template.md",
+    "review_write.md",
     "review_tidy.md",
     "concerns.md",
     HEADER_MD,
@@ -18,8 +19,9 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "review_1.md",
-    "review_2.md",
+    "review_descriptions.md",
+    "reviewer_template.md",
+    "review_write.md",
     "kpop.md",
     "kpop_common.md",
     "kpop_block.md",
@@ -43,8 +45,11 @@ pub fn default_file(name: &str) -> Option<&'static str> {
     match name {
         "check_plan.md" => Some(include_str!("../../default_prompts/check_plan.md")),
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
-        "review_1.md" => Some(include_str!("../../default_prompts/review_1.md")),
-        "review_2.md" => Some(include_str!("../../default_prompts/review_2.md")),
+        "review_descriptions.md" => {
+            Some(include_str!("../../default_prompts/review_descriptions.md"))
+        }
+        "reviewer_template.md" => Some(include_str!("../../default_prompts/reviewer_template.md")),
+        "review_write.md" => Some(include_str!("../../default_prompts/review_write.md")),
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         "mbc2_pure.md" => Some(include_str!("../../default_prompts/mbc2_pure.md")),
@@ -88,6 +93,61 @@ mod review_tidy_embed_tests {
         assert!(
             !s.contains("uncommited"),
             "embedded review_tidy must not contain the common misspelling"
+        );
+    }
+}
+
+#[cfg(test)]
+mod review_write_embed_tests {
+    use super::default_file;
+
+    #[test]
+    fn embedded_review_write_writes_problems_only_to_review_path() {
+        let s = default_file("review_write.md").expect("review_write must be embedded");
+        assert!(
+            s.contains("{{ review_path }}"),
+            "review_write must target review_path"
+        );
+        assert!(
+            !s.to_ascii_lowercase().contains("regression test"),
+            "review_write must not ask for regression tests during aggregation"
+        );
+    }
+}
+
+#[cfg(test)]
+mod reviewer_template_embed_tests {
+    use super::default_file;
+
+    #[test]
+    fn embedded_reviewer_template_spells_uncommitted_correctly() {
+        let s = default_file("reviewer_template.md").expect("reviewer_template must be embedded");
+        assert!(
+            !s.contains("uncommited"),
+            "embedded reviewer_template must not contain the common misspelling"
+        );
+    }
+}
+
+#[cfg(test)]
+mod review_descriptions_embed_tests {
+    use super::default_file;
+
+    #[test]
+    fn embedded_review_descriptions_has_no_stray_close_paren_question() {
+        let s = default_file("review_descriptions.md")
+            .expect("review_descriptions must be embedded");
+        assert!(
+            !s.contains("metrics)?"),
+            "kiss-metrics line must not contain stray ')?' fragment"
+        );
+    }
+
+    #[test]
+    fn review_descriptions_is_required_for_code_workflow() {
+        assert!(
+            super::REQUIRED_PROMPTS.contains(&"review_descriptions.md"),
+            "malvin code fan-out loads review_descriptions.md at runtime; validate_required must list it"
         );
     }
 }

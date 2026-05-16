@@ -29,7 +29,7 @@ pub fn user_home_dir() -> PathBuf {
 }
 
 impl PromptStore {
-    fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
+    pub(crate) fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
         self.root.as_ref().map_or_else(
             || {
                 default_file(filename)

@@ -3,12 +3,16 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
+    acp_mock_code_streaming_update_js, command_output_with_timeout,
     test_home_workspace, write_fake_kiss, write_mock_executable,
 };
 
 #[cfg(unix)]
-pub const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review_1.md within max loops.";
+pub const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review within max loops.";
+
+#[cfg(unix)]
+const MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(45);
 
 pub fn check_ignored(repo: &std::path::Path, rel_path: &str) -> bool {
     Command::new("git")
@@ -104,7 +108,7 @@ pub fn assert_review_abort_behavior(
     );
     assert!(
         !combined.contains(should_stop_prompt),
-        "ABORT should stop before Review-2 after Review-1 LGTM: {combined:?}"
+        "ABORT should stop before learn after review LGTM: {combined:?}"
     );
 }
 
@@ -127,7 +131,7 @@ pub fn run_code_with_mock_js(
 #[cfg(unix)]
 pub fn run_code_max_loops_zero_with_mock_opts(no_tee: bool) -> std::process::Output {
     run_code_with_mock_js(
-        &acp_mock_code_streaming_update_js(),
+        &acp_mock_code_max_loops_never_lgtm_js(),
         &["--max-loops", "0"],
         no_tee,
     )
@@ -141,6 +145,32 @@ pub fn run_code_max_loops_zero_with_mock() -> std::process::Output {
 #[cfg(unix)]
 pub fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
     run_code_max_loops_zero_with_mock_opts(false)
+}
+
+#[cfg(unix)]
+pub fn run_code_default_max_loops_never_lgtm_with_mock() -> std::process::Output {
+    let (root, home, workspace) = test_home_workspace();
+    let (_bin_dir, mock, path) =
+        prep_acp_mock_on_path(&root, "mock-agent-acp-code-max-loops-default", &acp_mock_code_max_loops_never_lgtm_js());
+    let out = command_output_with_timeout(
+        Command::new(env!("CARGO_BIN_EXE_malvin"))
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("CURSOR_AGENT_API_KEY", "test-key")
+            .env("MALVIN_AGENT_ACP_BIN", &mock)
+            .env("PATH", path)
+            .args([
+                "code",
+                "--no-learn",
+                "--trust-the-plan",
+                "--no-tee",
+                "ship it",
+            ]),
+        MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT,
+    )
+    .expect("spawn malvin code");
+    let _ = (root, workspace);
+    out
 }
 
 #[cfg(unix)]

@@ -94,8 +94,9 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
     let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
-    let _ = stringify!(crate::orchestrator::review_context::ReviewPhaseArgs);
-    let _ = stringify!(crate::orchestrator::review_context::ReviewAttemptCtx);
+    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
+    let _ = stringify!(crate::orchestrator::constants::REVIEWER_FANOUT_CONCURRENCY);
+    let _ = stringify!(crate::orchestrator::constants::fanout_wave_count);
 }
 
 #[test]
@@ -184,8 +185,9 @@ fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]
 
 const SMOKE_EMBEDDED_PROMPT_NAMES: &[&str] = &[
     "implement.md",
-    "review_1.md",
-    "review_2.md",
+    "review_descriptions.md",
+    "reviewer_template.md",
+    "review_write.md",
     "kpop.md",
     "kpop_common.md",
     "kpop_block.md",

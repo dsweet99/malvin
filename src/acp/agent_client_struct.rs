@@ -3,9 +3,10 @@
 /// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
 /// (unless skipped), `implement`, optional `learn`, and `concerns` prompts that run only inside
 /// each review phase—after a reviewer attempt fails to produce LGTM, not as a step between
-/// implement and learn. Each review attempt uses a short-lived **reviewer** session for
-/// `run_reviewer_review`, then tears it down. KPOP is driven by `run_kpop_flow` /
-/// `run_kpop_multiturn` / `run_kpop_flow_once`, not the reviewer-session API.
+/// implement and learn. Each review attempt fans out one short-lived **reviewer** session per
+/// description line in `review_descriptions.md` (bounded concurrency, default 3), then runs
+/// `review_write` on the coder session, then tears down reviewer sessions. KPOP is driven by
+/// `run_kpop_flow` / `run_kpop_multiturn` / `run_kpop_flow_once`, not the reviewer-session API.
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,

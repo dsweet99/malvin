@@ -60,6 +60,7 @@ async fn backoff_after_agent_failure(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReviewerRestorePolicy {
     RestoreWorkspace,
     NoRestore,
@@ -293,7 +294,7 @@ impl AgentClient {
     ///
     /// Returns [`AgentError`] when spawn or the prompt fails after retries.
     pub async fn run_reviewer_review(
-        &mut self,
+        &self,
         pair: ReviewerPromptPair<'_>,
         pair_id: crate::run_timing::ReviewPairId,
         workspace_restore: ReviewerRestorePolicy,

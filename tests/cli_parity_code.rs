@@ -6,8 +6,9 @@ use common::{
     acp_mock_code_abort_result_after_check_plan_lgtm_js,
     acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js,
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
-    assert_review_abort_behavior, only_run_dir, run_code_max_loops_zero_with_mock,
-    run_code_max_loops_zero_with_mock_without_trust_plan, run_code_with_mock_js,
+    assert_review_abort_behavior, only_run_dir, run_code_default_max_loops_never_lgtm_with_mock,
+    run_code_max_loops_zero_with_mock, run_code_max_loops_zero_with_mock_without_trust_plan,
+    run_code_with_mock_js,
     run_code_with_mock_js_trust_plan, run_code_with_mock_js_trust_plan_in_workspace,
 };
 
@@ -96,7 +97,33 @@ fn check_plan_kissconfig_restore_happens_before_implement() {
 }
 
 #[cfg_attr(unix, test)]
-fn max_loops_zero_skips_review_attempts_and_fails() {
+fn default_max_loops_exhausts_fanout_review_without_lgtm() {
+    let out = run_code_default_max_loops_never_lgtm_with_mock();
+    assert!(
+        !out.status.success(),
+        "malvin code should fail when review never reaches LGTM: {out:?}"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains(MAX_LOOPS_EXHAUSTED),
+        "expected default max-loops review exhaustion: {combined:?}"
+    );
+    assert!(
+        combined.contains("Review (attempt 5)"),
+        "expected fifth review attempt under default max-loops=5: {combined:?}"
+    );
+    assert!(
+        !combined.contains("Review (attempt 6)"),
+        "must not run a sixth review attempt: {combined:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
+fn max_loops_zero_runs_one_review_attempt_then_fails() {
     let out = run_code_max_loops_zero_with_mock();
     assert!(
         !out.status.success(),
@@ -112,8 +139,8 @@ fn max_loops_zero_skips_review_attempts_and_fails() {
         "expected max_loops=0 review skip failure: {combined:?}"
     );
     assert!(
-        combined.contains("Review-1 (attempt 1)"),
-        "review-1 should run at least once when --max-loops=0: {combined:?}"
+        combined.contains("Review (attempt 1)"),
+        "review should run at least once when --max-loops=0: {combined:?}"
     );
 }
 
@@ -134,7 +161,7 @@ fn max_loops_zero_skips_check_plan_attempt() {
         "check_plan should run at least once when max_loops=0: {combined:?}"
     );
     assert!(
-        !combined.contains("Review-1 (attempt 1)"),
+        !combined.contains("Review (attempt 1)"),
         "review attempt must not run when --max-loops=0: {combined:?}"
     );
     assert!(
@@ -175,7 +202,7 @@ fn code_stops_when_review_lgtm_also_writes_abort_result() {
     assert_review_abort_behavior(
         &out,
         "ABORT: review lgtm abort test",
-        "Review-2 (attempt 1)",
+        "Learn",
     );
 }
 

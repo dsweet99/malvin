@@ -11,10 +11,16 @@ mod memory_context;
 
 include!("helpers.rs");
 
+#[cfg(test)]
+mod helpers_tests;
+
+mod constants;
+mod review_fanout_desc;
+mod review_fanout_run;
+mod review_fanout_write;
 mod review_loop_helpers;
 
 mod check_plan;
-pub(crate) mod review_context;
 mod review_loop;
 pub mod session_flow;
 

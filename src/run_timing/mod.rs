@@ -15,8 +15,9 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 pub enum TimingPhase {
     CheckPlan,
     Implement,
-    Review1Review,
-    Review2Review,
+    ReviewFanout,
+    ReviewWrite,
+    ReviewTidy,
     Concerns,
     Learn,
     Summary,
@@ -24,16 +25,16 @@ pub enum TimingPhase {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ReviewPairId {
-    One,
-    Two,
+    Fanout,
+    Tidy,
 }
 
 impl ReviewPairId {
     #[must_use]
     pub const fn review_phase(self) -> TimingPhase {
         match self {
-            Self::One => TimingPhase::Review1Review,
-            Self::Two => TimingPhase::Review2Review,
+            Self::Fanout => TimingPhase::ReviewFanout,
+            Self::Tidy => TimingPhase::ReviewTidy,
         }
     }
 }
@@ -47,8 +48,9 @@ pub struct RunTiming {
     check_plan: Duration,
     implement: Duration,
     implement_display_name: &'static str,
-    review_1_review: Duration,
-    review_2_review: Duration,
+    review_fanout: Duration,
+    review_write: Duration,
+    review_tidy: Duration,
     concerns: Duration,
     learn: Duration,
     summary: Duration,
@@ -64,8 +66,9 @@ impl Default for RunTiming {
             check_plan: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
-            review_1_review: Duration::ZERO,
-            review_2_review: Duration::ZERO,
+            review_fanout: Duration::ZERO,
+            review_write: Duration::ZERO,
+            review_tidy: Duration::ZERO,
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
             summary: Duration::ZERO,
@@ -92,11 +95,14 @@ impl RunTiming {
         match phase {
             TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
             TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
-            TimingPhase::Review1Review => {
-                self.review_1_review = self.review_1_review.saturating_add(d);
+            TimingPhase::ReviewFanout => {
+                self.review_fanout = self.review_fanout.saturating_add(d);
             }
-            TimingPhase::Review2Review => {
-                self.review_2_review = self.review_2_review.saturating_add(d);
+            TimingPhase::ReviewWrite => {
+                self.review_write = self.review_write.saturating_add(d);
+            }
+            TimingPhase::ReviewTidy => {
+                self.review_tidy = self.review_tidy.saturating_add(d);
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
             TimingPhase::Learn => self.learn = self.learn.saturating_add(d),

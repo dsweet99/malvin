@@ -61,8 +61,40 @@ pub fn write_artifact_lgtm() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
 
+pub fn write_artifact_non_lgtm() -> String {
+    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'problems\\n', 'utf8');".to_string()
+}
+
 pub fn write_workspace_lgtm() -> String {
     "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+}
+
+pub fn write_fanout_reviewer_output() -> String {
+    r"      const m = promptText.match(/Write your executive summary and tl;dr to ([^\s\n]+reviewer_\d{3}\.md)/);
+      if (m) {
+        const outRel = m[1].trim();
+        const outPath = path.isAbsolute(outRel)
+          ? outRel
+          : path.join(process.cwd(), outRel.replace(/^\.\//, ''));
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        fs.writeFileSync(outPath, 'Executive summary: ok\n\ntl;dr: ok\n', 'utf8');
+      }"
+        .to_string()
+}
+
+pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {
+    let reviewer = write_fanout_reviewer_output();
+    format!(
+        r"    else if (promptText.includes('Write your executive summary and tl;dr to')) {{
+{reviewer}
+    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+{review_write_body}
+{reviewed_chunk}
+    }} else if (promptText.includes('Concerns')) {{
+    }} else {{
+      // learn, summary, and other coder prompts
+    }}"
+    )
 }
 
 pub fn acp_mock_bug_kpop_solved_js() -> String {
@@ -104,4 +136,22 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     }";
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
     acp_mock_js("", &format!("    {body}\n{done}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::write_fanout_reviewer_output;
+
+    #[test]
+    fn write_fanout_reviewer_output_accepts_paths_without_dot_slash_prefix() {
+        let snippet = write_fanout_reviewer_output();
+        assert!(
+            snippet.contains(r"([^\s\n]+reviewer_\d{3}\.md)"),
+            "mock must match reviewer paths with or without ./ prefix: {snippet}"
+        );
+        assert!(
+            !snippet.contains(r"(\.\/[^\n]+reviewer_\d{3}\.md)"),
+            "mock must not require a ./ prefix: {snippet}"
+        );
+    }
 }

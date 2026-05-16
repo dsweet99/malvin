@@ -117,7 +117,12 @@ fn load_header_swallows_missing_prompt_file() {
 fn validate_required_fails_when_header_or_coding_rules_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    for name in ["implement.md", "review_1.md", "review_2.md", "concerns.md"] {
+    for name in [
+        "implement.md",
+        "reviewer_template.md",
+        "review_write.md",
+        "concerns.md",
+    ] {
         std::fs::write(root.join(name), "x").unwrap();
     }
     let store = PromptStore::with_root(root.to_path_buf());
@@ -125,6 +130,25 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
     assert!(
         err.0.contains("header.md") && err.0.contains("coding_rules.md"),
         "expected missing header + coding_rules in error: {}",
+        err.0
+    );
+}
+
+#[test]
+fn validate_required_fails_when_review_descriptions_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    for &name in super::REQUIRED_PROMPTS {
+        if name == "review_descriptions.md" {
+            continue;
+        }
+        std::fs::write(root.join(name), "x").unwrap();
+    }
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store.validate_required().unwrap_err();
+    assert!(
+        err.0.contains("review_descriptions.md"),
+        "custom prompt roots must fail fast when review_descriptions.md is absent: {}",
         err.0
     );
 }

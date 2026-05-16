@@ -12,16 +12,17 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
     for key in [
         "check_plan",
         "implement",
-        "review_1_review",
-        "review_2_review",
+        "review_fanout",
+        "review_write",
+        "review_tidy",
         "concerns",
         "learn",
         "summary",
     ] {
         assert!(phases.get(key).is_some(), "missing {key}");
     }
-    assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
-    assert_eq!(ReviewPairId::Two.review_phase(), TimingPhase::Review2Review);
+    assert_eq!(ReviewPairId::Fanout.review_phase(), TimingPhase::ReviewFanout);
+    assert_eq!(ReviewPairId::Tidy.review_phase(), TimingPhase::ReviewTidy);
 }
 
 #[test]

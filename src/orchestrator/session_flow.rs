@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use crate::run_timing::TimingPhase;
 
-use super::review_context::ReviewPhaseArgs;
-use super::review_loop::run_review_phase;
+use super::review_loop::run_code_review_phase;
 use super::{Orchestrator, WorkflowError, check_plan::run_check_plan};
 
 pub(super) async fn run_coder_session_until_pre_summary(
@@ -65,27 +64,7 @@ async fn run_review_phases_until_pre_summary(
     orchestrator: &mut Orchestrator<'_>,
     context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
-    run_review_phase(
-        orchestrator,
-        ReviewPhaseArgs {
-            review_prompt: "review_1.md",
-            progress_label: "Review-1",
-            phase_id: "review_1",
-            context,
-        },
-    )
-    .await?;
-
-    run_review_phase(
-        orchestrator,
-        ReviewPhaseArgs {
-            review_prompt: "review_2.md",
-            progress_label: "Review-2",
-            phase_id: "review_2",
-            context,
-        },
-    )
-    .await?;
+    run_code_review_phase(orchestrator, context).await?;
 
     if orchestrator.config.run_learn && orchestrator.should_run_learn() {
         (orchestrator.progress_callback)("Learn");

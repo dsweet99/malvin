@@ -74,7 +74,14 @@ pub(crate) async fn run_reviewer_pair_once(
         return Err(AgentError(e));
     }
 
-    sync_review_to_artifact(pair.workspace_review_path, pair.artifact_review_path)?;
+    if pair.sync_workspace_review {
+        let Some(artifact_review_path) = pair.artifact_review_path else {
+            return Err(AgentError(
+                "artifact_review_path required when sync_workspace_review is true".to_string(),
+            ));
+        };
+        sync_review_to_artifact(pair.workspace_review_path, artifact_review_path)?;
+    }
 
     s.shutdown().await.map_err(AgentError)?;
     Ok(())

@@ -11,8 +11,18 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         .canonicalize()
         .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
     insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
-    insert_formatted(context, "review_path", &artifacts.artifact_review_md(), base);
-    insert_formatted(context, "result_path", &artifacts.artifact_result_md(), base);
+    insert_formatted(
+        context,
+        "review_path",
+        &artifacts.artifact_review_md(),
+        base,
+    );
+    insert_formatted(
+        context,
+        "result_path",
+        &artifacts.artifact_result_md(),
+        base,
+    );
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
     insert_formatted(
@@ -49,7 +59,8 @@ pub fn workflow_context(
     malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts, malvin_command);
-    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir).map_err(PromptError)?;
+    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)
+        .map_err(PromptError)?;
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)
@@ -85,7 +96,7 @@ pub fn check_abort(result_path: &Path) -> Option<String> {
     None
 }
 
-/// Stem used in log name segments for **both** coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`review_1.md`, …).
+/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`reviewer_template.md`, `review_tidy.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {
@@ -107,15 +118,14 @@ fn resolve_path_against_base(path: &Path, base_r: &Path) -> PathBuf {
     let Some(name) = abs.file_name() else {
         return abs;
     };
-    parent
-        .canonicalize()
-        .map(|p| p.join(name))
-        .unwrap_or(abs)
+    parent.canonicalize().map(|p| p.join(name)).unwrap_or(abs)
 }
 
 #[must_use]
 pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
-    let base_r = base_dir.canonicalize().unwrap_or_else(|_| base_dir.to_path_buf());
+    let base_r = base_dir
+        .canonicalize()
+        .unwrap_or_else(|_| base_dir.to_path_buf());
     let path_r = resolve_path_against_base(path, &base_r);
     path_r.strip_prefix(&base_r).map_or_else(
         |_| path.display().to_string(),
@@ -124,108 +134,10 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
 }
 
 #[must_use]
-pub fn format_exp_log_relative(artifacts: &crate::artifacts::RunArtifacts, exp_log: &Path) -> String {
+pub fn format_exp_log_relative(
+    artifacts: &crate::artifacts::RunArtifacts,
+    exp_log: &Path,
+) -> String {
     format_prompt_path(exp_log, &artifacts.work_dir)
 }
 
-#[cfg(test)]
-mod helper_tests {
-    use super::*;
-    use std::collections::HashMap;
-
-    #[test]
-    fn insert_formatted_adds_formatted_path() {
-        let tmp = tempfile::tempdir().unwrap();
-        let path = tmp.path().join("file.md");
-        std::fs::write(&path, "").unwrap();
-        let mut ctx = HashMap::new();
-        insert_formatted(&mut ctx, "key", &path, tmp.path());
-        assert!(ctx.get("key").unwrap().contains("file.md"));
-    }
-
-    #[test]
-    fn format_prompt_path_relative_when_target_missing() {
-        let tmp = tempfile::tempdir().unwrap();
-        let run_dir = tmp.path().join("_malvin").join("run123");
-        std::fs::create_dir_all(&run_dir).unwrap();
-        let review = run_dir.join("review.md");
-        assert_eq!(
-            format_prompt_path(&review, tmp.path()),
-            "./_malvin/run123/review.md"
-        );
-    }
-
-    #[test]
-    fn format_prompt_path_relative_existing_file_resolves_against_base_not_cwd() {
-        let tmp = tempfile::tempdir().unwrap();
-        let work = tmp.path().join("workspace");
-        let other = tmp.path().join("other");
-        std::fs::create_dir_all(&work).unwrap();
-        std::fs::create_dir_all(&other).unwrap();
-        std::fs::write(work.join("review.md"), "").unwrap();
-        std::fs::write(other.join("review.md"), "").unwrap();
-        let original = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(&other).expect("chdir other");
-        let formatted = format_prompt_path(Path::new("review.md"), &work);
-        std::env::set_current_dir(original).expect("restore cwd");
-        assert_eq!(
-            formatted, "./review.md",
-            "relative paths must resolve against base_dir, not process cwd"
-        );
-    }
-
-    #[test]
-    fn check_abort_returns_message_after_prefix_not_entire_file() {
-        let tmp = tempfile::tempdir().unwrap();
-        let p = tmp.path().join("result.md");
-        std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
-        assert_eq!(check_abort(&p).as_deref(), Some("stop here"));
-    }
-
-    #[test]
-    fn check_abort_returns_none_when_no_abort_line() {
-        let tmp = tempfile::tempdir().unwrap();
-        let p = tmp.path().join("result.md");
-        std::fs::write(&p, "ok\n").unwrap();
-        assert!(check_abort(&p).is_none());
-    }
-
-    #[test]
-    fn check_abort_strips_utf8_bom_before_matching_abort_line() {
-        let tmp = tempfile::tempdir().unwrap();
-        let p = tmp.path().join("result.md");
-        let mut bytes: Vec<u8> = vec![0xEF, 0xBB, 0xBF];
-        bytes.extend_from_slice(b"ABORT: bom case\n");
-        std::fs::write(&p, bytes).unwrap();
-        assert_eq!(check_abort(&p).as_deref(), Some("bom case"));
-    }
-
-    #[test]
-    fn insert_artifact_paths_populates_context() {
-        let tmp = tempfile::tempdir().unwrap();
-        let run_dir = tmp.path().join("_malvin").join("run");
-        std::fs::create_dir_all(&run_dir).unwrap();
-        let plan_path = run_dir.join("plan.md");
-        std::fs::write(&plan_path, "plan").unwrap();
-        let artifacts = crate::artifacts::RunArtifacts {
-            run_dir,
-            plan_path,
-            work_dir: tmp.path().to_path_buf(),
-        };
-        let ctx = workflow_context_paths_only(&artifacts, "code");
-        assert!(ctx.contains_key("plan_path"));
-        assert!(ctx.contains_key("kpop_log_dir"));
-        assert!(ctx.contains_key("review_path"));
-        assert!(ctx.contains_key("result_path"));
-        assert!(ctx.contains_key("quality_gates_log"));
-        assert!(ctx.contains_key("memories"));
-        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
-    }
-
-    #[test]
-    fn kiss_stringify_review_loop_helpers() {
-        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
-        let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-        let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
-    }
-}

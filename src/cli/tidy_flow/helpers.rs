@@ -145,7 +145,7 @@ pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(),
 }
 
 pub async fn run_review_tidy_turn(
-    input: &mut TidyAcpInput<'_>,
+    input: &TidyAcpInput<'_>,
     attempt: usize,
 ) -> Result<bool, String> {
     let artifact = input.artifacts.artifact_review_md();
@@ -161,14 +161,15 @@ pub async fn run_review_tidy_turn(
     let pair = ReviewerPromptPair {
         cwd: &input.artifacts.work_dir,
         workspace_review_path: &workspace,
-        artifact_review_path: &artifact,
+        artifact_review_path: Some(&artifact),
         review_body: review_body.as_str(),
         review_who: "review_tidy",
         review_log: &review_log,
+        sync_workspace_review: true,
     };
     input
         .client
-        .run_reviewer_review(pair, ReviewPairId::One, ReviewerRestorePolicy::NoRestore)
+        .run_reviewer_review(pair, ReviewPairId::Tidy, ReviewerRestorePolicy::NoRestore)
         .await
         .map_err(|e| e.to_string())?;
 

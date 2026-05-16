@@ -28,8 +28,14 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
     fn legacy_stem(s: &str) -> &str {
         &s[..s.len().saturating_sub(3)]
     }
-    assert_eq!(legacy_stem("review_1.md"), prompt_md_stem("review_1.md"));
-    assert_eq!(legacy_stem("review_2.md"), prompt_md_stem("review_2.md"));
+    assert_eq!(
+        legacy_stem("reviewer_template.md"),
+        prompt_md_stem("reviewer_template.md")
+    );
+    assert_eq!(
+        legacy_stem("review_write.md"),
+        prompt_md_stem("review_write.md")
+    );
     assert_ne!(
         legacy_stem("readme.markdown"),
         prompt_md_stem("readme.markdown")
@@ -177,7 +183,7 @@ fn kiss_stringify_orchestrator_helpers() {
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::DEFAULT_LEARN_MIN_ELAPSED_MS);
-    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
+    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
     let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
 }
