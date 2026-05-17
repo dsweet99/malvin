@@ -3,9 +3,9 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js, review_write_regression_test_body,
-    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_artifact_non_lgtm,
-    write_mock_executable, write_review_prep_output,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js, acp_mock_tidy_fanout_body,
+    review_write_regression_test_body, seed_git_kiss_cargo_gate_workspace, test_home_workspace,
+    write_artifact_non_lgtm, write_mock_executable,
 };
 #[cfg(unix)]
 use std::path::Path;
@@ -14,21 +14,12 @@ use std::process::Command;
 
 #[cfg(unix)]
 fn acp_mock_tidy_review_write_regression_js() -> String {
-    let prep = write_review_prep_output();
     let write_tail = format!(
         "{}\n      {}\n",
         review_write_regression_test_body(),
         write_artifact_non_lgtm()
     );
-    format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-{prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
-{write_tail}
-    }} else {{
-      // tidy coder
-    }}",
-    )
+    acp_mock_tidy_fanout_body(&write_tail)
 }
 
 #[cfg(unix)]

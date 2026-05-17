@@ -1,8 +1,8 @@
 use super::acp_code_fanout_mocks::review_write_try_counter_body;
 use super::acp_core::{
-    ARGV_CAPTURE_PREAMBLE, acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line,
-    session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_review_prep_output, write_workspace_lgtm,
+    ARGV_CAPTURE_PREAMBLE, CONCERNS_PROMPT_MATCH_JS, REVIEW_WRITE_PROMPT_MATCH_JS,
+    acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line, session_update_chunk_line,
+    write_artifact_lgtm, write_artifact_non_lgtm, write_review_prep_output, write_workspace_lgtm,
 };
 
 pub fn acp_mock_do_streaming_update_js() -> String {
@@ -90,17 +90,30 @@ pub fn acp_mock_do_creates_kissignore_js() -> String {
     acp_mock_js("", &format!("{create}\n{msg}"))
 }
 
-fn acp_mock_tidy_fanout_body(review_write_tail: &str) -> String {
-    let prep = write_review_prep_output();
-    let coder = chunk_line("coder");
+pub fn acp_mock_tidy_fanout_branches(
+    spawn_branch: &str,
+    review_write_tail: &str,
+    between_review_write_and_else: &str,
+    else_tail: &str,
+) -> String {
     format!(
         r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-{prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+{spawn_branch}
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_tail}
+    }}{between_review_write_and_else} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
-{coder}
+{else_tail}
     }}"
+    )
+}
+
+pub fn acp_mock_tidy_fanout_body(review_write_tail: &str) -> String {
+    acp_mock_tidy_fanout_branches(
+        &write_review_prep_output(),
+        review_write_tail,
+        "",
+        &chunk_line("coder"),
     )
 }
 
@@ -116,8 +129,7 @@ pub fn acp_mock_tidy_fanout_lgtm_with_abort_js() -> String {
 
 #[must_use]
 pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
-    let prep = write_review_prep_output();
-    let review_tail = format!("{}\n      {}", write_artifact_lgtm(), chunk_line("review"),);
+    let review_tail = format!("{}\n      {}", write_artifact_lgtm(), chunk_line("review"));
     let coder = chunk_line("coder");
     let coder_abort = format!(
         r"      const coderTriesPath = path.join(runDir, '.tidy_coder_tries');
@@ -132,34 +144,30 @@ pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
       }}
 {coder}"
     );
-    let body = format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-{prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
-{review_tail}
-    }} else {{
-{coder_abort}
-    }}"
+    let body = acp_mock_tidy_fanout_branches(
+        &write_review_prep_output(),
+        &review_tail,
+        "",
+        &coder_abort,
     );
     acp_mock_code_with_run_dir_js(&body)
 }
 
 #[must_use]
 pub fn acp_mock_tidy_lgtm_abort_on_learn_js() -> String {
-    let prep = write_review_prep_output();
     let review_tail = format!("{}\n      {}", write_artifact_lgtm(), chunk_line("review"));
     let coder = chunk_line("coder");
     let learn_abort = r"      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: tidy learn abort test\n', 'utf8');";
-    let body = format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-{prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
-{review_tail}
-    }} else if (promptText.includes('Edit an `.malvin_memory')) {{
+    let between = format!(
+        r" else if (promptText.includes('Edit an `.malvin_memory')) {{
 {learn_abort}
-    }} else {{
-{coder}
     }}"
+    );
+    let body = acp_mock_tidy_fanout_branches(
+        &write_review_prep_output(),
+        &review_tail,
+        &between,
+        &coder,
     );
     acp_mock_code_with_run_dir_js(&body)
 }
@@ -204,38 +212,37 @@ pub fn acp_mock_tidy_review_write_never_writes_artifact_js() -> String {
 
 #[must_use]
 pub fn acp_mock_tidy_review_write_succeeds_on_second_attempt_js() -> String {
-    let prep = write_review_prep_output();
-    let body = format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-{prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
-{try_counter}
-    }} else {{
-{coder}
-    }}",
-        try_counter = review_write_try_counter_body(
-            &write_workspace_lgtm(),
-            &write_artifact_lgtm(),
-            &chunk_line("review"),
-        ),
-        coder = chunk_line("coder"),
+    let try_counter = review_write_try_counter_body(
+        &write_workspace_lgtm(),
+        &write_artifact_lgtm(),
+        &chunk_line("review"),
     );
+    let body = acp_mock_tidy_fanout_body(&try_counter);
     acp_mock_code_with_run_dir_js(&body)
 }
 
 #[must_use]
 pub fn acp_mock_tidy_fanout_skips_reviewer_outputs_js() -> String {
-    let body = format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
-      {}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
-      {}
-    }} else {{
-      {}
-    }}",
-        chunk_line("reviewer"),
-        write_artifact_lgtm(),
-        chunk_line("coder"),
+    let body = acp_mock_tidy_fanout_branches(
+        &chunk_line("reviewer"),
+        &write_artifact_lgtm(),
+        "",
+        &chunk_line("coder"),
     );
     acp_mock_code_with_run_dir_js(&body)
+}
+
+#[cfg(test)]
+mod tidy_fanout_body_tests {
+    use super::acp_mock_tidy_fanout_body;
+    use super::CONCERNS_PROMPT_MATCH_JS;
+
+    #[test]
+    fn acp_mock_tidy_fanout_body_branches_on_concerns_prompt() {
+        let body = acp_mock_tidy_fanout_body("");
+        assert!(
+            body.contains(CONCERNS_PROMPT_MATCH_JS),
+            "tidy fanout ACP mock must branch on concerns prompts like code fanout mocks"
+        );
+    }
 }

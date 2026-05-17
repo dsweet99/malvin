@@ -1,7 +1,7 @@
 use super::acp_core::{
-    acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line, code_review_fanout_branches,
-    session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_review_prep_output, write_workspace_lgtm,
+    CONCERNS_PROMPT_MATCH_JS, REVIEW_WRITE_PROMPT_MATCH_JS, acp_mock_code_with_run_dir_js,
+    acp_mock_js, chunk_line, code_review_fanout_branches, session_update_chunk_line,
+    write_artifact_lgtm, write_artifact_non_lgtm, write_review_prep_output, write_workspace_lgtm,
 };
 
 pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
@@ -93,10 +93,10 @@ pub fn acp_mock_code_review_lgtm_with_abort_js() -> String {
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
     }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {lgtm}
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review lgtm abort test\n', 'utf8');
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
     }}"
     );
@@ -115,13 +115,14 @@ pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
 }
 
 pub fn acp_mock_code_workspace_review_only_lgtm_js() -> String {
-    let body = r"    if (!promptText.includes('Concerns')) {
+    let body = format!(
+        r"    if (!({CONCERNS_PROMPT_MATCH_JS})) {{
       const workspaceReview = path.join(process.cwd(), 'review.md');
       const runRootReview = path.join(runRoot, '..', '..', 'review.md');
       fs.writeFileSync(workspaceReview, 'LGTM\n', 'utf8');
       fs.writeFileSync(runRootReview, 'LGTM\n', 'utf8');
-    }"
-    .to_string();
+    }}"
+    );
     acp_mock_code_with_run_dir_js(&body)
 }
 

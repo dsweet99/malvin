@@ -238,9 +238,9 @@ async fn run_tidy_max_loops_one_not_lgtm_recovery(
     work_dir: &Path,
     run_dir: &Path,
 ) -> Result<bool, String> {
-    run_tidy_concerns_coder_turn(input, 1, session_dotfile_backups).await?;
     let recovery = max_attempts + 1;
     print_stdout_line(MALVIN_WHO, &tidy_recovery_stdout_line(recovery, max_attempts));
+    run_tidy_concerns_coder_turn(input, recovery, session_dotfile_backups).await?;
     run_tidy_post_concerns_recovery(
         input,
         recovery,
@@ -312,13 +312,14 @@ pub async fn run_tidy_interleaved_loop(
     session_dotfile_backups: &SessionDotfileBackups,
     max_loops: usize,
 ) -> Result<(), String> {
-    let max_attempts = max_loops.max(1);
+    let max_outer_iterations = max_loops.max(1);
+    let max_review_write_inner_retries = max_loops.max(1);
     let work_dir = input.artifacts.work_dir.clone();
     let run_dir = input.artifacts.run_dir.clone();
-    for attempt in 1..=max_attempts {
+    for attempt in 1..=max_outer_iterations {
         print_stdout_line(
             MALVIN_WHO,
-            &format!("tidy iteration {attempt}/{max_attempts}"),
+            &format!("tidy iteration {attempt}/{max_outer_iterations}"),
         );
         let coder_prompt: Cow<'_, str> = if attempt == 1 {
             Cow::Borrowed(initial_tidy_prompt)
@@ -342,7 +343,7 @@ pub async fn run_tidy_interleaved_loop(
             input,
             attempt,
             session_dotfile_backups,
-            max_attempts,
+            max_review_write_inner_retries,
         )
         .await?
         {
@@ -354,15 +355,18 @@ pub async fn run_tidy_interleaved_loop(
                     return Ok(());
                 }
                 write_checks_do_not_pass_for_artifacts(input.artifacts)?;
-                if attempt < max_attempts {
+                if attempt < max_outer_iterations {
                     continue;
                 }
-                let bonus = max_attempts + 1;
-                print_stdout_line(MALVIN_WHO, &tidy_recovery_stdout_line(bonus, max_attempts));
+                let bonus = max_outer_iterations + 1;
+                print_stdout_line(
+                    MALVIN_WHO,
+                    &tidy_recovery_stdout_line(bonus, max_outer_iterations),
+                );
                 if run_tidy_bonus_gate_recovery(
                     input,
                     bonus,
-                    max_attempts,
+                    max_review_write_inner_retries,
                     session_dotfile_backups,
                     &work_dir,
                     &run_dir,
@@ -374,10 +378,10 @@ pub async fn run_tidy_interleaved_loop(
                 }
             }
             TidyReviewAttemptOutcome::NotLgtm => {
-                if attempt == 1 && max_attempts == 1
+                if attempt == 1 && max_outer_iterations == 1
                     && run_tidy_max_loops_one_not_lgtm_recovery(
                         input,
-                        max_attempts,
+                        max_outer_iterations,
                         session_dotfile_backups,
                         &work_dir,
                         &run_dir,
@@ -389,7 +393,7 @@ pub async fn run_tidy_interleaved_loop(
                 }
             }
             TidyReviewAttemptOutcome::MissingArtifactExhausted => {
-                if attempt >= max_attempts {
+                if attempt >= max_outer_iterations {
                     return Err(format!(
                         "review: {REVIEW_WRITE_MISSING_ARTIFACT_MSG} after retries"
                     ));
@@ -398,7 +402,7 @@ pub async fn run_tidy_interleaved_loop(
         }
     }
     Err(format!(
-        "tidy did not converge within {max_attempts} iterations"
+        "tidy did not converge within {max_outer_iterations} iterations"
     ))
 }
 

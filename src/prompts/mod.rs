@@ -4,7 +4,9 @@ mod defaults;
 mod store;
 mod template;
 
-pub use defaults::{DO_HEADER_MD, HEADER_MD};
+pub use defaults::{
+    CONCERNS_ACP_MATCH_SUBSTRING, DO_HEADER_MD, HEADER_MD, REVIEW_WRITE_ACP_MATCH_PHRASE,
+};
 
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};

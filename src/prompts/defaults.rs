@@ -1,5 +1,9 @@
 //! Embedded default prompt bodies (`default_prompts/`).
 
+pub const REVIEW_WRITE_ACP_MATCH_PHRASE: &str = "write your final review";
+
+pub const CONCERNS_ACP_MATCH_SUBSTRING: &str = "reviewer's concerns";
+
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 
@@ -87,9 +91,30 @@ mod review_write_embed_tests {
             "review_write must target review_path"
         );
         assert!(
+            s.contains(super::REVIEW_WRITE_ACP_MATCH_PHRASE),
+            "review_write must include phrase used by ACP integration mocks"
+        );
+        assert!(
             s.to_ascii_lowercase().contains("regression test"),
             "review_write must ask for regression tests for remaining bug findings"
         );
+    }
+}
+
+#[cfg(test)]
+mod concerns_embed_tests {
+    use super::{CONCERNS_ACP_MATCH_SUBSTRING, default_file};
+
+    #[test]
+    fn embedded_concerns_prompts_contain_acp_mock_routing_substring() {
+        for name in ["concerns.md", "tidy_concerns.md"] {
+            let s = default_file(name).unwrap_or_else(|| panic!("{name} must be embedded"));
+            assert!(
+                s.contains(CONCERNS_ACP_MATCH_SUBSTRING),
+                "acp mocks branch on {CONCERNS_ACP_MATCH_SUBSTRING:?} but {name} does not; \
+                 see tests/common/acp_core.rs and acp_code_fanout_mocks.rs"
+            );
+        }
     }
 }
 

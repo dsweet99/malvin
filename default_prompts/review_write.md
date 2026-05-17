@@ -1,9 +1,16 @@
-Read {{ review_prep_path }}, then
-1. Rate all of the findings for seriousness on a scale of 1-5. Make up your own mind about the level of seriousness. You should take lint/coverage/test cheats seriously. Attempts to pass test should be earnest and in good faith.
-2. Discard anything rated 1.
 
-Write your review (problems only) to {{ review_path }}.
+
+Generate a single list in {{ review_prep_path }} of all detected problems with a severity rating, 1-5. Note that cheat the linters should get a rating of at least 4.
+
+Each item should have the format
+```md
+- [<RATING>] 1-2 sentence summary of problem. Paths & line numbers of relevant code.
+```
+
+Then remove any items with a rating less than 3.
+
+Based on {{ review_prep_path }}, write your final review -- problems only -- to {{ review_path }}.
 
 If everything is ok, write *only* and *exactly* LGTM in {{ review_path }}.
 
-For each remaining bug finding after the seriousness filtering above, write a failing regression test that exposes it before writing the final review.
+For each *bug* (not just any problem, bugs only) mentioned in {{ review_path }}, write a failing regression test that exposes it.

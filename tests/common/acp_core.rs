@@ -1,3 +1,9 @@
+pub const REVIEW_WRITE_PROMPT_MATCH_JS: &str =
+    "promptText.includes('write your final review')";
+
+pub const CONCERNS_PROMPT_MATCH_JS: &str =
+    "promptText.includes(\"reviewer's concerns\")";
+
 pub const ARGV_CAPTURE_PREAMBLE: &str = r"const fs = require('fs');
 const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
 if (capturePath) {
@@ -91,9 +97,9 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
 {implement}
     }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_tail}
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
       // learn, summary, and other coder prompts
     }}",
@@ -120,7 +126,7 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
 {implement}
     }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {reviewer_skip}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_lgtm}
     }} else {{
       // learn, summary
@@ -137,10 +143,10 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
     format!(
         r"    else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_body}
 {reviewed_chunk}
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
       // learn, summary, and other coder prompts
     }}"
@@ -187,4 +193,24 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
     acp_mock_js("", &format!("    {body}\n{done}"))
 }
+
+#[cfg(test)]
+mod review_write_match_phrase {
+    #[test]
+    fn review_write_prompt_match_js_contains_malvin_phrase() {
+        assert!(
+            super::REVIEW_WRITE_PROMPT_MATCH_JS
+                .contains(malvin::prompts::REVIEW_WRITE_ACP_MATCH_PHRASE)
+        );
+    }
+
+    #[test]
+    fn concerns_prompt_match_js_contains_malvin_phrase() {
+        assert!(
+            super::CONCERNS_PROMPT_MATCH_JS
+                .contains(malvin::prompts::CONCERNS_ACP_MATCH_SUBSTRING)
+        );
+    }
+}
+
 

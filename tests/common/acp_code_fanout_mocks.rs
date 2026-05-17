@@ -1,6 +1,7 @@
 use super::acp_core::{
-    acp_mock_code_with_run_dir_js, chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_review_prep_output, write_workspace_lgtm,
+    CONCERNS_PROMPT_MATCH_JS, REVIEW_WRITE_PROMPT_MATCH_JS, acp_mock_code_with_run_dir_js,
+    chunk_line, write_artifact_lgtm, write_artifact_non_lgtm, write_review_prep_output,
+    write_workspace_lgtm,
 };
 
 fn acp_mock_code_fanout_workspace_pollution_js(review_write_snippet: &str) -> String {
@@ -8,10 +9,10 @@ fn acp_mock_code_fanout_workspace_pollution_js(review_write_snippet: &str) -> St
     let review_tail = format!(
         r"    else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_snippet}
 {reviewed}
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
     }}",
         reviewed = chunk_line("reviewed"),
@@ -86,7 +87,7 @@ pub fn acp_mock_tidy_review_write_succeeds_on_third_inner_try_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_tail}
     }} else {{
 {coder}
@@ -108,9 +109,9 @@ pub fn acp_mock_code_review_write_succeeds_on_second_review_attempt_js() -> Stri
 {implement}
     }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {try_counter}
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
     }}",
         implement = chunk_line("implemented"),
@@ -155,9 +156,9 @@ pub fn acp_mock_code_missing_artifact_recovers_on_outer_review_attempt_js() -> S
 {implement}
     }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {prep}
-    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_by_attempt}
-    }} else if (promptText.includes('Concerns')) {{
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
     }} else {{
     }}",
         implement = chunk_line("implemented"),

@@ -42,10 +42,12 @@ fn tidy_max_loops_one_runs_concerns_after_non_lgtm_review() {
         "gates never pass in this mock; tidy must not claim success: {out:?}"
     );
     assert!(
-        combined.contains("Concerns (attempt 1)")
-            || combined.contains("tidy_concerns")
-            || combined.contains(">tidy_concerns"),
-        "malvin tidy must run concerns after non-LGTM review even with --max-loops 1: {combined:?}"
+        combined.contains("Concerns (attempt 2)"),
+        "max-loops-1 non-LGTM recovery must label the sole concerns turn with recovery attempt 2: {combined:?}"
+    );
+    assert!(
+        combined.contains("tidy recovery (review attempt 2, max-loops 1)"),
+        "recovery banner must precede concerns like bonus gate recovery: {combined:?}"
     );
     assert!(
         combined.contains("tidy did not converge within 1 iterations"),

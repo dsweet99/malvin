@@ -55,3 +55,6 @@ pub use do_stdout_harness::*;
 pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
+
+#[cfg(test)]
+mod acp_mock_syntax_tests;
