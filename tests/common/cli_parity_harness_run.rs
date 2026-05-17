@@ -4,8 +4,8 @@ use std::process::Command;
 #[cfg(unix)]
 use super::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
-    acp_mock_code_streaming_update_js, command_output_with_timeout,
-    test_home_workspace, write_fake_kiss, write_mock_executable,
+    acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
+    write_fake_kiss, write_mock_executable,
 };
 
 #[cfg(unix)]
@@ -150,8 +150,11 @@ pub fn run_code_max_loops_zero_with_mock_stdout() -> std::process::Output {
 #[cfg(unix)]
 pub fn run_code_default_max_loops_never_lgtm_with_mock() -> std::process::Output {
     let (root, home, workspace) = test_home_workspace();
-    let (_bin_dir, mock, path) =
-        prep_acp_mock_on_path(&root, "mock-agent-acp-code-max-loops-default", &acp_mock_code_max_loops_never_lgtm_js());
+    let (_bin_dir, mock, path) = prep_acp_mock_on_path(
+        &root,
+        "mock-agent-acp-code-max-loops-default",
+        &acp_mock_code_max_loops_never_lgtm_js(),
+    );
     let out = command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(&workspace)

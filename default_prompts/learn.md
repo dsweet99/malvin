@@ -8,6 +8,7 @@
 - The user's preferences (about coding or communication)
 - Agent pacing (latency vs thoroughness)
 - Code quality
+- The subject matter being address by this coding project
 
 2) Summarize them as a short bullet list.
 
@@ -19,6 +20,8 @@ ADVICE: A briefly-stated action to take, like "Read <file>" or "Use <tool/approa
 CONFIDENCE: 0
 ```
 in one of `./.malvin_memory/*.md`. If no file name (subject area) seems appropriate, create a new file with an appropriate file name (subject area).
+
+TRIGGER keywords should be words that the agent was searching for -- or might search for -- when it had the question but didn't yet have the answer. ADVICE should be the final, discovered, correct or useful action that the agent took. Our hope is that a future agent will grep for keywords, find a relevant TRIGGER, and be very glad it found the associated ADVICE.
 
 ## Falsification
 

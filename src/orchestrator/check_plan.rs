@@ -1,4 +1,4 @@
-use crate::review_sync::is_lgtm_str;
+use crate::review_sync::{is_lgtm_str, read_nonempty_review};
 use crate::run_timing::TimingPhase;
 use std::collections::HashMap;
 use std::path::Path;
@@ -55,20 +55,7 @@ async fn run_check_plan_attempt(
 }
 
 fn read_check_plan_review_file(review_path: &Path) -> Result<Option<String>, WorkflowError> {
-    if !review_path.exists() {
-        return Ok(None);
-    }
-    let contents = std::fs::read_to_string(review_path).map_err(|e| {
-        WorkflowError(format!(
-            "failed to read review file: {}: {e}",
-            review_path.display()
-        ))
-    })?;
-    if contents.trim().is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(contents))
-    }
+    read_nonempty_review(review_path, "").map_err(WorkflowError)
 }
 #[cfg(test)]
 mod tests {

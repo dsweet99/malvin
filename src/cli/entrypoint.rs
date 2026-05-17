@@ -5,8 +5,8 @@ use super::{
     run_plan, run_tidy,
 };
 use super::{init_cmd, models_cmd};
-use malvin::require_kiss_for_malvin;
 use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
+use malvin::require_kiss_for_malvin;
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {

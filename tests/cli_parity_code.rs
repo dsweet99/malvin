@@ -8,8 +8,8 @@ use common::{
     acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
     assert_review_abort_behavior, only_run_dir, run_code_default_max_loops_never_lgtm_with_mock,
     run_code_max_loops_zero_with_mock, run_code_max_loops_zero_with_mock_without_trust_plan,
-    run_code_with_mock_js,
-    run_code_with_mock_js_trust_plan, run_code_with_mock_js_trust_plan_in_workspace,
+    run_code_with_mock_js, run_code_with_mock_js_trust_plan,
+    run_code_with_mock_js_trust_plan_in_workspace,
 };
 
 #[cfg_attr(unix, test)]
@@ -199,11 +199,7 @@ fn code_stops_when_review_lgtm_also_writes_abort_result() {
         &["--max-loops", "1"],
         true,
     );
-    assert_review_abort_behavior(
-        &out,
-        "ABORT: review lgtm abort test",
-        "Learn",
-    );
+    assert_review_abort_behavior(&out, "ABORT: review lgtm abort test", "Learn");
 }
 
 #[cfg_attr(unix, test)]

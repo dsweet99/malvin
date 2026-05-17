@@ -8,10 +8,21 @@ fn kiss_stringify_tidy_helpers() {
     let _ = stringify!(super::write_checks_do_not_pass_to_review_path);
     let _ = stringify!(super::write_checks_do_not_pass_for_artifacts);
     let _ = stringify!(super::run_tidy_interleaved_loop);
-    let _ = stringify!(super::run_tidy_review_attempt);
     let _ = stringify!(super::run_tidy_bonus_gate_recovery);
-    let _ = stringify!(super::run_tidy_review_write);
-    let _ = stringify!(super::TidyReviewWriteSession);
+    let _ = stringify!(super::run_tidy_post_concerns_recovery);
+    let _ = stringify!(super::run_tidy_max_loops_one_not_lgtm_recovery);
+    let _ = stringify!(super::tidy_recovery_stdout_line);
+    let _ = stringify!(malvin::orchestrator::finish_review_write_attempt);
+    let _ = stringify!(malvin::orchestrator::run_reviewers_spawn_then_review_write);
+    let _ = stringify!(malvin::orchestrator::fail_on_abort_for_artifacts);
+}
+
+#[test]
+fn tidy_recovery_stdout_line_labels_recovery_not_budget_iteration() {
+    assert_eq!(
+        super::tidy_recovery_stdout_line(2, 1),
+        "tidy recovery (review attempt 2, max-loops 1)"
+    );
 }
 
 #[test]
@@ -30,8 +41,9 @@ fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
     use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
 
     let t = tempfile::tempdir().expect("tempdir");
-    let artifacts = malvin::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
-        .expect("artifacts");
+    let artifacts =
+        malvin::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
+            .expect("artifacts");
     let artifact = artifacts.artifact_review_md();
     let workspace = artifacts.workspace_review_md();
     std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");

@@ -83,10 +83,7 @@ fn sole_at_session_work_dir_matches_resolve_user_request() {
         text: Some(at_arg),
     };
     let dest = super::resolve_plan_destination(&plan).expect("dest");
-    assert_eq!(
-        super::plan_session_work_dir(&plan, &dest),
-        expected
-    );
+    assert_eq!(super::plan_session_work_dir(&plan, &dest), expected);
 }
 
 #[test]
@@ -96,8 +93,8 @@ fn plan_path_with_at_source_uses_destination_workspace() {
     super::apply_plan_source(&plan, &dest).expect("copy");
     let session_wd = super::plan_session_work_dir(&plan, &dest);
     assert_eq!(session_wd, dst_side);
-    let artifacts =
-        malvin::artifacts::create_run_artifacts(&dest, Some(session_wd.as_path())).expect("artifacts");
+    let artifacts = malvin::artifacts::create_run_artifacts(&dest, Some(session_wd.as_path()))
+        .expect("artifacts");
     assert_eq!(artifacts.work_dir, dst_side);
     assert!(artifacts.run_dir.starts_with(dst_side.join("_malvin")));
 }
@@ -210,4 +207,3 @@ fn sole_at_directory_is_rejected_before_copy() {
         "unexpected err: {err}"
     );
 }
-

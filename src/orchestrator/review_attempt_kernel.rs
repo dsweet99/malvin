@@ -1,74 +1,65 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-
-use crate::acp::AgentClient;
 use crate::artifacts::RunArtifacts;
-use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm_str, read_artifact_review_for_fanout_attempt};
 
 pub const REVIEW_WRITE_MISSING_ARTIFACT_MSG: &str = "review_write did not write artifact review";
+pub const REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG: &str =
+    "Review: review_write did not write artifact review, retrying";
+pub const REVIEW_PREP_MISSING_ARTIFACT_MSG: &str = "reviewers_spawn did not write review prep";
+
+pub const REVIEW_WRITE_INNER_RETRY_CAP: usize = 2;
 
 #[must_use]
 pub fn is_missing_artifact_review_error(err: &WorkflowError) -> bool {
     err.0 == REVIEW_WRITE_MISSING_ARTIFACT_MSG
 }
 
-use super::review_fanout_desc::{
-    load_review_description_lines, reviewers_attempt_dir, verify_reviewer_output_files,
-};
-use super::review_fanout_run::{FanoutPrepareInput, run_review_fanout_jobs};
 use super::{WorkflowError, clear_review_file};
 
-pub struct ReviewAttemptKernelInput<'a> {
-    pub store: &'a PromptStore,
-    pub artifacts: &'a RunArtifacts,
-    pub context: &'a HashMap<String, String>,
-    pub descriptions: &'a [String],
-    pub attempt: usize,
-}
-
 /// # Errors
 ///
-/// Returns [`WorkflowError`] when descriptions cannot be loaded or the file has no lines.
-pub fn load_review_descriptions_for_kernel(
-    store: &PromptStore,
-) -> Result<Vec<String>, WorkflowError> {
-    let descriptions = load_review_description_lines(store)?;
-    if descriptions.is_empty() {
-        return Err(WorkflowError(
-            "review_descriptions.md has no non-empty lines".to_string(),
-        ));
-    }
-    Ok(descriptions)
-}
-
-/// # Errors
-///
-/// Returns [`WorkflowError`] when review files cannot be cleared, fan-out jobs fail, or outputs are missing.
-pub async fn run_review_fanout_prefix(
-    client: &AgentClient,
-    input: &ReviewAttemptKernelInput<'_>,
-) -> Result<PathBuf, WorkflowError> {
-    let artifact_review = input.artifacts.artifact_review_md();
-    let workspace_review = input.artifacts.workspace_review_md();
+/// Returns [`WorkflowError`] when stale review files cannot be cleared.
+pub fn clear_review_attempt_artifacts(artifacts: &RunArtifacts) -> Result<(), WorkflowError> {
+    let artifact_review = artifacts.artifact_review_md();
+    let workspace_review = artifacts.workspace_review_md();
+    let review_prep = artifacts.review_prep_md();
 
     clear_review_file(&artifact_review)
         .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
     clear_review_file(&workspace_review)
         .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
+    clear_review_file(&review_prep)
+        .map_err(|e| WorkflowError(format!("failed to clear review prep: {e}")))?;
+    Ok(())
+}
 
-    let reviewers_subdir = reviewers_attempt_dir(&input.artifacts.run_dir, input.attempt);
-    let fanout = FanoutPrepareInput {
-        store: input.store,
-        artifacts: input.artifacts,
-        context: input.context,
-        descriptions: input.descriptions,
-        reviewers_subdir: &reviewers_subdir,
-        attempt: input.attempt,
-    };
-    run_review_fanout_jobs(client, fanout).await?;
-    verify_reviewer_output_files(&reviewers_subdir, input.descriptions.len())?;
-    Ok(reviewers_subdir)
+/// # Errors
+///
+/// Returns [`WorkflowError`] when the review prep file cannot be read.
+pub fn ensure_review_prep_after_reviewers_spawn(
+    artifacts: &RunArtifacts,
+) -> Result<(), WorkflowError> {
+    if let Some(abort_msg) = super::check_abort(&artifacts.artifact_result_md()) {
+        return Err(WorkflowError(format!("ABORT: {abort_msg}")));
+    }
+    let review_prep = artifacts.review_prep_md();
+    let text = std::fs::read_to_string(&review_prep).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            WorkflowError(REVIEW_PREP_MISSING_ARTIFACT_MSG.to_string())
+        } else {
+            WorkflowError(format!(
+                "failed to read review prep {}: {e}",
+                review_prep.display()
+            ))
+        }
+    })?;
+    if text.trim().is_empty() {
+        return Err(WorkflowError(REVIEW_PREP_MISSING_ARTIFACT_MSG.to_string()));
+    }
+    Ok(())
+}
+
+fn read_artifact_review_text(artifacts: &RunArtifacts) -> Result<Option<String>, WorkflowError> {
+    read_artifact_review_for_fanout_attempt(&artifacts.artifact_review_md()).map_err(WorkflowError)
 }
 
 /// # Errors
@@ -77,13 +68,8 @@ pub async fn run_review_fanout_prefix(
 pub fn ensure_artifact_review_after_review_write(
     artifacts: &RunArtifacts,
 ) -> Result<(), WorkflowError> {
-    let artifact_review = artifacts.artifact_review_md();
-    let review_text = read_artifact_review_for_fanout_attempt(&artifact_review)
-        .map_err(WorkflowError)?;
-    if review_text.is_none() {
-        return Err(WorkflowError(
-            REVIEW_WRITE_MISSING_ARTIFACT_MSG.to_string(),
-        ));
+    if read_artifact_review_text(artifacts)?.is_none() {
+        return Err(WorkflowError(REVIEW_WRITE_MISSING_ARTIFACT_MSG.to_string()));
     }
     Ok(())
 }
@@ -92,32 +78,36 @@ pub fn ensure_artifact_review_after_review_write(
 ///
 /// Returns [`WorkflowError`] when the artifact review file cannot be read.
 pub fn review_attempt_is_lgtm(artifacts: &RunArtifacts) -> Result<bool, WorkflowError> {
-    let artifact_review = artifacts.artifact_review_md();
-    let review_text = read_artifact_review_for_fanout_attempt(&artifact_review)
-        .map_err(WorkflowError)?;
-    Ok(review_text.as_deref().is_some_and(is_lgtm_str))
+    Ok(read_artifact_review_text(artifacts)?
+        .as_deref()
+        .is_some_and(is_lgtm_str))
+}
+
+/// Returns `Ok(None)` when the artifact review is missing, `Ok(Some(true|false))` for LGTM state.
+///
+/// # Errors
+///
+/// Returns [`WorkflowError`] when the artifact review file cannot be read.
+pub fn artifact_review_lgtm_after_review_write(
+    artifacts: &RunArtifacts,
+) -> Result<Option<bool>, WorkflowError> {
+    Ok(read_artifact_review_text(artifacts)?
+        .as_deref()
+        .map(is_lgtm_str))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::review_fanout_desc::parse_review_description_lines;
-    use crate::artifacts::create_run_artifacts_from_text;
-    use crate::prompts::PromptStore;
     use super::*;
+    use crate::artifacts::create_run_artifacts_from_text;
 
     #[test]
-    fn load_review_descriptions_rejects_empty_file() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let prompts = dir.path().join("prompts");
-        std::fs::create_dir_all(&prompts).expect("mkdir");
-        std::fs::write(prompts.join("review_descriptions.md"), "\n  \n").expect("write");
-        let store = PromptStore::with_root(prompts);
-        let err = load_review_descriptions_for_kernel(&store).expect_err("empty");
-        assert!(
-            err.0.contains("no non-empty lines"),
-            "unexpected: {}",
-            err.0
-        );
+    fn ensure_review_prep_errors_when_missing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
+        let err = ensure_review_prep_after_reviewers_spawn(&artifacts).expect_err("missing");
+        assert_eq!(err.0, REVIEW_PREP_MISSING_ARTIFACT_MSG);
     }
 
     #[test]
@@ -125,8 +115,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
-        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
-            .expect("artifacts");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
         let artifact = artifacts.artifact_review_md();
         let workspace = artifacts.workspace_review_md();
         std::fs::write(&artifact, "LGTM\n").expect("artifact lgtm");
@@ -146,8 +136,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
-        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
-            .expect("artifacts");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
         let artifact = artifacts.artifact_review_md();
         let workspace = artifacts.workspace_review_md();
         std::fs::write(&artifact, "Checks do not pass\n").expect("artifact marker");
@@ -168,8 +158,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
-        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
-            .expect("artifacts");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
         let workspace = artifacts.workspace_review_md();
         std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
         let err = ensure_artifact_review_after_review_write(&artifacts).expect_err("missing");
@@ -181,8 +171,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
-        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
-            .expect("artifacts");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
         std::fs::write(artifacts.artifact_review_md(), "problems\n").expect("artifact");
         ensure_artifact_review_after_review_write(&artifacts).expect("present");
     }
@@ -192,8 +182,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "plan").expect("write plan");
-        let artifacts = create_run_artifacts_from_text("kernel_test", Some(tmp.path()))
-            .expect("artifacts");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
         let artifact = artifacts.artifact_review_md();
         let workspace = artifacts.workspace_review_md();
         std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
@@ -202,31 +192,43 @@ mod tests {
             "empty artifact with workspace LGTM must not count as LGTM after fan-out"
         );
         assert!(
-            !artifact.exists() || std::fs::read_to_string(&artifact).unwrap().trim().is_empty(),
+            !artifact.exists()
+                || std::fs::read_to_string(&artifact)
+                    .unwrap()
+                    .trim()
+                    .is_empty(),
             "workspace LGTM must not be promoted into artifact for fan-out LGTM"
         );
     }
 
     #[test]
-    fn embedded_review_description_line_count_matches_store() {
-        let embedded = parse_review_description_lines(include_str!(
-            "../../default_prompts/review_descriptions.md"
-        ));
-        let store = PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let loaded = load_review_descriptions_for_kernel(&store).expect("load");
-        assert_eq!(loaded.len(), embedded.len());
-        assert!(!loaded.is_empty());
+    fn ensure_review_prep_accepts_nonempty_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
+        std::fs::write(artifacts.review_prep_md(), "prep\n").expect("prep");
+        ensure_review_prep_after_reviewers_spawn(&artifacts).expect("present");
+    }
+
+    #[test]
+    fn ensure_review_prep_after_spawn_surfaces_abort_when_prep_missing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_test", Some(tmp.path())).expect("artifacts");
+        std::fs::write(artifacts.artifact_result_md(), "ABORT: agent stop\n").expect("abort");
+        let err = ensure_review_prep_after_reviewers_spawn(&artifacts).expect_err("abort");
+        assert_eq!(err.0, "ABORT: agent stop");
     }
 
     #[test]
     fn kiss_stringify_review_attempt_kernel_units() {
-        let _ = stringify!(super::run_review_fanout_prefix);
+        let _ = stringify!(super::clear_review_attempt_artifacts);
+        let _ = stringify!(super::ensure_review_prep_after_reviewers_spawn);
         let _ = stringify!(super::ensure_artifact_review_after_review_write);
         let _ = stringify!(super::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
+        let _ = stringify!(super::REVIEW_PREP_MISSING_ARTIFACT_MSG);
         let _ = stringify!(super::is_missing_artifact_review_error);
         let _ = stringify!(super::review_attempt_is_lgtm);
-        let _ = stringify!(super::load_review_descriptions_for_kernel);
-        let _ = stringify!(super::ReviewAttemptKernelInput);
+        let _ = stringify!(super::artifact_review_lgtm_after_review_write);
     }
 }

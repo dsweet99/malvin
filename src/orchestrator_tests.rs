@@ -29,8 +29,8 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
         &s[..s.len().saturating_sub(3)]
     }
     assert_eq!(
-        legacy_stem("reviewer_template.md"),
-        prompt_md_stem("reviewer_template.md")
+        legacy_stem("reviewers_spawn.md"),
+        prompt_md_stem("reviewers_spawn.md")
     );
     assert_eq!(
         legacy_stem("review_write.md"),
@@ -70,11 +70,21 @@ fn sync_review_file_clears_artifact_when_workspace_whitespace_only() {
 }
 
 #[test]
-fn prefer_primary_errors_prefers_workflow_over_timing_when_both_fail() {
+fn prefer_primary_errors_chains_timing_when_workflow_fails() {
     let r = prefer_primary_errors_over_timing(
         Err(WorkflowError("workflow".into())),
         Ok(()),
         Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "workflow; timing: timing");
+}
+
+#[test]
+fn prefer_primary_errors_omits_timing_suffix_when_timing_succeeds() {
+    let r = prefer_primary_errors_over_timing(
+        Err(WorkflowError("workflow".into())),
+        Ok(()),
+        Ok(()),
     );
     assert_eq!(r.err().unwrap().0, "workflow");
 }
@@ -86,23 +96,23 @@ fn prefer_primary_errors_surfaces_timing_when_workflow_and_end_succeed() {
 }
 
 #[test]
-fn prefer_primary_errors_drops_timing_when_end_fails() {
+fn prefer_primary_errors_chains_timing_when_end_fails() {
     let r = prefer_primary_errors_over_timing(
         Ok(()),
         Err(WorkflowError("end".into())),
         Err(WorkflowError("timing".into())),
     );
-    assert_eq!(r.err().unwrap().0, "end");
+    assert_eq!(r.err().unwrap().0, "end; timing: timing");
 }
 
 #[test]
-fn prefer_primary_errors_surfaces_workflow_when_end_also_fails() {
+fn prefer_primary_errors_chains_timing_when_workflow_and_end_fail() {
     let r = prefer_primary_errors_over_timing(
         Err(WorkflowError("workflow".into())),
         Err(WorkflowError("end".into())),
         Err(WorkflowError("timing".into())),
     );
-    assert_eq!(r.err().unwrap().0, "workflow");
+    assert_eq!(r.err().unwrap().0, "workflow; end: end; timing: timing");
 }
 
 #[test]
@@ -183,7 +193,6 @@ fn kiss_stringify_orchestrator_helpers() {
     let _ = stringify!(crate::orchestrator::clear_review_file);
     let _ = stringify!(crate::orchestrator::check_abort);
     let _ = stringify!(crate::orchestrator::DEFAULT_LEARN_MIN_ELAPSED_MS);
-    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
     let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
 }

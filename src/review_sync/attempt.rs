@@ -22,12 +22,19 @@ fn clear_artifact_review_to_empty(path: &Path) -> Result<(), String> {
     })
 }
 
-fn read_nonempty_review(path: &Path, label: &str) -> Result<Option<String>, String> {
+pub fn read_nonempty_review(path: &Path, label: &str) -> Result<Option<String>, String> {
     if !path.exists() {
         return Ok(None);
     }
     let text = std::fs::read_to_string(path).map_err(|e| {
-        format!("failed to read {label} review file: {}: {e}", path.display())
+        if label.is_empty() {
+            format!("failed to read review file: {}: {e}", path.display())
+        } else {
+            format!(
+                "failed to read {label} review file: {}: {e}",
+                path.display()
+            )
+        }
     })?;
     if text.trim().is_empty() {
         Ok(None)
@@ -49,8 +56,10 @@ pub fn read_artifact_review_for_fanout_attempt(
 
 /// Copies workspace review into the artifact when the artifact is empty.
 ///
-/// Used by tests and legacy sync helpers; fan-out LGTM uses
-/// [`read_artifact_review_for_fanout_attempt`] only.
+/// Used by tests and legacy sync helpers only. Fan-out review LGTM decisions
+/// must use [`read_artifact_review_for_fanout_attempt`] (via
+/// [`crate::orchestrator::review_attempt_is_lgtm`]); do not call this from
+/// fan-out or `review_write` paths or workspace-only LGTM can be promoted.
 ///
 /// # Errors
 ///

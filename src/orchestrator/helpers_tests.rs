@@ -40,8 +40,7 @@ fn format_prompt_path_relative_existing_file_resolves_against_base_not_cwd() {
     std::fs::create_dir_all(&other).unwrap();
     std::fs::write(work.join("review.md"), "").unwrap();
     std::fs::write(other.join("review.md"), "").unwrap();
-    let formatted =
-        format_prompt_path_from_alternate_cwd(Path::new("review.md"), &work, &other);
+    let formatted = format_prompt_path_from_alternate_cwd(Path::new("review.md"), &work, &other);
     assert_eq!(
         formatted, "./review.md",
         "relative paths must resolve against base_dir, not process cwd"
@@ -139,8 +138,6 @@ fn format_prompt_path_uses_display_when_not_under_base() {
 
 #[test]
 fn kiss_stringify_review_loop_helpers() {
-    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-    let _ =
-        stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
+    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
 }

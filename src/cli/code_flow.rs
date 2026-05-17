@@ -248,12 +248,8 @@ mod tests {
             backup_workspace_kissignore_if_present(work).expect("kissignore backup"),
         );
         std::fs::write(work.join(".malvin_checks"), "agent-changed\n").expect("agent edit");
-        super::timing_merge::merge_acp_with_workspace_session_restore(
-            Ok(()),
-            work,
-            &backups,
-        )
-        .expect("session restore");
+        super::timing_merge::merge_acp_with_workspace_session_restore(Ok(()), work, &backups)
+            .expect("session restore");
         assert_eq!(
             std::fs::read_to_string(work.join(".malvin_checks")).expect("read checks"),
             "from-backup\n",

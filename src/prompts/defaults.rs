@@ -6,8 +6,7 @@ pub const DO_HEADER_MD: &str = "do_header.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "review_descriptions.md",
-    "reviewer_template.md",
+    "reviewers_spawn.md",
     "review_write.md",
     "concerns.md",
     HEADER_MD,
@@ -18,8 +17,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "review_descriptions.md",
-    "reviewer_template.md",
+    "reviewers_spawn.md",
     "review_write.md",
     "kpop.md",
     "kpop_common.md",
@@ -43,10 +41,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
     match name {
         "check_plan.md" => Some(include_str!("../../default_prompts/check_plan.md")),
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
-        "review_descriptions.md" => {
-            Some(include_str!("../../default_prompts/review_descriptions.md"))
-        }
-        "reviewer_template.md" => Some(include_str!("../../default_prompts/reviewer_template.md")),
+        "reviewers_spawn.md" => Some(include_str!("../../default_prompts/reviewers_spawn.md")),
         "review_write.md" => Some(include_str!("../../default_prompts/review_write.md")),
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
@@ -99,38 +94,28 @@ mod review_write_embed_tests {
 }
 
 #[cfg(test)]
-mod reviewer_template_embed_tests {
+mod reviewers_spawn_embed_tests {
     use super::default_file;
 
     #[test]
-    fn embedded_reviewer_template_spells_uncommitted_correctly() {
-        let s = default_file("reviewer_template.md").expect("reviewer_template must be embedded");
+    fn reviewers_spawn_is_required_for_code_workflow() {
         assert!(
-            !s.contains("uncommited"),
-            "embedded reviewer_template must not contain the common misspelling"
-        );
-    }
-}
-
-#[cfg(test)]
-mod review_descriptions_embed_tests {
-    use super::default_file;
-
-    #[test]
-    fn embedded_review_descriptions_has_no_stray_close_paren_question() {
-        let s = default_file("review_descriptions.md")
-            .expect("review_descriptions must be embedded");
-        assert!(
-            !s.contains("metrics)?"),
-            "kiss-metrics line must not contain stray ')?' fragment"
+            super::REQUIRED_PROMPTS.contains(&"reviewers_spawn.md"),
+            "malvin code review loads reviewers_spawn.md at runtime; validate_required must list it"
         );
     }
 
     #[test]
-    fn review_descriptions_is_required_for_code_workflow() {
+    fn embedded_reviewers_spawn_writes_prep_and_uses_kpop() {
+        let s = default_file("reviewers_spawn.md").expect("reviewers_spawn must be embedded");
         assert!(
-            super::REQUIRED_PROMPTS.contains(&"review_descriptions.md"),
-            "malvin code fan-out loads review_descriptions.md at runtime; validate_required must list it"
+            s.contains("{{ review_prep_path }}"),
+            "reviewers_spawn must write review_prep_path"
+        );
+        assert!(s.contains("{{ kpop }}"), "reviewers_spawn must include kpop block");
+        assert!(
+            s.contains("Spawn one subagent for each of these prompts"),
+            "reviewers_spawn must coordinate subagent fan-out"
         );
     }
 }

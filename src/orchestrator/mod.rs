@@ -16,16 +16,31 @@ mod helpers_tests;
 
 mod constants;
 mod review_attempt_kernel;
-mod review_fanout_desc;
 mod review_fanout_run;
 mod review_fanout_write;
+mod review_prompt_log;
 mod review_loop_helpers;
+mod review_write_retry;
 mod workflow_merge;
 
 pub use review_attempt_kernel::{
-    ReviewAttemptKernelInput, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
-    ensure_artifact_review_after_review_write, is_missing_artifact_review_error,
-    load_review_descriptions_for_kernel, review_attempt_is_lgtm, run_review_fanout_prefix,
+    REVIEW_PREP_MISSING_ARTIFACT_MSG, REVIEW_WRITE_INNER_RETRY_CAP,
+    REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
+    clear_review_attempt_artifacts,
+    artifact_review_lgtm_after_review_write, ensure_artifact_review_after_review_write,
+    ensure_review_prep_after_reviewers_spawn, is_missing_artifact_review_error,
+    review_attempt_is_lgtm,
+};
+pub use review_fanout_run::{
+    ReviewWriteCoderSession, ReviewersSpawnCoderSession, run_review_write_coder_session,
+    run_reviewers_spawn_coder_session,
+};
+pub use review_fanout_write::{
+    FinishReviewWriteInput, ReviewAttemptFinish, fail_on_abort_for_artifacts,
+    finish_review_write_attempt,
+};
+pub use review_write_retry::{
+    ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
 };
 pub use workflow_merge::merge_string_run_and_restore;
 
@@ -66,8 +81,18 @@ pub(crate) fn prefer_primary_errors_over_timing(
     if matches!((&workflow_result, &end_result), (Ok(()), Ok(()))) {
         timing_result
     } else {
-        let _ = timing_result;
-        workflow_result.and(end_result)
+        let primary = match (workflow_result, end_result) {
+            (Err(w), Err(e)) => Err(WorkflowError(format!("{}; end: {}", w.0, e.0))),
+            (Err(w), Ok(())) => Err(w),
+            (Ok(()), Err(e)) => Err(e),
+            (Ok(()), Ok(())) => Ok(()),
+        };
+        match (primary, timing_result) {
+            (Err(p), Err(WorkflowError(timing))) => {
+                Err(WorkflowError(format!("{}; timing: {timing}", p.0)))
+            }
+            (r, _) => r,
+        }
     }
 }
 
@@ -127,10 +152,7 @@ impl Orchestrator<'_> {
     }
 
     fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
-        if let Some(abort_msg) = check_abort(&self.artifacts.artifact_result_md()) {
-            return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-        }
-        Ok(())
+        fail_on_abort_for_artifacts(self.artifacts)
     }
 
     /// Drive the full workflow.

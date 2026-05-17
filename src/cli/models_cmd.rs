@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use clap::Args;
-use malvin::ansi_strip::strip_ansi_escapes;
 use malvin::agent_or_cursor_agent_bin;
+use malvin::ansi_strip::strip_ansi_escapes;
 use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
 use malvin::config::DEFAULT_CLI_MODEL;

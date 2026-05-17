@@ -1,0 +1,93 @@
+use std::collections::HashMap;
+
+use crate::acp::AgentClient;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::prompts::PromptStore;
+
+use super::WorkflowError;
+use super::review_attempt_kernel::{
+    clear_review_attempt_artifacts, ensure_review_prep_after_reviewers_spawn,
+};
+use super::review_fanout_run::{ReviewersSpawnCoderSession, run_reviewers_spawn_coder_session};
+use super::review_fanout_write::{
+    FinishReviewWriteInput, ReviewAttemptFinish, finish_review_write_attempt,
+};
+
+pub enum ReviewWriteInnerOutcome {
+    Lgtm,
+    NotLgtm,
+    MissingArtifactExhausted,
+}
+
+pub struct ReviewTwoPromptSession<'a> {
+    pub client: &'a mut AgentClient,
+    pub prompts: &'a PromptStore,
+    pub artifacts: &'a RunArtifacts,
+    pub session_dotfile_backups: &'a SessionDotfileBackups,
+    pub context: &'a HashMap<String, String>,
+    pub attempt: usize,
+    pub skip_repo_style: bool,
+}
+
+/// Run `reviewers_spawn`, then retry `review_write` against the same prep file.
+///
+/// # Errors
+///
+/// Returns [`WorkflowError`] when a prompt, restore, prep read, review read, or abort check fails.
+pub async fn run_reviewers_spawn_then_review_write<F>(
+    session: ReviewTwoPromptSession<'_>,
+    max_inner_retries: usize,
+    mut on_missing_retry: F,
+) -> Result<ReviewWriteInnerOutcome, WorkflowError>
+where
+    F: FnMut(),
+{
+    clear_review_attempt_artifacts(session.artifacts)?;
+    run_reviewers_spawn_coder_session(ReviewersSpawnCoderSession {
+        client: session.client,
+        prompts: session.prompts,
+        artifacts: session.artifacts,
+        session_dotfile_backups: session.session_dotfile_backups,
+        context: session.context,
+        attempt: session.attempt,
+        log_attempt: session.attempt,
+        skip_repo_style: session.skip_repo_style,
+    })
+    .await?;
+    ensure_review_prep_after_reviewers_spawn(session.artifacts)?;
+    let cap = max_inner_retries.max(1);
+    for review_write_try in 1..=cap {
+        match finish_review_write_attempt(FinishReviewWriteInput {
+            client: session.client,
+            prompts: session.prompts,
+            artifacts: session.artifacts,
+            session_dotfile_backups: session.session_dotfile_backups,
+            context: session.context,
+            attempt: review_write_try,
+            log_attempt: session.attempt,
+            skip_repo_style: session.skip_repo_style,
+        })
+        .await?
+        {
+            ReviewAttemptFinish::Lgtm => return Ok(ReviewWriteInnerOutcome::Lgtm),
+            ReviewAttemptFinish::NotLgtm => return Ok(ReviewWriteInnerOutcome::NotLgtm),
+            ReviewAttemptFinish::MissingArtifact => {
+                if review_write_try >= cap {
+                    return Ok(ReviewWriteInnerOutcome::MissingArtifactExhausted);
+                }
+                on_missing_retry();
+            }
+        }
+    }
+    unreachable!("inner review_write retries always return from the match")
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn kiss_stringify_review_write_retry_units() {
+        let _ = stringify!(super::ReviewWriteInnerOutcome);
+        let _ = stringify!(super::ReviewTwoPromptSession);
+        let _ = stringify!(super::run_reviewers_spawn_then_review_write);
+    }
+}

@@ -41,11 +41,8 @@ mod unix_tests {
             cmd.arg(a);
         }
         cmd.arg("ship it");
-        super::common::command_output_with_timeout(
-            &mut cmd,
-            super::common::MALVIN_TEST_CMD_TIMEOUT,
-        )
-        .expect("spawn malvin code")
+        super::common::command_output_with_timeout(&mut cmd, super::common::MALVIN_TEST_CMD_TIMEOUT)
+            .expect("spawn malvin code")
     }
 
     #[test]

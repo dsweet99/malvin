@@ -41,6 +41,11 @@ impl RunArtifacts {
         self.run_dir.join("review.md")
     }
 
+    #[must_use]
+    pub fn review_prep_md(&self) -> PathBuf {
+        self.run_dir.join("review_prep.md")
+    }
+
     /// Workspace `review.md` under [`Self::work_dir`].
     #[must_use]
     pub fn workspace_review_md(&self) -> PathBuf {

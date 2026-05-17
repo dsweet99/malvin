@@ -1,12 +1,10 @@
 /// ACP-backed agent with session-scoped coder and reviewer lifetimes.
 ///
 /// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
-/// (unless skipped), `implement`, optional `learn`, and `concerns` prompts that run only inside
-/// each review phase—after a reviewer attempt fails to produce LGTM, not as a step between
-/// implement and learn. Each review attempt fans out one short-lived **reviewer** session per
-/// description line in `review_descriptions.md` (bounded concurrency, default 3), then runs
-/// `review_write` on the coder session, then tears down reviewer sessions. KPOP is driven by
-/// `run_kpop_flow` / `run_kpop_multiturn` / `run_kpop_flow_once`, not the reviewer-session API.
+/// (unless skipped), `implement`, review prompts, optional `learn`, and `concerns` prompts that
+/// run only after a review attempt fails to produce LGTM. Review fan-out is now prompt-driven:
+/// the coder session runs `reviewers_spawn.md`, then `review_write.md`. KPOP is driven by
+/// `run_kpop_flow` / `run_kpop_multiturn` / `run_kpop_flow_once`, not the review API.
 pub struct AgentClient {
     pub model: String,
     pub io: AgentIoOptions,

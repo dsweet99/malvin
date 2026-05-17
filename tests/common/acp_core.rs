@@ -75,11 +75,11 @@ pub fn review_write_regression_test_body() -> String {
         '#[test]\nfn review_write_fanout_exposes_bug() { assert!(false); }\n',
         'utf8'
       );"
-        .to_string()
+    .to_string()
 }
 
 pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
-    let reviewer = write_fanout_reviewer_output();
+    let prep = write_review_prep_output();
     let write_tail = format!(
         "{}\n      {}\n{}",
         review_write_regression_test_body(),
@@ -89,17 +89,15 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
     format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('Write your executive summary and tl;dr to')) {{
-{reviewer}
-    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+{prep}
+    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
 {write_tail}
     }} else if (promptText.includes('Concerns')) {{
     }} else {{
       // learn, summary, and other coder prompts
     }}",
         implement = chunk_line("implemented"),
-        reviewer = reviewer,
-        write_tail = write_tail,
     )
 }
 
@@ -107,16 +105,12 @@ pub fn write_workspace_lgtm() -> String {
     "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
 
-pub fn write_fanout_reviewer_output() -> String {
-    r"      const m = promptText.match(/Write your executive summary and tl;dr to ([^\s\n]+reviewer_\d{3}\.md)/);
-      if (m) {
-        const outRel = m[1].trim();
-        const outPath = path.isAbsolute(outRel)
-          ? outRel
-          : path.join(process.cwd(), outRel.replace(/^\.\//, ''));
-        fs.mkdirSync(path.dirname(outPath), { recursive: true });
-        fs.writeFileSync(outPath, 'Executive summary: ok\n\ntl;dr: ok\n', 'utf8');
-      }"
+pub fn write_review_prep_output() -> String {
+    r"      fs.writeFileSync(
+        path.join(runDir, 'review_prep.md'),
+        '## Reviewer 1: mock\n\nExecutive summary:\nok\n\ntl;dr:\nok\n\nExperiment log:\n_mock.md\n',
+        'utf8'
+      );"
         .to_string()
 }
 
@@ -124,9 +118,9 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('Write your executive summary and tl;dr to')) {{
+    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
 {reviewer_skip}
-    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
 {write_lgtm}
     }} else {{
       // learn, summary
@@ -139,11 +133,11 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
 }
 
 pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {
-    let reviewer = write_fanout_reviewer_output();
+    let prep = write_review_prep_output();
     format!(
-        r"    else if (promptText.includes('Write your executive summary and tl;dr to')) {{
-{reviewer}
-    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+        r"    else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+{prep}
+    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
 {review_write_body}
 {reviewed_chunk}
     }} else if (promptText.includes('Concerns')) {{
@@ -194,20 +188,3 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     acp_mock_js("", &format!("    {body}\n{done}"))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::write_fanout_reviewer_output;
-
-    #[test]
-    fn write_fanout_reviewer_output_accepts_paths_without_dot_slash_prefix() {
-        let snippet = write_fanout_reviewer_output();
-        assert!(
-            snippet.contains(r"([^\s\n]+reviewer_\d{3}\.md)"),
-            "mock must match reviewer paths with or without ./ prefix: {snippet}"
-        );
-        assert!(
-            !snippet.contains(r"(\.\/[^\n]+reviewer_\d{3}\.md)"),
-            "mock must not require a ./ prefix: {snippet}"
-        );
-    }
-}

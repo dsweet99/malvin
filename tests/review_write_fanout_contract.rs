@@ -3,9 +3,10 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js, code_review_fanout_writes_regression_test_and_non_lgtm,
-    command_output_with_timeout, seed_git_kiss_cargo_gate_workspace, test_home_workspace,
-    write_fake_kiss, write_mock_executable,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js,
+    code_review_fanout_writes_regression_test_and_non_lgtm, command_output_with_timeout,
+    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_fake_kiss,
+    write_mock_executable,
 };
 #[cfg(unix)]
 use std::path::Path;
@@ -62,9 +63,8 @@ fn code_review_write_fanout_writes_failing_regression_test_before_non_lgtm_revie
         "expected code to fail when review is non-LGTM: {out:?}"
     );
     let regression = workspace.join("tests/review_write_fanout_regression.rs");
-    let contents = std::fs::read_to_string(&regression).unwrap_or_else(|e| {
-        panic!("review_write should create {regression:?}: {e}")
-    });
+    let contents = std::fs::read_to_string(&regression)
+        .unwrap_or_else(|e| panic!("review_write should create {regression:?}: {e}"));
     assert!(
         contents.contains("review_write_fanout_exposes_bug"),
         "expected failing regression test in {regression:?}: {contents}"

@@ -52,11 +52,8 @@ mod tests {
 
     #[test]
     fn merge_string_run_and_restore_labels_restore_failure() {
-        let err = merge_string_run_and_restore(
-            Err("run".to_string()),
-            Err("restore".to_string()),
-        )
-        .expect_err("both failed");
+        let err = merge_string_run_and_restore(Err("run".to_string()), Err("restore".to_string()))
+            .expect_err("both failed");
         assert!(err.contains("workspace session restore failed"));
     }
 

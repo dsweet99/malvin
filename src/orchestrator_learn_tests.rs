@@ -1,11 +1,17 @@
-use crate::orchestrator::{should_run_learn_check, DEFAULT_LEARN_MIN_ELAPSED_MS};
+use crate::orchestrator::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 
 const FIVE_MIN_MS: u64 = DEFAULT_LEARN_MIN_ELAPSED_MS;
 
 #[test]
 fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(should_run_learn_check(0, 0), "0 threshold, 0 elapsed => run");
-    assert!(should_run_learn_check(0, 1), "0 threshold, any elapsed => run");
+    assert!(
+        should_run_learn_check(0, 0),
+        "0 threshold, 0 elapsed => run"
+    );
+    assert!(
+        should_run_learn_check(0, 1),
+        "0 threshold, any elapsed => run"
+    );
     assert!(
         should_run_learn_check(0, FIVE_MIN_MS),
         "0 threshold, 5 min => run"

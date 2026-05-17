@@ -1,13 +1,12 @@
 use super::acp_core::{
     acp_mock_code_with_run_dir_js, acp_mock_js, chunk_line, code_review_fanout_branches,
     session_update_chunk_line, write_artifact_lgtm, write_artifact_non_lgtm,
-    write_fanout_reviewer_output, write_workspace_lgtm,
+    write_review_prep_output, write_workspace_lgtm,
 };
 
 pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
     let lgtm = write_artifact_lgtm();
-    let review_tail =
-        code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
+    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(
         r"    if (promptText.includes('write ONLY the four characters')) {{
 {lgtm}
@@ -23,10 +22,10 @@ pub fn acp_mock_code_abort_result_after_check_plan_lgtm_js() -> String {
     acp_mock_code_with_run_dir_js(&body)
 }
 
-pub fn acp_mock_code_check_plan_tampers_malvin_checks_then_implement_verifies_restore_js() -> String {
+pub fn acp_mock_code_check_plan_tampers_malvin_checks_then_implement_verifies_restore_js() -> String
+{
     let lgtm = write_artifact_lgtm();
-    let review_tail =
-        code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
+    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(
         r#"    if (promptText.includes('write ONLY the four characters "LGTM"')) {{
       fs.writeFileSync(path.join(process.cwd(), '.malvin_checks'), 'TAMPERED\n', 'utf8');
@@ -51,8 +50,7 @@ pub fn acp_mock_code_check_plan_tampers_malvin_checks_then_implement_verifies_re
 
 pub fn acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js() -> String {
     let lgtm = write_artifact_lgtm();
-    let review_tail =
-        code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
+    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(
         r#"    if (promptText.includes('write ONLY the four characters "LGTM"')) {{
       fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED\n', 'utf8');
@@ -89,25 +87,24 @@ pub fn acp_mock_code_review_lgtm_to_artifact_js() -> String {
 
 pub fn acp_mock_code_review_lgtm_with_abort_js() -> String {
     let lgtm = write_artifact_lgtm();
-    let reviewer = super::acp_core::write_fanout_reviewer_output();
+    let prep = write_review_prep_output();
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
-    }} else if (promptText.includes('Write your executive summary and tl;dr to')) {{
-{reviewer}
-    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+{prep}
+    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
 {lgtm}
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: review lgtm abort test\n', 'utf8');
     }} else if (promptText.includes('Concerns')) {{
     }} else {{
-    }}",
+    }}"
     );
     acp_mock_code_with_run_dir_js(&body)
 }
 
 pub fn acp_mock_code_review_writes_workspace_lgtm_js() -> String {
-    let review_tail =
-        code_review_fanout_branches(&write_workspace_lgtm(), &write_artifact_lgtm());
+    let review_tail = code_review_fanout_branches(&write_workspace_lgtm(), &write_artifact_lgtm());
     let body = format!(
         r"    if (promptText.includes('Find a discrepancy between the codebase and')) {{
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
@@ -166,8 +163,7 @@ pub fn acp_mock_code_streaming_long_bold_markdown_js() -> String {
 }
 
 pub fn acp_mock_code_abort_after_implement_js() -> String {
-    let review_tail =
-        code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
+    let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: stop now\n', 'utf8');

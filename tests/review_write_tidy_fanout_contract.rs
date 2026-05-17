@@ -5,7 +5,7 @@ mod common;
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js, review_write_regression_test_body,
     seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_artifact_non_lgtm,
-    write_fanout_reviewer_output, write_mock_executable,
+    write_mock_executable, write_review_prep_output,
 };
 #[cfg(unix)]
 use std::path::Path;
@@ -14,20 +14,20 @@ use std::process::Command;
 
 #[cfg(unix)]
 fn acp_mock_tidy_review_write_regression_js() -> String {
-    let reviewer = write_fanout_reviewer_output();
+    let prep = write_review_prep_output();
     let write_tail = format!(
         "{}\n      {}\n",
         review_write_regression_test_body(),
         write_artifact_non_lgtm()
     );
     format!(
-        r"    if (promptText.includes('Write your executive summary and tl;dr to')) {{
-{reviewer}
-    }} else if (promptText.includes('Read the files in') && promptText.includes('Rate all of the findings')) {{
+        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+{prep}
+    }} else if (promptText.includes('Read') && promptText.includes('Rate all of the findings')) {{
 {write_tail}
     }} else {{
       // tidy coder
-    }}"
+    }}",
     )
 }
 
@@ -38,7 +38,10 @@ fn spawn_tidy_review_write_regression(
     mock: &Path,
     path_var: &str,
 ) -> std::process::Output {
-    write_mock_executable(mock, &acp_mock_code_with_run_dir_js(&acp_mock_tidy_review_write_regression_js()));
+    write_mock_executable(
+        mock,
+        &acp_mock_code_with_run_dir_js(&acp_mock_tidy_review_write_regression_js()),
+    );
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(workspace)
         .env("HOME", home)
@@ -61,9 +64,8 @@ fn tidy_review_write_fanout_writes_failing_regression_test_before_non_lgtm_revie
         "expected tidy to fail when review is non-LGTM: {out:?}"
     );
     let regression = workspace.join("tests/review_write_fanout_regression.rs");
-    let contents = std::fs::read_to_string(&regression).unwrap_or_else(|e| {
-        panic!("review_write should create {regression:?}: {e}")
-    });
+    let contents = std::fs::read_to_string(&regression)
+        .unwrap_or_else(|e| panic!("review_write should create {regression:?}: {e}"));
     assert!(
         contents.contains("review_write_fanout_exposes_bug"),
         "expected failing regression test in {regression:?}: {contents}"

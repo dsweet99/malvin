@@ -6,8 +6,7 @@ use malvin::output::{MALVIN_WHO, format_line, print_stdout_line, print_stdout_te
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
     malvin::init_from_env();
-    let cmd =
-        malvin::command_line().expect("init_from_env populates argv via OnceLock");
+    let cmd = malvin::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
         print_stdout_line(MALVIN_WHO, &line);

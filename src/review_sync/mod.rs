@@ -2,9 +2,8 @@
 
 mod attempt;
 
-pub use attempt::{
-    read_artifact_review_for_fanout_attempt, sync_review_file_for_attempt,
-};
+pub(crate) use attempt::read_nonempty_review;
+pub use attempt::{read_artifact_review_for_fanout_attempt, sync_review_file_for_attempt};
 
 #[must_use]
 pub fn is_lgtm_str(content: &str) -> bool {
@@ -66,6 +65,9 @@ fn sync_review_then_is_lgtm(
     let content = sync_review_file(workspace_review_path, artifact_review_path)?;
     Ok(content.as_deref().is_some_and(is_lgtm_str))
 }
+
+#[cfg(test)]
+mod fanout_read_tests;
 
 #[cfg(test)]
 mod tests;

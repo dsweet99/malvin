@@ -20,7 +20,10 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
     ] {
         assert!(phases.get(key).is_some(), "missing {key}");
     }
-    assert_eq!(ReviewPairId::Fanout.review_phase(), TimingPhase::ReviewFanout);
+    assert_eq!(
+        ReviewPairId::Fanout.review_phase(),
+        TimingPhase::ReviewFanout
+    );
 }
 
 #[test]

@@ -19,6 +19,12 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
     );
     insert_formatted(
         context,
+        "review_prep_path",
+        &artifacts.review_prep_md(),
+        base,
+    );
+    insert_formatted(
+        context,
         "result_path",
         &artifacts.artifact_result_md(),
         base,
@@ -96,7 +102,7 @@ pub fn check_abort(result_path: &Path) -> Option<String> {
     None
 }
 
-/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and reviewer prompts (`reviewer_template.md`, …).
+/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and review prompts (`reviewers_spawn.md`, `review_write.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {

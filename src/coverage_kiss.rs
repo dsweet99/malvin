@@ -78,6 +78,9 @@ fn kiss_stringify_review_sync() {
     let _ = stringify!(crate::review_sync::is_lgtm_str);
     let _ = stringify!(crate::review_sync::read_artifact_review_for_fanout_attempt);
     let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
+    let _ = stringify!(crate::orchestrator::artifact_review_lgtm_after_review_write);
+    let _ = stringify!(crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG);
+    let _ = stringify!(crate::orchestrator::review_prompt_log::review_prompt_log_path);
 }
 
 #[test]
@@ -95,20 +98,28 @@ fn kiss_stringify_orchestrator() {
     let _ = stringify!(crate::orchestrator::prompt_md_stem);
     let _ = stringify!(crate::orchestrator::workflow_context);
     let _ = stringify!(crate::orchestrator::workflow_context_paths_only);
-    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_fanout_jobs);
     let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt);
     let _ = stringify!(crate::orchestrator::Orchestrator::run_coder_prompt_body);
-    let _ = stringify!(crate::orchestrator::run_review_fanout_prefix);
+    let _ = stringify!(crate::orchestrator::clear_review_attempt_artifacts);
+    let _ = stringify!(crate::orchestrator::ensure_review_prep_after_reviewers_spawn);
     let _ = stringify!(crate::orchestrator::ensure_artifact_review_after_review_write);
+    let _ = stringify!(crate::orchestrator::REVIEW_PREP_MISSING_ARTIFACT_MSG);
     let _ = stringify!(crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
+    let _ = stringify!(crate::orchestrator::REVIEW_WRITE_INNER_RETRY_CAP);
     let _ = stringify!(crate::orchestrator::is_missing_artifact_review_error);
     let _ = stringify!(crate::orchestrator::review_attempt_is_lgtm);
-    let _ = stringify!(crate::orchestrator::load_review_descriptions_for_kernel);
-    let _ = stringify!(crate::orchestrator::review_fanout_write::run_review_write_coder_session);
+    let _ = stringify!(crate::orchestrator::review_fanout_write::fail_on_abort_for_artifacts);
+    let _ = stringify!(crate::orchestrator::review_fanout_write::finish_review_write_attempt);
+    let _ = stringify!(crate::orchestrator::review_fanout_run::run_reviewers_spawn_coder_session);
+    let _ = stringify!(crate::orchestrator::review_fanout_write::ReviewAttemptFinish);
+    let _ = stringify!(crate::orchestrator::review_write_retry::ReviewWriteInnerOutcome);
+    let _ = stringify!(crate::orchestrator::review_write_retry::ReviewTwoPromptSession);
+    let _ =
+        stringify!(crate::orchestrator::review_write_retry::run_reviewers_spawn_then_review_write);
+    let _ = stringify!(crate::orchestrator::review_fanout_write::FinishReviewWriteInput);
+    let _ = stringify!(crate::orchestrator::review_fanout_run::run_review_write_coder_session);
     let _ = stringify!(crate::orchestrator::merge_string_run_and_restore);
     let _ = stringify!(crate::orchestrator::workflow_merge::merge_workflow_run_and_restore);
-    let _ = stringify!(crate::orchestrator::constants::REVIEWER_FANOUT_CONCURRENCY);
-    let _ = stringify!(crate::orchestrator::constants::fanout_wave_count);
 }
 
 #[test]
@@ -197,8 +208,7 @@ fn kiss_write_same_body_files(dir: &std::path::Path, names: &[&str], body: &[u8]
 
 const SMOKE_EMBEDDED_PROMPT_NAMES: &[&str] = &[
     "implement.md",
-    "review_descriptions.md",
-    "reviewer_template.md",
+    "reviewers_spawn.md",
     "review_write.md",
     "kpop.md",
     "kpop_common.md",

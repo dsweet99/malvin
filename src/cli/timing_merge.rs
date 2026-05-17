@@ -163,7 +163,9 @@ mod tests {
     fn kiss_stringify_timing_merge_units() {
         let _ = stringify!(crate::cli::timing_merge::emit_run_timing_json_only_after_acp);
         let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
-        let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore_and_check_abort);
+        let _ = stringify!(
+            crate::cli::timing_merge::merge_acp_with_workspace_session_restore_and_check_abort
+        );
     }
 
     #[test]

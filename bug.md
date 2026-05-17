@@ -1,22 +1,19 @@
-# Bug: false LGTM when fan-out artifact review is empty but workspace `review.md` says LGTM
+# Bug: `malvin tidy --max-loops 1` cannot succeed after a non-LGTM review even if concerns fix everything
 
 ## Status
 
-**Fixed** on branch `dsweet/gates`.
+**Fixed** in working tree (`run_tidy_post_concerns_recovery` after non-LGTM `--max-loops 1` concerns). Contract: `tests/tidy_max_loops_one_contract.rs`.
 
-## What was wrong
+## Summary
 
-After fan-out + `review_write`, `review_attempt_is_lgtm` used `sync_review_file_for_attempt`, which copied workspace `./review.md` (including stale `LGTM`) into the empty artifact and scored LGTM.
+With `--max-loops 1`, when the reviewer returned non-LGTM, tidy ran one `tidy_concerns` coder turn and then exited with `tidy did not converge within 1 iterations`. It did not re-run quality gates or the review fan-out after that concerns turn, so a successful concerns pass could not produce exit code 0.
 
-## Fix (current behavior)
+## Fix
 
-- `read_artifact_review_for_fanout_attempt`: artifact-only read for fan-out LGTM (no workspace promotion).
-- `ensure_artifact_review_after_review_write`: errors when artifact review is missing or whitespace-only after `review_write`.
-- `run_code_review_phase`: retries the review attempt within `max_loops` when the artifact is missing (like `check_plan`), instead of aborting the whole review phase.
-- Wired in `review_loop.rs` and `tidy_flow/helpers.rs` (via `tidy_review_attempt_with_retries`).
-- Regression tests in `tests/cli_parity_code_fanout.rs` and `review_attempt_kernel.rs` unit tests.
+After `run_tidy_concerns_coder_turn` on the `max_loops == 1` non-LGTM path, `run_tidy_post_concerns_recovery` re-runs gates and one `tidy_review_attempt_with_retries`, returning `Ok(())` when LGTM and gates pass (same tail as bonus gate recovery, without a second concerns pass).
 
-## Remaining hardening (non-blocking)
+## Related defects (operational, fixed)
 
-- `sync_review_file_for_attempt` still exists for legacy/tests; fan-out must keep using artifact-only paths.
-- Fan-out `ReviewerPromptPair` still accepts `workspace_review_path` though sync is disabled for fan-out jobs.
+`review_prompt_log_path` uses `log_attempt` for the base name on tidy and `malvin code` paths, with a shared inner-retry `_try_N` rule.
+
+Post-concerns recovery on `--max-loops 1` non-LGTM now passes `max_attempts + 1` as the review fan-out log attempt (same as bonus gate recovery), so recovery does not overwrite `reviewers_spawn_attempt_1.log`. Stdout uses `tidy recovery (review attempt N, max-loops M)` instead of `tidy iteration N+1/M`. Inner `review_write` missing-artifact retries per outer iteration use `max_loops.max(1)` again (not a fixed cap of 2). Regressions: `tidy_max_loops_one_non_lgtm_concerns_recovery_can_exit_zero`, `tidy_inner_review_write_retries_allow_at_least_max_loops_per_outer_iteration`.

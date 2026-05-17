@@ -26,8 +26,7 @@ pub use args::{BugArgs, Cli, CodeArgs, Commands, KpopArgs, PlanArgs};
 pub use bug_flow::run_bug;
 pub use code_flow::{
     AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, build_agent,
-    format_workspace_gate_failure, prepare_bug_prompt_store,
-    prepare_kpop_prompt_store, run_code,
+    format_workspace_gate_failure, prepare_bug_prompt_store, prepare_kpop_prompt_store, run_code,
 };
 pub use do_flow::run_do;
 pub use entrypoint::entrypoint;

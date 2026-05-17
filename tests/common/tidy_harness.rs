@@ -14,16 +14,47 @@ pub struct TidySpawn<'a> {
 }
 
 pub fn spawn_tidy(t: &TidySpawn<'_>) -> std::process::Output {
+    spawn_tidy_with_timeout(t, MALVIN_TEST_CMD_TIMEOUT)
+}
+
+pub fn spawn_tidy_with_timeout(
+    t: &TidySpawn<'_>,
+    timeout: std::time::Duration,
+) -> std::process::Output {
+    spawn_tidy_impl(t, true, None, timeout)
+}
+
+pub fn spawn_tidy_with_learn(t: &TidySpawn<'_>) -> std::process::Output {
+    spawn_tidy_impl(
+        t,
+        false,
+        Some(("MALVIN_TIDY_LEARN_MIN_ELAPSED_MS", "0")),
+        MALVIN_TEST_CMD_TIMEOUT,
+    )
+}
+
+fn spawn_tidy_impl(
+    t: &TidySpawn<'_>,
+    no_learn: bool,
+    extra_env: Option<(&str, &str)>,
+    timeout: std::time::Duration,
+) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(t.workspace)
         .env("HOME", t.home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", t.mock)
         .env("PATH", t.path_var);
-    let mut args: Vec<&str> = vec!["tidy", "--no-learn"];
+    if let Some((key, value)) = extra_env {
+        cmd.env(key, value);
+    }
+    let mut args: Vec<&str> = vec!["tidy"];
+    if no_learn {
+        args.push("--no-learn");
+    }
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+    command_output_with_timeout(&mut cmd, timeout).expect("spawn malvin")
 }
 
 pub fn workspace_kiss_check_only(workspace: &Path) {
