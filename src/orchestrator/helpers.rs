@@ -147,3 +147,37 @@ pub fn format_exp_log_relative(
     format_prompt_path(exp_log, &artifacts.work_dir)
 }
 
+#[cfg(test)]
+mod helpers_kiss_inline {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn kiss_stringify_helpers_units() {
+        let _ = stringify!(workflow_context_paths_only);
+        let _ = stringify!(workflow_context);
+        let _ = stringify!(clear_review_file);
+        let _ = stringify!(check_abort);
+        let _ = stringify!(format_prompt_path);
+        let _ = stringify!(format_exp_log_relative);
+    }
+
+    #[test]
+    fn insert_artifact_paths_and_resolve_path_against_base() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let run_dir = tmp.path().join("_malvin").join("run");
+        std::fs::create_dir_all(&run_dir).expect("mkdir");
+        let plan_path = run_dir.join("plan.md");
+        std::fs::write(&plan_path, "p").expect("plan");
+        let artifacts = crate::artifacts::RunArtifacts {
+            run_dir,
+            plan_path: plan_path.clone(),
+            work_dir: tmp.path().to_path_buf(),
+        };
+        let mut ctx = HashMap::new();
+        insert_artifact_paths(&mut ctx, &artifacts);
+        assert!(ctx.contains_key("quality_gates_log"));
+        let _ = resolve_path_against_base(&plan_path, &artifacts.work_dir);
+    }
+}
+

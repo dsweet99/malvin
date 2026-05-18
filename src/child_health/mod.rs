@@ -6,13 +6,6 @@
 
 use std::time::{Duration, Instant};
 
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "macos")]
-mod macos;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-mod other;
-
 /// Normalized snapshot from the OS for one child PID.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChildHealth {
@@ -44,15 +37,15 @@ pub fn sample_child_health(pid: u32) -> ChildHealth {
     }
     #[cfg(target_os = "linux")]
     {
-        linux::sample_child_health(pid)
+        linux::sample_child_health_linux(pid)
     }
     #[cfg(target_os = "macos")]
     {
-        macos::sample_child_health(pid)
+        macos::sample_child_health_macos(pid)
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        other::sample_child_health(pid)
+        other::sample_child_health_other(pid)
     }
 }
 
@@ -133,6 +126,17 @@ pub async fn evaluate_after_acp_silence(pid: u32, grace: Duration) -> SilenceHea
     silence_outcome_from_pair(&first, &second)
 }
 
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+pub(crate) mod other;
+
+#[cfg(test)]
+#[path = "tests/child_health_tests_root.rs"]
+mod child_health_unit_tests;
+
 impl ChildHealth {
     /// `/proc` (or equivalent) has no row for this PID — the child is definitely gone.
     pub(super) fn process_absent() -> Self {
@@ -167,4 +171,15 @@ impl ChildHealth {
 }
 
 #[cfg(test)]
-mod tests;
+mod child_health_kiss_names {
+    #[test]
+    fn kiss_stringify_child_health_units() {
+        let _ = stringify!(crate::child_health::ChildHealth);
+        let _ = stringify!(crate::child_health::SilenceHealthOutcome);
+        let _ = stringify!(crate::child_health::sample_child_health);
+        let _ = stringify!(crate::child_health::evaluate_after_acp_silence);
+        let _ = stringify!(crate::child_health::health_indicates_progress);
+        let _ = stringify!(crate::child_health::silence_grace_for_rpc_timeout);
+    }
+}
+

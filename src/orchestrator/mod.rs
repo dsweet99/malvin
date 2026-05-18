@@ -7,9 +7,13 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-mod memory_context;
+pub mod memory_context;
 
 include!("helpers.rs");
+
+#[cfg(test)]
+#[path = "memory_context/tests.rs"]
+mod memory_context_tests;
 
 #[cfg(test)]
 mod helpers_tests;
@@ -43,6 +47,10 @@ pub use review_write_retry::{
     ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
 };
 pub use workflow_merge::merge_string_run_and_restore;
+pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
+
+#[cfg(test)]
+pub(crate) mod orchestrator_test_support;
 
 mod check_plan;
 mod review_loop;
@@ -116,15 +124,7 @@ pub struct Orchestrator<'a> {
     pub session_dotfile_backups: SessionDotfileBackups,
 }
 
-/// Default learn-phase skip threshold (5 minutes), shared with CLI wiring.
-pub const DEFAULT_LEARN_MIN_ELAPSED_MS: u64 = 300_000;
-
-/// Returns true if learn should run given threshold and elapsed time.
-/// Threshold of 0 means always run. Otherwise, run only if elapsed >= threshold.
-#[must_use]
-pub const fn should_run_learn_check(threshold_ms: u64, elapsed_ms: u64) -> bool {
-    threshold_ms == 0 || elapsed_ms >= threshold_ms
-}
+pub use crate::learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 
 impl Orchestrator<'_> {
     pub(super) fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
@@ -224,3 +224,19 @@ impl Orchestrator<'_> {
 }
 
 include!("coder_prompt_impl.rs");
+
+#[cfg(test)]
+#[path = "check_plan_tests.rs"]
+mod check_plan_tests;
+
+#[cfg(test)]
+#[path = "review_loop_tests.rs"]
+mod review_loop_tests;
+
+#[cfg(test)]
+#[path = "bug_remediation_tests.rs"]
+mod bug_remediation_tests;
+
+#[cfg(test)]
+#[path = "orchestrator_kiss_names.rs"]
+mod orchestrator_kiss_names;

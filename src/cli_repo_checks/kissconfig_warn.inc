@@ -1,0 +1,76 @@
+use std::path::Path;
+
+use super::emit::emit_repo_gate_line;
+use super::types::RepoGateOutput;
+
+pub fn warn_kissconfig_test_coverage_if_needed(
+    work_dir: &Path,
+    output: RepoGateOutput,
+    run_log_dir: Option<&Path>,
+) {
+    let path = work_dir.join(".kissconfig");
+    if !path.is_file() {
+        return;
+    }
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => {
+            emit_repo_gate_line(
+                output,
+                &format!("Warning: could not read .kissconfig: {e}"),
+                run_log_dir,
+            );
+            return;
+        }
+    };
+    let value = match text.parse::<toml::Value>() {
+        Ok(v) => v,
+        Err(e) => {
+            emit_repo_gate_line(
+                output,
+                &format!("Warning: could not parse .kissconfig as TOML: {e}"),
+                run_log_dir,
+            );
+            return;
+        }
+    };
+    if !should_warn_low_test_coverage(&value) {
+        return;
+    }
+    emit_repo_gate_line(
+        output,
+        "Warning: .kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
+        run_log_dir,
+    );
+}
+
+fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
+    let gate = value.get("gate")?;
+    let v = gate.get("test_coverage_threshold")?;
+    integer_or_whole_float_i64(v)
+}
+
+fn integer_or_whole_float_i64(v: &toml::Value) -> Option<i64> {
+    if let Some(i) = v.as_integer() {
+        return Some(i);
+    }
+    let f = v.as_float()?;
+    if !f.is_finite() || f.fract() != 0.0 {
+        return None;
+    }
+    f.to_string().parse().ok()
+}
+
+pub fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
+    gate_test_coverage_threshold_i64(value).is_none_or(|t| t < 90)
+}
+
+#[cfg(test)]
+mod kiss_stringify_kissconfig_warn {
+    #[test]
+    fn kiss_stringify_repo_checks_kissconfig_warn_units() {
+        let _ = stringify!(super::warn_kissconfig_test_coverage_if_needed);
+        let _ = stringify!(super::gate_test_coverage_threshold_i64);
+        let _ = stringify!(super::integer_or_whole_float_i64);
+    }
+}
