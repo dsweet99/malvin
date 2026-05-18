@@ -43,7 +43,12 @@ fn run_repo_workspace_gates_materializes_default_malvin_checks() {
     let _guard = set_fake_command_dir(bin_dir.path());
     let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
     assert!(result.is_ok());
-    assert!(malvin_checks.is_file());
+    assert!(
+        !malvin_checks.exists(),
+        "ephemeral gate runs must restore Missing .malvin_checks so repo-root shadow files \
+         are not left behind"
+    );
+    std::fs::write(&malvin_checks, expected.join("\n") + "\n").unwrap();
     assert_eq!(
         repo_gates::load_malvin_checks(&malvin_checks).unwrap(),
         expected
@@ -95,7 +100,7 @@ fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
 }
 
 #[test]
-fn quality_gates_log_records_gate_output_when_run_log_dir_set() {
+fn quality_gates_log_records_gate_lines_when_run_log_dir_set() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     let run_dir = work.join("malvin_run");

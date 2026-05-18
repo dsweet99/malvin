@@ -211,6 +211,26 @@ mod tests {
     }
 
     #[test]
+    fn is_missing_artifact_review_error_matches_review_write_message() {
+        let err = WorkflowError(REVIEW_WRITE_MISSING_ARTIFACT_MSG.to_string());
+        assert!(is_missing_artifact_review_error(&err));
+    }
+
+    #[test]
+    fn clear_review_attempt_artifacts_clears_review_files() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            create_run_artifacts_from_text("kernel_clear", Some(tmp.path())).expect("artifacts");
+        std::fs::write(artifacts.artifact_review_md(), "x").expect("artifact");
+        std::fs::write(artifacts.workspace_review_md(), "y").expect("workspace");
+        std::fs::write(artifacts.review_prep_md(), "z").expect("prep");
+        clear_review_attempt_artifacts(&artifacts).expect("clear");
+        assert!(!artifacts.artifact_review_md().exists());
+        assert!(!artifacts.workspace_review_md().exists());
+        assert!(!artifacts.review_prep_md().exists());
+    }
+
+    #[test]
     fn ensure_review_prep_after_spawn_surfaces_abort_when_prep_missing() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
@@ -222,13 +242,7 @@ mod tests {
 
     #[test]
     fn kiss_stringify_review_attempt_kernel_units() {
-        let _ = stringify!(super::clear_review_attempt_artifacts);
         let _ = stringify!(super::ensure_review_prep_after_reviewers_spawn);
         let _ = stringify!(super::ensure_artifact_review_after_review_write);
-        let _ = stringify!(super::REVIEW_WRITE_MISSING_ARTIFACT_MSG);
-        let _ = stringify!(super::REVIEW_PREP_MISSING_ARTIFACT_MSG);
-        let _ = stringify!(super::is_missing_artifact_review_error);
-        let _ = stringify!(super::review_attempt_is_lgtm);
-        let _ = stringify!(super::artifact_review_lgtm_after_review_write);
     }
 }

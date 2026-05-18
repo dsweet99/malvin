@@ -1,19 +1,3 @@
-use super::{assert_cursor_credentials_forwarding, clear_cursor_env_for_test};
-use crate::acp_test_unix_bin::unix_bin_with_fallback;
-use crate::acp::ReaderLoopInput;
-use crate::acp::ResponseTx;
-use crate::acp::*;
-use serde_json::json;
-use std::collections::HashMap;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-use std::process::Stdio;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64};
-use std::time::Duration;
-use tokio::io::AsyncReadExt;
-use tokio::process::{ChildStdin, Command};
-use tokio::sync::{Mutex, Notify};
 
 #[test]
 fn test_cursor_credentials_empty_strings_skipped() {
@@ -68,7 +52,7 @@ fn test_cursor_credentials_skips_empty_token_only() {
 
 #[tokio::test]
 async fn test_write_rpc_line_fails_after_child_stdin_closed() {
-    let mut child = Command::new(unix_bin_with_fallback("sleep"))
+    let mut child = Command::new(crate::acp_test_unix_bin::unix_bin_with_fallback("sleep"))
         .arg("60")
         .stdin(Stdio::piped())
         .spawn()

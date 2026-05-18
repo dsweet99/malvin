@@ -1,15 +1,5 @@
-use std::collections::HashMap;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64};
-use tokio::sync::{Mutex, Notify};
 
-use crate::acp::*;
-
-use super::shared_harness::{acp_activity_state, acp_stdio_rpc_inactive, inactive_memory_containment, InactiveRpcIo};
-
-pub(super) struct TestReaderLoopSpawn {
+pub(crate) struct TestReaderLoopSpawn {
     pub stdout: tokio::process::ChildStdout,
     pub pending: Arc<Mutex<HashMap<u64, crate::acp::ResponseTx>>>,
     pub stdin: Arc<Mutex<tokio::process::ChildStdin>>,
@@ -28,7 +18,7 @@ fn handshake_stdio_pipes(mut child: tokio::process::Child) -> (
     (child, stdin, stdout)
 }
 
-pub(super) fn handshake_attach_and_start_reader(child: tokio::process::Child) -> HandshakeRunning {
+pub(crate) fn handshake_attach_and_start_reader(child: tokio::process::Child) -> HandshakeRunning {
     let (child, stdin, stdout) = handshake_stdio_pipes(child);
     let pending = Arc::new(Mutex::new(HashMap::new()));
     let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
@@ -52,13 +42,13 @@ pub(super) fn handshake_attach_and_start_reader(child: tokio::process::Child) ->
     HandshakeRunning { child, io, next_id }
 }
 
-pub(super) struct HandshakeRunning {
+pub(crate) struct HandshakeRunning {
     pub child: tokio::process::Child,
     pub io: AcpStdioRpc,
     pub next_id: Arc<AtomicU64>,
 }
 
-pub(super) fn spawn_test_reader_loop(args: TestReaderLoopSpawn) {
+pub(crate) fn spawn_test_reader_loop(args: TestReaderLoopSpawn) {
     let TestReaderLoopSpawn {
         stdout,
         pending,
@@ -87,7 +77,7 @@ pub(super) fn spawn_test_reader_loop(args: TestReaderLoopSpawn) {
     });
 }
 
-pub(super) async fn write_bad_session_new_mock(bin: &Path) {
+pub(crate) async fn write_bad_session_new_mock(bin: &Path) {
     let script = format!(
         "#!/usr/bin/env node\n{}",
         crate::test_utils::ACP_MOCK_JSONRPC_LOOP_JS
@@ -100,7 +90,8 @@ pub(super) async fn write_bad_session_new_mock(bin: &Path) {
     crate::test_utils::sync_test_executable(bin);
 }
 
-pub(super) async fn write_authenticate_rejected_but_session_new_ok_mock(bin: &Path) {
+#[allow(clippy::needless_raw_string_hashes)]
+pub(crate) async fn write_authenticate_rejected_but_session_new_ok_mock(bin: &Path) {
     let script = r#"#!/usr/bin/env node
 const readline = require('readline');
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -137,7 +128,7 @@ console.log(JSON.stringify({ jsonrpc: '2.0', id: rid, result: {} }));
     crate::test_utils::sync_test_executable(bin);
 }
 
-pub(super) fn clear_cursor_env_for_test() {
+pub(crate) fn clear_cursor_env_for_test() {
     unsafe {
         std::env::remove_var("CURSOR_API_KEY");
         std::env::remove_var("CURSOR_AUTH_TOKEN");

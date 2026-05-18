@@ -1,4 +1,4 @@
-//! Startup log tag derived from the CLI `request` string.
+// Startup log tag derived from the CLI `request` string.
 
 use std::path::Path;
 

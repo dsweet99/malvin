@@ -182,6 +182,7 @@ impl AcpSession {
 #[cfg(all(test, target_os = "linux"))]
 impl AcpSession {
     #[must_use]
+    #[allow(dead_code)]
     pub(crate) fn memory_containment_cgroup_leaf_snapshot_for_tests(&self) -> Option<std::path::PathBuf> {
         self.0.memory_containment.cgroup_leaf_snapshot_for_tests()
     }

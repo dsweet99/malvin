@@ -1,6 +1,6 @@
-use crate::acp::CoderPromptOptions;
-use crate::artifacts::restore_workspace_session_dotfiles;
-use crate::run_timing::TimingPhase;
+use malvin::acp::CoderPromptOptions;
+use malvin::artifacts::restore_workspace_session_dotfiles;
+use malvin::run_timing::TimingPhase;
 
 use super::TidyAcpInput;
 use super::TidyPromptRestore;

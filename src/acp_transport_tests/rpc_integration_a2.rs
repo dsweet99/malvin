@@ -1,14 +1,3 @@
-use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
-
-use super::{
-    clear_cursor_env_for_test, handshake_attach_and_start_reader,
-    write_authenticate_rejected_but_session_new_ok_mock, RpcSleepHarness,
-    SleepStdoutDrainMode,
-};
-use crate::acp::*;
-use serde_json::json;
 
 async fn handshake_skip_login_session_id(tmp: &Path, bin: &Path) -> String {
     let mut cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {

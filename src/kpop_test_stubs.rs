@@ -67,3 +67,7 @@ impl CaptureWants {
         Ok("stub mbc2".into())
     }
 }
+
+#[cfg(test)]
+#[path = "kpop_test_stubs_tests.rs"]
+mod kpop_test_stubs_tests;

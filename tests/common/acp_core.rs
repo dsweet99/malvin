@@ -1,8 +1,7 @@
 pub const REVIEW_WRITE_PROMPT_MATCH_JS: &str =
-    "promptText.includes('write your final review')";
+    "promptText.toLowerCase().includes('write your final review')";
 
-pub const CONCERNS_PROMPT_MATCH_JS: &str =
-    "promptText.includes(\"reviewer's concerns\")";
+pub const CONCERNS_PROMPT_MATCH_JS: &str = "promptText.includes(\"reviewer's concerns\")";
 
 pub const ARGV_CAPTURE_PREAMBLE: &str = r"const fs = require('fs');
 const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
@@ -95,7 +94,7 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
     format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_tail}
@@ -124,7 +123,7 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
 {reviewer_skip}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_lgtm}
@@ -141,7 +140,7 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
 pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {
     let prep = write_review_prep_output();
     format!(
-        r"    else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+        r"    else if (promptText.includes('KPop: Review the codebase for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_body}
@@ -207,10 +206,7 @@ mod review_write_match_phrase {
     #[test]
     fn concerns_prompt_match_js_contains_malvin_phrase() {
         assert!(
-            super::CONCERNS_PROMPT_MATCH_JS
-                .contains(malvin::prompts::CONCERNS_ACP_MATCH_SUBSTRING)
+            super::CONCERNS_PROMPT_MATCH_JS.contains(malvin::prompts::CONCERNS_ACP_MATCH_SUBSTRING)
         );
     }
 }
-
-

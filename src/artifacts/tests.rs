@@ -100,3 +100,27 @@ fn resolve_user_at_path_joins_relative_to_cwd() {
         tmp.path().join("p.md").canonicalize().expect("canonical")
     );
 }
+
+#[test]
+fn create_kpop_run_artifacts_writes_request_md() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
+    assert!(art.plan_path.ends_with("request.md"));
+    assert_eq!(std::fs::read_to_string(&art.plan_path).unwrap(), "kpop body");
+}
+
+#[test]
+fn work_dir_for_path_uses_parent_or_dot() {
+    assert_eq!(work_dir_for_path(Path::new("a/b.md")), PathBuf::from("a"));
+    assert_eq!(work_dir_for_path(Path::new("plan.md")), PathBuf::from("."));
+}
+
+#[test]
+fn resolve_at_file_reads_existing_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let f = tmp.path().join("doc.md");
+    std::fs::write(&f, "hello").unwrap();
+    let (text, wd) = resolve_at_file(&f.to_string_lossy()).unwrap();
+    assert_eq!(text, "hello");
+    assert_eq!(wd, tmp.path());
+}

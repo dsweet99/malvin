@@ -16,21 +16,23 @@ mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
 
-use std::io::{IsTerminal, stdout};
+use std::io::{IsTerminal, Write, stdout};
+use std::path::PathBuf;
 use std::sync::OnceLock;
-
-use chrono::Local;
+#[cfg(test)]
+use std::sync::Mutex;
 
 use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
-pub const LEARNING_PLACEHOLDER: &str = "[learning...]";
+pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
 
 /// Announce one outgoing prompt on stdout with a single bracket line `[{label}...]`.
 ///
-/// With `--verbose`, the ACP session also prints the full rendered prompt when not in raw-output
-/// mode: one timestamped stdout line per [`logical_lines`] slice, with the same `>` stem as used
-/// for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or name-only line);
+/// With full prompt logging enabled, the ACP session also prints the full rendered prompt when not
+/// in raw-output mode: one timestamped stdout line per [`logical_lines`] slice, with the same `>`
+/// stem as used for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or
+/// name-only line);
 /// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
 /// split traces keep a plain body on disk but use the `>do` stem on stdout and in `prompts.log`
 /// when verbose.
@@ -44,6 +46,8 @@ pub fn print_outgoing_prompt_log(label: &str) {
 pub const LOG_TAG_INNER_WIDTH: usize = 10;
 
 static STDOUT_USE_COLOR: OnceLock<bool> = OnceLock::new();
+#[cfg(test)]
+pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 const ANSI_DIM: &str = "\x1b[90m";
 const ANSI_CYAN: &str = "\x1b[36m";
@@ -74,12 +78,7 @@ pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
 }
 
 pub(crate) fn timestamp_now_string() -> String {
-    let now = Local::now();
-    format!(
-        "{}.{:03}",
-        now.format("%Y%m%d.%H%M%S"),
-        now.timestamp_subsec_millis()
-    )
+    crate::time_format::timestamp_now_string()
 }
 
 #[must_use]
@@ -107,6 +106,31 @@ fn stdout_use_color() -> bool {
     *STDOUT_USE_COLOR.get().unwrap_or(&false)
 }
 
+pub fn set_stdout_log_path(path: Option<PathBuf>) {
+    crate::stdout_log_path::set_stdout_log_path(path);
+}
+
+fn append_stdout_log_line(line: &str) {
+    let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
+        return;
+    };
+    let line = crate::ansi_strip::strip_ansi_escapes(line);
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut f| writeln!(f, "{line}"));
+}
+
+pub(crate) fn print_stdout_rendered_line(line: &str) {
+    println!("{line}");
+    append_stdout_log_line(line);
+}
+
+pub fn print_stdout_raw_line(line: &str) {
+    print_stdout_rendered_line(line);
+}
+
 pub fn print_stdout_line(who: &str, line: &str) {
     let ts = timestamp_now_string();
     let (max_payload, wrap) = stdout_line_wrap_meta(&ts, who, line);
@@ -116,7 +140,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
         } else {
             format_line_with_timestamp(&ts, who, line)
         };
-        println!("{s}");
+        print_stdout_rendered_line(&s);
         return;
     }
     for seg in wrap_words_bounded(max_payload, line) {
@@ -125,7 +149,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
         } else {
             format_line_with_timestamp(&ts, who, &seg)
         };
-        println!("{s}");
+        print_stdout_rendered_line(&s);
     }
 }
 

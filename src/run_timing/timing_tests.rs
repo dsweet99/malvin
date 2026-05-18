@@ -1,6 +1,10 @@
 use std::time::{Duration, Instant};
 
-use super::{ReviewPairId, RunTiming, TimingPhase, record_backoff, record_llm, report};
+use super::{
+    attach_new_run_timing, finalize_and_emit_run_timing, finalize_run_timing_json_only,
+    ReviewPairId, RunTiming, TimingPhase, record_backoff, record_llm, report,
+};
+use std::sync::{Arc, Mutex};
 
 #[test]
 fn run_timing_json_phases_and_review_pair_id_mapping() {
@@ -82,4 +86,27 @@ fn check_plan_phase_accumulates_timing() {
     let json = report::to_json_value(&r);
     let phases = json.get("phases_ms").unwrap();
     assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
+}
+
+#[test]
+fn attach_new_run_timing_and_finalize_json_only() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    assert!(slot.is_some());
+    finalize_run_timing_json_only(tmp.path(), &timing).expect("json only");
+    assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
+}
+
+#[test]
+fn finalize_and_emit_run_timing_writes_summary() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let timing = RunTiming::new_arc();
+    {
+        let mut g = timing.lock().unwrap();
+        g.mark_wall_start(Instant::now());
+        g.mark_wall_end(Instant::now());
+    }
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("emit");
+    assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
 }

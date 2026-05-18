@@ -1,5 +1,4 @@
-// Handshake / stdio pipe bundle types for `agent acp` (included from `acp/mod.rs`).
-use std::path::Path;
+// Handshake / stdio pipe bundle types for `agent acp` (included from `session_types.rs`).
 
 pub struct AcpHandshakeIo {
     pub stdin: Arc<Mutex<ChildStdin>>,

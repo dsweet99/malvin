@@ -1,4 +1,4 @@
-//! Trace file line emission and coalesced writes (used by the ACP stdout reader).
+// Trace file line emission and coalesced writes (used by the ACP stdout reader).
 
 use super::{
     PromptTraceWriter, SessionUpdateChunkKind, TraceChunkCoalescer, VerboseTraceCoalesceState,
@@ -93,11 +93,11 @@ fn print_tee_unprefixed_wrapped_line(line: &str) {
         crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
     );
     if !wrap {
-        println!("{line}");
+        crate::output::print_stdout_raw_line(line);
         return;
     }
     for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
-        println!("{seg}");
+        crate::output::print_stdout_raw_line(&seg);
     }
 }
 
@@ -155,7 +155,12 @@ pub async fn trace_file_write_line(
     kind: Option<SessionUpdateChunkKind>,
 ) {
     let display_line = format_trace_display_line(line, kind);
-    let ts = crate::output::timestamp_now_string();
+    let now = chrono::Local::now();
+    let ts = format!(
+        "{}.{:03}",
+        now.format("%Y%m%d.%H%M%S"),
+        now.timestamp_subsec_millis()
+    );
     let formatted = if writer.plain_lines {
         display_line.clone()
     } else {

@@ -91,7 +91,7 @@ pub fn acp_mock_code_review_lgtm_with_abort_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
       fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\n', 'utf8');
-    }} else if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {lgtm}

@@ -19,6 +19,10 @@ mod run_emit;
 mod shared_opts;
 mod source_detect;
 #[cfg(test)]
+mod cli_smoke_cov;
+#[cfg(test)]
+mod kiss_stringify_cov;
+#[cfg(test)]
 mod stringify_cov;
 mod tidy_flow;
 mod timing_merge;

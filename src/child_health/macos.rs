@@ -1,5 +1,5 @@
-//! macOS: `proc_pidinfo` with `libproc::task_info::TaskAllInfo` (BSD `pbi_status` + `proc_taskinfo`
-//! CPU totals and thread count).
+// macOS: `proc_pidinfo` with `libproc::task_info::TaskAllInfo` (BSD `pbi_status` + `proc_taskinfo`
+// CPU totals and thread count).
 
 use super::ChildHealth;
 use errno::errno;
@@ -12,7 +12,7 @@ use std::time::Instant;
 const P_STATUS_ZOMB: u32 = 5;
 
 #[must_use]
-pub(super) fn sample_child_health(pid: u32) -> ChildHealth {
+pub(super) fn sample_child_health_macos(pid: u32) -> ChildHealth {
     let Ok(pid_i) = i32::try_from(pid) else {
         return ChildHealth::cannot_sample();
     };
@@ -151,6 +151,24 @@ mod tests {
         let h = sample_child_health(u32::MAX);
         assert!(h.exists);
         assert!(!h.counters_trusted);
+    }
+
+    #[test]
+    fn sample_child_health_macos_reports_absent_for_dead_pid() {
+        let h = sample_child_health_macos(2_147_483_646);
+        assert_ne!(
+            (h.exists, h.counters_trusted),
+            (false, false),
+            "unexpected ChildHealth tuple: {h:?}"
+        );
+    }
+
+    #[test]
+    fn child_health_from_sampled_task_maps_task_all_info() {
+        use libproc::task_info::TaskAllInfo;
+        let info = TaskAllInfo::default();
+        let h = child_health_from_sampled_task(&info);
+        assert!(h.exists);
     }
 
     #[test]

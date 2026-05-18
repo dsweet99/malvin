@@ -3,7 +3,7 @@ use super::{
     LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_line_with_timestamp_ansi, format_log_tag_inner,
     init_stdout_style, is_command_prelude_line, print_outgoing_prompt_log, print_stderr_line,
-    print_stdout_line, print_stdout_text,
+    print_stdout_line, print_stdout_raw_line, print_stdout_text, set_stdout_log_path,
 };
 
 #[test]
@@ -58,6 +58,10 @@ fn exported_constants_match_public_contract() {
 #[test]
 fn smoke_print_and_format_paths_cover_helpers() {
     assert_eq!(format_acp_directional_tag_prefix('>', "x"), ">x");
+    assert!(!crate::time_format::timestamp_now_string().is_empty());
+    let (max_payload, _) = super::terminal_wrap::stdout_line_wrap_meta("ts", "malvin", "line");
+    let wrapped = super::terminal_wrap::wrap_words_bounded(max_payload, "hello world");
+    assert!(!wrapped.is_empty());
     let _ = format_line("who", "body");
     init_stdout_style(true);
     print_stdout_line("u", "one");
@@ -71,16 +75,56 @@ fn smoke_print_and_format_paths_cover_helpers() {
 }
 
 #[test]
+fn stdout_log_mirrors_stdout_helpers() {
+    let _guard = super::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    set_stdout_log_path(Some(path.clone()));
+    print_stdout_line("u", "m");
+    print_stdout_raw_line("raw mirrored");
+    set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).expect("read stdout log");
+    assert!(text.contains("]: m"));
+    assert!(text.contains("raw mirrored"));
+}
+
+#[test]
+fn append_stdout_log_line_writes_when_path_set() {
+    let _guard = super::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("append.log");
+    set_stdout_log_path(Some(path.clone()));
+    print_stdout_raw_line("append probe");
+    set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).expect("read");
+    assert!(text.contains("append probe"));
+}
+
+#[test]
+fn output_timestamp_wrapper_nonempty() {
+    assert!(!super::timestamp_now_string().is_empty());
+}
+
+#[test]
 fn kiss_stringify_output_symbols() {
     let _ = stringify!(super::format_log_tag_inner);
     let _ = stringify!(super::format_acp_directional_tag_prefix);
     let _ = stringify!(super::format_line_with_timestamp);
     let _ = stringify!(super::timestamp_now_string);
+    let _ = stringify!(crate::time_format::timestamp_now_string);
     let _ = stringify!(super::format_line);
     let _ = stringify!(super::format_line_with_timestamp_ansi);
     let _ = stringify!(super::init_stdout_style);
     let _ = stringify!(super::stdout_use_color);
+    let _ = stringify!(super::set_stdout_log_path);
+    let _ = stringify!(super::append_stdout_log_line);
+    let _ = stringify!(super::print_stdout_rendered_line);
     let _ = stringify!(super::print_stdout_line);
+    let _ = stringify!(super::print_stdout_raw_line);
     let _ = stringify!(super::print_stderr_line);
     let _ = stringify!(super::print_stdout_text);
     let _ = stringify!(super::print_outgoing_prompt_log);

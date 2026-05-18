@@ -1,10 +1,10 @@
-use crate::acp::AgentClient;
-use crate::artifacts::{
+use malvin::acp::AgentClient;
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_request,
 };
-use crate::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
-use crate::output::{MALVIN_WHO, print_stdout_line};
-use crate::prompts::{PromptError, PromptStore};
+use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::prompts::{PromptError, PromptStore};
 
 use super::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::{CodeArgs, SharedOpts};
@@ -56,7 +56,7 @@ pub fn prepare_kpop_prompt_store(
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
+        .validate_kpop_prompts(malvin::prompts::KpopPromptValidation {
             run_learn: workflow.run_learn,
             require_mbc2,
         })
@@ -84,8 +84,8 @@ pub const fn agent_io_options(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     tee: AgentStdoutTeeFlags,
-) -> crate::acp::AgentIoOptions {
-    crate::acp::AgentIoOptions {
+) -> malvin::acp::AgentIoOptions {
+    malvin::acp::AgentIoOptions {
         force: workflow.force,
         no_tee: shared.no_tee,
         raw_output: tee.raw_output,

@@ -1,4 +1,4 @@
-//! Embedded default prompt bodies (`default_prompts/`).
+// Embedded default prompt bodies (`default_prompts/`).
 
 pub const REVIEW_WRITE_ACP_MATCH_PHRASE: &str = "write your final review";
 
@@ -91,7 +91,8 @@ mod review_write_embed_tests {
             "review_write must target review_path"
         );
         assert!(
-            s.contains(super::REVIEW_WRITE_ACP_MATCH_PHRASE),
+            s.to_ascii_lowercase()
+                .contains(super::REVIEW_WRITE_ACP_MATCH_PHRASE),
             "review_write must include phrase used by ACP integration mocks"
         );
         assert!(
@@ -137,10 +138,17 @@ mod reviewers_spawn_embed_tests {
             s.contains("{{ review_prep_path }}"),
             "reviewers_spawn must write review_prep_path"
         );
-        assert!(s.contains("{{ kpop }}"), "reviewers_spawn must include kpop block");
         assert!(
-            s.contains("Spawn one subagent for each of these prompts"),
-            "reviewers_spawn must coordinate subagent fan-out"
+            s.contains("{{ kpop }}"),
+            "reviewers_spawn must include kpop block"
+        );
+        assert!(
+            s.contains("KPop: Review the codebase for these problems"),
+            "reviewers_spawn must run the single review pass"
+        );
+        assert!(
+            !s.contains("Spawn one subagent for each of these prompts"),
+            "reviewers_spawn must not coordinate subagent fan-out"
         );
     }
 }

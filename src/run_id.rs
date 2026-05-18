@@ -69,4 +69,14 @@ mod collision_tests {
         assert_eq!(run_dir, run_root.join("aaabbbcd"));
         assert!(run_dir.is_dir());
     }
+
+    #[test]
+    fn create_run_dir_and_build_identifier_smoke() {
+        let tmp = tempfile::tempdir().unwrap();
+        let id = build_identifier();
+        assert!(!id.is_empty());
+        let dir = create_run_dir(Some(tmp.path())).unwrap();
+        assert!(dir.is_dir());
+    }
 }
+

@@ -23,11 +23,11 @@ fn tidy_bonus_review_uses_attempt_index_matching_printed_iteration() {
     write_mock_executable(&mock, &acp_mock_tidy_fanout_lgtm_js());
     let out = spawn_tidy_with_timeout(
         &TidySpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--max-loops", "3"],
+            workspace: &workspace,
+            home: &home,
+            mock: &mock,
+            path_var: &path,
+            extra_args: &["--max-loops", "3"],
         },
         TIDY_BONUS_GATE_TIMEOUT,
     );

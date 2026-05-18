@@ -7,4 +7,3 @@ Read `{{ review_path }}`, and address the reviewer's concerns. Stay consistent w
 
 If the concerns cannot be resolved without contradicting an explicit session requirement, write a line starting with `ABORT:` to `{{ result_path }}` explaining the conflict.
 
-Use up to 3 parallel subagents.

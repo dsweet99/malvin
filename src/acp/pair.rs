@@ -11,3 +11,8 @@ pub struct ReviewerPromptPair<'a> {
     /// When false, the reviewer writes only to paths named in the prompt (fan-out jobs).
     pub sync_workspace_review: bool,
 }
+
+#[cfg(test)]
+mod pair_tests {
+    include!("pair_tests.inc");
+}

@@ -8,4 +8,3 @@ You are in the `malvin bug` workflow. The previous step added a regression test 
 
 If requirements conflict irreconcilably, write a line starting with `ABORT:` to `{{ result_path }}`.
 
-Use up to 3 parallel subagents.

@@ -2,8 +2,6 @@ use crate::acp::ResponseTx;
 use crate::acp::*;
 use serde_json::{Value, json};
 use std::collections::HashMap;
-#[cfg(unix)]
-use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -19,17 +17,7 @@ fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
 const CAT_BIN: &str = "cat";
 
 #[cfg(unix)]
-fn unix_bin_with_fallback(name: &str) -> String {
-    let bin = format!("/bin/{name}");
-    if Path::new(&bin).is_file() {
-        return bin;
-    }
-    let usr_bin = format!("/usr/bin/{name}");
-    if Path::new(&usr_bin).is_file() {
-        return usr_bin;
-    }
-    name.to_string()
-}
+use crate::acp_test_unix_bin::unix_bin_with_fallback;
 
 #[tokio::test]
 async fn test_dispatch_response_ok_error_orphans_and_malformed() {
@@ -118,6 +106,7 @@ async fn test_handle_incoming_line_parse_error_and_extension_method() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -130,6 +119,7 @@ async fn test_handle_incoming_line_parse_error_and_extension_method() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -795,6 +785,7 @@ async fn test_handle_session_update_and_permission_replies() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -808,6 +799,7 @@ async fn test_handle_session_update_and_permission_replies() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -857,6 +849,7 @@ async fn kpop_permission_without_correlation_id_writes_nothing_to_child_stdin() 
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -900,6 +893,7 @@ async fn permission_with_id_in_params_writes_allow_always_reply_line() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -939,6 +933,7 @@ async fn test_permission_json_or_write_failure_is_logged() {
             acp_activity_notify: &acp_activity_notify,
             prompt_cleanup: None,
             acp_verbose: false,
+            trace_jsonl: None,
         },
     )
     .await;
@@ -992,6 +987,8 @@ async fn test_reader_loop_drains_pending_on_stdout_eof() {
         prompt_cleanup,
         acp_verbose: false,
         tee_trace_stdout: false,
+        trace_jsonl: None,
+        memory_containment: crate::acp_memory_containment::AcpMemoryContainment::inactive(),
     });
     let err = rx.await.unwrap().unwrap_err();
     assert!(err.contains("closed") || err.contains("acp"));

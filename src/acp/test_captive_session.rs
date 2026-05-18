@@ -7,8 +7,8 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::session_channels::{SessionChannelState, SessionReaderTelemetry};
-use super::session_types::{AcpSession, AcpSpawnArgs};
+use super::session_types::{SessionChannelState, SessionReaderTelemetry};
+use super::{AcpSession, AcpSpawnArgs};
 use tokio::process::{Child, Command};
 
 fn spawn_cat_child_with_stdin(cwd: &Path) -> (Child, tokio::process::ChildStdin) {
@@ -54,21 +54,44 @@ fn telemetry_for_test_args(args: &AcpSpawnArgs<'_>) -> SessionReaderTelemetry {
         emit_stdout_markdown: args.emit_stdout_markdown,
         prompts_log_run_dir: args.prompts_log_run_dir.map(std::path::Path::to_path_buf),
         log_full_outgoing_prompts: args.log_full_outgoing_prompts,
+        trace_jsonl: None,
     }
 }
 
-/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
-#[doc(hidden)]
-pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
+fn captive_cat_acp_session_with_containment(
+    cwd: &Path,
+    memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
+) -> AcpSession {
     let (child, stdin) = spawn_cat_child_with_stdin(cwd);
     let args = default_test_spawn_args(cwd);
     let ch = SessionChannelState::new(stdin, &args);
     let telemetry = telemetry_for_test_args(&args);
     AcpSession(Arc::new(ch.into_session_inner(
-        child,
-        None,
-        "test-session-id".into(),
-        args.rpc_timeout,
-        telemetry,
+        crate::acp::session_types::SessionInnerAssembly {
+            child,
+            process_group_id: None,
+            session_id: "test-session-id".into(),
+            rpc_timeout: args.rpc_timeout,
+            telemetry,
+            memory_containment,
+        },
     )))
+}
+
+/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
+#[doc(hidden)]
+pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
+    captive_cat_acp_session_with_containment(
+        cwd,
+        crate::acp_memory_containment::AcpMemoryContainment::inactive(),
+    )
+}
+
+/// Like [`captive_cat_acp_session_for_tests`] but with the given containment state (for cgroup tests).
+#[doc(hidden)]
+pub fn captive_cat_acp_session_with_containment_for_tests(
+    cwd: &Path,
+    memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
+) -> AcpSession {
+    captive_cat_acp_session_with_containment(cwd, memory_containment)
 }

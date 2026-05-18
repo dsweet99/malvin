@@ -86,43 +86,6 @@ fn git_tracks(rel: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn lib_rs_top_level_module_names(lib_rs: &str) -> std::collections::BTreeSet<String> {
-    let mut names = std::collections::BTreeSet::new();
-    for line in lib_rs.lines() {
-        let trimmed = line.trim();
-        let rest = trimmed
-            .strip_prefix("pub mod ")
-            .or_else(|| trimmed.strip_prefix("pub(crate) mod "))
-            .or_else(|| trimmed.strip_prefix("mod "));
-        if let Some(rest) = rest {
-            let name = rest
-                .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
-                .next()
-                .unwrap_or("");
-            if !name.is_empty() {
-                names.insert(name.to_string());
-            }
-        }
-    }
-    names
-}
-
-pub fn crate_top_modules_in_stringify_refs(
-    stringify_refs: &str,
-) -> std::collections::BTreeSet<String> {
-    let mut names = std::collections::BTreeSet::new();
-    for line in stringify_refs.lines() {
-        let Some(rest) = line.split("stringify!(crate::").nth(1) else {
-            continue;
-        };
-        let top = rest.split("::").next().unwrap_or("");
-        if !top.is_empty() {
-            names.insert(top.to_string());
-        }
-    }
-    names
-}
-
 pub fn git_status_short_lines() -> Vec<String> {
     let out = Command::new("git")
         .args(["status", "--short"])
@@ -144,6 +107,40 @@ pub fn collect_orchestrator_orphan_inc_paths(orchestrator_dir: &Path) -> Vec<Str
             orphans.push(orphan_inc_note(&path));
         }
     }
+    orphans
+}
+
+fn module_dir_include_corpus(module_dir: &Path) -> String {
+    let mut corpus = String::new();
+    let entries = std::fs::read_dir(module_dir).expect("read module dir");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_shard = matches!(path.extension().and_then(|e| e.to_str()), Some("rs" | "inc"));
+        if is_shard {
+            corpus.push_str(&std::fs::read_to_string(&path).expect("read shard"));
+            corpus.push('\n');
+        }
+    }
+    corpus
+}
+
+/// `.inc` files in `module_dir` that no sibling `.rs`/`.inc` file `include!`s.
+pub fn collect_unincluded_inc_orphans(module_dir: &Path) -> Vec<String> {
+    let corpus = module_dir_include_corpus(module_dir);
+    let mut orphans = Vec::new();
+    let entries = std::fs::read_dir(module_dir).expect("read module dir");
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("inc") {
+            continue;
+        }
+        let name = path.file_name().expect("inc name").to_string_lossy();
+        let needle = format!("include!(\"{name}\")");
+        if !corpus.contains(&needle) {
+            orphans.push(path.display().to_string());
+        }
+    }
+    orphans.sort();
     orphans
 }
 

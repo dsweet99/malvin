@@ -4,13 +4,13 @@ use super::shared_opts::SharedOpts;
 use super::timing_merge;
 use super::{WorkflowCliOptions, repo_checks};
 use clap::Args;
-use crate::acp::{AgentClient, CoderPromptOptions};
-use crate::artifacts::{
+use malvin::acp::{AgentClient, CoderPromptOptions};
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_request,
 };
-use crate::orchestrator::{workflow_context, workflow_context_paths_only};
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
-use crate::run_timing::{RunTiming, TimingPhase};
+use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
+use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+use malvin::run_timing::{RunTiming, TimingPhase};
 
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]

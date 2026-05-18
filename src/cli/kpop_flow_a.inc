@@ -1,17 +1,16 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::acp::{AgentClient, AgentKpopMultiturnCtl};
-use crate::artifacts::{
+use malvin::acp::{AgentClient, AgentKpopMultiturnCtl};
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
 };
-use crate::kpop_creative_enabled;
-use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use crate::KpopTurnPrompts;
-use crate::kpop_progression::KpopMultiturnState;
-use crate::orchestrator::workflow_context_paths_only;
-use crate::output::{MALVIN_WHO, print_stdout_line};
-use crate::prompts::{PromptError, PromptStore};
+use malvin::kpop_creative_enabled;
+use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
+use malvin::kpop_progression::KpopMultiturnState;
+use malvin::orchestrator::workflow_context_paths_only;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::prompts::{PromptError, PromptStore};
 
 use super::KpopArgs;
 use super::LEARN_MIN_ELAPSED_MS;
@@ -67,13 +66,12 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
     let exp_log_path = init_kpop_exp_log_file(&artifacts)?;
-    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
     let session_dotfile_backups =
-        SessionDotfileBackups::snapshot(&artifacts.work_dir).map_err(|e| e.to_string())?;
+        SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     let mut context = workflow_context_paths_only(&artifacts, "kpop");
     context.insert(
         "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)?,
+        malvin::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
     );
     Ok(KpopPrepared {
         artifacts,

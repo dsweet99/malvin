@@ -1,18 +1,21 @@
+#![cfg_attr(test, allow(unsafe_code))]
 //! Agent Client Protocol (`agent acp`) JSON-RPC over stdio.
 //!
 //! Much of the implementation is assembled with [`include!`] so `kiss check` dependency depth
 //! stays within project limits; use the include file names (for example `transport/rpc.rs`) when
 //! navigating—IDE “go to module” may not match a single `mod` tree.
 
-mod handshake_types;
+mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
-mod session_channels;
-mod session_io;
 mod session_types;
+mod unix_process_group;
 
+pub(crate) use jsonl_trace::AcpJsonlTrace;
 pub use session_types::{AcpSession, AcpSpawnArgs};
 pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
+#[cfg(test)]
+pub(crate) use session_types::AcpSessionInner;
 
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
@@ -39,10 +42,10 @@ include!("transport/command.rs");
 include!("transport/rpc.rs");
 include!("transport/handshake.rs");
 
-/// Per-request wait helper for unit tests (matches [`crate::support_paths::acp_rpc_timeout_secs_from_env`]).
+/// Per-request wait helper for unit tests (matches [`crate::config::acp_rpc_timeout_secs_from_env`]).
 #[cfg(test)]
 pub(crate) fn acp_rpc_timeout() -> std::time::Duration {
-    std::time::Duration::from_secs(crate::support_paths::acp_rpc_timeout_secs_from_env())
+    std::time::Duration::from_secs(crate::config::acp_rpc_timeout_secs_from_env())
 }
 
 pub(crate) fn requires_cursor_login_auth(
@@ -60,7 +63,8 @@ fn kiss_stringify_acp_rpc_and_cursor_auth() {
 }
 
 include!("reader_inline.rs");
-include!("session_spawn.rs");
+include!("session_spawn.inc");
+use outgoing_prompt_trace::DoPromptTraceSplit;
 include!("session.rs");
 
 include!("agent_bundle.rs");
@@ -72,14 +76,30 @@ include!("agent_bundle.rs");
 #[doc(hidden)]
 pub mod test_captive_session;
 
+#[cfg(all(test, unix))]
+use std::os::unix::fs::PermissionsExt;
 #[cfg(test)]
-mod transport_tests;
+use tokio::io::AsyncReadExt;
+#[cfg(test)]
+#[allow(
+    unsafe_code,
+    clippy::pedantic,
+    clippy::nursery,
+    unused_imports,
+    clippy::await_holding_lock,
+    clippy::mutex_integer,
+    clippy::await_holding_lock,
+    clippy::unnecessary_struct_initialization,
+    clippy::unused_async,
+    clippy::redundant_pub_crate
+)]
+include!("transport_tests_inline.inc");
 
 #[cfg(test)]
 mod reader_tests;
 
 #[cfg(test)]
-mod spawn_test_args;
+pub(crate) mod spawn_test_args;
 
 #[cfg(test)]
 mod cursor_credentials_tests_inline {

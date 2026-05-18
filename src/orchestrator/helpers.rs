@@ -65,11 +65,9 @@ pub fn workflow_context(
     malvin_command: &str,
 ) -> Result<HashMap<String, String>, PromptError> {
     let mut context = workflow_context_paths_only(artifacts, malvin_command);
-    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)
-        .map_err(PromptError)?;
     context.insert(
         "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown(&artifacts.work_dir)
+        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
     );
     let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
@@ -160,6 +158,22 @@ mod helpers_kiss_inline {
         let _ = stringify!(check_abort);
         let _ = stringify!(format_prompt_path);
         let _ = stringify!(format_exp_log_relative);
+    }
+
+    #[test]
+    fn format_exp_log_relative_under_work_dir() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let run_dir = tmp.path().join("_malvin").join("run");
+        std::fs::create_dir_all(&run_dir).expect("mkdir");
+        let exp_log = run_dir.join("exp.log");
+        std::fs::write(&exp_log, "x").expect("write");
+        let artifacts = crate::artifacts::RunArtifacts {
+            run_dir: run_dir.clone(),
+            plan_path: run_dir.join("plan.md"),
+            work_dir: tmp.path().to_path_buf(),
+        };
+        let rel = format_exp_log_relative(&artifacts, &exp_log);
+        assert!(rel.contains("exp.log"));
     }
 
     #[test]

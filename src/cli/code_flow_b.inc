@@ -21,9 +21,9 @@ async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
     client
         .ensure_authenticated()
         .map_err(|e| e.to_string())?;
-    let ctx = workflow_context(artifacts, store, "code").map_err(|e: PromptError| e.0)?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot(&artifacts.work_dir).map_err(|e| e.to_string())?;
+    let ctx = workflow_context(artifacts, store, "code").map_err(|e: PromptError| e.0)?;
     run_emit::emit_run_startup_sequence(
         artifacts,
         shared.tee_startup_stdout(),
@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn code_session_end_restore_includes_malvin_checks() {
-        use crate::artifacts::SessionDotfileBackups;
+        use malvin::artifacts::SessionDotfileBackups;
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let work = tmp.path();

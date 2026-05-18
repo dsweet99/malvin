@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 
 pub fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
@@ -76,7 +76,7 @@ pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(),
 }
 
 pub fn write_checks_do_not_pass_for_artifacts(
-    artifacts: &crate::artifacts::RunArtifacts,
+    artifacts: &malvin::artifacts::RunArtifacts,
 ) -> Result<(), String> {
     write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())?;
     write_checks_do_not_pass_to_review_path(&artifacts.workspace_review_md())

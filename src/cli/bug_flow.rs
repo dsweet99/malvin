@@ -1,8 +1,5 @@
 use malvin::acp::AgentClient;
-use malvin::artifacts::{
-    RunArtifacts, backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
-    backup_workspace_malvin_checks_if_present,
-};
+use malvin::artifacts::RunArtifacts;
 use malvin::kpop_creative_enabled;
 use malvin::kpop_progression::{KpopMultiturnState, agent_declared_success};
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
@@ -53,12 +50,12 @@ async fn run_bug_kpop_multiturn(phase: BugKpopPhase<'_>) -> Result<KpopPrepared,
     phase.client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
     super::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
     kpop_emit_startup(phase.kpop, phase.shared, &prepared.artifacts)?;
-    let builder = KpopTurnPrompts {
+    let builder = malvin::kpop_multiturn_prompts::KpopMultiturnPrompts::Turn(KpopTurnPrompts {
         store: phase.store_kpop,
         base: &prepared.context,
         request_text: &prepared.text,
         prepend_rules_once: true,
-    };
+    });
     let mut state = KpopMultiturnState::new(
         builder,
         prepared.exp_log_path.clone(),
@@ -134,15 +131,9 @@ async fn run_bug_remediation_orchestrator(
     store: &PromptStore,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    let session_dotfile_backups =
+        malvin::artifacts::SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     let ctx = workflow_context(artifacts, store, "bug").map_err(|e: PromptError| e.0)?;
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
-    let session_dotfile_backups = malvin::artifacts::SessionDotfileBackups::from_parts(
-        kissconfig_backup.clone(),
-        malvin_checks_backup.clone(),
-        kissignore_backup.clone(),
-    );
     let mut orch = Orchestrator {
         client,
         prompts: store,

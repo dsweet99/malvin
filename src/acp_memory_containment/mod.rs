@@ -159,6 +159,7 @@ include!("linux_verify_abort.inc");
 pub(crate) mod acp_memory_containment_unit_tests;
 
 #[cfg(test)]
+#[allow(dead_code)]
 pub mod test_support {
     use super::{
         AcpMemoryContainment, begin_containment_for_command, complete_containment_after_spawn,

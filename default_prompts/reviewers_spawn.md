@@ -2,24 +2,29 @@
 
 ---
 
-Pay special attention to unadded (to git) or uncommitted code, but secondarily consider any code that differs from the base of this branch.
+Pay attention to
+- code that appears to implement `{{ plan_path }}`
+- files unadded to git
+- changes uncommitted to git
+- files changed in recent (by count or datetime) commits
 
-You are the review coordinator.
 
-Spawn one subagent for each of these prompts. Each subagent must use KPop for its assigned prompt and must return exactly these fields to you:
+KPop: Review the codebase for these problems:
+- Find inconsistencies with `{{ plan_path }}`.
+- Find "cheats" to avoid violations of kiss metrics (run `kiss stats` to see a table of kiss metrics). Check, especially, import patterns and unit tests.
+- Find bugs.
+- Find redundancy or wasted work.
+- Find poorly-tested code.
+- Find poorly-designed (bad SOC, leaky abstraction, overly-coupled, etc.) bits of code.
+- Find non-idiomatic or inelegant code.
 
-- `executive_summary`: text
-- `tl_dr`: text
-- `experiment_log`: path name
+Be thorough. Be especially critical of cheating of any kind.
 
-Review prompts:
+Write all discovered problems to {{ review_prep_path }} as a list.
 
-- KPop: Find inconsistencies with `{{ plan_path }}`.
-- KPop: Find "cheats" to avoid violations of kiss metrics (run `kiss stats` to see a table of kiss metrics). Check, especially, import patterns and unit tests.
-- KPop: Find bugs.
-- KPop: Find redundancy or wasted work.
-- KPop: Find poorly-tested code.
-- KPop: Find non-idiomatic or inelegant code.
-- KPop: Find poorly-designed (bad SOC, leaky abstraction, overly-coupled, etc.) bit of code.
+Each item should have the format
+```md
+- [<SEVERITY_RATING>] 1-2 sentence summary of problem. Relevant file paths & line numbers
+```
 
-Wait for all subagents to finish. Combine each subagent's `executive_summary`, `tl_dr`, and `experiment_log` into one document and write it to {{ review_prep_path }}.
+where SEVERITY_RATING is 1 (least severe), 2, 3, 4, 5 (most severe).

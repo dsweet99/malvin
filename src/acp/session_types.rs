@@ -1,11 +1,12 @@
 //! Core session state types for `agent acp`.
+use super::jsonl_trace::AcpJsonlTrace;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::time::Duration;
-use tokio::process::{Child, ChildStdin};
+use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify, oneshot};
 
 pub type ResponseTx = oneshot::Sender<Result<Value, String>>;
@@ -57,6 +58,8 @@ pub struct AcpSessionInner {
     pub prompts_log_run_dir: Option<PathBuf>,
     /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
     pub log_full_outgoing_prompts: bool,
+    pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -94,10 +97,19 @@ pub struct AcpSpawnArgs<'a> {
 }
 
 #[test]
-fn kiss_stringify_session_types() {
-    let _ = stringify!(ResponseTx);
-    let _ = stringify!(PromptTraceWriter);
-    let _ = stringify!(AcpSessionInner);
-    let _ = stringify!(AcpSession);
-    let _ = stringify!(AcpSpawnArgs);
+fn acp_spawn_args_george_fixture_sized() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let bin = tmp.path().join("agent");
+    let args = super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin);
+    assert_eq!(args.cwd, tmp.path());
+    assert!(args.bin_override.is_some());
+}
+
+include!("handshake_types.inc");
+include!("session_io.inc");
+include!("session_channels.inc");
+
+#[cfg(test)]
+mod session_types_tests {
+    include!("session_types_tests.inc");
 }

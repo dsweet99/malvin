@@ -46,3 +46,15 @@ pub fn workflow_ctx_for_smoke(
     let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
     (artifacts, store, ctx)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::io_opts;
+
+    #[test]
+    fn io_opts_disables_tee_and_markdown() {
+        let o = io_opts();
+        assert!(o.no_tee);
+        assert!(!o.emit_stdout_markdown);
+    }
+}

@@ -1,8 +1,8 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::acp::AgentClient;
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::acp::AgentClient;
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
 
 use super::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,

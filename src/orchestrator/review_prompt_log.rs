@@ -37,11 +37,21 @@ mod tests {
     use super::*;
     use crate::artifacts::create_run_artifacts_from_text;
 
+    #[test]
+    fn review_write_inner_try_needs_suffix_for_retry() {
+        let input = ReviewPromptLog {
+            prompt_file: REVIEW_WRITE_FILE,
+            skip_repo_style: false,
+            log_attempt: 1,
+            attempt: 2,
+        };
+        assert!(review_write_inner_try_needs_suffix(input));
+    }
+
     fn log_file_name(input: ReviewPromptLog) -> String {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            create_run_artifacts_from_text("review_prompt_log_path", Some(tmp.path()))
-                .expect("artifacts");
+        let artifacts = create_run_artifacts_from_text("review_prompt_log_path", Some(tmp.path()))
+            .expect("artifacts");
         review_prompt_log_path(&artifacts, input)
             .file_name()
             .expect("file name")
@@ -76,8 +86,8 @@ mod tests {
     }
 
     #[test]
-    fn tidy_skip_repo_style_inner_review_write_retry_distinct_when_log_attempt_equals_outer_attempt(
-    ) {
+    fn tidy_skip_repo_style_inner_review_write_retry_distinct_when_log_attempt_equals_outer_attempt()
+     {
         let first_try = log_file_name(ReviewPromptLog {
             prompt_file: "review_write.md",
             skip_repo_style: true,
@@ -144,11 +154,5 @@ mod tests {
             }),
             "coder_review_write_review_write_attempt_3_try_2.log"
         );
-    }
-
-    #[test]
-    fn kiss_stringify_review_prompt_log_units() {
-        let _ = stringify!(super::review_prompt_log_path);
-        let _ = stringify!(super::ReviewPromptLog);
     }
 }

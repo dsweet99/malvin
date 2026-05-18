@@ -77,7 +77,7 @@ fn sole_at_session_work_dir_matches_resolve_user_request() {
     let input = sub.join("in.md");
     std::fs::write(&input, "body\n").unwrap();
     let at_arg = format!("@{}", input.display());
-    let (_, expected) = crate::artifacts::resolve_user_request(&at_arg).unwrap();
+    let (_, expected) = malvin::artifacts::resolve_user_request(&at_arg).unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
         text: Some(at_arg),
@@ -93,7 +93,7 @@ fn plan_path_with_at_source_uses_destination_workspace() {
     super::apply_plan_source(&plan, &dest).expect("copy");
     let session_wd = super::plan_session_work_dir(&plan, &dest);
     assert_eq!(session_wd, dst_side);
-    let artifacts = crate::artifacts::create_run_artifacts(&dest, Some(session_wd.as_path()))
+    let artifacts = malvin::artifacts::create_run_artifacts(&dest, Some(session_wd.as_path()))
         .expect("artifacts");
     assert_eq!(artifacts.work_dir, dst_side);
     assert!(artifacts.run_dir.starts_with(dst_side.join("_malvin")));

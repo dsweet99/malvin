@@ -1,9 +1,5 @@
 use malvin::acp::AgentClient;
-use malvin::artifacts::{
-    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    create_run_artifacts_from_text, resolve_user_request,
-};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_request};
 use malvin::orchestrator::{Orchestrator, WorkflowConfig, WorkflowError, workflow_context};
 use malvin::output::{MALVIN_WHO, print_stdout_line};
 use malvin::prompts::{PromptError, PromptStore};
@@ -157,15 +153,8 @@ pub async fn run_code(
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         client.ensure_authenticated().map_err(|e| e.to_string())?;
+        let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
         let ctx = workflow_context(&artifacts, &store, "code").map_err(|e: PromptError| e.0)?;
-        let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-        let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-        let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
-        let session_dotfile_backups = SessionDotfileBackups::from_parts(
-            kissconfig_backup.clone(),
-            malvin_checks_backup.clone(),
-            kissignore_backup.clone(),
-        );
         run_emit::emit_run_startup_sequence(
             &artifacts,
             shared.tee_startup_stdout(),

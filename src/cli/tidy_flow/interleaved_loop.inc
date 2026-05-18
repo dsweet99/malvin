@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use crate::artifacts::SessionDotfileBackups;
-use crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG;
-use crate::output::{MALVIN_WHO, print_stdout_line};
+use malvin::artifacts::SessionDotfileBackups;
+use malvin::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
 
 use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
@@ -36,7 +36,7 @@ async fn run_tidy_coder_prompt_for_attempt(
         TidyPromptRestore {
             prompt: coder_prompt.as_ref(),
             label: "tidy",
-            phase: crate::run_timing::TimingPhase::Implement,
+            phase: malvin::run_timing::TimingPhase::Implement,
             session_dotfile_backups,
             restore_context: "tidy",
         },
@@ -53,8 +53,8 @@ struct TidyLgtmFinishCtx<'a, 'b> {
     session_dotfile_backups: &'a SessionDotfileBackups,
 }
 
-async fn tidy_finish_lgtm_attempt<'a, 'b>(
-    ctx: TidyLgtmFinishCtx<'a, 'b>,
+async fn tidy_finish_lgtm_attempt(
+    ctx: TidyLgtmFinishCtx<'_, '_>,
 ) -> Result<Option<()>, String> {
     let paths = TidyRecoveryPaths {
         work_dir: ctx.input.artifacts.work_dir.clone(),

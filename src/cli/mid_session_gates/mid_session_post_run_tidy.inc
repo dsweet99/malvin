@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::acp::AgentClient;
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::prompts::PromptStore;
-use crate::run_timing::TimingPhase;
+use malvin::acp::AgentClient;
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::prompts::PromptStore;
+use malvin::run_timing::TimingPhase;
 
 use crate::cli::repo_checks::RepoGateCommandFailure;
 use crate::cli::tidy_flow::{
@@ -119,9 +119,9 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
 #[cfg(test)]
 mod post_run_tidy_tests {
     use crate::cli::repo_checks::RepoGateCommandFailure;
-    use crate::acp::test_captive_session::captive_cat_acp_session_for_tests;
-    use crate::acp::{AgentClient, AgentIoOptions};
-    use crate::artifacts::{
+    use malvin::acp::test_captive_session::captive_cat_acp_session_for_tests;
+    use malvin::acp::{AgentClient, AgentIoOptions};
+    use malvin::artifacts::{
         KissConfigBackup, SessionDotfileBackups, create_run_artifacts_from_text,
     };
 
@@ -140,7 +140,7 @@ mod post_run_tidy_tests {
             create_run_artifacts_from_text("plan\n", Some(tmp.path())).expect("artifacts");
         std::fs::write(artifacts.work_dir.join(".malvin_checks"), "kiss check\n").expect("checks");
         let malvin_checks_backup =
-            crate::artifacts::backup_workspace_malvin_checks_if_present(&artifacts.work_dir)
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(&artifacts.work_dir)
                 .expect("backup malvin_checks");
         let backups = SessionDotfileBackups::from_parts(
             KissConfigBackup::Missing,

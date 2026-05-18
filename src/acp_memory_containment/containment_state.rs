@@ -150,4 +150,24 @@ mod containment_state_tests {
         super::finalize_containment_cgroup(&c);
         assert!(!c.active());
     }
+
+    #[test]
+    fn kiss_stringify_containment_state_units() {
+        let _ = stringify!(super::latch_oom_if_needed);
+        let _ = stringify!(super::teardown_containment_state);
+    }
+
+    #[test]
+    fn finalize_containment_latches_oom_when_under_oom_at_teardown() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("memory.limit_in_bytes"), "1048576").expect("limit");
+        std::fs::write(
+            dir.path().join("memory.oom_control"),
+            "oom_kill_disable 0\nunder_oom 1\n",
+        )
+        .expect("oom_control");
+        let c = AcpMemoryContainment::from_parts(true, Some(dir.path().to_path_buf()));
+        super::finalize_containment_cgroup(&c);
+        assert!(c.memory_limit_exceeded());
+    }
 }

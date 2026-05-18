@@ -13,6 +13,7 @@ use super::review_fanout_write::{
     FinishReviewWriteInput, ReviewAttemptFinish, finish_review_write_attempt,
 };
 
+#[derive(Debug)]
 pub enum ReviewWriteInnerOutcome {
     Lgtm,
     NotLgtm,
@@ -84,10 +85,71 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::{ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write};
+    use crate::acp::{AgentClient, AgentIoOptions};
+    use crate::artifacts::{
+        KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+        create_run_artifacts_from_text,
+    };
+    use crate::orchestrator::workflow_context;
+    use crate::prompts::PromptStore;
+
     #[test]
-    fn kiss_stringify_review_write_retry_units() {
-        let _ = stringify!(super::ReviewWriteInnerOutcome);
-        let _ = stringify!(super::ReviewTwoPromptSession);
-        let _ = stringify!(super::run_reviewers_spawn_then_review_write);
+    fn review_write_inner_outcomes_are_distinct() {
+        assert_ne!(
+            std::mem::discriminant(&ReviewWriteInnerOutcome::Lgtm),
+            std::mem::discriminant(&ReviewWriteInnerOutcome::NotLgtm)
+        );
+        assert_ne!(
+            std::mem::discriminant(&ReviewWriteInnerOutcome::NotLgtm),
+            std::mem::discriminant(&ReviewWriteInnerOutcome::MissingArtifactExhausted)
+        );
+    }
+
+    #[tokio::test]
+    async fn run_reviewers_spawn_then_review_write_errors_when_spawn_prompt_without_session() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            create_run_artifacts_from_text("rwr_smoke", Some(tmp.path())).expect("art");
+        let store = PromptStore::default_store();
+        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let backups = SessionDotfileBackups::from_parts(
+            KissConfigBackup::Missing,
+            MalvinChecksBackup::Missing,
+            KissignoreBackup::Missing,
+        );
+        let res = run_reviewers_spawn_then_review_write(
+            ReviewTwoPromptSession {
+                client: &mut client,
+                prompts: &store,
+                artifacts: &artifacts,
+                session_dotfile_backups: &backups,
+                context: &ctx,
+                attempt: 1,
+                skip_repo_style: true,
+            },
+            1,
+            || {},
+        )
+        .await;
+        let Err(e) = res else {
+            panic!("expected reviewers_spawn without session to fail");
+        };
+        assert!(
+            e.0.contains("begin_coder_session"),
+            "unexpected: {}",
+            e.0
+        );
     }
 }

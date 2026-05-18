@@ -145,12 +145,62 @@ pub async fn run_review_write_coder_session(
 
 #[cfg(test)]
 mod tests {
+    use super::{ReviewersSpawnCoderSession, run_reviewers_spawn_coder_session};
+    use crate::orchestrator::orchestrator_test_support::{
+        empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke,
+    };
+
+    #[tokio::test]
+    async fn run_review_write_coder_session_errors_when_no_coder_session() {
+        use super::{ReviewWriteCoderSession, run_review_write_coder_session};
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts, store, ctx) = workflow_ctx_for_smoke(&tmp, "rfr_write");
+        let mut client = no_session_client();
+        let backups = empty_dotfile_backups();
+        let err = run_review_write_coder_session(ReviewWriteCoderSession {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            session_dotfile_backups: &backups,
+            context: &ctx,
+            attempt: 1,
+            log_attempt: 1,
+            skip_repo_style: true,
+            stdout_bracket_label: None,
+        })
+        .await
+        .expect_err("write prompt without session");
+        assert!(err.0.contains("begin_coder_session"), "unexpected: {}", err.0);
+    }
+
+    #[tokio::test]
+    async fn run_reviewers_spawn_coder_session_errors_when_no_coder_session() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts, store, ctx) = workflow_ctx_for_smoke(&tmp, "rfr_smoke");
+        let mut client = no_session_client();
+        let backups = empty_dotfile_backups();
+        let err = run_reviewers_spawn_coder_session(ReviewersSpawnCoderSession {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            session_dotfile_backups: &backups,
+            context: &ctx,
+            attempt: 1,
+            log_attempt: 1,
+            skip_repo_style: true,
+        })
+        .await
+        .expect_err("spawn prompt without session");
+        assert!(
+            err.0.contains("begin_coder_session"),
+            "unexpected: {}",
+            err.0
+        );
+    }
+
     #[test]
-    fn kiss_stringify_review_prompt_run_units() {
-        let _ = stringify!(super::run_review_write_coder_session);
+    fn kiss_stringify_review_fanout_units() {
         let _ = stringify!(super::run_reviewers_spawn_coder_session);
-        let _ = stringify!(super::ReviewersSpawnCoderSession);
-        let _ = stringify!(super::ReviewWriteCoderSession);
-        let _ = stringify!(super::ReviewPromptCoderSession);
+        let _ = stringify!(super::run_review_write_coder_session);
     }
 }

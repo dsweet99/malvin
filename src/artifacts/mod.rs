@@ -1,11 +1,10 @@
 //! Run directories and log paths.
 
-mod dotfile_backup;
-pub mod run_id;
-mod session_dotfiles;
 mod startup_tag;
 
-pub use session_dotfiles::{
+use std::path::{Path, PathBuf};
+
+pub use crate::session_dotfile_backup::{
     KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
     backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
@@ -14,11 +13,9 @@ pub use session_dotfiles::{
     restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
 };
 
-use std::path::{Path, PathBuf};
-
 pub use startup_tag::startup_request_tag_label;
 
-pub const QUALITY_GATES_LOG: &str = "quality_gates.log";
+pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};
 
 /// One workflow run: isolated `_malvin/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
@@ -74,6 +71,16 @@ impl RunArtifacts {
     pub fn quality_gates_log_path(&self) -> PathBuf {
         self.run_dir.join(QUALITY_GATES_LOG)
     }
+
+    #[must_use]
+    pub fn stdout_log_path(&self) -> PathBuf {
+        self.run_dir.join(STDOUT_LOG)
+    }
+
+    #[must_use]
+    pub fn trace_jsonl_path(&self) -> PathBuf {
+        self.run_dir.join(TRACE_JSONL)
+    }
 }
 
 /// Copy `plan_source` into a fresh run directory under `base_dir`/`_malvin`/…
@@ -85,17 +92,20 @@ pub fn create_run_artifacts(
     plan_source: &Path,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::copy(plan_source, &plan_target)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: plan_target,
         work_dir: plan_source
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
 /// Write `plan_text` into a fresh run directory under `base_dir`/`_malvin`/…
@@ -108,14 +118,17 @@ pub fn create_run_artifacts_from_text(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::write(&plan_target, plan_text)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: plan_target,
         work_dir,
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
 /// Write `request_text` to `_malvin/.../request.md` for standalone `kpop` runs.
@@ -130,14 +143,17 @@ pub fn create_kpop_run_artifacts(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let request_target = run_dir.join("request.md");
     std::fs::write(&request_target, request_text)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: request_target,
         work_dir,
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {

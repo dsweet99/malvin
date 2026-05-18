@@ -1,5 +1,3 @@
-use super::{clear_cursor_env_for_test, handshake_attach_and_start_reader, write_bad_session_new_mock};
-use crate::acp::*;
 
 #[test]
 fn requires_cursor_login_auth_skips_login_when_process_credentials_exist() {

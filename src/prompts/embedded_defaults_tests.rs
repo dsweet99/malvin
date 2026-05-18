@@ -33,6 +33,19 @@ fn default_store_with_unset_home() -> String {
     render_default_implement(&store, &context)
 }
 
+fn default_embedded_placeholder_context() -> HashMap<String, String> {
+    HashMap::from([
+        ("plan_path".to_string(), "/p".to_string()),
+        ("result_path".to_string(), "/r".to_string()),
+        ("malvin_command".to_string(), "code".to_string()),
+        ("quality_gates".to_string(), String::new()),
+        (
+            "quality_gates_log".to_string(),
+            "/q/quality_gates.log".to_string(),
+        ),
+    ])
+}
+
 fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String, String>) {
     let _lock = crate::test_utils::test_env_lock();
     let profile = tempfile::tempdir().unwrap().path().join("profile");
@@ -43,16 +56,7 @@ fn default_prompt_store_with_unset_home() -> (super::PromptStore, HashMap<String
         store.ensure_defaults().unwrap();
         store
     };
-    let context = HashMap::from([
-        ("plan_path".to_string(), "/p".to_string()),
-        ("result_path".to_string(), "/r".to_string()),
-        ("malvin_command".to_string(), "code".to_string()),
-        ("quality_gates".to_string(), String::new()),
-        (
-            "quality_gates_log".to_string(),
-            "/q/quality_gates.log".to_string(),
-        ),
-    ]);
+    let context = default_embedded_placeholder_context();
     (store, context)
 }
 
@@ -82,4 +86,5 @@ fn kiss_stringify_embedded_defaults_units() {
         stringify!(crate::prompts::embedded_defaults_tests::default_prompt_store_with_unset_home);
     let _ = stringify!(crate::prompts::embedded_defaults_tests::with_unset_home_profile);
     let _ = stringify!(crate::prompts::embedded_defaults_tests::render_default_implement);
+    let _ = stringify!(crate::prompts::embedded_defaults_tests::default_embedded_placeholder_context);
 }

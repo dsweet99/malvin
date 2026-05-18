@@ -2,7 +2,8 @@
 
 mod defaults;
 mod store;
-mod template;
+
+include!("template.rs");
 
 pub use defaults::{
     CONCERNS_ACP_MATCH_SUBSTRING, DO_HEADER_MD, HEADER_MD, REVIEW_WRITE_ACP_MATCH_PHRASE,
@@ -29,15 +30,21 @@ pub fn enforce_no_unresolved_braces(text: &str) -> Result<(), PromptError> {
 #[error("{0}")]
 pub struct PromptError(pub String);
 
-pub use store::{KpopPromptValidation, PromptStore, user_home_dir};
-
-pub use template::{
-    merge_header_and_coding_rules, merged_coding_rules, render_mbc2_for_scheduled_kpop_block,
-    render_template, substitute_template,
+pub use crate::user_home::user_home_dir;
+pub use store::{
+    KpopPromptValidation, PromptStore, merged_coding_rules, render_mbc2_for_scheduled_kpop_block,
 };
 
 #[cfg(test)]
 mod embedded_defaults_tests;
 #[cfg(test)]
 #[allow(unsafe_code)]
-mod tests;
+mod prompts_tests_a {
+    include!("tests_a.rs");
+}
+
+#[cfg(test)]
+#[allow(unsafe_code)]
+mod prompts_tests_b {
+    include!("tests_b.rs");
+}

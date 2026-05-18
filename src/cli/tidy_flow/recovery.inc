@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::SessionDotfileBackups;
-use crate::orchestrator::{
+use malvin::artifacts::SessionDotfileBackups;
+use malvin::orchestrator::{
     REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
     ReviewTwoPromptSession, ReviewWriteInnerOutcome, fail_on_abort_for_artifacts,
     run_reviewers_spawn_then_review_write,
 };
-use crate::output::{MALVIN_WHO, print_stdout_line};
-use crate::run_timing::TimingPhase;
+use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::run_timing::TimingPhase;
 
 use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use crate::cli::{LEARN_MIN_ELAPSED_MS};
@@ -69,7 +69,7 @@ pub(crate) async fn tidy_review_attempt_with_retries(
 }
 
 pub(crate) fn tidy_fail_on_abort(
-    artifacts: &crate::artifacts::RunArtifacts,
+    artifacts: &malvin::artifacts::RunArtifacts,
 ) -> Result<(), String> {
     fail_on_abort_for_artifacts(artifacts).map_err(|e| e.0)
 }

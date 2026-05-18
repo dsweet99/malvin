@@ -1,14 +1,14 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::acp::{AgentClient, CoderPromptOptions};
-use crate::artifacts::{
+use malvin::acp::{AgentClient, CoderPromptOptions};
+use malvin::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts, restore_workspace_session_dotfiles,
 };
-use crate::output::{MALVIN_WHO, print_stdout_line};
-use crate::run_timing::{RunTiming, TimingPhase};
+use malvin::output::{MALVIN_WHO, print_stdout_line};
+use malvin::run_timing::{RunTiming, TimingPhase};
 
 use super::PlanArgs;
 use super::SharedOpts;
@@ -29,7 +29,6 @@ fn start_plan_workspace_session(
     user_plan_path: &Path,
 ) -> Result<SessionDotfileBackups, String> {
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
     let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
@@ -47,9 +46,9 @@ fn build_rendered_plan_prompt(
     artifacts: &RunArtifacts,
     user_plan_path: &Path,
 ) -> Result<String, String> {
-    let store = prepare_plan_prompt_store()?;
-    let context = plan_prompt_context(artifacts, user_plan_path, &store)?;
-    compose_plan_prompt(&store, &context)
+    let store = plan_prompt::prepare_plan_prompt_store()?;
+    let context = plan_prompt::plan_prompt_context(artifacts, user_plan_path, &store)?;
+    plan_prompt::compose_plan_prompt(&store, &context)
 }
 
 fn set_plan_timing_label(timing: &Arc<Mutex<RunTiming>>) {
@@ -171,12 +170,4 @@ pub async fn run_plan(
         super::error_run_log::clear_command_error_run_dir();
     }
     r
-}
-
-include!("plan_prompt.inc");
-include!("plan_resolve.inc");
-
-#[cfg(test)]
-mod plan_flow_unit_tests {
-    include!("plan_flow_tests.inc");
 }

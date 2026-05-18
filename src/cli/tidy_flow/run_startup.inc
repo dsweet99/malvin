@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::artifacts::{
+use malvin::artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present,
     backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text,
 };
-use crate::orchestrator::workflow_context;
-use crate::prompts::{PromptError, PromptStore};
+use malvin::orchestrator::workflow_context;
+use malvin::prompts::{PromptError, PromptStore};
 
 use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence};
@@ -85,7 +85,8 @@ pub fn prepare_tidy_run(
 ) -> Result<TidyStartup, String> {
     let artifacts =
         create_run_artifacts_from_text("tidy", Some(Path::new("."))).map_err(|e| e.to_string())?;
-    crate::repo_gates::ensure_default_malvin_checks_file(&artifacts.work_dir)?;
+    let malvin_checks_backup =
+        backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
 
     let gates_ok = run_repo_workspace_gates(
         &artifacts.work_dir,
@@ -93,9 +94,6 @@ pub fn prepare_tidy_run(
         Some(&artifacts.run_dir),
     )
     .is_ok();
-
-    let malvin_checks_backup =
-        backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
 
     if gates_ok {
         return tidy_skip_agent_startup(artifacts, shared, malvin_checks_backup);

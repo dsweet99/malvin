@@ -12,3 +12,13 @@ pub fn user_home_dir() -> PathBuf {
     }
     std::env::temp_dir()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::user_home_dir;
+
+    #[test]
+    fn user_home_dir_returns_nonempty_path() {
+        assert!(!user_home_dir().as_os_str().is_empty());
+    }
+}

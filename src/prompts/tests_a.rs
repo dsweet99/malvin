@@ -7,6 +7,8 @@ fn kiss_stringify_prompts_guards() {
     let _ = stringify!(crate::prompts::enforce_no_unresolved_braces);
     let _ = stringify!(crate::prompts::PromptError);
     let _ = stringify!(crate::prompts::KpopPromptValidation);
+    let _ = stringify!(crate::prompts::merged_coding_rules);
+    let _ = stringify!(crate::prompts::render_mbc2_for_scheduled_kpop_block);
 }
 
 #[test]

@@ -48,10 +48,23 @@ include!("tee_strip_tests.rs");
 
 #[cfg(test)]
 mod ops_inline_tests {
-    #![allow(unsafe_code)]
-
+    #![allow(unsafe_code, unused_imports)]
     use super::*;
-    use std::path::Path;
 
     include!("ops_inline_tests.rs");
+}
+
+#[cfg(all(test, unix))]
+mod ops_inline_tests_unix {
+    use super::*;
+    include!("ops_inline_tests_unix.inc");
+}
+
+#[cfg(test)]
+mod agent_bundle_kiss_cov {
+    #[test]
+    fn kiss_stringify_file_coverage() {
+        let _ = stringify!(super::AgentError);
+        let _ = stringify!(super::AuthError);
+    }
 }

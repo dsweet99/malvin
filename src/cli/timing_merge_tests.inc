@@ -90,10 +90,10 @@ mod tests {
         let result = tmp.path().join("result.md");
         std::fs::write(&result, "ABORT: stop\n").unwrap();
         let work = tempfile::tempdir().unwrap();
-        let empty = crate::artifacts::SessionDotfileBackups::from_parts(
-            crate::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        let empty = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
         );
         let err = super::merge_acp_with_workspace_session_restore_and_check_abort(
             Ok(()),
@@ -111,10 +111,10 @@ mod tests {
         let result = tmp.path().join("result.md");
         std::fs::write(&result, "ABORT: stop\n").unwrap();
         let work = tempfile::tempdir().unwrap();
-        let empty = crate::artifacts::SessionDotfileBackups::from_parts(
-            crate::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        let empty = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
         );
         let err = super::merge_acp_with_workspace_session_restore_and_check_abort(
             Err("wf failed".into()),
@@ -144,10 +144,10 @@ mod tests {
         std::fs::write(&result, "ABORT: stop\n").unwrap();
         let work = tempfile::tempdir().unwrap();
         std::fs::write(work.path().join(".malvin_checks"), "x\n").unwrap();
-        let backups = crate::artifacts::SessionDotfileBackups::from_parts(
-            crate::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
-            crate::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
+        let backups = malvin::artifacts::SessionDotfileBackups::from_parts(
+            malvin::artifacts::backup_workspace_kissconfig_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_malvin_checks_if_present(work.path()).unwrap(),
+            malvin::artifacts::backup_workspace_kissignore_if_present(work.path()).unwrap(),
         );
         std::fs::write(work.path().join(".malvin_checks"), "changed\n").unwrap();
         let err = super::merge_acp_with_workspace_session_restore_and_check_abort(

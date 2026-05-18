@@ -2,13 +2,13 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Args;
-use crate::acp::CoderPromptOptions;
-use crate::artifacts::{
+use malvin::acp::CoderPromptOptions;
+use malvin::artifacts::{
     create_run_artifacts_from_text,
 };
-use crate::orchestrator::workflow_context;
-use crate::prompts::{HEADER_MD, PromptError, PromptStore};
-use crate::run_timing::TimingPhase;
+use malvin::orchestrator::workflow_context;
+use malvin::prompts::{HEADER_MD, PromptError, PromptStore};
+use malvin::run_timing::TimingPhase;
 use crate::{lookup_bin_on_path, require_kiss_for_malvin};
 
 const TPL_GITIGNORE: &str = include_str!(concat!(
@@ -112,7 +112,7 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
 fn emit_init_startup(
     root: &Path,
     tee_startup_stdout: bool,
-) -> Result<crate::artifacts::RunArtifacts, String> {
+) -> Result<malvin::artifacts::RunArtifacts, String> {
     let artifacts =
         create_run_artifacts_from_text("init", Some(root)).map_err(|e| format!("init: {e}"))?;
     super::run_emit::emit_run_startup_sequence(&artifacts, tee_startup_stdout, "init")?;
@@ -137,8 +137,8 @@ fn init_summary_combined_body(
 }
 
 async fn init_summary_coder_turn_with_timing_emit(
-    client: &mut crate::acp::AgentClient,
-    artifacts: &crate::artifacts::RunArtifacts,
+    client: &mut malvin::acp::AgentClient,
+    artifacts: &malvin::artifacts::RunArtifacts,
     body: &str,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
@@ -181,7 +181,7 @@ async fn init_summary_coder_turn_with_timing_emit(
 
 async fn run_init_summary_phase(
     shared: &super::SharedOpts,
-    artifacts: &crate::artifacts::RunArtifacts,
+    artifacts: &malvin::artifacts::RunArtifacts,
 ) -> Result<(), String> {
     let workflow = super::WorkflowCliOptions {
         force: !shared.no_force,
@@ -194,7 +194,7 @@ async fn run_init_summary_phase(
         .map_err(|e: PromptError| e.0)?;
     let ctx = workflow_context(artifacts, &store, "init").map_err(|e: PromptError| e.0)?;
     let session_dotfile_backups =
-        crate::artifacts::SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+        malvin::artifacts::SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     let mut client = super::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());

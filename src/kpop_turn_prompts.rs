@@ -73,3 +73,7 @@ impl KpopTurnPrompts<'_> {
         self.render_turn_with_body("mbc2_pure.md", &ctx, false)
     }
 }
+
+#[cfg(test)]
+#[path = "kpop_turn_prompts_tests.rs"]
+mod kpop_turn_prompts_tests;

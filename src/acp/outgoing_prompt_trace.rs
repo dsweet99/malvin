@@ -1,4 +1,4 @@
-//! Outgoing ACP trace layout for `session/prompt` (uniform stem vs `malvin do` split).
+// Outgoing ACP trace layout for `session/prompt` (uniform stem vs `malvin do` split).
 
 /// Single-stem trace (`>who`) plus optional override for the stdout `[label...]` line.
 pub struct UniformOutgoingTrace<'a> {

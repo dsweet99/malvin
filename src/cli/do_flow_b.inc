@@ -47,8 +47,8 @@ fn stringify_do_flow_helpers() {
 mod do_tests {
     use clap::Parser;
 
-    use crate::artifacts::RunArtifacts;
-    use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
+    use malvin::artifacts::RunArtifacts;
+    use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
     use super::{combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user};
 

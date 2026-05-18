@@ -1,23 +1,13 @@
-use std::collections::HashMap;
-use std::process::Stdio;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64};
-use tokio::io::AsyncReadExt;
-use tokio::sync::{Mutex, Notify};
 
-use crate::acp::*;
-use crate::acp_test_unix_bin::unix_bin_with_fallback;
-use serde_json::Value;
-
-pub(super) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+pub(crate) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-pub(super) fn inactive_memory_containment() -> crate::acp_memory_containment::AcpMemoryContainment {
+pub(crate) fn inactive_memory_containment() -> crate::acp_memory_containment::AcpMemoryContainment {
     crate::acp_memory_containment::AcpMemoryContainment::inactive()
 }
 
-pub(super) struct InactiveRpcIo {
+pub(crate) struct InactiveRpcIo {
     pub reader_dead: Arc<AtomicBool>,
     pub stdin: Arc<Mutex<tokio::process::ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
@@ -25,7 +15,7 @@ pub(super) struct InactiveRpcIo {
     pub acp_activity_notify: Arc<Notify>,
 }
 
-pub(super) fn acp_stdio_rpc_inactive(io: InactiveRpcIo) -> AcpStdioRpc {
+pub(crate) fn acp_stdio_rpc_inactive(io: InactiveRpcIo) -> AcpStdioRpc {
     AcpStdioRpc {
         reader_dead: io.reader_dead,
         stdin: io.stdin,
@@ -83,7 +73,7 @@ fn sleep_stdout_drain_for_child(
 
 impl RpcSleepHarness {
     pub async fn spawn_sleep(seconds: &str, drain: SleepStdoutDrainMode) -> Self {
-        let mut child = tokio::process::Command::new(unix_bin_with_fallback("sleep"))
+        let mut child = tokio::process::Command::new(crate::acp_test_unix_bin::unix_bin_with_fallback("sleep"))
             .arg(seconds)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -128,8 +118,8 @@ impl RpcSleepHarness {
     }
 }
 
-pub(super) async fn true_child_stdin_stdout_drained_after_exit() -> (Arc<Mutex<tokio::process::ChildStdin>>, tokio::task::JoinHandle<()>) {
-    let mut child = tokio::process::Command::new(unix_bin_with_fallback("true"))
+pub(crate) async fn true_child_stdin_stdout_drained_after_exit() -> (Arc<Mutex<tokio::process::ChildStdin>>, tokio::task::JoinHandle<()>) {
+    let mut child = tokio::process::Command::new(crate::acp_test_unix_bin::unix_bin_with_fallback("true"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -149,7 +139,7 @@ pub(crate) struct HarnessRpcWaitParams<'a> {
     pub child_pid: Option<u32>,
 }
 
-pub(super) async fn harness_rpc_wait(params: HarnessRpcWaitParams<'_>) -> Result<Value, String> {
+pub(crate) async fn harness_rpc_wait(params: HarnessRpcWaitParams<'_>) -> Result<Value, String> {
     let io = params.h.io();
     rpc_wait_with_timeout(
         params.request_id,

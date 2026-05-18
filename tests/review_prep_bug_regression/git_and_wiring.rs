@@ -77,8 +77,17 @@ fn review_prep_bug_regression_sources_tracked_in_git() {
     for rel in [
         "tests/review_prep_bug_regression/main.rs",
         "tests/review_prep_bug_regression/helpers.rs",
+        "tests/review_prep_bug_regression/acp_bugs.rs",
         "tests/review_prep_bug_regression/git_and_wiring.rs",
         "tests/review_prep_bug_regression/stringify_and_orchestrator.rs",
+        "tests/review_prep_bug_regression/plan_flow_bugs.rs",
+        "tests/review_prep_bug_regression/timing_merge_bugs.rs",
+        "tests/review_prep_bug_regression/do_flow_bugs.rs",
+        "tests/review_prep_bug_regression/tidy_flow_helpers.rs",
+        "tests/review_prep_bug_regression/tidy_max_loops.rs",
+        "tests/review_prep_bug_regression/acp_wiring_bugs.rs",
+        "tests/review_prep_bug_regression/kissignore_bugs.rs",
+        "tests/review_prep_bug_regression/repo_root_shadow_bugs.rs",
     ] {
         assert_tracked_in_git(rel);
     }
@@ -88,27 +97,27 @@ fn review_prep_bug_regression_sources_tracked_in_git() {
 fn acp_reader_tests_must_be_wired_in_acp_module() {
     let acp_mod = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/acp/mod.rs"));
     assert!(
-        acp_mod.contains("acp_reader_tests/mod.rs"),
-        "bug: src/acp_reader_tests/ must be declared from acp/mod.rs so reader tests run"
+        acp_mod.contains("mod reader_tests") || acp_mod.contains("reader_tests_inline.inc"),
+        "bug: reader tests must be wired from acp/mod.rs (mod or include!) so reader tests run"
     );
 }
 
 #[test]
-fn kiss_stringify_cov_must_not_reference_removed_tidy_flow_helpers_module() {
+fn stringify_cov_must_not_reference_removed_tidy_flow_helpers_module() {
     let src = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/src/cli/kiss_stringify_cov.rs"
+        "/src/cli/stringify_cov.rs"
     ));
     assert!(
         !src.contains("tidy_flow::helpers::"),
-        "bug: kiss_stringify_cov.rs still stringify!s `tidy_flow::helpers::…` after helpers \
-         were moved to internal `tidy_flow_helpers` (see src/cli/tidy_flow.rs); paths are stale"
+        "bug: stringify_cov.rs still stringify!s `tidy_flow::helpers::…` after helpers \
+         were moved to flat tidy_flow includes (see src/cli/tidy_flow.rs); paths are stale"
     );
 }
 
 #[test]
 fn cli_repo_checks_mod_rs_must_be_tracked_in_git() {
-    assert_tracked_in_git("src/cli_repo_checks/mod.rs");
+    assert_tracked_in_git("src/cli/repo_checks/mod.rs");
 }
 
 #[test]

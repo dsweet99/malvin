@@ -45,27 +45,7 @@ pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
 }
 
 fn timeout_word_without_identifier_false_positive(text: &str) -> bool {
-    let needle = "timeout";
-    let mut search_from = 0_usize;
-    while let Some(found) = text[search_from..].find(needle) {
-        let start = search_from + found;
-        let end = start + needle.len();
-        let before = if start == 0 {
-            b' '
-        } else {
-            text.as_bytes()[start - 1]
-        };
-        let after = if end >= text.len() {
-            b' '
-        } else {
-            text.as_bytes()[end]
-        };
-        if !is_identifier_byte(before) && !is_identifier_byte(after) {
-            return true;
-        }
-        search_from = end;
-    }
-    false
+    delimited_token_match(text, "timeout")
 }
 
 const fn is_identifier_byte(byte: u8) -> bool {
@@ -73,6 +53,10 @@ const fn is_identifier_byte(byte: u8) -> bool {
 }
 
 fn has_delimited_substring(text: &str, token: &str) -> bool {
+    delimited_token_match(text, token)
+}
+
+fn delimited_token_match(text: &str, token: &str) -> bool {
     let mut search_from = 0_usize;
     while let Some(found) = text[search_from..].find(token) {
         let start = search_from + found;
@@ -117,8 +101,9 @@ pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRe
 #[cfg(test)]
 mod retry_policy_tests {
     use super::{
-        agent_string_is_retriable, agent_string_is_upgrade_plan, plan_agent_retry, retries_noun,
-        AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
+        agent_string_is_retriable, agent_string_is_upgrade_plan, delimited_token_match,
+        has_delimited_substring, is_identifier_byte, plan_agent_retry, retries_noun,
+        timeout_word_without_identifier_false_positive, AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
     };
     use std::time::Duration;
 
@@ -138,6 +123,16 @@ mod retry_policy_tests {
     }
 
     #[test]
+    fn retriable_timeout_delimited_without_timed_out_substring() {
+        assert!(agent_string_is_retriable("rpc: connection timeout"));
+        assert!(agent_string_is_retriable("session initialization failed"));
+        assert!(!agent_string_is_retriable("timeoutable"));
+        assert!(agent_string_is_retriable("rpc timeout"));
+        assert!(agent_string_is_retriable("error: timeout"));
+        assert!(!agent_string_is_retriable("atimeoutb"));
+    }
+
+    #[test]
     fn retriable_transient_errors_match_known_agent_strings() {
         assert!(agent_string_is_retriable("request timed out"));
         assert!(agent_string_is_retriable("DEADLINE EXCEEDED"));
@@ -154,22 +149,24 @@ mod retry_policy_tests {
         assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
     }
 
-    #[test]
-    fn retriable_first_attempt_sleeps_one_second() {
-        let out = plan_agent_retry("timed out", 1).unwrap();
+    fn assert_retriable_sleep_secs(attempt: u32, expected_secs: u64) {
+        let out = plan_agent_retry("timed out", attempt).unwrap();
         match out {
-            AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(1)),
-            AgentRetryOutcome::StopRetrying => panic!("expected Sleep(1s), got StopRetrying"),
+            AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(expected_secs)),
+            AgentRetryOutcome::StopRetrying => {
+                panic!("expected Sleep({expected_secs}s), got StopRetrying")
+            }
         }
     }
 
     #[test]
+    fn retriable_first_attempt_sleeps_one_second() {
+        assert_retriable_sleep_secs(1, 1);
+    }
+
+    #[test]
     fn retriable_second_attempt_sleeps_three_seconds() {
-        let out = plan_agent_retry("timed out", 2).unwrap();
-        match out {
-            AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(3)),
-            AgentRetryOutcome::StopRetrying => panic!("expected Sleep(3s), got StopRetrying"),
-        }
+        assert_retriable_sleep_secs(2, 3);
     }
 
     #[test]
@@ -182,5 +179,15 @@ mod retry_policy_tests {
     fn retries_noun_singular_and_plural() {
         assert_eq!(retries_noun(1), "retry");
         assert_eq!(retries_noun(2), "retries");
+    }
+
+    #[test]
+    fn delimited_token_helpers_match_agent_timeout_edge_cases() {
+        assert!(timeout_word_without_identifier_false_positive("rpc: connection timeout"));
+        assert!(!timeout_word_without_identifier_false_positive("atimeoutb"));
+        assert!(is_identifier_byte(b'a'));
+        assert!(!is_identifier_byte(b' '));
+        assert!(has_delimited_substring("session/new failed", "session/new"));
+        assert!(delimited_token_match("init session", "session"));
     }
 }

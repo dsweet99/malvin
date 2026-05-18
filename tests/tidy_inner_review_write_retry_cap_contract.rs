@@ -15,7 +15,10 @@ fn tidy_inner_review_write_retries_allow_at_least_max_loops_per_outer_iteration(
     let trace = root.path().join("kiss-inner-retry-cap.log");
     let path = bin_path_with_kiss_fail_until_n_passes(&root, &trace, 1);
     let mock = root.path().join("mock-tidy-inner-retry-cap");
-    write_mock_executable(&mock, &acp_mock_tidy_review_write_succeeds_on_third_inner_try_js());
+    write_mock_executable(
+        &mock,
+        &acp_mock_tidy_review_write_succeeds_on_third_inner_try_js(),
+    );
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,
         home: &home,

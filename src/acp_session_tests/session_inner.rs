@@ -29,11 +29,11 @@ pub fn dead_transport_sync_channels() -> (
     )
 }
 
-pub fn dead_transport_session_inner() -> crate::acp::session_types::AcpSessionInner {
+pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
     let (child, stdin) = dead_transport_child_stdio();
     let (acp_activity_seq, acp_activity_notify, reader_dead, next_id) =
         dead_transport_sync_channels();
-    crate::acp::session_types::AcpSessionInner {
+    crate::acp::AcpSessionInner {
         child,
         process_group_id: None,
         stdin,

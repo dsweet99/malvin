@@ -1,17 +1,25 @@
-use crate::orchestrator::memory_context::{
-    MAX_MEMORIES_PER_RUN, MemoryRecord, build_memories_value, format_memories, parse_memories,
-    sample_memories, sample_seed,
-};
 use crate::prompts::PromptStore;
 use std::collections::HashSet;
-use std::path::Path;
 
 #[test]
-fn kiss_stringify_memory_context_internals() {
-    let _ = stringify!(super::MemoryState);
-    let _ = stringify!(super::emit_if_complete);
-    let _ = stringify!(super::process_memory_line);
-    let _ = stringify!(super::collect_memory_records);
+fn collect_memory_records_empty_when_no_dot_memory_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let records = crate::orchestrator::memory_context::collect_memory_records(tmp.path());
+    assert!(records.is_empty());
+}
+
+#[test]
+fn process_memory_line_and_emit_complete_one_record() {
+    let mut state = crate::orchestrator::memory_context::MemoryState::default();
+    let mut out = Vec::new();
+    for line in ["TRIGGER: a", "ADVICE: b", "CONFIDENCE: 2"] {
+        crate::orchestrator::memory_context::process_memory_line(line, &mut state, &mut out);
+    }
+    crate::orchestrator::memory_context::emit_if_complete(&mut state, &mut out);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].trigger, "a");
+    assert_eq!(out[0].advice, "b");
+    assert_eq!(out[0].confidence, 2);
 }
 
 #[test]

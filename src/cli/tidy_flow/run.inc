@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::orchestrator::should_run_learn_check;
-use crate::prompts::{HEADER_MD, PromptError};
-use crate::run_timing::{RunTiming, TimingPhase};
+use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use malvin::orchestrator::should_run_learn_check;
+use malvin::prompts::{HEADER_MD, PromptError};
+use malvin::run_timing::{RunTiming, TimingPhase};
 
 use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use crate::cli::timing_merge;

@@ -9,10 +9,12 @@
 - Agent pacing (latency vs thoroughness)
 - Code quality
 - The subject matter being address by this coding project
+Newness should be decided relative to the existing `./.malvin_memory/*.md` files.
 
-2) Summarize them as a short bullet list.
+2) Summarize them in a list.
 
-3) Edit an `.malvin_memory/*.md` file to incorporate the new info (for example `./.malvin_memory/index.md`).
+3) Edit an `.malvin_memory/*.md` file to incorporate each list item.
+
 - Store as TRIGGER: / ADVICE: pairs, in this format
 ```
 TRIGGER: 1-4 keywords or phrases, where phrases are 1-3 words
@@ -27,6 +29,6 @@ TRIGGER keywords should be words that the agent was searching for -- or might se
 
 Each TRIGGER: / ADVICE: / CONFIDENCE: triple is implicitly hypothesizing that it will be "good advice".
 
-BAD: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome, repeat a stock malvin prompt, or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from ./.malvin_memory/*.md.
+Forgetting: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome, repeat a stock malvin prompt, or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from ./.malvin_memory/*.md.
 
-NOT BAD: Pick one piece of ADVICE: that wasn't bad and had CONFIDENCE: < 3 -- if there was one. Find it in ./.malvin_memory/*.md and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum value of 3.
+Increasing confidence: Pick one piece of ADVICE: that wasn't bad and had CONFIDENCE: < 3 -- if there was one. Find it in ./.malvin_memory/*.md and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum value of 3.

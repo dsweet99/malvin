@@ -54,6 +54,15 @@ fn handshake_stdio_rpc(
     }
 }
 
+async fn kill_child_and_finalize_containment(
+    child: &mut Child,
+    memory_containment: &crate::acp_memory_containment::AcpMemoryContainment,
+) {
+    let _ = child.kill().await;
+    let _ = child.wait().await;
+    crate::acp_memory_containment::finalize_containment_cgroup(memory_containment);
+}
+
 pub(crate) async fn acp_spawn_start_reader_and_handshake(
     pipes: AcpChildStdout,
     io: AcpHandshakeIo,
@@ -78,9 +87,7 @@ pub(crate) async fn acp_spawn_start_reader_and_handshake(
     {
         Ok(session_id) => Ok((child, session_id)),
         Err(e) => {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-            crate::acp_memory_containment::finalize_containment_cgroup(&memory_containment);
+            kill_child_and_finalize_containment(&mut child, &memory_containment).await;
             Err(e)
         }
     }

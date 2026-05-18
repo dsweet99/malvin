@@ -28,11 +28,11 @@ fn stringify_kpop_flow_helpers() {
     let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
-    let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
+    let _ = stringify!(malvin::artifacts::RunArtifacts::exp_log_path);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
-    let _ = stringify!(crate::KpopTurnPrompts);
+    let _ = stringify!(malvin::KpopTurnPrompts);
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let store = PromptStore::with_root(tmp.path().to_path_buf());
     store.ensure_defaults().unwrap();
     let base = kpop_markdown_fixture_context();
-    let mut turn = KpopTurnPrompts {
+    let mut turn = malvin::KpopTurnPrompts {
         store: &store,
         base: &base,
         request_text: "do the thing",

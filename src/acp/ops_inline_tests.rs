@@ -1,3 +1,5 @@
+use std::path::Path;
+
 #[cfg(unix)]
 fn write_path_executable(path: &Path) {
     use std::os::unix::fs::PermissionsExt;
@@ -9,104 +11,106 @@ fn write_path_executable(path: &Path) {
     crate::test_utils::sync_test_executable(path);
 }
 
-#[test]
 #[cfg(unix)]
-fn resolve_agent_bin_prefers_env_override() {
-    let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().unwrap();
-    let override_bin = tmp.path().join("custom-agent");
-    write_path_executable(&override_bin);
-    let path_dir = tmp.path().join("path-bin");
-    std::fs::create_dir(&path_dir).unwrap();
-    write_path_executable(&path_dir.join("agent"));
-    let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
-    let old_path = std::env::var_os("PATH");
+mod resolve_agent_bin_unix_tests {
+    use super::{resolve_agent_bin, write_path_executable};
 
-    unsafe {
-        std::env::set_var("MALVIN_AGENT_ACP_BIN", &override_bin);
-        std::env::set_var("PATH", &path_dir);
+    #[test]
+    fn resolve_agent_bin_prefers_env_override() {
+        let _guard = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let override_bin = tmp.path().join("custom-agent");
+        write_path_executable(&override_bin);
+        let path_dir = tmp.path().join("path-bin");
+        std::fs::create_dir(&path_dir).unwrap();
+        write_path_executable(&path_dir.join("agent"));
+        let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
+        let old_path = std::env::var_os("PATH");
+
+        unsafe {
+            std::env::set_var("MALVIN_AGENT_ACP_BIN", &override_bin);
+            std::env::set_var("PATH", &path_dir);
+        }
+
+        assert_eq!(resolve_agent_bin().as_deref(), Some(override_bin.as_path()));
+
+        unsafe {
+            if let Some(value) = old_override {
+                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
+            } else {
+                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            }
+            if let Some(value) = old_path {
+                std::env::set_var("PATH", value);
+            } else {
+                std::env::remove_var("PATH");
+            }
+        }
     }
 
-    assert_eq!(resolve_agent_bin().as_deref(), Some(override_bin.as_path()));
+    #[test]
+    fn resolve_agent_bin_prefers_agent_when_both_agent_and_cursor_on_path() {
+        let _guard = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let path_dir = tmp.path().join("bin");
+        std::fs::create_dir(&path_dir).unwrap();
+        let agent_bin = path_dir.join("agent");
+        let cursor_bin = path_dir.join("cursor-agent");
+        write_path_executable(&agent_bin);
+        write_path_executable(&cursor_bin);
+        let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
+        let old_path = std::env::var_os("PATH");
 
-    unsafe {
-        if let Some(value) = old_override {
-            std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-        } else {
+        unsafe {
             std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            std::env::set_var("PATH", &path_dir);
         }
-        if let Some(value) = old_path {
-            std::env::set_var("PATH", value);
-        } else {
-            std::env::remove_var("PATH");
+
+        assert_eq!(resolve_agent_bin().as_deref(), Some(agent_bin.as_path()));
+
+        unsafe {
+            if let Some(value) = old_override {
+                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
+            } else {
+                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            }
+            if let Some(value) = old_path {
+                std::env::set_var("PATH", value);
+            } else {
+                std::env::remove_var("PATH");
+            }
         }
     }
-}
 
-#[test]
-#[cfg(unix)]
-fn resolve_agent_bin_prefers_agent_when_both_agent_and_cursor_on_path() {
-    let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().unwrap();
-    let path_dir = tmp.path().join("bin");
-    std::fs::create_dir(&path_dir).unwrap();
-    let agent_bin = path_dir.join("agent");
-    let cursor_bin = path_dir.join("cursor-agent");
-    write_path_executable(&agent_bin);
-    write_path_executable(&cursor_bin);
-    let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
-    let old_path = std::env::var_os("PATH");
+    #[test]
+    fn resolve_agent_bin_falls_back_to_cursor_agent_on_path() {
+        let _guard = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let path_dir = tmp.path().join("bin");
+        std::fs::create_dir(&path_dir).unwrap();
+        let cursor_agent = path_dir.join("cursor-agent");
+        write_path_executable(&cursor_agent);
+        let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
+        let old_path = std::env::var_os("PATH");
 
-    unsafe {
-        std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-        std::env::set_var("PATH", &path_dir);
-    }
-
-    assert_eq!(resolve_agent_bin().as_deref(), Some(agent_bin.as_path()));
-
-    unsafe {
-        if let Some(value) = old_override {
-            std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-        } else {
+        unsafe {
             std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            std::env::set_var("PATH", &path_dir);
         }
-        if let Some(value) = old_path {
-            std::env::set_var("PATH", value);
-        } else {
-            std::env::remove_var("PATH");
-        }
-    }
-}
 
-#[test]
-#[cfg(unix)]
-fn resolve_agent_bin_falls_back_to_cursor_agent_on_path() {
-    let _guard = crate::test_utils::test_env_lock();
-    let tmp = tempfile::tempdir().unwrap();
-    let path_dir = tmp.path().join("bin");
-    std::fs::create_dir(&path_dir).unwrap();
-    let cursor_agent = path_dir.join("cursor-agent");
-    write_path_executable(&cursor_agent);
-    let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
-    let old_path = std::env::var_os("PATH");
+        assert_eq!(resolve_agent_bin().as_deref(), Some(cursor_agent.as_path()));
 
-    unsafe {
-        std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-        std::env::set_var("PATH", &path_dir);
-    }
-
-    assert_eq!(resolve_agent_bin().as_deref(), Some(cursor_agent.as_path()));
-
-    unsafe {
-        if let Some(value) = old_override {
-            std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-        } else {
-            std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-        }
-        if let Some(value) = old_path {
-            std::env::set_var("PATH", value);
-        } else {
-            std::env::remove_var("PATH");
+        unsafe {
+            if let Some(value) = old_override {
+                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
+            } else {
+                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            }
+            if let Some(value) = old_path {
+                std::env::set_var("PATH", value);
+            } else {
+                std::env::remove_var("PATH");
+            }
         }
     }
 }

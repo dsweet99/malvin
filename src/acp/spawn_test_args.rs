@@ -1,10 +1,10 @@
 use std::path::Path;
 use std::time::Duration;
 
-use super::AcpSpawnArgs;
+use crate::acp::AcpSpawnArgs;
 
 #[cfg(test)]
-pub(super) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpawnArgs<'a> {
+pub(crate) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpawnArgs<'a> {
     AcpSpawnArgs {
         cwd,
         bin_override: Some(bin),

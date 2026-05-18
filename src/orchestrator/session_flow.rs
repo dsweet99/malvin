@@ -77,12 +77,111 @@ async fn run_review_phases_until_pre_summary(
 }
 
 #[cfg(test)]
-mod kiss_coverage_tests {
-    #[test]
-    fn kiss_stringify_session_flow_units() {
-        let _ = stringify!(super::run_coder_session_until_pre_summary);
-        let _ = stringify!(super::run_bug_remediation_until_pre_summary);
-        let _ = stringify!(super::run_coder_session_summary_only);
-        let _ = stringify!(super::run_review_phases_until_pre_summary);
+mod session_flow_smoke_tests {
+    use super::{
+        run_bug_remediation_until_pre_summary, run_coder_session_summary_only,
+        run_coder_session_until_pre_summary, run_review_phases_until_pre_summary,
+    };
+    use crate::acp::AgentClient;
+    use crate::artifacts::RunArtifacts;
+    use crate::orchestrator::orchestrator_test_support::{empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke};
+    use crate::orchestrator::{Orchestrator, WorkflowConfig};
+    use crate::prompts::PromptStore;
+
+    enum NoSessionStep {
+        Summary,
+        BugRemediation,
+        CoderUntilPreSummary { skip_check_plan: bool },
+        ReviewPhases,
+    }
+
+    fn mk_orchestrator<'a>(
+        client: &'a mut AgentClient,
+        store: &'a PromptStore,
+        artifacts: &'a RunArtifacts,
+        skip_check_plan: bool,
+    ) -> Orchestrator<'a> {
+        Orchestrator {
+            client,
+            prompts: store,
+            artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: empty_dotfile_backups(),
+        }
+    }
+
+    async fn assert_fails_without_coder_session(step: NoSessionStep, expect_err: &'static str) {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts, store, ctx) = workflow_ctx_for_smoke(&tmp, "sf_smoke");
+        let mut client = no_session_client();
+        let skip = matches!(
+            &step,
+            NoSessionStep::CoderUntilPreSummary {
+                skip_check_plan: true
+            }
+        );
+        let mut orch = mk_orchestrator(&mut client, &store, &artifacts, skip);
+        let err = match step {
+            NoSessionStep::Summary => run_coder_session_summary_only(&mut orch, &ctx).await,
+            NoSessionStep::BugRemediation => {
+                run_bug_remediation_until_pre_summary(&mut orch, &ctx).await
+            }
+            NoSessionStep::CoderUntilPreSummary { .. } => {
+                run_coder_session_until_pre_summary(&mut orch, &ctx).await
+            }
+            NoSessionStep::ReviewPhases => {
+                run_review_phases_until_pre_summary(&mut orch, &ctx).await
+            }
+        }
+        .expect_err(expect_err);
+        assert!(
+            err.0.contains("begin_coder_session"),
+            "unexpected err: {}",
+            err.0
+        );
+    }
+
+    #[tokio::test]
+    async fn summary_only_errors_when_coder_session_not_open() {
+        assert_fails_without_coder_session(
+            NoSessionStep::Summary,
+            "expected prompt without session",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn bug_remediation_until_pre_summary_errors_when_coder_session_not_open() {
+        assert_fails_without_coder_session(
+            NoSessionStep::BugRemediation,
+            "expected prompt without session",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn coder_session_until_pre_summary_errors_when_coder_session_not_open_skip_plan() {
+        assert_fails_without_coder_session(
+            NoSessionStep::CoderUntilPreSummary {
+                skip_check_plan: true,
+            },
+            "expected implement without session",
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn review_phases_errors_when_coder_session_not_open() {
+        assert_fails_without_coder_session(
+            NoSessionStep::ReviewPhases,
+            "expected review prompt without session",
+        )
+        .await;
     }
 }

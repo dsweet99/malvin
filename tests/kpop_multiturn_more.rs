@@ -1,11 +1,11 @@
 mod common;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use common::{MtStubPrompts, append_kpop_line, append_mbc2_line, parse_kpop_want};
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
+use malvin::KpopCaptureWants;
 use malvin::kpop_progression::{
     KpopMultiturnParams, KpopMultiturnState, block_mean_from_p_creative, count_mbc2_entries,
     poisson_block_size,
@@ -14,7 +14,7 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 
 fn advance_until_first_mbc2_hit(
-    state: &mut KpopMultiturnState<MtStubPrompts>,
+    state: &mut KpopMultiturnState<'_>,
     path: &std::path::Path,
 ) -> bool {
     let mut step = 1usize;
@@ -43,7 +43,7 @@ fn mbc2_pure_retries_once_when_no_new_mbc2_line() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path.clone(),
         max_hypotheses: 20,
         p_creative: 0.5,
@@ -74,7 +74,7 @@ fn kpop_solved_stops_before_mbc2_when_creative_enabled() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "## Step 1 — KPOP test\n## KPOP_SOLVED\ndone\n").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
         max_hypotheses: 50,
         p_creative: 0.5,
@@ -82,21 +82,6 @@ fn kpop_solved_stops_before_mbc2_when_creative_enabled() {
     })
     .unwrap();
     assert!(state.next_prompt().expect("after solved").is_none());
-}
-
-struct CaptureWants {
-    wants: Rc<RefCell<Vec<usize>>>,
-}
-
-impl KpopMultiturnPrompts for CaptureWants {
-    fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        self.wants.borrow_mut().push(want);
-        Ok(format!("stub kpop want={want}"))
-    }
-
-    fn mbc2_pure(&mut self) -> Result<String, String> {
-        Ok("stub mbc2".into())
-    }
 }
 
 fn overshoot_pair_sizes(rng_seed: u64) -> (usize, usize, usize) {
@@ -124,11 +109,11 @@ fn append_kpop_steps(path: &std::path::Path, from: usize, to: usize) {
 struct OvershootCtx {
     _tmp: tempfile::TempDir,
     path: std::path::PathBuf,
-    state: KpopMultiturnState<CaptureWants>,
+    state: KpopMultiturnState<'static>,
     tn1: usize,
     overshoot: usize,
     expected_n2: usize,
-    wants: Rc<RefCell<Vec<usize>>>,
+    wants: Arc<Mutex<Vec<usize>>>,
 }
 
 fn overshoot_open(seed: u64) -> OvershootCtx {
@@ -136,12 +121,9 @@ fn overshoot_open(seed: u64) -> OvershootCtx {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
-    let wants = Rc::new(RefCell::new(Vec::new()));
-    let cap = CaptureWants {
-        wants: Rc::clone(&wants),
-    };
+    let wants = Arc::new(Mutex::new(Vec::new()));
     let state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: cap,
+        builder: KpopMultiturnPrompts::StubCapture(KpopCaptureWants::new(Arc::clone(&wants))),
         exp_log_path: path.clone(),
         max_hypotheses: 1000,
         p_creative: 0.0,
@@ -180,7 +162,11 @@ fn overshoot_two_block_wants(seed: u64) -> (usize, usize, Vec<usize>) {
     let mut ctx = overshoot_open(seed);
     overshoot_assert_first(&mut ctx);
     overshoot_assert_second(&mut ctx);
-    (ctx.tn1, ctx.expected_n2, ctx.wants.borrow().to_vec())
+    (
+        ctx.tn1,
+        ctx.expected_n2,
+        ctx.wants.lock().expect("wants lock").clone(),
+    )
 }
 
 #[test]

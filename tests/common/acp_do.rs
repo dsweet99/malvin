@@ -97,7 +97,7 @@ pub fn acp_mock_tidy_fanout_branches(
     else_tail: &str,
 ) -> String {
     format!(
-        r"    if (promptText.includes('Spawn one subagent for each of these prompts')) {{
+        r"    if (promptText.includes('KPop: Review the codebase for these problems')) {{
 {spawn_branch}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_tail}
@@ -144,12 +144,8 @@ pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
       }}
 {coder}"
     );
-    let body = acp_mock_tidy_fanout_branches(
-        &write_review_prep_output(),
-        &review_tail,
-        "",
-        &coder_abort,
-    );
+    let body =
+        acp_mock_tidy_fanout_branches(&write_review_prep_output(), &review_tail, "", &coder_abort);
     acp_mock_code_with_run_dir_js(&body)
 }
 
@@ -163,12 +159,8 @@ pub fn acp_mock_tidy_lgtm_abort_on_learn_js() -> String {
 {learn_abort}
     }}"
     );
-    let body = acp_mock_tidy_fanout_branches(
-        &write_review_prep_output(),
-        &review_tail,
-        &between,
-        &coder,
-    );
+    let body =
+        acp_mock_tidy_fanout_branches(&write_review_prep_output(), &review_tail, &between, &coder);
     acp_mock_code_with_run_dir_js(&body)
 }
 
@@ -234,8 +226,8 @@ pub fn acp_mock_tidy_fanout_skips_reviewer_outputs_js() -> String {
 
 #[cfg(test)]
 mod tidy_fanout_body_tests {
-    use super::acp_mock_tidy_fanout_body;
     use super::CONCERNS_PROMPT_MATCH_JS;
+    use super::acp_mock_tidy_fanout_body;
 
     #[test]
     fn acp_mock_tidy_fanout_body_branches_on_concerns_prompt() {

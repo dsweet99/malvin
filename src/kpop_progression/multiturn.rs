@@ -29,16 +29,16 @@ pub enum NextStep {
     Emit(MultiturnPrompt),
 }
 
-pub struct KpopMultiturnParams<B> {
-    pub builder: B,
+pub struct KpopMultiturnParams<'a> {
+    pub builder: KpopMultiturnPrompts<'a>,
     pub exp_log_path: PathBuf,
     pub max_hypotheses: usize,
     pub p_creative: f64,
     pub rng: StdRng,
 }
 
-pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
-    builder: B,
+pub struct KpopMultiturnState<'a> {
+    builder: KpopMultiturnPrompts<'a>,
     exp_log_path: PathBuf,
     pub max_hypotheses: usize,
     pub p_creative: f64,
@@ -47,7 +47,7 @@ pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
     phase: Phase,
     done: bool,
 }
-impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
+impl<'a> KpopMultiturnState<'a> {
     pub fn exp_log_path(&self) -> &std::path::Path {
         &self.exp_log_path
     }
@@ -58,7 +58,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     ///
     /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
     pub fn new(
-        builder: B,
+        builder: KpopMultiturnPrompts<'a>,
         exp_log_path: PathBuf,
         max_hypotheses: usize,
         p_creative: f64,
@@ -77,7 +77,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     /// # Errors
     ///
     /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
-    pub fn from_params(mut params: KpopMultiturnParams<B>) -> Result<Self, String> {
+    pub fn from_params(mut params: KpopMultiturnParams<'a>) -> Result<Self, String> {
         let text = read_exp_log_text(&params.exp_log_path)?;
         let hypotheses_before = hypotheses_emitted(&text);
         let mean = block_mean_from_p_creative(params.p_creative);

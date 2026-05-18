@@ -1,5 +1,8 @@
 //! Behavioral smoke tests for CLI helpers.
 
+use super::entrypoint::{require_kiss_for_cli_command, try_tokio_runtime};
+use super::{Cli, Commands};
+
 #[test]
 fn smoke_has_source_files_empty_dir() {
     let tmp = tempfile::tempdir().unwrap();
@@ -33,13 +36,11 @@ fn smoke_prefer_primary_over_secondary() {
     );
 }
 
-fn empty_session_backups(
-    work: &std::path::Path,
-) -> crate::artifacts::SessionDotfileBackups {
-    crate::artifacts::SessionDotfileBackups::from_parts(
-        crate::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
+fn empty_session_backups(work: &std::path::Path) -> malvin::artifacts::SessionDotfileBackups {
+    malvin::artifacts::SessionDotfileBackups::from_parts(
+        malvin::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
+        malvin::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
+        malvin::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
     )
 }
 
@@ -102,18 +103,18 @@ fn smoke_agent_io_options_maps_flags() {
 #[test]
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
-    let cli = super::Cli::try_parse_from(["malvin", "models"]).unwrap();
-    assert!(matches!(cli.command, super::Commands::Models(_)));
+    let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
+    assert!(matches!(cli.command, Commands::Models(_)));
 }
 
 #[test]
 fn smoke_try_tokio_runtime_builds_multi_thread() {
-    let _rt = super::try_tokio_runtime().expect("tokio runtime");
+    let _rt = try_tokio_runtime().expect("tokio runtime");
 }
 
 #[test]
 fn smoke_require_kiss_for_cli_command_models_does_not_require_kiss_bin() {
     use clap::Parser;
-    let cli = super::Cli::try_parse_from(["malvin", "models"]).unwrap();
-    assert!(super::require_kiss_for_cli_command(&cli.command).is_ok());
+    let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
+    assert!(require_kiss_for_cli_command(&cli.command).is_ok());
 }

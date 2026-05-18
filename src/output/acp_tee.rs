@@ -142,7 +142,7 @@ fn acp_tee_payload_prefix_width(prefix: &str) -> usize {
 }
 
 fn print_acp_tee_stdout_markdown_line(prefix: &str, rendered_payload: &str) {
-    println!("{prefix}{rendered_payload}");
+    super::print_stdout_rendered_line(&format!("{prefix}{rendered_payload}"));
 }
 
 fn print_acp_tee_stdout_markdown_lines(prefix: &str, rendered_payloads: &[String]) {
@@ -181,7 +181,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         } else {
             super::format_line_with_timestamp(ctx.ts, ctx.who, ctx.line)
         };
-        println!("{s}");
+        super::print_stdout_rendered_line(&s);
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
@@ -201,7 +201,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         } else {
             super::format_line_with_timestamp(ctx.ts, ctx.who, &seg)
         };
-        println!("{s}");
+        super::print_stdout_rendered_line(&s);
     }
 }
 

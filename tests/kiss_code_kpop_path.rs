@@ -155,12 +155,12 @@ fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
     std::fs::create_dir_all(&isolated_bin).unwrap();
     #[cfg(unix)]
     let out = run_malvin_path_timed(&isolated_bin, |c| {
-        c.arg("bug");
+        c.args(["bug"]);
     });
     #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
-        .arg("bug")
+        .args(["bug"])
         .output()
         .expect("spawn malvin");
     assert!(!out.status.success());

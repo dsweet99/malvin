@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
 #[test]
+fn effective_tidy_max_loops_zero_means_one() {
+    assert_eq!(crate::cli::tidy_flow::effective_tidy_max_loops(0), 1);
+}
+
+#[test]
 fn tidy_recovery_stdout_line_labels_recovery_not_budget_iteration() {
     assert_eq!(
         crate::cli::tidy_flow::recovery::tidy_recovery_stdout_line(2, 1),
@@ -21,11 +26,11 @@ fn write_checks_do_not_pass_writes_marker_line() {
 
 #[test]
 fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
-    use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
+    use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
 
     let t = tempfile::tempdir().expect("tempdir");
     let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
+        malvin::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
             .expect("artifacts");
     let artifact = artifacts.artifact_review_md();
     let workspace = artifacts.workspace_review_md();
@@ -43,7 +48,7 @@ fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
 
 #[test]
 fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
-    let store = crate::prompts::PromptStore::default_store();
+    let store = malvin::prompts::PromptStore::default_store();
     let mut ctx = HashMap::new();
     ctx.insert("memories".to_string(), String::new());
     ctx.insert(

@@ -56,10 +56,4 @@ mod tests {
             .expect_err("both failed");
         assert!(err.contains("workspace session restore failed"));
     }
-
-    #[test]
-    fn kiss_stringify_workflow_merge_units() {
-        let _ = stringify!(super::merge_workflow_run_and_restore);
-        let _ = stringify!(super::merge_string_run_and_restore);
-    }
 }

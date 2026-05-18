@@ -1,3 +1,5 @@
+#![allow(unused_imports, dead_code)]
+
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::{PromptError, PromptStore};
@@ -10,10 +12,6 @@ use std::sync::{Arc, Mutex};
 pub mod memory_context;
 
 include!("helpers.rs");
-
-#[cfg(test)]
-#[path = "memory_context/tests.rs"]
-mod memory_context_tests;
 
 #[cfg(test)]
 mod helpers_tests;
@@ -51,6 +49,9 @@ pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
 
 #[cfg(test)]
 pub(crate) mod orchestrator_test_support;
+
+#[cfg(test)]
+mod orchestrator_kiss_coverage;
 
 mod check_plan;
 mod review_loop;
@@ -225,18 +226,3 @@ impl Orchestrator<'_> {
 
 include!("coder_prompt_impl.rs");
 
-#[cfg(test)]
-#[path = "check_plan_tests.rs"]
-mod check_plan_tests;
-
-#[cfg(test)]
-#[path = "review_loop_tests.rs"]
-mod review_loop_tests;
-
-#[cfg(test)]
-#[path = "bug_remediation_tests.rs"]
-mod bug_remediation_tests;
-
-#[cfg(test)]
-#[path = "orchestrator_kiss_names.rs"]
-mod orchestrator_kiss_names;

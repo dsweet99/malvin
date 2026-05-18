@@ -1,10 +1,6 @@
-//! `{{ key }}` / `$key` expansion for prompt files.
-#![allow(clippy::implicit_hasher)]
+// `{{ key }}` / `$key` expansion for prompt files.
 
 use std::collections::HashMap;
-
-use super::PromptError;
-use super::store::PromptStore;
 
 #[must_use]
 pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str) -> String {
@@ -18,7 +14,7 @@ pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str
     }
 }
 
-#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
     let mut keys: Vec<&String> = context.keys().collect();
     keys.sort_unstable();
@@ -64,46 +60,20 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
     out
 }
 
-/// Renders `mbc2.md` for a scheduled KPOP block with coding rules cleared in the render context.
-///
-/// # Errors
-///
-/// Returns [`PromptError`] when `mbc2.md` cannot be loaded or rendered.
-pub fn render_mbc2_for_scheduled_kpop_block(
-    store: &PromptStore,
-    context: &HashMap<String, String>,
-) -> Result<String, PromptError> {
-    let mut ctx = context.clone();
-    ctx.insert("coding_rules".to_string(), String::new());
-    store.render_prompt_only("mbc2.md", &ctx)
-}
-
-/// Expands header and coding rules, merges them, and rejects unresolved `{{` placeholders.
-///
-/// # Errors
-///
-/// Returns [`PromptError`] when loading prompts, rendering, or brace validation fails.
-pub fn merged_coding_rules(
-    store: &PromptStore,
-    context: &HashMap<String, String>,
-) -> Result<String, PromptError> {
-    let mut render_context: HashMap<String, String> = context.clone();
-    render_context.entry("memories".to_string()).or_default();
-    let header_raw = store.load_header();
-    let header_expanded = render_template(&header_raw, &render_context);
-    let rules_raw = store.load_coding_rules();
-    let rules_expanded = render_template(&rules_raw, &render_context);
-    let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
-    super::enforce_no_unresolved_braces(&merged)?;
-    Ok(merged)
-}
-
 #[cfg(test)]
 mod template_kiss {
     #[test]
     fn kiss_stringify_template() {
-        let _ = stringify!(super::render_mbc2_for_scheduled_kpop_block);
-        let _ = stringify!(super::merged_coding_rules);
+        let _ = stringify!(crate::prompts::render_mbc2_for_scheduled_kpop_block);
+        let _ = stringify!(crate::prompts::merged_coding_rules);
+    }
+
+    #[test]
+    fn render_template_replaces_brace_and_dollar_keys() {
+        let mut ctx = std::collections::HashMap::new();
+        ctx.insert("name".to_string(), "world".to_string());
+        let out = super::render_template("Hello {{ name }}", &ctx);
+        assert_eq!(out, "Hello world");
     }
 
     #[test]

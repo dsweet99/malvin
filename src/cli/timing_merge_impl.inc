@@ -1,9 +1,9 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::acp::AgentClient;
-use crate::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
-use crate::run_timing::RunTiming;
+use malvin::acp::AgentClient;
+use malvin::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
+use malvin::run_timing::RunTiming;
 
 /// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
 pub fn merge_acp_and_timing_results(
@@ -49,7 +49,7 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 ) -> Result<(), String> {
     let merge_result =
         merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
-    if let Some(abort) = crate::orchestrator::check_abort(result_path) {
+    if let Some(abort) = malvin::orchestrator::check_abort(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
             Err(merge_error) => {
@@ -80,14 +80,14 @@ fn duplicate_safe_restore_error(merge_error: &str) -> String {
     }
 }
 
-/// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`crate::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
+/// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`malvin::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
 pub fn emit_run_timing_after_acp(
     client: &mut AgentClient,
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = crate::run_timing::finalize_and_emit_run_timing(run_dir, timing);
+    let timing_result = malvin::run_timing::finalize_and_emit_run_timing(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
 }
@@ -100,7 +100,7 @@ pub fn emit_run_timing_json_only_after_acp(
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
+    let timing_result = malvin::run_timing::finalize_run_timing_json_only(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
 }

@@ -85,7 +85,8 @@ fn tidy_max_loops_one_non_lgtm_concerns_recovery_can_exit_zero() {
         "max-loops-1 post-concerns recovery must not print a budgeted iteration overflow: {combined:?}"
     );
     let run_dir = only_run_dir(&workspace);
-    let artifact = std::fs::read_to_string(run_dir.join("review.md")).expect("read artifact review");
+    let artifact =
+        std::fs::read_to_string(run_dir.join("review.md")).expect("read artifact review");
     assert!(
         malvin::review_sync::is_lgtm_str(&artifact),
         "post-recovery review must be LGTM in run_dir artifact: {artifact:?}"

@@ -1,3 +1,6 @@
+use malvin::artifacts::{
+    backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
+};
 use malvin::repo_gates;
 use std::path::Path;
 use std::process::Command;
@@ -19,8 +22,11 @@ pub fn run_repo_workspace_gates(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), String> {
-    run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
-        .map_err(RepoGateFailure::into_error)
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
+    let result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
+        .map_err(RepoGateFailure::into_error);
+    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
+    result
 }
 
 /// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
@@ -31,8 +37,11 @@ pub fn run_repo_workspace_gates_no_kiss_clamp(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), String> {
-    run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
-        .map_err(RepoGateFailure::into_error)
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
+    let result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
+        .map_err(RepoGateFailure::into_error);
+    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
+    result
 }
 
 pub fn run_repo_workspace_gates_with_details(

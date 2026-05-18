@@ -183,6 +183,34 @@ pub fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 #[cfg(test)]
+pub fn with_isolated_home<F>(f: F)
+where
+    F: FnOnce(&Path),
+{
+    let _lock = test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(&home).unwrap();
+    let old_home = std::env::var_os("HOME");
+    {
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("HOME", &home);
+        }
+    }
+    let work = tmp.path().join("repo");
+    std::fs::create_dir_all(&work).unwrap();
+    f(&work);
+    #[allow(unsafe_code)]
+    unsafe {
+        match old_home {
+            Some(h) => std::env::set_var("HOME", h),
+            None => std::env::remove_var("HOME"),
+        }
+    }
+}
+
+#[cfg(test)]
 mod start_log_header_tests {
     use std::process::Command;
 

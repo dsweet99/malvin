@@ -8,19 +8,32 @@ use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{KPOP_CATCHUP_CAP, hypotheses_emitted};
 use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
+use malvin::KpopEchoPrompts;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use std::path::Path;
 
-struct EchoPrompts;
-
-impl KpopMultiturnPrompts for EchoPrompts {
-    fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("K{want}"))
+fn mbc2_seek_iteration(
+    state: &mut KpopMultiturnState<'_>,
+    path: &Path,
+    step: &mut usize,
+) -> bool {
+    let p = state.next_prompt().expect("prompt");
+    let Some(pr) = p else {
+        panic!("unexpected stop");
+    };
+    let s = pr.as_str();
+    if s == "stub mbc2" {
+        let again = state.next_prompt().expect("again").unwrap();
+        assert_eq!(again.as_str(), "stub mbc2");
+        return true;
     }
-
-    fn mbc2_pure(&mut self) -> Result<String, String> {
-        Ok("M".into())
+    let w = parse_kpop_want(s).expect("kpop");
+    for _ in 0..w {
+        append_kpop_line(path, *step);
+        *step += 1;
     }
+    false
 }
 
 #[test]
@@ -33,7 +46,7 @@ fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
     )
     .unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: EchoPrompts,
+        builder: KpopMultiturnPrompts::StubEcho(KpopEchoPrompts),
         exp_log_path: path,
         max_hypotheses: 3,
         p_creative: 0.5,
@@ -48,7 +61,7 @@ fn multiturn_exits_when_exp_log_hits_success_marker() {
     let tmp = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(tmp.path(), "## KPOP_SOLVED\nx\n").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: EchoPrompts,
+        builder: KpopMultiturnPrompts::StubEcho(KpopEchoPrompts),
         exp_log_path: tmp.path().to_path_buf(),
         max_hypotheses: 100,
         p_creative: 0.0,
@@ -64,7 +77,7 @@ fn kpop_want_respects_global_max_hypotheses() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
         max_hypotheses: 3,
         p_creative: 0.0,
@@ -85,7 +98,7 @@ fn kpop_block_finishes_after_agent_writes_enough_steps() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path.clone(),
         max_hypotheses: 50,
         p_creative: 0.0,
@@ -111,7 +124,7 @@ fn kpop_catch_up_exhausted_returns_error_when_log_stays_empty() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
         max_hypotheses: 100,
         p_creative: 0.0,
@@ -137,7 +150,7 @@ fn mbc2_without_dispatch_record_reissues_first_prompt() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: MtStubPrompts,
+        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path.clone(),
         max_hypotheses: 20,
         p_creative: 0.5,
@@ -146,20 +159,8 @@ fn mbc2_without_dispatch_record_reissues_first_prompt() {
     .unwrap();
     let mut step = 1usize;
     for _ in 0..MBC2_SEEK_MAX_STEPS {
-        let p = state.next_prompt().expect("prompt");
-        let Some(pr) = p else {
-            panic!("unexpected stop");
-        };
-        let s = pr.as_str();
-        if s == "stub mbc2" {
-            let again = state.next_prompt().expect("again").unwrap();
-            assert_eq!(again.as_str(), "stub mbc2");
+        if mbc2_seek_iteration(&mut state, &path, &mut step) {
             return;
-        }
-        let w = parse_kpop_want(s).expect("kpop");
-        for _ in 0..w {
-            append_kpop_line(&path, step);
-            step += 1;
         }
     }
     panic!("expected stub mbc2 within {MBC2_SEEK_MAX_STEPS} scheduler steps");

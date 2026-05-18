@@ -19,8 +19,6 @@ KPop: Please review the plan in {{ plan_path }}.
 - Is the plan self-consistent?
 - Is the plan implementable?
 
-Use up to 3 subagents if you think that could speed things up without sacrificing quality.
-
 
 ## Step 3: (Always) Revise plan
 

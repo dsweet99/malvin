@@ -1,5 +1,4 @@
 // Channel state built before the ACP JSON-RPC handshake completes.
-use super::AcpSpawnArgs;
 use rand::{Rng, distributions::Alphanumeric};
 
 /// Verbose logging for ACP (bundled for [`SessionChannelState::into_session_inner`]).

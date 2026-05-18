@@ -1,6 +1,8 @@
 //! PATH lookup, argv capture for traces, and run-dir display paths.
 
 use std::path::{Path, PathBuf};
+
+pub use crate::user_home::user_home_dir;
 use std::sync::OnceLock;
 
 static COMMAND_LINE: OnceLock<String> = OnceLock::new();
@@ -146,6 +148,12 @@ mod invocation_tests {
         init_from_env();
         let line = command_line().expect("command line after init");
         assert!(!line.is_empty());
+    }
+
+    #[test]
+    fn agent_bin_and_rpc_timeout_from_env() {
+        let _ = agent_or_cursor_agent_bin();
+        assert!(acp_rpc_timeout_secs_from_env() >= 1);
     }
 }
 

@@ -135,9 +135,3 @@ fn format_prompt_path_uses_display_when_not_under_base() {
     );
     let _ = std::fs::remove_dir_all(&outside);
 }
-
-#[test]
-fn kiss_stringify_review_loop_helpers() {
-    let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
-}

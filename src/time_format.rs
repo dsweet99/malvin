@@ -14,8 +14,7 @@ mod tests {
 
     #[test]
     fn timestamp_now_string_nonempty() {
-        let s = timestamp_now_string();
-        assert!(!s.is_empty());
+        assert!(!timestamp_now_string().is_empty());
         let _ = stringify!(timestamp_now_string);
     }
 }
