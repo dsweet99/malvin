@@ -1,7 +1,13 @@
-include!("tidy_flow/helpers.rs");
+mod tidy_flow_helpers {
+    #![allow(unused_imports)]
+    include!("tidy_flow/helpers_root.inc");
+}
+pub use tidy_flow_helpers::*;
 
 use clap::Args;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
+use crate::output::{MALVIN_WHO, print_stdout_line};
+
+use super::{SharedOpts, WorkflowCliOptions};
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
@@ -10,6 +16,11 @@ pub struct TidyArgs {
     pub max_loops: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
+}
+
+#[must_use]
+pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
+    max_loops.max(1)
 }
 
 pub async fn run_tidy(
@@ -70,8 +81,7 @@ pub async fn run_tidy(
     r
 }
 
-mod coverage_tests;
-
 #[cfg(test)]
-#[path = "tidy_flow/helpers/tests.rs"]
-mod tidy_flow_helpers_tests;
+mod tidy_flow_helpers_tests {
+    include!("tidy_flow/helpers_tests.inc");
+}
