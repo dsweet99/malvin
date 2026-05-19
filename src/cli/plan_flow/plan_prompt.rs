@@ -54,10 +54,30 @@ pub fn plan_prompt_context(
 
 #[cfg(test)]
 mod plan_prompt_coverage {
+    use std::path::Path;
+
+    use crate::artifacts::create_run_artifacts;
+
     #[test]
     fn kiss_stringify_plan_prompt_units() {
         let _ = stringify!(super::prepare_plan_prompt_store);
         let _ = stringify!(super::compose_plan_prompt);
         let _ = stringify!(super::plan_prompt_context);
+    }
+
+    #[test]
+    fn compose_plan_prompt_renders_embedded_review_plan_without_braces() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan_path = tmp.path().join("plan.md");
+        std::fs::write(&plan_path, "plan body\n").expect("write plan");
+        let artifacts =
+            create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
+        let store = super::prepare_plan_prompt_store().expect("store");
+        let ctx = super::plan_prompt_context(&artifacts, &plan_path, &store).expect("ctx");
+        let prompt = super::compose_plan_prompt(&store, &ctx).expect("compose");
+        assert!(
+            !prompt.contains("{{"),
+            "compose_plan_prompt must expand every {{ key }} placeholder"
+        );
     }
 }

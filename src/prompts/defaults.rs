@@ -70,12 +70,40 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod review_plan_embed_tests {
-    use super::default_file;
+    use std::path::Path;
+
+    use super::{DEFAULT_PROMPTS, default_file};
+    use crate::artifacts::create_run_artifacts;
+    use crate::orchestrator::workflow_context;
+    use crate::prompts::{PromptStore, malformed_brace_placeholders};
 
     #[test]
-    fn embedded_review_plan_starts_with_kpop_placeholder_line() {
-        let s = default_file("review_plan.md").expect("review_plan must be embedded");
-        assert!(s.contains("{{ kpop }}"));
+    fn embedded_default_prompts_use_spaced_brace_placeholders() {
+        for name in DEFAULT_PROMPTS {
+            let text = default_file(name).unwrap_or_else(|| panic!("{name} must be embedded"));
+            let bad = malformed_brace_placeholders(text);
+            assert!(bad.is_empty(), "{name}: {bad:?}");
+        }
+    }
+
+    #[test]
+    fn embedded_review_plan_renders_without_unresolved_braces() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan_path = tmp.path().join("plan.md");
+        std::fs::write(&plan_path, "plan body\n").expect("write plan");
+        let artifacts =
+            create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
+        let store = PromptStore::default_store();
+        let mut ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
+        ctx.insert(
+            "plan_path".to_string(),
+            crate::orchestrator::format_prompt_path(&plan_path, &artifacts.work_dir),
+        );
+        let out = store.render("review_plan.md", &ctx).expect("render");
+        assert!(
+            !out.contains("{{"),
+            "embedded review_plan.md must expand all placeholders"
+        );
     }
 }
 

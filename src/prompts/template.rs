@@ -27,6 +27,38 @@ pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> 
     substitute_template(&translated, context)
 }
 
+fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
+    let key = raw.trim();
+    raw.starts_with(' ')
+        && raw.ends_with(' ')
+        && !key.is_empty()
+        && key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Returns each `{{…}}` token in `text` that is not exactly `{{ key }}` (spaces required).
+#[must_use]
+pub fn malformed_brace_placeholders(text: &str) -> Vec<String> {
+    let mut bad = Vec::new();
+    let mut search_from = 0usize;
+    while let Some(rel) = text[search_from..].find("{{") {
+        let open = search_from + rel;
+        let after_open = open + 2;
+        let Some(close_rel) = text[after_open..].find("}}") else {
+            bad.push(text[open..].to_string());
+            break;
+        };
+        let close = after_open + close_rel;
+        let raw = &text[after_open..close];
+        if !is_spaced_brace_placeholder_inner(raw) {
+            bad.push(format!("{{{{{raw}}}}}"));
+        }
+        search_from = close + 2;
+    }
+    bad
+}
+
 /// `$identifier` replacement similar to `string.Template.safe_substitute` (no `${}` brace forms).
 #[must_use]
 pub fn substitute_template(template: &str, context: &HashMap<String, String>) -> String {
@@ -66,6 +98,20 @@ mod template_kiss {
     fn kiss_stringify_template() {
         let _ = stringify!(crate::prompts::render_mbc2_for_scheduled_kpop_block);
         let _ = stringify!(crate::prompts::merged_coding_rules);
+        let _ = stringify!(super::malformed_brace_placeholders);
+        let _ = stringify!(super::is_spaced_brace_placeholder_inner);
+    }
+
+    #[test]
+    fn malformed_brace_placeholders_rejects_unspaced_key() {
+        let bad = super::malformed_brace_placeholders("x {{plan_path}} y");
+        assert_eq!(bad.len(), 1);
+    }
+
+    #[test]
+    fn malformed_brace_placeholders_accepts_spaced_key() {
+        let bad = super::malformed_brace_placeholders("x {{ plan_path }} y");
+        assert!(bad.is_empty());
     }
 
     #[test]

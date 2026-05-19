@@ -102,9 +102,12 @@ fn help_omits_removed_ground_and_sync_commands() {
 }
 
 #[test]
-fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
-    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ kpop }}"));
-    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ plan_path }}"));
+fn default_prompts_review_plan_uses_spaced_brace_placeholders() {
+    let bad = malvin::prompts::malformed_brace_placeholders(DEFAULT_PROMPTS_REVIEW_PLAN);
+    assert!(
+        bad.is_empty(),
+        "review_plan.md must use {{ key }} placeholders: {bad:?}"
+    );
 }
 
 #[test]

@@ -66,7 +66,9 @@ pub use output::{
     ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, init_stdout_style,
     print_log_error, print_log_warning, print_stderr_line, print_stdout_line, print_stdout_text,
 };
-pub use prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
+pub use prompts::{
+    HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, merged_coding_rules,
+};
 pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
 };
