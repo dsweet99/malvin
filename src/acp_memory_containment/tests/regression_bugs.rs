@@ -137,15 +137,21 @@ fn memory_limit_exceeded_at_must_not_treat_stale_v2_oom_kill_as_exceeded() {
     );
 }
 
-#[cfg(target_os = "linux")]
-mod spawn_warn_regression {
-    #[test]
-    fn spawn_path_must_warn_when_cgroup_prepare_failed() {
-        assert!(
-            crate::acp_memory_containment::spawn_should_warn_containment_unavailable(false),
-            "plan §5: Linux spawn must warn when containment is inactive after prepare or verify failure"
-        );
-    }
+#[test]
+fn session_spawn_must_emit_containment_unavailable_warn_when_inactive() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    assert!(
+        crate::acp_memory_containment::spawn_should_warn_containment_unavailable(false),
+        "inactive containment must trigger warn policy"
+    );
+    assert!(
+        !crate::acp_memory_containment::spawn_should_warn_containment_unavailable(true),
+        "active containment must not trigger warn policy"
+    );
+    let stderr = capture_stderr_output(crate::acp_memory_containment::emit_containment_unavailable_warn);
+    assert!(stderr.contains(crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN));
+    assert!(stderr.contains("malvin"));
 }
 
 #[test]

@@ -16,4 +16,11 @@ fn kiss_stringify_crate_root_units() {
     let _ = stringify!(crate::child_health::macos::status_char_hint);
     let _ = stringify!(crate::output::timestamp_now_string);
     let _ = stringify!(crate::output::set_stdout_log_path);
+    let _ = stringify!(crate::tracing_init::init_tracing);
+    let _ = stringify!(crate::tracing_init::malvin_log_accepts_tracing_level);
+    let _ = stringify!(crate::tracing_init::format_debug_tracing_field);
+    let _ = stringify!(crate::output::take_captured_stderr_lines);
+    let _ = stringify!(crate::output::clear_captured_stderr_lines);
+    let _ = stringify!(crate::test_stderr_capture::capture_stderr_output);
+    let _ = stringify!(crate::acp_memory_containment::test_support::require_cgroup_integration_test);
 }

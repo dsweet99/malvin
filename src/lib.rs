@@ -38,6 +38,7 @@ mod learn_gate;
 pub mod session_dotfile_backup;
 pub mod run_id;
 mod malvin_constants;
+mod tracing_init;
 mod user_home;
 pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
@@ -150,6 +151,13 @@ mod orchestrator_check_plan_tests;
 
 #[cfg(test)]
 mod malvin_kiss_coverage;
+
+#[cfg(test)]
+#[allow(unsafe_code)]
+mod review_prep_regression;
+
+#[cfg(all(test, unix))]
+mod test_stderr_capture;
 
 #[cfg(test)]
 pub mod test_utils;

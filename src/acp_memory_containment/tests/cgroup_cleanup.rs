@@ -1,4 +1,4 @@
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux {
     use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::spawn_sleep_in_prepared_cgroup;
 
@@ -16,10 +16,8 @@ mod linux {
         let Some((mut child, pid, cgroup_dir, plan)) =
             spawn_sleep_in_prepared_cgroup(&format!("kill-leaf-{}", std::process::id())).await
         else {
-            eprintln!(
-                "SKIP remove_cgroup_dir_kills_process_still_in_leaf: cgroup spawn plan unavailable"
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         assert!(process_exists(pid));
         crate::acp_memory_containment::remove_cgroup_dir(&cgroup_dir);

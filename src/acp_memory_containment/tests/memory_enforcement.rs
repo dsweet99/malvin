@@ -1,4 +1,4 @@
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux {
     use std::process::Stdio;
     use std::time::Duration;
@@ -29,10 +29,8 @@ mod linux {
                 std::process::id()
             ))
         else {
-            eprintln!(
-                "SKIP tiny_cgroup_memory_limit_kills_allocating_child: cgroup spawn plan unavailable"
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("try_prepare_cgroup_spawn_plan failed on host with writable cgroups");
         };
         let limit = plan.memory_max_bytes.min(8 * 1024 * 1024);
         assert!(

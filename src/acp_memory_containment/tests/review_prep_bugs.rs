@@ -3,11 +3,7 @@
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{child_still_running, spawn_sleep_in_prepared_cgroup};
-    use crate::acp_memory_containment::{
-        ContainmentHandle, begin_containment_for_command, complete_containment_after_spawn,
-        finalize_containment_cgroup,
-    };
+    use crate::acp_memory_containment::finalize_containment_cgroup;
 
     #[test]
     fn shutdown_remove_must_not_leave_orphan_cgroup_while_containment_state_is_cloned() {
@@ -86,17 +82,24 @@ mod linux {
         );
     }
 
+}
+
+#[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
+mod linux_cgroup_integration {
+    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{child_still_running, spawn_sleep_in_prepared_cgroup};
+    use crate::acp_memory_containment::{
+        ContainmentHandle, begin_containment_for_command, complete_containment_after_spawn,
+        finalize_containment_cgroup,
+    };
+
     #[tokio::test]
     async fn complete_containment_verify_failure_leaves_child_alive_until_session_abort() {
         let Some((mut child, pid, cgroup_dir, plan)) =
             spawn_sleep_in_prepared_cgroup(&format!("review-prep-verify-{}", std::process::id()))
                 .await
         else {
-            assert!(
-                !crate::acp_memory_containment::test_support::writable_cgroups_on_host(),
-                "expected cgroup-backed sleep child on host with writable cgroups",
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         let bad_handle = ContainmentHandle::Linux {
             cgroup_dir: cgroup_dir.clone(),
@@ -118,11 +121,8 @@ mod linux {
         let Some((mut child, pid, cgroup_dir, plan)) =
             spawn_sleep_in_prepared_cgroup(&format!("review-prep-gate-{}", std::process::id())).await
         else {
-            assert!(
-                !crate::acp_memory_containment::test_support::writable_cgroups_on_host(),
-                "expected cgroup-backed sleep child on host with writable cgroups",
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         let err = crate::acp_memory_containment::complete_and_require_linux_containment_after_spawn(
             Some(pid),
@@ -147,17 +147,11 @@ mod linux {
 
     #[tokio::test]
     async fn containment_must_be_active_before_remove_on_writable_cgroup_host() {
+        crate::acp_memory_containment::test_support::require_cgroup_integration_test();
         let mut cmd = tokio::process::Command::new("true");
         let handle = begin_containment_for_command(&mut cmd);
         let mut child = cmd.spawn().expect("spawn true");
         let c = complete_containment_after_spawn(child.id(), handle).await;
-        if !crate::acp_memory_containment::test_support::writable_cgroups_on_host() {
-            eprintln!(
-                "SKIP containment_must_be_active_before_remove_on_writable_cgroup_host: no writable cgroups"
-            );
-            let _ = child.wait().await;
-            return;
-        }
         assert!(
             c.active(),
             "containment must be active after successful join before teardown"
@@ -166,3 +160,4 @@ mod linux {
         let _ = child.wait().await;
     }
 }
+

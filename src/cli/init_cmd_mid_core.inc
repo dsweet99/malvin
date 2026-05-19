@@ -76,8 +76,9 @@ fn create_initial_commit(root: &Path) -> Result<(), String> {
         .status()
         .is_ok_and(|s| !s.success());
     if has_staged {
-        eprintln!(
-            "init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)"
+        crate::output::print_stderr_line(
+            crate::output::MALVIN_WHO,
+            "init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)",
         );
         run_command_expect_success(
             Command::new("git")

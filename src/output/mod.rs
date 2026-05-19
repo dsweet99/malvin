@@ -20,12 +20,29 @@ use std::io::{IsTerminal, Write, stdout};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 #[cfg(test)]
+use std::cell::RefCell;
+#[cfg(test)]
 use std::sync::Mutex;
 
 use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
+
+#[cfg(test)]
+thread_local! {
+    static CAPTURED_STDERR_LINES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
+pub fn take_captured_stderr_lines() -> Vec<String> {
+    CAPTURED_STDERR_LINES.with(|lines| std::mem::take(&mut *lines.borrow_mut()))
+}
+
+#[cfg(test)]
+pub fn clear_captured_stderr_lines() {
+    CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
+}
 
 /// Announce one outgoing prompt on stdout with a single bracket line `[{label}...]`.
 ///
@@ -157,11 +174,17 @@ pub fn print_stderr_line(who: &str, line: &str) {
     let ts = timestamp_now_string();
     let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, line);
     if !wrap {
-        eprintln!("{}", format_line_with_timestamp(&ts, who, line));
+        let formatted = format_line_with_timestamp(&ts, who, line);
+        eprintln!("{formatted}");
+        #[cfg(test)]
+        CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(formatted));
         return;
     }
     for seg in wrap_words_bounded(max_payload, line) {
-        eprintln!("{}", format_line_with_timestamp(&ts, who, &seg));
+        let formatted = format_line_with_timestamp(&ts, who, &seg);
+        eprintln!("{formatted}");
+        #[cfg(test)]
+        CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(formatted));
     }
 }
 

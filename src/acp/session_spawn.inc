@@ -184,7 +184,6 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
         containment_handle,
     )
     .await;
-    #[cfg(target_os = "linux")]
     if crate::acp_memory_containment::spawn_should_warn_containment_unavailable(
         memory_containment.active(),
     ) {

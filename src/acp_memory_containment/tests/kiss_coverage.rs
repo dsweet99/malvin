@@ -19,25 +19,28 @@ fn kiss_smoke_mod_wrappers() {
 #[cfg(target_os = "linux")]
 mod linux_kiss {
     use crate::acp_memory_containment::resolve_writable_cgroup_parent;
-    use crate::acp_memory_containment::{
-        discard_prepared_cgroup_after_failed_join, try_prepare_cgroup_spawn_plan,
-        verify_pid_in_cgroup,
-    };
-    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::spawn_sleep_in_prepared_cgroup;
-
+    use crate::acp_memory_containment::try_prepare_cgroup_spawn_plan;
     #[test]
     fn kiss_smoke_linux_impl_enforcement_paths() {
         let _ = resolve_writable_cgroup_parent();
         let _ = try_prepare_cgroup_spawn_plan("kiss-smoke");
     }
 
+}
+
+#[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
+mod linux_cgroup_integration {
+    use crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join;
+    use crate::acp_memory_containment::verify_pid_in_cgroup;
+    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::spawn_sleep_in_prepared_cgroup;
+
     #[tokio::test]
     async fn verify_pid_in_cgroup_true_for_joined_sleep_child() {
         let Some((mut child, pid, _cgroup_dir, plan)) =
             spawn_sleep_in_prepared_cgroup(&format!("kiss-verify-{}", std::process::id())).await
         else {
-            eprintln!("SKIP verify_pid_in_cgroup_true_for_joined_sleep_child: no cgroup plan");
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         assert!(
             verify_pid_in_cgroup(pid, &plan),

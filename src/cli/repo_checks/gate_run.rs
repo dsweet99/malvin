@@ -41,10 +41,10 @@ fn append_quality_gates_command_output(
 }
 
 pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_dir: Option<&Path>) {
-    use crate::output::{MALVIN_WHO, print_stdout_line};
+    use crate::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
     match output {
         RepoGateOutput::Tagged => print_stdout_line(MALVIN_WHO, line),
-        RepoGateOutput::Stderr => eprintln!("{line}"),
+        RepoGateOutput::Stderr => print_stderr_line(MALVIN_WHO, line),
     }
     if let Some(dir) = run_log_dir {
         let _ = append_quality_gates_log_line(dir, line);

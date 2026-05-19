@@ -17,6 +17,8 @@ mod tests_gates_unix;
 mod tests_gates_unix_extra;
 #[cfg(test)]
 mod tests_style;
+#[cfg(test)]
+mod review_prep_regression;
 
 pub use types::{RepoGateCommandFailure, RepoGateFailure, RepoGateOutput};
 pub use gate_run::{

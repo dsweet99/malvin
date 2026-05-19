@@ -1,4 +1,4 @@
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux {
     use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{child_still_running, spawn_sleep_in_prepared_cgroup};
     use crate::acp_memory_containment::pid_listed_in_leaf_cgroup;
@@ -9,10 +9,8 @@ mod linux {
             spawn_sleep_in_prepared_cgroup(&format!("regression-join-{}", std::process::id()))
                 .await
         else {
-            eprintln!(
-                "SKIP join_wait_failure_must_evict_child_from_leaf_cgroup: cgroup spawn plan unavailable"
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         let bad_plan = crate::acp_memory_containment::CgroupSpawnPlan {
             cgroup_dir: cgroup_dir.clone(),
@@ -62,10 +60,8 @@ mod linux {
         let Some((mut child, pid, cgroup_dir, _plan)) =
             spawn_sleep_in_prepared_cgroup(&format!("regression-{}", std::process::id())).await
         else {
-            eprintln!(
-                "SKIP discard_after_failed_release_must_not_kill_child_in_leaf: cgroup spawn plan unavailable"
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         let bogus_parent = tempfile::tempdir().expect("tempdir");
         assert!(
@@ -99,10 +95,8 @@ mod linux {
             spawn_sleep_in_prepared_cgroup(&format!("regression-complete-{}", std::process::id()))
                 .await
         else {
-            eprintln!(
-                "SKIP complete_containment_verify_failure_path_must_not_kill_spawned_child: cgroup spawn plan unavailable"
-            );
-            return;
+            crate::acp_memory_containment::test_support::require_cgroup_integration_test();
+            panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
         let handle = ContainmentHandle::Linux {
             cgroup_dir: cgroup_dir.clone(),

@@ -32,6 +32,7 @@ pub fn require_kiss_for_malvin(subcommand: &str) -> Result<(), String> {
 
 pub fn init_from_env() {
     let _ = COMMAND_LINE.get_or_init(|| std::env::args().collect::<Vec<_>>().join(" "));
+    crate::tracing_init::init_tracing();
 }
 
 #[must_use]

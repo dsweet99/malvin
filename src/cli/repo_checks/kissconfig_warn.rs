@@ -17,7 +17,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(
         Err(e) => {
             emit_repo_gate_line(
                 output,
-                &format!("Warning: could not read .kissconfig: {e}"),
+                &format!("could not read .kissconfig: {e}"),
                 run_log_dir,
             );
             return;
@@ -28,7 +28,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(
         Err(e) => {
             emit_repo_gate_line(
                 output,
-                &format!("Warning: could not parse .kissconfig as TOML: {e}"),
+                &format!("could not parse .kissconfig as TOML: {e}"),
                 run_log_dir,
             );
             return;
@@ -39,7 +39,7 @@ pub fn warn_kissconfig_test_coverage_if_needed(
     }
     emit_repo_gate_line(
         output,
-        "Warning: .kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
+        ".kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.",
         run_log_dir,
     );
 }

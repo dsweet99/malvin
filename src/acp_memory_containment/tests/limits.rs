@@ -1,18 +1,9 @@
 #[test]
 fn mod_helpers_surface() {
-    use crate::acp_memory_containment::{
-        ContainmentHandle, remove_containment_handle, write_containment_unavailable_warn,
-    };
+    use crate::acp_memory_containment::{ContainmentHandle, remove_containment_handle};
 
     let _ = crate::acp_memory_containment::half_physical_memory_bytes();
     remove_containment_handle(ContainmentHandle::Inactive);
-    let mut buf = Vec::new();
-    write_containment_unavailable_warn(&mut buf).expect("write");
-    assert!(
-        String::from_utf8(buf)
-            .expect("utf8")
-            .contains("ACP memory containment unavailable")
-    );
 }
 
 #[test]
