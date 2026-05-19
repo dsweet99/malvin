@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn pid_out_of_i32_range_returns_cannot_sample_without_panicking() {
-        let h = sample_child_health(u32::MAX);
+        let h = sample_child_health_macos(u32::MAX);
         assert!(h.exists);
         assert!(!h.counters_trusted);
     }
@@ -165,16 +165,20 @@ mod tests {
 
     #[test]
     fn child_health_from_sampled_task_maps_task_all_info() {
-        use libproc::task_info::TaskAllInfo;
-        let info = TaskAllInfo::default();
-        let h = child_health_from_sampled_task(&info);
+        let h = child_health_from_pid_info_parts(&SampledTaskPidInfo {
+            pbi_status: 2,
+            pti_total_user: 1,
+            pti_total_system: 2,
+            pti_threadnum: 1,
+            pti_csw: 0,
+        });
         assert!(h.exists);
     }
 
     #[test]
     fn unlikely_pid_sample_has_absent_cannot_sample_or_live_shape() {
         // Very unlikely to exist; kernel should return `ESRCH` → `process_absent`, not panic.
-        let h = sample_child_health(2_147_483_646);
+        let h = sample_child_health_macos(2_147_483_646);
         assert_ne!(
             (h.exists, h.counters_trusted),
             (false, false),

@@ -40,6 +40,7 @@ async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
     h.shutdown().await;
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn active_memory_containment_maps_timeout_message_when_oom() {
     let dir = tempfile::tempdir().expect("tempdir");

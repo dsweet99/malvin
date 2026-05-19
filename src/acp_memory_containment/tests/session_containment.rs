@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn dropping_cloned_acp_session_keeps_containment_active() {
     let dir = tempfile::tempdir().expect("tempdir");

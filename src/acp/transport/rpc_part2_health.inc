@@ -19,6 +19,7 @@ fn child_health_timeout_error(
     }
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn appears_hung_must_surface_oom_when_v1_under_oom_cleared_after_activation() {
     use crate::acp_memory_containment::{
@@ -72,6 +73,7 @@ fn appears_hung_without_memory_exceeded_must_surface_hung_error() {
     );
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn appears_hung_path_maps_memory_limit_when_exceeded() {
     use crate::acp_memory_containment::{
@@ -119,6 +121,7 @@ fn child_zombie_must_not_use_stale_cgroup_oom_counters() {
     assert_eq!(err, "acp child process is zombie");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn child_exit_maps_memory_limit_after_oom_increment() {
     use crate::acp_memory_containment::{

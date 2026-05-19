@@ -1,19 +1,39 @@
 use crate::acp_memory_containment::{
     OomBaseline, half_physical_memory_bytes, memory_limit_exceeded_since_baseline,
-    memory_limit_oom_baseline_at, next_cgroup_suffix, remove_cgroup_dir_at,
+    memory_limit_oom_baseline_at, remove_cgroup_dir_at,
 };
-use crate::acp_memory_containment::memory_limit_exceeded_at;
 
+#[cfg(not(target_os = "linux"))]
 #[test]
 fn kiss_smoke_mod_wrappers() {
     let _ = half_physical_memory_bytes();
-    let _ = next_cgroup_suffix();
     let dir = tempfile::tempdir().expect("tempdir");
     let _ = memory_limit_oom_baseline_at(dir.path());
     let baseline = OomBaseline::default();
     let _ = memory_limit_exceeded_since_baseline(dir.path(), baseline);
-    let _ = memory_limit_exceeded_at(dir.path());
     remove_cgroup_dir_at(dir.path());
+}
+
+#[cfg(target_os = "linux")]
+mod linux_kiss_smoke {
+    use super::{
+        OomBaseline, half_physical_memory_bytes, memory_limit_exceeded_since_baseline,
+        memory_limit_oom_baseline_at, remove_cgroup_dir_at,
+    };
+    use crate::acp_memory_containment::memory_limit_exceeded_at;
+    use crate::acp_memory_containment::next_cgroup_suffix;
+
+    #[test]
+    fn kiss_smoke_mod_wrappers() {
+        let _ = half_physical_memory_bytes();
+        let _ = next_cgroup_suffix();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let _ = memory_limit_oom_baseline_at(dir.path());
+        let baseline = OomBaseline::default();
+        let _ = memory_limit_exceeded_since_baseline(dir.path(), baseline);
+        let _ = memory_limit_exceeded_at(dir.path());
+        remove_cgroup_dir_at(dir.path());
+    }
 }
 
 #[cfg(target_os = "linux")]

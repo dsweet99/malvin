@@ -5,7 +5,7 @@ use clap::Args;
 pub use crate::config::DEFAULT_CLI_MODEL;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
-const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown on stdout for `malvin code` / `malvin kpop` / `malvin bug` trace lines [default: markdown on]. Styling is also off when color is off (`--no-color` or NO_COLOR), same as other ANSI. No effect on `malvin do` (ACP stdout stays plain).";
+const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]

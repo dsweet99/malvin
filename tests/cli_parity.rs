@@ -60,6 +60,25 @@ fn help_lists_global_no_markdown_once() {
 }
 
 #[cfg_attr(unix, test)]
+fn help_no_markdown_description_is_disable_styled_markdown() {
+    let out = run_root_help_output();
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    let line = s
+        .lines()
+        .find(|line| line.contains("--no-markdown"))
+        .unwrap_or_else(|| panic!("expected --no-markdown in root help: {s}"));
+    assert!(
+        line.contains("Disable styled markdown"),
+        "expected --no-markdown help to say 'Disable styled markdown': {line:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
 fn help_omits_removed_ground_and_sync_commands() {
     let out = run_root_help_output();
     assert!(

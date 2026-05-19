@@ -23,5 +23,5 @@ fn smoke_has_api_key_reads_env_without_panic() {
 
 #[test]
 fn smoke_default_repo_style_prompt_rel_nonempty() {
-    assert!(!DEFAULT_REPO_STYLE_PROMPT_REL.is_empty());
+    assert_ne!(DEFAULT_REPO_STYLE_PROMPT_REL, "");
 }

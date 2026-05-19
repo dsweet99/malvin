@@ -124,6 +124,7 @@ mod containment_state_tests {
         let _ = std::mem::size_of::<ContainmentState>();
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn v1_under_oom_at_activation_latches_memory_limit_exceeded() {
         let dir = tempfile::tempdir().expect("tempdir");
@@ -157,6 +158,7 @@ mod containment_state_tests {
         let _ = stringify!(super::teardown_containment_state);
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn finalize_containment_latches_oom_when_under_oom_at_teardown() {
         let dir = tempfile::tempdir().expect("tempdir");

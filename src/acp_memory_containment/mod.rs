@@ -1,23 +1,33 @@
 //! Linux cgroup v2 (and v1 memory fallback) memory limits for `agent acp` children only.
 #![allow(unsafe_code)]
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(target_os = "linux")]
 #[allow(unsafe_code)]
 include!("cgroup_memory.inc");
+#[cfg(target_os = "linux")]
 include!("linux_fs.inc");
+#[cfg(target_os = "linux")]
 include!("linux_parent_death.inc");
+#[cfg(target_os = "linux")]
 include!("linux_spawn.inc");
 
 #[cfg(not(target_os = "linux"))]
 mod stub;
+#[cfg(not(target_os = "linux"))]
+pub(crate) use stub::{
+    memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at,
+};
 
 pub const AGENT_EXCEEDED_MEMORY_LIMIT_MSG: &str = "agent exceeded memory limit";
 pub const CONTAINMENT_UNAVAILABLE_WARN: &str =
     "warning: ACP memory containment unavailable; running agent without cgroup memory limit";
 
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 static CGROUP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 mod containment_state;
@@ -28,7 +38,9 @@ pub use containment_state::OomBaseline;
 pub use containment_state::finalize_containment_cgroup;
 
 #[cfg(not(target_os = "linux"))]
-pub fn half_physical_memory_bytes() -> Option<u64> {
+#[must_use]
+#[allow(dead_code)]
+pub const fn half_physical_memory_bytes() -> Option<u64> {
     None
 }
 
@@ -50,6 +62,7 @@ pub enum ContainmentHandle {
     Inactive,
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(clippy::missing_const_for_fn))]
 pub fn begin_containment_for_command(cmd: &mut tokio::process::Command) -> ContainmentHandle {
     #[cfg(target_os = "linux")]
     {
@@ -109,6 +122,7 @@ pub(crate) async fn complete_containment_after_spawn(
     }
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(clippy::missing_const_for_fn))]
 pub fn remove_containment_handle(handle: ContainmentHandle) {
     #[cfg(target_os = "linux")]
     {
@@ -133,6 +147,7 @@ pub const fn spawn_should_warn_containment_unavailable(containment_active: bool)
     !containment_active
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(clippy::missing_const_for_fn))]
 fn remove_cgroup_dir_at(path: &Path) {
     #[cfg(target_os = "linux")]
     remove_cgroup_dir(path);
@@ -142,6 +157,7 @@ fn remove_cgroup_dir_at(path: &Path) {
     }
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn next_cgroup_suffix() -> String {
     let n = CGROUP_SEQ.fetch_add(1, Ordering::Relaxed);
     format!("{}-{}", std::process::id(), n)
