@@ -36,7 +36,7 @@ fn session_spawn_must_emit_containment_unavailable_warn_when_inactive() {
     );
     let stderr = capture_stderr_output(crate::acp_memory_containment::emit_containment_unavailable_warn);
     assert!(stderr.contains(crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN));
-    assert!(stderr.contains("malvin"));
+    assert!(stderr.contains("[warning"));
 }
 
 #[cfg(target_os = "linux")]

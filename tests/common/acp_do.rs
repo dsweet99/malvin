@@ -97,7 +97,7 @@ pub fn acp_mock_tidy_fanout_branches(
     else_tail: &str,
 ) -> String {
     format!(
-        r"    if (promptText.includes('KPop: Review the codebase for these problems')) {{
+        r"    if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {spawn_branch}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_tail}

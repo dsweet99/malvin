@@ -1,5 +1,6 @@
 mod command_support;
 mod types;
+mod gate_log;
 mod gate_run;
 pub mod kissconfig_warn;
 

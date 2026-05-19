@@ -38,7 +38,7 @@ fn kiss_stringify_cli_units_1a() {
     let _ = stringify!(crate::repo_checks::gate_run::append_quality_gates_log_text);
     let _ = stringify!(crate::repo_checks::gate_run::append_quality_gates_log_line);
     let _ = stringify!(crate::repo_checks::gate_run::append_quality_gates_command_output);
-    let _ = stringify!(crate::repo_checks::gate_run::emit_repo_gate_line);
+    let _ = stringify!(crate::repo_checks::gate_log::emit_repo_gate_line);
     let _ = stringify!(crate::repo_checks::gate_run::prepare_repo_workspace);
     let _ = stringify!(crate::repo_checks::command_support::run_command_for);
     let _ = stringify!(crate::repo_checks::command_support::run_command_failure);

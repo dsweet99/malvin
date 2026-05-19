@@ -7,7 +7,7 @@ use super::acp_core::{
 fn acp_mock_code_fanout_workspace_pollution_js(review_write_snippet: &str) -> String {
     let prep = format!("{}\n{}", write_review_prep_output(), write_workspace_lgtm());
     let review_tail = format!(
-        r"    else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+        r"    else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_snippet}
@@ -85,7 +85,7 @@ pub fn acp_mock_tidy_review_write_succeeds_on_third_inner_try_js() -> String {
         &chunk_line("review"),
     );
     let body = format!(
-        r"    if (promptText.includes('KPop: Review the codebase for these problems')) {{
+        r"    if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_tail}
@@ -107,7 +107,7 @@ pub fn acp_mock_code_review_write_succeeds_on_second_review_attempt_js() -> Stri
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {try_counter}
@@ -154,7 +154,7 @@ pub fn acp_mock_code_missing_artifact_recovers_on_outer_review_attempt_js() -> S
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_by_attempt}

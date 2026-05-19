@@ -18,13 +18,9 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
 }
 
 pub fn print_command_error(message: &str) {
-    use crate::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
+    use crate::output::print_log_error;
     super::error_run_log::append_command_error_to_run_log(message);
-    if message.starts_with("ERR:") {
-        print_stdout_line(MALVIN_WHO, message);
-        return;
-    }
-    print_stderr_line(MALVIN_WHO, message);
+    print_log_error(message);
 }
 
 pub fn try_tokio_runtime() -> Result<tokio::runtime::Runtime, String> {

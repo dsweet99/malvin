@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use crate::output::{MALVIN_WHO, format_line};
+use crate::output::{ERROR_WHO, format_line};
 
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
@@ -32,7 +32,7 @@ pub fn append_command_error_to_run_log(message: &str) {
         return;
     };
     let path = dir.join("malvin_error.log");
-    let line = format!("{}\n", format_line(MALVIN_WHO, message));
+    let line = format!("{}\n", format_line(ERROR_WHO, message));
     let _ = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -57,8 +57,8 @@ mod tests {
             "unexpected log contents: {text:?}"
         );
         assert!(
-            text.contains("[malvin"),
-            "expected malvin tag in log line: {text:?}"
+            text.contains("[error"),
+            "expected error tag in log line: {text:?}"
         );
     }
 }

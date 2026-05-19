@@ -143,7 +143,7 @@ mod reviewers_spawn_embed_tests {
             "reviewers_spawn must include kpop block"
         );
         assert!(
-            s.contains("KPop: Review the codebase for these problems"),
+            s.contains("KPop: Review in-scope code for these problems"),
             "reviewers_spawn must run the single review pass"
         );
         assert!(

@@ -63,8 +63,8 @@ pub use prompts::DO_HEADER_MD;
 pub use config::DEFAULT_CLI_MODEL;
 pub use kpop_progression::agent_declared_success;
 pub use output::{
-    MALVIN_WHO, format_line, format_log_tag_inner, init_stdout_style, print_stderr_line,
-    print_stdout_line, print_stdout_text,
+    ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, init_stdout_style,
+    print_log_error, print_log_warning, print_stderr_line, print_stdout_line, print_stdout_text,
 };
 pub use prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 pub use run_timing::{

@@ -32,11 +32,11 @@ fn cgroup_integration_tests_must_not_return_after_skip_helper() {
 }
 
 #[test]
-fn require_cgroup_integration_test_must_use_print_stderr_line() {
+fn require_cgroup_integration_test_must_use_print_log_warning() {
     let src = include_str!("acp_memory_containment/mod.rs");
     assert!(
-        src.contains("print_stderr_line"),
-        "require_cgroup_integration_test must use print_stderr_line for SKIP"
+        src.contains("print_log_warning"),
+        "require_cgroup_integration_test must use print_log_warning for SKIP"
     );
     assert!(
         !src.contains("eprintln!(\"SKIP: cgroup integration test requires writable cgroups on this host\")"),
@@ -63,11 +63,11 @@ fn init_tracing_fallback_must_install_globally_not_thread_local_only() {
 }
 
 #[test]
-fn emit_containment_unavailable_warn_must_use_print_stderr_line() {
+fn emit_containment_unavailable_warn_must_use_print_log_warning() {
     let src = include_str!("acp_memory_containment/mod.rs");
     assert!(
-        src.contains("print_stderr_line(MALVIN_WHO, CONTAINMENT_UNAVAILABLE_WARN)"),
-        "containment warn must go through print_stderr_line"
+        src.contains("print_log_warning(CONTAINMENT_UNAVAILABLE_WARN)"),
+        "containment warn must go through print_log_warning"
     );
 }
 
@@ -117,17 +117,23 @@ fn session_spawn_containment_warn_must_not_be_linux_only() {
 }
 
 #[test]
-fn containment_warn_must_match_plan_example_prefix() {
+fn containment_warn_must_not_duplicate_warning_prefix_in_message() {
     assert!(
-        crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN.starts_with("warning:"),
-        "plan requires warning: prefix on containment unavailable message"
+        !crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN.starts_with("warning:"),
+        "warning who tag carries severity; message must not repeat warning: prefix"
     );
 }
 
 #[test]
-fn malvin_tracing_layer_must_forward_info_for_verbose_acp() {
+fn malvin_tracing_layer_must_forward_info_warn_and_error() {
     assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
         tracing::Level::INFO
+    ));
+    assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
+        tracing::Level::WARN
+    ));
+    assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
+        tracing::Level::ERROR
     ));
     assert!(!crate::tracing_init::malvin_log_accepts_tracing_level(
         tracing::Level::DEBUG
@@ -144,7 +150,7 @@ fn tracing_message_debug_field_must_not_use_rust_debug_quoting() {
 }
 
 #[test]
-fn malformed_rpc_timeout_env_must_use_default_and_emit_malvin_warn_on_stderr() {
+fn malformed_rpc_timeout_env_must_use_default_and_emit_warning_on_stderr() {
     use crate::support_paths::{DEFAULT_ACP_RPC_TIMEOUT_SECS, acp_rpc_timeout_secs_from_env};
     use crate::test_stderr_capture::capture_stderr_output;
     use crate::test_utils::test_env_lock;
@@ -175,8 +181,8 @@ fn malformed_rpc_timeout_env_must_use_default_and_emit_malvin_warn_on_stderr() {
     }
     assert_eq!(secs, DEFAULT_ACP_RPC_TIMEOUT_SECS);
     assert!(
-        stderr.contains("malvin"),
-        "malformed MALVIN_ACP_RPC_TIMEOUT_SECS must emit malvin-formatted warn on stderr"
+        stderr.contains("[warning"),
+        "malformed MALVIN_ACP_RPC_TIMEOUT_SECS must emit warning who tag on stderr"
     );
     assert!(
         stderr.contains("MALVIN_ACP_RPC_TIMEOUT_SECS"),

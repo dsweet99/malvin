@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::gate_run::emit_repo_gate_line;
+use super::gate_log::emit_repo_gate_line;
 use super::types::RepoGateOutput;
 
 pub fn ensure_workspace_style_markers(

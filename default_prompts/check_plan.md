@@ -13,6 +13,7 @@ If plan is acceptable, write ONLY the four characters "LGTM" to {{ review_path }
 
 If there IS a blocking issue, write a brief explanation to {{ review_path }} (without LGTM).
 
+You have a budget of 4 hypotheses.
 
 ## Reference
 The coding rules below are what the coding agent that implements this plan will see. Your task is *not* to implement the plan. The rules here are for your reference only. They may help you better evaluate the plan.

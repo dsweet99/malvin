@@ -2,6 +2,7 @@
 
 mod acp_tee;
 mod acp_tee_markdown;
+mod stderr_log;
 pub(crate) mod terminal_wrap;
 
 pub use acp_tee::{
@@ -24,14 +25,21 @@ use std::cell::RefCell;
 #[cfg(test)]
 use std::sync::Mutex;
 
-use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
+pub(crate) use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
 
 pub const MALVIN_WHO: &str = "malvin";
+pub const WARNING_WHO: &str = "warning";
+pub const ERROR_WHO: &str = "error";
 pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
 
 #[cfg(test)]
 thread_local! {
     static CAPTURED_STDERR_LINES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+#[cfg(test)]
+pub(crate) fn push_captured_stderr_line(line: String) {
+    CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(line));
 }
 
 #[cfg(test)]
@@ -62,12 +70,14 @@ pub fn print_outgoing_prompt_log(label: &str) {
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
 pub const LOG_TAG_INNER_WIDTH: usize = 10;
 
-static STDOUT_USE_COLOR: OnceLock<bool> = OnceLock::new();
+static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 const ANSI_DIM: &str = "\x1b[90m";
 const ANSI_CYAN: &str = "\x1b[36m";
+const ANSI_YELLOW: &str = "\x1b[33m";
+const ANSI_RED: &str = "\x1b[31m";
 const ANSI_RESET: &str = "\x1b[0m";
 
 #[must_use]
@@ -103,31 +113,48 @@ pub fn format_line(who: &str, line: &str) -> String {
     format_line_with_timestamp(&timestamp_now_string(), who, line)
 }
 
-/// ANSI-colored prefix for terminal stdout only. Log files and trace files must use
+fn who_tag_ansi(who: &str) -> &'static str {
+    match who {
+        WARNING_WHO => ANSI_YELLOW,
+        ERROR_WHO => ANSI_RED,
+        _ => ANSI_CYAN,
+    }
+}
+
+/// ANSI-colored prefix for terminal output. Log files and trace files must use
 /// [`format_line`] / [`format_line_with_timestamp`] instead.
 #[must_use]
 pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
-    format!("{ANSI_DIM}{ts}{ANSI_RESET}{ANSI_CYAN}:[{inner}]:{ANSI_RESET} {line}")
+    let tag_color = who_tag_ansi(who);
+    format!("{ANSI_DIM}{ts}{ANSI_RESET}{tag_color}:[{inner}]:{ANSI_RESET} {line}")
 }
 
-/// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true,
-/// when `NO_COLOR` is set, or when stdout is not a terminal.
+/// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true
+/// or when `NO_COLOR` is set. Each stream applies color only when that stream is a terminal.
 pub fn init_stdout_style(no_color: bool) {
     let disabled_by_env = std::env::var_os("NO_COLOR").is_some();
-    let use_color = !no_color && !disabled_by_env && stdout().is_terminal();
-    let _ = STDOUT_USE_COLOR.set(use_color);
+    let use_color = !no_color && !disabled_by_env;
+    let _ = LOG_USE_COLOR.set(use_color);
 }
 
-fn stdout_use_color() -> bool {
-    *STDOUT_USE_COLOR.get().unwrap_or(&false)
+fn log_use_color() -> bool {
+    *LOG_USE_COLOR.get().unwrap_or(&false)
+}
+
+pub(crate) fn stdout_use_color() -> bool {
+    log_use_color() && stdout().is_terminal()
+}
+
+pub(crate) fn stderr_use_color() -> bool {
+    log_use_color() && std::io::stderr().is_terminal()
 }
 
 pub fn set_stdout_log_path(path: Option<PathBuf>) {
     crate::stdout_log_path::set_stdout_log_path(path);
 }
 
-fn append_stdout_log_line(line: &str) {
+pub(crate) fn append_stdout_log_line(line: &str) {
     let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
         return;
     };
@@ -170,23 +197,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
     }
 }
 
-pub fn print_stderr_line(who: &str, line: &str) {
-    let ts = timestamp_now_string();
-    let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, line);
-    if !wrap {
-        let formatted = format_line_with_timestamp(&ts, who, line);
-        eprintln!("{formatted}");
-        #[cfg(test)]
-        CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(formatted));
-        return;
-    }
-    for seg in wrap_words_bounded(max_payload, line) {
-        let formatted = format_line_with_timestamp(&ts, who, &seg);
-        eprintln!("{formatted}");
-        #[cfg(test)]
-        CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(formatted));
-    }
-}
+pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
 
 pub fn print_stdout_text(who: &str, text: &str) {
     for line in logical_lines(text) {

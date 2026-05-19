@@ -11,8 +11,7 @@ fn install_malvin_tracing() {
     use tracing_subscriber::util::SubscriberInitExt;
     let subscriber = tracing_subscriber::registry().with(MalvinLogLayer);
     if subscriber.try_init().is_err() {
-        crate::output::print_stderr_line(
-            crate::output::MALVIN_WHO,
+        crate::output::print_log_warning(
             "tracing subscriber already initialized; malvin log layer not installed",
         );
     }
@@ -34,7 +33,8 @@ where
         event: &tracing::Event<'_>,
         _ctx: tracing_subscriber::layer::Context<'_, S>,
     ) {
-        if !malvin_log_accepts_tracing_level(*event.metadata().level()) {
+        let level = *event.metadata().level();
+        if !malvin_log_accepts_tracing_level(level) {
             return;
         }
         let mut msg = String::new();
@@ -42,7 +42,11 @@ where
         if msg.is_empty() {
             return;
         }
-        crate::output::print_stderr_line(crate::output::MALVIN_WHO, &msg);
+        match level {
+            tracing::Level::ERROR => crate::output::print_log_error(&msg),
+            tracing::Level::WARN => crate::output::print_log_warning(&msg),
+            _ => crate::output::print_stderr_line(crate::output::MALVIN_WHO, &msg),
+        }
     }
 }
 
@@ -85,4 +89,21 @@ fn push_log_field(buf: &mut String, name: &str, value: &str) {
         buf.push(' ');
     }
     let _ = write!(buf, "{name}={value}");
+}
+
+#[cfg(test)]
+mod level_tests {
+    use super::malvin_log_accepts_tracing_level;
+    use tracing::Level;
+
+    #[test]
+    fn tracing_level_order_matches_malvin_log_filter() {
+        assert!(Level::WARN <= Level::INFO);
+        assert!(Level::ERROR <= Level::INFO);
+        assert!(Level::DEBUG > Level::INFO);
+        assert!(malvin_log_accepts_tracing_level(Level::INFO));
+        assert!(malvin_log_accepts_tracing_level(Level::WARN));
+        assert!(malvin_log_accepts_tracing_level(Level::ERROR));
+        assert!(!malvin_log_accepts_tracing_level(Level::DEBUG));
+    }
 }

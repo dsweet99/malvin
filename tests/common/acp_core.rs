@@ -94,7 +94,7 @@ pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
     format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_tail}
@@ -123,7 +123,7 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
     let body = format!(
         r"    if (promptText.includes('Implement the plan in')) {{
 {implement}
-    }} else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {reviewer_skip}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {write_lgtm}
@@ -140,7 +140,7 @@ pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
 pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {
     let prep = write_review_prep_output();
     format!(
-        r"    else if (promptText.includes('KPop: Review the codebase for these problems')) {{
+        r"    else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
 {prep}
     }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
 {review_write_body}

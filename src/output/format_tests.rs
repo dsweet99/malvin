@@ -52,7 +52,18 @@ fn detects_prefixed_and_unprefixed_command_prelude() {
 #[test]
 fn exported_constants_match_public_contract() {
     assert_eq!(MALVIN_WHO, "malvin");
+    assert_eq!(super::WARNING_WHO, "warning");
+    assert_eq!(super::ERROR_WHO, "error");
     assert_eq!(LEARNING_PLACEHOLDER, "[learning...]");
+}
+
+#[test]
+fn ansi_who_tag_uses_yellow_for_warning_and_red_for_error() {
+    let ts = "20260413.121314.015";
+    let warn = super::format_line_with_timestamp_ansi(ts, super::WARNING_WHO, "");
+    let err = super::format_line_with_timestamp_ansi(ts, super::ERROR_WHO, "");
+    assert!(warn.contains("\x1b[33m"));
+    assert!(err.contains("\x1b[31m"));
 }
 
 #[test]
@@ -126,6 +137,9 @@ fn kiss_stringify_output_symbols() {
     let _ = stringify!(super::print_stdout_line);
     let _ = stringify!(super::print_stdout_raw_line);
     let _ = stringify!(super::print_stderr_line);
+    let _ = stringify!(super::stderr_log::print_log_warning);
+    let _ = stringify!(super::stderr_log::print_log_error);
+    let _ = stringify!(super::stderr_use_color);
     let _ = stringify!(super::print_stdout_text);
     let _ = stringify!(super::print_outgoing_prompt_log);
     let _ = stringify!(super::is_command_prelude_line);

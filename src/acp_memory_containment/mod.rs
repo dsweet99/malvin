@@ -25,7 +25,7 @@ pub(crate) use stub::{
 
 pub const AGENT_EXCEEDED_MEMORY_LIMIT_MSG: &str = "agent exceeded memory limit";
 pub const CONTAINMENT_UNAVAILABLE_WARN: &str =
-    "warning: ACP memory containment unavailable; running agent without cgroup memory limit";
+    "ACP memory containment unavailable; running agent without cgroup memory limit";
 
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 static CGROUP_SEQ: AtomicU64 = AtomicU64::new(0);
@@ -138,8 +138,7 @@ pub fn remove_containment_handle(handle: ContainmentHandle) {
 }
 
 pub fn emit_containment_unavailable_warn() {
-    use crate::output::{MALVIN_WHO, print_stderr_line};
-    print_stderr_line(MALVIN_WHO, CONTAINMENT_UNAVAILABLE_WARN);
+    crate::output::print_log_warning(CONTAINMENT_UNAVAILABLE_WARN);
 }
 
 #[must_use]
@@ -188,8 +187,7 @@ pub mod test_support {
         if writable_cgroups_on_host() {
             return;
         }
-        crate::output::print_stderr_line(
-            crate::output::MALVIN_WHO,
+        crate::output::print_log_warning(
             "SKIP: cgroup integration test requires writable cgroups on this host",
         );
         panic!("cgroup integration test requires writable cgroups on this host");

@@ -19,6 +19,8 @@ fn kiss_stringify_crate_root_units() {
     let _ = stringify!(crate::tracing_init::init_tracing);
     let _ = stringify!(crate::tracing_init::malvin_log_accepts_tracing_level);
     let _ = stringify!(crate::tracing_init::format_debug_tracing_field);
+    let _ = stringify!(crate::output::print_log_warning);
+    let _ = stringify!(crate::output::print_log_error);
     let _ = stringify!(crate::output::take_captured_stderr_lines);
     let _ = stringify!(crate::output::clear_captured_stderr_lines);
     let _ = stringify!(crate::test_stderr_capture::capture_stderr_output);
