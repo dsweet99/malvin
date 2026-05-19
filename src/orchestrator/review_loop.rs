@@ -101,7 +101,6 @@ mod tests {
     };
     use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
     use crate::prompts::PromptStore;
-    use crate::review_sync::is_lgtm_str;
 
     use super::run_code_review_phase;
 
@@ -143,20 +142,6 @@ mod tests {
             .await
             .expect_err("review");
         assert!(!err.0.is_empty());
-    }
-
-    #[test]
-    fn sync_review_file_for_attempt_regression_still_promotes_workspace_lgtm() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifact = tmp.path().join("artifact_review.md");
-        let workspace = tmp.path().join("workspace_review.md");
-        std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
-        let synced =
-            crate::review_sync::sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
-        assert!(
-            synced.as_deref().is_some_and(is_lgtm_str),
-            "legacy sync path must still promote workspace LGTM when artifact empty"
-        );
     }
 
     #[test]

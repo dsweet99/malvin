@@ -31,7 +31,7 @@ pub use cli_parity_tty_kpop::run_kpop_multiturn_investigate;
 
 pub use acp_code_fanout_mocks::*;
 pub use acp_code_run::*;
-pub use acp_core::*;
+pub use acp_core::{acp_mock_js, chunk_line, *};
 pub use acp_do::*;
 pub use kpop_multiturn_support::*;
 pub use process::{

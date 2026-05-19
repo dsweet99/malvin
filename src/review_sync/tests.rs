@@ -37,15 +37,18 @@ fn is_lgtm_str_returns_false_for_non_lgtm() {
 }
 
 #[test]
-fn sync_review_file_for_attempt_writes_workspace_text_to_artifact() {
+fn sync_review_file_for_attempt_does_not_promote_workspace_lgtm_to_empty_artifact() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     std::fs::write(&workspace, "LGTM\n").unwrap();
     let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
-    assert_eq!(out.as_deref(), Some("LGTM\n"));
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
+    assert_eq!(out, None);
+    assert!(
+        !artifact.exists() || std::fs::read_to_string(&artifact).unwrap().trim().is_empty(),
+        "workspace LGTM must not be copied into empty artifact"
+    );
 }
 
 #[test]
@@ -110,14 +113,14 @@ fn sync_review_file_for_attempt_whitespace_workspace_yields_none_when_artifact_e
 }
 
 #[test]
-fn sync_review_file_returns_content_when_copied() {
+fn sync_review_file_returns_none_when_artifact_empty_and_workspace_lgtm() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     std::fs::write(&workspace, "LGTM\n").unwrap();
     let result = sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(result, Some("LGTM\n".to_string()));
+    assert_eq!(result, None);
 }
 
 #[test]
@@ -140,15 +143,14 @@ fn sync_review_file_returns_none_when_workspace_empty() {
 }
 
 #[test]
-fn sync_review_then_is_lgtm_true_after_copy() {
+fn sync_review_then_is_lgtm_false_when_only_workspace_lgtm() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     let mut f = std::fs::File::create(&workspace).unwrap();
     writeln!(f, "LGTM").unwrap();
-    assert!(sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
-    assert!(artifact.exists());
+    assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
 }
 
 #[test]
@@ -172,27 +174,25 @@ fn sync_review_then_is_lgtm_false_when_workspace_missing() {
 }
 
 #[test]
-fn sync_review_then_is_lgtm_false_when_workspace_missing_clears_stale_lgtm_artifact() {
+fn sync_review_then_is_lgtm_true_when_artifact_lgtm_even_if_workspace_missing() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("missing.md");
     let artifact = t.path().join("review.md");
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
-    assert!(!is_lgtm(&artifact));
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    assert!(sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+    assert!(is_lgtm(&artifact));
 }
 
 #[test]
-fn sync_review_then_is_lgtm_false_when_workspace_whitespace_only_clears_stale_lgtm() {
+fn sync_review_then_is_lgtm_true_when_artifact_lgtm_and_workspace_whitespace_only() {
     let t = tempfile::tempdir().unwrap();
     let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     std::fs::write(&workspace, "  \n\t\n").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    assert!(!sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
-    assert!(!is_lgtm(&artifact));
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    assert!(sync_review_then_is_lgtm(&workspace, &artifact).unwrap());
+    assert!(is_lgtm(&artifact));
 }
 
 #[test]

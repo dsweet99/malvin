@@ -6,7 +6,6 @@ fn kiss_stringify_cli_units_0() {
     let _ = stringify!(super::args::CodeArgs);
     let _ = stringify!(super::args::KpopArgs);
     let _ = stringify!(super::build_agent);
-    let _ = stringify!(super::format_pre_check_gate_failure);
     let _ = stringify!(super::prepare_bug_prompt_store);
     let _ = stringify!(super::prepare_kpop_prompt_store);
     let _ = stringify!(super::prepare_prompt_store);
@@ -40,8 +39,6 @@ fn kiss_stringify_cli_units_1a() {
     let _ = stringify!(crate::repo_checks::gate_run::append_quality_gates_log_line);
     let _ = stringify!(crate::repo_checks::gate_run::append_quality_gates_command_output);
     let _ = stringify!(crate::repo_checks::gate_run::emit_repo_gate_line);
-    let _ = stringify!(crate::repo_checks::gate_run::run_repo_workspace_gates);
-    let _ = stringify!(crate::repo_checks::gate_run::run_repo_workspace_gates_no_kiss_clamp);
     let _ = stringify!(crate::repo_checks::gate_run::prepare_repo_workspace);
     let _ = stringify!(crate::repo_checks::command_support::run_command_for);
     let _ = stringify!(crate::repo_checks::command_support::run_command_failure);

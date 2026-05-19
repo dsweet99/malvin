@@ -16,5 +16,5 @@ fn smoke_review_sync() {
     let ws = tmp.path().join("workspace_review.md");
     std::fs::write(&ws, "LGTM").expect("ws review");
     let synced = crate::review_sync::sync_review_file_for_attempt(&art, &ws).expect("sync");
-    assert_eq!(synced.as_deref(), Some("LGTM"));
+    assert!(synced.is_none(), "empty artifact must not adopt workspace LGTM");
 }

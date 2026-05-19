@@ -1,6 +1,5 @@
 #[test]
 fn kiss_stringify_acp_reader_and_support_units() {
-    let _ = stringify!(crate::acp::pair::ReviewerPromptPair);
     let _ = stringify!(crate::acp::reader_tests_helpers::acp_activity_state);
     let _ = stringify!(
         crate::acp::reader_tests_dispatch::dispatch_resolves_pending_when_response_id_is_i64

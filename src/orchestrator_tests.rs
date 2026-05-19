@@ -53,21 +53,23 @@ fn is_lgtm_reads_file() {
 }
 
 #[test]
-fn sync_review_file_clears_artifact_when_workspace_empty_so_stale_lgtm_is_removed() {
+fn sync_review_file_returns_artifact_when_workspace_empty() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("LGTM\n"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
-fn sync_review_file_clears_artifact_when_workspace_whitespace_only() {
+fn sync_review_file_returns_artifact_when_workspace_whitespace_only() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "  \n\t\n").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("LGTM\n"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
@@ -114,12 +116,13 @@ fn prefer_primary_errors_chains_timing_when_workflow_and_end_fail() {
 }
 
 #[test]
-fn sync_review_file_copies_nonempty_workspace_to_artifact() {
+fn sync_review_file_prefers_nonempty_artifact_over_workspace() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "LGTM\n").unwrap();
     std::fs::write(&artifact, "old").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("old"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "old");
 }
 
 #[test]

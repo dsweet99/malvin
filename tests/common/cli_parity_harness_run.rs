@@ -9,6 +9,15 @@ use super::{
 };
 
 #[cfg(unix)]
+pub fn combined_cli_output(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+#[cfg(unix)]
 pub const MAX_LOOPS_EXHAUSTED: &str = "Did not receive LGTM for review within max loops.";
 
 #[cfg(unix)]

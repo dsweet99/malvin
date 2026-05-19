@@ -1,9 +1,3 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReviewerRestorePolicy {
-    RestoreWorkspace,
-    NoRestore,
-}
-
 impl AgentClient {
     #[must_use]
     pub fn new(model: String, io: AgentIoOptions) -> Self {

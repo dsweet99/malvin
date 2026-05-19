@@ -1,12 +1,14 @@
 # Bug: false LGTM when fan-out artifact review is empty but workspace `review.md` says LGTM
 
+**Status (fixed):** Fan-out/tidy LGTM uses artifact-only reads (`review_attempt_is_lgtm` → `read_artifact_review_for_fanout_attempt`). `sync_review_file_for_attempt` no longer copies workspace `LGTM` into an empty artifact. `ensure_artifact_review_after_review_write` retries when `review_write` omits the artifact.
+
 ## Severity
 
 High. The review loop can treat an attempt as **LGTM** and exit (or run post-LGTM gates in `malvin tidy`) even though **`review_write` never produced a valid artifact review** and fan-out aggregation did not run to completion.
 
 ## Summary
 
-The new fan-out review pipeline clears both review files, runs parallel reviewers, then runs `review_write` to aggregate into the **artifact** path `{{ review_path }}` (`_malvin/<run>/review.md`). LGTM is decided by `review_attempt_is_lgtm` → `sync_review_file_for_attempt`.
+The new fan-out review pipeline clears both review files, runs parallel reviewers, then runs `review_write` to aggregate into the **artifact** path `{{ review_path }}` (`_malvin/<run>/review.md`). LGTM was decided by `review_attempt_is_lgtm` → `sync_review_file_for_attempt` (since fixed: artifact-only).
 
 When the artifact review is **missing or whitespace-only**, `sync_review_file_for_attempt` **copies whatever is in workspace `./review.md` into the artifact** and returns that text. If workspace contains `LGTM`, the attempt is scored as LGTM.
 

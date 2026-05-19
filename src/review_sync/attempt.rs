@@ -54,16 +54,15 @@ pub fn read_artifact_review_for_fanout_attempt(
     read_nonempty_review(artifact_review_path, "artifact")
 }
 
-/// Copies workspace review into the artifact when the artifact is empty.
+/// Returns non-empty artifact review text when present; never copies workspace
+/// content into an empty artifact (avoids false LGTM from stale `./review.md`).
 ///
-/// Used by tests and legacy sync helpers only. Fan-out review LGTM decisions
-/// must use [`read_artifact_review_for_fanout_attempt`] (via
-/// [`crate::orchestrator::review_attempt_is_lgtm`]); do not call this from
-/// fan-out or `review_write` paths or workspace-only LGTM can be promoted.
+/// Fan-out LGTM must use [`read_artifact_review_for_fanout_attempt`] (via
+/// [`crate::orchestrator::review_attempt_is_lgtm`]).
 ///
 /// # Errors
 ///
-/// Returns `Err` when reading or writing review files fails.
+/// Returns `Err` when reading review files fails.
 pub fn sync_review_file_for_attempt(
     artifact_review_path: &Path,
     workspace_review_path: &Path,
@@ -81,16 +80,7 @@ pub fn sync_review_file_for_attempt(
         })?;
         if workspace_text.trim().is_empty() {
             clear_artifact_review_to_empty(artifact_review_path)?;
-            return Ok(None);
         }
-        ensure_parent_dir(artifact_review_path)?;
-        std::fs::write(artifact_review_path, &workspace_text).map_err(|e| {
-            format!(
-                "failed to sync workspace review into artifact: {}: {e}",
-                artifact_review_path.display()
-            )
-        })?;
-        return Ok(Some(workspace_text));
     }
 
     Ok(None)

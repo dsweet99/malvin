@@ -183,3 +183,43 @@ fn malformed_rpc_timeout_env_must_use_default_and_emit_malvin_warn_on_stderr() {
         "malformed env warn must mention MALVIN_ACP_RPC_TIMEOUT_SECS on stderr"
     );
 }
+
+#[test]
+fn bug_post_kpop_workspace_gate_failure_must_not_say_pre_checks() {
+    let msg = crate::cli::format_workspace_gate_failure("malvin bug", "`kiss check` failed");
+    assert!(
+        !msg.contains("Pre-checks"),
+        "post-KPOP remediation gate is not a startup pre-check; message was: {msg}"
+    );
+}
+
+#[test]
+fn stringify_cov_must_not_reference_phantom_prepare_code_run() {
+    let src = include_str!("cli/stringify_cov.rs");
+    assert!(
+        !src.contains("prepare_code_run"),
+        "kiss stringify coverage must reference real symbols, not phantom prepare_code_run"
+    );
+}
+
+#[test]
+fn sync_review_file_for_attempt_must_not_promote_workspace_lgtm_when_artifact_empty() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifact = tmp.path().join("artifact_review.md");
+    let workspace = tmp.path().join("workspace_review.md");
+    std::fs::write(&workspace, "LGTM\n").expect("workspace lgtm");
+    let synced =
+        crate::review_sync::sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
+    assert!(
+        synced.is_none(),
+        "empty artifact with workspace LGTM must not be promoted (false LGTM); got {synced:?}"
+    );
+    assert!(
+        !artifact.exists()
+            || std::fs::read_to_string(&artifact)
+                .expect("read artifact")
+                .trim()
+                .is_empty(),
+        "workspace LGTM must not be copied into artifact when artifact was empty"
+    );
+}

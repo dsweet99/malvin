@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn format_code_pre_check_failure_includes_guidance() {
         let msg = super::format_code_pre_check_failure("`kiss check` failed");
-        assert!(msg.starts_with("ERR: Implementation did not start"));
+        assert!(msg.starts_with("ERR: Pre-checks failed"));
         assert!(msg.contains("malvin tidy"));
         assert!(msg.contains("retry `malvin code`"));
         assert!(msg.contains("--skip-pre-checks` on"));

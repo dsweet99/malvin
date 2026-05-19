@@ -48,16 +48,6 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     .map_err(AgentError)
 }
 
-fn build_review_full_text(
-    client: &AgentClient,
-    pair: &ReviewerPromptPair<'_>,
-) -> Result<String, AgentError> {
-    let repo_style = read_coder_repo_style_text(&client.style_prompt_path);
-    let review_full = prepend_coder_repo_style_to_prompt(pair.review_body, repo_style.as_deref());
-    crate::prompts::enforce_no_unresolved_braces(&review_full).map_err(|e| AgentError(e.0))?;
-    Ok(review_full)
-}
-
 fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
     client.timing.as_ref().map_or(0, |t| {
         let d = t
@@ -68,91 +58,3 @@ fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
     })
 }
 
-/// Reviewer prompt: trace output tees live in the ACP stdout reader when enabled (`trace_file_write_line`).
-pub(crate) async fn run_reviewer_pair_once(
-    client: &AgentClient,
-    pair: &ReviewerPromptPair<'_>,
-    pair_id: crate::run_timing::ReviewPairId,
-) -> Result<(), AgentError> {
-    let s = spawn_agent_acp_session(client, pair.cwd).await?;
-
-    let review_full = build_review_full_text(client, pair)?;
-
-    let t_review = Instant::now();
-    let review_out = s
-        .prompt(&review_full, pair.review_log, pair.review_who, None)
-        .await;
-    crate::run_timing::record_llm(
-        client.timing.as_ref(),
-        pair_id.review_phase(),
-        t_review.elapsed(),
-    );
-    if let Err(e) = review_out {
-        let _ = s.shutdown().await;
-        return Err(AgentError(e));
-    }
-
-    if pair.sync_workspace_review {
-        let Some(artifact_review_path) = pair.artifact_review_path else {
-            return Err(AgentError(
-                "artifact_review_path required when sync_workspace_review is true".to_string(),
-            ));
-        };
-        sync_review_to_artifact(pair.workspace_review_path, artifact_review_path)?;
-    }
-
-    s.shutdown().await.map_err(AgentError)?;
-    Ok(())
-}
-
-fn sync_review_to_artifact(
-    workspace_review_path: &std::path::Path,
-    artifact_review_path: &std::path::Path,
-) -> Result<(), AgentError> {
-    let workspace_text = match std::fs::read_to_string(workspace_review_path) {
-        Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(e) => {
-            return Err(AgentError(format!(
-                "failed to read workspace review path {}: {e}",
-                workspace_review_path.display()
-            )))
-        }
-    };
-
-    if workspace_text.trim().is_empty() {
-        return Ok(());
-    }
-
-    std::fs::write(artifact_review_path, &workspace_text).map_err(|e| {
-        AgentError(format!(
-            "failed to write artifact review path {}: {e}",
-            artifact_review_path.display()
-        ))
-    })?;
-    Ok(())
-}
-
-#[cfg(test)]
-mod ops_body_tests {
-    use super::sync_review_to_artifact;
-
-    #[test]
-    fn sync_review_to_artifact_copies_workspace_review_content() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let workspace_review = tmp.path().join("review.md");
-        let artifact_review = tmp.path().join("run").join("review.md");
-        std::fs::create_dir_all(
-            artifact_review
-                .parent()
-                .expect("artifact parent"),
-        )
-        .expect("artifact parent");
-
-        std::fs::write(&workspace_review, "LGTM\n").expect("write workspace review");
-
-        sync_review_to_artifact(&workspace_review, &artifact_review).expect("sync");
-        let synced = std::fs::read_to_string(&artifact_review).expect("artifact read");
-        assert_eq!(synced, "LGTM\n");
-    }
-}

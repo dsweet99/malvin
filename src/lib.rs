@@ -47,7 +47,7 @@ pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
     AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl, AuthError, AcpSession,
-    AcpSpawnArgs, CoderPromptOptions, KpopFlowOnceArgs, ReviewerPromptPair,
+    AcpSpawnArgs, CoderPromptOptions, KpopFlowOnceArgs,
 };
 pub use session_dotfile_backup::KissConfigBackup;
 pub use artifacts::{

@@ -3,6 +3,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn emit_init_startup_creates_malvin_run_under_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let artifacts = emit_init_startup(tmp.path(), false).unwrap();
+        assert_eq!(artifacts.work_dir, tmp.path());
+        assert!(
+            artifacts.run_dir.starts_with(tmp.path().join("_malvin")),
+            "init run dir must live under _malvin"
+        );
+        assert!(artifacts.run_dir.exists());
+    }
+
+    #[test]
     fn templates_are_nonempty() {
         assert!(!TPL_GITIGNORE.trim().is_empty());
         assert!(

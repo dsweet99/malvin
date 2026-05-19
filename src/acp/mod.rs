@@ -71,7 +71,6 @@ include!("session_tests.rs");
 
 include!("agent_bundle.rs");
 include!("agent_client_struct.rs");
-include!("pair.rs");
 include!("retry_policy.rs");
 include!("ops_body.rs");
 include!("client_impl.rs");

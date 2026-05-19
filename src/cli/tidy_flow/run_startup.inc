@@ -88,15 +88,19 @@ pub fn prepare_tidy_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
 
-    let gates_ok = run_repo_workspace_gates(
+    let gate_result = run_repo_workspace_gates(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,
         Some(&artifacts.run_dir),
-    )
-    .is_ok();
+    );
 
-    if gates_ok {
+    if gate_result.is_ok() {
         return tidy_skip_agent_startup(artifacts, shared, malvin_checks_backup);
+    }
+
+    if let Some(detail) = gate_result.as_ref().err() {
+        let msg = crate::cli::format_pre_check_gate_failure("malvin tidy", detail);
+        crate::cli::entrypoint::print_command_error(&msg);
     }
 
     tidy_run_agent_startup(TidyAgentStartupRequest {

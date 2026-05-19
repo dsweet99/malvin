@@ -20,14 +20,6 @@ mod unix_tests {
         extra_args: &'a [&'a str],
     }
 
-    fn combined_output(out: &std::process::Output) -> String {
-        format!(
-            "{}{}",
-            String::from_utf8_lossy(&out.stdout),
-            String::from_utf8_lossy(&out.stderr)
-        )
-    }
-
     fn spawn_code(sp: &CodeSpawn<'_>) -> std::process::Output {
         let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
         cmd.current_dir(sp.workspace)
@@ -73,14 +65,14 @@ mod unix_tests {
             !out.status.success(),
             "malvin code should fail when pre-check gates fail: {out:?}"
         );
-        let combined = combined_output(&out);
+        let combined = super::common::combined_cli_output(&out);
         assert!(
             combined.contains("ERR:"),
             "expected ERR-prefixed failure: {combined:?}"
         );
         assert!(
-            combined.contains("Implementation did not start"),
-            "expected pre-check wrapper message: {combined:?}"
+            combined.contains("Pre-checks failed"),
+            "expected pre-check failure message: {combined:?}"
         );
         assert!(
             combined.contains("retry `malvin code`"),

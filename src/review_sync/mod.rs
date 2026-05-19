@@ -44,17 +44,8 @@ pub fn sync_review_file(
     workspace_review_path: &std::path::Path,
     artifact_review_path: &std::path::Path,
 ) -> std::io::Result<Option<String>> {
-    if !workspace_review_path.exists() {
-        clear_artifact_review(artifact_review_path)?;
-        return Ok(None);
-    }
-    let text = std::fs::read_to_string(workspace_review_path)?;
-    if text.trim().is_empty() {
-        clear_artifact_review(artifact_review_path)?;
-        return Ok(None);
-    }
-    std::fs::write(artifact_review_path, &text)?;
-    Ok(Some(text))
+    sync_review_file_for_attempt(artifact_review_path, workspace_review_path)
+        .map_err(std::io::Error::other)
 }
 
 #[cfg(test)]

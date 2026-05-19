@@ -68,7 +68,7 @@ fn kiss_stringify_cli_symbols_b() {
     let _ = stringify!(
         crate::cli::mid_session_gates::mid_session_post_run_tidy::run_tidy_prompt_after_post_run_gate_failure
     );
-    let _ = stringify!(super::prepare_code_run);
+    let _ = stringify!(super::entrypoint::run_code_command);
     let _ = stringify!(super::require_kiss_for_cli_command);
     let _ = stringify!(super::print_command_error);
     let _ = stringify!(super::try_tokio_runtime);

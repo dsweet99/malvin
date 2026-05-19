@@ -76,8 +76,8 @@ pub const fn agent_io_options(
 
 pub fn format_pre_check_gate_failure(command: &str, detail: &str) -> String {
     format!(
-        "ERR: Implementation did not start because workspace checks did not pass.\n\
-Run `malvin tidy` first, then retry `{command}`, or use `--skip-pre-checks` on `{command}` to bypass the pre-check gate.\n\
+        "ERR: Pre-checks failed; implementation did not start.\n\
+Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`.\n\
 \n\
 {detail}"
     )
@@ -86,7 +86,7 @@ Run `malvin tidy` first, then retry `{command}`, or use `--skip-pre-checks` on `
 pub fn format_workspace_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Workspace checks did not pass; the next step did not run.\n\
-Run `malvin tidy` first, then retry `{command}`, or retry with `--skip-pre-checks` to bypass this gate.\n\
+Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`.\n\
 \n\
 {detail}"
     )
