@@ -66,8 +66,35 @@ include!("reader_inline.rs");
 include!("session_spawn.inc");
 use outgoing_prompt_trace::DoPromptTraceSplit;
 include!("session.rs");
+#[cfg(test)]
+include!("session_tests.rs");
 
 include!("agent_bundle.rs");
+include!("agent_client_struct.rs");
+include!("pair.rs");
+include!("retry_policy.rs");
+include!("ops_body.rs");
+include!("client_impl.rs");
+#[cfg(test)]
+mod ops_inline_tests {
+    #![allow(
+        unsafe_code,
+        clippy::pedantic,
+        clippy::nursery,
+        unused_imports,
+        clippy::await_holding_lock,
+        clippy::mutex_integer,
+        clippy::unnecessary_struct_initialization,
+        clippy::unused_async,
+        clippy::redundant_pub_crate
+    )]
+    include!("ops_inline_tests.rs");
+}
+#[cfg(test)]
+include!("tee_strip_tests.rs");
+#[cfg(all(test, unix))]
+#[allow(unsafe_code, unused_imports)]
+include!("ops_inline_tests_unix.inc");
 
 /// Hidden harness: spawns `cat` as a stand-in coder session for the `malvin` binary crate’s unit tests.
 ///
@@ -96,7 +123,35 @@ use tokio::io::AsyncReadExt;
 include!("transport_tests_inline.inc");
 
 #[cfg(test)]
-mod reader_tests;
+#[path = "reader_tests_helpers.rs"]
+mod reader_tests_helpers;
+#[cfg(test)]
+#[path = "reader_tests_dispatch.rs"]
+mod reader_tests_dispatch;
+#[cfg(test)]
+#[path = "reader_tests_coalesce_a.rs"]
+mod reader_tests_coalesce_a;
+#[cfg(test)]
+#[path = "reader_tests_coalesce_b.rs"]
+mod reader_tests_coalesce_b;
+#[cfg(test)]
+#[path = "reader_tests_trace_a.rs"]
+mod reader_tests_trace_a;
+#[cfg(test)]
+#[path = "reader_tests_trace_b.rs"]
+mod reader_tests_trace_b;
+#[cfg(test)]
+#[path = "reader_tests_permission.rs"]
+mod reader_tests_permission;
+#[cfg(test)]
+#[path = "reader_tests_permission_unix.rs"]
+mod reader_tests_permission_unix;
+#[cfg(test)]
+#[path = "reader_tests_reader_loop.rs"]
+mod reader_tests_reader_loop;
+
+#[cfg(test)]
+mod kiss_coverage;
 
 #[cfg(test)]
 pub(crate) mod spawn_test_args;

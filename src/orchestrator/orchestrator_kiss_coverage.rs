@@ -17,4 +17,14 @@ fn kiss_stringify_orchestrator_units() {
     let _ = stringify!(crate::orchestrator::review_attempt_kernel::artifact_review_lgtm_after_review_write);
     let _ = stringify!(crate::orchestrator::review_attempt_kernel::ensure_review_prep_after_reviewers_spawn);
     let _ = stringify!(crate::orchestrator::review_attempt_kernel::ensure_artifact_review_after_review_write);
+    let _ = stringify!(crate::orchestrator::memory_context::MemoryRecord);
+    let _ = stringify!(crate::orchestrator::memory_context::MemoryState);
+    let _ = stringify!(crate::orchestrator::memory_context::emit_if_complete);
+    let _ = stringify!(crate::orchestrator::memory_context::process_memory_line);
+    let _ = stringify!(crate::orchestrator::memory_context::parse_memories);
+    let _ = stringify!(crate::orchestrator::memory_context::collect_memory_records);
+    let _ = stringify!(crate::orchestrator::memory_context::format_memories);
+    let _ = stringify!(crate::orchestrator::memory_context::sample_seed);
+    let _ = stringify!(crate::orchestrator::memory_context::sample_memories);
+    let _ = stringify!(crate::orchestrator::memory_context::build_memories_value);
 }

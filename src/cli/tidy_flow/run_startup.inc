@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use malvin::artifacts::{
+use crate::artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present,
     backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text,
 };
-use malvin::orchestrator::workflow_context;
-use malvin::prompts::{PromptError, PromptStore};
+use crate::prompts::{PromptError, PromptStore};
 
-use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
-use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent, emit_run_startup_sequence};
+use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent, run_emit};
 
 use super::prep::prepare_tidy_prompt_store;
 use super::TidyStartup;
@@ -20,6 +19,7 @@ use super::TidyStartup;
 pub fn tidy_prompt_context(
     artifacts: &RunArtifacts,
 ) -> Result<(PromptStore, HashMap<String, String>), String> {
+    use crate::orchestrator::workflow_context;
     let store = prepare_tidy_prompt_store()?;
     let context = workflow_context(artifacts, &store, "tidy").map_err(|e: PromptError| e.0)?;
     Ok((store, context))
@@ -43,7 +43,7 @@ fn tidy_skip_agent_startup(
     shared: &SharedOpts,
     malvin_checks_backup: MalvinChecksBackup,
 ) -> Result<TidyStartup, String> {
-    emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
+    run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
     let session_dotfile_backups =
         tidy_session_dotfile_backups(&artifacts.work_dir, malvin_checks_backup)?;
     Ok(TidyStartup::SkipAgent {
@@ -64,7 +64,7 @@ fn tidy_run_agent_startup(req: TidyAgentStartupRequest<'_>) -> Result<TidyStartu
     let mut client = build_agent(req.shared, req.workflow, req.shared.acp_stdout_markdown_enabled());
     client.prompts_log_run_dir = Some(req.artifacts.run_dir.clone());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    emit_run_startup_sequence(&req.artifacts, req.shared.tee_startup_stdout(), "tidy")?;
+    run_emit::emit_run_startup_sequence(&req.artifacts, req.shared.tee_startup_stdout(), "tidy")?;
     let session_dotfile_backups =
         tidy_session_dotfile_backups(&req.artifacts.work_dir, req.malvin_checks_backup)?;
     let (store, context) = tidy_prompt_context(&req.artifacts)?;

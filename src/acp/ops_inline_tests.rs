@@ -13,7 +13,8 @@ fn write_path_executable(path: &Path) {
 
 #[cfg(unix)]
 mod resolve_agent_bin_unix_tests {
-    use super::{resolve_agent_bin, write_path_executable};
+    use super::write_path_executable;
+    use crate::acp::resolve_agent_bin;
 
     #[test]
     fn resolve_agent_bin_prefers_env_override() {

@@ -1,4 +1,4 @@
-use malvin::artifacts::resolve_user_request;
+use crate::artifacts::resolve_user_request;
 
 fn resolve_plan_at_destination(trimmed: &str) -> Result<std::path::PathBuf, String> {
     let (_, work_dir) = resolve_user_request(trimmed)?;

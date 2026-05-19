@@ -1,12 +1,10 @@
 use std::sync::{Arc, Mutex};
 
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
-use malvin::orchestrator::should_run_learn_check;
-use malvin::prompts::{HEADER_MD, PromptError};
-use malvin::run_timing::{RunTiming, TimingPhase};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::prompts::{HEADER_MD, PromptError};
+use crate::run_timing::{RunTiming, TimingPhase};
 
-use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
-use crate::cli::timing_merge;
+use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::prompt::run_tidy_prompt_with_restore;
 use super::recovery::{tidy_fail_on_abort, tidy_learn_elapsed_threshold_ms};
 use super::interleaved_loop::run_tidy_interleaved_loop;
@@ -17,6 +15,7 @@ async fn run_tidy_learn_prompt_if_elapsed(
     timing: &Arc<Mutex<RunTiming>>,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
+    use crate::orchestrator::should_run_learn_check;
     if !input.run_learn {
         return Ok(());
     }
@@ -136,7 +135,7 @@ pub async fn run_tidy_acp(
         }
     }
 
-    timing_merge::emit_run_timing_after_acp(
+    crate::acp_post_run::emit_run_timing_after_acp(
         input.client,
         &input.artifacts.run_dir,
         &timing,
@@ -149,7 +148,7 @@ pub fn merge_tidy_timing(
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
+    crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         result,
         &artifacts.work_dir,
         session_dotfile_backups,

@@ -1,20 +1,15 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use malvin::acp::{AgentClient, CoderPromptOptions};
-use malvin::artifacts::{
+use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts, restore_workspace_session_dotfiles,
 };
-use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::run_timing::{RunTiming, TimingPhase};
+use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::run_timing::{RunTiming, TimingPhase};
 
-use super::PlanArgs;
-use super::SharedOpts;
-use super::code_flow::{WorkflowCliOptions, build_agent};
-use super::run_emit;
-use super::timing_merge;
+use crate::cli::{PlanArgs, SharedOpts, WorkflowCliOptions, build_agent, run_emit};
 
 fn plan_run_artifacts(plan: &PlanArgs, user_plan_path: &Path) -> Result<RunArtifacts, String> {
     let work_dir_for_run = plan_session_work_dir(plan, user_plan_path);
@@ -23,7 +18,7 @@ fn plan_run_artifacts(plan: &PlanArgs, user_plan_path: &Path) -> Result<RunArtif
 }
 
 fn start_plan_workspace_session(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
     shared: &SharedOpts,
     user_plan_path: &Path,
@@ -80,7 +75,7 @@ fn pair_run_and_restore(
 }
 
 async fn plan_coder_prompt(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
     prompt: &str,
 ) -> Result<(), String> {
@@ -89,7 +84,7 @@ async fn plan_coder_prompt(
             prompt,
             &artifacts.log_path("review_plan"),
             "review_plan",
-            CoderPromptOptions {
+            crate::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 skip_repo_style: true,
                 do_trace_split: None,
@@ -107,7 +102,7 @@ struct PlanReviewOnce<'a> {
 }
 
 async fn run_plan_review_once(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     request: PlanReviewOnce<'_>,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
@@ -129,8 +124,8 @@ async fn run_plan_review_once(
 
     let end_result = client.end_coder_session().await.map_err(|e| e.to_string());
     let acp_result =
-        timing_merge::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
-    timing_merge::emit_run_timing_after_acp(client, &request.artifacts.run_dir, &timing, acp_result)
+        crate::acp_post_run::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
+    crate::acp_post_run::emit_run_timing_after_acp(client, &request.artifacts.run_dir, &timing, acp_result)
 }
 
 pub async fn run_plan(
@@ -141,7 +136,7 @@ pub async fn run_plan(
     let user_plan_path = resolve_plan_destination(&plan)?;
     apply_plan_source(&plan, &user_plan_path)?;
     let artifacts = plan_run_artifacts(&plan, &user_plan_path)?;
-    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
         let session_dotfile_backups =
@@ -156,7 +151,7 @@ pub async fn run_plan(
             },
         )
         .await;
-        timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
+        crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
             wf_res,
             &artifacts.work_dir,
             &session_dotfile_backups,
@@ -167,7 +162,7 @@ pub async fn run_plan(
     }
     .await;
     if r.is_ok() {
-        super::error_run_log::clear_command_error_run_dir();
+        crate::cli::error_run_log::clear_command_error_run_dir();
     }
     r
 }

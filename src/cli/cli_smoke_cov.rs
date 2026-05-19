@@ -6,19 +6,19 @@ use super::{Cli, Commands};
 #[test]
 fn smoke_has_source_files_empty_dir() {
     let tmp = tempfile::tempdir().unwrap();
-    assert!(!super::source_detect::has_source_files(tmp.path()));
+    assert!(!crate::source_detect::has_source_files(tmp.path()));
 }
 
 #[test]
 fn smoke_has_source_files_detects_rs() {
     let tmp = tempfile::tempdir().unwrap();
     std::fs::write(tmp.path().join("x.rs"), "").unwrap();
-    assert!(super::source_detect::has_source_files(tmp.path()));
+    assert!(crate::source_detect::has_source_files(tmp.path()));
 }
 
 #[test]
 fn smoke_merge_acp_and_timing_results() {
-    use super::timing_merge::merge_acp_and_timing_results;
+    use crate::acp_post_run::merge_acp_and_timing_results;
     assert_eq!(merge_acp_and_timing_results(Ok(()), Ok(())), Ok(()));
     assert_eq!(
         merge_acp_and_timing_results(Err("acp".into()), Err(std::io::Error::other("io"))),
@@ -28,7 +28,7 @@ fn smoke_merge_acp_and_timing_results() {
 
 #[test]
 fn smoke_prefer_primary_over_secondary() {
-    use super::timing_merge::prefer_primary_over_secondary;
+    use crate::acp_post_run::prefer_primary_over_secondary;
     assert_eq!(prefer_primary_over_secondary(Ok(()), Ok(()), "x"), Ok(()));
     assert_eq!(
         prefer_primary_over_secondary(Ok(()), Err("b".into()), "x"),
@@ -36,11 +36,11 @@ fn smoke_prefer_primary_over_secondary() {
     );
 }
 
-fn empty_session_backups(work: &std::path::Path) -> malvin::artifacts::SessionDotfileBackups {
-    malvin::artifacts::SessionDotfileBackups::from_parts(
-        malvin::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
-        malvin::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
-        malvin::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
+fn empty_session_backups(work: &std::path::Path) -> crate::artifacts::SessionDotfileBackups {
+    crate::artifacts::SessionDotfileBackups::from_parts(
+        crate::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
+        crate::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
+        crate::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
     )
 }
 
@@ -49,7 +49,7 @@ fn smoke_merge_acp_with_workspace_session_restore() {
     let work = tempfile::tempdir().unwrap();
     let backups = empty_session_backups(work.path());
     assert!(
-        super::timing_merge::merge_acp_with_workspace_session_restore(Ok(()), work.path(), &backups)
+        crate::acp_post_run::merge_acp_with_workspace_session_restore(Ok(()), work.path(), &backups)
             .is_ok()
     );
 }
@@ -60,7 +60,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
     let missing = work.path().join("no_such_result.md");
     let backups = empty_session_backups(work.path());
     assert!(
-        super::timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
+        crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
             Ok(()),
             work.path(),
             &backups,
@@ -72,7 +72,7 @@ fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file
 
 #[test]
 fn smoke_agent_io_options_maps_flags() {
-    use super::code_flow::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
+    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options};
     let shared = super::SharedOpts {
         model: "m".into(),
         no_force: false,

@@ -1,10 +1,9 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use malvin::acp::AgentClient;
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 
-use super::repo_checks::{
+use crate::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
     run_repo_workspace_gates_with_details,
 };
@@ -38,7 +37,7 @@ where
 }
 
 pub fn mid_pre_summary_repo_gates<'a>(
-    client: &'a mut AgentClient,
+    client: &'a mut crate::acp::AgentClient,
     artifacts: &'a RunArtifacts,
     session_dotfile_backups: &'a SessionDotfileBackups,
 ) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send + 'a>> {
@@ -50,7 +49,7 @@ pub fn mid_pre_summary_repo_gates<'a>(
 }
 
 pub async fn run_pre_summary_repo_gates_with_tidy_retry(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
@@ -78,8 +77,8 @@ mod gates_root_tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::pre_summary_repo_gates_tidy_retry_flow;
-    use crate::cli::repo_checks::RepoGateCommandFailure;
-    use crate::cli::repo_checks::RepoGateFailure;
+    use crate::repo_checks::RepoGateCommandFailure;
+    use crate::repo_checks::RepoGateFailure;
 
     #[test]
     fn kiss_stringify_mid_session_gate_units() {

@@ -1,6 +1,5 @@
-use malvin::acp::CoderPromptOptions;
-use malvin::artifacts::restore_workspace_session_dotfiles;
-use malvin::run_timing::TimingPhase;
+use crate::artifacts::restore_workspace_session_dotfiles;
+use crate::run_timing::TimingPhase;
 
 use super::TidyAcpInput;
 use super::TidyPromptRestore;
@@ -17,7 +16,7 @@ pub async fn run_tidy_prompt(
             prompt,
             &input.artifacts.log_path(kind),
             kind,
-            CoderPromptOptions {
+            crate::acp::CoderPromptOptions {
                 llm_phase: Some(phase),
                 skip_repo_style: true,
                 do_trace_split: None,

@@ -182,5 +182,5 @@ pub(super) fn build_memories_value(work_dir: &Path) -> String {
 }
 
 #[cfg(test)]
-include!("memory_context/tests.rs");
+include!("memory_context/tests_body.inc");
 

@@ -2,7 +2,7 @@
 //! `malvin do` still forces plain markdown-off ACP stdout regardless of `--no-markdown`.
 
 use clap::Args;
-pub use malvin::config::DEFAULT_CLI_MODEL;
+pub use crate::config::DEFAULT_CLI_MODEL;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
 const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown on stdout for `malvin code` / `malvin kpop` / `malvin bug` trace lines [default: markdown on]. Styling is also off when color is off (`--no-color` or NO_COLOR), same as other ANSI. No effect on `malvin do` (ACP stdout stays plain).";

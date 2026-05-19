@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 
-use malvin::acp::AgentClient;
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
-use malvin::prompts::PromptStore;
-use malvin::run_timing::TimingPhase;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::prompts::PromptStore;
+use crate::run_timing::TimingPhase;
 
-use crate::cli::repo_checks::RepoGateCommandFailure;
+use crate::repo_checks::RepoGateCommandFailure;
 use crate::cli::tidy_flow::{
     TidyAcpInput, TidyPromptRestore, compose_tidy_prompt, run_tidy_prompt_with_restore,
     tidy_prompt_context,
 };
-use crate::cli::timing_merge;
 
 fn post_run_gate_failure_details(failure: &RepoGateCommandFailure, log_path: &str) -> String {
     let exit = failure
@@ -48,7 +46,7 @@ impl PostRunTidyPrompt {
 }
 
 pub async fn run_tidy_prompt_after_post_run_gate_failure(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
     failure: &RepoGateCommandFailure,
@@ -107,8 +105,8 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
         .await
         .map_err(|e| e.to_string());
     let acp_result =
-        timing_merge::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
-    timing_merge::emit_run_timing_after_acp(
+        crate::acp_post_run::prefer_primary_over_secondary(acp_result, end_result, "end_coder_session");
+    crate::acp_post_run::emit_run_timing_after_acp(
         input.client,
         &input.artifacts.run_dir,
         &timing,
@@ -118,10 +116,10 @@ pub async fn run_tidy_prompt_after_post_run_gate_failure(
 
 #[cfg(test)]
 mod post_run_tidy_tests {
-    use crate::cli::repo_checks::RepoGateCommandFailure;
-    use malvin::acp::test_captive_session::captive_cat_acp_session_for_tests;
-    use malvin::acp::{AgentClient, AgentIoOptions};
-    use malvin::artifacts::{
+    use crate::repo_checks::RepoGateCommandFailure;
+    use crate::acp::test_captive_session::captive_cat_acp_session_for_tests;
+    use crate::acp::AgentIoOptions;
+    use crate::artifacts::{
         KissConfigBackup, SessionDotfileBackups, create_run_artifacts_from_text,
     };
 
@@ -140,7 +138,7 @@ mod post_run_tidy_tests {
             create_run_artifacts_from_text("plan\n", Some(tmp.path())).expect("artifacts");
         std::fs::write(artifacts.work_dir.join(".malvin_checks"), "kiss check\n").expect("checks");
         let malvin_checks_backup =
-            malvin::artifacts::backup_workspace_malvin_checks_if_present(&artifacts.work_dir)
+            crate::artifacts::backup_workspace_malvin_checks_if_present(&artifacts.work_dir)
                 .expect("backup malvin_checks");
         let backups = SessionDotfileBackups::from_parts(
             KissConfigBackup::Missing,
@@ -153,7 +151,7 @@ mod post_run_tidy_tests {
             stdout: String::new(),
             stderr: String::new(),
         };
-        let mut client = AgentClient::new(
+        let mut client = crate::acp::AgentClient::new(
             "m".into(),
             AgentIoOptions {
                 force: false,

@@ -2,8 +2,6 @@
 // Match `lib.rs`: allow duplicate transitive versions under `clippy::cargo`.
 #![allow(clippy::multiple_crate_versions, clippy::redundant_pub_crate)]
 
-mod cli;
-
-fn main() -> cli::Exit {
-    cli::entrypoint()
+fn main() -> malvin::cli::Exit {
+    malvin::cli::entrypoint()
 }

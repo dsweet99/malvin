@@ -1,15 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use malvin::artifacts::SessionDotfileBackups;
-use malvin::orchestrator::{
-    REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
-    ReviewTwoPromptSession, ReviewWriteInnerOutcome, fail_on_abort_for_artifacts,
-    run_reviewers_spawn_then_review_write,
-};
-use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::run_timing::TimingPhase;
+use crate::artifacts::SessionDotfileBackups;
+use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::run_timing::TimingPhase;
 
-use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use crate::cli::{LEARN_MIN_ELAPSED_MS};
 
 use super::prep::{compose_tidy_concerns_prompt, write_checks_do_not_pass_for_artifacts};
@@ -42,6 +37,10 @@ pub(crate) async fn tidy_review_attempt_with_retries(
     session_dotfile_backups: &SessionDotfileBackups,
     max_inner_retries: usize,
 ) -> Result<TidyReviewAttemptOutcome, String> {
+    use crate::orchestrator::{
+        REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG, ReviewTwoPromptSession, ReviewWriteInnerOutcome,
+        run_reviewers_spawn_then_review_write,
+    };
     let outcome = run_reviewers_spawn_then_review_write(
         ReviewTwoPromptSession {
             client: input.client,
@@ -69,8 +68,9 @@ pub(crate) async fn tidy_review_attempt_with_retries(
 }
 
 pub(crate) fn tidy_fail_on_abort(
-    artifacts: &malvin::artifacts::RunArtifacts,
+    artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<(), String> {
+    use crate::orchestrator::fail_on_abort_for_artifacts;
     fail_on_abort_for_artifacts(artifacts).map_err(|e| e.0)
 }
 
@@ -112,6 +112,7 @@ pub(crate) async fn run_tidy_post_concerns_recovery(
     input: &mut TidyAcpInput<'_>,
     req: TidyRecoveryRequest<'_>,
 ) -> Result<bool, String> {
+    use crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG;
     if run_repo_workspace_gates(
         req.paths.work_dir.as_path(),
         RepoGateOutput::Tagged,

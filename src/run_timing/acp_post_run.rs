@@ -1,11 +1,11 @@
+//! Shared result merge for ACP runs that emit [`crate::run_timing`] artifacts.
+
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use malvin::acp::AgentClient;
-use malvin::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
-use malvin::run_timing::RunTiming;
+use crate::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
+use crate::run_timing::RunTiming;
 
-/// Prefer ACP failures over run-timing artifact errors once run timing emission completes.
 pub fn merge_acp_and_timing_results(
     acp_result: Result<(), String>,
     timing_result: std::io::Result<()>,
@@ -49,7 +49,7 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 ) -> Result<(), String> {
     let merge_result =
         merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
-    if let Some(abort) = malvin::orchestrator::check_abort(result_path) {
+    if let Some(abort) = crate::orchestrator::check_abort(result_path) {
         return match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
             Err(merge_error) => {
@@ -65,14 +65,14 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
     merge_result
 }
 
-fn merge_error_mentions_restore(merge_error: &str) -> bool {
+pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
     merge_error.contains("workspace session restore failed:")
         || merge_error.contains("kissconfig restore:")
         || merge_error.contains("malvin_checks restore:")
         || merge_error.contains("kissignore restore:")
 }
 
-fn duplicate_safe_restore_error(merge_error: &str) -> String {
+pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
     if merge_error_mentions_restore(merge_error) {
         merge_error.to_string()
     } else {
@@ -80,27 +80,24 @@ fn duplicate_safe_restore_error(merge_error: &str) -> String {
     }
 }
 
-/// After ACP work: write `run_timing.json`, print the stdout timing summary line (starts with [`malvin::run_timing::RUN_TIMING_SUMMARY_PREFIX`], i.e. `TIMING: ` with one ASCII space after the colon before the first field), clear [`AgentClient`] timing slot, merge errors.
 pub fn emit_run_timing_after_acp(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = malvin::run_timing::finalize_and_emit_run_timing(run_dir, timing);
+    let timing_result = crate::run_timing::finalize_and_emit_run_timing(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
 }
 
-/// After ACP work: write `run_timing.json` without a stdout timing line, clear [`AgentClient`]
-/// timing slot, merge errors.
 pub fn emit_run_timing_json_only_after_acp(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     run_dir: &Path,
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = malvin::run_timing::finalize_run_timing_json_only(run_dir, timing);
+    let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
 }

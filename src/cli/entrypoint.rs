@@ -4,11 +4,10 @@ use super::{
     Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
     run_plan, run_tidy,
 };
-use super::{init_cmd, models_cmd};
-use malvin::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
-use malvin::require_kiss_for_malvin;
+use super::models_cmd;
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
+    use crate::require_kiss_for_malvin;
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
@@ -19,6 +18,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
 }
 
 pub fn print_command_error(message: &str) {
+    use crate::output::{MALVIN_WHO, print_stderr_line, print_stdout_line};
     super::error_run_log::append_command_error_to_run_log(message);
     if message.starts_with("ERR:") {
         print_stdout_line(MALVIN_WHO, message);
@@ -44,13 +44,13 @@ where
 }
 
 pub fn entrypoint() -> Exit {
-    malvin::init_from_env();
+    crate::init_from_env();
     let cli = Cli::parse();
     if let Err(e) = require_kiss_for_cli_command(&cli.command) {
         print_command_error(&e);
         return Exit::Failure;
     }
-    malvin::output::init_stdout_style(cli.global.no_color);
+    crate::output::init_stdout_style(cli.global.no_color);
     let res = dispatch_command(cli);
     match res {
         Ok(()) => {
@@ -131,7 +131,16 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             let shared = cli.shared.clone();
             let tee = cli.shared.tee_startup_stdout();
             run_async_cli(|| async move {
-                init_cmd::run_init(init.path, init.force, &init.languages, &shared, tee).await
+                crate::init_cmd::run_init(crate::init_cmd::RunInitRequest {
+                    path: init.path,
+                    languages: &init.languages,
+                    shared: &shared,
+                    opts: crate::init_cmd::RunInitOptions {
+                        overwrite_templates: init.force,
+                        tee_startup_stdout: tee,
+                    },
+                })
+                .await
             })
         }
         Commands::Models(_) => models_cmd::run_models(),

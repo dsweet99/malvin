@@ -105,6 +105,29 @@ pub mod stdout_log_path;
 pub mod review_sync;
 pub mod run_timing;
 
+pub mod acp_post_run {
+    pub use crate::run_timing::acp_post_run::*;
+}
+
+#[path = "cli/repo_checks/mod.rs"]
+pub mod repo_checks;
+
+#[path = "cli/source_detect.rs"]
+pub mod source_detect;
+
+#[path = "cli/init_cmd.rs"]
+pub mod init_cmd;
+
+#[path = "cli/do_flow.rs"]
+pub mod do_flow;
+
+#[path = "cli/plan_flow/mod.rs"]
+pub mod plan_flow;
+
+#[path = "cli/mod.rs"]
+pub mod cli;
+
+
 #[cfg(test)]
 #[path = "acp/test_unix_bin.rs"]
 pub mod acp_test_unix_bin;

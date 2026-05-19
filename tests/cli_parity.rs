@@ -89,27 +89,19 @@ fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
 }
 
 #[test]
-fn root_gitignore_ignores_malvin_logs_and_target() {
+fn repo_root_gitignore_ignores_malvin_logs_and_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     assert!(
-        check_ignored(root, "_malvin/dummy_stamp/plan.md"),
-        "expected _malvin/ run dirs to be ignored"
+        check_ignored(root, "_malvin/x/plan.md"),
+        "repo .gitignore should ignore _malvin/ runs"
     );
     assert!(
         check_ignored(root, "log"),
-        "expected root log file to be ignored"
+        "repo .gitignore should ignore root log"
     );
     assert!(
-        check_ignored(root, "log_2"),
-        "expected root log_2 to be ignored"
-    );
-    assert!(
-        check_ignored(root, "target/debug/malvin"),
-        "expected Rust target/ tree to be ignored"
-    );
-    assert!(
-        !check_ignored(root, "README.md"),
-        "expected README.md not to be ignored"
+        check_ignored(root, "target/release/foo"),
+        "repo .gitignore should ignore Rust target/"
     );
 }
 

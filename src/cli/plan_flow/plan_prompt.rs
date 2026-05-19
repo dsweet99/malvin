@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use malvin::artifacts::RunArtifacts;
-use malvin::orchestrator::{format_prompt_path, workflow_context};
-use malvin::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
+use crate::artifacts::RunArtifacts;
+use crate::prompts::{HEADER_MD, PromptError, PromptStore, merged_coding_rules};
 
 pub fn prepare_plan_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
@@ -44,6 +43,7 @@ pub fn plan_prompt_context(
     user_plan_path: &Path,
     store: &PromptStore,
 ) -> Result<HashMap<String, String>, String> {
+    use crate::orchestrator::{format_prompt_path, workflow_context};
     let mut ctx = workflow_context(artifacts, store, "plan").map_err(|e: PromptError| e.0)?;
     ctx.insert(
         "plan_path".to_string(),

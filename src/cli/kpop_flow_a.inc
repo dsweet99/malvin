@@ -1,28 +1,19 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use malvin::acp::{AgentClient, AgentKpopMultiturnCtl};
-use malvin::artifacts::{
+use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
 };
-use malvin::kpop_creative_enabled;
-use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use malvin::kpop_progression::KpopMultiturnState;
-use malvin::orchestrator::workflow_context_paths_only;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
-use malvin::prompts::{PromptError, PromptStore};
+use crate::kpop_creative_enabled;
+use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
+use crate::kpop_progression::KpopMultiturnState;
+use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::prompts::{PromptError, PromptStore};
 
 use super::KpopArgs;
-use super::LEARN_MIN_ELAPSED_MS;
-use super::WorkflowCliOptions;
-use super::build_agent;
-use super::emit_run_startup_sequence;
-use super::prepare_kpop_prompt_store;
-use super::shared_opts::SharedOpts;
-use super::timing_merge;
-use super::timing_merge::emit_run_timing_after_acp;
+use super::{SharedOpts, WorkflowCliOptions, build_agent, prepare_kpop_prompt_store};
 
-pub(in crate::cli) fn kpop_prompt_store(
+pub(in crate) fn kpop_prompt_store(
     kpop: &KpopArgs,
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
@@ -39,7 +30,7 @@ pub struct KpopPrepared {
 }
 
 impl KpopPrepared {
-    pub(in crate::cli) fn into_bug_followup_artifacts(
+    pub(in crate) fn into_bug_followup_artifacts(
         self,
         plan_body: &str,
     ) -> Result<RunArtifacts, String> {
@@ -61,7 +52,8 @@ fn init_kpop_exp_log_file(artifacts: &RunArtifacts) -> Result<PathBuf, String> {
     Ok(exp_log_path)
 }
 
-pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
+pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
+    use crate::orchestrator::workflow_context_paths_only;
     let (text, work_dir) = resolve_user_request(&kpop.request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
@@ -71,7 +63,7 @@ pub(in crate::cli) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, 
     let mut context = workflow_context_paths_only(&artifacts, "kpop");
     context.insert(
         "quality_gates".to_string(),
-        malvin::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
+        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
     );
     Ok(KpopPrepared {
         artifacts,
@@ -86,7 +78,7 @@ fn kpop_boot_store_client_prepared(
     kpop: &KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-) -> Result<(PromptStore, AgentClient, KpopPrepared), String> {
+) -> Result<(PromptStore, crate::acp::AgentClient, KpopPrepared), String> {
     let store = kpop_prompt_store(kpop, workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);
@@ -98,14 +90,14 @@ fn kpop_boot_store_client_prepared(
 }
 
 pub struct KpopAcpMultiturnCtx<'a> {
-    pub client: &'a mut AgentClient,
+    pub client: &'a mut crate::acp::AgentClient,
     pub prepared: &'a KpopPrepared,
     pub workflow: WorkflowCliOptions,
     pub state: &'a mut KpopMultiturnState<'a>,
     pub store: &'a PromptStore,
 }
 
-pub(in crate::cli) async fn kpop_run_acp_multiturn(
+pub(in crate) async fn kpop_run_acp_multiturn(
     ctx: KpopAcpMultiturnCtx<'_>,
 ) -> Result<(), String> {
     let learn_owned = kpop_learn_bundle(
@@ -117,17 +109,17 @@ pub(in crate::cli) async fn kpop_run_acp_multiturn(
     let timing = ctx.client.attach_run_timing_for_session();
     let acp_result = ctx
         .client
-        .run_kpop_multiturn(AgentKpopMultiturnCtl {
+        .run_kpop_multiturn(crate::acp::AgentKpopMultiturnCtl {
             cwd: &ctx.prepared.artifacts.work_dir,
             kpop_log: ctx.prepared.artifacts.log_path("kpop"),
             learn: learn_owned,
-            learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
+            learn_min_elapsed_ms: crate::DEFAULT_LEARN_MIN_ELAPSED_MS,
             state: ctx.state,
             session_dotfile_backups: &ctx.prepared.session_dotfile_backups,
         })
         .await
         .map_err(|e| e.0);
-    emit_run_timing_after_acp(
+    crate::acp_post_run::emit_run_timing_after_acp(
         ctx.client,
         &ctx.prepared.artifacts.run_dir,
         &timing,
@@ -166,7 +158,7 @@ pub async fn run_kpop(
     })
     .await;
 
-    let r = timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
+    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_result,
         &prepared.artifacts.work_dir,
         &prepared.session_dotfile_backups,

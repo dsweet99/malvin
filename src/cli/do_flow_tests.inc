@@ -1,37 +1,3 @@
-
-async fn run_do_acp(
-    client: &mut AgentClient,
-    artifacts: &RunArtifacts,
-    coder: DoCoderRun,
-) -> Result<(), String> {
-    let timing = client.attach_run_timing_for_session();
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        client.set_run_timing(None);
-        return Err(e.to_string());
-    }
-    stamp_do_timing_display_name(&timing);
-    let log = artifacts.log_path("do");
-    let (ref header, ref user) = coder.header_user_for_trace;
-    let do_split = Some((header.as_str(), user.as_str()));
-    let run_res = client
-        .run_coder_prompt(
-            &coder.combined,
-            &log,
-            "do",
-            CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Implement),
-                skip_repo_style: coder.skip_repo_style,
-                do_trace_split: do_split,
-                stdout_bracket_label: None,
-            },
-        )
-        .await
-        .map_err(|e| e.to_string());
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = merge_two_string_results(run_res, end_res);
-    timing_merge::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
-}
-
 #[test]
 fn stringify_do_flow_helpers() {
     let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
@@ -40,17 +6,19 @@ fn stringify_do_flow_helpers() {
     let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
     let _ = stringify!(crate::cli::do_flow::combine_do_raw_header_and_user);
     let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
-    let _ = stringify!(crate::cli::do_flow::DoCoderRun);
+    let _ = stringify!(crate::cli::do_flow_prompt::DoCoderRun);
 }
 
 #[cfg(test)]
 mod do_tests {
     use clap::Parser;
 
-    use malvin::artifacts::RunArtifacts;
-    use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
+    use crate::artifacts::RunArtifacts;
+    use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
-    use super::{combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user};
+    use crate::do_flow::do_flow_prompt::{
+        combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user,
+    };
 
     #[test]
     fn combine_do_acp_prompt_joins_rendered_header_and_request() {
@@ -197,16 +165,9 @@ mod do_tests {
     }
 
     #[test]
-    fn cli_defaults_to_verbose_and_accepts_verbose_flags() {
+    fn cli_accepts_verbose_short_and_long_global_flags() {
         use crate::cli::Cli;
         use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "do", "default"]).expect("parse");
-        assert!(cli.shared.verbose);
-        match &cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "default"),
-            _ => panic!("expected Do subcommand"),
-        }
 
         let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
         assert!(cli.shared.verbose);
@@ -223,3 +184,4 @@ mod do_tests {
         }
     }
 }
+

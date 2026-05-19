@@ -12,10 +12,10 @@ Pay attention to
 KPop: Review the codebase for these problems:
 - Find inconsistencies with `{{ plan_path }}`.
 - Find "cheats" to avoid violations of kiss metrics (run `kiss stats` to see a table of kiss metrics). Check, especially, import patterns and unit tests.
-- Find bugs.
-- Find redundancy or wasted work.
+- Find serious bugs.
+- Find serious redundancy or wasted work.
 - Find poorly-tested code.
-- Find poorly-designed (bad SOC, leaky abstraction, overly-coupled, etc.) bits of code.
+- Find very poorly-designed (bad SOC, leaky abstraction, overly-coupled, etc.) bits of code.
 - Find non-idiomatic or inelegant code.
 
 Be thorough. Be especially critical of cheating of any kind.

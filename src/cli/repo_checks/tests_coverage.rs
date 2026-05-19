@@ -3,10 +3,10 @@ use super::kissconfig_warn::should_warn_low_test_coverage;
 #[test]
 fn repo_checks_kiss_stringify_internal_helpers() {
     let _ = stringify!(super::RepoGateOutput);
-    let _ = stringify!(super::emit::emit_repo_gate_line);
+    let _ = stringify!(super::gate_run::emit_repo_gate_line);
     let _ = stringify!(super::style_markers::touch_if_missing);
     let _ = stringify!(super::kissconfig_warn::should_warn_low_test_coverage);
-    let _ = stringify!(super::workspace::source_like_files_present);
+    let _ = stringify!(super::gate_run::source_like_files_present);
 }
 
 #[test]

@@ -11,31 +11,31 @@ use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn source_like_files_present_does_not_follow_external_symlink_dirs() {
-    let _ = stringify!(super::workspace::source_like_files_present);
+    let _ = stringify!(super::gate_run::source_like_files_present);
     let tmp = tempfile::tempdir().unwrap();
     let outside = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(outside.path().join("src")).unwrap();
     std::fs::write(outside.path().join("src/main.rs"), "fn main() {}").unwrap();
     std::os::unix::fs::symlink(outside.path(), tmp.path().join("src")).unwrap();
-    assert!(!super::workspace::source_like_files_present(tmp.path()));
+    assert!(!super::gate_run::source_like_files_present(tmp.path()));
 }
 
 #[tokio::test]
 async fn scan_for_extension_handles_symlink_cycles() {
-    let _ = stringify!(malvin::repo_gates::gate_command_lines);
+    let _ = stringify!(super::gate_run::scan_for_extension_handles_symlink_cycles);
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     std::fs::create_dir(root.join("src")).unwrap();
     std::os::unix::fs::symlink(&root, root.join("src").join("cycle")).unwrap();
 
     let scan = tokio::task::spawn_blocking(move || {
-        malvin::repo_gates::gate_command_lines(&root).unwrap();
-        false
+        super::gate_run::scan_for_extension_handles_symlink_cycles(&root)
     });
-    let _: bool = tokio::time::timeout(Duration::from_secs(1), scan)
+    let found = tokio::time::timeout(Duration::from_secs(1), scan)
         .await
-        .expect("gate_command_lines must finish")
+        .expect("scan_for_extension_handles_symlink_cycles must finish")
         .expect("panicked");
+    assert!(!found);
 }
 
 #[test]

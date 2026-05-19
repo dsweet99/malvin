@@ -1,10 +1,9 @@
 use std::borrow::Cow;
 
-use malvin::artifacts::SessionDotfileBackups;
-use malvin::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
+use crate::artifacts::SessionDotfileBackups;
+use crate::output::{MALVIN_WHO, print_stdout_line};
 
-use crate::cli::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 use super::prep::{compose_tidy_concerns_prompt, write_checks_do_not_pass_for_artifacts};
 use super::prompt::run_tidy_prompt_with_restore;
@@ -36,7 +35,7 @@ async fn run_tidy_coder_prompt_for_attempt(
         TidyPromptRestore {
             prompt: coder_prompt.as_ref(),
             label: "tidy",
-            phase: malvin::run_timing::TimingPhase::Implement,
+            phase: crate::run_timing::TimingPhase::Implement,
             session_dotfile_backups,
             restore_context: "tidy",
         },
@@ -98,6 +97,7 @@ pub async fn run_tidy_interleaved_loop(
     session_dotfile_backups: &SessionDotfileBackups,
     max_loops: usize,
 ) -> Result<(), String> {
+    use crate::orchestrator::REVIEW_WRITE_MISSING_ARTIFACT_MSG;
     let max_outer_iterations = crate::cli::tidy_flow::effective_tidy_max_loops(max_loops);
     let max_review_write_inner_retries = crate::cli::tidy_flow::effective_tidy_max_loops(max_loops);
     for attempt in 1..=max_outer_iterations {

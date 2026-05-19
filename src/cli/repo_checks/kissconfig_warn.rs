@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::emit::emit_repo_gate_line;
+use super::gate_run::emit_repo_gate_line;
 use super::types::RepoGateOutput;
 
 pub fn warn_kissconfig_test_coverage_if_needed(

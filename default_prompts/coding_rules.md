@@ -23,6 +23,7 @@ When presented with failures or violations, respond to them earnestly. Improve t
 - Don't name source code files ".inc".  .rs and .py are the correct extensions.
 - Keep code consistent with `{{ plan_path }}` when this run includes a plan file.
 - Use (up to 4) parallel subagents whereven possible.
+- Do not write tests for tests. That's silly overkill.
 
 ## Nota Bene & Hard Requirements
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me
@@ -35,3 +36,4 @@ Don't cheat the tests. Make earnest attempts to pass the linters and unit tests 
  in which they were designed.
 Your task is to get ALL checks and tests to pass on ALL files.
 Do NOT create Rust code in a Python-only project, or Python code in a Rust-only project.
+DO NOT add, commit, or otherwise perform a modifying operation on git. (You may inspect the log or diff to files, but no changing git.)

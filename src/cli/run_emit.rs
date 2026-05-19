@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use malvin::artifacts::{RunArtifacts, startup_request_tag_label};
-use malvin::format_logs_dir;
-use malvin::output::{MALVIN_WHO, format_line, print_stdout_line, print_stdout_text};
+use crate::artifacts::{RunArtifacts, startup_request_tag_label};
+use crate::format_logs_dir;
+use crate::output::{MALVIN_WHO, format_line, print_stdout_line, print_stdout_text};
 
 pub fn emit_command_line(run_dir: &Path, echo_stdout: bool) -> Result<(), String> {
-    malvin::init_from_env();
-    let cmd = malvin::command_line().expect("init_from_env populates argv via OnceLock");
+    crate::init_from_env();
+    let cmd = crate::command_line().expect("init_from_env populates argv via OnceLock");
     let line = format!("Command: {cmd}");
     if echo_stdout {
         print_stdout_line(MALVIN_WHO, &line);

@@ -1,11 +1,11 @@
-mod tidy_flow_helpers {
+mod tidy_run_body {
     #![allow(unused_imports)]
     include!("tidy_flow/helpers_root_body.inc");
 }
-pub use tidy_flow_helpers::*;
+pub use tidy_run_body::*;
 
 use clap::Args;
-use malvin::output::{MALVIN_WHO, print_stdout_line};
+use crate::output::{MALVIN_WHO, print_stdout_line};
 
 use super::{SharedOpts, WorkflowCliOptions};
 
@@ -75,9 +75,6 @@ pub async fn run_tidy(
     }
     r
 }
-
-#[cfg(test)]
-mod coverage_tests;
 
 #[cfg(test)]
 mod tidy_flow_helpers_tests {

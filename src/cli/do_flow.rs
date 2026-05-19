@@ -1,21 +1,108 @@
 //! `do` subcommand: one coder ACP prompt. Default raw mode prepends `do_header.md` to the user
 //! request; `--cooked` prepends `header.md` instead (and allows repo style).
 
-use std::collections::HashMap;
-
-use super::shared_opts::SharedOpts;
-use super::timing_merge;
-use super::{WorkflowCliOptions, repo_checks};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::repo_checks as repo_checks;
 use clap::Args;
-use malvin::acp::{AgentClient, CoderPromptOptions};
-use malvin::artifacts::{
+use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text, resolve_user_request,
 };
-use malvin::orchestrator::{workflow_context, workflow_context_paths_only};
-use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
-use malvin::run_timing::TimingPhase;
+use crate::run_timing::TimingPhase;
+
+mod do_flow_prompt {
+    use std::collections::HashMap;
+
+    use crate::artifacts::RunArtifacts;
+    use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+
+    pub(crate) struct DoCoderRun {
+        pub combined: String,
+        pub header_user_for_trace: (String, String),
+        pub skip_repo_style: bool,
+    }
+
+    fn prepare_do_prompt_store_validating(required_template: &str) -> Result<PromptStore, String> {
+        let store = PromptStore::default_store();
+        store.ensure_defaults().map_err(|e: PromptError| e.0)?;
+        store
+            .validate_exists(required_template)
+            .map_err(|e: PromptError| e.0)?;
+        Ok(store)
+    }
+
+    pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
+        prepare_do_prompt_store_validating(HEADER_MD)
+    }
+
+    pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
+        prepare_do_prompt_store_validating(DO_HEADER_MD)
+    }
+
+    pub fn combine_do_prompt_file_and_user(
+        store: &PromptStore,
+        text: &str,
+        template_file: &str,
+        context: &HashMap<String, String>,
+    ) -> Result<(String, String, String), String> {
+        let header_body = store
+            .render_prompt_only(template_file, context)
+            .map_err(|e: PromptError| e.0)?;
+        let header = header_body.trim_end().to_string();
+        let user = text.trim_end().to_string();
+        let combined = format!("{header}\n\n{user}");
+        Ok((combined, header, user))
+    }
+
+    pub fn combine_do_acp_prompt_header_and_user(
+        store: &PromptStore,
+        artifacts: &RunArtifacts,
+        text: &str,
+    ) -> Result<(String, String, String), String> {
+        use crate::orchestrator::workflow_context;
+        let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
+        combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
+    }
+
+    pub fn combine_do_raw_header_and_user(
+        store: &PromptStore,
+        artifacts: &RunArtifacts,
+        text: &str,
+    ) -> Result<(String, String, String), String> {
+        use crate::orchestrator::workflow_context_paths_only;
+        let context = workflow_context_paths_only(artifacts, "do");
+        combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
+    }
+
+    pub fn build_do_coder_run(
+        cooked: bool,
+        artifacts: &RunArtifacts,
+        text: &str,
+    ) -> Result<DoCoderRun, String> {
+        let skip_repo_style = !cooked;
+        let (combined, header_user) = if cooked {
+            let store = prepare_do_prompt_store()?;
+            let (combined, header, user) =
+                combine_do_acp_prompt_header_and_user(&store, artifacts, text)?;
+            (combined, (header, user))
+        } else {
+            let store = prepare_do_raw_prompt_store()?;
+            let (combined, header, user) = combine_do_raw_header_and_user(&store, artifacts, text)?;
+            (combined, (header, user))
+        };
+        Ok(DoCoderRun {
+            combined,
+            header_user_for_trace: header_user,
+            skip_repo_style,
+        })
+    }
+}
+
+pub use do_flow_prompt::{
+    combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user,
+    prepare_do_prompt_store, prepare_do_raw_prompt_store,
+};
 
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
@@ -32,53 +119,33 @@ pub struct DoArgs {
     pub request: String,
 }
 
-struct DoCoderRun {
-    combined: String,
-    header_user_for_trace: (String, String),
-    skip_repo_style: bool,
+struct DoRunPrep {
+    client: crate::acp::AgentClient,
+    artifacts: RunArtifacts,
+    coder: do_flow_prompt::DoCoderRun,
+    session_dotfile_backups: SessionDotfileBackups,
 }
 
-fn prepare_do_prompt_store_validating(required_template: &str) -> Result<PromptStore, String> {
-    let store = PromptStore::default_store();
-    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists(required_template)
-        .map_err(|e: PromptError| e.0)?;
-    Ok(store)
-}
-
-pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
-    prepare_do_prompt_store_validating(HEADER_MD)
-}
-
-pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
-    prepare_do_prompt_store_validating(DO_HEADER_MD)
-}
-
-pub async fn run_do(
-    do_args: DoArgs,
+fn new_do_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-) -> Result<(), String> {
-    let raw_output = true;
-    let skip_repo_style = !do_args.cooked;
-    let mut client = AgentClient::new(
+    thoughts: bool,
+) -> crate::acp::AgentClient {
+    crate::acp::AgentClient::new(
         shared.model.clone(),
-        super::agent_io_options(
+        agent_io_options(
             shared,
             workflow,
-            super::AgentStdoutTeeFlags {
+            AgentStdoutTeeFlags {
                 emit_stdout_markdown: false,
-                raw_output,
-                show_thoughts_on_stdout: do_args.thoughts,
+                raw_output: true,
+                show_thoughts_on_stdout: thoughts,
             },
         ),
-    );
-    let (text, work_dir) = resolve_user_request(&do_args.request)?;
-    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
-        .map_err(|e| e.to_string())?;
-    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    )
+}
 
+fn run_do_repo_gates_if_requested(do_args: &DoArgs, artifacts: &RunArtifacts) -> Result<(), String> {
     if do_args.repo_gates {
         repo_checks::run_repo_workspace_gates_no_kiss_clamp(
             &artifacts.work_dir,
@@ -86,87 +153,83 @@ pub async fn run_do(
             Some(&artifacts.run_dir),
         )?;
     }
+    Ok(())
+}
+
+async fn prepare_do_run(
+    do_args: &DoArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<DoRunPrep, String> {
+    let client = new_do_client(shared, workflow, do_args.thoughts);
+    let (text, work_dir) = resolve_user_request(&do_args.request)?;
+    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
+        .map_err(|e| e.to_string())?;
+    crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-
-    let (combined, header_user) = if do_args.cooked {
-        let store = prepare_do_prompt_store()?;
-        let (combined, header, user) =
-            combine_do_acp_prompt_header_and_user(&store, &artifacts, &text)?;
-        (combined, (header, user))
-    } else {
-        let store = prepare_do_raw_prompt_store()?;
-        let (combined, header, user) = combine_do_raw_header_and_user(&store, &artifacts, &text)?;
-        (combined, (header, user))
-    };
-
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let coder = DoCoderRun {
-        combined,
-        header_user_for_trace: header_user,
-        skip_repo_style,
-    };
-    let kissconfig_backup = backup_workspace_kissconfig_if_present(&artifacts.work_dir)?;
-    let kissignore_backup = backup_workspace_kissignore_if_present(&artifacts.work_dir)?;
+    let coder = do_flow_prompt::build_do_coder_run(do_args.cooked, &artifacts, &text)?;
     let session_dotfile_backups = SessionDotfileBackups::from_parts(
-        kissconfig_backup,
-        malvin_checks_backup,
-        kissignore_backup,
+        backup_workspace_kissconfig_if_present(&artifacts.work_dir)?,
+        backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?,
+        backup_workspace_kissignore_if_present(&artifacts.work_dir)?,
     );
-    super::run_emit::emit_command_line(&artifacts.run_dir, false)?;
-    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    let acp_res = run_do_acp(&mut client, &artifacts, coder).await;
-    let r = timing_merge::merge_acp_with_workspace_session_restore_and_check_abort(
+    Ok(DoRunPrep {
+        client,
+        artifacts,
+        coder,
+        session_dotfile_backups,
+    })
+}
+
+pub async fn run_do(
+    do_args: DoArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
+    let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
+    crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
+    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
+    let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
-        &artifacts.work_dir,
-        &session_dotfile_backups,
-        &artifacts.artifact_result_md(),
+        &prep.artifacts.work_dir,
+        &prep.session_dotfile_backups,
+        &prep.artifacts.artifact_result_md(),
     );
     if r.is_ok() {
-        super::error_run_log::clear_command_error_run_dir();
+        crate::cli::error_run_log::clear_command_error_run_dir();
     }
     r?;
     Ok(())
 }
 
-fn combine_do_prompt_file_and_user(
-    store: &PromptStore,
-    text: &str,
-    template_file: &str,
-    context: &HashMap<String, String>,
-) -> Result<(String, String, String), String> {
-    let header_body = store
-        .render_prompt_only(template_file, context)
-        .map_err(|e: PromptError| e.0)?;
-    let header = header_body.trim_end().to_string();
-    let user = text.trim_end().to_string();
-    let combined = format!("{header}\n\n{user}");
-    Ok((combined, header, user))
-}
-
-/// Renders `header.md` once; returns combined prompt plus header and user strings for ACP trace splitting.
-pub fn combine_do_acp_prompt_header_and_user(
-    store: &PromptStore,
+async fn run_do_coder_prompt(
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
-    text: &str,
-) -> Result<(String, String, String), String> {
-    let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
-    combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
-}
-
-/// Renders `do_header.md` once; same return shape for default raw `malvin do`.
-pub fn combine_do_raw_header_and_user(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-    text: &str,
-) -> Result<(String, String, String), String> {
-    let context = workflow_context_paths_only(artifacts, "do");
-    combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
+    coder: &do_flow_prompt::DoCoderRun,
+) -> Result<(), String> {
+    let (ref header, ref user) = coder.header_user_for_trace;
+    client
+        .run_coder_prompt(
+            &coder.combined,
+            &artifacts.log_path("do"),
+            "do",
+            crate::acp::CoderPromptOptions {
+                llm_phase: Some(TimingPhase::Implement),
+                skip_repo_style: coder.skip_repo_style,
+                do_trace_split: Some((header.as_str(), user.as_str())),
+                stdout_bracket_label: None,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn run_do_acp(
-    client: &mut AgentClient,
+    client: &mut crate::acp::AgentClient,
     artifacts: &RunArtifacts,
-    coder: DoCoderRun,
+    coder: do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
     let timing = client.attach_run_timing_for_session();
     if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
@@ -177,215 +240,11 @@ async fn run_do_acp(
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .set_implement_display_name("do");
-    let log = artifacts.log_path("do");
-    let (ref header, ref user) = coder.header_user_for_trace;
-    let do_split = Some((header.as_str(), user.as_str()));
-    let run_res = client
-        .run_coder_prompt(
-            &coder.combined,
-            &log,
-            "do",
-            CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Implement),
-                skip_repo_style: coder.skip_repo_style,
-                do_trace_split: do_split,
-                stdout_bracket_label: None,
-            },
-        )
-        .await
-        .map_err(|e| e.to_string());
+    let run_res = run_do_coder_prompt(client, artifacts, &coder).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = if let Err(e) = run_res {
-        Err(e)
-    } else if let Err(e) = end_res {
-        Err(e)
-    } else {
-        Ok(())
-    };
-    timing_merge::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
-}
-
-#[test]
-fn stringify_do_flow_helpers() {
-    let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
-    let _ = stringify!(crate::cli::do_flow::run_do);
-    let _ = stringify!(crate::cli::DoArgs);
-    let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
-    let _ = stringify!(crate::cli::do_flow::combine_do_raw_header_and_user);
-    let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
-    let _ = stringify!(crate::cli::do_flow::DoCoderRun);
+    let merged = crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
+    crate::acp_post_run::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
 }
 
 #[cfg(test)]
-mod do_tests {
-    use clap::Parser;
-
-    use malvin::artifacts::RunArtifacts;
-    use malvin::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
-
-    use super::{combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user};
-
-    #[test]
-    fn combine_do_acp_prompt_joins_rendered_header_and_request() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let prompt_root = tmp.path().join("prompts");
-        std::fs::create_dir_all(&prompt_root).expect("mkdir");
-        std::fs::write(prompt_root.join(HEADER_MD), "HEADER_TOKEN\n").expect("header");
-        std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
-        let plan = tmp.path().join("plan.md");
-        std::fs::write(&plan, "ignored").expect("plan");
-        let run_dir = tmp.path().join("_malvin").join("r");
-        std::fs::create_dir_all(&run_dir).expect("run");
-        let artifacts = RunArtifacts {
-            run_dir,
-            plan_path: plan,
-            work_dir: tmp.path().to_path_buf(),
-        };
-        let store = PromptStore::with_root(prompt_root);
-        let (combined, header, user) =
-            combine_do_acp_prompt_header_and_user(&store, &artifacts, "USER_TOKEN")
-                .expect("combine");
-        assert_eq!(header, "HEADER_TOKEN");
-        assert_eq!(user, "USER_TOKEN");
-        assert_eq!(combined, "HEADER_TOKEN\n\nUSER_TOKEN");
-        assert_eq!(combined.split("\n\n").count(), 2);
-        assert_eq!(combined.matches("HEADER_TOKEN").count(), 1);
-        assert_eq!(combined.matches("USER_TOKEN").count(), 1);
-    }
-
-    #[test]
-    fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let prompt_root = tmp.path().join("prompts");
-        std::fs::create_dir_all(&prompt_root).expect("mkdir");
-        std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_TOKEN\n").expect("do_header");
-        let plan = tmp.path().join("plan.md");
-        std::fs::write(&plan, "ignored").expect("plan");
-        let run_dir = tmp.path().join("_malvin").join("r");
-        std::fs::create_dir_all(&run_dir).expect("run");
-        let artifacts = RunArtifacts {
-            run_dir,
-            plan_path: plan,
-            work_dir: tmp.path().to_path_buf(),
-        };
-        let store = PromptStore::with_root(prompt_root);
-        let (combined, header, user) =
-            combine_do_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n")
-                .expect("combine");
-        assert_eq!(header, "DO_TOKEN");
-        assert_eq!(user, "USER_RAW_TOKEN");
-        assert_eq!(combined, "DO_TOKEN\n\nUSER_RAW_TOKEN");
-        assert_eq!(combined.split("\n\n").count(), 2);
-        assert_eq!(combined.matches("DO_TOKEN").count(), 1);
-        assert_eq!(combined.matches("USER_RAW_TOKEN").count(), 1);
-    }
-
-    #[test]
-    fn cli_accepts_do_and_passes_request() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "do", "fix the bug"]).expect("parse");
-        match cli.command {
-            Commands::Do(d) => {
-                assert_eq!(d.request, "fix the bug");
-                assert!(!d.cooked);
-                assert!(!d.repo_gates);
-                assert!(!d.thoughts);
-            }
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-
-    #[test]
-    fn cli_accepts_do_cooked() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "do", "--cooked", "x"]).expect("parse");
-        match cli.command {
-            Commands::Do(d) => {
-                assert!(d.cooked);
-                assert_eq!(d.request, "x");
-                assert!(!d.repo_gates);
-                assert!(!d.thoughts);
-            }
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-
-    #[test]
-    fn cli_accepts_do_repo_gates() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "do", "--repo-gates", "y"]).expect("parse");
-        match cli.command {
-            Commands::Do(d) => {
-                assert!(d.repo_gates);
-                assert_eq!(d.request, "y");
-                assert!(!d.thoughts);
-            }
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-
-    #[test]
-    fn cli_accepts_do_thoughts() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "do", "--thoughts", "z"]).expect("parse");
-        match cli.command {
-            Commands::Do(d) => {
-                assert!(d.thoughts);
-                assert_eq!(d.request, "z");
-            }
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-
-    #[test]
-    fn cli_accepts_all_shared_flags_before_subcommand() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from([
-            "malvin",
-            "--model",
-            "composer-2",
-            "--no-force",
-            "--no-tee",
-            "do",
-            "z",
-        ])
-        .expect("parse");
-        assert_eq!(cli.shared.model, "composer-2");
-        assert!(cli.shared.no_tee);
-        assert!(cli.shared.no_force);
-        match cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "z"),
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-
-    #[test]
-    fn cli_accepts_verbose_short_and_long_global_flags() {
-        use crate::cli::Cli;
-        use crate::cli::Commands;
-
-        let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
-        assert!(cli.shared.verbose);
-        match &cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "x"),
-            _ => panic!("expected Do subcommand"),
-        }
-
-        let cli = Cli::try_parse_from(["malvin", "do", "--verbose", "y"]).expect("parse");
-        assert!(cli.shared.verbose);
-        match cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "y"),
-            _ => panic!("expected Do subcommand"),
-        }
-    }
-}
+include!("do_flow_tests.inc");

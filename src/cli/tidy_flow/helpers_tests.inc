@@ -26,11 +26,11 @@ fn write_checks_do_not_pass_writes_marker_line() {
 
 #[test]
 fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
-    use malvin::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
+    use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
 
     let t = tempfile::tempdir().expect("tempdir");
     let artifacts =
-        malvin::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
+        crate::artifacts::create_run_artifacts_from_text("gate_marker", Some(t.path()))
             .expect("artifacts");
     let artifact = artifacts.artifact_review_md();
     let workspace = artifacts.workspace_review_md();
@@ -48,7 +48,7 @@ fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
 
 #[test]
 fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
-    let store = malvin::prompts::PromptStore::default_store();
+    let store = crate::prompts::PromptStore::default_store();
     let mut ctx = HashMap::new();
     ctx.insert("memories".to_string(), String::new());
     ctx.insert(

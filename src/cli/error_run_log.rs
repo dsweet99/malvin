@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use malvin::output::{MALVIN_WHO, format_line};
+use crate::output::{MALVIN_WHO, format_line};
 
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 

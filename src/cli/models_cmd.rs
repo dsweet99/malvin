@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use clap::Args;
-use malvin::agent_or_cursor_agent_bin;
-use malvin::ansi_strip::strip_ansi_escapes;
-use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
+use crate::agent_or_cursor_agent_bin;
+use crate::ansi_strip::strip_ansi_escapes;
+use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
-use malvin::config::DEFAULT_CLI_MODEL;
+use crate::config::DEFAULT_CLI_MODEL;
 
 #[derive(Args, Debug)]
 pub struct ModelsArgs {}
@@ -194,7 +194,7 @@ mod tests {
         let _ = stringify!(ModelsArgs);
         let _ = stringify!(run_models);
         let _ = stringify!(resolve_models_cli);
-        let _ = stringify!(malvin::ansi_strip::strip_ansi_escapes);
+        let _ = stringify!(crate::ansi_strip::strip_ansi_escapes);
         let _ = stringify!(trim_trailing_tip_lines);
         let _ = stringify!(looks_like_tip_banner_line);
         let _ = stringify!(print_parsed_or_fallback);

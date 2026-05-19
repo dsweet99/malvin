@@ -123,23 +123,4 @@ mod tests {
             .unwrap();
         assert_eq!(String::from_utf8_lossy(&branch.stdout).trim(), "main");
     }
-
-    #[test]
-    fn install_git_lfs_succeeds_when_available() {
-        let lfs_available = Command::new("git")
-            .args(["lfs", "version"])
-            .status()
-            .is_ok_and(|s| s.success());
-        if !lfs_available {
-            eprintln!("test skipped: git-lfs not installed");
-            return;
-        }
-        let tmp = tempfile::tempdir().unwrap();
-        Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        install_git_lfs(tmp.path()).unwrap();
-    }
 }

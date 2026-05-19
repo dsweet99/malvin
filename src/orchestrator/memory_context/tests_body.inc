@@ -1,21 +1,22 @@
+use super::*;
 use crate::prompts::PromptStore;
 use std::collections::HashSet;
 
 #[test]
 fn collect_memory_records_empty_when_no_dot_memory_dir() {
     let tmp = tempfile::tempdir().unwrap();
-    let records = crate::orchestrator::memory_context::collect_memory_records(tmp.path());
+    let records = collect_memory_records(tmp.path());
     assert!(records.is_empty());
 }
 
 #[test]
 fn process_memory_line_and_emit_complete_one_record() {
-    let mut state = crate::orchestrator::memory_context::MemoryState::default();
+    let mut state = MemoryState::default();
     let mut out = Vec::new();
     for line in ["TRIGGER: a", "ADVICE: b", "CONFIDENCE: 2"] {
-        crate::orchestrator::memory_context::process_memory_line(line, &mut state, &mut out);
+        process_memory_line(line, &mut state, &mut out);
     }
-    crate::orchestrator::memory_context::emit_if_complete(&mut state, &mut out);
+    emit_if_complete(&mut state, &mut out);
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].trigger, "a");
     assert_eq!(out[0].advice, "b");

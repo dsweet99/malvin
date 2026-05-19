@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use malvin::artifacts::{RunArtifacts, SessionDotfileBackups};
-use malvin::prompts::PromptStore;
-use malvin::run_timing::TimingPhase;
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
+use crate::prompts::PromptStore;
+use crate::run_timing::TimingPhase;
 
 #[must_use]
 pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
@@ -43,7 +43,7 @@ pub enum TidyStartup {
         session_dotfile_backups: SessionDotfileBackups,
     },
     RunAgent {
-        client: malvin::AgentClient,
+        client: crate::acp::AgentClient,
         artifacts: RunArtifacts,
         session_dotfile_backups: SessionDotfileBackups,
         store: PromptStore,
@@ -53,7 +53,7 @@ pub enum TidyStartup {
 }
 
 pub struct TidyAcpInput<'a> {
-    pub(crate) client: &'a mut malvin::AgentClient,
+    pub(crate) client: &'a mut crate::acp::AgentClient,
     pub(crate) artifacts: &'a RunArtifacts,
     pub(crate) store: &'a PromptStore,
     pub(crate) context: &'a HashMap<String, String>,

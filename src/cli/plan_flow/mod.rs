@@ -1,3 +1,4 @@
+#[path = "plan_prompt.rs"]
 mod plan_prompt;
 
 include!("plan_flow_root.inc");

@@ -1,8 +1,7 @@
 mod command_support;
-mod emit;
-pub mod kissconfig_warn;
 mod types;
-mod workspace;
+mod gate_run;
+pub mod kissconfig_warn;
 
 #[cfg(test)]
 mod style_markers;
@@ -20,7 +19,7 @@ mod tests_gates_unix_extra;
 mod tests_style;
 
 pub use types::{RepoGateCommandFailure, RepoGateFailure, RepoGateOutput};
-pub use workspace::{
+pub use gate_run::{
     run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,
     run_repo_workspace_gates_with_details,
 };

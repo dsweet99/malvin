@@ -1,6 +1,6 @@
 use std::os::unix::fs::PermissionsExt;
 
-use malvin::output::{MALVIN_WHO, format_log_tag_inner};
+use crate::output::{MALVIN_WHO, format_log_tag_inner};
 use tempfile::tempdir;
 
 use super::run_emit::emit_command_line;

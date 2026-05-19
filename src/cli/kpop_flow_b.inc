@@ -4,7 +4,7 @@ pub fn kpop_emit_startup(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &kpop.request)
+    super::run_emit::emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &kpop.request)
 }
 
 pub fn kpop_learn_bundle(
@@ -25,14 +25,14 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::cli::timing_merge::merge_acp_with_workspace_session_restore);
+    let _ = stringify!(crate::acp_post_run::merge_acp_with_workspace_session_restore);
     let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
     let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
-    let _ = stringify!(malvin::artifacts::RunArtifacts::exp_log_path);
+    let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
     let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
     let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
     let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
-    let _ = stringify!(malvin::KpopTurnPrompts);
+    let _ = stringify!(crate::KpopTurnPrompts);
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn legacy_timing_error_order_masks_acp_when_both_fail() {
 #[test]
 fn merge_acp_prefers_acp_error_when_both_fail() {
     let timing: std::io::Result<()> = Err(std::io::Error::other("timing"));
-    let merged = super::timing_merge::merge_acp_and_timing_results(Err("acp".into()), timing);
+    let merged = crate::acp_post_run::merge_acp_and_timing_results(Err("acp".into()), timing);
     assert_eq!(merged, Err("acp".into()));
 }
 
@@ -103,7 +103,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let store = PromptStore::with_root(tmp.path().to_path_buf());
     store.ensure_defaults().unwrap();
     let base = kpop_markdown_fixture_context();
-    let mut turn = malvin::KpopTurnPrompts {
+    let mut turn = crate::KpopTurnPrompts {
         store: &store,
         base: &base,
         request_text: "do the thing",
