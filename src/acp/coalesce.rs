@@ -160,15 +160,6 @@ mod coalesce_tests {
     use super::{ACP_VERBOSE_COALESCE_MAX, coalesce_flush_cap};
 
     #[test]
-    fn coalesce_kiss_stringify_units() {
-        let _ = stringify!(coalesce_append_chunk);
-        let _ = stringify!(coalesce_char_boundary_at);
-        let _ = stringify!(coalesce_flush_nonempty);
-        let _ = stringify!(session_update_chunk_parts);
-        let _ = stringify!(SessionUpdateChunkKind);
-    }
-
-    #[test]
     fn coalesce_flush_cap_preserves_tab_boundary_content() {
         let original = format!("{}\t{}", "a".repeat(50), "b".repeat(100));
         let mut buf = original.clone();

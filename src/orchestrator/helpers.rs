@@ -151,16 +151,6 @@ mod helpers_kiss_inline {
     use std::collections::HashMap;
 
     #[test]
-    fn kiss_stringify_helpers_units() {
-        let _ = stringify!(workflow_context_paths_only);
-        let _ = stringify!(workflow_context);
-        let _ = stringify!(clear_review_file);
-        let _ = stringify!(check_abort);
-        let _ = stringify!(format_prompt_path);
-        let _ = stringify!(format_exp_log_relative);
-    }
-
-    #[test]
     fn format_exp_log_relative_under_work_dir() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let run_dir = tmp.path().join("_malvin").join("run");

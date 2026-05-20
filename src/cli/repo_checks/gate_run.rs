@@ -186,18 +186,18 @@ fn run_shell_command_line_with_details(
 }
 
 #[cfg(test)]
-mod kiss_stringify_workspace {
+mod smoke_cov_workspace {
     #[test]
-    fn kiss_stringify_repo_checks_workspace_internals() {
-        let _ = stringify!(super::run_repo_workspace_gates_with_details);
-        let _ = stringify!(super::run_repo_workspace_gates_no_kiss_clamp_with_details);
-        let _ = stringify!(super::prepare_repo_workspace_with_details);
-        let _ = stringify!(super::ensure_kiss_clamp_if_needed_with_details);
-        let _ = stringify!(super::run_quality_gates_with_details);
-        let _ = stringify!(super::run_malvin_checks_with_details);
-        let _ = stringify!(super::shell_binary);
-        let _ = stringify!(super::run_shell_command_line_with_details);
-        let _ = stringify!(crate::source_detect::has_source_files);
-        let _ = stringify!(super::scan_for_extension_handles_symlink_cycles);
+    fn smoke_cov_repo_checks_workspace_internals() {
+        let _ = super::run_repo_workspace_gates_with_details;
+        let _ = super::run_repo_workspace_gates_no_kiss_clamp_with_details;
+        let _ = super::prepare_repo_workspace_with_details;
+        let _ = super::ensure_kiss_clamp_if_needed_with_details;
+        let _ = super::run_quality_gates_with_details;
+        let _ = super::run_malvin_checks_with_details;
+        let _ = super::shell_binary;
+        let _ = super::run_shell_command_line_with_details;
+        let _ = crate::source_detect::has_source_files;
+        let _ = super::scan_for_extension_handles_symlink_cycles;
     }
 }

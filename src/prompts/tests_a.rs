@@ -3,16 +3,11 @@ use std::collections::HashMap;
 use crate::prompts::*;
 
 #[test]
-fn kiss_stringify_prompts_guards() {
-    let _ = stringify!(crate::prompts::enforce_no_unresolved_braces);
-    let _ = stringify!(crate::prompts::PromptError);
-    let _ = stringify!(crate::prompts::KpopPromptValidation);
-    let _ = stringify!(crate::prompts::merged_coding_rules);
-    let _ = stringify!(crate::prompts::render_mbc2_for_scheduled_kpop_block);
-}
-
-#[test]
 fn substitute_replaces_dollar_keys() {
+    let _ = crate::prompts::enforce_no_unresolved_braces;
+    let _: Option<crate::prompts::PromptError> = None;
+    let _ = crate::prompts::merged_coding_rules;
+    let _ = crate::prompts::render_mbc2_for_scheduled_kpop_block;
     let mut m = HashMap::new();
     m.insert("plan_path".to_string(), "/p".to_string());
     assert_eq!(

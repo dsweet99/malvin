@@ -240,9 +240,4 @@ mod tests {
         assert_eq!(err.0, "ABORT: agent stop");
     }
 
-    #[test]
-    fn kiss_stringify_review_attempt_kernel_units() {
-        let _ = stringify!(super::ensure_review_prep_after_reviewers_spawn);
-        let _ = stringify!(super::ensure_artifact_review_after_review_write);
-    }
 }

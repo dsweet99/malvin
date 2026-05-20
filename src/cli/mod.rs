@@ -21,9 +21,12 @@ include!("code_flow_b.inc");
 #[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]
-mod kiss_stringify_cov;
+mod cli_cross_cov;
 #[cfg(test)]
-mod stringify_cov;
+mod cli_cross_cov_kiss;
+#[cfg(test)]
+#[path = "cli_cross_cov_paths_test.rs"]
+mod cli_cross_cov_paths_test;
 #[cfg(test)]
 #[path = "tidy_flow_coverage_tests.rs"]
 mod tidy_flow_coverage_tests;

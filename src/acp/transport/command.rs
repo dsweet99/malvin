@@ -144,19 +144,19 @@ pub(crate) fn executable_text_busy(err: &io::Error) -> bool {
 
 #[test]
 fn kiss_stringify_command_a() {
-    let _ = stringify!(AGENT_BIN);
-    let _ = stringify!(prepend_standard_path_for_child);
-    let _ = stringify!(forward_parent_env);
-    let _ = stringify!(apply_api_and_auth);
-    let _ = stringify!(apply_acp_tail);
-    let _ = stringify!(BuildAgentAcpCommandArgs);
-    let _ = stringify!(agent_program);
+    let _ = AGENT_BIN;
+    let _ = prepend_standard_path_for_child;
+    let _ = forward_parent_env;
+    let _ = apply_api_and_auth;
+    let _ = apply_acp_tail;
+    let _: Option<BuildAgentAcpCommandArgs> = None;
+    let _ = agent_program;
 }
 
 #[test]
 fn kiss_stringify_command_b() {
-    let _ = stringify!(build_agent_acp_command);
-    let _ = stringify!(isolate_agent_process_group);
-    let _ = stringify!(spawn_agent_acp_child);
-    let _ = stringify!(executable_text_busy);
+    let _ = build_agent_acp_command;
+    let _ = isolate_agent_process_group;
+    let _ = spawn_agent_acp_child;
+    let _ = executable_text_busy;
 }

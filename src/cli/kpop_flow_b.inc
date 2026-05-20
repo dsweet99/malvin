@@ -25,14 +25,14 @@ pub fn kpop_learn_bundle(
 
 #[test]
 fn stringify_kpop_flow_helpers() {
-    let _ = stringify!(crate::acp_post_run::merge_acp_with_workspace_session_restore);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_prompt_store);
-    let _ = stringify!(crate::cli::kpop_flow::prepare_kpop_run);
-    let _ = stringify!(crate::artifacts::RunArtifacts::exp_log_path);
-    let _ = stringify!(crate::cli::kpop_flow::KpopAcpMultiturnCtx);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_emit_startup);
-    let _ = stringify!(crate::cli::kpop_flow::kpop_learn_bundle);
-    let _ = stringify!(crate::KpopTurnPrompts);
+    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore;
+    let _ = crate::cli::kpop_flow::kpop_prompt_store;
+    let _ = crate::cli::kpop_flow::prepare_kpop_run;
+    let _ = crate::artifacts::RunArtifacts::exp_log_path;
+    let _: Option<crate::cli::kpop_flow::KpopAcpMultiturnCtx> = None;
+    let _ = crate::cli::kpop_flow::kpop_emit_startup;
+    let _ = crate::cli::kpop_flow::kpop_learn_bundle;
+    let _: Option<crate::KpopTurnPrompts> = None;
 }
 
 #[test]

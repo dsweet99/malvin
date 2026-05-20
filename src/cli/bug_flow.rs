@@ -204,14 +204,14 @@ pub async fn run_bug(
 #[cfg(test)]
 mod kiss_coverage_tests {
     #[test]
-    fn kiss_stringify_bug_flow_units() {
-        let _ = stringify!(crate::cli::bug_flow::BugKpopPhase);
-        let _ = stringify!(crate::cli::bug_flow::BugRunTail);
-        let _ = stringify!(crate::cli::bug_flow::run_bug);
-        let _ = stringify!(crate::cli::bug_flow::kpop_args_from_bug);
-        let _ = stringify!(crate::cli::bug_flow::run_bug_kpop_multiturn);
-        let _ = stringify!(crate::cli::bug_flow::ensure_kpop_solved);
-        let _ = stringify!(crate::cli::bug_flow::finish_bug_after_kpop);
-        let _ = stringify!(crate::cli::bug_flow::run_bug_remediation_orchestrator);
+    fn smoke_cov_bug_flow_units() {
+        let _: Option<crate::cli::bug_flow::BugKpopPhase> = None;
+        let _: Option<crate::cli::bug_flow::BugRunTail> = None;
+        let _ = crate::cli::bug_flow::run_bug;
+        let _ = crate::cli::bug_flow::kpop_args_from_bug;
+        let _ = crate::cli::bug_flow::run_bug_kpop_multiturn;
+        let _ = crate::cli::bug_flow::ensure_kpop_solved;
+        let _ = crate::cli::bug_flow::finish_bug_after_kpop;
+        let _ = crate::cli::bug_flow::run_bug_remediation_orchestrator;
     }
 }

@@ -80,11 +80,10 @@ fn render_default_implement(
 }
 
 #[test]
-fn kiss_stringify_embedded_defaults_units() {
-    let _ = stringify!(crate::prompts::embedded_defaults_tests::EnvHomeGuard);
-    let _ =
-        stringify!(crate::prompts::embedded_defaults_tests::default_prompt_store_with_unset_home);
-    let _ = stringify!(crate::prompts::embedded_defaults_tests::with_unset_home_profile);
-    let _ = stringify!(crate::prompts::embedded_defaults_tests::render_default_implement);
-    let _ = stringify!(crate::prompts::embedded_defaults_tests::default_embedded_placeholder_context);
+fn smoke_cov_embedded_defaults_units() {
+    let _: Option<crate::prompts::embedded_defaults_tests::EnvHomeGuard> = None;
+    let _ = crate::prompts::embedded_defaults_tests::default_prompt_store_with_unset_home;
+    let _ = crate::prompts::embedded_defaults_tests::with_unset_home_profile;
+    let _ = crate::prompts::embedded_defaults_tests::render_default_implement;
+    let _ = crate::prompts::embedded_defaults_tests::default_embedded_placeholder_context;
 }

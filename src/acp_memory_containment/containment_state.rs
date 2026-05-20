@@ -147,15 +147,11 @@ mod containment_state_tests {
 
     #[test]
     fn finalize_containment_cgroup_runs_teardown_on_inactive() {
+        let _ = super::latch_oom_if_needed;
+        let _ = super::teardown_containment_state;
         let c = AcpMemoryContainment::inactive();
         super::finalize_containment_cgroup(&c);
         assert!(!c.active());
-    }
-
-    #[test]
-    fn kiss_stringify_containment_state_units() {
-        let _ = stringify!(super::latch_oom_if_needed);
-        let _ = stringify!(super::teardown_containment_state);
     }
 
     #[cfg(target_os = "linux")]

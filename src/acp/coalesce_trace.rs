@@ -76,9 +76,11 @@ pub(crate) struct VerboseTraceCoalesceState<'a> {
 }
 
 #[test]
-fn kiss_stringify_coalesce_b() {
-    let _ = stringify!(TraceChunkCoalescer);
-    let _ = stringify!(TraceChunkCoalescer::feed);
-    let _ = stringify!(TraceChunkCoalescer::flush_all);
-    let _ = stringify!(VerboseTraceCoalesceState);
+fn trace_chunk_coalescer_feed_and_flush() {
+    let _ = TraceChunkCoalescer::feed;
+    let _: Option<VerboseTraceCoalesceState> = None;
+    let mut coalescer = TraceChunkCoalescer::default();
+    coalescer.feed(SessionUpdateChunkKind::Message, "hello");
+    let flushed = coalescer.flush_all();
+    assert!(flushed.iter().any(|(_, text)| text.contains("hello")));
 }

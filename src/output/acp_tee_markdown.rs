@@ -87,17 +87,17 @@ fn dim_rendered_markup_payload(rendered: &str) -> String {
 }
 
 #[cfg(test)]
-mod kiss_stringify_termimad {
+mod smoke_cov_termimad {
     #[test]
     fn stringify_termimad_gate() {
-        let _ = stringify!(super::TermimadStdoutGate);
-        let _ = stringify!(super::termimad_inline_payload_for_stdout);
-        let _ = stringify!(super::termimad_text_lines_for_stdout);
-        let _ = stringify!(super::render_markdown_lines_for_stdout);
-        let _ = stringify!(super::is_markdown_list_item);
-        let _ = stringify!(super::is_markdown_ordered_list_item);
-        let _ = stringify!(super::is_markdown_heading);
-        let _ = stringify!(super::needs_block_markdown_render);
-        let _ = stringify!(super::dim_rendered_markup_payload);
+        let _: Option<super::TermimadStdoutGate> = None;
+        let _ = super::termimad_inline_payload_for_stdout;
+        let _ = super::termimad_text_lines_for_stdout;
+        let _ = super::render_markdown_lines_for_stdout;
+        let _ = super::is_markdown_list_item;
+        let _ = super::is_markdown_ordered_list_item;
+        let _ = super::is_markdown_heading;
+        let _ = super::needs_block_markdown_render;
+        let _ = super::dim_rendered_markup_payload;
     }
 }

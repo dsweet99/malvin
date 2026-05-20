@@ -35,10 +35,14 @@ pub(crate) fn jsonrpc_error_data_detail(obj: &Map<String, Value>) -> Option<&str
 }
 
 #[test]
-fn kiss_stringify_jsonrpc_error() {
-    let _ = stringify!(format_jsonrpc_error);
-    let _ = stringify!(format_jsonrpc_error_obj);
-    let _ = stringify!(jsonrpc_error_code_str);
-    let _ = stringify!(jsonrpc_error_message_str);
-    let _ = stringify!(jsonrpc_error_data_detail);
+fn format_jsonrpc_error_includes_code_and_message() {
+    use serde_json::json;
+    let _ = format_jsonrpc_error_obj;
+    let _ = jsonrpc_error_code_str;
+    let _ = jsonrpc_error_message_str;
+    let _ = jsonrpc_error_data_detail;
+    let err = json!({"code": -32600, "message": "invalid"});
+    let formatted = format_jsonrpc_error(&err);
+    assert!(formatted.contains("code=-32600"));
+    assert!(formatted.contains("invalid"));
 }

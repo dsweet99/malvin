@@ -106,4 +106,21 @@ mod level_tests {
         assert!(malvin_log_accepts_tracing_level(Level::ERROR));
         assert!(!malvin_log_accepts_tracing_level(Level::DEBUG));
     }
+
+    #[test]
+    fn smoke_tracing_helpers_and_layer_output() {
+        let _ = super::install_malvin_tracing;
+        let _: Option<super::MalvinLogLayer> = None;
+        let _: Option<super::LogFieldVisitor<'_>> = None;
+        assert_eq!(super::strip_debug_string_quotes("\"hi\""), "hi");
+        assert_eq!(super::format_debug_tracing_field("message", &"hi"), "hi");
+        let mut buf = String::new();
+        super::push_log_field(&mut buf, "message", "msg");
+        assert_eq!(buf, "msg");
+        super::init_tracing();
+        crate::output::clear_captured_stderr_lines();
+        tracing::info!(extra = "v", "trace-smoke");
+        let lines = crate::output::take_captured_stderr_lines();
+        assert!(lines.iter().any(|l| l.contains("trace-smoke")));
+    }
 }

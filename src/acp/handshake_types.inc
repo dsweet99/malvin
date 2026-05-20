@@ -63,11 +63,6 @@ fn handshake_io_from_stdin(stdin: ChildStdin) -> AcpHandshakeIo {
     }
 }
 
-#[test]
-fn kiss_stringify_handshake_types() {
-    let _ = stringify!(handshake_io_from_stdin);
-}
-
 #[tokio::test]
 async fn handshake_io_constructed_like_channel_placeholder() {
     let mut child = tokio::process::Command::new("cat")

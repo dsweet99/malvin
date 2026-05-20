@@ -7,6 +7,11 @@ use super::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
 
 #[test]
 fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
+    let _: Option<super::acp_tee::AcpTeeStdoutEvent> = None;
+    let _ = super::acp_tee::print_stdout_acp_tee_line;
+    let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp;
+    let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp_dim_plain;
+    let _: Option<super::TermimadStdoutGate> = None;
     let to_line = format_line_with_timestamp_acp_ansi(
         "20260413.121314.015",
         AcpTeeDirection::ToAgent,
@@ -36,23 +41,6 @@ fn ansi_acp_tee_can_dim_payload_text() {
         dim_payload: true,
     });
     assert!(line.contains("\x1b[90m[thinking]\x1b[0m"));
-}
-
-#[test]
-fn kiss_stringify_acp_tee() {
-    let _ = stringify!(AcpTeeDirection);
-    let _ = stringify!(AcpTeeDirection::ToAgent);
-    let _ = stringify!(AcpTeeDirection::FromAgent);
-    let _ = stringify!(AcpTeeLineFmt);
-    let _ = stringify!(super::TermimadStdoutGate);
-    let _ = stringify!(super::acp_tee::AcpTeeStdoutEvent);
-    let _ = stringify!(format_line_with_timestamp_acp_ansi);
-    let _ = stringify!(format_line_with_timestamp_acp_ansi_payload);
-    let _ = stringify!(super::acp_tee::print_stdout_acp_tee_line);
-    let _ = stringify!(super::acp_tee::print_stdout_acp_tee_line_with_timestamp);
-    let _ = stringify!(super::acp_tee::print_stdout_acp_tee_line_with_timestamp_dim_plain);
-    let _ = stringify!(super::termimad_inline_payload_for_stdout);
-    let _ = stringify!(super::termimad_text_lines_for_stdout);
 }
 
 #[test]

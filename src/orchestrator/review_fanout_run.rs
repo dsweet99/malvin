@@ -198,9 +198,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn kiss_stringify_review_fanout_units() {
-        let _ = stringify!(super::run_reviewers_spawn_coder_session);
-        let _ = stringify!(super::run_review_write_coder_session);
-    }
 }

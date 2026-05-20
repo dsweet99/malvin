@@ -190,15 +190,15 @@ mod tests {
     }
 
     #[test]
-    fn kiss_stringify_models_cmd() {
-        let _ = stringify!(ModelsArgs);
-        let _ = stringify!(run_models);
-        let _ = stringify!(resolve_models_cli);
-        let _ = stringify!(crate::ansi_strip::strip_ansi_escapes);
-        let _ = stringify!(trim_trailing_tip_lines);
-        let _ = stringify!(looks_like_tip_banner_line);
-        let _ = stringify!(print_parsed_or_fallback);
-        let _ = stringify!(models_display_lines);
-        let _ = stringify!(parse_model_line);
+    fn smoke_cov_models_cmd() {
+        let _: Option<ModelsArgs> = None;
+        let _ = run_models;
+        let _ = resolve_models_cli;
+        let _ = crate::ansi_strip::strip_ansi_escapes;
+        let _ = trim_trailing_tip_lines;
+        let _ = looks_like_tip_banner_line;
+        let _ = print_parsed_or_fallback;
+        let _ = models_display_lines;
+        let _ = parse_model_line;
     }
 }

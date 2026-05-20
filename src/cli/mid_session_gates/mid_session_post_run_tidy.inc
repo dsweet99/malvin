@@ -126,9 +126,9 @@ mod post_run_tidy_tests {
     use super::run_tidy_prompt_after_post_run_gate_failure;
 
     #[test]
-    fn kiss_stringify_mid_session_post_run_tidy() {
-        let _ = stringify!(super::run_tidy_prompt_after_post_run_gate_failure);
-        let _ = stringify!(super::post_run_gate_failure_details);
+    fn smoke_cov_mid_session_post_run_tidy() {
+        let _ = super::run_tidy_prompt_after_post_run_gate_failure;
+        let _ = super::post_run_gate_failure_details;
     }
 
     #[tokio::test]

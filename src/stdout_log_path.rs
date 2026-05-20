@@ -39,9 +39,4 @@ mod stdout_log_path_tests {
         assert!(super::clone_stdout_log_path().is_none());
     }
 
-    #[test]
-    fn kiss_stringify_file_coverage() {
-        let _ = stringify!(super::set_stdout_log_path);
-        let _ = stringify!(super::clone_stdout_log_path);
-    }
 }

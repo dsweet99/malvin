@@ -89,10 +89,30 @@ pub fn sync_review_file_for_attempt(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn kiss_stringify_review_attempt_units() {
-        let _ = stringify!(super::ensure_parent_dir);
-        let _ = stringify!(super::clear_artifact_review_to_empty);
-        let _ = stringify!(super::read_nonempty_review);
-        let _ = stringify!(super::read_artifact_review_for_fanout_attempt);
+    fn sync_review_clears_empty_artifact_when_workspace_review_empty() {
+        let _ = super::ensure_parent_dir;
+        let _ = super::clear_artifact_review_to_empty;
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifact = tmp.path().join("nested/review.md");
+        let workspace = tmp.path().join("review.md");
+        std::fs::write(&workspace, "   \n").expect("workspace review");
+        let text = super::sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
+        assert!(text.is_none());
+        assert!(artifact.is_file());
+        assert_eq!(std::fs::read_to_string(&artifact).expect("read artifact"), "");
+    }
+
+    #[test]
+    fn read_nonempty_review_returns_none_for_missing_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let missing = tmp.path().join("missing.md");
+        assert_eq!(
+            super::read_nonempty_review(&missing, "artifact").expect("read"),
+            None
+        );
+        assert_eq!(
+            super::read_artifact_review_for_fanout_attempt(&missing).expect("fanout read"),
+            None
+        );
     }
 }

@@ -40,8 +40,8 @@ pub struct AgentIoOptions {
 #[cfg(test)]
 mod agent_bundle_kiss_cov {
     #[test]
-    fn kiss_stringify_file_coverage() {
-        let _ = stringify!(super::AgentError);
-        let _ = stringify!(super::AuthError);
+    fn agent_error_and_auth_error_display() {
+        assert_eq!(super::AgentError("e".into()).to_string(), "e");
+        assert_eq!(super::AuthError("a".into()).to_string(), "a");
     }
 }

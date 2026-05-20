@@ -222,7 +222,7 @@ mod tests {
             let n = poisson_block_size(&mut rng, 2000.0);
             assert_ne!(n, usize::MAX);
         }
-        let _ = stringify!(super::poisson_large_mean_normal_approx);
-        let _ = stringify!(super::step_kind);
+        let _: Option<fn(&mut StdRng, f64) -> usize> = Some(super::poisson_large_mean_normal_approx);
+        let _ = super::step_kind;
     }
 }

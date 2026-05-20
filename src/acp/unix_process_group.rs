@@ -28,9 +28,10 @@ pub async fn terminate_process_group(_: Option<u32>) {}
 
 #[cfg(test)]
 mod kiss_coverage {
-    #[test]
-    fn kiss_stringify_units() {
-        let _ = stringify!(super::signal_process_group);
-        let _ = stringify!(super::terminate_process_group);
+    #[tokio::test]
+    async fn terminate_process_group_none_is_noop() {
+        #[cfg(unix)]
+        let _ = super::signal_process_group;
+        super::terminate_process_group(None).await;
     }
 }

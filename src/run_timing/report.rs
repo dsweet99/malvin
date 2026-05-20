@@ -150,6 +150,12 @@ fn timing_line_implement_echoes_json_ms_via_same_formatter() {
 fn timing_line_from_json_matches_to_json_value_snapshot() {
     use crate::run_timing::{RunTiming, TimingPhase};
 
+    let _ = crate::run_timing::report::write_json_only;
+    let _ = crate::run_timing::report::write_json_and_print_summary;
+    let _ = crate::run_timing::report::duration_ms_u64;
+    let _ = crate::run_timing::report::format_ms_one_decimal_s;
+    let _ = crate::run_timing::report::timing_line_append_part;
+    let _ = crate::run_timing::report::phase_display_name;
     let mut r = RunTiming::default();
     r.mark_wall_start(std::time::Instant::now());
     r.mark_wall_end(std::time::Instant::now());
@@ -157,18 +163,6 @@ fn timing_line_from_json_matches_to_json_value_snapshot() {
     let json = to_json_value(&r);
     let line = format_timing_stdout_line_from_json(&json);
     assert!(line.contains("concerns = "));
-}
-
-#[test]
-fn kiss_stringify_run_timing_report_units() {
-    let _ = stringify!(crate::run_timing::report::to_json_value);
-    let _ = stringify!(crate::run_timing::report::write_json_only);
-    let _ = stringify!(crate::run_timing::report::write_json_and_print_summary);
-    let _ = stringify!(crate::run_timing::report::duration_ms_u64);
-    let _ = stringify!(crate::run_timing::report::format_ms_one_decimal_s);
-    let _ = stringify!(crate::run_timing::report::timing_line_append_part);
-    let _ = stringify!(crate::run_timing::report::phase_display_name);
-    let _ = stringify!(crate::run_timing::report::format_timing_stdout_line_from_json);
 }
 
 #[test]

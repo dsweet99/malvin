@@ -56,14 +56,14 @@ mod tests {
     use super::python_ruff_and_pytest_flags;
 
     #[test]
-    fn kiss_stringify_discover_py_units() {
-        let _ = stringify!(super::visit_source_files);
-        let _ = stringify!(python_ruff_and_pytest_flags);
-        #[cfg(unix)]
-        {
-            let _ = stringify!(python_flags_see_symlinked_py_file);
-            let _ = stringify!(python_pytest_flag_sees_symlinked_test_module);
-        }
+    fn visit_source_files_empty_dir_has_no_python_flags() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut count = 0usize;
+        super::visit_source_files(tmp.path(), &mut |_p| count += 1);
+        assert_eq!(count, 0);
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
+        assert!(!has_py);
+        assert!(!has_pytest);
     }
 
     #[cfg(unix)]

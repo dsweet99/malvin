@@ -135,8 +135,4 @@ mod tests {
         assert!(!err.0.is_empty());
     }
 
-    #[test]
-    fn kiss_stringify_check_plan_units() {
-        let _ = stringify!(super::run_check_plan);
-    }
 }

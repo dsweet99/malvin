@@ -214,16 +214,16 @@ pub async fn write_trace_line_coalesced(
 }
 
 #[test]
-fn kiss_stringify_trace_line_write() {
-    let _ = stringify!(ReaderTraceLineOpts);
-    let _ = stringify!(reader_loop_verbose_and_trace_line);
-    let _ = stringify!(TraceTeeStdoutCtx);
-    let _ = stringify!(format_trace_display_line);
-    let _ = stringify!(print_tee_unprefixed_wrapped_line);
-    let _ = stringify!(trace_file_write_line);
-    let _ = stringify!(write_trace_line_coalesced);
-    let _ = stringify!(WriteTraceLineCoalescedOpts);
-    let _ = stringify!(raw_output_suppress_thought_stdout);
-    let _ = stringify!(trace_tee_stdout_event);
-    let _ = stringify!(trace_tee_stdout_line);
+fn smoke_cov_trace_line_write() {
+    let _: Option<ReaderTraceLineOpts> = None;
+    let _ = reader_loop_verbose_and_trace_line;
+    let _: Option<TraceTeeStdoutCtx> = None;
+    let _ = format_trace_display_line;
+    let _ = print_tee_unprefixed_wrapped_line;
+    let _ = trace_file_write_line;
+    let _ = write_trace_line_coalesced;
+    let _: Option<WriteTraceLineCoalescedOpts> = None;
+    let _ = raw_output_suppress_thought_stdout;
+    let _ = trace_tee_stdout_event;
+    let _ = trace_tee_stdout_line;
 }

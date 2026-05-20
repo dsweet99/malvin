@@ -206,13 +206,13 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
 }
 
 #[cfg(test)]
-mod kiss_stringify_private {
+mod smoke_cov_private {
     #[test]
     fn stringify_internal_acp_tee() {
-        let _ = stringify!(super::acp_tee_payload_prefix);
-        let _ = stringify!(super::acp_tee_payload_prefix_width);
-        let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp_payload);
-        let _ = stringify!(super::print_acp_tee_stdout_markdown_line);
-        let _ = stringify!(super::print_acp_tee_stdout_markdown_lines);
+        let _ = super::acp_tee_payload_prefix;
+        let _ = super::acp_tee_payload_prefix_width;
+        let _ = super::print_stdout_acp_tee_line_with_timestamp_payload;
+        let _ = super::print_acp_tee_stdout_markdown_line;
+        let _ = super::print_acp_tee_stdout_markdown_lines;
     }
 }

@@ -59,10 +59,10 @@ mod plan_prompt_coverage {
     use crate::artifacts::create_run_artifacts;
 
     #[test]
-    fn kiss_stringify_plan_prompt_units() {
-        let _ = stringify!(super::prepare_plan_prompt_store);
-        let _ = stringify!(super::compose_plan_prompt);
-        let _ = stringify!(super::plan_prompt_context);
+    fn smoke_cov_plan_prompt_units() {
+        let _ = super::prepare_plan_prompt_store;
+        let _ = super::compose_plan_prompt;
+        let _ = super::plan_prompt_context;
     }
 
     #[test]

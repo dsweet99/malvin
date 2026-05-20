@@ -237,8 +237,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn kiss_stringify_source_detect() {
-        let _ = stringify!(super::has_source_files);
-    }
 }

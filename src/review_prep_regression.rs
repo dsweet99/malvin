@@ -200,15 +200,6 @@ fn bug_post_kpop_workspace_gate_failure_must_not_say_pre_checks() {
 }
 
 #[test]
-fn stringify_cov_must_not_reference_phantom_prepare_code_run() {
-    let src = include_str!("cli/stringify_cov.rs");
-    assert!(
-        !src.contains("prepare_code_run"),
-        "kiss stringify coverage must reference real symbols, not phantom prepare_code_run"
-    );
-}
-
-#[test]
 fn sync_review_file_for_attempt_must_not_promote_workspace_lgtm_when_artifact_empty() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifact = tmp.path().join("artifact_review.md");

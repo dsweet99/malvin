@@ -144,11 +144,5 @@ mod tests {
         assert!(!err.0.is_empty());
     }
 
-    #[test]
-    fn kiss_stringify_review_loop_units() {
-        let _ = stringify!(super::run_code_review_phase);
-        let _ = stringify!(super::run_concerns_and_check_abort_impl);
-        let _ = stringify!(super::CodeReviewAttemptOutcome);
-    }
 }
 

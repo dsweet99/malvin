@@ -122,14 +122,14 @@ pub fn apply_fake_path_if_present(_: &mut Command) {}
 mod kiss_stringify_command_support {
     #[test]
     fn kiss_stringify_repo_checks_command_support_units() {
-        let _ = stringify!(super::run_command_failure);
-        let _ = stringify!(super::apply_fake_path_if_present);
-        let _ = stringify!(super::fake_command_dir_for_path_env);
-        let _ = stringify!(super::test_fake_command_path);
-        let _ = stringify!(super::FakeCommandDirGuard);
-        let _ = stringify!(super::set_fake_command_dir);
-        let _ = stringify!(super::run_command_for);
-        let _ = stringify!(super::FAKE_COMMAND_DIR_MUTEX);
+        let _ = super::run_command_failure;
+        let _ = super::apply_fake_path_if_present;
+        let _ = super::fake_command_dir_for_path_env;
+        let _ = super::test_fake_command_path;
+        let _: Option<super::FakeCommandDirGuard> = None;
+        let _ = super::set_fake_command_dir;
+        let _ = super::run_command_for;
+        let _ = &super::FAKE_COMMAND_DIR_MUTEX;
     }
 }
 

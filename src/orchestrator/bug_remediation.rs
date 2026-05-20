@@ -99,8 +99,4 @@ mod tests {
         assert!(!err.0.is_empty());
     }
 
-    #[test]
-    fn kiss_stringify_bug_remediation_units() {
-        let _ = stringify!(super::run_bug_remediation_gap);
-    }
 }

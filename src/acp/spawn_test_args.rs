@@ -26,7 +26,9 @@ pub(crate) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpa
 }
 
 #[test]
-fn kiss_stringify_george_mock_spawn_args() {
-    let _ = george_mock_spawn_args(Path::new("."), Path::new("agent"));
-    let _ = stringify!(george_mock_spawn_args);
+fn george_mock_spawn_args_sets_credentials() {
+    let _ = george_mock_spawn_args;
+    let args = george_mock_spawn_args(Path::new("."), Path::new("agent"));
+    assert_eq!(args.api_key, Some("george-test-api-key"));
+    assert_eq!(args.auth_token, Some("george-test-auth"));
 }

@@ -157,16 +157,3 @@ fn run_code_command(code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
     })
 }
 
-#[cfg(test)]
-mod kiss_coverage_tests {
-    #[test]
-    fn kiss_stringify_entrypoint_units() {
-        let _ = stringify!(crate::cli::entrypoint::require_kiss_for_cli_command);
-        let _ = stringify!(crate::cli::entrypoint::print_command_error);
-        let _ = stringify!(crate::cli::entrypoint::try_tokio_runtime);
-        let _ = stringify!(crate::cli::entrypoint::run_async_cli);
-        let _ = stringify!(crate::cli::entrypoint::entrypoint);
-        let _ = stringify!(crate::cli::entrypoint::run_code_command);
-        let _ = stringify!(crate::cli::entrypoint::dispatch_command);
-    }
-}

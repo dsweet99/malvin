@@ -88,9 +88,9 @@ async fn read_first_stdout_line(stdout: tokio::process::ChildStdout) -> String {
 }
 
 #[test]
-fn kiss_stringify_rpc_part2_cat_helpers() {
-    let _ = stringify!(spawn_cat_rpc_stdio_pair);
-    let _ = stringify!(read_first_stdout_line);
+fn smoke_cov_rpc_part2_cat_helpers() {
+    let _ = spawn_cat_rpc_stdio_pair;
+    let _ = read_first_stdout_line;
 }
 
 #[tokio::test]

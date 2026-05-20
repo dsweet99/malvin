@@ -41,11 +41,20 @@ pub fn print_log_error(line: &str) {
 }
 
 #[cfg(test)]
-mod kiss_stringify_stderr_log {
+mod stderr_log_tests {
     #[test]
-    fn kiss_stringify_stderr_log_units() {
-        let _ = stringify!(super::print_stderr_line);
-        let _ = stringify!(super::print_log_warning);
-        let _ = stringify!(super::print_log_error);
+    fn emit_stderr_log_lines_captured_in_tests() {
+        crate::output::clear_captured_stderr_lines();
+        super::print_log_error("stderr-log-smoke");
+        let lines = crate::output::take_captured_stderr_lines();
+        assert!(lines.iter().any(|l| l.contains("stderr-log-smoke")));
+    }
+
+    #[test]
+    fn emit_stderr_log_lines_captures_warning() {
+        crate::output::clear_captured_stderr_lines();
+        super::print_log_warning("warn-smoke");
+        let lines = crate::output::take_captured_stderr_lines();
+        assert!(lines.iter().any(|l| l.contains("warn-smoke")));
     }
 }

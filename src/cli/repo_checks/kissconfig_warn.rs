@@ -57,11 +57,11 @@ pub fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
 }
 
 #[cfg(test)]
-mod kiss_stringify_kissconfig_warn {
+mod smoke_cov_kissconfig_warn {
     #[test]
-    fn kiss_stringify_repo_checks_kissconfig_warn_units() {
-        let _ = stringify!(super::warn_kissconfig_test_coverage_if_needed);
-        let _ = stringify!(super::gate_test_coverage_threshold_i64);
-        let _ = stringify!(super::integer_or_whole_float_i64);
+    fn smoke_cov_repo_checks_kissconfig_warn_units() {
+        let _ = super::warn_kissconfig_test_coverage_if_needed;
+        let _ = super::gate_test_coverage_threshold_i64;
+        let _ = super::integer_or_whole_float_i64;
     }
 }

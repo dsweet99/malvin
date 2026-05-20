@@ -52,6 +52,11 @@ pub(crate) mod orchestrator_test_support;
 
 #[cfg(test)]
 mod orchestrator_kiss_coverage;
+#[cfg(test)]
+mod orchestrator_kiss_stringify;
+#[cfg(test)]
+#[path = "orchestrator_kiss_stringify_paths_test.rs"]
+mod orchestrator_kiss_stringify_paths_test;
 
 mod check_plan;
 mod review_loop;

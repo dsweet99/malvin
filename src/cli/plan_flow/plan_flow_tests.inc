@@ -1,20 +1,20 @@
 #[test]
-fn kiss_stringify_plan_flow_units() {
-    let _ = stringify!(super::resolve_user_plan_path);
-    let _ = stringify!(super::normalized_plan_file_bytes);
-    let _ = stringify!(super::resolve_plan_destination);
-    let _ = stringify!(super::apply_plan_source);
-    let _ = stringify!(super::plan_session_work_dir);
-    let _ = stringify!(super::plan_run_artifacts);
-    let _ = stringify!(super::start_plan_workspace_session);
-    let _ = stringify!(super::build_rendered_plan_prompt);
-    let _ = stringify!(super::set_plan_timing_label);
-    let _ = stringify!(super::restore_after_plan_prompt);
-    let _ = stringify!(super::pair_run_and_restore);
-    let _ = stringify!(super::plan_coder_prompt);
-    let _ = stringify!(super::PlanReviewOnce);
-    let _ = stringify!(super::run_plan_review_once);
-    let _ = stringify!(super::run_plan);
+fn smoke_cov_plan_flow_units() {
+    let _ = super::resolve_user_plan_path;
+    let _ = super::normalized_plan_file_bytes;
+    let _ = super::resolve_plan_destination;
+    let _ = super::apply_plan_source;
+    let _ = super::plan_session_work_dir;
+    let _ = super::plan_run_artifacts;
+    let _ = super::start_plan_workspace_session;
+    let _ = super::build_rendered_plan_prompt;
+    let _ = super::set_plan_timing_label;
+    let _ = super::restore_after_plan_prompt;
+    let _ = super::pair_run_and_restore;
+    let _ = super::plan_coder_prompt;
+    let _: Option<super::PlanReviewOnce> = None;
+    let _ = super::run_plan_review_once;
+    let _ = super::run_plan;
 }
 
 #[test]

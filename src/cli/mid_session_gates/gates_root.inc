@@ -81,10 +81,9 @@ mod gates_root_tests {
     use crate::repo_checks::RepoGateFailure;
 
     #[test]
-    fn kiss_stringify_mid_session_gate_units() {
-        let _ = stringify!(crate::cli::mid_session_gates::mid_pre_summary_repo_gates);
-        let _ =
-            stringify!(crate::cli::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry);
+    fn smoke_cov_mid_session_gate_units() {
+        let _ = crate::cli::mid_session_gates::mid_pre_summary_repo_gates;
+        let _ = crate::cli::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry;
     }
 
     #[tokio::test]

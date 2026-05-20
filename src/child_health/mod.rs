@@ -171,15 +171,12 @@ impl ChildHealth {
 }
 
 #[cfg(test)]
-mod child_health_kiss_names {
+mod child_health_smoke {
     #[test]
-    fn kiss_stringify_child_health_units() {
-        let _ = stringify!(crate::child_health::ChildHealth);
-        let _ = stringify!(crate::child_health::SilenceHealthOutcome);
-        let _ = stringify!(crate::child_health::sample_child_health);
-        let _ = stringify!(crate::child_health::evaluate_after_acp_silence);
-        let _ = stringify!(crate::child_health::health_indicates_progress);
-        let _ = stringify!(crate::child_health::silence_grace_for_rpc_timeout);
+    fn sample_child_health_current_process() {
+        let health = crate::child_health::sample_child_health(std::process::id());
+        let _ = health.exists;
+        let _ = health.zombie;
     }
 }
 

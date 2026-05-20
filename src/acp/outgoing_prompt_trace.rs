@@ -38,10 +38,17 @@ pub struct DoPromptTraceSplit<'a> {
 }
 
 #[test]
-fn kiss_stringify_outgoing_prompt_trace() {
-    let _ = stringify!(UniformOutgoingTrace);
-    let _ = stringify!(OutgoingPromptTrace::Uniform);
-    let _ = stringify!(OutgoingPromptTrace::DoSplit);
-    let _ = stringify!(DoPromptTraceSplit);
-    let _ = stringify!(CoderPromptOptions);
+fn coder_prompt_options_default_and_trace_variants_construct() {
+    let _ = CoderPromptOptions::default();
+    let uniform = OutgoingPromptTrace::Uniform(UniformOutgoingTrace {
+        trace_who: "coder",
+        stdout_bracket_label: None,
+    });
+    let split = OutgoingPromptTrace::DoSplit(DoPromptTraceSplit {
+        style_text: None,
+        header: "h",
+        user: "u",
+    });
+    assert!(matches!(uniform, OutgoingPromptTrace::Uniform(_)));
+    assert!(matches!(split, OutgoingPromptTrace::DoSplit(_)));
 }

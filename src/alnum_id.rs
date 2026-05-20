@@ -15,9 +15,9 @@ pub fn random_alnum(len: usize) -> String {
 }
 
 #[cfg(test)]
-mod kiss_coverage {
+mod tests {
     #[test]
-    fn kiss_stringify_units() {
-        let _ = stringify!(super::random_alnum);
+    fn random_alnum_len_matches_request() {
+        assert_eq!(super::random_alnum(12).len(), 12);
     }
 }

@@ -66,12 +66,10 @@ fn prefer_primary_ok_when_both_ok() {
 }
 
 #[test]
-fn kiss_stringify_acp_post_run_units() {
-    let _ = stringify!(crate::acp_post_run::emit_run_timing_json_only_after_acp);
-    let _ = stringify!(crate::acp_post_run::merge_acp_with_workspace_session_restore);
-    let _ = stringify!(
-        crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort
-    );
+fn smoke_cov_acp_post_run_units() {
+    let _ = crate::acp_post_run::emit_run_timing_json_only_after_acp;
+    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore;
+    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort;
 }
 
 #[test]

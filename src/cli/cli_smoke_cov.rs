@@ -118,3 +118,9 @@ fn smoke_require_kiss_for_cli_command_models_does_not_require_kiss_bin() {
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
     assert!(require_kiss_for_cli_command(&cli.command).is_ok());
 }
+
+#[test]
+fn smoke_tidy_effective_max_loops() {
+    assert_eq!(super::tidy_flow::effective_tidy_max_loops(0), 1);
+    assert_eq!(super::tidy_flow::effective_tidy_max_loops(3), 3);
+}

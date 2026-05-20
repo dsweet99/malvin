@@ -57,9 +57,10 @@ pub(crate) fn requires_cursor_login_auth(
 }
 
 #[test]
-fn kiss_stringify_acp_rpc_and_cursor_auth() {
-    let _ = stringify!(acp_rpc_timeout);
-    let _ = stringify!(requires_cursor_login_auth);
+fn acp_rpc_timeout_and_login_auth_smoke() {
+    assert!(acp_rpc_timeout().as_secs() > 0);
+    assert!(!requires_cursor_login_auth(Some("key"), Some("token")));
+    let _ = requires_cursor_login_auth(None, None);
 }
 
 include!("reader_inline.rs");
@@ -114,7 +115,6 @@ use tokio::io::AsyncReadExt;
     unused_imports,
     clippy::await_holding_lock,
     clippy::mutex_integer,
-    clippy::await_holding_lock,
     clippy::unnecessary_struct_initialization,
     clippy::unused_async,
     clippy::redundant_pub_crate

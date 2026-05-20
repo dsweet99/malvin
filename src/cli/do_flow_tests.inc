@@ -1,12 +1,12 @@
 #[test]
 fn stringify_do_flow_helpers() {
-    let _ = stringify!(crate::cli::do_flow::prepare_do_prompt_store);
-    let _ = stringify!(crate::cli::do_flow::run_do);
-    let _ = stringify!(crate::cli::DoArgs);
-    let _ = stringify!(crate::cli::do_flow::combine_do_acp_prompt_header_and_user);
-    let _ = stringify!(crate::cli::do_flow::combine_do_raw_header_and_user);
-    let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
-    let _ = stringify!(crate::cli::do_flow_prompt::DoCoderRun);
+    let _ = crate::do_flow::prepare_do_prompt_store;
+    let _ = crate::do_flow::run_do;
+    let _: Option<crate::do_flow::DoArgs> = None;
+    let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
+    let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
+    let _ = crate::do_flow::do_flow_prompt::prepare_do_raw_prompt_store;
+    let _: Option<crate::do_flow::do_flow_prompt::DoCoderRun> = None;
 }
 
 #[cfg(test)]

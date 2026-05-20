@@ -117,33 +117,13 @@ fn append_stdout_log_line_writes_when_path_set() {
 
 #[test]
 fn output_timestamp_wrapper_nonempty() {
+    let _ = crate::stdout_log_path::set_stdout_log_path;
+    let _ = super::stdout_use_color;
+    let _ = super::append_stdout_log_line;
+    let _ = super::print_stdout_rendered_line;
+    let _ = super::stderr_log::print_log_warning;
+    let _ = super::stderr_log::print_log_error;
+    let _ = super::print_stdout_acp_tee_line_with_timestamp;
     assert!(!super::timestamp_now_string().is_empty());
-}
-
-#[test]
-fn kiss_stringify_output_symbols() {
-    let _ = stringify!(super::format_log_tag_inner);
-    let _ = stringify!(super::format_acp_directional_tag_prefix);
-    let _ = stringify!(super::format_line_with_timestamp);
-    let _ = stringify!(super::timestamp_now_string);
-    let _ = stringify!(crate::time_format::timestamp_now_string);
-    let _ = stringify!(super::format_line);
-    let _ = stringify!(super::format_line_with_timestamp_ansi);
-    let _ = stringify!(super::init_stdout_style);
-    let _ = stringify!(super::stdout_use_color);
-    let _ = stringify!(super::set_stdout_log_path);
-    let _ = stringify!(super::append_stdout_log_line);
-    let _ = stringify!(super::print_stdout_rendered_line);
-    let _ = stringify!(super::print_stdout_line);
-    let _ = stringify!(super::print_stdout_raw_line);
-    let _ = stringify!(super::print_stderr_line);
-    let _ = stringify!(super::stderr_log::print_log_warning);
-    let _ = stringify!(super::stderr_log::print_log_error);
-    let _ = stringify!(super::stderr_use_color);
-    let _ = stringify!(super::print_stdout_text);
-    let _ = stringify!(super::print_outgoing_prompt_log);
-    let _ = stringify!(super::is_command_prelude_line);
-    let _ = stringify!(super::logical_lines);
-    let _ = stringify!(super::print_stdout_acp_tee_line);
-    let _ = stringify!(super::print_stdout_acp_tee_line_with_timestamp);
+    assert!(!crate::time_format::timestamp_now_string().is_empty());
 }

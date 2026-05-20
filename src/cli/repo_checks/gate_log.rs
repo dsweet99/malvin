@@ -64,11 +64,11 @@ pub(crate) fn append_quality_gates_command_output(
 }
 
 #[cfg(test)]
-mod kiss_stringify_gate_log {
+mod smoke_cov_gate_log {
     #[test]
-    fn kiss_stringify_gate_log_units() {
-        let _ = stringify!(super::emit_repo_gate_warning);
-        let _ = stringify!(super::emit_repo_gate_line);
-        let _ = stringify!(super::append_quality_gates_command_output);
+    fn smoke_cov_gate_log_units() {
+        let _ = super::emit_repo_gate_warning;
+        let _ = super::emit_repo_gate_line;
+        let _ = super::append_quality_gates_command_output;
     }
 }

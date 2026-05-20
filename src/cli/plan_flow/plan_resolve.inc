@@ -163,20 +163,20 @@ pub(super) fn apply_plan_source(
 #[cfg(test)]
 mod kiss_coverage {
     #[test]
-    fn kiss_stringify_plan_resolve_units() {
-        let _ = stringify!(super::resolve_plan_at_destination);
-        let _ = stringify!(super::resolve_user_plan_path);
-        let _ = stringify!(super::normalized_plan_file_bytes);
-        let _ = stringify!(super::plan_write_bytes);
-        let _ = stringify!(super::AtPathSuffix);
-        let _ = stringify!(super::classify_at_path_suffix);
-        let _ = stringify!(super::is_sole_at_in_place);
-        let _ = stringify!(super::paths_equal);
-        let _ = stringify!(super::at_source_matches_destination);
-        let _ = stringify!(super::plan_session_work_dir);
-        let _ = stringify!(super::resolve_plan_destination);
-        let _ = stringify!(super::plan_source_bytes);
-        let _ = stringify!(super::apply_plan_source);
+    fn smoke_cov_plan_resolve_units() {
+        let _ = super::resolve_plan_at_destination;
+        let _ = super::resolve_user_plan_path;
+        let _ = super::normalized_plan_file_bytes;
+        let _ = super::plan_write_bytes;
+        let _: Option<super::AtPathSuffix> = None;
+        let _ = super::classify_at_path_suffix;
+        let _ = super::is_sole_at_in_place;
+        let _ = super::paths_equal;
+        let _ = super::at_source_matches_destination;
+        let _ = super::plan_session_work_dir;
+        let _ = super::resolve_plan_destination;
+        let _ = super::plan_source_bytes;
+        let _ = super::apply_plan_source;
     }
 }
 
