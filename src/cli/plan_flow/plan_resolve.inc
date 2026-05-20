@@ -161,26 +161,6 @@ pub(super) fn apply_plan_source(
 }
 
 #[cfg(test)]
-mod kiss_coverage {
-    #[test]
-    fn smoke_cov_plan_resolve_units() {
-        let _ = super::resolve_plan_at_destination;
-        let _ = super::resolve_user_plan_path;
-        let _ = super::normalized_plan_file_bytes;
-        let _ = super::plan_write_bytes;
-        let _: Option<super::AtPathSuffix> = None;
-        let _ = super::classify_at_path_suffix;
-        let _ = super::is_sole_at_in_place;
-        let _ = super::paths_equal;
-        let _ = super::at_source_matches_destination;
-        let _ = super::plan_session_work_dir;
-        let _ = super::resolve_plan_destination;
-        let _ = super::plan_source_bytes;
-        let _ = super::apply_plan_source;
-    }
-}
-
-#[cfg(test)]
 pub(super) fn is_sole_at_in_place_for_test(plan: &PlanArgs) -> bool {
     is_sole_at_in_place(plan)
 }

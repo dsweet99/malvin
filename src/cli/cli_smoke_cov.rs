@@ -124,3 +124,88 @@ fn smoke_tidy_effective_max_loops() {
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(0), 1);
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(3), 3);
 }
+
+#[test]
+fn smoke_parse_languages() {
+    let langs = crate::init_cmd::parse_languages(&["rust".into(), "python".into()]).expect("parse");
+    assert_eq!(langs.len(), 2);
+}
+
+#[test]
+fn smoke_emit_command_line_writes_log() {
+    use std::path::Path;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    super::run_emit::emit_command_line(Path::new(&run_dir), false).expect("emit");
+    assert!(run_dir.join("command.log").is_file());
+}
+
+#[test]
+fn smoke_cli_parse_plan_subcommand() {
+    use clap::Parser;
+    let cli = Cli::try_parse_from(["malvin", "plan", "hello"]).expect("parse");
+    assert!(matches!(cli.command, Commands::Plan(_)));
+}
+
+#[test]
+fn smoke_format_logs_dir_under_run_dir() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    let logs = crate::format_logs_dir(&run_dir).expect("logs dir");
+    assert!(logs.contains("run"));
+}
+
+#[test]
+fn smoke_cli_parse_init_subcommand() {
+    use clap::Parser;
+    let cli = Cli::try_parse_from(["malvin", "init", "rust"]).expect("parse");
+    assert!(matches!(cli.command, Commands::Init(_)));
+}
+
+#[test]
+fn smoke_run_emit_echo_primary_noop_when_not_plain() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "plan").expect("write plan");
+    super::run_emit::echo_primary_to_stdout(&plan, false, "malvin").expect("echo");
+}
+
+#[test]
+fn smoke_require_kiss_allows_do_without_kiss_on_path() {
+    use clap::Parser;
+    let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
+    assert!(require_kiss_for_cli_command(&cli.command).is_ok());
+}
+
+#[test]
+fn smoke_print_command_error_writes_run_log() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    crate::cli::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
+    super::entrypoint::print_command_error("gate failed");
+    let log = run_dir.join("malvin_error.log");
+    assert!(log.is_file());
+    let body = std::fs::read_to_string(&log).expect("read");
+    assert!(body.contains("gate failed"));
+    crate::cli::error_run_log::clear_command_error_run_dir();
+}
+
+#[test]
+fn smoke_prepare_do_prompt_store_loads_defaults() {
+    assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
+}
+
+#[test]
+fn smoke_shared_opts_tee_startup_stdout() {
+    let shared = super::SharedOpts {
+        model: "m".into(),
+        no_force: false,
+        no_tee: false,
+        no_markdown: false,
+        verbose: false,
+    };
+    assert!(shared.tee_startup_stdout());
+}

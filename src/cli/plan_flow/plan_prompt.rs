@@ -59,13 +59,6 @@ mod plan_prompt_coverage {
     use crate::artifacts::create_run_artifacts;
 
     #[test]
-    fn smoke_cov_plan_prompt_units() {
-        let _ = super::prepare_plan_prompt_store;
-        let _ = super::compose_plan_prompt;
-        let _ = super::plan_prompt_context;
-    }
-
-    #[test]
     fn compose_plan_prompt_renders_embedded_review_plan_without_braces() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan_path = tmp.path().join("plan.md");

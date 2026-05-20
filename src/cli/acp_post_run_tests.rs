@@ -19,6 +19,60 @@ fn empty_session_backups(work: &Path) -> crate::artifacts::SessionDotfileBackups
     )
 }
 
+fn smoke_agent_client() -> crate::acp::AgentClient {
+    use crate::acp::{AgentClient, AgentIoOptions};
+    AgentClient::new(
+        "m".into(),
+        AgentIoOptions {
+            force: false,
+            no_tee: true,
+            raw_output: true,
+            show_thoughts_on_stdout: false,
+            emit_stdout_markdown: false,
+            log_full_outgoing_prompts: false,
+        },
+    )
+}
+
+#[test]
+fn emit_run_timing_json_only_after_acp_writes_json() {
+    use std::sync::{Arc, Mutex};
+
+    use crate::acp_post_run::emit_run_timing_json_only_after_acp;
+    use crate::run_timing::RUN_TIMING_JSON_FILE;
+
+    let mut client = smoke_agent_client();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
+    emit_run_timing_json_only_after_acp(&mut client, &run_dir, &timing, Ok(()))
+        .expect("emit timing");
+    assert!(run_dir.join(RUN_TIMING_JSON_FILE).is_file());
+}
+
+#[test]
+fn emit_run_timing_after_acp_writes_json() {
+    use std::sync::{Arc, Mutex};
+    use std::time::Instant;
+
+    use crate::acp_post_run::emit_run_timing_after_acp;
+    use crate::run_timing::RUN_TIMING_JSON_FILE;
+
+    let mut client = smoke_agent_client();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
+    {
+        let mut g = timing.lock().expect("timing lock");
+        g.mark_wall_start(Instant::now());
+        g.mark_wall_end(Instant::now());
+    }
+    emit_run_timing_after_acp(&mut client, &run_dir, &timing, Ok(())).expect("emit timing");
+    assert!(run_dir.join(RUN_TIMING_JSON_FILE).is_file());
+}
+
 #[test]
 fn merge_timing_ok_acp_ok_propagates_timing_err() {
     assert_eq!(
@@ -61,15 +115,16 @@ fn prefer_primary_surfaces_secondary_when_primary_ok() {
 }
 
 #[test]
-fn prefer_primary_ok_when_both_ok() {
-    assert_eq!(prefer_primary_over_secondary(Ok(()), Ok(()), "x"), Ok(()));
+fn merge_error_mentions_restore_detects_workspace_failure() {
+    assert!(crate::acp_post_run::merge_error_mentions_restore(
+        "workspace session restore failed: disk"
+    ));
+    assert!(!crate::acp_post_run::merge_error_mentions_restore("unrelated"));
 }
 
 #[test]
-fn smoke_cov_acp_post_run_units() {
-    let _ = crate::acp_post_run::emit_run_timing_json_only_after_acp;
-    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore;
-    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort;
+fn prefer_primary_ok_when_both_ok() {
+    assert_eq!(prefer_primary_over_secondary(Ok(()), Ok(()), "x"), Ok(()));
 }
 
 #[test]

@@ -79,74 +79,7 @@ struct TraceTeeStdoutCtx<'a> {
     ts: &'a str,
 }
 
-fn format_trace_display_line(line: &str, kind: Option<SessionUpdateChunkKind>) -> String {
-    match kind {
-        Some(SessionUpdateChunkKind::Thought) => format!("[{line}]"),
-        _ => line.to_string(),
-    }
-}
-
-fn print_tee_unprefixed_wrapped_line(line: &str) {
-    let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
-        0,
-        line,
-        crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
-    );
-    if !wrap {
-        crate::output::print_stdout_raw_line(line);
-        return;
-    }
-    for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
-        crate::output::print_stdout_raw_line(&seg);
-    }
-}
-
-fn trace_tee_stdout_event<'a>(
-    writer: &'a PromptTraceWriter,
-    line: &'a str,
-    ts: &'a str,
-    dim_payload: bool,
-) -> crate::output::AcpTeeStdoutEvent<'a> {
-    crate::output::AcpTeeStdoutEvent {
-        direction: crate::output::AcpTeeDirection::FromAgent,
-        who: &writer.who,
-        line,
-        ts,
-        emit_stdout_markdown: writer.emit_stdout_markdown,
-        dim_payload,
-    }
-}
-
-fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
-    if !ctx.tee_stdout {
-        return;
-    }
-    if writer.plain_lines || writer.raw_output {
-        print_tee_unprefixed_wrapped_line(line);
-        return;
-    }
-    match writer.stdout_replacement {
-        Some(rep) => {
-            if !writer.placeholder_emitted {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, rep, ctx.ts, false,
-                ));
-                writer.placeholder_emitted = true;
-            }
-        }
-        None => {
-            if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, true,
-                ));
-            } else {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, false,
-                ));
-            }
-        }
-    }
-}
+include!("trace_line_write_tee.inc");
 
 pub async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
@@ -213,17 +146,103 @@ pub async fn write_trace_line_coalesced(
     trace_file_write_line(trace_file, opts.raw_line, unparsed_tee, None).await;
 }
 
-#[test]
-fn smoke_cov_trace_line_write() {
-    let _: Option<ReaderTraceLineOpts> = None;
-    let _ = reader_loop_verbose_and_trace_line;
-    let _: Option<TraceTeeStdoutCtx> = None;
-    let _ = format_trace_display_line;
-    let _ = print_tee_unprefixed_wrapped_line;
-    let _ = trace_file_write_line;
-    let _ = write_trace_line_coalesced;
-    let _: Option<WriteTraceLineCoalescedOpts> = None;
-    let _ = raw_output_suppress_thought_stdout;
-    let _ = trace_tee_stdout_event;
-    let _ = trace_tee_stdout_line;
+#[cfg(test)]
+mod trace_line_write_tests {
+    use super::*;
+    use crate::acp::SessionUpdateChunkKind;
+
+    #[tokio::test]
+    async fn trace_line_write_paths_execute_core_and_tee_helpers() {
+        assert_eq!(
+            format_trace_display_line("x", Some(SessionUpdateChunkKind::Thought)),
+            "[x]"
+        );
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("t.log");
+        let f = tokio::fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(&path)
+            .await
+            .expect("open");
+        let mut w = PromptTraceWriter {
+            file: f,
+            who: "t".into(),
+            plain_lines: false,
+            stdout_replacement: None,
+            placeholder_emitted: false,
+            raw_output: false,
+            show_thoughts_on_stdout: false,
+            emit_stdout_markdown: false,
+        };
+        write_trace_line_coalesced(
+            &mut w,
+            &mut TraceChunkCoalescer::default(),
+            WriteTraceLineCoalescedOpts {
+                parsed: None,
+                raw_line: "raw",
+                tee_stdout: false,
+            },
+        )
+        .await;
+        assert!(!raw_output_suppress_thought_stdout(
+            Some(SessionUpdateChunkKind::Thought),
+            &w
+        ));
+        let ts = "20260520.000000.000";
+        w.stdout_replacement = Some("…");
+        trace_tee_stdout_line(
+            &mut w,
+            "ignored",
+            &TraceTeeStdoutCtx {
+                tee_stdout: true,
+                kind: Some(SessionUpdateChunkKind::Message),
+                ts,
+            },
+        );
+        assert!(w.placeholder_emitted);
+        w.stdout_replacement = None;
+        w.placeholder_emitted = false;
+        let event = trace_tee_stdout_event(&w, "thought", ts, true);
+        assert_eq!(
+            event.direction,
+            crate::output::AcpTeeDirection::FromAgent
+        );
+        trace_tee_stdout_line(
+            &mut w,
+            "thought",
+            &TraceTeeStdoutCtx {
+                tee_stdout: true,
+                kind: Some(SessionUpdateChunkKind::Thought),
+                ts,
+            },
+        );
+        w.raw_output = true;
+        assert!(raw_output_suppress_thought_stdout(
+            Some(SessionUpdateChunkKind::Thought),
+            &w
+        ));
+        print_tee_unprefixed_wrapped_line("wrap-me");
+        trace_file_write_line(&mut w, "tee", true, Some(SessionUpdateChunkKind::Message)).await;
+        let arc = Arc::new(Mutex::new(Some(w)));
+        let mut verbose = crate::acp::VerboseIoCoalescer::default();
+        let mut trace_c = TraceChunkCoalescer::default();
+        reader_loop_verbose_and_trace_line(
+            r#"{"jsonrpc":"2.0"}"#,
+            &ReaderTraceLineOpts {
+                acp_verbose: true,
+                tee_trace_stdout: false,
+            },
+            &arc,
+            &mut VerboseTraceCoalesceState {
+                verbose: &mut verbose,
+                trace: &mut trace_c,
+            },
+        )
+        .await;
+        drop(arc);
+        let body = tokio::fs::read_to_string(&path).await.expect("read");
+        assert!(body.contains("raw") && body.contains("tee"));
+    }
 }

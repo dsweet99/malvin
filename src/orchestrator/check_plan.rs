@@ -135,4 +135,55 @@ mod tests {
         assert!(!err.0.is_empty());
     }
 
+    #[tokio::test]
+    async fn run_check_plan_attempt_errors_when_spawn_fails() {
+        use crate::acp::{AgentClient, AgentIoOptions};
+        use crate::artifacts::{
+            create_run_artifacts_from_text, KissConfigBackup, KissignoreBackup, MalvinChecksBackup,
+            SessionDotfileBackups,
+        };
+        use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
+        use crate::prompts::PromptStore;
+
+        use super::run_check_plan_attempt;
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts = create_run_artifacts_from_text("cp-attempt", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: false,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let review_path = artifacts.artifact_review_md();
+        let err = run_check_plan_attempt(&mut orch, &ctx, &review_path)
+            .await
+            .expect_err("attempt");
+        assert!(!err.0.is_empty());
+    }
+
 }

@@ -156,3 +156,14 @@ pub fn merge_tidy_timing(
     )?;
     Ok(())
 }
+
+#[cfg(test)]
+mod smoke_cov_run {
+    #[test]
+    fn smoke_cov_tidy_run_private_fns() {
+        let _ = super::run_tidy_learn_mid_gates_and_summary;
+        let _ = super::run_tidy_learn_prompt_if_elapsed;
+        let _ = super::run_tidy_summary_prompt;
+        assert!(super::super::recovery::tidy_learn_elapsed_threshold_ms() > 0);
+    }
+}

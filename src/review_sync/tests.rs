@@ -236,8 +236,3 @@ fn tidy_reviewer_turn_double_clear_prevents_stale_lgtm_on_sync_attempt() {
     );
 }
 
-#[test]
-fn smoke_cov_review_sync_tests() {
-    let _ = tmp_lgtm_artifact_and_workspace;
-    let _ = tidy_reviewer_turn_double_clear_prevents_stale_lgtm_on_sync_attempt;
-}

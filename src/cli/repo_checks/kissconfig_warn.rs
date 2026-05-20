@@ -35,13 +35,13 @@ pub fn warn_kissconfig_test_coverage_if_needed(
     );
 }
 
-fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
+pub(crate) fn gate_test_coverage_threshold_i64(value: &toml::Value) -> Option<i64> {
     let gate = value.get("gate")?;
     let v = gate.get("test_coverage_threshold")?;
     integer_or_whole_float_i64(v)
 }
 
-fn integer_or_whole_float_i64(v: &toml::Value) -> Option<i64> {
+pub(crate) fn integer_or_whole_float_i64(v: &toml::Value) -> Option<i64> {
     if let Some(i) = v.as_integer() {
         return Some(i);
     }
@@ -57,11 +57,57 @@ pub fn should_warn_low_test_coverage(value: &toml::Value) -> bool {
 }
 
 #[cfg(test)]
-mod smoke_cov_kissconfig_warn {
+mod kissconfig_warn_tests {
+    use crate::repo_checks::RepoGateOutput;
+
     #[test]
-    fn smoke_cov_repo_checks_kissconfig_warn_units() {
-        let _ = super::warn_kissconfig_test_coverage_if_needed;
-        let _ = super::gate_test_coverage_threshold_i64;
-        let _ = super::integer_or_whole_float_i64;
+    fn warn_emits_when_kissconfig_threshold_below_90() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            tmp.path().join(".kissconfig"),
+            "[gate]\ntest_coverage_threshold = 50\n",
+        )
+        .expect("write");
+        super::warn_kissconfig_test_coverage_if_needed(tmp.path(), RepoGateOutput::Tagged, None);
+    }
+
+    #[test]
+    fn should_warn_covers_threshold_parser_edges() {
+        let ok: toml::Value =
+            toml::from_str("[gate]\ntest_coverage_threshold = 90.0\n").expect("toml");
+        assert!(!super::should_warn_low_test_coverage(&ok));
+        let fractional: toml::Value =
+            toml::from_str("[gate]\ntest_coverage_threshold = 90.5\n").expect("toml");
+        assert!(super::should_warn_low_test_coverage(&fractional));
+        let missing_gate: toml::Value = toml::from_str("[other]\n").expect("toml");
+        assert!(super::should_warn_low_test_coverage(&missing_gate));
+        let integer_ok: toml::Value =
+            toml::from_str("[gate]\ntest_coverage_threshold = 90\n").expect("toml");
+        assert!(!super::should_warn_low_test_coverage(&integer_ok));
+        let high: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 100").expect("toml");
+        assert!(!super::should_warn_low_test_coverage(&high));
+        let low: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 50").expect("toml");
+        assert!(super::should_warn_low_test_coverage(&low));
+        assert_eq!(
+            super::gate_test_coverage_threshold_i64(&integer_ok),
+            Some(90)
+        );
+        assert_eq!(super::integer_or_whole_float_i64(&fractional), None);
+    }
+
+    #[test]
+    fn warn_path_exercises_gate_log_style_and_source_detect() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        crate::repo_checks::gate_log::emit_repo_gate_line(
+            RepoGateOutput::Tagged,
+            "kissconfig-warn-test",
+            None,
+        );
+        crate::repo_checks::style_markers::touch_if_missing(
+            &tmp.path().join("style.md"),
+            RepoGateOutput::Tagged,
+        )
+        .expect("touch");
+        assert!(!crate::repo_checks::gate_run::source_like_files_present(tmp.path()));
     }
 }

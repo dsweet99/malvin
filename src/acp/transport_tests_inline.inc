@@ -22,7 +22,7 @@ fn smoke_harness_rpc_wait_params_symbol() {
 }
 
 #[test]
-fn kiss_stringify_transport_units() {
+fn kiss_wire_transport_units() {
     let _ = acp_activity_state;
     let _ = assert_arg_value;
     let _ = command_args;

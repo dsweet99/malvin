@@ -144,5 +144,55 @@ mod tests {
         assert!(!err.0.is_empty());
     }
 
+    #[tokio::test]
+    async fn code_review_single_attempt_errors_when_spawn_fails() {
+        use super::{CodeReviewAttempt, CodeReviewAttemptOutcome, code_review_single_attempt};
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts = create_run_artifacts_from_text("rv-single", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: true,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let attempt_ctx = CodeReviewAttempt {
+            context: &ctx,
+            attempt: 1,
+        };
+        match code_review_single_attempt(&mut orch, attempt_ctx).await {
+            Err(e) => assert!(!e.0.is_empty()),
+            Ok(CodeReviewAttemptOutcome::Lgtm) => panic!("expected spawn failure"),
+            Ok(CodeReviewAttemptOutcome::NotLgtm) => panic!("expected spawn failure"),
+            Ok(CodeReviewAttemptOutcome::MissingArtifactReview) => {
+                panic!("expected spawn failure")
+            }
+        }
+    }
+
 }
 

@@ -82,6 +82,7 @@ mod tests {
         unsafe {
             std::env::set_var("COLUMNS", "100");
         }
+        assert_eq!(super::columns_from_env(), Some(100));
         assert_eq!(terminal_columns(), 100);
         assert!(super::stdout_allows_log_word_wrap());
         assert!(super::stderr_allows_log_word_wrap());
@@ -118,19 +119,19 @@ mod tests {
     }
 
     #[test]
-    fn smoke_cov_terminal_wrap_symbols() {
-        let _ = super::line_wrap_for_prefix_len;
-        let _ = super::terminal_columns;
-        let _ = super::stdout_allows_log_word_wrap;
-        let _ = super::stderr_allows_log_word_wrap;
-        let _ = super::stdout_line_wrap_meta;
-        let _ = super::stderr_line_wrap_meta;
-        let _ = super::wrap_words_bounded;
-        let _ = super::wrap_words_single_line_no_newlines;
-        let _ = super::char_display_cell;
-        let _ = super::columns_from_env;
-        let _ = super::columns_from_tty;
-        let _ = super::line_wrap_meta_tagged_malvin;
-        let _ = super::line_wrap_meta_tagged_plain;
+    fn line_wrap_meta_exercises_remaining_helpers() {
+        let (max, _) = super::line_wrap_for_prefix_len(8, "hello world", true);
+        assert!(max > 0);
+        let v = super::wrap_words_single_line_no_newlines(20, "hello world");
+        assert_eq!(v, vec!["hello world"]);
+        assert_eq!(super::char_display_cell('a'), 1);
+        let (tag_max, _) =
+            super::line_wrap_meta_tagged_malvin("t", "malvin", "line", true, false);
+        assert!(tag_max > 0);
+        let (pmax, _) = super::line_wrap_meta_tagged_plain("t", "who", "line", true);
+        assert!(pmax > 0);
+        let (smax, _) = super::stderr_line_wrap_meta("t", "w", "line");
+        assert!(smax > 0);
+        let _ = super::columns_from_tty();
     }
 }

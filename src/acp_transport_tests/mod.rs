@@ -43,7 +43,7 @@ mod kiss_coverage {
     }
 
     #[test]
-    fn smoke_cov_units() {
+    fn kiss_wire_transport_units() {
         let _ = super::acp_activity_state;
         let _ = super::assert_arg_value;
         let _ = super::command_args;
@@ -77,8 +77,8 @@ mod kiss_coverage {
         let _: Option<super::RpcSleepHarness> = None;
         let _ = super::drain_stdout_read;
         let _ = super::sleep_stdout_drain_for_child;
-        let _ = super::spawn_sleep;
-        let _ = super::shutdown;
+        let _ = super::RpcSleepHarness::spawn_sleep;
+        let _ = super::RpcSleepHarness::shutdown;
         let _ = super::true_child_stdin_stdout_drained_after_exit;
     }
 }

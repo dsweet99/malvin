@@ -80,12 +80,6 @@ mod gates_root_tests {
     use crate::repo_checks::RepoGateCommandFailure;
     use crate::repo_checks::RepoGateFailure;
 
-    #[test]
-    fn smoke_cov_mid_session_gate_units() {
-        let _ = crate::cli::mid_session_gates::mid_pre_summary_repo_gates;
-        let _ = crate::cli::mid_session_gates::run_pre_summary_repo_gates_with_tidy_retry;
-    }
-
     #[tokio::test]
     async fn tidy_retry_flow_ok_when_first_gates_pass() {
         let first_calls = AtomicUsize::new(0);

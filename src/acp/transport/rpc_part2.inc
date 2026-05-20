@@ -87,12 +87,6 @@ async fn read_first_stdout_line(stdout: tokio::process::ChildStdout) -> String {
     line
 }
 
-#[test]
-fn smoke_cov_rpc_part2_cat_helpers() {
-    let _ = spawn_cat_rpc_stdio_pair;
-    let _ = read_first_stdout_line;
-}
-
 #[tokio::test]
 async fn write_rpc_line_appends_flush_line_readable_on_child_stdout() {
     let (mut child, stdout, stdin) = spawn_cat_rpc_stdio_pair().await;

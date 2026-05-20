@@ -16,12 +16,34 @@ fn append_quality_gates_log_line(run_dir: &Path, who: &str, line: &str) -> std::
     append_quality_gates_log_text(run_dir, &format!("{}\n", format_line(who, line)))
 }
 
+fn try_append_log_line(run_log_dir: Option<&Path>, who: &str, line: &str) {
+    if let Some(dir) = run_log_dir {
+        if let Err(e) = append_quality_gates_log_line(dir, who, line) {
+            use crate::output::print_log_warning;
+            print_log_warning(&format!("failed to write quality gates log: {e}"));
+        }
+    }
+}
+
+pub(crate) fn try_append_command_output(
+    run_log_dir: Option<&Path>,
+    command_line: &str,
+    cmd_output: &std::process::Output,
+) {
+    if let Some(dir) = run_log_dir {
+        if let Err(e) = append_quality_gates_command_output(dir, command_line, cmd_output) {
+            emit_repo_gate_warning(
+                &format!("failed to write quality gates log for `{command_line}`: {e}"),
+                Some(dir),
+            );
+        }
+    }
+}
+
 pub(crate) fn emit_repo_gate_warning(line: &str, run_log_dir: Option<&Path>) {
     use crate::output::{WARNING_WHO, print_log_warning};
     print_log_warning(line);
-    if let Some(dir) = run_log_dir {
-        let _ = append_quality_gates_log_line(dir, WARNING_WHO, line);
-    }
+    try_append_log_line(run_log_dir, WARNING_WHO, line);
 }
 
 pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_dir: Option<&Path>) {
@@ -29,15 +51,11 @@ pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_di
     match output {
         RepoGateOutput::Tagged => {
             print_stdout_line(MALVIN_WHO, line);
-            if let Some(dir) = run_log_dir {
-                let _ = append_quality_gates_log_line(dir, MALVIN_WHO, line);
-            }
+            try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
         RepoGateOutput::Stderr => {
             print_stderr_line(MALVIN_WHO, line);
-            if let Some(dir) = run_log_dir {
-                let _ = append_quality_gates_log_line(dir, MALVIN_WHO, line);
-            }
+            try_append_log_line(run_log_dir, MALVIN_WHO, line);
         }
     }
 }
@@ -64,11 +82,42 @@ pub(crate) fn append_quality_gates_command_output(
 }
 
 #[cfg(test)]
-mod smoke_cov_gate_log {
+mod gate_log_tests {
     #[test]
-    fn smoke_cov_gate_log_units() {
-        let _ = super::emit_repo_gate_warning;
-        let _ = super::emit_repo_gate_line;
-        let _ = super::append_quality_gates_command_output;
+    fn append_quality_gates_log_writes_run_dir_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        super::append_quality_gates_log_text(tmp.path(), "plain\n").expect("text");
+        super::append_quality_gates_log_line(tmp.path(), "who", "line").expect("line");
+        let path = tmp.path().join(crate::artifacts::QUALITY_GATES_LOG);
+        let content = std::fs::read_to_string(path).expect("read log");
+        assert!(content.contains("plain"));
+        assert!(content.contains("line"));
+        super::emit_repo_gate_warning("warn", Some(tmp.path()));
+        super::emit_repo_gate_line(super::RepoGateOutput::Tagged, "ok", Some(tmp.path()));
+        let output = std::process::Output {
+            status: std::process::ExitStatus::default(),
+            stdout: b"out".to_vec(),
+            stderr: b"err".to_vec(),
+        };
+        super::append_quality_gates_command_output(tmp.path(), "kiss", &output).expect("cmd out");
+    }
+
+    #[test]
+    fn emit_repo_gate_warning_survives_blocked_log_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG)).expect("block log");
+        super::emit_repo_gate_warning("warn", Some(tmp.path()));
+    }
+
+    #[test]
+    fn try_append_command_output_survives_blocked_log_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG)).expect("block log");
+        let output = std::process::Output {
+            status: std::process::ExitStatus::default(),
+            stdout: Vec::new(),
+            stderr: Vec::new(),
+        };
+        super::try_append_command_output(Some(tmp.path()), "kiss check", &output);
     }
 }

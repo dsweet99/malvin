@@ -25,7 +25,7 @@ KPOP ended with `## KPOP_SOLVED`. The experiment log under `_kpop/` is the autho
 Malvin will run two coder prompts in order: `bug_regression_test.md`, then `bug_fix.md`.
 ";
 
-fn kpop_args_from_bug(bug: &BugArgs) -> KpopArgs {
+pub(crate) fn kpop_args_from_bug(bug: &BugArgs) -> KpopArgs {
     KpopArgs {
         max_hypotheses: bug.max_hypotheses,
         p_creative: bug.p_creative,
@@ -202,16 +202,21 @@ pub async fn run_bug(
 }
 
 #[cfg(test)]
-mod kiss_coverage_tests {
+mod tests {
+    use super::{kpop_args_from_bug, BugArgs, BUG_KPOP_REQUEST};
+
     #[test]
-    fn smoke_cov_bug_flow_units() {
-        let _: Option<crate::cli::bug_flow::BugKpopPhase> = None;
-        let _: Option<crate::cli::bug_flow::BugRunTail> = None;
-        let _ = crate::cli::bug_flow::run_bug;
-        let _ = crate::cli::bug_flow::kpop_args_from_bug;
-        let _ = crate::cli::bug_flow::run_bug_kpop_multiturn;
-        let _ = crate::cli::bug_flow::ensure_kpop_solved;
-        let _ = crate::cli::bug_flow::finish_bug_after_kpop;
-        let _ = crate::cli::bug_flow::run_bug_remediation_orchestrator;
+    fn kpop_args_from_bug_maps_bug_fields() {
+        let bug = BugArgs {
+            max_hypotheses: 7,
+            p_creative: 0.25,
+            no_learn: true,
+            skip_pre_checks: true,
+        };
+        let kpop = kpop_args_from_bug(&bug);
+        assert_eq!(kpop.max_hypotheses, 7);
+        assert!((kpop.p_creative - 0.25).abs() < f64::EPSILON);
+        assert!(kpop.no_learn);
+        assert_eq!(kpop.request, BUG_KPOP_REQUEST);
     }
 }

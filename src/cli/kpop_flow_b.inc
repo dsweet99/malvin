@@ -24,15 +24,40 @@ pub fn kpop_learn_bundle(
 }
 
 #[test]
-fn stringify_kpop_flow_helpers() {
-    let _ = crate::acp_post_run::merge_acp_with_workspace_session_restore;
-    let _ = crate::cli::kpop_flow::kpop_prompt_store;
-    let _ = crate::cli::kpop_flow::prepare_kpop_run;
-    let _ = crate::artifacts::RunArtifacts::exp_log_path;
-    let _: Option<crate::cli::kpop_flow::KpopAcpMultiturnCtx> = None;
-    let _ = crate::cli::kpop_flow::kpop_emit_startup;
-    let _ = crate::cli::kpop_flow::kpop_learn_bundle;
-    let _: Option<crate::KpopTurnPrompts> = None;
+fn kpop_emit_startup_creates_malvin_run_under_root() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts =
+        crate::artifacts::create_run_artifacts_from_text("kpop", Some(tmp.path())).expect("art");
+    let shared = crate::cli::SharedOpts {
+        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        no_force: true,
+        no_tee: true,
+        no_markdown: true,
+        verbose: false,
+    };
+    let kpop = crate::cli::KpopArgs {
+        max_hypotheses: 1,
+        p_creative: 0.1,
+        no_learn: true,
+        request: "smoke".into(),
+    };
+    kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
+    assert!(artifacts.run_dir.starts_with(tmp.path().join("_malvin")));
+}
+
+#[test]
+fn kpop_learn_bundle_none_when_learn_disabled() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts =
+        crate::artifacts::create_run_artifacts_from_text("kpop", Some(tmp.path())).expect("art");
+    let store = crate::prompts::PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let ctx = HashMap::new();
+    assert!(
+        kpop_learn_bundle(&store, &ctx, false, &artifacts)
+            .expect("bundle")
+            .is_none()
+    );
 }
 
 #[test]

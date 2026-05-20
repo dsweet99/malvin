@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
-use super::gate_log::{append_quality_gates_command_output, emit_repo_gate_line};
+use super::gate_log::{emit_repo_gate_line, try_append_command_output};
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput};
 
@@ -107,9 +107,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
     let output = command
         .output()
         .map_err(|e| RepoGateFailure::Message(format!("`kiss clamp` failed to start: {e}")))?;
-    if let Some(dir) = run_log_dir {
-        let _ = append_quality_gates_command_output(dir, "kiss clamp", &output);
-    }
+    try_append_command_output(run_log_dir, "kiss clamp", &output);
     if output.status.success() {
         Ok(())
     } else {
@@ -175,9 +173,7 @@ fn run_shell_command_line_with_details(
     let output = command
         .output()
         .map_err(|e| RepoGateFailure::Message(format!("`{command_line}` failed to start: {e}")))?;
-    if let Some(dir) = run_log_dir {
-        let _ = append_quality_gates_command_output(dir, command_line, &output);
-    }
+    try_append_command_output(run_log_dir, command_line, &output);
     if output.status.success() {
         Ok(())
     } else {
@@ -186,18 +182,5 @@ fn run_shell_command_line_with_details(
 }
 
 #[cfg(test)]
-mod smoke_cov_workspace {
-    #[test]
-    fn smoke_cov_repo_checks_workspace_internals() {
-        let _ = super::run_repo_workspace_gates_with_details;
-        let _ = super::run_repo_workspace_gates_no_kiss_clamp_with_details;
-        let _ = super::prepare_repo_workspace_with_details;
-        let _ = super::ensure_kiss_clamp_if_needed_with_details;
-        let _ = super::run_quality_gates_with_details;
-        let _ = super::run_malvin_checks_with_details;
-        let _ = super::shell_binary;
-        let _ = super::run_shell_command_line_with_details;
-        let _ = crate::source_detect::has_source_files;
-        let _ = super::scan_for_extension_handles_symlink_cycles;
-    }
-}
+#[path = "gate_run_tests.rs"]
+mod gate_run_tests;

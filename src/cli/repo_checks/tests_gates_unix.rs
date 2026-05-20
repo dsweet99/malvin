@@ -11,7 +11,6 @@ use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn source_like_files_present_does_not_follow_external_symlink_dirs() {
-    let _ = super::gate_run::source_like_files_present;
     let tmp = tempfile::tempdir().unwrap();
     let outside = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(outside.path().join("src")).unwrap();
@@ -22,7 +21,6 @@ fn source_like_files_present_does_not_follow_external_symlink_dirs() {
 
 #[tokio::test]
 async fn scan_for_extension_handles_symlink_cycles() {
-    let _ = super::gate_run::scan_for_extension_handles_symlink_cycles;
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     std::fs::create_dir(root.join("src")).unwrap();

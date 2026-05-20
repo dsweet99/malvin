@@ -190,15 +190,20 @@ mod tests {
     }
 
     #[test]
-    fn smoke_cov_models_cmd() {
-        let _: Option<ModelsArgs> = None;
-        let _ = run_models;
-        let _ = resolve_models_cli;
-        let _ = crate::ansi_strip::strip_ansi_escapes;
-        let _ = trim_trailing_tip_lines;
-        let _ = looks_like_tip_banner_line;
-        let _ = print_parsed_or_fallback;
-        let _ = models_display_lines;
-        let _ = parse_model_line;
+    fn models_subcommand_parse_invokes_cli_helpers() {
+        use clap::Parser;
+        use crate::cli::{Cli, Commands};
+        let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
+        assert!(matches!(cli.command, Commands::Models(_)));
+        assert!(looks_like_tip_banner_line("tip: upgrade"));
+        print_parsed_or_fallback("composer-2 — Fast");
+        match resolve_models_cli() {
+            Err(msg) => assert!(msg.contains("agent") || msg.contains("PATH")),
+            Ok(path) => assert!(!path.as_os_str().is_empty()),
+        }
+        match run_models() {
+            Ok(()) => {}
+            Err(msg) => assert!(!msg.is_empty()),
+        }
     }
 }

@@ -6,8 +6,6 @@ pub mod kissconfig_warn;
 
 #[cfg(test)]
 mod style_markers;
-#[cfg(test)]
-mod tests_coverage;
 #[cfg(all(test, unix))]
 mod tests_gates_common;
 #[cfg(all(test, unix))]

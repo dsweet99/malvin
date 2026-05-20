@@ -1,14 +1,3 @@
-#[test]
-fn stringify_do_flow_helpers() {
-    let _ = crate::do_flow::prepare_do_prompt_store;
-    let _ = crate::do_flow::run_do;
-    let _: Option<crate::do_flow::DoArgs> = None;
-    let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
-    let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
-    let _ = crate::do_flow::do_flow_prompt::prepare_do_raw_prompt_store;
-    let _: Option<crate::do_flow::do_flow_prompt::DoCoderRun> = None;
-}
-
 #[cfg(test)]
 mod do_tests {
     use clap::Parser;
@@ -16,9 +5,57 @@ mod do_tests {
     use crate::artifacts::RunArtifacts;
     use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
+    use std::collections::HashMap;
+
     use crate::do_flow::do_flow_prompt::{
-        combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user,
+        build_do_coder_run, combine_do_acp_prompt_header_and_user,
+        combine_do_prompt_file_and_user, combine_do_raw_header_and_user,
+        prepare_do_prompt_store, prepare_do_raw_prompt_store,
     };
+
+    #[test]
+    fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prompt_root = tmp.path().join("prompts");
+        std::fs::create_dir_all(&prompt_root).expect("mkdir");
+        std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
+        let store = PromptStore::with_root(prompt_root);
+        let ctx = HashMap::from([("k".into(), "v".into())]);
+        let (combined, header, user) =
+            combine_do_prompt_file_and_user(&store, "BODY\n", HEADER_MD, &ctx).expect("combine");
+        assert_eq!(header, "TMPL");
+        assert_eq!(user, "BODY");
+        assert_eq!(combined, "TMPL\n\nBODY");
+    }
+
+    #[test]
+    fn prepare_do_prompt_stores_load_default_templates() {
+        let cooked = prepare_do_prompt_store().expect("cooked store");
+        let raw = prepare_do_raw_prompt_store().expect("raw store");
+        assert!(cooked.validate_exists(HEADER_MD).is_ok());
+        assert!(raw.validate_exists(DO_HEADER_MD).is_ok());
+    }
+
+    #[test]
+    fn build_do_coder_run_cooked_and_raw_modes() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(tmp.path().join("kpop_common.md"), "").expect("kpop_common");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "p").expect("plan");
+        let run_dir = tmp.path().join("_malvin").join("r");
+        std::fs::create_dir_all(&run_dir).expect("run");
+        let artifacts = RunArtifacts {
+            run_dir,
+            plan_path: plan,
+            work_dir: tmp.path().to_path_buf(),
+        };
+        let cooked = build_do_coder_run(true, &artifacts, "USER1").expect("cooked");
+        assert!(!cooked.skip_repo_style);
+        assert!(cooked.combined.contains("USER1"));
+        let raw = build_do_coder_run(false, &artifacts, "RAW1").expect("raw");
+        assert!(raw.skip_repo_style);
+        assert!(raw.combined.contains("RAW1"));
+    }
 
     #[test]
     fn combine_do_acp_prompt_joins_rendered_header_and_request() {

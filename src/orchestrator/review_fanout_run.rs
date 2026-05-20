@@ -198,4 +198,35 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn run_review_prompt_coder_session_errors_when_no_coder_session() {
+        use super::{ReviewPromptCoderSession, run_review_prompt_coder_session, REVIEWERS_SPAWN_FILE};
+        use crate::orchestrator::review_prompt_log::ReviewPromptLog;
+        use crate::run_timing::TimingPhase;
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts, store, ctx) = workflow_ctx_for_smoke(&tmp, "rfr_prompt");
+        let mut client = no_session_client();
+        let backups = empty_dotfile_backups();
+        let err = run_review_prompt_coder_session(ReviewPromptCoderSession {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            session_dotfile_backups: &backups,
+            context: &ctx,
+            prompt_file: REVIEWERS_SPAWN_FILE,
+            phase: TimingPhase::ReviewFanout,
+            log: ReviewPromptLog {
+                prompt_file: REVIEWERS_SPAWN_FILE,
+                skip_repo_style: true,
+                log_attempt: 1,
+                attempt: 1,
+            },
+            stdout_bracket_label: None,
+        })
+        .await
+        .expect_err("prompt session");
+        assert!(err.0.contains("begin_coder_session"), "unexpected: {}", err.0);
+    }
+
 }

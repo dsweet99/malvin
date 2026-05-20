@@ -206,13 +206,37 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
 }
 
 #[cfg(test)]
-mod smoke_cov_private {
+mod acp_tee_tests {
+    use super::{AcpTeeDirection, AcpTeeLineFmt, format_line_with_timestamp_acp_ansi_payload};
+
     #[test]
-    fn stringify_internal_acp_tee() {
-        let _ = super::acp_tee_payload_prefix;
-        let _ = super::acp_tee_payload_prefix_width;
-        let _ = super::print_stdout_acp_tee_line_with_timestamp_payload;
-        let _ = super::print_acp_tee_stdout_markdown_line;
-        let _ = super::print_acp_tee_stdout_markdown_lines;
+    fn format_acp_ansi_payload_includes_who_and_line() {
+        let s = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
+            ts: "2020-01-01T00:00:00Z",
+            direction: AcpTeeDirection::ToAgent,
+            who: "malvin",
+            line: "hello",
+            dim_payload: false,
+        });
+        assert!(s.contains("malvin"));
+        assert!(s.contains("hello"));
+        let prefix = super::acp_tee_payload_prefix(&AcpTeeLineFmt {
+            ts: "t",
+            direction: AcpTeeDirection::FromAgent,
+            who: "w",
+            line: "x",
+            dim_payload: false,
+        });
+        assert!(super::acp_tee_payload_prefix_width(&prefix) > 0);
+        let ctx = AcpTeeLineFmt {
+            ts: "t",
+            direction: AcpTeeDirection::ToAgent,
+            who: "w",
+            line: "plain",
+            dim_payload: false,
+        };
+        super::print_stdout_acp_tee_line_with_timestamp_payload(&ctx, false);
+        super::print_acp_tee_stdout_markdown_line("p:", "body");
+        super::print_acp_tee_stdout_markdown_lines("p:", &["a".to_string()]);
     }
 }

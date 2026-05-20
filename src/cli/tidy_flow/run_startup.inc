@@ -111,3 +111,38 @@ pub fn prepare_tidy_run(
         run_learn,
     })
 }
+
+#[cfg(test)]
+mod smoke_cov_startup {
+    #[test]
+    fn smoke_cov_tidy_startup_private_fns() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let backups = super::tidy_session_dotfile_backups(
+            tmp.path(),
+            crate::artifacts::MalvinChecksBackup::Missing,
+        )
+        .expect("session dotfile backups");
+        assert_eq!(
+            backups.malvin_checks,
+            crate::artifacts::MalvinChecksBackup::Missing
+        );
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+            .expect("artifacts");
+        let shared = crate::cli::SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+        };
+        let startup = super::tidy_skip_agent_startup(
+            artifacts,
+            &shared,
+            crate::artifacts::MalvinChecksBackup::Missing,
+        )
+        .expect("skip startup");
+        assert!(matches!(startup, super::TidyStartup::SkipAgent { .. }));
+        let _ = super::tidy_run_agent_startup;
+        let _: Option<super::TidyAgentStartupRequest<'static>> = None;
+    }
+}

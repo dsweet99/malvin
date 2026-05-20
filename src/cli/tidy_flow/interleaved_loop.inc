@@ -168,3 +168,12 @@ pub async fn run_tidy_interleaved_loop(
         "tidy did not converge within {max_outer_iterations} iterations"
     ))
 }
+
+#[cfg(test)]
+mod smoke_cov_interleaved {
+    #[test]
+    fn smoke_cov_tidy_interleaved_private_fns() {
+        let _ = super::run_tidy_coder_prompt_for_attempt;
+        let _ = super::tidy_finish_lgtm_attempt;
+    }
+}

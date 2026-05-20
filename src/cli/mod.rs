@@ -25,12 +25,6 @@ mod cli_cross_cov;
 #[cfg(test)]
 mod cli_cross_cov_kiss;
 #[cfg(test)]
-#[path = "cli_cross_cov_paths_test.rs"]
-mod cli_cross_cov_paths_test;
-#[cfg(test)]
-#[path = "tidy_flow_coverage_tests.rs"]
-mod tidy_flow_coverage_tests;
-#[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;
 

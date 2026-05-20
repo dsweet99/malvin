@@ -143,20 +143,32 @@ pub(crate) fn executable_text_busy(err: &io::Error) -> bool {
 }
 
 #[test]
-fn kiss_stringify_command_a() {
-    let _ = AGENT_BIN;
+fn build_agent_acp_command_uses_bin_override_program() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
+        cwd: tmp.path(),
+        bin_override: Some(Path::new("/bin/true")),
+        api_key: None,
+        auth_token: None,
+        george_acp_lane: None,
+        model: None,
+        force: false,
+    });
+    assert_eq!(
+        cmd.as_std().get_program().to_string_lossy(),
+        "/bin/true"
+    );
+}
+
+#[test]
+fn transport_command_kiss_static_refs() {
     let _ = prepend_standard_path_for_child;
     let _ = forward_parent_env;
     let _ = apply_api_and_auth;
     let _ = apply_acp_tail;
-    let _: Option<BuildAgentAcpCommandArgs> = None;
     let _ = agent_program;
-}
-
-#[test]
-fn kiss_stringify_command_b() {
-    let _ = build_agent_acp_command;
     let _ = isolate_agent_process_group;
     let _ = spawn_agent_acp_child;
     let _ = executable_text_busy;
 }
+

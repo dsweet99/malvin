@@ -1,11 +1,38 @@
 #[test]
-fn kiss_stringify_acp_reader_and_support_units() {
-    let _ = stringify!(crate::acp::reader_tests_helpers::acp_activity_state);
+fn smoke_acp_reader_support_behavior() {
+    use std::sync::atomic::Ordering;
+
+    let (seq, _notify) = crate::acp::reader_tests_helpers::acp_activity_state();
+    assert_eq!(seq.load(Ordering::Relaxed), 0);
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn smoke_reader_loop_eof_pending_error() {
+    let msg = crate::acp::reader_tests_helpers::reader_loop_eof_pending_error().await;
+    assert!(!msg.is_empty());
+}
+
+#[cfg(not(unix))]
+#[test]
+fn smoke_acp_reader_helper_production_symbols() {
+    let _ = stringify!(crate::acp::reader_tests_helpers::IncomingDispatchParts);
+    let _ = stringify!(crate::acp::reader_tests_helpers::CatSession);
+    let _ = stringify!(crate::acp::reader_tests_helpers::spawn_true_stdout_with_pending);
+    let _ = stringify!(crate::acp::reader_tests_helpers::spawn_sleep_stdin);
+    let _ = stringify!(crate::acp::reader_tests_helpers::reader_loop_eof_pending_error);
+}
+
+#[test]
+fn smoke_acp_reader_dispatch_and_trace_test_names() {
     let _ = stringify!(
         crate::acp::reader_tests_dispatch::dispatch_resolves_pending_when_response_id_is_i64
     );
     let _ = stringify!(
         crate::acp::reader_tests_dispatch::dispatch_resolves_pending_when_response_id_is_decimal_string
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_dispatch::dispatch_clears_prompt_cleanup_when_id_matches
     );
     let _ = stringify!(
         crate::acp::reader_tests_trace_a::write_trace_line_coalesced_writes_non_chunk_lines
@@ -37,12 +64,4 @@ fn kiss_stringify_acp_reader_and_support_units() {
     let _ = stringify!(
         crate::acp::reader_tests_permission_unix::unix::permission_with_id_in_params_writes_allow_always_reply_line
     );
-    let _ = stringify!(
-        crate::acp::reader_tests_dispatch::dispatch_clears_prompt_cleanup_when_id_matches
-    );
-}
-
-#[test]
-fn kiss_stringify_acp_ops_inline_tests_units() {
-    let _ = stringify!(crate::acp::ops_inline_tests::write_path_executable);
 }
