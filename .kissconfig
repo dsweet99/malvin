@@ -51,5 +51,5 @@ concrete_types_per_file = 4
 imported_names_per_file = 50
 cycle_size = 0
 indirect_dependencies = 35
-dependency_depth = 2
+dependency_depth = 3
 
