@@ -5,6 +5,7 @@ struct CodeRunExecuteArgs<'a> {
     store: &'a crate::prompts::PromptStore,
     client: &'a mut crate::acp::AgentClient,
     artifacts: &'a crate::artifacts::RunArtifacts,
+    startup_request: &'a str,
 }
 
 async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
@@ -17,6 +18,7 @@ async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
         store,
         client,
         artifacts,
+        startup_request,
     } = exec;
     client
         .ensure_authenticated()
@@ -28,7 +30,7 @@ async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
     run_emit::emit_run_startup_sequence(
         artifacts,
         shared.tee_startup_stdout(),
-        &code.request,
+        startup_request,
     )?;
     let workflow_res = {
         let mut orch = Orchestrator {
@@ -70,7 +72,8 @@ pub async fn run_code(
 ) -> Result<(), String> {
     use crate::artifacts::{create_run_artifacts_from_text, resolve_user_request};
     let store = prepare_prompt_store(workflow)?;
-    let (text, work_dir) = resolve_user_request(&code.request)?;
+    let request = crate::cli::cli_request::require_cli_request(code.request.as_ref(), "code")?;
+    let (text, work_dir) = resolve_user_request(&request)?;
     if !code.skip_pre_checks {
         use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
         run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, None)
@@ -89,6 +92,7 @@ pub async fn run_code(
         store: &store,
         client: &mut client,
         artifacts: &artifacts,
+        startup_request: &request,
     })
     .await;
     if r.is_ok() {

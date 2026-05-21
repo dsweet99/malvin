@@ -4,7 +4,8 @@ pub fn kpop_emit_startup(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    super::run_emit::emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &kpop.request)
+    let request = super::cli_request::require_cli_request(kpop.request.as_ref(), "kpop")?;
+    super::run_emit::emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &request)
 }
 
 pub fn kpop_learn_bundle(
@@ -34,12 +35,13 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         no_tee: true,
         no_markdown: true,
         verbose: false,
+        doc: false,
     };
     let kpop = crate::cli::KpopArgs {
         max_hypotheses: 1,
         p_creative: 0.1,
         no_learn: true,
-        request: "smoke".into(),
+        request: Some("smoke".into()),
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
     assert!(artifacts.run_dir.starts_with(tmp.path().join("_malvin")));

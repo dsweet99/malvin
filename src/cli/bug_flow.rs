@@ -30,7 +30,7 @@ pub(crate) fn kpop_args_from_bug(bug: &BugArgs) -> KpopArgs {
         max_hypotheses: bug.max_hypotheses,
         p_creative: bug.p_creative,
         no_learn: bug.no_learn,
-        request: BUG_KPOP_REQUEST.to_string(),
+        request: Some(BUG_KPOP_REQUEST.to_string()),
     }
 }
 
@@ -217,6 +217,6 @@ mod tests {
         assert_eq!(kpop.max_hypotheses, 7);
         assert!((kpop.p_creative - 0.25).abs() < f64::EPSILON);
         assert!(kpop.no_learn);
-        assert_eq!(kpop.request, BUG_KPOP_REQUEST);
+        assert_eq!(kpop.request.as_deref(), Some(BUG_KPOP_REQUEST));
     }
 }

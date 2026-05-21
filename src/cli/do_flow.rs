@@ -1,6 +1,9 @@
 //! `do` subcommand: one coder ACP prompt. Default raw mode prepends `do_header.md` to the user
 //! request; `--cooked` prepends `header.md` instead (and allows repo style).
 
+use std::path::Path;
+
+use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
 use crate::repo_checks as repo_checks;
 use clap::Args;
@@ -11,93 +14,7 @@ use crate::artifacts::{
 };
 use crate::run_timing::TimingPhase;
 
-mod do_flow_prompt {
-    use std::collections::HashMap;
-
-    use crate::artifacts::RunArtifacts;
-    use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
-
-    pub(crate) struct DoCoderRun {
-        pub combined: String,
-        pub header_user_for_trace: (String, String),
-        pub skip_repo_style: bool,
-    }
-
-    fn prepare_do_prompt_store_validating(required_template: &str) -> Result<PromptStore, String> {
-        let store = PromptStore::default_store();
-        store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-        store
-            .validate_exists(required_template)
-            .map_err(|e: PromptError| e.0)?;
-        Ok(store)
-    }
-
-    pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
-        prepare_do_prompt_store_validating(HEADER_MD)
-    }
-
-    pub fn prepare_do_raw_prompt_store() -> Result<PromptStore, String> {
-        prepare_do_prompt_store_validating(DO_HEADER_MD)
-    }
-
-    pub fn combine_do_prompt_file_and_user(
-        store: &PromptStore,
-        text: &str,
-        template_file: &str,
-        context: &HashMap<String, String>,
-    ) -> Result<(String, String, String), String> {
-        let header_body = store
-            .render_prompt_only(template_file, context)
-            .map_err(|e: PromptError| e.0)?;
-        let header = header_body.trim_end().to_string();
-        let user = text.trim_end().to_string();
-        let combined = format!("{header}\n\n{user}");
-        Ok((combined, header, user))
-    }
-
-    pub fn combine_do_acp_prompt_header_and_user(
-        store: &PromptStore,
-        artifacts: &RunArtifacts,
-        text: &str,
-    ) -> Result<(String, String, String), String> {
-        use crate::orchestrator::workflow_context;
-        let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
-        combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
-    }
-
-    pub fn combine_do_raw_header_and_user(
-        store: &PromptStore,
-        artifacts: &RunArtifacts,
-        text: &str,
-    ) -> Result<(String, String, String), String> {
-        use crate::orchestrator::workflow_context_paths_only;
-        let context = workflow_context_paths_only(artifacts, "do");
-        combine_do_prompt_file_and_user(store, text, DO_HEADER_MD, &context)
-    }
-
-    pub fn build_do_coder_run(
-        cooked: bool,
-        artifacts: &RunArtifacts,
-        text: &str,
-    ) -> Result<DoCoderRun, String> {
-        let skip_repo_style = !cooked;
-        let (combined, header_user) = if cooked {
-            let store = prepare_do_prompt_store()?;
-            let (combined, header, user) =
-                combine_do_acp_prompt_header_and_user(&store, artifacts, text)?;
-            (combined, (header, user))
-        } else {
-            let store = prepare_do_raw_prompt_store()?;
-            let (combined, header, user) = combine_do_raw_header_and_user(&store, artifacts, text)?;
-            (combined, (header, user))
-        };
-        Ok(DoCoderRun {
-            combined,
-            header_user_for_trace: header_user,
-            skip_repo_style,
-        })
-    }
-}
+mod do_flow_prompt;
 
 pub use do_flow_prompt::{
     combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user,
@@ -116,7 +33,7 @@ pub struct DoArgs {
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
-    pub request: String,
+    pub request: Option<String>,
 }
 
 struct DoRunPrep {
@@ -156,24 +73,29 @@ fn run_do_repo_gates_if_requested(do_args: &DoArgs, artifacts: &RunArtifacts) ->
     Ok(())
 }
 
+fn snapshot_do_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
+    Ok(SessionDotfileBackups::from_parts(
+        backup_workspace_kissconfig_if_present(work_dir)?,
+        backup_workspace_malvin_checks_if_present(work_dir)?,
+        backup_workspace_kissignore_if_present(work_dir)?,
+    ))
+}
+
 async fn prepare_do_run(
     do_args: &DoArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
     let client = new_do_client(shared, workflow, do_args.thoughts);
-    let (text, work_dir) = resolve_user_request(&do_args.request)?;
+    let request = require_cli_request(do_args.request.as_ref(), "do")?;
+    let (text, work_dir) = resolve_user_request(&request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let coder = do_flow_prompt::build_do_coder_run(do_args.cooked, &artifacts, &text)?;
-    let session_dotfile_backups = SessionDotfileBackups::from_parts(
-        backup_workspace_kissconfig_if_present(&artifacts.work_dir)?,
-        backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?,
-        backup_workspace_kissignore_if_present(&artifacts.work_dir)?,
-    );
+    let session_dotfile_backups = snapshot_do_session_dotfiles(&artifacts.work_dir)?;
     Ok(DoRunPrep {
         client,
         artifacts,
@@ -244,6 +166,17 @@ async fn run_do_acp(
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
     let merged = crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
     crate::acp_post_run::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
+}
+
+#[cfg(test)]
+mod do_flow_helpers_tests {
+    use super::snapshot_do_session_dotfiles;
+
+    #[test]
+    fn snapshot_do_session_dotfiles_on_empty_workdir() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        snapshot_do_session_dotfiles(tmp.path()).expect("snapshot");
+    }
 }
 
 #[cfg(test)]

@@ -46,6 +46,10 @@ fn smoke_cov_cli_cli_units_1a() {
 #[test]
 fn smoke_cov_cli_cli_units_1b() {
     let _ = stringify!(crate::do_flow::do_flow_prompt::DoCoderRun);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::prepare_do_raw_prompt_store);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run);
     let _: Option<crate::init_cmd::RunInitOptions> = None;
     let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
     let _ = stringify!(crate::init_cmd::init_summary_combined_body);

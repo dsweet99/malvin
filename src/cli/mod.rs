@@ -1,6 +1,8 @@
 mod args;
 mod args_bug_kpop;
 mod bug_flow;
+pub(crate) mod cli_request;
+pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
 mod entrypoint;

@@ -53,8 +53,10 @@ fn init_kpop_exp_log_file(artifacts: &RunArtifacts) -> Result<PathBuf, String> {
 }
 
 pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
+    use crate::cli::cli_request::require_cli_request;
     use crate::orchestrator::workflow_context_paths_only;
-    let (text, work_dir) = resolve_user_request(&kpop.request)?;
+    let request = require_cli_request(kpop.request.as_ref(), "kpop")?;
+    let (text, work_dir) = resolve_user_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
     let exp_log_path = init_kpop_exp_log_file(&artifacts)?;

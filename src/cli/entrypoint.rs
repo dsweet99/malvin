@@ -42,11 +42,20 @@ where
 pub fn entrypoint() -> Exit {
     crate::init_from_env();
     let cli = Cli::parse();
+    crate::output::init_stdout_style(cli.global.no_color);
+    if cli.shared.doc {
+        return match super::command_docs::print_command_doc(&cli.command) {
+            Ok(()) => Exit::Success,
+            Err(e) => {
+                print_command_error(&e);
+                Exit::Failure
+            }
+        };
+    }
     if let Err(e) = require_kiss_for_cli_command(&cli.command) {
         print_command_error(&e);
         return Exit::Failure;
     }
-    crate::output::init_stdout_style(cli.global.no_color);
     let res = dispatch_command(cli);
     match res {
         Ok(()) => {

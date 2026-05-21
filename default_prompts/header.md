@@ -34,7 +34,7 @@ ADVICE: Consider improving efficiency with ad hoc use of CS/engineering algorith
 CONFIDENCE: 3
 
 ### Regular memories
-Does the user's request relate to any of the TRIGGER words in .malvin_memories/*.md? Search for keywords in those files and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
+Does the user's request relate to any of the TRIGGER words in .malvin_memory/*.md? Search for keywords in those files and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 
 ## Capability

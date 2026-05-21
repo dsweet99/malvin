@@ -73,6 +73,6 @@ pub struct CodeArgs {
     #[arg(long, default_value_t = false)]
     pub skip_pre_checks: bool,
     /// Request or `@file` → `_malvin/.../plan.md`.
-    pub request: String,
+    pub request: Option<String>,
 }
 

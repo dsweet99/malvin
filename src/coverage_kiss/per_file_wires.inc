@@ -346,11 +346,6 @@ fn kiss_cov_src_output_stdout_heartbeat_rs_maybe_emit_stdout_heartbeat() {
 }
 
 #[test]
-fn kiss_cov_src_output_stdout_heartbeat_rs_format_stdout_heartbeat_line() {
-    let _ = stringify!(crate::output::stdout_heartbeat::format_stdout_heartbeat_line);
-}
-
-#[test]
 fn kiss_cov_src_output_stdout_heartbeat_rs_spawn_wall_clock_poller_if_needed() {
     let _ = stringify!(crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed);
 }

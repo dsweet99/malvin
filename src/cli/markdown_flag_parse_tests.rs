@@ -36,7 +36,7 @@ fn do_parses_with_global_no_markdown_without_do_local_flag() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "do", "hi"]).expect("parse");
     assert!(cli.shared.no_markdown);
     match &cli.command {
-        crate::cli::Commands::Do(d) => assert_eq!(d.request, "hi"),
+        crate::cli::Commands::Do(d) => assert_eq!(d.request.as_deref(), Some("hi")),
         _ => panic!("expected Do"),
     }
 }

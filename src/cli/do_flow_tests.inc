@@ -120,7 +120,7 @@ mod do_tests {
         let cli = Cli::try_parse_from(["malvin", "do", "fix the bug"]).expect("parse");
         match cli.command {
             Commands::Do(d) => {
-                assert_eq!(d.request, "fix the bug");
+                assert_eq!(d.request.as_deref(), Some("fix the bug"));
                 assert!(!d.cooked);
                 assert!(!d.repo_gates);
                 assert!(!d.thoughts);
@@ -138,7 +138,7 @@ mod do_tests {
         match cli.command {
             Commands::Do(d) => {
                 assert!(d.cooked);
-                assert_eq!(d.request, "x");
+                assert_eq!(d.request.as_deref(), Some("x"));
                 assert!(!d.repo_gates);
                 assert!(!d.thoughts);
             }
@@ -155,7 +155,7 @@ mod do_tests {
         match cli.command {
             Commands::Do(d) => {
                 assert!(d.repo_gates);
-                assert_eq!(d.request, "y");
+                assert_eq!(d.request.as_deref(), Some("y"));
                 assert!(!d.thoughts);
             }
             _ => panic!("expected Do subcommand"),
@@ -171,7 +171,7 @@ mod do_tests {
         match cli.command {
             Commands::Do(d) => {
                 assert!(d.thoughts);
-                assert_eq!(d.request, "z");
+                assert_eq!(d.request.as_deref(), Some("z"));
             }
             _ => panic!("expected Do subcommand"),
         }
@@ -196,7 +196,7 @@ mod do_tests {
         assert!(cli.shared.no_tee);
         assert!(cli.shared.no_force);
         match cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "z"),
+            Commands::Do(d) => assert_eq!(d.request.as_deref(), Some("z")),
             _ => panic!("expected Do subcommand"),
         }
     }
@@ -209,14 +209,14 @@ mod do_tests {
         let cli = Cli::try_parse_from(["malvin", "-v", "do", "x"]).expect("parse");
         assert!(cli.shared.verbose);
         match &cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "x"),
+            Commands::Do(d) => assert_eq!(d.request.as_deref(), Some("x")),
             _ => panic!("expected Do subcommand"),
         }
 
         let cli = Cli::try_parse_from(["malvin", "do", "--verbose", "y"]).expect("parse");
         assert!(cli.shared.verbose);
         match cli.command {
-            Commands::Do(d) => assert_eq!(d.request, "y"),
+            Commands::Do(d) => assert_eq!(d.request.as_deref(), Some("y")),
             _ => panic!("expected Do subcommand"),
         }
     }

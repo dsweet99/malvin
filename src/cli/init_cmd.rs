@@ -63,8 +63,7 @@ pub struct InitArgs {
     /// Overwrite `default_repo/` installs; refresh `admin/check_untracked.sh`.
     #[arg(long, default_value_t = false)]
     pub force: bool,
-    /// Languages to support (python, rust). At least one required.
-    #[arg(required = true)]
+    /// Languages to support (python, rust). At least one required unless `--doc`.
     pub languages: Vec<String>,
     /// Target directory [default: cwd].
     #[arg(long)]

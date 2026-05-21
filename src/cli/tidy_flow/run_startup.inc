@@ -134,6 +134,7 @@ mod smoke_cov_startup {
             no_tee: true,
             no_markdown: true,
             verbose: false,
+            doc: false,
         };
         let startup = super::tidy_skip_agent_startup(
             artifacts,
