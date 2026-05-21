@@ -138,7 +138,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert_substrings_monotonic(
         &kpop,
         &[
-            "AFTER EVERY REQUEST",
+            "Regular memories",
             "# Definition: KPop",
             "# This KPOP turn",
         ],
@@ -153,7 +153,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     );
     let mbc2 = turn.mbc2_pure().unwrap();
     assert!(
-        !mbc2.contains("AFTER EVERY REQUEST"),
+        !mbc2.contains("Regular memories"),
         "mbc2 should not include header/coding rules"
     );
     assert_substrings_monotonic(&mbc2, &["# Definition: KPop", "# Pure MBC2 turn"]);

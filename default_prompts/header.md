@@ -20,6 +20,7 @@ When you read information into your context label it as "HISTORY" with a number 
 
 ## Memories
 
+### Implanted memories
 TRIGGER: .kissconfig
 ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
 CONFIDENCE: 3
@@ -32,12 +33,19 @@ TRIGGER: large task, many tasks
 ADVICE: Consider improving efficiency with ad hoc use of CS/engineering algorithm methods like: caching, hashing, divide-and-conquer, timing/analyzing a small subset, parallelization, planning.
 CONFIDENCE: 3
 
+### Regular memories
+Does the user's request relate to any of the TRIGGER words in .malvin_memories/*.md? Search for keywords in those files and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
+
+
+## Capability
+Before any potentially long (>3 minutes) task, estimate how long it'll take and write that out as 
+```
+PREDICT_TIME: <prediction>
+```
+
 ---
 
 # General Rules
-
-## AFTER EVERY REQUEST
-- Does the user's request relate to any of the TRIGGER words in .malvin_memories/*.md? Search for keywords in those files and look in this context. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 ## Subagents
 - Avoid subagents. They are "too clever by half".

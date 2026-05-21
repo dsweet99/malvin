@@ -9,3 +9,4 @@ target
 .llm_style/
 _kpop/
 *~
+.malvin_memory/
