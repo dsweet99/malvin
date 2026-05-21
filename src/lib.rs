@@ -73,6 +73,7 @@ pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
 };
 
+mod cgroup_build;
 pub(crate) mod acp_memory_containment;
 pub mod artifacts;
 mod child_health;

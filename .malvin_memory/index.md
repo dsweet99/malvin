@@ -4,6 +4,7 @@ Subject-specific files:
 
 - [rust_platform_tests.md](./rust_platform_tests.md) — Linux-only integration tests, kiss attributes
 - [rust_cfg_includes.md](./rust_cfg_includes.md) — `#[cfg]` + `include!`, acp memory containment on macOS
+- [acp_memory_containment.md](./acp_memory_containment.md) — cgroup warn text, verbose gating, kiss bool struct pattern
 - [paths_and_gates.md](./paths_and_gates.md) — `format_prompt_path`, quality gates, protected files
 - [cli_and_review.md](./cli_and_review.md) — `--no-markdown` / shared opts, cli_parity help tests, KPop review scope, kiss stringify cheats
 - [logger_output.md](./logger_output.md) — `print_log_warning` / `print_log_error`, `RepoGateOutput` vs severity, tracing level filter

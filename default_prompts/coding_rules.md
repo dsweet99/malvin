@@ -14,6 +14,12 @@ Malvin writes quality-gate command output to `{{ quality_gates_log }}`; inspect 
 
 When presented with failures or violations, respond to them earnestly. Improve the code in a way that respects the spirit of the quality-gate feedback.
 
+When you want to iterate quickly on a bit of code, try these fast tools:
+- `cargo check` - Tells whether code *would* compile, but doesn't compile it.
+- `kiss test <filename>` - Runs just the subset of Rust or Python tests that test a given filename. Heuristic but fast b/c you aren't running all tests.
+
+`ruff check` and `kiss check` are also very fast, even when applied to the entire codebase.
+
 ## Tips and Soft Requirements
 - Run `kiss rules` before getting started so that you can avoid `kiss` VIOLATIONs.
 - Run `kiss --help` to familiarize yourself with kiss's coding tools, like `test` and `mv`. `kiss test` can be especially helpful in reducing the unit test burden in a coding loop.

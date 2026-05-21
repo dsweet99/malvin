@@ -13,6 +13,7 @@ mod limits;
 mod memory_enforcement;
 mod platform;
 mod regression_bugs;
+mod spawn_verbose_warn;
 mod review_prep_bugs;
 #[cfg(target_os = "linux")]
 mod stderr_warn;

@@ -22,23 +22,6 @@ fn shared_containment_deactivates_when_cgroup_removed_on_sibling_handle() {
     );
 }
 
-#[test]
-fn session_spawn_must_emit_containment_unavailable_warn_when_inactive() {
-    use crate::test_stderr_capture::capture_stderr_output;
-
-    assert!(
-        crate::acp_memory_containment::spawn_should_warn_containment_unavailable(false),
-        "inactive containment must trigger warn policy"
-    );
-    assert!(
-        !crate::acp_memory_containment::spawn_should_warn_containment_unavailable(true),
-        "active containment must not trigger warn policy"
-    );
-    let stderr = capture_stderr_output(crate::acp_memory_containment::emit_containment_unavailable_warn);
-    assert!(stderr.contains(crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN));
-    assert!(stderr.contains("[warning"));
-}
-
 #[cfg(target_os = "linux")]
 mod linux_regression {
     use super::{AGENT_EXCEEDED_MEMORY_LIMIT_MSG, finalize_containment_cgroup, map_acp_child_exit_message};

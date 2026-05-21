@@ -184,11 +184,12 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
         containment_handle,
     )
     .await;
-    if crate::acp_memory_containment::spawn_should_warn_containment_unavailable(
-        memory_containment.active(),
-    ) {
-        crate::acp_memory_containment::emit_containment_unavailable_warn();
-    }
+    crate::acp_memory_containment::emit_containment_unavailable_warn_after_spawn(
+        crate::acp_memory_containment::ContainmentUnavailableWarnAtSpawn {
+            log_full_outgoing_prompts: args.log_full_outgoing_prompts,
+            containment_active: memory_containment.active(),
+        },
+    );
     let (stdin, stdout) = match take_stdio_pipes(&mut child).await {
         Ok(pipes) => pipes,
         Err(e) => {

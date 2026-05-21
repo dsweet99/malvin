@@ -4,8 +4,8 @@ use std::pin::Pin;
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 
 use crate::repo_checks::{
-    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, run_repo_workspace_gates,
-    run_repo_workspace_gates_with_details,
+    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, emit_repo_gate_line,
+    run_repo_workspace_gates, run_repo_workspace_gates_with_details,
 };
 
 mod mid_session_post_run_tidy {
@@ -13,6 +13,16 @@ mod mid_session_post_run_tidy {
 }
 
 pub use mid_session_post_run_tidy::run_tidy_prompt_after_post_run_gate_failure;
+
+fn post_run_tidy_retry_line(failure: &RepoGateCommandFailure) -> String {
+    let exit = failure
+        .exit_code
+        .map_or_else(|| "signal".to_string(), |code| code.to_string());
+    format!(
+        "Post-run quality gate `{}` failed with exit code {}; running tidy in response.",
+        failure.command, exit
+    )
+}
 
 pub(super) async fn pre_summary_repo_gates_tidy_retry_flow<F, G, Fut, S>(
     first_gates: F,
@@ -57,14 +67,22 @@ pub async fn run_pre_summary_repo_gates_with_tidy_retry(
     let run_dir = artifacts.run_dir.clone();
     pre_summary_repo_gates_tidy_retry_flow(
         || run_repo_workspace_gates_with_details(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
-        |failure| async move {
-            run_tidy_prompt_after_post_run_gate_failure(
-                client,
-                artifacts,
-                session_dotfile_backups,
-                &failure,
-            )
-            .await
+        |failure| {
+            let tidy_run_dir = run_dir.clone();
+            async move {
+                emit_repo_gate_line(
+                    RepoGateOutput::Tagged,
+                    &post_run_tidy_retry_line(&failure),
+                    Some(&tidy_run_dir),
+                );
+                run_tidy_prompt_after_post_run_gate_failure(
+                    client,
+                    artifacts,
+                    session_dotfile_backups,
+                    &failure,
+                )
+                .await
+            }
         },
         || run_repo_workspace_gates(&work_dir, RepoGateOutput::Tagged, Some(&run_dir)),
     )
@@ -76,9 +94,24 @@ mod gates_root_tests {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use super::pre_summary_repo_gates_tidy_retry_flow;
+    use super::{post_run_tidy_retry_line, pre_summary_repo_gates_tidy_retry_flow};
     use crate::repo_checks::RepoGateCommandFailure;
     use crate::repo_checks::RepoGateFailure;
+
+    #[test]
+    fn post_run_tidy_retry_line_names_failed_gate() {
+        let failure = RepoGateCommandFailure {
+            command: "ruff check .".into(),
+            exit_code: Some(1),
+            stdout: String::new(),
+            stderr: String::new(),
+        };
+
+        assert_eq!(
+            post_run_tidy_retry_line(&failure),
+            "Post-run quality gate `ruff check .` failed with exit code 1; running tidy in response."
+        );
+    }
 
     #[tokio::test]
     async fn tidy_retry_flow_ok_when_first_gates_pass() {

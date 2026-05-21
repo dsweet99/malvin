@@ -1,11 +1,16 @@
 use crate::acp_memory_containment::{
-    OomBaseline, half_physical_memory_bytes, memory_limit_exceeded_since_baseline,
-    memory_limit_oom_baseline_at, remove_cgroup_dir_at,
+    ContainmentUnavailableWarnAtSpawn, OomBaseline, emit_containment_unavailable_warn_after_spawn,
+    half_physical_memory_bytes, memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at,
+    remove_cgroup_dir_at,
 };
 
 #[cfg(not(target_os = "linux"))]
 #[test]
 fn kiss_smoke_mod_wrappers() {
+    emit_containment_unavailable_warn_after_spawn(ContainmentUnavailableWarnAtSpawn {
+        log_full_outgoing_prompts: false,
+        containment_active: false,
+    });
     let _ = half_physical_memory_bytes();
     let dir = tempfile::tempdir().expect("tempdir");
     let _ = memory_limit_oom_baseline_at(dir.path());
@@ -25,6 +30,10 @@ mod linux_kiss_smoke {
 
     #[test]
     fn kiss_smoke_mod_wrappers() {
+        emit_containment_unavailable_warn_after_spawn(ContainmentUnavailableWarnAtSpawn {
+            log_full_outgoing_prompts: false,
+            containment_active: false,
+        });
         let _ = half_physical_memory_bytes();
         let _ = next_cgroup_suffix();
         let dir = tempfile::tempdir().expect("tempdir");

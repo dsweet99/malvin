@@ -141,6 +141,20 @@ pub fn emit_containment_unavailable_warn() {
     crate::output::print_log_warning(CONTAINMENT_UNAVAILABLE_WARN);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContainmentUnavailableWarnAtSpawn {
+    pub log_full_outgoing_prompts: bool,
+    pub containment_active: bool,
+}
+
+pub fn emit_containment_unavailable_warn_after_spawn(ctx: ContainmentUnavailableWarnAtSpawn) {
+    if ctx.log_full_outgoing_prompts
+        && spawn_should_warn_containment_unavailable(ctx.containment_active)
+    {
+        emit_containment_unavailable_warn();
+    }
+}
+
 #[must_use]
 pub const fn spawn_should_warn_containment_unavailable(containment_active: bool) -> bool {
     !containment_active
