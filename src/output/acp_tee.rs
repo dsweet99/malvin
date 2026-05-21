@@ -68,11 +68,11 @@ pub fn format_line_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     };
     if ctx.dim_payload {
         format!(
-            "{bracket}:[{inner}]:{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
+            "{bracket}[{inner}]{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
             ctx.line
         )
     } else {
-        format!("{bracket}:[{inner}]:{ANSI_RESET} {}", ctx.line)
+        format!("{bracket}[{inner}]{ANSI_RESET} {}", ctx.line)
     }
 }
 
@@ -85,19 +85,19 @@ pub fn format_line_with_timestamp_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> S
     };
     if ctx.dim_payload {
         format!(
-            "{ANSI_DIM}{}{ANSI_RESET}{bracket}:[{inner}]:{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
+            "{ANSI_DIM}{}{ANSI_RESET} {bracket}[{inner}]{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
             ctx.ts, ctx.line
         )
     } else {
         format!(
-            "{ANSI_DIM}{}{ANSI_RESET}{bracket}:[{inner}]:{ANSI_RESET} {}",
+            "{ANSI_DIM}{}{ANSI_RESET} {bracket}[{inner}]{ANSI_RESET} {}",
             ctx.ts, ctx.line
         )
     }
 }
 
 /// Stdout tee for ACP trace lines: when color is enabled, outbound (`>`) vs inbound (`<`) use
-/// different ANSI colors for the `[who]:` prefix; the payload is plain, dim, or `termimad` per mode.
+/// different ANSI colors for the `[who]` prefix; the payload is plain, dim, or `termimad` per mode.
 pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &str) {
     let ts = timestamp_now_string();
     print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {

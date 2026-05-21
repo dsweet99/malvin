@@ -16,7 +16,7 @@ fn emit_command_line_writes_command_log_when_run_dir_is_writable() {
     let text = std::fs::read_to_string(&p).expect("read command.log");
     let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(
-        text.contains(&format!(":[{inner}]: Command: ")) && text.ends_with('\n'),
+        text.contains(&format!(" [{inner}] Command: ")) && text.ends_with('\n'),
         "command.log should match stdout line format; got {text:?}"
     );
 }
@@ -35,7 +35,7 @@ fn emit_command_line_writes_command_log_when_stdout_echo_suppressed() {
     let text = std::fs::read_to_string(&p).expect("read command.log");
     let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(
-        text.contains(&format!(":[{inner}]: Command: ")) && text.ends_with('\n'),
+        text.contains(&format!(" [{inner}] Command: ")) && text.ends_with('\n'),
         "command.log should match stdout format when tee is off; got {text:?}"
     );
 }

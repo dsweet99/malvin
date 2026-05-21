@@ -11,7 +11,7 @@ fn formats_expected_mini_header() {
     let inner = format_log_tag_inner("kpop");
     assert_eq!(
         format_line_with_timestamp("20260413.121314.015", "kpop", "hello"),
-        format!("20260413.121314.015:[{inner}]: hello")
+        format!("20260413.121314.015 [{inner}] hello")
     );
 }
 
@@ -42,11 +42,66 @@ fn detects_prefixed_and_unprefixed_command_prelude() {
     let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(is_command_prelude_line("Command: malvin code @plan.md"));
     assert!(is_command_prelude_line(&format!(
-        "[{inner}]: Command: malvin code @plan.md"
+        "[{inner}] Command: malvin code @plan.md"
+    )));
+    assert!(is_command_prelude_line(&format_line_with_timestamp(
+        "20260413.121314.015",
+        MALVIN_WHO,
+        "Command: malvin code @plan.md"
     )));
     assert!(!is_command_prelude_line(
-        "20260413.121314.015:[kpop]: not a command line"
+        "20260413.121314.015 [kpop] not a command line"
     ));
+}
+
+#[test]
+fn command_prelude_detection_ignores_unrelated_bracket_command_substrings() {
+    assert!(
+        !is_command_prelude_line("agent note ] Command: not a malvin prelude"),
+        "only fixed-width tagged preludes should match, not arbitrary '] Command:' text"
+    );
+}
+
+#[test]
+fn command_prelude_rejects_short_bracket_tags_and_non_timestamp_prefixes() {
+    assert!(!is_command_prelude_line("[kpop] Command: malvin code"));
+    assert!(!is_command_prelude_line("agent-ts [malvin         ] Command: malvin code"));
+    assert!(!is_command_prelude_line("20260413 [malvin         ] Command: malvin code"));
+    assert!(!is_command_prelude_line(""));
+    assert!(!is_command_prelude_line("not a command"));
+}
+
+#[test]
+fn command_prelude_rejects_dot_only_timestamp_token() {
+    use super::is_log_timestamp_token;
+
+    assert!(!is_log_timestamp_token("."));
+    let inner = format_log_tag_inner(MALVIN_WHO);
+    assert!(
+        !is_command_prelude_line(&format!(". [{inner}] Command: not-a-real-prelude")),
+        "a lone '.' must not qualify as a log timestamp prefix"
+    );
+}
+
+#[test]
+fn bracket_tag_payload_and_timestamp_token_helpers() {
+    use super::{is_log_timestamp_token, payload_after_fixed_width_bracket_tag};
+
+    assert!(!is_log_timestamp_token(""));
+    assert!(!is_log_timestamp_token("nodot"));
+    assert!(!is_log_timestamp_token("."));
+    assert!(!is_log_timestamp_token("20260413.121314"));
+    assert!(is_log_timestamp_token("20260413.121314.015"));
+    assert_eq!(payload_after_fixed_width_bracket_tag("no-bracket"), None);
+    let inner = format_log_tag_inner(MALVIN_WHO);
+    assert_eq!(
+        payload_after_fixed_width_bracket_tag(&format!("[{inner}] Command: x")),
+        Some("Command: x")
+    );
+    assert_eq!(
+        payload_after_fixed_width_bracket_tag(&format!("[{inner}]bad")),
+        None
+    );
 }
 
 #[test]
@@ -97,8 +152,8 @@ fn stdout_log_mirrors_stdout_helpers() {
     print_stdout_raw_line("raw mirrored");
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
-    assert!(text.contains("]: m"));
-    assert!(text.lines().any(|l| l.starts_with("20") && l.contains("]: m")));
+    assert!(text.contains("] m"));
+    assert!(text.lines().any(|l| l.starts_with("20") && l.contains("] m")));
     assert!(text.contains("raw mirrored"));
 }
 

@@ -15,6 +15,10 @@ pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
         .contains("upgrade your plan to continue")
 }
 
+pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
+    msg.to_ascii_lowercase().contains("cannot use this model")
+}
+
 pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
     if text.contains("timed out")
@@ -85,10 +89,10 @@ pub(crate) enum AgentRetryOutcome {
     Sleep(std::time::Duration),
 }
 
-/// Shared retry policy for bounded ACP attempts (upgrade-plan / funds-exceeded errors fail fast;
+/// Shared retry policy for bounded ACP attempts (upgrade-plan / invalid-model errors fail fast;
 /// everything else retries with 1s then 3s sleeps).
 pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRetryOutcome, AgentError> {
-    if agent_string_is_upgrade_plan(last_error) {
+    if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
     if !agent_string_is_retriable(last_error) || attempt >= MAX_AGENT_ATTEMPTS {
@@ -101,9 +105,10 @@ pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRe
 #[cfg(test)]
 mod retry_policy_tests {
     use super::{
-        agent_string_is_retriable, agent_string_is_upgrade_plan, delimited_token_match,
-        has_delimited_substring, is_identifier_byte, plan_agent_retry, retries_noun,
-        timeout_word_without_identifier_false_positive, AgentRetryOutcome, MAX_AGENT_ATTEMPTS,
+        agent_string_is_cannot_use_model, agent_string_is_retriable, agent_string_is_upgrade_plan,
+        delimited_token_match, has_delimited_substring, is_identifier_byte, plan_agent_retry,
+        retries_noun, timeout_word_without_identifier_false_positive, AgentRetryOutcome,
+        MAX_AGENT_ATTEMPTS,
     };
     use std::time::Duration;
 
@@ -119,6 +124,21 @@ mod retry_policy_tests {
     fn upgrade_plan_errors_do_not_retry() {
         let msg = "billing: upgrade your plan to continue";
         let err = plan_agent_retry(msg, 1).expect_err("upgrade plan must fail fast");
+        assert_eq!(err.0, msg);
+    }
+
+    #[test]
+    fn cannot_use_model_errors_do_not_retry() {
+        let msg = "Error: Cannot use this model with that provider";
+        assert!(agent_string_is_cannot_use_model(msg));
+        let err = plan_agent_retry(msg, 1).expect_err("invalid model must fail fast");
+        assert_eq!(err.0, msg);
+    }
+
+    #[test]
+    fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
+        let msg = "rpc [unavailable]: Cannot use this model";
+        let err = plan_agent_retry(msg, 1).expect_err("model error must beat retriable match");
         assert_eq!(err.0, msg);
     }
 

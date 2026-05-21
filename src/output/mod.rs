@@ -74,7 +74,7 @@ pub fn print_outgoing_prompt_log(label: &str) {
     print_stdout_acp_tee_line(AcpTeeDirection::ToAgent, &directional_tag, &bracket_payload);
 }
 
-/// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
+/// Fixed width (Unicode scalars) for the bracket label in log lines (`[…] …`).
 pub const LOG_TAG_INNER_WIDTH: usize = 15;
 
 static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
@@ -108,7 +108,7 @@ pub fn format_acp_directional_tag_prefix(direction: char, stem: &str) -> String 
 #[must_use]
 pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
-    format!("{ts}:[{inner}]: {line}")
+    format!("{ts} [{inner}] {line}")
 }
 
 pub(crate) fn timestamp_now_string() -> String {
@@ -134,7 +134,7 @@ pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
 pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
     let tag_color = who_tag_ansi(who);
-    format!("{ANSI_DIM}{ts}{ANSI_RESET}{tag_color}:[{inner}]:{ANSI_RESET} {line}")
+    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}[{inner}]{ANSI_RESET} {line}")
 }
 
 /// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true
@@ -186,12 +186,41 @@ pub fn print_stdout_raw_line(line: &str) {
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
 
+pub(crate) fn payload_after_fixed_width_bracket_tag(line: &str) -> Option<&str> {
+    let after_open = line.strip_prefix('[')?;
+    let (tag_end, _) = after_open.char_indices().nth(LOG_TAG_INNER_WIDTH)?;
+    after_open[tag_end..].strip_prefix("] ")
+}
+
+const LOG_TIMESTAMP_LEN: usize = 19;
+
+pub(crate) fn is_log_timestamp_token(token: &str) -> bool {
+    let b = token.as_bytes();
+    b.len() == LOG_TIMESTAMP_LEN
+        && b[8] == b'.'
+        && b[15] == b'.'
+        && b[..8].iter().all(u8::is_ascii_digit)
+        && b[9..15].iter().all(u8::is_ascii_digit)
+        && b[16..].iter().all(u8::is_ascii_digit)
+}
+
 #[must_use]
 pub fn is_command_prelude_line(line: &str) -> bool {
-    line.starts_with("Command: ")
-        || line
-            .split_once("]: ")
-            .is_some_and(|(_, payload)| payload.starts_with("Command: "))
+    const CMD: &str = "Command: ";
+    if line.starts_with(CMD) {
+        return true;
+    }
+    if let Some(payload) = payload_after_fixed_width_bracket_tag(line) {
+        return payload.starts_with(CMD);
+    }
+    let Some((ts, rest)) = line.split_once(' ') else {
+        return false;
+    };
+    if !is_log_timestamp_token(ts) {
+        return false;
+    }
+    payload_after_fixed_width_bracket_tag(rest)
+        .is_some_and(|payload| payload.starts_with(CMD))
 }
 
 pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
