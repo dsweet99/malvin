@@ -40,7 +40,7 @@ pub(crate) async fn do_split_trace_preamble(
 ) -> Result<(), String> {
     trace_write_invocation_and_do_split_prompt(file, split).await?;
     if !raw_output {
-        crate::output::print_outgoing_prompt_log("do");
+        crate::output::print_outgoing_prompt_log("do", "do");
     }
     Ok(())
 }

@@ -59,7 +59,7 @@ pub fn clear_captured_stderr_lines() {
     CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
 }
 
-/// Announce one outgoing prompt on stdout with a single bracket line `[{label}...]`.
+/// Announce one outgoing prompt on stdout with a single bracket line `[{bracket_label}...]`.
 ///
 /// With full prompt logging enabled, the ACP session also prints the full rendered prompt when not
 /// in raw-output mode: one timestamped stdout line per [`logical_lines`] slice, with the same `>`
@@ -68,9 +68,9 @@ pub fn clear_captured_stderr_lines() {
 /// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
 /// split traces keep a plain body on disk but use the `>do` stem on stdout and in `prompts.log`
 /// when verbose.
-pub fn print_outgoing_prompt_log(label: &str) {
-    let directional_tag = format_acp_directional_tag_prefix('>', label);
-    let bracket_payload = format!("[{label}...]");
+pub fn print_outgoing_prompt_log(trace_who: &str, bracket_label: &str) {
+    let directional_tag = format_acp_directional_tag_prefix('>', trace_who);
+    let bracket_payload = format!("[{bracket_label}...]");
     print_stdout_acp_tee_line(AcpTeeDirection::ToAgent, &directional_tag, &bracket_payload);
 }
 

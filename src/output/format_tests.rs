@@ -122,6 +122,30 @@ fn ansi_who_tag_uses_yellow_for_warning_and_red_for_error() {
 }
 
 #[test]
+fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
+    let _guard = super::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    set_stdout_log_path(Some(path.clone()));
+    init_stdout_style(true);
+    print_outgoing_prompt_log("check_plan", "check_plan.md");
+    set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).expect("read stdout log");
+    let who = format_acp_directional_tag_prefix('>', "check_plan");
+    let inner = format_log_tag_inner(&who);
+    assert!(
+        text.contains(&format!("[{inner}] [check_plan.md...]")),
+        "expected stem who tag and .md bracket payload: {text:?}"
+    );
+    assert!(
+        !text.contains(">check_plan.md"),
+        "who tag must not include .md suffix: {text:?}"
+    );
+}
+
+#[test]
 fn smoke_print_and_format_paths_cover_helpers() {
     assert_eq!(format_acp_directional_tag_prefix('>', "x"), ">x");
     assert!(!crate::time_format::timestamp_now_string().is_empty());
@@ -134,7 +158,7 @@ fn smoke_print_and_format_paths_cover_helpers() {
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
     print_stderr_line("e", "err");
     print_stdout_text("t", "a\nb");
-    print_outgoing_prompt_log("main");
+    print_outgoing_prompt_log("check_plan", "check_plan.md");
     let mut it = super::logical_lines("x\ny");
     assert_eq!(it.next(), Some("x"));
     assert_eq!(it.next(), Some("y"));

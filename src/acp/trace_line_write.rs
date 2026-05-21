@@ -88,12 +88,7 @@ pub async fn trace_file_write_line(
     kind: Option<SessionUpdateChunkKind>,
 ) {
     let display_line = format_trace_display_line(line, kind);
-    let now = chrono::Local::now();
-    let ts = format!(
-        "{}.{:03}",
-        now.format("%Y%m%d.%H%M%S"),
-        now.timestamp_subsec_millis()
-    );
+    let ts = crate::output::timestamp_now_string();
     let formatted = if writer.plain_lines {
         display_line.clone()
     } else {

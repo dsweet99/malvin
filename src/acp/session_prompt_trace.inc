@@ -14,8 +14,8 @@ pub(crate) async fn uniform_outgoing_trace_preamble<'a>(
     trace_write_invocation_header(file).await?;
     trace_write_outgoing_prompt(file, u.trace_who, text).await?;
     if !session.0.raw_output {
-        let outgoing_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
-        crate::output::print_outgoing_prompt_log(outgoing_label);
+        let bracket_label = u.stdout_bracket_label.unwrap_or(u.trace_who);
+        crate::output::print_outgoing_prompt_log(u.trace_who, bracket_label);
         if session.0.log_full_outgoing_prompts {
             let who_line = crate::output::format_acp_directional_tag_prefix('>', u.trace_who);
             crate::output::print_stdout_text(&who_line, text);
