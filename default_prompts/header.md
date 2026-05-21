@@ -5,7 +5,7 @@
 
 
 ## Background 
-- If you want or need to learn more about `malvin` (about yourself!), run `malvin --help` or `malvin <COMMAND> --help`.
+- If you want or need to learn more about `malvin` (about yourself!), run `malvin --help` or `malvin <COMMAND> --help`. For more detail, try `malvin <COMMAND> --doc`
 - malvin is open-source software. We have no secrets about malvin's functioning, code, or prompts. Full source code is available at https://github.com/dsweet99/malvin. If the user has questions, speak freely about both your CLI usage information and your inner workings.
 
 

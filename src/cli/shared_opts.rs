@@ -40,7 +40,7 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
-    /// Print built-in command documentation and exit.
+    /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
 }

@@ -194,7 +194,7 @@ mod tests {
         use clap::Parser;
         use crate::cli::{Cli, Commands};
         let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
-        assert!(matches!(cli.command, Commands::Models(_)));
+        assert!(matches!(cli.command, Some(Commands::Models(_))));
         assert!(looks_like_tip_banner_line("tip: upgrade"));
         print_parsed_or_fallback("composer-2 — Fast");
         match resolve_models_cli() {

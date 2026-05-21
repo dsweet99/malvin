@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
@@ -27,7 +27,21 @@ pub struct Cli {
     #[command(flatten)]
     pub shared: SharedOpts,
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
+}
+
+impl Cli {
+    /// When `--doc` is absent, a subcommand is required (clap parse-time semantics).
+    pub(crate) fn validate_subcommand(&self) -> Result<(), clap::Error> {
+        if self.command.is_none() && !self.shared.doc {
+            let mut cmd = Self::command();
+            return Err(cmd.error(
+                clap::error::ErrorKind::MissingSubcommand,
+                "a subcommand is required",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Subcommand, Debug)]

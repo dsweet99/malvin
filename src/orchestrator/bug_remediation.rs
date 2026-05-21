@@ -62,8 +62,9 @@ mod tests {
     #[tokio::test]
     async fn run_bug_remediation_gap_spawn_fails() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = tmp.path();
         let store = PromptStore::default_store();
-        let artifacts = create_run_artifacts_from_text("bug", Some(tmp.path())).expect("art");
+        let artifacts = create_run_artifacts_from_text("bug", Some(cwd)).expect("art");
         let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
         let mut client = AgentClient::new(
             "m".into(),
@@ -76,27 +77,36 @@ mod tests {
                 log_full_outgoing_prompts: false,
             },
         );
-        let mut orch = Orchestrator {
-            client: &mut client,
-            prompts: &store,
-            artifacts: &artifacts,
-            config: WorkflowConfig {
-                max_loops: 1,
-                run_learn: false,
-                learn_min_elapsed_ms: 0,
-                skip_check_plan: false,
-            },
-            progress_callback: Box::new(|_| {}),
-            session_dotfile_backups: SessionDotfileBackups::from_parts(
-                KissConfigBackup::Missing,
-                MalvinChecksBackup::Missing,
-                KissignoreBackup::Missing,
-            ),
+        client.replace_coder_session_slot_for_tests(
+            crate::acp::test_captive_session::captive_cat_acp_session_for_tests(cwd),
+        );
+        let err = {
+            let mut orch = Orchestrator {
+                client: &mut client,
+                prompts: &store,
+                artifacts: &artifacts,
+                config: WorkflowConfig {
+                    max_loops: 1,
+                    run_learn: false,
+                    learn_min_elapsed_ms: 0,
+                    skip_check_plan: false,
+                },
+                progress_callback: Box::new(|_| {}),
+                session_dotfile_backups: SessionDotfileBackups::from_parts(
+                    KissConfigBackup::Missing,
+                    MalvinChecksBackup::Missing,
+                    KissignoreBackup::Missing,
+                ),
+            };
+            run_bug_remediation_gap(&mut orch, &ctx, mid_noop)
+                .await
+                .expect_err("bug gap")
         };
-        let err = run_bug_remediation_gap(&mut orch, &ctx, mid_noop)
-            .await
-            .expect_err("bug gap");
         assert!(!err.0.is_empty());
+        client
+            .end_coder_session()
+            .await
+            .expect("shutdown test session");
     }
 
 }

@@ -105,7 +105,7 @@ fn smoke_agent_io_options_maps_flags() {
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
-    assert!(matches!(cli.command, Commands::Models(_)));
+    assert!(matches!(cli.command, Some(Commands::Models(_))));
 }
 
 #[test]
@@ -117,7 +117,8 @@ fn smoke_try_tokio_runtime_builds_multi_thread() {
 fn smoke_require_kiss_for_cli_command_models_does_not_require_kiss_bin() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
-    assert!(require_kiss_for_cli_command(&cli.command).is_ok());
+    let cmd = cli.command.as_ref().expect("subcommand");
+    assert!(require_kiss_for_cli_command(cmd).is_ok());
 }
 
 #[test]
@@ -146,7 +147,7 @@ fn smoke_emit_command_line_writes_log() {
 fn smoke_cli_parse_plan_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "plan", "hello"]).expect("parse");
-    assert!(matches!(cli.command, Commands::Plan(_)));
+    assert!(matches!(cli.command, Some(Commands::Plan(_))));
 }
 
 #[test]
@@ -162,7 +163,7 @@ fn smoke_format_logs_dir_under_run_dir() {
 fn smoke_cli_parse_init_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "init", "rust"]).expect("parse");
-    assert!(matches!(cli.command, Commands::Init(_)));
+    assert!(matches!(cli.command, Some(Commands::Init(_))));
 }
 
 #[test]
@@ -177,7 +178,8 @@ fn smoke_run_emit_echo_primary_noop_when_not_plain() {
 fn smoke_require_kiss_allows_do_without_kiss_on_path() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
-    assert!(require_kiss_for_cli_command(&cli.command).is_ok());
+    let cmd = cli.command.as_ref().expect("subcommand");
+    assert!(require_kiss_for_cli_command(cmd).is_ok());
 }
 
 #[test]

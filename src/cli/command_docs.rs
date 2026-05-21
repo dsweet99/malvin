@@ -4,6 +4,8 @@ use std::io::{self, Write};
 
 use super::Commands;
 
+const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
+
 const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
@@ -17,81 +19,88 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     }
 }
 
-pub(crate) fn print_command_doc(cmd: &Commands) -> Result<(), String> {
-    let text = command_doc_markdown(cmd);
-    let mut out = io::stdout().lock();
-    out.write_all(text.as_bytes())
+const fn doc_text(command: Option<&Commands>) -> &'static str {
+    match command {
+        Some(cmd) => command_doc_markdown(cmd),
+        None => MALVIN_OVERVIEW_DOC,
+    }
+}
+
+fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Write) -> Result<(), String> {
+    out.write_all(doc_text(command).as_bytes())
         .map_err(|e| format!("stdout: {e}"))?;
     Ok(())
+}
+
+pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
+    print_doc_to_writer(command, io::stdout().lock())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::args::{BugArgs, CodeArgs, Commands, KpopArgs, PlanArgs};
+    use crate::cli::args::{Commands, KpopArgs};
     use crate::cli::models_cmd::ModelsArgs;
-    use crate::cli::tidy_flow::TidyArgs;
     use crate::cli::Cli;
-    use crate::do_flow::DoArgs;
-    use crate::init_cmd::InitArgs;
     use clap::Parser;
 
+    fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
+        let mut buf = Vec::new();
+        print_doc_to_writer(command, &mut buf)?;
+        Ok(buf)
+    }
+
     #[test]
-    fn doc_markdown_nonempty_for_each_subcommand() {
-        let cases: [Commands; 8] = [
-            Commands::Init(InitArgs {
-                force: false,
-                languages: vec![],
-                path: None,
-            }),
-            Commands::Do(DoArgs {
-                cooked: false,
-                repo_gates: false,
-                thoughts: false,
-                request: None,
-            }),
-            Commands::Code(CodeArgs {
-                max_loops: 1,
-                no_learn: true,
-                trust_the_plan: false,
-                skip_pre_checks: false,
-                request: None,
-            }),
-            Commands::Kpop(KpopArgs {
-                max_hypotheses: 1,
-                p_creative: 0.1,
-                no_learn: true,
-                request: None,
-            }),
-            Commands::Bug(BugArgs {
-                max_hypotheses: 1,
-                p_creative: 0.1,
-                no_learn: true,
-                skip_pre_checks: false,
-            }),
-            Commands::Tidy(TidyArgs {
-                max_loops: 1,
-                no_learn: true,
-            }),
-            Commands::Plan(PlanArgs {
-                plan_path: None,
-                text: None,
-            }),
-            Commands::Models(ModelsArgs {}),
-        ];
-        for cmd in cases {
-            let md = command_doc_markdown(&cmd);
-            assert!(!md.is_empty(), "doc body must not be empty");
-            assert!(md.starts_with("# malvin "), "expected title line: {md:?}");
-        }
+    fn subcommand_doc_embeds_have_malvin_heading() {
+        let md = command_doc_markdown(&Commands::Models(ModelsArgs {}));
+        assert!(md.starts_with("# malvin "));
+        let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
+            max_hypotheses: 1,
+            p_creative: 0.1,
+            no_learn: true,
+            request: None,
+        }));
+        assert!(md.starts_with("# malvin "));
+    }
+
+    #[test]
+    fn print_doc_none_writes_full_malvin_md() {
+        let out = capture_doc(None).expect("capture");
+        assert_eq!(out.as_slice(), MALVIN_OVERVIEW_DOC.as_bytes());
+    }
+
+    #[test]
+    fn print_doc_some_writes_subcommand_md() {
+        let cmd = Commands::Kpop(KpopArgs {
+            max_hypotheses: 1,
+            p_creative: 0.1,
+            no_learn: true,
+            request: None,
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
+        assert!(out.starts_with(b"# malvin kpop"));
+    }
+
+    #[test]
+    fn top_level_doc_parses_without_subcommand() {
+        let cli = Cli::try_parse_from(["malvin", "--doc"]).expect("parse");
+        assert!(cli.shared.doc);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn bare_malvin_without_doc_fails_validate_subcommand() {
+        let cli = Cli::try_parse_from(["malvin"]).expect("parse");
+        assert!(cli.validate_subcommand().is_err());
     }
 
     #[test]
     fn kpop_doc_parses_without_request_when_doc_flag_set() {
         let cli = Cli::try_parse_from(["malvin", "kpop", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
-        match cli.command {
-            Commands::Kpop(k) => assert!(k.request.is_none()),
+        match cli.command.as_ref() {
+            Some(Commands::Kpop(k)) => assert!(k.request.is_none()),
             _ => panic!("expected Kpop"),
         }
     }
@@ -100,20 +109,10 @@ mod tests {
     fn init_doc_parses_without_languages_when_doc_flag_set() {
         let cli = Cli::try_parse_from(["malvin", "init", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
-        match cli.command {
-            Commands::Init(i) => assert!(i.languages.is_empty()),
+        match cli.command.as_ref() {
+            Some(Commands::Init(i)) => assert!(i.languages.is_empty()),
             _ => panic!("expected Init"),
         }
     }
 
-    #[test]
-    fn print_command_doc_kpop_writes_markdown() {
-        let cmd = Commands::Kpop(KpopArgs {
-            max_hypotheses: 1,
-            p_creative: 0.1,
-            no_learn: true,
-            request: None,
-        });
-        super::print_command_doc(&cmd).expect("stdout");
-    }
 }

@@ -40,11 +40,32 @@ where
 }
 
 pub fn entrypoint() -> Exit {
+    entrypoint_from(std::env::args_os())
+}
+
+pub fn entrypoint_from(
+    args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
+) -> Exit {
     crate::init_from_env();
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse_from(args) {
+        Ok(cli) => cli,
+        Err(e) => {
+            use clap::error::ErrorKind;
+            let exit = match e.kind() {
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => Exit::Success,
+                _ => Exit::Failure,
+            };
+            let _ = e.print();
+            return exit;
+        }
+    };
+    if let Err(e) = cli.validate_subcommand() {
+        let _ = e.print();
+        return Exit::Failure;
+    }
     crate::output::init_stdout_style(cli.global.no_color);
     if cli.shared.doc {
-        return match super::command_docs::print_command_doc(&cli.command) {
+        return match super::command_docs::print_doc(cli.command.as_ref()) {
             Ok(()) => Exit::Success,
             Err(e) => {
                 print_command_error(&e);
@@ -52,11 +73,12 @@ pub fn entrypoint() -> Exit {
             }
         };
     }
-    if let Err(e) = require_kiss_for_cli_command(&cli.command) {
+    let command = cli.command.expect("validate_subcommand ensures subcommand");
+    if let Err(e) = require_kiss_for_cli_command(&command) {
         print_command_error(&e);
         return Exit::Failure;
     }
-    let res = dispatch_command(cli);
+    let res = dispatch_command(command, &cli.shared);
     match res {
         Ok(()) => {
             super::error_run_log::clear_command_error_run_dir();
@@ -70,17 +92,17 @@ pub fn entrypoint() -> Exit {
     }
 }
 
-fn dispatch_command(cli: Cli) -> Result<(), String> {
-    match cli.command {
-        Commands::Code(code) => run_code_command(code, &cli.shared),
+fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String> {
+    match command {
+        Commands::Code(code) => run_code_command(code, shared),
         Commands::Kpop(kpop) => {
             let run_learn = !kpop.no_learn;
             run_async_cli(|| {
                 run_kpop(
                     kpop.clone(),
-                    &cli.shared,
+                    shared,
                     WorkflowCliOptions {
-                        force: !cli.shared.no_force,
+                        force: !shared.no_force,
                         run_learn,
                     },
                 )
@@ -91,9 +113,9 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             run_async_cli(|| {
                 run_bug(
                     bug.clone(),
-                    &cli.shared,
+                    shared,
                     WorkflowCliOptions {
-                        force: !cli.shared.no_force,
+                        force: !shared.no_force,
                         run_learn,
                     },
                 )
@@ -104,9 +126,9 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
             run_async_cli(|| {
                 run_tidy(
                     tidy.clone(),
-                    &cli.shared,
+                    shared,
                     WorkflowCliOptions {
-                        force: !cli.shared.no_force,
+                        force: !shared.no_force,
                         run_learn,
                     },
                 )
@@ -115,9 +137,9 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
         Commands::Plan(plan) => run_async_cli(|| {
             run_plan(
                 plan,
-                &cli.shared,
+                shared,
                 WorkflowCliOptions {
-                    force: !cli.shared.no_force,
+                    force: !shared.no_force,
                     run_learn: false,
                 },
             )
@@ -125,16 +147,16 @@ fn dispatch_command(cli: Cli) -> Result<(), String> {
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
-                &cli.shared,
+                shared,
                 WorkflowCliOptions {
-                    force: !cli.shared.no_force,
+                    force: !shared.no_force,
                     run_learn: false,
                 },
             )
         }),
         Commands::Init(init) => {
-            let shared = cli.shared.clone();
-            let tee = cli.shared.tee_startup_stdout();
+            let shared = shared.clone();
+            let tee = shared.tee_startup_stdout();
             run_async_cli(|| async move {
                 crate::init_cmd::run_init(crate::init_cmd::RunInitRequest {
                     path: init.path,
@@ -164,5 +186,20 @@ fn run_code_command(code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
             },
         )
     })
+}
+
+#[cfg(test)]
+mod entrypoint_doc_tests {
+    use super::{entrypoint_from, Exit};
+
+    #[test]
+    fn entrypoint_from_doc_argv_exits_success() {
+        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
+    }
+
+    #[test]
+    fn entrypoint_from_bare_malvin_exits_failure() {
+        assert_eq!(entrypoint_from(["malvin"]), Exit::Failure);
+    }
 }
 

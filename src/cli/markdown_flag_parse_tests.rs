@@ -28,15 +28,18 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
 fn global_no_markdown_before_bug_subcommand() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "bug", "--no-learn"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(cli.command, crate::cli::Commands::Bug(_)));
+    assert!(matches!(
+        cli.command,
+        Some(crate::cli::Commands::Bug(_))
+    ));
 }
 
 #[test]
 fn do_parses_with_global_no_markdown_without_do_local_flag() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "do", "hi"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    match &cli.command {
-        crate::cli::Commands::Do(d) => assert_eq!(d.request.as_deref(), Some("hi")),
+    match cli.command.as_ref() {
+        Some(crate::cli::Commands::Do(d)) => assert_eq!(d.request.as_deref(), Some("hi")),
         _ => panic!("expected Do"),
     }
 }
@@ -45,14 +48,17 @@ fn do_parses_with_global_no_markdown_without_do_local_flag() {
 fn tidy_parses_with_global_no_markdown_and_without_request() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "tidy"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(cli.command, crate::cli::Commands::Tidy(_)));
+    assert!(matches!(
+        cli.command,
+        Some(crate::cli::Commands::Tidy(_))
+    ));
 }
 
 #[test]
 fn tidy_parses_without_request_and_runs_learn() {
     let cli = Cli::try_parse_from(["malvin", "tidy", "--no-learn"]).expect("parse");
     match cli.command {
-        crate::cli::Commands::Tidy(tidy) => assert!(tidy.no_learn),
+        Some(crate::cli::Commands::Tidy(tidy)) => assert!(tidy.no_learn),
         _ => panic!("expected tidy"),
     }
 }
@@ -61,7 +67,10 @@ fn tidy_parses_without_request_and_runs_learn() {
 fn models_parses_with_global_no_markdown() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "models"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(cli.command, crate::cli::Commands::Models(_)));
+    assert!(matches!(
+        cli.command,
+        Some(crate::cli::Commands::Models(_))
+    ));
 }
 
 #[test]
@@ -69,7 +78,7 @@ fn plan_parses_text_after_plan_path_flag() {
     let cli = Cli::try_parse_from(["malvin", "plan", "--plan_path", "/tmp/p.md", "hello"])
         .expect("parse");
     match cli.command {
-        crate::cli::Commands::Plan(p) => {
+        Some(crate::cli::Commands::Plan(p)) => {
             assert_eq!(
                 p.plan_path.as_deref(),
                 Some(std::path::Path::new("/tmp/p.md"))
@@ -85,7 +94,7 @@ fn plan_parses_plan_path_alias_before_text() {
     let cli = Cli::try_parse_from(["malvin", "plan", "--plan-path", "notes/plan.md", "x"])
         .expect("parse");
     match cli.command {
-        crate::cli::Commands::Plan(p) => {
+        Some(crate::cli::Commands::Plan(p)) => {
             assert_eq!(
                 p.plan_path.as_ref().map(|x| x.as_os_str()),
                 Some(std::ffi::OsStr::new("notes/plan.md"))
@@ -100,7 +109,7 @@ fn plan_parses_plan_path_alias_before_text() {
 fn plan_parses_without_positional() {
     let cli = Cli::try_parse_from(["malvin", "plan"]).expect("parse");
     match cli.command {
-        crate::cli::Commands::Plan(p) => {
+        Some(crate::cli::Commands::Plan(p)) => {
             assert!(p.plan_path.is_none());
             assert!(p.text.is_none());
         }
