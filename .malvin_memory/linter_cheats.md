@@ -26,4 +26,4 @@ CONFIDENCE: 1
 
 TRIGGER: rg slow, ripgrep timeout, search whole repo
 ADVICE: Unscoped `rg` from repo root can run 90s+ (large `_malvin/` traces). Scope to `src/` and `tests/`, or use a short Python `Path.rglob` loop skipping `target`, `_malvin`, `.git`. Redirect huge output to a temp file before reading.
-CONFIDENCE: 2
+CONFIDENCE: 3

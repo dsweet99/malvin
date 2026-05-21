@@ -31,7 +31,7 @@ fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
         bin_override: None,
         api_key: Some("test-key"),
         auth_token: Some("test-token"),
-        rpc_timeout: Duration::from_secs(30),
+        rpc_timeout: Duration::from_secs(5),
         acp_verbose: false,
         george_acp_lane: None,
         ui_idle_notify: None,

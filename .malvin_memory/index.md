@@ -3,6 +3,7 @@
 Subject-specific files:
 
 - [rust_platform_tests.md](./rust_platform_tests.md) — Linux-only integration tests, kiss attributes
+- [rust_test_timeouts.md](./rust_test_timeouts.md) — nested mutex deadlocks, nextest slow-timeout, captive RPC timeouts, zombie test processes
 - [rust_cfg_includes.md](./rust_cfg_includes.md) — `#[cfg]` + `include!`, acp memory containment on macOS
 - [acp_memory_containment.md](./acp_memory_containment.md) — cgroup warn text, verbose gating, kiss bool struct pattern
 - [paths_and_gates.md](./paths_and_gates.md) — `format_prompt_path`, quality gates, protected files
@@ -14,7 +15,7 @@ Subject-specific files:
 ## Workflow
 
 TRIGGER: quality gates, malvin_checks, CI
-ADVICE: Read non-empty lines from `.malvin_checks` at repo root (in order). Typical Rust layout: `kiss check`, then `cargo clippy --all-targets --all-features --` with project clippy flags, then `cargo test`. On failure, inspect `./_malvin/<run_id>/quality_gates.log` if Malvin wrote one.
+ADVICE: Read non-empty lines from `.malvin_checks` at repo root (in order). Typical Rust layout: `kiss check`, then `cargo clippy --all-targets --all-features --` with project clippy flags, then `cargo nextest run` (see `.config/nextest.toml` for per-test timeouts). On failure, inspect `./_malvin/<run_id>/quality_gates.log` if Malvin wrote one.
 CONFIDENCE: 3
 
 TRIGGER: kiss check, kiss rules, before coding

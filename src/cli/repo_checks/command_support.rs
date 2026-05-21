@@ -80,6 +80,7 @@ const fn test_fake_command_path(_: &str) -> Option<PathBuf> {
 pub struct FakeCommandDirGuard {
     pub(crate) previous: Option<PathBuf>,
     thread_id: std::thread::ThreadId,
+    _process_lock: Option<std::sync::MutexGuard<'static, ()>>,
 }
 
 #[cfg(test)]
@@ -95,9 +96,16 @@ impl Drop for FakeCommandDirGuard {
 
 #[cfg(test)]
 pub fn set_fake_command_dir(path: &std::path::Path) -> FakeCommandDirGuard {
-    let _mutex_guard = FAKE_COMMAND_DIR_MUTEX
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let is_outermost = TEST_FAKE_COMMAND_DIR.with(|dir| dir.borrow().is_none());
+    let process_lock = if is_outermost {
+        Some(
+            FAKE_COMMAND_DIR_MUTEX
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        )
+    } else {
+        None
+    };
     let previous = TEST_FAKE_COMMAND_DIR.with(|dir| {
         let mut guard = dir.borrow_mut();
         guard.replace(path.to_path_buf())
@@ -105,6 +113,7 @@ pub fn set_fake_command_dir(path: &std::path::Path) -> FakeCommandDirGuard {
     FakeCommandDirGuard {
         previous,
         thread_id: std::thread::current().id(),
+        _process_lock: process_lock,
     }
 }
 
