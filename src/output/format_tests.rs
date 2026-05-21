@@ -42,7 +42,7 @@ fn detects_prefixed_and_unprefixed_command_prelude() {
     let inner = format_log_tag_inner(MALVIN_WHO);
     assert!(is_command_prelude_line("Command: malvin code @plan.md"));
     assert!(is_command_prelude_line(&format!(
-        "20260413.121314.015:[{inner}]: Command: malvin code @plan.md"
+        "[{inner}]: Command: malvin code @plan.md"
     )));
     assert!(!is_command_prelude_line(
         "20260413.121314.015:[kpop]: not a command line"
@@ -70,7 +70,7 @@ fn ansi_who_tag_uses_yellow_for_warning_and_red_for_error() {
 fn smoke_print_and_format_paths_cover_helpers() {
     assert_eq!(format_acp_directional_tag_prefix('>', "x"), ">x");
     assert!(!crate::time_format::timestamp_now_string().is_empty());
-    let (max_payload, _) = super::terminal_wrap::stdout_line_wrap_meta("ts", "malvin", "line");
+    let (max_payload, _) = super::terminal_wrap::stdout_line_wrap_meta("malvin", "line");
     let wrapped = super::terminal_wrap::wrap_words_bounded(max_payload, "hello world");
     assert!(!wrapped.is_empty());
     let _ = format_line("who", "body");
@@ -98,6 +98,7 @@ fn stdout_log_mirrors_stdout_helpers() {
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
     assert!(text.contains("]: m"));
+    assert!(text.lines().any(|l| l.starts_with("20") && l.contains("]: m")));
     assert!(text.contains("raw mirrored"));
 }
 
@@ -121,6 +122,9 @@ fn output_timestamp_wrapper_nonempty() {
     let _ = super::stdout_use_color;
     let _ = super::append_stdout_log_line;
     let _ = super::print_stdout_rendered_line;
+    let _ = crate::output::stdout_display::stdout_display_and_log;
+    let _ = crate::output::stdout_heartbeat::emit_heartbeat_line;
+    let _ = crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed;
     let _ = super::stderr_log::print_log_warning;
     let _ = super::stderr_log::print_log_error;
     let _ = super::print_stdout_acp_tee_line_with_timestamp;

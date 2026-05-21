@@ -4,7 +4,7 @@ pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
 use super::{ANSI_DIM, ANSI_RESET};
-use super::{format_log_tag_inner, stdout_use_color, timestamp_now_string};
+use super::{format_log_tag_inner, format_line_stdout, stdout_use_color, timestamp_now_string};
 
 use crate::ansi_strip::strip_ansi_escapes;
 use unicode_width::UnicodeWidthStr;
@@ -57,6 +57,23 @@ pub fn format_line_with_timestamp_acp_ansi(
         line,
         dim_payload: false,
     })
+}
+
+#[must_use]
+pub fn format_line_acp_ansi_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
+    let inner = format_log_tag_inner(ctx.who);
+    let bracket = match ctx.direction {
+        AcpTeeDirection::ToAgent => ANSI_BRIGHT_GREEN,
+        AcpTeeDirection::FromAgent => ANSI_BRIGHT_MAGENTA,
+    };
+    if ctx.dim_payload {
+        format!(
+            "{bracket}:[{inner}]:{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
+            ctx.line
+        )
+    } else {
+        format!("{bracket}:[{inner}]:{ANSI_RESET} {}", ctx.line)
+    }
 }
 
 #[must_use]
@@ -122,6 +139,18 @@ pub fn print_stdout_acp_tee_line_with_timestamp_dim_plain(
     });
 }
 
+pub(crate) fn acp_tee_display_line(ctx: &AcpTeeLineFmt<'_>) -> String {
+    if stdout_use_color() {
+        format_line_acp_ansi_payload(ctx)
+    } else {
+        format_line_stdout(ctx.who, ctx.line)
+    }
+}
+
+pub(crate) fn acp_tee_log_line(ctx: &AcpTeeLineFmt<'_>) -> String {
+    super::format_line_with_timestamp(ctx.ts, ctx.who, ctx.line)
+}
+
 fn acp_tee_payload_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
     let empty = AcpTeeLineFmt {
         ts: ctx.ts,
@@ -130,24 +159,29 @@ fn acp_tee_payload_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
         line: "",
         dim_payload: ctx.dim_payload,
     };
-    if super::stdout_use_color() {
-        format_line_with_timestamp_acp_ansi_payload(&empty)
-    } else {
-        super::format_line_with_timestamp(ctx.ts, ctx.who, "")
-    }
+    acp_tee_display_line(&empty)
+}
+
+pub(crate) fn acp_tee_log_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
+    super::format_line_with_timestamp(ctx.ts, ctx.who, "")
 }
 
 fn acp_tee_payload_prefix_width(prefix: &str) -> usize {
     strip_ansi_escapes(prefix).width()
 }
 
-fn print_acp_tee_stdout_markdown_line(prefix: &str, rendered_payload: &str) {
-    super::print_stdout_rendered_line(&format!("{prefix}{rendered_payload}"));
+fn print_acp_tee_stdout_markdown_line(ctx: &AcpTeeLineFmt<'_>, rendered_payload: &str) {
+    let display_prefix = acp_tee_payload_prefix(ctx);
+    let log_prefix = acp_tee_log_prefix(ctx);
+    super::print_stdout_rendered_line(
+        &format!("{display_prefix}{rendered_payload}"),
+        &format!("{log_prefix}{rendered_payload}"),
+    );
 }
 
-fn print_acp_tee_stdout_markdown_lines(prefix: &str, rendered_payloads: &[String]) {
+fn print_acp_tee_stdout_markdown_lines(ctx: &AcpTeeLineFmt<'_>, rendered_payloads: &[String]) {
     for rendered in rendered_payloads {
-        print_acp_tee_stdout_markdown_line(prefix, rendered);
+        print_acp_tee_stdout_markdown_line(ctx, rendered);
     }
 }
 
@@ -168,20 +202,15 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         super::terminal_wrap::stdout_allows_log_word_wrap(),
     );
     if let Some(rendered_lines) = termimad_text_lines_for_stdout(ctx.line, line_gate, max_payload) {
-        print_acp_tee_stdout_markdown_lines(&prefix, &rendered_lines);
+        print_acp_tee_stdout_markdown_lines(ctx, &rendered_lines);
         return;
     }
     if !wrap {
         if let Some(rendered) = termimad_inline_payload_for_stdout(ctx.line, line_gate) {
-            print_acp_tee_stdout_markdown_line(&prefix, &rendered);
+            print_acp_tee_stdout_markdown_line(ctx, &rendered);
             return;
         }
-        let s = if stdout_use_color() {
-            format_line_with_timestamp_acp_ansi_payload(ctx)
-        } else {
-            super::format_line_with_timestamp(ctx.ts, ctx.who, ctx.line)
-        };
-        super::print_stdout_rendered_line(&s);
+        super::print_stdout_rendered_line(&acp_tee_display_line(ctx), &acp_tee_log_line(ctx));
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
@@ -193,50 +222,13 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             dim_payload: ctx.dim_payload,
         };
         if let Some(rendered) = termimad_inline_payload_for_stdout(&seg, line_gate) {
-            print_acp_tee_stdout_markdown_line(&prefix, &rendered);
+            print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered);
             continue;
         }
-        let s = if stdout_use_color() {
-            format_line_with_timestamp_acp_ansi_payload(&seg_ctx)
-        } else {
-            super::format_line_with_timestamp(ctx.ts, ctx.who, &seg)
-        };
-        super::print_stdout_rendered_line(&s);
+        super::print_stdout_rendered_line(
+            &acp_tee_display_line(&seg_ctx),
+            &acp_tee_log_line(&seg_ctx),
+        );
     }
 }
 
-#[cfg(test)]
-mod acp_tee_tests {
-    use super::{AcpTeeDirection, AcpTeeLineFmt, format_line_with_timestamp_acp_ansi_payload};
-
-    #[test]
-    fn format_acp_ansi_payload_includes_who_and_line() {
-        let s = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
-            ts: "2020-01-01T00:00:00Z",
-            direction: AcpTeeDirection::ToAgent,
-            who: "malvin",
-            line: "hello",
-            dim_payload: false,
-        });
-        assert!(s.contains("malvin"));
-        assert!(s.contains("hello"));
-        let prefix = super::acp_tee_payload_prefix(&AcpTeeLineFmt {
-            ts: "t",
-            direction: AcpTeeDirection::FromAgent,
-            who: "w",
-            line: "x",
-            dim_payload: false,
-        });
-        assert!(super::acp_tee_payload_prefix_width(&prefix) > 0);
-        let ctx = AcpTeeLineFmt {
-            ts: "t",
-            direction: AcpTeeDirection::ToAgent,
-            who: "w",
-            line: "plain",
-            dim_payload: false,
-        };
-        super::print_stdout_acp_tee_line_with_timestamp_payload(&ctx, false);
-        super::print_acp_tee_stdout_markdown_line("p:", "body");
-        super::print_acp_tee_stdout_markdown_lines("p:", &["a".to_string()]);
-    }
-}

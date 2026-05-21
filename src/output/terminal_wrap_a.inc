@@ -37,7 +37,16 @@ pub fn stderr_allows_log_word_wrap() -> bool {
     stderr().is_terminal() || columns_from_env().is_some()
 }
 
-fn malvin_tagged_prefix_len(ts: &str, who: &str, use_color: bool) -> usize {
+fn malvin_tagged_stdout_prefix_len(who: &str, use_color: bool) -> usize {
+    let s = if use_color {
+        super::format_line_stdout_ansi(who, "")
+    } else {
+        super::format_line_stdout(who, "")
+    };
+    strip_ansi_escapes(&s).chars().count()
+}
+
+fn malvin_tagged_stderr_prefix_len(ts: &str, who: &str, use_color: bool) -> usize {
     let s = if use_color {
         super::format_line_with_timestamp_ansi(ts, who, "")
     } else {
@@ -57,14 +66,24 @@ pub fn line_wrap_for_prefix_len(
     (max_payload, wrap)
 }
 
-fn line_wrap_meta_tagged_malvin(
+fn line_wrap_meta_tagged_stderr(
     ts: &str,
     who: &str,
     line: &str,
     allow_word_wrap: bool,
     use_color: bool,
 ) -> (usize, bool) {
-    let prefix_len = malvin_tagged_prefix_len(ts, who, use_color);
+    let prefix_len = malvin_tagged_stderr_prefix_len(ts, who, use_color);
+    line_wrap_for_prefix_len(prefix_len, line, allow_word_wrap)
+}
+
+fn line_wrap_meta_tagged_stdout(
+    who: &str,
+    line: &str,
+    allow_word_wrap: bool,
+    use_color: bool,
+) -> (usize, bool) {
+    let prefix_len = malvin_tagged_stdout_prefix_len(who, use_color);
     line_wrap_for_prefix_len(prefix_len, line, allow_word_wrap)
 }
 
@@ -81,9 +100,8 @@ fn line_wrap_meta_tagged_plain(
 }
 
 #[must_use]
-pub fn stdout_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
-    line_wrap_meta_tagged_malvin(
-        ts,
+pub fn stdout_line_wrap_meta(who: &str, line: &str) -> (usize, bool) {
+    line_wrap_meta_tagged_stdout(
         who,
         line,
         stdout_allows_log_word_wrap(),
@@ -94,7 +112,7 @@ pub fn stdout_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
 #[must_use]
 pub fn stderr_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
     if super::stderr_use_color() {
-        return line_wrap_meta_tagged_malvin(
+        return line_wrap_meta_tagged_stderr(
             ts,
             who,
             line,

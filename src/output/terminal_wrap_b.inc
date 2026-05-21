@@ -105,7 +105,7 @@ mod tests {
         unsafe {
             std::env::set_var("COLUMNS", "40");
         }
-        let (_max, wrap) = super::stdout_line_wrap_meta("20260101.120000.000", "malvin", &long);
+        let (_max, wrap) = super::stdout_line_wrap_meta("malvin", &long);
         assert!(
             super::stdout_allows_log_word_wrap() && wrap,
             "COLUMNS set should allow wrapping a long line even when stdout is not a TTY"
@@ -126,7 +126,7 @@ mod tests {
         assert_eq!(v, vec!["hello world"]);
         assert_eq!(super::char_display_cell('a'), 1);
         let (tag_max, _) =
-            super::line_wrap_meta_tagged_malvin("t", "malvin", "line", true, false);
+            super::line_wrap_meta_tagged_stdout("malvin", "line", true, false);
         assert!(tag_max > 0);
         let (pmax, _) = super::line_wrap_meta_tagged_plain("t", "who", "line", true);
         assert!(pmax > 0);

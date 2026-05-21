@@ -3,7 +3,14 @@
 mod acp_tee;
 mod acp_tee_markdown;
 mod stderr_log;
+mod stdout_display;
+mod stdout_heartbeat;
 pub(crate) mod terminal_wrap;
+
+pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
+pub(crate) use stdout_heartbeat::maybe_emit_stdout_heartbeat;
+
+pub use stdout_display::{print_stdout_line, print_stdout_text};
 
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
@@ -68,7 +75,7 @@ pub fn print_outgoing_prompt_log(label: &str) {
 }
 
 /// Fixed width (Unicode scalars) for the bracket label in log lines (`[…]: …`).
-pub const LOG_TAG_INNER_WIDTH: usize = 10;
+pub const LOG_TAG_INNER_WIDTH: usize = 15;
 
 static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 #[cfg(test)]
@@ -113,7 +120,7 @@ pub fn format_line(who: &str, line: &str) -> String {
     format_line_with_timestamp(&timestamp_now_string(), who, line)
 }
 
-fn who_tag_ansi(who: &str) -> &'static str {
+pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
         WARNING_WHO => ANSI_YELLOW,
         ERROR_WHO => ANSI_RED,
@@ -136,6 +143,7 @@ pub fn init_stdout_style(no_color: bool) {
     let disabled_by_env = std::env::var_os("NO_COLOR").is_some();
     let use_color = !no_color && !disabled_by_env;
     let _ = LOG_USE_COLOR.set(use_color);
+    crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
 }
 
 fn log_use_color() -> bool {
@@ -166,44 +174,17 @@ pub(crate) fn append_stdout_log_line(line: &str) {
         .and_then(|mut f| writeln!(f, "{line}"));
 }
 
-pub(crate) fn print_stdout_rendered_line(line: &str) {
-    println!("{line}");
-    append_stdout_log_line(line);
+pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
+    maybe_emit_stdout_heartbeat();
+    println!("{display}");
+    append_stdout_log_line(log);
 }
 
 pub fn print_stdout_raw_line(line: &str) {
-    print_stdout_rendered_line(line);
-}
-
-pub fn print_stdout_line(who: &str, line: &str) {
-    let ts = timestamp_now_string();
-    let (max_payload, wrap) = stdout_line_wrap_meta(&ts, who, line);
-    if !wrap {
-        let s = if stdout_use_color() {
-            format_line_with_timestamp_ansi(&ts, who, line)
-        } else {
-            format_line_with_timestamp(&ts, who, line)
-        };
-        print_stdout_rendered_line(&s);
-        return;
-    }
-    for seg in wrap_words_bounded(max_payload, line) {
-        let s = if stdout_use_color() {
-            format_line_with_timestamp_ansi(&ts, who, &seg)
-        } else {
-            format_line_with_timestamp(&ts, who, &seg)
-        };
-        print_stdout_rendered_line(&s);
-    }
+    print_stdout_rendered_line(line, line);
 }
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
-
-pub fn print_stdout_text(who: &str, text: &str) {
-    for line in logical_lines(text) {
-        print_stdout_line(who, line);
-    }
-}
 
 #[must_use]
 pub fn is_command_prelude_line(line: &str) -> bool {

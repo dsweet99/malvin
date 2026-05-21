@@ -1,9 +1,36 @@
 use super::acp_tee::{
-    AcpTeeDirection, AcpTeeLineFmt, format_line_with_timestamp_acp_ansi,
-    format_line_with_timestamp_acp_ansi_payload,
+    acp_tee_display_line, acp_tee_log_line, acp_tee_log_prefix, AcpTeeDirection, AcpTeeLineFmt,
+    format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi,
+    format_line_with_timestamp_acp_ansi_payload, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp,
 };
 use super::acp_tee_markdown::termimad_text_lines_for_stdout;
 use super::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
+
+#[test]
+fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
+    let ctx = AcpTeeLineFmt {
+        ts: "20260413.121314.015",
+        direction: AcpTeeDirection::ToAgent,
+        who: "malvin",
+        line: "hello",
+        dim_payload: false,
+    };
+    let plain_acp = format_line_acp_ansi_payload(&ctx);
+    assert!(!plain_acp.contains("20260413"));
+    assert!(acp_tee_display_line(&ctx).contains("hello"));
+    assert!(acp_tee_log_line(&ctx).starts_with("20260413"));
+    assert!(acp_tee_log_prefix(&ctx).starts_with("20260413"));
+    print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "probe");
+    print_stdout_acp_tee_line_with_timestamp(&super::acp_tee::AcpTeeStdoutEvent {
+        direction: AcpTeeDirection::ToAgent,
+        who: "w",
+        line: "plain",
+        ts: "t",
+        emit_stdout_markdown: false,
+        dim_payload: false,
+    });
+}
 
 #[test]
 fn ansi_acp_tee_directions_use_distinct_bracket_colors() {

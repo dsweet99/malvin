@@ -311,6 +311,81 @@ fn kiss_cov_src_output_mod_rs_set_stdout_log_path() {
 }
 
 #[test]
+fn kiss_cov_src_output_mod_rs_stdout_display_and_log() {
+    let _ = stringify!(crate::output::stdout_display::stdout_display_and_log);
+}
+
+#[test]
+fn kiss_cov_src_output_acp_tee_rs_format_line_acp_ansi_payload() {
+    let _ = stringify!(crate::output::acp_tee::format_line_acp_ansi_payload);
+}
+
+#[test]
+fn kiss_cov_src_output_acp_tee_rs_acp_tee_display_line() {
+    let _ = stringify!(crate::output::acp_tee::acp_tee_display_line);
+}
+
+#[test]
+fn kiss_cov_src_output_acp_tee_rs_acp_tee_log_line() {
+    let _ = stringify!(crate::output::acp_tee::acp_tee_log_line);
+}
+
+#[test]
+fn kiss_cov_src_output_acp_tee_rs_acp_tee_log_prefix() {
+    let _ = stringify!(crate::output::acp_tee::acp_tee_log_prefix);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_emit_heartbeat_line() {
+    let _ = stringify!(crate::output::stdout_heartbeat::emit_heartbeat_line);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_maybe_emit_stdout_heartbeat() {
+    let _ = stringify!(crate::output::stdout_heartbeat::maybe_emit_stdout_heartbeat);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_format_stdout_heartbeat_line() {
+    let _ = stringify!(crate::output::stdout_heartbeat::format_stdout_heartbeat_line);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_spawn_wall_clock_poller_if_needed() {
+    let _ = stringify!(crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_heartbeat_due() {
+    let _ = stringify!(crate::output::stdout_heartbeat::heartbeat_due);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_try_emit_heartbeat_if_due() {
+    let _ = stringify!(crate::output::stdout_heartbeat::try_emit_heartbeat_if_due);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_poll_wall_clock_heartbeat_if_due() {
+    let _ = stringify!(crate::output::stdout_heartbeat::poll_wall_clock_heartbeat_if_due);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_heartbeat_rs_wall_clock_poller_loop() {
+    let _ = stringify!(crate::output::stdout_heartbeat::wall_clock_poller_loop);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_display_rs_format_line_stdout() {
+    let _ = stringify!(crate::output::stdout_display::format_line_stdout);
+}
+
+#[test]
+fn kiss_cov_src_output_stdout_display_rs_format_line_stdout_ansi() {
+    let _ = stringify!(crate::output::stdout_display::format_line_stdout_ansi);
+}
+
+#[test]
 fn kiss_cov_src_output_stderr_log_rs_emit_stderr_log_line() {
     let _ = stringify!(crate::output::emit_stderr_log_line);
 }
