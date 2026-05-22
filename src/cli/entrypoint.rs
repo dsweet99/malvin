@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 use super::{
     Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
@@ -63,11 +63,12 @@ pub fn entrypoint_from(
             return exit;
         }
     };
-    if let Err(e) = cli.validate_subcommand() {
-        let _ = e.print();
-        return Exit::Failure;
-    }
     crate::output::init_stdout_style(cli.global.no_color);
+    if cli.command.is_none() && !cli.shared.doc {
+        let mut cmd = Cli::command();
+        let _ = cmd.print_help();
+        return Exit::Success;
+    }
     if cli.shared.doc {
         return match super::command_docs::print_doc(cli.command.as_ref()) {
             Ok(()) => Exit::Success,
@@ -77,7 +78,7 @@ pub fn entrypoint_from(
             }
         };
     }
-    let command = cli.command.expect("validate_subcommand ensures subcommand");
+    let command = cli.command.expect("subcommand when not --doc-only");
     if let Err(e) = require_kiss_for_cli_command(&command) {
         print_command_error(&e);
         return Exit::Failure;
@@ -216,8 +217,8 @@ mod entrypoint_doc_tests {
     }
 
     #[test]
-    fn entrypoint_from_bare_malvin_exits_failure() {
-        assert_eq!(entrypoint_from(["malvin"]), Exit::Failure);
+    fn entrypoint_from_bare_malvin_exits_success() {
+        assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
     }
 }
 

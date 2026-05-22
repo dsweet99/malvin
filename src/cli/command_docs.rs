@@ -96,12 +96,6 @@ mod tests {
     }
 
     #[test]
-    fn bare_malvin_without_doc_fails_validate_subcommand() {
-        let cli = Cli::try_parse_from(["malvin"]).expect("parse");
-        assert!(cli.validate_subcommand().is_err());
-    }
-
-    #[test]
     fn kpop_doc_parses_without_request_when_doc_flag_set() {
         let cli = Cli::try_parse_from(["malvin", "kpop", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
