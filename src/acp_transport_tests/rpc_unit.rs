@@ -65,7 +65,7 @@ async fn test_write_rpc_line_fails_after_child_stdin_closed() {
     // until `write_rpc_line` sees `EPIPE` / broken pipe (or time out).
     let mut last = Ok(());
     for _ in 0..100 {
-        last = write_rpc_line(&stdin, r#"{"x":1}"#, false, None).await;
+        last = write_rpc_line(&stdin, r#"{"x":1}"#, false, None, None).await;
         if last.is_err() {
             return;
         }

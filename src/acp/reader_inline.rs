@@ -1,5 +1,4 @@
 // Stdout JSON-RPC line processing (inlined into `acp` for `kiss` dependency depth).
-use tokio::sync::Notify;
 
 /// Clears busy / trace when the JSON-RPC response for a `session/prompt` request is processed.
 pub(crate) struct PromptRpcCleanup {

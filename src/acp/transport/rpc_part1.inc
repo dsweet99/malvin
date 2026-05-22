@@ -17,6 +17,7 @@ pub(crate) async fn write_rpc_line(
     line: &str,
     acp_verbose: bool,
     trace_jsonl: Option<&AcpJsonlTrace>,
+    activity: Option<(&Arc<AtomicU64>, &Arc<tokio::sync::Notify>)>,
 ) -> Result<(), String> {
     if acp_verbose {
         info!(
@@ -43,6 +44,9 @@ pub(crate) async fn write_rpc_line(
         .await
         .map_err(|e| format!("acp stdin flush: {e}"))?;
     drop(guard);
+    if let Some((seq, notify)) = activity {
+        note_acp_trace_activity(seq, notify);
+    }
     Ok(())
 }
 
@@ -98,8 +102,14 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
             return Err(e.to_string());
         }
     };
-    if let Err(e) =
-        write_rpc_line(&io.stdin, &line, io.acp_verbose, io.trace_jsonl.as_deref()).await
+    if let Err(e) = write_rpc_line(
+        &io.stdin,
+        &line,
+        io.acp_verbose,
+        io.trace_jsonl.as_deref(),
+        Some((&io.acp_activity_seq, &io.acp_activity_notify)),
+    )
+    .await
     {
         io.pending.lock().await.remove(&o.id);
         return Err(e);

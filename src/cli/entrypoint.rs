@@ -2,7 +2,7 @@ use clap::Parser;
 
 use super::{
     Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
-    run_mbc2, run_plan, run_tidy,
+    run_ideas, run_plan, run_tidy,
 };
 use super::models_cmd;
 
@@ -16,7 +16,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
-        | Commands::Mbc2(_)
+        | Commands::Ideas(_)
         | Commands::Models(_) => Ok(()),
     }
 }
@@ -158,7 +158,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 },
             )
         }),
-        Commands::Mbc2(mbc2) => run_mbc2_command(mbc2, shared),
+        Commands::Ideas(ideas) => run_ideas_command(ideas, shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -179,10 +179,10 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
     }
 }
 
-fn run_mbc2_command(mbc2: crate::mbc2_flow::Mbc2Args, shared: &SharedOpts) -> Result<(), String> {
+fn run_ideas_command(ideas: crate::ideas_flow::IdeasArgs, shared: &SharedOpts) -> Result<(), String> {
     run_async_cli(|| {
-        run_mbc2(
-            mbc2,
+        run_ideas(
+            ideas,
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,

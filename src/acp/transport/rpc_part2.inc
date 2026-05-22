@@ -90,7 +90,13 @@ async fn read_first_stdout_line(stdout: tokio::process::ChildStdout) -> String {
 #[tokio::test]
 async fn write_rpc_line_appends_flush_line_readable_on_child_stdout() {
     let (mut child, stdout, stdin) = spawn_cat_rpc_stdio_pair().await;
-    write_rpc_line(&stdin, r#"{"jsonrpc":"2.0","id":1}"#, false, None)
+    write_rpc_line(
+        &stdin,
+        r#"{"jsonrpc":"2.0","id":1}"#,
+        false,
+        None,
+        None,
+    )
         .await
         .expect("write_rpc_line");
     drop(stdin);

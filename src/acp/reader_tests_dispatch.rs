@@ -123,8 +123,8 @@ mod incoming_line_unix {
     .await;
     assert_eq!(
         acp_activity_seq.load(Ordering::SeqCst),
-        1,
-        "only valid JSON should count as ACP activity"
+        2,
+        "each received stdout line counts as trace activity"
     );
     }
 }

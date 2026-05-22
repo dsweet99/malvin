@@ -34,8 +34,16 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdin, ChildStdout};
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{Mutex, Notify, oneshot};
 use tracing::{debug, error, info, trace, warn};
+
+pub(crate) fn note_acp_trace_activity(
+    acp_activity_seq: &Arc<AtomicU64>,
+    acp_activity_notify: &Arc<Notify>,
+) {
+    acp_activity_seq.fetch_add(1, Ordering::SeqCst);
+    acp_activity_notify.notify_waiters();
+}
 
 include!("transport/jsonrpc_error.rs");
 include!("transport/command.rs");

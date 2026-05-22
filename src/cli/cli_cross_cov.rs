@@ -5,7 +5,7 @@ fn kiss_wire_cli_entrypoint_refs() {
     let _ = crate::cli::entrypoint;
     let _ = crate::cli::run_code;
     let _ = crate::cli::run_do;
-    let _ = crate::cli::run_mbc2;
+    let _ = crate::cli::run_ideas;
     let _ = crate::cli::run_tidy;
     let _ = crate::cli::run_plan;
 }

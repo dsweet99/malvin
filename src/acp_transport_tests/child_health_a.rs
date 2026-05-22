@@ -5,9 +5,9 @@ async fn spawn_json_activity_then_response(
     tx: tokio::sync::oneshot::Sender<Result<Value, String>>,
 ) {
     tokio::time::sleep(Duration::from_millis(20)).await;
-    note_acp_json_activity(&seq, &notify);
+    note_acp_trace_activity(&seq, &notify);
     tokio::time::sleep(Duration::from_millis(20)).await;
-    note_acp_json_activity(&seq, &notify);
+    note_acp_trace_activity(&seq, &notify);
     tokio::time::sleep(Duration::from_millis(20)).await;
     let _ = tx.send(Ok(json!({"ok": true})));
 }
@@ -18,7 +18,7 @@ async fn spawn_activity_then_kill_child(
     kill_pid: Option<u32>,
 ) {
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-    note_acp_json_activity(&seq, &notify);
+    note_acp_trace_activity(&seq, &notify);
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
     if let Some(pid) = kill_pid {
         let _ = std::process::Command::new("kill")

@@ -14,8 +14,8 @@ mod unix {
             .await;
         assert_eq!(
             cat.acp_activity_seq.load(Ordering::SeqCst),
-            2,
-            "both JSON messages should count as ACP activity"
+            3,
+            "each incoming line and the permission reply write count as trace activity"
         );
         let line = cat.finish_stdout().await;
         assert!(

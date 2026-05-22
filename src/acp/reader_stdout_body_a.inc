@@ -67,14 +67,6 @@ pub(crate) fn jsonrpc_response_id_as_u64(id_v: &Value) -> Option<u64> {
     id_v.as_str()?.parse::<u64>().ok()
 }
 
-pub(crate) fn note_acp_json_activity(
-    acp_activity_seq: &Arc<AtomicU64>,
-    acp_activity_notify: &Arc<Notify>,
-) {
-    acp_activity_seq.fetch_add(1, Ordering::SeqCst);
-    acp_activity_notify.notify_waiters();
-}
-
 pub(crate) async fn dispatch_response(
     msg: &Value,
     pending: &Arc<Mutex<HashMap<u64, ResponseTx>>>,
@@ -118,6 +110,7 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
     if let Some(trace) = d.trace_jsonl {
         trace.append_line("in", line);
     }
+    note_acp_trace_activity(d.acp_activity_seq, d.acp_activity_notify);
     let msg: Value = match serde_json::from_str(line) {
         Ok(m) => m,
         Err(e) => {
@@ -125,7 +118,6 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             return;
         }
     };
-    note_acp_json_activity(d.acp_activity_seq, d.acp_activity_notify);
 
     match msg.get("method").and_then(|m| m.as_str()) {
         None => {
@@ -156,7 +148,15 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
                     return;
                 }
             };
-            if let Err(e) = write_rpc_line(d.stdin, &line, d.acp_verbose, d.trace_jsonl).await {
+            if let Err(e) = write_rpc_line(
+                d.stdin,
+                &line,
+                d.acp_verbose,
+                d.trace_jsonl,
+                Some((d.acp_activity_seq, d.acp_activity_notify)),
+            )
+            .await
+            {
                 error!(error = %e, "failed to answer session/request_permission");
             }
         }

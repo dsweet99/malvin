@@ -8,7 +8,7 @@ use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
 
 pub use crate::do_flow::DoArgs;
-pub use crate::mbc2_flow::Mbc2Args;
+pub use crate::ideas_flow::IdeasArgs;
 pub use crate::init_cmd::InitArgs;
 pub use super::models_cmd::ModelsArgs;
 
@@ -52,7 +52,7 @@ pub enum Commands {
     /// Respond to a single request
     Do(DoArgs),
     /// MBC2 boundary exploration (one-shot ideation)
-    Mbc2(Mbc2Args),
+    Ideas(IdeasArgs),
     /// Implement a plan
     Code(CodeArgs),
     /// Popperian scientific investigator
