@@ -2,7 +2,7 @@
 
 use super::{
     PromptTraceWriter, SessionUpdateChunkKind, TraceChunkCoalescer, VerboseTraceCoalesceState,
-    session_update_chunk_parts,
+    session_update_chunk_parts, tool_summary::{ToolSummaryDetail, tool_summary_lines},
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -74,9 +74,10 @@ const fn raw_output_suppress_thought_stdout(
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct TraceFileStdout {
+pub(crate) struct TraceFileStdout<'a> {
     pub tee_stdout: bool,
     pub stream_iterable_closed: Option<super::IterableClosedStream>,
+    pub tee_line_override: Option<&'a str>,
 }
 
 struct TraceTeeStdoutCtx<'a> {
@@ -87,26 +88,11 @@ struct TraceTeeStdoutCtx<'a> {
 
 include!("trace_line_write_tee.inc");
 
-fn parsed_tool_call_lifecycle_line(parsed: Option<&Value>) -> bool {
-    let Some(parsed) = parsed else {
-        return false;
-    };
-    if parsed.get("method").and_then(Value::as_str) != Some("session/update") {
-        return false;
-    }
-    matches!(
-        parsed
-            .pointer("/params/update/sessionUpdate")
-            .and_then(Value::as_str),
-        Some("tool_call" | "tool_call_update")
-    )
-}
-
 pub async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
     line: &str,
     kind: Option<SessionUpdateChunkKind>,
-    stdout: TraceFileStdout,
+    stdout: TraceFileStdout<'_>,
 ) {
     let display_line = format_trace_display_line(line, kind);
     let ts = crate::output::timestamp_now_string();
@@ -137,11 +123,15 @@ pub async fn trace_file_write_line(
         }
         return;
     }
-    let stdout_line = if writer.plain_lines || writer.raw_output {
-        line
-    } else {
-        &display_line
-    };
+    let stdout_line = stdout
+        .tee_line_override
+        .unwrap_or_else(|| {
+            if writer.plain_lines || writer.raw_output {
+                line
+            } else {
+                &display_line
+            }
+        });
     trace_tee_stdout_line(
         writer,
         stdout_line,
@@ -167,6 +157,7 @@ pub async fn write_trace_line_coalesced(
                 TraceFileStdout {
                     tee_stdout: opts.tee_stdout,
                     stream_iterable_closed: stream,
+                    tee_line_override: None,
                 },
             )
             .await;
@@ -181,12 +172,31 @@ pub async fn write_trace_line_coalesced(
             TraceFileStdout {
                 tee_stdout: opts.tee_stdout,
                 stream_iterable_closed: stream,
+                tee_line_override: None,
             },
         )
         .await;
     }
-    let raw_protocol_tee =
-        opts.tee_stdout && (opts.parsed.is_none() || parsed_tool_call_lifecycle_line(opts.parsed));
+    if let Some(parsed) = opts.parsed {
+        if let Some(summary) =
+            tool_summary_lines(parsed, &mut coalesce.tool_tracker, ToolSummaryDetail::Stdout)
+        {
+            let stdout_override = summary.stdout.as_str();
+            trace_file_write_line(
+                trace_file,
+                &summary.log,
+                None,
+                TraceFileStdout {
+                    tee_stdout: opts.tee_stdout,
+                    stream_iterable_closed: None,
+                    tee_line_override: Some(stdout_override),
+                },
+            )
+            .await;
+            return;
+        }
+    }
+    let raw_protocol_tee = opts.tee_stdout && opts.parsed.is_none();
     trace_file_write_line(
         trace_file,
         opts.raw_line,
@@ -194,6 +204,7 @@ pub async fn write_trace_line_coalesced(
         TraceFileStdout {
             tee_stdout: raw_protocol_tee,
             stream_iterable_closed: None,
+            tee_line_override: None,
         },
     )
     .await;

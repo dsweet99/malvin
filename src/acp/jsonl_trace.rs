@@ -69,4 +69,17 @@ mod tests {
         assert_eq!(records[1]["direction"], "in");
         assert_eq!(records[1]["message"]["result"], serde_json::json!({}));
     }
+
+    #[test]
+    fn trace_jsonl_append_records_raw_line_before_human_summary() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("trace.jsonl");
+        let trace = AcpJsonlTrace::new(path.clone(), "kpop".to_string());
+        let raw = r#"{"jsonrpc":"2.0","method":"session/update","params":{"update":{"sessionUpdate":"tool_call","toolCallId":"tool_x","kind":"read","status":"pending","title":"Read"}}}"#;
+        trace.append_line("in", raw);
+        let text = std::fs::read_to_string(path).expect("read");
+        assert!(text.contains("tool_call"));
+        assert!(text.contains("tool_x"));
+        assert!(!text.contains("[tool]"));
+    }
 }

@@ -16,6 +16,16 @@ mod resolve_agent_bin_unix_tests {
     use super::write_path_executable;
     use crate::acp::{MALVIN_TEST_NO_REAL_AGENT_ENV, auth_probe, resolve_agent_bin};
 
+    unsafe fn restore_optional_env(key: &str, value: Option<std::ffi::OsString>) {
+        unsafe {
+            if let Some(v) = value {
+                std::env::set_var(key, v);
+            } else {
+                std::env::remove_var(key);
+            }
+        }
+    }
+
     #[test]
     fn resolve_agent_bin_prefers_env_override() {
         let _guard = crate::test_utils::test_env_lock();
@@ -135,21 +145,9 @@ mod resolve_agent_bin_unix_tests {
         assert_eq!(resolve_agent_bin(), None);
 
         unsafe {
-            if let Some(value) = old_override {
-                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-            } else {
-                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-            }
-            if let Some(value) = old_path {
-                std::env::set_var("PATH", value);
-            } else {
-                std::env::remove_var("PATH");
-            }
-            if let Some(value) = old_no_real_agent {
-                std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, value);
-            } else {
-                std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
-            }
+            restore_optional_env("MALVIN_AGENT_ACP_BIN", old_override);
+            restore_optional_env("PATH", old_path);
+            restore_optional_env(MALVIN_TEST_NO_REAL_AGENT_ENV, old_no_real_agent);
         }
     }
 

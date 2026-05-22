@@ -68,18 +68,22 @@ async fn deliver_tool_call_session_updates(
     .await;
 }
 
-fn assert_tool_call_lifecycle_tee(trace: &str, stdout: &str) {
+fn assert_tool_call_lifecycle_summary_tee(trace: &str, stdout: &str) {
     assert!(
-        trace.contains("tool_call"),
-        "tool lifecycle lines must still be recorded in the per-prompt trace file"
+        !trace.contains("sessionUpdate"),
+        "tool lifecycle must be summarized in prompt trace, not raw JSON; got {trace:?}"
     );
     assert!(
-        stdout.contains("tool_call"),
-        "parsed tool_call session/update lines must be tee'd to stdout when tee_stdout is enabled; got {stdout:?}"
+        trace.contains("[tool] start") && trace.contains("[tool] running"),
+        "prompt trace must include tool start and running summaries; got {trace:?}"
     );
     assert!(
-        stdout.contains("tool_call_update"),
-        "parsed tool_call_update session/update lines must be tee'd to stdout when tee_stdout is enabled; got {stdout:?}"
+        stdout.contains("[tool] start") && stdout.contains("[tool] running"),
+        "tool summaries must tee to stdout when tee_stdout is enabled; got {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("tool_call_update"),
+        "stdout must not contain raw tool JSON; got {stdout:?}"
     );
 }
 
@@ -170,7 +174,7 @@ async fn write_trace_line_coalesced_must_tee_parsed_tool_call_lifecycle_to_stdou
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let (trace, stdout) = run_tool_call_lifecycle_tee_fixture().await;
-    assert_tool_call_lifecycle_tee(&trace, &stdout);
+    assert_tool_call_lifecycle_summary_tee(&trace, &stdout);
 }
 
 #[tokio::test]

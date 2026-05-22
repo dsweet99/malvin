@@ -20,6 +20,7 @@ pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
 include!("coalesce_trace.rs");
+mod tool_summary;
 mod trace_line_write;
 pub(crate) use trace_line_write::{
     ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,
@@ -162,6 +163,15 @@ mod reader_tests_trace_b;
 #[cfg(test)]
 #[path = "reader_tests_trace_coalesce_write.rs"]
 mod reader_tests_trace_coalesce_write;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary.rs"]
+mod reader_tests_tool_summary;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_trace.rs"]
+mod reader_tests_tool_summary_trace;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_kinds.rs"]
+mod reader_tests_tool_summary_kinds;
 #[cfg(test)]
 #[path = "reader_tests_trace_iterable.rs"]
 mod reader_tests_trace_iterable;
