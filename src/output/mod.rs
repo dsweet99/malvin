@@ -1,6 +1,7 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
 mod acp_tee;
+mod acp_tee_format;
 mod acp_tee_markdown;
 mod stderr_log;
 mod stdout_display;
@@ -13,15 +14,18 @@ pub(crate) use stdout_heartbeat::maybe_emit_stdout_heartbeat;
 pub use stdout_display::{print_stdout_line, print_stdout_text};
 
 pub use acp_tee::{
-    AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
-    print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
-    print_stdout_acp_tee_line_with_timestamp_dim_plain, print_stdout_acp_tool_summary_tee,
-    termimad_inline_payload_for_stdout,
+    AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
+    acp_tee_log_line, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_plain,
+    print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
+pub use acp_tee_format::format_line_with_timestamp_acp_ansi_payload;
 
 #[cfg(test)]
 mod acp_tee_tests;
+#[cfg(test)]
+mod acp_tee_termimad_tests;
 #[cfg(test)]
 mod format_tests;
 

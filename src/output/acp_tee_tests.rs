@@ -1,14 +1,45 @@
 use super::acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, acp_tee_display_line, acp_tee_log_line,
-    acp_tee_log_prefix, format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi,
-    format_line_with_timestamp_acp_ansi_payload, print_stdout_acp_tool_summary_tee,
+    acp_tee_log_prefix, format_line_with_timestamp_acp_ansi, print_stdout_acp_tool_summary_tee,
     print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
 };
-use super::acp_tee_markdown::termimad_text_lines_for_stdout;
-use super::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
+use super::acp_tee_format::{format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi_payload};
 
 #[test]
-fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
+fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
+    let ts = "20260413.121314.015";
+    let ctx = AcpTeeLineFmt {
+        ts,
+        direction: AcpTeeDirection::FromAgent,
+        who: "<check_plan",
+        line: "[thinking]",
+        dim_payload: true,
+    };
+    let tool_log = super::format_line_with_timestamp(ts, "<check_plan", "Run echo hi · 1ms · ✓");
+    let tee_log = acp_tee_log_line(&ctx);
+    assert!(
+        super::is_log_timestamp_token(tool_log.split_whitespace().next().unwrap_or("")),
+        "tool summary log should start with timestamp token; got {tool_log:?}"
+    );
+    assert!(
+        super::is_log_timestamp_token(tee_log.split_whitespace().next().unwrap_or("")),
+        "acp_tee_log_line should include timestamp; got {tee_log:?}"
+    );
+    let prefix = acp_tee_log_prefix(&AcpTeeLineFmt {
+        ts,
+        direction: AcpTeeDirection::FromAgent,
+        who: "<kpop",
+        line: "",
+        dim_payload: false,
+    });
+    assert!(
+        prefix.starts_with("20260413"),
+        "markdown/log prefix should include timestamp; got {prefix:?}"
+    );
+}
+
+#[test]
+fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
     let ctx = AcpTeeLineFmt {
         ts: "20260413.121314.015",
         direction: AcpTeeDirection::ToAgent,
@@ -17,11 +48,11 @@ fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
         dim_payload: false,
     };
     let plain_acp = format_line_acp_ansi_payload(&ctx);
-    assert!(!plain_acp.contains("20260413"));
+    assert!(!plain_acp.contains("20260413"), "raw non-timestamp helper remains non-ts");
     assert!(acp_tee_display_line(&ctx).contains("hello"));
-    assert_eq!(acp_tee_display_line(&ctx), acp_tee_log_line(&ctx));
-    assert!(!acp_tee_log_line(&ctx).starts_with("20260413"));
-    assert!(!acp_tee_log_prefix(&ctx).starts_with("20260413"));
+    assert!(acp_tee_display_line(&ctx).starts_with("20260413"));
+    assert!(acp_tee_log_line(&ctx).starts_with("20260413"));
+    assert!(acp_tee_log_prefix(&ctx).starts_with("20260413"));
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "probe");
     print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction: AcpTeeDirection::ToAgent,
@@ -50,7 +81,7 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     let _ = super::acp_tee::print_stdout_acp_tee_line;
     let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp;
     let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp_dim_plain;
-    let _: Option<super::TermimadStdoutGate> = None;
+    let _: Option<super::acp_tee_markdown::TermimadStdoutGate> = None;
     let to_line = format_line_with_timestamp_acp_ansi(
         "20260413.121314.015",
         AcpTeeDirection::ToAgent,
@@ -80,130 +111,4 @@ fn ansi_acp_tee_can_dim_payload_text() {
         dim_payload: true,
     });
     assert!(line.contains("\x1b[90m[thinking]\x1b[0m"));
-}
-
-#[test]
-fn termimad_inline_bold_when_emit_and_inline_styling_gate_true() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    let s = termimad_inline_payload_for_stdout("**m**", gate).expect("render");
-    assert!(
-        s.contains('\x1b'),
-        "expected termimad ANSI styling in rendered payload: {s:?}"
-    );
-    assert!(
-        !s.contains("**m**"),
-        "expected markdown markers to be consumed: {s:?}"
-    );
-}
-
-#[test]
-fn termimad_inline_plain_when_no_markdown_syntax() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    let rendered = termimad_inline_payload_for_stdout("plain", gate).expect("render");
-    assert_eq!(rendered, "plain");
-}
-
-#[test]
-fn termimad_inline_none_when_emit_false_even_if_tty() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: false,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    assert!(termimad_inline_payload_for_stdout("**m**", gate).is_none());
-}
-
-#[test]
-fn termimad_inline_wraps_dim_when_dim_with_emit() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: true,
-        allow_inline_styling: true,
-    };
-    let s = termimad_inline_payload_for_stdout("**m** tail", gate).expect("render");
-    assert!(s.starts_with("\x1b[90m"), "expected outer dim wrap: {s:?}");
-    assert!(
-        s.ends_with("\x1b[0m"),
-        "expected reset after dim wrap: {s:?}"
-    );
-    assert!(!s.contains("**m**"), "expected markdown consumed: {s:?}");
-    assert!(
-        s.contains("\x1b[0m\x1b[90m tail"),
-        "expected dim to resume after inner reset: {s:?}"
-    );
-}
-
-#[test]
-fn termimad_inline_none_when_styling_disabled() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: false,
-    };
-    assert!(termimad_inline_payload_for_stdout("**m**", gate).is_none());
-}
-
-#[test]
-fn termimad_text_lines_wrap_list_item_at_width() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    let lines =
-        termimad_text_lines_for_stdout("- **alpha** beta gamma delta", gate, 10).expect("render");
-    assert!(
-        lines.len() > 1,
-        "expected wrapped list item lines, got {lines:?}"
-    );
-    assert!(
-        lines.iter().all(|line| !line.is_empty()),
-        "expected non-empty rendered lines, got {lines:?}"
-    );
-    assert!(
-        lines.iter().all(|line| !line.contains("**alpha**")),
-        "expected markdown markers to be consumed: {lines:?}"
-    );
-}
-
-#[test]
-fn termimad_text_lines_keep_dim_across_inner_resets() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: true,
-        allow_inline_styling: true,
-    };
-    let lines = termimad_text_lines_for_stdout("- **alpha** tail", gate, 40).expect("render");
-    assert_eq!(lines.len(), 1, "unexpected wrap for short input: {lines:?}");
-    let line = &lines[0];
-    assert!(
-        line.starts_with("\x1b[90m"),
-        "expected outer dim wrap: {line:?}"
-    );
-    assert!(
-        line.contains("\x1b[0m\x1b[90m tail"),
-        "expected dim to resume after inner reset: {line:?}"
-    );
-}
-
-#[test]
-fn termimad_text_lines_only_for_structural_markdown_and_safe_widths() {
-    let gate = TermimadStdoutGate {
-        emit_stdout_markdown: true,
-        dim_payload: false,
-        allow_inline_styling: true,
-    };
-    assert!(termimad_text_lines_for_stdout("**bold**", gate, 40).is_none());
-    assert!(termimad_text_lines_for_stdout("# heading", gate, 40).is_some());
-    assert!(termimad_text_lines_for_stdout("- item", gate, 40).is_some());
-    assert!(termimad_text_lines_for_stdout("1. ordered", gate, 40).is_some());
-    assert!(termimad_text_lines_for_stdout("# x", gate, 2).is_none());
 }

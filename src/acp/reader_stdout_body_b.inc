@@ -29,6 +29,7 @@ async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
                     stream_iterable_closed: stream,
                     tee_line_override: None,
                     tee_line_display: None,
+                    ts: None,
                 },
             )
             .await;

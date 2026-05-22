@@ -1,5 +1,6 @@
 // K-pop progression and prompt template smoke tests.
 
+use std::collections::HashMap;
 
 use rand::{rngs::StdRng, SeedableRng};
 

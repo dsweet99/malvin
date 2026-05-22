@@ -1,3 +1,9 @@
+#[derive(Clone, Copy)]
+struct LineRange {
+    start: u64,
+    end: Option<u64>,
+}
+
 struct ParsedToolUpdate {
     phase: u8,
     id: String,
@@ -6,6 +12,7 @@ struct ParsedToolUpdate {
     status: Option<String>,
     command: Option<String>,
     input_path: Option<String>,
+    input_line_range: Option<LineRange>,
     search_query: Option<String>,
     raw_output: Option<Value>,
 }
@@ -69,6 +76,7 @@ fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
             .and_then(Value::as_str)
             .map(str::to_string),
         input_path: acp_path_field(raw_input).or_else(|| acp_path_field(raw_output)),
+        input_line_range: acp_line_range_field(raw_input).or_else(|| acp_line_range_field(raw_output)),
         search_query: acp_search_query_field(raw_input).or_else(|| acp_search_query_field(raw_output)),
         raw_output: raw_output.cloned(),
     })
@@ -90,4 +98,45 @@ fn acp_search_query_field(raw_input: Option<&Value>) -> Option<String> {
         .or_else(|| v.get("searchQuery"))
         .and_then(Value::as_str)
         .map(str::to_string)
+}
+
+fn acp_line_range_field(raw: Option<&Value>) -> Option<LineRange> {
+    let v = raw?;
+    let line_number = v
+        .get("lineNumber")
+        .or_else(|| v.get("startLine"))
+        .and_then(json_u64);
+    let end_line = v.get("endLine").and_then(json_u64);
+    if let Some(start) = line_number {
+        let end = end_line.filter(|end| *end > start);
+        return Some(LineRange { start, end });
+    }
+    let offset = v.get("offset").and_then(json_u64);
+    let limit = v.get("limit").and_then(json_u64);
+    let (Some(offset), Some(limit)) = (offset, limit) else {
+        return None;
+    };
+    if limit == 0 {
+        return None;
+    }
+    let start = offset.saturating_add(1);
+    let end = if limit > 1 {
+        Some(start.saturating_add(limit.saturating_sub(1)))
+    } else {
+        None
+    };
+    Some(LineRange { start, end })
+}
+
+fn json_u64(v: &Value) -> Option<u64> {
+    if let Some(n) = v.as_u64() {
+        return Some(n);
+    }
+    if let Some(n) = v.as_i64() {
+        return u64::try_from(n).ok();
+    }
+    if let Some(s) = v.as_str() {
+        return s.parse().ok();
+    }
+    None
 }

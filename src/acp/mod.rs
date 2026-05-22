@@ -183,6 +183,15 @@ mod reader_tests_tool_summary_human_bugs;
 mod reader_tests_trace_iterable;
 
 #[cfg(test)]
+mod kpop_stdout_logger_plan_helpers;
+#[cfg(test)]
+#[path = "kpop_stdout_logger_plan_check.rs"]
+mod kpop_stdout_logger_plan_check;
+#[cfg(test)]
+#[path = "kpop_stdout_logger_plan_check_ext.rs"]
+mod kpop_stdout_logger_plan_check_ext;
+
+#[cfg(test)]
 mod kiss_coverage;
 
 #[cfg(test)]

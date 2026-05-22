@@ -80,6 +80,8 @@ pub(crate) struct TraceFileStdout<'a> {
     pub stream_iterable_closed: Option<super::IterableClosedStream>,
     pub tee_line_override: Option<&'a str>,
     pub tee_line_display: Option<&'a str>,
+    /// When set, trace file and stdout tee share this timestamp (tool-summary path).
+    pub ts: Option<&'a str>,
 }
 
 struct TraceTeeStdoutCtx<'a> {
@@ -98,7 +100,9 @@ pub async fn trace_file_write_line(
     stdout: TraceFileStdout<'_>,
 ) {
     let display_line = format_trace_display_line(line, kind);
-    let ts = crate::output::timestamp_now_string();
+    let ts = stdout
+        .ts
+        .map_or_else(crate::output::timestamp_now_string, str::to_string);
     let formatted = if writer.plain_lines {
         display_line.clone()
     } else {
@@ -163,6 +167,7 @@ pub async fn write_trace_line_coalesced(
                     stream_iterable_closed: stream,
                     tee_line_override: None,
                     tee_line_display: None,
+                    ts: None,
                 },
             )
             .await;
@@ -179,6 +184,7 @@ pub async fn write_trace_line_coalesced(
                 stream_iterable_closed: stream,
                 tee_line_override: None,
                 tee_line_display: None,
+                ts: None,
             },
         )
         .await;
@@ -198,6 +204,7 @@ pub async fn write_trace_line_coalesced(
             stream_iterable_closed: None,
             tee_line_override: None,
             tee_line_display: None,
+            ts: None,
         },
     )
     .await;

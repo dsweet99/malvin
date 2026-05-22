@@ -20,6 +20,8 @@ struct ToolCallRecord {
     kind: String,
     title: String,
     command: Option<String>,
+    input_path: Option<String>,
+    input_line_range: Option<LineRange>,
     started: Instant,
     stdout_start_emitted: bool,
 }
@@ -72,26 +74,46 @@ pub fn tool_summary_lines(
     })
 }
 
+fn new_tool_call_record(parsed: &ParsedToolUpdate) -> ToolCallRecord {
+    ToolCallRecord {
+        kind: parsed.kind.clone(),
+        title: parsed.title.clone(),
+        command: parsed.command.clone(),
+        input_path: parsed.input_path.clone(),
+        input_line_range: parsed.input_line_range,
+        started: Instant::now(),
+        stdout_start_emitted: false,
+    }
+}
+
+fn merge_parsed_into_record(entry: &mut ToolCallRecord, parsed: &ParsedToolUpdate) {
+    if !parsed.kind.is_empty() && parsed.kind != "unknown" {
+        entry.kind = parsed.kind.clone();
+    }
+    if !parsed.title.is_empty() {
+        entry.title = parsed.title.clone();
+    }
+    if let Some(cmd) = parsed.command.as_ref() {
+        entry.command = Some(cmd.clone());
+        if entry.title.is_empty() {
+            entry.title = cmd.clone();
+        }
+    }
+    if let Some(path) = parsed.input_path.as_ref() {
+        entry.input_path = Some(path.clone());
+    }
+    if let Some(line_range) = parsed.input_line_range {
+        entry.input_line_range = Some(line_range);
+    }
+}
+
 impl ToolSummaryTracker {
     fn apply(&mut self, parsed: &ParsedToolUpdate) {
-        let entry = self.calls.entry(parsed.id.clone()).or_insert_with(|| ToolCallRecord {
-            kind: parsed.kind.clone(),
-            title: parsed.title.clone(),
-            command: parsed.command.clone(),
-            started: Instant::now(),
-            stdout_start_emitted: false,
-        });
-        if !parsed.kind.is_empty() && parsed.kind != "unknown" {
-            entry.kind = parsed.kind.clone();
-        }
-        if !parsed.title.is_empty() {
-            entry.title = parsed.title.clone();
-        }
-        if let Some(cmd) = parsed.command.as_ref() {
-            entry.command = Some(cmd.clone());
-            if entry.title.is_empty() {
-                entry.title = cmd.clone();
-            }
+        if let Some(entry) = self.calls.get_mut(&parsed.id) {
+            merge_parsed_into_record(entry, parsed);
+        } else {
+            self.calls
+                .insert(parsed.id.clone(), new_tool_call_record(parsed));
         }
     }
 
