@@ -87,6 +87,21 @@ struct TraceTeeStdoutCtx<'a> {
 
 include!("trace_line_write_tee.inc");
 
+fn parsed_tool_call_lifecycle_line(parsed: Option<&Value>) -> bool {
+    let Some(parsed) = parsed else {
+        return false;
+    };
+    if parsed.get("method").and_then(Value::as_str) != Some("session/update") {
+        return false;
+    }
+    matches!(
+        parsed
+            .pointer("/params/update/sessionUpdate")
+            .and_then(Value::as_str),
+        Some("tool_call" | "tool_call_update")
+    )
+}
+
 pub async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
     line: &str,
@@ -170,13 +185,14 @@ pub async fn write_trace_line_coalesced(
         )
         .await;
     }
-    let unparsed_tee = opts.tee_stdout && opts.parsed.is_none();
+    let raw_protocol_tee =
+        opts.tee_stdout && (opts.parsed.is_none() || parsed_tool_call_lifecycle_line(opts.parsed));
     trace_file_write_line(
         trace_file,
         opts.raw_line,
         None,
         TraceFileStdout {
-            tee_stdout: unparsed_tee,
+            tee_stdout: raw_protocol_tee,
             stream_iterable_closed: None,
         },
     )
