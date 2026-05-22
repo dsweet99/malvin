@@ -173,6 +173,12 @@ mod reader_tests_tool_summary_trace;
 #[path = "reader_tests_tool_summary_kinds.rs"]
 mod reader_tests_tool_summary_kinds;
 #[cfg(test)]
+#[path = "reader_tests_tool_summary_human.rs"]
+mod reader_tests_tool_summary_human;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_human_bugs.rs"]
+mod reader_tests_tool_summary_human_bugs;
+#[cfg(test)]
 #[path = "reader_tests_trace_iterable.rs"]
 mod reader_tests_trace_iterable;
 

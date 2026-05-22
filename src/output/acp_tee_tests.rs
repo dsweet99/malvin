@@ -1,8 +1,8 @@
 use super::acp_tee::{
-    AcpTeeDirection, AcpTeeLineFmt, acp_tee_display_line, acp_tee_log_line, acp_tee_log_prefix,
-    format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi,
-    format_line_with_timestamp_acp_ansi_payload, print_stdout_acp_tee_line,
-    print_stdout_acp_tee_line_with_timestamp,
+    AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, acp_tee_display_line, acp_tee_log_line,
+    acp_tee_log_prefix, format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi,
+    format_line_with_timestamp_acp_ansi_payload, print_stdout_acp_tool_summary_tee,
+    print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
 };
 use super::acp_tee_markdown::termimad_text_lines_for_stdout;
 use super::{TermimadStdoutGate, termimad_inline_payload_for_stdout};
@@ -23,7 +23,7 @@ fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
     assert!(!acp_tee_log_line(&ctx).starts_with("20260413"));
     assert!(!acp_tee_log_prefix(&ctx).starts_with("20260413"));
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "probe");
-    print_stdout_acp_tee_line_with_timestamp(&super::acp_tee::AcpTeeStdoutEvent {
+    print_stdout_acp_tee_line_with_timestamp(&AcpTeeStdoutEvent {
         direction: AcpTeeDirection::ToAgent,
         who: "w",
         line: "plain",
@@ -31,6 +31,17 @@ fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
         emit_stdout_markdown: false,
         dim_payload: false,
     });
+    print_stdout_acp_tool_summary_tee(
+        &AcpTeeStdoutEvent {
+            direction: AcpTeeDirection::FromAgent,
+            who: "k",
+            line: "Run cargo test · 1.0s · ✓",
+            ts: "ts",
+            emit_stdout_markdown: false,
+            dim_payload: false,
+        },
+        "Run cargo test · 1.0s · ✓",
+    );
 }
 
 #[test]

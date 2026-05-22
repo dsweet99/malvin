@@ -70,6 +70,7 @@ async fn flush_coalesce_lines(
                 tee_stdout,
                 stream_iterable_closed: stream,
                 tee_line_override: None,
+                tee_line_display: None,
             },
         )
         .await;
@@ -148,6 +149,7 @@ async fn trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
             tee_stdout: true,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;

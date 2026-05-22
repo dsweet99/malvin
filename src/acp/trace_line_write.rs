@@ -2,7 +2,8 @@
 
 use super::{
     PromptTraceWriter, SessionUpdateChunkKind, TraceChunkCoalescer, VerboseTraceCoalesceState,
-    session_update_chunk_parts, tool_summary::{ToolSummaryDetail, tool_summary_lines},
+    session_update_chunk_parts,
+    tool_summary::{ToolSummaryDetail, tool_summary_lines, tool_summary_stdout_display},
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -78,6 +79,7 @@ pub(crate) struct TraceFileStdout<'a> {
     pub tee_stdout: bool,
     pub stream_iterable_closed: Option<super::IterableClosedStream>,
     pub tee_line_override: Option<&'a str>,
+    pub tee_line_display: Option<&'a str>,
 }
 
 struct TraceTeeStdoutCtx<'a> {
@@ -87,6 +89,7 @@ struct TraceTeeStdoutCtx<'a> {
 }
 
 include!("trace_line_write_tee.inc");
+include!("trace_line_write_tool_summary.inc");
 
 pub async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
@@ -135,6 +138,7 @@ pub async fn trace_file_write_line(
     trace_tee_stdout_line(
         writer,
         stdout_line,
+        stdout.tee_line_display,
         &TraceTeeStdoutCtx {
             tee_stdout: stdout.tee_stdout,
             kind,
@@ -158,6 +162,7 @@ pub async fn write_trace_line_coalesced(
                     tee_stdout: opts.tee_stdout,
                     stream_iterable_closed: stream,
                     tee_line_override: None,
+                    tee_line_display: None,
                 },
             )
             .await;
@@ -173,26 +178,13 @@ pub async fn write_trace_line_coalesced(
                 tee_stdout: opts.tee_stdout,
                 stream_iterable_closed: stream,
                 tee_line_override: None,
+                tee_line_display: None,
             },
         )
         .await;
     }
     if let Some(parsed) = opts.parsed {
-        if let Some(summary) =
-            tool_summary_lines(parsed, &mut coalesce.tool_tracker, ToolSummaryDetail::Stdout)
-        {
-            let stdout_override = summary.stdout.as_str();
-            trace_file_write_line(
-                trace_file,
-                &summary.log,
-                None,
-                TraceFileStdout {
-                    tee_stdout: opts.tee_stdout,
-                    stream_iterable_closed: None,
-                    tee_line_override: Some(stdout_override),
-                },
-            )
-            .await;
+        if write_tool_summary_trace_line(trace_file, coalesce, parsed, opts.tee_stdout).await {
             return;
         }
     }
@@ -205,6 +197,7 @@ pub async fn write_trace_line_coalesced(
             tee_stdout: raw_protocol_tee,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;

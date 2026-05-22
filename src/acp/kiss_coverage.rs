@@ -171,6 +171,20 @@ fn smoke_acp_tool_summary_test_names() {
     );
     let _ = stringify!(crate::acp::reader_tests_tool_summary_trace::long_command_uses_middle_ellipsis);
     let _ = stringify!(crate::acp::reader_tests_tool_summary_trace::write_parsed_trace_line);
+    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_read_done_prose_and_humanized_size);
+    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_start_suppressed_until_running_threshold);
+    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_execute_failure_shows_exit_and_error);
+    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_display_ansi_stripped_matches_plain);
+    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::log_channel_stays_key_value);
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_execute_failed_without_exit_code_must_not_show_checkmark
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_read_done_without_raw_output_still_emits_prose
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_pending_update_tees_human_start_line
+    );
     let _ = stringify!(
         crate::acp::jsonl_trace::tests::trace_jsonl_append_records_raw_line_before_human_summary
     );

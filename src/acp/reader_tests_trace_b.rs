@@ -30,6 +30,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
             tee_stdout: false,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;
@@ -72,6 +73,7 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
             tee_stdout: false,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;
@@ -83,6 +85,7 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
             tee_stdout: false,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;
@@ -128,6 +131,7 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
             tee_stdout: false,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;
@@ -166,6 +170,7 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
             tee_stdout: false,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;
@@ -207,6 +212,7 @@ async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
             tee_stdout: true,
             stream_iterable_closed: None,
             tee_line_override: None,
+            tee_line_display: None,
         },
     )
     .await;

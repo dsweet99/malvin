@@ -36,7 +36,12 @@ fn trace_tee_stdout_event<'a>(
     }
 }
 
-fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
+fn trace_tee_stdout_line(
+    writer: &mut PromptTraceWriter,
+    line: &str,
+    display_line: Option<&str>,
+    ctx: &TraceTeeStdoutCtx<'_>,
+) {
     if !ctx.tee_stdout {
         return;
     }
@@ -44,25 +49,25 @@ fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &Trace
         print_tee_unprefixed_wrapped_line(line);
         return;
     }
-    match writer.stdout_replacement {
-        Some(rep) => {
-            if !writer.placeholder_emitted {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, rep, ctx.ts, false,
-                ));
-                writer.placeholder_emitted = true;
-            }
+    if let Some(rep) = writer.stdout_replacement {
+        if !writer.placeholder_emitted {
+            crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+                writer, rep, ctx.ts, false,
+            ));
+            writer.placeholder_emitted = true;
         }
-        None => {
-            if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, true,
-                ));
-            } else {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, false,
-                ));
-            }
-        }
+    } else if let Some(display) = display_line {
+        crate::output::print_stdout_acp_tool_summary_tee(
+            &trace_tee_stdout_event(writer, line, ctx.ts, false),
+            display,
+        );
+    } else if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
+        crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+            writer, line, ctx.ts, true,
+        ));
+    } else {
+        crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
+            writer, line, ctx.ts, false,
+        ));
     }
 }

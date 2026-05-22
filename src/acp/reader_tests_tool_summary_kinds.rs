@@ -86,6 +86,8 @@ fn search_done_matches_and_truncated() {
     });
     let mut tracker = ToolSummaryTracker::default();
     let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
-    assert!(lines.stdout.contains("matches=242"));
-    assert!(lines.stdout.contains("truncated=true"));
+    let stdout = lines.stdout.as_deref().unwrap_or("");
+    assert!(stdout.contains("242 matches"));
+    assert!(stdout.contains("(truncated)"));
+    assert!(!stdout.contains("truncated=false"));
 }

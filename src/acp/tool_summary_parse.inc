@@ -5,6 +5,8 @@ struct ParsedToolUpdate {
     title: String,
     status: Option<String>,
     command: Option<String>,
+    input_path: Option<String>,
+    search_query: Option<String>,
     raw_output: Option<Value>,
 }
 
@@ -46,6 +48,8 @@ fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
     let session_update = update.get("sessionUpdate").and_then(Value::as_str)?;
     let phase = phase_for_session_update(session_update, update.get("status").and_then(Value::as_str))?;
     let id = update.get("toolCallId").and_then(Value::as_str)?.to_string();
+    let raw_input = update.get("rawInput");
+    let raw_output = update.get("rawOutput");
     Some(ParsedToolUpdate {
         phase,
         id,
@@ -60,10 +64,30 @@ fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
             .unwrap_or("")
             .to_string(),
         status: update.get("status").and_then(Value::as_str).map(str::to_string),
-        command: update
-            .pointer("/rawInput/command")
+        command: raw_input
+            .and_then(|v| v.get("command"))
             .and_then(Value::as_str)
             .map(str::to_string),
-        raw_output: update.get("rawOutput").cloned(),
+        input_path: acp_path_field(raw_input).or_else(|| acp_path_field(raw_output)),
+        search_query: acp_search_query_field(raw_input).or_else(|| acp_search_query_field(raw_output)),
+        raw_output: raw_output.cloned(),
     })
+}
+
+fn acp_path_field(raw_input: Option<&Value>) -> Option<String> {
+    let v = raw_input?;
+    v.get("path")
+        .or_else(|| v.get("filePath"))
+        .or_else(|| v.get("uri"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+fn acp_search_query_field(raw_input: Option<&Value>) -> Option<String> {
+    let v = raw_input?;
+    v.get("query")
+        .or_else(|| v.get("pattern"))
+        .or_else(|| v.get("searchQuery"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
 }

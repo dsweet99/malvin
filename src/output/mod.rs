@@ -15,7 +15,8 @@ pub use stdout_display::{print_stdout_line, print_stdout_text};
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeStdoutEvent, TermimadStdoutGate, format_line_with_timestamp_acp_ansi,
     print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
-    print_stdout_acp_tee_line_with_timestamp_dim_plain, termimad_inline_payload_for_stdout,
+    print_stdout_acp_tee_line_with_timestamp_dim_plain, print_stdout_acp_tool_summary_tee,
+    termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
 

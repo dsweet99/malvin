@@ -434,3 +434,49 @@ fn kiss_cov_src_stdout_log_path_rs_set_stdout_log_path() {
 fn kiss_cov_src_time_format_rs_timestamp_now_string() {
     let _ = stringify!(crate::time_format::timestamp_now_string);
 }
+
+#[test]
+fn kiss_cov_src_acp_tool_summary_rs_tool_summary_lines() {
+    let _ = stringify!(crate::acp::tool_summary::tool_summary_lines);
+}
+
+#[test]
+fn kiss_cov_src_acp_tool_summary_rs_format_tool_stdout() {
+    let _ = stringify!(crate::acp::tool_summary::format_tool_stdout);
+}
+
+#[test]
+fn kiss_cov_src_acp_tool_summary_rs_execute_effective_exit() {
+    let _ = stringify!(crate::acp::tool_summary::execute_effective_exit);
+}
+
+#[test]
+fn kiss_cov_src_acp_tool_summary_rs_tool_summary_stdout_display() {
+    let _ = stringify!(crate::acp::tool_summary::tool_summary_stdout_display);
+}
+
+#[test]
+fn kiss_cov_src_output_acp_tee_rs_print_stdout_acp_tool_summary_tee() {
+    let _ = stringify!(crate::output::acp_tee::print_stdout_acp_tool_summary_tee);
+}
+
+#[test]
+fn kiss_cov_reader_tests_tool_summary_human_bugs_execute_fail() {
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_execute_failed_without_exit_code_must_not_show_checkmark
+    );
+}
+
+#[test]
+fn kiss_cov_reader_tests_tool_summary_human_bugs_read_no_raw() {
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_read_done_without_raw_output_still_emits_prose
+    );
+}
+
+#[test]
+fn kiss_cov_reader_tests_tool_summary_human_bugs_pending_stdout() {
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_pending_update_tees_human_start_line
+    );
+}

@@ -4,7 +4,10 @@ pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
 use super::{ANSI_DIM, ANSI_RESET};
-use super::{format_line_stdout, format_log_tag_inner, stdout_use_color, timestamp_now_string};
+use super::{
+    format_line_stdout, format_line_with_timestamp, format_log_tag_inner, stdout_use_color,
+    timestamp_now_string,
+};
 
 use crate::ansi_strip::strip_ansi_escapes;
 use unicode_width::UnicodeWidthStr;
@@ -111,6 +114,20 @@ pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &s
 }
 
 /// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
+pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
+    let display_ctx = AcpTeeLineFmt {
+        ts: ev.ts,
+        direction: ev.direction,
+        who: ev.who,
+        line: display_payload,
+        dim_payload: ev.dim_payload,
+    };
+    super::print_stdout_rendered_line(
+        &format_line_with_timestamp_acp_ansi_payload(&display_ctx),
+        &format_line_with_timestamp(ev.ts, ev.who, ev.line),
+    );
+}
+
 pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
     let ctx = AcpTeeLineFmt {
         ts: ev.ts,

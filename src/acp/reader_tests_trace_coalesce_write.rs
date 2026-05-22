@@ -78,8 +78,8 @@ fn assert_tool_call_lifecycle_summary_tee(trace: &str, stdout: &str) {
         "prompt trace must include tool start and running summaries; got {trace:?}"
     );
     assert!(
-        stdout.contains("[tool] start") && stdout.contains("[tool] running"),
-        "tool summaries must tee to stdout when tee_stdout is enabled; got {stdout:?}"
+        !stdout.contains("[tool] start") && !stdout.contains("[tool] running"),
+        "sub-second tool start/running must not tee to stdout (deferred/collapsed per plan); got {stdout:?}"
     );
     assert!(
         !stdout.contains("tool_call_update"),

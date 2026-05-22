@@ -74,17 +74,25 @@ fn parse_tool_update_running_and_done() {
     let mut tracker = ToolSummaryTracker::default();
     let s = tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
     assert!(s.log.contains("[tool] start"));
+    assert!(s.log.contains("echo hi"), "start log should retain command: {}", s.log);
     let r = tool_summary_lines(&running, &mut tracker, ToolSummaryDetail::Log).unwrap();
     assert!(r.log.contains("[tool] running"));
     assert!(r.log.contains("elapsed="));
-    let d = tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    assert_eq!(tracker.stored_command("tool_x"), Some("echo hi"));
+    let d_out = tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
+    let stdout = d_out.stdout.as_deref().unwrap_or("");
+    assert!(stdout.contains("Run echo hi"));
+    assert!(stdout.contains('✓'));
+    assert!(!stdout.contains("exit=0"));
+    assert!(!stdout.contains("stdout="));
+    let mut tracker_log = ToolSummaryTracker::default();
+    tool_summary_lines(&start, &mut tracker_log, ToolSummaryDetail::Log).unwrap();
+    tool_summary_lines(&running, &mut tracker_log, ToolSummaryDetail::Log).unwrap();
+    let d = tool_summary_lines(&done, &mut tracker_log, ToolSummaryDetail::Log).unwrap();
     assert!(d.log.contains("[tool] done"));
     assert!(d.log.contains("exit=0"));
     assert!(d.log.contains("stdout=3B"));
     assert!(!d.log.contains("ok\n"));
-    let d_out = tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
-    assert!(d_out.stdout.contains("exit=0"));
-    assert!(!d_out.stdout.contains("stdout="));
 }
 
 #[test]
