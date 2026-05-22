@@ -231,6 +231,41 @@ fn kiss_cov_src_cli_do_flow_rs_run_do_acp() {
 }
 
 #[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_prepare_mbc2_prompt_store() {
+    let _ = stringify!(crate::mbc2_flow::prepare_mbc2_prompt_store);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_new_mbc2_client() {
+    let _ = stringify!(crate::mbc2_flow::new_mbc2_client);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_snapshot_mbc2_session_dotfiles() {
+    let _ = stringify!(crate::mbc2_flow::snapshot_mbc2_session_dotfiles);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_prepare_mbc2_run() {
+    let _ = stringify!(crate::mbc2_flow::prepare_mbc2_run);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_run_mbc2_coder_prompt() {
+    let _ = stringify!(crate::mbc2_flow::run_mbc2_coder_prompt);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_run_mbc2_acp() {
+    let _ = stringify!(crate::mbc2_flow::run_mbc2_acp);
+}
+
+#[test]
+fn kiss_cov_src_cli_mbc2_flow_rs_mbc2_run_prep() {
+    let _ = stringify!(crate::mbc2_flow::Mbc2RunPrep);
+}
+
+#[test]
 fn kiss_cov_src_cli_repo_checks_gate_log_rs_try_append_log_line() {
     let _ = stringify!(crate::cli::repo_checks::gate_log::try_append_log_line);
 }

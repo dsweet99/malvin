@@ -10,6 +10,7 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
+        Commands::Mbc2(_) => include_str!("../../default_prompts/docs/mbc2.md"),
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
         Commands::Bug(_) => include_str!("../../default_prompts/docs/bug.md"),
@@ -39,7 +40,7 @@ pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::args::{Commands, KpopArgs};
+    use crate::cli::args::{Commands, KpopArgs, Mbc2Args};
     use crate::cli::models_cmd::ModelsArgs;
     use crate::cli::Cli;
     use clap::Parser;
@@ -61,6 +62,11 @@ mod tests {
             request: None,
         }));
         assert!(md.starts_with("# malvin "));
+        let md = command_doc_markdown(&Commands::Mbc2(Mbc2Args {
+            num_ideas: 3,
+            request: None,
+        }));
+        assert!(md.starts_with("# malvin mbc2"));
     }
 
     #[test]

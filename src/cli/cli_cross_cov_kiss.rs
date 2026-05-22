@@ -16,6 +16,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = super::entrypoint::require_kiss_for_cli_command;
     let _ = stringify!(super::entrypoint::run_async_cli);
     let _ = stringify!(super::entrypoint::run_code_command);
+    let _ = stringify!(super::entrypoint::run_mbc2_command);
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
@@ -90,6 +91,10 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<super::Cli> = None;
     let _: Option<super::Commands> = None;
     let _: Option<crate::do_flow::DoArgs> = None;
+    let _: Option<crate::mbc2_flow::Mbc2Args> = None;
+    let _ = stringify!(crate::mbc2_flow::render_mbc2_prompt);
+    let _ = stringify!(crate::mbc2_flow::build_mbc2_render_context);
+    let _ = stringify!(crate::mbc2_flow::run_mbc2);
     let _: Option<super::models_cmd::ModelsArgs> = None;
     let _: Option<super::WorkflowCliOptions> = None;
     let _: Option<super::AgentStdoutTeeFlags> = None;

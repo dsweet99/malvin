@@ -2,7 +2,7 @@ use clap::Parser;
 
 use super::{
     Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
-    run_plan, run_tidy,
+    run_mbc2, run_plan, run_tidy,
 };
 use super::models_cmd;
 
@@ -13,7 +13,11 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
         Commands::Bug(_) => require_kiss_for_malvin("bug"),
-        Commands::Do(_) | Commands::Init(_) | Commands::Kpop(_) | Commands::Models(_) => Ok(()),
+        Commands::Do(_)
+        | Commands::Init(_)
+        | Commands::Kpop(_)
+        | Commands::Mbc2(_)
+        | Commands::Models(_) => Ok(()),
     }
 }
 
@@ -154,6 +158,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 },
             )
         }),
+        Commands::Mbc2(mbc2) => run_mbc2_command(mbc2, shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -172,6 +177,19 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
         }
         Commands::Models(_) => models_cmd::run_models(),
     }
+}
+
+fn run_mbc2_command(mbc2: crate::mbc2_flow::Mbc2Args, shared: &SharedOpts) -> Result<(), String> {
+    run_async_cli(|| {
+        run_mbc2(
+            mbc2,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+                run_learn: false,
+            },
+        )
+    })
 }
 
 fn run_code_command(code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {

@@ -125,6 +125,9 @@ pub mod init_cmd;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
 
+#[path = "cli/mbc2_flow.rs"]
+pub mod mbc2_flow;
+
 #[path = "cli/plan_flow/mod.rs"]
 pub mod plan_flow;
 
