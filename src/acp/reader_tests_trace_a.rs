@@ -8,7 +8,7 @@ fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     assert_eq!(fin.len(), 1);
     assert_eq!(
         fin[0],
-        (SessionUpdateChunkKind::Message, "hello".to_string())
+        (SessionUpdateChunkKind::Message, "hello".to_string(), None)
     );
 }
 
@@ -18,19 +18,19 @@ fn trace_chunk_coalescer_feed_preserves_repeated_interleaved_order() {
     assert!(c.feed(SessionUpdateChunkKind::Message, "m1").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t1"),
-        vec![(SessionUpdateChunkKind::Message, "m1".to_string())]
+        vec![(SessionUpdateChunkKind::Message, "m1".to_string(), None)]
     );
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Message, "m2"),
-        vec![(SessionUpdateChunkKind::Thought, "t1".to_string())]
+        vec![(SessionUpdateChunkKind::Thought, "t1".to_string(), None)]
     );
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t2"),
-        vec![(SessionUpdateChunkKind::Message, "m2".to_string())]
+        vec![(SessionUpdateChunkKind::Message, "m2".to_string(), None)]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Thought, "t2".to_string())]
+        vec![(SessionUpdateChunkKind::Thought, "t2".to_string(), None)]
     );
 }
 
@@ -40,11 +40,11 @@ fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_the
     assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Message, "m"),
-        vec![(SessionUpdateChunkKind::Thought, "t".to_string()),]
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None),]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Message, "m".to_string())]
+        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None)]
     );
 }
 
@@ -54,11 +54,11 @@ fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_message_the
     assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t"),
-        vec![(SessionUpdateChunkKind::Message, "m".to_string()),]
+        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None),]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Thought, "t".to_string())]
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None)]
     );
 }
 
@@ -69,8 +69,8 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
     assert_eq!(
         out,
         vec![
-            (SessionUpdateChunkKind::Message, "yes".to_string()),
-            (SessionUpdateChunkKind::Message, "yes".to_string()),
+            (SessionUpdateChunkKind::Message, "yes".to_string(), None),
+            (SessionUpdateChunkKind::Message, "yes".to_string(), None),
         ],
         "consecutive identical lines must not be deduplicated"
     );
@@ -96,6 +96,7 @@ async fn write_trace_line_coalesced_writes_non_chunk_lines() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -137,6 +138,7 @@ async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
     let mut c = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});
@@ -176,6 +178,7 @@ async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
     let mut c = TraceChunkCoalescer::default();
     crate::acp::trace_line_write::write_trace_line_coalesced(
@@ -207,5 +210,8 @@ fn trace_chunk_coalescer_emits_at_cap_like_verbose() {
     assert_eq!(out[0].1.chars().count(), max);
     let fin = c.flush_all();
     assert_eq!(fin.len(), 1);
-    assert_eq!(fin[0], (SessionUpdateChunkKind::Message, "x".repeat(10)));
+    assert_eq!(
+        fin[0],
+        (SessionUpdateChunkKind::Message, "x".repeat(10), None)
+    );
 }

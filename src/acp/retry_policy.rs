@@ -19,6 +19,61 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("cannot use this model")
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum IterableClosedStream {
+    Writable,
+    Readable,
+}
+
+fn iterable_closed_in_ascii_lower(text: &str) -> bool {
+    text.contains("writableiterable is closed") || text.contains("readableiterable is closed")
+}
+
+/// Which iterable-closed error the coalesced buffer carries, if any.
+#[must_use]
+pub(crate) fn iterable_closed_stream_from_buffer(buf: &str) -> Option<IterableClosedStream> {
+    let text = buf.to_ascii_lowercase();
+    if text.contains("readableiterable is closed") {
+        Some(IterableClosedStream::Readable)
+    } else if text.contains("writableiterable is closed") {
+        Some(IterableClosedStream::Writable)
+    } else {
+        None
+    }
+}
+
+const fn iterable_closed_stream_message(kind: IterableClosedStream) -> &'static str {
+    match kind {
+        IterableClosedStream::Writable => "acp: WritableIterable is closed",
+        IterableClosedStream::Readable => "acp: ReadableIterable is closed",
+    }
+}
+
+/// Operational stderr line for [`crate::output::print_log_warning`] (not session `who` tee).
+#[must_use]
+pub(crate) fn operational_iterable_closed_log_line(msg: &str) -> Option<&'static str> {
+    let text = msg.to_ascii_lowercase();
+    if text.contains("writableiterable is closed") {
+        Some("acp: WritableIterable is closed")
+    } else if text.contains("readableiterable is closed") {
+        Some("acp: ReadableIterable is closed")
+    } else {
+        None
+    }
+}
+
+/// Line or parent coalesced stream carries iterable-closed (split emissions included).
+#[must_use]
+pub(crate) fn operational_iterable_closed_for_emit(
+    line: &str,
+    stream_iterable_closed: Option<IterableClosedStream>,
+) -> Option<&'static str> {
+    if let Some(line) = operational_iterable_closed_log_line(line) {
+        return Some(line);
+    }
+    stream_iterable_closed.map(iterable_closed_stream_message)
+}
+
 pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     let text = msg.to_ascii_lowercase();
     if text.contains("timed out")
@@ -28,7 +83,7 @@ pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
     {
         return true;
     }
-    if text.contains("writableiterable is closed") || text.contains("readableiterable is closed") {
+    if iterable_closed_in_ascii_lower(&text) {
         return true;
     }
     if text.contains("child process is dead")
@@ -100,114 +155,4 @@ pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRe
     }
     let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
     Ok(AgentRetryOutcome::Sleep(std::time::Duration::from_secs(secs)))
-}
-
-#[cfg(test)]
-mod retry_policy_tests {
-    use super::{
-        agent_string_is_cannot_use_model, agent_string_is_retriable, agent_string_is_upgrade_plan,
-        delimited_token_match, has_delimited_substring, is_identifier_byte, plan_agent_retry,
-        retries_noun, timeout_word_without_identifier_false_positive, AgentRetryOutcome,
-        MAX_AGENT_ATTEMPTS,
-    };
-    use std::time::Duration;
-
-    #[test]
-    fn upgrade_plan_substring_is_detected_case_insensitively() {
-        assert!(agent_string_is_upgrade_plan(
-            "Error: Upgrade Your Plan To Continue"
-        ));
-        assert!(!agent_string_is_upgrade_plan("timed out"));
-    }
-
-    #[test]
-    fn upgrade_plan_errors_do_not_retry() {
-        let msg = "billing: upgrade your plan to continue";
-        let err = plan_agent_retry(msg, 1).expect_err("upgrade plan must fail fast");
-        assert_eq!(err.0, msg);
-    }
-
-    #[test]
-    fn cannot_use_model_errors_do_not_retry() {
-        let msg = "Error: Cannot use this model with that provider";
-        assert!(agent_string_is_cannot_use_model(msg));
-        let err = plan_agent_retry(msg, 1).expect_err("invalid model must fail fast");
-        assert_eq!(err.0, msg);
-    }
-
-    #[test]
-    fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
-        let msg = "rpc [unavailable]: Cannot use this model";
-        let err = plan_agent_retry(msg, 1).expect_err("model error must beat retriable match");
-        assert_eq!(err.0, msg);
-    }
-
-    #[test]
-    fn retriable_timeout_delimited_without_timed_out_substring() {
-        assert!(agent_string_is_retriable("rpc: connection timeout"));
-        assert!(agent_string_is_retriable("session initialization failed"));
-        assert!(!agent_string_is_retriable("timeoutable"));
-        assert!(agent_string_is_retriable("rpc timeout"));
-        assert!(agent_string_is_retriable("error: timeout"));
-        assert!(!agent_string_is_retriable("atimeoutb"));
-    }
-
-    #[test]
-    fn retriable_transient_errors_match_known_agent_strings() {
-        assert!(agent_string_is_retriable("request timed out"));
-        assert!(agent_string_is_retriable("DEADLINE EXCEEDED"));
-        assert!(agent_string_is_retriable("WritableIterable is closed"));
-        assert!(agent_string_is_retriable("child process is zombie"));
-        assert!(agent_string_is_retriable("session/new failed"));
-        assert!(agent_string_is_retriable("rpc [unavailable]"));
-    }
-
-    #[test]
-    fn non_retriable_errors_stop_without_sleep() {
-        assert!(!agent_string_is_retriable("invalid json"));
-        let out = plan_agent_retry("invalid json", 1).unwrap();
-        assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
-    }
-
-    fn assert_retriable_sleep_secs(attempt: u32, expected_secs: u64) {
-        let out = plan_agent_retry("timed out", attempt).unwrap();
-        match out {
-            AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(expected_secs)),
-            AgentRetryOutcome::StopRetrying => {
-                panic!("expected Sleep({expected_secs}s), got StopRetrying")
-            }
-        }
-    }
-
-    #[test]
-    fn retriable_first_attempt_sleeps_one_second() {
-        assert_retriable_sleep_secs(1, 1);
-    }
-
-    #[test]
-    fn retriable_second_attempt_sleeps_three_seconds() {
-        assert_retriable_sleep_secs(2, 3);
-    }
-
-    #[test]
-    fn retriable_exhausts_after_max_agent_attempts() {
-        let out = plan_agent_retry("timed out", MAX_AGENT_ATTEMPTS).unwrap();
-        assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
-    }
-
-    #[test]
-    fn retries_noun_singular_and_plural() {
-        assert_eq!(retries_noun(1), "retry");
-        assert_eq!(retries_noun(2), "retries");
-    }
-
-    #[test]
-    fn delimited_token_helpers_match_agent_timeout_edge_cases() {
-        assert!(timeout_word_without_identifier_false_positive("rpc: connection timeout"));
-        assert!(!timeout_word_without_identifier_false_positive("atimeoutb"));
-        assert!(is_identifier_byte(b'a'));
-        assert!(!is_identifier_byte(b' '));
-        assert!(has_delimited_substring("session/new failed", "session/new"));
-        assert!(delimited_token_match("init session", "session"));
-    }
 }

@@ -129,6 +129,7 @@ impl AcpSession {
             emit_stdout_markdown: self.0.emit_stdout_markdown
                 && !meta.trace_raw_output
                 && !meta.plain_lines,
+            iterable_closed_warned: false,
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

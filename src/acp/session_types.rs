@@ -26,6 +26,8 @@ pub struct PromptTraceWriter {
     pub show_thoughts_on_stdout: bool,
     /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
+    /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
+    pub iterable_closed_warned: bool,
 }
 
 #[allow(clippy::struct_excessive_bools)]

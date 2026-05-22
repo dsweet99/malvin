@@ -1,4 +1,5 @@
 use crate::acp::*;
+use crate::acp::trace_line_write::TraceFileStdout;
 
 async fn trace_file_write_line_prefixes_with_prompt_who() {
     let dir = tempfile::tempdir().unwrap();
@@ -19,8 +20,18 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
-    crate::acp::trace_file_write_line(&mut writer, "hello", false, None).await;
+    crate::acp::trace_file_write_line(
+        &mut writer,
+        "hello",
+        None,
+        TraceFileStdout {
+            tee_stdout: false,
+            stream_iterable_closed: None,
+        },
+    )
+    .await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
     let inner = crate::output::format_log_tag_inner("review_1");
@@ -50,19 +61,26 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
         raw_output: true,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
+        iterable_closed_warned: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
         "internal reasoning",
-        false,
         Some(SessionUpdateChunkKind::Thought),
+        TraceFileStdout {
+            tee_stdout: false,
+            stream_iterable_closed: None,
+        },
     )
     .await;
     crate::acp::trace_file_write_line(
         &mut writer,
         "final answer",
-        false,
         Some(SessionUpdateChunkKind::Message),
+        TraceFileStdout {
+            tee_stdout: false,
+            stream_iterable_closed: None,
+        },
     )
     .await;
     drop(writer);
@@ -97,12 +115,16 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
         raw_output: true,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
+        iterable_closed_warned: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
         "assistant response",
-        false,
         Some(SessionUpdateChunkKind::Message),
+        TraceFileStdout {
+            tee_stdout: false,
+            stream_iterable_closed: None,
+        },
     )
     .await;
     drop(writer);
@@ -130,12 +152,16 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
         "internal reasoning",
-        false,
         Some(SessionUpdateChunkKind::Thought),
+        TraceFileStdout {
+            tee_stdout: false,
+            stream_iterable_closed: None,
+        },
     )
     .await;
     drop(writer);
@@ -166,12 +192,16 @@ async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
         raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
+        iterable_closed_warned: false,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
         "**x**",
-        true,
         Some(SessionUpdateChunkKind::Message),
+        TraceFileStdout {
+            tee_stdout: true,
+            stream_iterable_closed: None,
+        },
     )
     .await;
     drop(writer);

@@ -19,12 +19,15 @@ async fn reader_loop_finish(session: &mut ReaderLoopFinishCtx<'_>) {
 async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
     let mut g = session.trace_writer.lock().await;
     if let Some(ref mut f) = *g {
-        for (kind, tl) in session.trace_coalesce.flush_all() {
+        for (kind, tl, stream) in session.trace_coalesce.flush_all() {
             crate::acp::trace_file_write_line(
                 f,
                 &tl,
-                session.trace_opts.tee_trace_stdout,
                 Some(kind),
+                crate::acp::trace_line_write::TraceFileStdout {
+                    tee_stdout: session.trace_opts.tee_trace_stdout,
+                    stream_iterable_closed: stream,
+                },
             )
             .await;
         }

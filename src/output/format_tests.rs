@@ -196,6 +196,11 @@ fn append_stdout_log_line_writes_when_path_set() {
 }
 
 #[test]
+fn timestamp_now_string_cross_module_smoke() {
+    assert!(!crate::time_format::timestamp_now_string().is_empty());
+}
+
+#[test]
 fn output_timestamp_wrapper_nonempty() {
     let _ = crate::stdout_log_path::set_stdout_log_path;
     let _ = super::stdout_use_color;

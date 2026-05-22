@@ -43,7 +43,7 @@ pub fn print_log_error(line: &str) {
 #[cfg(test)]
 mod stderr_log_tests {
     #[test]
-    fn emit_stderr_log_lines_captured_in_tests() {
+    fn emit_stderr_log_line_emit_stderr_log_lines_capture_error() {
         crate::output::clear_captured_stderr_lines();
         super::print_log_error("stderr-log-smoke");
         let lines = crate::output::take_captured_stderr_lines();

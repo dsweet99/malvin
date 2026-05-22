@@ -140,6 +140,12 @@ mod reader_tests_trace_a;
 #[path = "reader_tests_trace_b.rs"]
 mod reader_tests_trace_b;
 #[cfg(test)]
+#[path = "reader_tests_trace_iterable.rs"]
+mod reader_tests_trace_iterable;
+#[cfg(test)]
+#[path = "reader_tests_retry_policy.rs"]
+mod reader_tests_retry_policy;
+#[cfg(test)]
 #[path = "reader_tests_permission.rs"]
 mod reader_tests_permission;
 #[cfg(test)]
