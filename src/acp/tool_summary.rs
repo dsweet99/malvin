@@ -58,6 +58,9 @@ pub fn tool_summary_lines(
     } else {
         format_tool_line(&parsed, tracker, ToolSummaryDetail::Stdout)
     };
+    if parsed.phase == TOOL_PHASE_DONE {
+        tracker.calls.remove(&parsed.id);
+    }
     Some(ToolSummaryLines { log, stdout })
 }
 
@@ -78,6 +81,100 @@ impl ToolSummaryTracker {
 
     fn record(&self, id: &str) -> Option<&ToolCallRecord> {
         self.calls.get(id)
+    }
+}
+
+#[cfg(test)]
+mod tool_summary_regressions {
+    use super::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
+    use serde_json::json;
+
+    #[test]
+    fn tool_call_update_unknown_status_must_not_be_labeled_running() {
+        let v = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "tool_unknown_status",
+                "kind": "execute",
+                "status": "queued"
+            }}
+        });
+        let mut tracker = ToolSummaryTracker::default();
+        let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Log).unwrap();
+        assert!(
+            !lines.log.contains("[tool] running"),
+            "unknown status must not be reported as running; got {:?}",
+            lines.log
+        );
+        assert!(
+            lines.log.contains("[tool] queued"),
+            "unknown status should use the status name as the phase label; got {:?}",
+            lines.log
+        );
+    }
+
+    #[test]
+    fn tracker_drops_record_after_tool_call_completes() {
+        let start = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "tool_evict",
+                "kind": "read",
+                "status": "pending",
+                "title": "Read"
+            }}
+        });
+        let done = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "tool_evict",
+                "kind": "read",
+                "status": "completed",
+                "rawOutput": {"content": "x"}
+            }}
+        });
+        let mut tracker = ToolSummaryTracker::default();
+        tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
+        tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Log).unwrap();
+        assert_eq!(
+            tracker.calls.len(),
+            0,
+            "completed tools should not be retained in tracker (minimal state per plan)"
+        );
+    }
+
+    #[test]
+    fn pending_update_includes_identifying_title_from_prior_start() {
+        let start = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "tool_pend_ctx",
+                "kind": "read",
+                "status": "pending",
+                "title": "Read File"
+            }}
+        });
+        let pending = json!({
+            "method": "session/update",
+            "params": {"update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "tool_pend_ctx",
+                "kind": "read",
+                "status": "pending"
+            }}
+        });
+        let mut tracker = ToolSummaryTracker::default();
+        tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
+        let lines = tool_summary_lines(&pending, &mut tracker, ToolSummaryDetail::Log).unwrap();
+        assert!(
+            lines.log.contains("[tool] pending") && lines.log.contains("Read File"),
+            "pending summary must identify the tool (plan: diagnose from last visible state); got {:?}",
+            lines.log
+        );
     }
 }
 

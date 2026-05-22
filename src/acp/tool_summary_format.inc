@@ -7,7 +7,7 @@ fn format_tool_line(
     let kind = rec.map_or(parsed.kind.as_str(), |r| r.kind.as_str());
     let mut parts = vec![
         "[tool]".to_string(),
-        tool_phase_label(parsed.phase).to_string(),
+        tool_phase_label(parsed.phase, parsed.status.as_deref()),
         format!("kind={kind}"),
         format!("id={}", parsed.id),
     ];
@@ -15,7 +15,7 @@ fn format_tool_line(
         if let Some(rec) = rec {
             append_elapsed(&mut parts, rec);
         }
-    } else if parsed.phase == TOOL_PHASE_START {
+    } else if parsed.phase == TOOL_PHASE_START || parsed.phase == TOOL_PHASE_PENDING {
         append_start_title(&mut parts, parsed, rec);
     }
     if parsed.phase == TOOL_PHASE_DONE {
