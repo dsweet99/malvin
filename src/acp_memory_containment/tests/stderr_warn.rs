@@ -1,4 +1,6 @@
-use crate::acp_memory_containment::{CONTAINMENT_UNAVAILABLE_WARN, emit_containment_unavailable_warn};
+use crate::acp_memory_containment::{
+    CONTAINMENT_UNAVAILABLE_WARN, emit_containment_unavailable_warn,
+};
 use crate::test_stderr_capture::capture_stderr_output;
 
 #[test]

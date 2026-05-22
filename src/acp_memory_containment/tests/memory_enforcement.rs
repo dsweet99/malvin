@@ -23,12 +23,9 @@ mod linux {
 
     #[tokio::test]
     async fn tiny_cgroup_memory_limit_kills_allocating_child() {
-        let Some(mut plan) =
-            crate::acp_memory_containment::try_prepare_cgroup_spawn_plan(&format!(
-                "enforce-{}",
-                std::process::id()
-            ))
-        else {
+        let Some(mut plan) = crate::acp_memory_containment::try_prepare_cgroup_spawn_plan(
+            &format!("enforce-{}", std::process::id()),
+        ) else {
             crate::acp_memory_containment::test_support::require_cgroup_integration_test();
             panic!("try_prepare_cgroup_spawn_plan failed on host with writable cgroups");
         };

@@ -179,4 +179,3 @@ mod child_health_smoke {
         let _ = health.zombie;
     }
 }
-

@@ -78,5 +78,4 @@ mod tests {
             "OSC may end with ST (ESC \\) instead of BEL"
         );
     }
-
 }

@@ -28,10 +28,7 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
 fn global_no_markdown_before_bug_subcommand() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "bug", "--no-learn"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(
-        cli.command,
-        Some(crate::cli::Commands::Bug(_))
-    ));
+    assert!(matches!(cli.command, Some(crate::cli::Commands::Bug(_))));
 }
 
 #[test]
@@ -48,10 +45,7 @@ fn do_parses_with_global_no_markdown_without_do_local_flag() {
 fn tidy_parses_with_global_no_markdown_and_without_request() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "tidy"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(
-        cli.command,
-        Some(crate::cli::Commands::Tidy(_))
-    ));
+    assert!(matches!(cli.command, Some(crate::cli::Commands::Tidy(_))));
 }
 
 #[test]
@@ -67,10 +61,7 @@ fn tidy_parses_without_request_and_runs_learn() {
 fn models_parses_with_global_no_markdown() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "models"]).expect("parse");
     assert!(cli.shared.no_markdown);
-    assert!(matches!(
-        cli.command,
-        Some(crate::cli::Commands::Models(_))
-    ));
+    assert!(matches!(cli.command, Some(crate::cli::Commands::Models(_))));
 }
 
 #[test]

@@ -3,10 +3,10 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use clap::Args;
 use crate::agent_or_cursor_agent_bin;
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
+use clap::Args;
 
 use crate::config::DEFAULT_CLI_MODEL;
 
@@ -191,8 +191,8 @@ mod tests {
 
     #[test]
     fn models_subcommand_parse_invokes_cli_helpers() {
-        use clap::Parser;
         use crate::cli::{Cli, Commands};
+        use clap::Parser;
         let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
         assert!(matches!(cli.command, Some(Commands::Models(_))));
         assert!(looks_like_tip_banner_line("tip: upgrade"));

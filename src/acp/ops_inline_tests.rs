@@ -14,7 +14,7 @@ fn write_path_executable(path: &Path) {
 #[cfg(unix)]
 mod resolve_agent_bin_unix_tests {
     use super::write_path_executable;
-    use crate::acp::resolve_agent_bin;
+    use crate::acp::{MALVIN_TEST_NO_REAL_AGENT_ENV, auth_probe, resolve_agent_bin};
 
     #[test]
     fn resolve_agent_bin_prefers_env_override() {
@@ -111,6 +111,64 @@ mod resolve_agent_bin_unix_tests {
                 std::env::set_var("PATH", value);
             } else {
                 std::env::remove_var("PATH");
+            }
+        }
+    }
+
+    #[test]
+    fn resolve_agent_bin_does_not_fall_back_when_real_agent_disabled() {
+        let _guard = crate::test_utils::test_env_lock();
+        let tmp = tempfile::tempdir().unwrap();
+        let path_dir = tmp.path().join("bin");
+        std::fs::create_dir(&path_dir).unwrap();
+        write_path_executable(&path_dir.join("agent"));
+        let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
+        let old_path = std::env::var_os("PATH");
+        let old_no_real_agent = std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV);
+
+        unsafe {
+            std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
+            std::env::set_var("PATH", &path_dir);
+        }
+
+        assert_eq!(resolve_agent_bin(), None);
+
+        unsafe {
+            if let Some(value) = old_override {
+                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
+            } else {
+                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            }
+            if let Some(value) = old_path {
+                std::env::set_var("PATH", value);
+            } else {
+                std::env::remove_var("PATH");
+            }
+            if let Some(value) = old_no_real_agent {
+                std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, value);
+            } else {
+                std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
+            }
+        }
+    }
+
+    #[test]
+    fn auth_probe_does_not_spawn_when_real_agent_disabled() {
+        let _guard = crate::test_utils::test_env_lock();
+        let old_no_real_agent = std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV);
+
+        unsafe {
+            std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
+        }
+
+        assert!(!auth_probe(&["sh", "-c", "exit 0"]));
+
+        unsafe {
+            if let Some(value) = old_no_real_agent {
+                std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, value);
+            } else {
+                std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
             }
         }
     }

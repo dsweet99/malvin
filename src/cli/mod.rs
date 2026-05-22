@@ -21,15 +21,18 @@ include!("code_flow_a.inc");
 include!("code_flow_b.inc");
 
 #[cfg(test)]
-mod cli_smoke_cov;
+#[path = "acp_post_run_tests.rs"]
+mod acp_post_run_tests;
 #[cfg(test)]
 mod cli_cross_cov;
 #[cfg(test)]
 mod cli_cross_cov_kiss;
 #[cfg(test)]
-#[path = "acp_post_run_tests.rs"]
-mod acp_post_run_tests;
+mod cli_smoke_cov;
 
+pub use crate::do_flow::run_do;
+pub use crate::ideas_flow::run_ideas;
+pub use crate::plan_flow::run_plan;
 pub use args::{BugArgs, Cli, CodeArgs, Commands, IdeasArgs, KpopArgs, PlanArgs};
 pub use bug_flow::run_bug;
 pub use entrypoint::entrypoint;
@@ -38,7 +41,4 @@ pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use tidy_flow::run_tidy;
-pub use crate::do_flow::run_do;
-pub use crate::ideas_flow::run_ideas;
-pub use crate::plan_flow::run_plan;
 pub const LEARN_MIN_ELAPSED_MS: u64 = crate::DEFAULT_LEARN_MIN_ELAPSED_MS;

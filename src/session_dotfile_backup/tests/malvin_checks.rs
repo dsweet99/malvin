@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use crate::test_utils::with_isolated_home;
 use crate::artifacts::{
     MalvinChecksBackup, backup_workspace_malvin_checks_if_present,
     backup_workspace_malvin_checks_if_present_with_id, restore_workspace_malvin_checks_backup,
 };
+use crate::test_utils::with_isolated_home;
 
 #[test]
 fn malvin_checks_backup_skips_when_workspace_file_missing() {

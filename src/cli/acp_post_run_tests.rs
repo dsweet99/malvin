@@ -119,7 +119,9 @@ fn merge_error_mentions_restore_detects_workspace_failure() {
     assert!(crate::acp_post_run::merge_error_mentions_restore(
         "workspace session restore failed: disk"
     ));
-    assert!(!crate::acp_post_run::merge_error_mentions_restore("unrelated"));
+    assert!(!crate::acp_post_run::merge_error_mentions_restore(
+        "unrelated"
+    ));
 }
 
 #[test]

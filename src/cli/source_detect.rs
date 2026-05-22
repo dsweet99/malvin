@@ -8,9 +8,11 @@ fn entry_name_has_extension(path: &Path, ext: &str) -> bool {
 }
 
 fn entry_name_is_workspace_marker(path: &Path) -> bool {
-    path.file_name().and_then(|n| n.to_str()).is_some_and(|name| {
-        name == "Cargo.toml" || name == "pyproject.toml" || name == "requirements.txt"
-    })
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| {
+            name == "Cargo.toml" || name == "pyproject.toml" || name == "requirements.txt"
+        })
 }
 
 fn resolved_symlink_target(link: &Path) -> Option<PathBuf> {
@@ -47,7 +49,8 @@ pub fn has_extension_files(dir: &Path, ext: &str) -> bool {
             };
             let path = entry.path();
             if file_type.is_symlink() {
-                if entry_or_symlink_file_target_matches(&path, |p| entry_name_has_extension(p, ext)) {
+                if entry_or_symlink_file_target_matches(&path, |p| entry_name_has_extension(p, ext))
+                {
                     return true;
                 }
                 continue;
@@ -236,5 +239,4 @@ mod tests {
             assert!(!has_source_files(tmp.path()));
         }
     }
-
 }

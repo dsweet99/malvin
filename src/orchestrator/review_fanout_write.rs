@@ -80,20 +80,19 @@ pub async fn finish_review_write_attempt(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ReviewAttemptFinish, fail_on_abort_for_artifacts, finish_review_write_attempt,
-    };
+    use super::{ReviewAttemptFinish, fail_on_abort_for_artifacts, finish_review_write_attempt};
     use crate::artifacts::create_run_artifacts_from_text;
     use crate::orchestrator::orchestrator_test_support::{
         empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke,
     };
-    use crate::orchestrator::review_fanout_run::{ReviewWriteCoderSession, run_review_write_coder_session};
+    use crate::orchestrator::review_fanout_run::{
+        ReviewWriteCoderSession, run_review_write_coder_session,
+    };
 
     #[test]
     fn fail_on_abort_ok_when_result_has_no_abort() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            create_run_artifacts_from_text("rfw_smoke", Some(tmp.path())).expect("art");
+        let artifacts = create_run_artifacts_from_text("rfw_smoke", Some(tmp.path())).expect("art");
         std::fs::write(artifacts.artifact_result_md(), "ok\n").expect("result");
         fail_on_abort_for_artifacts(&artifacts).expect("no abort");
     }
@@ -101,8 +100,7 @@ mod tests {
     #[test]
     fn fail_on_abort_err_when_result_contains_abort() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            create_run_artifacts_from_text("rfw_smoke", Some(tmp.path())).expect("art");
+        let artifacts = create_run_artifacts_from_text("rfw_smoke", Some(tmp.path())).expect("art");
         std::fs::write(artifacts.artifact_result_md(), "ABORT: stop\n").expect("result");
         let err = fail_on_abort_for_artifacts(&artifacts).expect_err("abort");
         assert_eq!(err.0, "ABORT: stop");

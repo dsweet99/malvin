@@ -1,5 +1,5 @@
 use super::acp_tee::{
-    acp_tee_display_line, acp_tee_log_line, acp_tee_log_prefix, AcpTeeDirection, AcpTeeLineFmt,
+    AcpTeeDirection, AcpTeeLineFmt, acp_tee_display_line, acp_tee_log_line, acp_tee_log_prefix,
     format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi,
     format_line_with_timestamp_acp_ansi_payload, print_stdout_acp_tee_line,
     print_stdout_acp_tee_line_with_timestamp,
@@ -19,8 +19,9 @@ fn acp_display_and_log_helpers_omit_timestamp_on_stdout_formatted_lines() {
     let plain_acp = format_line_acp_ansi_payload(&ctx);
     assert!(!plain_acp.contains("20260413"));
     assert!(acp_tee_display_line(&ctx).contains("hello"));
-    assert!(acp_tee_log_line(&ctx).starts_with("20260413"));
-    assert!(acp_tee_log_prefix(&ctx).starts_with("20260413"));
+    assert_eq!(acp_tee_display_line(&ctx), acp_tee_log_line(&ctx));
+    assert!(!acp_tee_log_line(&ctx).starts_with("20260413"));
+    assert!(!acp_tee_log_prefix(&ctx).starts_with("20260413"));
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "probe");
     print_stdout_acp_tee_line_with_timestamp(&super::acp_tee::AcpTeeStdoutEvent {
         direction: AcpTeeDirection::ToAgent,

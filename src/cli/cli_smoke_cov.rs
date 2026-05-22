@@ -49,8 +49,12 @@ fn smoke_merge_acp_with_workspace_session_restore() {
     let work = tempfile::tempdir().unwrap();
     let backups = empty_session_backups(work.path());
     assert!(
-        crate::acp_post_run::merge_acp_with_workspace_session_restore(Ok(()), work.path(), &backups)
-            .is_ok()
+        crate::acp_post_run::merge_acp_with_workspace_session_restore(
+            Ok(()),
+            work.path(),
+            &backups
+        )
+        .is_ok()
     );
 }
 

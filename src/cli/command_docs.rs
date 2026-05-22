@@ -40,9 +40,9 @@ pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::Cli;
     use crate::cli::args::{Commands, IdeasArgs, KpopArgs};
     use crate::cli::models_cmd::ModelsArgs;
-    use crate::cli::Cli;
     use clap::Parser;
 
     fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
@@ -114,5 +114,4 @@ mod tests {
             _ => panic!("expected Init"),
         }
     }
-
 }

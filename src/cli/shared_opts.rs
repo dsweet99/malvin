@@ -1,7 +1,7 @@
 //! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, `malvin bug`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `bug`, `plan`, `tidy` when the agent runs, `init` summary). It is a no-op for `models` (no agent). `malvin do` forces plain stdout regardless of `--no-markdown`.
 
-use clap::Args;
 pub use crate::config::DEFAULT_CLI_MODEL;
+use clap::Args;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
 const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown";

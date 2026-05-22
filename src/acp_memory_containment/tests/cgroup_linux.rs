@@ -1,13 +1,13 @@
 mod fs_tests {
-    use crate::acp_memory_containment::{
-        cgroup_v2_mount, parse_memory_events_oom, parse_memory_limit_bytes,
-        self_cgroup_v2_relative_path,
-    };
+    use crate::acp_memory_containment::cgroup_memory_max_is_limited;
     use crate::acp_memory_containment::{
         cgroup_line_lists_leaf, memory_limit_exceeded_at, memory_limit_exceeded_since_baseline,
         memory_limit_oom_baseline_at,
     };
-    use crate::acp_memory_containment::cgroup_memory_max_is_limited;
+    use crate::acp_memory_containment::{
+        cgroup_v2_mount, parse_memory_events_oom, parse_memory_limit_bytes,
+        self_cgroup_v2_relative_path,
+    };
 
     #[test]
     fn parse_memory_limit_bytes_accepts_digits() {
@@ -45,7 +45,10 @@ mod fs_tests {
 
     #[test]
     fn cgroup_line_lists_leaf_matches_suffix() {
-        assert!(cgroup_line_lists_leaf("0::/malvin-acp-1-0", "malvin-acp-1-0"));
+        assert!(cgroup_line_lists_leaf(
+            "0::/malvin-acp-1-0",
+            "malvin-acp-1-0"
+        ));
         assert!(!cgroup_line_lists_leaf("0::/other", "malvin-acp-1-0"));
     }
 
@@ -54,7 +57,10 @@ mod fs_tests {
         let v2_dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(v2_dir.path().join("memory.events"), "oom_kill 0\n").expect("write");
         let baseline = memory_limit_oom_baseline_at(v2_dir.path());
-        assert!(!memory_limit_exceeded_since_baseline(v2_dir.path(), baseline));
+        assert!(!memory_limit_exceeded_since_baseline(
+            v2_dir.path(),
+            baseline
+        ));
         assert!(!memory_limit_exceeded_at(v2_dir.path()));
 
         let v1_dir = tempfile::tempdir().expect("tempdir");

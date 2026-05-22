@@ -46,7 +46,11 @@ fn sync_review_file_for_attempt_does_not_promote_workspace_lgtm_to_empty_artifac
     let out = super::sync_review_file_for_attempt(&artifact, &workspace).unwrap();
     assert_eq!(out, None);
     assert!(
-        !artifact.exists() || std::fs::read_to_string(&artifact).unwrap().trim().is_empty(),
+        !artifact.exists()
+            || std::fs::read_to_string(&artifact)
+                .unwrap()
+                .trim()
+                .is_empty(),
         "workspace LGTM must not be copied into empty artifact"
     );
 }
@@ -235,4 +239,3 @@ fn tidy_reviewer_turn_double_clear_prevents_stale_lgtm_on_sync_attempt() {
         "stale LGTM must not survive the same double-clear prelude as run_tidy_review_attempt"
     );
 }
-

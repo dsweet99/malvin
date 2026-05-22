@@ -30,6 +30,7 @@ When you want to iterate quickly on a bit of code, try these fast tools:
 - Keep code consistent with `{{ plan_path }}` when this run includes a plan file.
 - Use (up to 4) parallel subagents whereven possible.
 - Do not write tests for tests. That's silly overkill.
+- In tests, avoid doing things that take a long or highly-variable amount of time. Also avoid external services if at all possible. They can be unreliable, and the operators might get annoyed if we keep using them just for our tests.
 
 ## Nota Bene & Hard Requirements
 ALL checks and tests should pass on ALL	files (not just the ones you modified). Don't tell me

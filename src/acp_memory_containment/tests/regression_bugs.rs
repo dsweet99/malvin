@@ -3,7 +3,9 @@ use crate::acp_memory_containment::finalize_containment_cgroup;
 #[test]
 fn remove_containment_cgroup_clears_active_flag() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let c = crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+    let c = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+        dir.path().to_path_buf(),
+    );
     assert!(c.active());
     finalize_containment_cgroup(&c);
     assert!(!c.active());
@@ -12,7 +14,9 @@ fn remove_containment_cgroup_clears_active_flag() {
 #[test]
 fn shared_containment_deactivates_when_cgroup_removed_on_sibling_handle() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let retained = crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+    let retained = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+        dir.path().to_path_buf(),
+    );
     assert!(retained.active());
     let prompt_local = retained.clone();
     finalize_containment_cgroup(&prompt_local);
@@ -24,7 +28,9 @@ fn shared_containment_deactivates_when_cgroup_removed_on_sibling_handle() {
 
 #[cfg(target_os = "linux")]
 mod linux_regression {
-    use super::{AGENT_EXCEEDED_MEMORY_LIMIT_MSG, finalize_containment_cgroup, map_acp_child_exit_message};
+    use super::{
+        AGENT_EXCEEDED_MEMORY_LIMIT_MSG, finalize_containment_cgroup, map_acp_child_exit_message,
+    };
 
     #[test]
     fn v1_failcnt_without_oom_kill_is_not_memory_limit_exceeded() {
@@ -54,7 +60,9 @@ mod linux_regression {
             !dir.path().join("memory.events").exists(),
             "fixture must be v1-only (no memory.events)"
         );
-        assert!(crate::acp_memory_containment::memory_limit_exceeded_at(dir.path()));
+        assert!(crate::acp_memory_containment::memory_limit_exceeded_at(
+            dir.path()
+        ));
     }
 
     #[test]
@@ -69,7 +77,9 @@ mod linux_regression {
     fn oom_message_still_mapped_after_containment_cgroup_removed() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("memory.events"), "oom_kill 0\n").expect("events");
-        let c = crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+        let c = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+            dir.path().to_path_buf(),
+        );
         std::fs::write(dir.path().join("memory.events"), "oom_kill 1\n").expect("events");
         assert_eq!(
             map_acp_child_exit_message(&c, "acp stdout closed"),
@@ -99,15 +109,19 @@ mod linux_regression {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("memory.events"), "oom_kill 0\n").expect("events");
         let baseline = crate::acp_memory_containment::memory_limit_oom_baseline_at(dir.path());
-        assert!(!crate::acp_memory_containment::memory_limit_exceeded_since_baseline(
-            dir.path(),
-            baseline
-        ));
+        assert!(
+            !crate::acp_memory_containment::memory_limit_exceeded_since_baseline(
+                dir.path(),
+                baseline
+            )
+        );
         std::fs::write(dir.path().join("memory.events"), "oom_kill 1\n").expect("events");
-        assert!(crate::acp_memory_containment::memory_limit_exceeded_since_baseline(
-            dir.path(),
-            baseline
-        ));
+        assert!(
+            crate::acp_memory_containment::memory_limit_exceeded_since_baseline(
+                dir.path(),
+                baseline
+            )
+        );
     }
 
     #[test]
@@ -124,8 +138,9 @@ mod linux_regression {
     fn memory_limit_exceeded_must_not_use_stale_cgroup_event_counters() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("memory.events"), "oom_kill 99\n").expect("events");
-        let containment =
-            crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+        let containment = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+            dir.path().to_path_buf(),
+        );
         assert!(
             !containment.memory_limit_exceeded(),
             "stale memory.events must not alone trigger memory_limit_exceeded"
@@ -136,8 +151,9 @@ mod linux_regression {
     fn map_acp_child_exit_message_must_not_use_stale_cgroup_oom_counters() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("memory.events"), "oom_kill 99\n").expect("events");
-        let containment =
-            crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+        let containment = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+            dir.path().to_path_buf(),
+        );
         assert_eq!(
             map_acp_child_exit_message(&containment, "acp child process is not running"),
             "acp child process is not running"
@@ -157,8 +173,9 @@ mod linux_regression {
     fn map_acp_child_exit_message_surfaces_oom_when_active() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::write(dir.path().join("memory.events"), "oom_kill 0\n").expect("events");
-        let containment =
-            crate::acp_memory_containment::test_support::active_with_cgroup_dir(dir.path().to_path_buf());
+        let containment = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
+            dir.path().to_path_buf(),
+        );
         std::fs::write(dir.path().join("memory.events"), "oom_kill 1\n").expect("events");
         assert_eq!(
             map_acp_child_exit_message(&containment, "acp stdout closed"),
@@ -171,9 +188,7 @@ mod linux_regression {
 mod complete_inactive_when_verify_fails {
     use std::path::PathBuf;
 
-    use crate::acp_memory_containment::{
-        ContainmentHandle, complete_containment_after_spawn,
-    };
+    use crate::acp_memory_containment::{ContainmentHandle, complete_containment_after_spawn};
 
     #[tokio::test]
     async fn complete_containment_inactive_when_verify_fails() {

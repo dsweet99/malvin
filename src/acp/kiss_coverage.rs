@@ -35,13 +35,27 @@ fn smoke_acp_reader_dispatch_and_trace_test_names() {
         crate::acp::reader_tests_dispatch::dispatch_clears_prompt_cleanup_when_id_matches
     );
     let _ = stringify!(
-        crate::acp::reader_tests_trace_a::write_trace_line_coalesced_writes_non_chunk_lines
+        crate::acp::reader_tests_trace_coalesce_write::write_trace_line_coalesced_writes_non_chunk_lines
     );
     let _ = stringify!(
-        crate::acp::reader_tests_trace_a::write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines
+        crate::acp::reader_tests_trace_coalesce_write::write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines
     );
     let _ = stringify!(
-        crate::acp::reader_tests_trace_a::write_trace_line_coalesced_writes_malformed_non_json_lines
+        crate::acp::reader_tests_trace_coalesce_write::write_trace_line_coalesced_must_tee_parsed_tool_call_lifecycle_to_stdout
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_coalesce_write::write_trace_line_coalesced_writes_malformed_non_json_lines
+    );
+    let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::kpop_coalesce_trace_writer);
+    let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::open_coalesce_trace_at);
+    let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::write_coalesced_line);
+    let _ =
+        stringify!(crate::acp::reader_tests_trace_coalesce_write::assert_tool_call_lifecycle_tee);
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_coalesce_write::run_tool_call_lifecycle_tee_fixture
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_coalesce_write::deliver_tool_call_session_updates
     );
     let _ = stringify!(
         crate::acp::reader_tests_trace_b::trace_file_write_line_prefixes_with_prompt_who
@@ -78,10 +92,14 @@ fn smoke_acp_reader_iterable_closed_and_retry_policy_test_names() {
         crate::acp::reader_tests_trace_iterable::readable_iterable_closed_split_coalesce_emits_readable_operational_warning
     );
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::kpop_trace_writer);
-    let _ = stringify!(crate::acp::reader_tests_trace_iterable::assert_iterable_closed_operational_stderr);
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_iterable::assert_iterable_closed_operational_stderr
+    );
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::session_update_message_chunk_json);
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::deliver_coalesced_message_chunk);
-    let _ = stringify!(crate::acp::reader_tests_trace_iterable::assert_split_iterable_closed_operational);
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_iterable::assert_split_iterable_closed_operational
+    );
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::run_split_iterable_closed_fixture);
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::open_kpop_trace_writer);
     let _ = stringify!(crate::acp::reader_tests_trace_iterable::flush_coalesce_lines);
@@ -101,11 +119,20 @@ fn smoke_acp_reader_iterable_closed_and_retry_policy_test_names() {
     let _ = stringify!(
         crate::acp::reader_tests_retry_policy::operational_iterable_closed_log_line_detection
     );
-    let _ = stringify!(crate::acp::reader_tests_retry_policy::retriable_transient_errors_match_known_agent_strings);
-    let _ = stringify!(crate::acp::reader_tests_retry_policy::non_retriable_errors_stop_without_sleep);
-    let _ = stringify!(crate::acp::reader_tests_retry_policy::retriable_first_attempt_sleeps_one_second);
-    let _ = stringify!(crate::acp::reader_tests_retry_policy::retriable_second_attempt_sleeps_three_seconds);
-    let _ = stringify!(crate::acp::reader_tests_retry_policy::retriable_exhausts_after_max_agent_attempts);
+    let _ = stringify!(
+        crate::acp::reader_tests_retry_policy::retriable_transient_errors_match_known_agent_strings
+    );
+    let _ =
+        stringify!(crate::acp::reader_tests_retry_policy::non_retriable_errors_stop_without_sleep);
+    let _ = stringify!(
+        crate::acp::reader_tests_retry_policy::retriable_first_attempt_sleeps_one_second
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_retry_policy::retriable_second_attempt_sleeps_three_seconds
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_retry_policy::retriable_exhausts_after_max_agent_attempts
+    );
     let _ = stringify!(crate::acp::reader_tests_retry_policy::retries_noun_singular_and_plural);
     let _ = stringify!(
         crate::acp::reader_tests_retry_policy::delimited_token_match_has_delimited_substring_is_identifier_byte_timeout_word_iterable_closed_in_ascii_lower

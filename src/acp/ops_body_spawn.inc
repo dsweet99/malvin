@@ -1,8 +1,19 @@
+pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
+
+fn test_no_real_agent_enabled() -> bool {
+    std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV)
+        .is_some_and(|v| !v.is_empty() && v != "0")
+}
+
 pub(crate) fn resolve_agent_bin() -> Option<PathBuf> {
-    std::env::var_os("MALVIN_AGENT_ACP_BIN")
+    let explicit = std::env::var_os("MALVIN_AGENT_ACP_BIN")
         .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .or_else(crate::support_paths::agent_or_cursor_agent_bin)
+        .map(PathBuf::from);
+    if explicit.is_some() || test_no_real_agent_enabled() {
+        explicit
+    } else {
+        crate::support_paths::agent_or_cursor_agent_bin()
+    }
 }
 
 pub(crate) fn has_api_key() -> bool {
@@ -15,6 +26,9 @@ pub(crate) fn has_api_key() -> bool {
 }
 
 pub(crate) fn auth_probe(args: &[&str]) -> bool {
+    if test_no_real_agent_enabled() {
+        return false;
+    }
     StdCommand::new(args[0])
         .args(&args[1..])
         .output()
@@ -23,6 +37,12 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
 
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
     let bin = resolve_agent_bin();
+    if bin.is_none() && test_no_real_agent_enabled() {
+        return Err(AgentError(
+            "real Cursor agent is disabled for tests; set MALVIN_AGENT_ACP_BIN to an ACP mock"
+                .to_string(),
+        ));
+    }
     let rpc_secs = crate::support_paths::acp_rpc_timeout_secs_from_env();
     let model = client.model.trim();
     let model_opt = (!model.is_empty()).then_some(model);

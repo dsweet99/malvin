@@ -52,7 +52,7 @@ const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
     "summary",
 ];
 
-/// Writes `run_timing.json` and prints one stdout summary line (timestamp-prefixed).
+/// Writes `run_timing.json` and prints one tagged stdout summary line.
 pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
     let path = run_dir.join(RUN_TIMING_JSON_FILE);
     let file = std::fs::File::create(&path)?;

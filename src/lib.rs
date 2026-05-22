@@ -35,9 +35,9 @@
 
 mod alnum_id;
 mod learn_gate;
-pub mod session_dotfile_backup;
-pub mod run_id;
 mod malvin_constants;
+pub mod run_id;
+pub mod session_dotfile_backup;
 mod tracing_init;
 mod user_home;
 pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
@@ -46,43 +46,45 @@ pub use user_home::user_home_dir;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
-    AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl, AuthError, AcpSession,
-    AcpSpawnArgs, CoderPromptOptions, KpopFlowOnceArgs,
+    AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl,
+    AuthError, CoderPromptOptions, KpopFlowOnceArgs,
 };
-pub use session_dotfile_backup::KissConfigBackup;
+pub use ansi_strip::strip_ansi_escapes;
+pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
     backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     restore_workspace_session_dotfiles,
 };
-pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_request};
-pub use artifacts::startup_request_tag_label;
-pub use prompts::DO_HEADER_MD;
 pub use config::DEFAULT_CLI_MODEL;
 pub use kpop_progression::agent_declared_success;
 pub use output::{
     ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, init_stdout_style,
     print_log_error, print_log_warning, print_stderr_line, print_stdout_line, print_stdout_text,
 };
+pub use prompts::DO_HEADER_MD;
 pub use prompts::{
     HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, merged_coding_rules,
 };
 pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
 };
+pub use session_dotfile_backup::KissConfigBackup;
 
-mod cgroup_build;
 pub(crate) mod acp_memory_containment;
 pub mod artifacts;
+mod cgroup_build;
 mod child_health;
 pub mod config;
 mod kpop_acp_prompt;
 pub use kpop_acp_prompt::kpop_creative_enabled;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
-pub use kpop_test_stubs::{CaptureWants as KpopCaptureWants, EchoPrompts as KpopEchoPrompts, MtStubPrompts};
+pub use kpop_test_stubs::{
+    CaptureWants as KpopCaptureWants, EchoPrompts as KpopEchoPrompts, MtStubPrompts,
+};
 pub use kpop_turn_prompts::KpopTurnPrompts;
 pub mod kpop_multiturn_prompts;
 pub use kpop_multiturn_prompts::KpopMultiturnPrompts;
@@ -97,17 +99,17 @@ pub use support_paths::{
 };
 pub mod orchestrator;
 pub use orchestrator::{
-    Orchestrator, ReviewTwoPromptSession, ReviewWriteInnerOutcome, WorkflowConfig, WorkflowError,
-    REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG, check_abort,
+    Orchestrator, REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
+    ReviewTwoPromptSession, ReviewWriteInnerOutcome, WorkflowConfig, WorkflowError, check_abort,
     fail_on_abort_for_artifacts, format_prompt_path, run_reviewers_spawn_then_review_write,
     workflow_context, workflow_context_paths_only,
 };
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
-pub mod stdout_log_path;
 pub mod review_sync;
 pub mod run_timing;
+pub mod stdout_log_path;
 
 pub mod acp_post_run {
     pub use crate::run_timing::acp_post_run::*;
@@ -133,7 +135,6 @@ pub mod plan_flow;
 
 #[path = "cli/mod.rs"]
 pub mod cli;
-
 
 #[cfg(test)]
 #[path = "acp/test_unix_bin.rs"]

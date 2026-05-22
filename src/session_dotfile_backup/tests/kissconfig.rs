@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use crate::test_utils::with_isolated_home;
 use crate::artifacts::{
     KissConfigBackup, backup_workspace_kissconfig_if_present,
     backup_workspace_kissconfig_if_present_with_id, restore_workspace_kissconfig_backup,
 };
+use crate::test_utils::with_isolated_home;
 
 #[test]
 fn kissconfig_backup_skips_when_workspace_file_missing() {

@@ -1,6 +1,8 @@
 #[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux {
-    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{child_still_running, spawn_sleep_in_prepared_cgroup};
+    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{
+        child_still_running, spawn_sleep_in_prepared_cgroup,
+    };
     use crate::acp_memory_containment::pid_listed_in_leaf_cgroup;
 
     #[tokio::test]
@@ -16,19 +18,14 @@ mod linux {
             cgroup_dir: cgroup_dir.clone(),
             memory_max_bytes: plan.memory_max_bytes / 2,
         };
-        assert!(
-            !crate::acp_memory_containment::wait_for_cgroup_join(pid, &bad_plan).await
-        );
+        assert!(!crate::acp_memory_containment::wait_for_cgroup_join(pid, &bad_plan).await);
         assert!(
             !pid_listed_in_leaf_cgroup(pid, &cgroup_dir),
             "join wait failure must not leave agent pid in leaf cgroup"
         );
         let _ = child.kill().await;
         let _ = child.wait().await;
-        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(
-            pid,
-            &cgroup_dir,
-        );
+        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(pid, &cgroup_dir);
     }
 
     #[test]
@@ -46,9 +43,7 @@ mod linux {
             !crate::acp_memory_containment::release_pid_from_cgroup(pid, &leaf),
             "fixture requires release_pid_from_cgroup to fail without parent cgroup.procs"
         );
-        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(
-            pid, &leaf,
-        );
+        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(pid, &leaf);
         assert!(
             !leaf.exists(),
             "must not leave orphan malvin-acp leaf when cleanup cannot release pid"
@@ -65,26 +60,17 @@ mod linux {
         };
         let bogus_parent = tempfile::tempdir().expect("tempdir");
         assert!(
-            !crate::acp_memory_containment::release_pid_from_cgroup(
-                pid,
-                bogus_parent.path(),
-            ),
+            !crate::acp_memory_containment::release_pid_from_cgroup(pid, bogus_parent.path(),),
             "fixture requires release_pid_from_cgroup to fail like verify-failure cleanup"
         );
-        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(
-            pid,
-            &cgroup_dir,
-        );
+        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(pid, &cgroup_dir);
         assert!(
             child_still_running(&mut child),
             "failed join cleanup must not cgroup.kill a child still in the leaf"
         );
         let _ = child.kill().await;
         let _ = child.wait().await;
-        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(
-            pid,
-            &cgroup_dir,
-        );
+        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(pid, &cgroup_dir);
     }
 
     #[tokio::test]
@@ -110,9 +96,6 @@ mod linux {
         );
         let _ = child.kill().await;
         let _ = child.wait().await;
-        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(
-            pid,
-            &cgroup_dir,
-        );
+        crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join(pid, &cgroup_dir);
     }
 }

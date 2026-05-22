@@ -7,10 +7,10 @@ use clap::{Args, Parser, Subcommand};
 use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
 
+pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::ideas_flow::IdeasArgs;
 pub use crate::init_cmd::InitArgs;
-pub use super::models_cmd::ModelsArgs;
 
 pub use super::args_bug_kpop::{BugArgs, KpopArgs};
 pub use super::shared_opts::GlobalOpts;
@@ -78,4 +78,3 @@ pub struct CodeArgs {
     /// Request or `@file` → `_malvin/.../plan.md`.
     pub request: Option<String>,
 }
-

@@ -69,7 +69,8 @@ pub fn build_do_coder_run(
     let skip_repo_style = !cooked;
     let (combined, header_user) = if cooked {
         let store = prepare_do_prompt_store()?;
-        let (combined, header, user) = combine_do_acp_prompt_header_and_user(&store, artifacts, text)?;
+        let (combined, header, user) =
+            combine_do_acp_prompt_header_and_user(&store, artifacts, text)?;
         (combined, (header, user))
     } else {
         let store = prepare_do_raw_prompt_store()?;

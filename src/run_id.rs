@@ -79,4 +79,3 @@ mod collision_tests {
         assert!(dir.is_dir());
     }
 }
-

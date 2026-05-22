@@ -1,8 +1,5 @@
-use super::{
-    format_line_with_timestamp, format_log_tag_inner, stdout_use_color, timestamp_now_string,
-    wrap_words_bounded, ANSI_RESET,
-};
 use super::stdout_line_wrap_meta;
+use super::{ANSI_RESET, format_log_tag_inner, stdout_use_color, wrap_words_bounded};
 
 pub(crate) use super::who_tag_ansi;
 
@@ -19,8 +16,8 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
     format!("{tag_color}[{inner}]{ANSI_RESET} {line}")
 }
 
-pub(crate) fn stdout_display_and_log(ts: &str, who: &str, line: &str) -> (String, String) {
-    let log = format_line_with_timestamp(ts, who, line);
+pub(crate) fn stdout_display_and_log(who: &str, line: &str) -> (String, String) {
+    let log = format_line_stdout(who, line);
     let display = if stdout_use_color() {
         format_line_stdout_ansi(who, line)
     } else {
@@ -30,15 +27,14 @@ pub(crate) fn stdout_display_and_log(ts: &str, who: &str, line: &str) -> (String
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    let ts = timestamp_now_string();
     let (max_payload, wrap) = stdout_line_wrap_meta(who, line);
     if !wrap {
-        let (display, log) = stdout_display_and_log(&ts, who, line);
+        let (display, log) = stdout_display_and_log(who, line);
         super::print_stdout_rendered_line(&display, &log);
         return;
     }
     for seg in wrap_words_bounded(max_payload, line) {
-        let (display, log) = stdout_display_and_log(&ts, who, &seg);
+        let (display, log) = stdout_display_and_log(who, &seg);
         super::print_stdout_rendered_line(&display, &log);
     }
 }
@@ -57,7 +53,10 @@ mod tests {
     #[test]
     fn stdout_line_omits_timestamp_prefix() {
         let inner = format_log_tag_inner("kpop");
-        assert_eq!(format_line_stdout("kpop", "hello"), format!("[{inner}] hello"));
+        assert_eq!(
+            format_line_stdout("kpop", "hello"),
+            format!("[{inner}] hello")
+        );
         assert!(!format_line_stdout("kpop", "hello").starts_with("20"));
     }
 

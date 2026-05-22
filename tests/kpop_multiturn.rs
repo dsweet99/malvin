@@ -4,20 +4,16 @@
 mod common;
 
 use common::{MBC2_SEEK_MAX_STEPS, MtStubPrompts, append_kpop_line, parse_kpop_want};
+use malvin::KpopEchoPrompts;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{KPOP_CATCHUP_CAP, hypotheses_emitted};
 use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
-use malvin::KpopEchoPrompts;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use std::path::Path;
 
-fn mbc2_seek_iteration(
-    state: &mut KpopMultiturnState<'_>,
-    path: &Path,
-    step: &mut usize,
-) -> bool {
+fn mbc2_seek_iteration(state: &mut KpopMultiturnState<'_>, path: &Path, step: &mut usize) -> bool {
     let p = state.next_prompt().expect("prompt");
     let Some(pr) = p else {
         panic!("unexpected stop");

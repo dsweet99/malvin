@@ -148,7 +148,6 @@ mod command_support_unit_tests {
         assert!(stdout.contains("stdout-bytes"));
         assert!(stderr.contains("stderr-bytes"));
     }
-
 }
 
 #[cfg(all(test, windows))]
@@ -156,7 +155,10 @@ mod windows_fake_command_path_tests {
     use std::fs;
     use std::process::Command;
 
-    use super::{apply_fake_path_if_present, fake_command_dir_for_path_env, run_command_for, set_fake_command_dir};
+    use super::{
+        apply_fake_path_if_present, fake_command_dir_for_path_env, run_command_for,
+        set_fake_command_dir,
+    };
 
     #[test]
     fn fake_command_dir_resolves_batch_command() {

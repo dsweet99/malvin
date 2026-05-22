@@ -11,7 +11,8 @@ fn quality_gate_commands_do_not_reference_acp_containment() {
 #[cfg(target_os = "linux")]
 mod linux {
     use crate::acp_memory_containment::{
-        begin_containment_for_command, complete_containment_after_spawn, finalize_containment_cgroup,
+        begin_containment_for_command, complete_containment_after_spawn,
+        finalize_containment_cgroup,
     };
 
     #[tokio::test]

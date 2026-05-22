@@ -1,21 +1,18 @@
 //! Cross-module behavioral smokes and static refs for orchestrator kiss per-file coverage.
 
+use super::artifact_review_lgtm_after_review_write;
 use super::check_plan::run_check_plan;
 use super::memory_context::{
     MemoryRecord, build_memories_value, collect_memory_records, emit_if_complete, format_memories,
     parse_memories, process_memory_line, sample_memories, sample_seed,
 };
-use super::artifact_review_lgtm_after_review_write;
-use super::{
-    ensure_artifact_review_after_review_write, fail_on_abort_for_artifacts,
-};
+use super::{ensure_artifact_review_after_review_write, fail_on_abort_for_artifacts};
 
 #[test]
 fn smoke_artifact_review_lgtm_none_when_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("orch-read", Some(tmp.path()))
-            .expect("artifacts");
+    let artifacts = crate::artifacts::create_run_artifacts_from_text("orch-read", Some(tmp.path()))
+        .expect("artifacts");
     assert!(
         artifact_review_lgtm_after_review_write(&artifacts)
             .expect("read")

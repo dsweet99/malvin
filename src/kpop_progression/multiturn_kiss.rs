@@ -15,6 +15,8 @@ fn smoke_multiturn_phase_and_next_step_variants() {
         sent: 0,
     };
     assert!(matches!(mbc2, Phase::Mbc2 { .. }));
-    let emit = NextStep::Emit(crate::multiturn_prompt::MultiturnPrompt::KpopBlock("x".into()));
+    let emit = NextStep::Emit(crate::multiturn_prompt::MultiturnPrompt::KpopBlock(
+        "x".into(),
+    ));
     assert!(matches!(emit, NextStep::Emit(_)));
 }

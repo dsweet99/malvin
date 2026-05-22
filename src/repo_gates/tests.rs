@@ -155,4 +155,3 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
 fn smoke_cov_repo_gates_units() {
     let _ = builtin_gate_command_lines;
 }
-

@@ -1,10 +1,10 @@
 use clap::{CommandFactory, Parser};
 
-use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_kpop,
-    run_ideas, run_plan, run_tidy,
-};
 use super::models_cmd;
+use super::{
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_ideas,
+    run_kpop, run_plan, run_tidy,
+};
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     use crate::require_kiss_for_malvin;
@@ -180,7 +180,10 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
     }
 }
 
-fn run_ideas_command(ideas: crate::ideas_flow::IdeasArgs, shared: &SharedOpts) -> Result<(), String> {
+fn run_ideas_command(
+    ideas: crate::ideas_flow::IdeasArgs,
+    shared: &SharedOpts,
+) -> Result<(), String> {
     run_async_cli(|| {
         run_ideas(
             ideas,
@@ -209,7 +212,7 @@ fn run_code_command(code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
 
 #[cfg(test)]
 mod entrypoint_doc_tests {
-    use super::{entrypoint_from, Exit};
+    use super::{Exit, entrypoint_from};
 
     #[test]
     fn entrypoint_from_doc_argv_exits_success() {
@@ -221,4 +224,3 @@ mod entrypoint_doc_tests {
         assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
     }
 }
-

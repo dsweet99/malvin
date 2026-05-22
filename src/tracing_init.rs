@@ -58,7 +58,11 @@ impl tracing::field::Visit for LogFieldVisitor<'_> {
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        push_log_field(self.0, field.name(), &format_debug_tracing_field(field.name(), value));
+        push_log_field(
+            self.0,
+            field.name(),
+            &format_debug_tracing_field(field.name(), value),
+        );
     }
 }
 

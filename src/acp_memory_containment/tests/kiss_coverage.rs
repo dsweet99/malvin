@@ -54,14 +54,13 @@ mod linux_kiss {
         let _ = resolve_writable_cgroup_parent();
         let _ = try_prepare_cgroup_spawn_plan("kiss-smoke");
     }
-
 }
 
 #[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux_cgroup_integration {
+    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::spawn_sleep_in_prepared_cgroup;
     use crate::acp_memory_containment::discard_prepared_cgroup_after_failed_join;
     use crate::acp_memory_containment::verify_pid_in_cgroup;
-    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::spawn_sleep_in_prepared_cgroup;
 
     #[tokio::test]
     async fn verify_pid_in_cgroup_true_for_joined_sleep_child() {

@@ -81,12 +81,13 @@ mod linux {
             "finalize_containment_cgroup must remove leaf cgroup even when another handle clones containment state"
         );
     }
-
 }
 
 #[cfg(all(target_os = "linux", malvin_have_writable_cgroups))]
 mod linux_cgroup_integration {
-    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{child_still_running, spawn_sleep_in_prepared_cgroup};
+    use crate::acp_memory_containment::acp_memory_containment_unit_tests::cgroup_helpers::{
+        child_still_running, spawn_sleep_in_prepared_cgroup,
+    };
     use crate::acp_memory_containment::{
         ContainmentHandle, begin_containment_for_command, complete_containment_after_spawn,
         finalize_containment_cgroup,
@@ -119,22 +120,26 @@ mod linux_cgroup_integration {
     #[tokio::test]
     async fn session_spawn_gate_aborts_when_cgroup_verify_fails() {
         let Some((mut child, pid, cgroup_dir, plan)) =
-            spawn_sleep_in_prepared_cgroup(&format!("review-prep-gate-{}", std::process::id())).await
+            spawn_sleep_in_prepared_cgroup(&format!("review-prep-gate-{}", std::process::id()))
+                .await
         else {
             crate::acp_memory_containment::test_support::require_cgroup_integration_test();
             panic!("spawn_sleep_in_prepared_cgroup failed on host with writable cgroups");
         };
-        let err = crate::acp_memory_containment::complete_and_require_linux_containment_after_spawn(
-            Some(pid),
-            ContainmentHandle::Linux {
-                cgroup_dir,
-                memory_max_bytes: plan.memory_max_bytes / 2,
-            },
-            true,
-            &mut child,
-        )
-        .await
-        .expect_err("session_spawn gate must abort when cgroup verify failed after a Linux plan");
+        let err =
+            crate::acp_memory_containment::complete_and_require_linux_containment_after_spawn(
+                Some(pid),
+                ContainmentHandle::Linux {
+                    cgroup_dir,
+                    memory_max_bytes: plan.memory_max_bytes / 2,
+                },
+                true,
+                &mut child,
+            )
+            .await
+            .expect_err(
+                "session_spawn gate must abort when cgroup verify failed after a Linux plan",
+            );
         assert!(
             err.contains("verify failed"),
             "unexpected abort message: {err}"
@@ -160,4 +165,3 @@ mod linux_cgroup_integration {
         let _ = child.wait().await;
     }
 }
-

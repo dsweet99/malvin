@@ -4,8 +4,8 @@ mod tidy_run_body {
 }
 pub use tidy_run_body::*;
 
-use clap::Args;
 use crate::output::{MALVIN_WHO, print_stdout_line};
+use clap::Args;
 
 use super::{SharedOpts, WorkflowCliOptions};
 

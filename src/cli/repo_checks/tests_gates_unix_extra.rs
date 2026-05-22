@@ -3,13 +3,13 @@ use std::fs;
 use crate::repo_gates;
 
 use super::command_support::set_fake_command_dir;
+use super::gate_run::prepare_repo_workspace;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
     install_trace_echo_bins, workspace_git_cargo_main_only,
     workspace_git_kissconfig_90_cargo_rs_py, workspace_git_malvin_checks_line,
     workspace_git_minimal_cargo_rs_py_tests, write_executable_script, write_trace_echo_script,
 };
-use super::gate_run::prepare_repo_workspace;
 use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
@@ -61,7 +61,10 @@ fn run_repo_workspace_gates_materializes_default_malvin_checks() {
          are not left behind"
     );
     std::fs::write(&malvin_checks, expected.join("\n") + "\n").unwrap();
-    assert_eq!(repo_gates::load_malvin_checks(&malvin_checks).unwrap(), expected);
+    assert_eq!(
+        repo_gates::load_malvin_checks(&malvin_checks).unwrap(),
+        expected
+    );
     assert_default_gate_trace(&fs::read_to_string(&trace).unwrap());
 }
 

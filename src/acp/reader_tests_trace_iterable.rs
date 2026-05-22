@@ -1,5 +1,5 @@
-use crate::acp::*;
 use crate::acp::trace_line_write::TraceFileStdout;
+use crate::acp::*;
 
 fn kpop_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
     PromptTraceWriter {
@@ -21,7 +21,8 @@ fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
         "trace file should still record agent text: {trace:?}"
     );
     assert!(
-        stderr.contains(crate::output::WARNING_WHO) && stderr.contains("acp: WritableIterable is closed"),
+        stderr.contains(crate::output::WARNING_WHO)
+            && stderr.contains("acp: WritableIterable is closed"),
         "operational warning must use warning who, got: {stderr:?}"
     );
     assert!(
@@ -109,10 +110,7 @@ fn assert_split_iterable_closed_operational(stderr: &str, stdout_log: &str) {
 }
 
 async fn run_split_iterable_closed_fixture() -> (String, String) {
-    let text = format!(
-        "{}\n\nError: T: WritableIterable is closed",
-        "p".repeat(95)
-    );
+    let text = format!("{}\n\nError: T: WritableIterable is closed", "p".repeat(95));
     let dir = tempfile::tempdir().unwrap();
     let stdout_path = dir.path().join("stdout-split.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));
@@ -163,10 +161,7 @@ async fn readable_iterable_closed_split_coalesce_emits_readable_operational_warn
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let text = format!(
-        "{}\n\nError: T: ReadableIterable is closed",
-        "p".repeat(95)
-    );
+    let text = format!("{}\n\nError: T: ReadableIterable is closed", "p".repeat(95));
     let dir = tempfile::tempdir().unwrap();
     let stdout_path = dir.path().join("stdout-readable-split.log");
     crate::output::set_stdout_log_path(Some(stdout_path.clone()));

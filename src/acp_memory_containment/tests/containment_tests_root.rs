@@ -13,10 +13,10 @@ mod limits;
 mod memory_enforcement;
 mod platform;
 mod regression_bugs;
-mod spawn_verbose_warn;
 mod review_prep_bugs;
+mod session_containment;
+mod spawn_verbose_warn;
 #[cfg(target_os = "linux")]
 mod stderr_warn;
-mod session_containment;
 #[cfg(target_os = "linux")]
 mod verify_failure_must_not_kill_child;

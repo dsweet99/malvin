@@ -2,8 +2,8 @@
 
 use super::ChildHealth;
 use std::fs;
-use std::time::Instant;
 use std::io::ErrorKind;
+use std::time::Instant;
 
 pub(super) struct ParsedProcStat {
     pub state: u8,
@@ -79,7 +79,7 @@ pub(super) fn sample_child_health_linux(pid: u32) -> ChildHealth {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_proc_stat_line, parse_status_voluntary_ctxt, ParsedProcStat};
+    use super::{ParsedProcStat, parse_proc_stat_line, parse_status_voluntary_ctxt};
 
     #[test]
     fn parse_proc_stat_line_extracts_parsed_proc_stat_fields() {

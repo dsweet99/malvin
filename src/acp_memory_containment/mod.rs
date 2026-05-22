@@ -19,9 +19,7 @@ include!("linux_spawn.inc");
 #[cfg(not(target_os = "linux"))]
 mod stub;
 #[cfg(not(target_os = "linux"))]
-pub(crate) use stub::{
-    memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at,
-};
+pub(crate) use stub::{memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at};
 
 pub const AGENT_EXCEEDED_MEMORY_LIMIT_MSG: &str = "agent exceeded memory limit";
 pub const CONTAINMENT_UNAVAILABLE_WARN: &str =

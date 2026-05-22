@@ -84,7 +84,9 @@ mod session_flow_smoke_tests {
     };
     use crate::acp::AgentClient;
     use crate::artifacts::RunArtifacts;
-    use crate::orchestrator::orchestrator_test_support::{empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke};
+    use crate::orchestrator::orchestrator_test_support::{
+        empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke,
+    };
     use crate::orchestrator::{Orchestrator, WorkflowConfig};
     use crate::prompts::PromptStore;
 

@@ -14,6 +14,7 @@ pub fn command_output_with_timeout(
     cmd: &mut Command,
     timeout: std::time::Duration,
 ) -> std::io::Result<std::process::Output> {
+    cmd.env("MALVIN_TEST_NO_REAL_AGENT", "1");
     let (child, stdout_jh, stderr_jh) = spawn_piped_process_group(cmd)?;
     wait_child_with_timeout(child, stdout_jh, stderr_jh, Instant::now() + timeout)
 }

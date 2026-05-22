@@ -24,15 +24,17 @@ mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
 
-use std::io::{IsTerminal, Write, stdout};
-use std::path::PathBuf;
-use std::sync::OnceLock;
 #[cfg(test)]
 use std::cell::RefCell;
+use std::io::{IsTerminal, Write, stdout};
+use std::path::PathBuf;
 #[cfg(test)]
 use std::sync::Mutex;
+use std::sync::OnceLock;
 
-pub(crate) use self::terminal_wrap::{stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded};
+pub(crate) use self::terminal_wrap::{
+    stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
+};
 
 pub const MALVIN_WHO: &str = "malvin";
 pub const WARNING_WHO: &str = "warning";
@@ -219,8 +221,7 @@ pub fn is_command_prelude_line(line: &str) -> bool {
     if !is_log_timestamp_token(ts) {
         return false;
     }
-    payload_after_fixed_width_bracket_tag(rest)
-        .is_some_and(|payload| payload.starts_with(CMD))
+    payload_after_fixed_width_bracket_tag(rest).is_some_and(|payload| payload.starts_with(CMD))
 }
 
 pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {

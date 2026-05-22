@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::test_utils::with_isolated_home;
 use crate::artifacts::SessionDotfileBackups;
 use crate::repo_gates::{KISSCONFIG_FILE, KISSIGNORE_FILE, MALVIN_CHECKS_FILE};
+use crate::test_utils::with_isolated_home;
 
 fn workspace_three_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf) {
     (

@@ -7,8 +7,7 @@ use super::{
 };
 use crate::test_stderr_capture::capture_stderr_output;
 
-const KISSCONFIG_COVERAGE_WARN: &str =
-    ".kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.";
+const KISSCONFIG_COVERAGE_WARN: &str = ".kissconfig gate.test_coverage_threshold is missing or below 90; editing code without sufficient unit test coverage is dangerous.";
 
 #[test]
 fn repo_gate_stderr_progress_must_use_malvin_who_not_warning() {
@@ -32,7 +31,10 @@ fn quality_gates_log_stderr_warning_must_use_warning_who_tag() {
     let stderr = capture_stderr_output(|| {
         emit_repo_gate_warning(msg, Some(tmp.path()));
     });
-    assert!(stderr.contains("[warning"), "stderr must use warning who tag");
+    assert!(
+        stderr.contains("[warning"),
+        "stderr must use warning who tag"
+    );
     let log = std::fs::read_to_string(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG))
         .expect("quality_gates.log");
     assert!(

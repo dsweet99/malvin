@@ -1,8 +1,7 @@
 const SESSION_SPAWN_INC: &str = include_str!("acp/session_spawn.inc");
 const INIT_COMMIT_NOTICE: &str =
     "init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)";
-const SILENT_CGROUP_EARLY_RETURN: &str =
-    "if !crate::acp_memory_containment::test_support::writable_cgroups_on_host() {\n            return;\n        }";
+const SILENT_CGROUP_EARLY_RETURN: &str = "if !crate::acp_memory_containment::test_support::writable_cgroups_on_host() {\n            return;\n        }";
 
 #[test]
 fn cgroup_dispatch_tests_must_not_silent_return_when_cgroups_unavailable() {
@@ -39,7 +38,9 @@ fn require_cgroup_integration_test_must_use_print_log_warning() {
         "require_cgroup_integration_test must use print_log_warning for SKIP"
     );
     assert!(
-        !src.contains("eprintln!(\"SKIP: cgroup integration test requires writable cgroups on this host\")"),
+        !src.contains(
+            "eprintln!(\"SKIP: cgroup integration test requires writable cgroups on this host\")"
+        ),
         "require_cgroup_integration_test must not use raw eprintln for SKIP"
     );
 }

@@ -87,4 +87,3 @@ fn coalesce_append_only_newlines_emits_nothing() {
     assert!(out.is_empty());
     assert!(buf.is_empty());
 }
-

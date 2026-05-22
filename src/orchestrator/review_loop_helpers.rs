@@ -43,8 +43,7 @@ mod smoke_tests {
     #[tokio::test]
     async fn concerns_step_errors_when_coder_session_not_open() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts =
-            create_run_artifacts_from_text("rlh_smoke", Some(tmp.path())).expect("art");
+        let artifacts = create_run_artifacts_from_text("rlh_smoke", Some(tmp.path())).expect("art");
         let store = PromptStore::default_store();
         let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
         let mut client = AgentClient::new(

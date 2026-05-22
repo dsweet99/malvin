@@ -2,19 +2,19 @@ use crate::artifacts::RunArtifacts;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 use crate::prompts::{PromptError, PromptStore};
 
+use super::SharedOpts;
 use super::kpop_flow::{
     KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_emit_startup, kpop_run_acp_multiturn,
     prepare_kpop_run,
 };
 use super::mid_session_gates::mid_pre_summary_repo_gates;
-use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
+use super::run_emit::emit_run_startup_sequence;
 use super::{BugArgs, KpopArgs};
 use super::{
     WorkflowCliOptions, build_agent, format_workspace_gate_failure, prepare_bug_prompt_store,
 };
-use super::run_emit::emit_run_startup_sequence;
-use super::SharedOpts;
 use crate::DEFAULT_LEARN_MIN_ELAPSED_MS as LEARN_MIN_ELAPSED_MS;
+use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 const BUG_KPOP_REQUEST: &str = "Find a serious bug in this codebase.";
 
@@ -203,7 +203,7 @@ pub async fn run_bug(
 
 #[cfg(test)]
 mod tests {
-    use super::{kpop_args_from_bug, BugArgs, BUG_KPOP_REQUEST};
+    use super::{BUG_KPOP_REQUEST, BugArgs, kpop_args_from_bug};
 
     #[test]
     fn kpop_args_from_bug_maps_bug_fields() {

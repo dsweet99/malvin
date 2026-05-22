@@ -20,18 +20,17 @@ mod constants;
 mod review_attempt_kernel;
 mod review_fanout_run;
 mod review_fanout_write;
-mod review_prompt_log;
 mod review_loop_helpers;
+mod review_prompt_log;
 mod review_write_retry;
 mod workflow_merge;
 
 pub use review_attempt_kernel::{
     REVIEW_PREP_MISSING_ARTIFACT_MSG, REVIEW_WRITE_INNER_RETRY_CAP,
     REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
-    clear_review_attempt_artifacts,
-    artifact_review_lgtm_after_review_write, ensure_artifact_review_after_review_write,
-    ensure_review_prep_after_reviewers_spawn, is_missing_artifact_review_error,
-    review_attempt_is_lgtm,
+    artifact_review_lgtm_after_review_write, clear_review_attempt_artifacts,
+    ensure_artifact_review_after_review_write, ensure_review_prep_after_reviewers_spawn,
+    is_missing_artifact_review_error, review_attempt_is_lgtm,
 };
 pub use review_fanout_run::{
     ReviewWriteCoderSession, ReviewersSpawnCoderSession, run_review_write_coder_session,
@@ -41,11 +40,11 @@ pub use review_fanout_write::{
     FinishReviewWriteInput, ReviewAttemptFinish, fail_on_abort_for_artifacts,
     finish_review_write_attempt,
 };
+pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
 pub use review_write_retry::{
     ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
 };
 pub use workflow_merge::merge_string_run_and_restore;
-pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
 
 #[cfg(test)]
 pub(crate) mod orchestrator_test_support;
@@ -225,4 +224,3 @@ impl Orchestrator<'_> {
 }
 
 include!("coder_prompt_impl.rs");
-

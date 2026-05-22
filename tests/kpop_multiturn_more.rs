@@ -3,9 +3,9 @@ mod common;
 use std::sync::{Arc, Mutex};
 
 use common::{MtStubPrompts, append_kpop_line, append_mbc2_line, parse_kpop_want};
+use malvin::KpopCaptureWants;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use malvin::KpopCaptureWants;
 use malvin::kpop_progression::{
     KpopMultiturnParams, KpopMultiturnState, block_mean_from_p_creative, count_mbc2_entries,
     poisson_block_size,

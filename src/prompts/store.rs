@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use super::PromptError;
-use super::defaults::{default_file, DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS};
+use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
 use super::enforce_no_unresolved_braces;
 use super::{merge_header_and_coding_rules, render_template};
 
@@ -46,7 +46,8 @@ impl PromptStore {
             |root| root.display().to_string(),
         )
     }
-}impl PromptStore {
+}
+impl PromptStore {
     #[must_use]
     pub const fn default_store() -> Self {
         Self { root: None }
@@ -209,7 +210,6 @@ impl PromptStore {
             .to_string()
     }
 }
-
 
 /// # Errors
 ///

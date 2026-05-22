@@ -89,11 +89,7 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
     let artifacts = emit_init_startup(&root, req.opts.tee_startup_stdout)?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
-        write_init_templates(
-            &root,
-            req.opts.overwrite_templates,
-            &languages,
-        )?;
+        write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
         bootstrap_repo_tooling(&root)?;
         run_init_summary_phase(req.shared, &artifacts).await
     }
@@ -228,7 +224,6 @@ pub fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
 use std::process::Command;
 
 use crate::{lookup_bin_on_path, require_kiss_for_malvin};
-
 
 include!("init_cmd_mid_core.inc");
 include!("init_cmd_mid_tests.inc");

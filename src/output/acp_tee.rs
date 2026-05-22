@@ -4,7 +4,7 @@ pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
 use super::{ANSI_DIM, ANSI_RESET};
-use super::{format_log_tag_inner, format_line_stdout, stdout_use_color, timestamp_now_string};
+use super::{format_line_stdout, format_log_tag_inner, stdout_use_color, timestamp_now_string};
 
 use crate::ansi_strip::strip_ansi_escapes;
 use unicode_width::UnicodeWidthStr;
@@ -148,7 +148,7 @@ pub(crate) fn acp_tee_display_line(ctx: &AcpTeeLineFmt<'_>) -> String {
 }
 
 pub(crate) fn acp_tee_log_line(ctx: &AcpTeeLineFmt<'_>) -> String {
-    super::format_line_with_timestamp(ctx.ts, ctx.who, ctx.line)
+    format_line_stdout(ctx.who, ctx.line)
 }
 
 fn acp_tee_payload_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
@@ -163,7 +163,7 @@ fn acp_tee_payload_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
 }
 
 pub(crate) fn acp_tee_log_prefix(ctx: &AcpTeeLineFmt<'_>) -> String {
-    super::format_line_with_timestamp(ctx.ts, ctx.who, "")
+    format_line_stdout(ctx.who, "")
 }
 
 fn acp_tee_payload_prefix_width(prefix: &str) -> usize {
@@ -231,4 +231,3 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         );
     }
 }
-

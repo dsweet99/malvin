@@ -89,8 +89,8 @@ mod tests {
     async fn run_check_plan_spawn_fails() {
         use crate::acp::{AgentClient, AgentIoOptions};
         use crate::artifacts::{
-            create_run_artifacts_from_text, KissConfigBackup, KissignoreBackup, MalvinChecksBackup,
-            SessionDotfileBackups,
+            KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+            create_run_artifacts_from_text,
         };
         use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
         use crate::prompts::PromptStore;
@@ -139,8 +139,8 @@ mod tests {
     async fn run_check_plan_attempt_errors_when_spawn_fails() {
         use crate::acp::{AgentClient, AgentIoOptions};
         use crate::artifacts::{
-            create_run_artifacts_from_text, KissConfigBackup, KissignoreBackup, MalvinChecksBackup,
-            SessionDotfileBackups,
+            KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+            create_run_artifacts_from_text,
         };
         use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
         use crate::prompts::PromptStore;
@@ -149,7 +149,8 @@ mod tests {
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let store = PromptStore::default_store();
-        let artifacts = create_run_artifacts_from_text("cp-attempt", Some(tmp.path())).expect("art");
+        let artifacts =
+            create_run_artifacts_from_text("cp-attempt", Some(tmp.path())).expect("art");
         let ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
         let mut client = AgentClient::new(
             "m".into(),
@@ -185,5 +186,4 @@ mod tests {
             .expect_err("attempt");
         assert!(!err.0.is_empty());
     }
-
 }

@@ -51,10 +51,10 @@ pub async fn run_bug_remediation_gap(
 mod tests {
     use crate::acp::{AgentClient, AgentIoOptions};
     use crate::artifacts::{
-        create_run_artifacts_from_text, KissConfigBackup, KissignoreBackup, MalvinChecksBackup,
-        SessionDotfileBackups,
+        KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+        create_run_artifacts_from_text,
     };
-    use crate::orchestrator::{mid_noop, Orchestrator, WorkflowConfig, workflow_context};
+    use crate::orchestrator::{Orchestrator, WorkflowConfig, mid_noop, workflow_context};
     use crate::prompts::PromptStore;
 
     use super::run_bug_remediation_gap;
@@ -108,5 +108,4 @@ mod tests {
             .await
             .expect("shutdown test session");
     }
-
 }

@@ -101,8 +101,7 @@ impl CatSession {
 }
 
 #[cfg(unix)]
-async fn spawn_true_stdout_with_pending(
-) -> (
+async fn spawn_true_stdout_with_pending() -> (
     Arc<Mutex<HashMap<u64, ResponseTx>>>,
     oneshot::Receiver<Result<serde_json::Value, String>>,
     Child,

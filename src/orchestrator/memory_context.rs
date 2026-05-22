@@ -35,7 +35,11 @@ pub(super) fn emit_if_complete(state: &mut MemoryState, out: &mut Vec<MemoryReco
     }
 }
 
-pub(super) fn process_memory_line(line: &str, state: &mut MemoryState, out: &mut Vec<MemoryRecord>) {
+pub(super) fn process_memory_line(
+    line: &str,
+    state: &mut MemoryState,
+    out: &mut Vec<MemoryRecord>,
+) {
     let trimmed = line.trim();
     if let Some(rest) = trimmed.strip_prefix("TRIGGER:") {
         emit_if_complete(state, out);
@@ -183,4 +187,3 @@ pub(super) fn build_memories_value(work_dir: &Path) -> String {
 
 #[cfg(test)]
 include!("memory_context/tests_body.inc");
-

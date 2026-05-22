@@ -1,9 +1,7 @@
 use crate::acp::{
-    AgentRetryOutcome, MAX_AGENT_ATTEMPTS, agent_string_is_cannot_use_model,
-    agent_string_is_retriable, agent_string_is_upgrade_plan,
-    IterableClosedStream, iterable_closed_stream_from_buffer, operational_iterable_closed_for_emit,
-    operational_iterable_closed_log_line,
-    plan_agent_retry,
+    AgentRetryOutcome, IterableClosedStream, MAX_AGENT_ATTEMPTS, agent_string_is_cannot_use_model,
+    agent_string_is_retriable, agent_string_is_upgrade_plan, iterable_closed_stream_from_buffer,
+    operational_iterable_closed_for_emit, operational_iterable_closed_log_line, plan_agent_retry,
     retries_noun,
 };
 use std::time::Duration;
@@ -132,7 +130,8 @@ fn retries_noun_singular_and_plural() {
 }
 
 #[test]
-fn delimited_token_match_has_delimited_substring_is_identifier_byte_timeout_word_iterable_closed_in_ascii_lower() {
+fn delimited_token_match_has_delimited_substring_is_identifier_byte_timeout_word_iterable_closed_in_ascii_lower()
+ {
     let _ = stringify!(iterable_closed_in_ascii_lower);
     let _ = stringify!(timeout_word_without_identifier_false_positive);
     let _ = stringify!(is_identifier_byte);

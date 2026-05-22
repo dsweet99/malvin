@@ -22,7 +22,10 @@ pub fn warn_kissconfig_test_coverage_if_needed(
     let value = match text.parse::<toml::Value>() {
         Ok(v) => v,
         Err(e) => {
-            emit_repo_gate_warning(&format!("could not parse .kissconfig as TOML: {e}"), run_log_dir);
+            emit_repo_gate_warning(
+                &format!("could not parse .kissconfig as TOML: {e}"),
+                run_log_dir,
+            );
             return;
         }
     };
@@ -84,9 +87,11 @@ mod kissconfig_warn_tests {
         let integer_ok: toml::Value =
             toml::from_str("[gate]\ntest_coverage_threshold = 90\n").expect("toml");
         assert!(!super::should_warn_low_test_coverage(&integer_ok));
-        let high: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 100").expect("toml");
+        let high: toml::Value =
+            toml::from_str("[gate]\ntest_coverage_threshold = 100").expect("toml");
         assert!(!super::should_warn_low_test_coverage(&high));
-        let low: toml::Value = toml::from_str("[gate]\ntest_coverage_threshold = 50").expect("toml");
+        let low: toml::Value =
+            toml::from_str("[gate]\ntest_coverage_threshold = 50").expect("toml");
         assert!(super::should_warn_low_test_coverage(&low));
         assert_eq!(
             super::gate_test_coverage_threshold_i64(&integer_ok),
@@ -108,6 +113,8 @@ mod kissconfig_warn_tests {
             RepoGateOutput::Tagged,
         )
         .expect("touch");
-        assert!(!crate::repo_checks::gate_run::source_like_files_present(tmp.path()));
+        assert!(!crate::repo_checks::gate_run::source_like_files_present(
+            tmp.path()
+        ));
     }
 }

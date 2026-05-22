@@ -170,7 +170,11 @@ mod tests {
         })
         .await
         .expect_err("write prompt without session");
-        assert!(err.0.contains("begin_coder_session"), "unexpected: {}", err.0);
+        assert!(
+            err.0.contains("begin_coder_session"),
+            "unexpected: {}",
+            err.0
+        );
     }
 
     #[tokio::test]
@@ -200,7 +204,9 @@ mod tests {
 
     #[tokio::test]
     async fn run_review_prompt_coder_session_errors_when_no_coder_session() {
-        use super::{ReviewPromptCoderSession, run_review_prompt_coder_session, REVIEWERS_SPAWN_FILE};
+        use super::{
+            REVIEWERS_SPAWN_FILE, ReviewPromptCoderSession, run_review_prompt_coder_session,
+        };
         use crate::orchestrator::review_prompt_log::ReviewPromptLog;
         use crate::run_timing::TimingPhase;
 
@@ -226,7 +232,10 @@ mod tests {
         })
         .await
         .expect_err("prompt session");
-        assert!(err.0.contains("begin_coder_session"), "unexpected: {}", err.0);
+        assert!(
+            err.0.contains("begin_coder_session"),
+            "unexpected: {}",
+            err.0
+        );
     }
-
 }

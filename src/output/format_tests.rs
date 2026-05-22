@@ -65,8 +65,12 @@ fn command_prelude_detection_ignores_unrelated_bracket_command_substrings() {
 #[test]
 fn command_prelude_rejects_short_bracket_tags_and_non_timestamp_prefixes() {
     assert!(!is_command_prelude_line("[kpop] Command: malvin code"));
-    assert!(!is_command_prelude_line("agent-ts [malvin         ] Command: malvin code"));
-    assert!(!is_command_prelude_line("20260413 [malvin         ] Command: malvin code"));
+    assert!(!is_command_prelude_line(
+        "agent-ts [malvin         ] Command: malvin code"
+    ));
+    assert!(!is_command_prelude_line(
+        "20260413 [malvin         ] Command: malvin code"
+    ));
     assert!(!is_command_prelude_line(""));
     assert!(!is_command_prelude_line("not a command"));
 }
@@ -165,20 +169,17 @@ fn smoke_print_and_format_paths_cover_helpers() {
 }
 
 #[test]
-fn stdout_log_mirrors_stdout_helpers() {
-    let _guard = super::STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("stdout.log");
-    set_stdout_log_path(Some(path.clone()));
-    print_stdout_line("u", "m");
-    print_stdout_raw_line("raw mirrored");
-    set_stdout_log_path(None);
-    let text = std::fs::read_to_string(path).expect("read stdout log");
-    assert!(text.contains("] m"));
-    assert!(text.lines().any(|l| l.starts_with("20") && l.contains("] m")));
-    assert!(text.contains("raw mirrored"));
+fn stdout_log_mirrors_stdout_without_timestamps() {
+    let (display, tagged_line) = crate::output::stdout_display::stdout_display_and_log("u", "m");
+    assert_eq!(display, tagged_line);
+    let first_token = tagged_line
+        .split_whitespace()
+        .next()
+        .expect("tagged stdout line should not be empty");
+    assert!(
+        !super::is_log_timestamp_token(first_token),
+        "stdout log should mirror stdout without timestamp prefixes: {tagged_line:?}"
+    );
 }
 
 #[test]

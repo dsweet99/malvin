@@ -47,9 +47,10 @@ mod active_containment_linux {
     #[tokio::test]
     async fn spawn_path_activates_containment_when_cgroups_available() {
         crate::acp_memory_containment::test_support::require_cgroup_integration_test();
-        let (containment, mut child) = crate::acp_memory_containment::test_support::active_via_true_child_spawn()
-            .await
-            .expect("expected cgroup-backed true child when cgroups are writable");
+        let (containment, mut child) =
+            crate::acp_memory_containment::test_support::active_via_true_child_spawn()
+                .await
+                .expect("expected cgroup-backed true child when cgroups are writable");
         assert!(containment.active());
         finalize_containment_cgroup(&containment);
         let _ = child.wait().await;

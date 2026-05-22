@@ -34,7 +34,9 @@ struct IdeasRunPrep {
 
 fn prepare_ideas_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
-    store.validate_exists("mbc2.md").map_err(|e: PromptError| e.0)?;
+    store
+        .validate_exists("mbc2.md")
+        .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }
 
@@ -54,10 +56,7 @@ pub fn render_ideas_prompt(num_ideas: usize, user_prompt: &str) -> Result<String
     render_mbc2_for_scheduled_kpop_block(&store, &ctx).map_err(|e| e.0)
 }
 
-fn new_ideas_client(
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> crate::acp::AgentClient {
+fn new_ideas_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> crate::acp::AgentClient {
     crate::acp::AgentClient::new(
         shared.model.clone(),
         agent_io_options(
@@ -161,8 +160,14 @@ async fn run_ideas_acp(
         .set_implement_display_name("ideas");
     let run_res = run_ideas_coder_prompt(client, artifacts, prompt).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
+    let merged =
+        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
+    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+        client,
+        &artifacts.run_dir,
+        &timing,
+        merged,
+    )
 }
 
 #[cfg(test)]
@@ -244,5 +249,4 @@ mod ideas_tests {
             _ => panic!("expected Ideas"),
         }
     }
-
 }

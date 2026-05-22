@@ -239,5 +239,4 @@ mod tests {
         let err = ensure_review_prep_after_reviewers_spawn(&artifacts).expect_err("abort");
         assert_eq!(err.0, "ABORT: agent stop");
     }
-
 }

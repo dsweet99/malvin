@@ -3,22 +3,22 @@
 
 use std::path::Path;
 
-use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
-use crate::repo_checks as repo_checks;
-use clap::Args;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
     create_run_artifacts_from_text, resolve_user_request,
 };
+use crate::cli::cli_request::require_cli_request;
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::repo_checks;
 use crate::run_timing::TimingPhase;
+use clap::Args;
 
 mod do_flow_prompt;
 
 pub use do_flow_prompt::{
-    combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user,
-    prepare_do_prompt_store, prepare_do_raw_prompt_store,
+    combine_do_acp_prompt_header_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
+    prepare_do_raw_prompt_store,
 };
 
 /// Arguments for [`run_do`].
@@ -62,7 +62,10 @@ fn new_do_client(
     )
 }
 
-fn run_do_repo_gates_if_requested(do_args: &DoArgs, artifacts: &RunArtifacts) -> Result<(), String> {
+fn run_do_repo_gates_if_requested(
+    do_args: &DoArgs,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
     if do_args.repo_gates {
         repo_checks::run_repo_workspace_gates_no_kiss_clamp(
             &artifacts.work_dir,
@@ -164,8 +167,14 @@ async fn run_do_acp(
         .set_implement_display_name("do");
     let run_res = run_do_coder_prompt(client, artifacts, &coder).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(client, &artifacts.run_dir, &timing, merged)
+    let merged =
+        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
+    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+        client,
+        &artifacts.run_dir,
+        &timing,
+        merged,
+    )
 }
 
 #[cfg(test)]

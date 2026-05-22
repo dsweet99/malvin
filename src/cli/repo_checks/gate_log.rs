@@ -105,14 +105,16 @@ mod gate_log_tests {
     #[test]
     fn emit_repo_gate_warning_survives_blocked_log_path() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG)).expect("block log");
+        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG))
+            .expect("block log");
         super::emit_repo_gate_warning("warn", Some(tmp.path()));
     }
 
     #[test]
     fn try_append_command_output_survives_blocked_log_path() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG)).expect("block log");
+        std::fs::create_dir(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG))
+            .expect("block log");
         let output = std::process::Output {
             status: std::process::ExitStatus::default(),
             stdout: Vec::new(),

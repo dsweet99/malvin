@@ -8,7 +8,12 @@ fn kpop_turn_prompts_render() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let root = tmp.path().join("prompts");
     std::fs::create_dir_all(&root).expect("mkdir");
-    for name in ["kpop_common.md", "kpop_block.md", "mbc2_pure.md", "coding_rules.md"] {
+    for name in [
+        "kpop_common.md",
+        "kpop_block.md",
+        "mbc2_pure.md",
+        "coding_rules.md",
+    ] {
         std::fs::write(root.join(name), "body").expect("write");
     }
     let store = PromptStore::with_root(root);

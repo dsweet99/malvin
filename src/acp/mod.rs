@@ -12,10 +12,10 @@ mod session_types;
 mod unix_process_group;
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
-pub use session_types::{AcpSession, AcpSpawnArgs};
-pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 #[cfg(test)]
 pub(crate) use session_types::AcpSessionInner;
+pub use session_types::{AcpSession, AcpSpawnArgs};
+pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 
 include!("cursor_credentials.rs");
 include!("coalesce.rs");
@@ -130,29 +130,17 @@ use tokio::io::AsyncReadExt;
 include!("transport_tests_inline.inc");
 
 #[cfg(test)]
-#[path = "reader_tests_helpers.rs"]
-mod reader_tests_helpers;
-#[cfg(test)]
-#[path = "reader_tests_dispatch.rs"]
-mod reader_tests_dispatch;
-#[cfg(test)]
 #[path = "reader_tests_coalesce_a.rs"]
 mod reader_tests_coalesce_a;
 #[cfg(test)]
 #[path = "reader_tests_coalesce_b.rs"]
 mod reader_tests_coalesce_b;
 #[cfg(test)]
-#[path = "reader_tests_trace_a.rs"]
-mod reader_tests_trace_a;
+#[path = "reader_tests_dispatch.rs"]
+mod reader_tests_dispatch;
 #[cfg(test)]
-#[path = "reader_tests_trace_b.rs"]
-mod reader_tests_trace_b;
-#[cfg(test)]
-#[path = "reader_tests_trace_iterable.rs"]
-mod reader_tests_trace_iterable;
-#[cfg(test)]
-#[path = "reader_tests_retry_policy.rs"]
-mod reader_tests_retry_policy;
+#[path = "reader_tests_helpers.rs"]
+mod reader_tests_helpers;
 #[cfg(test)]
 #[path = "reader_tests_permission.rs"]
 mod reader_tests_permission;
@@ -162,6 +150,21 @@ mod reader_tests_permission_unix;
 #[cfg(test)]
 #[path = "reader_tests_reader_loop.rs"]
 mod reader_tests_reader_loop;
+#[cfg(test)]
+#[path = "reader_tests_retry_policy.rs"]
+mod reader_tests_retry_policy;
+#[cfg(test)]
+#[path = "reader_tests_trace_a.rs"]
+mod reader_tests_trace_a;
+#[cfg(test)]
+#[path = "reader_tests_trace_b.rs"]
+mod reader_tests_trace_b;
+#[cfg(test)]
+#[path = "reader_tests_trace_coalesce_write.rs"]
+mod reader_tests_trace_coalesce_write;
+#[cfg(test)]
+#[path = "reader_tests_trace_iterable.rs"]
+mod reader_tests_trace_iterable;
 
 #[cfg(test)]
 mod kiss_coverage;

@@ -76,7 +76,9 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
     let last = Instant::now()
         .checked_sub(elapsed)
         .expect("elapsed heartbeat offset must not exceed now");
-    *LAST_HEARTBEAT.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(last);
+    *LAST_HEARTBEAT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(last);
 }
 
 #[cfg(test)]
@@ -85,14 +87,13 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{
-        emit_heartbeat_line, heartbeat_due, maybe_emit_stdout_heartbeat,
+        HEARTBEAT_TEST_LOCK, emit_heartbeat_line, heartbeat_due, maybe_emit_stdout_heartbeat,
         poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
         test_set_last_heartbeat_elapsed, try_emit_heartbeat_if_due, wall_clock_poller_loop,
-        HEARTBEAT_TEST_LOCK,
     };
     use crate::output::{
-        format_log_tag_inner, init_stdout_style, is_log_timestamp_token, print_stdout_line,
-        set_stdout_log_path, MALVIN_WHO,
+        MALVIN_WHO, format_log_tag_inner, init_stdout_style, is_log_timestamp_token,
+        print_stdout_line, set_stdout_log_path,
     };
 
     #[test]
@@ -120,9 +121,7 @@ mod tests {
         let text = std::fs::read_to_string(&path).expect("read");
         let inner = format_log_tag_inner(MALVIN_WHO);
         let line = text.lines().next().expect("heartbeat line");
-        let (ts_prefix, rest) = line.split_once(' ').expect("timestamp prefix");
-        assert!(is_log_timestamp_token(ts_prefix), "log prefix: {line:?}");
-        let payload = rest
+        let payload = line
             .strip_prefix(&format!("[{inner}] "))
             .expect("tag prefix");
         assert!(
@@ -148,7 +147,11 @@ mod tests {
         maybe_emit_stdout_heartbeat();
         set_stdout_log_path(None);
         let text = std::fs::read_to_string(path).expect("read");
-        assert_eq!(text.matches('[').count(), 1, "expected one heartbeat: {text:?}");
+        assert_eq!(
+            text.matches('[').count(),
+            1,
+            "expected one heartbeat: {text:?}"
+        );
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use super::{
-    attach_new_run_timing, finalize_and_emit_run_timing, finalize_run_timing_json_only,
-    ReviewPairId, RunTiming, TimingPhase, record_backoff, record_llm, report,
+    ReviewPairId, RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
+    finalize_run_timing_json_only, record_backoff, record_llm, report,
 };
 use std::sync::{Arc, Mutex};
 

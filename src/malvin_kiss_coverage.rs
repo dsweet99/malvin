@@ -15,7 +15,8 @@ fn smoke_artifacts_create() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "plan").expect("write plan");
-    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     assert!(artifacts.plan_path.is_file());
     let from_text =
         crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path())).expect("from_text");
@@ -41,7 +42,9 @@ fn smoke_artifacts_resolve_and_learn_gate() {
 #[test]
 fn smoke_output_and_tracing() {
     crate::tracing_init::init_tracing();
-    assert!(crate::tracing_init::malvin_log_accepts_tracing_level(tracing::Level::INFO));
+    assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
+        tracing::Level::INFO
+    ));
     let formatted = crate::tracing_init::format_debug_tracing_field("k", &"val");
     assert_eq!(formatted, "\"val\"");
     crate::output::clear_captured_stderr_lines();

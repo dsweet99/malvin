@@ -96,8 +96,8 @@ async fn code_review_single_attempt(
 mod tests {
     use crate::acp::{AgentClient, AgentIoOptions};
     use crate::artifacts::{
-        create_run_artifacts_from_text, KissConfigBackup, KissignoreBackup, MalvinChecksBackup,
-        SessionDotfileBackups,
+        KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+        create_run_artifacts_from_text,
     };
     use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
     use crate::prompts::PromptStore;
@@ -193,6 +193,4 @@ mod tests {
             }
         }
     }
-
 }
-

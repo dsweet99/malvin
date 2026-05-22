@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use super::containment_state::OomBaseline;
 use super::AcpMemoryContainment;
+use super::containment_state::OomBaseline;
 
 #[must_use]
 pub fn inactive_containment() -> AcpMemoryContainment {

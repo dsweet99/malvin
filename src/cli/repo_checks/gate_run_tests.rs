@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use crate::repo_checks::command_support::set_fake_command_dir;
 use super::*;
+use crate::repo_checks::command_support::set_fake_command_dir;
 
 #[cfg(unix)]
 fn install_zero_exit_gate_bins(bin_dir: &Path) {

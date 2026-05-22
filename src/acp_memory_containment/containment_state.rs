@@ -86,7 +86,9 @@ impl AcpMemoryContainment {
 
 fn latch_oom_if_needed(state: &ContainmentState, had_oom: bool) {
     if had_oom {
-        state.oom_latched.store(true, std::sync::atomic::Ordering::Relaxed);
+        state
+            .oom_latched
+            .store(true, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

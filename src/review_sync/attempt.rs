@@ -99,7 +99,10 @@ mod tests {
         let text = super::sync_review_file_for_attempt(&artifact, &workspace).expect("sync");
         assert!(text.is_none());
         assert!(artifact.is_file());
-        assert_eq!(std::fs::read_to_string(&artifact).expect("read artifact"), "");
+        assert_eq!(
+            std::fs::read_to_string(&artifact).expect("read artifact"),
+            ""
+        );
     }
 
     #[test]

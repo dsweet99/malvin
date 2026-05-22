@@ -38,5 +38,4 @@ mod stdout_log_path_tests {
         super::set_stdout_log_path(None);
         assert!(super::clone_stdout_log_path().is_none());
     }
-
 }
