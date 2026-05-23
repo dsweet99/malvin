@@ -46,7 +46,7 @@ pub fn run_models() -> Result<(), String> {
     print_stdout_line(MALVIN_WHO, "");
     print_stdout_line(
         MALVIN_WHO,
-        &format!("Default model in malvin: {DEFAULT_CLI_MODEL}"),
+        &format!("Default model: {DEFAULT_CLI_MODEL}"),
     );
     Ok(())
 }
