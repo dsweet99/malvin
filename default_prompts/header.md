@@ -69,6 +69,9 @@ PREDICT_TIME: <prediction>
 - Label any statement which is a hypothesis as such.
 - `{{ plan_path }}` (when present) overrides ADVICE. ADVICE is not binding.
 
+## Shorthand
+- DCC: Don't Change Code
+
 ## Style
 When communicating to the user:
 - No corporate-speak (e.g., "learnings", "close the loop")
