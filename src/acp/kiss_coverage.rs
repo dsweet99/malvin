@@ -177,6 +177,9 @@ fn smoke_acp_tool_summary_test_names() {
     let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_display_ansi_stripped_matches_plain);
     let _ = stringify!(crate::acp::reader_tests_tool_summary_human::log_channel_stays_key_value);
     let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human_bugs::stdout_execute_completed_stderr_without_exit_code_must_not_show_checkmark
+    );
+    let _ = stringify!(
         crate::acp::reader_tests_tool_summary_human_bugs::stdout_execute_failed_without_exit_code_must_not_show_checkmark
     );
     let _ = stringify!(

@@ -99,7 +99,7 @@ const ANSI_RESET: &str = "\x1b[0m";
 pub fn format_log_tag_inner(label: &str) -> String {
     let mut s: String = label.chars().take(LOG_TAG_INNER_WIDTH).collect();
     while s.chars().count() < LOG_TAG_INNER_WIDTH {
-        s.push(' ');
+        s.push('.');
     }
     s
 }
