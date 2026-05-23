@@ -277,6 +277,10 @@ fn read_output_path(raw: &Value) -> Option<&str> {
         .and_then(Value::as_str)
 }
 
+fn human_edit_subject_path(path: &str) -> String {
+    shorten_middle(path, TOOL_DISPLAY_MAX_WIDTH)
+}
+
 fn human_edit_subject(
     parsed: &ParsedToolUpdate,
     tracker: &ToolSummaryTracker,
@@ -285,11 +289,7 @@ fn human_edit_subject(
     let rec = tracker.record(&parsed.id);
     if let Some(paths) = parsed.raw_output.as_ref().and_then(edit_paths) {
         if paths.len() == 1 {
-            let line_range = parsed
-                .input_line_range
-                .or_else(|| rec.and_then(|r| r.input_line_range))
-                .or_else(|| parsed.raw_output.as_ref().and_then(|raw| acp_line_range_field(Some(raw))));
-            return Some(shorten_subject_path(&paths[0], line_range));
+            return Some(human_edit_subject_path(&paths[0]));
         }
         return Some(format!("{} files", paths.len()));
     }
@@ -298,10 +298,7 @@ fn human_edit_subject(
         .as_deref()
         .or_else(|| rec.and_then(|r| r.input_path.as_deref()))
     {
-        let line_range = parsed
-            .input_line_range
-            .or_else(|| rec.and_then(|r| r.input_line_range));
-        return Some(shorten_subject_path(path, line_range));
+        return Some(human_edit_subject_path(path));
     }
     if let Some(label) = read_or_edit_title_label(parsed, rec, "Edit") {
         return Some(shorten_middle(&label, TOOL_DISPLAY_MAX_WIDTH));

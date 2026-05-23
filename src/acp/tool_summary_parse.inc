@@ -57,6 +57,7 @@ fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
     let id = update.get("toolCallId").and_then(Value::as_str)?.to_string();
     let raw_input = update.get("rawInput");
     let raw_output = update.get("rawOutput");
+    let content_diff_paths = acp_content_diff_paths(update);
     Some(ParsedToolUpdate {
         phase,
         id,
@@ -75,20 +76,101 @@ fn parse_tool_update(v: &Value) -> Option<ParsedToolUpdate> {
             .and_then(|v| v.get("command"))
             .and_then(Value::as_str)
             .map(str::to_string),
-        input_path: acp_path_field(raw_input).or_else(|| acp_path_field(raw_output)),
+        input_path: acp_path_field(raw_input)
+            .or_else(|| acp_path_field(raw_output))
+            .or_else(|| content_diff_paths.as_ref().and_then(|paths| paths.first().cloned())),
         input_line_range: acp_line_range_field(raw_input).or_else(|| acp_line_range_field(raw_output)),
         search_query: acp_search_query_field(raw_input).or_else(|| acp_search_query_field(raw_output)),
-        raw_output: raw_output.cloned(),
+        raw_output: merge_content_diff_paths(raw_output, content_diff_paths.as_deref()),
     })
 }
 
-fn acp_path_field(raw_input: Option<&Value>) -> Option<String> {
-    let v = raw_input?;
+fn acp_content_diff_paths(update: &Value) -> Option<Vec<String>> {
+    let arr = update.get("content")?.as_array()?;
+    let mut paths = Vec::new();
+    for item in arr {
+        if item.get("type").and_then(Value::as_str) != Some("diff") {
+            continue;
+        }
+        if let Some(path) = acp_path_value(item) {
+            paths.push(path);
+        }
+    }
+    (!paths.is_empty()).then_some(paths)
+}
+
+fn acp_path_value(v: &Value) -> Option<String> {
     v.get("path")
         .or_else(|| v.get("filePath"))
         .or_else(|| v.get("uri"))
         .and_then(Value::as_str)
-        .map(str::to_string)
+        .map(acp_normalize_path)
+}
+
+fn acp_normalize_path(s: &str) -> String {
+    let Some(rest) = s.strip_prefix("file://") else {
+        return s.to_string();
+    };
+    if rest.starts_with('/') {
+        return rest.to_string();
+    }
+    rest.find('/')
+        .map_or_else(|| rest.to_string(), |slash| rest[slash..].to_string())
+}
+
+fn merge_content_diff_paths(raw_output: Option<&Value>, content_diff_paths: Option<&[String]>) -> Option<Value> {
+    match (raw_output, content_diff_paths) {
+        (None, None) => None,
+        (Some(raw), None) => Some(raw.clone()),
+        (None, Some(paths)) => Some(content_diff_paths_to_raw_output(paths)),
+        (Some(raw), Some(paths)) => {
+            let mut merged = raw.clone();
+            if !raw_output_has_edit_paths(raw) {
+                merge_paths_into_raw(&mut merged, paths);
+            }
+            Some(merged)
+        }
+    }
+}
+
+fn content_diff_paths_to_raw_output(paths: &[String]) -> Value {
+    if paths.len() == 1 {
+        Value::Object(serde_json::Map::from_iter([(
+            "path".to_string(),
+            Value::String(paths[0].clone()),
+        )]))
+    } else {
+        Value::Object(serde_json::Map::from_iter([(
+            "paths".to_string(),
+            Value::Array(paths.iter().cloned().map(Value::String).collect()),
+        )]))
+    }
+}
+
+fn raw_output_has_edit_paths(raw: &Value) -> bool {
+    acp_path_value(raw).is_some()
+        || raw
+            .get("paths")
+            .and_then(Value::as_array)
+            .is_some_and(|paths| !paths.is_empty())
+}
+
+fn merge_paths_into_raw(raw: &mut Value, paths: &[String]) {
+    let Some(obj) = raw.as_object_mut() else {
+        return;
+    };
+    if paths.len() == 1 {
+        obj.insert("path".to_string(), Value::String(paths[0].clone()));
+        return;
+    }
+    obj.insert(
+        "paths".to_string(),
+        Value::Array(paths.iter().cloned().map(Value::String).collect()),
+    );
+}
+
+fn acp_path_field(raw_input: Option<&Value>) -> Option<String> {
+    raw_input.and_then(acp_path_value)
 }
 
 fn acp_search_query_field(raw_input: Option<&Value>) -> Option<String> {

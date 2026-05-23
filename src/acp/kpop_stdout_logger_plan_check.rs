@@ -29,7 +29,7 @@ fn h2_read_without_path_suppresses_pending_stdout() {
 }
 
 #[test]
-fn h3_edit_stdout_includes_line_number_when_available() {
+fn h3_edit_stdout_omits_line_number_for_edit_subject() {
     let v = json!({
         "method": "session/update",
         "params": {"update": {
@@ -49,13 +49,17 @@ fn h3_edit_stdout_includes_line_number_when_available() {
     let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
     let stdout = lines.stdout.as_deref().unwrap_or("");
     assert!(
-        lines.log.contains(":12"),
-        "log channel should include :12; log={}",
+        !lines.log.contains(":12"),
+        "log channel should omit line numbers for edits; log={}",
         lines.log
     );
     assert!(
-        stdout.contains(":12"),
-        "stdout edit summary should include line number; got {stdout:?}"
+        !stdout.contains(":12"),
+        "stdout edit summary should omit line number; got {stdout:?}"
+    );
+    assert!(
+        stdout.contains("src/foo.rs"),
+        "stdout edit summary should include filename; got {stdout:?}"
     );
 }
 

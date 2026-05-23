@@ -11,7 +11,7 @@ mod unix_tests {
     };
 
     #[test]
-    fn startup_gate_failure_surfaces_pre_check_guidance() {
+    fn startup_gate_failure_omits_code_pre_check_guidance_and_still_runs_tidy() {
         let (root, home, workspace) = test_home_workspace();
         seed_git_kiss_cargo_gate_workspace(&workspace);
         std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("malvin_checks");
@@ -28,20 +28,20 @@ mod unix_tests {
         });
         let combined = super::common::combined_cli_output(&out);
         assert!(
-            combined.contains("Pre-checks failed"),
-            "tidy startup gate failure should use pre-check guidance: {combined:?}"
+            !combined.contains("Pre-checks failed"),
+            "tidy must not use code-style pre-check guidance: {combined:?}"
         );
         assert!(
-            combined.contains("retry `malvin tidy`"),
-            "expected malvin tidy retry guidance: {combined:?}"
+            !combined.contains("implementation did not start"),
+            "tidy startup gate failure must not claim implementation never started: {combined:?}"
         );
         assert!(
-            combined.contains("malvin tidy"),
-            "expected tidy guidance in pre-check failure: {combined:?}"
+            combined.contains("kiss check"),
+            "expected gate failure detail from repo checks: {combined:?}"
         );
         assert!(
-            combined.contains("--skip-pre-checks"),
-            "expected skip-pre-checks guidance: {combined:?}"
+            combined.contains("tidy iteration"),
+            "tidy should continue after startup gate failure: {combined:?}"
         );
     }
 }

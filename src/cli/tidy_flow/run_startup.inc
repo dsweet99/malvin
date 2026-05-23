@@ -98,11 +98,6 @@ pub fn prepare_tidy_run(
         return tidy_skip_agent_startup(artifacts, shared, malvin_checks_backup);
     }
 
-    if let Some(detail) = gate_result.as_ref().err() {
-        let msg = crate::cli::format_pre_check_gate_failure("malvin tidy", detail);
-        crate::cli::entrypoint::print_command_error(&msg);
-    }
-
     tidy_run_agent_startup(TidyAgentStartupRequest {
         shared,
         workflow,

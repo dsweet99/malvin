@@ -120,17 +120,9 @@ fn append_search_done(parts: &mut Vec<String>, raw: &Value) {
     }
 }
 
-fn push_edit_path(parts: &mut Vec<String>, raw: &Value, path: &str) {
+fn push_edit_path(parts: &mut Vec<String>, _raw: &Value, path: &str) {
     let short = shorten_middle(path, TOOL_DISPLAY_MAX_WIDTH);
-    if let Some(line) = raw
-        .get("lineNumber")
-        .or_else(|| raw.get("startLine"))
-        .and_then(json_number)
-    {
-        parts.push(format!("path={short}:{line}"));
-    } else {
-        parts.push(format!("path={short}"));
-    }
+    parts.push(format!("path={short}"));
 }
 
 fn append_edit_done(parts: &mut Vec<String>, raw: &Value) {
@@ -177,13 +169,13 @@ fn append_generic_done(parts: &mut Vec<String>, raw: &Value, detail: ToolSummary
 
 fn edit_paths(raw: &Value) -> Option<Vec<String>> {
     let mut paths = Vec::new();
-    if let Some(p) = raw.get("path").or_else(|| raw.get("filePath")).and_then(Value::as_str) {
-        paths.push(p.to_string());
+    if let Some(p) = acp_path_value(raw) {
+        paths.push(p);
     }
     if let Some(arr) = raw.get("paths").and_then(Value::as_array) {
         for item in arr {
             if let Some(s) = item.as_str() {
-                paths.push(s.to_string());
+                paths.push(acp_normalize_path(s));
             }
         }
     }

@@ -186,6 +186,31 @@ fn edit_done_emits_added_when_only_lines_added_field_present() {
 }
 
 #[test]
+fn edit_done_raw_output_uri_includes_path_in_log() {
+    let v = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "tool_edit_raw_uri",
+            "kind": "edit",
+            "status": "completed",
+            "rawOutput": {
+                "uri": "file:///workspace/review.md",
+                "linesAdded": 1,
+                "linesRemoved": 0
+            }
+        }}
+    });
+    let mut tracker = ToolSummaryTracker::default();
+    let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    assert!(
+        lines.log.contains("path=") && lines.log.contains("review.md"),
+        "log channel should include normalized uri path; log={}",
+        lines.log
+    );
+}
+
+#[test]
 fn tool_call_update_pending_labeled_pending_not_start() {
     let v = json!({
         "method": "session/update",
