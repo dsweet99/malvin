@@ -5,7 +5,7 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 
 use crate::repo_checks::{
     RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, emit_repo_gate_line,
-    run_repo_workspace_gates, run_repo_workspace_gates_with_details,
+    repo_gate_failure_to_string, run_repo_workspace_gates, run_repo_workspace_gates_with_details,
 };
 
 mod mid_session_post_run_tidy {
@@ -38,11 +38,14 @@ where
     match first_gates() {
         Ok(()) => Ok(()),
         Err(RepoGateFailure::Command(failure)) => {
+            let _ = repo_gate_failure_to_string(RepoGateFailure::Command(failure.clone()));
             on_command_failure(failure).await?;
             second_gates()
                 .map_err(|e| format!("post-run gates still failing after one tidy.md retry: {e}"))
         }
-        Err(RepoGateFailure::Message(err)) => Err(err),
+        Err(RepoGateFailure::Message(err)) => {
+            Err(repo_gate_failure_to_string(RepoGateFailure::Message(err)))
+        }
     }
 }
 
@@ -95,8 +98,7 @@ mod gates_root_tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use super::{post_run_tidy_retry_line, pre_summary_repo_gates_tidy_retry_flow};
-    use crate::repo_checks::RepoGateCommandFailure;
-    use crate::repo_checks::RepoGateFailure;
+    use crate::repo_checks::{RepoGateCommandFailure, RepoGateFailure, gate_failure_summary};
 
     #[test]
     fn post_run_tidy_retry_line_names_failed_gate() {
@@ -152,7 +154,7 @@ mod gates_root_tests {
         )
         .await
         .expect_err("expected message error");
-        assert_eq!(err, "no workspace");
+        assert_eq!(gate_failure_summary(&err), "no workspace");
         assert_eq!(tidy_calls.load(Ordering::SeqCst), 0);
     }
 

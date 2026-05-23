@@ -4,7 +4,7 @@ use std::process::Command;
 use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
-use super::types::{RepoGateFailure, RepoGateOutput};
+use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
 /// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `bug`, `tidy`, …).
 ///
@@ -23,7 +23,7 @@ pub fn run_repo_workspace_gates(
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
     let result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
-        .map_err(RepoGateFailure::into_error);
+        .map_err(repo_gate_failure_to_string);
     restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
     result
 }
@@ -41,7 +41,7 @@ pub fn run_repo_workspace_gates_no_kiss_clamp(
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
     let result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
-        .map_err(RepoGateFailure::into_error);
+        .map_err(repo_gate_failure_to_string);
     restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
     result
 }
@@ -71,7 +71,7 @@ pub fn prepare_repo_workspace(
     run_log_dir: Option<&Path>,
 ) -> Result<(), String> {
     prepare_repo_workspace_with_details(work_dir, output, run_log_dir, true)
-        .map_err(RepoGateFailure::into_error)
+        .map_err(repo_gate_failure_to_string)
 }
 
 fn prepare_repo_workspace_with_details(

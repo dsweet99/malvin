@@ -24,6 +24,9 @@ pub fn clear_command_error_run_dir() {
 
 /// Appends one timestamped malvin line to `malvin_error.log` under the bound run directory, when set.
 pub fn append_command_error_to_run_log(message: &str) {
+    if crate::repo_checks::is_gate_failure_error(message) {
+        return;
+    }
     let Some(dir) = COMMAND_ERROR_RUN_DIR
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

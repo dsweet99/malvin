@@ -29,6 +29,8 @@ mod cli_cross_cov;
 mod cli_cross_cov_kiss;
 #[cfg(test)]
 mod cli_smoke_cov;
+#[cfg(test)]
+mod gate_error_regression;
 
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;

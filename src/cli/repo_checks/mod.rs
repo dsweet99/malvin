@@ -24,4 +24,8 @@ pub use gate_run::{
     run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,
     run_repo_workspace_gates_with_details,
 };
-pub use types::{RepoGateCommandFailure, RepoGateFailure, RepoGateOutput};
+pub use types::{
+    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, gate_failure_summary,
+    is_gate_failure_error, is_pure_gate_failure_summary,
+};
+pub(crate) use types::repo_gate_failure_to_string;

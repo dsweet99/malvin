@@ -17,17 +17,20 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
-    let ts = super::timestamp_now_string();
-    let ts = ts.as_str();
-    let (max_payload, wrap) = stdout_line_wrap_meta(who, line);
-    if !wrap {
-        let (display, log) = super::stdout_tagged_display_and_log_line(who, line, Some(ts));
-        super::print_stdout_rendered_line(&display, &log);
-        return;
-    }
-    for seg in wrap_words_bounded(max_payload, line) {
-        let (display, log) = super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
-        super::print_stdout_rendered_line(&display, &log);
+    for para in line.split('\n') {
+        let ts = super::timestamp_now_string();
+        let ts = ts.as_str();
+        let (max_payload, wrap) = stdout_line_wrap_meta(who, para);
+        if !wrap {
+            let (display, log) = super::stdout_tagged_display_and_log_line(who, para, Some(ts));
+            super::print_stdout_rendered_line(&display, &log);
+            continue;
+        }
+        for seg in wrap_words_bounded(max_payload, para) {
+            let (display, log) =
+                super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
+            super::print_stdout_rendered_line(&display, &log);
+        }
     }
 }
 

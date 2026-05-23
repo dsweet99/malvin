@@ -41,9 +41,9 @@ pub(crate) fn try_append_command_output(
 }
 
 pub(crate) fn emit_repo_gate_warning(line: &str, run_log_dir: Option<&Path>) {
-    use crate::output::{WARNING_WHO, print_log_warning};
-    print_log_warning(line);
-    try_append_log_line(run_log_dir, WARNING_WHO, line);
+    use crate::output::{MALVIN_WHO, print_stderr_line};
+    print_stderr_line(MALVIN_WHO, line);
+    try_append_log_line(run_log_dir, MALVIN_WHO, line);
 }
 
 pub(crate) fn emit_repo_gate_line(output: RepoGateOutput, line: &str, run_log_dir: Option<&Path>) {

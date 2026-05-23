@@ -17,14 +17,16 @@ fn emit_stderr_log_line(ts: &str, who: &str, line: &str) {
 }
 
 fn emit_stderr_log_lines(who: &str, line: &str) {
-    let ts = timestamp_now_string();
-    let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, line);
-    if !wrap {
-        emit_stderr_log_line(&ts, who, line);
-        return;
-    }
-    for seg in wrap_words_bounded(max_payload, line) {
-        emit_stderr_log_line(&ts, who, &seg);
+    for para in line.split('\n') {
+        let ts = timestamp_now_string();
+        let (max_payload, wrap) = stderr_line_wrap_meta(&ts, who, para);
+        if !wrap {
+            emit_stderr_log_line(&ts, who, para);
+            continue;
+        }
+        for seg in wrap_words_bounded(max_payload, para) {
+            emit_stderr_log_line(&ts, who, &seg);
+        }
     }
 }
 
@@ -56,5 +58,33 @@ mod stderr_log_tests {
         super::print_log_warning("warn-smoke");
         let lines = crate::output::take_captured_stderr_lines();
         assert!(lines.iter().any(|l| l.contains("warn-smoke")));
+    }
+
+    #[test]
+    #[allow(unsafe_code)]
+    fn multiline_log_error_tags_every_physical_line() {
+        let prev_cols = std::env::var("COLUMNS").ok();
+        unsafe {
+            std::env::set_var("COLUMNS", "500");
+        }
+        crate::output::clear_captured_stderr_lines();
+        super::print_log_error("first\nsecond\nthird");
+        let lines = crate::output::take_captured_stderr_lines();
+        unsafe {
+            match prev_cols {
+                Some(v) => std::env::set_var("COLUMNS", v),
+                None => std::env::remove_var("COLUMNS"),
+            }
+        }
+        assert_eq!(lines.len(), 3, "expected one captured line per paragraph: {lines:?}");
+        for line in &lines {
+            assert!(
+                line.contains("[error"),
+                "each physical line must carry the error tag: {line:?}"
+            );
+        }
+        assert!(lines[0].contains("first"));
+        assert!(lines[1].contains("second"));
+        assert!(lines[2].contains("third"));
     }
 }

@@ -25,26 +25,26 @@ fn repo_gate_stderr_progress_must_use_malvin_who_not_warning() {
 }
 
 #[test]
-fn quality_gates_log_stderr_warning_must_use_warning_who_tag() {
+fn quality_gates_log_stderr_gate_warning_must_use_malvin_who_tag() {
     let msg = KISSCONFIG_COVERAGE_WARN;
     let tmp = tempfile::tempdir().expect("tempdir");
     let stderr = capture_stderr_output(|| {
         emit_repo_gate_warning(msg, Some(tmp.path()));
     });
     assert!(
-        stderr.contains("[warning"),
-        "stderr must use warning who tag"
+        stderr.contains("[malvin") && !stderr.contains("[warning"),
+        "stderr must use malvin who tag, got: {stderr:?}"
     );
     let log = std::fs::read_to_string(tmp.path().join(crate::artifacts::QUALITY_GATES_LOG))
         .expect("quality_gates.log");
     assert!(
-        log.contains("[warning") && log.contains(msg),
-        "quality_gates.log must record warning who tag for stderr gate warnings, got: {log:?}"
+        log.contains("[malvin") && log.contains(msg),
+        "quality_gates.log must record malvin who tag for gate warnings, got: {log:?}"
     );
 }
 
 #[test]
-fn kissconfig_coverage_warn_must_use_warning_who_on_stderr_not_malvin_stdout() {
+fn kissconfig_coverage_warn_must_use_malvin_who_on_stderr() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cfg = tmp.path().join(".kissconfig");
     let mut f = std::fs::File::create(&cfg).expect("create .kissconfig");
@@ -54,8 +54,12 @@ fn kissconfig_coverage_warn_must_use_warning_who_on_stderr_not_malvin_stdout() {
         warn_kissconfig_test_coverage_if_needed(tmp.path(), RepoGateOutput::Tagged, None);
     });
     assert!(
-        stderr.contains("[warning") && stderr.contains("test_coverage_threshold"),
-        "kissconfig coverage warnings must use warning who on stderr per plan, stderr={stderr:?}"
+        stderr.contains("[malvin") && stderr.contains("test_coverage_threshold"),
+        "kissconfig coverage warnings must use malvin who on stderr, stderr={stderr:?}"
+    );
+    assert!(
+        !stderr.contains("[warning"),
+        "kissconfig coverage must not use warning who, stderr={stderr:?}"
     );
 }
 
@@ -70,11 +74,11 @@ fn repo_gate_stderr_output_must_match_malvin_log_format() {
     let log_path = tmp.path().join(crate::artifacts::QUALITY_GATES_LOG);
     let log = std::fs::read_to_string(&log_path).expect("quality_gates.log");
     assert!(
-        log.contains("[warning") && log.contains(msg),
-        "quality_gates.log must record warning who tag for gate warnings"
+        log.contains("[malvin") && log.contains(msg),
+        "quality_gates.log must record malvin who tag for gate warnings"
     );
     assert!(
-        stderr.contains("[warning") && stderr.contains(msg),
-        "gate warnings must reach stderr via print_log_warning"
+        stderr.contains("[malvin") && stderr.contains(msg),
+        "gate warnings must reach stderr via print_stderr_line(malvin)"
     );
 }
