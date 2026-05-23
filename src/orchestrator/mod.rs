@@ -53,6 +53,7 @@ pub(crate) mod orchestrator_test_support;
 mod orchestrator_kiss_coverage;
 
 mod check_plan;
+pub mod pre_review_gates;
 mod review_loop;
 pub mod session_flow;
 
@@ -69,7 +70,7 @@ pub type PreSummaryMidFn =
         &'a SessionDotfileBackups,
     ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
-fn mid_noop<'a>(
+pub fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
     _: &'a SessionDotfileBackups,

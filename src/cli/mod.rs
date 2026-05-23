@@ -11,7 +11,6 @@ mod exit;
 mod kpop_flow;
 #[cfg(test)]
 mod markdown_flag_parse_tests;
-mod mid_session_gates;
 mod models_cmd;
 pub(crate) mod run_emit;
 mod shared_opts;

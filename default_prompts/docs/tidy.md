@@ -65,8 +65,7 @@ Gate failure message on stderr points user at the failing commands before the ag
 | Step | Prompt role (effect) | When |
 |------|----------------------|------|
 | 6 | **Learn** — Process reflection | Not `--no-learn`, elapsed ≥ 5 min |
-| 7 | **Workspace gates** | After learn |
-| 8 | **Summary** — Header + summary body | Closing user message |
+| 7 | **Summary** — Header + summary body | Closing user message |
 
 ## Comparison to `code`
 

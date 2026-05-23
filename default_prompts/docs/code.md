@@ -1,10 +1,10 @@
 # malvin code
 
-Implement a **plan** using the full malvin coding pipeline: optional plan validation, implementation, multi-attempt code review, optional learning, workspace gates, and a closing summary.
+Implement a **plan** using the full malvin coding pipeline: optional plan validation, implementation, multi-attempt code review, optional learning, and a closing summary.
 
 ## Intention
 
-Take a written plan (inline or from a file) and drive the repo to a reviewed, gate-clean state. This is the primary “build this feature” command.
+Take a written plan (inline or from a file) and drive the repo to a reviewed state with quality gates enforced before each review cycle. This is the primary “build this feature” command.
 
 ## Usage
 
@@ -54,7 +54,7 @@ See `malvin.md`. `--no-markdown` affects agent stdout styling. `--no-force` disa
 
 ## Prompt workflow
 
-Single long-lived coder session with a **pre-summary gap** (repo gates + optional tidy retry) between main work and summary.
+Single long-lived coder session: main work, then optional learn, then summary.
 
 ### Phase A — Before summary (main loop)
 
@@ -68,30 +68,18 @@ Single long-lived coder session with a **pre-summary gap** (repo gates + optiona
 
 | Sub-step | Prompt role (effect) |
 |----------|----------------------|
-| 3a | **Reviewers spawn** — Parallel reviewer agents produce structured review material into run artifacts. |
-| 3b | **Review write** — Aggregates reviewer output into a single review verdict in `review.md`. |
-| 3c | If not LGTM: **Concerns** — Agent addresses review feedback and updates code. |
-| 3d | Abort check on `result.md` between steps. |
+| 3a | **Pre-review quality gates** — Run `.malvin_checks` commands. If any fail, malvin writes gate output to `review.md` and skips to concerns (3d). |
+| 3b | **Reviewers spawn** — Parallel reviewer agents produce structured review material into run artifacts. |
+| 3c | **Review write** — Aggregates reviewer output into a single review verdict in `review.md`. |
+| 3d | If not LGTM: **Concerns** — Agent addresses review feedback and updates code. |
+| 3e | Abort check on `result.md` between steps. |
 
 Loop exits on LGTM or exhausted `--max-loops`.
 
 | Order | Prompt role (effect) | Notes |
 |-------|----------------------|-------|
 | 4 | **Learn** (optional) — Reflect on the session and suggest process/repo improvements. Skipped if `--no-learn`, or if elapsed time &lt; 5 minutes (default threshold). | After review succeeds |
-
-### Phase B — Pre-summary gap (malvin-controlled, not a template file)
-
-| Step | Effect |
-|------|--------|
-| 5 | **Workspace quality gates** — Run `.malvin_checks` commands (after `kiss clamp` prep when needed). |
-| 6 | On gate command failure: **one-shot tidy prompt** — Agent attempts to fix gate failures (same family as `tidy.md`). |
-| 7 | Re-run gates; fail run if still broken. |
-
-### Phase C — Summary
-
-| Order | Prompt role (effect) |
-|-------|----------------------|
-| 8 | **Summary** — Short user-facing recap of what was done. |
+| 5 | **Summary** — Short user-facing recap of what was done. |
 
 ## Artifacts
 

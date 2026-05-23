@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 
+use crate::repo_checks::RepoGateFailure;
+
+use super::pre_review_gates::{
+    run_pre_review_workspace_gates, write_pre_review_gate_failure_for_artifacts,
+};
 use super::review_attempt_kernel::{
     REVIEW_WRITE_INNER_RETRY_CAP, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
-    REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
+    REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG, clear_review_attempt_artifacts,
 };
 use super::review_loop_helpers::run_concerns_and_check_abort_impl;
 use super::review_write_retry::{
@@ -50,6 +55,33 @@ async fn code_review_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
     ctx: CodeReviewAttempt<'_>,
 ) -> Result<CodeReviewAttemptOutcome, WorkflowError> {
+    (orchestrator.progress_callback)(&format!("Pre-review (attempt {})", ctx.attempt));
+    clear_review_attempt_artifacts(orchestrator.artifacts)?;
+    match run_pre_review_workspace_gates(orchestrator.artifacts) {
+        Ok(()) => {}
+        Err(RepoGateFailure::Command(failure)) => {
+            let log_path = ctx
+                .context
+                .get("quality_gates_log")
+                .map_or("./_malvin/.../quality_gates.log", String::as_str);
+            write_pre_review_gate_failure_for_artifacts(
+                orchestrator.artifacts,
+                &failure,
+                log_path,
+            )?;
+            let concern_suffix = format!("pre_review_gates_attempt_{}", ctx.attempt);
+            run_concerns_and_check_abort_impl(
+                orchestrator,
+                ctx.attempt,
+                &concern_suffix,
+                ctx.context,
+            )
+            .await?;
+            return Ok(CodeReviewAttemptOutcome::NotLgtm);
+        }
+        Err(RepoGateFailure::Message(message)) => return Err(WorkflowError(message)),
+    }
+
     (orchestrator.progress_callback)(&format!("Review (attempt {})", ctx.attempt));
 
     let outcome = {

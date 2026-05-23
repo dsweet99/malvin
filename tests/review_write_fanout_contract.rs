@@ -5,8 +5,8 @@ mod common;
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_with_run_dir_js,
     code_review_fanout_writes_regression_test_and_non_lgtm, command_output_with_timeout,
-    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_fake_kiss,
-    write_mock_executable,
+    seed_git_kiss_cargo_gate_workspace, test_home_workspace, workspace_kiss_check_only,
+    write_fake_kiss, write_mock_executable,
 };
 #[cfg(unix)]
 use std::path::Path;
@@ -46,6 +46,7 @@ fn spawn_code_review_write_regression(
 fn code_review_write_fanout_writes_failing_regression_test_before_non_lgtm_review() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
     let path = {
         let bin_dir = root.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("mkdir bin");

@@ -4,7 +4,6 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::{HEADER_MD, PromptError};
 use crate::run_timing::{RunTiming, TimingPhase};
 
-use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 use super::prompt::run_tidy_prompt_with_restore;
 use super::recovery::{tidy_fail_on_abort, tidy_learn_elapsed_threshold_ms};
 use super::interleaved_loop::run_tidy_interleaved_loop;
@@ -78,18 +77,13 @@ async fn run_tidy_summary_prompt(
     .await
 }
 
-async fn run_tidy_learn_mid_gates_and_summary(
+async fn run_tidy_learn_and_summary(
     input: &mut TidyAcpInput<'_>,
     timing: &Arc<Mutex<RunTiming>>,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
     run_tidy_learn_prompt_if_elapsed(input, timing, session_dotfile_backups).await?;
     tidy_fail_on_abort(input.artifacts)?;
-    run_repo_workspace_gates(
-        &input.artifacts.work_dir,
-        RepoGateOutput::Tagged,
-        Some(&input.artifacts.run_dir),
-    )?;
     run_tidy_summary_prompt(input, session_dotfile_backups).await?;
     Ok(())
 }
@@ -120,7 +114,7 @@ pub async fn run_tidy_acp(
     .await;
     if acp_result.is_ok() {
         acp_result =
-            run_tidy_learn_mid_gates_and_summary(input, &timing, session_dotfile_backups).await;
+            run_tidy_learn_and_summary(input, &timing, session_dotfile_backups).await;
     }
     let end_result = input
         .client
@@ -161,7 +155,7 @@ pub fn merge_tidy_timing(
 mod smoke_cov_run {
     #[test]
     fn smoke_cov_tidy_run_private_fns() {
-        let _ = super::run_tidy_learn_mid_gates_and_summary;
+        let _ = super::run_tidy_learn_and_summary;
         let _ = super::run_tidy_learn_prompt_if_elapsed;
         let _ = super::run_tidy_summary_prompt;
         assert!(super::super::recovery::tidy_learn_elapsed_threshold_ms() > 0);

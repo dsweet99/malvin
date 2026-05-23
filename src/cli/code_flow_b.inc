@@ -49,10 +49,7 @@ async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
             session_dotfile_backups: session_dotfile_backups.clone(),
         };
         orch
-            .run_with_pre_summary_gap(
-                &ctx,
-                mid_session_gates::mid_pre_summary_repo_gates,
-            )
+            .run_with_pre_summary_gap(&ctx, crate::orchestrator::mid_noop)
             .await
             .map_err(|e: WorkflowError| e.0)
     };

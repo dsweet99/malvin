@@ -224,7 +224,7 @@ fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
     assert_eq!(
         log.matches("Running `kiss check`").count(),
         1,
-        "expected one gate pass (pre-summary only): {log}"
+        "expected one gate pass (pre-review only): {log}"
     );
 
     let (out2, _root2, workspace2) =
@@ -235,6 +235,6 @@ fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
     assert_eq!(
         log2.matches("Running `kiss check`").count(),
         1,
-        "expected pre-summary gate pass in quality_gates.log (initial pre-check runs before run dir exists): {log2}"
+        "expected pre-review gate pass in quality_gates.log (initial pre-check runs before run dir exists): {log2}"
     );
 }

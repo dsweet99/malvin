@@ -33,7 +33,7 @@ fn smoke_cov_cli_cli_units_1a() {
     let _: Option<super::kpop_flow::KpopPrepared> = None;
     let _ = super::kpop_flow::kpop_run_acp_multiturn;
     let _ = super::run_kpop;
-    let _ = stringify!(super::mid_session_gates::mid_session_post_run_tidy::PostRunTidyPrompt);
+    let _ = stringify!(crate::orchestrator::pre_review_gates::format_pre_review_gate_failure_review);
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = super::run_emit::emit_run_startup_sequence;
@@ -107,5 +107,5 @@ fn smoke_cov_cli_cli_symbols_a() {
 fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates;
     let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
-    let _ = stringify!(super::mid_session_gates::pre_summary_repo_gates_tidy_retry_flow);
+    let _ = stringify!(crate::orchestrator::mid_noop);
 }

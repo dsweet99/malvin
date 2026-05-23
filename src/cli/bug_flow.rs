@@ -7,7 +7,6 @@ use super::kpop_flow::{
     KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_emit_startup, kpop_run_acp_multiturn,
     prepare_kpop_run,
 };
-use super::mid_session_gates::mid_pre_summary_repo_gates;
 use super::run_emit::emit_run_startup_sequence;
 use super::{BugArgs, KpopArgs};
 use super::{
@@ -150,7 +149,7 @@ async fn run_bug_remediation_orchestrator(
         session_dotfile_backups: session_dotfile_backups.clone(),
     };
     let workflow_res = orch
-        .run_bug_remediation_gap(&ctx, mid_pre_summary_repo_gates)
+        .run_bug_remediation_gap(&ctx, crate::orchestrator::mid_noop)
         .await
         .map_err(|e: WorkflowError| e.0);
     crate::acp_post_run::merge_acp_with_workspace_session_restore(
