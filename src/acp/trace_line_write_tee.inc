@@ -5,18 +5,18 @@ fn format_trace_display_line(line: &str, kind: Option<SessionUpdateChunkKind>) -
     }
 }
 
-fn print_tee_unprefixed_wrapped_line(line: &str) {
+fn print_tee_unprefixed_wrapped_line(line: &str, ts: &str) {
     let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
         0,
         line,
         crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
     );
     if !wrap {
-        crate::output::print_stdout_raw_line(line);
+        crate::output::print_stdout_raw_line_with_ts(line, Some(ts));
         return;
     }
     for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
-        crate::output::print_stdout_raw_line(&seg);
+        crate::output::print_stdout_raw_line_with_ts(&seg, Some(ts));
     }
 }
 
@@ -46,7 +46,7 @@ fn trace_tee_stdout_line(
         return;
     }
     if writer.plain_lines || writer.raw_output {
-        print_tee_unprefixed_wrapped_line(line);
+        print_tee_unprefixed_wrapped_line(line, ctx.ts);
         return;
     }
     if let Some(rep) = writer.stdout_replacement {

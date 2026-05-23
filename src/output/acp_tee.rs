@@ -1,15 +1,13 @@
 //! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
-pub use super::acp_tee_format::{
-    acp_tee_display_line, acp_tee_log_line, AcpTeeDirection, AcpTeeLineFmt,
-    format_line_with_timestamp_acp_ansi,
+pub use super::stdout_log_pair::{
+    acp_tee_display_line, acp_tee_log_line, format_line_acp_ansi_payload, AcpTeeDirection,
+    AcpTeeLineFmt,
 };
 pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
-pub(crate) use super::acp_tee_format::{
-    acp_tee_log_prefix, acp_tee_payload_prefix, acp_tee_payload_prefix_width,
-};
+pub(crate) use super::stdout_log_pair::{acp_tee_payload_prefix, acp_tee_payload_prefix_width};
 
 use super::timestamp_now_string;
 
@@ -53,7 +51,8 @@ pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_pay
         line: ev.line,
         dim_payload: ev.dim_payload,
     };
-    super::print_stdout_rendered_line(&acp_tee_display_line(&display_ctx), &acp_tee_log_line(&log_ctx));
+    let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(&display_ctx, &log_ctx);
+    super::print_stdout_rendered_line(&display, &log);
 }
 
 pub fn print_stdout_acp_tee_line_with_timestamp(ev: &AcpTeeStdoutEvent<'_>) {
@@ -85,12 +84,9 @@ pub fn print_stdout_acp_tee_line_with_timestamp_dim_plain(
 }
 
 fn print_acp_tee_stdout_markdown_line(ctx: &AcpTeeLineFmt<'_>, rendered_payload: &str) {
-    let display_prefix = acp_tee_payload_prefix(ctx);
-    let log_prefix = acp_tee_log_prefix(ctx);
-    super::print_stdout_rendered_line(
-        &format!("{display_prefix}{rendered_payload}"),
-        &format!("{log_prefix}{rendered_payload}"),
-    );
+    let (display, log) =
+        super::stdout_log_pair::stdout_acp_prefix_rendered_line(ctx, rendered_payload);
+    super::print_stdout_rendered_line(&display, &log);
 }
 
 fn print_acp_tee_stdout_markdown_lines(ctx: &AcpTeeLineFmt<'_>, rendered_payloads: &[String]) {
@@ -106,7 +102,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
     let line_gate = TermimadStdoutGate {
         emit_stdout_markdown,
         dim_payload: ctx.dim_payload,
-        allow_inline_styling: super::stdout_use_color(),
+        allow_inline_styling: super::log_use_color(),
     };
     let prefix = acp_tee_payload_prefix(ctx);
     let prefix_len = acp_tee_payload_prefix_width(&prefix);
@@ -124,7 +120,8 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             print_acp_tee_stdout_markdown_line(ctx, &rendered);
             return;
         }
-        super::print_stdout_rendered_line(&acp_tee_display_line(ctx), &acp_tee_log_line(ctx));
+        let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(ctx, ctx);
+        super::print_stdout_rendered_line(&display, &log);
         return;
     }
     for seg in super::terminal_wrap::wrap_words_bounded(max_payload, ctx.line) {
@@ -139,9 +136,7 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
             print_acp_tee_stdout_markdown_line(&seg_ctx, &rendered);
             continue;
         }
-        super::print_stdout_rendered_line(
-            &acp_tee_display_line(&seg_ctx),
-            &acp_tee_log_line(&seg_ctx),
-        );
+        let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(&seg_ctx, &seg_ctx);
+        super::print_stdout_rendered_line(&display, &log);
     }
 }

@@ -121,12 +121,16 @@ mod tests {
         let text = std::fs::read_to_string(&path).expect("read");
         let inner = format_log_tag_inner(MALVIN_WHO);
         let line = text.lines().next().expect("heartbeat line");
+        assert!(
+            is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")),
+            "stdout.log heartbeat line must start with wall-clock prefix; got {line:?}"
+        );
         let payload = line
-            .strip_prefix(&format!("[{inner}] "))
-            .expect("tag prefix");
+            .split_once(&format!("[{inner}] "))
+            .map_or("", |(_, rest)| rest);
         assert!(
             is_log_timestamp_token(payload),
-            "expected timestamp payload, got: {payload:?}"
+            "heartbeat log payload must remain the wall-clock token; got: {payload:?}"
         );
     }
 

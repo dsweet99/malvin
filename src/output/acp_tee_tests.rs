@@ -1,9 +1,9 @@
 use super::acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, acp_tee_display_line, acp_tee_log_line,
-    acp_tee_log_prefix, format_line_with_timestamp_acp_ansi, print_stdout_acp_tool_summary_tee,
-    print_stdout_acp_tee_line, print_stdout_acp_tee_line_with_timestamp,
+    format_line_acp_ansi_payload, print_stdout_acp_tool_summary_tee, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp,
 };
-use super::acp_tee_format::{format_line_acp_ansi_payload, format_line_with_timestamp_acp_ansi_payload};
+use crate::output::stdout_log_pair::acp_tee_log_prefix;
 
 #[test]
 fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
@@ -50,7 +50,10 @@ fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
     let plain_acp = format_line_acp_ansi_payload(&ctx);
     assert!(!plain_acp.contains("20260413"), "raw non-timestamp helper remains non-ts");
     assert!(acp_tee_display_line(&ctx).contains("hello"));
-    assert!(acp_tee_display_line(&ctx).starts_with("20260413"));
+    assert!(
+        !acp_tee_display_line(&ctx).starts_with("20260413"),
+        "live stdout display must omit wall-clock prefix"
+    );
     assert!(acp_tee_log_line(&ctx).starts_with("20260413"));
     assert!(acp_tee_log_prefix(&ctx).starts_with("20260413"));
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "probe");
@@ -82,28 +85,32 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp;
     let _ = super::acp_tee::print_stdout_acp_tee_line_with_timestamp_dim_plain;
     let _: Option<super::acp_tee_markdown::TermimadStdoutGate> = None;
-    let to_line = format_line_with_timestamp_acp_ansi(
-        "20260413.121314.015",
-        AcpTeeDirection::ToAgent,
-        ">stem",
-        "out",
-    );
-    let from_line = format_line_with_timestamp_acp_ansi(
-        "20260413.121314.015",
-        AcpTeeDirection::FromAgent,
-        "<stem",
-        "in",
-    );
+    let to_line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
+        ts: "20260413.121314.015",
+        direction: AcpTeeDirection::ToAgent,
+        who: ">stem",
+        line: "out",
+        dim_payload: false,
+    });
+    let from_line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
+        ts: "20260413.121314.015",
+        direction: AcpTeeDirection::FromAgent,
+        who: "<stem",
+        line: "in",
+        dim_payload: false,
+    });
     assert!(to_line.contains('\x1b'));
     assert!(from_line.contains('\x1b'));
     assert_ne!(to_line, from_line);
     assert!(to_line.ends_with(" out"));
     assert!(from_line.ends_with(" in"));
+    assert!(!to_line.starts_with("20260413"));
+    assert!(!from_line.starts_with("20260413"));
 }
 
 #[test]
 fn ansi_acp_tee_can_dim_payload_text() {
-    let line = format_line_with_timestamp_acp_ansi_payload(&AcpTeeLineFmt {
+    let line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         ts: "20260413.121314.015",
         direction: AcpTeeDirection::FromAgent,
         who: "<stem",
@@ -111,4 +118,5 @@ fn ansi_acp_tee_can_dim_payload_text() {
         dim_payload: true,
     });
     assert!(line.contains("\x1b[90m[thinking]\x1b[0m"));
+    assert!(!line.starts_with("20260413"));
 }

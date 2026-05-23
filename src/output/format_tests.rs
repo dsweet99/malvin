@@ -169,17 +169,21 @@ fn smoke_print_and_format_paths_cover_helpers() {
 }
 
 #[test]
-fn stdout_log_mirrors_stdout_without_timestamps() {
-    let (display, tagged_line) = crate::output::stdout_display::stdout_display_and_log("u", "m");
-    assert_eq!(display, tagged_line);
-    let first_token = tagged_line
-        .split_whitespace()
-        .next()
-        .expect("tagged stdout line should not be empty");
+fn stdout_log_timestamps_disk_but_not_live_display() {
+    let (display, log_line) =
+        crate::output::stdout_tagged_display_and_log_line("u", "m", None);
+    assert_ne!(display, log_line);
     assert!(
-        !super::is_log_timestamp_token(first_token),
-        "stdout log should mirror stdout without timestamp prefixes: {tagged_line:?}"
+        !super::is_log_timestamp_token(
+            display.split_whitespace().next().unwrap_or("")
+        ),
+        "live display must omit wall-clock prefix: {display:?}"
     );
+    assert!(
+        super::is_log_timestamp_token(log_line.split_whitespace().next().unwrap_or("")),
+        "stdout.log line must be timestamped: {log_line:?}"
+    );
+    assert!(log_line.contains("] m"));
 }
 
 #[test]
@@ -207,7 +211,7 @@ fn output_timestamp_wrapper_nonempty() {
     let _ = super::stdout_use_color;
     let _ = super::append_stdout_log_line;
     let _ = super::print_stdout_rendered_line;
-    let _ = crate::output::stdout_display::stdout_display_and_log;
+    let _ = crate::output::stdout_tagged_display_and_log_line;
     let _ = crate::output::stdout_heartbeat::emit_heartbeat_line;
     let _ = crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed;
     let _ = super::stderr_log::print_log_warning;

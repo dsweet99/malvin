@@ -1,5 +1,5 @@
 use super::stdout_line_wrap_meta;
-use super::{ANSI_RESET, format_log_tag_inner, stdout_use_color, wrap_words_bounded};
+use super::{ANSI_RESET, format_log_tag_inner, wrap_words_bounded};
 
 pub(crate) use super::who_tag_ansi;
 
@@ -16,25 +16,17 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
     format!("{tag_color}[{inner}]{ANSI_RESET} {line}")
 }
 
-pub(crate) fn stdout_display_and_log(who: &str, line: &str) -> (String, String) {
-    let log = format_line_stdout(who, line);
-    let display = if stdout_use_color() {
-        format_line_stdout_ansi(who, line)
-    } else {
-        format_line_stdout(who, line)
-    };
-    (display, log)
-}
-
 pub fn print_stdout_line(who: &str, line: &str) {
+    let ts = super::timestamp_now_string();
+    let ts = ts.as_str();
     let (max_payload, wrap) = stdout_line_wrap_meta(who, line);
     if !wrap {
-        let (display, log) = stdout_display_and_log(who, line);
+        let (display, log) = super::stdout_tagged_display_and_log_line(who, line, Some(ts));
         super::print_stdout_rendered_line(&display, &log);
         return;
     }
     for seg in wrap_words_bounded(max_payload, line) {
-        let (display, log) = stdout_display_and_log(who, &seg);
+        let (display, log) = super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
         super::print_stdout_rendered_line(&display, &log);
     }
 }
@@ -43,6 +35,15 @@ pub fn print_stdout_text(who: &str, text: &str) {
     for line in super::logical_lines(text) {
         print_stdout_line(who, line);
     }
+}
+
+pub fn print_stdout_raw_line(line: &str) {
+    print_stdout_raw_line_with_ts(line, None);
+}
+
+pub fn print_stdout_raw_line_with_ts(line: &str, ts: Option<&str>) {
+    let (display, log) = super::stdout_log_pair::stdout_raw_display_and_log_line(line, ts);
+    super::print_stdout_rendered_line(&display, &log);
 }
 
 #[cfg(test)]
@@ -67,6 +68,15 @@ mod tests {
         assert!(ansi.contains('\x1b'));
         assert!(ansi.ends_with(" hello"));
         assert!(!plain.contains('\x1b'));
+    }
+
+    #[test]
+    fn stdout_display_and_log_splits_timestamp_for_disk() {
+        let (display, log) =
+            crate::output::stdout_log_pair::stdout_tagged_display_and_log_line("kpop", "payload", None);
+        assert!(!display.starts_with("20"));
+        assert!(log.starts_with("20"));
+        assert!(log.contains("] payload"));
     }
 
     #[test]

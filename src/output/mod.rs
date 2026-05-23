@@ -1,26 +1,25 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
 mod acp_tee;
-mod acp_tee_format;
 mod acp_tee_markdown;
 mod stderr_log;
 mod stdout_display;
 mod stdout_heartbeat;
+pub(crate) mod stdout_log_pair;
 pub(crate) mod terminal_wrap;
 
 pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
 pub(crate) use stdout_heartbeat::maybe_emit_stdout_heartbeat;
 
-pub use stdout_display::{print_stdout_line, print_stdout_text};
+pub use stdout_display::{print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text};
 
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
-    acp_tee_log_line, format_line_with_timestamp_acp_ansi, print_stdout_acp_tee_line,
+    acp_tee_log_line, format_line_acp_ansi_payload, print_stdout_acp_tee_line,
     print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tee_line_with_timestamp_dim_plain,
     print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
-pub use acp_tee_format::format_line_with_timestamp_acp_ansi_payload;
 
 #[cfg(test)]
 mod acp_tee_tests;
@@ -28,6 +27,8 @@ mod acp_tee_tests;
 mod acp_tee_termimad_tests;
 #[cfg(test)]
 mod format_tests;
+#[cfg(test)]
+mod stdout_log_tests;
 
 #[cfg(test)]
 use std::cell::RefCell;
@@ -69,7 +70,7 @@ pub fn clear_captured_stderr_lines() {
 /// Announce one outgoing prompt on stdout with a single bracket line `[{bracket_label}...]`.
 ///
 /// With full prompt logging enabled, the ACP session also prints the full rendered prompt when not
-/// in raw-output mode: one timestamped stdout line per [`logical_lines`] slice, with the same `>`
+/// in raw-output mode: one plain stdout line per [`logical_lines`] slice, with the same `>`
 /// stem as used for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or
 /// name-only line);
 /// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
@@ -114,8 +115,7 @@ pub fn format_acp_directional_tag_prefix(direction: char, stem: &str) -> String 
 
 #[must_use]
 pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
-    let inner = format_log_tag_inner(who);
-    format!("{ts} [{inner}] {line}")
+    stdout_log_pair::tagged_log_line(ts, who, line)
 }
 
 pub(crate) fn timestamp_now_string() -> String {
@@ -124,7 +124,7 @@ pub(crate) fn timestamp_now_string() -> String {
 
 #[must_use]
 pub fn format_line(who: &str, line: &str) -> String {
-    format_line_with_timestamp(&timestamp_now_string(), who, line)
+    stdout_log_pair::stdout_tagged_display_and_log_line(who, line, None).1
 }
 
 pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
@@ -139,9 +139,7 @@ pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
 /// [`format_line`] / [`format_line_with_timestamp`] instead.
 #[must_use]
 pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> String {
-    let inner = format_log_tag_inner(who);
-    let tag_color = who_tag_ansi(who);
-    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}[{inner}]{ANSI_RESET} {line}")
+    stdout_log_pair::tagged_display_line_with_timestamp_ansi(ts, who, line)
 }
 
 /// Call once from the binary entrypoint after parsing CLI. Disables color when `no_color` is true
@@ -153,7 +151,7 @@ pub fn init_stdout_style(no_color: bool) {
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
 }
 
-fn log_use_color() -> bool {
+pub(crate) fn log_use_color() -> bool {
     *LOG_USE_COLOR.get().unwrap_or(&false)
 }
 
@@ -168,6 +166,8 @@ pub(crate) fn stderr_use_color() -> bool {
 pub fn set_stdout_log_path(path: Option<PathBuf>) {
     crate::stdout_log_path::set_stdout_log_path(path);
 }
+
+pub(crate) use stdout_log_pair::stdout_tagged_display_and_log_line;
 
 pub(crate) fn append_stdout_log_line(line: &str) {
     let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
@@ -185,10 +185,6 @@ pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
     maybe_emit_stdout_heartbeat();
     println!("{display}");
     append_stdout_log_line(log);
-}
-
-pub fn print_stdout_raw_line(line: &str) {
-    print_stdout_rendered_line(line, line);
 }
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
