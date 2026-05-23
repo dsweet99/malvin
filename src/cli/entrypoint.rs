@@ -23,12 +23,15 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
 
 pub fn print_command_error(message: &str) {
     use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
-    use crate::repo_checks::{is_gate_failure_error, is_pure_gate_failure_summary};
+    use crate::repo_checks::{
+        GATE_FAILURE_MARKER, is_gate_failure_error, is_pure_gate_failure_summary,
+    };
     if is_pure_gate_failure_summary(message) {
         return;
     }
     if is_gate_failure_error(message) {
-        print_stderr_line(MALVIN_WHO, message);
+        let display = message.replace(GATE_FAILURE_MARKER, "");
+        print_stderr_line(MALVIN_WHO, &display);
         return;
     }
     super::error_run_log::append_command_error_to_run_log(message);

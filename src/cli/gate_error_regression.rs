@@ -1,5 +1,6 @@
 use crate::repo_checks::{
-    RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error, repo_gate_failure_to_string,
+    GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error,
+    repo_gate_failure_to_string,
 };
 use crate::test_stderr_capture::capture_stderr_output;
 
@@ -34,6 +35,18 @@ fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
     assert!(
         !stderr.contains("[error"),
         "wrapped gate failures must not be painted as [error]; got: {stderr:?}"
+    );
+    assert!(
+        !stderr.contains(GATE_FAILURE_MARKER),
+        "internal gate marker must not be user-facing; got: {stderr:?}"
+    );
+    assert!(
+        stderr.contains("post-run gates still failing after one tidy.md retry"),
+        "wrapped context should remain visible; got: {stderr:?}"
+    );
+    assert!(
+        stderr.contains("`kiss check` failed (exit 1)"),
+        "gate summary should remain visible; got: {stderr:?}"
     );
 }
 

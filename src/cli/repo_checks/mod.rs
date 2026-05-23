@@ -26,6 +26,6 @@ pub use gate_run::{
 };
 pub(crate) use types::repo_gate_failure_to_string;
 pub use types::{
-    RepoGateCommandFailure, RepoGateFailure, RepoGateOutput, gate_failure_summary,
-    is_gate_failure_error, is_pure_gate_failure_summary,
+    GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, RepoGateOutput,
+    gate_failure_summary, is_gate_failure_error, is_pure_gate_failure_summary,
 };
