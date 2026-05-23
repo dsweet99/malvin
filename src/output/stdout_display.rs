@@ -27,8 +27,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
             continue;
         }
         for seg in wrap_words_bounded(max_payload, para) {
-            let (display, log) =
-                super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
+            let (display, log) = super::stdout_tagged_display_and_log_line(who, &seg, Some(ts));
             super::print_stdout_rendered_line(&display, &log);
         }
     }
@@ -75,8 +74,9 @@ mod tests {
 
     #[test]
     fn stdout_display_and_log_splits_timestamp_for_disk() {
-        let (display, log) =
-            crate::output::stdout_log_pair::stdout_tagged_display_and_log_line("kpop", "payload", None);
+        let (display, log) = crate::output::stdout_log_pair::stdout_tagged_display_and_log_line(
+            "kpop", "payload", None,
+        );
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20"));
         assert!(log.contains("] payload"));

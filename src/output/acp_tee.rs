@@ -1,11 +1,11 @@
 //! ACP trace tee: distinct ANSI colors for outbound (`>`) vs inbound (`<`) lines on stdout.
 
-pub use super::stdout_log_pair::{
-    acp_tee_display_line, acp_tee_log_line, format_line_acp_ansi_payload, AcpTeeDirection,
-    AcpTeeLineFmt,
-};
 pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
+};
+pub use super::stdout_log_pair::{
+    AcpTeeDirection, AcpTeeLineFmt, acp_tee_display_line, acp_tee_log_line,
+    format_line_acp_ansi_payload,
 };
 pub(crate) use super::stdout_log_pair::{acp_tee_payload_prefix, acp_tee_payload_prefix_width};
 

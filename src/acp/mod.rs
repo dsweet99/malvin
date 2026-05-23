@@ -155,6 +155,21 @@ mod reader_tests_reader_loop;
 #[path = "reader_tests_retry_policy.rs"]
 mod reader_tests_retry_policy;
 #[cfg(test)]
+#[path = "reader_tests_tool_summary.rs"]
+mod reader_tests_tool_summary;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_human.rs"]
+mod reader_tests_tool_summary_human;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_human_bugs.rs"]
+mod reader_tests_tool_summary_human_bugs;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_kinds.rs"]
+mod reader_tests_tool_summary_kinds;
+#[cfg(test)]
+#[path = "reader_tests_tool_summary_trace.rs"]
+mod reader_tests_tool_summary_trace;
+#[cfg(test)]
 #[path = "reader_tests_trace_a.rs"]
 mod reader_tests_trace_a;
 #[cfg(test)]
@@ -164,32 +179,17 @@ mod reader_tests_trace_b;
 #[path = "reader_tests_trace_coalesce_write.rs"]
 mod reader_tests_trace_coalesce_write;
 #[cfg(test)]
-#[path = "reader_tests_tool_summary.rs"]
-mod reader_tests_tool_summary;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_trace.rs"]
-mod reader_tests_tool_summary_trace;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_kinds.rs"]
-mod reader_tests_tool_summary_kinds;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_human.rs"]
-mod reader_tests_tool_summary_human;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_human_bugs.rs"]
-mod reader_tests_tool_summary_human_bugs;
-#[cfg(test)]
 #[path = "reader_tests_trace_iterable.rs"]
 mod reader_tests_trace_iterable;
 
-#[cfg(test)]
-mod kpop_stdout_logger_plan_helpers;
 #[cfg(test)]
 #[path = "kpop_stdout_logger_plan_check.rs"]
 mod kpop_stdout_logger_plan_check;
 #[cfg(test)]
 #[path = "kpop_stdout_logger_plan_check_ext.rs"]
 mod kpop_stdout_logger_plan_check_ext;
+#[cfg(test)]
+mod kpop_stdout_logger_plan_helpers;
 
 #[cfg(test)]
 mod kiss_coverage;

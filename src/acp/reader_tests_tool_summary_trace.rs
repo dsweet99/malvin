@@ -55,7 +55,10 @@ async fn coalesced_tool_done_omits_full_stdout_in_trace() {
 
 #[test]
 fn long_command_uses_middle_ellipsis() {
-    let long_cmd = format!("cd {} && cargo clippy && cargo nextest run", "a/".repeat(30));
+    let long_cmd = format!(
+        "cd {} && cargo clippy && cargo nextest run",
+        "a/".repeat(30)
+    );
     let v = json!({
         "method": "session/update",
         "params": {"update": {

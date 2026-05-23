@@ -130,15 +130,13 @@ pub async fn trace_file_write_line(
         }
         return;
     }
-    let stdout_line = stdout
-        .tee_line_override
-        .unwrap_or_else(|| {
-            if writer.plain_lines || writer.raw_output {
-                line
-            } else {
-                &display_line
-            }
-        });
+    let stdout_line = stdout.tee_line_override.unwrap_or_else(|| {
+        if writer.plain_lines || writer.raw_output {
+            line
+        } else {
+            &display_line
+        }
+    });
     trace_tee_stdout_line(
         writer,
         stdout_line,

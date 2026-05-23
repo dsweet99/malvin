@@ -2,7 +2,9 @@
 
 #[test]
 fn kiss_cov_src_output_stdout_log_pair_rs_acp_tee_payload_prefix_width() {
-    use crate::output::stdout_log_pair::{acp_tee_payload_prefix_width, acp_tee_payload_prefix, AcpTeeDirection, AcpTeeLineFmt};
+    use crate::output::stdout_log_pair::{
+        AcpTeeDirection, AcpTeeLineFmt, acp_tee_payload_prefix, acp_tee_payload_prefix_width,
+    };
     let ctx = AcpTeeLineFmt {
         ts: "20260413.121314.015",
         direction: AcpTeeDirection::FromAgent,
@@ -102,4 +104,3 @@ fn kiss_cov_src_acp_tool_summary_rs_tool_summary_stdout_display() {
 fn kiss_cov_src_output_acp_tee_rs_print_stdout_acp_tool_summary_tee() {
     let _ = stringify!(crate::output::acp_tee::print_stdout_acp_tool_summary_tee);
 }
-

@@ -2,7 +2,8 @@
 
 #[test]
 fn kiss_cov_src_acp_session_tests_unix_helpers_rs_write_descendant_spawning_acp_mock() {
-    let _ = stringify!(crate::acp_session_unit_tests::unix_helpers::write_descendant_spawning_acp_mock);
+    let _ =
+        stringify!(crate::acp_session_unit_tests::unix_helpers::write_descendant_spawning_acp_mock);
 }
 
 #[test]
@@ -94,4 +95,3 @@ fn kiss_cov_src_cli_cli_smoke_cov_rs_empty_session_backups() {
 fn kiss_cov_src_cli_do_flow_rs_prepare_do_raw_prompt_store() {
     let _ = stringify!(crate::cli::do_flow::prepare_do_raw_prompt_store);
 }
-

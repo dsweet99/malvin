@@ -87,11 +87,12 @@ fn kiss_cov_src_cli_repo_checks_gate_log_rs_try_append_log_line() {
 
 #[test]
 fn kiss_cov_src_cli_repo_checks_tests_gates_unix_rs_scan_for_extension_handles_symlink_cycles() {
-    let _ = stringify!(crate::cli::repo_checks::tests_gates_unix::scan_for_extension_handles_symlink_cycles);
+    let _ = stringify!(
+        crate::cli::repo_checks::tests_gates_unix::scan_for_extension_handles_symlink_cycles
+    );
 }
 
 #[test]
 fn kiss_cov_src_cli_source_detect_rs_entry_name_has_extension() {
     let _ = stringify!(crate::source_detect::entry_name_has_extension);
 }
-

@@ -170,13 +170,10 @@ fn smoke_print_and_format_paths_cover_helpers() {
 
 #[test]
 fn stdout_log_timestamps_disk_but_not_live_display() {
-    let (display, log_line) =
-        crate::output::stdout_tagged_display_and_log_line("u", "m", None);
+    let (display, log_line) = crate::output::stdout_tagged_display_and_log_line("u", "m", None);
     assert_ne!(display, log_line);
     assert!(
-        !super::is_log_timestamp_token(
-            display.split_whitespace().next().unwrap_or("")
-        ),
+        !super::is_log_timestamp_token(display.split_whitespace().next().unwrap_or("")),
         "live display must omit wall-clock prefix: {display:?}"
     );
     assert!(

@@ -1,4 +1,6 @@
-use crate::acp::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines};
+use crate::acp::tool_summary::{
+    ToolSummaryDetail, ToolSummaryTracker, shorten_middle, tool_summary_lines,
+};
 use serde_json::json;
 
 #[test]
@@ -74,7 +76,11 @@ fn parse_tool_update_running_and_done() {
     let mut tracker = ToolSummaryTracker::default();
     let s = tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
     assert!(s.log.contains("[tool] start"));
-    assert!(s.log.contains("echo hi"), "start log should retain command: {}", s.log);
+    assert!(
+        s.log.contains("echo hi"),
+        "start log should retain command: {}",
+        s.log
+    );
     let r = tool_summary_lines(&running, &mut tracker, ToolSummaryDetail::Log).unwrap();
     assert!(r.log.contains("[tool] running"));
     assert!(r.log.contains("elapsed="));
@@ -203,4 +209,3 @@ fn tool_call_update_pending_labeled_pending_not_start() {
         lines.log
     );
 }
-

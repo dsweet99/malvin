@@ -1,6 +1,6 @@
 use super::{
     ANSI_DIM, ANSI_RESET, format_line_stdout, format_line_stdout_ansi, format_log_tag_inner,
-    stdout_use_color, timestamp_now_string, who_tag_ansi,
+    stderr_use_color, stdout_use_color, timestamp_now_string, who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
@@ -50,9 +50,26 @@ pub(crate) fn stdout_tagged_display_and_log_line(
     payload: &str,
     ts: Option<&str>,
 ) -> (String, String) {
+    tagged_display_and_log_line(who, payload, ts, stdout_use_color())
+}
+
+pub(crate) fn stderr_tagged_display_and_log_line(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+) -> (String, String) {
+    tagged_display_and_log_line(who, payload, ts, stderr_use_color())
+}
+
+fn tagged_display_and_log_line(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+    use_color: bool,
+) -> (String, String) {
     let ts = resolve_log_timestamp(ts);
     let log = tagged_log_line(&ts, who, payload);
-    let display = if stdout_use_color() {
+    let display = if use_color {
         format_line_stdout_ansi(who, payload)
     } else {
         format_line_stdout(who, payload)
@@ -124,10 +141,7 @@ pub(crate) fn stdout_acp_display_and_log(
     display: &AcpTeeLineFmt<'_>,
     log: &AcpTeeLineFmt<'_>,
 ) -> (String, String) {
-    (
-        acp_tee_display_line(display),
-        acp_tee_log_line(log),
-    )
+    (acp_tee_display_line(display), acp_tee_log_line(log))
 }
 
 pub(crate) fn stdout_acp_prefix_rendered_line(

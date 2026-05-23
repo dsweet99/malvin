@@ -46,11 +46,11 @@ fn malvin_tagged_stdout_prefix_len(who: &str, use_color: bool) -> usize {
     strip_ansi_escapes(&s).chars().count()
 }
 
-fn malvin_tagged_stderr_prefix_len(ts: &str, who: &str, use_color: bool) -> usize {
+fn malvin_tagged_stderr_prefix_len(_ts: &str, who: &str, use_color: bool) -> usize {
     let s = if use_color {
-        super::format_line_with_timestamp_ansi(ts, who, "")
+        super::format_line_stdout_ansi(who, "")
     } else {
-        super::format_line_with_timestamp(ts, who, "")
+        super::format_line_stdout(who, "")
     };
     strip_ansi_escapes(&s).chars().count()
 }

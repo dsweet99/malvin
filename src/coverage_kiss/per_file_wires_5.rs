@@ -46,7 +46,9 @@ fn kiss_cov_src_acp_ops_inline_tests_rs_restore_optional_env() {
 
 #[test]
 fn kiss_cov_src_acp_kpop_stdout_logger_plan_check_rs_h6_trace_file_lines_include_timestamp() {
-    let _ = stringify!(crate::acp::kpop_stdout_logger_plan_check::h6_trace_file_lines_include_timestamp);
+    let _ = stringify!(
+        crate::acp::kpop_stdout_logger_plan_check::h6_trace_file_lines_include_timestamp
+    );
 }
 
 #[test]

@@ -49,8 +49,9 @@ fn smoke_acp_reader_dispatch_and_trace_test_names() {
     let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::kpop_coalesce_trace_writer);
     let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::open_coalesce_trace_at);
     let _ = stringify!(crate::acp::reader_tests_trace_coalesce_write::write_coalesced_line);
-    let _ =
-        stringify!(crate::acp::reader_tests_trace_coalesce_write::assert_tool_call_lifecycle_summary_tee);
+    let _ = stringify!(
+        crate::acp::reader_tests_trace_coalesce_write::assert_tool_call_lifecycle_summary_tee
+    );
     let _ = stringify!(
         crate::acp::reader_tests_trace_coalesce_write::run_tool_call_lifecycle_tee_fixture
     );
@@ -153,7 +154,8 @@ fn smoke_acp_tool_summary_test_names() {
     );
     let _ = stringify!(crate::acp::reader_tests_tool_summary::parse_tool_call_start);
     let _ = stringify!(crate::acp::reader_tests_tool_summary::parse_tool_update_running_and_done);
-    let _ = stringify!(crate::acp::reader_tests_tool_summary::done_summary_omits_title_field_per_plan);
+    let _ =
+        stringify!(crate::acp::reader_tests_tool_summary::done_summary_omits_title_field_per_plan);
     let _ = stringify!(
         crate::acp::reader_tests_tool_summary::edit_done_content_only_omits_synthetic_added_removed_counts
     );
@@ -163,18 +165,24 @@ fn smoke_acp_tool_summary_test_names() {
     let _ = stringify!(
         crate::acp::reader_tests_tool_summary::tool_call_update_pending_labeled_pending_not_start
     );
-    let _ = stringify!(
-        crate::acp::reader_tests_tool_summary_kinds::edit_done_includes_path_and_counts
-    );
+    let _ =
+        stringify!(crate::acp::reader_tests_tool_summary_kinds::edit_done_includes_path_and_counts);
     let _ = stringify!(
         crate::acp::reader_tests_tool_summary_trace::coalesced_tool_done_omits_full_stdout_in_trace
     );
-    let _ = stringify!(crate::acp::reader_tests_tool_summary_trace::long_command_uses_middle_ellipsis);
+    let _ =
+        stringify!(crate::acp::reader_tests_tool_summary_trace::long_command_uses_middle_ellipsis);
     let _ = stringify!(crate::acp::reader_tests_tool_summary_trace::write_parsed_trace_line);
-    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_read_done_prose_and_humanized_size);
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human::stdout_read_done_prose_and_humanized_size
+    );
     let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_start_suppressed_until_running_threshold);
-    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_execute_failure_shows_exit_and_error);
-    let _ = stringify!(crate::acp::reader_tests_tool_summary_human::stdout_display_ansi_stripped_matches_plain);
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human::stdout_execute_failure_shows_exit_and_error
+    );
+    let _ = stringify!(
+        crate::acp::reader_tests_tool_summary_human::stdout_display_ansi_stripped_matches_plain
+    );
     let _ = stringify!(crate::acp::reader_tests_tool_summary_human::log_channel_stays_key_value);
     let _ = stringify!(
         crate::acp::reader_tests_tool_summary_human_bugs::stdout_execute_completed_stderr_without_exit_code_must_not_show_checkmark

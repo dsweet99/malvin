@@ -1,7 +1,7 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use super::{MALVIN_WHO, print_stdout_line, timestamp_now_string};
+use super::{MALVIN_WHO, append_stdout_log_line, format_line_with_timestamp, timestamp_now_string};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -17,7 +17,8 @@ static WALL_CLOCK_POLLER: OnceLock<()> = OnceLock::new();
 pub(crate) static HEARTBEAT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub(crate) fn emit_heartbeat_line() {
-    print_stdout_line(MALVIN_WHO, &timestamp_now_string());
+    let ts = timestamp_now_string();
+    append_stdout_log_line(&format_line_with_timestamp(&ts, MALVIN_WHO, "heartbeat"));
 }
 
 pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
@@ -58,6 +59,10 @@ pub(crate) fn wall_clock_poller_loop() {
     }
 }
 
+#[cfg(test)]
+pub(crate) const fn spawn_wall_clock_poller_if_needed() {}
+
+#[cfg(not(test))]
 pub(crate) fn spawn_wall_clock_poller_if_needed() {
     WALL_CLOCK_POLLER.get_or_init(|| {
         std::thread::spawn(wall_clock_poller_loop);
@@ -83,7 +88,6 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
     use std::time::{Duration, Instant};
 
     use super::{
@@ -106,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn heartbeat_log_line_routes_timestamp_through_logger_payload() {
+    fn heartbeat_log_line_uses_logger_timestamp_only() {
         let _guard = HEARTBEAT_TEST_LOCK
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -128,10 +132,7 @@ mod tests {
         let payload = line
             .split_once(&format!("[{inner}] "))
             .map_or("", |(_, rest)| rest);
-        assert!(
-            is_log_timestamp_token(payload),
-            "heartbeat log payload must remain the wall-clock token; got: {payload:?}"
-        );
+        assert_eq!(payload, "heartbeat");
     }
 
     #[test]
@@ -184,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn heartbeat_emits_during_stdout_silence_when_interval_elapsed() {
+    fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
         let _guard = HEARTBEAT_TEST_LOCK
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -197,12 +198,12 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("stdout.log");
         set_stdout_log_path(Some(path.clone()));
-        thread::sleep(Duration::from_millis(50));
+        poll_wall_clock_heartbeat_if_due();
         set_stdout_log_path(None);
         let text = std::fs::read_to_string(&path).unwrap_or_default();
         let inner = format_log_tag_inner(MALVIN_WHO);
         assert!(
-            text.contains(&format!("[{inner}] ")),
+            text.contains(&format!("[{inner}] heartbeat")),
             "expected wall-clock heartbeat during stdout silence: {text:?}"
         );
     }

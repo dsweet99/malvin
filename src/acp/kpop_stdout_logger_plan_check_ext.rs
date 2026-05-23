@@ -27,7 +27,10 @@ fn h9_edit_without_path_suppresses_pending_stdout() {
     });
     let mut tracker = ToolSummaryTracker::default();
     let lines = tool_summary_lines(&pending, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
-    assert!(lines.stdout.is_none(), "expected pending edit with unknown path to be suppressed");
+    assert!(
+        lines.stdout.is_none(),
+        "expected pending edit with unknown path to be suppressed"
+    );
 }
 
 #[tokio::test]
@@ -145,5 +148,8 @@ fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
         !is_log_timestamp_token(live.split_whitespace().next().unwrap_or("")),
         "live tee display must omit wall-clock prefix; got {live:?}"
     );
-    assert!(live.contains(plain), "display should carry payload; got {live:?}");
+    assert!(
+        live.contains(plain),
+        "display should carry payload; got {live:?}"
+    );
 }

@@ -1,19 +1,15 @@
 use super::{
-    ERROR_WHO, WARNING_WHO, append_stdout_log_line, format_line_with_timestamp,
-    format_line_with_timestamp_ansi, stderr_line_wrap_meta, stderr_use_color, timestamp_now_string,
+    ERROR_WHO, WARNING_WHO, append_stdout_log_line, stderr_line_wrap_meta, timestamp_now_string,
     wrap_words_bounded,
 };
 
 fn emit_stderr_log_line(ts: &str, who: &str, line: &str) {
-    let formatted = if stderr_use_color() {
-        format_line_with_timestamp_ansi(ts, who, line)
-    } else {
-        format_line_with_timestamp(ts, who, line)
-    };
-    eprintln!("{formatted}");
-    append_stdout_log_line(&formatted);
+    let (display, log) =
+        super::stdout_log_pair::stderr_tagged_display_and_log_line(who, line, Some(ts));
+    eprintln!("{display}");
+    append_stdout_log_line(&log);
     #[cfg(test)]
-    super::push_captured_stderr_line(formatted);
+    super::push_captured_stderr_line(display);
 }
 
 fn emit_stderr_log_lines(who: &str, line: &str) {
@@ -61,6 +57,37 @@ mod stderr_log_tests {
     }
 
     #[test]
+    fn stderr_display_omits_timestamp_but_log_keeps_it() {
+        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(path.clone()));
+        crate::output::clear_captured_stderr_lines();
+
+        super::print_stderr_line(crate::output::MALVIN_WHO, "VIOLATION:test_coverage:probe");
+        crate::output::set_stdout_log_path(None);
+
+        let captured = crate::output::take_captured_stderr_lines();
+        let display = captured.first().expect("captured stderr display");
+        assert!(
+            !crate::output::is_log_timestamp_token(display.split_whitespace().next().unwrap_or("")),
+            "live stderr display must omit wall-clock prefix; got {display:?}"
+        );
+        assert!(display.contains("[malvin"));
+        assert!(display.contains("VIOLATION:test_coverage:probe"));
+
+        let log_text = std::fs::read_to_string(path).expect("read log");
+        let log_line = log_text.lines().next().expect("logged stderr line");
+        assert!(
+            crate::output::is_log_timestamp_token(log_line.split_whitespace().next().unwrap_or("")),
+            "stderr log line must keep wall-clock prefix; got {log_line:?}"
+        );
+        assert!(log_line.contains("VIOLATION:test_coverage:probe"));
+    }
+
+    #[test]
     #[allow(unsafe_code)]
     fn multiline_log_error_tags_every_physical_line() {
         let prev_cols = std::env::var("COLUMNS").ok();
@@ -76,7 +103,11 @@ mod stderr_log_tests {
                 None => std::env::remove_var("COLUMNS"),
             }
         }
-        assert_eq!(lines.len(), 3, "expected one captured line per paragraph: {lines:?}");
+        assert_eq!(
+            lines.len(),
+            3,
+            "expected one captured line per paragraph: {lines:?}"
+        );
         for line in &lines {
             assert!(
                 line.contains("[error"),

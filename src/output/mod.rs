@@ -11,7 +11,9 @@ pub(crate) mod terminal_wrap;
 pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
 pub(crate) use stdout_heartbeat::maybe_emit_stdout_heartbeat;
 
-pub use stdout_display::{print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text};
+pub use stdout_display::{
+    print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
+};
 
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
@@ -22,9 +24,9 @@ pub use acp_tee::{
 };
 
 #[cfg(test)]
-mod acp_tee_tests;
-#[cfg(test)]
 mod acp_tee_termimad_tests;
+#[cfg(test)]
+mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
 #[cfg(test)]

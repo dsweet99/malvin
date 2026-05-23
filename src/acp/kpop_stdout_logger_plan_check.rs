@@ -22,7 +22,10 @@ fn h2_read_without_path_suppresses_pending_stdout() {
     });
     let mut tracker = ToolSummaryTracker::default();
     let lines = tool_summary_lines(&pending, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
-    assert!(lines.stdout.is_none(), "expected pending read with unknown path to be suppressed");
+    assert!(
+        lines.stdout.is_none(),
+        "expected pending read with unknown path to be suppressed"
+    );
 }
 
 #[test]
@@ -45,7 +48,11 @@ fn h3_edit_stdout_includes_line_number_when_available() {
     let mut tracker = ToolSummaryTracker::default();
     let lines = tool_summary_lines(&v, &mut tracker, ToolSummaryDetail::Stdout).unwrap();
     let stdout = lines.stdout.as_deref().unwrap_or("");
-    assert!(lines.log.contains(":12"), "log channel should include :12; log={}", lines.log);
+    assert!(
+        lines.log.contains(":12"),
+        "log channel should include :12; log={}",
+        lines.log
+    );
     assert!(
         stdout.contains(":12"),
         "stdout edit summary should include line number; got {stdout:?}"

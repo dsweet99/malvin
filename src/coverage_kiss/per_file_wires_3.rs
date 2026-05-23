@@ -107,7 +107,9 @@ fn kiss_cov_src_output_stdout_log_pair_rs_stdout_acp_display_and_log() {
 
 #[test]
 fn kiss_cov_src_output_stdout_log_pair_rs_format_line_acp_ansi_payload() {
-    use crate::output::{AcpTeeDirection, AcpTeeLineFmt, stdout_log_pair::format_line_acp_ansi_payload};
+    use crate::output::{
+        AcpTeeDirection, AcpTeeLineFmt, stdout_log_pair::format_line_acp_ansi_payload,
+    };
     let ctx = AcpTeeLineFmt {
         ts: "20260413.121314.015",
         direction: AcpTeeDirection::FromAgent,
@@ -137,8 +139,10 @@ fn kiss_cov_src_output_stdout_log_pair_rs_stdout_acp_prefix_rendered_line() {
 
 #[test]
 fn kiss_cov_src_output_mod_rs_print_stdout_raw_line_with_ts() {
-    let (_, log) =
-        crate::output::stdout_log_pair::stdout_raw_display_and_log_line("raw", Some("20260413.121314.015"));
+    let (_, log) = crate::output::stdout_log_pair::stdout_raw_display_and_log_line(
+        "raw",
+        Some("20260413.121314.015"),
+    );
     assert!(log.starts_with("20260413"));
 }
 
@@ -193,4 +197,3 @@ fn kiss_cov_src_output_stdout_log_pair_rs_acp_tee_payload_prefix() {
     };
     assert!(!acp_tee_payload_prefix(&ctx).starts_with("20260413"));
 }
-

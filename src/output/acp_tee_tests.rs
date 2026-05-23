@@ -1,7 +1,7 @@
 use super::acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, acp_tee_display_line, acp_tee_log_line,
-    format_line_acp_ansi_payload, print_stdout_acp_tool_summary_tee, print_stdout_acp_tee_line,
-    print_stdout_acp_tee_line_with_timestamp,
+    format_line_acp_ansi_payload, print_stdout_acp_tee_line,
+    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,
 };
 use crate::output::stdout_log_pair::acp_tee_log_prefix;
 
@@ -48,7 +48,10 @@ fn acp_display_and_log_helpers_include_timestamp_on_stdout_formatted_lines() {
         dim_payload: false,
     };
     let plain_acp = format_line_acp_ansi_payload(&ctx);
-    assert!(!plain_acp.contains("20260413"), "raw non-timestamp helper remains non-ts");
+    assert!(
+        !plain_acp.contains("20260413"),
+        "raw non-timestamp helper remains non-ts"
+    );
     assert!(acp_tee_display_line(&ctx).contains("hello"));
     assert!(
         !acp_tee_display_line(&ctx).starts_with("20260413"),
