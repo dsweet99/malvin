@@ -1,4 +1,4 @@
-use crate::acp::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
+use crate::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
 use serde_json::json;
 
 #[test]

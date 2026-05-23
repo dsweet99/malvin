@@ -150,10 +150,12 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             };
             if let Err(e) = write_rpc_line(
                 d.stdin,
-                &line,
-                d.acp_verbose,
-                d.trace_jsonl,
-                Some((d.acp_activity_seq, d.acp_activity_notify)),
+                RpcLineWriteOpts {
+                    line: &line,
+                    acp_verbose: d.acp_verbose,
+                    trace_jsonl: d.trace_jsonl,
+                    activity: Some((d.acp_activity_seq, d.acp_activity_notify)),
+                },
             )
             .await
             {
@@ -165,3 +167,4 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
         }
     }
 }
+

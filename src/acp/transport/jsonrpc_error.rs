@@ -1,3 +1,4 @@
+use crate::acp::import_prelude::*;
 // Pretty-print JSON-RPC error objects for logs.
 
 pub(crate) fn format_jsonrpc_error(err: &Value) -> String {

@@ -1,3 +1,5 @@
+use crate::acp::import_prelude::*;
+use crate::acp::{effective_cursor_api_key, effective_cursor_auth_token};
 // Build and spawn the `agent acp` child process.
 //
 // This file is `include!`d from `acp/mod.rs`. It does not declare its own `use std::path::Path`; it

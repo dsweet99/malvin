@@ -8,7 +8,7 @@ Answer a question, perform a one-off task, or continue an informal conversation 
 
 ## Usage
 
-```
+```text
 malvin do [OPTIONS] <REQUEST>
 ```
 
@@ -68,7 +68,7 @@ No `implement`, `review`, `concerns`, `learn`, or `summary` phases.
 
 ## Examples
 
-```
+```text
 malvin do "List failing tests and suggest fixes"
 malvin do --cooked @notes/task.md
 malvin do --repo-gates "Refactor foo.rs to use Result"

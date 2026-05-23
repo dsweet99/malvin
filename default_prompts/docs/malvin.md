@@ -4,7 +4,7 @@ malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent`
 
 ## Usage
 
-```
+```text
 malvin [OPTIONS] <COMMAND>
 ```
 

@@ -2,7 +2,7 @@
 
 use super::artifact_review_lgtm_after_review_write;
 use super::check_plan::run_check_plan;
-use super::memory_context::{
+use crate::memory_context::{
     MemoryRecord, build_memories_value, collect_memory_records, emit_if_complete, format_memories,
     parse_memories, process_memory_line, sample_memories, sample_seed,
 };
@@ -24,7 +24,7 @@ fn smoke_artifact_review_lgtm_none_when_missing() {
 
 #[test]
 fn smoke_memory_context_units() {
-    let mut state = super::memory_context::MemoryState::default();
+    let mut state = crate::memory_context::MemoryState::default();
     let mut out = Vec::new();
     process_memory_line("TRIGGER: t", &mut state, &mut out);
     process_memory_line("ADVICE: a", &mut state, &mut out);

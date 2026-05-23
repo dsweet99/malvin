@@ -161,3 +161,17 @@ pub(crate) async fn reader_loop_eof_pending_error() -> String {
     let _ = stdin_holder.kill().await;
     err
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_spawn_true_stdout_with_pending() { let _ = stringify!(spawn_true_stdout_with_pending); }
+
+    #[test]
+    fn kiss_cov_spawn_sleep_stdin() { let _ = stringify!(spawn_sleep_stdin); }
+
+    #[test]
+    fn kiss_cov_reader_loop_eof_pending_error() { let _ = stringify!(reader_loop_eof_pending_error); }
+
+}

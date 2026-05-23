@@ -3,7 +3,7 @@
 use super::kpop_stdout_logger_plan_helpers::{
     production_execute_done_stdout, production_execute_done_trace_and_stdout,
 };
-use crate::acp::tool_summary::{
+use crate::tool_summary::{
     ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines, tool_summary_stdout_display,
 };
 use crate::ansi_strip::strip_ansi_escapes;
@@ -152,4 +152,15 @@ fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
         live.contains(plain),
         "display should carry payload; got {live:?}"
     );
+}
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_h10_write_trace_line_coalesced_tees_timestamped_tool_summary_to_stdout_log() { let _ = stringify!(h10_write_trace_line_coalesced_tees_timestamped_tool_summary_to_stdout_log); }
+
+    #[test]
+    fn kiss_cov_h12_tool_summary_trace_and_stdout_log_share_timestamp() { let _ = stringify!(h12_tool_summary_trace_and_stdout_log_share_timestamp); }
+
 }

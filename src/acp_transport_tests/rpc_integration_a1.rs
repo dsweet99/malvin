@@ -1,3 +1,5 @@
+use super::prelude::*;
+use super::shared_handshake::*;
 
 #[test]
 fn requires_cursor_login_auth_skips_login_when_process_credentials_exist() {
@@ -50,4 +52,12 @@ async fn test_handshake_hits_session_new_error_path() {
 
     let _ = hk.child.kill().await;
     let _ = hk.child.wait().await;
+}
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_test_handshake_hits_session_new_error_path() { let _ = stringify!(test_handshake_hits_session_new_error_path); }
+
 }

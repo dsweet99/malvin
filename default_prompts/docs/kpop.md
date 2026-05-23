@@ -8,7 +8,7 @@ Scientifically explore a question or codebase behavior: formulate falsifiable hy
 
 ## Usage
 
-```
+```text
 malvin kpop [OPTIONS] <REQUEST>
 ```
 
@@ -95,7 +95,7 @@ Stops when any of:
 
 ## Examples
 
-```
+```text
 malvin kpop "Why does cache invalidation fail under load?"
 malvin kpop @questions/regression.md --max-hypotheses 20
 malvin kpop --p-creative 0 --no-learn @brief.md

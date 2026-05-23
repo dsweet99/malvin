@@ -1,15 +1,17 @@
-pub mod session_inner {
-    include!("session_inner.rs");
-}
+#[path = "session_inner.rs"]
+pub mod session_inner;
 
-include!("smoke.rs");
-include!("cancel.rs");
+#[path = "smoke.rs"]
+mod smoke;
+#[path = "cancel.rs"]
+mod cancel;
 
 #[cfg(unix)]
-mod unix_helpers {
-    include!("unix_helpers.rs");
-}
+#[path = "unix_helpers.rs"]
+mod unix_helpers;
 #[cfg(unix)]
-include!("unix_shutdown.rs");
+#[path = "unix_shutdown.rs"]
+mod unix_shutdown;
 #[cfg(all(unix, target_os = "linux"))]
-include!("linux_spawn_abort.rs");
+#[path = "linux_spawn_abort.rs"]
+mod linux_spawn_abort;

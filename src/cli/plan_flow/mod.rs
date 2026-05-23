@@ -1,10 +1,14 @@
 #[path = "plan_prompt.rs"]
 mod plan_prompt;
 
-include!("plan_flow_root.inc");
-include!("plan_resolve.inc");
+#[path = "plan_flow_root.rs"]
+mod plan_flow_root;
+#[path = "plan_resolve.rs"]
+mod plan_resolve;
+
+pub use plan_flow_root::*;
+pub use plan_resolve::resolve_user_plan_path;
 
 #[cfg(test)]
-mod tests {
-    include!("plan_flow_tests.inc");
-}
+#[path = "plan_flow_tests.rs"]
+mod plan_flow_tests;

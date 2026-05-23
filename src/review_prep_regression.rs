@@ -92,7 +92,7 @@ fn malvin_must_install_tracing_subscriber_so_warn_events_are_visible() {
 
 #[test]
 fn init_bootstrap_commit_notice_must_use_malvin_log_format() {
-    let inc = include_str!("cli/init_cmd_mid_core.inc");
+    let inc = include_str!("cli/init_cmd_mid_core.rs");
     assert!(
         inc.contains(INIT_COMMIT_NOTICE),
         "fixture must reference the init bootstrap notice string"

@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+
+use super::{Orchestrator, WorkflowError, prompt_md_stem};
+use crate::acp::{AgentError, CoderPromptOptions};
+use crate::run_timing::TimingPhase;
+
 impl Orchestrator<'_> {
     pub(super) async fn run_coder_prompt(
         &mut self,

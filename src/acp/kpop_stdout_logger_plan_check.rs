@@ -1,6 +1,6 @@
 //! KPOP falsification tests for plan.md (stdout logger cleanup).
 
-use crate::acp::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
+use crate::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
 use crate::output::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, acp_tee_log_line, is_log_timestamp_token,
     print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,

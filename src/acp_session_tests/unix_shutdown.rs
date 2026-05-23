@@ -1,6 +1,6 @@
 #[cfg(unix)]
 mod shutdown_kills_descendants {
-    use super::unix_helpers::{
+    use super::super::unix_helpers::{
         process_exists, wait_for_pid_file, write_descendant_spawning_acp_mock,
     };
 

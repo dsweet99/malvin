@@ -8,7 +8,7 @@ Turn an empty or existing directory into a malvin-aware repo with language-appro
 
 ## Usage
 
-```
+```text
 malvin init [OPTIONS] <LANGUAGES>...
 ```
 
@@ -73,6 +73,6 @@ kiss pre-check at CLI entry (unlike `code` / `tidy`); `kiss init` is run as part
 
 ## Example
 
-```
+```text
 malvin init python rust --path ~/myproject
 ```

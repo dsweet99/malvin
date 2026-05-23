@@ -7,6 +7,7 @@ Do NOT introduce new frameworks, objectives, or representations.
 Stay within the same formal system, but explore its boundaries.
 
 Identify the core assumptions of the current idea. For each one:
+
 - Push it to an extreme limit
 - Consider its negation
 - Consider asymptotic scaling or pathological edge cases

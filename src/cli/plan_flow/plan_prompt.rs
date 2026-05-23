@@ -43,7 +43,8 @@ pub fn plan_prompt_context(
     user_plan_path: &Path,
     store: &PromptStore,
 ) -> Result<HashMap<String, String>, String> {
-    use crate::orchestrator::{format_prompt_path, workflow_context};
+    use crate::orchestrator::format_prompt_path;
+    use crate::workflow_context;
     let mut ctx = workflow_context(artifacts, store, "plan").map_err(|e: PromptError| e.0)?;
     ctx.insert(
         "plan_path".to_string(),

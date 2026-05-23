@@ -43,6 +43,7 @@ mod user_home;
 pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
 pub use user_home::user_home_dir;
+pub mod tool_summary;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
@@ -97,13 +98,16 @@ pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
     require_kiss_for_malvin,
 };
+#[path = "orchestrator/memory_context.rs"]
+pub mod memory_context;
+pub mod workflow_context;
 pub mod orchestrator;
 pub use orchestrator::{
     Orchestrator, REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
     ReviewTwoPromptSession, ReviewWriteInnerOutcome, WorkflowConfig, WorkflowError, check_abort,
-    fail_on_abort_for_artifacts, format_prompt_path, run_reviewers_spawn_then_review_write,
-    workflow_context, workflow_context_paths_only,
+    fail_on_abort_for_artifacts, run_reviewers_spawn_then_review_write,
 };
+pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
@@ -145,6 +149,14 @@ pub mod acp_test_unix_bin;
 pub(crate) mod acp_session_unit_tests;
 
 #[cfg(test)]
+#[path = "acp_tests/mod.rs"]
+mod acp_tests;
+
+#[cfg(test)]
+#[path = "acp_transport_tests/mod.rs"]
+mod acp_transport_tests;
+
+#[cfg(test)]
 mod coverage_kiss;
 
 #[cfg(test)]
@@ -162,6 +174,7 @@ mod malvin_kiss_coverage;
 #[cfg(test)]
 #[allow(unsafe_code)]
 mod review_prep_regression;
+mod review_prep_regression_kiss;
 
 #[cfg(all(test, unix))]
 mod test_stderr_capture;

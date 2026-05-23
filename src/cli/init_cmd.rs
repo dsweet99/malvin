@@ -37,9 +37,19 @@ pub(crate) const TPL_STYLE: &str = include_str!(concat!(
     "/default_repo/llm_style/style.md"
 ));
 
+#[path = "init_cmd_mid_core.rs"]
+mod init_cmd_mid_core;
+
+#[cfg(test)]
+#[path = "init_cmd_mid_tests.rs"]
+mod init_cmd_mid_tests;
+
 use std::path::{Path, PathBuf};
 
 use clap::Args;
+use init_cmd_mid_core::{
+    bootstrap_repo_tooling, resolve_init_root, write_init_templates,
+};
 /// Supported languages for `malvin init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
@@ -220,10 +230,3 @@ pub fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
     }
     Ok(languages)
 }
-
-use std::process::Command;
-
-use crate::{lookup_bin_on_path, require_kiss_for_malvin};
-
-include!("init_cmd_mid_core.inc");
-include!("init_cmd_mid_tests.inc");

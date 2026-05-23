@@ -1,7 +1,3 @@
-use crate::acp::session_types::acp_stdio;
-
-pub(crate) use outgoing_prompt_trace::{OutgoingPromptTrace, UniformOutgoingTrace};
-
 pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
     if who == "learn" {
         Some(crate::malvin_constants::LEARNING_PLACEHOLDER)
@@ -44,3 +40,4 @@ pub(crate) async fn do_split_trace_preamble(
     }
     Ok(())
 }
+

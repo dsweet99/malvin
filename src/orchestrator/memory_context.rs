@@ -2,24 +2,24 @@ use std::path::Path;
 
 use rand::SeedableRng;
 
-pub(super) const MAX_MEMORIES_PER_RUN: usize = 100;
+pub(crate) const MAX_MEMORIES_PER_RUN: usize = 100;
 const MEMORY_FILE_EXTENSION: &str = "md";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct MemoryRecord {
-    pub(super) trigger: String,
-    pub(super) advice: String,
-    pub(super) confidence: u64,
+pub(crate) struct MemoryRecord {
+    pub(crate) trigger: String,
+    pub(crate) advice: String,
+    pub(crate) confidence: u64,
 }
 
 #[derive(Default)]
-pub(super) struct MemoryState {
+pub(crate) struct MemoryState {
     trigger: Option<String>,
     advice: Option<String>,
     confidence: Option<u64>,
 }
 
-pub(super) fn emit_if_complete(state: &mut MemoryState, out: &mut Vec<MemoryRecord>) {
+pub(crate) fn emit_if_complete(state: &mut MemoryState, out: &mut Vec<MemoryRecord>) {
     if let (Some(trigger), Some(advice), Some(confidence)) = (
         state.trigger.take(),
         state.advice.take(),
@@ -35,7 +35,7 @@ pub(super) fn emit_if_complete(state: &mut MemoryState, out: &mut Vec<MemoryReco
     }
 }
 
-pub(super) fn process_memory_line(
+pub(crate) fn process_memory_line(
     line: &str,
     state: &mut MemoryState,
     out: &mut Vec<MemoryRecord>,
@@ -55,7 +55,7 @@ pub(super) fn process_memory_line(
     }
 }
 
-pub(super) fn parse_memories(contents: &str) -> Vec<MemoryRecord> {
+pub(crate) fn parse_memories(contents: &str) -> Vec<MemoryRecord> {
     let mut out = Vec::new();
     let mut state = MemoryState::default();
     for line in contents.lines() {
@@ -65,7 +65,7 @@ pub(super) fn parse_memories(contents: &str) -> Vec<MemoryRecord> {
     out
 }
 
-pub(super) fn collect_memory_records(work_dir: &Path) -> Vec<MemoryRecord> {
+pub(crate) fn collect_memory_records(work_dir: &Path) -> Vec<MemoryRecord> {
     let memory_dir = work_dir.join(".malvin_memory");
     if !memory_dir.is_dir() {
         return Vec::new();
@@ -97,7 +97,7 @@ pub(super) fn collect_memory_records(work_dir: &Path) -> Vec<MemoryRecord> {
     records
 }
 
-pub(super) fn format_memories(records: &[MemoryRecord]) -> String {
+pub(crate) fn format_memories(records: &[MemoryRecord]) -> String {
     let escape_template = |value: &str| {
         value
             .replace("{{", "{ {")
@@ -118,7 +118,7 @@ pub(super) fn format_memories(records: &[MemoryRecord]) -> String {
         .join("\n\n")
 }
 
-pub(super) fn sample_seed(path: &Path, records: &[MemoryRecord]) -> u64 {
+pub(crate) fn sample_seed(path: &Path, records: &[MemoryRecord]) -> u64 {
     let mut seed = 1u64;
     for b in path.as_os_str().to_string_lossy().as_bytes() {
         seed ^= u64::from(*b);
@@ -138,7 +138,7 @@ pub(super) fn sample_seed(path: &Path, records: &[MemoryRecord]) -> u64 {
     seed
 }
 
-pub(super) fn sample_memories(
+pub(crate) fn sample_memories(
     records: &mut Vec<MemoryRecord>,
     max: usize,
     seed: u64,
@@ -178,7 +178,7 @@ pub(super) fn sample_memories(
     out
 }
 
-pub(super) fn build_memories_value(work_dir: &Path) -> String {
+pub fn build_memories_value(work_dir: &Path) -> String {
     let mut records = collect_memory_records(work_dir);
     let seed = sample_seed(work_dir, &records);
     let sampled = sample_memories(&mut records, MAX_MEMORIES_PER_RUN, seed);
@@ -186,4 +186,9 @@ pub(super) fn build_memories_value(work_dir: &Path) -> String {
 }
 
 #[cfg(test)]
-include!("memory_context/tests_body.inc");
+#[path = "memory_context_tests.rs"]
+mod memory_context_tests;
+
+#[cfg(test)]
+#[path = "memory_context_tests_b.rs"]
+mod memory_context_tests_b;

@@ -1,16 +1,6 @@
 //! Static entrypoint refs and focused behavioral smokes (`cli_smoke_cov.rs` holds the rest).
 
 #[test]
-fn kiss_wire_cli_entrypoint_refs() {
-    let _ = crate::cli::entrypoint;
-    let _ = crate::cli::run_code;
-    let _ = crate::cli::run_do;
-    let _ = crate::cli::run_ideas;
-    let _ = crate::cli::run_tidy;
-    let _ = crate::cli::run_plan;
-}
-
-#[test]
 fn smoke_format_gate_failures_non_empty() {
     let pre = super::format_pre_check_gate_failure("malvin code", "kiss failed");
     assert!(pre.contains("kiss failed"));

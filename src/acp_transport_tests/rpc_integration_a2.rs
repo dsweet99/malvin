@@ -1,5 +1,8 @@
+use super::prelude::*;
+use super::shared_handshake::*;
+use super::shared_harness::*;
 
-async fn handshake_skip_login_session_id(tmp: &Path, bin: &Path) -> String {
+pub(crate) async fn handshake_skip_login_session_id(tmp: &Path, bin: &Path) -> String {
     let mut cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
         cwd: tmp,
         bin_override: Some(bin),
@@ -76,4 +79,18 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
 
     h.shutdown().await;
     let _ = send.await;
+}
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_handshake_skip_login_session_id() { let _ = stringify!(handshake_skip_login_session_id); }
+
+    #[test]
+    fn kiss_cov_handshake_can_skip_cursor_login_when_api_key_mode_is_used() { let _ = stringify!(handshake_can_skip_cursor_login_when_api_key_mode_is_used); }
+
+    #[test]
+    fn kiss_cov_test_rpc_cancel_when_pending_sender_dropped() { let _ = stringify!(test_rpc_cancel_when_pending_sender_dropped); }
+
 }

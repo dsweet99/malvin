@@ -8,7 +8,7 @@ Batch creative exploration separate from the full `kpop` hypothesis loop. Uses `
 
 ## Usage
 
-```
+```text
 malvin ideas [OPTIONS] <REQUEST>
 ```
 
@@ -49,7 +49,7 @@ Exactly **one** coder prompt per invocation: rendered `mbc2.md` only (no coding 
 
 ## Examples
 
-```
+```text
 malvin ideas "Alternative cache invalidation strategies for our API"
 malvin ideas --num-ideas 5 @notes/topic.md
 ```

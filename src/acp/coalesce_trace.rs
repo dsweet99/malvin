@@ -1,3 +1,7 @@
+use crate::acp::coalesce::{
+    coalesce_append_chunk, SessionUpdateChunkKind, VerboseIoCoalescer,
+};
+
 #[derive(Default)]
 pub(crate) struct TraceChunkCoalescer {
     pub message: String,
@@ -6,7 +10,7 @@ pub(crate) struct TraceChunkCoalescer {
     thought_chars: usize,
     message_iterable_closed: Option<crate::acp::IterableClosedStream>,
     thought_iterable_closed: Option<crate::acp::IterableClosedStream>,
-    pub tool_tracker: crate::acp::tool_summary::ToolSummaryTracker,
+    pub tool_tracker: crate::tool_summary::ToolSummaryTracker,
 }
 
 pub(crate) type TraceChunkEmission =
@@ -99,8 +103,6 @@ pub(crate) struct VerboseTraceCoalesceState<'a> {
 
 #[test]
 fn trace_chunk_coalescer_feed_and_flush() {
-    let _ = TraceChunkCoalescer::feed;
-    let _: Option<VerboseTraceCoalesceState> = None;
     let mut coalescer = TraceChunkCoalescer::default();
     coalescer.feed(SessionUpdateChunkKind::Message, "hello");
     let flushed = coalescer.flush_all();
@@ -110,6 +112,7 @@ fn trace_chunk_coalescer_feed_and_flush() {
 #[test]
 fn trace_chunk_coalescer_flush_other_stream_preserves_iterable_closed_on_flush_stream_ctx() {
     let _ = stringify!(FlushStreamCtx);
+    let _ = stringify!(VerboseTraceCoalesceState);
     let mut coalescer = TraceChunkCoalescer::default();
     coalescer.feed(
         SessionUpdateChunkKind::Message,

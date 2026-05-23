@@ -9,9 +9,13 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-pub mod memory_context;
+mod helpers;
 
-include!("helpers.rs");
+pub use helpers::{
+    check_abort, clear_review_file, format_exp_log_relative, format_prompt_path,
+    workflow_context, workflow_context_paths_only,
+};
+pub(crate) use helpers::{insert_formatted, prompt_md_stem};
 
 #[cfg(test)]
 mod helpers_tests;
@@ -224,4 +228,4 @@ impl Orchestrator<'_> {
     }
 }
 
-include!("coder_prompt_impl.rs");
+mod coder_prompt_impl;

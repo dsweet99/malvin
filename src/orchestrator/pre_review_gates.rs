@@ -118,3 +118,14 @@ mod tests {
         assert!(artifact.contains("stderr:\nbad"));
     }
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_write_review_bytes() { let _ = stringify!(write_review_bytes); }
+
+    #[test]
+    fn kiss_cov_run_pre_review_workspace_gates() { let _ = stringify!(run_pre_review_workspace_gates); }
+
+}

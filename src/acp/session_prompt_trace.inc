@@ -65,3 +65,4 @@ pub(crate) async fn do_split_outgoing_trace_preamble<'a>(
         plain_lines: true,
     })
 }
+

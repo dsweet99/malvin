@@ -1,3 +1,7 @@
+use std::path::PathBuf;
+
+use super::{AgentIoOptions, AcpSession};
+
 /// ACP-backed agent with session-scoped coder and reviewer lifetimes.
 ///
 /// In the **`malvin code`** orchestrator, one long-lived **coder** session spans `check_plan`
@@ -10,9 +14,9 @@ pub struct AgentClient {
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<std::path::PathBuf>,
     pub(crate) style_prompt_path: PathBuf,
-    coder_session: Option<AcpSession>,
+    pub(crate) coder_session: Option<AcpSession>,
     /// When true, the next [`Self::run_coder_prompt`] prepends injected repo style (first turn only).
-    coder_style_on_next_prompt: bool,
+    pub(crate) coder_style_on_next_prompt: bool,
     /// When set (e.g. `malvin code` orchestrator), LLM waits and retry backoff are recorded.
     pub(crate) timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }

@@ -7,6 +7,7 @@ Do NOT introduce new frameworks, objectives, or representations.
 Stay within the same formal system, but explore its boundaries.
 
 Identify the core assumptions of the current idea. For each one:
+
 - Push it to an extreme limit
 - Consider its negation
 - Consider asymptotic scaling or pathological edge cases
@@ -20,6 +21,7 @@ Do not evaluate or prune yet. Your goal is boundary exploration, not refinement.
 ---
 
 MBC2: Generate {{ num_ideas }} ideas based on the user's prompt:
-```
+
+```text
 {{ user_prompt }}
 ```

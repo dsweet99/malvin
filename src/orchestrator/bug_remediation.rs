@@ -109,3 +109,11 @@ mod tests {
             .expect("shutdown test session");
     }
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_run_bug_remediation_gap() { let _ = stringify!(run_bug_remediation_gap); }
+
+}

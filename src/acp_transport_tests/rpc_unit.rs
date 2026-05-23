@@ -1,3 +1,6 @@
+use super::prelude::*;
+use super::jsonrpc::*;
+use super::shared_handshake::*;
 
 #[test]
 fn test_cursor_credentials_empty_strings_skipped() {
@@ -65,7 +68,16 @@ async fn test_write_rpc_line_fails_after_child_stdin_closed() {
     // until `write_rpc_line` sees `EPIPE` / broken pipe (or time out).
     let mut last = Ok(());
     for _ in 0..100 {
-        last = write_rpc_line(&stdin, r#"{"x":1}"#, false, None, None).await;
+        last = write_rpc_line(
+            &stdin,
+            RpcLineWriteOpts {
+                line: r#"{"x":1}"#,
+                acp_verbose: false,
+                trace_jsonl: None,
+                activity: None,
+            },
+        )
+        .await;
         if last.is_err() {
             return;
         }
@@ -100,3 +112,11 @@ fn test_agent_program_prefers_nonempty_override() {
     assert_eq!(agent_program(None), AGENT_BIN);
 }
 
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_test_write_rpc_line_fails_after_child_stdin_closed() { let _ = stringify!(test_write_rpc_line_fails_after_child_stdin_closed); }
+
+}

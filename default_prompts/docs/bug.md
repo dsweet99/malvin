@@ -8,7 +8,7 @@ End-to-end bug discovery and remediation without the user supplying a plan. The 
 
 ## Usage
 
-```
+```text
 malvin bug [OPTIONS]
 ```
 
@@ -87,7 +87,7 @@ Optional **learn** follows the same rules as `code` when not `--no-learn`.
 
 ## Example
 
-```
+```text
 malvin bug --max-hypotheses 15 --p-creative 0.1
 malvin bug --skip-pre-checks --no-learn
 ```

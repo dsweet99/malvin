@@ -8,8 +8,8 @@ pub const fn clamp_rpc_timeout(d: Duration) -> Duration {
     }
 }
 
-pub fn acp_stdio(s: &AcpSessionInner) -> super::AcpStdioRpc {
-    super::AcpStdioRpc {
+pub fn acp_stdio(s: &AcpSessionInner) -> crate::acp::AcpStdioRpc {
+    crate::acp::AcpStdioRpc {
         reader_dead: s.reader_dead.clone(),
         stdin: s.stdin.clone(),
         pending: s.pending.clone(),
@@ -57,3 +57,4 @@ async fn take_stdio_pipes_from_piped_spawn() {
     drop(stdout);
     let _ = child.wait().await;
 }
+

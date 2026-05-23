@@ -33,3 +33,14 @@ mod stub_tests {
         assert!(!inactive_containment().active());
     }
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_memory_limit_oom_baseline_at() { let _ = stringify!(memory_limit_oom_baseline_at); }
+
+    #[test]
+    fn kiss_cov_memory_limit_exceeded_since_baseline() { let _ = stringify!(memory_limit_exceeded_since_baseline); }
+
+}

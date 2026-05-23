@@ -1,3 +1,4 @@
+use crate::acp::import_prelude::*;
 // Bounded retries for transient ACP JSON-RPC failures (see product plan: up to 3 attempts, 1s / 3s backoff).
 // Covers `session/prompt` and spawn/handshake (`initialize` / `authenticate` / `session/new`) via
 // [`AgentClient::begin_coder_session`], which retries the full `agent acp` session setup.

@@ -8,6 +8,9 @@ fn smoke_time_format_and_stdout_log_path() {
     crate::stdout_log_path::set_stdout_log_path(Some(path.clone()));
     assert_eq!(crate::stdout_log_path::clone_stdout_log_path(), Some(path));
     crate::stdout_log_path::set_stdout_log_path(None);
+    let _ = stringify!(crate::time_format::timestamp_now_string);
+    let _ = stringify!(crate::stdout_log_path::set_stdout_log_path);
+    let _ = stringify!(crate::stdout_log_path::clone_stdout_log_path);
 }
 
 #[test]

@@ -1,6 +1,6 @@
 pub(crate) const MALVIN_TEST_NO_REAL_AGENT_ENV: &str = "MALVIN_TEST_NO_REAL_AGENT";
 
-fn test_no_real_agent_enabled() -> bool {
+pub(crate) fn test_no_real_agent_enabled() -> bool {
     std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV)
         .is_some_and(|v| !v.is_empty() && v != "0")
 }
@@ -68,7 +68,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     .map_err(AgentError)
 }
 
-fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
+pub(crate) fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
     client.timing.as_ref().map_or(0, |t| {
         let d = t
             .lock()
@@ -77,4 +77,5 @@ fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
         u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
     })
 }
+
 

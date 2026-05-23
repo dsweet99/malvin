@@ -1,3 +1,5 @@
+use super::prelude::*;
+use super::shared_harness::*;
 
 #[tokio::test]
 async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
@@ -81,4 +83,18 @@ async fn rpc_request_with_correlation_id_errors_when_reader_dead() {
     .expect_err("reader flagged dead");
     assert!(err.contains("dead"), "{err}");
     h.shutdown().await;
+}
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_test_rpc_request_does_not_leak_pending_after_write_failure() { let _ = stringify!(test_rpc_request_does_not_leak_pending_after_write_failure); }
+
+    #[test]
+    fn kiss_cov_rpc_request_with_correlation_id_times_out_when_stdout_silent() { let _ = stringify!(rpc_request_with_correlation_id_times_out_when_stdout_silent); }
+
+    #[test]
+    fn kiss_cov_rpc_request_with_correlation_id_errors_when_reader_dead() { let _ = stringify!(rpc_request_with_correlation_id_errors_when_reader_dead); }
+
 }

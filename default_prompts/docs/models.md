@@ -8,7 +8,7 @@ Discover which `--model` values can be passed to malvin subcommands that spawn a
 
 ## Usage
 
-```
+```text
 malvin models [OPTIONS]
 ```
 
@@ -43,13 +43,13 @@ This command does not run any malvin prompt templates.
 
 ## Example
 
-```
+```text
 malvin models
 malvin --no-color models
 ```
 
 Use a listed id with other commands:
 
-```
+```text
 malvin --model sonnet-4 code @plan.md
 ```

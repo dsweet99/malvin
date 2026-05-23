@@ -2,6 +2,7 @@
 ## Observation
 
 1) What *new*, interesting/surprising things did you learn in this chat about?:
+
 - Codebase structure (where things live)
 - Algorithms/methods + notable results
 - Tooling/workflow constraints (commands, env gotchas, quality gates)
@@ -16,11 +17,13 @@ Newness should be decided relative to the existing `./.malvin_memory/*.md` files
 3) Edit an `.malvin_memory/*.md` file to incorporate each list item.
 
 - Store as TRIGGER: / ADVICE: pairs, in this format
-```
+
+```text
 TRIGGER: 1-4 keywords or phrases, where phrases are 1-3 words
 ADVICE: A briefly-stated action to take, like "Read <file>" or "Use <tool/approach/method, with instructions>" or "Check for <problem/benefit>" etc.
 CONFIDENCE: 0
 ```
+
 in one of `./.malvin_memory/*.md`. If no file name (subject area) seems appropriate, create a new file with an appropriate file name (subject area).
 
 TRIGGER keywords should be words that the agent was searching for -- or might search for -- when it had the question but didn't yet have the answer. ADVICE should be the final, discovered, correct or useful action that the agent took. Our hope is that a future agent will grep for keywords, find a relevant TRIGGER, and be very glad it found the associated ADVICE.

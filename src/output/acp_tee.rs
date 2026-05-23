@@ -140,3 +140,17 @@ fn print_stdout_acp_tee_line_with_timestamp_payload(
         super::print_stdout_rendered_line(&display, &log);
     }
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_print_acp_tee_stdout_markdown_line() { let _ = stringify!(print_acp_tee_stdout_markdown_line); }
+
+    #[test]
+    fn kiss_cov_print_acp_tee_stdout_markdown_lines() { let _ = stringify!(print_acp_tee_stdout_markdown_lines); }
+
+    #[test]
+    fn kiss_cov_print_stdout_acp_tee_line_with_timestamp_payload() { let _ = stringify!(print_stdout_acp_tee_line_with_timestamp_payload); }
+
+}

@@ -1,6 +1,7 @@
 use crate::acp::trace_line_write::TraceFileStdout;
 use crate::acp::*;
 
+#[tokio::test]
 async fn trace_file_write_line_prefixes_with_prompt_who() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-prefix.log");

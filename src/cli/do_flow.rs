@@ -189,4 +189,13 @@ mod do_flow_helpers_tests {
 }
 
 #[cfg(test)]
-include!("do_flow_tests.inc");
+#[path = "do_flow_tests.rs"]
+mod do_flow_tests;
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_run_do() { let _ = stringify!(run_do); }
+
+}

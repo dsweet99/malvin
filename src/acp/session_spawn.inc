@@ -1,9 +1,4 @@
 // Spawn `agent acp`, stdout reader, and JSON-RPC handshake (inlined into `acp` for `kiss` dependency depth).
-use session_types::{
-    AcpChildStdout, AcpHandshakeContinuation, AcpHandshakeIo, AcpHandshakeSessionOpts,
-    SessionAfterStdioIn, SessionChannelState, SessionInnerAssembly, SessionReaderTelemetry,
-    clamp_rpc_timeout, take_stdio_pipes,
-};
 
 fn prompt_rpc_cleanup_arc(io: &AcpHandshakeIo) -> Arc<PromptRpcCleanup> {
     Arc::new(PromptRpcCleanup {
@@ -210,3 +205,4 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
     })
     .await
 }
+

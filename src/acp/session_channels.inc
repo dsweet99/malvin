@@ -186,3 +186,4 @@ fn acp_activity_state_returns_valid_arc_pair() {
     assert_eq!(seq.load(Ordering::SeqCst), 0);
     notify.notify_one();
 }
+

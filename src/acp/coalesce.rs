@@ -1,4 +1,5 @@
 // Verbose/trace coalescing for `session/update` chunks.
+use crate::acp::import_prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SessionUpdateChunkKind {
     Message,

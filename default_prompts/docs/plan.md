@@ -8,7 +8,7 @@ Produce or improve `plan.md` (or another path) with malvin’s coding header, me
 
 ## Usage
 
-```
+```text
 malvin plan [OPTIONS] [TEXT]
 ```
 
@@ -76,14 +76,14 @@ No `implement`, `concerns`, `learn`, or post-run gate loop in this command.
 
 Typical flow:
 
-```
+```text
 malvin plan "Add caching layer for API responses"
 malvin code --trust-the-plan @plan.md
 ```
 
 ## Examples
 
-```
+```text
 malvin plan
 malvin plan "Refactor auth module"
 malvin plan @draft.md --plan_path plan.md

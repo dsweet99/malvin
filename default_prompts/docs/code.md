@@ -8,7 +8,7 @@ Take a written plan (inline or from a file) and drive the repo to a reviewed sta
 
 ## Usage
 
-```
+```text
 malvin code [OPTIONS] <REQUEST>
 ```
 
@@ -79,7 +79,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 | Order | Prompt role (effect) | Notes |
 |-------|----------------------|-------|
 | 4 | **Learn** (optional) — Reflect on the session and suggest process/repo improvements. Skipped if `--no-learn`, or if elapsed time &lt; 5 minutes (default threshold). | After review succeeds |
-| 5 | **Summary** — Short user-facing recap of what was done. |
+| 5 | **Summary** — Short user-facing recap of what was done. |  |
 
 ## Artifacts
 
@@ -95,7 +95,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 
 ## Examples
 
-```
+```text
 malvin code @plan.md
 malvin code --trust-the-plan @plan.md --max-loops 3
 malvin code --skip-pre-checks "Add widget API per plan.md"

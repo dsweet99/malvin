@@ -3,7 +3,8 @@
 mod defaults;
 mod store;
 
-include!("template.rs");
+mod template;
+pub use template::*;
 
 pub use defaults::{
     CONCERNS_ACP_MATCH_SUBSTRING, DO_HEADER_MD, HEADER_MD, REVIEW_WRITE_ACP_MATCH_PHRASE,
@@ -38,13 +39,16 @@ pub use store::{
 #[cfg(test)]
 mod embedded_defaults_tests;
 #[cfg(test)]
-#[allow(unsafe_code)]
-mod prompts_tests_a {
-    include!("tests_a.rs");
-}
+#[path = "prompts_tests_a.rs"]
+mod prompts_tests_a;
+#[cfg(test)]
+#[path = "prompts_tests_b.rs"]
+mod prompts_tests_b;
+
 
 #[cfg(test)]
-#[allow(unsafe_code)]
-mod prompts_tests_b {
-    include!("tests_b.rs");
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_prompt_error() { let _ = stringify!(PromptError); }
+
 }

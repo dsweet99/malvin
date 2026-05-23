@@ -10,6 +10,9 @@ repository = "https://github.com/dsweet99/malvin"
 keywords = ["malvin"]
 categories = ["development-tools"]
 
+[profile.dev]
+incremental = true
+
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }

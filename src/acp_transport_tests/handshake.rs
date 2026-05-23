@@ -1,3 +1,6 @@
+use super::prelude::*;
+use super::jsonrpc::*;
+use super::shared_handshake::*;
 
 #[test]
 fn test_cursor_credentials_explicit_auth_token_overrides_process_env() {

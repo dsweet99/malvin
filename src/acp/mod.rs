@@ -1,14 +1,26 @@
 #![cfg_attr(test, allow(unsafe_code))]
 //! Agent Client Protocol (`agent acp`) JSON-RPC over stdio.
-//!
-//! Much of the implementation is assembled with [`include!`] so `kiss check` dependency depth
-//! stays within project limits; use the include file names (for example `transport/rpc.rs`) when
-//! navigating—IDE “go to module” may not match a single `mod` tree.
 
+mod import_prelude;
 mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
 mod session_types;
+
+#[path = "wrap_handshake_types.rs"]
+mod wrap_handshake_types;
+#[path = "wrap_session_io.rs"]
+mod wrap_session_io;
+#[path = "wrap_session_channels.rs"]
+mod wrap_session_channels;
+pub(crate) use wrap_handshake_types::*;
+pub(crate) use wrap_session_channels::*;
+pub(crate) use wrap_session_io::*;
+
+#[cfg(test)]
+#[path = "session_types_tests.rs"]
+mod session_types_tests;
+
 mod unix_process_group;
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
@@ -17,26 +29,40 @@ pub(crate) use session_types::AcpSessionInner;
 pub use session_types::{AcpSession, AcpSpawnArgs};
 pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
 
-include!("cursor_credentials.rs");
-include!("coalesce.rs");
-include!("coalesce_trace.rs");
-mod tool_summary;
-mod trace_line_write;
+#[path = "cursor_credentials.rs"]
+mod cursor_credentials;
+pub(crate) use cursor_credentials::*;
+
+#[path = "coalesce.rs"]
+mod coalesce;
+pub(crate) use coalesce::*;
+
+#[path = "coalesce_trace.rs"]
+mod coalesce_trace;
+pub(crate) use coalesce_trace::*;
+
+#[path = "trace_line_write_tee.rs"]
+mod trace_line_write_tee;
+#[path = "trace_line_write_tool_summary.rs"]
+mod trace_line_write_tool_summary;
+pub(crate) mod trace_line_write;
 pub(crate) use trace_line_write::{
     ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,
 };
-include!("session_trace.rs");
 
-// Inlined former `acp::transport` so `kiss` dependency depth stays ≤2 (no `lib → acp → transport`).
-use serde_json::{Map, Value, json};
-use std::collections::HashMap;
-use std::path::Path;
+#[path = "session_trace_setup.rs"]
+mod session_trace_setup;
+#[path = "session_prompts_log.rs"]
+mod session_prompts_log;
+#[cfg(test)]
+#[path = "session_trace_tests.rs"]
+mod session_trace_tests;
+pub(crate) use session_prompts_log::*;
+pub(crate) use session_trace_setup::*;
+
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{ChildStdin, ChildStdout};
-use tokio::sync::{Mutex, Notify, oneshot};
-use tracing::{debug, error, info, trace, warn};
+use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::sync::Notify;
 
 pub(crate) fn note_acp_trace_activity(
     acp_activity_seq: &Arc<AtomicU64>,
@@ -46,12 +72,27 @@ pub(crate) fn note_acp_trace_activity(
     acp_activity_notify.notify_waiters();
 }
 
-include!("transport/jsonrpc_error.rs");
-include!("transport/command.rs");
-include!("transport/rpc.rs");
-include!("transport/handshake.rs");
+#[path = "transport/jsonrpc_error.rs"]
+mod jsonrpc_error;
+#[path = "transport/command.rs"]
+mod command;
+#[path = "transport/rpc_part1.rs"]
+mod rpc_part1;
+#[path = "transport/rpc_wait_args.rs"]
+mod rpc_wait_args;
+pub(crate) use rpc_wait_args::RpcWaitArgs;
+#[path = "transport/rpc_part2.rs"]
+mod rpc_part2;
+#[path = "transport/rpc_part2_health.rs"]
+mod rpc_part2_health;
+#[path = "transport/handshake.rs"]
+mod handshake;
+pub(crate) use command::*;
+pub(crate) use handshake::*;
+pub(crate) use jsonrpc_error::*;
+pub(crate) use rpc_part1::*;
+pub(crate) use rpc_part2::*;
 
-/// Per-request wait helper for unit tests (matches [`crate::config::acp_rpc_timeout_secs_from_env`]).
 #[cfg(test)]
 pub(crate) fn acp_rpc_timeout() -> std::time::Duration {
     std::time::Duration::from_secs(crate::config::acp_rpc_timeout_secs_from_env())
@@ -72,138 +113,80 @@ fn acp_rpc_timeout_and_login_auth_smoke() {
     let _ = requires_cursor_login_auth(None, None);
 }
 
-include!("reader_inline.rs");
-include!("session_spawn.inc");
-use outgoing_prompt_trace::DoPromptTraceSplit;
-include!("session.rs");
-#[cfg(test)]
-include!("session_tests.rs");
+#[path = "wrap_reader_a.rs"]
+mod wrap_reader_a;
+pub(crate) use wrap_reader_a::*;
 
-include!("agent_bundle.rs");
-include!("agent_client_struct.rs");
-include!("retry_policy.rs");
-include!("ops_body.rs");
-include!("client_impl.rs");
-#[cfg(test)]
-mod ops_inline_tests {
-    #![allow(
-        unsafe_code,
-        clippy::pedantic,
-        clippy::nursery,
-        unused_imports,
-        clippy::await_holding_lock,
-        clippy::mutex_integer,
-        clippy::unnecessary_struct_initialization,
-        clippy::unused_async,
-        clippy::redundant_pub_crate
-    )]
-    include!("ops_inline_tests.rs");
-}
-#[cfg(test)]
-include!("tee_strip_tests.rs");
-#[cfg(all(test, unix))]
-#[allow(unsafe_code, unused_imports)]
-include!("ops_inline_tests_unix.inc");
+#[path = "wrap_reader_b.rs"]
+mod wrap_reader_b;
+pub(crate) use wrap_reader_b::*;
 
-/// Hidden harness: spawns `cat` as a stand-in coder session for the `malvin` binary crate’s unit tests.
-///
-/// The library is built **without** `cfg(test)` when linked from the binary target, so this stays
-/// unconditional; normal callers should not use it.
+#[path = "wrap_session_spawn.rs"]
+mod wrap_session_spawn;
+pub(crate) use wrap_session_spawn::*;
+
+#[path = "wrap_session_prompt.rs"]
+mod wrap_session_prompt;
+pub(crate) use wrap_session_prompt::*;
+
+#[path = "wrap_session_post.rs"]
+mod wrap_session_post;
+
+#[cfg(test)]
+#[path = "session_tests.rs"]
+mod session_tests;
+
+#[path = "wrap_agent_bundle.rs"]
+mod wrap_agent_bundle;
+#[path = "wrap_retry_policy.rs"]
+mod wrap_retry_policy;
+pub use wrap_agent_bundle::{AgentError, AgentIoOptions, AuthError};
+pub(crate) use wrap_agent_bundle::*;
+pub(crate) use wrap_retry_policy::*;
+
+#[path = "agent_client_struct.rs"]
+mod agent_client_struct;
+pub use agent_client_struct::AgentClient;
+
+#[path = "wrap_ops_spawn.rs"]
+mod wrap_ops_spawn;
+pub(crate) use wrap_ops_spawn::*;
+
+#[path = "ops_body_kpop.rs"]
+mod ops_body_kpop;
+pub use ops_body_kpop::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
+pub(crate) use ops_body_kpop::*;
+
+#[path = "ops_body_kpop_mt.rs"]
+mod ops_body_kpop_mt;
+pub(crate) use ops_body_kpop_mt::*;
+
+#[path = "client_impl_helpers.rs"]
+mod client_impl_helpers;
+#[path = "client_impl_session.rs"]
+mod client_impl_session;
+#[path = "client_impl_prompt_dispatch.rs"]
+mod client_impl_prompt_dispatch;
+#[path = "client_impl_prompt.rs"]
+mod client_impl_prompt;
+#[path = "client_impl_flow.rs"]
+mod client_impl_flow;
+pub(crate) use client_impl_helpers::*;
+pub(crate) use client_impl_prompt_dispatch::*;
+
+#[cfg(test)]
+#[path = "ops_inline_tests.rs"]
+mod ops_inline_tests;
+
+#[cfg(test)]
+#[path = "tee_strip_tests.rs"]
+mod tee_strip_tests;
+
 #[doc(hidden)]
 pub mod test_captive_session;
-
-#[cfg(all(test, unix))]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(test)]
-use tokio::io::AsyncReadExt;
-#[cfg(test)]
-#[allow(
-    unsafe_code,
-    clippy::pedantic,
-    clippy::nursery,
-    unused_imports,
-    clippy::await_holding_lock,
-    clippy::mutex_integer,
-    clippy::unnecessary_struct_initialization,
-    clippy::unused_async,
-    clippy::redundant_pub_crate
-)]
-include!("transport_tests_inline.inc");
-
-#[cfg(test)]
-#[path = "reader_tests_coalesce_a.rs"]
-mod reader_tests_coalesce_a;
-#[cfg(test)]
-#[path = "reader_tests_coalesce_b.rs"]
-mod reader_tests_coalesce_b;
-#[cfg(test)]
-#[path = "reader_tests_dispatch.rs"]
-mod reader_tests_dispatch;
-#[cfg(test)]
-#[path = "reader_tests_helpers.rs"]
-mod reader_tests_helpers;
-#[cfg(test)]
-#[path = "reader_tests_permission.rs"]
-mod reader_tests_permission;
-#[cfg(test)]
-#[path = "reader_tests_permission_unix.rs"]
-mod reader_tests_permission_unix;
-#[cfg(test)]
-#[path = "reader_tests_reader_loop.rs"]
-mod reader_tests_reader_loop;
-#[cfg(test)]
-#[path = "reader_tests_retry_policy.rs"]
-mod reader_tests_retry_policy;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary.rs"]
-mod reader_tests_tool_summary;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_human.rs"]
-mod reader_tests_tool_summary_human;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_human_bugs.rs"]
-mod reader_tests_tool_summary_human_bugs;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_kinds.rs"]
-mod reader_tests_tool_summary_kinds;
-#[cfg(test)]
-#[path = "reader_tests_tool_summary_trace.rs"]
-mod reader_tests_tool_summary_trace;
-#[cfg(test)]
-#[path = "reader_tests_trace_a.rs"]
-mod reader_tests_trace_a;
-#[cfg(test)]
-#[path = "reader_tests_trace_b.rs"]
-mod reader_tests_trace_b;
-#[cfg(test)]
-#[path = "reader_tests_trace_coalesce_write.rs"]
-mod reader_tests_trace_coalesce_write;
-#[cfg(test)]
-#[path = "reader_tests_trace_iterable.rs"]
-mod reader_tests_trace_iterable;
-
-#[cfg(test)]
-#[path = "kpop_stdout_logger_plan_check.rs"]
-mod kpop_stdout_logger_plan_check;
-#[cfg(test)]
-#[path = "kpop_stdout_logger_plan_check_ext.rs"]
-mod kpop_stdout_logger_plan_check_ext;
-#[cfg(test)]
-mod kpop_stdout_logger_plan_helpers;
 
 #[cfg(test)]
 mod kiss_coverage;
 
 #[cfg(test)]
 pub(crate) mod spawn_test_args;
-
-#[cfg(test)]
-mod cursor_credentials_tests_inline {
-    #![allow(unsafe_code)]
-    use super::{
-        effective_cursor_api_key, effective_cursor_auth_token, nonempty_explicit_or_env_var,
-    };
-    use crate::test_utils::test_env_lock;
-
-    include!("cursor_credentials_tests.rs");
-}

@@ -35,7 +35,6 @@ mod stdout_log_tests;
 #[cfg(test)]
 use std::cell::RefCell;
 use std::io::{IsTerminal, Write, stdout};
-use std::path::PathBuf;
 #[cfg(test)]
 use std::sync::Mutex;
 use std::sync::OnceLock;
@@ -120,9 +119,7 @@ pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
     stdout_log_pair::tagged_log_line(ts, who, line)
 }
 
-pub(crate) fn timestamp_now_string() -> String {
-    crate::time_format::timestamp_now_string()
-}
+pub(crate) use crate::time_format::timestamp_now_string;
 
 #[must_use]
 pub fn format_line(who: &str, line: &str) -> String {
@@ -165,10 +162,7 @@ pub(crate) fn stderr_use_color() -> bool {
     log_use_color() && std::io::stderr().is_terminal()
 }
 
-pub fn set_stdout_log_path(path: Option<PathBuf>) {
-    crate::stdout_log_path::set_stdout_log_path(path);
-}
-
+pub use crate::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::stdout_tagged_display_and_log_line;
 
 pub(crate) fn append_stdout_log_line(line: &str) {

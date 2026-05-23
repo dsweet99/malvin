@@ -8,7 +8,7 @@ Recover a dirty repo to a check-clean state—use after failed `code` pre-checks
 
 ## Usage
 
-```
+```text
 malvin tidy [OPTIONS]
 ```
 
@@ -84,7 +84,7 @@ Gate failure message on stderr points user at the failing commands before the ag
 
 ## Examples
 
-```
+```text
 malvin tidy
 malvin tidy --max-loops 5
 malvin tidy --no-learn
@@ -92,6 +92,6 @@ malvin tidy --no-learn
 
 Typical recovery flow after failed code:
 
-```
+```text
 malvin tidy && malvin code @plan.md
 ```

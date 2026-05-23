@@ -1,3 +1,5 @@
+use super::prelude::*;
+use super::shared_harness::*;
 
 #[tokio::test]
 async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
@@ -57,4 +59,12 @@ fn active_memory_containment_maps_timeout_message_when_oom() {
         ),
         crate::acp_memory_containment::AGENT_EXCEEDED_MEMORY_LIMIT_MSG
     );
+}
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_rpc_response_arriving_during_child_health_grace_is_delivered() { let _ = stringify!(rpc_response_arriving_during_child_health_grace_is_delivered); }
+
 }

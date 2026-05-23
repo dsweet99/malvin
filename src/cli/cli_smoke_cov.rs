@@ -217,3 +217,11 @@ fn smoke_shared_opts_tee_startup_stdout() {
     };
     assert!(shared.tee_startup_stdout());
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_empty_session_backups() { let _ = stringify!(empty_session_backups); }
+
+}

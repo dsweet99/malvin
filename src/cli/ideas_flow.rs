@@ -182,4 +182,5 @@ mod ideas_flow_helpers_tests {
 }
 
 #[cfg(test)]
-include!("ideas_flow_tests.inc");
+#[path = "ideas_flow_tests.rs"]
+mod ideas_flow_tests;

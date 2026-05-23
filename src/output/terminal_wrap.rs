@@ -1,2 +1,4 @@
-include!("terminal_wrap_a.inc");
-include!("terminal_wrap_b.inc");
+#[path = "terminal_wrap_a.rs"]
+pub(crate) mod terminal_wrap_a;
+
+pub use terminal_wrap_a::*;

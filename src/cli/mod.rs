@@ -14,10 +14,17 @@ mod markdown_flag_parse_tests;
 mod models_cmd;
 pub(crate) mod run_emit;
 mod shared_opts;
-mod tidy_flow;
+pub(crate) mod tidy_flow;
 
-include!("code_flow_a.inc");
-include!("code_flow_b.inc");
+mod code_flow_a;
+mod code_flow_b;
+
+pub use code_flow_a::{
+    agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
+    format_workspace_gate_failure, prepare_bug_prompt_store, prepare_kpop_prompt_store,
+    prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+};
+pub use code_flow_b::run_code;
 
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
