@@ -117,12 +117,16 @@ fn exported_constants_match_public_contract() {
 }
 
 #[test]
-fn ansi_who_tag_uses_yellow_for_warning_and_red_for_error() {
+fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
+    use crate::terminal_palette::{ANSI_TOOL_CORAL, ANSI_TOOL_NAVY, ANSI_TOOL_SAND};
+
     let ts = "20260413.121314.015";
     let warn = super::format_line_with_timestamp_ansi(ts, super::WARNING_WHO, "");
     let err = super::format_line_with_timestamp_ansi(ts, super::ERROR_WHO, "");
-    assert!(warn.contains("\x1b[33m"));
-    assert!(err.contains("\x1b[31m"));
+    let default = super::format_line_with_timestamp_ansi(ts, "kpop", "");
+    assert!(warn.contains(ANSI_TOOL_SAND));
+    assert!(err.contains(ANSI_TOOL_CORAL));
+    assert!(default.contains(ANSI_TOOL_NAVY));
 }
 
 #[test]

@@ -40,6 +40,7 @@ pub use malvin_short_id::{
 };
 mod learn_gate;
 mod malvin_constants;
+mod terminal_palette;
 pub mod run_id;
 pub mod session_dotfile_backup;
 mod tracing_init;

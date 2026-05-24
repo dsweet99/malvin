@@ -4,10 +4,8 @@ use super::{
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
+use crate::terminal_palette::{ANSI_TOOL_SAND, ANSI_TOOL_TEAL};
 use unicode_width::UnicodeWidthStr;
-
-const ANSI_BRIGHT_GREEN: &str = "\x1b[92m";
-const ANSI_BRIGHT_MAGENTA: &str = "\x1b[95m";
 
 /// Tee direction for ACP trace lines echoed to stdout (distinct ANSI bracket colors on TTY).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -84,8 +82,8 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
 
 const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
-        AcpTeeDirection::ToAgent => ANSI_BRIGHT_GREEN,
-        AcpTeeDirection::FromAgent => ANSI_BRIGHT_MAGENTA,
+        AcpTeeDirection::ToAgent => ANSI_TOOL_TEAL,
+        AcpTeeDirection::FromAgent => ANSI_TOOL_SAND,
     }
 }
 

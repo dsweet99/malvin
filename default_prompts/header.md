@@ -36,12 +36,12 @@ CONFIDENCE: 3
 
 Does the user's request relate to any of the TRIGGER words in .malvin_memory/*.md? Search for keywords in those files and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
-## Capability
+## Calibration
 
 Before any potentially long (>3 minutes) task, estimate how long it'll take and write that out as
 
 ```text
-PREDICT_TIME: <prediction>
+Predicted running time: <prediction>
 ```
 
 ---
@@ -69,7 +69,7 @@ PREDICT_TIME: <prediction>
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
-- `{{ plan_path }}` (when present) overrides ADVICE. ADVICE is not binding.
+- The use plan,`{{ plan_path }}`, when present, overrides ADVICE. ADVICE is not binding.
 
 ## Shorthand
 

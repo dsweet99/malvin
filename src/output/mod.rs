@@ -90,11 +90,9 @@ static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-const ANSI_DIM: &str = "\x1b[90m";
-const ANSI_CYAN: &str = "\x1b[36m";
-const ANSI_YELLOW: &str = "\x1b[33m";
-const ANSI_RED: &str = "\x1b[31m";
-const ANSI_RESET: &str = "\x1b[0m";
+use crate::terminal_palette::{
+    ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_NAVY, ANSI_TOOL_SAND,
+};
 
 #[must_use]
 pub fn format_log_tag_inner(label: &str) -> String {
@@ -128,9 +126,9 @@ pub fn format_line(who: &str, line: &str) -> String {
 
 pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
-        WARNING_WHO => ANSI_YELLOW,
-        ERROR_WHO => ANSI_RED,
-        _ => ANSI_CYAN,
+        WARNING_WHO => ANSI_TOOL_SAND,
+        ERROR_WHO => ANSI_TOOL_CORAL,
+        _ => ANSI_TOOL_NAVY,
     }
 }
 

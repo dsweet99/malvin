@@ -80,7 +80,7 @@ pub(super) fn line_has_id_only(text: &str, id: &str, kind: MalvinRunLogKind) -> 
             if payload.contains(log_line.as_str()) {
                 return false;
             }
-            if payload.contains(id_line.as_str()) {
+            if payload.trim() == id_line {
                 return true;
             }
         }

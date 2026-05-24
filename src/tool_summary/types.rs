@@ -4,13 +4,10 @@ use std::time::Instant;
 pub const TOOL_DISPLAY_MAX_WIDTH: usize = 60;
 pub const TOOL_ELLIPSIS: &str = "...";
 
-pub(crate) const ANSI_BOLD: &str = "\x1b[1m";
-pub(crate) const ANSI_RESET: &str = "\x1b[0m";
-pub(crate) const ANSI_TOOL_CREAM: &str = "\x1b[38;2;244;241;222m";
-pub(crate) const ANSI_TOOL_CORAL: &str = "\x1b[38;2;224;122;95m";
-pub(crate) const ANSI_TOOL_NAVY: &str = "\x1b[38;2;61;64;91m";
-pub(crate) const ANSI_TOOL_TEAL: &str = "\x1b[38;2;129;178;154m";
-pub(crate) const ANSI_TOOL_SAND: &str = "\x1b[38;2;242;204;143m";
+pub(crate) use crate::terminal_palette::{
+    ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_NAVY, ANSI_TOOL_SAND,
+    ANSI_TOOL_TEAL,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ToolSummaryDetail {

@@ -99,6 +99,28 @@ fn ensure_exp_log_solved_rejects_missing_marker() {
 }
 
 #[test]
+fn lookup_rejects_tagged_prose_mentioning_bug_id_without_official_emission() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cwd = tmp.path();
+    let run_dir = cwd.join("_malvin").join("20260106_agent");
+    std::fs::create_dir_all(run_dir.join("_kpop")).expect("mkdir");
+    let exp = run_dir.join("_kpop").join("exp_log_20260106_agent.md");
+    std::fs::write(&exp, "## KPOP_SOLVED\n").expect("exp");
+    std::fs::write(
+        run_dir.join("stdout.log"),
+        format!(
+            "20260101.000000.000 [{}] agent mentions BUG_ID: Mfake1 in prose\n",
+            format_log_tag_inner(MALVIN_WHO)
+        ),
+    )
+    .expect("stdout");
+    assert!(
+        lookup_bug_id(cwd, "Mfake1").is_err(),
+        "fix-by-id must not treat tagged agent prose as an authoritative BUG_ID emission"
+    );
+}
+
+#[test]
 fn lookup_rejects_untagged_bug_id_only_chatter_in_stdout_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
