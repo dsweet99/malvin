@@ -127,16 +127,19 @@ fn merge_header_and_coding_rules_handles_empty() {
 
 #[test]
 fn learn_prompt_has_consistent_memory_target_guidance() {
-    let learn = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/default_prompts/learn.md"
-    ));
+    let store = PromptStore::default_store();
+    store.ensure_defaults().unwrap();
+    let ctx = HashMap::from([(
+        "advice_path".to_string(),
+        "./.malvin/advice.md".to_string(),
+    )]);
+    let learn = store.render_prompt_only("learn.md", &ctx).unwrap();
     assert!(
-        learn.contains("Edit `.malvin/advice.md`"),
+        learn.contains("Edit `./.malvin/advice.md`"),
         "expected consistent memory-path guidance in learn prompt"
     );
     assert!(
-        learn.contains("relative to the existing `.malvin/advice.md`"),
+        learn.contains("relative to the existing `./.malvin/advice.md`"),
         "expected advice file guidance in learn prompt"
     );
 }

@@ -33,6 +33,8 @@
     clippy::needless_pass_by_ref_mut
 )]
 
+mod log_gc;
+mod log_gc_config;
 mod alnum_id;
 mod malvin_short_id;
 pub use malvin_short_id::{
@@ -43,11 +45,12 @@ mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
     find_malvin_logs_root, is_malvin_workspace, malvin_advice_path, malvin_checks_path,
-    malvin_logs_root, remove_legacy_malvin_checks_file, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL,
-    MALVIN_DIR, MALVIN_LOGS_REL,
+    malvin_config_path, malvin_logs_root, remove_legacy_malvin_checks_file, MALVIN_ADVICE_REL,
+    MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR, MALVIN_LOGS_REL,
 };
 mod terminal_palette;
-pub mod run_id;
+mod run_id;
+pub use run_id::{build_identifier, create_run_dir, RunDirOptions};
 pub mod session_dotfile_backup;
 mod tracing_init;
 mod user_home;

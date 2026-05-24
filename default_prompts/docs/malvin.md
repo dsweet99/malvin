@@ -80,6 +80,10 @@ Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under t
 - `quality_gates.log` — workspace gate commands and output when gates run
 - `review.md`, `review_prep.md`, `result.md` — review and abort artifacts for coding workflows
 
+## Log retention
+
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `./.malvin/logs/` according to `.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_runs`, `max_bytes`). `malvin init` and `malvin do` skip this pruning. `malvin init` seeds the config file with defaults.
+
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for all agent subcommands and `models`).

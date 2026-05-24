@@ -11,11 +11,11 @@
 - Code quality
 - The subject matter being address by this coding project
 
-Look for cases of "If I'd known then what I know now, I'd have had a easier time". Newness should be decided relative to the existing `.malvin/advice.md` file.
+Look for cases of "If I'd known then what I know now, I'd have had a easier time". Newness should be decided relative to the existing `{{ advice_path }}` file.
 
 2) Summarize them in a list.
 
-3) Edit `.malvin/advice.md` to incorporate each list item.
+3) Edit `{{ advice_path }}` to incorporate each list item.
 
 - Store as TRIGGER: / ADVICE: pairs, in this format
 
@@ -31,6 +31,6 @@ TRIGGER keywords should be words that the agent was searching for -- or might se
 
 Each TRIGGER: / ADVICE: / CONFIDENCE: triple is implicitly hypothesizing that it will be "good advice".
 
-Forgetting: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome, repeat a stock malvin prompt, or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from `.malvin/advice.md`.
+Forgetting: Can you find one piece of ADVICE: that was followed during this session that was *bad* advice? For example, did it lead to a bad outcome, repeat a stock malvin prompt, or just waste time producing nothing useful? If so, consider that TRIGGER: / ADVICE: / CONFIDENCE: triple falsified and remove it from `{{ advice_path }}`.
 
-Increasing confidence: Pick one piece of ADVICE: that wasn't bad and had CONFIDENCE: < 3 -- if there was one. Find it in `.malvin/advice.md` and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum value of 3.
+Increasing confidence: Pick one piece of ADVICE: that wasn't bad and had CONFIDENCE: < 3 -- if there was one. Find it in `{{ advice_path }}` and increment its CONFIDENCE: value by 1, but limit CONFIDENCE: to a maximum value of 3.

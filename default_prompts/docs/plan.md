@@ -54,7 +54,7 @@ See `malvin.md`. Uses standard coding-session stdout markdown unless `--no-markd
 | Step | Prompt role (effect) |
 |------|----------------------|
 | 1 | **Coding header** — Malvin identity, history/memory, paths. |
-| 2 | **Coding rules** — Default rules plus repo overrides from `.malvin/advice.md` / workspace. |
+| 2 | **Coding rules** — Default rules plus repo overrides from `{{ advice_path }}` / workspace. |
 | 3 | **Review plan** — Agent writes or critiques the plan at `plan_path`; structured review expectations (LGTM / feedback in `review.md` per template). |
 
 Logged as `review_plan` → `review_plan.log`.

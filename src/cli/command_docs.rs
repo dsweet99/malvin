@@ -28,7 +28,8 @@ const fn doc_text(command: Option<&Commands>) -> &'static str {
 }
 
 fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Write) -> Result<(), String> {
-    out.write_all(doc_text(command).as_bytes())
+    let text = doc_text(command).replace("{{ advice_path }}", crate::MALVIN_ADVICE_REL);
+    out.write_all(text.as_bytes())
         .map_err(|e| format!("stdout: {e}"))?;
     Ok(())
 }
@@ -111,5 +112,44 @@ mod tests {
             Some(Commands::Init(i)) => assert!(i.languages.is_empty()),
             _ => panic!("expected Init"),
         }
+    }
+
+    #[test]
+    fn init_doc_substitutes_advice_path() {
+        use crate::cli::args::{Commands, InitArgs};
+        let cmd = Commands::Init(InitArgs {
+            force: false,
+            languages: vec![],
+            path: None,
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(
+            text.contains(".malvin/advice.md"),
+            "init doc must show advice path"
+        );
+        assert!(
+            !text.contains("{{ advice_path }}"),
+            "init doc must not leave unresolved advice_path placeholder"
+        );
+    }
+
+    #[test]
+    fn plan_doc_substitutes_advice_path() {
+        use crate::cli::args::{Commands, PlanArgs};
+        let cmd = Commands::Plan(PlanArgs {
+            plan_path: None,
+            text: None,
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(
+            text.contains(".malvin/advice.md"),
+            "plan doc must show advice path"
+        );
+        assert!(
+            !text.contains("{{ advice_path }}"),
+            "plan doc must not leave unresolved advice_path placeholder"
+        );
     }
 }

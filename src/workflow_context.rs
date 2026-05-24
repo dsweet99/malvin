@@ -37,6 +37,12 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         base,
     );
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
+    insert_formatted(
+        context,
+        "advice_path",
+        &crate::malvin_advice_path(base),
+        base,
+    );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
     insert_formatted(
         context,
@@ -190,6 +196,7 @@ mod workflow_context_path_tests {
         insert_artifact_paths(&mut ctx, &artifacts);
         assert!(ctx.contains_key("result_path"));
         assert!(ctx.contains_key("review_prep_path"));
+        assert!(ctx.contains_key("advice_path"));
     }
 
     #[test]

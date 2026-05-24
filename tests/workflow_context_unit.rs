@@ -52,6 +52,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         "malvin_output_path",
         "quality_gates_log",
         "kpop_log_dir",
+        "advice_path",
     ] {
         let path = ctx.get(key).unwrap_or_else(|| panic!("missing {key}"));
         assert!(
@@ -60,6 +61,11 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         );
     }
     assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+    let advice = ctx.get("advice_path").expect("advice_path");
+    assert!(
+        advice.starts_with("./"),
+        "advice_path should be relative to work_dir, got {advice:?}"
+    );
 }
 
 #[test]

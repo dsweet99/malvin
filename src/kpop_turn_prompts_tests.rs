@@ -3,6 +3,13 @@ use std::collections::HashMap;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 use crate::prompts::PromptStore;
 
+fn kpop_turn_test_context() -> HashMap<String, String> {
+    HashMap::from([
+        ("plan_path".to_string(), "p".to_string()),
+        ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
+    ])
+}
+
 #[test]
 fn kpop_turn_prompts_render() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -18,7 +25,7 @@ fn kpop_turn_prompts_render() {
     }
     let store = PromptStore::with_root(root);
     store.ensure_defaults().expect("defaults");
-    let ctx = HashMap::from([("plan_path".to_string(), "p".to_string())]);
+    let ctx = kpop_turn_test_context();
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &ctx,

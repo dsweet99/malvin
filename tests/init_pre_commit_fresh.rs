@@ -2,6 +2,9 @@
 
 mod common;
 
+use malvin::MALVIN_ADVICE_REL;
+use malvin::MALVIN_CONFIG_REL;
+
 use common::{
     InitOk, assert_git_head_commit_count, git_show_rev_path, malvin_init_output,
     tempdir_seeded_dirty_keep,
@@ -16,8 +19,12 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
         "init must write .malvin/checks"
     );
     assert!(
-        w.path().join(".malvin/advice.md").is_file(),
-        "init must write .malvin/advice.md"
+        w.path().join(MALVIN_ADVICE_REL).is_file(),
+        "init must write {MALVIN_ADVICE_REL}"
+    );
+    assert!(
+        w.path().join(MALVIN_CONFIG_REL).is_file(),
+        "init must write {MALVIN_CONFIG_REL}"
     );
 }
 

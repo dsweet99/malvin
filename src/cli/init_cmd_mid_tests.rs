@@ -106,7 +106,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         ensure_malvin_workspace_layout(tmp.path(), false, &[Language::Rust]).unwrap();
         assert!(tmp.path().join(".malvin/checks").is_file());
-        assert!(tmp.path().join(".malvin/advice.md").is_file());
+        assert!(tmp.path().join(crate::MALVIN_ADVICE_REL).is_file());
+        assert!(tmp.path().join(crate::MALVIN_CONFIG_REL).is_file());
         assert!(tmp.path().join(".malvin/logs").is_dir());
         assert!(tmp.path().join("Cargo.toml").is_file());
     }

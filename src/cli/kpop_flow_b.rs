@@ -100,6 +100,7 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
+        ("advice_path", "./.malvin/advice.md"),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))

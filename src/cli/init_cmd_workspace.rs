@@ -3,6 +3,7 @@ use std::path::Path;
 use super::Language;
 use super::init_cmd_mid_core::write_text_file;
 use super::TPL_ADVICE;
+use super::TPL_CONFIG;
 
 pub(super) fn ensure_malvin_workspace_layout(
     root: &Path,
@@ -13,6 +14,7 @@ pub(super) fn ensure_malvin_workspace_layout(
         .map_err(|e| format!("init: mkdir {}: {e}", crate::MALVIN_LOGS_REL))?;
     crate::repo_gates::ensure_default_malvin_checks_file(root)?;
     write_text_file(&crate::malvin_advice_path(root), TPL_ADVICE, force)?;
+    write_text_file(&crate::malvin_config_path(root), TPL_CONFIG, force)?;
     if languages.contains(&Language::Rust) {
         ensure_cargo_toml(root, force)?;
     }

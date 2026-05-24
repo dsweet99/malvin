@@ -34,7 +34,7 @@ CONFIDENCE: 3
 
 ### Regular memories
 
-Does the user's request relate to any of the TRIGGER words in `.malvin/advice.md`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
+Does the user's request relate to any of the TRIGGER words in `{{ advice_path }}`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 ## Calibration
 
