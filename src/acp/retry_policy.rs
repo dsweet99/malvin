@@ -26,10 +26,6 @@ pub(crate) enum IterableClosedStream {
     Readable,
 }
 
-fn iterable_closed_in_ascii_lower(text: &str) -> bool {
-    text.contains("writableiterable is closed") || text.contains("readableiterable is closed")
-}
-
 /// Which iterable-closed error the coalesced buffer carries, if any.
 #[must_use]
 pub(crate) fn iterable_closed_stream_from_buffer(buf: &str) -> Option<IterableClosedStream> {
@@ -75,83 +71,20 @@ pub(crate) fn operational_iterable_closed_for_emit(
     stream_iterable_closed.map(iterable_closed_stream_message)
 }
 
-pub(crate) fn agent_string_is_retriable(msg: &str) -> bool {
-    let text = msg.to_ascii_lowercase();
-    if text.contains("timed out")
-        || timeout_word_without_identifier_false_positive(&text)
-        || text.contains("deadline exceeded")
-        || text.contains("deadlineexceeded")
-    {
-        return true;
-    }
-    if iterable_closed_in_ascii_lower(&text) {
-        return true;
-    }
-    if text.contains("child process is dead")
-        || text.contains("child process is zombie")
-        || text.contains("dead or zombie child process")
-        || text.contains("child process is not running")
-    {
-        return true;
-    }
-    if has_delimited_substring(&text, "initialize session")
-        || has_delimited_substring(&text, "session initialization")
-        || has_delimited_substring(&text, "session/new")
-        || has_delimited_substring(&text, "session init")
-    {
-        return true;
-    }
-    text.contains("[unavailable]")
-}
-
-fn timeout_word_without_identifier_false_positive(text: &str) -> bool {
-    delimited_token_match(text, "timeout")
-}
-
-const fn is_identifier_byte(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
-}
-
-fn has_delimited_substring(text: &str, token: &str) -> bool {
-    delimited_token_match(text, token)
-}
-
-fn delimited_token_match(text: &str, token: &str) -> bool {
-    let mut search_from = 0_usize;
-    while let Some(found) = text[search_from..].find(token) {
-        let start = search_from + found;
-        let end = start + token.len();
-        let before = if start == 0 {
-            b' '
-        } else {
-            text.as_bytes()[start - 1]
-        };
-        let after = if end >= text.len() {
-            b' '
-        } else {
-            text.as_bytes()[end]
-        };
-        if !is_identifier_byte(before) && !is_identifier_byte(after) {
-            return true;
-        }
-        search_from = end;
-    }
-    false
-}
-
 #[derive(Debug)]
 pub(crate) enum AgentRetryOutcome {
     StopRetrying,
     Sleep(std::time::Duration),
 }
 
-/// Shared retry policy for bounded ACP attempts (upgrade-plan / invalid-model errors fail fast;
-/// everything else retries with 1s then 3s sleeps).
+/// Blacklist-default retry policy for bounded ACP attempts: upgrade-plan and cannot-use-model
+/// errors fail fast with [`Err`]; all other errors retry with 1s then 3s sleeps until
+/// [`MAX_AGENT_ATTEMPTS`]. Unknown permanent failures may spend ~4s extra before stopping.
 pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRetryOutcome, AgentError> {
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
-    if !agent_string_is_retriable(last_error) || attempt >= MAX_AGENT_ATTEMPTS {
+    if attempt >= MAX_AGENT_ATTEMPTS {
         return Ok(AgentRetryOutcome::StopRetrying);
     }
     let secs = if attempt == 1 { 1_u64 } else { 3_u64 };

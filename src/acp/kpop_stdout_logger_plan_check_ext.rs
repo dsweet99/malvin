@@ -1,8 +1,13 @@
 //! Additional plan falsification tests (h9–h11).
 
 use super::kpop_stdout_logger_plan_helpers::{
+    begin_stdout_log_fixture, execute_tool_done_json, execute_tool_json,
+    finish_stdout_log_fixture, open_styled_markdown_trace_writer,
     production_execute_done_stdout, production_execute_done_trace_and_stdout,
+    styled_markdown_trace_writer, stdout_log_test_guard,
 };
+use crate::acp::{format_styled_tool_summary_tee_line, write_tool_summary_trace_line};
+use crate::output::assert_acp_tool_summary_dim_preserves_bracket;
 use crate::tool_summary::{
     ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines, tool_summary_stdout_display,
 };
@@ -155,6 +160,73 @@ fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
 }
 
 
+fn h22_tee_writer(work_dir: std::path::PathBuf) -> crate::acp::PromptTraceWriter {
+    let tee_dir = tempfile::tempdir().unwrap();
+    let trace_file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(tee_dir.path().join("tee-dim.trace"))
+        .unwrap();
+    styled_markdown_trace_writer(tokio::fs::File::from_std(trace_file), work_dir)
+}
+
+fn h22_rendered_tool_summary_tee(
+    work_dir: std::path::PathBuf,
+    start: &serde_json::Value,
+    done: &serde_json::Value,
+    ts: &str,
+) -> String {
+    let mut tracker = ToolSummaryTracker::default();
+    tool_summary_lines(start, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    let plain = tool_summary_lines(done, &mut tracker, ToolSummaryDetail::Stdout)
+        .unwrap()
+        .stdout
+        .expect("stdout summary");
+    let plain_bracketed = format!("[{plain}]");
+    let display = tool_summary_stdout_display(&plain_bracketed);
+    let tee_writer = h22_tee_writer(work_dir);
+    format_styled_tool_summary_tee_line(&tee_writer, &plain_bracketed, &display, ts)
+}
+
+#[tokio::test]
+async fn h22_styled_tool_summary_trace_tee_dims_payload() {
+    let start = execute_tool_json("tool_dim", "pending", "echo hi");
+    let done = execute_tool_done_json("tool_dim");
+    let ts = "20260413.121314.015";
+
+    let _guard = stdout_log_test_guard();
+    let fixture = begin_stdout_log_fixture();
+    let (mut writer, mut coalesce) =
+        open_styled_markdown_trace_writer(&fixture.trace_path, fixture.tmp.path()).await;
+    let work_dir = writer.work_dir.clone();
+    write_tool_summary_trace_line(&mut writer, &mut coalesce, &start, true).await;
+    write_tool_summary_trace_line(&mut writer, &mut coalesce, &done, true).await;
+    drop(writer);
+    let stdout = finish_stdout_log_fixture(fixture);
+    assert!(
+        stdout.lines().any(|l| l.contains("echo hi")),
+        "got {stdout:?}"
+    );
+    let rendered = h22_rendered_tool_summary_tee(work_dir, &start, &done, ts);
+    assert_acp_tool_summary_dim_preserves_bracket(&rendered);
+    assert!(rendered.contains("echo hi"), "got {rendered:?}");
+}
+
+#[test]
+fn h22_tee_writer_opens() {
+    let _ = h22_tee_writer(std::path::PathBuf::new());
+}
+
+#[test]
+fn h22_rendered_tool_summary_tee_offline() {
+    let start = execute_tool_json("tool_dim_offline", "pending", "echo hi");
+    let done = execute_tool_done_json("tool_dim_offline");
+    let rendered = h22_rendered_tool_summary_tee(std::path::PathBuf::new(), &start, &done, "ts");
+    assert_acp_tool_summary_dim_preserves_bracket(&rendered);
+}
+
+
 #[cfg(test)]
 mod kiss_cov_auto {
     #[test]
@@ -162,5 +234,8 @@ mod kiss_cov_auto {
 
     #[test]
     fn kiss_cov_h12_tool_summary_trace_and_stdout_log_share_timestamp() { let _ = stringify!(h12_tool_summary_trace_and_stdout_log_share_timestamp); }
+
+    #[test]
+    fn kiss_cov_h22_styled_tool_summary_trace_tee_dims_payload() { let _ = stringify!(h22_styled_tool_summary_trace_tee_dims_payload); }
 
 }

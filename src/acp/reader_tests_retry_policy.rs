@@ -1,6 +1,6 @@
 use crate::acp::{
     AgentRetryOutcome, IterableClosedStream, MAX_AGENT_ATTEMPTS, agent_string_is_cannot_use_model,
-    agent_string_is_retriable, agent_string_is_upgrade_plan, iterable_closed_stream_from_buffer,
+    agent_string_is_upgrade_plan, iterable_closed_stream_from_buffer,
     operational_iterable_closed_for_emit, operational_iterable_closed_log_line, plan_agent_retry,
     retries_noun,
 };
@@ -34,16 +34,6 @@ fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
     let err = plan_agent_retry(msg, 1).expect_err("model error must beat retriable match");
     assert_eq!(err.0, msg);
-}
-
-#[test]
-fn retriable_timeout_delimited_without_timed_out_substring() {
-    assert!(agent_string_is_retriable("rpc: connection timeout"));
-    assert!(agent_string_is_retriable("session initialization failed"));
-    assert!(!agent_string_is_retriable("timeoutable"));
-    assert!(agent_string_is_retriable("rpc timeout"));
-    assert!(agent_string_is_retriable("error: timeout"));
-    assert!(!agent_string_is_retriable("atimeoutb"));
 }
 
 #[test]
@@ -81,20 +71,40 @@ fn operational_iterable_closed_log_line_detection() {
 }
 
 #[test]
-fn retriable_transient_errors_match_known_agent_strings() {
-    assert!(agent_string_is_retriable("request timed out"));
-    assert!(agent_string_is_retriable("DEADLINE EXCEEDED"));
-    assert!(agent_string_is_retriable("WritableIterable is closed"));
-    assert!(agent_string_is_retriable("child process is zombie"));
-    assert!(agent_string_is_retriable("session/new failed"));
-    assert!(agent_string_is_retriable("rpc [unavailable]"));
+fn transient_errors_retry_with_backoff() {
+    for msg in [
+        "request timed out",
+        "DEADLINE EXCEEDED",
+        "WritableIterable is closed",
+        "child process is zombie",
+        "session/new failed",
+        "rpc [unavailable]",
+    ] {
+        assert!(
+            matches!(
+                plan_agent_retry(msg, 1).unwrap(),
+                AgentRetryOutcome::Sleep(_)
+            ),
+            "{msg}"
+        );
+    }
 }
 
 #[test]
-fn non_retriable_errors_stop_without_sleep() {
-    assert!(!agent_string_is_retriable("invalid json"));
-    let out = plan_agent_retry("invalid json", 1).unwrap();
-    assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
+fn unknown_errors_retry_with_backoff() {
+    for msg in [
+        "acp child process appears hung",
+        "invalid json",
+        "failed to spawn agent acp: No such file",
+    ] {
+        assert!(
+            matches!(
+                plan_agent_retry(msg, 1).unwrap(),
+                AgentRetryOutcome::Sleep(_)
+            ),
+            "{msg}"
+        );
+    }
 }
 
 fn assert_retriable_sleep_secs(attempt: u32, expected_secs: u64) {
@@ -127,18 +137,4 @@ fn retriable_exhausts_after_max_agent_attempts() {
 fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(1), "retry");
     assert_eq!(retries_noun(2), "retries");
-}
-
-#[test]
-fn delimited_token_match_has_delimited_substring_is_identifier_byte_timeout_word_iterable_closed_in_ascii_lower()
- {
-    let _ = stringify!(iterable_closed_in_ascii_lower);
-    let _ = stringify!(timeout_word_without_identifier_false_positive);
-    let _ = stringify!(is_identifier_byte);
-    let _ = stringify!(has_delimited_substring);
-    let _ = stringify!(delimited_token_match);
-    assert!(agent_string_is_retriable("rpc: connection timeout"));
-    assert!(!agent_string_is_retriable("atimeoutb"));
-    assert!(agent_string_is_retriable("session/new failed"));
-    assert!(agent_string_is_retriable("init session timeout"));
 }

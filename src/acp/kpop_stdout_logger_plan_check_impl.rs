@@ -130,7 +130,7 @@ async fn h18_raw_output_writer_suppresses_tool_stdout_tee() {
 }
 
 #[tokio::test]
-async fn h19_thought_stdout_five_space_indent_no_brackets() {
+async fn h19_thought_stdout_three_space_indent_no_brackets() {
     let _guard = stdout_log_test_guard();
     let mut fixture = begin_stdout_log_fixture();
     fixture.trace_path = fixture.tmp.path().join("trace-thought.log");
@@ -153,7 +153,7 @@ async fn h19_thought_stdout_five_space_indent_no_brackets() {
     let trace = tokio::fs::read_to_string(&fixture.trace_path).await.unwrap();
     let stdout = finish_stdout_log_fixture(fixture);
     assert!(trace.contains("[internal reasoning]"), "got {trace:?}");
-    assert!(stdout.contains("     internal reasoning"), "got {stdout:?}");
+    assert!(stdout.contains("   internal reasoning"), "got {stdout:?}");
     assert!(!stdout.contains("[internal reasoning]"), "got {stdout:?}");
 }
 

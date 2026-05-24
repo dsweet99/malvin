@@ -17,7 +17,7 @@ pub(crate) fn trace_stdout_tee_payload(
         return line.to_string();
     }
     if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
-        return format!("     {line}");
+        return format!("   {line}");
     }
     line.to_string()
 }
@@ -53,6 +53,32 @@ fn trace_tee_stdout_event<'a>(
     }
 }
 
+pub(crate) fn trace_tee_tool_summary_stdout_event<'a>(
+    writer: &'a PromptTraceWriter,
+    line: &'a str,
+    ts: &'a str,
+) -> crate::output::AcpTeeStdoutEvent<'a> {
+    trace_tee_stdout_event(writer, line, ts, true)
+}
+
+#[cfg(test)]
+pub(crate) fn format_styled_tool_summary_tee_line(
+    writer: &PromptTraceWriter,
+    plain_bracketed: &str,
+    display: &str,
+    ts: &str,
+) -> String {
+    let ev = trace_tee_tool_summary_stdout_event(writer, plain_bracketed, ts);
+    assert!(ev.dim_payload, "tool-summary tee must dim payload");
+    crate::output::format_line_acp_ansi_payload(&crate::output::AcpTeeLineFmt {
+        ts: ev.ts,
+        direction: crate::output::AcpTeeDirection::FromAgent,
+        who: ev.who,
+        line: display,
+        dim_payload: ev.dim_payload,
+    })
+}
+
 pub(crate) fn trace_tee_stdout_line(
     writer: &mut PromptTraceWriter,
     line: &str,
@@ -75,7 +101,7 @@ pub(crate) fn trace_tee_stdout_line(
         }
     } else if let Some(display) = display_line {
         crate::output::print_stdout_acp_tool_summary_tee(
-            &trace_tee_stdout_event(writer, line, ctx.ts, false),
+            &trace_tee_tool_summary_stdout_event(writer, line, ctx.ts),
             display,
         );
     } else if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
@@ -91,20 +117,5 @@ pub(crate) fn trace_tee_stdout_line(
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_format_trace_display_line() { let _ = stringify!(format_trace_display_line); }
-
-    #[test]
-    fn kiss_cov_trace_stdout_tee_payload() { let _ = stringify!(trace_stdout_tee_payload); }
-
-    #[test]
-    fn kiss_cov_print_tee_unprefixed_wrapped_line() { let _ = stringify!(print_tee_unprefixed_wrapped_line); }
-
-    #[test]
-    fn kiss_cov_trace_tee_stdout_event() { let _ = stringify!(trace_tee_stdout_event); }
-
-    #[test]
-    fn kiss_cov_trace_tee_stdout_line() { let _ = stringify!(trace_tee_stdout_line); }
-
-}
+#[path = "trace_line_write_tee_tests.rs"]
+mod trace_line_write_tee_tests;

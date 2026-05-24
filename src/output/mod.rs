@@ -162,6 +162,8 @@ pub(crate) fn stderr_use_color() -> bool {
 
 pub use crate::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::stdout_tagged_display_and_log_line;
+#[cfg(test)]
+pub(crate) use stdout_log_pair::assert_acp_tool_summary_dim_preserves_bracket;
 
 pub(crate) fn append_stdout_log_line(line: &str) {
     let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
