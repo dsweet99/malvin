@@ -114,9 +114,25 @@ pub fn write_fake_gate(
     gate_name: &str,
     exit_code: i32,
 ) -> (tempfile::TempDir, crate::repo_checks::FakeCommandDirGuard) {
-    std::fs::write(work_dir.join(".malvin_checks"), format!("{gate_name}\n")).expect("checks");
+    std::fs::create_dir_all(work_dir.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
+    std::fs::write(crate::malvin_checks_path(work_dir), format!("{gate_name}\n"))
+        .expect("checks");
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_gate_bin(bin_dir.path(), gate_name, exit_code);
     let guard = crate::repo_checks::set_fake_command_dir(bin_dir.path());
     (bin_dir, guard)
+}
+
+#[cfg(test)]
+mod write_fake_gate_tests {
+    use super::write_fake_gate;
+
+    #[test]
+    fn write_fake_gate_seeds_checks_on_workspace_without_malvin_dir() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let work = tmp.path().join("fresh");
+        std::fs::create_dir_all(&work).expect("mkdir work");
+        let (_bin, _guard) = write_fake_gate(&work, "kiss", 0);
+        assert!(work.join(".malvin/checks").is_file());
+    }
 }

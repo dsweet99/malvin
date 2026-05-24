@@ -48,7 +48,8 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
         "[package]\nname = 'm'\nversion = '0.1.0'\n",
     )
     .unwrap();
-    fs::write(w.join(".malvin_checks"), "custom-a\ncustom-b\n").unwrap();
+    fs::create_dir_all(w.join(".malvin")).unwrap();
+    fs::write(w.join(".malvin/checks"), "custom-a\ncustom-b\n").unwrap();
     let g = gate_command_lines(w).unwrap();
     assert_eq!(g, vec!["custom-a".to_string(), "custom-b".to_string()]);
     assert!(!g.iter().any(|c| c == KISS_CHECK_COMMAND));
@@ -102,7 +103,10 @@ fn prompt_quality_gates_includes_rust_builtin_without_git_when_cargo_toml_presen
     let md = prompt_quality_gates_markdown(w).unwrap();
     assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
     assert!(md.contains("cargo clippy"));
-    assert!(md.contains("cargo test"));
+    assert!(
+        md.contains("cargo test") || md.contains("cargo nextest run"),
+        "md: {md}"
+    );
 }
 
 #[test]
@@ -136,7 +140,7 @@ fn prompt_quality_gates_markdown_ephemeral_restores_missing_malvin_checks() {
     assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
     assert!(
         !checks_path.exists(),
-        "ephemeral prompt expansion must restore Missing .malvin_checks"
+        "ephemeral prompt expansion must restore Missing .malvin/checks"
     );
 }
 
@@ -154,4 +158,23 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
 #[test]
 fn smoke_cov_repo_gates_units() {
     let _ = builtin_gate_command_lines;
+}
+
+#[test]
+fn default_rust_test_command_matches_nextest_probe() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    let cmd = default_rust_test_command(w);
+    if cargo_nextest_available(w) {
+        assert_eq!(cmd, DEFAULT_RUST_NEXTEST);
+    } else {
+        assert_eq!(cmd, DEFAULT_RUST_TEST);
+    }
+}
+
+#[test]
+fn should_run_workspace_gates_when_malvin_dir_present() {
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(tmp.path().join(crate::MALVIN_DIR)).unwrap();
+    assert!(should_run_workspace_gates(tmp.path()));
 }

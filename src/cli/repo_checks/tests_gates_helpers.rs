@@ -62,11 +62,13 @@ pub(super) fn workspace_git_kissconfig_90_cargo_rs_py(work: &Path) {
 
 pub(super) fn workspace_git_malvin_checks_line(work: &Path, line: &str) {
     fs::create_dir(work.join(".git")).expect(".git");
-    fs::write(work.join(".malvin_checks"), line).expect(".malvin_checks");
+    fs::create_dir_all(work.join(".malvin")).expect(".malvin");
+    fs::write(work.join(".malvin/checks"), line).expect(".malvin/checks");
 }
 
 pub(super) fn workspace_git_precommit_malvin_checks_cargo_main(work: &Path) {
     workspace_git_cargo_main_only(work);
     fs::write(work.join(".pre-commit-config.yaml"), "repos:\n").expect("pre-commit");
-    fs::write(work.join(".malvin_checks"), "custom --only\n").expect(".malvin_checks");
+    fs::create_dir_all(work.join(".malvin")).expect(".malvin");
+    fs::write(work.join(".malvin/checks"), "custom --only\n").expect(".malvin/checks");
 }

@@ -151,7 +151,7 @@ async fn stdin_from_sleep_holder() -> (tokio::process::Child, ChildStdin) {
 #[tokio::test]
 async fn session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let run_dir = tmp.path().join("_malvin").join("r");
+    let run_dir = tmp.path().join(".malvin/logs").join("r");
     std::fs::create_dir_all(&run_dir).expect("run dir");
     let (mut child, stdin) = stdin_from_sleep_holder().await;
     let args = AcpSpawnArgs {

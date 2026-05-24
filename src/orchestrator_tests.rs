@@ -30,8 +30,8 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
         &s[..s.len().saturating_sub(3)]
     }
     assert_eq!(
-        legacy_stem("reviewers_spawn.md"),
-        prompt_md_stem("reviewers_spawn.md")
+        legacy_stem("review.md"),
+        prompt_md_stem("review.md")
     );
     assert_eq!(
         legacy_stem("review_write.md"),
@@ -128,7 +128,7 @@ fn sync_review_file_prefers_nonempty_artifact_over_workspace() {
 #[test]
 fn workflow_context_review_path_points_to_artifact() {
     let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join("_malvin").join("run123");
+    let run_dir = t.path().join(".malvin/logs").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
     let plan_path = run_dir.join("plan.md");
     std::fs::write(&plan_path, "test plan").unwrap();
@@ -146,11 +146,11 @@ fn workflow_context_review_path_points_to_artifact() {
         .expect("review_path must be in context");
 
     assert!(
-        review_path.contains("_malvin"),
-        "review_path must point to artifact (./_malvin/.../review.md); got: {review_path}"
+        review_path.contains(".malvin/logs"),
+        "review_path must point to artifact (./.malvin/logs/.../review.md); got: {review_path}"
     );
     assert_eq!(
-        review_path, "./_malvin/run123/review.md",
+        review_path, "./.malvin/logs/run123/review.md",
         "review_path should be the artifact path"
     );
     assert!(
@@ -159,7 +159,7 @@ fn workflow_context_review_path_points_to_artifact() {
     );
     assert_eq!(
         ctx.get("quality_gates_log").map(String::as_str),
-        Some("./_malvin/run123/quality_gates.log"),
+        Some("./.malvin/logs/run123/quality_gates.log"),
         "quality_gates_log should point to the run artifact log"
     );
 }
@@ -167,7 +167,7 @@ fn workflow_context_review_path_points_to_artifact() {
 #[test]
 fn workflow_context_includes_malvin_command() {
     let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join("_malvin").join("run123");
+    let run_dir = t.path().join(".malvin/logs").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
     let plan_path = run_dir.join("plan.md");
     std::fs::write(&plan_path, "test plan").unwrap();

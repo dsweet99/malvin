@@ -63,7 +63,7 @@ fn install_exit_one_gate_bin(bin_dir: &std::path::Path, name: &str) {
 fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
-    std::fs::write(work.join(".malvin_checks"), "failgate\n").expect("malvin_checks");
+    crate::seed_malvin_checks(work, "failgate\n");
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_one_gate_bin(bin_dir.path(), "failgate");
     let _guard = set_fake_command_dir(bin_dir.path());

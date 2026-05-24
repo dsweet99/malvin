@@ -9,7 +9,7 @@ mod unix_tests {
 
     use super::common::{
         acp_mock_code_review_lgtm_to_artifact_js, seed_git_kiss_cargo_gate_workspace,
-        test_home_workspace, write_failing_gate_tools, write_mock_executable,
+        seed_malvin_checks, test_home_workspace, write_failing_gate_tools, write_mock_executable,
     };
 
     struct CodeSpawn<'a> {
@@ -41,7 +41,7 @@ mod unix_tests {
     fn pre_checks_failure_surfaces_guidance_message() {
         let (root, home, workspace) = test_home_workspace();
         seed_git_kiss_cargo_gate_workspace(&workspace);
-        std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("malvin_checks");
+        seed_malvin_checks(&workspace, "kiss check\n");
         let bin_dir = root.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
         let trace = root.path().join("pre-check-trace.log");

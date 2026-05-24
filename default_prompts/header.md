@@ -12,7 +12,7 @@
 
 ## History
 
-You might want to read your recent logs in, say, `ls -ltr ./_malvin | tail -n 3`. They might give you some useful context about the user's query. The user might implicitly treat successive malvin sessions as continuations of previous session -- or they might not. Please carefully distinguish what information in the logs might be relevant and what might not be.
+You might want to read your recent logs in, say, `ls -ltr .malvin/logs | tail -n 3`. They might give you some useful context about the user's query. The user might implicitly treat successive malvin sessions as continuations of previous session -- or they might not. Please carefully distinguish what information in the logs might be relevant and what might not be.
 
 When you read information into your context label it as "HISTORY" with a number indicating how old it is.
 
@@ -34,7 +34,7 @@ CONFIDENCE: 3
 
 ### Regular memories
 
-Does the user's request relate to any of the TRIGGER words in .malvin_memory/*.md? Search for keywords in those files and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
+Does the user's request relate to any of the TRIGGER words in `.malvin/advice.md`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 ## Calibration
 

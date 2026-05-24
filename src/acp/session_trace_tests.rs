@@ -51,7 +51,7 @@ async fn trace_write_outgoing_prompt_do_writes_plain_lines_without_tags() {
 #[tokio::test]
 async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("r");
+    let run_dir = tmp.path().join(".malvin/logs").join("r");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
     append_prompts_log_uniform(Some(&run_dir), "implement", "implement.md", Some("a\nb"))
         .await
@@ -71,7 +71,7 @@ async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
 #[tokio::test]
 async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("do_run");
+    let run_dir = tmp.path().join(".malvin/logs").join("do_run");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
     append_prompts_log_do_plain(
         Some(&run_dir),
@@ -97,7 +97,7 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
 #[tokio::test]
 async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("r");
+    let run_dir = tmp.path().join(".malvin/logs").join("r");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
     append_prompts_log_uniform(Some(&run_dir), "learn", "learn.md", None)
         .await
@@ -112,7 +112,7 @@ async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
 #[tokio::test]
 async fn append_prompts_log_do_plain_name_only_writes_do_summary() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("do_run");
+    let run_dir = tmp.path().join(".malvin/logs").join("do_run");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
     append_prompts_log_do_plain(
         Some(&run_dir),

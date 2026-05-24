@@ -59,7 +59,7 @@ mod unix_tests {
             "expected BUG_LOG line: {combined:?}"
         );
         assert!(combined.contains("DONE"), "expected DONE: {combined:?}");
-        let run_dir = std::fs::read_dir(workspace.join("_malvin"))
+        let run_dir = std::fs::read_dir(workspace.join(".malvin/logs"))
             .expect("malvin dir")
             .find_map(Result::ok)
             .expect("one run")

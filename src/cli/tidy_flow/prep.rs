@@ -19,7 +19,7 @@ pub fn prepare_tidy_prompt_store() -> Result<PromptStore, String> {
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists("reviewers_spawn.md")
+        .validate_exists("review.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("review_write.md")

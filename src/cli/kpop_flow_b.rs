@@ -50,7 +50,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         request: Some("smoke".into()),
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
-    assert!(artifacts.run_dir.starts_with(tmp.path().join("_malvin")));
+    assert!(artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")));
 }
 
 #[test]
@@ -92,14 +92,14 @@ fn merge_acp_prefers_acp_error_when_both_fail() {
 #[cfg(test)]
 fn kpop_markdown_fixture_context() -> HashMap<String, String> {
     [
-        ("plan_path", "./_malvin/run42/plan.md"),
-        ("kpop_log_dir", "./_malvin/run42/_kpop"),
+        ("plan_path", "./.malvin/logs/run42/plan.md"),
+        ("kpop_log_dir", "./.malvin/logs/run42/_kpop"),
         ("review_path", "./review.md"),
-        ("result_path", "./_malvin/run42/result.md"),
-        ("exp_log", "_malvin/run42/_kpop/exp_log_run42.md"),
+        ("result_path", "./.malvin/logs/run42/result.md"),
+        ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
-        ("quality_gates_log", "./_malvin/run42/quality_gates.log"),
+        ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -156,7 +156,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &[
             "Restate the problem clearly",
             "Hypothesize",
-            "_malvin/run42/_kpop/exp_log_run42.md",
+            ".malvin/logs/run42/_kpop/exp_log_run42.md",
         ],
     );
     let mbc2 = turn.mbc2_pure().unwrap();
@@ -169,7 +169,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &mbc2,
         &[
             "Restate the problem clearly",
-            "_malvin/run42/_kpop/exp_log_run42.md",
+            ".malvin/logs/run42/_kpop/exp_log_run42.md",
         ],
     );
 }

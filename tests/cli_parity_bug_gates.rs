@@ -9,7 +9,8 @@ mod unix_tests {
 
     use super::common::{
         MALVIN_TEST_CMD_TIMEOUT, acp_mock_bug_kpop_solved_js, only_run_dir,
-        seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_failing_gate_tools,
+        seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
+        write_failing_gate_tools,
         write_mock_executable,
     };
 
@@ -26,7 +27,7 @@ mod unix_tests {
         fn new() -> Self {
             let (root, home, workspace) = test_home_workspace();
             seed_git_kiss_cargo_gate_workspace(&workspace);
-            std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("malvin_checks");
+            seed_malvin_checks(&workspace, "kiss check\n");
             let bin_dir = root.path().join("bin");
             std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
             let trace = root.path().join("bug-post-kpop-gate-trace.log");

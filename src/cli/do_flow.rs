@@ -28,7 +28,7 @@ pub struct DoArgs {
     pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
-    /// Request or `@file` → `_malvin/.../plan.md`.
+    /// Request or `@file` → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
 

@@ -68,7 +68,7 @@ Single long-lived coder session: main work, then optional learn, then summary.
 
 | Sub-step | Prompt role (effect) |
 |----------|----------------------|
-| 3a | **Pre-review quality gates** — Run `.malvin_checks` commands. If any fail, malvin writes gate output to `review.md` and skips to concerns (3d). |
+| 3a | **Pre-review quality gates** — Run `.malvin/checks` commands. If any fail, malvin writes gate output to `review.md` and skips to concerns (3d). |
 | 3b | **Reviewers spawn** — Parallel reviewer agents produce structured review material into run artifacts. |
 | 3c | **Review write** — Aggregates reviewer output into a single review verdict in `review.md`. |
 | 3d | If not LGTM: **Concerns** — Agent addresses review feedback and updates code. |
@@ -83,7 +83,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 
 ## Artifacts
 
-- `_malvin/<run>/plan.md` — input plan
+- `./.malvin/logs/<run>/plan.md` — input plan
 - `review.md`, `review_prep.md` — review pipeline
 - `result.md` — `ABORT:` prefix stops the workflow
 - `quality_gates.log` — gate commands
@@ -91,7 +91,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 
 ## Session safety
 
-`.kissconfig`, `.kissignore`, and `.malvin_checks` are snapshotted before the session and restored after so agent edits do not persist unintentionally.
+`.kissconfig`, `.kissignore`, and `.malvin/checks` are snapshotted before the session and restored after so agent edits do not persist unintentionally.
 
 ## Examples
 

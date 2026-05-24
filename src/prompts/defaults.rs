@@ -10,7 +10,7 @@ pub const DO_HEADER_MD: &str = "do_header.md";
 pub const REQUIRED_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "reviewers_spawn.md",
+    "review.md",
     "review_write.md",
     "concerns.md",
     HEADER_MD,
@@ -21,7 +21,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "check_plan.md",
     "implement.md",
-    "reviewers_spawn.md",
+    "review.md",
     "review_write.md",
     "kpop.md",
     "kpop_common.md",
@@ -46,7 +46,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
     match name {
         "check_plan.md" => Some(include_str!("../../default_prompts/check_plan.md")),
         "implement.md" => Some(include_str!("../../default_prompts/implement.md")),
-        "reviewers_spawn.md" => Some(include_str!("../../default_prompts/reviewers_spawn.md")),
+        "review.md" => Some(include_str!("../../default_prompts/review.md")),
         "review_write.md" => Some(include_str!("../../default_prompts/review_write.md")),
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
@@ -150,35 +150,35 @@ mod concerns_embed_tests {
 }
 
 #[cfg(test)]
-mod reviewers_spawn_embed_tests {
+mod review_embed_tests {
     use super::default_file;
 
     #[test]
-    fn reviewers_spawn_is_required_for_code_workflow() {
+    fn review_is_required_for_code_workflow() {
         assert!(
-            super::REQUIRED_PROMPTS.contains(&"reviewers_spawn.md"),
-            "malvin code review loads reviewers_spawn.md at runtime; validate_required must list it"
+            super::REQUIRED_PROMPTS.contains(&"review.md"),
+            "malvin code review loads review.md at runtime; validate_required must list it"
         );
     }
 
     #[test]
-    fn embedded_reviewers_spawn_writes_prep_and_uses_kpop() {
-        let s = default_file("reviewers_spawn.md").expect("reviewers_spawn must be embedded");
+    fn embedded_review_writes_prep_and_uses_kpop() {
+        let s = default_file("review.md").expect("review must be embedded");
         assert!(
             s.contains("{{ review_prep_path }}"),
-            "reviewers_spawn must write review_prep_path"
+            "review must write review_prep_path"
         );
         assert!(
             s.contains("{{ kpop }}"),
-            "reviewers_spawn must include kpop block"
+            "review must include kpop block"
         );
         assert!(
             s.contains("KPop: Review in-scope code for these problems"),
-            "reviewers_spawn must run the single review pass"
+            "review must run the single review pass"
         );
         assert!(
             !s.contains("Spawn one subagent for each of these prompts"),
-            "reviewers_spawn must not coordinate subagent fan-out"
+            "review must not coordinate subagent fan-out"
         );
     }
 }

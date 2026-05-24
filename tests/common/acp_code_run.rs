@@ -28,11 +28,11 @@ pub fn acp_mock_code_check_plan_tampers_malvin_checks_then_implement_verifies_re
     let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(
         r#"    if (promptText.includes('write ONLY the four characters "LGTM"')) {{
-      fs.writeFileSync(path.join(process.cwd(), '.malvin_checks'), 'TAMPERED\n', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.malvin/checks'), 'TAMPERED\n', 'utf8');
 {lgtm}
 {checked}
     }} else if (promptText.includes('Implement the plan in')) {{
-      const c = fs.readFileSync(path.join(process.cwd(), '.malvin_checks'), 'utf8');
+      const c = fs.readFileSync(path.join(process.cwd(), '.malvin/checks'), 'utf8');
       if (c === 'kiss check\n') {{
 {implement_ok}
       }} else {{

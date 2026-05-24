@@ -157,12 +157,12 @@ mod unix_tests {
             "copied plan\n"
         );
         assert!(
-            dst_side.join("_malvin").is_dir(),
+            dst_side.join(".malvin/logs").is_dir(),
             "run artifacts must live under destination plan parent, not source"
         );
         assert!(
-            !src_side.join("_malvin").exists(),
-            "_malvin must not be created under source when --plan-path selects another tree"
+            !src_side.join(".malvin/logs").exists(),
+            ".malvin/logs must not be created under source when --plan-path selects another tree"
         );
     }
 }

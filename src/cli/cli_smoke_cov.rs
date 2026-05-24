@@ -219,7 +219,7 @@ fn smoke_compose_tidy_prompt_includes_plan_path() {
     let mut ctx = HashMap::new();
     ctx.insert(
         "quality_gates_log".to_string(),
-        "./_malvin/run/quality_gates.log".to_string(),
+        "./.malvin/logs/run/quality_gates.log".to_string(),
     );
     ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());

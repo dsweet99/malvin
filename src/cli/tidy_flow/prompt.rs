@@ -84,8 +84,8 @@ mod prompt_tests {
     async fn run_tidy_prompt_with_restore_still_restores_after_prompt_failure() {
         let mut client = crate::test_agent_client::smoke_agent_client();
         let tmp = tempfile::tempdir().expect("tempdir");
-        let checks = tmp.path().join(".malvin_checks");
-        std::fs::write(&checks, "orig\n").expect("write checks");
+        crate::seed_malvin_checks(tmp.path(), "orig\n");
+        let checks = tmp.path().join(".malvin/checks");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "tidy").expect("write plan");
         let artifacts =

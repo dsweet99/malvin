@@ -58,7 +58,7 @@ fn spawn_tidy_impl(
 }
 
 pub fn workspace_kiss_check_only(workspace: &Path) {
-    std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("checks");
+    super::seed_malvin_checks(workspace, "kiss check\n");
 }
 
 pub fn bin_path_with_failing_gates(root: &tempfile::TempDir, trace: &Path) -> String {

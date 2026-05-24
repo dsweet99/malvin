@@ -81,6 +81,6 @@ pub struct CodeArgs {
     /// Alias for `--skip-pre-checks --trust-the-plan`.
     #[arg(short = 'f', default_value_t = false)]
     pub fast: bool,
-    /// Request text or path to an existing `.md` file → `_malvin/.../plan.md`.
+    /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }

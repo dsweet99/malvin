@@ -1,6 +1,8 @@
 use std::fs;
 use std::time::Duration;
 
+use crate::repo_gates;
+
 use super::command_support::set_fake_command_dir;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
@@ -51,7 +53,7 @@ fn run_repo_workspace_gates_invokes_expected_quality_commands() {
     assert!(log.contains("kiss clamp"));
     assert!(log.contains("kiss check"));
     assert!(log.contains("cargo clippy"));
-    assert!(log.contains("cargo test"));
+    assert!(log.contains(repo_gates::default_rust_test_command(work)));
     assert!(log_contains_command(&log, "ruff check"));
     assert!(!log_contains_command(&log, "pytest"));
 }

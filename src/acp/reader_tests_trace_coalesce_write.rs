@@ -44,7 +44,7 @@ async fn deliver_tool_call_session_updates(
     writer: &mut PromptTraceWriter,
     coalesce: &mut TraceChunkCoalescer,
 ) {
-    let tool_call_line = r#"{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"85738996-e440-40f3-9055-75e4fcfc934e","update":{"sessionUpdate":"tool_call","toolCallId":"tool_026fbf9d-cf5b-4010-b626-8e2547fa6b4","title":"`ls -ltr ./_malvin`","kind":"execute","status":"pending","rawInput":{"command":"ls -ltr ./_malvin"}}}}"#;
+    let tool_call_line = r#"{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"85738996-e440-40f3-9055-75e4fcfc934e","update":{"sessionUpdate":"tool_call","toolCallId":"tool_026fbf9d-cf5b-4010-b626-8e2547fa6b4","title":"`ls -ltr ./.malvin/logs`","kind":"execute","status":"pending","rawInput":{"command":"ls -ltr ./.malvin/logs"}}}}"#;
     let parsed = serde_json::from_str(tool_call_line).unwrap();
     write_coalesced_line(
         writer,

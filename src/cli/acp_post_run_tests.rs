@@ -174,14 +174,19 @@ fn duplicate_safe_restore_error_recognizes_slot_restore_prefix() {
     assert_eq!(duplicate_safe_restore_error(err), err);
 }
 
+fn work_dir_with_checks(content: &str) -> (tempfile::TempDir, crate::artifacts::SessionDotfileBackups) {
+    let work = tempfile::tempdir().unwrap();
+    crate::seed_malvin_checks(work.path(), content);
+    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
+    (work, backups)
+}
+
 #[test]
 fn merge_with_abort_combines_restore_failure() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
-    let work = tempfile::tempdir().unwrap();
-    std::fs::write(work.path().join(".malvin_checks"), "x\n").unwrap();
-    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
-    std::fs::write(work.path().join(".malvin_checks"), "changed\n").unwrap();
+    let (work, backups) = work_dir_with_checks("x\n");
+    crate::seed_malvin_checks(work.path(), "changed\n");
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
         work.path(),

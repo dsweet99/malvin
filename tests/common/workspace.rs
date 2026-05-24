@@ -1,7 +1,12 @@
+use std::path::{Path, PathBuf};
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-#[cfg(unix)]
-use std::path::{Path, PathBuf};
+
+pub fn seed_malvin_checks(workspace: &Path, content: &str) {
+    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
+    std::fs::write(workspace.join(".malvin/checks"), content).expect("write .malvin/checks");
+}
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
@@ -47,9 +52,9 @@ pub fn write_mock_executable(path: &std::path::Path, js: &str) {
 
 #[cfg(unix)]
 pub fn only_run_dir(workspace: &Path) -> PathBuf {
-    let run_root = workspace.join("_malvin");
+    let run_root = workspace.join(".malvin/logs");
     let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
-        .expect("read _malvin")
+        .expect("read .malvin/logs")
         .map(|entry| entry.expect("dir entry").path())
         .filter(|path| path.is_dir())
         .collect();

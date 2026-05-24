@@ -1,6 +1,26 @@
+use std::path::{Path, PathBuf};
+
 use crate::cli::bug_id_lookup::{ensure_exp_log_solved, is_valid_bug_id, lookup_bug_id, validate_bug_id};
 use crate::malvin_short_id;
 use crate::output::{format_log_tag_inner, MALVIN_WHO};
+
+fn seed_bug_run(workspace: &Path, run_name: &str, bug_id: &str) -> (PathBuf, PathBuf) {
+    let run_dir = workspace.join(".malvin/logs").join(run_name);
+    std::fs::create_dir_all(&run_dir).expect("mkdir run");
+    let exp = run_dir.join("_kpop").join(format!("exp_log_{run_name}.md"));
+    std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
+    std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
+    let rel = format!("./.malvin/logs/{run_name}/_kpop/exp_log_{run_name}.md");
+    std::fs::write(
+        run_dir.join("stdout.log"),
+        format!(
+            "20260101.000000.000 [{}] BUG_LOG: {bug_id} {rel}\n",
+            format_log_tag_inner(MALVIN_WHO)
+        ),
+    )
+    .expect("stdout");
+    (run_dir, exp)
+}
 
 #[test]
 fn malvin_short_id_matches_charset() {
@@ -21,20 +41,7 @@ fn validate_bug_id_rejects_bad() {
 fn lookup_finds_unique_bug_log_line() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260101_abc");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    let exp = run_dir.join("_kpop").join("exp_log_20260101_abc.md");
-    std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-    std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
-    let rel = "./_malvin/20260101_abc/_kpop/exp_log_20260101_abc.md";
-    std::fs::write(
-        run_dir.join("stdout.log"),
-        format!(
-            "20260101.000000.000 [{}] BUG_LOG: Ma1b2c {rel}\n",
-            format_log_tag_inner(MALVIN_WHO)
-        ),
-    )
-    .expect("stdout");
+    let (run_dir, exp) = seed_bug_run(cwd, "20260101_abc", "Ma1b2c");
     let resolved = lookup_bug_id(cwd, "Ma1b2c").expect("lookup");
     assert_eq!(resolved.run_dir, run_dir);
     assert_eq!(resolved.exp_log_path, exp);
@@ -45,7 +52,7 @@ fn lookup_duplicate_ids_errors_with_two_runs() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
     for name in ["run_a", "run_b"] {
-        let run_dir = cwd.join("_malvin").join(name);
+        let run_dir = cwd.join(".malvin/logs").join(name);
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(
             run_dir.join("stdout.log"),
@@ -65,7 +72,7 @@ fn lookup_duplicate_ids_errors_with_two_runs() {
 #[test]
 fn lookup_not_found() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join("_malvin")).expect("mkdir");
+    std::fs::create_dir_all(tmp.path().join(".malvin/logs")).expect("mkdir");
     let err = lookup_bug_id(tmp.path(), "Mnope1").unwrap_err();
     assert!(err.contains("no BUG_ID"), "got: {err}");
 }
@@ -74,7 +81,7 @@ fn lookup_not_found() {
 fn lookup_bug_id_only_fallback() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260102_xyz");
+    let run_dir = cwd.join(".malvin/logs").join("20260102_xyz");
     std::fs::create_dir_all(run_dir.join("_kpop")).expect("mkdir");
     let exp = run_dir.join("_kpop").join("exp_log_20260102_xyz.md");
     std::fs::write(&exp, "## KPOP_SOLVED\n").expect("exp");
@@ -102,7 +109,7 @@ fn ensure_exp_log_solved_rejects_missing_marker() {
 fn lookup_rejects_tagged_prose_mentioning_bug_id_without_official_emission() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260106_agent");
+    let run_dir = cwd.join(".malvin/logs").join("20260106_agent");
     std::fs::create_dir_all(run_dir.join("_kpop")).expect("mkdir");
     let exp = run_dir.join("_kpop").join("exp_log_20260106_agent.md");
     std::fs::write(&exp, "## KPOP_SOLVED\n").expect("exp");
@@ -124,7 +131,7 @@ fn lookup_rejects_tagged_prose_mentioning_bug_id_without_official_emission() {
 fn lookup_rejects_untagged_bug_id_only_chatter_in_stdout_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260104_agent");
+    let run_dir = cwd.join(".malvin/logs").join("20260104_agent");
     std::fs::create_dir_all(run_dir.join("_kpop")).expect("mkdir");
     let exp = run_dir.join("_kpop").join("exp_log_20260104_agent.md");
     std::fs::write(&exp, "## KPOP_SOLVED\n").expect("exp");
@@ -143,11 +150,11 @@ fn lookup_rejects_untagged_bug_id_only_chatter_in_stdout_log() {
 fn lookup_rejects_untagged_bug_log_line_in_stdout_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260105_agent");
+    let run_dir = cwd.join(".malvin/logs").join("20260105_agent");
     std::fs::create_dir_all(run_dir.join("_kpop")).expect("mkdir");
     let exp = run_dir.join("_kpop").join("exp_log_20260105_agent.md");
     std::fs::write(&exp, "## KPOP_SOLVED\n").expect("exp");
-    let rel = "./_malvin/20260105_agent/_kpop/exp_log_20260105_agent.md";
+    let rel = "./.malvin/logs/20260105_agent/_kpop/exp_log_20260105_agent.md";
     std::fs::write(
         run_dir.join("stdout.log"),
         format!("acp trace: BUG_LOG: Mlogab {rel}\n"),
@@ -163,15 +170,27 @@ fn lookup_rejects_untagged_bug_log_line_in_stdout_log() {
 fn lookup_rejects_missing_exp_log_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
-    let run_dir = cwd.join("_malvin").join("20260103_nope");
+    let run_dir = cwd.join(".malvin/logs").join("20260103_nope");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     std::fs::write(
         run_dir.join("stdout.log"),
         format!(
-            "20260101.000000.000 [{}] BUG_LOG: Mbad01 ./_malvin/missing/exp_log_x.md\n",
+            "20260101.000000.000 [{}] BUG_LOG: Mbad01 ./.malvin/logs/missing/exp_log_x.md\n",
             format_log_tag_inner(MALVIN_WHO)
         ),
     )
     .expect("stdout");
     assert!(lookup_bug_id(cwd, "Mbad01").is_err());
+}
+
+#[test]
+fn lookup_finds_bug_when_cwd_is_subdirectory_of_workspace() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let repo = tmp.path().join("repo");
+    let sub = repo.join("src");
+    std::fs::create_dir_all(&sub).expect("mkdir sub");
+    let (_run_dir, exp) = seed_bug_run(&repo, "20260101_abc", "Ma1b2c");
+    let resolved = lookup_bug_id(&sub, "Ma1b2c").expect("lookup from subdir cwd");
+    assert_eq!(resolved.work_dir, repo);
+    assert_eq!(resolved.exp_log_path, exp);
 }

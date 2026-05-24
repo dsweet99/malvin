@@ -48,7 +48,7 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
         r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
-    const runRoot = path.join(process.cwd(), '_malvin');
+    const runRoot = path.join(process.cwd(), '.malvin', 'logs');
     const runDirNames = fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
     const runDir = path.join(runRoot, runDirNames[0]);
 {body}"
@@ -155,7 +155,7 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
 pub fn acp_mock_bug_kpop_solved_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
-    const root = path.join(process.cwd(), '_malvin');
+    const root = path.join(process.cwd(), '.malvin', 'logs');
     if (fs.existsSync(root)) {
       const runs = fs.readdirSync(root, { withFileTypes: true })
         .filter((e) => e.isDirectory())

@@ -27,6 +27,6 @@ pub struct KpopArgs {
     /// Skip learning.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// Request or `@file` → `_malvin/.../request.md`.
+    /// Request or `@file` → `.malvin/logs/.../request.md`.
     pub request: Option<String>,
 }

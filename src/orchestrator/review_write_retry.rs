@@ -29,7 +29,7 @@ pub struct ReviewTwoPromptSession<'a> {
     pub attempt: usize,
 }
 
-/// Run `reviewers_spawn`, then retry `review_write` against the same prep file.
+/// Run `review.md`, then retry `review_write` against the same prep file.
 ///
 /// # Errors
 ///

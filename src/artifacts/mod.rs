@@ -19,7 +19,7 @@ pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};
 
-/// One workflow run: isolated `_malvin/<stamp>_<token>/` with copied plan.
+/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
     pub run_dir: PathBuf,
@@ -85,7 +85,7 @@ impl RunArtifacts {
     }
 }
 
-/// Copy `plan_source` into a fresh run directory under `base_dir`/`_malvin`/…
+/// Copy `plan_source` into a fresh run directory under `base_dir`/`.malvin/logs`/…
 ///
 /// # Errors
 ///
@@ -110,7 +110,7 @@ pub fn create_run_artifacts(
     Ok(artifacts)
 }
 
-/// Write `plan_text` into a fresh run directory under `base_dir`/`_malvin`/…
+/// Write `plan_text` into a fresh run directory under `base_dir`/`.malvin/logs`/…
 ///
 /// # Errors
 ///
@@ -133,7 +133,7 @@ pub fn create_run_artifacts_from_text(
     Ok(artifacts)
 }
 
-/// Write `request_text` to `_malvin/.../request.md` for standalone `kpop` runs.
+/// Write `request_text` to `.malvin/logs/.../request.md` for standalone `kpop` runs.
 ///
 /// [`RunArtifacts::plan_path`] points at `request.md` so templates can resolve a stable path.
 ///

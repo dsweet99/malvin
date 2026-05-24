@@ -156,15 +156,15 @@ mod tests {
 
         let tmp = tempfile::tempdir().expect("tempdir");
         let work = tmp.path();
-        std::fs::write(work.join(".malvin_checks"), "from-backup\n").expect("seed checks");
+        crate::seed_malvin_checks(work, "from-backup\n");
         let backups = SessionDotfileBackups::snapshot(work).expect("snapshot backups");
-        std::fs::write(work.join(".malvin_checks"), "agent-changed\n").expect("agent edit");
+        crate::seed_malvin_checks(work, "agent-changed\n");
         crate::acp_post_run::merge_acp_with_workspace_session_restore(Ok(()), work, &backups)
             .expect("session restore");
         assert_eq!(
-            std::fs::read_to_string(work.join(".malvin_checks")).expect("read checks"),
+            std::fs::read_to_string(work.join(".malvin/checks")).expect("read checks"),
             "from-backup\n",
-            "malvin code must restore .malvin_checks after the session"
+            "malvin code must restore .malvin/checks after the session"
         );
     }
 }

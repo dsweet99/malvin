@@ -101,7 +101,6 @@ pub(super) fn create_initial_commit(root: &Path) -> Result<(), String> {
                 .current_dir(root),
             "`git commit` failed.",
         )?;
-        ensure_branch_is_main(root)?;
     }
     Ok(())
 }
@@ -112,24 +111,6 @@ fn repo_already_has_commits(root: &Path) -> bool {
         .current_dir(root)
         .output()
         .is_ok_and(|o| o.status.success())
-}
-
-pub(super) fn ensure_branch_is_main(root: &Path) -> Result<(), String> {
-    let current = Command::new("git")
-        .args(["branch", "--show-current"])
-        .current_dir(root)
-        .output()
-        .map_err(|e| format!("`git branch --show-current` failed: {e}"))?;
-    let branch = String::from_utf8_lossy(&current.stdout);
-    if branch.trim() == "main" {
-        return Ok(());
-    }
-    run_command_expect_success(
-        Command::new("git")
-            .args(["branch", "-M", "main"])
-            .current_dir(root),
-        "`git branch -M main` failed.",
-    )
 }
 
 pub(super) fn require_on_path(bin: &str, err: &str) -> Result<(), String> {
@@ -193,4 +174,27 @@ pub(super) fn write_shell_script(path: &Path, contents: &str, force: bool) -> Re
             .map_err(|e| format!("init: chmod {}: {e}", path.display()))?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+    use std::process::Command;
+
+    #[test]
+    fn install_git_lfs_succeeds_when_git_lfs_available() {
+        let tmp = tempfile::tempdir().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .unwrap();
+        if Command::new("git")
+            .args(["lfs", "version"])
+            .status()
+            .is_ok_and(|s| s.success())
+        {
+            install_git_lfs(tmp.path()).unwrap();
+        }
+    }
 }

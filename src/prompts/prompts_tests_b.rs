@@ -132,12 +132,12 @@ fn learn_prompt_has_consistent_memory_target_guidance() {
         "/default_prompts/learn.md"
     ));
     assert!(
-        learn.contains("Edit an `.malvin_memory/*.md` file"),
+        learn.contains("Edit `.malvin/advice.md`"),
         "expected consistent memory-path guidance in learn prompt"
     );
     assert!(
-        learn.contains("in one of `./.malvin_memory/*.md`"),
-        "expected fallback memory file guidance in learn prompt"
+        learn.contains("relative to the existing `.malvin/advice.md`"),
+        "expected advice file guidance in learn prompt"
     );
 }
 

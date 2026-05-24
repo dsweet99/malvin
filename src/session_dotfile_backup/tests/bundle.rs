@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::SessionDotfileBackups;
+use crate::artifacts::{
+    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+};
 use crate::repo_gates::{KISSCONFIG_FILE, KISSIGNORE_FILE, MALVIN_CHECKS_FILE};
 use crate::test_utils::with_isolated_home;
 
@@ -14,6 +16,7 @@ fn workspace_three_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf) {
 
 fn seed_pair(work: &Path) {
     std::fs::create_dir_all(work).unwrap();
+    std::fs::create_dir_all(work.join(".malvin")).unwrap();
     let (k, m, _) = workspace_three_paths(work);
     std::fs::write(&k, b"k\n").unwrap();
     std::fs::write(&m, b"m\n").unwrap();
@@ -35,4 +38,20 @@ fn session_snapshot_bundle_round_trip() {
         assert_eq!(m_txt, "m\n");
         assert!(!ki.exists());
     });
+}
+
+#[test]
+fn restore_session_dotfiles_strips_legacy_root_checks_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path();
+    std::fs::create_dir_all(work).unwrap();
+    std::fs::write(work.join(".malvin_checks"), "legacy\n").unwrap();
+    SessionDotfileBackups::from_parts(
+        KissConfigBackup::Missing,
+        MalvinChecksBackup::Missing,
+        KissignoreBackup::Missing,
+    )
+    .restore(work)
+    .unwrap();
+    assert!(!work.join(".malvin_checks").exists());
 }

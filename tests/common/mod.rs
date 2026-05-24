@@ -44,7 +44,7 @@ pub use tidy_harness::{
     spawn_tidy_with_timeout, workspace_kiss_check_only,
 };
 pub use workspace::{
-    only_run_dir, seed_git_kiss_cargo_gate_workspace, test_home_workspace,
+    only_run_dir, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
     write_failing_gate_tools, write_fake_kiss, write_mock_executable,
 };
 

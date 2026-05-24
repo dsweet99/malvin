@@ -14,12 +14,12 @@ fn insert_formatted_adds_formatted_path() {
 #[test]
 fn format_prompt_path_relative_when_target_missing() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("run123");
+    let run_dir = tmp.path().join(".malvin/logs").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
     let review = run_dir.join("review.md");
     assert_eq!(
         format_prompt_path(&review, tmp.path()),
-        "./_malvin/run123/review.md"
+        "./.malvin/logs/run123/review.md"
     );
 }
 
@@ -76,7 +76,7 @@ fn check_abort_strips_utf8_bom_before_matching_abort_line() {
 #[test]
 fn insert_artifact_paths_populates_context() {
     let tmp = tempfile::tempdir().unwrap();
-    let run_dir = tmp.path().join("_malvin").join("run");
+    let run_dir = tmp.path().join(".malvin/logs").join("run");
     std::fs::create_dir_all(&run_dir).unwrap();
     let plan_path = run_dir.join("plan.md");
     std::fs::write(&plan_path, "plan").unwrap();
@@ -103,7 +103,7 @@ fn summary_render_uses_malvin_output_path_run_dir() {
     let ctx = workflow_context(&artifacts, &store, "code").unwrap();
     let rendered = store.render("summary.md", &ctx).unwrap();
     assert!(
-        rendered.contains("Review the files in ./_malvin/"),
+        rendered.contains("Review the files in ./.malvin/logs/"),
         "summary must point at the run directory, got {rendered:?}"
     );
     assert!(

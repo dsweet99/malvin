@@ -63,12 +63,12 @@ mod tests {
     fn kpop_lookup_finds_unique_kpop_log_line() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
-        let run_dir = cwd.join("_malvin").join("20260101_abc");
+        let run_dir = cwd.join(".malvin/logs").join("20260101_abc");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         let exp = run_dir.join("_kpop").join("exp_log_20260101_abc.md");
         std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
         std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
-        let rel = "./_malvin/20260101_abc/_kpop/exp_log_20260101_abc.md";
+        let rel = "./.malvin/logs/20260101_abc/_kpop/exp_log_20260101_abc.md";
         std::fs::write(
             run_dir.join("stdout.log"),
             format!(
@@ -86,7 +86,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
         for name in ["run_a", "run_b"] {
-            let run_dir = cwd.join("_malvin").join(name);
+            let run_dir = cwd.join(".malvin/logs").join(name);
             std::fs::create_dir_all(&run_dir).expect("mkdir");
             std::fs::write(
                 run_dir.join("stdout.log"),
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn kpop_lookup_not_found() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join("_malvin")).expect("mkdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin/logs")).expect("mkdir");
         let err = lookup_kpop_id(tmp.path(), "Mnope1").unwrap_err();
         assert!(err.contains("no KPOP id"), "got: {err}");
     }
@@ -113,12 +113,12 @@ mod tests {
     fn kpop_lookup_reads_command_log() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
-        let run_dir = cwd.join("_malvin").join("run_cmd");
+        let run_dir = cwd.join(".malvin/logs").join("run_cmd");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         let exp = run_dir.join("_kpop").join("exp_log_run_cmd.md");
         std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
         std::fs::write(&exp, "log\n").expect("exp");
-        let rel = "./_malvin/run_cmd/_kpop/exp_log_run_cmd.md";
+        let rel = "./.malvin/logs/run_cmd/_kpop/exp_log_run_cmd.md";
         std::fs::write(
             run_dir.join("command.log"),
             format!(
@@ -135,12 +135,12 @@ mod tests {
     fn kpop_lookup_nested_malvin_tree() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
-        let run_dir = cwd.join("_malvin").join("outer").join("inner");
+        let run_dir = cwd.join(".malvin/logs").join("outer").join("inner");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         let exp = run_dir.join("_kpop").join("exp_log_inner.md");
         std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
         std::fs::write(&exp, "log\n").expect("exp");
-        let rel = "./outer/inner/_kpop/exp_log_inner.md";
+        let rel = "./.malvin/logs/outer/inner/_kpop/exp_log_inner.md";
         std::fs::write(
             run_dir.join("stdout.log"),
             format!(
@@ -157,12 +157,12 @@ mod tests {
     fn kpop_lookup_rejects_missing_exp_log_path() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
-        let run_dir = cwd.join("_malvin").join("20260103_nope");
+        let run_dir = cwd.join(".malvin/logs").join("20260103_nope");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(
             run_dir.join("stdout.log"),
             format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Mbad01 ./_malvin/missing/exp_log_x.md\n",
+                "20260101.000000.000 [{}] KPOP_LOG: Mbad01 ./.malvin/logs/missing/exp_log_x.md\n",
                 format_log_tag_inner(MALVIN_WHO)
             ),
         )

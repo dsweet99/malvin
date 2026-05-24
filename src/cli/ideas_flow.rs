@@ -21,7 +21,7 @@ pub struct IdeasArgs {
     /// Number of ideas to request in the rendered `mbc2.md` prompt.
     #[arg(long = "num-ideas", default_value_t = 3)]
     pub num_ideas: usize,
-    /// Request or `@file` → `_malvin/.../plan.md`.
+    /// Request or `@file` → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
 

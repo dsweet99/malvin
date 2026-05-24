@@ -23,7 +23,6 @@ const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
 }
 
 const KISSCONFIG_FILE: &str = ".kissconfig";
-const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 const KISSIGNORE_FILE: &str = ".kissignore";
 
 const DOTFILE_ROWS: [DotfileSpecRow; 3] = [
@@ -37,12 +36,12 @@ const DOTFILE_ROWS: [DotfileSpecRow; 3] = [
         restore_copy_err: "kissconfig restore",
     },
     DotfileSpecRow {
-        rel: MALVIN_CHECKS_FILE,
+        rel: crate::MALVIN_CHECKS_REL,
         home_subdir: "malvin_checks_snapshots",
         mkdir_lbl: "malvin_checks backup mkdir",
         collision_lbl: "malvin_checks backup mkdir",
         restore_lbl: "malvin_checks restore",
-        copy_err: ".malvin_checks backup copy",
+        copy_err: ".malvin/checks backup copy",
         restore_copy_err: "malvin_checks restore",
     },
     DotfileSpecRow {
@@ -87,6 +86,9 @@ fn backup_slot(
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);
+    if let Some(parent) = dest_file.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", spec.mkdir_lbl))?;
+    }
     if let Err(e) = std::fs::copy(&src, &dest_file) {
         let _ = std::fs::remove_dir_all(&dest_dir);
         return Err(format!("{}: {e}", spec.copy_err));
@@ -100,9 +102,15 @@ fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Re
     let lbls = labels(spec);
     match backup {
         DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
-        DotfileBackupState::Present(backup_path) => std::fs::copy(backup_path, &dst)
-            .map_err(|e| format!("{}: {e}", spec.restore_copy_err))
-            .map(|_| ()),
+        DotfileBackupState::Present(backup_path) => {
+            if let Some(parent) = dst.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("{}: {e}", spec.restore_lbl))?;
+            }
+            std::fs::copy(backup_path, &dst)
+                .map_err(|e| format!("{}: {e}", spec.restore_copy_err))
+                .map(|_| ())
+        }
     }
 }
 
@@ -216,25 +224,25 @@ pub fn restore_workspace_session_dotfiles(
     restore_slot(work_dir, &bundle.kissconfig, 0)?;
     restore_slot(work_dir, &bundle.malvin_checks, 1)?;
     restore_slot(work_dir, &bundle.kissignore, 2)
+        .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
 }
 
 #[cfg(test)]
 mod kiss_inline {
     use super::*;
-
     #[test]
     fn dotfile_spec_labels_and_slots() {
         let _ = labels(&DOTFILE_ROWS[0]);
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let mut id_gen = |n: usize| format!("kiss{n}");
-        let _ = backup_slot(0, tmp.path(), &mut id_gen);
+        let tmp = tempfile::tempdir().unwrap();
+        let mut id = |n: usize| format!("kiss{n}");
+        let _ = backup_slot(0, tmp.path(), &mut id);
         let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
-        let bundle = SessionDotfileBackups::from_parts(
+        let b = SessionDotfileBackups::from_parts(
             DotfileBackupState::Missing,
             DotfileBackupState::Missing,
             DotfileBackupState::Missing,
         );
-        restore_workspace_session_dotfiles(tmp.path(), &bundle).expect("restore all");
+        restore_workspace_session_dotfiles(tmp.path(), &b).unwrap();
     }
 }
 

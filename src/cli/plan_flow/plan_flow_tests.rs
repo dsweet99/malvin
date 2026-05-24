@@ -81,7 +81,7 @@ fn plan_path_with_md_source_uses_destination_workspace() {
     let artifacts = crate::artifacts::create_run_artifacts(&dest, Some(session_wd.as_path()))
         .expect("artifacts");
     assert_eq!(artifacts.work_dir, dst_side);
-    assert!(artifacts.run_dir.starts_with(dst_side.join("_malvin")));
+    assert!(artifacts.run_dir.starts_with(dst_side.join(".malvin/logs")));
 }
 
 #[test]

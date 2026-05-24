@@ -8,16 +8,17 @@ use common::{
     acp_mock_tidy_review_write_never_writes_artifact_js,
     acp_mock_tidy_review_write_succeeds_on_second_attempt_js, bin_path_with_fake_kiss,
     bin_path_with_kiss_fail_until_n_passes, only_run_dir, seed_git_kiss_cargo_gate_workspace,
+    seed_malvin_checks,
     spawn_tidy, test_home_workspace, workspace_kiss_check_only, write_mock_executable,
 };
 #[cfg(unix)]
 fn prepare_tidy_gate_failure(workspace: &std::path::Path) {
     seed_git_kiss_cargo_gate_workspace(workspace);
-    std::fs::write(workspace.join(".malvin_checks"), "false\n").expect("checks");
+    seed_malvin_checks(workspace, "false\n");
 }
 
 #[cfg_attr(unix, test)]
-fn tidy_interleaved_fails_when_reviewers_spawn_omits_prep() {
+fn tidy_interleaved_fails_when_review_omits_prep() {
     let (root, home, workspace) = test_home_workspace();
     prepare_tidy_gate_failure(&workspace);
     let path = bin_path_with_fake_kiss(&root);
@@ -37,7 +38,7 @@ fn tidy_interleaved_fails_when_reviewers_spawn_omits_prep() {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        combined.contains("reviewers_spawn did not write review prep"),
+        combined.contains("review did not write review prep"),
         "expected pre-aggregation review prep failure: {combined:?}"
     );
 }

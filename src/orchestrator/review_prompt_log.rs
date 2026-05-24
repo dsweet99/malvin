@@ -99,14 +99,14 @@ mod tests {
     }
 
     #[test]
-    fn reviewers_spawn_keeps_outer_attempt_without_try_suffix() {
+    fn review_keeps_outer_attempt_without_try_suffix() {
         assert_eq!(
             log_file_name(ReviewPromptLog {
-                prompt_file: "reviewers_spawn.md",
+                prompt_file: "review.md",
                 log_attempt: 4,
                 attempt: 4,
             }),
-            "reviewers_spawn_attempt_4.log"
+            "review_attempt_4.log"
         );
     }
 }

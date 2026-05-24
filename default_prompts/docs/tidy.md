@@ -1,6 +1,6 @@
 # malvin tidy
 
-Ensure the workspace passes **quality gates** (commands listed in `.malvin_checks`). If gates already pass, exit quickly without calling the agent. Otherwise run a tidy/review loop until LGTM and gates succeed, then optional learn and summary.
+Ensure the workspace passes **quality gates** (commands listed in `.malvin/checks`). If gates already pass, exit quickly without calling the agent. Otherwise run a tidy/review loop until LGTM and gates succeed, then optional learn and summary.
 
 ## Intention
 
@@ -78,7 +78,7 @@ Gate failure message on stderr points user at the failing commands before the ag
 
 ## Artifacts
 
-- `_malvin/<run>/` with `plan.md` containing literal `"tidy"`
+- `./.malvin/logs/<run>/` with `plan.md` containing literal `"tidy"`
 - `quality_gates.log`, review artifacts, phase logs
 - `stdout.log` when agent runs
 

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 fn tmp_lgtm_artifact_and_workspace() -> (tempfile::TempDir, PathBuf, PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let artifact = t.path().join("_malvin").join("run").join("review.md");
+    let artifact = t.path().join(".malvin/logs").join("run").join("review.md");
     let workspace = t.path().join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();

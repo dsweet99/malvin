@@ -46,7 +46,7 @@ fn do_restores_missing_kissconfig_when_agent_creates_it() {
 #[cfg_attr(unix, test)]
 fn do_restores_workspace_malvin_checks_after_mock_agent_overwrites() {
     let (root, home, workspace) = test_home_workspace();
-    std::fs::write(workspace.join(".malvin_checks"), "x\n").expect("write .malvin_checks");
+    common::seed_malvin_checks(&workspace, "x\n");
     let mock = root.path().join("mock-agent-acp-do-malvin-checks");
     common::write_mock_executable(&mock, &acp_mock_do_tampers_malvin_checks_js());
     let out = run_malvin_do_home_workspace(&workspace, &home, &mock);
@@ -56,14 +56,14 @@ fn do_restores_workspace_malvin_checks_after_mock_agent_overwrites() {
         String::from_utf8_lossy(&out.stderr)
     );
     let restored =
-        std::fs::read_to_string(workspace.join(".malvin_checks")).expect("read .malvin_checks");
+        std::fs::read_to_string(workspace.join(".malvin/checks")).expect("read .malvin/checks");
     assert_eq!(restored, "x\n");
 }
 
 #[cfg_attr(unix, test)]
 fn do_restores_malvin_checks_after_tamper_when_present_at_start() {
     let (root, _home, workspace) = test_home_workspace();
-    std::fs::write(workspace.join(".malvin_checks"), "m\n").expect("write .malvin_checks");
+    common::seed_malvin_checks(&workspace, "m\n");
     let mock = root.path().join("mock-agent-acp-do-tamper-malvin");
     common::write_mock_executable(&mock, &acp_mock_do_tampers_malvin_checks_js_only());
     let out = run_malvin_do_home_workspace(&workspace, &root.path().join("home"), &mock);
@@ -73,7 +73,7 @@ fn do_restores_malvin_checks_after_tamper_when_present_at_start() {
         String::from_utf8_lossy(&out.stderr)
     );
     let restored =
-        std::fs::read_to_string(workspace.join(".malvin_checks")).expect("read .malvin_checks");
+        std::fs::read_to_string(workspace.join(".malvin/checks")).expect("read .malvin/checks");
     assert_eq!(restored, "m\n");
 }
 

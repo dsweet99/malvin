@@ -92,11 +92,11 @@ fn tidy_max_loops_one_non_lgtm_concerns_recovery_can_exit_zero() {
         "post-recovery review must be LGTM in run_dir artifact: {artifact:?}"
     );
     assert!(
-        run_dir.join("reviewers_spawn_attempt_1.log").is_file(),
+        run_dir.join("review_attempt_1.log").is_file(),
         "first review fan-out must leave attempt-1 spawn log; run_dir={run_dir:?}"
     );
     assert!(
-        run_dir.join("reviewers_spawn_attempt_2.log").is_file(),
+        run_dir.join("review_attempt_2.log").is_file(),
         "post-concerns recovery must use a distinct log attempt (like bonus recovery) \
          so it does not overwrite attempt-1 transcripts; run_dir={run_dir:?}"
     );

@@ -40,6 +40,12 @@ pub use malvin_short_id::{
 };
 mod learn_gate;
 mod malvin_constants;
+pub mod workspace_paths;
+pub use workspace_paths::{
+    find_malvin_logs_root, is_malvin_workspace, malvin_advice_path, malvin_checks_path,
+    malvin_logs_root, remove_legacy_malvin_checks_file, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL,
+    MALVIN_DIR, MALVIN_LOGS_REL,
+};
 mod terminal_palette;
 pub mod run_id;
 pub mod session_dotfile_backup;
@@ -180,6 +186,10 @@ mod review_prep_regression_kiss;
 #[cfg(all(test, unix))]
 mod test_stderr_capture;
 
+#[cfg(test)]
+mod malvin_test_seed;
+#[cfg(test)]
+pub use malvin_test_seed::seed_malvin_checks;
 #[cfg(test)]
 pub mod test_utils;
 

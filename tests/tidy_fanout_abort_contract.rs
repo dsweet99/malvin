@@ -4,13 +4,14 @@ mod common;
 #[cfg(unix)]
 use common::{
     TidySpawn, acp_mock_tidy_abort_after_first_coder_turn_js, bin_path_with_fake_kiss,
-    seed_git_kiss_cargo_gate_workspace, spawn_tidy, test_home_workspace, write_mock_executable,
+    seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, spawn_tidy, test_home_workspace,
+    write_mock_executable,
 };
 
 #[cfg(unix)]
 fn prepare_tidy_gate_failure(workspace: &std::path::Path) {
     seed_git_kiss_cargo_gate_workspace(workspace);
-    std::fs::write(workspace.join(".malvin_checks"), "false\n").expect("checks");
+    seed_malvin_checks(workspace, "false\n");
 }
 
 #[cfg_attr(unix, test)]

@@ -3,15 +3,22 @@
 mod common;
 
 use common::{
-    InitOk, assert_git_branch_main, assert_git_head_commit_count, git_show_rev_path,
-    malvin_init_output, tempdir_seeded_dirty_keep,
+    InitOk, assert_git_head_commit_count, git_show_rev_path, malvin_init_output,
+    tempdir_seeded_dirty_keep,
 };
 
 #[test]
-fn malvin_init_creates_initial_commit_on_main_for_fresh_repo() {
+fn malvin_init_creates_initial_commit_for_fresh_repo() {
     let w = InitOk::new(&["python"]);
-    assert_git_branch_main(w.path());
     assert_git_head_commit_count(w.path(), "1");
+    assert!(
+        w.path().join(".malvin/checks").is_file(),
+        "init must write .malvin/checks"
+    );
+    assert!(
+        w.path().join(".malvin/advice.md").is_file(),
+        "init must write .malvin/advice.md"
+    );
 }
 
 #[test]

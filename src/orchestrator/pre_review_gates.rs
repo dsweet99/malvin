@@ -89,11 +89,11 @@ mod tests {
             stdout: "out line\n".into(),
             stderr: "err line\n".into(),
         };
-        let body = format_pre_review_gate_failure_review(&failure, "./_malvin/run/q.log");
+        let body = format_pre_review_gate_failure_review(&failure, "./.malvin/logs/run/q.log");
         assert!(body.contains("Quality gates did not pass"));
         assert!(body.contains("command: kiss check"));
         assert!(body.contains("exit code: 1"));
-        assert!(body.contains("./_malvin/run/q.log"));
+        assert!(body.contains("./.malvin/logs/run/q.log"));
         assert!(body.contains("stdout:\nout line"));
         assert!(body.contains("stderr:\nerr line"));
     }

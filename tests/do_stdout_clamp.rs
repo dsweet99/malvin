@@ -3,13 +3,13 @@ mod common;
 #[cfg(unix)]
 use common::{
     acp_mock_do_streaming_update_js, prepare_do_auto_clamp_case, prepare_do_skip_clamp_case,
-    run_do_say_hi_path_prefixed, run_do_say_hi_path_prefixed_mid,
+    run_do_say_hi_path_prefixed, run_do_say_hi_path_prefixed_mid, seed_malvin_checks,
 };
 
 #[cfg_attr(unix, test)]
 fn do_repo_gates_does_not_invoke_kiss_clamp_without_kissconfig() {
     let (ctx, marker, kissconfig) = prepare_do_auto_clamp_case(&acp_mock_do_streaming_update_js());
-    std::fs::write(ctx.workspace.join(".malvin_checks"), "true\n").expect("malvin_checks");
+    seed_malvin_checks(&ctx.workspace, "true\n");
     let out = run_do_say_hi_path_prefixed_mid(&ctx, &["--repo-gates"]);
     assert!(
         out.status.success(),

@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent` or `agent`) against a workspace. Each invocation creates an isolated run directory under `_malvin/` in the workspace (or target path) and logs prompts, stdout, and artifacts there.
+malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent` or `agent`) against a workspace. Each invocation creates an isolated run directory under `./.malvin/logs/` in the workspace (or target path) and logs prompts, stdout, and artifacts there.
 
 ## Usage
 
@@ -42,7 +42,7 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tee`
 
-By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `_malvin/`.
+By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `./.malvin/logs/`.
 
 ### `--no-markdown`
 
@@ -54,7 +54,7 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 ### `--doc`
 
-Print built-in documentation and exit. Does not spawn an agent or create a `_malvin` run directory.
+Print built-in documentation and exit. Does not spawn an agent or create a `./.malvin/logs` run directory.
 
 - `malvin --doc` — top-level overview (`default_prompts/docs/malvin.md`, this file).
 - `malvin <COMMAND> --doc` — documentation for that subcommand (`default_prompts/docs/<command>.md`).
@@ -71,7 +71,7 @@ Print malvin’s version.
 
 ## Run directories and logs
 
-Every agent-backed command creates `_malvin/<timestamp>_<token>/` under the session work directory. Typical files:
+Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under the session work directory. Typical files:
 
 - `plan.md` or `request.md` — copy of the user input for this run
 - `do.log`, `code` phase logs, `kpop.log`, etc. — per-prompt transcripts

@@ -63,7 +63,7 @@ async fn code_review_single_attempt(
             let log_path = ctx
                 .context
                 .get("quality_gates_log")
-                .map_or("./_malvin/.../quality_gates.log", String::as_str);
+                .map_or("./.malvin/logs/.../quality_gates.log", String::as_str);
             write_pre_review_gate_failure_for_artifacts(
                 orchestrator.artifacts,
                 &failure,

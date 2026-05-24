@@ -11,7 +11,7 @@ use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "ignored").expect("plan");
-    let run_dir = tmp.path().join("_malvin").join("r");
+    let run_dir = tmp.path().join(".malvin/logs").join("r");
     std::fs::create_dir_all(&run_dir).expect("run");
     RunArtifacts {
         run_dir,

@@ -29,12 +29,15 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
     assert!(!log_contains_command(&log, "cargo clippy"));
 }
 
-fn assert_default_gate_trace(log: &str) {
+fn assert_default_gate_trace(log: &str, work: &std::path::Path) {
     assert!(!log_contains_command(log, "pre-commit run --all-files"));
     assert!(log_contains_command(log, "kiss check"));
     assert!(log_contains_command(log, "ruff check ."));
     assert!(log_contains_command(log, "cargo clippy"));
-    assert!(log_contains_command(log, "cargo test"));
+    assert!(log_contains_command(
+        log,
+        repo_gates::default_rust_test_command(work)
+    ));
 }
 
 fn materialize_default_checks_fixture() -> (tempfile::TempDir, std::path::PathBuf, Vec<String>) {
@@ -57,15 +60,16 @@ fn run_repo_workspace_gates_materializes_default_malvin_checks() {
     assert!(run_repo_workspace_gates(&work, RepoGateOutput::Tagged, None).is_ok());
     assert!(
         !malvin_checks.exists(),
-        "ephemeral gate runs must restore Missing .malvin_checks so repo-root shadow files \
+        "ephemeral gate runs must restore Missing .malvin/checks so repo-root shadow files \
          are not left behind"
     );
-    std::fs::write(&malvin_checks, expected.join("\n") + "\n").unwrap();
+    fs::create_dir_all(malvin_checks.parent().unwrap()).unwrap();
+    fs::write(&malvin_checks, expected.join("\n") + "\n").unwrap();
     assert_eq!(
         repo_gates::load_malvin_checks(&malvin_checks).unwrap(),
         expected
     );
-    assert_default_gate_trace(&fs::read_to_string(&trace).unwrap());
+    assert_default_gate_trace(&fs::read_to_string(&trace).unwrap(), &work);
 }
 
 #[test]
@@ -86,7 +90,10 @@ fn run_repo_workspace_gates_runs_tree_builtins_without_git_or_malvin_checks() {
     let log = fs::read_to_string(&trace).unwrap();
     assert!(log_contains_command(&log, "kiss check"));
     assert!(log_contains_command(&log, "cargo clippy"));
-    assert!(log_contains_command(&log, "cargo test"));
+    assert!(log_contains_command(
+        &log,
+        repo_gates::default_rust_test_command(work)
+    ));
 }
 
 #[test]
@@ -125,7 +132,10 @@ fn quality_gates_log_records_gate_lines_when_run_log_dir_set() {
     run_repo_workspace_gates(work, RepoGateOutput::Tagged, Some(&run_dir)).unwrap();
     let qlog = fs::read_to_string(run_dir.join("quality_gates.log")).unwrap();
     assert!(qlog.contains("Running `kiss check`"));
-    assert!(qlog.contains("Running `cargo test`"));
+    assert!(qlog.contains(&format!(
+        "Running `{}`",
+        repo_gates::default_rust_test_command(work)
+    )));
     assert!(qlog.contains("[stdout]"));
     assert!(qlog.contains("[stderr]"));
     assert!(qlog.contains("stdout from"));

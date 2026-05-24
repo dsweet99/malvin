@@ -21,7 +21,7 @@ Investigation brief as text or `@<path>`. Stored as `request.md` in the run dir 
 
 ### `<KPOP_ID>` (log lookup)
 
-Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/_malvin/**` for a tagged `KPOP_LOG: <id> …` line and prints the experiment log to stdout. No agent session.
+Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/.malvin/logs/**` for a tagged `KPOP_LOG: <id> …` line and prints the experiment log to stdout. No agent session.
 
 ## Options
 
@@ -56,7 +56,7 @@ Each turn uses the **KPOP block** prompt: the agent adds hypotheses as `## Step`
 At the start of a normal run, malvin prints:
 
 ```text
-[malvin] KPOP_LOG: Ma3bx9 ./_malvin/<run_id>/_kpop/exp_log_<run_id>.md
+[malvin] KPOP_LOG: Ma3bx9 ./.malvin/logs/<run_id>/_kpop/exp_log_<run_id>.md
 ```
 
 Use `malvin kpop Ma3bx9` later to dump that log.
@@ -77,8 +77,8 @@ Stops when any of:
 
 ## Artifacts
 
-- `_malvin/<run>/request.md` — input brief
-- `_malvin/<run>/_kpop/exp_log_<run>.md` — experiment log (authoritative)
+- `./.malvin/logs/<run>/request.md` — input brief
+- `./.malvin/logs/<run>/_kpop/exp_log_<run>.md` — experiment log (authoritative)
 - `kpop.log` — multiturn transcript
 - `quality_gates.log` when gates are embedded in prompts
 

@@ -146,8 +146,8 @@ pub fn nonempty_stdout_lines(stdout: &[u8]) -> Vec<String> {
 
 #[cfg(unix)]
 pub fn first_do_log_path(workspace: &std::path::Path) -> std::path::PathBuf {
-    let sub = std::fs::read_dir(workspace.join("_malvin"))
-        .expect("_malvin")
+    let sub = std::fs::read_dir(workspace.join(".malvin/logs"))
+        .expect(".malvin/logs")
         .flatten()
         .find(|e| e.path().is_dir())
         .expect("run dir");

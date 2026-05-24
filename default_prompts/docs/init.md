@@ -47,7 +47,8 @@ Init-specific: `--force` on the subcommand is separate from global `--no-force` 
 2. Run `pre-commit install` in the target directory.
 3. Require `kiss` on PATH and run `kiss init`.
 4. Install git LFS if available.
-5. If the repo has no commits yet: `git add .`, initial commit as malvin (with `--no-verify` to avoid bootstrap cycle), ensure branch `main`.
+5. If the repo has no commits yet: `git add .`, initial commit as malvin (with `--no-verify` to avoid bootstrap cycle). Does not rename the current branch.
+6. Ensure `.malvin/checks`, `.malvin/advice.md`, and `.malvin/logs/` exist (checks seeded with language-appropriate defaults; nextest used when `cargo nextest --version` succeeds).
 
 ## Prompt workflow
 
@@ -58,7 +59,7 @@ Init runs **one** coder session after filesystem bootstrap.
 | 1 | **Identity + context header** — Establishes malvin persona, run paths, and workspace context for a coding-style session. | Combined with step 2 |
 | 2 | **Summary** — Agent explains what was installed and how to use the repo with malvin; user-facing wrap-up. | `summary.log` (label `summary`) |
 
-Session dotfiles (`.kissconfig`, `.kissignore`, `.malvin_checks`) are backed up before the agent runs and restored afterward so init does not permanently leave agent mutations in those files.
+Session dotfiles (`.kissconfig`, `.kissignore`, `.malvin/checks`) are backed up before the agent runs and restored afterward so init does not permanently leave agent mutations in those files.
 
 ## Requirements
 

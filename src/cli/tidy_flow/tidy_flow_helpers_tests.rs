@@ -53,7 +53,7 @@ fn prepare_tidy_prompt_store_loads_required_templates() {
     ctx.insert("quality_gates".to_string(), String::new());
     ctx.insert(
         "quality_gates_log".to_string(),
-        "./_malvin/run/quality_gates.log".to_string(),
+        "./.malvin/logs/run/quality_gates.log".to_string(),
     );
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());
     let prompt = crate::cli::tidy_flow::compose_tidy_prompt(&store, &ctx).expect("compose");
@@ -66,17 +66,17 @@ fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
     let mut ctx = HashMap::new();
     ctx.insert(
         "quality_gates_log".to_string(),
-        "./_malvin/run/quality_gates.log".to_string(),
+        "./.malvin/logs/run/quality_gates.log".to_string(),
     );
     ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());
     ctx.insert(
         "review_path".to_string(),
-        "./_malvin/run/review.md".to_string(),
+        "./.malvin/logs/run/review.md".to_string(),
     );
     let out = crate::cli::tidy_flow::compose_tidy_concerns_prompt(&store, &ctx).expect("compose");
     assert!(
-        out.contains("./_malvin/run/review.md"),
+        out.contains("./.malvin/logs/run/review.md"),
         "expected rendered concerns to cite review_path: {out:?}"
     );
 }
@@ -121,8 +121,8 @@ fn merge_tidy_timing_checks_fixture() -> (
     std::path::PathBuf,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let checks = tmp.path().join(".malvin_checks");
-    std::fs::write(&checks, "orig\n").expect("write checks");
+    crate::seed_malvin_checks(tmp.path(), "orig\n");
+    let checks = tmp.path().join(".malvin/checks");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "plan").expect("write plan");
     let artifacts =

@@ -3,9 +3,10 @@ mod tests {
     use std::process::Command;
 
     use crate::init_cmd::init_cmd_mid_core::{
-        build_pre_commit_config, ensure_branch_is_main, require_on_path, run_command_expect_success,
-        write_shell_script, write_text_file,
+        build_pre_commit_config, require_on_path, run_command_expect_success, write_shell_script,
+        write_text_file,
     };
+    use crate::init_cmd::init_cmd_workspace::ensure_malvin_workspace_layout;
     use crate::init_cmd::{
         emit_init_startup, parse_languages, resolve_init_root, Language, ADMIN_CHECK_UNTRACKED,
         TPL_GITIGNORE,
@@ -17,8 +18,8 @@ mod tests {
         let artifacts = emit_init_startup(tmp.path(), false).unwrap();
         assert_eq!(artifacts.work_dir, tmp.path());
         assert!(
-            artifacts.run_dir.starts_with(tmp.path().join("_malvin")),
-            "init run dir must live under _malvin"
+            artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")),
+            "init run dir must live under .malvin/logs"
         );
         assert!(artifacts.run_dir.exists());
     }
@@ -101,6 +102,26 @@ mod tests {
     }
 
     #[test]
+    fn ensure_malvin_workspace_layout_writes_checks_advice_and_logs() {
+        let tmp = tempfile::tempdir().unwrap();
+        ensure_malvin_workspace_layout(tmp.path(), false, &[Language::Rust]).unwrap();
+        assert!(tmp.path().join(".malvin/checks").is_file());
+        assert!(tmp.path().join(".malvin/advice.md").is_file());
+        assert!(tmp.path().join(".malvin/logs").is_dir());
+        assert!(tmp.path().join("Cargo.toml").is_file());
+    }
+
+    #[test]
+    fn ensure_malvin_workspace_layout_sanitizes_cargo_package_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("My-Project-2");
+        std::fs::create_dir_all(&nested).unwrap();
+        ensure_malvin_workspace_layout(&nested, false, &[Language::Rust]).unwrap();
+        let toml = std::fs::read_to_string(nested.join("Cargo.toml")).unwrap();
+        assert!(toml.contains("name = \"my_project_2\""));
+    }
+
+    #[test]
     #[cfg(unix)]
     fn write_shell_script_sets_executable_bit() {
         use std::os::unix::fs::PermissionsExt;
@@ -110,37 +131,4 @@ mod tests {
         assert!(std::fs::metadata(&script).unwrap().permissions().mode() & 0o111 != 0);
     }
 
-    #[test]
-    fn ensure_branch_is_main_renames_to_main() {
-        let tmp = tempfile::tempdir().unwrap();
-        Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        Command::new("git")
-            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
-            .args(["commit", "--allow-empty", "-m", "i"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        Command::new("git")
-            .args(["branch", "-M", "main"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        ensure_branch_is_main(tmp.path()).unwrap();
-        Command::new("git")
-            .args(["branch", "-M", "master"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        ensure_branch_is_main(tmp.path()).unwrap();
-        let branch = Command::new("git")
-            .args(["branch", "--show-current"])
-            .current_dir(tmp.path())
-            .output()
-            .unwrap();
-        assert_eq!(String::from_utf8_lossy(&branch.stdout).trim(), "main");
-    }
 }

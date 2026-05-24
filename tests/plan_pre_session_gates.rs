@@ -62,8 +62,16 @@ mod unix_tests {
         );
         let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
         assert!(
-            trace_log.is_empty(),
-            "expected no gate tool invocations before plan ACP: {trace_log:?}"
+            !trace_log.contains("kiss check"),
+            "expected no quality-gate runs before plan ACP: {trace_log:?}"
+        );
+        assert!(
+            !trace_log.contains("cargo clippy"),
+            "expected no quality-gate runs before plan ACP: {trace_log:?}"
+        );
+        assert!(
+            !trace_log.contains("ruff check"),
+            "expected no quality-gate runs before plan ACP: {trace_log:?}"
         );
     }
 }

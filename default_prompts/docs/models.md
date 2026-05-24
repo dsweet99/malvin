@@ -1,6 +1,6 @@
 # malvin models
 
-List model ids available from the installed Cursor agent CLI. Does not invoke malvin prompts or create a `_malvin` run directory.
+List model ids available from the installed Cursor agent CLI. Does not invoke malvin prompts or create a `./.malvin/logs` run directory.
 
 ## Intention
 
@@ -35,7 +35,7 @@ Only **global** options apply (`malvin.md`):
 ## Does not require
 
 - `kiss`
-- Workspace or `_malvin` directory
+- A malvin workspace (`.malvin/` layout) or run logs under `.malvin/logs/`
 
 ## No prompt workflow
 

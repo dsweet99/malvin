@@ -31,7 +31,7 @@ pub fn check_abort(result_path: &Path) -> Option<String> {
     None
 }
 
-/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and review prompts (`reviewers_spawn.md`, `review_write.md`, …).
+/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and review prompts (`review.md`, `review_write.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {
@@ -54,7 +54,7 @@ mod helpers_kiss_inline {
     #[test]
     fn format_exp_log_relative_under_work_dir() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let run_dir = tmp.path().join("_malvin").join("run");
+        let run_dir = tmp.path().join(".malvin/logs").join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         let exp_log = run_dir.join("exp.log");
         std::fs::write(&exp_log, "x").expect("write");
@@ -70,7 +70,7 @@ mod helpers_kiss_inline {
     #[test]
     fn insert_artifact_paths_and_resolve_path_against_base() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let run_dir = tmp.path().join("_malvin").join("run");
+        let run_dir = tmp.path().join(".malvin/logs").join("run");
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         let plan_path = run_dir.join("plan.md");
         std::fs::write(&plan_path, "p").expect("plan");

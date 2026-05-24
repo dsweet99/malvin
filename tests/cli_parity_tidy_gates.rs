@@ -7,14 +7,15 @@ mod common;
 mod unix_tests {
     use super::common::{
         TidySpawn, acp_mock_js, bin_path_with_failing_gates, chunk_line,
-        seed_git_kiss_cargo_gate_workspace, spawn_tidy, test_home_workspace, write_mock_executable,
+        seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, spawn_tidy, test_home_workspace,
+        write_mock_executable,
     };
 
     #[test]
     fn startup_gate_failure_omits_code_pre_check_guidance_and_still_runs_tidy() {
         let (root, home, workspace) = test_home_workspace();
         seed_git_kiss_cargo_gate_workspace(&workspace);
-        std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("malvin_checks");
+        seed_malvin_checks(&workspace, "kiss check\n");
         let trace = root.path().join("tidy-startup-gate-trace.log");
         let path = bin_path_with_failing_gates(&root, &trace);
         let mock = root.path().join("mock-agent-acp-tidy-startup-gates");

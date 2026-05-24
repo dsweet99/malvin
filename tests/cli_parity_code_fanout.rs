@@ -14,7 +14,7 @@ use common::{
 use std::path::Path;
 
 #[cfg_attr(unix, test)]
-fn code_fails_when_reviewers_spawn_omits_prep() {
+fn code_fails_when_review_omits_prep() {
     let out = run_code_with_mock_js(
         &acp_mock_code_fanout_skips_reviewer_outputs_js(),
         &["--max-loops", "1", "--skip-pre-checks"],
@@ -27,7 +27,7 @@ fn code_fails_when_reviewers_spawn_omits_prep() {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        combined.contains("reviewers_spawn did not write review prep"),
+        combined.contains("review did not write review prep"),
         "expected review prep guard before review_write: {combined:?}"
     );
 }
@@ -58,7 +58,7 @@ fn review_loop_rejects_workspace_lgtm_when_review_write_omits_artifact() {
 fn review_default_prompts_exist_on_disk() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     for rel in [
-        "default_prompts/reviewers_spawn.md",
+        "default_prompts/review.md",
         "default_prompts/review_write.md",
     ] {
         assert!(
@@ -85,7 +85,7 @@ fn review_fix_rust_modules_exist_on_disk() {
 fn review_default_prompts_are_embedded_files() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     for rel in [
-        "default_prompts/reviewers_spawn.md",
+        "default_prompts/review.md",
         "default_prompts/review_write.md",
     ] {
         let on_disk = manifest_dir.join(rel);

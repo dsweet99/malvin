@@ -1,4 +1,4 @@
-//! Optional `_malvin/.../malvin_error.log` mirror for fatal CLI errors (see [`append_command_error_to_run_log`]).
+//! Optional `.malvin/logs/.../malvin_error.log` mirror for fatal CLI errors (see [`append_command_error_to_run_log`]).
 //!
 //! The active run directory is set by each subcommand once [`RunArtifacts`] exists so
 //! [`super::entrypoint::print_command_error`] can append even when the message only went to stderr before.
@@ -10,7 +10,7 @@ use crate::output::{ERROR_WHO, format_line};
 
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
-/// Remember `_malvin/<stamp>/` for [`append_command_error_to_run_log`].
+/// Remember `.malvin/logs/<stamp>/` for [`append_command_error_to_run_log`].
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
     *COMMAND_ERROR_RUN_DIR
         .lock()

@@ -30,22 +30,27 @@ If you still lingering questions, leave them at the bottom of `{{ plan_path }}` 
 
 ## Step 2: Review plan
 
-KPop: Please review the plan in {{ plan_path }}.
+KPop: Please review the plan in `{{ plan_path }}`. You have a budget of 5 hypotheses.
 
 - Are there errors in the plan?
 - Is the plan self-consistent?
 - Is the plan sound?
 
-## Step 3: Revise plan
+## Step 3: Improve the plan
 
-When you're done with the review, revise the restated plan to incorporate the review feedback. If there are answered questions at the bottom, incorporate them into the main plan, too. Leave the user's original plan unaltered.
+KPop: Find one way to make the plan in `{{ plan_path }}` result in more efficient implementation.  You have a budget of 5 hypotheses.
 
-If you *really* still lingering questions, leave them at the bottom of `{{ plan_path }}` as multiple-choice questions and stop.
+## Step 4: Revise plan
 
-Otherwise, append this to `{{ plan_path }}`
+As a final step, revise the restated plan to incorporate the review feedback. If there are answered questions at the bottom, incorporate them into the main plan, too. Leave the user's original plan unaltered.
 
-```text
+If you *really* still have lingering questions, leave them at the bottom of `{{ plan_path }}` as multiple-choice questions and stop.
+
+Otherwise, append the following text to `{{ plan_path }}`:
+
+```
 ---
+
 [malvin] Ready for implementation.
 ```
 

@@ -54,7 +54,7 @@ See `malvin.md`. Uses standard coding-session stdout markdown unless `--no-markd
 | Step | Prompt role (effect) |
 |------|----------------------|
 | 1 | **Coding header** — Malvin identity, history/memory, paths. |
-| 2 | **Coding rules** — Default rules plus repo overrides from `.malvin_memory` / workspace. |
+| 2 | **Coding rules** — Default rules plus repo overrides from `.malvin/advice.md` / workspace. |
 | 3 | **Review plan** — Agent writes or critiques the plan at `plan_path`; structured review expectations (LGTM / feedback in `review.md` per template). |
 
 Logged as `review_plan` → `review_plan.log`.
@@ -64,7 +64,7 @@ No `implement`, `concerns`, `learn`, or post-run gate loop in this command.
 ## Session behavior
 
 - Work directory: parent of plan file, or directory from existing `.md` resolution rules above.
-- Run dir: `_malvin/<stamp>/` under session work dir.
+- Run dir: `./.malvin/logs/<stamp>/` under session work dir.
 - Dotfile backup/restore like other coding sessions.
 - Abort via `result.md` honored after the prompt.
 

@@ -5,7 +5,7 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups, restore_workspace_se
 use crate::prompts::PromptStore;
 use crate::run_timing::TimingPhase;
 
-use super::constants::{REVIEW_WRITE_FILE, REVIEWERS_SPAWN_FILE};
+use super::constants::{REVIEW_WRITE_FILE, REVIEW_FILE};
 use super::review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
 use super::workflow_merge::merge_workflow_run_and_restore;
 use super::{WorkflowError, format_prompt_path, prompt_md_stem};
@@ -96,14 +96,14 @@ pub async fn run_reviewers_spawn_coder_session(
         artifacts: session.artifacts,
         session_dotfile_backups: session.session_dotfile_backups,
         context: session.context,
-        prompt_file: REVIEWERS_SPAWN_FILE,
+        prompt_file: REVIEW_FILE,
         phase: TimingPhase::ReviewFanout,
         log: ReviewPromptLog {
-            prompt_file: REVIEWERS_SPAWN_FILE,
+            prompt_file: REVIEW_FILE,
             log_attempt: session.log_attempt,
             attempt: session.attempt,
         },
-        stdout_bracket_label: Some(REVIEWERS_SPAWN_FILE),
+        stdout_bracket_label: Some(REVIEW_FILE),
     })
     .await
 }
@@ -191,7 +191,7 @@ mod tests {
     #[tokio::test]
     async fn run_review_prompt_coder_session_errors_when_no_coder_session() {
         use super::{
-            REVIEWERS_SPAWN_FILE, ReviewPromptCoderSession, run_review_prompt_coder_session,
+            REVIEW_FILE, ReviewPromptCoderSession, run_review_prompt_coder_session,
         };
         use crate::orchestrator::review_prompt_log::ReviewPromptLog;
         use crate::run_timing::TimingPhase;
@@ -206,14 +206,14 @@ mod tests {
             artifacts: &artifacts,
             session_dotfile_backups: &backups,
             context: &ctx,
-            prompt_file: REVIEWERS_SPAWN_FILE,
+            prompt_file: REVIEW_FILE,
             phase: TimingPhase::ReviewFanout,
             log: ReviewPromptLog {
-                prompt_file: REVIEWERS_SPAWN_FILE,
+                prompt_file: REVIEW_FILE,
                 log_attempt: 1,
                 attempt: 1,
             },
-            stdout_bracket_label: Some(REVIEWERS_SPAWN_FILE),
+            stdout_bracket_label: Some(REVIEW_FILE),
         })
         .await
         .expect_err("prompt session");

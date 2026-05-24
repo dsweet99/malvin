@@ -8,6 +8,10 @@ pub(crate) const TPL_KISSIGNORE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/kissignore"
 ));
+pub(crate) const TPL_ADVICE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/advice.md"
+));
 pub(crate) const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/admin/check_untracked.sh"
@@ -35,6 +39,9 @@ pub(crate) const HOOK_UNTRACKED: &str = include_str!(concat!(
 #[path = "init_cmd_mid_core.rs"]
 mod init_cmd_mid_core;
 
+#[path = "init_cmd_workspace.rs"]
+mod init_cmd_workspace;
+
 #[cfg(test)]
 #[path = "init_cmd_mid_tests.rs"]
 mod init_cmd_mid_tests;
@@ -42,9 +49,8 @@ mod init_cmd_mid_tests;
 use std::path::{Path, PathBuf};
 
 use clap::Args;
-use init_cmd_mid_core::{
-    bootstrap_repo_tooling, resolve_init_root, write_init_templates,
-};
+use init_cmd_mid_core::{bootstrap_repo_tooling, resolve_init_root, write_init_templates};
+use init_cmd_workspace::ensure_malvin_workspace_layout;
 /// Supported languages for `malvin init`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Language {
@@ -95,6 +101,7 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
+        ensure_malvin_workspace_layout(&root, req.opts.overwrite_templates, &languages)?;
         bootstrap_repo_tooling(&root)?;
         run_init_summary_phase(req.shared, &artifacts).await
     }

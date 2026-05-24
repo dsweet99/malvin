@@ -42,7 +42,8 @@ pub(super) fn lookup_run_by_log_kind(
     id: &str,
     kind: MalvinRunLogKind,
 ) -> Result<BugIdResolved, String> {
-    let malvin_root = cwd.join("_malvin");
+    let malvin_root = crate::find_malvin_logs_root(cwd)
+        .unwrap_or_else(|| crate::malvin_logs_root(cwd));
     if !malvin_root.is_dir() {
         return Err(not_found_msg(id, &malvin_root, kind));
     }
@@ -136,11 +137,26 @@ fn scan_malvin_logs(
 }
 
 fn work_dir_from_run_dir(run_dir: &Path, cwd: &Path) -> PathBuf {
-    run_dir
-        .parent()
-        .and_then(|malvin| malvin.parent())
-        .filter(|p| !p.as_os_str().is_empty())
-        .map_or_else(|| cwd.to_path_buf(), Path::to_path_buf)
+    workspace_root_from_run_dir(run_dir).unwrap_or_else(|| cwd.to_path_buf())
+}
+
+fn workspace_root_from_run_dir(run_dir: &Path) -> Option<PathBuf> {
+    let logs_segment = Path::new(crate::MALVIN_LOGS_REL).file_name()?;
+    let malvin_segment = Path::new(crate::MALVIN_DIR).file_name()?;
+    let mut cursor = run_dir;
+    while let Some(logs_dir) = cursor.parent() {
+        if logs_dir.file_name() == Some(logs_segment) {
+            let malvin_dir = logs_dir.parent()?;
+            if malvin_dir.file_name() == Some(malvin_segment) {
+                return malvin_dir
+                    .parent()
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .map(Path::to_path_buf);
+            }
+        }
+        cursor = logs_dir;
+    }
+    None
 }
 
 fn resolve_exp_log_path(

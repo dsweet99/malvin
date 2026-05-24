@@ -45,10 +45,10 @@ fn tidy_bonus_review_uses_attempt_index_matching_printed_iteration() {
         "bonus pass must print recovery banner with log attempt max+1: {combined:?}"
     );
     let run_dir = only_run_dir(&workspace);
-    let bonus_review_log = run_dir.join("reviewers_spawn_attempt_4.log");
+    let bonus_review_log = run_dir.join("review_attempt_4.log");
     assert!(
         bonus_review_log.is_file(),
-        "bonus review must write reviewers_spawn_attempt_4.log when stdout says tidy recovery \
+        "bonus review must write review_attempt_4.log when stdout says tidy recovery \
          (review attempt 4, max-loops 3); \
          got run_dir={run_dir:?}"
     );

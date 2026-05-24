@@ -114,8 +114,8 @@ fn default_prompts_review_plan_uses_spaced_brace_placeholders() {
 fn repo_root_gitignore_ignores_malvin_logs_and_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     assert!(
-        check_ignored(root, "_malvin/x/plan.md"),
-        "repo .gitignore should ignore _malvin/ runs"
+        check_ignored(root, ".malvin/logs/x/plan.md"),
+        "repo .gitignore should ignore .malvin/logs/ runs"
     );
     assert!(
         check_ignored(root, "log"),
@@ -139,8 +139,8 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
         .expect("git init");
     assert!(st.success(), "git init failed");
     assert!(
-        check_ignored(tmp.path(), "_malvin/x/plan.md"),
-        "template should ignore _malvin/ runs"
+        check_ignored(tmp.path(), ".malvin/logs/x/plan.md"),
+        "template should ignore .malvin/logs/ runs"
     );
     assert!(
         check_ignored(tmp.path(), "log"),

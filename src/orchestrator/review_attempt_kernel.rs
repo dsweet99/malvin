@@ -4,7 +4,7 @@ use crate::review_sync::{is_lgtm_str, read_artifact_review_for_fanout_attempt};
 pub const REVIEW_WRITE_MISSING_ARTIFACT_MSG: &str = "review_write did not write artifact review";
 pub const REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG: &str =
     "Review: review_write did not write artifact review, retrying";
-pub const REVIEW_PREP_MISSING_ARTIFACT_MSG: &str = "reviewers_spawn did not write review prep";
+pub const REVIEW_PREP_MISSING_ARTIFACT_MSG: &str = "review did not write review prep";
 
 pub const REVIEW_WRITE_INNER_RETRY_CAP: usize = 2;
 
