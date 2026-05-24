@@ -49,6 +49,8 @@ pub(crate) mod trace_line_write;
 pub(crate) use trace_line_write::{
     ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,
 };
+#[cfg(test)]
+pub(crate) use trace_line_write_tool_summary::write_tool_summary_trace_line;
 
 #[path = "session_trace_setup.rs"]
 mod session_trace_setup;

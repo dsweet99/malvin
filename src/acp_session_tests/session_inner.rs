@@ -57,6 +57,7 @@ pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
         log_full_outgoing_prompts: false,
         trace_jsonl: None,
         memory_containment: crate::acp_memory_containment::AcpMemoryContainment::inactive(),
+        work_dir: std::env::temp_dir(),
     }
 }
 

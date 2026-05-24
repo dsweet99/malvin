@@ -28,6 +28,8 @@ pub struct PromptTraceWriter {
     pub emit_stdout_markdown: bool,
     /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
     pub iterable_closed_warned: bool,
+    /// Session workspace root for relativizing tool-summary paths on stdout.
+    pub work_dir: PathBuf,
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -62,6 +64,7 @@ pub struct AcpSessionInner {
     pub log_full_outgoing_prompts: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
     pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
+    pub work_dir: PathBuf,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run

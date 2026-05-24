@@ -17,7 +17,7 @@ pub(crate) fn human_done_line(
 ) -> Option<String> {
     match kind {
         "read" => Some(human_read_done(parsed, tracker, elapsed)),
-        "search" => Some(human_search_done(parsed, elapsed)),
+        "search" => Some(human_search_done(parsed, tracker, elapsed)),
         "execute" => Some(human_execute_done(parsed, tracker, elapsed)),
         "edit" => Some(human_edit_done(parsed, tracker, elapsed)),
         _ => None,
@@ -45,29 +45,58 @@ pub(crate) fn human_read_done(
     )
 }
 
-pub(crate) fn human_search_start(parsed: &ParsedToolUpdate) -> String {
-    if let Some(q) = parsed.search_query.as_deref().filter(|s| !s.is_empty()) {
+pub(crate) fn human_search_start(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) -> String {
+    if let Some(q) = search_query_from(parsed, tracker) {
         return format!("Searching {}…", shorten_middle(q, TOOL_DISPLAY_MAX_WIDTH));
     }
     "Searching…".to_string()
 }
 
-pub(crate) fn human_search_done(parsed: &ParsedToolUpdate, _elapsed: std::time::Duration) -> String {
-    let Some(raw) = parsed.raw_output.as_ref() else {
-        return "Search · matches".to_string();
-    };
-    let mut line = raw
-        .get("totalMatches")
-        .or_else(|| raw.get("resultCount"))
-        .and_then(json_number)
-        .map_or_else(
-            || "Search · matches".to_string(),
-            |n| format!("Search · {n} matches"),
-        );
-    if raw.get("truncated").and_then(Value::as_bool) == Some(true) {
+pub(crate) fn search_query_from<'a>(
+    parsed: &'a ParsedToolUpdate,
+    tracker: &'a ToolSummaryTracker,
+) -> Option<&'a str> {
+    parsed
+        .search_query
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            tracker
+                .record(&parsed.id)
+                .and_then(|r| r.search_query.as_deref())
+                .filter(|s| !s.is_empty())
+        })
+}
+
+fn search_done_line(query: Option<&str>, matches: Option<u64>, truncated: bool) -> String {
+    let query_suffix = query
+        .map(|q| format!(" {}", shorten_middle(q, TOOL_DISPLAY_MAX_WIDTH)))
+        .unwrap_or_default();
+    let mut line = matches.map_or_else(
+        || format!("Search{query_suffix} · matches"),
+        |n| format!("Search{query_suffix} · {n} matches"),
+    );
+    if truncated {
         line.push_str(" (truncated)");
     }
     line
+}
+
+pub(crate) fn human_search_done(
+    parsed: &ParsedToolUpdate,
+    tracker: &ToolSummaryTracker,
+    _elapsed: std::time::Duration,
+) -> String {
+    let query = search_query_from(parsed, tracker);
+    let Some(raw) = parsed.raw_output.as_ref() else {
+        return search_done_line(query, None, false);
+    };
+    let truncated = raw.get("truncated").and_then(Value::as_bool) == Some(true);
+    let matches = raw
+        .get("totalMatches")
+        .or_else(|| raw.get("resultCount"))
+        .and_then(json_number);
+    search_done_line(query, matches, truncated)
 }
 
 pub(crate) fn human_execute_done(
@@ -124,5 +153,23 @@ pub(crate) fn human_edit_counts(raw: &Value) -> String {
         (Some(a), None) => format!("+{a}"),
         (None, Some(r)) => format!("−{r}"),
         (None, None) => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod search_done_line_tests {
+    use super::search_done_line;
+
+    #[test]
+    fn search_done_line_covers_query_match_and_truncated_branches() {
+        assert_eq!(
+            search_done_line(Some("q"), Some(2), false),
+            "Search q · 2 matches"
+        );
+        assert_eq!(search_done_line(None, None, false), "Search · matches");
+        assert_eq!(
+            search_done_line(Some("q"), None, true),
+            "Search q · matches (truncated)"
+        );
     }
 }

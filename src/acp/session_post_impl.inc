@@ -130,6 +130,7 @@ impl AcpSession {
                 && !meta.trace_raw_output
                 && !meta.plain_lines,
             iterable_closed_warned: false,
+            work_dir: self.0.work_dir.clone(),
         });
         self.0.busy.store(true, Ordering::SeqCst);
 

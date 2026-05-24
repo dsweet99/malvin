@@ -124,6 +124,7 @@ async fn h6_trace_file_lines_include_timestamp() {
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
+        work_dir: std::path::PathBuf::new(),
     };
     crate::acp::trace_file_write_line(
         &mut writer,

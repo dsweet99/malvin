@@ -39,6 +39,8 @@ pub(crate) mod reader_tests_trace_iterable;
 mod kpop_stdout_logger_plan_check;
 #[path = "../acp/kpop_stdout_logger_plan_check_ext.rs"]
 mod kpop_stdout_logger_plan_check_ext;
+#[path = "../acp/kpop_stdout_logger_plan_check_impl.rs"]
+mod kpop_stdout_logger_plan_check_impl;
 #[path = "../acp/kpop_stdout_logger_plan_helpers.rs"]
 mod kpop_stdout_logger_plan_helpers;
 

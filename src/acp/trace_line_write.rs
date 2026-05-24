@@ -90,7 +90,7 @@ pub(crate) struct TraceTeeStdoutCtx<'a> {
     pub(crate) ts: &'a str,
 }
 
-use crate::acp::trace_line_write_tee::{format_trace_display_line, trace_tee_stdout_line};
+use crate::acp::trace_line_write_tee::{format_trace_display_line, trace_stdout_tee_payload, trace_tee_stdout_line};
 use crate::acp::trace_line_write_tool_summary::write_tool_summary_trace_line;
 
 pub async fn trace_file_write_line(
@@ -130,16 +130,13 @@ pub async fn trace_file_write_line(
         }
         return;
     }
-    let stdout_line = stdout.tee_line_override.unwrap_or_else(|| {
-        if writer.plain_lines || writer.raw_output {
-            line
-        } else {
-            &display_line
-        }
-    });
+    let stdout_line = stdout.tee_line_override.map_or_else(
+        || trace_stdout_tee_payload(line, kind, writer),
+        std::string::ToString::to_string,
+    );
     trace_tee_stdout_line(
         writer,
-        stdout_line,
+        &stdout_line,
         stdout.tee_line_display,
         &TraceTeeStdoutCtx {
             tee_stdout: stdout.tee_stdout,

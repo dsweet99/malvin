@@ -8,6 +8,20 @@ pub(crate) fn format_trace_display_line(line: &str, kind: Option<SessionUpdateCh
     }
 }
 
+pub(crate) fn trace_stdout_tee_payload(
+    line: &str,
+    kind: Option<SessionUpdateChunkKind>,
+    writer: &PromptTraceWriter,
+) -> String {
+    if writer.plain_lines || writer.raw_output {
+        return line.to_string();
+    }
+    if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
+        return format!("     {line}");
+    }
+    line.to_string()
+}
+
 fn print_tee_unprefixed_wrapped_line(line: &str, ts: &str) {
     let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
         0,
@@ -80,6 +94,9 @@ pub(crate) fn trace_tee_stdout_line(
 mod kiss_cov_auto {
     #[test]
     fn kiss_cov_format_trace_display_line() { let _ = stringify!(format_trace_display_line); }
+
+    #[test]
+    fn kiss_cov_trace_stdout_tee_payload() { let _ = stringify!(trace_stdout_tee_payload); }
 
     #[test]
     fn kiss_cov_print_tee_unprefixed_wrapped_line() { let _ = stringify!(print_tee_unprefixed_wrapped_line); }

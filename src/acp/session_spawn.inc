@@ -133,6 +133,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
                 trace_jsonl,
             },
             memory_containment,
+            work_dir: args.cwd.to_path_buf(),
         },
     ))))
 }

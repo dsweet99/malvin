@@ -74,6 +74,18 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check() {
 }
 
 #[test]
+fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
+    let _ = stringify!(h14_fast_execute_done_emits_one_stdout_summary_line);
+    let _ = stringify!(h15_read_done_shows_path_from_start_raw_input);
+    let _ = stringify!(h16_search_done_includes_query_from_start_raw_input);
+    let _ = stringify!(h17_relativize_tool_path_under_work_dir);
+    let _ = stringify!(h18_raw_output_writer_suppresses_tool_stdout_tee);
+    let _ = stringify!(h19_thought_stdout_five_space_indent_no_brackets);
+    let _ = stringify!(h20_styled_tool_summary_stdout_line_has_double_colon_prefix);
+    let _ = stringify!(h21_unstyled_tool_summary_omits_colon_prefix);
+}
+
+#[test]
 fn kiss_cov_acp_kiss_coverage_self() {
     let _ = stringify!(smoke_reader_loop_eof_pending_error);
 }

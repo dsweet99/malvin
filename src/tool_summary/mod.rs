@@ -3,8 +3,11 @@ mod parse;
 mod parse_acp;
 mod format;
 mod human_b;
+mod ansi;
 mod human_a_done;
 mod human_a;
+#[cfg(test)]
+mod search_coverage;
 #[cfg(test)]
 mod kiss_coverage;
 #[cfg(test)]
@@ -17,7 +20,9 @@ pub use types::{
 };
 #[allow(unused_imports)]
 pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
-pub use human_b::tool_summary_stdout_display;
+pub use ansi::tool_summary_stdout_display;
+#[allow(unused_imports)]
+pub(crate) use human_b::relativize_tool_path;
 #[allow(unused_imports)]
 pub(crate) use parse::{json_number, parse_tool_update, tool_phase_label};
 
@@ -55,6 +60,7 @@ fn new_tool_call_record(parsed: &ParsedToolUpdate) -> ToolCallRecord {
         title: parsed.title.clone(),
         command: parsed.command.clone(),
         input_path: parsed.input_path.clone(),
+        search_query: parsed.search_query.clone(),
         input_line_range: parsed.input_line_range,
         started: std::time::Instant::now(),
         stdout_start_emitted: false,
@@ -76,6 +82,9 @@ fn merge_parsed_into_record(entry: &mut ToolCallRecord, parsed: &ParsedToolUpdat
     }
     if let Some(path) = parsed.input_path.as_ref() {
         entry.input_path = Some(path.clone());
+    }
+    if let Some(query) = parsed.search_query.as_ref() {
+        entry.search_query = Some(query.clone());
     }
     if let Some(line_range) = parsed.input_line_range {
         entry.input_line_range = Some(line_range);

@@ -5,11 +5,12 @@ pub const TOOL_DISPLAY_MAX_WIDTH: usize = 60;
 pub const TOOL_ELLIPSIS: &str = "...";
 
 pub(crate) const ANSI_BOLD: &str = "\x1b[1m";
-pub(crate) const ANSI_CYAN: &str = "\x1b[36m";
-pub(crate) const ANSI_DIM: &str = "\x1b[90m";
-pub(crate) const ANSI_GREEN: &str = "\x1b[32m";
-pub(crate) const ANSI_RED: &str = "\x1b[31m";
 pub(crate) const ANSI_RESET: &str = "\x1b[0m";
+pub(crate) const ANSI_TOOL_CREAM: &str = "\x1b[38;2;244;241;222m";
+pub(crate) const ANSI_TOOL_CORAL: &str = "\x1b[38;2;224;122;95m";
+pub(crate) const ANSI_TOOL_NAVY: &str = "\x1b[38;2;61;64;91m";
+pub(crate) const ANSI_TOOL_TEAL: &str = "\x1b[38;2;129;178;154m";
+pub(crate) const ANSI_TOOL_SAND: &str = "\x1b[38;2;242;204;143m";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ToolSummaryDetail {
@@ -20,6 +21,7 @@ pub enum ToolSummaryDetail {
 #[derive(Default)]
 pub struct ToolSummaryTracker {
     pub(crate) calls: HashMap<String, ToolCallRecord>,
+    path_base: Option<std::path::PathBuf>,
 }
 
 impl ToolSummaryTracker {
@@ -30,6 +32,14 @@ impl ToolSummaryTracker {
     pub(crate) fn record_mut(&mut self, id: &str) -> Option<&mut ToolCallRecord> {
         self.calls.get_mut(id)
     }
+
+    pub(crate) fn set_work_dir(&mut self, work_dir: std::path::PathBuf) {
+        self.path_base = Some(work_dir);
+    }
+
+    pub(crate) fn work_dir(&self) -> Option<&std::path::Path> {
+        self.path_base.as_deref()
+    }
 }
 
 pub(crate) struct ToolCallRecord {
@@ -37,6 +47,7 @@ pub(crate) struct ToolCallRecord {
     pub(crate) title: String,
     pub(crate) command: Option<String>,
     pub(crate) input_path: Option<String>,
+    pub(crate) search_query: Option<String>,
     pub(crate) input_line_range: Option<super::parse::LineRange>,
     pub(crate) started: Instant,
     pub(crate) stdout_start_emitted: bool,

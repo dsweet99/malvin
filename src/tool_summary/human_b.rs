@@ -1,11 +1,23 @@
 use serde_json::Value;
 
+use std::path::Path;
+
 use super::format::{edit_paths, start_label};
 use super::parse::{LineRange, ParsedToolUpdate};
 use super::types::{
-    shorten_middle, ToolCallRecord, ToolSummaryTracker,
-    TOOL_DISPLAY_MAX_WIDTH, ANSI_BOLD, ANSI_CYAN, ANSI_DIM, ANSI_GREEN, ANSI_RED, ANSI_RESET,
+    shorten_middle, ToolCallRecord, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH,
 };
+
+pub(crate) fn relativize_tool_path(path: &str, work_dir: Option<&Path>) -> String {
+    let Some(base) = work_dir else {
+        return path.to_string();
+    };
+    crate::workflow_context::format_prompt_path(Path::new(path), base)
+}
+
+fn display_tool_path(path: &str, tracker: &ToolSummaryTracker) -> String {
+    relativize_tool_path(path, tracker.work_dir())
+}
 
 pub(crate) fn human_read_subject(
     parsed: &ParsedToolUpdate,
@@ -22,10 +34,16 @@ pub(crate) fn human_read_subject(
         let line_range = parsed
             .input_line_range
             .or_else(|| rec.and_then(|r| r.input_line_range));
-        return Some(shorten_subject_path(path, line_range));
+        return Some(shorten_subject_path(
+            &display_tool_path(path, tracker),
+            line_range,
+        ));
     }
     if let Some(label) = read_or_edit_title_label(parsed, rec, "Read") {
-        return Some(shorten_middle(&label, TOOL_DISPLAY_MAX_WIDTH));
+        return Some(shorten_middle(
+            &display_tool_path(&label, tracker),
+            TOOL_DISPLAY_MAX_WIDTH,
+        ));
     }
     allow_generic.then(|| "file".to_string())
 }
@@ -36,8 +54,11 @@ pub(crate) fn read_output_path(raw: &Value) -> Option<&str> {
         .and_then(Value::as_str)
 }
 
-pub(crate) fn human_edit_subject_path(path: &str) -> String {
-    shorten_middle(path, TOOL_DISPLAY_MAX_WIDTH)
+pub(crate) fn human_edit_subject_path(path: &str, tracker: &ToolSummaryTracker) -> String {
+    shorten_middle(
+        &display_tool_path(path, tracker),
+        TOOL_DISPLAY_MAX_WIDTH,
+    )
 }
 
 pub(crate) fn human_edit_subject(
@@ -48,7 +69,7 @@ pub(crate) fn human_edit_subject(
     let rec = tracker.record(&parsed.id);
     if let Some(paths) = parsed.raw_output.as_ref().and_then(edit_paths) {
         if paths.len() == 1 {
-            return Some(human_edit_subject_path(&paths[0]));
+            return Some(human_edit_subject_path(&paths[0], tracker));
         }
         return Some(format!("{} files", paths.len()));
     }
@@ -57,10 +78,13 @@ pub(crate) fn human_edit_subject(
         .as_deref()
         .or_else(|| rec.and_then(|r| r.input_path.as_deref()))
     {
-        return Some(human_edit_subject_path(path));
+        return Some(human_edit_subject_path(path, tracker));
     }
     if let Some(label) = read_or_edit_title_label(parsed, rec, "Edit") {
-        return Some(shorten_middle(&label, TOOL_DISPLAY_MAX_WIDTH));
+        return Some(shorten_middle(
+            &display_tool_path(&label, tracker),
+            TOOL_DISPLAY_MAX_WIDTH,
+        ));
     }
     allow_generic.then(|| "file".to_string())
 }
@@ -174,67 +198,4 @@ pub(crate) fn humanize_duration(elapsed: std::time::Duration) -> String {
     let secs = elapsed.as_secs();
     let tenths = elapsed.subsec_millis() / 100;
     format!("{secs}.{tenths}s")
-}
-
-pub fn tool_summary_stdout_display(plain: &str) -> String {
-    if !crate::output::stdout_use_color() {
-        return plain.to_string();
-    }
-    apply_tool_summary_ansi(plain)
-}
-
-pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
-    use std::fmt::Write as _;
-    let mut out = String::new();
-    let mut rest = plain;
-    while let Some(idx) = rest.find('·') {
-        let (left, right) = rest.split_at(idx);
-        out.push_str(&ansi_style_tool_segment(left));
-        let _ = write!(out, "{ANSI_DIM}·{ANSI_RESET}");
-        rest = right.trim_start_matches('·').trim_start();
-    }
-    out.push_str(&ansi_style_tool_segment(rest));
-    out
-}
-
-pub(crate) fn ansi_style_tool_segment(seg: &str) -> String {
-    let seg = seg.trim();
-    if seg.is_empty() {
-        return String::new();
-    }
-    if seg.contains('✓') {
-        return seg.replace('✓', &format!("{ANSI_GREEN}✓{ANSI_RESET}"));
-    }
-    if seg.contains('✗') {
-        return seg.replace('✗', &format!("{ANSI_RED}✗{ANSI_RESET}"));
-    }
-    ansi_style_tool_segment_running_or_path(seg)
-}
-
-pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
-    if seg.ends_with('…') || seg.starts_with("Reading ") || seg.starts_with("Run ") || seg.starts_with("Editing ") || seg == "Searching…"
-    {
-        let verb_end = seg.find(' ').unwrap_or(seg.len());
-        let (verb, tail) = seg.split_at(verb_end);
-        return format!(
-            "{ANSI_BOLD}{verb}{ANSI_RESET}{}",
-            ansi_style_path_tail(tail)
-        );
-    }
-    if seg.starts_with("Read ") || seg.starts_with("Edit ") || seg.starts_with("Search ") {
-        let rest = seg.split_once(' ').map_or(seg, |(_, r)| r);
-        return format!("{}{}", &seg[..seg.len() - rest.len()], ansi_style_path_tail(rest));
-    }
-    if seg.contains("matches") || seg.contains("exit ") {
-        format!("{ANSI_DIM}{seg}{ANSI_RESET}")
-    } else {
-        ansi_style_path_tail(seg)
-    }
-}
-
-pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
-    if seg.chars().any(|c| c == '/' || c == '.') {
-        return format!("{ANSI_CYAN}{seg}{ANSI_RESET}");
-    }
-    format!("{ANSI_DIM}{seg}{ANSI_RESET}")
 }

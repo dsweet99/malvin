@@ -74,6 +74,7 @@ fn captive_cat_acp_session_with_containment(
             rpc_timeout: args.rpc_timeout,
             telemetry,
             memory_containment,
+            work_dir: cwd.to_path_buf(),
         },
     )))
 }

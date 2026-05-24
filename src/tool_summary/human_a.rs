@@ -1,12 +1,12 @@
 use serde_json::Value;
 
 use super::format::stderr_headline;
-use super::human_a_done::human_done_line;
+use super::human_a_done::{human_done_line, search_query_from};
 use super::human_b::{human_edit_subject, human_execute_command, human_read_subject, humanize_duration};
 use super::parse::ParsedToolUpdate;
 use super::types::{
-    ToolSummaryTracker, TOOL_PHASE_DONE, TOOL_PHASE_NAMED_STATUS, TOOL_PHASE_PENDING,
-    TOOL_PHASE_RUNNING, TOOL_PHASE_START,
+    shorten_middle, ToolSummaryTracker, TOOL_PHASE_DONE, TOOL_PHASE_NAMED_STATUS,
+    TOOL_PHASE_PENDING, TOOL_PHASE_RUNNING, TOOL_PHASE_START,
 };
 
 const TOOL_STDOUT_FAST_COLLAPSE_MS: u128 = 300;
@@ -75,7 +75,7 @@ pub(crate) fn human_start_line(
 ) -> Option<String> {
     match kind {
         "read" => human_read_subject(parsed, tracker, false).map(|subject| format!("Reading {subject}…")),
-        "search" => Some(super::human_a_done::human_search_start(parsed)),
+        "search" => Some(super::human_a_done::human_search_start(parsed, tracker)),
         "execute" => {
             let cmd = human_execute_command(parsed, tracker);
             Some(format!("Run {cmd}…"))
@@ -99,7 +99,13 @@ pub(crate) fn human_running_line(
     match kind {
         "read" => human_read_subject(parsed, tracker, false)
             .map(|subject| format!("Reading {subject} · {dur}")),
-        "search" => Some(format!("Searching · {dur}")),
+        "search" => search_query_from(parsed, tracker).map_or_else(
+            || Some(format!("Searching · {dur}")),
+            |q| Some(format!(
+                "Searching {} · {dur}",
+                shorten_middle(q, super::types::TOOL_DISPLAY_MAX_WIDTH)
+            )),
+        ),
         "execute" => Some(format!(
             "Run {} · {dur}",
             human_execute_command(parsed, tracker)

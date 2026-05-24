@@ -60,6 +60,7 @@ pub struct SessionInnerAssembly {
     pub rpc_timeout: std::time::Duration,
     pub telemetry: SessionReaderTelemetry,
     pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
+    pub work_dir: PathBuf,
 }
 
 impl SessionChannelState {
@@ -122,6 +123,7 @@ impl SessionChannelState {
             log_full_outgoing_prompts: parts.telemetry.log_full_outgoing_prompts,
             trace_jsonl: parts.telemetry.trace_jsonl,
             memory_containment: parts.memory_containment,
+            work_dir: parts.work_dir,
         }
     }
 }

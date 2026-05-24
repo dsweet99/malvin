@@ -12,6 +12,7 @@ fn kpop_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         iterable_closed_warned: false,
+        work_dir: std::path::PathBuf::new(),
     }
 }
 

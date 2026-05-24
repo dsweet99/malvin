@@ -10,7 +10,7 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::human_a::format_tool_stdout;
     let _ = super::human_a::execute_effective_exit;
     let _ = super::human_a::execute_stdout_failed;
-    let _ = super::human_b::tool_summary_stdout_display;
+    let _ = super::ansi::tool_summary_stdout_display;
     let _ = std::any::type_name::<super::ToolSummaryLines>();
     let _ = super::format::format_tool_line;
     let _ = super::format::start_label;
@@ -65,7 +65,10 @@ fn kiss_cov_tool_summary_format_symbols_for_kiss() {
 fn kiss_cov_tool_summary_human_symbols_for_kiss() {
     let _ = super::human_a_done::human_done_line;
     let _ = super::human_a_done::human_search_start;
+    let _ = super::human_a_done::search_query_from;
+    let _ = super::human_b::relativize_tool_path;
     let _ = super::human_b::human_read_subject;
+    let _ = super::ansi::apply_tool_summary_ansi;
     let _ = super::human_b::human_edit_subject;
     let _ = super::human_b::human_execute_command;
     let _ = super::human_b::raw_byte_size;
@@ -92,8 +95,8 @@ fn kiss_cov_tool_summary_human_b_detail_symbols_for_kiss() {
     let _ = super::human_b::looks_like_path_label;
     let _ = super::human_b::escape_tool_subject_fragment;
     let _ = super::human_b::strip_execute_cd_prefix;
-    let _ = super::human_b::apply_tool_summary_ansi;
-    let _ = super::human_b::ansi_style_tool_segment;
-    let _ = super::human_b::ansi_style_tool_segment_running_or_path;
-    let _ = super::human_b::ansi_style_path_tail;
+    let _ = super::ansi::apply_tool_summary_ansi;
+    let _ = super::ansi::ansi_style_tool_segment;
+    let _ = super::ansi::ansi_style_tool_segment_running_or_path;
+    let _ = super::ansi::ansi_style_path_tail;
 }
