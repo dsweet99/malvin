@@ -1,4 +1,4 @@
-//! `malvin plan` `@file` edge cases (continued).
+//! `malvin plan` md-file edge cases (continued).
 
 #[cfg(unix)]
 mod common;
@@ -39,9 +39,9 @@ mod unix_tests {
     }
 
     #[test]
-    fn malvin_plan_missing_at_file_fails() {
+    fn malvin_plan_nonexistent_md_is_literal() {
         let (root, home, workspace) = test_home_workspace();
-        let mock = root.path().join("mock-agent-acp-plan-missing-at");
+        let mock = root.path().join("mock-agent-acp-plan-missing-md");
         write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
         let original_path = std::env::var("PATH").unwrap_or_default();
         let path = format!("{}:{original_path}", root.path().display());
@@ -51,37 +51,21 @@ mod unix_tests {
             mock_agent: &mock,
             path,
         };
-        let missing = workspace.join("no_such_plan.md");
-        let at_arg = format!("@{}", missing.display());
-        let out = spawn_malvin_plan(&sp, &[&at_arg]);
-        assert!(!out.status.success());
-        let combined = format!(
-            "{}{}",
+        let out = spawn_malvin_plan(&sp, &["no_such_plan.md"]);
+        assert!(
+            out.status.success(),
+            "stderr={}\nstdout={}",
             String::from_utf8_lossy(&out.stderr),
             String::from_utf8_lossy(&out.stdout)
         );
-        assert!(
-            combined.contains("does not exist") || combined.contains("ERR:"),
-            "expected missing @file error: {combined}"
-        );
-    }
-
-    fn assert_bare_at_rejected(sp: &PlanSpawn<'_>, args: &[&str]) {
-        let out = spawn_malvin_plan(sp, args);
-        assert!(!out.status.success());
-        let combined = format!(
-            "{}{}",
-            String::from_utf8_lossy(&out.stderr),
-            String::from_utf8_lossy(&out.stdout)
-        );
-        assert!(
-            combined.contains("Empty path after `@`") || combined.contains("ERR:"),
-            "expected bare @ error for args={args:?}: {combined}"
+        assert_eq!(
+            fs::read_to_string(workspace.join("plan.md")).unwrap(),
+            "no_such_plan.md\n"
         );
     }
 
     #[test]
-    fn malvin_plan_bare_at_is_rejected_with_and_without_plan_path() {
+    fn malvin_plan_bare_at_writes_literal_to_default_plan() {
         let (root, home, workspace) = test_home_workspace();
         let mock = root.path().join("mock-agent-acp-plan-bare-at");
         write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
@@ -93,8 +77,14 @@ mod unix_tests {
             mock_agent: &mock,
             path,
         };
-        assert_bare_at_rejected(&sp, &["@"]);
-        assert_bare_at_rejected(&sp, &["--plan-path", "out.md", "@"]);
+        let out = spawn_malvin_plan(&sp, &["@"]);
+        assert!(
+            out.status.success(),
+            "stderr={}\nstdout={}",
+            String::from_utf8_lossy(&out.stderr),
+            String::from_utf8_lossy(&out.stdout)
+        );
+        assert_eq!(fs::read_to_string(workspace.join("plan.md")).unwrap(), "@\n");
     }
 
     #[test]

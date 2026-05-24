@@ -86,12 +86,15 @@ Every agent-backed command creates `_malvin/<timestamp>_<token>/` under the sess
 - **kiss**: required before `code`, `tidy`, `plan`, and `bug` start; also installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.
 
-## Request syntax (`@file`)
+## Request syntax
 
-Several commands accept a positional request. Prefix with `@` to read text from a file; the session work directory becomes the file’s parent directory (`.` for a bare string).
+Several commands accept a positional request.
+
+- **`code` and `plan`:** pass an existing `.md` file path (no whitespace; case-sensitive `.md` suffix) to read that file; work dir is its parent. Otherwise the argument is literal text (including nonexistent `.md` paths).
+- **Other commands (`do`, `kpop`, …):** prefix with `@` to read text from a file; work dir is the file’s parent.
 
 Examples:
 
 - `malvin do "fix the typo"` — work dir `.`, request is literal text
-- `malvin code @plan.md` — read `plan.md`, work dir is its parent
+- `malvin code plan.md` — read `plan.md`, work dir is its parent
 - `malvin kpop @notes/request.md` — KPOP stores copy as `request.md` in the run dir

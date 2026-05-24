@@ -6,6 +6,8 @@ If you solve the problem before using the global hypothesis budget, append a sec
 
 Approximate remaining hypothesis budget for the full run after this turn if you complete it ({{ want }} steps): {{ remaining_hypotheses }}.
 
+If you need ideas, call `malvin invent PROMPT`
+
 User request:
 
 {{ user_request }}

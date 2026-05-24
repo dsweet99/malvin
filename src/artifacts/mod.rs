@@ -1,5 +1,6 @@
 //! Run directories and log paths.
 
+mod md_request;
 mod startup_tag;
 
 use std::path::{Path, PathBuf};
@@ -13,6 +14,7 @@ pub use crate::session_dotfile_backup::{
     restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
 };
 
+pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
 pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};

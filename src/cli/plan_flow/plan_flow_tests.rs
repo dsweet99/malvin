@@ -16,17 +16,17 @@ fn normalizes_trailing_newlines_to_single_terminal_newline() {
 }
 
 #[test]
-fn sole_at_positional_targets_file_in_place() {
+fn sole_md_positional_targets_file_in_place() {
     let tmp = tempfile::tempdir().unwrap();
     let notes = tmp.path().join("notes.md");
     std::fs::write(&notes, "from file\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
-        text: Some(format!("@{}", notes.display())),
+        text: Some(notes.to_string_lossy().into_owned()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     assert_eq!(dest, notes);
-    assert!(super::plan_resolve::is_sole_at_in_place_for_test(&plan));
+    assert!(super::plan_resolve::is_sole_md_file_in_place_for_test(&plan));
     assert!(
         super::plan_resolve::plan_source_bytes_for_test(&plan, &dest)
             .unwrap()
@@ -45,30 +45,33 @@ fn cross_dir_plan_copy_fixture() -> (tempfile::TempDir, std::path::PathBuf, crat
     std::fs::write(&input, "body\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: Some(output),
-        text: Some(format!("@{}", input.display())),
+        text: Some(input.to_string_lossy().into_owned()),
     };
     (tmp, dst_side, plan)
 }
 
 #[test]
-fn sole_at_session_work_dir_matches_resolve_user_request() {
+fn sole_md_session_work_dir_matches_resolve_user_md_request() {
+    let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
-    let sub = tmp.path().join("nested");
-    std::fs::create_dir_all(&sub).unwrap();
-    let input = sub.join("in.md");
-    std::fs::write(&input, "body\n").unwrap();
-    let at_arg = format!("@{}", input.display());
-    let (_, expected) = crate::artifacts::resolve_user_request(&at_arg).unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    std::fs::create_dir_all("nested").unwrap();
+    std::fs::write("nested/in.md", "body\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
-        text: Some(at_arg),
+        text: Some("nested/in.md".to_string()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
-    assert_eq!(super::plan_resolve::plan_session_work_dir(&plan, &dest), expected);
+    assert_eq!(
+        super::plan_resolve::plan_session_work_dir(&plan, &dest),
+        tmp.path().join("nested")
+    );
+    std::env::set_current_dir(old_cwd).unwrap();
 }
 
 #[test]
-fn plan_path_with_at_source_uses_destination_workspace() {
+fn plan_path_with_md_source_uses_destination_workspace() {
     let (_tmp, dst_side, plan) = cross_dir_plan_copy_fixture();
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     super::plan_resolve::apply_plan_source(&plan, &dest).expect("copy");
@@ -81,14 +84,14 @@ fn plan_path_with_at_source_uses_destination_workspace() {
 }
 
 #[test]
-fn plan_path_same_file_as_at_source_skips_rewrite() {
+fn plan_path_same_file_as_md_source_skips_rewrite() {
     let tmp = tempfile::tempdir().unwrap();
     let plan_file = tmp.path().join("plan.md");
     std::fs::write(&plan_file, "keep\n\n").unwrap();
     let before = std::fs::read(&plan_file).unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: Some(plan_file.clone()),
-        text: Some(format!("@{}", plan_file.display())),
+        text: Some(plan_file.to_string_lossy().into_owned()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     super::plan_resolve::apply_plan_source(&plan, &dest).expect("apply");
@@ -96,14 +99,14 @@ fn plan_path_same_file_as_at_source_skips_rewrite() {
 }
 
 #[test]
-fn plan_path_flag_with_at_source_writes_copy() {
+fn plan_path_flag_with_md_source_writes_copy() {
     let tmp = tempfile::tempdir().unwrap();
     let input = tmp.path().join("in.md");
     let output = tmp.path().join("out.md");
     std::fs::write(&input, "copy me\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: Some(output.clone()),
-        text: Some(format!("@{}", input.display())),
+        text: Some(input.to_string_lossy().into_owned()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     super::plan_resolve::apply_plan_source(&plan, &dest).expect("write");
@@ -124,34 +127,49 @@ fn literal_positional_writes_normalized_text() {
 }
 
 #[test]
-fn bare_at_positional_rejected_like_resolve_user_request() {
+fn bare_at_positional_writes_literal_to_default_plan() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
         text: Some("@".to_string()),
     };
-    let err = super::plan_resolve::resolve_plan_destination(&plan).unwrap_err();
-    assert_eq!(err, "Empty path after `@`.");
+    let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
+    super::plan_resolve::apply_plan_source(&plan, &dest).expect("write");
+    assert_eq!(std::fs::read_to_string(dest).unwrap(), "@\n");
+    std::env::set_current_dir(old_cwd).unwrap();
 }
 
 #[test]
-fn bare_at_with_plan_path_is_rejected_on_copy() {
+fn nonexistent_md_positional_is_literal() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
     let plan = crate::cli::PlanArgs {
-        plan_path: Some(std::path::PathBuf::from("out.md")),
-        text: Some("@".to_string()),
+        plan_path: None,
+        text: Some("no_such_plan.md".to_string()),
     };
-    let err = super::plan_resolve::resolve_plan_destination(&plan).unwrap_err();
-    assert_eq!(err, "Empty path after `@`.");
+    let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
+    super::plan_resolve::apply_plan_source(&plan, &dest).expect("write");
+    assert_eq!(
+        std::fs::read_to_string(dest).unwrap(),
+        "no_such_plan.md\n"
+    );
+    std::env::set_current_dir(old_cwd).unwrap();
 }
 
 #[test]
-fn plan_path_with_at_source_copies_trim_empty_file_body() {
+fn plan_path_with_md_source_copies_trim_empty_file_body() {
     let tmp = tempfile::tempdir().unwrap();
     let input = tmp.path().join("empty.md");
     let output = tmp.path().join("out.md");
     std::fs::write(&input, "\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: Some(output.clone()),
-        text: Some(format!("@{}", input.display())),
+        text: Some(input.to_string_lossy().into_owned()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     super::plan_resolve::apply_plan_source(&plan, &dest).expect("copy");
@@ -159,13 +177,13 @@ fn plan_path_with_at_source_copies_trim_empty_file_body() {
 }
 
 #[test]
-fn sole_at_empty_existing_file_reviews_in_place_without_rewrite() {
+fn sole_md_empty_existing_file_reviews_in_place_without_rewrite() {
     let tmp = tempfile::tempdir().unwrap();
     let empty = tmp.path().join("empty.md");
     std::fs::write(&empty, "\n").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
-        text: Some(format!("@{}", empty.display())),
+        text: Some(empty.to_string_lossy().into_owned()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
     assert_eq!(dest, empty);
@@ -174,17 +192,18 @@ fn sole_at_empty_existing_file_reviews_in_place_without_rewrite() {
 }
 
 #[test]
-fn sole_at_directory_is_rejected_before_copy() {
+fn md_directory_path_is_literal() {
+    let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
-    let dir = tmp.path().join("plans");
-    std::fs::create_dir_all(&dir).unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    std::fs::create_dir_all("notes.md").unwrap();
     let plan = crate::cli::PlanArgs {
         plan_path: None,
-        text: Some(format!("@{}", dir.display())),
+        text: Some("notes.md".to_string()),
     };
-    let err = super::plan_resolve::resolve_plan_destination(&plan).unwrap_err();
-    assert!(
-        err.contains("not a file") || err.contains("directory"),
-        "unexpected err: {err}"
-    );
+    let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
+    super::plan_resolve::apply_plan_source(&plan, &dest).expect("write");
+    assert_eq!(std::fs::read_to_string(dest).unwrap(), "notes.md\n");
+    std::env::set_current_dir(old_cwd).unwrap();
 }

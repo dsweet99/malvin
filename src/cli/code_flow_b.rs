@@ -95,10 +95,10 @@ pub async fn run_code(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    use crate::artifacts::resolve_user_request;
+    use crate::artifacts::resolve_user_md_request;
     let store = prepare_prompt_store(workflow)?;
     let request = crate::cli::cli_request::require_cli_request(code.request.as_ref(), "code")?;
-    let (text, work_dir) = resolve_user_request(&request)?;
+    let (text, work_dir) = resolve_user_md_request(&request)?;
     code_run_workspace_pre_checks(&code, &work_dir)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
     let mut client = build_agent(shared, workflow, emit_stdout_markdown);

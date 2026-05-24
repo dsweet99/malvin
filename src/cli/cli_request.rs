@@ -1,4 +1,4 @@
-//! CLI positional request validation (`<REQUEST>` text or `@path`).
+//! CLI positional request validation (`<REQUEST>` text or path).
 
 pub(crate) fn require_cli_request(
     request: Option<&String>,
@@ -10,7 +10,7 @@ pub(crate) fn require_cli_request(
         .filter(|s| !s.is_empty());
     trimmed
         .map(std::string::ToString::to_string)
-        .ok_or_else(|| format!("malvin {subcommand}: missing required REQUEST (text or @path)"))
+        .ok_or_else(|| format!("malvin {subcommand}: missing required REQUEST (text or path)"))
 }
 
 #[cfg(test)]

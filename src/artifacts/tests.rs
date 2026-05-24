@@ -127,3 +127,45 @@ fn resolve_at_file_reads_existing_file() {
     assert_eq!(text, "hello");
     assert_eq!(wd, tmp.path());
 }
+
+#[test]
+fn resolve_user_md_request_literal_uses_dot_work_dir_and_trims() {
+    let (text, wd) = resolve_user_md_request("  hello world  ").unwrap();
+    assert_eq!(text, "hello world");
+    assert_eq!(wd, PathBuf::from("."));
+}
+
+#[test]
+fn resolve_user_md_request_reads_existing_md_file() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    std::fs::write("note.md", "line1\n").unwrap();
+    let (text, wd) = resolve_user_md_request("note.md").unwrap();
+    std::env::set_current_dir(old_cwd).unwrap();
+    assert_eq!(text, "line1\n");
+    assert_eq!(wd, tmp.path());
+}
+
+#[test]
+fn is_existing_md_file_path_rejects_whitespace_and_nonexistent() {
+    assert!(is_existing_md_file_path("fix plan.md").is_none());
+    assert!(is_existing_md_file_path("missing.md").is_none());
+    assert!(is_existing_md_file_path("@plan.md").is_none());
+    assert!(is_existing_md_file_path("../missing.md").is_none());
+    assert!(is_existing_md_file_path("./note.md").is_none());
+    assert!(is_existing_md_file_path("plan.MD").is_none());
+}
+
+#[test]
+fn is_existing_md_file_path_rejects_directory() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(tmp.path()).unwrap();
+    let dir = tmp.path().join("notes.md");
+    std::fs::create_dir_all(&dir).unwrap();
+    assert!(is_existing_md_file_path("notes.md").is_none());
+    std::env::set_current_dir(old_cwd).unwrap();
+}

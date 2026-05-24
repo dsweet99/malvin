@@ -1,4 +1,4 @@
-//! `malvin plan` `@file` destination and source behavior.
+//! `malvin plan` md-file destination and source behavior.
 
 #[cfg(unix)]
 mod common;
@@ -13,7 +13,7 @@ mod unix_tests {
     };
 
     #[test]
-    fn malvin_plan_at_file_reads_source_not_literal() {
+    fn malvin_plan_md_file_reads_source_not_literal() {
         let (root, home, workspace) = test_home_workspace();
         let mock = root.path().join("mock-agent-acp-plan-at");
         write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
@@ -26,8 +26,8 @@ mod unix_tests {
             path,
         };
         fs::write(workspace.join("source.md"), "real plan body\n").unwrap();
-        let at_arg = format!("@{}", workspace.join("source.md").display());
-        let out = spawn_malvin_plan(&sp, &[&at_arg]);
+        let md_arg = workspace.join("source.md").to_string_lossy().into_owned();
+        let out = spawn_malvin_plan(&sp, &[&md_arg]);
         assert!(
             out.status.success(),
             "stderr={}\nstdout={}",
@@ -37,13 +37,12 @@ mod unix_tests {
         let body = fs::read_to_string(workspace.join("source.md")).unwrap();
         assert!(
             body.contains("real plan body"),
-            "plan file should retain source content, not @ literal: {body}"
+            "plan file should retain source content, not path literal: {body}"
         );
-        assert!(!body.trim().starts_with('@'));
         let default_plan = workspace.join("plan.md");
         assert!(
             !default_plan.exists(),
-            "sole @path must review in place, not create {default_plan:?}"
+            "sole md path must review in place, not create {default_plan:?}"
         );
     }
 
@@ -74,7 +73,7 @@ mod unix_tests {
     }
 
     #[test]
-    fn malvin_plan_plan_path_with_at_source_copies_then_reviews() {
+    fn malvin_plan_plan_path_with_md_source_copies_then_reviews() {
         let (root, home, workspace) = test_home_workspace();
         let mock = root.path().join("mock-agent-acp-plan-copy");
         write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
@@ -87,8 +86,8 @@ mod unix_tests {
             path,
         };
         fs::write(workspace.join("in.md"), "copied plan\n").unwrap();
-        let at_arg = format!("@{}", workspace.join("in.md").display());
-        let out = spawn_malvin_plan(&sp, &["--plan-path", "out.md", &at_arg]);
+        let md_arg = workspace.join("in.md").to_string_lossy().into_owned();
+        let out = spawn_malvin_plan(&sp, &["--plan-path", "out.md", &md_arg]);
         assert!(
             out.status.success(),
             "stderr={}\nstdout={}",
@@ -145,8 +144,8 @@ mod unix_tests {
         fs::create_dir_all(&src_side).unwrap();
         fs::create_dir_all(&dst_side).unwrap();
         fs::write(src_side.join("in.md"), "copied plan\n").unwrap();
-        let at_arg = format!("@{}", src_side.join("in.md").display());
-        let out = spawn_malvin_plan(&sp, &["--plan-path", "dst_side/out.md", &at_arg]);
+        let md_arg = src_side.join("in.md").to_string_lossy().into_owned();
+        let out = spawn_malvin_plan(&sp, &["--plan-path", "dst_side/out.md", &md_arg]);
         assert!(
             out.status.success(),
             "stderr={}\nstdout={}",
@@ -159,11 +158,11 @@ mod unix_tests {
         );
         assert!(
             dst_side.join("_malvin").is_dir(),
-            "run artifacts must live under destination plan parent, not @ source"
+            "run artifacts must live under destination plan parent, not source"
         );
         assert!(
             !src_side.join("_malvin").exists(),
-            "_malvin must not be created under @ source when --plan-path selects another tree"
+            "_malvin must not be created under source when --plan-path selects another tree"
         );
     }
 }

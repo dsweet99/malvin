@@ -22,19 +22,21 @@ How the plan destination and content are determined:
 |------|-------------|---------|
 | (omit) | `./plan.md` | Review existing file (must exist) |
 | Plain text | `./plan.md` | Write normalized text to `plan.md` |
-| `@path` only (no `--plan_path`) | `path` in place | Review/copy from file; session work dir = file’s parent |
-| `@src` + `--plan_path <dest>` | `<dest>` | Copy/read from `@src` into destination |
+| `path.md` only (no `--plan_path`) | `path.md` in place | Review existing file; session work dir = file’s parent |
+| `src.md` + `--plan_path <dest>` | `<dest>` | Copy/read from `src.md` into destination |
 | Text + `--plan_path` | Flag path | Write text to flag path |
 
 Normalization: trim trailing newlines, ensure single trailing newline; empty-after-trim text errors.
 
-**In-place `@file` review:** When positional is only `@file` and no `--plan_path`, malvin does not rewrite the source file; it opens a session in the file’s directory and reviews that path.
+A positional string is treated as a file path only when it has no whitespace, ends with `.md` (case-sensitive), has no invalid path characters, and names an existing regular file. Otherwise it is literal plan text (including nonexistent `.md` paths).
+
+**In-place file review:** When positional is only an existing `.md` file and no `--plan_path`, malvin does not rewrite the source file; it opens a session in the file’s directory and reviews that path.
 
 ## Options
 
 ### `--plan_path <PATH>` / `--plan-path <PATH>`
 
-Explicit plan file path (default if no `@` in text: `plan.md` in cwd). Relative paths resolve from cwd.
+Explicit plan file path (default when positional is not an existing `.md` file: `plan.md` in cwd). Relative paths resolve from cwd.
 
 ### Global options
 
@@ -61,7 +63,7 @@ No `implement`, `concerns`, `learn`, or post-run gate loop in this command.
 
 ## Session behavior
 
-- Work directory: parent of plan file, or directory from `@file` resolution rules above.
+- Work directory: parent of plan file, or directory from existing `.md` resolution rules above.
 - Run dir: `_malvin/<stamp>/` under session work dir.
 - Dotfile backup/restore like other coding sessions.
 - Abort via `result.md` honored after the prompt.
@@ -78,7 +80,7 @@ Typical flow:
 
 ```text
 malvin plan "Add caching layer for API responses"
-malvin code --trust-the-plan @plan.md
+malvin code --trust-the-plan plan.md
 ```
 
 ## Examples
@@ -86,6 +88,6 @@ malvin code --trust-the-plan @plan.md
 ```text
 malvin plan
 malvin plan "Refactor auth module"
-malvin plan @draft.md --plan_path plan.md
-malvin plan @plan.md
+malvin plan draft.md --plan_path plan.md
+malvin plan plan.md
 ```

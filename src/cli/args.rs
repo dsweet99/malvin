@@ -76,6 +76,6 @@ pub struct CodeArgs {
     /// Skip workspace quality gates before the ACP session starts.
     #[arg(long, default_value_t = false)]
     pub skip_pre_checks: bool,
-    /// Request or `@file` → `_malvin/.../plan.md`.
+    /// Request text or path to an existing `.md` file → `_malvin/.../plan.md`.
     pub request: Option<String>,
 }

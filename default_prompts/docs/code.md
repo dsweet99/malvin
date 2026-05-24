@@ -16,7 +16,7 @@ malvin code [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Plan text or `@<path>` to a plan file (same resolution as `do`). Copy stored as `plan.md` in the run directory.
+Plan text or a path to an existing `.md` file (no whitespace in the path string; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
 
 ## Options
 
@@ -96,7 +96,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 ## Examples
 
 ```text
-malvin code @plan.md
-malvin code --trust-the-plan @plan.md --max-loops 3
+malvin code plan.md
+malvin code --trust-the-plan plan.md --max-loops 3
 malvin code --skip-pre-checks "Add widget API per plan.md"
 ```

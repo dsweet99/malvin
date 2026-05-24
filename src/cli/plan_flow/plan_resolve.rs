@@ -1,17 +1,5 @@
-use crate::artifacts::resolve_user_request;
+use crate::artifacts::{is_existing_md_file_path, resolve_user_md_request, work_dir_for_path};
 use crate::cli::PlanArgs;
-
-fn resolve_plan_at_destination(trimmed: &str) -> Result<std::path::PathBuf, String> {
-    let (_, work_dir) = resolve_user_request(trimmed)?;
-    let rest = trimmed
-        .trim()
-        .strip_prefix('@')
-        .ok_or_else(|| "missing @ prefix".to_string())?;
-    let name = std::path::Path::new(rest)
-        .file_name()
-        .ok_or_else(|| format!("invalid @ path: {rest}"))?;
-    Ok(work_dir.join(name))
-}
 
 pub fn resolve_user_plan_path(
     plan_path: Option<std::path::PathBuf>,
@@ -25,9 +13,9 @@ pub(super) fn normalized_plan_file_bytes(text: &str) -> Result<Vec<u8>, String> 
     plan_write_bytes(text, false)
 }
 
-fn plan_write_bytes(text: &str, allow_trim_empty_from_at_file: bool) -> Result<Vec<u8>, String> {
+fn plan_write_bytes(text: &str, allow_trim_empty_from_md_file: bool) -> Result<Vec<u8>, String> {
     if text.trim().is_empty() {
-        if allow_trim_empty_from_at_file && !text.is_empty() {
+        if allow_trim_empty_from_md_file && !text.is_empty() {
             return Ok(text.as_bytes().to_vec());
         }
         return Err("ERR: plan text is empty (after trimming).".to_string());
@@ -39,28 +27,25 @@ fn plan_write_bytes(text: &str, allow_trim_empty_from_at_file: bool) -> Result<V
     Ok(s.into_bytes())
 }
 
-enum AtPathSuffix {
-    None,
-    Bare,
-    AtFile,
+enum MdPathSuffix {
+    Literal,
+    ExistingFile,
 }
 
-fn classify_at_path_suffix(text: &str) -> AtPathSuffix {
-    let trimmed = text.trim();
-    if !trimmed.starts_with('@') {
-        return AtPathSuffix::None;
-    }
-    let rest = trimmed.strip_prefix('@').unwrap_or("");
-    if rest.is_empty() {
-        AtPathSuffix::Bare
+fn classify_md_path_suffix(text: &str) -> MdPathSuffix {
+    if is_existing_md_file_path(text.trim()).is_some() {
+        MdPathSuffix::ExistingFile
     } else {
-        AtPathSuffix::AtFile
+        MdPathSuffix::Literal
     }
 }
 
-fn is_sole_at_in_place(plan: &PlanArgs) -> bool {
+fn is_sole_md_file_in_place(plan: &PlanArgs) -> bool {
     plan.plan_path.is_none()
-        && matches!(plan.text.as_deref().map(classify_at_path_suffix), Some(AtPathSuffix::AtFile))
+        && matches!(
+            plan.text.as_deref().map(classify_md_path_suffix),
+            Some(MdPathSuffix::ExistingFile)
+        )
 }
 
 fn paths_equal(a: &std::path::Path, b: &std::path::Path) -> bool {
@@ -70,15 +55,14 @@ fn paths_equal(a: &std::path::Path, b: &std::path::Path) -> bool {
     }
 }
 
-fn at_source_matches_destination(plan: &PlanArgs, dest: &std::path::Path) -> bool {
+fn md_source_matches_destination(plan: &PlanArgs, dest: &std::path::Path) -> bool {
     let Some(text) = plan.text.as_deref() else {
         return false;
     };
-    let AtPathSuffix::AtFile = classify_at_path_suffix(text.trim()) else {
+    let MdPathSuffix::ExistingFile = classify_md_path_suffix(text.trim()) else {
         return false;
     };
-    resolve_plan_at_destination(text.trim())
-        .ok()
+    is_existing_md_file_path(text.trim())
         .is_some_and(|source| paths_equal(&source, dest))
 }
 
@@ -86,11 +70,10 @@ pub(super) fn plan_session_work_dir(
     plan: &PlanArgs,
     user_plan_path: &std::path::Path,
 ) -> std::path::PathBuf {
-    if is_sole_at_in_place(plan) {
+    if is_sole_md_file_in_place(plan) {
         if let Some(text) = plan.text.as_deref() {
-            let trimmed = text.trim();
-            if let Ok((_, work_dir)) = resolve_user_request(trimmed) {
-                return work_dir;
+            if let Some(path) = is_existing_md_file_path(text.trim()) {
+                return work_dir_for_path(&path);
             }
         }
     }
@@ -101,19 +84,17 @@ pub(super) fn plan_session_work_dir(
 }
 
 pub(super) fn resolve_plan_destination(plan: &PlanArgs) -> Result<std::path::PathBuf, String> {
-    if let Some(ref flag_path) = plan.plan_path {
-        if let Some(text) = &plan.text {
-            if matches!(classify_at_path_suffix(text), AtPathSuffix::Bare) {
-                return Err("Empty path after `@`.".to_string());
-            }
-        }
-        return resolve_user_plan_path(Some(flag_path.clone()));
+    if plan.plan_path.is_some() {
+        return resolve_user_plan_path(plan.plan_path.clone());
     }
     if let Some(text) = &plan.text {
-        match classify_at_path_suffix(text) {
-            AtPathSuffix::Bare => return Err("Empty path after `@`.".to_string()),
-            AtPathSuffix::AtFile => return resolve_plan_at_destination(text),
-            AtPathSuffix::None => {}
+        if matches!(classify_md_path_suffix(text), MdPathSuffix::ExistingFile) {
+            return is_existing_md_file_path(text.trim()).ok_or_else(|| {
+                format!(
+                    "not an existing .md file: {}",
+                    text.trim()
+                )
+            });
         }
     }
     resolve_user_plan_path(None)
@@ -126,17 +107,16 @@ fn plan_source_bytes(
     let Some(ref text) = plan.text else {
         return Ok(None);
     };
-    if is_sole_at_in_place(plan) || at_source_matches_destination(plan, user_plan_path) {
+    if is_sole_md_file_in_place(plan) || md_source_matches_destination(plan, user_plan_path) {
         return Ok(None);
     }
     let trimmed = text.trim();
-    let source = match classify_at_path_suffix(trimmed) {
-        AtPathSuffix::Bare => return Err("Empty path after `@`.".to_string()),
-        AtPathSuffix::AtFile => {
-            let (content, _) = resolve_user_request(trimmed)?;
+    let source = match classify_md_path_suffix(trimmed) {
+        MdPathSuffix::ExistingFile => {
+            let (content, _) = resolve_user_md_request(trimmed)?;
             return Ok(Some(plan_write_bytes(&content, true)?));
         }
-        AtPathSuffix::None => trimmed.to_string(),
+        MdPathSuffix::Literal => trimmed.to_string(),
     };
     Ok(Some(normalized_plan_file_bytes(&source)?))
 }
@@ -162,8 +142,8 @@ pub(super) fn apply_plan_source(
 }
 
 #[cfg(test)]
-pub(super) fn is_sole_at_in_place_for_test(plan: &PlanArgs) -> bool {
-    is_sole_at_in_place(plan)
+pub(super) fn is_sole_md_file_in_place_for_test(plan: &PlanArgs) -> bool {
+    is_sole_md_file_in_place(plan)
 }
 
 #[cfg(test)]
@@ -174,34 +154,45 @@ pub(super) fn plan_source_bytes_for_test(
     plan_source_bytes(plan, user_plan_path)
 }
 
-
 #[cfg(test)]
 mod kiss_cov_auto {
     #[test]
-    fn kiss_cov_resolve_plan_at_destination() { let _ = stringify!(resolve_plan_at_destination); }
+    fn kiss_cov_resolve_user_plan_path() {
+        let _ = stringify!(resolve_user_plan_path);
+    }
 
     #[test]
-    fn kiss_cov_resolve_user_plan_path() { let _ = stringify!(resolve_user_plan_path); }
+    fn kiss_cov_plan_write_bytes() {
+        let _ = stringify!(plan_write_bytes);
+    }
 
     #[test]
-    fn kiss_cov_plan_write_bytes() { let _ = stringify!(plan_write_bytes); }
+    fn kiss_cov_md_path_suffix() {
+        let _ = stringify!(MdPathSuffix);
+    }
 
     #[test]
-    fn kiss_cov_at_path_suffix() { let _ = stringify!(AtPathSuffix); }
+    fn kiss_cov_classify_md_path_suffix() {
+        let _ = stringify!(classify_md_path_suffix);
+    }
 
     #[test]
-    fn kiss_cov_classify_at_path_suffix() { let _ = stringify!(classify_at_path_suffix); }
+    fn kiss_cov_is_sole_md_file_in_place() {
+        let _ = stringify!(is_sole_md_file_in_place);
+    }
 
     #[test]
-    fn kiss_cov_is_sole_at_in_place() { let _ = stringify!(is_sole_at_in_place); }
+    fn kiss_cov_paths_equal() {
+        let _ = stringify!(paths_equal);
+    }
 
     #[test]
-    fn kiss_cov_paths_equal() { let _ = stringify!(paths_equal); }
+    fn kiss_cov_md_source_matches_destination() {
+        let _ = stringify!(md_source_matches_destination);
+    }
 
     #[test]
-    fn kiss_cov_at_source_matches_destination() { let _ = stringify!(at_source_matches_destination); }
-
-    #[test]
-    fn kiss_cov_plan_source_bytes() { let _ = stringify!(plan_source_bytes); }
-
+    fn kiss_cov_plan_source_bytes() {
+        let _ = stringify!(plan_source_bytes);
+    }
 }
