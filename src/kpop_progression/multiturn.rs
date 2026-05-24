@@ -11,34 +11,10 @@ use crate::kpop_acp_prompt::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
-pub enum Phase {
-    KpopBlock {
-        target_n: usize,
-        hypotheses_before: usize,
-        attempts: u32,
-    },
-    Mbc2 {
-        baseline: usize,
-        sent: u32,
-    },
-}
+use super::multiturn_types::{KpopMultiturnParams, NextStep, Phase};
 
-pub enum NextStep {
-    Stop,
-    Again,
-    Emit(MultiturnPrompt),
-}
-
-pub struct KpopMultiturnParams<B> {
-    pub builder: B,
-    pub exp_log_path: PathBuf,
-    pub max_hypotheses: usize,
-    pub p_creative: f64,
-    pub rng: StdRng,
-}
-
-pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
-    builder: B,
+pub struct KpopMultiturnState<'a> {
+    builder: KpopMultiturnPrompts<'a>,
     exp_log_path: PathBuf,
     pub max_hypotheses: usize,
     pub p_creative: f64,
@@ -47,7 +23,7 @@ pub struct KpopMultiturnState<B: KpopMultiturnPrompts> {
     phase: Phase,
     done: bool,
 }
-impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
+impl<'a> KpopMultiturnState<'a> {
     pub fn exp_log_path(&self) -> &std::path::Path {
         &self.exp_log_path
     }
@@ -58,7 +34,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     ///
     /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
     pub fn new(
-        builder: B,
+        builder: KpopMultiturnPrompts<'a>,
         exp_log_path: PathBuf,
         max_hypotheses: usize,
         p_creative: f64,
@@ -77,7 +53,7 @@ impl<B: KpopMultiturnPrompts> KpopMultiturnState<B> {
     /// # Errors
     ///
     /// Returns `Err` when the experiment log cannot be read or parsed for the initial phase.
-    pub fn from_params(mut params: KpopMultiturnParams<B>) -> Result<Self, String> {
+    pub fn from_params(mut params: KpopMultiturnParams<'a>) -> Result<Self, String> {
         let text = read_exp_log_text(&params.exp_log_path)?;
         let hypotheses_before = hypotheses_emitted(&text);
         let mean = block_mean_from_p_creative(params.p_creative);

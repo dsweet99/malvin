@@ -1,4 +1,4 @@
-//! Linux: `/proc/<pid>/stat` and optional `/proc/<pid>/status`.
+// Linux: `/proc/<pid>/stat` and optional `/proc/<pid>/status`.
 
 use super::ChildHealth;
 use std::fs;
@@ -46,7 +46,7 @@ pub(super) fn parse_status_voluntary_ctxt(status: &str) -> Option<u64> {
 }
 
 #[must_use]
-pub(super) fn sample_child_health(pid: u32) -> ChildHealth {
+pub(super) fn sample_child_health_linux(pid: u32) -> ChildHealth {
     let stat_path = format!("/proc/{pid}/stat");
     let raw = match fs::read_to_string(&stat_path) {
         Ok(s) => s,
@@ -74,5 +74,32 @@ pub(super) fn sample_child_health(pid: u32) -> ChildHealth {
         thread_count: Some(p.num_threads),
         voluntary_ctxt,
         sample_time: Instant::now(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ParsedProcStat, parse_proc_stat_line, parse_status_voluntary_ctxt};
+
+    #[test]
+    fn parse_proc_stat_line_extracts_parsed_proc_stat_fields() {
+        let line = "1 (sleep) S 0 1 1 0 -1 4194304 100 0 0 0 10 20 0 0 0 0 3";
+        let p = parse_proc_stat_line(line).expect("stat");
+        assert_eq!(p.state, b'S');
+        assert_eq!(p.utime, 10);
+        assert_eq!(p.stime, 20);
+        assert_eq!(p.num_threads, 3);
+        let _ = ParsedProcStat {
+            state: p.state,
+            utime: p.utime,
+            stime: p.stime,
+            num_threads: p.num_threads,
+        };
+    }
+
+    #[test]
+    fn parse_status_voluntary_ctxt_reads_switch_count() {
+        let status = "Name:\tsleep\nvoluntary_ctxt_switches:\t42\n";
+        assert_eq!(parse_status_voluntary_ctxt(status), Some(42));
     }
 }

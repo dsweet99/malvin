@@ -3,10 +3,11 @@
 pub(crate) mod discover_py;
 
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 use discover_py::python_ruff_and_pytest_flags;
 
-pub const MALVIN_CHECKS_FILE: &str = ".malvin_checks";
+pub use crate::workspace_paths::MALVIN_CHECKS_REL as MALVIN_CHECKS_FILE;
 
 pub const KISSIGNORE_FILE: &str = ".kissignore";
 
@@ -18,11 +19,35 @@ pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
 pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo";
 
-const DEFAULT_RUST_CHECKS: [&str; 2] = [DEFAULT_RUST_CLIPPY, "cargo test"];
+pub const DEFAULT_RUST_TEST: &str = "cargo test";
+
+pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
+
+#[must_use]
+pub fn cargo_nextest_available(work_dir: &Path) -> bool {
+    Command::new("cargo")
+        .args(["nextest", "--version"])
+        .current_dir(work_dir)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+#[must_use]
+pub fn default_rust_test_command(work_dir: &Path) -> &'static str {
+    if cargo_nextest_available(work_dir) {
+        DEFAULT_RUST_NEXTEST
+    } else {
+        DEFAULT_RUST_TEST
+    }
+}
 
 #[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
-    work_dir.join(".git").is_dir() || work_dir.join(MALVIN_CHECKS_FILE).is_file()
+    work_dir.join(".git").is_dir()
+        || crate::malvin_checks_path(work_dir).is_file()
+        || crate::is_malvin_workspace(work_dir)
 }
 
 fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
@@ -35,13 +60,14 @@ fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
         out.push(DEFAULT_PYTEST_CHECK.to_string());
     }
     if work_dir.join("Cargo.toml").is_file() {
-        out.extend(DEFAULT_RUST_CHECKS.iter().map(|s| (*s).to_string()));
+        out.push(DEFAULT_RUST_CLIPPY.to_string());
+        out.push(default_rust_test_command(work_dir).to_string());
     }
     out
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
-    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    let checks_path = crate::malvin_checks_path(work_dir);
     if checks_path.is_file() {
         return load_malvin_checks(&checks_path);
     }
@@ -49,7 +75,7 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
 }
 
 pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
-    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    let checks_path = crate::malvin_checks_path(work_dir);
     if checks_path.is_file() {
         return Ok(());
     }
@@ -58,21 +84,25 @@ pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> 
     if !content.is_empty() {
         content.push('\n');
     }
+    if let Some(parent) = checks_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+    }
     std::fs::write(&checks_path, content)
         .map_err(|e| format!("write {}: {e}", checks_path.display()))
 }
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
     ensure_default_malvin_checks_file(work_dir)?;
-    load_malvin_checks(&work_dir.join(MALVIN_CHECKS_FILE))
+    load_malvin_checks(&crate::malvin_checks_path(work_dir))
 }
 
 /// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
 ///
-/// Reads **only** [`MALVIN_CHECKS_FILE`]. Returns an error if that file is not a regular file.
+/// Reads **only** [`.malvin/checks`]. Returns an error if that file is not a regular file.
 /// Callers that need defaults materialized first should run [`ensure_default_malvin_checks_file`].
 pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> {
-    let checks_path = work_dir.join(MALVIN_CHECKS_FILE);
+    let checks_path = crate::malvin_checks_path(work_dir);
     if !checks_path.is_file() {
         return Err(format!(
             "{} is missing (expected a regular file before expanding {{ quality_gates }})",
@@ -81,6 +111,22 @@ pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> 
     }
     let lines = load_malvin_checks(&checks_path)?;
     Ok(format_quality_gates_markdown(&lines))
+}
+
+/// Materializes default `.malvin/checks` only while building prompt markdown, then restores prior state.
+///
+/// Avoids leaving an untracked `.malvin/checks` when the workspace had none before the call.
+pub fn prompt_quality_gates_markdown_ephemeral(work_dir: &Path) -> Result<String, String> {
+    use crate::session_dotfile_backup::{
+        backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
+    };
+    let backup = backup_workspace_malvin_checks_if_present(work_dir)?;
+    let result = (|| {
+        ensure_default_malvin_checks_file(work_dir)?;
+        prompt_quality_gates_markdown(work_dir)
+    })();
+    restore_workspace_malvin_checks_backup(work_dir, &backup)?;
+    result
 }
 
 #[must_use]
@@ -107,131 +153,4 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-
-    #[test]
-    fn kiss_stringify_repo_gates_internals() {
-        let _ = stringify!(super::builtin_gate_command_lines);
-        let _ = stringify!(crate::repo_gates::discover_py::visit_source_files);
-        let _ = stringify!(crate::repo_gates::discover_py::python_ruff_and_pytest_flags);
-        let _ = stringify!(super::ensure_default_malvin_checks_file);
-        let _ = stringify!(super::gate_command_lines_for_workspace_run);
-    }
-
-    #[test]
-    fn gate_command_lines_skips_ruff_when_no_python() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname = 'm'\nversion = '0.1.0'\n",
-        )
-        .unwrap();
-        let g = gate_command_lines(w).unwrap();
-        assert!(g.iter().any(|c| c == KISS_CHECK_COMMAND));
-        assert!(!g.iter().any(|c| c.starts_with("ruff")));
-        assert!(g.iter().any(|c| c.starts_with("cargo clippy")));
-    }
-
-    #[test]
-    fn gate_command_lines_skips_pytest_without_test_named_py() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(w.join("main.py"), "x=1\n").unwrap();
-        let g = gate_command_lines(w).unwrap();
-        assert!(g.iter().any(|c| c == "ruff check ."));
-        assert!(!g.iter().any(|c| c.contains("pytest")));
-    }
-
-    #[test]
-    fn gate_command_lines_runs_pytest_when_test_module_present() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(w.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
-        let g = gate_command_lines(w).unwrap();
-        assert!(g.iter().any(|c| c == DEFAULT_PYTEST_CHECK));
-    }
-
-    #[test]
-    fn gate_command_lines_uses_only_malvin_checks_when_present() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname = 'm'\nversion = '0.1.0'\n",
-        )
-        .unwrap();
-        fs::write(w.join(".malvin_checks"), "custom-a\ncustom-b\n").unwrap();
-        let g = gate_command_lines(w).unwrap();
-        assert_eq!(g, vec!["custom-a".to_string(), "custom-b".to_string()]);
-        assert!(!g.iter().any(|c| c == KISS_CHECK_COMMAND));
-    }
-
-    #[test]
-    fn ensure_default_malvin_checks_file_writes_builtin_lines() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname = 'm'\nversion = '0.1.0'\n",
-        )
-        .unwrap();
-        let checks_path = w.join(MALVIN_CHECKS_FILE);
-        assert!(!checks_path.exists());
-        let expected = gate_command_lines(w).unwrap();
-        ensure_default_malvin_checks_file(w).unwrap();
-        assert!(checks_path.is_file());
-        assert_eq!(load_malvin_checks(&checks_path).unwrap(), expected);
-        ensure_default_malvin_checks_file(w).unwrap();
-        assert_eq!(load_malvin_checks(&checks_path).unwrap(), expected);
-    }
-
-    #[test]
-    fn gate_command_lines_for_workspace_run_matches_file_after_ensure() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::create_dir(w.join(".git")).unwrap();
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname = 'm'\nversion = '0.1.0'\n",
-        )
-        .unwrap();
-        let a = gate_command_lines_for_workspace_run(w).unwrap();
-        let b = gate_command_lines(w).unwrap();
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn prompt_quality_gates_includes_rust_builtin_without_git_when_cargo_toml_present() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname='x'\nversion='0.1.0'\n",
-        )
-        .unwrap();
-        ensure_default_malvin_checks_file(w).unwrap();
-        let md = prompt_quality_gates_markdown(w).unwrap();
-        assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
-        assert!(md.contains("cargo clippy"));
-        assert!(md.contains("cargo test"));
-    }
-
-    #[test]
-    fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        let err = prompt_quality_gates_markdown(w).unwrap_err();
-        assert!(
-            err.contains("is missing"),
-            "unexpected error message: {err}"
-        );
-    }
-}
+mod tests;

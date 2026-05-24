@@ -14,8 +14,9 @@ pub fn git_init(project: &Path) {
 
 pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::Output {
     let mock_home = tempfile::tempdir().expect("mock home tempdir");
+    let pre_commit_home = tempfile::tempdir().expect("pre-commit home tempdir");
     let mock_bin = mock_home.path().join("mock-acp-init");
-    let js = super::acp_mock_js("", "");
+    let js = super::acp_core::acp_mock_js("", "");
     super::write_mock_executable(&mock_bin, &js);
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.arg("init");
@@ -24,7 +25,8 @@ pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::O
     }
     cmd.args(["--path"]).arg(project);
     cmd.env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str());
+        .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
+        .env("PRE_COMMIT_HOME", pre_commit_home.path());
     cmd.output().expect("spawn malvin init")
 }
 

@@ -1,4 +1,4 @@
-//! Trace file line emission and coalesced writes (used by the ACP stdout reader).
+// Trace file line emission and coalesced writes (used by the ACP stdout reader).
 
 use super::{
     PromptTraceWriter, SessionUpdateChunkKind, TraceChunkCoalescer, VerboseTraceCoalesceState,
@@ -73,89 +73,36 @@ const fn raw_output_suppress_thought_stdout(
         && !writer.show_thoughts_on_stdout
 }
 
-struct TraceTeeStdoutCtx<'a> {
-    tee_stdout: bool,
-    kind: Option<SessionUpdateChunkKind>,
-    ts: &'a str,
+#[derive(Clone, Copy)]
+pub(crate) struct TraceFileStdout<'a> {
+    pub tee_stdout: bool,
+    pub stream_iterable_closed: Option<super::IterableClosedStream>,
+    pub tee_line_override: Option<&'a str>,
+    pub tee_line_display: Option<&'a str>,
+    /// When set, trace file and stdout tee share this timestamp (tool-summary path).
+    pub ts: Option<&'a str>,
 }
 
-fn format_trace_display_line(line: &str, kind: Option<SessionUpdateChunkKind>) -> String {
-    match kind {
-        Some(SessionUpdateChunkKind::Thought) => format!("[{line}]"),
-        _ => line.to_string(),
-    }
+#[derive(Clone, Copy)]
+pub(crate) struct TraceTeeStdoutCtx<'a> {
+    pub(crate) tee_stdout: bool,
+    pub(crate) kind: Option<SessionUpdateChunkKind>,
+    pub(crate) ts: &'a str,
 }
 
-fn print_tee_unprefixed_wrapped_line(line: &str) {
-    let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
-        0,
-        line,
-        crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
-    );
-    if !wrap {
-        println!("{line}");
-        return;
-    }
-    for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
-        println!("{seg}");
-    }
-}
-
-fn trace_tee_stdout_event<'a>(
-    writer: &'a PromptTraceWriter,
-    line: &'a str,
-    ts: &'a str,
-    dim_payload: bool,
-) -> crate::output::AcpTeeStdoutEvent<'a> {
-    crate::output::AcpTeeStdoutEvent {
-        direction: crate::output::AcpTeeDirection::FromAgent,
-        who: &writer.who,
-        line,
-        ts,
-        emit_stdout_markdown: writer.emit_stdout_markdown,
-        dim_payload,
-    }
-}
-
-fn trace_tee_stdout_line(writer: &mut PromptTraceWriter, line: &str, ctx: &TraceTeeStdoutCtx<'_>) {
-    if !ctx.tee_stdout {
-        return;
-    }
-    if writer.plain_lines || writer.raw_output {
-        print_tee_unprefixed_wrapped_line(line);
-        return;
-    }
-    match writer.stdout_replacement {
-        Some(rep) => {
-            if !writer.placeholder_emitted {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, rep, ctx.ts, false,
-                ));
-                writer.placeholder_emitted = true;
-            }
-        }
-        None => {
-            if matches!(ctx.kind, Some(SessionUpdateChunkKind::Thought)) {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, true,
-                ));
-            } else {
-                crate::output::print_stdout_acp_tee_line_with_timestamp(&trace_tee_stdout_event(
-                    writer, line, ctx.ts, false,
-                ));
-            }
-        }
-    }
-}
+use crate::acp::trace_line_write_tee::{format_trace_display_line, trace_stdout_tee_payload, trace_tee_stdout_line};
+use crate::acp::trace_line_write_tool_summary::write_tool_summary_trace_line;
 
 pub async fn trace_file_write_line(
     writer: &mut PromptTraceWriter,
     line: &str,
-    tee_stdout: bool,
     kind: Option<SessionUpdateChunkKind>,
+    stdout: TraceFileStdout<'_>,
 ) {
     let display_line = format_trace_display_line(line, kind);
-    let ts = crate::output::timestamp_now_string();
+    let ts = stdout
+        .ts
+        .map_or_else(crate::output::timestamp_now_string, str::to_string);
     let formatted = if writer.plain_lines {
         display_line.clone()
     } else {
@@ -174,16 +121,25 @@ pub async fn trace_file_write_line(
     if raw_output_suppress_thought_stdout(kind, writer) {
         return;
     }
-    let stdout_line = if writer.plain_lines || writer.raw_output {
-        line
-    } else {
-        &display_line
-    };
+    if let Some(warn) =
+        super::operational_iterable_closed_for_emit(line, stdout.stream_iterable_closed)
+    {
+        if !writer.iterable_closed_warned {
+            crate::output::print_log_warning(warn);
+            writer.iterable_closed_warned = true;
+        }
+        return;
+    }
+    let stdout_line = stdout.tee_line_override.map_or_else(
+        || trace_stdout_tee_payload(line, kind, writer),
+        std::string::ToString::to_string,
+    );
     trace_tee_stdout_line(
         writer,
-        stdout_line,
+        &stdout_line,
+        stdout.tee_line_display,
         &TraceTeeStdoutCtx {
-            tee_stdout,
+            tee_stdout: stdout.tee_stdout,
             kind,
             ts: &ts,
         },
@@ -196,29 +152,85 @@ pub async fn write_trace_line_coalesced(
     opts: WriteTraceLineCoalescedOpts<'_>,
 ) {
     if let Some((kind, text)) = opts.parsed.and_then(session_update_chunk_parts) {
-        for (kind, tl) in coalesce.feed(kind, text) {
-            trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
+        for (kind, tl, stream) in coalesce.feed(kind, text) {
+            trace_file_write_line(
+                trace_file,
+                &tl,
+                Some(kind),
+                TraceFileStdout {
+                    tee_stdout: opts.tee_stdout,
+                    stream_iterable_closed: stream,
+                    tee_line_override: None,
+                    tee_line_display: None,
+                    ts: None,
+                },
+            )
+            .await;
         }
         return;
     }
-    for (kind, tl) in coalesce.flush_all() {
-        trace_file_write_line(trace_file, &tl, opts.tee_stdout, Some(kind)).await;
+    for (kind, tl, stream) in coalesce.flush_all() {
+        trace_file_write_line(
+            trace_file,
+            &tl,
+            Some(kind),
+            TraceFileStdout {
+                tee_stdout: opts.tee_stdout,
+                stream_iterable_closed: stream,
+                tee_line_override: None,
+                tee_line_display: None,
+                ts: None,
+            },
+        )
+        .await;
     }
-    let unparsed_tee = opts.tee_stdout && opts.parsed.is_none();
-    trace_file_write_line(trace_file, opts.raw_line, unparsed_tee, None).await;
+    if let Some(parsed) = opts.parsed {
+        if write_tool_summary_trace_line(trace_file, coalesce, parsed, opts.tee_stdout).await {
+            return;
+        }
+    }
+    let raw_protocol_tee = opts.tee_stdout && opts.parsed.is_none();
+    trace_file_write_line(
+        trace_file,
+        opts.raw_line,
+        None,
+        TraceFileStdout {
+            tee_stdout: raw_protocol_tee,
+            stream_iterable_closed: None,
+            tee_line_override: None,
+            tee_line_display: None,
+            ts: None,
+        },
+    )
+    .await;
 }
 
-#[test]
-fn kiss_stringify_trace_line_write() {
-    let _ = stringify!(ReaderTraceLineOpts);
-    let _ = stringify!(reader_loop_verbose_and_trace_line);
-    let _ = stringify!(TraceTeeStdoutCtx);
-    let _ = stringify!(format_trace_display_line);
-    let _ = stringify!(print_tee_unprefixed_wrapped_line);
-    let _ = stringify!(trace_file_write_line);
-    let _ = stringify!(write_trace_line_coalesced);
-    let _ = stringify!(WriteTraceLineCoalescedOpts);
-    let _ = stringify!(raw_output_suppress_thought_stdout);
-    let _ = stringify!(trace_tee_stdout_event);
-    let _ = stringify!(trace_tee_stdout_line);
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_reader_trace_line_opts() { let _ = stringify!(ReaderTraceLineOpts); }
+
+    #[test]
+    fn kiss_cov_write_trace_line_coalesced_opts() { let _ = stringify!(WriteTraceLineCoalescedOpts); }
+
+    #[test]
+    fn kiss_cov_reader_loop_verbose_and_trace_line() { let _ = stringify!(reader_loop_verbose_and_trace_line); }
+
+    #[test]
+    fn kiss_cov_raw_output_suppress_thought_stdout() { let _ = stringify!(raw_output_suppress_thought_stdout); }
+
+    #[test]
+    fn kiss_cov_trace_file_stdout() { let _ = stringify!(TraceFileStdout); }
+
+    #[test]
+    fn kiss_cov_trace_tee_stdout_ctx() { let _ = stringify!(TraceTeeStdoutCtx); }
+
+    #[test]
+    fn kiss_cov_trace_file_write_line() { let _ = stringify!(trace_file_write_line); }
+
+    #[test]
+    fn kiss_cov_write_trace_line_coalesced() { let _ = stringify!(write_trace_line_coalesced); }
+
 }

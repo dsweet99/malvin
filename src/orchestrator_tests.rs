@@ -1,7 +1,8 @@
 use crate::artifacts::RunArtifacts;
+use crate::orchestrator::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 use crate::orchestrator::{
     WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
-    should_run_learn_check, workflow_context,
+    workflow_context,
 };
 use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
@@ -28,8 +29,14 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
     fn legacy_stem(s: &str) -> &str {
         &s[..s.len().saturating_sub(3)]
     }
-    assert_eq!(legacy_stem("review_1.md"), prompt_md_stem("review_1.md"));
-    assert_eq!(legacy_stem("review_2.md"), prompt_md_stem("review_2.md"));
+    assert_eq!(
+        legacy_stem("review.md"),
+        prompt_md_stem("review.md")
+    );
+    assert_eq!(
+        legacy_stem("review_write.md"),
+        prompt_md_stem("review_write.md")
+    );
     assert_ne!(
         legacy_stem("readme.markdown"),
         prompt_md_stem("readme.markdown")
@@ -46,30 +53,39 @@ fn is_lgtm_reads_file() {
 }
 
 #[test]
-fn sync_review_file_clears_artifact_when_workspace_empty_so_stale_lgtm_is_removed() {
+fn sync_review_file_returns_artifact_when_workspace_empty() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("LGTM\n"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
-fn sync_review_file_clears_artifact_when_workspace_whitespace_only() {
+fn sync_review_file_returns_artifact_when_workspace_whitespace_only() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "  \n\t\n").unwrap();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("LGTM\n"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
-fn prefer_primary_errors_prefers_workflow_over_timing_when_both_fail() {
+fn prefer_primary_errors_chains_timing_when_workflow_fails() {
     let r = prefer_primary_errors_over_timing(
         Err(WorkflowError("workflow".into())),
         Ok(()),
         Err(WorkflowError("timing".into())),
     );
+    assert_eq!(r.err().unwrap().0, "workflow; timing: timing");
+}
+
+#[test]
+fn prefer_primary_errors_omits_timing_suffix_when_timing_succeeds() {
+    let r =
+        prefer_primary_errors_over_timing(Err(WorkflowError("workflow".into())), Ok(()), Ok(()));
     assert_eq!(r.err().unwrap().0, "workflow");
 }
 
@@ -80,18 +96,39 @@ fn prefer_primary_errors_surfaces_timing_when_workflow_and_end_succeed() {
 }
 
 #[test]
-fn sync_review_file_copies_nonempty_workspace_to_artifact() {
+fn prefer_primary_errors_chains_timing_when_end_fails() {
+    let r = prefer_primary_errors_over_timing(
+        Ok(()),
+        Err(WorkflowError("end".into())),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "end; timing: timing");
+}
+
+#[test]
+fn prefer_primary_errors_chains_timing_when_workflow_and_end_fail() {
+    let r = prefer_primary_errors_over_timing(
+        Err(WorkflowError("workflow".into())),
+        Err(WorkflowError("end".into())),
+        Err(WorkflowError("timing".into())),
+    );
+    assert_eq!(r.err().unwrap().0, "workflow; end: end; timing: timing");
+}
+
+#[test]
+fn sync_review_file_prefers_nonempty_artifact_over_workspace() {
     let (_t, workspace, artifact) = tmp_review_paths();
     std::fs::write(&workspace, "LGTM\n").unwrap();
     std::fs::write(&artifact, "old").unwrap();
-    sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap().trim(), "LGTM");
+    let out = sync_review_file(&workspace, &artifact).unwrap();
+    assert_eq!(out.as_deref(), Some("old"));
+    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "old");
 }
 
 #[test]
 fn workflow_context_review_path_points_to_artifact() {
     let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join("_malvin").join("run123");
+    let run_dir = t.path().join(".malvin/logs").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
     let plan_path = run_dir.join("plan.md");
     std::fs::write(&plan_path, "test plan").unwrap();
@@ -109,23 +146,28 @@ fn workflow_context_review_path_points_to_artifact() {
         .expect("review_path must be in context");
 
     assert!(
-        review_path.contains("_malvin"),
-        "review_path must point to artifact (./_malvin/.../review.md); got: {review_path}"
+        review_path.contains(".malvin/logs"),
+        "review_path must point to artifact (./.malvin/logs/.../review.md); got: {review_path}"
     );
     assert_eq!(
-        review_path, "./_malvin/run123/review.md",
+        review_path, "./.malvin/logs/run123/review.md",
         "review_path should be the artifact path"
     );
     assert!(
         ctx.contains_key("quality_gates"),
         "quality_gates must be in context"
     );
+    assert_eq!(
+        ctx.get("quality_gates_log").map(String::as_str),
+        Some("./.malvin/logs/run123/quality_gates.log"),
+        "quality_gates_log should point to the run artifact log"
+    );
 }
 
 #[test]
 fn workflow_context_includes_malvin_command() {
     let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join("_malvin").join("run123");
+    let run_dir = t.path().join(".malvin/logs").join("run123");
     std::fs::create_dir_all(&run_dir).unwrap();
     let plan_path = run_dir.join("plan.md");
     std::fs::write(&plan_path, "test plan").unwrap();
@@ -137,63 +179,6 @@ fn workflow_context_includes_malvin_command() {
     let prompts = PromptStore::default_store();
     let ctx = workflow_context(&artifacts, &prompts, "tidy").expect("workflow_context");
     assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
-}
-
-#[test]
-fn kiss_stringify_orchestrator_helpers() {
-    let _ = stringify!(crate::orchestrator::insert_artifact_paths);
-    let _ = stringify!(crate::orchestrator::insert_formatted);
-    let _ = stringify!(crate::orchestrator::prompt_md_stem);
-    let _ = stringify!(crate::orchestrator::format_prompt_path);
-    let _ = stringify!(crate::orchestrator::clear_review_file);
-    let _ = stringify!(crate::orchestrator::check_abort);
-    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_reviewer_pair_for_attempt);
-    let _ = stringify!(crate::review_sync::sync_review_file_for_attempt);
-    let _ = stringify!(crate::orchestrator::review_loop_helpers::run_concerns_and_check_abort_impl);
-}
-
-#[test]
-fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(
-        should_run_learn_check(0, 0),
-        "0 threshold, 0 elapsed => run"
-    );
-    assert!(
-        should_run_learn_check(0, 1),
-        "0 threshold, any elapsed => run"
-    );
-    assert!(
-        should_run_learn_check(0, 300_000),
-        "0 threshold, 5 min => run"
-    );
-}
-
-#[test]
-fn should_run_learn_check_below_threshold_skips() {
-    assert!(
-        !should_run_learn_check(300_000, 0),
-        "5 min threshold, 0 elapsed => skip"
-    );
-    assert!(
-        !should_run_learn_check(300_000, 299_999),
-        "5 min threshold, just under => skip"
-    );
-}
-
-#[test]
-fn should_run_learn_check_at_or_above_threshold_runs() {
-    assert!(
-        should_run_learn_check(300_000, 300_000),
-        "5 min threshold, exactly 5 min => run"
-    );
-    assert!(
-        should_run_learn_check(300_000, 300_001),
-        "5 min threshold, just over => run"
-    );
-    assert!(
-        should_run_learn_check(300_000, 600_000),
-        "5 min threshold, 10 min => run"
-    );
 }
 
 #[test]
@@ -235,8 +220,24 @@ fn clear_review_file_returns_error_on_permission_denied() {
     );
 }
 
+const FIVE_MIN_MS: u64 = DEFAULT_LEARN_MIN_ELAPSED_MS;
+
 #[test]
-fn stringify_orchestrator_run_methods() {
-    let _ = stringify!(crate::orchestrator::Orchestrator::run_with_pre_summary_gap);
-    let _ = stringify!(crate::orchestrator::Orchestrator::run);
+fn should_run_learn_check_zero_threshold_always_runs() {
+    assert!(should_run_learn_check(0, 0));
+    assert!(should_run_learn_check(0, 1));
+    assert!(should_run_learn_check(0, FIVE_MIN_MS));
+}
+
+#[test]
+fn should_run_learn_check_below_threshold_skips() {
+    assert!(!should_run_learn_check(FIVE_MIN_MS, 0));
+    assert!(!should_run_learn_check(FIVE_MIN_MS, 299_999));
+}
+
+#[test]
+fn should_run_learn_check_at_or_above_threshold_runs() {
+    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS));
+    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS + 1));
+    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS * 2));
 }

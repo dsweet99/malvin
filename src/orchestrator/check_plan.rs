@@ -1,4 +1,4 @@
-use crate::review_sync::is_lgtm_str;
+use crate::review_sync::{is_lgtm_str, read_nonempty_review};
 use crate::run_timing::TimingPhase;
 use std::collections::HashMap;
 use std::path::Path;
@@ -55,20 +55,7 @@ async fn run_check_plan_attempt(
 }
 
 fn read_check_plan_review_file(review_path: &Path) -> Result<Option<String>, WorkflowError> {
-    if !review_path.exists() {
-        return Ok(None);
-    }
-    let contents = std::fs::read_to_string(review_path).map_err(|e| {
-        WorkflowError(format!(
-            "failed to read review file: {}: {e}",
-            review_path.display()
-        ))
-    })?;
-    if contents.trim().is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(contents))
-    }
+    read_nonempty_review(review_path, "").map_err(WorkflowError)
 }
 #[cfg(test)]
 mod tests {
@@ -98,10 +85,107 @@ mod tests {
         assert!(err.0.contains("failed to read review file"));
     }
 
-    #[test]
-    fn kiss_stringify_check_plan_units() {
-        let _ = stringify!(super::run_check_plan);
-        let _ = stringify!(super::run_check_plan_attempt);
-        let _ = stringify!(super::read_check_plan_review_file);
+    #[tokio::test]
+    async fn run_check_plan_spawn_fails() {
+        use crate::acp::{AgentClient, AgentIoOptions};
+        use crate::artifacts::{
+            KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+            create_run_artifacts_from_text,
+        };
+        use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
+        use crate::prompts::PromptStore;
+
+        use super::run_check_plan;
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts = create_run_artifacts_from_text("cp", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                sandbox: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: false,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let err = run_check_plan(&mut orch, &ctx)
+            .await
+            .expect_err("check plan");
+        assert!(!err.0.is_empty());
+    }
+
+    #[tokio::test]
+    async fn run_check_plan_attempt_errors_when_spawn_fails() {
+        use crate::acp::{AgentClient, AgentIoOptions};
+        use crate::artifacts::{
+            KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+            create_run_artifacts_from_text,
+        };
+        use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
+        use crate::prompts::PromptStore;
+
+        use super::run_check_plan_attempt;
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts =
+            create_run_artifacts_from_text("cp-attempt", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                sandbox: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: false,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let review_path = artifacts.artifact_review_md();
+        let err = run_check_plan_attempt(&mut orch, &ctx, &review_path)
+            .await
+            .expect_err("attempt");
+        assert!(!err.0.is_empty());
     }
 }

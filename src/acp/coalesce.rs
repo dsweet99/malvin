@@ -1,4 +1,5 @@
 // Verbose/trace coalescing for `session/update` chunks.
+use crate::acp::import_prelude::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum SessionUpdateChunkKind {
     Message,
@@ -153,21 +154,6 @@ pub(crate) fn session_update_chunk_parts(
         .and_then(Value::as_str)
         .unwrap_or("");
     Some((kind, text))
-}
-
-#[test]
-fn kiss_stringify_coalesce_a() {
-    let _ = stringify!(SessionUpdateChunkKind);
-    let _ = stringify!(ACP_VERBOSE_COALESCE_MAX);
-    let _ = stringify!(coalesce_append_chunk);
-    let _ = stringify!(coalesce_char_boundary_at);
-    let _ = stringify!(coalesce_flush_cap);
-    let _ = stringify!(coalesce_word_split_points);
-    let _ = stringify!(coalesce_flush_nonempty);
-    let _ = stringify!(VerboseIoCoalescer);
-    let _ = stringify!(VerboseIoCoalescer::feed);
-    let _ = stringify!(VerboseIoCoalescer::flush_all);
-    let _ = stringify!(session_update_chunk_parts);
 }
 
 #[cfg(test)]

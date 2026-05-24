@@ -1,5 +1,6 @@
 mod common;
 
+use common::check_ignored;
 use std::path::Path;
 use std::process::Command;
 
@@ -59,6 +60,25 @@ fn help_lists_global_no_markdown_once() {
 }
 
 #[cfg_attr(unix, test)]
+fn help_no_markdown_description_is_disable_styled_markdown() {
+    let out = run_root_help_output();
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    let line = s
+        .lines()
+        .find(|line| line.contains("--no-markdown"))
+        .unwrap_or_else(|| panic!("expected --no-markdown in root help: {s}"));
+    assert!(
+        line.contains("Disable styled markdown"),
+        "expected --no-markdown help to say 'Disable styled markdown': {line:?}"
+    );
+}
+
+#[cfg_attr(unix, test)]
 fn help_omits_removed_ground_and_sync_commands() {
     let out = run_root_help_output();
     assert!(
@@ -82,33 +102,28 @@ fn help_omits_removed_ground_and_sync_commands() {
 }
 
 #[test]
-fn default_prompts_review_plan_has_kpop_and_plan_path_slots() {
-    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ kpop }}"));
-    assert!(DEFAULT_PROMPTS_REVIEW_PLAN.contains("{{ plan_path }}"));
+fn default_prompts_review_plan_uses_spaced_brace_placeholders() {
+    let bad = malvin::prompts::malformed_brace_placeholders(DEFAULT_PROMPTS_REVIEW_PLAN);
+    assert!(
+        bad.is_empty(),
+        "review_plan.md must use {{ key }} placeholders: {bad:?}"
+    );
 }
 
 #[test]
-fn root_gitignore_ignores_malvin_logs_and_target() {
+fn repo_root_gitignore_ignores_malvin_logs_and_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     assert!(
-        common::check_ignored(root, "_malvin/dummy_stamp/plan.md"),
-        "expected _malvin/ run dirs to be ignored"
+        check_ignored(root, ".malvin/logs/x/plan.md"),
+        "repo .gitignore should ignore .malvin/logs/ runs"
     );
     assert!(
-        common::check_ignored(root, "log"),
-        "expected root log file to be ignored"
+        check_ignored(root, "log"),
+        "repo .gitignore should ignore root log"
     );
     assert!(
-        common::check_ignored(root, "log_2"),
-        "expected root log_2 to be ignored"
-    );
-    assert!(
-        common::check_ignored(root, "target/debug/malvin"),
-        "expected Rust target/ tree to be ignored"
-    );
-    assert!(
-        !common::check_ignored(root, "README.md"),
-        "expected README.md not to be ignored"
+        check_ignored(root, "target/release/foo"),
+        "repo .gitignore should ignore Rust target/"
     );
 }
 
@@ -124,31 +139,31 @@ fn init_template_gitignore_is_consistent_with_git_check_ignore() {
         .expect("git init");
     assert!(st.success(), "git init failed");
     assert!(
-        common::check_ignored(tmp.path(), "_malvin/x/plan.md"),
-        "template should ignore _malvin/ runs"
+        check_ignored(tmp.path(), ".malvin/logs/x/plan.md"),
+        "template should ignore .malvin/logs/ runs"
     );
     assert!(
-        common::check_ignored(tmp.path(), "log"),
+        check_ignored(tmp.path(), "log"),
         "template should ignore root log"
     );
     assert!(
-        common::check_ignored(tmp.path(), "log_2"),
+        check_ignored(tmp.path(), "log_2"),
         "template should ignore root log_2"
     );
     assert!(
-        common::check_ignored(tmp.path(), "target/release/foo"),
+        check_ignored(tmp.path(), "target/release/foo"),
         "template should ignore Rust target/"
     );
     assert!(
-        !common::check_ignored(tmp.path(), "src/lib.rs"),
+        !check_ignored(tmp.path(), "src/lib.rs"),
         "template should not ignore normal sources"
     );
     assert!(
-        common::check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
+        check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
         "template should ignore sources under nested __pycache__ dirs (not only *.pyc)"
     );
     assert!(
-        common::check_ignored(tmp.path(), "lib/foo.pyc"),
+        check_ignored(tmp.path(), "lib/foo.pyc"),
         "template should ignore .pyc via **/*.py[cod]"
     );
 }

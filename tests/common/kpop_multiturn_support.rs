@@ -1,18 +1,6 @@
-use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
+pub use malvin::MtStubPrompts;
 
 pub const MBC2_SEEK_MAX_STEPS: usize = 10_000;
-
-pub struct MtStubPrompts;
-
-impl KpopMultiturnPrompts for MtStubPrompts {
-    fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("stub kpop want={want}"))
-    }
-
-    fn mbc2_pure(&mut self) -> Result<String, String> {
-        Ok("stub mbc2".into())
-    }
-}
 
 pub fn parse_kpop_want(prompt: &str) -> Option<usize> {
     prompt

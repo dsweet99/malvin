@@ -1,90 +1,229 @@
-use crate::review_sync::{is_lgtm_str, sync_review_file_for_attempt};
-use crate::run_timing::ReviewPairId;
+use std::collections::HashMap;
 
-use super::Orchestrator;
-use super::WorkflowError;
-use super::clear_review_file;
-use super::review_context::{ReviewAttemptCtx, ReviewPhaseArgs};
-use super::review_loop_helpers::{
-    run_concerns_and_check_abort_impl, run_reviewer_pair_for_attempt,
+use crate::repo_checks::RepoGateFailure;
+
+use super::pre_review_gates::{
+    run_pre_review_workspace_gates, write_pre_review_gate_failure_for_artifacts,
 };
+use super::review_attempt_kernel::{
+    REVIEW_WRITE_INNER_RETRY_CAP, REVIEW_WRITE_MISSING_ARTIFACT_MSG,
+    REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG, clear_review_attempt_artifacts,
+};
+use super::review_loop_helpers::run_concerns_and_check_abort_impl;
+use super::review_write_retry::{
+    ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
+};
+use super::{Orchestrator, WorkflowError};
 
-pub(super) async fn run_review_phase(
+struct CodeReviewAttempt<'a> {
+    context: &'a HashMap<String, String>,
+    attempt: usize,
+}
+
+pub(super) async fn run_code_review_phase(
     orchestrator: &mut Orchestrator<'_>,
-    phase: ReviewPhaseArgs<'_>,
+    context: &HashMap<String, String>,
 ) -> Result<(), WorkflowError> {
-    let review_path = orchestrator.artifacts.artifact_review_md();
-
-    for attempt in 1..=orchestrator.config.max_loops.max(1) {
-        let ctx = ReviewAttemptCtx {
-            review_prompt: phase.review_prompt,
-            progress_label: phase.progress_label,
-            phase_id: phase.phase_id,
-            attempt,
-            review_path: &review_path,
-            context: phase.context,
-        };
-        if review_phase_single_attempt(orchestrator, ctx).await? {
-            return Ok(());
+    let max_loops = orchestrator.config.max_loops.max(1);
+    for attempt in 1..=max_loops {
+        let ctx = CodeReviewAttempt { context, attempt };
+        match code_review_single_attempt(orchestrator, ctx).await? {
+            CodeReviewAttemptOutcome::Lgtm => return Ok(()),
+            CodeReviewAttemptOutcome::NotLgtm => {}
+            CodeReviewAttemptOutcome::MissingArtifactReview => {
+                if attempt >= max_loops {
+                    return Err(WorkflowError(format!(
+                        "review: {REVIEW_WRITE_MISSING_ARTIFACT_MSG} after retries"
+                    )));
+                }
+                (orchestrator.progress_callback)(REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG);
+            }
         }
     }
-    Err(WorkflowError(format!(
-        "Did not receive LGTM for {} within max loops.",
-        phase.review_prompt
-    )))
+    Err(WorkflowError(
+        "Did not receive LGTM for review within max loops.".to_string(),
+    ))
 }
 
-async fn review_phase_single_attempt(
+enum CodeReviewAttemptOutcome {
+    Lgtm,
+    NotLgtm,
+    MissingArtifactReview,
+}
+
+async fn code_review_single_attempt(
     orchestrator: &mut Orchestrator<'_>,
-    ctx: ReviewAttemptCtx<'_>,
-) -> Result<bool, WorkflowError> {
-    let workspace_review_path = orchestrator.artifacts.workspace_review_md();
-    (orchestrator.progress_callback)(&format!("{} (attempt {})", ctx.progress_label, ctx.attempt));
-
-    clear_review_file(ctx.review_path)
-        .map_err(|e| WorkflowError(format!("failed to clear artifact review: {e}")))?;
-    clear_review_file(&workspace_review_path)
-        .map_err(|e| WorkflowError(format!("failed to clear workspace review: {e}")))?;
-
-    let review_body = orchestrator
-        .prompts
-        .render(ctx.review_prompt, ctx.context)
-        .map_err(|e| WorkflowError(e.0))?;
-
-    let pair_id = match ctx.phase_id {
-        "review_2" => ReviewPairId::Two,
-        _ => ReviewPairId::One,
-    };
-    run_reviewer_pair_for_attempt(orchestrator, &ctx, &review_body, pair_id).await?;
-
-    let lgtm_text = sync_review_file_for_attempt(ctx.review_path, &workspace_review_path)
-        .map_err(WorkflowError)?;
-    let lgtm = lgtm_text.as_deref().is_some_and(is_lgtm_str);
-    if lgtm {
-        orchestrator.fail_on_abort_result()?;
-        return Ok(true);
+    ctx: CodeReviewAttempt<'_>,
+) -> Result<CodeReviewAttemptOutcome, WorkflowError> {
+    (orchestrator.progress_callback)(&format!("Pre-review (attempt {})", ctx.attempt));
+    clear_review_attempt_artifacts(orchestrator.artifacts)?;
+    match run_pre_review_workspace_gates(orchestrator.artifacts) {
+        Ok(()) => {}
+        Err(RepoGateFailure::Command(failure)) => {
+            let log_path = ctx
+                .context
+                .get("quality_gates_log")
+                .map_or("./.malvin/logs/.../quality_gates.log", String::as_str);
+            write_pre_review_gate_failure_for_artifacts(
+                orchestrator.artifacts,
+                &failure,
+                log_path,
+            )?;
+            let concern_suffix = format!("pre_review_gates_attempt_{}", ctx.attempt);
+            run_concerns_and_check_abort_impl(
+                orchestrator,
+                ctx.attempt,
+                &concern_suffix,
+                ctx.context,
+            )
+            .await?;
+            return Ok(CodeReviewAttemptOutcome::NotLgtm);
+        }
+        Err(RepoGateFailure::Message(message)) => return Err(WorkflowError(message)),
     }
-    run_concerns_and_check_abort(orchestrator, &ctx, "attempt").await
-}
 
-async fn run_concerns_and_check_abort(
-    orchestrator: &mut Orchestrator<'_>,
-    ctx: &ReviewAttemptCtx<'_>,
-    concern_suffix_kind: &str,
-) -> Result<bool, WorkflowError> {
-    let concern_suffix = format!(
-        "{0}_{1}_{2}",
-        ctx.phase_id, concern_suffix_kind, ctx.attempt
-    );
-    run_concerns_and_check_abort_impl(orchestrator, ctx.attempt, &concern_suffix, ctx.context).await
+    (orchestrator.progress_callback)(&format!("Review (attempt {})", ctx.attempt));
+
+    let outcome = {
+        let Orchestrator {
+            client,
+            prompts,
+            artifacts,
+            session_dotfile_backups,
+            progress_callback,
+            ..
+        } = orchestrator;
+        run_reviewers_spawn_then_review_write(
+            ReviewTwoPromptSession {
+                client,
+                prompts,
+                artifacts,
+                session_dotfile_backups,
+                context: ctx.context,
+                attempt: ctx.attempt,
+            },
+            REVIEW_WRITE_INNER_RETRY_CAP,
+            || {
+                progress_callback(REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG);
+            },
+        )
+        .await?
+    };
+    match outcome {
+        ReviewWriteInnerOutcome::Lgtm => return Ok(CodeReviewAttemptOutcome::Lgtm),
+        ReviewWriteInnerOutcome::MissingArtifactExhausted => {
+            return Ok(CodeReviewAttemptOutcome::MissingArtifactReview);
+        }
+        ReviewWriteInnerOutcome::NotLgtm => {}
+    }
+
+    let concern_suffix = format!("review_attempt_{}", ctx.attempt);
+    run_concerns_and_check_abort_impl(orchestrator, ctx.attempt, &concern_suffix, ctx.context)
+        .await?;
+    Ok(CodeReviewAttemptOutcome::NotLgtm)
 }
 
 #[cfg(test)]
-mod kiss_coverage_tests {
-    #[test]
-    fn kiss_stringify_review_loop_units() {
-        let _ = stringify!(super::run_review_phase);
-        let _ = stringify!(super::review_phase_single_attempt);
-        let _ = stringify!(super::run_concerns_and_check_abort);
+mod tests {
+    use crate::acp::{AgentClient, AgentIoOptions};
+    use crate::artifacts::{
+        KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
+        create_run_artifacts_from_text,
+    };
+    use crate::orchestrator::{Orchestrator, WorkflowConfig, workflow_context};
+    use crate::prompts::PromptStore;
+
+    use super::run_code_review_phase;
+
+    #[tokio::test]
+    async fn run_code_review_phase_spawn_fails() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts = create_run_artifacts_from_text("rv", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                sandbox: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: true,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let err = run_code_review_phase(&mut orch, &ctx)
+            .await
+            .expect_err("review");
+        assert!(!err.0.is_empty());
+    }
+
+    #[tokio::test]
+    async fn code_review_single_attempt_errors_when_spawn_fails() {
+        use super::{CodeReviewAttempt, CodeReviewAttemptOutcome, code_review_single_attempt};
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let store = PromptStore::default_store();
+        let artifacts = create_run_artifacts_from_text("rv-single", Some(tmp.path())).expect("art");
+        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let mut client = AgentClient::new(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                sandbox: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig {
+                max_loops: 1,
+                run_learn: false,
+                learn_min_elapsed_ms: 0,
+                skip_check_plan: true,
+            },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: SessionDotfileBackups::from_parts(
+                KissConfigBackup::Missing,
+                MalvinChecksBackup::Missing,
+                KissignoreBackup::Missing,
+            ),
+        };
+        let attempt_ctx = CodeReviewAttempt {
+            context: &ctx,
+            attempt: 1,
+        };
+        match code_review_single_attempt(&mut orch, attempt_ctx).await {
+            Err(e) => assert!(!e.0.is_empty()),
+            Ok(CodeReviewAttemptOutcome::Lgtm) => panic!("expected spawn failure"),
+            Ok(CodeReviewAttemptOutcome::NotLgtm) => panic!("expected spawn failure"),
+            Ok(CodeReviewAttemptOutcome::MissingArtifactReview) => {
+                panic!("expected spawn failure")
+            }
+        }
     }
 }

@@ -1,6 +1,10 @@
 use std::time::{Duration, Instant};
 
-use super::{ReviewPairId, RunTiming, TimingPhase, record_backoff, record_llm, report};
+use super::{
+    ReviewPairId, RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
+    finalize_run_timing_json_only, record_backoff, record_llm, report,
+};
+use std::sync::{Arc, Mutex};
 
 #[test]
 fn run_timing_json_phases_and_review_pair_id_mapping() {
@@ -12,16 +16,18 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
     for key in [
         "check_plan",
         "implement",
-        "review_1_review",
-        "review_2_review",
+        "review_fanout",
+        "review_write",
         "concerns",
         "learn",
         "summary",
     ] {
         assert!(phases.get(key).is_some(), "missing {key}");
     }
-    assert_eq!(ReviewPairId::One.review_phase(), TimingPhase::Review1Review);
-    assert_eq!(ReviewPairId::Two.review_phase(), TimingPhase::Review2Review);
+    assert_eq!(
+        ReviewPairId::Fanout.review_phase(),
+        TimingPhase::ReviewFanout
+    );
 }
 
 #[test]
@@ -80,4 +86,40 @@ fn check_plan_phase_accumulates_timing() {
     let json = report::to_json_value(&r);
     let phases = json.get("phases_ms").unwrap();
     assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
+}
+
+#[test]
+fn attach_new_run_timing_and_finalize_json_only() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    assert!(slot.is_some());
+    finalize_run_timing_json_only(tmp.path(), &timing).expect("json only");
+    assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
+}
+
+#[test]
+fn tool_call_wall_duration_accumulates_in_run_timing() {
+    let mut r = RunTiming::default();
+    r.add_tool_call_wall(Duration::from_millis(30));
+    r.add_tool_call_wall(Duration::from_millis(20));
+    assert_eq!(
+        report::to_json_value(&r)
+            .get("tool_calls_ms")
+            .and_then(serde_json::Value::as_u64),
+        Some(50)
+    );
+}
+
+#[test]
+fn finalize_and_emit_run_timing_writes_summary() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let timing = RunTiming::new_arc();
+    {
+        let mut g = timing.lock().unwrap();
+        g.mark_wall_start(Instant::now());
+        g.mark_wall_end(Instant::now());
+    }
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("emit");
+    assert!(tmp.path().join(super::RUN_TIMING_JSON_FILE).is_file());
 }

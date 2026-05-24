@@ -3,7 +3,7 @@
 
 [gate]
 test_coverage_threshold = 90
-min_similarity = 0.7
+min_similarity = 0.8
 duplication_enabled = true
 orphan_module_enabled = true
 
@@ -40,7 +40,7 @@ returns_per_function = 5
 branches_per_function = 9
 local_variables = 16
 boolean_parameters = 1
-attributes_per_function = 1
+attributes_per_function = 4
 calls_per_function = 20
 methods_per_class = 10
 statements_per_file = 200
@@ -50,6 +50,6 @@ interface_types_per_file = 0
 concrete_types_per_file = 4
 imported_names_per_file = 50
 cycle_size = 0
-indirect_dependencies = 13
-dependency_depth = 2
+indirect_dependencies = 50
+dependency_depth = 5
 

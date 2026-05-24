@@ -3,27 +3,55 @@
 
 ---
 
-## Step 1: Maybe restate plan
+Don't change code.
 
-If the plan in {{ plan_path }} is brief or simplistic, then:
-- Restate the user's request clearly, writing to {{ plan_path }}. Append any questions you might have to the end of the file.
-- Now do research to answer the questions.
+If `[malvin] Ready for implementation.` appears at the bottom of `{{ plan_path }}`, you may stop here. (You've already reviewed and ok'd this plan.)
 
+If there is an "answers" section, then answers take precedence over other parts of the plan.
+If there seem to be inline edits or comments typed in by the user, they take precedence over everything, even answers.
 
-## Step 2: (Always) Review plan
+## Step 1: Restate plan
 
-KPop: Please review the plan in {{ plan_path }}.
+Restate the user's request clearly, and append (after a `---`) your restatement to `{{ plan_path }}`. Also, append any questions you might have to the end of the file.
+
+```text
+<user's original plan, unaltered>
+---
+# Restated Plan
+<your restatement>
+---
+# Questions
+<your questions>
+```
+
+Then do research to answer the questions. Insert your answers into `{{ plan_path }}`.
+
+If you still lingering questions, leave them at the bottom of `{{ plan_path }}` as multiple-choice questions.
+
+## Step 2: Review plan
+
+KPop: Please review the plan in `{{ plan_path }}`. You have a budget of 5 hypotheses.
+
 - Are there errors in the plan?
 - Is the plan self-consistent?
-- Is the plan implementable?
+- Is the plan sound?
 
+## Step 3: Improve the plan
 
-## Step 3: (Always) Revise plan
+KPop: Find one way to make the plan in `{{ plan_path }}` result in more efficient implementation.  You have a budget of 5 hypotheses.
 
-When you're done with the review, revise the plan to incorporate the review feedback. If there are answered questions at the bottom, incorporate them into the main plan, too.
+## Step 4: Revise plan
 
-If there are *really* still lingering questions, leave them at the bottom of {{ plan_path }} as multiple-choice questions.  Otherwise append to the bottom of {{ plan_path }}
+As a final step, revise the restated plan to incorporate the review feedback. If there are answered questions at the bottom, incorporate them into the main plan, too. Leave the user's original plan unaltered.
+
+If you *really* still have lingering questions, leave them at the bottom of `{{ plan_path }}` as multiple-choice questions and stop.
+
+Otherwise, append the following text to `{{ plan_path }}`:
+
 ```
 ---
+
 [malvin] Ready for implementation.
 ```
+
+Don't change code.

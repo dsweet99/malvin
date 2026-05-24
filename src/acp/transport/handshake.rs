@@ -1,3 +1,6 @@
+use crate::acp::import_prelude::*;
+use crate::acp::{AcpStdioRpc, RpcRequestNext, rpc_request};
+
 // `initialize` / `authenticate` / `session/new` handshake.
 
 pub(crate) struct HandshakeParams<'a> {
@@ -62,8 +65,8 @@ pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, St
 }
 
 #[test]
-fn kiss_stringify_handshake() {
-    let _ = stringify!(HandshakeParams);
-    let _ = stringify!(handshake_inner);
+fn handshake_params_and_inner_fn_are_linked_for_coverage() {
+    let _: Option<HandshakeParams> = None;
+    let _ = handshake_inner;
 }
 

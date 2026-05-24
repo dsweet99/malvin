@@ -3,12 +3,12 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+use crate::agent_or_cursor_agent_bin;
+use crate::ansi_strip::strip_ansi_escapes;
+use crate::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 use clap::Args;
-use malvin::ansi_strip::strip_ansi_escapes;
-use malvin::env_path::agent_or_cursor_agent_bin;
-use malvin::output::{MALVIN_WHO, print_stdout_line, print_stdout_text};
 
-use malvin::config::DEFAULT_CLI_MODEL;
+use crate::config::DEFAULT_CLI_MODEL;
 
 #[derive(Args, Debug)]
 pub struct ModelsArgs {}
@@ -46,7 +46,7 @@ pub fn run_models() -> Result<(), String> {
     print_stdout_line(MALVIN_WHO, "");
     print_stdout_line(
         MALVIN_WHO,
-        &format!("Default model in malvin: {DEFAULT_CLI_MODEL}"),
+        &format!("Default model: {DEFAULT_CLI_MODEL}"),
     );
     Ok(())
 }
@@ -190,15 +190,20 @@ mod tests {
     }
 
     #[test]
-    fn kiss_stringify_models_cmd() {
-        let _ = stringify!(ModelsArgs);
-        let _ = stringify!(run_models);
-        let _ = stringify!(resolve_models_cli);
-        let _ = stringify!(malvin::ansi_strip::strip_ansi_escapes);
-        let _ = stringify!(trim_trailing_tip_lines);
-        let _ = stringify!(looks_like_tip_banner_line);
-        let _ = stringify!(print_parsed_or_fallback);
-        let _ = stringify!(models_display_lines);
-        let _ = stringify!(parse_model_line);
+    fn models_subcommand_parse_invokes_cli_helpers() {
+        use crate::cli::{Cli, Commands};
+        use clap::Parser;
+        let cli = Cli::try_parse_from(["malvin", "models"]).expect("parse");
+        assert!(matches!(cli.command, Some(Commands::Models(_))));
+        assert!(looks_like_tip_banner_line("tip: upgrade"));
+        print_parsed_or_fallback("composer-2 — Fast");
+        match resolve_models_cli() {
+            Err(msg) => assert!(msg.contains("agent") || msg.contains("PATH")),
+            Ok(path) => assert!(!path.as_os_str().is_empty()),
+        }
+        match run_models() {
+            Ok(()) => {}
+            Err(msg) => assert!(!msg.is_empty()),
+        }
     }
 }

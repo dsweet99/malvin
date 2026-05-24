@@ -1,20 +1,63 @@
+#![allow(unused_imports, dead_code)]
+
 use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::{self, RunTiming, TimingPhase};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-mod memory_context;
+mod helpers;
 
-include!("helpers.rs");
+pub use helpers::{
+    check_abort, clear_review_file, format_exp_log_relative, format_prompt_path,
+    workflow_context, workflow_context_paths_only,
+};
+pub(crate) use helpers::{insert_formatted, prompt_md_stem};
 
+#[cfg(test)]
+mod helpers_tests;
+
+mod constants;
+mod review_attempt_kernel;
+mod review_fanout_run;
+mod review_fanout_write;
 mod review_loop_helpers;
+mod review_prompt_log;
+mod review_write_retry;
+mod workflow_merge;
+
+pub use review_attempt_kernel::{
+    REVIEW_PREP_MISSING_ARTIFACT_MSG, REVIEW_WRITE_INNER_RETRY_CAP,
+    REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
+    artifact_review_lgtm_after_review_write, clear_review_attempt_artifacts,
+    ensure_artifact_review_after_review_write, ensure_review_prep_after_reviewers_spawn,
+    is_missing_artifact_review_error, review_attempt_is_lgtm,
+};
+pub use review_fanout_run::{
+    ReviewWriteCoderSession, ReviewersSpawnCoderSession, run_review_write_coder_session,
+    run_reviewers_spawn_coder_session,
+};
+pub use review_fanout_write::{
+    FinishReviewWriteInput, ReviewAttemptFinish, fail_on_abort_for_artifacts,
+    finish_review_write_attempt,
+};
+pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
+pub use review_write_retry::{
+    ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
+};
+pub use workflow_merge::merge_string_run_and_restore;
+
+#[cfg(test)]
+pub(crate) mod orchestrator_test_support;
+
+#[cfg(test)]
+mod orchestrator_kiss_coverage;
 
 mod check_plan;
-pub(crate) mod review_context;
+pub mod pre_review_gates;
 mod review_loop;
 pub mod session_flow;
 
@@ -24,13 +67,14 @@ use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_s
 
 use workflow_context as workflow_context_inner;
 
-pub type PreSummaryMidFn = for<'a> fn(
-    &'a mut AgentClient,
-    &'a RunArtifacts,
-    &'a SessionDotfileBackups,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
+pub type PreSummaryMidFn =
+    for<'a> fn(
+        &'a mut AgentClient,
+        &'a RunArtifacts,
+        &'a SessionDotfileBackups,
+    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
-fn mid_noop<'a>(
+pub fn mid_noop<'a>(
     _: &'a mut AgentClient,
     _: &'a RunArtifacts,
     _: &'a SessionDotfileBackups,
@@ -50,8 +94,18 @@ pub(crate) fn prefer_primary_errors_over_timing(
     if matches!((&workflow_result, &end_result), (Ok(()), Ok(()))) {
         timing_result
     } else {
-        let _ = timing_result;
-        workflow_result.and(end_result)
+        let primary = match (workflow_result, end_result) {
+            (Err(w), Err(e)) => Err(WorkflowError(format!("{}; end: {}", w.0, e.0))),
+            (Err(w), Ok(())) => Err(w),
+            (Ok(()), Err(e)) => Err(e),
+            (Ok(()), Ok(())) => Ok(()),
+        };
+        match (primary, timing_result) {
+            (Err(p), Err(WorkflowError(timing))) => {
+                Err(WorkflowError(format!("{}; timing: {timing}", p.0)))
+            }
+            (r, _) => r,
+        }
     }
 }
 
@@ -75,12 +129,7 @@ pub struct Orchestrator<'a> {
     pub session_dotfile_backups: SessionDotfileBackups,
 }
 
-/// Returns true if learn should run given threshold and elapsed time.
-/// Threshold of 0 means always run. Otherwise, run only if elapsed >= threshold.
-#[must_use]
-pub const fn should_run_learn_check(threshold_ms: u64, elapsed_ms: u64) -> bool {
-    threshold_ms == 0 || elapsed_ms >= threshold_ms
-}
+pub use crate::learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 
 impl Orchestrator<'_> {
     pub(super) fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {
@@ -108,10 +157,7 @@ impl Orchestrator<'_> {
     }
 
     fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
-        if let Some(abort_msg) = check_abort(&self.artifacts.artifact_result_md()) {
-            return Err(WorkflowError(format!("ABORT: {abort_msg}")));
-        }
-        Ok(())
+        fail_on_abort_for_artifacts(self.artifacts)
     }
 
     /// Drive the full workflow.
@@ -145,13 +191,9 @@ impl Orchestrator<'_> {
             Ok(()) => {
                 async {
                     run_coder_session_until_pre_summary(self, context).await?;
-                    mid(
-                        self.client,
-                        self.artifacts,
-                        &self.session_dotfile_backups,
-                    )
-                    .await
-                    .map_err(WorkflowError)?;
+                    mid(self.client, self.artifacts, &self.session_dotfile_backups)
+                        .await
+                        .map_err(WorkflowError)?;
                     run_coder_session_summary_only(self, context).await
                 }
                 .await
@@ -172,7 +214,7 @@ impl Orchestrator<'_> {
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
-    /// KPOP already finished; run regression-test then fix coder prompts, optional mid hook, summary.
+    /// `KPop` already finished; run regression-test then fix coder prompts, optional mid hook, summary.
     ///
     /// # Errors
     ///
@@ -184,59 +226,6 @@ impl Orchestrator<'_> {
     ) -> Result<(), WorkflowError> {
         bug_remediation::run_bug_remediation_gap(self, context, mid).await
     }
-
-    pub(super) async fn run_coder_prompt(
-        &mut self,
-        filename: &str,
-        context: &HashMap<String, String>,
-        suffix: &str,
-        llm_phase: TimingPhase,
-    ) -> Result<(), WorkflowError> {
-        let prompt = self
-            .prompts
-            .render(filename, context)
-            .map_err(|e| WorkflowError(e.0))?;
-        self.run_coder_prompt_body(prompt, filename, suffix, llm_phase)
-            .await
-    }
-
-    pub(super) async fn run_coder_prompt_body(
-        &mut self,
-        prompt: String,
-        filename: &str,
-        suffix: &str,
-        llm_phase: TimingPhase,
-    ) -> Result<(), WorkflowError> {
-        let stem = prompt_md_stem(filename);
-        let log = self.artifacts.log_path(&format!("coder_{stem}_{suffix}"));
-        let run_result = self
-            .client
-            .run_coder_prompt(
-                &prompt,
-                &log,
-                stem,
-                CoderPromptOptions {
-                    llm_phase: Some(llm_phase),
-                    skip_repo_style: false,
-                    do_trace_split: None,
-                    stdout_bracket_label: Some(filename),
-                },
-            )
-            .await
-            .map_err(|e: AgentError| WorkflowError(e.0));
-        let restore_result = crate::artifacts::restore_workspace_kissconfig_backup(
-            &self.artifacts.work_dir,
-            &self.session_dotfile_backups.kissconfig,
-        )
-        .map_err(WorkflowError);
-
-        match (run_result, restore_result) {
-            (Ok(()), Ok(())) => Ok(()),
-            (Err(run_err), Ok(())) => Err(run_err),
-            (Ok(()), Err(restore_err)) => Err(restore_err),
-            (Err(run_err), Err(restore_err)) => {
-                Err(WorkflowError(format!("{}, {}", run_err.0, restore_err.0)))
-            }
-        }
-    }
 }
+
+mod coder_prompt_impl;

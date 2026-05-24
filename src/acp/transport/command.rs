@@ -1,3 +1,5 @@
+use crate::acp::import_prelude::*;
+use crate::acp::{effective_cursor_api_key, effective_cursor_auth_token};
 // Build and spawn the `agent acp` child process.
 //
 // This file is `include!`d from `acp/mod.rs`. It does not declare its own `use std::path::Path`; it
@@ -75,6 +77,7 @@ pub(crate) struct BuildAgentAcpCommandArgs<'a> {
     pub george_acp_lane: Option<&'a str>,
     pub model: Option<&'a str>,
     pub force: bool,
+    pub sandbox: bool,
 }
 
 pub(crate) fn agent_program(bin_override: Option<&Path>) -> String {
@@ -93,13 +96,25 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
     if args.force {
         cmd.arg("--force");
     }
+    if args.sandbox {
+        cmd.arg("--sandbox").arg("enabled");
+    }
     if let Some(m) = args.model.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.arg("--model").arg(m);
     }
     apply_acp_tail(&mut cmd, args.cwd, args.george_acp_lane);
     prepend_standard_path_for_child(&mut cmd);
+    isolate_agent_process_group(&mut cmd);
     cmd
 }
+
+#[cfg(unix)]
+fn isolate_agent_process_group(cmd: &mut Command) {
+    cmd.process_group(0);
+}
+
+#[cfg(not(unix))]
+fn isolate_agent_process_group(_: &mut Command) {}
 
 pub(crate) async fn spawn_agent_acp_child(cmd: &mut Command) -> Result<Child, io::Error> {
     const ATTEMPTS: u32 = 16;
@@ -134,19 +149,33 @@ pub(crate) fn executable_text_busy(err: &io::Error) -> bool {
 }
 
 #[test]
-fn kiss_stringify_command_a() {
-    let _ = stringify!(AGENT_BIN);
-    let _ = stringify!(prepend_standard_path_for_child);
-    let _ = stringify!(forward_parent_env);
-    let _ = stringify!(apply_api_and_auth);
-    let _ = stringify!(apply_acp_tail);
-    let _ = stringify!(BuildAgentAcpCommandArgs);
-    let _ = stringify!(agent_program);
+fn build_agent_acp_command_uses_bin_override_program() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
+        cwd: tmp.path(),
+        bin_override: Some(Path::new("/bin/true")),
+        api_key: None,
+        auth_token: None,
+        george_acp_lane: None,
+        model: None,
+        force: false,
+        sandbox: false,
+    });
+    assert_eq!(
+        cmd.as_std().get_program().to_string_lossy(),
+        "/bin/true"
+    );
 }
 
 #[test]
-fn kiss_stringify_command_b() {
-    let _ = stringify!(build_agent_acp_command);
-    let _ = stringify!(spawn_agent_acp_child);
-    let _ = stringify!(executable_text_busy);
+fn transport_command_kiss_static_refs() {
+    let _ = prepend_standard_path_for_child;
+    let _ = forward_parent_env;
+    let _ = apply_api_and_auth;
+    let _ = apply_acp_tail;
+    let _ = agent_program;
+    let _ = isolate_agent_process_group;
+    let _ = spawn_agent_acp_child;
+    let _ = executable_text_busy;
 }
+

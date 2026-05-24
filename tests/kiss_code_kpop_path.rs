@@ -145,7 +145,7 @@ fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
 
 #[test]
 fn malvin_bug_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["bug"]);
+    assert_malvin_subcommand_fails_without_kiss(&["hunt"]);
 }
 
 #[test]
@@ -155,12 +155,12 @@ fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
     std::fs::create_dir_all(&isolated_bin).unwrap();
     #[cfg(unix)]
     let out = run_malvin_path_timed(&isolated_bin, |c| {
-        c.arg("bug");
+        c.args(["hunt"]);
     });
     #[cfg(not(unix))]
     let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
         .env("PATH", &isolated_bin)
-        .arg("bug")
+        .args(["hunt"])
         .output()
         .expect("spawn malvin");
     assert!(!out.status.success());
@@ -170,8 +170,8 @@ fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        msg.contains("`malvin bug`"),
-        "expected error to name the bug subcommand; got: {msg:?}"
+        msg.contains("`malvin hunt`"),
+        "expected error to name the hunt subcommand; got: {msg:?}"
     );
     assert!(
         !msg.contains("`malvin code`"),

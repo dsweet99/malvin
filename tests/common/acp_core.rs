@@ -1,3 +1,8 @@
+pub const REVIEW_WRITE_PROMPT_MATCH_JS: &str =
+    "promptText.toLowerCase().includes('write your final review')";
+
+pub const CONCERNS_PROMPT_MATCH_JS: &str = "promptText.includes(\"reviewer's concerns\")";
+
 pub const ARGV_CAPTURE_PREAMBLE: &str = r"const fs = require('fs');
 const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
 if (capturePath) {
@@ -43,7 +48,7 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
         r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
-    const runRoot = path.join(process.cwd(), '_malvin');
+    const runRoot = path.join(process.cwd(), '.malvin', 'logs');
     const runDirNames = fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
     const runDir = path.join(runRoot, runDirNames[0]);
 {body}"
@@ -61,8 +66,115 @@ pub fn write_artifact_lgtm() -> String {
     "      fs.writeFileSync(path.join(runDir, 'review.md'), 'LGTM\\n', 'utf8');".to_string()
 }
 
+pub fn write_artifact_non_lgtm() -> String {
+    "      fs.writeFileSync(path.join(runDir, 'review.md'), 'problems\\n', 'utf8');".to_string()
+}
+
+pub fn review_write_regression_test_body() -> String {
+    r"      const fs = require('fs');
+      const path = require('path');
+      const testPath = path.join(process.cwd(), 'tests', 'review_write_fanout_regression.rs');
+      fs.mkdirSync(path.dirname(testPath), { recursive: true });
+      fs.writeFileSync(
+        testPath,
+        '#[test]\nfn review_write_fanout_exposes_bug() { assert!(false); }\n',
+        'utf8'
+      );"
+    .to_string()
+}
+
+pub fn code_review_fanout_writes_regression_test_and_non_lgtm() -> String {
+    let prep = write_review_prep_output();
+    let write_tail = format!(
+        "{}\n      {}\n{}",
+        review_write_regression_test_body(),
+        write_artifact_non_lgtm(),
+        chunk_line("reviewed")
+    );
+    format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
+{prep}
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
+{write_tail}
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
+    }} else {{
+      // learn, summary, and other coder prompts
+    }}",
+        implement = chunk_line("implemented"),
+    )
+}
+
 pub fn write_workspace_lgtm() -> String {
     "      fs.writeFileSync(path.join(process.cwd(), 'review.md'), 'LGTM\\n', 'utf8');".to_string()
+}
+
+pub fn write_review_prep_output() -> String {
+    r"      fs.writeFileSync(
+        path.join(runDir, 'review_prep.md'),
+        '## Reviewer 1: mock\n\nExecutive summary:\nok\n\ntl;dr:\nok\n\nExperiment log:\n_mock.md\n',
+        'utf8'
+      );"
+        .to_string()
+}
+
+pub fn acp_mock_code_fanout_skips_reviewer_outputs_js() -> String {
+    let body = format!(
+        r"    if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
+{reviewer_skip}
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
+{write_lgtm}
+    }} else {{
+      // learn, summary
+    }}",
+        implement = chunk_line("implemented"),
+        reviewer_skip = chunk_line("skipped"),
+        write_lgtm = write_artifact_lgtm(),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str) -> String {
+    let prep = write_review_prep_output();
+    format!(
+        r"    else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
+{prep}
+    }} else if ({REVIEW_WRITE_PROMPT_MATCH_JS}) {{
+{review_write_body}
+{reviewed_chunk}
+    }} else if ({CONCERNS_PROMPT_MATCH_JS}) {{
+    }} else {{
+      // learn, summary, and other coder prompts
+    }}"
+    )
+}
+
+pub fn acp_mock_bug_kpop_solved_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const root = path.join(process.cwd(), '.malvin', 'logs');
+    if (fs.existsSync(root)) {
+      const runs = fs.readdirSync(root, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort()
+        .reverse();
+      outer: for (const run of runs) {
+        const kpopDir = path.join(root, run, '_kpop');
+        if (!fs.existsSync(kpopDir)) continue;
+        for (const name of fs.readdirSync(kpopDir)) {
+          if (name.startsWith('exp_log_') && name.endsWith('.md')) {
+            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
+            break outer;
+          }
+        }
+      }
+    }";
+    let done = session_update_chunk_line("agent_message_chunk", r"'kpop solved\n'");
+    acp_mock_js("", &format!("{body}\n{done}"))
 }
 
 #[cfg(all(unix, target_os = "linux"))]
@@ -79,4 +191,22 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     }";
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
     acp_mock_js("", &format!("    {body}\n{done}"))
+}
+
+#[cfg(test)]
+mod review_write_match_phrase {
+    #[test]
+    fn review_write_prompt_match_js_contains_malvin_phrase() {
+        assert!(
+            super::REVIEW_WRITE_PROMPT_MATCH_JS
+                .contains(malvin::prompts::REVIEW_WRITE_ACP_MATCH_PHRASE)
+        );
+    }
+
+    #[test]
+    fn concerns_prompt_match_js_contains_malvin_phrase() {
+        assert!(
+            super::CONCERNS_PROMPT_MATCH_JS.contains(malvin::prompts::CONCERNS_ACP_MATCH_SUBSTRING)
+        );
+    }
 }

@@ -1,3 +1,6 @@
+use crate::acp::{effective_cursor_api_key, effective_cursor_auth_token, nonempty_explicit_or_env_var};
+use crate::test_utils::test_env_lock;
+
 fn clear_cursor_cred_env() {
     unsafe {
         std::env::remove_var("CURSOR_API_KEY");

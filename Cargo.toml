@@ -1,6 +1,6 @@
 [package]
 name = "malvin"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 rust-version = "1.87"
 description = "Non-interactive CLI agent, via Cursor ACP"
@@ -9,6 +9,9 @@ readme = "README.md"
 repository = "https://github.com/dsweet99/malvin"
 keywords = ["malvin"]
 categories = ["development-tools"]
+
+[profile.dev]
+incremental = true
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
@@ -19,6 +22,7 @@ tempfile = "3"
 terminal_size = "0.4"
 thiserror = "1"
 toml = "0.8"
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 tokio = { version = "1", features = [
     "fs",
     "io-util",
@@ -29,6 +33,7 @@ tokio = { version = "1", features = [
     "time",
 ] }
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "registry"] }
 termimad = "0.34"
 unicode-width = "0.2"
 
@@ -48,6 +53,9 @@ unsafe_code = "deny"
 [lints.clippy]
 pedantic = "warn"
 nursery = "warn"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 errno = "0.3"

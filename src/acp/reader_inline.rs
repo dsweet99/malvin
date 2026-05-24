@@ -1,5 +1,6 @@
+use crate::acp::import_prelude::*;
+use crate::acp::*;
 // Stdout JSON-RPC line processing (inlined into `acp` for `kiss` dependency depth).
-use tokio::sync::Notify;
 
 /// Clears busy / trace when the JSON-RPC response for a `session/prompt` request is processed.
 pub(crate) struct PromptRpcCleanup {
@@ -23,6 +24,3 @@ impl PromptRpcCleanup {
         }
     }
 }
-
-// Single stdout include (no `reader::stdout` submodule) for `kiss` dependency depth.
-include!("reader_stdout_body.rs");

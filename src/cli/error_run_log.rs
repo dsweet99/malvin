@@ -1,4 +1,4 @@
-//! Optional `_malvin/.../malvin_error.log` mirror for fatal CLI errors (see [`append_command_error_to_run_log`]).
+//! Optional `.malvin/logs/.../malvin_error.log` mirror for fatal CLI errors (see [`append_command_error_to_run_log`]).
 //!
 //! The active run directory is set by each subcommand once [`RunArtifacts`] exists so
 //! [`super::entrypoint::print_command_error`] can append even when the message only went to stderr before.
@@ -6,11 +6,11 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use malvin::output::{MALVIN_WHO, format_line};
+use crate::output::{ERROR_WHO, format_line};
 
 static COMMAND_ERROR_RUN_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
-/// Remember `_malvin/<stamp>/` for [`append_command_error_to_run_log`].
+/// Remember `.malvin/logs/<stamp>/` for [`append_command_error_to_run_log`].
 pub fn set_command_error_run_dir(path: Option<PathBuf>) {
     *COMMAND_ERROR_RUN_DIR
         .lock()
@@ -24,6 +24,9 @@ pub fn clear_command_error_run_dir() {
 
 /// Appends one timestamped malvin line to `malvin_error.log` under the bound run directory, when set.
 pub fn append_command_error_to_run_log(message: &str) {
+    if crate::repo_checks::is_gate_failure_error(message) {
+        return;
+    }
     let Some(dir) = COMMAND_ERROR_RUN_DIR
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -32,7 +35,7 @@ pub fn append_command_error_to_run_log(message: &str) {
         return;
     };
     let path = dir.join("malvin_error.log");
-    let line = format!("{}\n", format_line(MALVIN_WHO, message));
+    let line = format!("{}\n", format_line(ERROR_WHO, message));
     let _ = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -57,8 +60,8 @@ mod tests {
             "unexpected log contents: {text:?}"
         );
         assert!(
-            text.contains("[malvin"),
-            "expected malvin tag in log line: {text:?}"
+            text.contains("[error"),
+            "expected error tag in log line: {text:?}"
         );
     }
 }

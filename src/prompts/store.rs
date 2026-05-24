@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use super::PromptError;
 use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
 use super::enforce_no_unresolved_braces;
-use super::template::{merged_coding_rules, render_template};
+use super::{merge_header_and_coding_rules, render_template};
 
 #[derive(Debug, Clone, Copy)]
 pub struct KpopPromptValidation {
@@ -17,19 +17,8 @@ pub struct PromptStore {
     root: Option<PathBuf>,
 }
 
-#[must_use]
-pub fn user_home_dir() -> PathBuf {
-    if let Some(h) = std::env::var_os("HOME").filter(|s| !s.is_empty()) {
-        return PathBuf::from(h);
-    }
-    if let Some(h) = std::env::var_os("USERPROFILE").filter(|s| !s.is_empty()) {
-        return PathBuf::from(h);
-    }
-    std::env::temp_dir()
-}
-
 impl PromptStore {
-    fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
+    pub(crate) fn prompt_text(&self, filename: &str) -> Result<String, PromptError> {
         self.root.as_ref().map_or_else(
             || {
                 default_file(filename)
@@ -58,7 +47,6 @@ impl PromptStore {
         )
     }
 }
-
 impl PromptStore {
     #[must_use]
     pub const fn default_store() -> Self {
@@ -128,7 +116,7 @@ impl PromptStore {
 
     /// # Errors
     ///
-    /// Returns [`PromptError`] when KPOP-required prompts are missing for `validation`.
+    /// Returns [`PromptError`] when `KPop`-required prompts are missing for `validation`.
     pub fn validate_kpop_prompts(
         &self,
         validation: KpopPromptValidation,
@@ -182,7 +170,6 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context.entry("memories".to_string()).or_default();
         render_context.insert(
             "coding_rules".to_string(),
             merged_coding_rules(self, context)?,
@@ -201,8 +188,7 @@ impl PromptStore {
         context: &HashMap<String, String>,
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
-        let mut render_context: HashMap<String, String> = context.clone();
-        render_context.entry("memories".to_string()).or_default();
+        let render_context: HashMap<String, String> = context.clone();
         let out = render_template(&prompt_text, &render_context);
         enforce_no_unresolved_braces(&out)?;
         Ok(out)
@@ -223,20 +209,31 @@ impl PromptStore {
     }
 }
 
-#[cfg(test)]
-mod store_kiss {
-    #[test]
-    fn kiss_stringify_store() {
-        let _ = stringify!(super::KpopPromptValidation);
-        let _ = stringify!(super::PromptStore);
-        let _ = stringify!(super::user_home_dir);
-        let _ = stringify!(super::PromptStore::default_store);
-        let _ = stringify!(super::PromptStore::with_root);
-        let _ = stringify!(super::PromptStore::ensure_defaults);
-        let _ = stringify!(super::PromptStore::validate_required);
-        let _ = stringify!(super::PromptStore::validate_kpop_prompts);
-        let _ = stringify!(super::PromptStore::validate_exists);
-        let _ = stringify!(super::PromptStore::render);
-        let _ = stringify!(super::PromptStore::render_prompt_only);
-    }
+/// # Errors
+///
+/// Returns [`PromptError`] when prompts cannot be loaded, rendered, or validated.
+pub fn merged_coding_rules(
+    store: &PromptStore,
+    context: &std::collections::HashMap<String, String>,
+) -> Result<String, PromptError> {
+    let render_context: std::collections::HashMap<String, String> = context.clone();
+    let header_raw = store.load_header();
+    let header_expanded = render_template(&header_raw, &render_context);
+    let rules_raw = store.load_coding_rules();
+    let rules_expanded = render_template(&rules_raw, &render_context);
+    let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
+    enforce_no_unresolved_braces(&merged)?;
+    Ok(merged)
+}
+
+/// # Errors
+///
+/// Returns [`PromptError`] when `mbc2.md` cannot be loaded or rendered.
+pub fn render_mbc2_for_scheduled_kpop_block(
+    store: &PromptStore,
+    context: &std::collections::HashMap<String, String>,
+) -> Result<String, PromptError> {
+    let mut ctx = context.clone();
+    ctx.insert("coding_rules".to_string(), String::new());
+    store.render_prompt_only("mbc2.md", &ctx)
 }

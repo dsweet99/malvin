@@ -1,11 +1,10 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, `malvin bug`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` affects only `malvin code` / `malvin kpop` / `malvin bug` trace stdout; it is a no-op for other subcommands (for example `init`, `models`).
-//! `malvin do` still forces plain markdown-off ACP stdout regardless of `--no-markdown`.
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, `malvin bug`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `bug`, `plan`, `tidy` when the agent runs, `init` summary). It is a no-op for `models` (no agent). `malvin do` forces plain stdout regardless of `--no-markdown`.
 
+pub use crate::config::DEFAULT_CLI_MODEL;
 use clap::Args;
-pub use malvin::config::DEFAULT_CLI_MODEL;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
-const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown on stdout for `malvin code` / `malvin kpop` / `malvin bug` trace lines [default: markdown on]. Styling is also off when color is off (`--no-color` or NO_COLOR), same as other ANSI. No effect on `malvin do` (ACP stdout stays plain).";
+const NO_MARKDOWN_HELPTEXT: &str = "Disable styled markdown";
 
 /// Flags that apply to every subcommand (place before or after the subcommand name).
 #[derive(Args, Debug)]
@@ -41,6 +40,12 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
+    /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
+    #[arg(long, global = true, default_value_t = false)]
+    pub doc: bool,
+    /// Pass `--sandbox` to `cursor-agent` when spawning the ACP child.
+    #[arg(long, global = true, default_value_t = false)]
+    pub sandbox: bool,
 }
 
 impl SharedOpts {

@@ -1,6 +1,8 @@
 use std::fs;
 use std::time::Duration;
 
+use crate::repo_gates;
+
 use super::command_support::set_fake_command_dir;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
@@ -11,31 +13,29 @@ use super::{RepoGateOutput, run_repo_workspace_gates};
 
 #[test]
 fn source_like_files_present_does_not_follow_external_symlink_dirs() {
-    let _ = stringify!(super::workspace::source_like_files_present);
     let tmp = tempfile::tempdir().unwrap();
     let outside = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(outside.path().join("src")).unwrap();
     std::fs::write(outside.path().join("src/main.rs"), "fn main() {}").unwrap();
     std::os::unix::fs::symlink(outside.path(), tmp.path().join("src")).unwrap();
-    assert!(!super::workspace::source_like_files_present(tmp.path()));
+    assert!(!super::gate_run::source_like_files_present(tmp.path()));
 }
 
 #[tokio::test]
-async fn scan_for_extension_handles_symlink_cycles() {
-    let _ = stringify!(malvin::repo_gates::gate_command_lines);
+async fn test_scan_for_extension_handles_symlink_cycles() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     std::fs::create_dir(root.join("src")).unwrap();
     std::os::unix::fs::symlink(&root, root.join("src").join("cycle")).unwrap();
 
     let scan = tokio::task::spawn_blocking(move || {
-        malvin::repo_gates::gate_command_lines(&root).unwrap();
-        false
+        super::gate_run::scan_for_extension_handles_symlink_cycles(&root)
     });
-    let _: bool = tokio::time::timeout(Duration::from_secs(1), scan)
+    let found = tokio::time::timeout(Duration::from_secs(1), scan)
         .await
-        .expect("gate_command_lines must finish")
+        .expect("test_scan_for_extension_handles_symlink_cycles must finish")
         .expect("panicked");
+    assert!(!found);
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn run_repo_workspace_gates_invokes_expected_quality_commands() {
     assert!(log.contains("kiss clamp"));
     assert!(log.contains("kiss check"));
     assert!(log.contains("cargo clippy"));
-    assert!(log.contains("cargo test"));
+    assert!(log.contains(repo_gates::default_rust_test_command(work)));
     assert!(log_contains_command(&log, "ruff check"));
     assert!(!log_contains_command(&log, "pytest"));
 }

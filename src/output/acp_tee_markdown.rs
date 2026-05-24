@@ -87,17 +87,43 @@ fn dim_rendered_markup_payload(rendered: &str) -> String {
 }
 
 #[cfg(test)]
-mod kiss_stringify_termimad {
+mod termimad_tests {
+    use super::{
+        TermimadStdoutGate, dim_rendered_markup_payload, is_markdown_heading,
+        is_markdown_list_item, is_markdown_ordered_list_item, needs_block_markdown_render,
+        render_markdown_lines_for_stdout, termimad_inline_payload_for_stdout,
+        termimad_text_lines_for_stdout,
+    };
+
     #[test]
-    fn stringify_termimad_gate() {
-        let _ = stringify!(super::TermimadStdoutGate);
-        let _ = stringify!(super::termimad_inline_payload_for_stdout);
-        let _ = stringify!(super::termimad_text_lines_for_stdout);
-        let _ = stringify!(super::render_markdown_lines_for_stdout);
-        let _ = stringify!(super::is_markdown_list_item);
-        let _ = stringify!(super::is_markdown_ordered_list_item);
-        let _ = stringify!(super::is_markdown_heading);
-        let _ = stringify!(super::needs_block_markdown_render);
-        let _ = stringify!(super::dim_rendered_markup_payload);
+    fn termimad_gate_and_markdown_helpers() {
+        assert!(is_markdown_heading("# h"));
+        assert!(is_markdown_list_item("- x"));
+        assert!(is_markdown_ordered_list_item("1. x"));
+        assert!(needs_block_markdown_render("# h"));
+        let gate = TermimadStdoutGate {
+            emit_stdout_markdown: false,
+            dim_payload: false,
+            allow_inline_styling: false,
+        };
+        assert!(termimad_inline_payload_for_stdout("x", gate).is_none());
+        assert!(termimad_text_lines_for_stdout("# h", gate, 80).is_none());
+        let dimmed = dim_rendered_markup_payload("x");
+        assert!(dimmed.contains(super::ANSI_DIM));
+        let on = TermimadStdoutGate {
+            emit_stdout_markdown: true,
+            dim_payload: false,
+            allow_inline_styling: true,
+        };
+        let lines = termimad_text_lines_for_stdout("# Title\n", on, 40);
+        assert!(lines.is_some_and(|v| !v.is_empty()));
+        let dim_gate = TermimadStdoutGate {
+            emit_stdout_markdown: true,
+            dim_payload: true,
+            allow_inline_styling: true,
+        };
+        let rendered = render_markdown_lines_for_stdout("- item", dim_gate, 40);
+        assert!(!rendered.is_empty());
+        assert!(rendered[0].contains(super::ANSI_DIM));
     }
 }

@@ -9,10 +9,15 @@ pub(super) fn visit_source_files(root: &Path, f: &mut impl FnMut(&Path)) {
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
+            let path = entry.path();
             if file_type.is_symlink() {
+                if let Ok(md) = std::fs::metadata(&path) {
+                    if md.is_file() {
+                        f(&path);
+                    }
+                }
                 continue;
             }
-            let path = entry.path();
             if file_type.is_file() {
                 f(&path);
             } else if file_type.is_dir() {
@@ -44,4 +49,48 @@ pub(super) fn python_ruff_and_pytest_flags(root: &Path) -> (bool, bool) {
         }
     });
     (has_py, has_pytest)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::python_ruff_and_pytest_flags;
+
+    #[test]
+    fn visit_source_files_empty_dir_has_no_python_flags() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut count = 0usize;
+        super::visit_source_files(tmp.path(), &mut |_p| count += 1);
+        assert_eq!(count, 0);
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
+        assert!(!has_py);
+        assert!(!has_pytest);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn python_flags_see_symlinked_py_file() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        std::fs::write(w.join("real.py"), "x = 1\n").unwrap();
+        symlink(w.join("real.py"), w.join("linked.py")).unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(w);
+        assert!(has_py);
+        assert!(!has_pytest);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn python_pytest_flag_sees_symlinked_test_module() {
+        use std::os::unix::fs::symlink;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        std::fs::write(w.join("impl.py"), "def test_x():\n    assert True\n").unwrap();
+        symlink(w.join("impl.py"), w.join("test_linked.py")).unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(w);
+        assert!(has_py);
+        assert!(has_pytest);
+    }
 }

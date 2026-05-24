@@ -1,12 +1,14 @@
 //! Minimal live stdio session (`cat`) for tests that need `coder_session: Some(...)` without `agent acp`.
 
+#![allow(clippy::must_use_candidate)]
+
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::session_channels::{SessionChannelState, SessionReaderTelemetry};
-use super::session_types::{AcpSession, AcpSpawnArgs};
+use super::session_types::{SessionChannelState, SessionReaderTelemetry};
+use super::{AcpSession, AcpSpawnArgs};
 use tokio::process::{Child, Command};
 
 fn spawn_cat_child_with_stdin(cwd: &Path) -> (Child, tokio::process::ChildStdin) {
@@ -22,18 +24,20 @@ fn spawn_cat_child_with_stdin(cwd: &Path) -> (Child, tokio::process::ChildStdin)
     (child, stdin)
 }
 
+#[allow(clippy::missing_const_for_fn)]
 fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
     AcpSpawnArgs {
         cwd,
         bin_override: None,
         api_key: Some("test-key"),
         auth_token: Some("test-token"),
-        rpc_timeout: Duration::from_secs(30),
+        rpc_timeout: Duration::from_secs(5),
         acp_verbose: false,
         george_acp_lane: None,
         ui_idle_notify: None,
         model: None,
         force: false,
+        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
@@ -51,19 +55,26 @@ fn telemetry_for_test_args(args: &AcpSpawnArgs<'_>) -> SessionReaderTelemetry {
         emit_stdout_markdown: args.emit_stdout_markdown,
         prompts_log_run_dir: args.prompts_log_run_dir.map(std::path::Path::to_path_buf),
         log_full_outgoing_prompts: args.log_full_outgoing_prompts,
+        trace_jsonl: None,
     }
 }
 
-/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for guard tests only.
-pub(super) fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
+/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
+#[doc(hidden)]
+pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
     let (child, stdin) = spawn_cat_child_with_stdin(cwd);
     let args = default_test_spawn_args(cwd);
     let ch = SessionChannelState::new(stdin, &args);
     let telemetry = telemetry_for_test_args(&args);
     AcpSession(Arc::new(ch.into_session_inner(
-        child,
-        "test-session-id".into(),
-        args.rpc_timeout,
-        telemetry,
+        crate::acp::session_types::SessionInnerAssembly {
+            child,
+            process_group_id: None,
+            session_id: "test-session-id".into(),
+            rpc_timeout: args.rpc_timeout,
+            telemetry,
+            work_dir: cwd.to_path_buf(),
+            run_timing: None,
+        },
     )))
 }

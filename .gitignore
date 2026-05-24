@@ -2,10 +2,11 @@ target
 **/__pycache__/
 **/*.py[cod]
 **/*.rs.bk
-/_malvin/
+.malvin/logs/
+.malvin_checks
 /log
 /log_2
 *.md~
-.llm_style/
 _kpop/
 *~
+.malvin_memory/

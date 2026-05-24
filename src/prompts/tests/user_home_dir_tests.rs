@@ -11,7 +11,7 @@ fn user_home_dir_prefers_home_then_userprofile() {
         std::env::remove_var("USERPROFILE");
     }
     assert_eq!(
-        super::super::user_home_dir(),
+        crate::user_home::user_home_dir(),
         std::path::PathBuf::from("/tmp/custom-home")
     );
 
@@ -20,7 +20,7 @@ fn user_home_dir_prefers_home_then_userprofile() {
         std::env::remove_var("HOME");
     }
     assert_eq!(
-        super::super::user_home_dir(),
+        crate::user_home::user_home_dir(),
         std::path::PathBuf::from("/tmp/fallback-userprofile")
     );
 
@@ -29,7 +29,7 @@ fn user_home_dir_prefers_home_then_userprofile() {
         std::env::set_var("USERPROFILE", "/tmp/ignored");
     }
     assert_eq!(
-        super::super::user_home_dir(),
+        crate::user_home::user_home_dir(),
         std::path::PathBuf::from("/tmp/ignored")
     );
 
@@ -55,7 +55,7 @@ fn user_home_dir_falls_back_to_temp_dir() {
         std::env::remove_var("HOME");
         std::env::remove_var("USERPROFILE");
     }
-    let home = super::super::user_home_dir();
+    let home = crate::user_home::user_home_dir();
     assert_eq!(home, std::env::temp_dir());
 
     unsafe {

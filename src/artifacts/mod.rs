@@ -1,11 +1,11 @@
 //! Run directories and log paths.
 
-mod dotfile_backup;
-pub mod run_id;
-mod session_dotfiles;
+mod md_request;
 mod startup_tag;
 
-pub use session_dotfiles::{
+use std::path::{Path, PathBuf};
+
+pub use crate::session_dotfile_backup::{
     KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
     backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
@@ -14,11 +14,12 @@ pub use session_dotfiles::{
     restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
 };
 
-use std::path::{Path, PathBuf};
-
+pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
 pub use startup_tag::startup_request_tag_label;
 
-/// One workflow run: isolated `_malvin/<stamp>_<token>/` with copied plan.
+pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};
+
+/// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
 pub struct RunArtifacts {
     pub run_dir: PathBuf,
@@ -37,6 +38,11 @@ impl RunArtifacts {
     #[must_use]
     pub fn artifact_review_md(&self) -> PathBuf {
         self.run_dir.join("review.md")
+    }
+
+    #[must_use]
+    pub fn review_prep_md(&self) -> PathBuf {
+        self.run_dir.join("review_prep.md")
     }
 
     /// Workspace `review.md` under [`Self::work_dir`].
@@ -62,9 +68,24 @@ impl RunArtifacts {
             .join("_kpop")
             .join(format!("exp_log_{slug}.md"))
     }
+
+    #[must_use]
+    pub fn quality_gates_log_path(&self) -> PathBuf {
+        self.run_dir.join(QUALITY_GATES_LOG)
+    }
+
+    #[must_use]
+    pub fn stdout_log_path(&self) -> PathBuf {
+        self.run_dir.join(STDOUT_LOG)
+    }
+
+    #[must_use]
+    pub fn trace_jsonl_path(&self) -> PathBuf {
+        self.run_dir.join(TRACE_JSONL)
+    }
 }
 
-/// Copy `plan_source` into a fresh run directory under `base_dir`/`_malvin`/…
+/// Copy `plan_source` into a fresh run directory under `base_dir`/`.malvin/logs`/…
 ///
 /// # Errors
 ///
@@ -73,20 +94,23 @@ pub fn create_run_artifacts(
     plan_source: &Path,
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::copy(plan_source, &plan_target)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: plan_target,
         work_dir: plan_source
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
-/// Write `plan_text` into a fresh run directory under `base_dir`/`_malvin`/…
+/// Write `plan_text` into a fresh run directory under `base_dir`/`.malvin/logs`/…
 ///
 /// # Errors
 ///
@@ -96,17 +120,20 @@ pub fn create_run_artifacts_from_text(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let plan_target = run_dir.join("plan.md");
     std::fs::write(&plan_target, plan_text)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: plan_target,
         work_dir,
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
-/// Write `request_text` to `_malvin/.../request.md` for standalone `kpop` runs.
+/// Write `request_text` to `.malvin/logs/.../request.md` for standalone `kpop` runs.
 ///
 /// [`RunArtifacts::plan_path`] points at `request.md` so templates can resolve a stable path.
 ///
@@ -118,23 +145,29 @@ pub fn create_kpop_run_artifacts(
     base_dir: Option<&Path>,
 ) -> std::io::Result<RunArtifacts> {
     let work_dir = base_dir.unwrap_or_else(|| Path::new(".")).to_path_buf();
-    let run_dir = run_id::create_run_dir(base_dir)?;
+    let run_dir = crate::run_id::create_run_dir(base_dir)?;
     let request_target = run_dir.join("request.md");
     std::fs::write(&request_target, request_text)?;
-    Ok(RunArtifacts {
+    let artifacts = RunArtifacts {
         run_dir,
         plan_path: request_target,
         work_dir,
-    })
+    };
+    #[cfg(not(test))]
+    crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
+    Ok(artifacts)
 }
 
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path.parent()
         .filter(|p| !p.as_os_str().is_empty())
-        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
+        .map_or_else(
+            || PathBuf::from("."),
+            |parent| parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf()),
+        )
 }
 
-pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
+pub(crate) fn resolve_user_at_path(rest: &str) -> Result<PathBuf, String> {
     if rest.is_empty() {
         return Err("Empty path after `@`.".to_string());
     }
@@ -142,8 +175,28 @@ pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
     if !path.exists() {
         return Err(format!("Path does not exist: {}", path.display()));
     }
-    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    Ok((text, work_dir_for_path(path)))
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    if resolved.is_file() {
+        return Ok(resolved);
+    }
+    if resolved.is_dir() {
+        return Err(format!(
+            "Path is a directory, not a file: {}",
+            resolved.display()
+        ));
+    }
+    Err(format!("Path is not a file: {}", resolved.display()))
+}
+
+pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
+    let path = resolve_user_at_path(rest)?;
+    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    Ok((text, work_dir_for_path(&path)))
 }
 
 /// Resolve CLI `request`: `@path` reads an existing file; otherwise treat as literal text.

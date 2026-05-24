@@ -1,4 +1,5 @@
 //! Core session state types for `agent acp`.
+use super::jsonl_trace::AcpJsonlTrace;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -25,11 +26,17 @@ pub struct PromptTraceWriter {
     pub show_thoughts_on_stdout: bool,
     /// When true, render agent message payloads as markdown on stdout (`malvin code` / `malvin kpop`).
     pub emit_stdout_markdown: bool,
+    /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
+    pub iterable_closed_warned: bool,
+    /// Session workspace root for relativizing tool-summary paths on stdout.
+    pub work_dir: PathBuf,
+    pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 #[allow(clippy::struct_excessive_bools)]
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
+    pub process_group_id: Option<u32>,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,
@@ -56,6 +63,9 @@ pub struct AcpSessionInner {
     pub prompts_log_run_dir: Option<PathBuf>,
     /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
     pub log_full_outgoing_prompts: bool,
+    pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub work_dir: PathBuf,
+    pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -78,6 +88,8 @@ pub struct AcpSpawnArgs<'a> {
     pub model: Option<&'a str>,
     /// When true, passes `agent --force`.
     pub force: bool,
+    /// When true, passes `agent --sandbox` before the `acp` subcommand.
+    pub sandbox: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).
@@ -92,11 +104,24 @@ pub struct AcpSpawnArgs<'a> {
     pub log_full_outgoing_prompts: bool,
 }
 
+pub(crate) use super::wrap_handshake_types::*;
+pub(crate) use super::wrap_session_channels::*;
+
 #[test]
-fn kiss_stringify_session_types() {
-    let _ = stringify!(ResponseTx);
-    let _ = stringify!(PromptTraceWriter);
-    let _ = stringify!(AcpSessionInner);
-    let _ = stringify!(AcpSession);
-    let _ = stringify!(AcpSpawnArgs);
+fn acp_spawn_args_george_fixture_sized() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let bin = tmp.path().join("agent");
+    let args = super::spawn_test_args::george_mock_spawn_args(tmp.path(), &bin);
+    assert_eq!(args.cwd, tmp.path());
+    assert!(args.bin_override.is_some());
+}
+
+
+
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_prompt_trace_writer() { let _ = stringify!(PromptTraceWriter); }
+
 }

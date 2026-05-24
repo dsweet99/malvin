@@ -6,8 +6,9 @@ mod common;
 #[cfg(unix)]
 use common::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
-    seed_git_kiss_cargo_gate_workspace, test_home_workspace, write_fake_kiss,
-    write_failing_gate_tools, write_mock_executable,
+    seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
+    write_failing_gate_tools,
+    write_fake_kiss, write_mock_executable,
 };
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -59,7 +60,7 @@ struct TidySkipFixture {
 fn tidy_skip_agent_fixture() -> TidySkipFixture {
     let (root, home, workspace) = test_home_workspace();
     std::fs::create_dir(workspace.join(".git")).expect("mkdir .git");
-    std::fs::write(workspace.join(".malvin_checks"), "kiss check\n").expect("write checks");
+    seed_malvin_checks(&workspace, "kiss check\n");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     write_fake_kiss(&bin_dir.join("kiss"));

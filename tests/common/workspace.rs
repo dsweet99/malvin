@@ -1,7 +1,12 @@
+use std::path::{Path, PathBuf};
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-#[cfg(unix)]
-use std::path::{Path, PathBuf};
+
+pub fn seed_malvin_checks(workspace: &Path, content: &str) {
+    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
+    std::fs::write(workspace.join(".malvin/checks"), content).expect("write .malvin/checks");
+}
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
@@ -47,12 +52,35 @@ pub fn write_mock_executable(path: &std::path::Path, js: &str) {
 
 #[cfg(unix)]
 pub fn only_run_dir(workspace: &Path) -> PathBuf {
-    let run_root = workspace.join("_malvin");
+    let run_root = workspace.join(".malvin/logs");
     let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
-        .expect("read _malvin")
+        .expect("read .malvin/logs")
         .map(|entry| entry.expect("dir entry").path())
         .filter(|path| path.is_dir())
         .collect();
     assert_eq!(dirs.len(), 1, "expected exactly one run dir, got {dirs:?}");
     dirs.into_iter().next().expect("run dir")
+}
+
+#[cfg(unix)]
+pub fn write_failing_command(path: &Path, trace: &Path) {
+    let name = path.file_name().unwrap().to_string_lossy();
+    std::fs::write(
+        path,
+        format!(
+            "#!/usr/bin/env sh\necho \"{name} $@\" >> \"{}\"\nexit 1\n",
+            trace.display()
+        ),
+    )
+    .expect("write failing command");
+    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+pub fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
+    for name in ["kiss", "cargo", "ruff", "pytest"] {
+        write_failing_command(&bin_dir.join(name), trace);
+    }
 }
