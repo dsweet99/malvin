@@ -74,6 +74,7 @@ Predicted running time: <prediction>
 ## Shorthand
 
 - DCC: Don't Change Code
+- RL: Be sure to look at recent logs.
 
 ## Style
 

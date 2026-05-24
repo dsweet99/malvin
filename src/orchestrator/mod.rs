@@ -118,6 +118,8 @@ pub struct WorkflowConfig {
     pub learn_min_elapsed_ms: u64,
     /// Skip `check_plan` step (enabled by `--trust-the-plan`).
     pub skip_check_plan: bool,
+    /// Run `check_plan` only; stop before implement/review (enabled by `--dry-run`).
+    pub dry_run: bool,
 }
 
 pub struct Orchestrator<'a> {
@@ -191,6 +193,9 @@ impl Orchestrator<'_> {
             Ok(()) => {
                 async {
                     run_coder_session_until_pre_summary(self, context).await?;
+                    if self.config.dry_run {
+                        return Ok(());
+                    }
                     mid(self.client, self.artifacts, &self.session_dotfile_backups)
                         .await
                         .map_err(WorkflowError)?;

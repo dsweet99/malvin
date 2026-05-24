@@ -10,7 +10,8 @@
 - Agent pacing (latency vs thoroughness)
 - Code quality
 - The subject matter being address by this coding project
-Newness should be decided relative to the existing `.malvin/advice.md` file.
+
+Look for cases of "If I'd known then what I know now, I'd have had a easier time". Newness should be decided relative to the existing `.malvin/advice.md` file.
 
 2) Summarize them in a list.
 

@@ -35,6 +35,7 @@ KPop: Please review the plan in `{{ plan_path }}`. You have a budget of 5 hypoth
 - Are there errors in the plan?
 - Is the plan self-consistent?
 - Is the plan sound?
+- Are there mentions in recent logs of `malvin code` rejecting this plan?
 
 ## Step 3: Improve the plan
 

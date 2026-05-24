@@ -28,6 +28,12 @@ pub(super) async fn run_check_plan(
             continue;
         };
         if is_lgtm_str(&contents) {
+            if orchestrator.config.dry_run {
+                (orchestrator.progress_callback)(&format!(
+                    "Plan check passed:\n{}",
+                    contents.trim()
+                ));
+            }
             return orchestrator.fail_on_abort_result();
         }
         orchestrator.fail_on_abort_result()?;
@@ -122,6 +128,7 @@ mod tests {
                 run_learn: false,
                 learn_min_elapsed_ms: 0,
                 skip_check_plan: false,
+                dry_run: false,
             },
             progress_callback: Box::new(|_| {}),
             session_dotfile_backups: SessionDotfileBackups::from_parts(
@@ -174,6 +181,7 @@ mod tests {
                 run_learn: false,
                 learn_min_elapsed_ms: 0,
                 skip_check_plan: false,
+                dry_run: false,
             },
             progress_callback: Box::new(|_| {}),
             session_dotfile_backups: SessionDotfileBackups::from_parts(

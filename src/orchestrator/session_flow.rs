@@ -13,6 +13,10 @@ pub(super) async fn run_coder_session_until_pre_summary(
         run_check_plan(orchestrator, context).await?;
     }
 
+    if orchestrator.config.dry_run {
+        return Ok(());
+    }
+
     (orchestrator.progress_callback)("Implement");
     orchestrator
         .run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
@@ -112,6 +116,7 @@ mod session_flow_smoke_tests {
                 run_learn: false,
                 learn_min_elapsed_ms: 0,
                 skip_check_plan,
+                dry_run: false,
             },
             progress_callback: Box::new(|_| {}),
             session_dotfile_backups: empty_dotfile_backups(),
