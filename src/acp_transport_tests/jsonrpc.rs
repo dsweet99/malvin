@@ -96,6 +96,27 @@ pub(crate) fn assert_cursor_credentials_forwarding(
 }
 
 #[test]
+fn test_sandbox_forwards_enabled_mode_before_model() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
+        cwd: tmp.path(),
+        bin_override: Some(Path::new("/bin/true")),
+        api_key: None,
+        auth_token: None,
+        george_acp_lane: None,
+        model: Some("gpt-5"),
+        force: false,
+        sandbox: true,
+    });
+    let args = command_args(&cmd);
+    assert_arg_value(&args, "--sandbox", Some("enabled"));
+    assert_arg_value(&args, "--model", Some("gpt-5"));
+    let sandbox_idx = args.iter().position(|a| a == "--sandbox").expect("sandbox");
+    let model_idx = args.iter().position(|a| a == "--model").expect("model");
+    assert!(sandbox_idx < model_idx, "args: {args:?}");
+}
+
+#[test]
 fn test_cursor_credentials_forwards_key_and_token() {
     let _guard = crate::test_utils::test_env_lock();
     clear_cursor_env_for_test();

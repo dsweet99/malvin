@@ -97,7 +97,7 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
         cmd.arg("--force");
     }
     if args.sandbox {
-        cmd.arg("--sandbox");
+        cmd.arg("--sandbox").arg("enabled");
     }
     if let Some(m) = args.model.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.arg("--model").arg(m);
