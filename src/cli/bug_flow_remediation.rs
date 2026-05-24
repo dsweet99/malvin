@@ -16,7 +16,12 @@ KPOP ended with `## KPOP_SOLVED`. The experiment log under `_kpop/` is the autho
 Malvin will run two coder prompts in order: `bug_regression_test.md`, then `bug_fix.md`.
 ";
 
-pub(super) const BUG_KPOP_REQUEST: &str = "Find a serious bug in this codebase.";
+pub(super) fn bug_kpop_request(store: &PromptStore) -> Result<String, String> {
+    store
+        .prompt_text("hunt_request.md")
+        .map(|s| s.trim().to_string())
+        .map_err(|e: PromptError| e.0)
+}
 
 pub(super) struct BugRunTail<'a> {
     pub bug: &'a BugArgs,
@@ -52,11 +57,12 @@ pub(super) async fn finish_bug_remediation(
     }
 
     let store = prepare_bug_prompt_store(tail.workflow)?;
+    let request = bug_kpop_request(&store)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
     emit_run_startup_sequence(
         &artifacts,
         tail.shared.tee_startup_stdout(),
-        BUG_KPOP_REQUEST,
+        &request,
     )?;
     run_bug_remediation_orchestrator(client, &artifacts, &store, tail.workflow).await?;
     print_stdout_line(MALVIN_WHO, "DONE");
@@ -123,10 +129,11 @@ async fn run_bug_remediation_orchestrator(
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::{finish_bug_remediation, run_bug_fix_by_id};
+    use super::{bug_kpop_request, finish_bug_remediation, run_bug_fix_by_id};
 
     #[test]
     fn kiss_static_fn_item_refs() {
+        let _ = bug_kpop_request;
         let _ = finish_bug_remediation;
         let _ = run_bug_fix_by_id;
     }

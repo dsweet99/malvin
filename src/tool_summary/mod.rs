@@ -114,6 +114,9 @@ impl ToolSummaryTracker {
 }
 
 #[cfg(test)]
+mod run_timing_regressions;
+
+#[cfg(test)]
 mod tool_summary_regressions {
     use super::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
     use serde_json::json;

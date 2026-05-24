@@ -18,7 +18,6 @@ pub async fn run_tidy_prompt(
             kind,
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(phase),
-                skip_repo_style: true,
                 do_trace_split: None,
                 stdout_bracket_label: None,
             },

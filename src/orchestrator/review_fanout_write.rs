@@ -5,7 +5,6 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::prompts::PromptStore;
 
 use super::WorkflowError;
-use super::constants::REVIEW_WRITE_FILE;
 use super::review_attempt_kernel::artifact_review_lgtm_after_review_write;
 use super::review_fanout_run::{ReviewWriteCoderSession, run_review_write_coder_session};
 
@@ -34,7 +33,6 @@ pub struct FinishReviewWriteInput<'a> {
     pub context: &'a HashMap<String, String>,
     pub attempt: usize,
     pub log_attempt: usize,
-    pub skip_repo_style: bool,
 }
 
 /// # Errors
@@ -51,13 +49,7 @@ pub async fn finish_review_write_attempt(
         context,
         attempt,
         log_attempt,
-        skip_repo_style,
     } = input;
-    let stdout_bracket_label = if skip_repo_style {
-        None
-    } else {
-        Some(REVIEW_WRITE_FILE)
-    };
     run_review_write_coder_session(ReviewWriteCoderSession {
         client,
         prompts,
@@ -66,8 +58,6 @@ pub async fn finish_review_write_attempt(
         context,
         attempt,
         log_attempt,
-        skip_repo_style,
-        stdout_bracket_label,
     })
     .await?;
     fail_on_abort_for_artifacts(artifacts)?;
@@ -132,7 +122,6 @@ mod tests {
             context: &ctx,
             attempt: 1,
             log_attempt: 1,
-            skip_repo_style: true,
         })
         .await
         .expect_err("review_write without session");
@@ -157,8 +146,6 @@ mod tests {
             context: &ctx,
             attempt: 1,
             log_attempt: 1,
-            skip_repo_style: true,
-            stdout_bracket_label: None,
         })
         .await
         .expect_err("expected no session");

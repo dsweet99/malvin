@@ -50,7 +50,6 @@ fn gate_failure_marker_not_masked_by_stale_workspace_lgtm_on_sync() {
 fn prepare_tidy_prompt_store_loads_required_templates() {
     let store = crate::cli::tidy_flow::prepare_tidy_prompt_store().expect("store");
     let mut ctx = std::collections::HashMap::new();
-    ctx.insert("memories".to_string(), String::new());
     ctx.insert("quality_gates".to_string(), String::new());
     ctx.insert(
         "quality_gates_log".to_string(),
@@ -65,7 +64,6 @@ fn prepare_tidy_prompt_store_loads_required_templates() {
 fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
     let store = crate::prompts::PromptStore::default_store();
     let mut ctx = HashMap::new();
-    ctx.insert("memories".to_string(), String::new());
     ctx.insert(
         "quality_gates_log".to_string(),
         "./_malvin/run/quality_gates.log".to_string(),

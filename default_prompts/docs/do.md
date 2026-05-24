@@ -24,12 +24,6 @@ The user’s task as literal text, or `@<path>` to read from a file.
 
 ## Options
 
-### `--cooked`
-
-**Default (raw) mode:** Prepends the short **do header** (malvin-do persona, plaintext stdout, log hints). Optional first-turn repo style from `coder_style.md` in the work directory is **not** injected.
-
-**Cooked mode:** Prepends the full **coding header** (malvin identity, history/memory guidance, repo rules path). Optional first-turn repo style from `coder_style.md` **may** be injected (same as `code`). (`.malvin_memory/*.md` supplies memory TRIGGER/ADVICE text in the header, not this prepend. `init` may install `.malvin_memory/style.md` as a separate template; malvin does not read that path for ACP first-turn style injection.)
-
 ### `--repo-gates`
 
 Before the agent runs, execute workspace quality gates (commands from `.malvin_checks`, with `kiss clamp` preparation). Uses the no-clamp variant for gates only in the sense that this path calls `run_repo_workspace_gates_no_kiss_clamp` so gates do not implicitly create `.kissconfig`. Failure aborts before any prompt.
@@ -48,9 +42,9 @@ Exactly **one** coder prompt per invocation.
 
 | Step | Prompt role (effect) | Log |
 |------|----------------------|-----|
-| 1a (raw) | **Do header** — Tells the agent it is malvin in do mode; plaintext replies; points at `_malvin/.../do.log` for prior do sessions. | `do.log` |
-| 1b (cooked) | **Coding header** — Full malvin coding context plus user request. | `do.log` |
-| — | **User request** — Appended after the header (not a separate file). | `do.log` |
+| 1 | **Coding header** (`header.md`) — Full malvin coding context (identity, history/memory guidance, repo rules). | `do.log` |
+| 2 | **Do header** (`do_header.md`) — Tells the agent it is malvin in do mode; plaintext replies; points at `_malvin/.../do.log` for prior do sessions. | `do.log` |
+| — | **User request** — Appended after both headers (not a separate file). | `do.log` |
 
 No `implement`, `review`, `concerns`, `learn`, or `summary` phases.
 
@@ -64,12 +58,12 @@ No `implement`, `review`, `concerns`, `learn`, or `summary` phases.
 
 - Quick questions or small edits without a written plan.
 - Piped/redirected workflows that need clean plaintext.
-- Inspecting or continuing prior work via recent `_malvin/*/do.log` (agent is steered to look there in raw mode).
+- Inspecting or continuing prior work via recent `_malvin/*/do.log` (agent is steered to look there in the do header).
 
 ## Examples
 
 ```text
 malvin do "List failing tests and suggest fixes"
-malvin do --cooked @notes/task.md
+malvin do @notes/task.md
 malvin do --repo-gates "Refactor foo.rs to use Result"
 ```

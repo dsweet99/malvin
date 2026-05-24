@@ -15,11 +15,11 @@ use super::kpop_flow::{
 use super::{BugArgs, KpopArgs};
 use super::{WorkflowCliOptions, build_agent};
 
-pub(crate) fn kpop_args_from_bug(bug: &BugArgs) -> KpopArgs {
+pub(crate) fn kpop_args_from_bug(bug: &BugArgs, request: &str) -> KpopArgs {
     KpopArgs {
         max_hypotheses: bug.max_hypotheses,
         no_learn: bug.no_learn,
-        request: Some(super::bug_flow_remediation::BUG_KPOP_REQUEST.to_string()),
+        request: Some(request.to_string()),
     }
 }
 
@@ -130,8 +130,9 @@ pub async fn run_bug(
         let resolved = lookup_bug_id(&cwd, id)?;
         run_bug_fix_by_id(tail, resolved, &mut client).await
     } else {
-        let kpop = kpop_args_from_bug(&bug);
-        let store_kpop = super::prepare_kpop_prompt_store(workflow, false)?;
+        let store_kpop = super::prepare_hunt_kpop_prompt_store(workflow)?;
+        let request = super::bug_flow_remediation::bug_kpop_request(&store_kpop)?;
+        let kpop = kpop_args_from_bug(&bug, &request);
         async {
             let prepared = run_bug_kpop_multiturn(BugKpopPhase {
                 kpop: &kpop,
@@ -166,6 +167,7 @@ mod kiss_static_fn_item_refs {
 #[cfg(test)]
 mod tests {
     use super::{kpop_args_from_bug, validate_bug_cli, BugArgs};
+    use crate::prompts::PromptStore;
 
     #[test]
     fn kpop_args_from_bug_maps_bug_fields() {
@@ -176,13 +178,13 @@ mod tests {
             skip_pre_checks: false,
             bug_id: None,
         };
-        let kpop = kpop_args_from_bug(&bug);
+        let store = PromptStore::default_store();
+        let expected = super::super::bug_flow_remediation::bug_kpop_request(&store)
+            .expect("hunt_request");
+        let kpop = kpop_args_from_bug(&bug, &expected);
         assert_eq!(kpop.max_hypotheses, 7);
         assert!(kpop.no_learn);
-        assert_eq!(
-            kpop.request.as_deref(),
-            Some(super::super::bug_flow_remediation::BUG_KPOP_REQUEST)
-        );
+        assert_eq!(kpop.request.as_deref(), Some(expected.as_str()));
     }
 
     #[test]

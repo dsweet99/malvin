@@ -27,7 +27,6 @@ pub struct ReviewTwoPromptSession<'a> {
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub context: &'a HashMap<String, String>,
     pub attempt: usize,
-    pub skip_repo_style: bool,
 }
 
 /// Run `reviewers_spawn`, then retry `review_write` against the same prep file.
@@ -52,7 +51,6 @@ where
         context: session.context,
         attempt: session.attempt,
         log_attempt: session.attempt,
-        skip_repo_style: session.skip_repo_style,
     })
     .await?;
     ensure_review_prep_after_reviewers_spawn(session.artifacts)?;
@@ -66,7 +64,6 @@ where
             context: session.context,
             attempt: review_write_try,
             log_attempt: session.attempt,
-            skip_repo_style: session.skip_repo_style,
         })
         .await?
         {
@@ -139,7 +136,6 @@ mod tests {
                 session_dotfile_backups: &backups,
                 context: &ctx,
                 attempt: 1,
-                skip_repo_style: true,
             },
             1,
             || {},

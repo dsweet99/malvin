@@ -99,7 +99,6 @@ impl AcpSession {
         split: DoPromptTraceSplit<'_>,
     ) -> Result<(), String> {
         let expected = compose_do_split_prompt_text(&DoOutgoingTraceParts {
-            style_text: split.style_text,
             header_text: split.header,
             user_text: split.user,
         });

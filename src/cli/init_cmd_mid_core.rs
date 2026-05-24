@@ -3,7 +3,7 @@ use std::process::Command;
 
 use super::{
     ADMIN_CHECK_UNTRACKED, HOOK_CLIPPY, HOOK_KISS, HOOK_RUFF, HOOK_UNTRACKED, Language,
-    PRE_COMMIT_HEADER, TPL_GITIGNORE, TPL_KISSIGNORE, TPL_STYLE,
+    PRE_COMMIT_HEADER, TPL_GITIGNORE, TPL_KISSIGNORE,
 };
 use crate::{lookup_bin_on_path, require_kiss_for_malvin};
 
@@ -45,11 +45,7 @@ pub(super) fn write_init_templates(root: &Path, force: bool, languages: &[Langua
         ADMIN_CHECK_UNTRACKED,
         force,
     )?;
-    write_text_file(
-        &root.join(".malvin_memory").join("style.md"),
-        TPL_STYLE,
-        force,
-    )
+    Ok(())
 }
 
 pub(super) fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {

@@ -135,7 +135,6 @@ async fn run_ideas_coder_prompt(
             "ideas",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
-                skip_repo_style: true,
                 do_trace_split: None,
                 stdout_bracket_label: None,
             },

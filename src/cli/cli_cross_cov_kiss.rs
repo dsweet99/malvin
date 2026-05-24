@@ -7,10 +7,11 @@ fn smoke_cov_cli_cli_units_0() {
     let _: Option<super::args::KpopArgs> = None;
     let _ = super::build_agent;
     let _ = super::prepare_bug_prompt_store;
+    let _ = super::prepare_hunt_kpop_prompt_store;
     let _ = super::prepare_kpop_prompt_store;
     let _ = super::prepare_prompt_store;
     let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::prepare_do_prompt_store_validating);
+    let _ = stringify!(super::bug_flow_remediation::bug_kpop_request);
     let _ = stringify!(super::entrypoint::dispatch_command);
     let _ = super::entrypoint::print_command_error;
     let _ = super::entrypoint::require_kiss_for_cli_command;
@@ -47,9 +48,10 @@ fn smoke_cov_cli_cli_units_1a() {
 #[test]
 fn smoke_cov_cli_cli_units_1b() {
     let _ = stringify!(crate::do_flow::do_flow_prompt::DoCoderRun);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::prepare_do_raw_prompt_store);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::prepare_do_prompt_store);
     let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user);
     let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user);
+    let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run_with_store);
     let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run);
     let _: Option<crate::init_cmd::RunInitOptions> = None;
     let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
@@ -119,7 +121,7 @@ fn smoke_cov_cli_cross_file_symbols_a() {
     let _ = stringify!(BugKpopPhase);
     let _ = stringify!(run_bug_kpop_multiturn);
     let _ = stringify!(ensure_kpop_solved);
-    let _ = stringify!(finish_bug_after_kpop);
+    let _ = stringify!(after_kpop_discovery);
     let _ = stringify!(BugRunTail);
     let _ = stringify!(run_bug_remediation_orchestrator);
 }

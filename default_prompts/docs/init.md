@@ -4,7 +4,7 @@ Prepare a workspace (repository) for malvin: install default config files, hook 
 
 ## Intention
 
-Turn an empty or existing directory into a malvin-aware repo with language-appropriate hooks, kiss configuration, LLM style guidance, and git hygiene—without requiring the user to hand-copy templates from the malvin source tree.
+Turn an empty or existing directory into a malvin-aware repo with language-appropriate hooks, kiss configuration, and git hygiene—without requiring the user to hand-copy templates from the malvin source tree.
 
 ## Usage
 
@@ -43,7 +43,7 @@ Init-specific: `--force` on the subcommand is separate from global `--no-force` 
 
 ## What init does (non-agent steps)
 
-1. Write templates: `.gitignore`, `.kissignore`, `.pre-commit-config.yaml`, `admin/check_untracked.sh`, `.malvin_memory/style.md` (respecting `--force`).
+1. Write templates: `.gitignore`, `.kissignore`, `.pre-commit-config.yaml`, `admin/check_untracked.sh` (respecting `--force`).
 2. Run `pre-commit install` in the target directory.
 3. Require `kiss` on PATH and run `kiss init`.
 4. Install git LFS if available.

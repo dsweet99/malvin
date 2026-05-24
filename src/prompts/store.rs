@@ -170,7 +170,6 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context.entry("memories".to_string()).or_default();
         render_context.insert(
             "coding_rules".to_string(),
             merged_coding_rules(self, context)?,
@@ -189,8 +188,7 @@ impl PromptStore {
         context: &HashMap<String, String>,
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
-        let mut render_context: HashMap<String, String> = context.clone();
-        render_context.entry("memories".to_string()).or_default();
+        let render_context: HashMap<String, String> = context.clone();
         let out = render_template(&prompt_text, &render_context);
         enforce_no_unresolved_braces(&out)?;
         Ok(out)
@@ -218,8 +216,7 @@ pub fn merged_coding_rules(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {
-    let mut render_context: std::collections::HashMap<String, String> = context.clone();
-    render_context.entry("memories".to_string()).or_default();
+    let render_context: std::collections::HashMap<String, String> = context.clone();
     let header_raw = store.load_header();
     let header_expanded = render_template(&header_raw, &render_context);
     let rules_raw = store.load_coding_rules();

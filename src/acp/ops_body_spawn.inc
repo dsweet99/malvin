@@ -35,6 +35,16 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
         .is_ok_and(|o| o.status.success())
 }
 
+/// True when [`AgentClient::ensure_authenticated`] would succeed without an ACP `authenticate` RPC.
+pub(crate) fn cursor_cli_auth_established() -> bool {
+    if has_api_key() {
+        return true;
+    }
+    auth_probe(&["agent", "auth", "status"])
+        || auth_probe(&["cursor-agent", "auth", "status"])
+        || auth_probe(&["agent", "whoami"])
+}
+
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
     let bin = resolve_agent_bin();
     if bin.is_none() && test_no_real_agent_enabled() {
@@ -46,7 +56,7 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     let rpc_secs = crate::support_paths::acp_rpc_timeout_secs_from_env();
     let model = client.model.trim();
     let model_opt = (!model.is_empty()).then_some(model);
-    AcpSession::spawn(AcpSpawnArgs {
+    let mut session = AcpSession::spawn(AcpSpawnArgs {
         cwd,
         bin_override: bin.as_deref(),
         api_key: None,
@@ -66,7 +76,9 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         log_full_outgoing_prompts: client.io.log_full_outgoing_prompts,
     })
     .await
-    .map_err(AgentError)
+    .map_err(AgentError)?;
+    crate::acp::acp_session_set_run_timing(&mut session, client.timing.clone());
+    Ok(session)
 }
 
 pub(crate) fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {

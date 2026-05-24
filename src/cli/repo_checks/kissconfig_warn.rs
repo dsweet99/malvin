@@ -101,18 +101,14 @@ mod kissconfig_warn_tests {
     }
 
     #[test]
-    fn warn_path_exercises_gate_log_style_and_source_detect() {
+    fn warn_path_exercises_gate_log_and_source_detect() {
         let tmp = tempfile::tempdir().expect("tempdir");
         crate::repo_checks::gate_log::emit_repo_gate_line(
             RepoGateOutput::Tagged,
             "kissconfig-warn-test",
             None,
         );
-        crate::repo_checks::style_markers::touch_if_missing(
-            &tmp.path().join("style.md"),
-            RepoGateOutput::Tagged,
-        )
-        .expect("touch");
+        std::fs::File::create(tmp.path().join("marker.md")).expect("touch");
         assert!(!crate::repo_checks::gate_run::source_like_files_present(
             tmp.path()
         ));

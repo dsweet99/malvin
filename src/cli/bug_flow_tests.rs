@@ -1,8 +1,9 @@
 use crate::cli::bug_flow::{kpop_args_from_bug, validate_bug_cli};
 use crate::cli::bug_flow_remediation::{
-    artifacts_for_fix_by_id, gate_retry_command, BUG_KPOP_REQUEST,
+    artifacts_for_fix_by_id, bug_kpop_request, gate_retry_command,
 };
 use crate::cli::BugArgs;
+use crate::prompts::PromptStore;
 
 #[test]
 fn kpop_args_from_bug_maps_bug_fields() {
@@ -13,10 +14,22 @@ fn kpop_args_from_bug_maps_bug_fields() {
         fix: false,
         bug_id: None,
     };
-    let kpop = kpop_args_from_bug(&bug);
+    let store = PromptStore::default_store();
+    let expected = bug_kpop_request(&store).expect("hunt_request");
+    let kpop = kpop_args_from_bug(&bug, &expected);
     assert_eq!(kpop.max_hypotheses, 7);
     assert!(kpop.no_learn);
-    assert_eq!(kpop.request.as_deref(), Some(BUG_KPOP_REQUEST));
+    assert_eq!(kpop.request.as_deref(), Some(expected.as_str()));
+}
+
+#[test]
+fn prepare_hunt_kpop_prompt_store_loads_hunt_request() {
+    let store = crate::cli::prepare_hunt_kpop_prompt_store(crate::cli::WorkflowCliOptions {
+        force: false,
+        run_learn: false,
+    })
+    .expect("store");
+    assert!(store.validate_exists("hunt_request.md").is_ok());
 }
 
 #[test]

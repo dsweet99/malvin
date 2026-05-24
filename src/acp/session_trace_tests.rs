@@ -34,7 +34,6 @@ async fn trace_write_outgoing_prompt_do_writes_plain_lines_without_tags() {
     trace_write_outgoing_prompt_do(
         &mut file,
         DoOutgoingTraceParts {
-            style_text: Some("STYLE"),
             header_text: "HEADER",
             user_text: "PROMPT",
         },
@@ -43,7 +42,7 @@ async fn trace_write_outgoing_prompt_do_writes_plain_lines_without_tags() {
     .unwrap();
     drop(file);
     let content = std::fs::read_to_string(path).unwrap();
-    assert_eq!(content, "STYLE\n\nHEADER\n\nPROMPT\n");
+    assert_eq!(content, "HEADER\n\nPROMPT\n");
     assert!(!content.contains(":[>style"));
     assert!(!content.contains(":[>header"));
     assert!(!content.contains(":[>prompt"));
@@ -77,7 +76,6 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
     append_prompts_log_do_plain(
         Some(&run_dir),
         &DoOutgoingTraceParts {
-            style_text: None,
             header_text: "H",
             user_text: "U",
         },
@@ -119,7 +117,6 @@ async fn append_prompts_log_do_plain_name_only_writes_do_summary() {
     append_prompts_log_do_plain(
         Some(&run_dir),
         &DoOutgoingTraceParts {
-            style_text: None,
             header_text: "SECRET",
             user_text: "PRIVATE",
         },
@@ -148,7 +145,6 @@ async fn trace_write_outgoing_prompt_do_preserves_header_user_separator() {
     trace_write_outgoing_prompt_do(
         &mut file,
         DoOutgoingTraceParts {
-            style_text: None,
             header_text: "HEADER",
             user_text: "USER",
         },

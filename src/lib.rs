@@ -101,8 +101,6 @@ pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
     require_kiss_for_malvin,
 };
-#[path = "orchestrator/memory_context.rs"]
-pub mod memory_context;
 pub mod workflow_context;
 pub mod orchestrator;
 pub use orchestrator::{

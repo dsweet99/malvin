@@ -101,7 +101,6 @@ async fn code_review_single_attempt(
                 session_dotfile_backups,
                 context: ctx.context,
                 attempt: ctx.attempt,
-                skip_repo_style: false,
             },
             REVIEW_WRITE_INNER_RETRY_CAP,
             || {

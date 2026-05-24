@@ -24,8 +24,8 @@ mod code_flow_b;
 
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
-    format_workspace_gate_failure, prepare_bug_prompt_store, prepare_kpop_prompt_store,
-    prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
+    format_workspace_gate_failure, prepare_bug_prompt_store, prepare_hunt_kpop_prompt_store,
+    prepare_kpop_prompt_store, prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub use code_flow_b::run_code;
 
@@ -38,6 +38,9 @@ mod bug_flow_tests;
 #[cfg(test)]
 #[path = "bug_id_lookup_tests.rs"]
 mod bug_id_lookup_tests;
+#[cfg(test)]
+#[path = "do_flow_tests.rs"]
+mod do_flow_tests;
 #[cfg(test)]
 mod cli_cross_cov;
 #[cfg(test)]

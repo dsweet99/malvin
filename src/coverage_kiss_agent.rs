@@ -1,6 +1,6 @@
 //! Agent ACP behavioral smokes for `kiss check` coverage (split from `coverage_kiss` for file size limits).
 
-use crate::acp::{AgentClient, AgentIoOptions, DEFAULT_REPO_STYLE_PROMPT_REL, has_api_key};
+use crate::acp::{AgentClient, AgentIoOptions, has_api_key};
 
 #[test]
 fn smoke_agent_client_new_has_no_open_coder_session() {
@@ -20,9 +20,4 @@ fn smoke_agent_client_new_has_no_open_coder_session() {
 #[test]
 fn smoke_has_api_key_reads_env_without_panic() {
     let _: bool = has_api_key();
-}
-
-#[test]
-fn smoke_default_repo_style_prompt_rel_nonempty() {
-    assert_ne!(DEFAULT_REPO_STYLE_PROMPT_REL, "");
 }

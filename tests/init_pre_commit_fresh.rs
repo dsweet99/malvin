@@ -8,12 +8,8 @@ use common::{
 };
 
 #[test]
-fn malvin_init_creates_initial_commit_on_main_and_installs_llm_style_for_fresh_repo() {
+fn malvin_init_creates_initial_commit_on_main_for_fresh_repo() {
     let w = InitOk::new(&["python"]);
-    assert!(
-        w.path().join(".malvin_memory/style.md").exists(),
-        "init should install .malvin_memory/style.md"
-    );
     assert_git_branch_main(w.path());
     assert_git_head_commit_count(w.path(), "1");
 }

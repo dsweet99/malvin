@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
-use crate::memory_context;
 
 use crate::prompts::{PromptError, PromptStore};
 
@@ -54,15 +53,11 @@ pub fn workflow_context_paths_only(
 ) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
-    context.insert(
-        "memories".to_string(),
-        memory_context::build_memories_value(&artifacts.work_dir),
-    );
     context.insert("malvin_command".to_string(), malvin_command.to_string());
     context
 }
 
-/// Builds the full workflow render context (paths, memories, quality gates, `kpop` slot).
+/// Builds the full workflow render context (paths, quality gates, `kpop` slot).
 ///
 /// # Errors
 ///

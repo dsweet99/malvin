@@ -32,11 +32,6 @@ pub(crate) const HOOK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/hooks/untracked.yaml"
 ));
-pub(crate) const TPL_STYLE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/llm_style/style.md"
-));
-
 #[path = "init_cmd_mid_core.rs"]
 mod init_cmd_mid_core;
 
@@ -162,7 +157,6 @@ async fn init_summary_coder_turn_with_timing_emit(
             "summary",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Summary),
-                skip_repo_style: true,
                 do_trace_split: None,
                 stdout_bracket_label: None,
             },

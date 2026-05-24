@@ -1,21 +1,18 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::acp::{
-    auth_probe, backoff_after_agent_failure, has_api_key, spawn_agent_acp_session, AgentClient,
-    AgentError, AgentIoOptions, AuthError, DEFAULT_REPO_STYLE_PROMPT_REL, MAX_AGENT_ATTEMPTS,
-    retries_noun,
+    backoff_after_agent_failure, spawn_agent_acp_session, AgentClient, AgentError, AgentIoOptions,
+    AuthError, MAX_AGENT_ATTEMPTS, retries_noun,
 };
 
 impl AgentClient {
     #[must_use]
-    pub fn new(model: String, io: AgentIoOptions) -> Self {
+    pub const fn new(model: String, io: AgentIoOptions) -> Self {
         Self {
             model,
             io,
             prompts_log_run_dir: None,
-            style_prompt_path: PathBuf::from(DEFAULT_REPO_STYLE_PROMPT_REL),
             coder_session: None,
-            coder_style_on_next_prompt: false,
             timing: None,
         }
     }
@@ -52,16 +49,7 @@ impl AgentClient {
     ///
     /// Returns [`AuthError`] when no credentials and probes fail.
     pub fn ensure_authenticated(&self) -> Result<(), AuthError> {
-        if has_api_key() {
-            return Ok(());
-        }
-        if auth_probe(&["agent", "auth", "status"]) {
-            return Ok(());
-        }
-        if auth_probe(&["cursor-agent", "auth", "status"]) {
-            return Ok(());
-        }
-        if auth_probe(&["agent", "whoami"]) {
+        if crate::acp::cursor_cli_auth_established() {
             return Ok(());
         }
         Err(AuthError(
@@ -93,7 +81,6 @@ impl AgentClient {
                 Ok(mut s) => {
                     crate::acp::acp_session_set_run_timing(&mut s, self.timing.clone());
                     self.coder_session = Some(s);
-                    self.coder_style_on_next_prompt = true;
                     return Ok(());
                 }
                 Err(e) => {

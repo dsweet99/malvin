@@ -18,8 +18,6 @@ pub struct ReviewWriteCoderSession<'a> {
     pub context: &'a HashMap<String, String>,
     pub attempt: usize,
     pub log_attempt: usize,
-    pub skip_repo_style: bool,
-    pub stdout_bracket_label: Option<&'a str>,
 }
 
 pub struct ReviewersSpawnCoderSession<'a> {
@@ -30,7 +28,6 @@ pub struct ReviewersSpawnCoderSession<'a> {
     pub context: &'a HashMap<String, String>,
     pub attempt: usize,
     pub log_attempt: usize,
-    pub skip_repo_style: bool,
 }
 
 struct ReviewPromptCoderSession<'a> {
@@ -75,7 +72,6 @@ async fn run_review_prompt_coder_session(
             prompt_md_stem(prompt_file),
             CoderPromptOptions {
                 llm_phase: Some(phase),
-                skip_repo_style: log.skip_repo_style,
                 do_trace_split: None,
                 stdout_bracket_label,
             },
@@ -94,11 +90,6 @@ async fn run_review_prompt_coder_session(
 pub async fn run_reviewers_spawn_coder_session(
     session: ReviewersSpawnCoderSession<'_>,
 ) -> Result<(), WorkflowError> {
-    let stdout_bracket_label = if session.skip_repo_style {
-        None
-    } else {
-        Some(REVIEWERS_SPAWN_FILE)
-    };
     run_review_prompt_coder_session(ReviewPromptCoderSession {
         client: session.client,
         prompts: session.prompts,
@@ -109,11 +100,10 @@ pub async fn run_reviewers_spawn_coder_session(
         phase: TimingPhase::ReviewFanout,
         log: ReviewPromptLog {
             prompt_file: REVIEWERS_SPAWN_FILE,
-            skip_repo_style: session.skip_repo_style,
             log_attempt: session.log_attempt,
             attempt: session.attempt,
         },
-        stdout_bracket_label,
+        stdout_bracket_label: Some(REVIEWERS_SPAWN_FILE),
     })
     .await
 }
@@ -134,11 +124,10 @@ pub async fn run_review_write_coder_session(
         phase: TimingPhase::ReviewWrite,
         log: ReviewPromptLog {
             prompt_file: REVIEW_WRITE_FILE,
-            skip_repo_style: session.skip_repo_style,
             log_attempt: session.log_attempt,
             attempt: session.attempt,
         },
-        stdout_bracket_label: session.stdout_bracket_label,
+        stdout_bracket_label: Some(REVIEW_WRITE_FILE),
     })
     .await
 }
@@ -165,8 +154,6 @@ mod tests {
             context: &ctx,
             attempt: 1,
             log_attempt: 1,
-            skip_repo_style: true,
-            stdout_bracket_label: None,
         })
         .await
         .expect_err("write prompt without session");
@@ -191,7 +178,6 @@ mod tests {
             context: &ctx,
             attempt: 1,
             log_attempt: 1,
-            skip_repo_style: true,
         })
         .await
         .expect_err("spawn prompt without session");
@@ -224,11 +210,10 @@ mod tests {
             phase: TimingPhase::ReviewFanout,
             log: ReviewPromptLog {
                 prompt_file: REVIEWERS_SPAWN_FILE,
-                skip_repo_style: true,
                 log_attempt: 1,
                 attempt: 1,
             },
-            stdout_bracket_label: None,
+            stdout_bracket_label: Some(REVIEWERS_SPAWN_FILE),
         })
         .await
         .expect_err("prompt session");

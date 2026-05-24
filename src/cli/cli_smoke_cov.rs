@@ -217,7 +217,6 @@ fn smoke_compose_tidy_prompt_includes_plan_path() {
     use std::collections::HashMap;
     let store = crate::prompts::PromptStore::default_store();
     let mut ctx = HashMap::new();
-    ctx.insert("memories".to_string(), String::new());
     ctx.insert(
         "quality_gates_log".to_string(),
         "./_malvin/run/quality_gates.log".to_string(),

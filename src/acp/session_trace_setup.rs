@@ -79,21 +79,13 @@ async fn trace_write_plain_body(file: &mut tokio::fs::File, body: &str) -> Resul
     Ok(())
 }
 
-#[allow(clippy::struct_field_names)]
 pub(crate) struct DoOutgoingTraceParts<'a> {
-    pub style_text: Option<&'a str>,
     pub header_text: &'a str,
     pub user_text: &'a str,
 }
 
 pub(crate) fn compose_do_split_prompt_text(parts: &DoOutgoingTraceParts<'_>) -> String {
-    let mut sections = Vec::new();
-    if let Some(style) = parts.style_text.map(str::trim).filter(|t| !t.is_empty()) {
-        sections.push(style.to_string());
-    }
-    sections.push(parts.header_text.to_string());
-    sections.push(parts.user_text.to_string());
-    sections.join("\n\n")
+    format!("{}\n\n{}", parts.header_text, parts.user_text)
 }
 
 pub(crate) async fn trace_write_invocation_and_do_split_prompt(
@@ -104,7 +96,6 @@ pub(crate) async fn trace_write_invocation_and_do_split_prompt(
     trace_write_outgoing_prompt_do(
         file,
         DoOutgoingTraceParts {
-            style_text: split.style_text,
             header_text: split.header,
             user_text: split.user,
         },
@@ -112,7 +103,7 @@ pub(crate) async fn trace_write_invocation_and_do_split_prompt(
     .await
 }
 
-/// `malvin do`: disk trace matches the full prompt (style, then `header.md`, then user request).
+/// `malvin do`: disk trace matches the full prompt (combined headers, then user request).
 pub(crate) async fn trace_write_outgoing_prompt_do(
     file: &mut tokio::fs::File,
     parts: DoOutgoingTraceParts<'_>,

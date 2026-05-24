@@ -97,7 +97,6 @@ fn malvin_init_creates_expected_files_for_python_only() {
         "should always have check-untracked hook"
     );
 
-    assert!(w.path().join(".malvin_memory/style.md").exists());
 
     assert!(w.path().join(".gitignore").exists());
     assert!(w.path().join(".kissignore").exists());
@@ -147,5 +146,5 @@ fn malvin_init_language_args_are_case_insensitive() {
 fn malvin_init_git_ls_tree_head_lists_expected_paths() {
     let w = InitOk::new(&["python"]);
     let tree = git_stdout(w.path(), &["ls-tree", "-r", "--name-only", "HEAD"]);
-    assert!(tree.contains(".malvin_memory/style.md"));
+    assert!(tree.contains(".gitignore"));
 }

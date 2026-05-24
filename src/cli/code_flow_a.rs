@@ -61,6 +61,17 @@ pub fn prepare_kpop_prompt_store(
     Ok(store)
 }
 
+pub fn prepare_hunt_kpop_prompt_store(
+    workflow: WorkflowCliOptions,
+) -> Result<crate::prompts::PromptStore, String> {
+    use crate::prompts::PromptError;
+    let store = prepare_kpop_prompt_store(workflow, false)?;
+    store
+        .validate_exists("hunt_request.md")
+        .map_err(|e: PromptError| e.0)?;
+    Ok(store)
+}
+
 pub const fn agent_io_options(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,

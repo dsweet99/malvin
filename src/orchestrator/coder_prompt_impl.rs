@@ -37,7 +37,6 @@ impl Orchestrator<'_> {
                 stem,
                 CoderPromptOptions {
                     llm_phase: Some(llm_phase),
-                    skip_repo_style: false,
                     do_trace_split: None,
                     stdout_bracket_label: Some(filename),
                 },

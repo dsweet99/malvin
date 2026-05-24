@@ -100,12 +100,20 @@ pub(crate) fn acp_rpc_timeout() -> std::time::Duration {
     std::time::Duration::from_secs(crate::config::acp_rpc_timeout_secs_from_env())
 }
 
+/// Whether the ACP handshake must send `authenticate` (`methodId: cursor_login`).
+///
+/// One-time `agent login` is enough for the CLI; when credentials are already present we skip the
+/// redundant RPC (often ~10s+) and go straight to `session/new`.
 pub(crate) fn requires_cursor_login_auth(
     explicit_api_key: Option<&str>,
     explicit_auth_token: Option<&str>,
 ) -> bool {
-    effective_cursor_api_key(explicit_api_key).is_none()
-        && effective_cursor_auth_token(explicit_auth_token).is_none()
+    if effective_cursor_api_key(explicit_api_key).is_some()
+        || effective_cursor_auth_token(explicit_auth_token).is_some()
+    {
+        return false;
+    }
+    !crate::acp::cursor_cli_auth_established()
 }
 
 #[test]

@@ -6,8 +6,6 @@ mod types;
 
 #[cfg(test)]
 mod review_prep_regression;
-#[cfg(test)]
-mod style_markers;
 #[cfg(all(test, unix))]
 mod tests_gates_common;
 #[cfg(all(test, unix))]
@@ -16,8 +14,6 @@ mod tests_gates_helpers;
 mod tests_gates_unix;
 #[cfg(all(test, unix))]
 mod tests_gates_unix_extra;
-#[cfg(test)]
-mod tests_style;
 #[cfg(test)]
 pub use command_support::{set_fake_command_dir, FakeCommandDirGuard};
 

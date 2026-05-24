@@ -43,7 +43,6 @@ pub(crate) async fn do_split_outgoing_trace_preamble<'a>(
 ) -> Result<PromptTraceDispatchMeta<'a>, String> {
     do_split_trace_preamble(file, session.0.raw_output, split).await?;
     let parts = DoOutgoingTraceParts {
-        style_text: split.style_text,
         header_text: split.header,
         user_text: split.user,
     };

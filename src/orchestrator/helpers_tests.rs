@@ -91,7 +91,6 @@ fn insert_artifact_paths_populates_context() {
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("result_path"));
     assert!(ctx.contains_key("quality_gates_log"));
-    assert!(ctx.contains_key("memories"));
     assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("code"));
 }
 

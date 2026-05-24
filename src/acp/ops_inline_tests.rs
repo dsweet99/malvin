@@ -1,40 +1,53 @@
 use std::path::Path;
 
+unsafe fn clear_cursor_api_keys() {
+    unsafe {
+        for key in ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"] {
+            std::env::remove_var(key);
+        }
+    }
+}
+
+unsafe fn restore_optional_env(key: &str, value: Option<std::ffi::OsString>) {
+    unsafe {
+        if let Some(v) = value {
+            std::env::set_var(key, v);
+        } else {
+            std::env::remove_var(key);
+        }
+    }
+}
+
 #[cfg(unix)]
-fn write_path_executable(path: &Path) {
+fn write_path_executable(path: &Path, body: &[u8]) {
     use std::os::unix::fs::PermissionsExt;
 
-    std::fs::write(path, b"#!/bin/sh\nexit 0\n").unwrap();
+    std::fs::write(path, body).unwrap();
     let mut perms = std::fs::metadata(path).unwrap().permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(path, perms).unwrap();
     crate::test_utils::sync_test_executable(path);
 }
 
+#[path = "ops_inline_tests_cursor_auth_common.rs"]
+mod ops_inline_tests_cursor_auth_common;
+
 #[cfg(unix)]
 mod resolve_agent_bin_unix_tests {
-    use super::write_path_executable;
+    use super::{restore_optional_env, write_path_executable};
     use crate::acp::{MALVIN_TEST_NO_REAL_AGENT_ENV, auth_probe, resolve_agent_bin};
 
-    unsafe fn restore_optional_env(key: &str, value: Option<std::ffi::OsString>) {
-        unsafe {
-            if let Some(v) = value {
-                std::env::set_var(key, v);
-            } else {
-                std::env::remove_var(key);
-            }
-        }
-    }
+    const EXIT0: &[u8] = b"#!/bin/sh\nexit 0\n";
 
     #[test]
     fn resolve_agent_bin_prefers_env_override() {
         let _guard = crate::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
         let override_bin = tmp.path().join("custom-agent");
-        write_path_executable(&override_bin);
+        write_path_executable(&override_bin, EXIT0);
         let path_dir = tmp.path().join("path-bin");
         std::fs::create_dir(&path_dir).unwrap();
-        write_path_executable(&path_dir.join("agent"));
+        write_path_executable(&path_dir.join("agent"), EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
 
@@ -67,8 +80,8 @@ mod resolve_agent_bin_unix_tests {
         std::fs::create_dir(&path_dir).unwrap();
         let agent_bin = path_dir.join("agent");
         let cursor_bin = path_dir.join("cursor-agent");
-        write_path_executable(&agent_bin);
-        write_path_executable(&cursor_bin);
+        write_path_executable(&agent_bin, EXIT0);
+        write_path_executable(&cursor_bin, EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
 
@@ -100,7 +113,7 @@ mod resolve_agent_bin_unix_tests {
         let path_dir = tmp.path().join("bin");
         std::fs::create_dir(&path_dir).unwrap();
         let cursor_agent = path_dir.join("cursor-agent");
-        write_path_executable(&cursor_agent);
+        write_path_executable(&cursor_agent, EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
 
@@ -131,7 +144,7 @@ mod resolve_agent_bin_unix_tests {
         let tmp = tempfile::tempdir().unwrap();
         let path_dir = tmp.path().join("bin");
         std::fs::create_dir(&path_dir).unwrap();
-        write_path_executable(&path_dir.join("agent"));
+        write_path_executable(&path_dir.join("agent"), EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
         let old_no_real_agent = std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV);
@@ -145,6 +158,8 @@ mod resolve_agent_bin_unix_tests {
         assert_eq!(resolve_agent_bin(), None);
 
         unsafe {
+            restore_optional_env("MALVIN_AGENT_ACP_BIN", None);
+            assert!(std::env::var_os("MALVIN_AGENT_ACP_BIN").is_none());
             restore_optional_env("MALVIN_AGENT_ACP_BIN", old_override);
             restore_optional_env("PATH", old_path);
             restore_optional_env(MALVIN_TEST_NO_REAL_AGENT_ENV, old_no_real_agent);
@@ -163,11 +178,11 @@ mod resolve_agent_bin_unix_tests {
         assert!(!auth_probe(&["sh", "-c", "exit 0"]));
 
         unsafe {
-            if let Some(value) = old_no_real_agent {
-                std::env::set_var(MALVIN_TEST_NO_REAL_AGENT_ENV, value);
-            } else {
-                std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
-            }
+            restore_optional_env(MALVIN_TEST_NO_REAL_AGENT_ENV, old_no_real_agent);
         }
     }
 }
+
+#[cfg(unix)]
+#[path = "ops_inline_tests_cursor_auth.rs"]
+mod ops_inline_tests_cursor_auth;

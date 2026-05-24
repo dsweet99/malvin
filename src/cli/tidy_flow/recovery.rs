@@ -49,7 +49,6 @@ pub(crate) async fn tidy_review_attempt_with_retries(
             session_dotfile_backups,
             context: input.context,
             attempt,
-            skip_repo_style: true,
         },
         max_inner_retries.max(1),
         || {

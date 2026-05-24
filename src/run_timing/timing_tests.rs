@@ -99,6 +99,19 @@ fn attach_new_run_timing_and_finalize_json_only() {
 }
 
 #[test]
+fn tool_call_wall_duration_accumulates_in_run_timing() {
+    let mut r = RunTiming::default();
+    r.add_tool_call_wall(Duration::from_millis(30));
+    r.add_tool_call_wall(Duration::from_millis(20));
+    assert_eq!(
+        report::to_json_value(&r)
+            .get("tool_calls_ms")
+            .and_then(serde_json::Value::as_u64),
+        Some(50)
+    );
+}
+
+#[test]
 fn finalize_and_emit_run_timing_writes_summary() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let timing = RunTiming::new_arc();

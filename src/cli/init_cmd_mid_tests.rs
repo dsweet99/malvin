@@ -8,7 +8,7 @@ mod tests {
     };
     use crate::init_cmd::{
         emit_init_startup, parse_languages, resolve_init_root, Language, ADMIN_CHECK_UNTRACKED,
-        TPL_GITIGNORE, TPL_STYLE,
+        TPL_GITIGNORE,
     };
 
     #[test]
@@ -32,7 +32,6 @@ mod tests {
         );
         assert!(ADMIN_CHECK_UNTRACKED.contains("check_untracked"));
         assert!(ADMIN_CHECK_UNTRACKED.contains("exclude-standard"));
-        assert!(!TPL_STYLE.trim().is_empty());
     }
 
     #[test]

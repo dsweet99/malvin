@@ -2,23 +2,20 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::acp::{
-    backoff_after_agent_failure, coder_prompt_body_with_optional_repo_style, CoderPromptRepoStyleOpts,
-    outgoing_prompt_trace, AgentClient, AgentError, CoderSessionPromptDispatch, MAX_AGENT_ATTEMPTS,
-    coder_prompt_exhausted_error, dispatch_coder_session_prompt, record_coder_prompt_llm_timing,
+    backoff_after_agent_failure, outgoing_prompt_trace, AgentClient, AgentError,
+    CoderSessionPromptDispatch, MAX_AGENT_ATTEMPTS, coder_prompt_exhausted_error,
+    dispatch_coder_session_prompt, record_coder_prompt_llm_timing,
 };
 
 impl AgentClient {
     /// Run one prompt on the open coder session (implement, concerns, or learn).
     ///
-    /// When `opts.skip_repo_style` is false, the first prompt after [`Self::begin_coder_session`] may prepend
-    /// injected repo style when present. Set `skip_repo_style` for default raw `malvin do` so only `prompt` is sent.
-    ///
     /// `who` names the outbound/inbound **trace stem** when `opts.do_trace_split` is `None` (for example
     /// `implement` for `implement.md`). `opts.stdout_bracket_label`
     /// overrides the stdout `[label...]` line and is usually the template filename (for example
     /// `implement.md`); pass `None` to default the bracket label to `who`. When `do_trace_split` is `Some`,
-    /// stems come from the split trace (`>style` / `>header` / `>prompt`) and `who` / `stdout_bracket_label`
-    /// are not used for the split path (the `malvin do` subcommand passes `"raw"` or `"header"` as `who` for trace only).
+    /// stems come from the split trace and `who` / `stdout_bracket_label`
+    /// are not used for the split path.
     ///
     /// # Errors
     ///
@@ -32,7 +29,6 @@ impl AgentClient {
     ) -> Result<(), AgentError> {
         let outgoing_prompt_trace::CoderPromptOptions {
             llm_phase,
-            skip_repo_style,
             do_trace_split,
             stdout_bracket_label,
         } = opts;
@@ -42,31 +38,14 @@ impl AgentClient {
             .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?
             .clone();
 
-        let (full_prompt, repo_style) = coder_prompt_body_with_optional_repo_style(
-            prompt,
-            CoderPromptRepoStyleOpts {
-                style_on_first_turn: self.coder_style_on_next_prompt,
-                skip_repo_style,
-            },
-            &self.style_prompt_path,
-        );
-        crate::prompts::enforce_no_unresolved_braces(&full_prompt).map_err(|e| AgentError(e.0))?;
-
-        let style_for_do_trace = if do_trace_split.is_some() {
-            repo_style.as_deref()
-        } else {
-            None
-        };
-
-        self.coder_style_on_next_prompt = false;
+        crate::prompts::enforce_no_unresolved_braces(prompt).map_err(|e| AgentError(e.0))?;
 
         let dispatch = CoderSessionPromptDispatch {
             session: &session,
-            full_prompt: &full_prompt,
+            full_prompt: prompt,
             log_path,
             who,
             do_trace_split,
-            style_for_do_trace,
             stdout_bracket_label,
         };
         run_coder_prompt_with_retries(self, dispatch, llm_phase).await
@@ -115,10 +94,10 @@ async fn run_coder_prompt_with_retries(
     Err(coder_prompt_exhausted_error(attempts_used, last_error))
 }
 
-
 #[cfg(test)]
 mod kiss_cov_auto {
     #[test]
-    fn kiss_cov_run_coder_prompt_with_retries() { let _ = stringify!(run_coder_prompt_with_retries); }
-
+    fn kiss_cov_run_coder_prompt_with_retries() {
+        let _ = stringify!(run_coder_prompt_with_retries);
+    }
 }
