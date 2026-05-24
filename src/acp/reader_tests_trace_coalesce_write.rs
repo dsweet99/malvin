@@ -12,6 +12,7 @@ fn kpop_coalesce_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     }
 }
 
@@ -151,6 +152,7 @@ async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     let mut coalesce = TraceChunkCoalescer::default();
     let parsed = serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"ok":true}});

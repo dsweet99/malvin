@@ -4,32 +4,30 @@
 
 ## Intention
 
-Scientifically explore a question or codebase behavior: formulate falsifiable hypotheses, test them, record outcomes, and optionally interleave **MBC2** “creative” turns that stress-test assumptions. Distinct from `code`—focused on investigation, not shipping a pre-written plan.
+Scientifically explore a question or codebase behavior: formulate falsifiable hypotheses, test them, and record outcomes. Distinct from `code`—focused on investigation, not shipping a pre-written plan. For MBC2 creative interleave turns, use **`malvin invent`**.
 
 ## Usage
 
 ```text
 malvin kpop [OPTIONS] <REQUEST>
+malvin kpop <KPOP_ID>
 ```
 
 ## Arguments
 
-### `<REQUEST>` (required)
+### `<REQUEST>` (investigation brief)
 
 Investigation brief as text or `@<path>`. Stored as `request.md` in the run dir (not `plan.md`).
+
+### `<KPOP_ID>` (log lookup)
+
+Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/_malvin/**` for a tagged `KPOP_LOG: <id> …` line and prints the experiment log to stdout. No agent session.
 
 ## Options
 
 ### `--max-hypotheses <N>` (default: 10)
 
-Stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` or `## Step <n> — MBC2 …` (em dash, en dash, or hyphen before the kind). Both kinds count toward the same budget. Alias: `--max-loops`.
-
-### `--p-creative <P>` (default: 0.1)
-
-Controls KPOP block sizing and MBC2 interleaving:
-
-- Higher `P` → smaller mean KPOP blocks, more frequent MBC2 turns.
-- Non-finite or ≤ 0 → **pure KPOP** (no MBC2 prompts; only `kpop_block` multiturn).
+Stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` (em dash, en dash, or hyphen before the kind). Alias: `--max-loops`.
 
 ### `--no-learn`
 
@@ -46,39 +44,30 @@ See `malvin.md`. `--no-markdown` styles agent stdout. `--no-force` disables agen
 
 ## Multiturn architecture
 
-KPOP alternates two **phases** driven by state machine + experiment log on disk:
-
-### KPOP block phase
-
-| Prompt role (effect) |
-|----------------------|
-| **KPOP block** — Agent adds up to *N* new `## Step` hypotheses in one turn (*N* sampled from a Poisson distribution around mean derived from `--p-creative`). Catches up if the block under-filled, with a cap on catch-up attempts. |
-
-When the block completes, control passes to MBC2 (if creative mode enabled) or starts a new block.
-
-### MBC2 phase (when `--p-creative` enables creative mode)
-
-| Prompt role (effect) |
-|----------------------|
-| **MBC2 pure** — Creative / adversarial turn; up to two sends per MBC2 phase. Logged separately from KPOP steps. |
-
-After MBC2 updates the log, a new KPOP block begins (credit from oversized blocks can carry forward).
-
-### Shared preamble (first turn)
+Each turn uses the **KPOP block** prompt: the agent adds hypotheses as `## Step` lines in the experiment log.
 
 | Prompt role (effect) |
 |----------------------|
 | **KPOP common** — Shared rules, quality-gates markdown for the workspace, and request text. Coding rules prepended once. |
+| **KPOP block** — Agent adds new `## Step` hypotheses in one turn. |
 
-Templates `kpop_block.md` / `mbc2_pure.md` (and `mbc2.md` when loaded) are selected by the progression engine, not as a fixed linear list.
+## KPOP_LOG
+
+At the start of a normal run, malvin prints:
+
+```text
+[malvin] KPOP_LOG: Ma3bx9 ./_malvin/<run_id>/_kpop/exp_log_<run_id>.md
+```
+
+Use `malvin kpop Ma3bx9` later to dump that log.
 
 ## Termination
 
 Stops when any of:
 
 - Experiment log contains a line exactly `## KPOP_SOLVED` (agent-declared success)
-- Typed step line count ≥ `--max-hypotheses` (same `## Step <n> — KPOP|MBC2` format as above; malformed `## Step` lines do not count)
-- Internal error (e.g. block catch-up exhausted)
+- Typed step line count ≥ `--max-hypotheses`
+- Internal error
 
 ## Post-run (optional)
 
@@ -98,7 +87,5 @@ Stops when any of:
 ```text
 malvin kpop "Why does cache invalidation fail under load?"
 malvin kpop @questions/regression.md --max-hypotheses 20
-malvin kpop --p-creative 0 --no-learn @brief.md
+malvin kpop Ma3bx9
 ```
-
-Pure KPOP (`--p-creative 0`) disables MBC2 entirely.

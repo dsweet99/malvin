@@ -81,8 +81,8 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
     let _ = stringify!(h17_relativize_tool_path_under_work_dir);
     let _ = stringify!(h18_raw_output_writer_suppresses_tool_stdout_tee);
     let _ = stringify!(h19_thought_stdout_five_space_indent_no_brackets);
-    let _ = stringify!(h20_styled_tool_summary_stdout_line_has_double_colon_prefix);
-    let _ = stringify!(h21_unstyled_tool_summary_omits_colon_prefix);
+    let _ = stringify!(h20_styled_tool_summary_stdout_line_uses_brackets);
+    let _ = stringify!(h21_unstyled_tool_summary_omits_brackets);
 }
 
 #[test]

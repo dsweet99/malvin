@@ -18,4 +18,6 @@ Repeat until you think you've solved the problem:
 
 Log your hypotheses and test results -- as they become available -- to {{ exp_log }}.
 
+If you get stuck and need ideas, run `malvin invent IDEAS_PROMPT`.
+
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.

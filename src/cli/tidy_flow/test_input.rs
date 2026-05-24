@@ -21,5 +21,6 @@ pub(crate) fn tidy_acp_input<'a>(
         store,
         context,
         run_learn: false,
+        quick: false,
     }
 }

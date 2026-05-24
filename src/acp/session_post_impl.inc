@@ -1,3 +1,12 @@
+pub(crate) fn acp_session_set_run_timing(
+    session: &mut AcpSession,
+    timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+) {
+    Arc::get_mut(&mut session.0)
+        .expect("unique session handle")
+        .run_timing = timing;
+}
+
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///
@@ -131,6 +140,7 @@ impl AcpSession {
                 && !meta.plain_lines,
             iterable_closed_warned: false,
             work_dir: self.0.work_dir.clone(),
+            run_timing: self.0.run_timing.clone(),
         });
         self.0.busy.store(true, Ordering::SeqCst);
 
@@ -175,34 +185,12 @@ impl AcpSession {
             .await
             .map_err(|e| format!("acp wait: {e}"));
         drop(ch);
-        crate::acp_memory_containment::finalize_containment_cgroup(&self.0.memory_containment);
         wait_result?;
         Ok(())
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
-impl AcpSession {
-    #[must_use]
-    #[allow(dead_code)]
-    pub(crate) fn memory_containment_cgroup_leaf_snapshot_for_tests(&self) -> Option<std::path::PathBuf> {
-        self.0.memory_containment.cgroup_leaf_snapshot_for_tests()
-    }
-}
-
-#[cfg(test)]
-impl AcpSession {
-    #[must_use]
-    pub(crate) fn memory_containment_active_for_tests(&self) -> bool {
-        self.0.memory_containment.active()
-    }
-}
-
 impl Drop for AcpSession {
-    fn drop(&mut self) {
-        if std::sync::Arc::strong_count(&self.0) == 1 {
-            crate::acp_memory_containment::finalize_containment_cgroup(&self.0.memory_containment);
-        }
-    }
+    fn drop(&mut self) {}
 }
 

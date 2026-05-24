@@ -59,8 +59,8 @@ pub struct SessionInnerAssembly {
     pub session_id: String,
     pub rpc_timeout: std::time::Duration,
     pub telemetry: SessionReaderTelemetry,
-    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
     pub work_dir: PathBuf,
+    pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 impl SessionChannelState {
@@ -122,8 +122,8 @@ impl SessionChannelState {
             prompts_log_run_dir: parts.telemetry.prompts_log_run_dir,
             log_full_outgoing_prompts: parts.telemetry.log_full_outgoing_prompts,
             trace_jsonl: parts.telemetry.trace_jsonl,
-            memory_containment: parts.memory_containment,
             work_dir: parts.work_dir,
+            run_timing: parts.run_timing,
         }
     }
 }
@@ -135,7 +135,6 @@ pub struct SessionAfterStdioIn<'a> {
     pub(crate) child: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: ChildStdout,
-    pub(crate) memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
 }
 
 #[cfg(test)]
@@ -166,6 +165,7 @@ async fn session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set() {
         ui_idle_notify: None,
         model: None,
         force: false,
+        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,

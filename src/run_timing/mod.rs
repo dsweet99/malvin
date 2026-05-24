@@ -49,6 +49,7 @@ pub struct RunTiming {
     concerns: Duration,
     learn: Duration,
     summary: Duration,
+    tool_calls: Duration,
 }
 
 impl Default for RunTiming {
@@ -66,7 +67,14 @@ impl Default for RunTiming {
             concerns: Duration::ZERO,
             learn: Duration::ZERO,
             summary: Duration::ZERO,
+            tool_calls: Duration::ZERO,
         }
+    }
+}
+
+impl RunTiming {
+    pub const fn add_tool_call_wall(&mut self, d: Duration) {
+        self.tool_calls = self.tool_calls.saturating_add(d);
     }
 }
 

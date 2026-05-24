@@ -14,9 +14,17 @@ pub fn tool_summary_stdout_display(plain: &str) -> String {
     apply_tool_summary_ansi(plain)
 }
 
+fn split_outer_brackets(plain: &str) -> (&str, &str, &str) {
+    plain
+        .strip_prefix('[')
+        .and_then(|s| s.strip_suffix(']'))
+        .map_or(("", plain, ""), |inner| ("[", inner, "]"))
+}
+
 pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
-    let mut out = String::new();
-    let mut rest = plain;
+    let (open, inner, close) = split_outer_brackets(plain);
+    let mut out = String::from(open);
+    let mut rest = inner;
     while let Some(idx) = rest.find('·') {
         let (left, right) = rest.split_at(idx);
         out.push_str(&ansi_style_tool_segment(left));
@@ -24,6 +32,7 @@ pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
         rest = right.trim_start_matches('·').trim_start();
     }
     out.push_str(&ansi_style_tool_segment(rest));
+    out.push_str(close);
     out
 }
 
@@ -42,8 +51,13 @@ pub(crate) fn ansi_style_tool_segment(seg: &str) -> String {
 }
 
 fn tool_line_colon_prefix(seg: &str) -> (&str, &str) {
-    seg.strip_prefix(":: ")
-        .map_or(("", seg), |rest| (":: ", rest))
+    if let Some(rest) = seg.strip_prefix(":: ") {
+        return (":: ", rest);
+    }
+    if let Some(inner) = seg.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+        return ("[", inner);
+    }
+    ("", seg)
 }
 
 fn ansi_style_navy_verb(verb: &str) -> String {
@@ -121,6 +135,7 @@ mod ansi_tests {
     #[test]
     fn tool_line_colon_prefix_splits_leading_marker() {
         assert_eq!(tool_line_colon_prefix(":: Run x"), (":: ", "Run x"));
+        assert_eq!(tool_line_colon_prefix("[Run x]"), ("[", "Run x"));
         assert_eq!(tool_line_colon_prefix("Run x"), ("", "Run x"));
     }
 
@@ -132,29 +147,29 @@ mod ansi_tests {
     }
 
     #[test]
-    fn colon_prefixed_running_line_bolds_run_verb_not_double_colon() {
-        let styled = apply_tool_summary_ansi(":: Run echo hi…");
+    fn bracket_wrapped_running_line_bolds_run_verb() {
+        let styled = apply_tool_summary_ansi("[Run echo hi…]");
         let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_NAVY}Run");
         assert!(
             styled.contains(&run_verb),
-            "expected navy bold on Run after :: prefix; got {styled:?}"
+            "expected navy bold on Run inside brackets; got {styled:?}"
         );
     }
 
     #[test]
-    fn colon_prefixed_done_line_bolds_run_verb() {
-        let styled = apply_tool_summary_ansi(":: Run echo hi · 1ms · ✓");
+    fn bracket_wrapped_done_line_bolds_run_verb() {
+        let styled = apply_tool_summary_ansi("[Run echo hi · 1ms · ✓]");
         let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_NAVY}Run");
         assert!(
             styled.contains(&run_verb),
             "expected navy bold on Run in done line; got {styled:?}"
         );
-        assert!(styled.contains(":: "));
+        assert!(styled.contains('['));
     }
 
     #[test]
-    fn colon_prefixed_reading_running_line_bolds_verb() {
-        let styled = apply_tool_summary_ansi(":: Reading ./src/foo.rs…");
+    fn bracket_wrapped_reading_running_line_bolds_verb() {
+        let styled = apply_tool_summary_ansi("[Reading ./src/foo.rs…]");
         let verb = format!("{ANSI_BOLD}{ANSI_TOOL_NAVY}Reading");
         assert!(
             styled.contains(&verb),

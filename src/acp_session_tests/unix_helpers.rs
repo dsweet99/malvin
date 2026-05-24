@@ -56,3 +56,14 @@ rl.on('line', (line) => {
     std::fs::set_permissions(bin, perms).unwrap();
     crate::test_utils::sync_test_executable(bin);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::process_exists;
+
+    #[test]
+    fn process_exists_true_for_current_process() {
+        let pid = std::process::id();
+        assert!(process_exists(pid));
+    }
+}

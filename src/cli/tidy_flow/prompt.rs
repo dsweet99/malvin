@@ -68,6 +68,7 @@ mod prompt_tests {
             store: &store,
             context: &context,
             run_learn: false,
+            quick: false,
         };
         let err = run_tidy_prompt(
             &mut input,
@@ -106,6 +107,7 @@ mod prompt_tests {
             store: &store,
             context: &context,
             run_learn: false,
+            quick: false,
         };
         let err = run_tidy_prompt_with_restore(
             &mut input,

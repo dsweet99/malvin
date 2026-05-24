@@ -35,9 +35,9 @@ mod ideas_tests {
 
     #[test]
     fn cli_accepts_ideas_and_passes_request() {
-        let cli = Cli::try_parse_from(["malvin", "ideas", "explore edges"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "invent", "explore edges"]).expect("parse");
         match cli.command {
-            Some(Commands::Ideas(m)) => {
+            Some(Commands::Invent(m)) => {
                 assert_eq!(m.request.as_deref(), Some("explore edges"));
                 assert_eq!(m.num_ideas, 3);
             }
@@ -47,9 +47,9 @@ mod ideas_tests {
 
     #[test]
     fn cli_accepts_ideas_num_ideas() {
-        let cli = Cli::try_parse_from(["malvin", "ideas", "--num-ideas", "9", "q"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "invent", "--num-ideas", "9", "q"]).expect("parse");
         match cli.command {
-            Some(Commands::Ideas(m)) => {
+            Some(Commands::Invent(m)) => {
                 assert_eq!(m.num_ideas, 9);
                 assert_eq!(m.request.as_deref(), Some("q"));
             }
@@ -59,10 +59,10 @@ mod ideas_tests {
 
     #[test]
     fn cli_ideas_doc_parses_without_request() {
-        let cli = Cli::try_parse_from(["malvin", "ideas", "--doc"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "invent", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
         match cli.command.as_ref() {
-            Some(Commands::Ideas(m)) => assert!(m.request.is_none()),
+            Some(Commands::Invent(m)) => assert!(m.request.is_none()),
             _ => panic!("expected Ideas"),
         }
     }

@@ -22,6 +22,7 @@ pub enum ToolSummaryDetail {
 pub struct ToolSummaryTracker {
     pub(crate) calls: HashMap<String, ToolCallRecord>,
     path_base: Option<std::path::PathBuf>,
+    run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 impl ToolSummaryTracker {
@@ -39,6 +40,27 @@ impl ToolSummaryTracker {
 
     pub(crate) fn work_dir(&self) -> Option<&std::path::Path> {
         self.path_base.as_deref()
+    }
+
+    pub(crate) fn set_run_timing(
+        &mut self,
+        timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    ) {
+        self.run_timing = timing;
+    }
+
+    pub(crate) fn record_tool_done(&mut self, id: &str) {
+        let Some(rec) = self.calls.get(id) else {
+            return;
+        };
+        let elapsed = rec.started.elapsed();
+        let Some(timing) = self.run_timing.as_ref() else {
+            return;
+        };
+        timing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .add_tool_call_wall(elapsed);
     }
 }
 

@@ -23,6 +23,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -68,6 +69,7 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
         emit_stdout_markdown: false,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -129,6 +131,7 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
         emit_stdout_markdown: false,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -170,6 +173,7 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     crate::acp::trace_file_write_line(
         &mut writer,
@@ -214,6 +218,7 @@ async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+            run_timing: None,
     };
     crate::acp::trace_file_write_line(
         &mut writer,

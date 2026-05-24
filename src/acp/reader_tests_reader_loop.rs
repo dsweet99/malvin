@@ -32,7 +32,6 @@ pub(crate) async fn reader_loop_eof_pending_error() -> String {
         acp_verbose: false,
         tee_trace_stdout: false,
         trace_jsonl: None,
-        memory_containment: crate::acp_memory_containment::AcpMemoryContainment::inactive(),
     });
     let err = rx.await.unwrap().unwrap_err();
     let _: () = waiter.await.unwrap();

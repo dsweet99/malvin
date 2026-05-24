@@ -16,6 +16,7 @@ pub(crate) fn george_mock_spawn_args<'a>(cwd: &'a Path, bin: &'a Path) -> AcpSpa
         ui_idle_notify: None,
         model: None,
         force: false,
+        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,

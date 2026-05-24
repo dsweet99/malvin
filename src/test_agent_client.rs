@@ -7,6 +7,7 @@ pub fn smoke_agent_client() -> crate::acp::AgentClient {
         "m".into(),
         AgentIoOptions {
             force: false,
+            sandbox: false,
             no_tee: true,
             raw_output: true,
             show_thoughts_on_stdout: false,
@@ -93,6 +94,7 @@ pub fn tidy_acp_input_parts<'a>(
         store,
         context,
         run_learn: false,
+        quick: false,
     }
 }
 

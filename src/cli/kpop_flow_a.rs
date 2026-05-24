@@ -5,7 +5,6 @@ use crate::KpopTurnPrompts;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
 };
-use crate::kpop_creative_enabled;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::kpop_progression::KpopMultiturnState;
 use crate::output::{MALVIN_WHO, print_stdout_line};
@@ -16,11 +15,10 @@ use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_
 use super::kpop_flow_b::{kpop_emit_startup, kpop_learn_bundle};
 
 pub(in crate) fn kpop_prompt_store(
-    kpop: &KpopArgs,
+    _kpop: &KpopArgs,
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let needs_mbc2 = kpop_creative_enabled(kpop.p_creative);
-    prepare_kpop_prompt_store(workflow, needs_mbc2)
+    prepare_kpop_prompt_store(workflow, false)
 }
 
 pub struct KpopPrepared {
@@ -131,12 +129,32 @@ pub(in crate) async fn kpop_run_acp_multiturn(
     )
 }
 
+fn run_kpop_short_id_lookup(kpop: &KpopArgs) -> Result<(), String> {
+    let id = kpop.request.as_deref().expect("checked above").trim();
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let exp_log = crate::cli::bug_id_lookup_kpop::lookup_kpop_id(&cwd, id)?;
+    crate::cli::bug_id_lookup_kpop::dump_kpop_log_to_stdout(&exp_log)
+}
+
 pub async fn run_kpop(
     kpop: KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    if crate::cli::bug_id_lookup_kpop::is_kpop_lookup_request(kpop.request.as_deref()) {
+        return run_kpop_short_id_lookup(&kpop);
+    }
+
     let (store, mut client, prepared) = kpop_boot_store_client_prepared(&kpop, shared, workflow)?;
+
+    let kpop_id = crate::malvin_short_id();
+    let log_line = crate::cli::bug_id_lookup_kpop::kpop_log_line(
+        &kpop_id,
+        &prepared.artifacts.work_dir,
+        &prepared.artifacts.run_dir,
+        &prepared.exp_log_path,
+    );
+    print_stdout_line(MALVIN_WHO, &log_line);
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
@@ -150,7 +168,7 @@ pub async fn run_kpop(
         builder,
         prepared.exp_log_path.clone(),
         kpop.max_hypotheses,
-        kpop.p_creative,
+        0.0,
     )?;
 
     let acp_result = kpop_run_acp_multiturn(KpopAcpMultiturnCtx {

@@ -37,6 +37,7 @@ fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
         ui_idle_notify: None,
         model: None,
         force: false,
+        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
@@ -58,10 +59,9 @@ fn telemetry_for_test_args(args: &AcpSpawnArgs<'_>) -> SessionReaderTelemetry {
     }
 }
 
-fn captive_cat_acp_session_with_containment(
-    cwd: &Path,
-    memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
-) -> AcpSession {
+/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
+#[doc(hidden)]
+pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
     let (child, stdin) = spawn_cat_child_with_stdin(cwd);
     let args = default_test_spawn_args(cwd);
     let ch = SessionChannelState::new(stdin, &args);
@@ -73,26 +73,8 @@ fn captive_cat_acp_session_with_containment(
             session_id: "test-session-id".into(),
             rpc_timeout: args.rpc_timeout,
             telemetry,
-            memory_containment,
             work_dir: cwd.to_path_buf(),
+            run_timing: None,
         },
     )))
-}
-
-/// Spawns `cat` with piped stdio and wraps it as an [`AcpSession`] for harness tests only.
-#[doc(hidden)]
-pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
-    captive_cat_acp_session_with_containment(
-        cwd,
-        crate::acp_memory_containment::AcpMemoryContainment::inactive(),
-    )
-}
-
-/// Like [`captive_cat_acp_session_for_tests`] but with the given containment state (for cgroup tests).
-#[doc(hidden)]
-pub fn captive_cat_acp_session_with_containment_for_tests(
-    cwd: &Path,
-    memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
-) -> AcpSession {
-    captive_cat_acp_session_with_containment(cwd, memory_containment)
 }

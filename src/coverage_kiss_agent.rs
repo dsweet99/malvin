@@ -6,6 +6,7 @@ use crate::acp::{AgentClient, AgentIoOptions, DEFAULT_REPO_STYLE_PROMPT_REL, has
 fn smoke_agent_client_new_has_no_open_coder_session() {
     let io = AgentIoOptions {
         force: false,
+        sandbox: false,
         no_tee: false,
         raw_output: false,
         show_thoughts_on_stdout: true,

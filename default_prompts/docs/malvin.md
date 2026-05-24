@@ -14,15 +14,15 @@ malvin [OPTIONS] <COMMAND>
 |---------|---------|
 | `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn for a single user request |
-| `ideas` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
+| `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
 | `code` | Implement a plan with review and optional learn loop |
 | `kpop` | Popperian scientific investigation (hypothesis-driven experiment log) |
-| `bug` | Find a serious bug via KPOP, then regression-test and fix (experimental) |
+| `hunt` | Find a serious bug via KPOP, then regression-test and fix (experimental) |
 | `tidy` | Fix workspace until quality gates pass |
 | `plan` | Write or review a plan file (experimental) |
 | `models` | List models available from the Cursor agent CLI |
 
-See the matching doc in this directory: `init.md`, `do.md`, `ideas.md`, `code.md`, `kpop.md`, `bug.md`, `tidy.md`, `plan.md`, `models.md`.
+See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `bug.md`, `tidy.md`, `plan.md`, `models.md`.
 
 ## Global options
 
@@ -46,7 +46,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `bug`, `plan`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `ideas` always use plain stdout** regardless of this flag.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `hunt`, `plan`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `invent` always use plain stdout** regardless of this flag.
 
 ### `-v` / `--verbose`
 
@@ -83,7 +83,7 @@ Every agent-backed command creates `_malvin/<timestamp>_<token>/` under the sess
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for all agent subcommands and `models`).
-- **kiss**: required before `code`, `tidy`, `plan`, and `bug` start; also installed/configured by `init`.
+- **kiss**: required before `code`, `tidy`, `plan`, and `hunt` start; also installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.
 
 ## Request syntax

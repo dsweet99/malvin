@@ -146,6 +146,7 @@ mod tests {
             "m".into(),
             AgentIoOptions {
                 force: false,
+                sandbox: false,
                 no_tee: true,
                 raw_output: true,
                 show_thoughts_on_stdout: false,
@@ -188,6 +189,7 @@ mod tests {
             "m".into(),
             AgentIoOptions {
                 force: false,
+                sandbox: false,
                 no_tee: true,
                 raw_output: true,
                 show_thoughts_on_stdout: false,

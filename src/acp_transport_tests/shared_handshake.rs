@@ -73,7 +73,6 @@ pub(crate) fn spawn_test_reader_loop(args: TestReaderLoopSpawn) {
             acp_verbose: false,
             tee_trace_stdout: false,
             trace_jsonl: None,
-            memory_containment: inactive_memory_containment(),
         })
         .await;
     });

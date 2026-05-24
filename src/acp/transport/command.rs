@@ -77,6 +77,7 @@ pub(crate) struct BuildAgentAcpCommandArgs<'a> {
     pub george_acp_lane: Option<&'a str>,
     pub model: Option<&'a str>,
     pub force: bool,
+    pub sandbox: bool,
 }
 
 pub(crate) fn agent_program(bin_override: Option<&Path>) -> String {
@@ -94,6 +95,9 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
     apply_api_and_auth(&mut cmd, api_key.as_deref(), auth_token.as_deref());
     if args.force {
         cmd.arg("--force");
+    }
+    if args.sandbox {
+        cmd.arg("--sandbox");
     }
     if let Some(m) = args.model.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.arg("--model").arg(m);
@@ -155,6 +159,7 @@ fn build_agent_acp_command_uses_bin_override_program() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_eq!(
         cmd.as_std().get_program().to_string_lossy(),

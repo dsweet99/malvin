@@ -30,6 +30,7 @@ pub struct PromptTraceWriter {
     pub iterable_closed_warned: bool,
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
+    pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -63,8 +64,8 @@ pub struct AcpSessionInner {
     /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
     pub log_full_outgoing_prompts: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
-    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
     pub work_dir: PathBuf,
+    pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -87,6 +88,8 @@ pub struct AcpSpawnArgs<'a> {
     pub model: Option<&'a str>,
     /// When true, passes `agent --force`.
     pub force: bool,
+    /// When true, passes `agent --sandbox` before the `acp` subcommand.
+    pub sandbox: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).

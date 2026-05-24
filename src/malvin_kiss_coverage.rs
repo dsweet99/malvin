@@ -23,7 +23,10 @@ fn smoke_artifacts_create() {
     assert!(from_text.plan_path.is_file());
     let kpop = crate::artifacts::create_kpop_run_artifacts("req", Some(tmp.path())).expect("kpop");
     assert!(kpop.run_dir.join("request.md").is_file());
-    assert_eq!(crate::artifacts::work_dir_for_path(&plan), tmp.path());
+    assert_eq!(
+        crate::artifacts::work_dir_for_path(&plan),
+        tmp.path().canonicalize().unwrap_or_else(|_| tmp.path().to_path_buf()),
+    );
 }
 
 #[test]
@@ -85,18 +88,6 @@ fn smoke_output_helpers_for_kiss() {
     assert!(lines.iter().any(|l| l.contains("kiss-smoke")));
     let _ = crate::output::log_use_color();
     let _ = crate::output::stderr_use_color();
-}
-
-#[cfg(target_os = "linux")]
-#[test]
-fn smoke_acp_memory_containment_test_support() {
-    if crate::acp_memory_containment::test_support::writable_cgroups_on_host() {
-        return;
-    }
-    let result = std::panic::catch_unwind(|| {
-        crate::acp_memory_containment::test_support::require_cgroup_integration_test();
-    });
-    assert!(result.is_err());
 }
 
 #[test]

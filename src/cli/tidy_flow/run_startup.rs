@@ -126,6 +126,7 @@ mod smoke_cov_startup {
         let shared = crate::cli::SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            sandbox: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,
@@ -148,6 +149,7 @@ mod smoke_cov_startup {
         let shared = crate::cli::SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            sandbox: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,
@@ -170,6 +172,7 @@ mod smoke_cov_startup {
         let shared = crate::cli::SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            sandbox: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,
@@ -196,6 +199,7 @@ mod smoke_cov_startup {
         let shared = crate::cli::SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            sandbox: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,

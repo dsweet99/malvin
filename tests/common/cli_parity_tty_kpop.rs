@@ -38,8 +38,6 @@ pub fn run_kpop_multiturn_investigate(
         .args([
             "kpop",
             "--no-learn",
-            "--p-creative",
-            "0",
             "--max-hypotheses",
             "1",
             "investigate",

@@ -85,7 +85,7 @@ mod linux_pty {
     fn kpop_stdout_markdown_styles_stdout_but_logs_stay_raw() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
-            "kpop --no-learn --p-creative 0 --max-hypotheses 50 investigate",
+            "kpop --no-learn --max-hypotheses 50 investigate",
             None,
         );
         assert_markdown_stdout_and_logs(&run, "expected kpop catch-up failure exit from script -e");

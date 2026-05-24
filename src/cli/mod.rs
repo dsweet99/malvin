@@ -1,6 +1,9 @@
 mod args;
 mod args_bug_kpop;
 mod bug_flow;
+mod bug_flow_remediation;
+mod bug_id_lookup;
+mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 #[cfg(test)]
@@ -30,6 +33,12 @@ pub use code_flow_b::run_code;
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;
 #[cfg(test)]
+#[path = "bug_flow_tests.rs"]
+mod bug_flow_tests;
+#[cfg(test)]
+#[path = "bug_id_lookup_tests.rs"]
+mod bug_id_lookup_tests;
+#[cfg(test)]
 mod cli_cross_cov;
 #[cfg(test)]
 mod cli_cross_cov_kiss;
@@ -41,7 +50,7 @@ mod gate_error_regression;
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;
 pub use crate::plan_flow::run_plan;
-pub use args::{BugArgs, Cli, CodeArgs, Commands, IdeasArgs, KpopArgs, PlanArgs};
+pub use args::{BugArgs, Cli, CodeArgs, Commands, InventArgs, KpopArgs, PlanArgs};
 pub use bug_flow::run_bug;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;

@@ -108,8 +108,11 @@ pub async fn run_tidy_acp(
     let mut acp_result = run_tidy_interleaved_loop(
         input,
         prompt,
-        session_dotfile_backups,
-        max_loops,
+        super::interleaved_loop::TidyInterleavedLoopOpts {
+            session_dotfile_backups,
+            max_loops,
+            quick: input.quick,
+        },
     )
     .await;
     if acp_result.is_ok() {

@@ -52,25 +52,36 @@ fn init_bootstrap_commit_notice_must_use_malvin_log_format() {
 }
 
 #[test]
-fn session_spawn_containment_warn_must_not_be_linux_only() {
+fn session_spawn_must_not_reference_cgroup_containment() {
     assert!(
-        !SESSION_SPAWN_INC.contains(
-            "#[cfg(target_os = \"linux\")]\n    if crate::acp_memory_containment::spawn_should_warn_containment_unavailable"
-        ),
-        "session_spawn must warn on inactive containment on all platforms, not only Linux"
-    );
-    assert!(
-        SESSION_SPAWN_INC.contains("emit_containment_unavailable_warn"),
-        "session_spawn must call emit_containment_unavailable_warn"
+        !SESSION_SPAWN_INC.contains("acp_memory_containment"),
+        "session_spawn must not wire cgroup memory containment"
     );
 }
 
 #[test]
-fn containment_warn_must_not_duplicate_warning_prefix_in_message() {
+fn unix_shutdown_must_not_reference_cgroup_containment_test_api() {
+    let src = include_str!("acp_session_tests/unix_shutdown.rs");
     assert!(
-        !crate::acp_memory_containment::CONTAINMENT_UNAVAILABLE_WARN.starts_with("warning:"),
-        "warning who tag carries severity; message must not repeat warning: prefix"
+        !src.contains("memory_containment_cgroup_leaf_snapshot_for_tests"),
+        "cgroup removal deleted memory containment; unix_shutdown must not call removed test API (breaks Linux builds)"
     );
+}
+
+#[test]
+fn linux_kpop_harness_must_not_pass_removed_p_creative_flag() {
+    const HARNESS: &[&str] = &[
+        include_str!("../tests/common/cli_parity_tty_kpop.rs"),
+        include_str!("../tests/common/cli_parity_tty.rs"),
+        include_str!("../tests/cli_parity_linux_pty_a.rs"),
+        include_str!("../tests/cli_parity_linux_pty_b.rs"),
+    ];
+    for src in HARNESS {
+        assert!(
+            !src.contains("--p-creative"),
+            "kpop dropped --p-creative (plan A6); Linux PTY/parity harness must not pass it (clap parse error)"
+        );
+    }
 }
 
 #[test]
@@ -140,13 +151,13 @@ fn malformed_rpc_timeout_env_must_use_default_and_emit_warning_on_stderr() {
 }
 
 #[test]
-fn bughunt_workspace_gate_failure_omits_skip_pre_checks() {
-    let msg = crate::cli::format_workspace_gate_failure("malvin bughunt", "`kiss check` failed");
+fn hunt_workspace_gate_failure_omits_skip_pre_checks() {
+    let msg = crate::cli::format_workspace_gate_failure("malvin hunt", "`kiss check` failed");
     assert!(
         !msg.contains("--skip-pre-checks"),
-        "bughunt no longer supports --skip-pre-checks; message was: {msg}"
+        "hunt no longer supports --skip-pre-checks; message was: {msg}"
     );
-    assert!(msg.contains("retry `malvin bughunt`"));
+    assert!(msg.contains("retry `malvin hunt`"));
 }
 
 #[test]

@@ -15,6 +15,7 @@ fn test_cursor_credentials_empty_strings_skipped() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, None, None);
 }
@@ -32,6 +33,7 @@ fn test_cursor_credentials_skips_empty_key_only() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, None, Some("tok2"));
 }
@@ -49,6 +51,7 @@ fn test_cursor_credentials_skips_empty_token_only() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, Some("k2"), None);
 }

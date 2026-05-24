@@ -161,7 +161,10 @@ pub fn create_kpop_run_artifacts(
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path.parent()
         .filter(|p| !p.as_os_str().is_empty())
-        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
+        .map_or_else(
+            || PathBuf::from("."),
+            |parent| parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf()),
+        )
 }
 
 pub(crate) fn resolve_user_at_path(rest: &str) -> Result<PathBuf, String> {

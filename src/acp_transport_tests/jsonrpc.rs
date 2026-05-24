@@ -108,6 +108,7 @@ fn test_cursor_credentials_forwards_key_and_token() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, Some("key-a"), Some("tok-b"));
 }
@@ -125,6 +126,7 @@ fn test_cursor_credentials_key_only() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, Some("k-only"), None);
 }
@@ -145,6 +147,7 @@ fn test_cursor_credentials_explicit_none_uses_process_env_api_key() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, Some("key-from-process-env"), None);
     clear_cursor_env_for_test();
@@ -166,6 +169,7 @@ fn test_cursor_credentials_explicit_none_uses_process_env_auth_token() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, None, Some("tok-from-process-env"));
     clear_cursor_env_for_test();
@@ -187,6 +191,7 @@ fn test_cursor_credentials_explicit_api_key_overrides_process_env() {
         george_acp_lane: None,
         model: None,
         force: false,
+        sandbox: false,
     });
     assert_cursor_credentials_forwarding(&cmd, Some("explicit-wins"), None);
     clear_cursor_env_for_test();

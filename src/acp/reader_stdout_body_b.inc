@@ -4,7 +4,6 @@ pub(crate) struct ReaderLoopFinishCtx<'a> {
     pub trace_coalesce: &'a mut TraceChunkCoalescer,
     pub trace_writer: &'a Arc<Mutex<Option<PromptTraceWriter>>>,
     pub reader_dead: &'a Arc<AtomicBool>,
-    pub memory_containment: &'a crate::acp_memory_containment::AcpMemoryContainment,
     pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
 }
 
@@ -39,10 +38,7 @@ async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
 
 async fn reader_dead_after_stdout_close(session: &mut ReaderLoopFinishCtx<'_>) {
     session.reader_dead.store(true, Ordering::SeqCst);
-    let closed_msg = crate::acp_memory_containment::map_acp_child_exit_message(
-        session.memory_containment,
-        "acp stdout closed",
-    );
+    let closed_msg = "acp stdout closed".to_string();
     let mut g = session.pending.lock().await;
     for (_, tx) in g.drain() {
         let _ = tx.send(Err(closed_msg.clone()));
@@ -68,7 +64,6 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         acp_verbose,
         tee_trace_stdout,
         trace_jsonl,
-        memory_containment,
     } = inp;
     let trace_opts = ReaderTraceLineOpts {
         acp_verbose,
@@ -97,7 +92,6 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         trace_coalesce: &mut trace_coalesce,
         trace_writer: &trace_writer,
         reader_dead: &reader_dead,
-        memory_containment: &memory_containment,
         pending: &pending,
     })
     .await;
@@ -183,7 +177,6 @@ pub(crate) fn spawn_acp_stdout_reader(args: ReaderSpawnArgs) -> tokio::task::Joi
             acp_verbose: args.acp_verbose,
             tee_trace_stdout: args.tee_trace_stdout,
             trace_jsonl: args.trace_jsonl,
-            memory_containment: args.memory_containment,
         })
         .await;
     })

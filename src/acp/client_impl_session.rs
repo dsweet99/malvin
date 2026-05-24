@@ -90,7 +90,8 @@ impl AgentClient {
         for attempt in 1..=MAX_AGENT_ATTEMPTS {
             attempts_used = attempt;
             match spawn_agent_acp_session(self, cwd).await {
-                Ok(s) => {
+                Ok(mut s) => {
+                    crate::acp::acp_session_set_run_timing(&mut s, self.timing.clone());
                     self.coder_session = Some(s);
                     self.coder_style_on_next_prompt = true;
                     return Ok(());

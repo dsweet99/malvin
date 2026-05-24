@@ -11,7 +11,6 @@ pub(crate) type RpcWaitContext<'a> = (
     &'a Arc<tokio::sync::Notify>,
     &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
     Option<u32>,
-    &'a crate::acp_memory_containment::AcpMemoryContainment,
 );
 
 pub(crate) async fn rpc_request(n: RpcRequestNext<'_>) -> Result<Value, String> {

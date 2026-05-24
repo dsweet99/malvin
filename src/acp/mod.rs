@@ -133,6 +133,7 @@ pub(crate) use wrap_session_prompt::*;
 
 #[path = "wrap_session_post.rs"]
 mod wrap_session_post;
+pub(crate) use wrap_session_post::acp_session_set_run_timing;
 
 #[cfg(test)]
 #[path = "session_tests.rs"]

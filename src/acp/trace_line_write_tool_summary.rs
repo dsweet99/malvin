@@ -5,7 +5,7 @@ use crate::tool_summary::{tool_summary_lines, tool_summary_stdout_display, ToolS
 
 fn tool_summary_styled_tee_payload(writer: &PromptTraceWriter, plain: &str) -> (String, String) {
     let plain = if writer.emit_stdout_markdown {
-        format!(":: {plain}")
+        format!("[{plain}]")
     } else {
         plain.to_string()
     };
@@ -22,6 +22,9 @@ pub(crate) async fn write_tool_summary_trace_line(
     coalesce
         .tool_tracker
         .set_work_dir(trace_file.work_dir.clone());
+    coalesce
+        .tool_tracker
+        .set_run_timing(trace_file.run_timing.clone());
     let Some(summary) =
         tool_summary_lines(parsed, &mut coalesce.tool_tracker, ToolSummaryDetail::Stdout)
     else {
@@ -93,18 +96,19 @@ mod tool_summary_styled_tee_tests {
             emit_stdout_markdown,
             iterable_closed_warned: false,
             work_dir: dir.path().to_path_buf(),
+            run_timing: None,
         }
     }
 
     #[test]
-    fn styled_payload_adds_colon_prefix() {
+    fn styled_payload_wraps_in_brackets() {
         let w = writer(true);
         let (plain, _) = tool_summary_styled_tee_payload(&w, "Run x");
-        assert!(plain.starts_with(":: "));
+        assert_eq!(plain, "[Run x]");
     }
 
     #[test]
-    fn unstyled_payload_omits_colon_prefix() {
+    fn unstyled_payload_omits_brackets() {
         let w = writer(false);
         let (plain, _) = tool_summary_styled_tee_payload(&w, "Run x");
         assert_eq!(plain, "Run x");

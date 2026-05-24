@@ -63,9 +63,10 @@ fn sole_md_session_work_dir_matches_resolve_user_md_request() {
         text: Some("nested/in.md".to_string()),
     };
     let dest = super::plan_resolve::resolve_plan_destination(&plan).expect("dest");
+    let nested_md = tmp.path().join("nested/in.md");
     assert_eq!(
         super::plan_resolve::plan_session_work_dir(&plan, &dest),
-        tmp.path().join("nested")
+        crate::artifacts::work_dir_for_path(&nested_md),
     );
     std::env::set_current_dir(old_cwd).unwrap();
 }

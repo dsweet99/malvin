@@ -132,15 +132,15 @@ mod tests {
     }
 
     #[test]
-    fn format_workspace_gate_failure_bughunt_omits_skip_pre_checks() {
+    fn format_workspace_gate_failure_hunt_omits_skip_pre_checks() {
         let msg =
-            crate::cli::format_workspace_gate_failure("malvin bughunt", "`kiss check` failed");
+            crate::cli::format_workspace_gate_failure("malvin hunt", "`kiss check` failed");
         assert!(msg.contains("Workspace checks did not pass"));
         assert!(msg.contains("malvin tidy"));
-        assert!(msg.contains("retry `malvin bughunt`"));
+        assert!(msg.contains("retry `malvin hunt`"));
         assert!(
             !msg.contains("--skip-pre-checks"),
-            "bughunt no longer supports --skip-pre-checks: {msg}"
+            "hunt no longer supports --skip-pre-checks: {msg}"
         );
     }
 

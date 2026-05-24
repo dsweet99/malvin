@@ -48,23 +48,23 @@ mod unix_tests {
             }
         }
 
-        fn spawn_bughunt(&self) -> std::process::Output {
+        fn spawn_hunt(&self) -> std::process::Output {
             let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
             cmd.current_dir(&self.workspace)
                 .env("HOME", &self.home)
                 .env("CURSOR_AGENT_API_KEY", "test-key")
                 .env("MALVIN_AGENT_ACP_BIN", &self.mock)
                 .env("PATH", &self.path)
-                .args(["bughunt", "--no-learn", "--max-hypotheses", "1"]);
+                .args(["hunt", "--fix", "--no-learn", "--max-hypotheses", "1"]);
             super::common::command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT)
-                .expect("spawn malvin bughunt")
+                .expect("spawn malvin hunt")
         }
     }
 
     fn assert_post_kpop_gate_skip(fx: &BugGateSkipFixture, combined: &str) {
         assert!(
             !combined.contains("Workspace checks did not pass"),
-            "first-phase bughunt must not run workspace gates after KPOP: {combined:?}"
+            "first-phase hunt must not run workspace gates after KPOP: {combined:?}"
         );
         assert!(
             combined.contains("Bug regression test"),
@@ -87,14 +87,14 @@ mod unix_tests {
             gates_text
                 .as_deref()
                 .is_none_or(|log| !log.contains("Running `kiss check`")),
-            "post-KPOP bughunt must not invoke kiss check via workspace gates: {gates_text:?}"
+            "post-KPOP hunt must not invoke kiss check via workspace gates: {gates_text:?}"
         );
     }
 
     #[test]
     fn post_kpop_skips_workspace_gates_before_remediation() {
         let fx = BugGateSkipFixture::new();
-        let out = fx.spawn_bughunt();
+        let out = fx.spawn_hunt();
         let combined = super::common::combined_cli_output(&out);
         assert_post_kpop_gate_skip(&fx, &combined);
     }

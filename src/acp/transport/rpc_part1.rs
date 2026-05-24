@@ -23,7 +23,6 @@ pub(crate) struct AcpStdioRpc {
     pub acp_activity_notify: Arc<tokio::sync::Notify>,
     pub acp_verbose: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
-    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
 }
 
 pub(crate) struct RpcLineWriteOpts<'a> {
@@ -137,7 +136,6 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
         &io.acp_activity_notify,
         &io.pending,
         o.child_pid,
-        &io.memory_containment,
     );
     rpc_wait_with_timeout(
         o.id,
@@ -154,7 +152,7 @@ pub(crate) async fn rpc_wait_with_timeout(
     wait: impl std::future::Future<Output = Result<Value, String>>,
     state: RpcWaitContext<'_>,
 ) -> Result<Value, String> {
-    let (acp_activity_seq, acp_activity_notify, pending, child_pid, memory_containment) = state;
+    let (acp_activity_seq, acp_activity_notify, pending, child_pid) = state;
     tokio::pin!(wait);
     loop {
         tokio::select! {
@@ -188,7 +186,6 @@ pub(crate) async fn rpc_wait_with_timeout(
                                 crate::child_health::SilenceHealthOutcome::AppearsHung => {
                                     let err = child_health_timeout_error(
                                         crate::child_health::SilenceHealthOutcome::AppearsHung,
-                                        memory_containment,
                                     )
                                     .unwrap_or_else(|| {
                                         format!("acp request id {id} timed out after {timeout:?}")
@@ -196,7 +193,7 @@ pub(crate) async fn rpc_wait_with_timeout(
                                     Err(err)
                                 }
                                 other => {
-                                    let err = child_health_timeout_error(other, memory_containment)
+                                    let err = child_health_timeout_error(other)
                                     .unwrap_or_else(|| {
                                         format!("acp request id {id} timed out after {timeout:?}")
                                     });

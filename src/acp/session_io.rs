@@ -21,7 +21,6 @@ pub fn acp_stdio(s: &AcpSessionInner) -> crate::acp::AcpStdioRpc {
         acp_activity_notify: s.acp_activity_notify.clone(),
         acp_verbose: s.acp_verbose,
         trace_jsonl: s.trace_jsonl.clone(),
-        memory_containment: s.memory_containment.clone(),
     }
 }
 

@@ -22,6 +22,7 @@ pub(crate) async fn open_trace_writer(
         emit_stdout_markdown: false,
         iterable_closed_warned: false,
         work_dir: std::path::PathBuf::new(),
+        run_timing: None,
     };
     (writer, TraceChunkCoalescer::default())
 }
@@ -41,6 +42,7 @@ pub(crate) fn styled_markdown_trace_writer(
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
         work_dir,
+        run_timing: None,
     }
 }
 

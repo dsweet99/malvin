@@ -10,10 +10,10 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
-        Commands::Ideas(_) => include_str!("../../default_prompts/docs/ideas.md"),
+        Commands::Invent(_) => include_str!("../../default_prompts/docs/invent.md"),
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
-        Commands::Bug(_) => include_str!("../../default_prompts/docs/bug.md"),
+        Commands::Hunt(_) => include_str!("../../default_prompts/docs/hunt.md"),
         Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
         Commands::Plan(_) => include_str!("../../default_prompts/docs/plan.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
@@ -41,7 +41,7 @@ pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::cli::Cli;
-    use crate::cli::args::{Commands, IdeasArgs, KpopArgs};
+    use crate::cli::args::{Commands, InventArgs, KpopArgs};
     use crate::cli::models_cmd::ModelsArgs;
     use clap::Parser;
 
@@ -57,16 +57,15 @@ mod tests {
         assert!(md.starts_with("# malvin "));
         let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
             max_hypotheses: 1,
-            p_creative: 0.1,
             no_learn: true,
             request: None,
         }));
         assert!(md.starts_with("# malvin "));
-        let md = command_doc_markdown(&Commands::Ideas(IdeasArgs {
+        let md = command_doc_markdown(&Commands::Invent(InventArgs {
             num_ideas: 3,
             request: None,
         }));
-        assert!(md.starts_with("# malvin ideas"));
+        assert!(md.starts_with("# malvin invent"));
     }
 
     #[test]
@@ -79,7 +78,6 @@ mod tests {
     fn print_doc_some_writes_subcommand_md() {
         let cmd = Commands::Kpop(KpopArgs {
             max_hypotheses: 1,
-            p_creative: 0.1,
             no_learn: true,
             request: None,
         });

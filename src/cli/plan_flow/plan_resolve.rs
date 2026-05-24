@@ -100,6 +100,14 @@ pub(super) fn resolve_plan_destination(plan: &PlanArgs) -> Result<std::path::Pat
     resolve_user_plan_path(None)
 }
 
+fn is_default_cwd_plan_md(user_plan_path: &std::path::Path) -> bool {
+    let Ok(cwd) = std::env::current_dir() else {
+        return false;
+    };
+    let default = cwd.join("plan.md");
+    paths_equal(user_plan_path, &default)
+}
+
 fn plan_source_bytes(
     plan: &PlanArgs,
     user_plan_path: &std::path::Path,
@@ -109,6 +117,15 @@ fn plan_source_bytes(
     };
     if is_sole_md_file_in_place(plan) || md_source_matches_destination(plan, user_plan_path) {
         return Ok(None);
+    }
+    if plan.plan_path.is_none()
+        && is_default_cwd_plan_md(user_plan_path)
+        && user_plan_path.is_file()
+        && matches!(classify_md_path_suffix(text.trim()), MdPathSuffix::Literal)
+    {
+        return Err(
+            "ERR: plan.md already exists; delete or rename it, pass --plan-path, or run `malvin plan` with no positional to review.".to_string(),
+        );
     }
     let trimmed = text.trim();
     let source = match classify_md_path_suffix(trimmed) {

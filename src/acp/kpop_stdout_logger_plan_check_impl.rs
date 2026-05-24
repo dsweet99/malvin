@@ -158,7 +158,7 @@ async fn h19_thought_stdout_five_space_indent_no_brackets() {
 }
 
 #[tokio::test]
-async fn h20_styled_tool_summary_stdout_line_has_double_colon_prefix() {
+async fn h20_styled_tool_summary_stdout_line_uses_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) =
@@ -181,12 +181,12 @@ async fn h20_styled_tool_summary_stdout_line_has_double_colon_prefix() {
     let stdout = finish_stdout_log_fixture(fixture);
     let line = stdout.lines().find(|l| l.contains("Run ")).expect("tool summary");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
-    assert!(line.contains(":: Run"), "got {line:?}");
+    assert!(line.contains("[Run"), "got {line:?}");
     assert!(line.contains("echo hi"), "got {line:?}");
 }
 
 #[tokio::test]
-async fn h21_unstyled_tool_summary_omits_colon_prefix() {
+async fn h21_unstyled_tool_summary_omits_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) = open_trace_writer(&fixture.trace_path).await;
@@ -195,5 +195,5 @@ async fn h21_unstyled_tool_summary_omits_colon_prefix() {
     let stdout = finish_stdout_log_fixture(fixture);
     let line = stdout.lines().find(|l| l.contains("Run ")).expect("tool summary");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
-    assert!(!line.contains(":: Run"), "got {line:?}");
+    assert!(!line.contains("[Run"), "got {line:?}");
 }

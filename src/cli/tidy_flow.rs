@@ -13,6 +13,8 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 mod prep;
 #[path = "tidy_flow/prompt.rs"]
 mod prompt;
+#[path = "tidy_flow/interleaved_lgtm.rs"]
+mod interleaved_lgtm;
 #[path = "tidy_flow/interleaved_loop.rs"]
 mod interleaved_loop;
 #[cfg(test)]
@@ -21,7 +23,7 @@ pub(crate) mod test_input;
 
 #[cfg(test)]
 #[allow(unused_imports)]
-pub(crate) use interleaved_loop::{
+pub(crate) use interleaved_lgtm::{
     run_tidy_coder_prompt_for_attempt, tidy_finish_lgtm_attempt, TidyLgtmFinishCtx,
 };
 #[cfg(test)]
@@ -78,6 +80,7 @@ pub struct TidyAcpInput<'a> {
     pub(crate) store: &'a PromptStore,
     pub(crate) context: &'a HashMap<String, String>,
     pub(crate) run_learn: bool,
+    pub(crate) quick: bool,
 }
 
 pub struct TidyPromptRestore<'a> {
@@ -100,6 +103,9 @@ pub struct TidyArgs {
     pub max_loops: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
+    /// Skip review; run quality gates only.
+    #[arg(long, short = 'q', default_value_t = false)]
+    pub quick: bool,
 }
 
 pub async fn run_tidy(
@@ -139,6 +145,7 @@ pub async fn run_tidy(
                     store: &store,
                     context: &context,
                     run_learn,
+                    quick: tidy.quick,
                 };
                 let result = run_tidy_acp(
                     &mut input,

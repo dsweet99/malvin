@@ -45,6 +45,7 @@ pub fn tool_summary_lines(
         ToolSummaryDetail::Stdout => format_tool_stdout(&parsed, tracker, &mut stdout_deferred),
     };
     if parsed.phase == TOOL_PHASE_DONE {
+        tracker.record_tool_done(&parsed.id);
         tracker.calls.remove(&parsed.id);
     }
     Some(ToolSummaryLines {

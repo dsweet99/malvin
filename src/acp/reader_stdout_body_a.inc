@@ -12,7 +12,6 @@ pub(crate) struct ReaderSpawnArgs {
     pub acp_verbose: bool,
     pub tee_trace_stdout: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
-    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
 }
 
 pub(crate) struct ReaderLoopInput {
@@ -27,7 +26,6 @@ pub(crate) struct ReaderLoopInput {
     pub acp_verbose: bool,
     pub tee_trace_stdout: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
-    pub memory_containment: crate::acp_memory_containment::AcpMemoryContainment,
 }
 
 /// JSON-RPC 2.0 allows `id` as string or number; map nonnegative integers (and decimal strings) to

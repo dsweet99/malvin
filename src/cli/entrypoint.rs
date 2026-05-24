@@ -12,11 +12,11 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
-        Commands::Bug(_) => require_kiss_for_malvin("bughunt"),
+        Commands::Hunt(_) => require_kiss_for_malvin("hunt"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
-        | Commands::Ideas(_)
+        | Commands::Invent(_)
         | Commands::Models(_) => Ok(()),
     }
 }
@@ -124,7 +124,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 )
             })
         }
-        Commands::Bug(bug) => {
+        Commands::Hunt(bug) => {
             let run_learn = !bug.no_learn;
             run_async_cli(|| {
                 run_bug(
@@ -170,7 +170,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 },
             )
         }),
-        Commands::Ideas(ideas) => run_ideas_command(ideas, shared),
+        Commands::Invent(ideas) => run_invent_command(ideas, shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -191,7 +191,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
     }
 }
 
-fn run_ideas_command(
+fn run_invent_command(
     ideas: crate::ideas_flow::IdeasArgs,
     shared: &SharedOpts,
 ) -> Result<(), String> {
@@ -207,7 +207,11 @@ fn run_ideas_command(
     })
 }
 
-fn run_code_command(code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
+fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
+    if code.fast {
+        code.skip_pre_checks = true;
+        code.trust_the_plan = true;
+    }
     let run_learn = !code.no_learn;
     run_async_cli(|| {
         super::run_code(

@@ -53,7 +53,7 @@ fn resolve_user_request_at_file_reads_contents_and_parent_work_dir() {
     let arg = format!("@{}", f.display());
     let (text, wd) = resolve_user_request(&arg).unwrap();
     assert_eq!(text, "line1\n");
-    assert_eq!(wd, tmp.path());
+    assert_eq!(wd, work_dir_for_path(&f));
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn resolve_at_file_reads_existing_file() {
     std::fs::write(&f, "hello").unwrap();
     let (text, wd) = resolve_at_file(&f.to_string_lossy()).unwrap();
     assert_eq!(text, "hello");
-    assert_eq!(wd, tmp.path());
+    assert_eq!(wd, work_dir_for_path(&f));
 }
 
 #[test]
@@ -142,10 +142,15 @@ fn resolve_user_md_request_reads_existing_md_file() {
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(tmp.path()).unwrap();
     std::fs::write("note.md", "line1\n").unwrap();
+    let abs_file = tmp.path().join("note.md");
     let (text, wd) = resolve_user_md_request("note.md").unwrap();
     std::env::set_current_dir(old_cwd).unwrap();
     assert_eq!(text, "line1\n");
-    assert_eq!(wd, tmp.path());
+    assert_eq!(
+        wd,
+        work_dir_for_path(&abs_file),
+        "absolute and cwd-relative resolution must agree on work_dir"
+    );
 }
 
 #[test]

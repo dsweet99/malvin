@@ -8,4 +8,5 @@ mod inline {
     include!("session_post_impl.inc");
 }
 
+pub(crate) use inline::acp_session_set_run_timing;
 pub(crate) use inline::*;

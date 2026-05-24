@@ -125,7 +125,7 @@ pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_kpop_catchup_under_script(extra_args: &[&str]) -> std::process::Output {
     let mut args_line =
-        String::from("kpop --no-learn --p-creative 0 --max-hypotheses 50 investigate");
+        String::from("kpop --no-learn --max-hypotheses 50 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);

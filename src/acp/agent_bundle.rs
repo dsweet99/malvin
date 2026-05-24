@@ -27,6 +27,7 @@ impl std::error::Error for AuthError {}
 #[allow(clippy::struct_excessive_bools)]
 pub struct AgentIoOptions {
     pub force: bool,
+    pub sandbox: bool,
     pub no_tee: bool,
     pub raw_output: bool,
     pub show_thoughts_on_stdout: bool,

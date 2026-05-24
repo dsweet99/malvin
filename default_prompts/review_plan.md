@@ -7,6 +7,9 @@ Don't change code.
 
 If `[malvin] Ready for implementation.` appears at the bottom of `{{ plan_path }}`, you may stop here. (You've already reviewed and ok'd this plan.)
 
+If there is an "answers" section, then answers take precedence over other parts of the plan.
+If there seem to be inline edits or comments typed in by the user, they take precedence over everything, even answers.
+
 ## Step 1: Restate plan
 
 Restate the user's request clearly, and append (after a `---`) your restatement to `{{ plan_path }}`. Also, append any questions you might have to the end of the file.

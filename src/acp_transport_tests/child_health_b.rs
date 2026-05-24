@@ -42,26 +42,6 @@ async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
     h.shutdown().await;
 }
 
-#[cfg(target_os = "linux")]
-#[test]
-fn active_memory_containment_maps_timeout_message_when_oom() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(dir.path().join("memory.events"), "oom_kill 0\n").expect("events");
-    let memory_containment = crate::acp_memory_containment::test_support::active_with_cgroup_dir(
-        dir.path().to_path_buf(),
-    );
-    std::fs::write(dir.path().join("memory.events"), "oom_kill 1\n").expect("events");
-    assert!(memory_containment.memory_limit_exceeded());
-    assert_eq!(
-        crate::acp_memory_containment::map_acp_child_exit_message(
-            &memory_containment,
-            "acp request id 1 timed out",
-        ),
-        crate::acp_memory_containment::AGENT_EXCEEDED_MEMORY_LIMIT_MSG
-    );
-}
-
-
 #[cfg(test)]
 mod kiss_cov_auto {
     #[test]

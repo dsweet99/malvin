@@ -89,16 +89,20 @@ fn resolve_path_against_base(path: &Path, base_r: &Path) -> PathBuf {
     } else {
         base_r.join(path)
     };
-    if let Ok(p) = abs.canonicalize() {
-        return p;
-    }
-    let Some(parent) = abs.parent() else {
-        return abs;
-    };
-    let Some(name) = abs.file_name() else {
-        return abs;
-    };
-    parent.canonicalize().map(|p| p.join(name)).unwrap_or(abs)
+    abs.canonicalize().unwrap_or_else(|_| resolve_nonexistent_path(&abs))
+}
+
+fn resolve_nonexistent_path(abs: &Path) -> PathBuf {
+    abs.ancestors()
+        .find_map(|ancestor| {
+            ancestor.canonicalize().ok().map(|canonical| {
+                match abs.strip_prefix(ancestor) {
+                    Ok(tail) if !tail.as_os_str().is_empty() => canonical.join(tail),
+                    _ => canonical,
+                }
+            })
+        })
+        .unwrap_or_else(|| abs.to_path_buf())
 }
 
 #[must_use]
@@ -108,7 +112,7 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
         .unwrap_or_else(|_| base_dir.to_path_buf());
     let path_r = resolve_path_against_base(path, &base_r);
     path_r.strip_prefix(&base_r).map_or_else(
-        |_| path.display().to_string(),
+        |_| path_r.display().to_string(),
         |r| format!("./{}", r.display()),
     )
 }
@@ -116,9 +120,12 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
 #[cfg(test)]
 mod workflow_context_path_tests {
     use std::collections::HashMap;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
-    use super::{insert_artifact_paths, insert_formatted, resolve_path_against_base};
+    use super::{
+        format_prompt_path, insert_artifact_paths, insert_formatted, resolve_nonexistent_path,
+        resolve_path_against_base,
+    };
 
     #[test]
     fn resolve_path_against_base_resolves_relative_plan_path() {
@@ -126,6 +133,56 @@ mod workflow_context_path_tests {
         let base = tmp.path().canonicalize().expect("base");
         let resolved = resolve_path_against_base(Path::new("plan.md"), &base);
         assert!(resolved.ends_with("plan.md"));
+    }
+
+    #[test]
+    fn resolve_path_against_base_resolves_absolute_missing_file_under_base() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let base = tmp.path().canonicalize().expect("base");
+        let abs = tmp.path().join("src/foo.rs");
+        let resolved = resolve_path_against_base(&abs, &base);
+        assert!(
+            resolved.starts_with(&base),
+            "expected resolved path under base, got {}",
+            resolved.display()
+        );
+        assert!(resolved.ends_with("src/foo.rs"));
+    }
+
+    #[test]
+    fn resolve_nonexistent_path_cases() {
+        let _ = stringify!(resolve_nonexistent_path);
+        assert_eq!(resolve_nonexistent_path(Path::new("")), PathBuf::from(""));
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let base = tmp.path().canonicalize().expect("base");
+        let missing = tmp.path().join("nested/missing.md");
+        let resolved = resolve_nonexistent_path(&missing);
+        assert!(resolved.starts_with(&base));
+        assert!(resolved.ends_with("nested/missing.md"));
+
+        let deep = tmp.path().join("a/b/c/d.md");
+        let deep_resolved = resolve_nonexistent_path(&deep);
+        assert!(deep_resolved.starts_with(&base));
+        assert!(deep_resolved.ends_with("a/b/c/d.md"));
+    }
+
+    #[test]
+    fn format_prompt_path_fallback_uses_resolved_path_display() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let outside = std::env::temp_dir().join(format!("malvin_outside_{}", std::process::id()));
+        std::fs::create_dir_all(&outside).expect("outside dir");
+        let missing = outside.join("missing.md");
+        let formatted = format_prompt_path(&missing, tmp.path());
+        assert!(
+            !formatted.starts_with("./"),
+            "outside path must not be relativized: {formatted}"
+        );
+        assert!(
+            formatted.contains("missing.md"),
+            "fallback must name the file: {formatted}"
+        );
+        let _ = std::fs::remove_dir_all(&outside);
     }
 
     #[test]

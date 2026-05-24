@@ -34,6 +34,10 @@
 )]
 
 mod alnum_id;
+mod malvin_short_id;
+pub use malvin_short_id::{
+    is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id, MALVIN_SHORT_ID_LEN,
+};
 mod learn_gate;
 mod malvin_constants;
 pub mod run_id;
@@ -74,9 +78,7 @@ pub use run_timing::{
 };
 pub use session_dotfile_backup::KissConfigBackup;
 
-pub(crate) mod acp_memory_containment;
 pub mod artifacts;
-mod cgroup_build;
 mod child_health;
 pub mod config;
 mod kpop_acp_prompt;

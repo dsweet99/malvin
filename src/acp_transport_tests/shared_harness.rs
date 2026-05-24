@@ -4,10 +4,6 @@ pub(crate) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-pub(crate) fn inactive_memory_containment() -> crate::acp_memory_containment::AcpMemoryContainment {
-    crate::acp_memory_containment::AcpMemoryContainment::inactive()
-}
-
 pub(crate) struct InactiveRpcIo {
     pub reader_dead: Arc<AtomicBool>,
     pub stdin: Arc<Mutex<tokio::process::ChildStdin>>,
@@ -25,7 +21,6 @@ pub(crate) fn acp_stdio_rpc_inactive(io: InactiveRpcIo) -> AcpStdioRpc {
         acp_activity_notify: io.acp_activity_notify,
         acp_verbose: false,
         trace_jsonl: None,
-        memory_containment: inactive_memory_containment(),
     }
 }
 
@@ -158,7 +153,6 @@ pub(crate) async fn harness_rpc_wait(params: HarnessRpcWaitParams<'_>) -> Result
             &io.acp_activity_notify,
             &io.pending,
             params.child_pid,
-            &io.memory_containment,
         ),
     )
     .await
@@ -169,9 +163,6 @@ pub(crate) async fn harness_rpc_wait(params: HarnessRpcWaitParams<'_>) -> Result
 mod kiss_cov_auto {
     #[test]
     fn kiss_cov_acp_activity_state() { let _ = stringify!(acp_activity_state); }
-
-    #[test]
-    fn kiss_cov_inactive_memory_containment() { let _ = stringify!(inactive_memory_containment); }
 
     #[test]
     fn kiss_cov_inactive_rpc_io() { let _ = stringify!(InactiveRpcIo); }
