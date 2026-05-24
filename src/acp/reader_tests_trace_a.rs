@@ -1,5 +1,6 @@
 use crate::acp::*;
 
+#[test]
 fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     let mut c = TraceChunkCoalescer::default();
     assert!(c.feed(SessionUpdateChunkKind::Message, "hel").is_empty());

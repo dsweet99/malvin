@@ -2,26 +2,32 @@ use clap::Args;
 
 #[derive(Args, Debug, Clone)]
 pub struct BugArgs {
-    /// Total KPOP + MBC2 hypothesis steps before stopping (same as `malvin kpop`).
+    /// After discovery, write regression test and fix
+    #[arg(long, default_value_t = false, conflicts_with = "bug_id")]
+    pub fix: bool,
+    /// Total `KPop` + MBC2 hypothesis steps before stopping (same as `malvin kpop`).
     #[arg(long, default_value_t = 10, alias = "max-loops")]
     pub max_hypotheses: usize,
     /// MBC2 interleave density (same as `malvin kpop`).
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
-    /// Skip learning after KPOP.
+    /// Skip learning after `KPop`.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// Skip workspace quality gates before the post-KPOP coder session.
+    /// Skip workspace quality gates before the post-`KPop` coder session.
     #[arg(long, default_value_t = false)]
     pub skip_pre_checks: bool,
+    /// Fix an existing bug by id (skip discovery).
+    #[arg(value_name = "BUG_ID", conflicts_with = "fix")]
+    pub bug_id: Option<String>,
 }
 
 #[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
-    /// Total KPOP + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
+    /// Total `KPop` + MBC2 hypothesis steps (## Step headings in the exp log) before stopping.
     #[arg(long, default_value_t = 10, alias = "max-loops")]
     pub max_hypotheses: usize,
-    /// Drives mean KPOP block size and MBC2 interleave; higher = more frequent MBC2 turns and smaller KPOP blocks. Non-finite or ≤ 0 disables MBC2 turns (pure multiturn KPOP).
+    /// Drives mean `KPop` block size and MBC2 interleave; higher = more frequent MBC2 turns and smaller `KPop` blocks. Non-finite or ≤ 0 disables MBC2 turns (pure multiturn `KPop`).
     #[arg(long, default_value_t = 0.10)]
     pub p_creative: f64,
     /// Skip learning.

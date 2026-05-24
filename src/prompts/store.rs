@@ -116,7 +116,7 @@ impl PromptStore {
 
     /// # Errors
     ///
-    /// Returns [`PromptError`] when KPOP-required prompts are missing for `validation`.
+    /// Returns [`PromptError`] when `KPop`-required prompts are missing for `validation`.
     pub fn validate_kpop_prompts(
         &self,
         validation: KpopPromptValidation,

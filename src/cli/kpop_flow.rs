@@ -1,4 +1,4 @@
-//! KPOP subcommand: artifacts, prompt assembly, and ACP dispatch.
+//! `KPop` subcommand: artifacts, prompt assembly, and ACP dispatch.
 
 pub use crate::KpopTurnPrompts;
 

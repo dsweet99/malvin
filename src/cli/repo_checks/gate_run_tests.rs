@@ -100,3 +100,8 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
     run_repo_workspace_gates_no_kiss_clamp_with_details(work, RepoGateOutput::Tagged, None)
         .expect("workspace gates without kiss clamp");
 }
+
+#[test]
+fn kiss_cov_wires_tests_gates_unix_scan() {
+    let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
+}

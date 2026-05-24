@@ -9,7 +9,7 @@ fn smoke_acp_reader_support_behavior() {
 #[cfg(unix)]
 #[tokio::test]
 async fn smoke_reader_loop_eof_pending_error() {
-    let msg = crate::acp_tests::reader_tests_helpers::reader_loop_eof_pending_error().await;
+    let msg = crate::acp_tests::reader_tests_reader_loop::reader_loop_eof_pending_error().await;
     assert!(!msg.is_empty());
 }
 
@@ -19,6 +19,13 @@ fn smoke_acp_reader_helper_production_symbols() {
     let _ = crate::acp_tests::reader_tests_helpers::acp_activity_state;
     let _: Option<crate::acp_tests::reader_tests_helpers::IncomingDispatchParts> = None;
     let _: Option<crate::acp_tests::reader_tests_helpers::CatSession> = None;
+}
+
+#[test]
+fn smoke_spawn_and_agent_env_helpers() {
+    let _ = super::resolve_agent_bin();
+    let _ = super::test_no_real_agent_enabled();
+    let _ = super::auth_probe(&["/bin/true"]);
 }
 
 #[test]
@@ -32,8 +39,8 @@ fn smoke_acp_inc_symbols_for_kiss() {
     let _ = stringify!(ReaderLoopFinishCtx);
     let _ = stringify!(ReaderLoopLineIo);
     let _ = stringify!(ReaderLoopDrainCtx);
-    let _ = stringify!(resolve_agent_bin);
-    let _ = stringify!(spawn_agent_acp_session);
+    let _ = super::resolve_agent_bin;
+    let _ = super::spawn_agent_acp_session;
     let _ = stringify!(PromptTraceDispatchMeta);
     let _ = stringify!(DoOutgoingTraceParts);
     let _ = stringify!(SessionAfterStdioIn);

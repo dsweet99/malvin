@@ -9,6 +9,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(target_os = "linux")]
 #[path = "cgroup_memory.rs"]
 mod cgroup_memory;
+#[cfg(any(test, target_os = "linux"))]
+#[path = "cgroup_line.rs"]
+mod cgroup_line;
 #[cfg(target_os = "linux")]
 #[path = "linux_fs.rs"]
 mod linux_fs;
@@ -30,7 +33,10 @@ pub(crate) use linux_spawn::*;
 #[cfg(not(target_os = "linux"))]
 mod stub;
 #[cfg(not(target_os = "linux"))]
-pub(crate) use stub::{memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at};
+pub(crate) use stub::{
+    inactive_platform_memory_limit_exceeded_since_baseline as memory_limit_exceeded_since_baseline,
+    inactive_platform_memory_limit_oom_baseline_at as memory_limit_oom_baseline_at,
+};
 
 pub const AGENT_EXCEEDED_MEMORY_LIMIT_MSG: &str = "agent exceeded memory limit";
 pub const CONTAINMENT_UNAVAILABLE_WARN: &str =
@@ -196,55 +202,28 @@ pub(crate) use linux_verify_abort::*;
 pub(crate) mod acp_memory_containment_unit_tests;
 
 #[cfg(test)]
-#[allow(dead_code)]
-pub mod test_support {
-    use super::{
-        AcpMemoryContainment, begin_containment_for_command, complete_containment_after_spawn,
-    };
+#[path = "test_support.rs"]
+pub mod test_support;
 
-    #[cfg(target_os = "linux")]
-    #[must_use]
-    pub fn writable_cgroups_on_host() -> bool {
-        crate::acp_memory_containment::resolve_writable_cgroup_parent().is_some()
-    }
-
-    #[cfg(target_os = "linux")]
-    pub fn require_cgroup_integration_test() {
-        if writable_cgroups_on_host() {
-            return;
-        }
-        crate::output::print_log_warning(
-            "SKIP: cgroup integration test requires writable cgroups on this host",
-        );
-        panic!("cgroup integration test requires writable cgroups on this host");
-    }
-
-    /// Synthetic test fixture only (not from a real containment spawn).
-    #[must_use]
-    pub fn active_with_cgroup_dir(cgroup_dir: std::path::PathBuf) -> AcpMemoryContainment {
-        AcpMemoryContainment::from_parts(true, Some(cgroup_dir))
-    }
-
-    #[must_use]
-    pub async fn active_via_true_child_spawn()
-    -> Option<(AcpMemoryContainment, tokio::process::Child)> {
-        let mut cmd = tokio::process::Command::new("true");
-        let handle = begin_containment_for_command(&mut cmd);
-        let mut child = cmd.spawn().ok()?;
-        let pid = child.id()?;
-        let containment = complete_containment_after_spawn(Some(pid), handle).await;
-        if !containment.active() {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
-            return None;
-        }
-        Some((containment, child))
-    }
-}
 #[cfg(test)]
 mod kiss_cov_auto {
+    use super::{half_physical_memory_bytes, spawn_should_warn_containment_unavailable};
+
     #[test]
-    fn kiss_cov_half_physical_memory_bytes() { let _ = stringify!(half_physical_memory_bytes); }
+    fn kiss_cov_src_acp_memory_containment_mod_rs_half_physical_memory_bytes() {
+        #[cfg(target_os = "linux")]
+        {
+            let value = half_physical_memory_bytes();
+            assert!(value.is_some());
+            assert!(value.unwrap() > 0);
+        }
+        #[cfg(not(target_os = "linux"))]
+        assert_eq!(half_physical_memory_bytes(), None);
+    }
+
     #[test]
-    fn kiss_cov_spawn_should_warn_containment_unavailable() { let _ = stringify!(spawn_should_warn_containment_unavailable); }
+    fn kiss_cov_spawn_should_warn_containment_unavailable() {
+        assert!(spawn_should_warn_containment_unavailable(false));
+        assert!(!spawn_should_warn_containment_unavailable(true));
+    }
 }

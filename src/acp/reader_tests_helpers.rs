@@ -101,7 +101,7 @@ impl CatSession {
 }
 
 #[cfg(unix)]
-async fn spawn_true_stdout_with_pending() -> (
+pub(crate) async fn spawn_true_stdout_with_pending() -> (
     Arc<Mutex<HashMap<u64, ResponseTx>>>,
     oneshot::Receiver<Result<serde_json::Value, String>>,
     Child,
@@ -119,7 +119,7 @@ async fn spawn_true_stdout_with_pending() -> (
 }
 
 #[cfg(unix)]
-async fn spawn_sleep_stdin() -> (Arc<Mutex<tokio::process::ChildStdin>>, Child) {
+pub(crate) async fn spawn_sleep_stdin() -> (Arc<Mutex<tokio::process::ChildStdin>>, Child) {
     let mut stdin_holder = Command::new(unix_bin_with_fallback("sleep"))
         .arg("1")
         .stdin(Stdio::piped())
@@ -129,49 +129,24 @@ async fn spawn_sleep_stdin() -> (Arc<Mutex<tokio::process::ChildStdin>>, Child) 
     (stdin, stdin_holder)
 }
 
-#[cfg(unix)]
-pub(crate) async fn reader_loop_eof_pending_error() -> String {
-    let (pending, rx, mut child, stdout) = spawn_true_stdout_with_pending().await;
-    let (stdin, mut stdin_holder) = spawn_sleep_stdin().await;
-    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
-    let trace_writer: Arc<Mutex<Option<PromptTraceWriter>>> = Arc::new(Mutex::new(None));
-    let prompt_cleanup = Arc::new(PromptRpcCleanup {
-        busy: Arc::new(AtomicBool::new(false)),
-        trace_writer: trace_writer.clone(),
-        prompt_rpc_id: Arc::new(AtomicU64::new(0)),
-        idle_notify: None,
-    });
-    let waiter = spawn_acp_stdout_reader(ReaderSpawnArgs {
-        stdout,
-        pending,
-        stdin,
-        acp_activity_seq,
-        acp_activity_notify,
-        reader_dead: Arc::new(AtomicBool::new(false)),
-        trace_writer,
-        prompt_cleanup,
-        acp_verbose: false,
-        tee_trace_stdout: false,
-        trace_jsonl: None,
-        memory_containment: crate::acp_memory_containment::AcpMemoryContainment::inactive(),
-    });
-    let err = rx.await.unwrap().unwrap_err();
-    let _: () = waiter.await.unwrap();
-    let _ = child.wait().await;
-    let _ = stdin_holder.kill().await;
-    err
+#[cfg(test)]
+pub(crate) fn block_on_test<F, T>(f: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("test runtime")
+        .block_on(f)
 }
 
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_spawn_true_stdout_with_pending() { let _ = stringify!(spawn_true_stdout_with_pending); }
-
-    #[test]
-    fn kiss_cov_spawn_sleep_stdin() { let _ = stringify!(spawn_sleep_stdin); }
-
-    #[test]
-    fn kiss_cov_reader_loop_eof_pending_error() { let _ = stringify!(reader_loop_eof_pending_error); }
-
+#[cfg(all(unix, test))]
+#[test]
+fn reader_helpers_unix_fixtures_run() {
+    block_on_test(async {
+        let (_stdin, _child) = spawn_sleep_stdin().await;
+        let (_stdin_alias, _child_alias) = spawn_sleep_stdin().await;
+        let (_pending, _rx, _child, _stdout) = spawn_true_stdout_with_pending().await;
+    });
 }

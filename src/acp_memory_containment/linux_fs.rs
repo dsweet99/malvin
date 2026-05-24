@@ -15,14 +15,6 @@ pub fn half_physical_memory_bytes() -> Option<u64> {
     total_kb.checked_mul(1024)?.checked_div(2)
 }
 
-pub fn cgroup_line_lists_leaf(line: &str, leaf: &str) -> bool {
-    let Some(path) = line.rsplit(':').next() else {
-        return false;
-    };
-    let path = path.trim();
-    path == leaf || path.ends_with(&format!("/{leaf}"))
-}
-
 pub fn memory_limit_oom_baseline_at(cgroup_dir: &Path) -> containment_state::OomBaseline {
     let events = cgroup_dir.join("memory.events");
     if events.is_file() {
@@ -164,16 +156,3 @@ mod linux_fs_tests {
     }
 }
 
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_half_physical_memory_bytes() { let _ = stringify!(half_physical_memory_bytes); }
-
-    #[test]
-    fn kiss_cov_memory_limit_oom_baseline_at() { let _ = stringify!(memory_limit_oom_baseline_at); }
-
-    #[test]
-    fn kiss_cov_memory_limit_exceeded_since_baseline() { let _ = stringify!(memory_limit_exceeded_since_baseline); }
-
-}

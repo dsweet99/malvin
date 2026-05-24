@@ -189,4 +189,8 @@ pub mod test_captive_session;
 mod kiss_coverage;
 
 #[cfg(test)]
+#[path = "kiss_coverage_b.rs"]
+mod kiss_coverage_b;
+
+#[cfg(test)]
 pub(crate) mod spawn_test_args;

@@ -33,21 +33,22 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Prep a workspace (repo)
+    /// Prep this repo
     Init(InitArgs),
-    /// Respond to a single request
+    /// Respond to a single, generic request
     Do(DoArgs),
-    /// MBC2 boundary exploration (one-shot ideation)
+    /// Be creative
     Ideas(IdeasArgs),
-    /// Implement a plan
+    /// Engineer software
     Code(CodeArgs),
-    /// Popperian scientific investigator
+    /// Reason scientifically (q&a, research, optimization, ...)
     Kpop(KpopArgs),
-    /// KPOP bug hunter: find, regression test, fix (EXPERIMENTAL)
+    /// `KPop` bug hunter: find & fix bugs
+    #[command(name = "bughunt")]
     Bug(BugArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Write or review a plan file (EXPERIMENTAL)
+    /// Write or review a plan file
     Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),

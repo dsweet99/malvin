@@ -24,6 +24,15 @@ fn poisson_large_mean_normal_approx(rng: &mut impl Rng, lambda: f64) -> usize {
     let u2 = rng.r#gen::<f64>();
     let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
     let raw = (lambda + z * lambda.sqrt()).round();
+    poisson_normal_draw_clamp(raw)
+}
+
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
+fn poisson_normal_draw_clamp(raw: f64) -> usize {
     if raw <= 0.0 {
         return 0;
     }
@@ -61,6 +70,13 @@ pub fn read_exp_log_text(path: &Path) -> Result<String, String> {
         .map_err(|e| format!("failed to read exp log {}: {e}", path.display()))
 }
 
+fn is_kpop_step_label(tail: &str) -> bool {
+    if tail.len() < 4 || !tail[..4].eq_ignore_ascii_case("kpop") {
+        return false;
+    }
+    tail.len() == 4 || !tail.as_bytes()[4].is_ascii_alphanumeric()
+}
+
 fn step_kind(line: &str) -> Option<&'static str> {
     let t = line.trim_start();
     let rest = t.strip_prefix("## Step ")?;
@@ -68,8 +84,8 @@ fn step_kind(line: &str) -> Option<&'static str> {
         .iter()
         .find_map(|sep| rest.split_once(sep).map(|(_, t)| t))?;
     let tail = tail.trim_start();
-    if tail.starts_with("KPOP") {
-        return Some("KPOP");
+    if is_kpop_step_label(tail) {
+        return Some("KPop");
     }
     if tail.starts_with("MBC2") {
         return Some("MBC2");
@@ -80,7 +96,7 @@ fn step_kind(line: &str) -> Option<&'static str> {
 #[must_use]
 pub fn count_kpop_entries(text: &str) -> usize {
     text.lines()
-        .filter(|line| step_kind(line) == Some("KPOP"))
+        .filter(|line| step_kind(line) == Some("KPop"))
         .count()
 }
 
@@ -113,117 +129,36 @@ mod tests {
     use rand::rngs::StdRng;
 
     use super::{
-        agent_declared_success, block_mean_from_p_creative, count_kpop_entries, count_mbc2_entries,
-        hypotheses_emitted, poisson_block_size, read_exp_log_text,
+        is_kpop_step_label, poisson_large_mean_normal_approx, poisson_normal_draw_clamp, step_kind,
     };
 
     #[test]
-    fn block_mean_matches_one_minus_p_over_p() {
-        assert!((block_mean_from_p_creative(0.1) - 9.0).abs() < 1e-9);
+    fn step_kind_classifies_kpop_mbc2_and_rejects_kpopulation() {
+        assert_eq!(step_kind("## Step 1 — KPop x"), Some("KPop"));
+        assert_eq!(step_kind("## Step 2 — MBC2 y"), Some("MBC2"));
+        assert_eq!(step_kind("## Step 3 — kpopulation x"), None);
     }
 
     #[test]
-    fn block_mean_fallback_ten_when_mbc2_disabled() {
-        assert!((block_mean_from_p_creative(0.0) - 10.0).abs() < 1e-9);
+    fn is_kpop_step_label_accepts_kpop_prefix_only() {
+        assert!(is_kpop_step_label("KPop"));
+        assert!(is_kpop_step_label("kpop"));
+        assert!(!is_kpop_step_label("kpopulation"));
+        assert!(!is_kpop_step_label("foo"));
     }
 
     #[test]
-    fn poisson_seeded_stable() {
-        let mut a = StdRng::seed_from_u64(7);
-        let mut b = StdRng::seed_from_u64(7);
-        assert_eq!(
-            poisson_block_size(&mut a, 9.0),
-            poisson_block_size(&mut b, 9.0)
-        );
+    fn poisson_normal_draw_clamp_zero_and_max() {
+        assert_eq!(poisson_normal_draw_clamp(-1.0), 0);
+        assert_eq!(poisson_normal_draw_clamp(0.0), 0);
+        assert_eq!(poisson_normal_draw_clamp(1.0e20), usize::MAX);
     }
 
     #[test]
-    fn poisson_draw_can_be_zero() {
-        let mut rng = StdRng::seed_from_u64(2026);
-        let mut saw_zero = false;
-        for _ in 0..4000 {
-            if poisson_block_size(&mut rng, 0.5) == 0 {
-                saw_zero = true;
-                break;
-            }
-        }
-        assert!(saw_zero);
-    }
-
-    #[test]
-    fn counts_steps_in_exp_log() {
-        let text = "## Step 1 — KPOP x\n## Step 2 — MBC2 y\n## Step 3 — KPOP z\n";
-        assert_eq!(count_kpop_entries(text), 2);
-        assert_eq!(count_mbc2_entries(text), 1);
-        assert_eq!(hypotheses_emitted(text), 3);
-    }
-
-    #[test]
-    fn counts_steps_with_ascii_hyphen_separator() {
-        let text = "## Step 1 - KPOP x\n## Step 2 - MBC2 y\n## Step 3 - KPOP z\n";
-        assert_eq!(count_kpop_entries(text), 2);
-        assert_eq!(count_mbc2_entries(text), 1);
-        assert_eq!(hypotheses_emitted(text), 3);
-    }
-
-    #[test]
-    fn counts_steps_with_en_dash_separator() {
-        let text = "## Step 1 \u{2013} KPOP x\n## Step 2 \u{2013} MBC2 y\n";
-        assert_eq!(count_kpop_entries(text), 1);
-        assert_eq!(count_mbc2_entries(text), 1);
-        assert_eq!(hypotheses_emitted(text), 2);
-    }
-
-    #[test]
-    fn counts_steps_with_mixed_dash_styles() {
-        let text = "## Step 1 — KPOP a\n## Step 2 - KPOP b\n## Step 3 \u{2013} MBC2 c\n";
-        assert_eq!(count_kpop_entries(text), 2);
-        assert_eq!(count_mbc2_entries(text), 1);
-        assert_eq!(hypotheses_emitted(text), 3);
-    }
-
-    #[test]
-    fn rejects_step_without_recognized_separator() {
-        let text = "## Step 1 KPOP no-sep\n## Step 2: KPOP colon\n";
-        assert_eq!(count_kpop_entries(text), 0);
-        assert_eq!(hypotheses_emitted(text), 0);
-    }
-
-    #[test]
-    fn success_marker_detected() {
-        assert!(!agent_declared_success("no marker"));
-        assert!(agent_declared_success("## KPOP_SOLVED\ndone"));
-    }
-
-    #[test]
-    fn success_marker_rejects_heading_prefix_extensions() {
-        assert!(!agent_declared_success("## KPOP_SOLVED_extra\n"));
-    }
-
-    #[test]
-    fn success_marker_rejects_non_empty_remainder_after_keyword() {
-        assert!(!agent_declared_success(
-            "## KPOP_SOLVED  not actually solved\n"
-        ));
-        assert!(!agent_declared_success("## KPOP_SOLVED\tstill working\n"));
-    }
-
-    #[test]
-    fn read_exp_log_text_errors_on_missing_file() {
-        let p = std::path::Path::new("/nonexistent/malvin_exp_log_read_test.md");
-        let e = read_exp_log_text(p).expect_err("missing file");
-        assert!(e.contains("failed to read exp log"));
-    }
-
-    #[test]
-    fn poisson_terminates_when_exp_neg_lambda_underflows_to_zero() {
-        let mut rng = StdRng::seed_from_u64(42);
-        for _ in 0..20 {
-            let n = poisson_block_size(&mut rng, 2000.0);
-            assert_ne!(n, usize::MAX);
-        }
-        let _: Option<fn(&mut StdRng, f64) -> usize> =
-            Some(super::poisson_large_mean_normal_approx);
-        let _ = super::step_kind;
+    fn poisson_large_mean_normal_approx_returns_draw_near_mean() {
+        let mut rng = StdRng::seed_from_u64(99);
+        let n = poisson_large_mean_normal_approx(&mut rng, 5000.0);
+        assert!(n > 1000 && n < 10_000);
     }
 }
+

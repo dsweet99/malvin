@@ -5,7 +5,7 @@ use crate::acp::{
 };
 
 impl AgentClient {
-    /// Standalone KPOP: one ACP session without injected repo style; optional `learn.md` in the same session.
+    /// Standalone `KPop`: one ACP session without injected repo style; optional `learn.md` in the same session.
     ///
     /// # Errors
     ///
@@ -41,7 +41,7 @@ impl AgentClient {
         )))
     }
 
-    /// Multiturn KPOP: one ACP session; each [`crate::kpop_progression::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
+    /// Multiturn `KPop`: one ACP session; each [`crate::kpop_progression::KpopMultiturnState::next_prompt`] issues another `prompt` until done.
     ///
     /// # Errors
     ///

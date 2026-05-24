@@ -18,6 +18,8 @@ mod tests_gates_unix;
 mod tests_gates_unix_extra;
 #[cfg(test)]
 mod tests_style;
+#[cfg(test)]
+pub use command_support::{set_fake_command_dir, FakeCommandDirGuard};
 
 pub use gate_run::{
     run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,

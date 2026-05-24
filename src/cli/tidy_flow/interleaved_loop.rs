@@ -19,7 +19,7 @@ use super::recovery::{
 };
 use super::{TidyAcpInput, TidyPromptRestore};
 
-async fn run_tidy_coder_prompt_for_attempt(
+pub(crate) async fn run_tidy_coder_prompt_for_attempt(
     input: &mut TidyAcpInput<'_>,
     attempt: usize,
     initial_tidy_prompt: &str,
@@ -44,7 +44,7 @@ async fn run_tidy_coder_prompt_for_attempt(
     tidy_fail_on_abort(input.artifacts)
 }
 
-struct TidyLgtmFinishCtx<'a, 'b> {
+pub(crate) struct TidyLgtmFinishCtx<'a, 'b> {
     input: &'a mut TidyAcpInput<'b>,
     attempt: usize,
     max_outer_iterations: usize,
@@ -52,7 +52,7 @@ struct TidyLgtmFinishCtx<'a, 'b> {
     session_dotfile_backups: &'a SessionDotfileBackups,
 }
 
-async fn tidy_finish_lgtm_attempt(
+pub(crate) async fn tidy_finish_lgtm_attempt(
     ctx: TidyLgtmFinishCtx<'_, '_>,
 ) -> Result<Option<()>, String> {
     let paths = TidyRecoveryPaths {
@@ -169,17 +169,71 @@ pub async fn run_tidy_interleaved_loop(
     ))
 }
 
-
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_run_tidy_coder_prompt_for_attempt() { let _ = stringify!(run_tidy_coder_prompt_for_attempt); }
+mod interleaved_loop_tests {
+    use super::*;
+    use crate::test_agent_client::{tidy_acp_input_parts, tidy_test_session, write_fake_gate};
 
-    #[test]
-    fn kiss_cov_tidy_lgtm_finish_ctx() { let _ = stringify!(TidyLgtmFinishCtx); }
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn run_tidy_coder_prompt_for_attempt_fails_without_coder_session() {
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let err = run_tidy_coder_prompt_for_attempt(&mut input, 1, "tidy body", &session.backups)
+            .await
+            .expect_err("no session");
+        assert!(!err.is_empty());
+    }
 
-    #[test]
-    fn kiss_cov_tidy_finish_lgtm_attempt() { let _ = stringify!(tidy_finish_lgtm_attempt); }
+    #[tokio::test]
+    async fn run_tidy_interleaved_loop_errors_when_review_never_produces_artifact() {
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let err = run_tidy_interleaved_loop(&mut input, "tidy prompt", &session.backups, 1)
+            .await
+            .expect_err("no review artifact");
+        assert!(
+            err.contains("tidy") || err.contains("review") || err.contains("session"),
+            "got {err:?}"
+        );
+    }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn tidy_finish_lgtm_attempt_writes_checks_marker_when_gates_fail() {
+        let mut session = tidy_test_session("tidy");
+        let (_bin, _guard) = write_fake_gate(&session.artifacts.work_dir, "failgate", 1);
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let finished = tidy_finish_lgtm_attempt(TidyLgtmFinishCtx {
+            input: &mut input,
+            attempt: 1,
+            max_outer_iterations: 2,
+            max_review_write_inner_retries: 1,
+            session_dotfile_backups: &session.backups,
+        })
+        .await
+        .expect("finish");
+        assert!(finished.is_none());
+        let review =
+            std::fs::read_to_string(session.artifacts.artifact_review_md()).expect("review");
+        assert!(review.contains("Checks do not pass"));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn tidy_finish_lgtm_attempt_returns_some_when_gates_pass() {
+        let mut session = tidy_test_session("tidy");
+        let (_bin, _guard) = write_fake_gate(&session.artifacts.work_dir, "okgate", 0);
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let finished = tidy_finish_lgtm_attempt(TidyLgtmFinishCtx {
+            input: &mut input,
+            attempt: 1,
+            max_outer_iterations: 1,
+            max_review_write_inner_retries: 1,
+            session_dotfile_backups: &session.backups,
+        })
+        .await
+        .expect("finish");
+        assert!(finished.is_some());
+    }
 }

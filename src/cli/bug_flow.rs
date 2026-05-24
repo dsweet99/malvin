@@ -108,7 +108,7 @@ async fn finish_bug_after_kpop(
             RepoGateOutput::Tagged,
             Some(&artifacts.run_dir),
         )
-        .map_err(|e| format_workspace_gate_failure("malvin bug", &e))?;
+        .map_err(|e| format_workspace_gate_failure("malvin bughunt", &e))?;
     }
 
     let store = prepare_bug_prompt_store(tail.workflow)?;
@@ -207,10 +207,12 @@ mod tests {
     #[test]
     fn kpop_args_from_bug_maps_bug_fields() {
         let bug = BugArgs {
+            fix: false,
             max_hypotheses: 7,
             p_creative: 0.25,
             no_learn: true,
             skip_pre_checks: true,
+            bug_id: None,
         };
         let kpop = kpop_args_from_bug(&bug);
         assert_eq!(kpop.max_hypotheses, 7);

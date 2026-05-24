@@ -214,7 +214,7 @@ impl Orchestrator<'_> {
         prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
-    /// KPOP already finished; run regression-test then fix coder prompts, optional mid hook, summary.
+    /// `KPop` already finished; run regression-test then fix coder prompts, optional mid hook, summary.
     ///
     /// # Errors
     ///

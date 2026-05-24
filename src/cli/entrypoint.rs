@@ -12,7 +12,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Plan(_) => require_kiss_for_malvin("plan"),
-        Commands::Bug(_) => require_kiss_for_malvin("bug"),
+        Commands::Bug(_) => require_kiss_for_malvin("bughunt"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)

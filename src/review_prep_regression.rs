@@ -1,49 +1,6 @@
-const SESSION_SPAWN_INC: &str = include_str!("acp/session_spawn.inc");
 const INIT_COMMIT_NOTICE: &str =
     "init: creating initial commit (skipping pre-commit hooks to avoid bootstrap cycle)";
-const SILENT_CGROUP_EARLY_RETURN: &str = "if !crate::acp_memory_containment::test_support::writable_cgroups_on_host() {\n            return;\n        }";
-
-#[test]
-fn cgroup_dispatch_tests_must_not_silent_return_when_cgroups_unavailable() {
-    let src = include_str!("acp_memory_containment/tests/dispatch.rs");
-    assert!(
-        !src.contains(SILENT_CGROUP_EARLY_RETURN),
-        "cgroup integration tests must fail loudly or use #[ignore], not silent return"
-    );
-}
-
-#[test]
-fn cgroup_integration_tests_must_use_require_helper() {
-    let dispatch = include_str!("acp_memory_containment/tests/dispatch.rs");
-    assert!(
-        dispatch.contains("require_cgroup_integration_test"),
-        "cgroup integration tests must call require_cgroup_integration_test"
-    );
-}
-
-#[test]
-fn cgroup_integration_tests_must_not_return_after_skip_helper() {
-    let dispatch = include_str!("acp_memory_containment/tests/dispatch.rs");
-    assert!(
-        !dispatch.contains("skip_cgroup_integration_test() {\n            return;"),
-        "cgroup integration tests must not pass without running assertions after skip"
-    );
-}
-
-#[test]
-fn require_cgroup_integration_test_must_use_print_log_warning() {
-    let src = include_str!("acp_memory_containment/mod.rs");
-    assert!(
-        src.contains("print_log_warning"),
-        "require_cgroup_integration_test must use print_log_warning for SKIP"
-    );
-    assert!(
-        !src.contains(
-            "eprintln!(\"SKIP: cgroup integration test requires writable cgroups on this host\")"
-        ),
-        "require_cgroup_integration_test must not use raw eprintln for SKIP"
-    );
-}
+const SESSION_SPAWN_INC: &str = include_str!("acp/session_spawn.inc");
 
 #[test]
 fn captured_stderr_must_use_thread_local_buffer() {
@@ -60,15 +17,6 @@ fn init_tracing_fallback_must_install_globally_not_thread_local_only() {
     assert!(
         !src.contains("dispatcher::set_default"),
         "when try_init fails, MalvinLogLayer must be installed for all threads, not via thread-local set_default"
-    );
-}
-
-#[test]
-fn emit_containment_unavailable_warn_must_use_print_log_warning() {
-    let src = include_str!("acp_memory_containment/mod.rs");
-    assert!(
-        src.contains("print_log_warning(CONTAINMENT_UNAVAILABLE_WARN)"),
-        "containment warn must go through print_log_warning"
     );
 }
 

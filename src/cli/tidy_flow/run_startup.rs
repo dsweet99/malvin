@@ -60,7 +60,7 @@ pub(super) struct TidyAgentStartupRequest<'a> {
     pub run_learn: bool,
 }
 
-fn tidy_run_agent_startup(req: TidyAgentStartupRequest<'_>) -> Result<TidyStartup, String> {
+pub(super) fn tidy_run_agent_startup(req: TidyAgentStartupRequest<'_>) -> Result<TidyStartup, String> {
     let mut client = build_agent(req.shared, req.workflow, req.shared.acp_stdout_markdown_enabled());
     client.prompts_log_run_dir = Some(req.artifacts.run_dir.clone());
     client.ensure_authenticated().map_err(|e| e.to_string())?;
@@ -139,15 +139,81 @@ mod smoke_cov_startup {
         .expect("skip startup");
         assert!(matches!(startup, super::TidyStartup::SkipAgent { .. }));
     }
-}
-
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_tidy_agent_startup_request() { let _ = stringify!(TidyAgentStartupRequest); }
 
     #[test]
-    fn kiss_cov_tidy_run_agent_startup() { let _ = stringify!(tidy_run_agent_startup); }
+    fn prepare_tidy_run_skips_agent_when_workspace_gates_pass() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+        let shared = crate::cli::SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            doc: false,
+        };
+        let workflow = crate::cli::WorkflowCliOptions {
+            force: false,
+            run_learn: false,
+        };
+        let startup = super::prepare_tidy_run(&shared, workflow, false).expect("prepare");
+        std::env::set_current_dir(cwd).expect("restore cwd");
+        assert!(matches!(startup, super::TidyStartup::SkipAgent { .. }));
+    }
 
+    #[test]
+    fn tidy_agent_startup_request_fields_used_by_skip_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+            .expect("artifacts");
+        let shared = crate::cli::SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            doc: false,
+        };
+        let req = super::TidyAgentStartupRequest {
+            shared: &shared,
+            workflow: crate::cli::WorkflowCliOptions {
+                force: false,
+                run_learn: false,
+            },
+            artifacts,
+            malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            run_learn: false,
+        };
+        assert!(!req.run_learn);
+    }
+
+    #[test]
+    fn tidy_run_agent_startup_returns_run_agent_or_auth_error() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
+            .expect("artifacts");
+        let shared = crate::cli::SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            doc: false,
+        };
+        let req = super::TidyAgentStartupRequest {
+            shared: &shared,
+            workflow: crate::cli::WorkflowCliOptions {
+                force: false,
+                run_learn: false,
+            },
+            artifacts,
+            malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            run_learn: false,
+        };
+        match super::tidy_run_agent_startup(req) {
+            Ok(startup) => assert!(matches!(startup, super::TidyStartup::RunAgent { .. })),
+            Err(err) => assert!(!err.is_empty()),
+        }
+    }
 }

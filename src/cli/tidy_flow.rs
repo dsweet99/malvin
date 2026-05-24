@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-
 use std::collections::HashMap;
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
@@ -17,6 +15,28 @@ mod prep;
 mod prompt;
 #[path = "tidy_flow/interleaved_loop.rs"]
 mod interleaved_loop;
+#[cfg(test)]
+#[path = "tidy_flow/test_input.rs"]
+pub(crate) mod test_input;
+
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use interleaved_loop::{
+    run_tidy_coder_prompt_for_attempt, tidy_finish_lgtm_attempt, TidyLgtmFinishCtx,
+};
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use recovery::{
+    run_tidy_bonus_gate_recovery, run_tidy_concerns_coder_turn,
+    run_tidy_max_loops_one_not_lgtm_recovery, run_tidy_post_concerns_recovery,
+    tidy_review_attempt_with_retries, TidyMaxLoopsOneRecovery, TidyRecoveryPaths,
+    TidyRecoveryRequest, TidyReviewAttemptOutcome,
+};
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use run::{
+    run_tidy_learn_and_summary, run_tidy_learn_prompt_if_elapsed, run_tidy_summary_prompt,
+};
 #[path = "tidy_flow/recovery.rs"]
 pub(crate) mod recovery;
 #[path = "tidy_flow/run.rs"]
@@ -24,13 +44,17 @@ mod run;
 #[path = "tidy_flow/run_startup.rs"]
 mod run_startup;
 
+#[allow(unused_imports)]
 pub use prep::{
     compose_tidy_concerns_prompt, compose_tidy_prompt, prepare_tidy_prompt_store,
     write_checks_do_not_pass_for_artifacts, write_checks_do_not_pass_to_review_path,
 };
+#[allow(unused_imports)]
 pub use prompt::{run_tidy_prompt, run_tidy_prompt_with_restore};
+#[allow(unused_imports)]
 pub use interleaved_loop::run_tidy_interleaved_loop;
 pub use run::{merge_tidy_timing, run_tidy_acp};
+#[allow(unused_imports)]
 pub use run_startup::{prepare_tidy_run, tidy_prompt_context};
 
 pub enum TidyStartup {
@@ -139,3 +163,4 @@ pub async fn run_tidy(
 #[cfg(test)]
 #[path = "tidy_flow/tidy_flow_helpers_tests.rs"]
 mod tidy_flow_helpers_tests;
+

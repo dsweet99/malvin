@@ -36,18 +36,10 @@ fn smoke_prefer_primary_over_secondary() {
     );
 }
 
-fn empty_session_backups(work: &std::path::Path) -> crate::artifacts::SessionDotfileBackups {
-    crate::artifacts::SessionDotfileBackups::from_parts(
-        crate::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
-    )
-}
-
 #[test]
 fn smoke_merge_acp_with_workspace_session_restore() {
     let work = tempfile::tempdir().unwrap();
-    let backups = empty_session_backups(work.path());
+    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
     assert!(
         crate::acp_post_run::merge_acp_with_workspace_session_restore(
             Ok(()),
@@ -62,7 +54,7 @@ fn smoke_merge_acp_with_workspace_session_restore() {
 fn smoke_merge_acp_with_workspace_session_restore_and_check_abort_no_result_file() {
     let work = tempfile::tempdir().unwrap();
     let missing = work.path().join("no_such_result.md");
-    let backups = empty_session_backups(work.path());
+    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
     assert!(
         crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
             Ok(()),
@@ -218,10 +210,18 @@ fn smoke_shared_opts_tee_startup_stdout() {
     assert!(shared.tee_startup_stdout());
 }
 
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_empty_session_backups() { let _ = stringify!(empty_session_backups); }
-
+#[test]
+fn smoke_compose_tidy_prompt_includes_plan_path() {
+    use std::collections::HashMap;
+    let store = crate::prompts::PromptStore::default_store();
+    let mut ctx = HashMap::new();
+    ctx.insert("memories".to_string(), String::new());
+    ctx.insert(
+        "quality_gates_log".to_string(),
+        "./_malvin/run/quality_gates.log".to_string(),
+    );
+    ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
+    ctx.insert("plan_path".to_string(), "./plan.md".to_string());
+    let out = super::tidy_flow::compose_tidy_prompt(&store, &ctx).expect("compose");
+    assert!(out.contains("./plan.md"));
 }

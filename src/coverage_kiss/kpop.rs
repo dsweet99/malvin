@@ -1,5 +1,3 @@
-// K-pop progression and prompt template smoke tests.
-
 use std::collections::HashMap;
 
 use rand::{rngs::StdRng, SeedableRng};
@@ -20,7 +18,7 @@ fn smoke_kpop_progression_and_multiturn() {
     let mut rng = StdRng::seed_from_u64(1);
     let _ = crate::kpop_progression::poisson_block_size(&mut rng, mean);
 
-    let text = "## Step 1 — KPOP a\n";
+    let text = "## Step 1 — KPop a\n";
     assert_eq!(crate::kpop_progression::count_kpop_entries(text), 1);
     assert_eq!(crate::kpop_progression::count_mbc2_entries(text), 0);
     assert_eq!(crate::kpop_progression::hypotheses_emitted(text), 1);
@@ -33,9 +31,7 @@ fn smoke_kpop_progression_and_multiturn() {
     assert_eq!(got, "hello");
 
     let state = crate::kpop_progression::KpopMultiturnState::new(
-        crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(
-            crate::MtStubPrompts,
-        ),
+        crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(crate::MtStubPrompts),
         exp,
         10,
         0.5,

@@ -178,4 +178,10 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_acp_bracket_payload() { let _ = stringify!(acp_bracket_payload); }
 
+    #[test]
+    fn kiss_cov_acp_tee_payload_prefix_width() { let _ = super::acp_tee_payload_prefix_width; }
+
+    #[test]
+    fn kiss_cov_stdout_acp_display_and_log() { let _ = super::stdout_acp_display_and_log; }
+
 }

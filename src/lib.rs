@@ -181,3 +181,6 @@ mod test_stderr_capture;
 
 #[cfg(test)]
 pub mod test_utils;
+
+#[cfg(test)]
+mod test_agent_client;

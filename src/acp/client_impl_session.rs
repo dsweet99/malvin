@@ -20,7 +20,7 @@ impl AgentClient {
         }
     }
 
-    /// When set (orchestrator, standalone KPOP), LLM waits and retry backoff are recorded.
+    /// When set (orchestrator, standalone `KPop`), LLM waits and retry backoff are recorded.
     pub fn set_run_timing(
         &mut self,
         timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,

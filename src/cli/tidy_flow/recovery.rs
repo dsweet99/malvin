@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::output::{MALVIN_WHO, print_stdout_line};
@@ -24,7 +24,7 @@ pub(crate) struct TidyRecoveryRequest<'a> {
     pub paths: TidyRecoveryPaths,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TidyReviewAttemptOutcome {
     Lgtm,
     NotLgtm,
@@ -190,19 +190,48 @@ pub(crate) async fn run_tidy_max_loops_one_not_lgtm_recovery(
     run_tidy_post_concerns_recovery(input, req).await
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_tidy_learn_elapsed_threshold_ms() { let _ = stringify!(tidy_learn_elapsed_threshold_ms); }
+mod recovery_tests {
+    use super::*;
+    use crate::test_agent_client::{tidy_acp_input_parts, tidy_test_session, write_fake_gate};
 
-    #[test]
-    fn kiss_cov_run_tidy_post_concerns_recovery() { let _ = stringify!(run_tidy_post_concerns_recovery); }
-
-    #[test]
-    fn kiss_cov_run_tidy_bonus_gate_recovery() { let _ = stringify!(run_tidy_bonus_gate_recovery); }
-
-    #[test]
-    fn kiss_cov_run_tidy_max_loops_one_not_lgtm_recovery() { let _ = stringify!(run_tidy_max_loops_one_not_lgtm_recovery); }
-
+    #[tokio::test]
+    async fn recovery_helpers_error_without_coder_session() {
+        let mut session = tidy_test_session("tidy");
+        let paths = session.recovery_paths();
+        assert!(!run_tidy_concerns_coder_turn(&mut tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context), 2, &session.backups).await.expect_err("concerns").is_empty());
+        let req = TidyRecoveryRequest {
+            attempt: 2,
+            max_inner_retries: 1,
+            session_dotfile_backups: &session.backups,
+            paths: paths.clone(),
+        };
+        assert!(!run_tidy_bonus_gate_recovery(&mut tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context), req).await.expect_err("bonus").is_empty());
+        assert!(!run_tidy_max_loops_one_not_lgtm_recovery(
+            &mut tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context),
+            TidyMaxLoopsOneRecovery {
+                max_attempts: 1,
+                session_dotfile_backups: &session.backups,
+                paths,
+                max_inner_retries: 1,
+            },
+        )
+        .await.expect_err("max loops").is_empty());
+        assert!(!tidy_review_attempt_with_retries(&mut tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context), 1, &session.backups, 1).await.expect_err("review").is_empty());
+        #[cfg(unix)]
+        {
+            let (_bin, _guard) = write_fake_gate(&session.artifacts.work_dir, "failgate", 1);
+            let req = TidyRecoveryRequest {
+                attempt: 2,
+                max_inner_retries: 1,
+                session_dotfile_backups: &session.backups,
+                paths: session.recovery_paths(),
+            };
+            assert!(
+                !run_tidy_post_concerns_recovery(&mut tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context), req)
+                    .await
+                    .expect("recovery")
+            );
+        }
+    }
 }

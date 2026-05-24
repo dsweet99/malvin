@@ -1,7 +1,7 @@
 mod fs_tests {
     use crate::acp_memory_containment::cgroup_memory_max_is_limited;
     use crate::acp_memory_containment::{
-        cgroup_line_lists_leaf, memory_limit_exceeded_at, memory_limit_exceeded_since_baseline,
+        memory_limit_exceeded_at, memory_limit_exceeded_since_baseline,
         memory_limit_oom_baseline_at,
     };
     use crate::acp_memory_containment::{
@@ -41,15 +41,6 @@ mod fs_tests {
         std::fs::write(dir.path().join("memory.max"), "2097152").expect("write");
         assert!(cgroup_memory_max_is_limited(dir.path(), 2_097_152));
         assert!(!cgroup_memory_max_is_limited(dir.path(), 512 * 1024));
-    }
-
-    #[test]
-    fn cgroup_line_lists_leaf_matches_suffix() {
-        assert!(cgroup_line_lists_leaf(
-            "0::/malvin-acp-1-0",
-            "malvin-acp-1-0"
-        ));
-        assert!(!cgroup_line_lists_leaf("0::/other", "malvin-acp-1-0"));
     }
 
     #[test]

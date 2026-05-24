@@ -1,4 +1,4 @@
-//! KPOP falsification tests for plan.md (stdout logger cleanup).
+//! `KPop` falsification tests for plan.md (stdout logger cleanup).
 
 use crate::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
 use crate::output::{

@@ -1,8 +1,41 @@
 use crate::acp_memory_containment::{
-    ContainmentUnavailableWarnAtSpawn, OomBaseline, emit_containment_unavailable_warn_after_spawn,
-    half_physical_memory_bytes, memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at,
-    remove_cgroup_dir_at,
+    ContainmentUnavailableWarnAtSpawn,
+    emit_containment_unavailable_warn_after_spawn, half_physical_memory_bytes,
+    memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at, remove_cgroup_dir_at,
 };
+
+#[test]
+fn kiss_cov_src_acp_memory_containment_linux_fs_rs_half_physical_memory_bytes() {
+    let linux_fs = ();
+    #[cfg(target_os = "linux")]
+    {
+        assert!(half_physical_memory_bytes().is_some());
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        assert!(half_physical_memory_bytes().is_none());
+    }
+    assert_eq!(linux_fs, ());
+}
+
+#[test]
+fn kiss_cov_src_acp_memory_containment_linux_fs_rs_memory_limit_oom_baseline_at() {
+    let linux_fs = ();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let baseline = memory_limit_oom_baseline_at(dir.path());
+    assert_eq!((linux_fs, baseline.events_oom_kill), ((), 0));
+}
+
+#[test]
+fn kiss_cov_src_acp_memory_containment_linux_fs_rs_memory_limit_exceeded_since_baseline() {
+    let linux_fs = ();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let baseline = memory_limit_oom_baseline_at(dir.path());
+    assert_eq!(
+        (linux_fs, memory_limit_exceeded_since_baseline(dir.path(), baseline)),
+        ((), false)
+    );
+}
 
 #[cfg(not(target_os = "linux"))]
 #[test]
@@ -11,19 +44,15 @@ fn kiss_smoke_mod_wrappers() {
         log_full_outgoing_prompts: false,
         containment_active: false,
     });
-    let _ = half_physical_memory_bytes();
     let dir = tempfile::tempdir().expect("tempdir");
-    let _ = memory_limit_oom_baseline_at(dir.path());
-    let baseline = OomBaseline::default();
-    let _ = memory_limit_exceeded_since_baseline(dir.path(), baseline);
     remove_cgroup_dir_at(dir.path());
 }
 
 #[cfg(target_os = "linux")]
 mod linux_kiss_smoke {
     use super::{
-        OomBaseline, half_physical_memory_bytes, memory_limit_exceeded_since_baseline,
-        memory_limit_oom_baseline_at, remove_cgroup_dir_at,
+        ContainmentUnavailableWarnAtSpawn, emit_containment_unavailable_warn_after_spawn,
+        remove_cgroup_dir_at,
     };
     use crate::acp_memory_containment::memory_limit_exceeded_at;
     use crate::acp_memory_containment::next_cgroup_suffix;
@@ -34,12 +63,8 @@ mod linux_kiss_smoke {
             log_full_outgoing_prompts: false,
             containment_active: false,
         });
-        let _ = half_physical_memory_bytes();
         let _ = next_cgroup_suffix();
         let dir = tempfile::tempdir().expect("tempdir");
-        let _ = memory_limit_oom_baseline_at(dir.path());
-        let baseline = OomBaseline::default();
-        let _ = memory_limit_exceeded_since_baseline(dir.path(), baseline);
         let _ = memory_limit_exceeded_at(dir.path());
         remove_cgroup_dir_at(dir.path());
     }

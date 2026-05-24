@@ -7,6 +7,8 @@ mod human_a_done;
 mod human_a;
 #[cfg(test)]
 mod kiss_coverage;
+#[cfg(test)]
+mod smoke_coverage;
 
 #[allow(unused_imports)]
 pub use types::{

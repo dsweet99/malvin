@@ -1,4 +1,4 @@
-//! Integration-style exercises for multiturn KPOP state: simulate the agent by appending to the exp log
+//! Integration-style exercises for multiturn `KPop` state: simulate the agent by appending to the exp log
 //! between `next_prompt` calls (no real `agent acp` child).
 
 mod common;

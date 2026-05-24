@@ -26,9 +26,9 @@ mod unix_tests {
             .env("CURSOR_AGENT_API_KEY", "test-key")
             .env("MALVIN_AGENT_ACP_BIN", sp.mock)
             .env("PATH", sp.path)
-            .args(["bug", "--no-learn", "--max-hypotheses", "1"]);
+            .args(["bughunt", "--no-learn", "--max-hypotheses", "1"]);
         super::common::command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT)
-            .expect("spawn malvin bug")
+            .expect("spawn malvin bughunt")
     }
 
     #[test]
@@ -56,7 +56,7 @@ mod unix_tests {
         let out = spawn_bug(&sp);
         assert!(
             !out.status.success(),
-            "malvin bug should fail when post-KPOP gates fail: {out:?}"
+            "malvin bughunt should fail when post-KPOP gates fail: {out:?}"
         );
         let combined = super::common::combined_cli_output(&out);
         assert!(
@@ -76,8 +76,8 @@ mod unix_tests {
             "expected tidy guidance: {combined:?}"
         );
         assert!(
-            combined.contains("retry `malvin bug`"),
-            "expected malvin bug retry guidance: {combined:?}"
+            combined.contains("retry `malvin bughunt`"),
+            "expected malvin bughunt retry guidance: {combined:?}"
         );
         assert!(
             combined.contains("--skip-pre-checks"),

@@ -17,14 +17,14 @@ fn time_format_timestamp_symbol_lives_in_one_module() {
 }
 
 #[test]
-fn handshake_types_inc_must_pass_focused_kiss_per_file_coverage() {
+fn handshake_types_rs_must_pass_focused_kiss_per_file_coverage() {
     let status = std::process::Command::new("kiss")
-        .args(["check", ".", "src/acp/handshake_types.inc"])
+        .args(["check", ".", "src/acp/handshake_types.rs"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .status()
         .expect("spawn kiss");
     assert!(
         status.success(),
-        "handshake_types.inc must meet kiss per-file 90% threshold; focused check still fails after gate-fix"
+        "handshake_types.rs must meet kiss per-file 90% threshold; focused check still fails after gate-fix"
     );
 }

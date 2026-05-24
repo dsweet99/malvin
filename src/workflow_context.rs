@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
 use crate::memory_context;
-use std::path::PathBuf;
 
 use crate::prompts::{PromptError, PromptStore};
 
@@ -114,13 +113,40 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
     )
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_insert_artifact_paths() { let _ = stringify!(insert_artifact_paths); }
+mod workflow_context_path_tests {
+    use std::collections::HashMap;
+    use std::path::Path;
+
+    use super::{insert_artifact_paths, insert_formatted, resolve_path_against_base};
 
     #[test]
-    fn kiss_cov_resolve_path_against_base() { let _ = stringify!(resolve_path_against_base); }
+    fn resolve_path_against_base_resolves_relative_plan_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let base = tmp.path().canonicalize().expect("base");
+        let resolved = resolve_path_against_base(Path::new("plan.md"), &base);
+        assert!(resolved.ends_with("plan.md"));
+    }
 
+    #[test]
+    fn insert_artifact_paths_populates_expected_keys() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "p").expect("write");
+        let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        let mut ctx = HashMap::new();
+        insert_artifact_paths(&mut ctx, &artifacts);
+        assert!(ctx.contains_key("result_path"));
+        assert!(ctx.contains_key("review_prep_path"));
+    }
+
+    #[test]
+    fn insert_formatted_stores_workflow_relative_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "p").expect("write");
+        let mut ctx = HashMap::new();
+        insert_formatted(&mut ctx, "plan_path", &plan, tmp.path());
+        assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
+    }
 }

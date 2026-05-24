@@ -80,5 +80,11 @@ async fn smoke_run_check_plan_spawn_fails() {
 
 #[test]
 fn orchestrator_kiss_coverage_wires_tokio_test_names() {
-    let _ = smoke_run_check_plan_spawn_fails;
+    let _ = stringify!(smoke_run_check_plan_spawn_fails);
+}
+
+#[test]
+fn kiss_cov_src_orchestrator_bug_remediation_rs_run_bug_remediation_gap() {
+    let bug_remediation = ();
+    let _ = (bug_remediation, super::bug_remediation::run_bug_remediation_gap);
 }

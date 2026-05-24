@@ -1,5 +1,3 @@
-// Review sync smoke tests.
-
 #[test]
 fn smoke_review_sync() {
     assert!(crate::review_sync::is_lgtm_str("LGTM"));

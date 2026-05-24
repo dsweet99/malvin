@@ -1,4 +1,4 @@
-use super::multiturn::{NextStep, Phase};
+use super::multiturn_types::{NextStep, Phase};
 
 #[test]
 fn smoke_multiturn_phase_and_next_step_variants() {

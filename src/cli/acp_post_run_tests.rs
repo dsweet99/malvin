@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::acp_post_run::{
     duplicate_safe_restore_error, merge_acp_and_timing_results,
@@ -11,29 +11,6 @@ fn abort_result_path(dir: &tempfile::TempDir) -> PathBuf {
     result
 }
 
-fn empty_session_backups(work: &Path) -> crate::artifacts::SessionDotfileBackups {
-    crate::artifacts::SessionDotfileBackups::from_parts(
-        crate::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
-        crate::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
-    )
-}
-
-fn smoke_agent_client() -> crate::acp::AgentClient {
-    use crate::acp::{AgentClient, AgentIoOptions};
-    AgentClient::new(
-        "m".into(),
-        AgentIoOptions {
-            force: false,
-            no_tee: true,
-            raw_output: true,
-            show_thoughts_on_stdout: false,
-            emit_stdout_markdown: false,
-            log_full_outgoing_prompts: false,
-        },
-    )
-}
-
 #[test]
 fn emit_run_timing_json_only_after_acp_writes_json() {
     use std::sync::{Arc, Mutex};
@@ -41,7 +18,7 @@ fn emit_run_timing_json_only_after_acp_writes_json() {
     use crate::acp_post_run::emit_run_timing_json_only_after_acp;
     use crate::run_timing::RUN_TIMING_JSON_FILE;
 
-    let mut client = smoke_agent_client();
+    let mut client = crate::test_agent_client::smoke_agent_client();
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
@@ -59,7 +36,7 @@ fn emit_run_timing_after_acp_writes_json() {
     use crate::acp_post_run::emit_run_timing_after_acp;
     use crate::run_timing::RUN_TIMING_JSON_FILE;
 
-    let mut client = smoke_agent_client();
+    let mut client = crate::test_agent_client::smoke_agent_client();
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
@@ -159,7 +136,7 @@ fn merge_with_abort_after_successful_restore() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = empty_session_backups(work.path());
+    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Ok(()),
         work.path(),
@@ -175,7 +152,7 @@ fn merge_with_abort_does_not_claim_restore_failed_when_restore_succeeded() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
-    let empty = empty_session_backups(work.path());
+    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
         work.path(),
@@ -203,7 +180,7 @@ fn merge_with_abort_combines_restore_failure() {
     let result = abort_result_path(&tmp);
     let work = tempfile::tempdir().unwrap();
     std::fs::write(work.path().join(".malvin_checks"), "x\n").unwrap();
-    let backups = empty_session_backups(work.path());
+    let backups = crate::test_utils::empty_session_dotfile_backups(work.path());
     std::fs::write(work.path().join(".malvin_checks"), "changed\n").unwrap();
     let err = merge_acp_with_workspace_session_restore_and_check_abort(
         Err("wf failed".into()),
@@ -214,12 +191,4 @@ fn merge_with_abort_combines_restore_failure() {
     .unwrap_err();
     assert!(err.contains("ABORT: stop"));
     assert!(err.contains("wf failed"));
-}
-
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_empty_session_backups() { let _ = stringify!(empty_session_backups); }
-
 }

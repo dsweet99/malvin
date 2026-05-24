@@ -9,7 +9,7 @@ use super::recovery::{tidy_fail_on_abort, tidy_learn_elapsed_threshold_ms};
 use super::interleaved_loop::run_tidy_interleaved_loop;
 use super::{TidyAcpInput, TidyPromptRestore};
 
-async fn run_tidy_learn_prompt_if_elapsed(
+pub(crate) async fn run_tidy_learn_prompt_if_elapsed(
     input: &mut TidyAcpInput<'_>,
     timing: &Arc<Mutex<RunTiming>>,
     session_dotfile_backups: &SessionDotfileBackups,
@@ -47,7 +47,7 @@ async fn run_tidy_learn_prompt_if_elapsed(
     tidy_fail_on_abort(input.artifacts)
 }
 
-async fn run_tidy_summary_prompt(
+pub(crate) async fn run_tidy_summary_prompt(
     input: &mut TidyAcpInput<'_>,
     session_dotfile_backups: &SessionDotfileBackups,
 ) -> Result<(), String> {
@@ -77,7 +77,7 @@ async fn run_tidy_summary_prompt(
     .await
 }
 
-async fn run_tidy_learn_and_summary(
+pub(crate) async fn run_tidy_learn_and_summary(
     input: &mut TidyAcpInput<'_>,
     timing: &Arc<Mutex<RunTiming>>,
     session_dotfile_backups: &SessionDotfileBackups,
@@ -151,17 +151,78 @@ pub fn merge_tidy_timing(
     Ok(())
 }
 
-
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_run_tidy_learn_prompt_if_elapsed() { let _ = stringify!(run_tidy_learn_prompt_if_elapsed); }
+mod run_tests {
+    #![allow(unsafe_code)]
 
-    #[test]
-    fn kiss_cov_run_tidy_summary_prompt() { let _ = stringify!(run_tidy_summary_prompt); }
+    use super::*;
+    use crate::test_agent_client::{install_exit_gate_bin, tidy_acp_input_parts, tidy_test_session};
 
-    #[test]
-    fn kiss_cov_run_tidy_learn_and_summary() { let _ = stringify!(run_tidy_learn_and_summary); }
+    #[tokio::test]
+    async fn run_tidy_acp_fails_before_interleaved_loop_without_coder_session() {
+        use crate::test_utils::test_env_lock;
+        let _env = test_env_lock();
+        let bin_dir = tempfile::tempdir().expect("bindir");
+        install_exit_gate_bin(bin_dir.path(), "agent-acp", 1);
+        let fake = {
+            #[cfg(windows)]
+            {
+                bin_dir.path().join("agent-acp.cmd")
+            }
+            #[cfg(not(windows))]
+            {
+                bin_dir.path().join("agent-acp")
+            }
+        };
+        unsafe {
+            std::env::set_var("MALVIN_AGENT_ACP_BIN", &fake);
+            std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
+        }
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(
+            &mut session.client,
+            &session.artifacts,
+            &session.store,
+            &session.context,
+        );
+        let err = run_tidy_acp(&mut input, "tidy", &session.backups, 1)
+            .await
+            .expect_err("begin session");
+        assert!(!err.is_empty());
+    }
 
+    #[tokio::test]
+    async fn run_tidy_learn_prompt_if_elapsed_skips_when_learn_disabled() {
+        use std::sync::{Arc, Mutex};
+
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
+        run_tidy_learn_prompt_if_elapsed(&mut input, &timing, &session.backups)
+            .await
+            .expect("skipped learn");
+    }
+
+    #[tokio::test]
+    async fn run_tidy_summary_prompt_errors_without_coder_session() {
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let err = run_tidy_summary_prompt(&mut input, &session.backups)
+            .await
+            .expect_err("no session");
+        assert!(!err.is_empty());
+    }
+
+    #[tokio::test]
+    async fn run_tidy_learn_and_summary_propagates_summary_failure() {
+        use std::sync::{Arc, Mutex};
+
+        let mut session = tidy_test_session("tidy");
+        let mut input = tidy_acp_input_parts(&mut session.client, &session.artifacts, &session.store, &session.context);
+        let timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
+        let err = run_tidy_learn_and_summary(&mut input, &timing, &session.backups)
+            .await
+            .expect_err("summary needs session");
+        assert!(!err.is_empty());
+    }
 }

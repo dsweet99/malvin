@@ -9,7 +9,7 @@ pub fn inactive_containment() -> AcpMemoryContainment {
 }
 
 #[must_use]
-pub const fn memory_limit_oom_baseline_at(_cgroup_dir: &Path) -> OomBaseline {
+pub const fn inactive_platform_memory_limit_oom_baseline_at(_cgroup_dir: &Path) -> OomBaseline {
     OomBaseline {
         events_oom_kill: 0,
         v1_under_oom: false,
@@ -17,7 +17,7 @@ pub const fn memory_limit_oom_baseline_at(_cgroup_dir: &Path) -> OomBaseline {
 }
 
 #[must_use]
-pub const fn memory_limit_exceeded_since_baseline(
+pub const fn inactive_platform_memory_limit_exceeded_since_baseline(
     _cgroup_dir: &Path,
     _baseline: OomBaseline,
 ) -> bool {
@@ -26,21 +26,32 @@ pub const fn memory_limit_exceeded_since_baseline(
 
 #[cfg(test)]
 mod stub_tests {
-    use super::inactive_containment;
+    use super::{
+        inactive_containment, inactive_platform_memory_limit_exceeded_since_baseline,
+        inactive_platform_memory_limit_oom_baseline_at,
+    };
 
     #[test]
     fn inactive_containment_returns_inactive() {
         assert!(!inactive_containment().active());
     }
-}
-
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_memory_limit_oom_baseline_at() { let _ = stringify!(memory_limit_oom_baseline_at); }
 
     #[test]
-    fn kiss_cov_memory_limit_exceeded_since_baseline() { let _ = stringify!(memory_limit_exceeded_since_baseline); }
+    fn kiss_cov_src_acp_memory_containment_stub_rs_inactive_platform_memory_limit_oom_baseline_at(
+    ) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let baseline = inactive_platform_memory_limit_oom_baseline_at(dir.path());
+        assert_eq!(baseline.events_oom_kill, 0);
+    }
 
+    #[test]
+    fn kiss_cov_src_acp_memory_containment_stub_rs_inactive_platform_memory_limit_exceeded_since_baseline(
+    ) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let baseline = inactive_platform_memory_limit_oom_baseline_at(dir.path());
+        assert!(!inactive_platform_memory_limit_exceeded_since_baseline(
+            dir.path(),
+            baseline
+        ));
+    }
 }

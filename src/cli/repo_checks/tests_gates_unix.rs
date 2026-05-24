@@ -20,7 +20,7 @@ fn source_like_files_present_does_not_follow_external_symlink_dirs() {
 }
 
 #[tokio::test]
-async fn scan_for_extension_handles_symlink_cycles() {
+async fn test_scan_for_extension_handles_symlink_cycles() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
     std::fs::create_dir(root.join("src")).unwrap();
@@ -31,7 +31,7 @@ async fn scan_for_extension_handles_symlink_cycles() {
     });
     let found = tokio::time::timeout(Duration::from_secs(1), scan)
         .await
-        .expect("scan_for_extension_handles_symlink_cycles must finish")
+        .expect("test_scan_for_extension_handles_symlink_cycles must finish")
         .expect("panicked");
     assert!(!found);
 }
@@ -72,12 +72,4 @@ fn run_repo_workspace_gates_skips_pre_commit_when_config_present() {
     assert!(!log_contains_command(&log, "kiss check"));
     assert!(!log_contains_command(&log, "cargo clippy"));
     assert!(log_contains_command(&log, "custom --only"));
-}
-
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_scan_for_extension_handles_symlink_cycles() { let _ = stringify!(scan_for_extension_handles_symlink_cycles); }
-
 }

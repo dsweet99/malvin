@@ -10,11 +10,6 @@ fn smoke_format_gate_failures_non_empty() {
     assert!(code.contains("detail"));
 }
 
-#[test]
-fn smoke_lookup_bin_on_path_finds_sh() {
-    assert!(crate::lookup_bin_on_path("sh").is_some());
-}
-
 #[cfg(unix)]
 #[test]
 fn smoke_has_source_files_detects_symlink_to_rs_in_workspace() {

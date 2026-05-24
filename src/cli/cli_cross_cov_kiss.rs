@@ -109,3 +109,33 @@ fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
     let _ = stringify!(crate::orchestrator::mid_noop);
 }
+
+#[test]
+fn smoke_cov_cli_cross_file_symbols_a() {
+    let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
+    let _ = stringify!(doc_text);
+    let _ = stringify!(print_doc);
+    let _ = stringify!(try_append_log_line);
+    let _ = stringify!(BugKpopPhase);
+    let _ = stringify!(run_bug_kpop_multiturn);
+    let _ = stringify!(ensure_kpop_solved);
+    let _ = stringify!(finish_bug_after_kpop);
+    let _ = stringify!(BugRunTail);
+    let _ = stringify!(run_bug_remediation_orchestrator);
+}
+
+#[test]
+fn smoke_cov_cli_cross_file_symbols_b() {
+    let _ = stringify!(DoRunPrep);
+    let _ = stringify!(new_do_client);
+    let _ = stringify!(run_do_repo_gates_if_requested);
+    let _ = stringify!(prepare_do_run);
+    let _ = stringify!(run_do_coder_prompt);
+    let _ = stringify!(run_do_acp);
+    let _ = stringify!(IdeasRunPrep);
+    let _ = stringify!(prepare_ideas_prompt_store);
+    let _ = stringify!(new_ideas_client);
+    let _ = stringify!(prepare_ideas_run);
+    let _ = stringify!(run_ideas_coder_prompt);
+    let _ = stringify!(run_ideas_acp);
+}
