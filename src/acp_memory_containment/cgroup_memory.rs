@@ -1,11 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub use crate::cgroup_build::{
-    cgroup_v2_mount, probe_writable_parent, resolve_cgroup_v1_memory_parent,
-    resolve_cgroup_v2_parent, self_cgroup_v1_memory_relative_path, self_cgroup_v2_relative_path,
-};
-
 pub fn read_memory_events_oom_kill_count(text: &str) -> u64 {
     for line in text.lines() {
         let mut parts = line.split_whitespace();

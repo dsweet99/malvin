@@ -6,10 +6,8 @@ use std::path::{Path, PathBuf};
 use super::cgroup_memory::{
     cgroup_memory_max_is_limited, resolve_writable_cgroup_parent, write_memory_limit,
 };
-use super::linux_fs::{
-    half_physical_memory_bytes, memory_limit_exceeded_since_baseline,
-    memory_limit_oom_baseline_at,
-};
+use super::linux_parent_death::install_parent_death_guard;
+use super::linux_fs::half_physical_memory_bytes;
 use super::cgroup_line::cgroup_line_lists_leaf;
 
 use tokio::process::Command;

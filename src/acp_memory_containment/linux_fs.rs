@@ -1,9 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use super::cgroup_memory::{
-    cgroup_memory_max_is_limited, read_memory_events_oom_kill_count, v1_under_oom,
-};
+use super::cgroup_memory::{read_memory_events_oom_kill_count, v1_under_oom};
 use super::containment_state;
 
 pub fn half_physical_memory_bytes() -> Option<u64> {
@@ -57,9 +55,10 @@ pub fn memory_limit_exceeded_at(cgroup_dir: &Path) -> bool {
 #[cfg(test)]
 mod linux_fs_tests {
     use super::{
-        cgroup_memory_max_is_limited, half_physical_memory_bytes, memory_limit_exceeded_at,
-        memory_limit_exceeded_since_baseline, memory_limit_oom_baseline_at,
+        half_physical_memory_bytes, memory_limit_exceeded_at, memory_limit_exceeded_since_baseline,
+        memory_limit_oom_baseline_at,
     };
+    use crate::acp_memory_containment::cgroup_memory_max_is_limited;
     use std::path::Path;
 
     use crate::acp_memory_containment::{

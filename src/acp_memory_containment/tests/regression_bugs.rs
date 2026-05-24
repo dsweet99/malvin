@@ -28,7 +28,7 @@ fn shared_containment_deactivates_when_cgroup_removed_on_sibling_handle() {
 
 #[cfg(target_os = "linux")]
 mod linux_regression {
-    use super::{
+    use crate::acp_memory_containment::{
         AGENT_EXCEEDED_MEMORY_LIMIT_MSG, finalize_containment_cgroup, map_acp_child_exit_message,
     };
 

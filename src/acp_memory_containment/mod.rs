@@ -22,13 +22,19 @@ mod linux_parent_death;
 #[path = "linux_spawn.rs"]
 mod linux_spawn;
 #[cfg(target_os = "linux")]
-pub(crate) use cgroup_memory::*;
-#[cfg(target_os = "linux")]
 pub(crate) use linux_fs::*;
 #[cfg(target_os = "linux")]
-pub(crate) use linux_parent_death::*;
-#[cfg(target_os = "linux")]
 pub(crate) use linux_spawn::*;
+#[cfg(all(test, target_os = "linux"))]
+pub use cgroup_memory::{
+    cgroup_memory_max_is_limited, parse_memory_events_oom, parse_memory_limit_bytes,
+    read_v1_memory_limit, read_v2_memory_max, resolve_writable_cgroup_parent, write_memory_limit,
+};
+#[cfg(all(test, target_os = "linux"))]
+pub use crate::cgroup_build::{
+    cgroup_v2_mount, probe_writable_parent, resolve_cgroup_v1_memory_parent,
+    resolve_cgroup_v2_parent, self_cgroup_v1_memory_relative_path, self_cgroup_v2_relative_path,
+};
 
 #[cfg(not(target_os = "linux"))]
 mod stub;
