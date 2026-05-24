@@ -132,14 +132,22 @@ mod tests {
     }
 
     #[test]
-    fn bug_post_kpop_pre_check_failure_does_not_claim_implementation_never_started() {
-        let msg = crate::cli::format_workspace_gate_failure("malvin bug", "`kiss check` failed");
-        assert!(
-            !msg.contains("did not start"),
-            "KPOP already ran; only bug remediation is gated: {msg}"
-        );
+    fn format_workspace_gate_failure_bughunt_omits_skip_pre_checks() {
+        let msg =
+            crate::cli::format_workspace_gate_failure("malvin bughunt", "`kiss check` failed");
         assert!(msg.contains("Workspace checks did not pass"));
         assert!(msg.contains("malvin tidy"));
+        assert!(msg.contains("retry `malvin bughunt`"));
+        assert!(
+            !msg.contains("--skip-pre-checks"),
+            "bughunt no longer supports --skip-pre-checks: {msg}"
+        );
+    }
+
+    #[test]
+    fn format_workspace_gate_failure_code_includes_skip_pre_checks() {
+        let msg = crate::cli::format_workspace_gate_failure("malvin code", "`kiss check` failed");
+        assert!(msg.contains("--skip-pre-checks` on `malvin code`"));
     }
 
     #[test]

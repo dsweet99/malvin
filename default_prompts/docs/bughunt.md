@@ -51,10 +51,6 @@ Same as `kpop`: MBC2 interleave density. `≤ 0` or non-finite → pure KPOP blo
 
 Skip **learn** in the remediation orchestrator when not `--no-learn`.
 
-### `--skip-pre-checks`
-
-Skip workspace quality gates **before** the post-KPOP coder session (regression test + fix). Applies to `--fix` and fix-by-id, not to discover-only.
-
 ### Global options
 
 See `malvin.md`.
@@ -78,8 +74,6 @@ Same multiturn engine as `malvin kpop`, with a built-in request: find a serious 
 ### Bug remediation (`--fix` or `<BUG_ID>`)
 
 Uses the same run directory as discovery. Writes or reuses `plan.md` describing post-KPOP remediation; the KPOP log under `_kpop/` remains authoritative.
-
-Pre-check: workspace gates (unless `--skip-pre-checks`). On gate failure, retry `malvin bughunt --fix` or `malvin bughunt <BUG_ID>` after `malvin tidy`.
 
 Single coder session:
 
@@ -113,5 +107,5 @@ Optional **learn** follows the same rules as `code` when not `--no-learn`.
 ```text
 malvin bughunt
 malvin bughunt --fix --max-hypotheses 15 --p-creative 0.1
-malvin bughunt Ma1b2c --skip-pre-checks --no-learn
+malvin bughunt Ma1b2c --no-learn
 ```

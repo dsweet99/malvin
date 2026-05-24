@@ -79,19 +79,31 @@ pub const fn agent_io_options(
 pub fn format_pre_check_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Pre-checks failed; implementation did not start.\n\
-Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`.\n\
+{}\n\
 \n\
-{detail}"
+{detail}",
+        gate_failure_recovery_hint(command)
     )
 }
 
 pub fn format_workspace_gate_failure(command: &str, detail: &str) -> String {
     format!(
         "ERR: Workspace checks did not pass; the next step did not run.\n\
-Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`.\n\
+{}\n\
 \n\
-{detail}"
+{detail}",
+        gate_failure_recovery_hint(command)
     )
+}
+
+fn gate_failure_recovery_hint(command: &str) -> String {
+    if command == "malvin code" {
+        format!(
+            "Run `malvin tidy`, then retry `{command}`, or use `--skip-pre-checks` on `{command}`."
+        )
+    } else {
+        format!("Run `malvin tidy`, then retry `{command}`.")
+    }
 }
 
 pub fn format_code_pre_check_failure(detail: &str) -> String {

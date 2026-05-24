@@ -9,11 +9,8 @@ use super::kpop_flow::{
 };
 use super::run_emit::emit_run_startup_sequence;
 use super::{BugArgs, KpopArgs};
-use super::{
-    WorkflowCliOptions, build_agent, format_workspace_gate_failure, prepare_bug_prompt_store,
-};
+use super::{WorkflowCliOptions, build_agent, prepare_bug_prompt_store};
 use crate::DEFAULT_LEARN_MIN_ELAPSED_MS as LEARN_MIN_ELAPSED_MS;
-use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 const BUG_KPOP_REQUEST: &str = "Find a serious bug in this codebase.";
 
@@ -88,7 +85,6 @@ fn ensure_kpop_solved(prepared: &KpopPrepared) -> Result<(), String> {
 }
 
 struct BugRunTail<'a> {
-    bug: &'a BugArgs,
     shared: &'a SharedOpts,
     workflow: WorkflowCliOptions,
 }
@@ -101,15 +97,6 @@ async fn finish_bug_after_kpop(
     ensure_kpop_solved(&prepared)?;
     let artifacts = prepared.into_bug_followup_artifacts(BUG_FOLLOWUP_PLAN)?;
     super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-
-    if !tail.bug.skip_pre_checks {
-        run_repo_workspace_gates(
-            &artifacts.work_dir,
-            RepoGateOutput::Tagged,
-            Some(&artifacts.run_dir),
-        )
-        .map_err(|e| format_workspace_gate_failure("malvin bughunt", &e))?;
-    }
 
     let store = prepare_bug_prompt_store(tail.workflow)?;
     client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
@@ -184,7 +171,6 @@ pub async fn run_bug(
 
         finish_bug_after_kpop(
             BugRunTail {
-                bug: &bug,
                 shared,
                 workflow,
             },
@@ -211,7 +197,6 @@ mod tests {
             max_hypotheses: 7,
             p_creative: 0.25,
             no_learn: true,
-            skip_pre_checks: true,
             bug_id: None,
         };
         let kpop = kpop_args_from_bug(&bug);

@@ -14,9 +14,6 @@ pub struct BugArgs {
     /// Skip learning after `KPop`.
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// Skip workspace quality gates before the post-`KPop` coder session.
-    #[arg(long, default_value_t = false)]
-    pub skip_pre_checks: bool,
     /// Fix an existing bug by id (skip discovery).
     #[arg(value_name = "BUG_ID", conflicts_with = "fix")]
     pub bug_id: Option<String>,

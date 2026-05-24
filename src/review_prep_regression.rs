@@ -140,12 +140,13 @@ fn malformed_rpc_timeout_env_must_use_default_and_emit_warning_on_stderr() {
 }
 
 #[test]
-fn bug_post_kpop_workspace_gate_failure_must_not_say_pre_checks() {
-    let msg = crate::cli::format_workspace_gate_failure("malvin bug", "`kiss check` failed");
+fn bughunt_workspace_gate_failure_omits_skip_pre_checks() {
+    let msg = crate::cli::format_workspace_gate_failure("malvin bughunt", "`kiss check` failed");
     assert!(
-        !msg.contains("Pre-checks"),
-        "post-KPOP remediation gate is not a startup pre-check; message was: {msg}"
+        !msg.contains("--skip-pre-checks"),
+        "bughunt no longer supports --skip-pre-checks; message was: {msg}"
     );
+    assert!(msg.contains("retry `malvin bughunt`"));
 }
 
 #[test]
