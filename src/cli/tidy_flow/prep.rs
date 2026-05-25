@@ -18,9 +18,19 @@ pub fn prepare_tidy_kpop_prompt_store(
     Ok(store)
 }
 
-pub fn tidy_kpop_request(store: &PromptStore, work_dir: &Path) -> Result<String, String> {
+pub fn tidy_kpop_request(
+    store: &PromptStore,
+    work_dir: &Path,
+    artifacts: &crate::artifacts::RunArtifacts,
+) -> Result<String, String> {
+    let quality_gates_log = crate::orchestrator::format_prompt_path(
+        &artifacts.quality_gates_log_path(),
+        work_dir,
+    );
+    let mut tidy_context = HashMap::new();
+    tidy_context.insert("quality_gates_log".to_string(), quality_gates_log);
     let scope_constraints = store
-        .render_prompt_only("tidy_constraints.md", &HashMap::new())
+        .render_prompt_only("tidy_constraints.md", &tidy_context)
         .map_err(|e: PromptError| e.0)?;
     let quality_gates =
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
@@ -66,9 +76,12 @@ mod tests {
 
     #[test]
     fn tidy_kpop_request_has_no_unresolved_braces() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let text = tidy_kpop_request(&store, Path::new(".")).expect("request");
+        let text = tidy_kpop_request(&store, tmp.path(), &artifacts).expect("request");
         assert!(
             !text.contains("{{"),
             "tidy kpop request must expand all placeholders: {text:?}"
@@ -76,6 +89,10 @@ mod tests {
         assert!(
             text.contains("Just get quality gates to pass"),
             "expected tidy_constraints in request: {text:?}"
+        );
+        assert!(
+            text.contains("quality_gates.log"),
+            "expected quality_gates_log path from tidy_constraints: {text:?}"
         );
     }
 

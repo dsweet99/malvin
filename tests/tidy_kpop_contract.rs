@@ -6,13 +6,13 @@ mod common;
 #[cfg(unix)]
 use common::{
     TidySpawn, acp_mock_tidy_kpop_steps_js, bin_path_with_failing_gates, bin_path_with_fake_kiss,
-    combined_cli_output, only_run_dir, seed_git_kiss_cargo_gate_workspace, spawn_tidy,
+    combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_tidy,
     test_home_workspace, workspace_kiss_check_only, write_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
-fn tidy_kpop_succeeds_when_steps_written_and_gates_pass() {
+fn tidy_skips_kpop_when_gates_already_pass() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
@@ -29,20 +29,14 @@ fn tidy_kpop_succeeds_when_steps_written_and_gates_pass() {
     let combined = combined_cli_output(&out);
     assert!(
         out.status.success(),
-        "expected tidy success after kpop steps and passing gates: status={:?} combined={combined:?}",
+        "expected tidy success when gates already pass: status={:?} combined={combined:?}",
         out.status,
     );
+    assert!(combined.contains("DONE"), "expected fast-path DONE: {combined:?}");
     assert!(
-        combined.contains("KPOP_LOG:"),
-        "tidy should emit kpop log line: {combined:?}"
+        !combined.contains("KPOP_LOG:"),
+        "tidy must skip kpop when gates pass before agent: {combined:?}"
     );
-    let run_dir = only_run_dir(&workspace);
-    let exp_dir = run_dir.join("_kpop");
-    let exp_files: Vec<_> = std::fs::read_dir(&exp_dir)
-        .expect("read kpop dir")
-        .filter_map(Result::ok)
-        .collect();
-    assert!(!exp_files.is_empty(), "expected experiment log under _kpop");
 }
 
 #[cfg(unix)]

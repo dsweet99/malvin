@@ -22,6 +22,14 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
     format!("{tag_color}[{inner}]{ANSI_RESET} {line}")
 }
 
+/// Heartbeat TTY lines keep the who-tag color through the payload (no reset after `]`).
+#[must_use]
+pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
+    let inner = format_log_tag_inner(who);
+    let tag_color = who_tag_ansi(who);
+    format!("{tag_color}[{inner}] {line}{ANSI_RESET}")
+}
+
 pub fn print_stdout_line(who: &str, line: &str) {
     for para in line.split('\n') {
         let ts = super::timestamp_now_string();
@@ -121,14 +129,14 @@ mod tests {
 
     #[test]
     fn heartbeat_display_matches_logger_format_for_color_mode() {
-        use crate::output::stdout_tagged_display_and_log_line;
+        use crate::output::stdout_heartbeat_display_and_log_line;
         use crate::output::{init_stdout_style, stdout_use_color};
 
         init_stdout_style(true);
         let (display, _) =
-            stdout_tagged_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some("20260524.000000.000"));
+            stdout_heartbeat_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some("20260524.000000.000"));
         let expected = if stdout_use_color() {
-            format_line_stdout_ansi(MALVIN_WHO, "HB: 20260524.000000")
+            super::format_heartbeat_stdout_ansi(MALVIN_WHO, "HB: 20260524.000000")
         } else {
             format_line_stdout(MALVIN_WHO, "HB: 20260524.000000")
         };
@@ -139,18 +147,31 @@ mod tests {
     }
 
     #[test]
-    fn heartbeat_ansi_display_uses_color_branch_without_tty() {
-        let (display, log) = crate::output::stdout_log_pair::tagged_display_and_log_line_for_color(
+    fn heartbeat_ansi_display_uses_uniform_who_tag_color() {
+        use crate::terminal_palette::ANSI_TOOL_NAVY;
+
+        let payload = "20260524.000000 Still alive.";
+        let (display, log) = crate::output::stdout_log_pair::heartbeat_display_and_log_line_for_color(
             MALVIN_WHO,
-            "HB: 20260524.000000",
+            payload,
             Some("20260524.000000.000"),
             true,
         );
-        let expected = format_line_stdout_ansi(MALVIN_WHO, "HB: 20260524.000000");
+        let expected = super::format_heartbeat_stdout_ansi(MALVIN_WHO, payload);
         assert_eq!(display, expected);
         assert!(display.contains('\x1b'));
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20260524.000000.000"));
+        assert!(
+            display.starts_with(ANSI_TOOL_NAVY),
+            "heartbeat line must open with who-tag navy; got {display:?}"
+        );
+        let reset_before_payload = format!("]{}{} ", super::ANSI_RESET, payload);
+        assert!(
+            !display.contains(&reset_before_payload),
+            "must not reset color before payload"
+        );
+        assert!(display.ends_with(super::ANSI_RESET));
     }
 
     #[test]

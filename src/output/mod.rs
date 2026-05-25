@@ -21,7 +21,9 @@ pub(crate) use stdout_heartbeat::{
     heartbeat_rendered_if_due, is_heartbeat_log_line, log_contains_heartbeat, mark_heartbeat_emitted,
 };
 
-pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi, logical_lines};
+pub(crate) use stdout_display::{
+    format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
+};
 
 #[cfg(test)]
 pub(crate) use stdout_heartbeat::{
@@ -191,7 +193,9 @@ pub(crate) fn stderr_use_color() -> bool {
 }
 
 pub use crate::stdout_log_path::set_stdout_log_path;
-pub(crate) use stdout_log_pair::stdout_tagged_display_and_log_line;
+pub(crate) use stdout_log_pair::{
+    stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
+};
 #[cfg(test)]
 pub(crate) use stdout_log_pair::assert_acp_tool_summary_dim_preserves_bracket;
 

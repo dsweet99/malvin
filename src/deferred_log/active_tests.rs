@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 fn defer_heartbeat_under_held_mutex(shared: &SharedDeferSink) {
-    let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
+    let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
         crate::output::MALVIN_WHO,
         "HB: 20260524.000000",
         Some("20260524.000000.000"),
@@ -39,7 +39,7 @@ fn heartbeat_contention_pending_len() -> usize {
     let pending = {
         let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let (display, log) = crate::output::stdout_tagged_display_and_log_line(
+        let (display, log) = crate::output::stdout_heartbeat_display_and_log_line(
             crate::output::MALVIN_WHO,
             "HB: 20260524.000000",
             Some("20260524.000000.000"),
@@ -218,7 +218,7 @@ fn contention_flush_emits_one_heartbeat_to_terminal_and_log() {
         let shared = zero_age_defer_shared("contention_flush");
         register(Arc::clone(&shared));
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
+        let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
             crate::output::MALVIN_WHO,
             "HB: 20260524.000000",
             Some("20260524.000000.000"),

@@ -4,7 +4,7 @@ pub fn acp_mock_tidy_kpop_steps_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const wantMatch = promptText.match(/Complete exactly (\d+) KPOP iterations/);
+    const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
     const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
     const root = path.join(process.cwd(), '.malvin', 'logs');
     if (fs.existsSync(root)) {

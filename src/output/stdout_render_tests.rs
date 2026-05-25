@@ -4,14 +4,19 @@ route_stdout_rendered_line, write_heartbeat_log_line, StdoutRenderPrelude,
 };
 use crate::output::{
 enable_stdout_capture, is_log_timestamp_token, set_stdout_log_path,
-stdout_tagged_display_and_log_line, take_captured_stdout, try_defer_heartbeat,
-try_defer_tagged_stdout, MALVIN_WHO, STDOUT_LOG_TEST_LOCK,
+stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
+    take_captured_stdout, try_defer_heartbeat, try_defer_tagged_stdout, MALVIN_WHO,
+    STDOUT_LOG_TEST_LOCK,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
 
 fn tagged_pair(payload: &str) -> (String, String) {
     stdout_tagged_display_and_log_line(MALVIN_WHO, payload, Some("20260524.000000.000"))
+}
+
+fn heartbeat_pair(payload: &str) -> (String, String) {
+    stdout_heartbeat_display_and_log_line(MALVIN_WHO, payload, Some("20260524.000000.000"))
 }
 
 fn with_render_capture<F: FnOnce()>(run: F) -> (String, String) {
@@ -53,7 +58,7 @@ fn immediate_emit_prints_display_not_log_on_terminal() {
 
 #[test]
 fn heartbeat_route_prints_display_on_terminal() {
-    let (display, log) = tagged_pair("heartbeat");
+    let (display, log) = heartbeat_pair("heartbeat");
     let (terminal, disk) = with_render_capture(|| write_heartbeat_log_line(&display, &log));
     assert_eq!(terminal.trim(), display);
     assert!(disk.contains("heartbeat"));
@@ -94,7 +99,7 @@ fn tagged_route_writes_immediate_log_when_no_defer() {
 
 #[test]
 fn heartbeat_route_writes_immediate_log_when_no_defer() {
-    let (display, log) = tagged_pair("heartbeat");
+    let (display, log) = heartbeat_pair("heartbeat");
     let (terminal, disk) = with_render_capture(|| write_heartbeat_log_line(&display, &log));
     assert!(disk.contains("heartbeat"));
     assert!(terminal.contains("heartbeat"));
@@ -176,7 +181,7 @@ fn tagged_route_defers_when_session_active() {
 
 #[test]
 fn heartbeat_route_defers_when_session_active() {
-    let (display, log) = tagged_pair("heartbeat");
+    let (display, log) = heartbeat_pair("heartbeat");
     let shared = Arc::new(std::sync::Mutex::new(
         crate::deferred_log::DeferredLogSink::for_prompt(
             "render_hb".to_string(),
@@ -201,7 +206,7 @@ fn heartbeat_route_defers_when_session_active() {
 
 #[test]
 fn heartbeat_route_defers_then_flush_preserves_split() {
-    let (display, log) = tagged_pair("heartbeat");
+    let (display, log) = heartbeat_pair("heartbeat");
     let shared = Arc::new(std::sync::Mutex::new(
         crate::deferred_log::DeferredLogSink::for_prompt(
             "render_hb_flush".to_string(),

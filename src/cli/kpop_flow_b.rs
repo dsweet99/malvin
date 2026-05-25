@@ -157,9 +157,19 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &[
             "Restate the problem clearly",
             "Hypothesize",
+            "Complete up to `2` KPOP iterations",
+            "iterations budget",
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
             "Do not write KPop logs under repo-root `./_kpop/`",
         ],
+    );
+    assert!(
+        !kpop.contains("Complete exactly"),
+        "kpop_block must use up-to wording: {kpop:?}"
+    );
+    assert!(
+        !kpop.contains("remaining_hypotheses"),
+        "kpop_block must not reference remaining_hypotheses: {kpop:?}"
     );
     let mbc2 = turn.mbc2_pure().unwrap();
     assert!(

@@ -113,8 +113,12 @@ fn malvin_code_prunes_preexisting_log_dirs() {
         "malvin code dry-run should succeed with one active run dir: {combined:?}"
     );
     assert!(
-        combined.contains("[malvin] pruned 1 run log(s)"),
+        combined.contains("pruned 1 run log(s)"),
         "malvin code must GC before creating run dir: {combined:?}"
+    );
+    assert!(
+        combined.contains("[malvin"),
+        "prune line must use standard malvin logger tag: {combined:?}"
     );
     assert!(!old.exists(), "malvin code must GC aged seeded run dir");
 }

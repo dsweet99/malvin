@@ -214,9 +214,12 @@ fn smoke_shared_opts_tee_startup_stdout() {
 
 #[test]
 fn smoke_tidy_kpop_request_includes_constraints() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path()))
+        .expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let out = super::tidy_flow::tidy_kpop_request(&store, std::path::Path::new(".")).expect("request");
+    let out = super::tidy_flow::tidy_kpop_request(&store, tmp.path(), &artifacts).expect("request");
     assert!(out.contains("Just get quality gates to pass"));
     assert!(out.contains("Satisfy all constraints"));
 }

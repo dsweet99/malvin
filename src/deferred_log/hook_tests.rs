@@ -56,7 +56,7 @@ fn emit_rendered_due_heartbeat() {
 }
 
 fn heartbeat_display_log_line() -> (String, String) {
-    crate::output::stdout_tagged_display_and_log_line(
+    crate::output::stdout_heartbeat_display_and_log_line(
         crate::output::MALVIN_WHO,
         "HB: 20260524.000000",
         Some("20260524.000000.000"),

@@ -82,7 +82,7 @@ Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under t
 
 ## Deferred stdout logging
 
-During live ACP sessions (`code`, `kpop`, `hunt`, `plan`, `tidy`, and similar agent-backed flows), malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **750ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral. Heartbeats during an active defer session go through the same defer sink (including the wall-clock poller) so `stdout.log` and the terminal stay in FIFO order with agent output.
+During live ACP sessions (`code`, `kpop`, `hunt`, `plan`, `tidy`, and similar agent-backed flows), malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **1000ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral. Heartbeats during an active defer session go through the same defer sink (including the wall-clock poller) so `stdout.log` and the terminal stay in FIFO order with agent output.
 
 ## Log retention
 

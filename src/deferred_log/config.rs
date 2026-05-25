@@ -47,7 +47,7 @@ pub(crate) fn defer_log_max_age_from_env() -> Duration {
     std::env::var("MALVIN_DEFER_LOG_MAX_AGE_MS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
-        .map_or(Duration::from_millis(750), Duration::from_millis)
+        .map_or(Duration::from_millis(1000), Duration::from_millis)
 }
 
 pub(crate) fn defer_log_max_drain_from_env() -> usize {
