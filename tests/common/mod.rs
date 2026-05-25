@@ -23,6 +23,8 @@ mod kpop_multiturn_support;
 mod live_agent;
 mod process;
 #[cfg(unix)]
+mod code_harness;
+#[cfg(unix)]
 mod tidy_harness;
 mod workspace;
 
@@ -45,6 +47,8 @@ pub use live_agent::{
 pub use process::{
     MALVIN_TEST_CMD_TIMEOUT, PlanSpawn, command_output_with_timeout, spawn_malvin_plan,
 };
+#[cfg(unix)]
+pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,

@@ -138,17 +138,17 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     let path = tmp.path().join("stdout.log");
     set_stdout_log_path(Some(path.clone()));
     init_stdout_style(true);
-    print_outgoing_prompt_log("check_plan", "check_plan.md");
+    print_outgoing_prompt_log("bug_fix", "bug_fix.md");
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
-    let who = format_acp_directional_tag_prefix('>', "check_plan");
+    let who = format_acp_directional_tag_prefix('>', "bug_fix");
     let inner = format_log_tag_inner(&who);
     assert!(
-        text.contains(&format!("[{inner}] [check_plan.md...]")),
+        text.contains(&format!("[{inner}] [bug_fix.md...]")),
         "expected stem who tag and .md bracket payload: {text:?}"
     );
     assert!(
-        !text.contains(">check_plan.md"),
+        !text.contains(">bug_fix.md"),
         "who tag must not include .md suffix: {text:?}"
     );
 }
@@ -166,7 +166,7 @@ fn smoke_print_and_format_paths_cover_helpers() {
     print_stdout_acp_tee_line(AcpTeeDirection::FromAgent, "<w", "two");
     print_stderr_line("e", "err");
     print_stdout_text("t", "a\nb");
-    print_outgoing_prompt_log("check_plan", "check_plan.md");
+    print_outgoing_prompt_log("bug_fix", "bug_fix.md");
     let mut it = super::logical_lines("x\ny");
     assert_eq!(it.next(), Some("x"));
     assert_eq!(it.next(), Some("y"));

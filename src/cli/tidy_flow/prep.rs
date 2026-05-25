@@ -28,10 +28,25 @@ pub fn tidy_kpop_request(
         work_dir,
     );
     let mut tidy_context = HashMap::new();
-    tidy_context.insert("quality_gates_log".to_string(), quality_gates_log);
+    tidy_context.insert(
+        "quality_gates_log".to_string(),
+        quality_gates_log.clone(),
+    );
     let scope_constraints = store
         .render_prompt_only("tidy_constraints.md", &tidy_context)
         .map_err(|e: PromptError| e.0)?;
+    let context = kpop_program_context(work_dir, &scope_constraints, &quality_gates_log)?;
+    store
+        .render_prompt_only("kpop_program.md", &context)
+        .map(|s| s.trim().to_string())
+        .map_err(|e: PromptError| e.0)
+}
+
+fn kpop_program_context(
+    work_dir: &Path,
+    scope_constraints: &str,
+    quality_gates_log: &str,
+) -> Result<HashMap<String, String>, String> {
     let quality_gates =
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
     let mut context = HashMap::new();
@@ -40,34 +55,11 @@ pub fn tidy_kpop_request(
         scope_constraints.trim().to_string(),
     );
     context.insert("quality_gates".to_string(), quality_gates);
-    store
-        .render_prompt_only("kpop_program.md", &context)
-        .map(|s| s.trim().to_string())
-        .map_err(|e: PromptError| e.0)
-}
-
-pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(), String> {
-    if let Some(parent) = review_path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| {
-            format!(
-                "failed to create parent dirs for {}: {e}",
-                review_path.display()
-            )
-        })?;
-    }
-    std::fs::write(review_path, b"Checks do not pass\n").map_err(|e| {
-        format!(
-            "failed to write checks-do-not-pass marker {}: {e}",
-            review_path.display()
-        )
-    })
-}
-
-pub fn write_checks_do_not_pass_for_artifacts(
-    artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<(), String> {
-    write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())?;
-    write_checks_do_not_pass_to_review_path(&artifacts.workspace_review_md())
+    context.insert(
+        "quality_gates_log".to_string(),
+        quality_gates_log.to_string(),
+    );
+    Ok(context)
 }
 
 #[cfg(test)]
@@ -105,5 +97,20 @@ mod tests {
         let store = prepare_tidy_kpop_prompt_store(workflow).expect("store");
         assert!(store.validate_exists("kpop_program.md").is_ok());
         assert!(store.validate_exists("tidy_constraints.md").is_ok());
+    }
+
+    #[test]
+    fn kpop_program_context_expands_quality_gates_log() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+        let ctx = super::kpop_program_context(tmp.path(), "scope", "./.malvin/logs/run/q.log")
+            .expect("context");
+        assert_eq!(ctx.get("scope_constraints").map(String::as_str), Some("scope"));
+        assert!(ctx.contains_key("quality_gates"));
+        assert_eq!(
+            ctx.get("quality_gates_log").map(String::as_str),
+            Some("./.malvin/logs/run/q.log")
+        );
     }
 }

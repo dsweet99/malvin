@@ -8,12 +8,12 @@ use crate::acp::{
 };
 
 impl AgentClient {
-    /// Run one prompt on the open coder session (implement, concerns, or learn).
+    /// Run one prompt on the open coder session (bug fix, summary, or learn).
     ///
     /// `who` names the outbound/inbound **trace stem** when `opts.do_trace_split` is `None` (for example
-    /// `implement` for `implement.md`). `opts.stdout_bracket_label`
+    /// `bug_fix` for `bug_fix.md`). `opts.stdout_bracket_label`
     /// overrides the stdout `[label...]` line and is usually the template filename (for example
-    /// `implement.md`); pass `None` to default the bracket label to `who`. When `do_trace_split` is `Some`,
+    /// `bug_fix.md`); pass `None` to default the bracket label to `who`. When `do_trace_split` is `Some`,
     /// stems come from the split trace and `who` / `stdout_bracket_label`
     /// are not used for the split path.
     ///

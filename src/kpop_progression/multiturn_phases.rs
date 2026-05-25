@@ -126,7 +126,7 @@ pub(crate) fn run_mbc2_phase(state: &mut KpopMultiturnState, text: &str) -> Resu
     if *sent < 2 {
         return state
             .builder
-            .mbc2_pure()
+            .mbc2_turn()
             .map(|s| NextStep::Emit(MultiturnPrompt::Mbc2(s)));
     }
     start_new_block_after_mbc2(state)?;

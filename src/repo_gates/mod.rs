@@ -4,6 +4,7 @@ pub(crate) mod discover_py;
 
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
 
@@ -23,15 +24,19 @@ pub const DEFAULT_RUST_TEST: &str = "cargo test";
 
 pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
 
+static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
+
 #[must_use]
 pub fn cargo_nextest_available(work_dir: &Path) -> bool {
-    Command::new("cargo")
-        .args(["nextest", "--version"])
-        .current_dir(work_dir)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
+    let _ = work_dir;
+    *CARGO_NEXTEST_AVAILABLE.get_or_init(|| {
+        Command::new("cargo")
+            .args(["nextest", "--version"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success())
+    })
 }
 
 #[must_use]

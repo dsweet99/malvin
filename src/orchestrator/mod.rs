@@ -1,53 +1,25 @@
 #![allow(unused_imports, dead_code)]
 
-use crate::acp::{AgentClient, AgentError, CoderPromptOptions};
+use crate::acp::{AgentClient, AgentError};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::prompts::{PromptError, PromptStore};
-use crate::run_timing::{self, RunTiming, TimingPhase};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use crate::prompts::PromptStore;
+use crate::run_timing::{self, RunTiming};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 mod helpers;
 
 pub use helpers::{
-    check_abort, clear_review_file, format_exp_log_relative, format_prompt_path,
-    workflow_context, workflow_context_paths_only,
+    check_abort, clear_review_file, fail_on_abort_for_artifacts, format_exp_log_relative,
+    format_prompt_path, workflow_context, workflow_context_paths_only,
 };
 pub(crate) use helpers::{insert_formatted, prompt_md_stem};
 
 #[cfg(test)]
 mod helpers_tests;
 
-mod constants;
-mod review_attempt_kernel;
-mod review_fanout_run;
-mod review_fanout_write;
-mod review_loop_helpers;
-mod review_prompt_log;
-mod review_write_retry;
 mod workflow_merge;
 
-pub use review_attempt_kernel::{
-    REVIEW_PREP_MISSING_ARTIFACT_MSG, REVIEW_WRITE_INNER_RETRY_CAP,
-    REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
-    artifact_review_lgtm_after_review_write, clear_review_attempt_artifacts,
-    ensure_artifact_review_after_review_write, ensure_review_prep_after_reviewers_spawn,
-    is_missing_artifact_review_error, review_attempt_is_lgtm,
-};
-pub use review_fanout_run::{
-    ReviewWriteCoderSession, ReviewersSpawnCoderSession, run_review_write_coder_session,
-    run_reviewers_spawn_coder_session,
-};
-pub use review_fanout_write::{
-    FinishReviewWriteInput, ReviewAttemptFinish, fail_on_abort_for_artifacts,
-    finish_review_write_attempt,
-};
-pub use review_prompt_log::{ReviewPromptLog, review_prompt_log_path};
-pub use review_write_retry::{
-    ReviewTwoPromptSession, ReviewWriteInnerOutcome, run_reviewers_spawn_then_review_write,
-};
 pub use workflow_merge::merge_string_run_and_restore;
 
 #[cfg(test)]
@@ -56,16 +28,11 @@ pub(crate) mod orchestrator_test_support;
 #[cfg(test)]
 mod orchestrator_kiss_coverage;
 
-mod check_plan;
-pub mod pre_review_gates;
-mod review_loop;
 pub mod session_flow;
 
 mod bug_remediation;
 
-use session_flow::{run_coder_session_summary_only, run_coder_session_until_pre_summary};
-
-use workflow_context as workflow_context_inner;
+use session_flow::run_coder_session_summary_only;
 
 pub type PreSummaryMidFn =
     for<'a> fn(
@@ -116,10 +83,6 @@ pub struct WorkflowConfig {
     /// Skip learn phase if elapsed time is below this threshold (milliseconds).
     /// Default: `300_000` (5 minutes). Set to 0 to always run learn when `run_learn` is true.
     pub learn_min_elapsed_ms: u64,
-    /// Skip `check_plan` step (enabled by `--trust-the-plan`).
-    pub skip_check_plan: bool,
-    /// Run `check_plan` only; stop before implement/review (enabled by `--dry-run`).
-    pub dry_run: bool,
 }
 
 pub struct Orchestrator<'a> {
@@ -138,17 +101,6 @@ impl Orchestrator<'_> {
         self.client.attach_run_timing_for_session()
     }
 
-    fn should_run_learn(&self) -> bool {
-        let elapsed_ms = self.client.timing.as_ref().map_or(0, |t| {
-            let d = t
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .elapsed_so_far();
-            u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
-        });
-        should_run_learn_check(self.config.learn_min_elapsed_ms, elapsed_ms)
-    }
-
     pub(super) fn emit_run_timing_artifact(
         &mut self,
         timing: &Arc<Mutex<RunTiming>>,
@@ -158,65 +110,8 @@ impl Orchestrator<'_> {
         res.map_err(|e| WorkflowError(format!("run timing: {e}")))
     }
 
-    fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
+    pub(super) fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
         fail_on_abort_for_artifacts(self.artifacts)
-    }
-
-    /// Drive the full workflow.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`WorkflowError`] when a prompt or review step fails.
-    pub async fn run(&mut self) -> Result<(), WorkflowError> {
-        let context = workflow_context_inner(self.artifacts, self.prompts, "code")
-            .map_err(|e: PromptError| WorkflowError(e.0))?;
-        self.run_with_pre_summary_gap(&context, mid_noop).await
-    }
-
-    /// Runs coder prompts up to the pre-summary gap, executes `mid`, then summary.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`WorkflowError`] when session setup, a workflow step, `mid`, or timing emission fails.
-    pub async fn run_with_pre_summary_gap(
-        &mut self,
-        context: &HashMap<String, String>,
-        mid: PreSummaryMidFn,
-    ) -> Result<(), WorkflowError> {
-        let timing = self.attach_run_timing();
-        let begin_res = self
-            .client
-            .begin_coder_session(&self.artifacts.work_dir)
-            .await;
-        let coder_session_began = begin_res.is_ok();
-        let workflow_result = match begin_res {
-            Ok(()) => {
-                async {
-                    run_coder_session_until_pre_summary(self, context).await?;
-                    if self.config.dry_run {
-                        return Ok(());
-                    }
-                    mid(self.client, self.artifacts, &self.session_dotfile_backups)
-                        .await
-                        .map_err(WorkflowError)?;
-                    run_coder_session_summary_only(self, context).await
-                }
-                .await
-            }
-            Err(e) => Err(WorkflowError(e.0)),
-        };
-        let timing_result = if coder_session_began {
-            self.emit_run_timing_artifact(&timing)
-        } else {
-            self.client.set_run_timing(None);
-            Ok(())
-        };
-        let end_result = self
-            .client
-            .end_coder_session()
-            .await
-            .map_err(|e: AgentError| WorkflowError(e.0));
-        prefer_primary_errors_over_timing(workflow_result, end_result, timing_result)
     }
 
     /// `KPop` already finished; run regression-test then fix coder prompts, optional mid hook, summary.
@@ -226,7 +121,7 @@ impl Orchestrator<'_> {
     /// Returns [`WorkflowError`] when session setup, a bug phase, `mid`, or timing emission fails.
     pub async fn run_bug_remediation_gap(
         &mut self,
-        context: &HashMap<String, String>,
+        context: &std::collections::HashMap<String, String>,
         mid: PreSummaryMidFn,
     ) -> Result<(), WorkflowError> {
         bug_remediation::run_bug_remediation_gap(self, context, mid).await

@@ -10,9 +10,10 @@ mod kpop_session;
 mod run_loop;
 
 #[allow(unused_imports)]
-pub use prep::{
-    prepare_tidy_kpop_prompt_store, tidy_kpop_request, write_checks_do_not_pass_for_artifacts,
-    write_checks_do_not_pass_to_review_path,
+pub use prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
+#[allow(unused_imports)]
+pub use crate::cli::workflow_kpop_shared::{
+    write_checks_do_not_pass_for_artifacts, write_checks_do_not_pass_to_review_path,
 };
 #[allow(unused_imports)]
 pub use run_startup::{prepare_tidy_kpop_run, TidyKpopPrepared};
@@ -20,7 +21,7 @@ pub use run_loop::run_tidy;
 
 #[must_use]
 pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
-    max_loops.max(1)
+    crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
 #[derive(Args, Debug, Clone)]
@@ -62,7 +63,6 @@ mod tests {
         let _ = stringify!(run_loop::TidyGateLoopCtx);
         let _ = stringify!(run_loop::run_tidy_gate_loop);
         let _ = stringify!(run_loop::start_tidy_agent_session);
-        let _ = stringify!(kpop_session::tidy_kpop_prepared);
         let _ = stringify!(run_startup::tidy_kpop_workflow_context);
         let _ = stringify!(kpop_session::run_tidy_kpop_multiturn);
         let _ = stringify!(tidy_post_kpop_gates);
@@ -72,6 +72,7 @@ mod tests {
         let _ = stringify!(kpop_session::print_tidy_kpop_log_line);
         let _ = stringify!(kpop_session::run_tidy_kpop_session);
         let _ = stringify!(TidyKpopMultiturnRequest);
+        let _ = stringify!(kpop_session::kpop_args_from_tidy);
     }
 
     #[test]

@@ -4,7 +4,7 @@ use crate::kpop_progression::KpopMultiturnState;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
 use crate::cli::kpop_flow::{
-    KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_emit_startup, kpop_run_acp_multiturn,
+    KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_run_acp_multiturn,
 };
 use crate::cli::{
     SharedOpts, WorkflowCliOptions, KpopArgs,
@@ -14,29 +14,33 @@ use crate::cli::workflow_kpop_shared::{
     run_kpop_workspace_gates,
 };
 
-use super::run_startup::TidyKpopPrepared;
-use super::{effective_tidy_max_loops, TidyArgs};
+use super::run_startup::CodeKpopPrepared;
+use super::{effective_code_max_loops, CodeArgs};
 
-pub(super) struct TidyKpopMultiturnRequest<'a> {
-    pub tidy: &'a TidyArgs,
+pub(super) struct CodeKpopMultiturnRequest<'a> {
+    pub code: &'a CodeArgs,
     pub shared: &'a SharedOpts,
     pub workflow: WorkflowCliOptions,
     pub client: &'a mut crate::acp::AgentClient,
-    pub prepared: &'a TidyKpopPrepared,
+    pub prepared: &'a CodeKpopPrepared,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
 }
 
-fn kpop_args_from_tidy(tidy: &TidyArgs, request: &str) -> KpopArgs {
+fn kpop_args_from_code(code: &CodeArgs, request: &str) -> KpopArgs {
     KpopArgs {
-        max_hypotheses: effective_tidy_max_loops(tidy.max_loops),
-        no_learn: tidy.no_learn,
+        max_hypotheses: effective_code_max_loops(code.max_loops),
+        no_learn: code.no_learn,
         request: Some(request.to_string()),
     }
 }
 
-async fn run_tidy_kpop_multiturn(req: &mut TidyKpopMultiturnRequest<'_>) -> Result<(), String> {
-    let kpop = kpop_args_from_tidy(req.tidy, &req.prepared.request_text);
-    kpop_emit_startup(&kpop, req.shared, &req.prepared.artifacts)?;
+async fn run_code_kpop_multiturn(req: &mut CodeKpopMultiturnRequest<'_>) -> Result<(), String> {
+    let kpop = kpop_args_from_code(req.code, &req.prepared.startup_request);
+    crate::cli::run_emit::emit_run_startup_sequence(
+        &req.prepared.artifacts,
+        req.shared.tee_startup_stdout(),
+        &req.prepared.startup_request,
+    )?;
     let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
         store: &req.prepared.store,
         base: &req.prepared.context,
@@ -66,39 +70,43 @@ async fn run_tidy_kpop_multiturn(req: &mut TidyKpopMultiturnRequest<'_>) -> Resu
     .await
 }
 
-pub(super) fn tidy_post_kpop_gates(prepared: &TidyKpopPrepared) -> Result<(), String> {
-    post_kpop_session_gates("malvin tidy", &prepared.artifacts)
+pub(super) fn code_post_kpop_gates(prepared: &CodeKpopPrepared) -> Result<(), String> {
+    post_kpop_session_gates("malvin code", &prepared.artifacts)
 }
 
-pub(super) fn print_tidy_kpop_log_line(prepared: &TidyKpopPrepared) {
+pub(super) fn print_code_kpop_log_line(prepared: &CodeKpopPrepared) {
     print_kpop_session_log_line(&prepared.artifacts, &prepared.exp_log_path);
 }
 
-pub(super) async fn run_tidy_kpop_session(
-    req: &mut TidyKpopMultiturnRequest<'_>,
+pub(super) async fn run_code_kpop_session(
+    req: &mut CodeKpopMultiturnRequest<'_>,
 ) -> Result<(), String> {
-    run_tidy_kpop_multiturn(req).await?;
+    run_code_kpop_multiturn(req).await?;
     finish_kpop_acp_session(&req.prepared.artifacts, req.session_dotfile_backups).await
 }
 
-pub(super) fn tidy_run_workspace_gates(prepared: &TidyKpopPrepared) -> Result<(), String> {
+pub(super) fn code_run_workspace_gates(prepared: &CodeKpopPrepared) -> Result<(), String> {
     run_kpop_workspace_gates(&prepared.artifacts)
 }
 
-pub(super) fn tidy_finish_after_gates_pass(
-    tidy: &TidyArgs,
+pub(super) fn code_finish_after_gates_pass(
+    code: &CodeArgs,
     shared: &SharedOpts,
-    prepared: &TidyKpopPrepared,
+    prepared: &CodeKpopPrepared,
     agent_ran: bool,
 ) -> Result<(), String> {
     if !agent_ran {
-        let kpop = kpop_args_from_tidy(tidy, &prepared.request_text);
-        kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
+        crate::cli::run_emit::emit_run_startup_sequence(
+            &prepared.artifacts,
+            shared.tee_startup_stdout(),
+            &prepared.startup_request,
+        )?;
     }
+    let _ = code;
     print_stdout_line(MALVIN_WHO, "DONE");
     Ok(())
 }
 
-pub(super) fn tidy_fail_after_exhausted_loops(prepared: &TidyKpopPrepared) -> Result<(), String> {
-    tidy_post_kpop_gates(prepared)
+pub(super) fn code_fail_after_exhausted_loops(prepared: &CodeKpopPrepared) -> Result<(), String> {
+    code_post_kpop_gates(prepared)
 }

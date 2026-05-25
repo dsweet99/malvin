@@ -38,7 +38,7 @@ fn advance_until_first_mbc2_hit(
 }
 
 #[test]
-fn mbc2_pure_retries_once_when_no_new_mbc2_line() {
+fn mbc2_turn_retries_once_when_no_new_mbc2_line() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();

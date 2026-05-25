@@ -23,10 +23,10 @@ fn validate_kpop_prompts_requires_learn_when_run_learn() {
     );
 }
 
-fn write_nested_coding_rules_implement_fixture(root: &std::path::Path) {
+fn write_nested_coding_rules_fixture(root: &std::path::Path) {
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(
-        root.join("implement.md"),
+        root.join("bug_fix.md"),
         "START\n{{ coding_rules }}\nEND\n",
     )
     .unwrap();
@@ -37,34 +37,34 @@ fn write_nested_coding_rules_implement_fixture(root: &std::path::Path) {
 fn coding_rules_nested_placeholders_expand() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    write_nested_coding_rules_implement_fixture(root);
+    write_nested_coding_rules_fixture(root);
     let store = PromptStore::with_root(root.to_path_buf());
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/P".to_string());
     ctx.insert("quality_gates".to_string(), String::new());
-    let out = store.render("implement.md", &ctx).unwrap();
+    let out = store.render("bug_fix.md", &ctx).unwrap();
     assert!(
         out.contains("/P") && !out.contains("{{ plan_path }}"),
         "expected nested plan_path in coding_rules; got:\n{out}"
     );
 }
 
-fn store_with_header_rules_implement(root: &std::path::Path) -> PromptStore {
+fn store_with_header_rules_bug_fix(root: &std::path::Path) -> PromptStore {
     std::fs::write(root.join("header.md"), "OPENING").unwrap();
     std::fs::write(root.join("coding_rules.md"), "RULES").unwrap();
-    std::fs::write(root.join("implement.md"), "{{ coding_rules }}").unwrap();
+    std::fs::write(root.join("bug_fix.md"), "{{ coding_rules }}").unwrap();
     PromptStore::with_root(root.to_path_buf())
 }
 
 #[test]
 fn header_prepends_coding_rules_placeholder() {
     let tmp = tempfile::tempdir().unwrap();
-    let store = store_with_header_rules_implement(tmp.path());
+    let store = store_with_header_rules_bug_fix(tmp.path());
     let mut ctx = HashMap::new();
     ctx.insert("plan_path".to_string(), "/x".to_string());
     ctx.insert("kpop_log_dir".to_string(), "./_kpop".to_string());
     ctx.insert("quality_gates".to_string(), String::new());
-    let out = store.render("implement.md", &ctx).unwrap();
+    let out = store.render("bug_fix.md", &ctx).unwrap();
     assert!(
         out.starts_with("OPENING\n\nRULES"),
         "expected header before rules; got:\n{out}"
@@ -90,9 +90,9 @@ fn render_fails_when_double_brace_remains() {
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("coding_rules.md"), "").unwrap();
-    std::fs::write(root.join("implement.md"), "x {{ not_in_context }} y").unwrap();
+    std::fs::write(root.join("bug_fix.md"), "x {{ not_in_context }} y").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let err = store.render("implement.md", &HashMap::new()).unwrap_err();
+    let err = store.render("bug_fix.md", &HashMap::new()).unwrap_err();
     assert!(
         err.0.contains("{{"),
         "expected brace rejection, got {:?}",

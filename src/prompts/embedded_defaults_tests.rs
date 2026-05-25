@@ -25,18 +25,19 @@ impl Drop for EnvHomeGuard {
 #[test]
 fn default_store_uses_embedded_prompts_when_home_unset() {
     let prompt = default_store_with_unset_home();
-    assert!(prompt.contains("Implement"));
+    assert!(prompt.contains("# SUMMARY"));
 }
 
 fn default_store_with_unset_home() -> String {
     let (store, context) = default_prompt_store_with_unset_home();
-    render_default_implement(&store, &context)
+    render_default_summary(&store, &context)
 }
 
 fn default_embedded_placeholder_context() -> HashMap<String, String> {
     HashMap::from([
         ("plan_path".to_string(), "/p".to_string()),
         ("result_path".to_string(), "/r".to_string()),
+        ("malvin_output_path".to_string(), "/logs/run".to_string()),
         ("malvin_command".to_string(), "code".to_string()),
         ("quality_gates".to_string(), String::new()),
         (
@@ -73,11 +74,11 @@ fn with_unset_home_profile(profile: std::path::PathBuf) -> EnvHomeGuard {
     guard
 }
 
-fn render_default_implement(
+fn render_default_summary(
     store: &super::PromptStore,
     context: &HashMap<String, String>,
 ) -> String {
-    store.render("implement.md", context).expect("render")
+    store.render("summary.md", context).expect("render")
 }
 
 #[test]
@@ -85,6 +86,6 @@ fn smoke_cov_embedded_defaults_units() {
     let _: Option<EnvHomeGuard> = None;
     let _ = default_prompt_store_with_unset_home;
     let _ = with_unset_home_profile;
-    let _ = render_default_implement;
+    let _ = render_default_summary;
     let _ = default_embedded_placeholder_context;
 }

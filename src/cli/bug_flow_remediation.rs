@@ -111,8 +111,6 @@ async fn run_bug_remediation_orchestrator(
             max_loops: 5,
             run_learn: workflow.run_learn,
             learn_min_elapsed_ms: LEARN_MIN_ELAPSED_MS,
-            skip_check_plan: true,
-            dry_run: false,
         },
         progress_callback: Box::new(|msg: &str| {
             print_stdout_line(MALVIN_WHO, msg);

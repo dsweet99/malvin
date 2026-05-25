@@ -19,12 +19,7 @@ pub struct TidyKpopPrepared {
 fn tidy_kpop_workflow_context(
     artifacts: &RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
-    let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, "tidy");
-    context.insert(
-        "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
-    );
-    Ok(context)
+    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "tidy")
 }
 
 pub fn prepare_tidy_kpop_run(

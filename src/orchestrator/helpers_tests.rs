@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::HashMap;
+use std::path::Path;
 
 #[test]
 fn insert_formatted_adds_formatted_path() {

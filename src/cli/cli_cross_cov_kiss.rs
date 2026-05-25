@@ -3,7 +3,7 @@
 #[test]
 fn smoke_cov_cli_cli_units_0() {
     let _: Option<super::args::BugArgs> = None;
-    let _: Option<super::args::CodeArgs> = None;
+    let _: Option<super::CodeArgs> = None;
     let _: Option<super::args::KpopArgs> = None;
     let _ = super::build_agent;
     let _ = super::prepare_bug_prompt_store;
@@ -34,7 +34,7 @@ fn smoke_cov_cli_cli_units_1a() {
     let _: Option<super::kpop_flow::KpopPrepared> = None;
     let _ = super::kpop_flow::kpop_run_acp_multiturn;
     let _ = super::run_kpop;
-    let _ = stringify!(crate::orchestrator::pre_review_gates::format_pre_review_gate_failure_review);
+    let _ = stringify!(crate::orchestrator::session_flow::run_bug_remediation_until_pre_summary);
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = super::run_emit::emit_run_startup_sequence;
@@ -59,6 +59,23 @@ fn smoke_cov_cli_cli_units_1b() {
 }
 
 #[test]
+fn smoke_cov_cli_cli_code_flow_units() {
+    let _: Option<super::CodeArgs> = None;
+    let _: Option<super::code_flow::CodeKpopPrepared> = None;
+    let _ = super::code_flow::prepare_code_kpop_prompt_store;
+    let _ = super::code_flow::code_kpop_request;
+    let _ = super::code_flow::prepare_code_kpop_run;
+    let _ = super::code_flow::run_code;
+    let _ = super::code_flow::effective_code_max_loops;
+    let _ = super::workflow_kpop_shared::effective_max_loops;
+    let _ = super::workflow_kpop_shared::kpop_workflow_context;
+    let _ = super::workflow_kpop_shared::post_kpop_session_gates;
+    let _ = super::workflow_kpop_shared::run_kpop_workspace_gates;
+    let _ = super::workflow_kpop_shared::print_kpop_session_log_line;
+    let _ = super::workflow_kpop_shared::finish_kpop_acp_session;
+}
+
+#[test]
 fn smoke_cov_cli_cli_tidy_flow_units() {
     let _: Option<super::tidy_flow::TidyArgs> = None;
     let _: Option<super::tidy_flow::TidyKpopPrepared> = None;
@@ -66,6 +83,8 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
     let _ = super::tidy_flow::tidy_kpop_request;
     let _ = super::tidy_flow::write_checks_do_not_pass_to_review_path;
     let _ = super::tidy_flow::write_checks_do_not_pass_for_artifacts;
+    let _ = super::workflow_kpop_shared::write_checks_do_not_pass_to_review_path;
+    let _ = super::workflow_kpop_shared::write_checks_do_not_pass_for_artifacts;
     let _ = super::tidy_flow::prepare_tidy_kpop_run;
     let _ = super::tidy_flow::run_tidy;
     let _ = super::tidy_flow::effective_tidy_max_loops;

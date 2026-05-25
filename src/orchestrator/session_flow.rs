@@ -2,29 +2,7 @@ use std::collections::HashMap;
 
 use crate::run_timing::TimingPhase;
 
-use super::review_loop::run_code_review_phase;
-use super::{Orchestrator, WorkflowError, check_plan::run_check_plan};
-
-pub(super) async fn run_coder_session_until_pre_summary(
-    orchestrator: &mut Orchestrator<'_>,
-    context: &HashMap<String, String>,
-) -> Result<(), WorkflowError> {
-    if !orchestrator.config.skip_check_plan {
-        run_check_plan(orchestrator, context).await?;
-    }
-
-    if orchestrator.config.dry_run {
-        return Ok(());
-    }
-
-    (orchestrator.progress_callback)("Implement");
-    orchestrator
-        .run_coder_prompt("implement.md", context, "main", TimingPhase::Implement)
-        .await?;
-    orchestrator.fail_on_abort_result()?;
-
-    run_review_phases_until_pre_summary(orchestrator, context).await
-}
+use super::{Orchestrator, WorkflowError};
 
 pub(super) async fn run_bug_remediation_until_pre_summary(
     orchestrator: &mut Orchestrator<'_>,
@@ -64,28 +42,9 @@ pub(super) async fn run_coder_session_summary_only(
     Ok(())
 }
 
-async fn run_review_phases_until_pre_summary(
-    orchestrator: &mut Orchestrator<'_>,
-    context: &HashMap<String, String>,
-) -> Result<(), WorkflowError> {
-    run_code_review_phase(orchestrator, context).await?;
-
-    if orchestrator.config.run_learn && orchestrator.should_run_learn() {
-        (orchestrator.progress_callback)("Learn");
-        orchestrator
-            .run_coder_prompt("learn.md", context, "final", TimingPhase::Learn)
-            .await?;
-        orchestrator.fail_on_abort_result()?;
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod session_flow_smoke_tests {
-    use super::{
-        run_bug_remediation_until_pre_summary, run_coder_session_summary_only,
-        run_coder_session_until_pre_summary, run_review_phases_until_pre_summary,
-    };
+    use super::{run_bug_remediation_until_pre_summary, run_coder_session_summary_only};
     use crate::acp::AgentClient;
     use crate::artifacts::RunArtifacts;
     use crate::orchestrator::orchestrator_test_support::{
@@ -97,15 +56,12 @@ mod session_flow_smoke_tests {
     enum NoSessionStep {
         Summary,
         BugRemediation,
-        CoderUntilPreSummary { skip_check_plan: bool },
-        ReviewPhases,
     }
 
     fn mk_orchestrator<'a>(
         client: &'a mut AgentClient,
         store: &'a PromptStore,
         artifacts: &'a RunArtifacts,
-        skip_check_plan: bool,
     ) -> Orchestrator<'a> {
         Orchestrator {
             client,
@@ -115,8 +71,6 @@ mod session_flow_smoke_tests {
                 max_loops: 1,
                 run_learn: false,
                 learn_min_elapsed_ms: 0,
-                skip_check_plan,
-                dry_run: false,
             },
             progress_callback: Box::new(|_| {}),
             session_dotfile_backups: empty_dotfile_backups(),
@@ -127,23 +81,11 @@ mod session_flow_smoke_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (artifacts, store, ctx) = workflow_ctx_for_smoke(&tmp, "sf_smoke");
         let mut client = no_session_client();
-        let skip = matches!(
-            &step,
-            NoSessionStep::CoderUntilPreSummary {
-                skip_check_plan: true
-            }
-        );
-        let mut orch = mk_orchestrator(&mut client, &store, &artifacts, skip);
+        let mut orch = mk_orchestrator(&mut client, &store, &artifacts);
         let err = match step {
             NoSessionStep::Summary => run_coder_session_summary_only(&mut orch, &ctx).await,
             NoSessionStep::BugRemediation => {
                 run_bug_remediation_until_pre_summary(&mut orch, &ctx).await
-            }
-            NoSessionStep::CoderUntilPreSummary { .. } => {
-                run_coder_session_until_pre_summary(&mut orch, &ctx).await
-            }
-            NoSessionStep::ReviewPhases => {
-                run_review_phases_until_pre_summary(&mut orch, &ctx).await
             }
         }
         .expect_err(expect_err);
@@ -168,26 +110,6 @@ mod session_flow_smoke_tests {
         assert_fails_without_coder_session(
             NoSessionStep::BugRemediation,
             "expected prompt without session",
-        )
-        .await;
-    }
-
-    #[tokio::test]
-    async fn coder_session_until_pre_summary_errors_when_coder_session_not_open_skip_plan() {
-        assert_fails_without_coder_session(
-            NoSessionStep::CoderUntilPreSummary {
-                skip_check_plan: true,
-            },
-            "expected implement without session",
-        )
-        .await;
-    }
-
-    #[tokio::test]
-    async fn review_phases_errors_when_coder_session_not_open() {
-        assert_fails_without_coder_session(
-            NoSessionStep::ReviewPhases,
-            "expected review prompt without session",
         )
         .await;
     }

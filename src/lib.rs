@@ -116,9 +116,7 @@ pub use support_paths::{
 pub mod workflow_context;
 pub mod orchestrator;
 pub use orchestrator::{
-    Orchestrator, REVIEW_WRITE_MISSING_ARTIFACT_MSG, REVIEW_WRITE_MISSING_ARTIFACT_RETRY_MSG,
-    ReviewTwoPromptSession, ReviewWriteInnerOutcome, WorkflowConfig, WorkflowError, check_abort,
-    fail_on_abort_for_artifacts, run_reviewers_spawn_then_review_write,
+    Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
 };
 pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
 pub mod output;
@@ -179,15 +177,7 @@ mod coverage_kiss_agent;
 mod orchestrator_tests;
 
 #[cfg(test)]
-mod orchestrator_check_plan_tests;
-
-#[cfg(test)]
 mod malvin_kiss_coverage;
-
-#[cfg(test)]
-#[allow(unsafe_code)]
-mod review_prep_regression;
-mod review_prep_regression_kiss;
 
 #[cfg(all(test, unix))]
 mod test_stderr_capture;

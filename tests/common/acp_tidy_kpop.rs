@@ -1,7 +1,7 @@
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
-pub fn acp_mock_tidy_kpop_steps_js() -> String {
-    let body = r"    const fs = require('fs');
+const fn acp_mock_kpop_steps_body() -> &'static str {
+    r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
@@ -34,7 +34,26 @@ pub fn acp_mock_tidy_kpop_steps_js() -> String {
           break outer;
         }
       }
-    }";
-    let done = session_update_chunk_line("agent_message_chunk", r"'tidy kpop step\n'");
+    }"
+}
+
+pub fn acp_mock_kpop_steps_js(chunk: &str) -> String {
+    let done = session_update_chunk_line("agent_message_chunk", chunk);
+    acp_mock_js("", &format!("{}\n{done}", acp_mock_kpop_steps_body()))
+}
+
+pub fn acp_mock_tidy_kpop_steps_js() -> String {
+    acp_mock_kpop_steps_js(r"'tidy kpop step\n'")
+}
+
+pub fn acp_mock_code_kpop_steps_js() -> String {
+    acp_mock_kpop_steps_js(r"'code kpop step\n'")
+}
+
+pub fn acp_mock_code_kpop_abort_result_js() -> String {
+    let abort_tail = r"        const resultPath = path.join(root, run, 'result.md');
+        fs.writeFileSync(resultPath, 'ABORT: code kpop stop\n');";
+    let body = acp_mock_kpop_steps_body().replace("break outer;", abort_tail);
+    let done = session_update_chunk_line("agent_message_chunk", r"'abort\n'");
     acp_mock_js("", &format!("{body}\n{done}"))
 }

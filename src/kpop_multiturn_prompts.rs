@@ -37,12 +37,12 @@ impl KpopMultiturnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails.
-    pub fn mbc2_pure(&mut self) -> Result<String, String> {
+    pub fn mbc2_turn(&mut self) -> Result<String, String> {
         match self {
-            Self::Turn(inner) => inner.mbc2_pure(),
-            Self::StubMt(inner) => inner.mbc2_pure(),
-            Self::StubEcho(inner) => inner.mbc2_pure(),
-            Self::StubCapture(inner) => inner.mbc2_pure(),
+            Self::Turn(inner) => inner.mbc2_turn(),
+            Self::StubMt(inner) => inner.mbc2_turn(),
+            Self::StubEcho(inner) => inner.mbc2_turn(),
+            Self::StubCapture(inner) => inner.mbc2_turn(),
             #[cfg(test)]
             Self::Smoke(_) => Ok("m".to_string()),
         }

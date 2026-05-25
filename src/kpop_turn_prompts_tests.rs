@@ -7,6 +7,7 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
     HashMap::from([
         ("plan_path".to_string(), "p".to_string()),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
+        ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
     ])
 }
 
@@ -18,7 +19,7 @@ fn kpop_turn_prompts_render() {
     for name in [
         "kpop_common.md",
         "kpop_block.md",
-        "mbc2_pure.md",
+        "mbc2.md",
         "coding_rules.md",
     ] {
         std::fs::write(root.join(name), "body").expect("write");
@@ -33,5 +34,5 @@ fn kpop_turn_prompts_render() {
         prepend_rules_once: true,
     };
     let _ = prompts.kpop_block(1, 0).expect("kpop");
-    let _ = prompts.mbc2_pure().expect("mbc2");
+    let _ = prompts.mbc2_turn().expect("mbc2");
 }
