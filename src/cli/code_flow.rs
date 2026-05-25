@@ -4,8 +4,6 @@ use clap::Args;
 mod prep;
 #[path = "code_flow/run_startup.rs"]
 mod run_startup;
-#[path = "code_flow/kpop_session.rs"]
-mod kpop_session;
 #[path = "code_flow/run_loop.rs"]
 mod run_loop;
 
@@ -47,7 +45,7 @@ pub struct CodeArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::kpop_session::code_post_kpop_gates;
+    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn kpop_args_from_code_maps_max_loops() {
@@ -71,19 +69,17 @@ mod tests {
 
     #[test]
     fn kiss_cov_code_kpop_helpers() {
-        let _ = stringify!(run_loop::CodeGateLoopCtx);
-        let _ = stringify!(run_loop::run_code_gate_loop);
-        let _ = stringify!(run_loop::start_code_agent_session);
+        let _ = stringify!(run_loop::run_code);
         let _ = stringify!(run_startup::code_kpop_workflow_context);
-        let _ = stringify!(kpop_session::run_code_kpop_multiturn);
-        let _ = stringify!(code_post_kpop_gates);
-        let _ = stringify!(kpop_session::code_run_workspace_gates);
-        let _ = stringify!(kpop_session::code_finish_after_gates_pass);
-        let _ = stringify!(kpop_session::code_fail_after_exhausted_loops);
-        let _ = stringify!(kpop_session::print_code_kpop_log_line);
-        let _ = stringify!(kpop_session::run_code_kpop_session);
-        let _ = stringify!(kpop_session::CodeKpopMultiturnRequest);
-        let _ = stringify!(kpop_session::kpop_args_from_code);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
+        let _ = stringify!(post_gate_kpop_gates);
+        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateKpopPrepared);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE);
     }
 
     #[test]
@@ -102,7 +98,7 @@ mod tests {
             "ship it",
         )
         .expect("prepared");
-        let err = code_post_kpop_gates(&prepared).expect_err("gates");
+        let err = post_gate_kpop_gates("malvin code", &prepared).expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(err.contains("quality gates"));
     }

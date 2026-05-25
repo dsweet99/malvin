@@ -4,8 +4,6 @@ use clap::Args;
 mod prep;
 #[path = "tidy_flow/run_startup.rs"]
 mod run_startup;
-#[path = "tidy_flow/kpop_session.rs"]
-mod kpop_session;
 #[path = "tidy_flow/run_loop.rs"]
 mod run_loop;
 
@@ -39,7 +37,7 @@ pub struct TidyArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::kpop_session::tidy_post_kpop_gates;
+    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn kpop_args_from_tidy_maps_max_loops() {
@@ -60,19 +58,17 @@ mod tests {
 
     #[test]
     fn kiss_cov_tidy_kpop_helpers() {
-        let _ = stringify!(run_loop::TidyGateLoopCtx);
-        let _ = stringify!(run_loop::run_tidy_gate_loop);
-        let _ = stringify!(run_loop::start_tidy_agent_session);
+        let _ = stringify!(run_loop::run_tidy);
         let _ = stringify!(run_startup::tidy_kpop_workflow_context);
-        let _ = stringify!(kpop_session::run_tidy_kpop_multiturn);
-        let _ = stringify!(tidy_post_kpop_gates);
-        let _ = stringify!(kpop_session::tidy_run_workspace_gates);
-        let _ = stringify!(kpop_session::tidy_finish_after_gates_pass);
-        let _ = stringify!(kpop_session::tidy_fail_after_exhausted_loops);
-        let _ = stringify!(kpop_session::print_tidy_kpop_log_line);
-        let _ = stringify!(kpop_session::run_tidy_kpop_session);
-        let _ = stringify!(TidyKpopMultiturnRequest);
-        let _ = stringify!(kpop_session::kpop_args_from_tidy);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
+        let _ = stringify!(post_gate_kpop_gates);
+        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateKpopPrepared);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY);
     }
 
     #[test]
@@ -88,7 +84,7 @@ mod tests {
             run_learn: false,
         })
         .expect("prepared");
-        let err = tidy_post_kpop_gates(&prepared).expect_err("gates");
+        let err = post_gate_kpop_gates("malvin tidy", &prepared).expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(err.contains("quality gates"));
     }

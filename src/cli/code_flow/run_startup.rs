@@ -1,22 +1,15 @@
 use crate::artifacts::{
-    MalvinChecksBackup, RunArtifacts, backup_workspace_malvin_checks_if_present,
-    create_run_artifacts_from_text, resolve_user_md_request,
+    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
+    resolve_user_md_request,
 };
-use crate::prompts::PromptStore;
+use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+
 use super::prep::{code_kpop_request, prepare_code_kpop_prompt_store};
 
-pub struct CodeKpopPrepared {
-    pub artifacts: RunArtifacts,
-    pub exp_log_path: std::path::PathBuf,
-    pub context: std::collections::HashMap<String, String>,
-    pub request_text: String,
-    pub startup_request: String,
-    pub store: PromptStore,
-    pub malvin_checks_backup: MalvinChecksBackup,
-}
+pub type CodeKpopPrepared = GateKpopPrepared;
 
 fn code_kpop_workflow_context(
-    artifacts: &RunArtifacts,
+    artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
     crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "code")
 }
@@ -34,12 +27,12 @@ pub fn prepare_code_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = code_kpop_workflow_context(&artifacts)?;
-    Ok(CodeKpopPrepared {
+    Ok(GateKpopPrepared {
         artifacts,
         exp_log_path,
         context,
         request_text,
-        startup_request: cli_request.to_string(),
+        startup_emit_request: cli_request.to_string(),
         store,
         malvin_checks_backup,
     })
@@ -71,6 +64,6 @@ mod tests {
         .expect("prepared");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(prepared.request_text.contains("plan.md"));
-        assert_eq!(prepared.startup_request, format!("@{}", plan.display()));
+        assert_eq!(prepared.startup_emit_request, format!("@{}", plan.display()));
     }
 }

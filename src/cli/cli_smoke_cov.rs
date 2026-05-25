@@ -141,13 +141,6 @@ fn smoke_emit_command_line_writes_log() {
 }
 
 #[test]
-fn smoke_cli_parse_plan_subcommand() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "plan", "hello"]).expect("parse");
-    assert!(matches!(cli.command, Some(Commands::Plan(_))));
-}
-
-#[test]
 fn smoke_format_logs_dir_under_run_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");

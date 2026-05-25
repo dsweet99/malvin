@@ -17,12 +17,10 @@ malvin [OPTIONS] <COMMAND>
 | `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
 | `code` | Implement a plan with review and optional learn loop |
 | `kpop` | Popperian scientific investigation (hypothesis-driven experiment log) |
-| `hunt` | Find a serious bug via KPOP, then regression-test and fix (experimental) |
 | `tidy` | Fix workspace until quality gates pass |
-| `plan` | Write or review a plan file (experimental) |
 | `models` | List models available from the Cursor agent CLI |
 
-See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `bug.md`, `tidy.md`, `plan.md`, `models.md`.
+See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `tidy.md`, `models.md`.
 
 ## Global options
 
@@ -46,7 +44,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `hunt`, `plan`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `invent` always use plain stdout** regardless of this flag.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `invent` always use plain stdout** regardless of this flag.
 
 ### `-v` / `--verbose`
 
@@ -82,7 +80,7 @@ Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under t
 
 ## Deferred stdout logging
 
-During live ACP sessions (`code`, `kpop`, `hunt`, `plan`, `tidy`, and similar agent-backed flows), malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **1000ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral. Heartbeats during an active defer session go through the same defer sink (including the wall-clock poller) so `stdout.log` and the terminal stay in FIFO order with agent output.
+During live ACP sessions (`code`, `kpop`, `tidy`, and similar agent-backed flows), malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **1000ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral. Heartbeats during an active defer session go through the same defer sink (including the wall-clock poller) so `stdout.log` and the terminal stay in FIFO order with agent output.
 
 ## Log retention
 
@@ -91,14 +89,14 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for all agent subcommands and `models`).
-- **kiss**: required before `code`, `tidy`, `plan`, and `hunt` start; also installed/configured by `init`.
+- **kiss**: required before `code` and `tidy` start; also installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.
 
 ## Request syntax
 
 Several commands accept a positional request.
 
-- **`code` and `plan`:** pass an existing `.md` file path (no whitespace; case-sensitive `.md` suffix) to read that file; work dir is its parent. Otherwise the argument is literal text (including nonexistent `.md` paths).
+- **`code`:** pass an existing `.md` file path (no whitespace; case-sensitive `.md` suffix) to read that file; work dir is its parent. Otherwise the argument is literal text (including nonexistent `.md` paths).
 - **Other commands (`do`, `kpop`, …):** prefix with `@` to read text from a file; work dir is the file’s parent.
 
 Examples:

@@ -24,10 +24,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_program.md",
     "tidy_constraints.md",
     "code_constraints.md",
-    "review_plan.md",
-    "bug_regression_test.md",
-    "bug_fix.md",
-    "hunt_request.md",
     HEADER_MD,
     DO_HEADER_MD,
     "coding_rules.md",
@@ -35,12 +31,9 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
 
 #[cfg(test)]
 mod review_plan_embed_tests {
-    use std::path::Path;
-
-    use super::{DEFAULT_PROMPTS, default_file};
-    use crate::artifacts::create_run_artifacts;
-    use crate::orchestrator::workflow_context;
-    use crate::prompts::{PromptStore, malformed_brace_placeholders};
+    use super::DEFAULT_PROMPTS;
+    use super::default_file;
+    use crate::prompts::malformed_brace_placeholders;
 
     #[test]
     fn embedded_default_prompts_use_spaced_brace_placeholders() {
@@ -49,26 +42,6 @@ mod review_plan_embed_tests {
             let bad = malformed_brace_placeholders(text);
             assert!(bad.is_empty(), "{name}: {bad:?}");
         }
-    }
-
-    #[test]
-    fn embedded_review_plan_renders_without_unresolved_braces() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let plan_path = tmp.path().join("plan.md");
-        std::fs::write(&plan_path, "plan body\n").expect("write plan");
-        let artifacts =
-            create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
-        let store = PromptStore::default_store();
-        let mut ctx = workflow_context(&artifacts, &store, "plan").expect("ctx");
-        ctx.insert(
-            "plan_path".to_string(),
-            crate::orchestrator::format_prompt_path(&plan_path, &artifacts.work_dir),
-        );
-        let out = store.render("review_plan.md", &ctx).expect("render");
-        assert!(
-            !out.contains("{{"),
-            "embedded review_plan.md must expand all placeholders"
-        );
     }
 }
 

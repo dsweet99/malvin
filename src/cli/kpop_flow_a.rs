@@ -29,19 +29,6 @@ pub struct KpopPrepared {
     pub(in crate) session_dotfile_backups: SessionDotfileBackups,
 }
 
-impl KpopPrepared {
-    pub(in crate) fn into_bug_followup_artifacts(
-        self,
-        plan_body: &str,
-    ) -> Result<RunArtifacts, String> {
-        let Self { mut artifacts, .. } = self;
-        let plan_path = artifacts.run_dir.join("plan.md");
-        std::fs::write(&plan_path, plan_body).map_err(|e| e.to_string())?;
-        artifacts.plan_path = plan_path;
-        Ok(artifacts)
-    }
-}
-
 pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
     use crate::cli::cli_request::require_cli_request;
     use crate::orchestrator::workflow_context_paths_only;

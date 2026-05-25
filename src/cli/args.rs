@@ -1,8 +1,6 @@
 //! CLI argument structs for the `malvin` binary.
 
-use std::path::PathBuf;
-
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
 use super::tidy_flow::TidyArgs;
@@ -12,7 +10,7 @@ pub use crate::do_flow::DoArgs;
 pub use crate::ideas_flow::IdeasArgs as InventArgs;
 pub use crate::init_cmd::InitArgs;
 
-pub use super::args_bug_kpop::{BugArgs, KpopArgs};
+pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
 #[derive(Parser, Debug)]
@@ -44,21 +42,8 @@ pub enum Commands {
     Code(crate::cli::code_flow::CodeArgs),
     /// Reason scientifically (q&a, research, optimization, ...)
     Kpop(KpopArgs),
-    /// `KPop` bug hunter: find & fix bugs
-    #[command(name = "hunt")]
-    Hunt(BugArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Write or review a plan file (EXPERIMENTAL)
-    Plan(PlanArgs),
     /// List available models
     Models(ModelsArgs),
-}
-
-#[derive(Args, Debug)]
-pub struct PlanArgs {
-    #[arg(long = "plan_path", visible_alias = "plan-path", value_name = "PATH")]
-    pub plan_path: Option<PathBuf>,
-    #[arg(value_name = "TEXT")]
-    pub text: Option<String>,
 }

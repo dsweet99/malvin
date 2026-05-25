@@ -30,25 +30,6 @@ mod orchestrator_kiss_coverage;
 
 pub mod session_flow;
 
-mod bug_remediation;
-
-use session_flow::run_coder_session_summary_only;
-
-pub type PreSummaryMidFn =
-    for<'a> fn(
-        &'a mut AgentClient,
-        &'a RunArtifacts,
-        &'a SessionDotfileBackups,
-    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
-
-pub fn mid_noop<'a>(
-    _: &'a mut AgentClient,
-    _: &'a RunArtifacts,
-    _: &'a SessionDotfileBackups,
-) -> Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
-    Box::pin(async { Ok(()) })
-}
-
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
 pub struct WorkflowError(pub String);
@@ -112,19 +93,6 @@ impl Orchestrator<'_> {
 
     pub(super) fn fail_on_abort_result(&self) -> Result<(), WorkflowError> {
         fail_on_abort_for_artifacts(self.artifacts)
-    }
-
-    /// `KPop` already finished; run regression-test then fix coder prompts, optional mid hook, summary.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`WorkflowError`] when session setup, a bug phase, `mid`, or timing emission fails.
-    pub async fn run_bug_remediation_gap(
-        &mut self,
-        context: &std::collections::HashMap<String, String>,
-        mid: PreSummaryMidFn,
-    ) -> Result<(), WorkflowError> {
-        bug_remediation::run_bug_remediation_gap(self, context, mid).await
     }
 }
 

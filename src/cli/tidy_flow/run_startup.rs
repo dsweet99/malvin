@@ -1,23 +1,16 @@
 use std::path::Path;
 
 use crate::artifacts::{
-    MalvinChecksBackup, RunArtifacts, backup_workspace_malvin_checks_if_present,
-    create_kpop_run_artifacts,
+    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
-use crate::prompts::PromptStore;
+use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+
 use super::prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
 
-pub struct TidyKpopPrepared {
-    pub artifacts: RunArtifacts,
-    pub exp_log_path: std::path::PathBuf,
-    pub context: std::collections::HashMap<String, String>,
-    pub request_text: String,
-    pub store: PromptStore,
-    pub malvin_checks_backup: MalvinChecksBackup,
-}
+pub type TidyKpopPrepared = GateKpopPrepared;
 
 fn tidy_kpop_workflow_context(
-    artifacts: &RunArtifacts,
+    artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
     crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "tidy")
 }
@@ -35,11 +28,12 @@ pub fn prepare_tidy_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = tidy_kpop_workflow_context(&artifacts)?;
-    Ok(TidyKpopPrepared {
+    Ok(GateKpopPrepared {
         artifacts,
         exp_log_path,
         context,
-        request_text,
+        request_text: request_text.clone(),
+        startup_emit_request: request_text,
         store,
         malvin_checks_backup,
     })

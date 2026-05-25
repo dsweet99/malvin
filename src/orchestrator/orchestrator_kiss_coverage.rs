@@ -9,9 +9,3 @@ fn smoke_fail_on_abort_for_artifacts_ok_when_no_abort() {
         .expect("artifacts");
     fail_on_abort_for_artifacts(&artifacts).expect("no abort");
 }
-
-#[test]
-fn kiss_cov_src_orchestrator_bug_remediation_rs_run_bug_remediation_gap() {
-    let bug_remediation = ();
-    let _ = (bug_remediation, super::bug_remediation::run_bug_remediation_gap);
-}

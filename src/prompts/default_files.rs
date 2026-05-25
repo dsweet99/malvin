@@ -24,12 +24,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         .or_else(|| match name {
             "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
             "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
-            "review_plan.md" => Some(include_str!("../../default_prompts/review_plan.md")),
-            "bug_regression_test.md" => {
-                Some(include_str!("../../default_prompts/bug_regression_test.md"))
-            }
-            "bug_fix.md" => Some(include_str!("../../default_prompts/bug_fix.md")),
-            "hunt_request.md" => Some(include_str!("../../default_prompts/hunt_request.md")),
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),

@@ -13,9 +13,7 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         Commands::Invent(_) => include_str!("../../default_prompts/docs/invent.md"),
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
-        Commands::Hunt(_) => include_str!("../../default_prompts/docs/hunt.md"),
         Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
-        Commands::Plan(_) => include_str!("../../default_prompts/docs/plan.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
     }
 }
@@ -131,25 +129,6 @@ mod tests {
         assert!(
             !text.contains("{{ advice_path }}"),
             "init doc must not leave unresolved advice_path placeholder"
-        );
-    }
-
-    #[test]
-    fn plan_doc_substitutes_advice_path() {
-        use crate::cli::args::{Commands, PlanArgs};
-        let cmd = Commands::Plan(PlanArgs {
-            plan_path: None,
-            text: None,
-        });
-        let out = capture_doc(Some(&cmd)).expect("capture");
-        let text = String::from_utf8(out).expect("utf8");
-        assert!(
-            text.contains(".malvin/advice.md"),
-            "plan doc must show advice path"
-        );
-        assert!(
-            !text.contains("{{ advice_path }}"),
-            "plan doc must not leave unresolved advice_path placeholder"
         );
     }
 }

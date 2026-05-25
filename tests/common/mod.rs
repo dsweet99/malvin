@@ -44,9 +44,7 @@ pub use kpop_multiturn_support::*;
 pub use live_agent::{
     command_output_live_agent, live_agent_prereqs_met, LIVE_AGENT_CMD_TIMEOUT,
 };
-pub use process::{
-    MALVIN_TEST_CMD_TIMEOUT, PlanSpawn, command_output_with_timeout, spawn_malvin_plan,
-};
+pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 #[cfg(unix)]
 pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
