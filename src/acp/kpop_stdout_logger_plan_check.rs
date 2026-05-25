@@ -116,6 +116,7 @@ async fn h6_trace_file_lines_include_timestamp() {
         TraceFileStdout {
             tee_stdout: false,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: None,

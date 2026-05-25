@@ -28,6 +28,8 @@ pub struct PromptTraceWriter {
     pub emit_stdout_markdown: bool,
     /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
     pub iterable_closed_warned: bool,
+    /// Suppress duplicate operational errors for upgrade-plan within one trace writer.
+    pub upgrade_plan_warned: bool,
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,

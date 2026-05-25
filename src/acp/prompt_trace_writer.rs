@@ -55,6 +55,7 @@ impl PromptTraceWriter {
             show_thoughts_on_stdout: args.show_thoughts_on_stdout,
             emit_stdout_markdown: args.emit_stdout_markdown,
             iterable_closed_warned: false,
+            upgrade_plan_warned: false,
             work_dir: args.work_dir,
             run_timing: args.run_timing,
             session_id: args.session_id,

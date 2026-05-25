@@ -26,6 +26,7 @@ async fn open_trace_b_writer(path: &std::path::Path, opts: TraceBWriterOpts) -> 
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: opts.emit_stdout_markdown,
         iterable_closed_warned: false,
+        upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
         run_timing: None,
         session_id: String::new(),
@@ -36,6 +37,7 @@ async fn open_trace_b_writer(path: &std::path::Path, opts: TraceBWriterOpts) -> 
 const TRACE_STDOUT_OFF: TraceFileStdout<'_> = TraceFileStdout {
     tee_stdout: false,
     stream_iterable_closed: None,
+    stream_upgrade_plan: false,
     tee_line_override: None,
     tee_line_display: None,
     ts: None,
@@ -181,6 +183,7 @@ async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
         TraceFileStdout {
             tee_stdout: true,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: None,

@@ -9,7 +9,7 @@ fn trace_chunk_coalescer_merges_two_small_message_chunks() {
     assert_eq!(fin.len(), 1);
     assert_eq!(
         fin[0],
-        (SessionUpdateChunkKind::Message, "hello".to_string(), None)
+        (SessionUpdateChunkKind::Message, "hello".to_string(), None, false)
     );
 }
 
@@ -19,19 +19,19 @@ fn trace_chunk_coalescer_feed_preserves_repeated_interleaved_order() {
     assert!(c.feed(SessionUpdateChunkKind::Message, "m1").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t1"),
-        vec![(SessionUpdateChunkKind::Message, "m1".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Message, "m1".to_string(), None, false)]
     );
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Message, "m2"),
-        vec![(SessionUpdateChunkKind::Thought, "t1".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Thought, "t1".to_string(), None, false)]
     );
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t2"),
-        vec![(SessionUpdateChunkKind::Message, "m2".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Message, "m2".to_string(), None, false)]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Thought, "t2".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Thought, "t2".to_string(), None, false)]
     );
 }
 
@@ -41,11 +41,11 @@ fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_thought_the
     assert!(c.feed(SessionUpdateChunkKind::Thought, "t").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Message, "m"),
-        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None),]
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None, false),]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None, false)]
     );
 }
 
@@ -55,11 +55,11 @@ fn trace_chunk_coalescer_flush_all_preserves_interleaved_chunk_order_message_the
     assert!(c.feed(SessionUpdateChunkKind::Message, "m").is_empty());
     assert_eq!(
         c.feed(SessionUpdateChunkKind::Thought, "t"),
-        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None),]
+        vec![(SessionUpdateChunkKind::Message, "m".to_string(), None, false),]
     );
     assert_eq!(
         c.flush_all(),
-        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None)]
+        vec![(SessionUpdateChunkKind::Thought, "t".to_string(), None, false)]
     );
 }
 
@@ -70,8 +70,8 @@ fn trace_chunk_coalescer_must_not_drop_consecutive_identical_lines() {
     assert_eq!(
         out,
         vec![
-            (SessionUpdateChunkKind::Message, "yes".to_string(), None),
-            (SessionUpdateChunkKind::Message, "yes".to_string(), None),
+            (SessionUpdateChunkKind::Message, "yes".to_string(), None, false),
+            (SessionUpdateChunkKind::Message, "yes".to_string(), None, false),
         ],
         "consecutive identical lines must not be deduplicated"
     );
@@ -90,6 +90,6 @@ fn trace_chunk_coalescer_emits_at_cap_like_verbose() {
     assert_eq!(fin.len(), 1);
     assert_eq!(
         fin[0],
-        (SessionUpdateChunkKind::Message, "x".repeat(10), None)
+        (SessionUpdateChunkKind::Message, "x".repeat(10), None, false)
     );
 }

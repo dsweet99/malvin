@@ -143,6 +143,7 @@ async fn h19_thought_stdout_three_space_indent_no_brackets() {
         TraceFileStdout {
             tee_stdout: true,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: Some("20260413.121314.015"),

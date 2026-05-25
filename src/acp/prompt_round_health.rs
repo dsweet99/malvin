@@ -3,12 +3,15 @@
 use serde_json::Value;
 
 const MAX_TOOL_ERRORS: usize = 4;
+const UPGRADE_PLAN_WINDOW: usize = 128;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PromptRoundHealth {
     tool_errors: Vec<String>,
     silent_shell_completions: u32,
     agent_streamed_kpop_solved: bool,
+    upgrade_plan_seen: bool,
+    agent_text_acc: String,
 }
 
 impl PromptRoundHealth {
@@ -31,30 +34,17 @@ impl PromptRoundHealth {
         self.record_completed_tool_call(update);
     }
 
-    fn record_silent_shell_completion(&mut self, update: &serde_json::Map<String, Value>, raw: &serde_json::Map<String, Value>) {
-        if update.get("kind").and_then(|v| v.as_str()) == Some("execute")
-            && raw.get("exitCode").and_then(serde_json::Value::as_u64) == Some(0)
-            && raw_output_text_empty(raw)
-        {
-            self.silent_shell_completions = self.silent_shell_completions.saturating_add(1);
-        }
-    }
-
     fn record_completed_tool_call(&mut self, update: &serde_json::Map<String, Value>) {
-        if update.get("sessionUpdate").and_then(|v| v.as_str()) != Some("tool_call_update") {
-            return;
-        }
-        if update.get("status").and_then(|v| v.as_str()) != Some("completed") {
-            return;
-        }
-        let Some(raw) = update.get("rawOutput").and_then(|v| v.as_object()) else {
+        let Some(raw) = completed_tool_call_raw(update) else {
             return;
         };
         if let Some(err) = raw.get("error").and_then(|v| v.as_str()) {
             self.record_tool_error(err, update);
             return;
         }
-        self.record_silent_shell_completion(update, raw);
+        if silent_shell_completion(update, raw) {
+            self.silent_shell_completions = self.silent_shell_completions.saturating_add(1);
+        }
     }
 
     fn record_agent_chunk(&mut self, update: &serde_json::Map<String, Value>) {
@@ -68,6 +58,24 @@ impl PromptRoundHealth {
         };
         if text.contains("## KPOP_SOLVED") {
             self.agent_streamed_kpop_solved = true;
+        }
+        self.append_agent_text_for_upgrade_plan(text);
+    }
+
+    fn append_agent_text_for_upgrade_plan(&mut self, text: &str) {
+        self.agent_text_acc.push_str(text);
+        if crate::acp::agent_string_is_upgrade_plan(&self.agent_text_acc) {
+            self.upgrade_plan_seen = true;
+        }
+        if self.agent_text_acc.len() > UPGRADE_PLAN_WINDOW {
+            let mut drain = self.agent_text_acc.len() - UPGRADE_PLAN_WINDOW;
+            while drain > 0 && !self.agent_text_acc.is_char_boundary(drain) {
+                drain -= 1;
+            }
+            self.agent_text_acc.drain(..drain);
+        }
+        if crate::acp::agent_string_is_upgrade_plan(&self.agent_text_acc) {
+            self.upgrade_plan_seen = true;
         }
     }
 
@@ -104,6 +112,11 @@ impl PromptRoundHealth {
     }
 
     #[must_use]
+    pub const fn upgrade_plan_seen(&self) -> bool {
+        self.upgrade_plan_seen
+    }
+
+    #[must_use]
     pub fn format_lines(&self) -> Vec<String> {
         let mut lines = Vec::new();
         for err in &self.tool_errors {
@@ -124,63 +137,29 @@ impl PromptRoundHealth {
     }
 }
 
+fn completed_tool_call_raw(
+    update: &serde_json::Map<String, Value>,
+) -> Option<&serde_json::Map<String, Value>> {
+    if update.get("sessionUpdate").and_then(|v| v.as_str()) != Some("tool_call_update") {
+        return None;
+    }
+    if update.get("status").and_then(|v| v.as_str()) != Some("completed") {
+        return None;
+    }
+    update.get("rawOutput").and_then(|v| v.as_object())
+}
+
+fn silent_shell_completion(
+    update: &serde_json::Map<String, Value>,
+    raw: &serde_json::Map<String, Value>,
+) -> bool {
+    update.get("kind").and_then(|v| v.as_str()) == Some("execute")
+        && raw.get("exitCode").and_then(serde_json::Value::as_u64) == Some(0)
+        && raw_output_text_empty(raw)
+}
+
 fn raw_output_text_empty(raw: &serde_json::Map<String, Value>) -> bool {
     let stdout = raw.get("stdout").and_then(|v| v.as_str()).unwrap_or("");
     let stderr = raw.get("stderr").and_then(|v| v.as_str()).unwrap_or("");
     stdout.is_empty() && stderr.is_empty()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn records_service_unavailable_on_search_tool() {
-        let msg = json!({
-            "method": "session/update",
-            "params": {"update": {
-                "sessionUpdate": "tool_call_update",
-                "kind": "search",
-                "title": "Find",
-                "status": "completed",
-                "rawOutput": {"error": "Service temporarily unavailable. This may be temporary; try again."}
-            }}
-        });
-        let mut h = PromptRoundHealth::default();
-        h.record_session_update(&msg);
-        assert!(h.has_infra_failure());
-        assert!(h.format_lines()[0].contains("Service temporarily unavailable"));
-    }
-
-    #[test]
-    fn counts_silent_shell_completions() {
-        let msg = json!({
-            "method": "session/update",
-            "params": {"update": {
-                "sessionUpdate": "tool_call_update",
-                "kind": "execute",
-                "status": "completed",
-                "rawOutput": {"exitCode": 0, "stdout": "", "stderr": ""}
-            }}
-        });
-        let mut h = PromptRoundHealth::default();
-        h.record_session_update(&msg);
-        h.record_session_update(&msg);
-        assert!(h.has_infra_failure());
-    }
-
-    #[test]
-    fn detects_streamed_kpop_solved_in_agent_chunk() {
-        let msg = json!({
-            "method": "session/update",
-            "params": {"update": {
-                "sessionUpdate": "agent_message_chunk",
-                "content": {"text": "## KPOP_SOLVED\nDone.", "type": "text"}
-            }}
-        });
-        let mut h = PromptRoundHealth::default();
-        h.record_session_update(&msg);
-        assert!(h.agent_streamed_kpop_solved());
-    }
 }

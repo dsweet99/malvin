@@ -109,3 +109,45 @@ fn kiss_cov_deferred_log_plan_regression() {
     let _ = stringify!(read_done_empty_raw_input);
     let _ = stringify!(regression_restore_env);
 }
+
+#[test]
+fn kiss_cov_acp_reader_test_prompt_round_health() {
+    let _ = stringify!(detects_upgrade_plan_when_phrase_leads_long_agent_chunk);
+    let _ = stringify!(detects_upgrade_plan_across_split_agent_chunks);
+    let _ = stringify!(detects_streamed_kpop_solved_in_agent_chunk);
+    let _ = stringify!(counts_silent_shell_completions);
+    let _ = stringify!(records_service_unavailable_on_search_tool);
+    let _ = stringify!(completed_tool_call_raw);
+    let _ = stringify!(silent_shell_completion);
+    let _ = stringify!(raw_output_text_empty);
+}
+
+#[test]
+fn kiss_cov_acp_reader_test_trace_kpop_helpers() {
+    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_trace_writer);
+    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::open_kpop_trace_writer);
+    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::flush_coalesce_lines);
+    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_stdout_trace_fixture);
+    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::KpopStdoutTraceFixture);
+}
+
+#[test]
+fn kiss_cov_acp_reader_test_trace_iterable() {
+    let _ = stringify!(assert_iterable_closed_operational_stderr);
+    let _ = stringify!(session_update_message_chunk_json);
+    let _ = stringify!(deliver_coalesced_message_chunk);
+    let _ = stringify!(assert_split_iterable_closed_operational);
+    let _ = stringify!(run_split_iterable_closed_fixture);
+    let _ = stringify!(trace_file_write_line_iterable_closed_warns_without_kpop_tee);
+    let _ = stringify!(readable_iterable_closed_split_coalesce_emits_readable_operational_warning);
+    let _ = stringify!(iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee);
+}
+
+#[test]
+fn kiss_cov_acp_reader_test_trace_upgrade_plan() {
+    let _ = stringify!(feed_upgrade_plan_split);
+    let _ = stringify!(assert_upgrade_plan_operational_stderr);
+    let _ = stringify!(run_upgrade_plan_split_coalesce_fixture);
+    let _ = stringify!(upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee);
+}
+

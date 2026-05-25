@@ -91,6 +91,7 @@ pub(crate) async fn write_tool_summary_trace_line(
         TraceFileStdout {
             tee_stdout: false,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: Some(&ts),
@@ -160,6 +161,7 @@ mod tool_summary_styled_tee_tests {
             show_thoughts_on_stdout: false,
             emit_stdout_markdown,
             iterable_closed_warned: false,
+            upgrade_plan_warned: false,
             work_dir: dir.path().to_path_buf(),
             run_timing: None,
             session_id: String::new(),

@@ -145,7 +145,19 @@ impl AcpSession {
         let res = rpc_session_prompt_text(self, text, id).await;
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(()) => {
+                let upgrade = self
+                    .0
+                    .prompt_round_health
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .upgrade_plan_seen();
+                if upgrade {
+                    self.reset_prompt_inflight().await;
+                    return Err(crate::acp::UPGRADE_PLAN_STOP_MESSAGE.to_string());
+                }
+                Ok(())
+            }
             Err(e) => {
                 self.reset_prompt_inflight().await;
                 Err(e)
