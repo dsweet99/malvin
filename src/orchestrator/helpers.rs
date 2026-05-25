@@ -31,7 +31,17 @@ pub fn check_abort(result_path: &Path) -> Option<String> {
     None
 }
 
-/// Stem used in log name segments for coder prompts (`check_plan.md`, `implement.md`, …) and review prompts (`review.md`, `review_write.md`, …).
+/// # Errors
+///
+/// Returns [`WorkflowError`] when `result.md` contains an `ABORT:` line.
+pub fn fail_on_abort_for_artifacts(artifacts: &crate::artifacts::RunArtifacts) -> Result<(), super::WorkflowError> {
+    if let Some(abort_msg) = check_abort(&artifacts.artifact_result_md()) {
+        return Err(super::WorkflowError(format!("ABORT: {abort_msg}")));
+    }
+    Ok(())
+}
+
+/// Stem used in log name segments for coder prompts (`bug_fix.md`, `summary.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {

@@ -4,7 +4,15 @@ use crate::output::stdout_log_pair::{
     tagged_display_and_log_line_for_color, tagged_display_line_with_timestamp_ansi, tagged_log_line,
     AcpTeeDirection, AcpTeeLineFmt,
 };
-use crate::output::{format_line_stdout, is_log_timestamp_token, stdout_tagged_display_and_log_line, MALVIN_WHO};
+use crate::output::{format_heartbeat_stdout_ansi, format_line_stdout, is_log_timestamp_token, stdout_tagged_display_and_log_line, MALVIN_WHO};
+
+#[test]
+fn heartbeat_stdout_ansi_keeps_who_color_through_payload() {
+    let payload = "HB: 20260524.000000";
+    let line = format_heartbeat_stdout_ansi(MALVIN_WHO, payload);
+    assert!(line.contains(payload));
+    assert!(line.contains('\x1b'));
+}
 
 #[test]
 fn tagged_log_line_includes_timestamp_and_payload() {

@@ -70,7 +70,7 @@ fn smoke_kpop_multiturn_builder_type() {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
     let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
     assert_eq!(smoke.kpop_block(1, 0).expect("kpop"), "k");
-    assert_eq!(smoke.mbc2_pure().expect("mbc2"), "m");
+    assert_eq!(smoke.mbc2_turn().expect("mbc2"), "m");
 }
 
 #[test]

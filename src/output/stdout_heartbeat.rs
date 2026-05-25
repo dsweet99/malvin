@@ -5,7 +5,8 @@ use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::{
-    MALVIN_WHO, stdout_tagged_display_and_log_line, timestamp_now_string, write_heartbeat_log_line,
+    MALVIN_WHO, stdout_heartbeat_display_and_log_line, timestamp_now_string,
+    write_heartbeat_log_line,
 };
 use crate::time_format::heartbeat_payload_now;
 
@@ -69,7 +70,7 @@ pub(crate) fn heartbeat_rendered_if_due(now: Instant, arm_if_unarmed: bool) -> O
     drop(guard);
     let ts = timestamp_now_string();
     let payload = heartbeat_payload_now();
-    Some(stdout_tagged_display_and_log_line(
+    Some(stdout_heartbeat_display_and_log_line(
         MALVIN_WHO,
         &payload,
         Some(ts.as_str()),

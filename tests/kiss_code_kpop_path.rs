@@ -139,47 +139,6 @@ fn malvin_tidy_kiss_missing_error_cites_tidy_subcommand() {
 }
 
 #[test]
-fn malvin_plan_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["plan"]);
-}
-
-#[test]
-fn malvin_bug_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["hunt"]);
-}
-
-#[test]
-fn malvin_bug_kiss_missing_error_cites_bug_subcommand() {
-    let path_root = tempfile::tempdir().unwrap();
-    let isolated_bin = path_root.path().join("bin");
-    std::fs::create_dir_all(&isolated_bin).unwrap();
-    #[cfg(unix)]
-    let out = run_malvin_path_timed(&isolated_bin, |c| {
-        c.args(["hunt"]);
-    });
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("PATH", &isolated_bin)
-        .args(["hunt"])
-        .output()
-        .expect("spawn malvin");
-    assert!(!out.status.success());
-    let msg = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        msg.contains("`malvin hunt`"),
-        "expected error to name the hunt subcommand; got: {msg:?}"
-    );
-    assert!(
-        !msg.contains("`malvin code`"),
-        "expected bug path not to reuse code subcommand text; got: {msg:?}"
-    );
-}
-
-#[test]
 fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["do", "hello"]);
 }

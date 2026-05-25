@@ -2,239 +2,36 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    CodeRunOpts, MAX_LOOPS_EXHAUSTED, acp_mock_code_abort_after_implement_js,
-    acp_mock_code_abort_result_after_check_plan_lgtm_js,
-    acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js,
-    acp_mock_code_review_lgtm_to_artifact_js, acp_mock_code_review_lgtm_with_abort_js,
-    assert_review_abort_behavior, only_run_dir, run_code_default_max_loops_never_lgtm_with_mock,
-    run_code_max_loops_zero_with_mock, run_code_max_loops_zero_with_mock_without_trust_plan,
-    run_code_with_mock_js, run_code_with_mock_js_trust_plan,
-    run_code_with_mock_js_trust_plan_in_workspace,
+    CodeSpawn, acp_mock_code_kpop_abort_result_js, bin_path_with_failing_gates,
+    combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_code, test_home_workspace,
+    workspace_kiss_check_only, write_mock_executable,
 };
 
-#[cfg_attr(unix, test)]
-fn code_stops_when_implement_writes_abort_result() {
-    let out = run_code_with_mock_js(
-        &acp_mock_code_abort_after_implement_js(),
-        &["--max-loops", "1"],
-        true,
-    );
+#[cfg(unix)]
+#[test]
+fn code_stops_when_kpop_writes_abort_result() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let trace = root.path().join("kiss-trace.log");
+    let path = bin_path_with_failing_gates(&root, &trace);
+    let mock = root.path().join("mock-code-kpop-abort");
+    write_mock_executable(&mock, &acp_mock_code_kpop_abort_result_js());
+    let out = spawn_code(&CodeSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1"],
+        request: "ship it",
+    });
     assert!(
         !out.status.success(),
         "expected ABORT failure path: {out:?}"
     );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
+    let combined = combined_cli_output(&out);
     assert!(
-        combined.contains("ABORT: stop now"),
-        "expected implement ABORT to stop the workflow: {combined:?}"
-    );
-    assert!(
-        !combined.contains(MAX_LOOPS_EXHAUSTED),
-        "workflow should stop on ABORT before review exhaustion: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn code_stops_when_check_plan_writes_abort_result_with_lgtm_review() {
-    let out = run_code_with_mock_js_trust_plan(
-        &acp_mock_code_abort_result_after_check_plan_lgtm_js(),
-        &["--max-loops", "1"],
-        &CodeRunOpts {
-            no_tee: true,
-            trust_plan: false,
-        },
-    );
-    assert!(
-        !out.status.success(),
-        "expected ABORT failure path: {out:?}"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        combined.contains("ABORT: after check plan"),
-        "expected check_plan ABORT to stop the workflow: {combined:?}"
-    );
-    assert!(
-        !combined.contains("implement_phase_ran"),
-        "implement must not run after ABORT in result.md from check_plan: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn check_plan_kissconfig_restore_happens_before_implement() {
-    let out = run_code_with_mock_js_trust_plan(
-        &acp_mock_code_check_plan_tampers_kissconfig_then_implement_verifies_restore_js(),
-        &["--max-loops", "1"],
-        &CodeRunOpts {
-            no_tee: false,
-            trust_plan: false,
-        },
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        combined.contains("implement ok"),
-        "expected implement to see restored kissconfig: {combined:?}"
-    );
-    assert!(
-        !combined.contains("ABORT: kissconfig leaked into implement"),
-        "check_plan kissconfig mutation must not leak into implement: {combined:?}"
-    );
-    assert!(
-        out.status.success(),
-        "expected successful exit when check_plan + implement restore path converges: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn default_max_loops_exhausts_fanout_review_without_lgtm() {
-    let out = run_code_default_max_loops_never_lgtm_with_mock();
-    assert!(
-        !out.status.success(),
-        "malvin code should fail when review never reaches LGTM: {out:?}"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        combined.contains(MAX_LOOPS_EXHAUSTED),
-        "expected default max-loops review exhaustion: {combined:?}"
-    );
-    assert!(
-        combined.contains("Review (attempt 5)"),
-        "expected fifth review attempt under default max-loops=5: {combined:?}"
-    );
-    assert!(
-        !combined.contains("Review (attempt 6)"),
-        "must not run a sixth review attempt: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn max_loops_zero_runs_one_review_attempt_then_fails() {
-    let out = run_code_max_loops_zero_with_mock();
-    assert!(
-        !out.status.success(),
-        "malvin code unexpectedly succeeded: {out:?}"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        combined.contains(MAX_LOOPS_EXHAUSTED),
-        "expected max_loops=0 review skip failure: {combined:?}"
-    );
-    assert!(
-        combined.contains("Review (attempt 1)"),
-        "review should run at least once when --max-loops=0: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn max_loops_zero_skips_check_plan_attempt() {
-    let out = run_code_max_loops_zero_with_mock_without_trust_plan();
-    assert!(
-        !out.status.success(),
-        "malvin code unexpectedly succeeded: {out:?}"
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        combined.contains("CheckPlan"),
-        "check_plan should run at least once when max_loops=0: {combined:?}"
-    );
-    assert!(
-        !combined.contains("Review (attempt 1)"),
-        "review attempt must not run when --max-loops=0: {combined:?}"
-    );
-    assert!(
-        combined.contains("check_plan: agent did not write review file after retries"),
-        "expected check_plan missing-review failure path: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn review_loop_accepts_lgtm_written_to_artifact_path() {
-    let out = run_code_with_mock_js(
-        &acp_mock_code_review_lgtm_to_artifact_js(),
-        &["--max-loops", "1"],
-        true,
-    );
-    let combined = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        !combined.contains(MAX_LOOPS_EXHAUSTED),
-        "review loop should accept LGTM from artifact path: {combined:?}"
-    );
-    assert!(
-        out.status.success(),
-        "malvin code should succeed when reviewer writes LGTM to artifact: {combined:?}"
-    );
-}
-
-#[cfg_attr(unix, test)]
-fn code_stops_when_review_lgtm_also_writes_abort_result() {
-    let out = run_code_with_mock_js(
-        &acp_mock_code_review_lgtm_with_abort_js(),
-        &["--max-loops", "1"],
-        true,
-    );
-    assert_review_abort_behavior(&out, "ABORT: review lgtm abort test", "Learn");
-}
-
-#[cfg_attr(unix, test)]
-fn skip_pre_checks_skips_initial_repo_gates_in_quality_log() {
-    let js = acp_mock_code_review_lgtm_to_artifact_js();
-    let opts = CodeRunOpts {
-        no_tee: true,
-        trust_plan: true,
-    };
-    let (out, _root, workspace) = run_code_with_mock_js_trust_plan_in_workspace(
-        &js,
-        &["--max-loops", "1", "--skip-pre-checks"],
-        &opts,
-    );
-    assert!(
-        out.status.success(),
-        "malvin code should succeed: {:?}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    let log = std::fs::read_to_string(only_run_dir(&workspace).join("quality_gates.log"))
-        .expect("quality_gates.log");
-    assert_eq!(
-        log.matches("Running `kiss check`").count(),
-        1,
-        "expected one gate pass (pre-review only): {log}"
-    );
-
-    let (out2, _root2, workspace2) =
-        run_code_with_mock_js_trust_plan_in_workspace(&js, &["--max-loops", "1"], &opts);
-    assert!(out2.status.success(), "baseline malvin code should succeed");
-    let log2 = std::fs::read_to_string(only_run_dir(&workspace2).join("quality_gates.log"))
-        .expect("quality_gates.log baseline");
-    assert_eq!(
-        log2.matches("Running `kiss check`").count(),
-        1,
-        "expected pre-review gate pass in quality_gates.log (initial pre-check runs before run dir exists): {log2}"
+        combined.contains("ABORT: code kpop stop"),
+        "expected kpop ABORT to stop the workflow: {combined:?}"
     );
 }

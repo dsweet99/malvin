@@ -28,7 +28,7 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
         .expect("kpop-only ok");
     assert!(
         store.validate_required().is_err(),
-        "full workflow should still require implement/review/etc."
+        "full workflow should still require kpop_program/coding_rules when only header is present"
     );
 }
 
@@ -63,8 +63,8 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
         })
         .unwrap_err();
     assert!(
-        err.0.contains("mbc2_pure.md"),
-        "expected mbc2_pure missing error, got {:?}",
+        err.0.contains("mbc2.md"),
+        "expected mbc2 missing error, got {:?}",
         err.0
     );
 }
@@ -110,14 +110,7 @@ fn load_header_swallows_missing_prompt_file() {
 fn validate_required_fails_when_header_or_coding_rules_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
-    for name in [
-        "implement.md",
-        "review.md",
-        "review_write.md",
-        "concerns.md",
-    ] {
-        std::fs::write(root.join(name), "x").unwrap();
-    }
+    std::fs::write(root.join("kpop_program.md"), "x").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store.validate_required().unwrap_err();
     assert!(
@@ -128,11 +121,11 @@ fn validate_required_fails_when_header_or_coding_rules_missing() {
 }
 
 #[test]
-fn validate_required_fails_when_review_missing() {
+fn validate_required_fails_when_kpop_program_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     for &name in crate::prompts::REQUIRED_PROMPTS {
-        if name == "review.md" {
+        if name == "kpop_program.md" {
             continue;
         }
         std::fs::write(root.join(name), "x").unwrap();
@@ -140,8 +133,8 @@ fn validate_required_fails_when_review_missing() {
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store.validate_required().unwrap_err();
     assert!(
-        err.0.contains("review.md"),
-        "custom prompt roots must fail fast when review.md is absent: {}",
+        err.0.contains("kpop_program.md"),
+        "custom prompt roots must fail fast when kpop_program.md is absent: {}",
         err.0
     );
 }

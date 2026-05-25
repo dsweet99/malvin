@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
     seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
     write_failing_gate_tools,
     write_fake_kiss, write_mock_executable,
@@ -101,25 +101,26 @@ fn run_malvin_tidy_no_auth_keys(
 }
 
 #[cfg_attr(unix, test)]
-fn malvin_tidy_runs_agent_when_quality_gates_already_pass() {
+fn malvin_tidy_skips_agent_when_quality_gates_already_pass() {
     let fx = tidy_skip_agent_fixture();
     let out = run_malvin_tidy_no_auth_keys(&fx.workspace, &fx.home, &fx.mock, &fx.path);
     assert!(
-        !out.status.success(),
-        "expected tidy to run review agent even when gates pass; status={:?} stdout={} stderr={}",
+        out.status.success(),
+        "expected tidy to skip agent when gates pass; status={:?} stdout={} stderr={}",
         out.status,
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr),
     );
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("DONE"), "expected fast-path DONE; stdout={stdout:?}");
     assert!(
-        stderr.contains("authentication") || stderr.contains("auth") || stderr.contains("API key"),
-        "expected auth failure from agent startup when gates pass; stderr={stderr:?}"
+        !stdout.contains("[>kpop") && !stdout.contains("[<kpop"),
+        "agent must not run when gates already pass; stdout={stdout:?}"
     );
 }
 
 #[cfg_attr(unix, test)]
-fn malvin_tidy_runs_quality_gates_after_acp() {
+fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
     let (root, home, workspace) = test_home_workspace();
     seed_tidy_workspace(&workspace);
     let bin_dir = root.path().join("bin");
@@ -127,7 +128,7 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
     let trace = root.path().join("quality-trace.log");
     write_failing_gate_tools(&bin_dir, &trace);
     let mock = root.path().join("mock-agent-acp-tidy");
-    write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
+    write_mock_executable(&mock, &acp_mock_tidy_kpop_steps_js());
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
 
@@ -140,10 +141,10 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(
         !trace_log.is_empty(),
-        "expected quality gates to run after ACP: {trace_log}"
+        "expected quality gates to run around kpop: {trace_log}"
     );
     assert!(
         trace_log.contains("kiss"),
-        "expected at least one post-ACP quality gate command to run: {trace_log}"
+        "expected at least one quality gate command in trace: {trace_log}"
     );
 }

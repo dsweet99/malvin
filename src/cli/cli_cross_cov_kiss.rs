@@ -2,16 +2,12 @@
 
 #[test]
 fn smoke_cov_cli_cli_units_0() {
-    let _: Option<super::args::BugArgs> = None;
-    let _: Option<super::args::CodeArgs> = None;
+    let _: Option<super::CodeArgs> = None;
     let _: Option<super::args::KpopArgs> = None;
     let _ = super::build_agent;
-    let _ = super::prepare_bug_prompt_store;
-    let _ = super::prepare_hunt_kpop_prompt_store;
     let _ = super::prepare_kpop_prompt_store;
     let _ = super::prepare_prompt_store;
     let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user);
-    let _ = stringify!(super::bug_flow_remediation::bug_kpop_request);
     let _ = stringify!(super::entrypoint::dispatch_command);
     let _ = super::entrypoint::print_command_error;
     let _ = super::entrypoint::require_kiss_for_cli_command;
@@ -34,15 +30,10 @@ fn smoke_cov_cli_cli_units_1a() {
     let _: Option<super::kpop_flow::KpopPrepared> = None;
     let _ = super::kpop_flow::kpop_run_acp_multiturn;
     let _ = super::run_kpop;
-    let _ = stringify!(crate::orchestrator::pre_review_gates::format_pre_review_gate_failure_review);
     let _: Option<crate::repo_checks::RepoGateOutput> = None;
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = super::run_emit::emit_run_startup_sequence;
     let _: Option<super::shared_opts::GlobalOpts> = None;
-    let _: Option<super::tidy_flow::recovery::TidyReviewAttemptOutcome> = None;
-    let _ = super::tidy_flow::recovery::run_tidy_concerns_coder_turn;
-    let _ = super::tidy_flow::recovery::tidy_fail_on_abort;
-    let _ = super::tidy_flow::recovery::tidy_review_attempt_with_retries;
 }
 
 #[test]
@@ -60,31 +51,43 @@ fn smoke_cov_cli_cli_units_1b() {
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
     let _ = super::kpop_flow::prepare_kpop_run;
-    let _: Option<super::tidy_flow::recovery::TidyRecoveryPaths> = None;
-    let _: Option<super::tidy_flow::recovery::TidyRecoveryRequest<'static>> = None;
-    let _: Option<super::tidy_flow::recovery::TidyMaxLoopsOneRecovery<'static>> = None;
+}
+
+#[test]
+fn smoke_cov_cli_cli_code_flow_units() {
+    let _: Option<super::CodeArgs> = None;
+    let _: Option<super::code_flow::CodeKpopPrepared> = None;
+    let _ = super::code_flow::prepare_code_kpop_prompt_store;
+    let _ = super::code_flow::code_kpop_request;
+    let _ = super::code_flow::prepare_code_kpop_run;
+    let _ = super::code_flow::run_code;
+    let _ = super::code_flow::effective_code_max_loops;
+    let _ = super::workflow_kpop_shared::effective_max_loops;
+    let _ = super::workflow_kpop_shared::kpop_workflow_context;
+    let _ = super::workflow_kpop_shared::post_kpop_session_gates;
+    let _ = super::workflow_kpop_shared::run_kpop_workspace_gates;
+    let _ = super::workflow_kpop_shared::print_kpop_session_log_line;
+    let _ = super::workflow_kpop_shared::finish_kpop_acp_session;
+    let _ = super::gate_kpop_workflow::run_gate_kpop_loop;
+    let _ = super::gate_kpop_workflow::post_gate_kpop_gates;
+    let _ = super::gate_kpop_workflow::finish_gate_kpop_after_pass;
+    let _ = super::gate_kpop_workflow::fail_gate_kpop_after_exhausted;
+    let _ = stringify!(super::gate_kpop_workflow::GateKpopLoopParams);
 }
 
 #[test]
 fn smoke_cov_cli_cli_tidy_flow_units() {
     let _: Option<super::tidy_flow::TidyArgs> = None;
-    let _: Option<super::tidy_flow::TidyStartup> = None;
-    let _: Option<super::tidy_flow::TidyAcpInput<'static>> = None;
-    let _: Option<super::tidy_flow::TidyPromptRestore<'static>> = None;
-    let _ = super::tidy_flow::prepare_tidy_prompt_store;
-    let _ = super::tidy_flow::compose_tidy_prompt;
-    let _ = super::tidy_flow::compose_tidy_concerns_prompt;
+    let _: Option<super::tidy_flow::TidyKpopPrepared> = None;
+    let _ = super::tidy_flow::prepare_tidy_kpop_prompt_store;
+    let _ = super::tidy_flow::tidy_kpop_request;
     let _ = super::tidy_flow::write_checks_do_not_pass_to_review_path;
     let _ = super::tidy_flow::write_checks_do_not_pass_for_artifacts;
-    let _ = super::tidy_flow::run_tidy_prompt;
-    let _ = super::tidy_flow::run_tidy_prompt_with_restore;
-    let _ = super::tidy_flow::run_tidy_interleaved_loop;
-    let _ = super::tidy_flow::run_tidy_acp;
-    let _ = super::tidy_flow::merge_tidy_timing;
-    let _ = super::tidy_flow::tidy_prompt_context;
-    let _ = super::tidy_flow::prepare_tidy_run;
+    let _ = super::workflow_kpop_shared::write_checks_do_not_pass_to_review_path;
+    let _ = super::workflow_kpop_shared::write_checks_do_not_pass_for_artifacts;
+    let _ = super::tidy_flow::prepare_tidy_kpop_run;
     let _ = super::tidy_flow::run_tidy;
-    let _: Option<super::PlanArgs> = None;
+    let _ = super::tidy_flow::effective_tidy_max_loops;
 }
 
 #[test]
@@ -101,7 +104,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<super::WorkflowCliOptions> = None;
     let _: Option<super::AgentStdoutTeeFlags> = None;
     let _ = stringify!(crate::do_flow::prepare_do_prompt_store);
-    let _ = super::run_bug;
     let _: Option<super::kpop_flow::KpopAcpMultiturnCtx> = None;
 }
 
@@ -109,7 +111,6 @@ fn smoke_cov_cli_cli_symbols_a() {
 fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates;
     let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
-    let _ = stringify!(crate::orchestrator::mid_noop);
 }
 
 #[test]
@@ -118,12 +119,6 @@ fn smoke_cov_cli_cross_file_symbols_a() {
     let _ = stringify!(doc_text);
     let _ = stringify!(print_doc);
     let _ = stringify!(try_append_log_line);
-    let _ = stringify!(BugKpopPhase);
-    let _ = stringify!(run_bug_kpop_multiturn);
-    let _ = stringify!(ensure_kpop_solved);
-    let _ = stringify!(after_kpop_discovery);
-    let _ = stringify!(BugRunTail);
-    let _ = stringify!(run_bug_remediation_orchestrator);
 }
 
 #[test]

@@ -2,8 +2,8 @@ use clap::{CommandFactory, Parser};
 
 use super::models_cmd;
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_bug, run_do, run_ideas,
-    run_kpop, run_plan, run_tidy,
+    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_ideas, run_kpop,
+    run_tidy,
 };
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
@@ -11,8 +11,6 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
-        Commands::Plan(_) => require_kiss_for_malvin("plan"),
-        Commands::Hunt(_) => require_kiss_for_malvin("hunt"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
@@ -130,19 +128,6 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 )
             })
         }
-        Commands::Hunt(bug) => {
-            let run_learn = !bug.no_learn;
-            run_async_cli(|| {
-                run_bug(
-                    bug.clone(),
-                    shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                        run_learn,
-                    },
-                )
-            })
-        }
         Commands::Tidy(tidy) => {
             let run_learn = !tidy.no_learn;
             run_async_cli(|| {
@@ -156,16 +141,6 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 )
             })
         }
-        Commands::Plan(plan) => run_async_cli(|| {
-            run_plan(
-                plan,
-                shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                    run_learn: false,
-                },
-            )
-        }),
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,

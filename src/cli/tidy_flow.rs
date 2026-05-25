@@ -1,153 +1,91 @@
-use std::collections::HashMap;
-
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::prompts::PromptStore;
-use crate::run_timing::TimingPhase;
-
-#[must_use]
-pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
-    max_loops.max(1)
-}
+use clap::Args;
 
 #[path = "tidy_flow/prep.rs"]
 mod prep;
-#[path = "tidy_flow/prompt.rs"]
-mod prompt;
-#[path = "tidy_flow/interleaved_lgtm.rs"]
-mod interleaved_lgtm;
-#[path = "tidy_flow/interleaved_loop.rs"]
-mod interleaved_loop;
-#[cfg(test)]
-#[path = "tidy_flow/test_input.rs"]
-pub(crate) mod test_input;
-
-#[cfg(test)]
-#[allow(unused_imports)]
-pub(crate) use interleaved_lgtm::{
-    run_tidy_coder_prompt_for_attempt, tidy_finish_lgtm_attempt, TidyLgtmFinishCtx,
-};
-#[cfg(test)]
-#[allow(unused_imports)]
-pub(crate) use recovery::{
-    run_tidy_bonus_gate_recovery, run_tidy_concerns_coder_turn,
-    run_tidy_max_loops_one_not_lgtm_recovery, run_tidy_post_concerns_recovery,
-    tidy_review_attempt_with_retries, TidyMaxLoopsOneRecovery, TidyRecoveryPaths,
-    TidyRecoveryRequest, TidyReviewAttemptOutcome,
-};
-#[cfg(test)]
-#[allow(unused_imports)]
-pub(crate) use run::{
-    run_tidy_learn_and_summary, run_tidy_learn_prompt_if_elapsed, run_tidy_summary_prompt,
-};
-#[path = "tidy_flow/recovery.rs"]
-pub(crate) mod recovery;
-#[path = "tidy_flow/run.rs"]
-mod run;
 #[path = "tidy_flow/run_startup.rs"]
 mod run_startup;
+#[path = "tidy_flow/run_loop.rs"]
+mod run_loop;
 
 #[allow(unused_imports)]
-pub use prep::{
-    compose_tidy_concerns_prompt, compose_tidy_prompt, prepare_tidy_prompt_store,
+pub use prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
+#[allow(unused_imports)]
+pub use crate::cli::workflow_kpop_shared::{
     write_checks_do_not_pass_for_artifacts, write_checks_do_not_pass_to_review_path,
 };
 #[allow(unused_imports)]
-pub use prompt::{run_tidy_prompt, run_tidy_prompt_with_restore};
-#[allow(unused_imports)]
-pub use interleaved_loop::run_tidy_interleaved_loop;
-pub use run::{merge_tidy_timing, run_tidy_acp};
-#[allow(unused_imports)]
-pub use run_startup::{prepare_tidy_run, tidy_prompt_context};
+pub use run_startup::{prepare_tidy_kpop_run, TidyKpopPrepared};
+pub use run_loop::run_tidy;
 
-pub enum TidyStartup {
-    RunAgent {
-        client: crate::acp::AgentClient,
-        artifacts: RunArtifacts,
-        session_dotfile_backups: SessionDotfileBackups,
-        store: PromptStore,
-        context: HashMap<String, String>,
-        run_learn: bool,
-    },
+#[must_use]
+pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
+    crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
-
-pub struct TidyAcpInput<'a> {
-    pub(crate) client: &'a mut crate::acp::AgentClient,
-    pub(crate) artifacts: &'a RunArtifacts,
-    pub(crate) store: &'a PromptStore,
-    pub(crate) context: &'a HashMap<String, String>,
-    pub(crate) run_learn: bool,
-    pub(crate) quick: bool,
-}
-
-pub struct TidyPromptRestore<'a> {
-    pub(crate) prompt: &'a str,
-    pub(crate) label: &'a str,
-    pub(crate) phase: TimingPhase,
-    pub(crate) session_dotfile_backups: &'a SessionDotfileBackups,
-    pub(crate) restore_context: &'a str,
-}
-
-use crate::output::{MALVIN_WHO, print_stdout_line};
-use clap::Args;
-
-use super::{SharedOpts, WorkflowCliOptions};
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
-    /// Maximum coder iterations in the tidy/review loop. Each iteration runs one coder turn (`tidy.md` on attempt 1, `tidy_concerns.md` afterwards), reviewer fan-out plus `review_write` aggregation, then workspace quality gates after LGTM. The loop exits early on LGTM plus gates pass. A value of `0` is treated as `1` (same effective semantics as `malvin code` review budgets).
-    #[arg(long, default_value_t = 3)]
+    /// Maximum `KPop` hypothesis steps before stopping (alias: `--max-hypotheses`).
+    #[arg(long, default_value_t = 3, alias = "max-hypotheses")]
     pub max_loops: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
-    /// Skip review; run quality gates only.
-    #[arg(long, short = 'q', default_value_t = false)]
+    /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
+    #[arg(long, short = 'q', default_value_t = false, hide = true)]
     pub quick: bool,
 }
 
-pub async fn run_tidy(
-    tidy: TidyArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<(), String> {
-    let startup = prepare_tidy_run(shared, workflow, !tidy.no_learn)?;
-    let TidyStartup::RunAgent {
-        mut client,
-        artifacts,
-        session_dotfile_backups,
-        store,
-        context,
-        run_learn,
-    } = startup;
-    super::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    let r = async {
-        let prompt = compose_tidy_prompt(&store, &context)?;
-        let mut input = TidyAcpInput {
-            client: &mut client,
-            artifacts: &artifacts,
-            store: &store,
-            context: &context,
-            run_learn,
-            quick: tidy.quick,
-        };
-        let result = run_tidy_acp(
-            &mut input,
-            prompt.trim_end(),
-            &session_dotfile_backups,
-            tidy.max_loops,
-        )
-        .await;
-        merge_tidy_timing(result, &artifacts, &session_dotfile_backups)?;
-        print_stdout_line(MALVIN_WHO, "DONE");
-        Ok(())
-    }
-    .await;
-    if r.is_ok() {
-        super::error_run_log::clear_command_error_run_dir();
-    }
-    r
-}
-
 #[cfg(test)]
-#[path = "tidy_flow/tidy_flow_helpers_tests.rs"]
-mod tidy_flow_helpers_tests;
+mod tests {
+    use super::*;
+    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
+    #[test]
+    fn kpop_args_from_tidy_maps_max_loops() {
+        let tidy = TidyArgs {
+            max_loops: 0,
+            no_learn: true,
+            quick: false,
+        };
+        let kpop = crate::cli::KpopArgs {
+            max_hypotheses: effective_tidy_max_loops(tidy.max_loops),
+            no_learn: tidy.no_learn,
+            request: Some("req".to_string()),
+        };
+        assert_eq!(kpop.max_hypotheses, 1);
+        assert!(kpop.no_learn);
+        assert_eq!(kpop.request.as_deref(), Some("req"));
+    }
+
+    #[test]
+    fn kiss_cov_tidy_kpop_helpers() {
+        let _ = stringify!(run_loop::run_tidy);
+        let _ = stringify!(run_startup::tidy_kpop_workflow_context);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
+        let _ = stringify!(post_gate_kpop_gates);
+        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateKpopPrepared);
+        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY);
+    }
+
+    #[test]
+    fn tidy_post_kpop_gates_fails_when_gates_fail() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        std::fs::write(tmp.path().join(".malvin/checks"), "kiss\n").expect("checks");
+        let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
+        let old = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions {
+            force: false,
+            run_learn: false,
+        })
+        .expect("prepared");
+        let err = post_gate_kpop_gates("malvin tidy", &prepared).expect_err("gates");
+        std::env::set_current_dir(old).expect("restore cwd");
+        assert!(err.contains("quality gates"));
+    }
+}

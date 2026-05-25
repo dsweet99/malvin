@@ -2,7 +2,6 @@
 
 mod attempt;
 
-pub(crate) use attempt::read_nonempty_review;
 pub use attempt::{read_artifact_review_for_fanout_attempt, sync_review_file_for_attempt};
 
 #[must_use]

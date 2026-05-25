@@ -8,7 +8,6 @@ use crate::output::stdout_heartbeat::{
 use crate::output::{
     enable_stdout_capture, take_captured_stdout, write_heartbeat_log_line, MALVIN_WHO,
     format_log_tag_inner, is_log_timestamp_token, set_stdout_log_path,
-    stdout_tagged_display_and_log_line,
 };
 
 use crate::output::log_contains_heartbeat;
@@ -16,7 +15,7 @@ use crate::output::log_contains_heartbeat;
 use super::stdout_heartbeat_test_support::heartbeat_test_guards;
 
 fn heartbeat_lines_at(ts: &str) -> (String, String) {
-    stdout_tagged_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some(ts))
+    crate::output::stdout_heartbeat_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some(ts))
 }
 
 fn emit_heartbeat_at(ts: &str) {

@@ -14,7 +14,7 @@ impl MtStubPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_pure(&mut self) -> Result<String, String> {
+    pub fn mbc2_turn(&mut self) -> Result<String, String> {
         Ok("stub mbc2".into())
     }
 }
@@ -33,7 +33,7 @@ impl EchoPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_pure(&mut self) -> Result<String, String> {
+    pub fn mbc2_turn(&mut self) -> Result<String, String> {
         Ok("M".into())
     }
 }
@@ -63,7 +63,7 @@ impl CaptureWants {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_pure(&mut self) -> Result<String, String> {
+    pub fn mbc2_turn(&mut self) -> Result<String, String> {
         Ok("stub mbc2".into())
     }
 }

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, NaiveDateTime, Utc};
 
-use crate::output::print_log_warning;
+use crate::output::{MALVIN_WHO, print_log_warning, print_stdout_line};
 use crate::workspace_paths::malvin_logs_root;
 
 pub use crate::log_gc_config::{load_logs_gc_config, LogsGcConfig};
@@ -65,7 +65,10 @@ pub fn prune_logs_before_run(work_dir: &Path) {
     run_dirs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let (removed, freed) = prune_run_dirs(&mut run_dirs, &config);
     if removed > 0 {
-        eprintln!("[malvin] pruned {removed} run log(s) (~{} freed)", format_freed(freed));
+        print_stdout_line(
+            MALVIN_WHO,
+            &format!("pruned {removed} run log(s) (~{} freed)", format_freed(freed)),
+        );
     }
 }
 

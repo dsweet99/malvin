@@ -25,14 +25,6 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
 }
 
 #[test]
-fn global_no_markdown_before_bug_subcommand() {
-    let cli =
-        Cli::try_parse_from(["malvin", "--no-markdown", "hunt", "--no-learn"]).expect("parse");
-    assert!(cli.shared.no_markdown);
-    assert!(matches!(cli.command, Some(crate::cli::Commands::Hunt(_))));
-}
-
-#[test]
 fn do_parses_with_global_no_markdown_without_do_local_flag() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "do", "hi"]).expect("parse");
     assert!(cli.shared.no_markdown);
@@ -63,48 +55,4 @@ fn models_parses_with_global_no_markdown() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "models"]).expect("parse");
     assert!(cli.shared.no_markdown);
     assert!(matches!(cli.command, Some(crate::cli::Commands::Models(_))));
-}
-
-#[test]
-fn plan_parses_text_after_plan_path_flag() {
-    let cli = Cli::try_parse_from(["malvin", "plan", "--plan_path", "/tmp/p.md", "hello"])
-        .expect("parse");
-    match cli.command {
-        Some(crate::cli::Commands::Plan(p)) => {
-            assert_eq!(
-                p.plan_path.as_deref(),
-                Some(std::path::Path::new("/tmp/p.md"))
-            );
-            assert_eq!(p.text.as_deref(), Some("hello"));
-        }
-        _ => panic!("expected plan"),
-    }
-}
-
-#[test]
-fn plan_parses_plan_path_alias_before_text() {
-    let cli = Cli::try_parse_from(["malvin", "plan", "--plan-path", "notes/plan.md", "x"])
-        .expect("parse");
-    match cli.command {
-        Some(crate::cli::Commands::Plan(p)) => {
-            assert_eq!(
-                p.plan_path.as_ref().map(|x| x.as_os_str()),
-                Some(std::ffi::OsStr::new("notes/plan.md"))
-            );
-            assert_eq!(p.text.as_deref(), Some("x"));
-        }
-        _ => panic!("expected plan"),
-    }
-}
-
-#[test]
-fn plan_parses_without_positional() {
-    let cli = Cli::try_parse_from(["malvin", "plan"]).expect("parse");
-    match cli.command {
-        Some(crate::cli::Commands::Plan(p)) => {
-            assert!(p.plan_path.is_none());
-            assert!(p.text.is_none());
-        }
-        _ => panic!("expected plan"),
-    }
 }

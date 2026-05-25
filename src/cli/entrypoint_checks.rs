@@ -14,7 +14,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
 mod tests {
     use super::ensure_malvin_checks_for_command;
     use crate::cli::args::{DoArgs, ModelsArgs};
-    use crate::cli::{Commands, PlanArgs};
+    use crate::cli::{CodeArgs, Commands};
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_defaults_except_do_and_models() {
@@ -24,11 +24,16 @@ mod tests {
         let checks = tmp.path().join(".malvin/checks");
         assert!(!checks.exists());
 
-        ensure_malvin_checks_for_command(&Commands::Plan(PlanArgs {
-            plan_path: None,
-            text: None,
+        ensure_malvin_checks_for_command(&Commands::Code(CodeArgs {
+            max_loops: 1,
+            no_learn: false,
+            trust_the_plan: false,
+            dry_run: false,
+            skip_pre_checks: false,
+            fast: false,
+            request: None,
         }))
-        .expect("plan should materialize checks");
+        .expect("code should materialize checks");
         assert!(checks.is_file());
 
         std::fs::remove_file(&checks).expect("remove checks");

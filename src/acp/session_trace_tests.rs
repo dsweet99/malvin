@@ -53,16 +53,16 @@ async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
     let tmp = tempfile::tempdir().unwrap();
     let run_dir = tmp.path().join(".malvin/logs").join("r");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
-    append_prompts_log_uniform(Some(&run_dir), "implement", "implement.md", Some("a\nb"))
+    append_prompts_log_uniform(Some(&run_dir), "bug_fix", "bug_fix.md", Some("a\nb"))
         .await
         .unwrap();
-    append_prompts_log_uniform(Some(&run_dir), "implement", "implement.md", Some("c"))
+    append_prompts_log_uniform(Some(&run_dir), "bug_fix", "bug_fix.md", Some("c"))
         .await
         .unwrap();
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
         .await
         .unwrap();
-    assert_eq!(content.matches(">implement").count(), 3);
+    assert_eq!(content.matches(">bug_fix").count(), 3);
     assert!(content.contains("] a"));
     assert!(content.contains("] b"));
     assert!(content.contains("] c"));

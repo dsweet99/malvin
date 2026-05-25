@@ -66,7 +66,7 @@ fn spill_orphaned_pending_preserves_display_log_split() {
 fn deferred_heartbeat_visible_after_unregister_without_force_flush() {
     use std::time::{Duration, Instant};
 
-    let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
+    let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
         crate::output::MALVIN_WHO,
         "HB: 20260524.000000",
         Some("20260524.000000.000"),

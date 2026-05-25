@@ -193,20 +193,3 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     acp_mock_js("", &format!("    {body}\n{done}"))
 }
 
-#[cfg(test)]
-mod review_write_match_phrase {
-    #[test]
-    fn review_write_prompt_match_js_contains_malvin_phrase() {
-        assert!(
-            super::REVIEW_WRITE_PROMPT_MATCH_JS
-                .contains(malvin::prompts::REVIEW_WRITE_ACP_MATCH_PHRASE)
-        );
-    }
-
-    #[test]
-    fn concerns_prompt_match_js_contains_malvin_phrase() {
-        assert!(
-            super::CONCERNS_PROMPT_MATCH_JS.contains(malvin::prompts::CONCERNS_ACP_MATCH_SUBSTRING)
-        );
-    }
-}

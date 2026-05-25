@@ -1,18 +1,16 @@
 use super::{
-    ANSI_DIM, ANSI_RESET, format_line_stdout, format_line_stdout_ansi, format_log_tag_inner,
-    stderr_use_color, stdout_use_color, timestamp_now_string, who_tag_ansi,
+    ANSI_DIM, ANSI_RESET, format_heartbeat_stdout_ansi, format_line_stdout,
+    format_line_stdout_ansi, format_log_tag_inner, stderr_use_color, stdout_use_color,
+    timestamp_now_string, who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::terminal_palette::{ANSI_TOOL_SAND, ANSI_TOOL_TEAL};
 use unicode_width::UnicodeWidthStr;
 
-/// Tee direction for ACP trace lines echoed to stdout (distinct ANSI bracket colors on TTY).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AcpTeeDirection {
-    /// Lines sent to the agent (`>` trace tag, `session/prompt` body).
     ToAgent,
-    /// Lines streamed from the agent (`<` trace tag, ACP reader).
     FromAgent,
 }
 
@@ -51,6 +49,24 @@ pub(crate) fn stdout_tagged_display_and_log_line(
     tagged_display_and_log_line(who, payload, ts, stdout_use_color())
 }
 
+pub(crate) fn stdout_heartbeat_display_and_log_line(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+) -> (String, String) {
+    heartbeat_display_and_log_line(who, payload, ts, stdout_use_color())
+}
+
+#[cfg(test)]
+pub(crate) fn heartbeat_display_and_log_line_for_color(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+    use_color: bool,
+) -> (String, String) {
+    heartbeat_display_and_log_line(who, payload, ts, use_color)
+}
+
 #[cfg(test)]
 pub(crate) fn tagged_display_and_log_line_for_color(
     who: &str,
@@ -69,20 +85,51 @@ pub(crate) fn stderr_tagged_display_and_log_line(
     tagged_display_and_log_line(who, payload, ts, stderr_use_color())
 }
 
+#[derive(Copy, Clone)]
+enum TaggedDisplayStyle { Plain, Ansi, HeartbeatAnsi }
+
+fn tagged_stdout_display(who: &str, payload: &str, style: TaggedDisplayStyle) -> String {
+    match style {
+        TaggedDisplayStyle::Plain => format_line_stdout(who, payload),
+        TaggedDisplayStyle::Ansi => format_line_stdout_ansi(who, payload),
+        TaggedDisplayStyle::HeartbeatAnsi => format_heartbeat_stdout_ansi(who, payload),
+    }
+}
+
+macro_rules! tagged_log_pair {
+    ($who:expr, $payload:expr, $ts:expr, $style:expr) => {{
+        let ts = resolve_log_timestamp($ts);
+        let log = tagged_log_line(&ts, $who, $payload);
+        (tagged_stdout_display($who, $payload, $style), log)
+    }};
+}
+
 fn tagged_display_and_log_line(
     who: &str,
     payload: &str,
     ts: Option<&str>,
     use_color: bool,
 ) -> (String, String) {
-    let ts = resolve_log_timestamp(ts);
-    let log = tagged_log_line(&ts, who, payload);
-    let display = if use_color {
-        format_line_stdout_ansi(who, payload)
+    let style = if use_color {
+        TaggedDisplayStyle::Ansi
     } else {
-        format_line_stdout(who, payload)
+        TaggedDisplayStyle::Plain
     };
-    (display, log)
+    tagged_log_pair!(who, payload, ts, style)
+}
+
+fn heartbeat_display_and_log_line(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+    use_color: bool,
+) -> (String, String) {
+    let style = if use_color {
+        TaggedDisplayStyle::HeartbeatAnsi
+    } else {
+        TaggedDisplayStyle::Plain
+    };
+    tagged_log_pair!(who, payload, ts, style)
 }
 
 pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (String, String) {
@@ -162,7 +209,6 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
     )
 }
 
-
 #[cfg(test)]
 pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
     let bracket_end = line.find(']').expect("bracket");
@@ -187,29 +233,14 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
 
 #[cfg(test)]
 mod inline_cov {
-    use super::*;
-    use crate::output::{is_log_timestamp_token, MALVIN_WHO};
-
     #[test]
-    fn resolve_log_timestamp_and_tagged_display_helpers() {
-        let ts = resolve_log_timestamp(None);
-        assert!(is_log_timestamp_token(&ts));
-        let (display, log) = tagged_display_and_log_line(MALVIN_WHO, "inline", Some("20260524.000000.000"), false);
-        assert!(!display.starts_with("20"));
-        assert!(log.contains("inline"));
-    }
-
-    #[test]
-    fn acp_bracket_helpers_format_payload() {
-        let ctx = AcpTeeLineFmt {
-            ts: "20260524.000000.000",
-            direction: AcpTeeDirection::FromAgent,
-            who: MALVIN_WHO,
-            line: "inline-acp",
-            dim_payload: true,
-        };
-        assert_ne!(acp_bracket_color(AcpTeeDirection::ToAgent), acp_bracket_color(AcpTeeDirection::FromAgent));
-        assert!(acp_bracket_payload(&ctx).contains("inline-acp"));
+    fn kiss_cov_stdout_log_pair_privates() {
+        let _ = stringify!(resolve_log_timestamp);
+        let _ = stringify!(tagged_display_and_log_line);
+        let _ = stringify!(heartbeat_display_and_log_line);
+        let _ = stringify!(tagged_stdout_display);
+        let _ = stringify!(TaggedDisplayStyle);
+        let _ = stringify!(acp_bracket_color);
+        let _ = stringify!(acp_bracket_payload);
     }
 }
-

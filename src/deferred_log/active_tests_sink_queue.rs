@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 fn sink_queue_contention_fixture() -> (SharedDeferSink, String, String) {
     let shared = aged_defer_shared("sink_q_contention");
-    let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
+    let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
         crate::output::MALVIN_WHO,
         "HB: 20260524.000000",
         Some("20260524.000000.000"),

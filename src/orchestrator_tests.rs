@@ -17,7 +17,7 @@ fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::Path
 
 #[test]
 fn prompt_md_stem_strips_suffix_without_panicking_on_short_names() {
-    assert_eq!(prompt_md_stem("implement.md"), "implement");
+    assert_eq!(prompt_md_stem("bug_fix.md"), "bug_fix");
     assert_eq!(prompt_md_stem("x.md"), "x");
     assert_eq!(prompt_md_stem(""), "");
     assert_eq!(prompt_md_stem("ab"), "ab");
@@ -30,12 +30,12 @@ fn legacy_slice_stem_diverges_from_prompt_md_stem() {
         &s[..s.len().saturating_sub(3)]
     }
     assert_eq!(
-        legacy_stem("review.md"),
-        prompt_md_stem("review.md")
+        legacy_stem("bug_fix.md"),
+        prompt_md_stem("bug_fix.md")
     );
     assert_eq!(
-        legacy_stem("review_write.md"),
-        prompt_md_stem("review_write.md")
+        legacy_stem("summary.md"),
+        prompt_md_stem("summary.md")
     );
     assert_ne!(
         legacy_stem("readme.markdown"),

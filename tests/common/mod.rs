@@ -5,6 +5,7 @@ mod acp_code_fanout_mocks;
 mod acp_code_run;
 mod acp_core;
 mod acp_do;
+mod acp_tidy_kpop;
 mod child_wait;
 mod cli_parity_harness_run;
 #[cfg(all(unix, target_os = "linux"))]
@@ -22,6 +23,8 @@ mod kpop_multiturn_support;
 mod live_agent;
 mod process;
 #[cfg(unix)]
+mod code_harness;
+#[cfg(unix)]
 mod tidy_harness;
 mod workspace;
 
@@ -35,14 +38,15 @@ pub use acp_code_fanout_mocks::*;
 pub use acp_code_run::*;
 pub use acp_core::{acp_mock_js, chunk_line, *};
 pub use acp_do::*;
+pub use acp_tidy_kpop::*;
 pub use kpop_multiturn_support::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, live_agent_prereqs_met, LIVE_AGENT_CMD_TIMEOUT,
 };
-pub use process::{
-    MALVIN_TEST_CMD_TIMEOUT, PlanSpawn, command_output_with_timeout, spawn_malvin_plan,
-};
+pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
+#[cfg(unix)]
+pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,

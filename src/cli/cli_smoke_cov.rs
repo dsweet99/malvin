@@ -141,13 +141,6 @@ fn smoke_emit_command_line_writes_log() {
 }
 
 #[test]
-fn smoke_cli_parse_plan_subcommand() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "plan", "hello"]).expect("parse");
-    assert!(matches!(cli.command, Some(Commands::Plan(_))));
-}
-
-#[test]
 fn smoke_format_logs_dir_under_run_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
@@ -213,17 +206,13 @@ fn smoke_shared_opts_tee_startup_stdout() {
 }
 
 #[test]
-fn smoke_compose_tidy_prompt_includes_plan_path() {
-    use std::collections::HashMap;
+fn smoke_tidy_kpop_request_includes_constraints() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path()))
+        .expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
-    let mut ctx = HashMap::new();
-    ctx.insert(
-        "quality_gates_log".to_string(),
-        "./.malvin/logs/run/quality_gates.log".to_string(),
-    );
-    ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
-    ctx.insert("plan_path".to_string(), "./plan.md".to_string());
-    ctx.insert("advice_path".to_string(), "./.malvin/advice.md".to_string());
-    let out = super::tidy_flow::compose_tidy_prompt(&store, &ctx).expect("compose");
-    assert!(out.contains("./plan.md"));
+    store.ensure_defaults().expect("defaults");
+    let out = super::tidy_flow::tidy_kpop_request(&store, tmp.path(), &artifacts).expect("request");
+    assert!(out.contains("Just get quality gates to pass"));
+    assert!(out.contains("Satisfy all constraints"));
 }

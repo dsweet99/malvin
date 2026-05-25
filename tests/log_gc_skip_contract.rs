@@ -55,27 +55,23 @@ fn malvin_do_does_not_prune_preexisting_log_dirs() {
 }
 
 #[cfg(unix)]
-fn run_malvin_code_dry_run_in_workspace(
+fn run_malvin_code_in_workspace(
     root: &tempfile::TempDir,
     workspace: &Path,
     home: &Path,
 ) -> std::process::Output {
     use common::{
-        acp_mock_code_dry_run_check_plan_lgtm_js, command_output_with_timeout, write_fake_kiss,
-        write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+        acp_mock_code_kpop_steps_js, bin_path_with_fake_kiss, command_output_with_timeout,
+        seed_git_kiss_cargo_gate_workspace, write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
+        workspace_kiss_check_only,
     };
     use std::process::Command;
 
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    seed_git_kiss_cargo_gate_workspace(workspace);
+    workspace_kiss_check_only(workspace);
+    let path = bin_path_with_fake_kiss(root);
     let mock = root.path().join("mock-agent-acp-code-gc");
-    write_mock_executable(&mock, &acp_mock_code_dry_run_check_plan_lgtm_js());
-    write_fake_kiss(&bin_dir.join("kiss"));
-    let path = format!(
-        "{}:{}",
-        bin_dir.display(),
-        std::env::var("PATH").unwrap_or_default()
-    );
+    write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
     command_output_with_timeout(
         Command::new(env!("CARGO_BIN_EXE_malvin"))
             .current_dir(workspace)
@@ -87,9 +83,8 @@ fn run_malvin_code_dry_run_in_workspace(
                 "--no-tee",
                 "code",
                 "--no-learn",
-                "--dry-run",
-                "--skip-pre-checks",
-                "--no-tee",
+                "--max-loops",
+                "1",
                 "ship it",
             ]),
         MALVIN_TEST_CMD_TIMEOUT,
@@ -106,15 +101,19 @@ fn malvin_code_prunes_preexisting_log_dirs() {
     write_gc_config_age_only(&workspace);
     let old = seed_old_run(&workspace);
 
-    let out = run_malvin_code_dry_run_in_workspace(&root, &workspace, &home);
+    let out = run_malvin_code_in_workspace(&root, &workspace, &home);
     let combined = combined_cli_output(&out);
     assert!(
         out.status.success(),
-        "malvin code dry-run should succeed with one active run dir: {combined:?}"
+        "malvin code should succeed with one active run dir: {combined:?}"
     );
     assert!(
-        combined.contains("[malvin] pruned 1 run log(s)"),
+        combined.contains("pruned 1 run log(s)"),
         "malvin code must GC before creating run dir: {combined:?}"
+    );
+    assert!(
+        combined.contains("[malvin"),
+        "prune line must use standard malvin logger tag: {combined:?}"
     );
     assert!(!old.exists(), "malvin code must GC aged seeded run dir");
 }
