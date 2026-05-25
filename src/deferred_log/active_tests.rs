@@ -9,7 +9,7 @@ use std::time::Duration;
 fn defer_heartbeat_under_held_mutex(shared: &SharedDeferSink) {
     let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
         crate::output::MALVIN_WHO,
-        "heartbeat",
+        "HB: 20260524.000000",
         Some("20260524.000000.000"),
     );
     let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -41,7 +41,7 @@ fn heartbeat_contention_pending_len() -> usize {
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         let (display, log) = crate::output::stdout_tagged_display_and_log_line(
             crate::output::MALVIN_WHO,
-            "heartbeat",
+            "HB: 20260524.000000",
             Some("20260524.000000.000"),
         );
         crate::output::write_heartbeat_log_line(&display, &log);
@@ -57,8 +57,8 @@ fn heartbeat_contention_pending_len() -> usize {
 
 fn try_push_heartbeat_while_mutex_held(shared: &SharedDeferSink) {
     let hb = build_display_log_entry(
-        "[malvin.........] heartbeat".into(),
-        "20260524.000000.000 [malvin.........] heartbeat".into(),
+        "[malvin.........] HB: 20260524.000000".into(),
+        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
     );
     let _acp_hold = shared
         .lock()
@@ -167,9 +167,9 @@ fn try_defer_heartbeat_under_mutex_flushes_display_log_split() {
     let text = defer_heartbeat_split_log();
     let line = text
         .lines()
-        .find(|l| l.contains("heartbeat"))
+        .find(|l| l.contains("HB:"))
         .expect("heartbeat log line");
-    assert_eq!(line, "20260524.000000.000 [malvin.........] heartbeat");
+    assert!(line.contains("20260524.000000.000 [malvin.........] HB:"));
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn contention_flush_emits_one_heartbeat_to_terminal_and_log() {
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
             crate::output::MALVIN_WHO,
-            "heartbeat",
+            "HB: 20260524.000000",
             Some("20260524.000000.000"),
         );
         {
@@ -237,8 +237,8 @@ fn contention_flush_emits_one_heartbeat_to_terminal_and_log() {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .force_flush();
     });
-    assert_eq!(terminal.lines().filter(|l| l.contains("heartbeat")).count(), 1);
-    assert_eq!(log.lines().filter(|l| l.contains("heartbeat")).count(), 1);
+    assert_eq!(terminal.lines().filter(|l| l.contains("HB:")).count(), 1);
+    assert_eq!(log.lines().filter(|l| l.contains("HB:")).count(), 1);
     assert!(!terminal.starts_with("20"));
     assert!(log.lines().next().unwrap_or("").starts_with("20260524"));
 }

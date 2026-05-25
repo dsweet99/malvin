@@ -16,7 +16,7 @@ Repeat until you think you've solved the problem:
 - **Predict**: Define a falsifying test. If the hypothesis were true, what outcome would the test produce?
 - **Falsify**: Run the test. If falsified, reject the hypothesis.
 
-Log your hypotheses and test results -- as they become available -- to {{ exp_log }}.
+Log your hypotheses and test results -- as they become available -- to {{ exp_log }} (never a repo-root `./_kpop/` path). Do not write KPop logs under repo-root `./_kpop/`; use only `{{ exp_log }}`.
 
 If you get stuck and need ideas, run `malvin invent IDEAS_PROMPT`.
 

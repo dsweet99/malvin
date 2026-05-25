@@ -172,6 +172,7 @@ fn create_kpop_run_artifacts_writes_request_md() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
     assert!(art.plan_path.ends_with("request.md"));
+    assert!(art.exp_log_path().is_file());
     assert_eq!(
         std::fs::read_to_string(&art.plan_path).unwrap(),
         "kpop body"
@@ -240,3 +241,4 @@ fn is_existing_md_file_path_rejects_directory() {
     assert!(is_existing_md_file_path("notes.md").is_none());
     std::env::set_current_dir(old_cwd).unwrap();
 }
+

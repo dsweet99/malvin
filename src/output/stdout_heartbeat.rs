@@ -4,7 +4,14 @@ use std::time::{Duration, Instant};
 #[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::{MALVIN_WHO, stdout_tagged_display_and_log_line, timestamp_now_string, write_heartbeat_log_line};
+use super::{
+    MALVIN_WHO, stdout_tagged_display_and_log_line, timestamp_now_string, write_heartbeat_log_line,
+};
+use crate::time_format::heartbeat_payload_now;
+
+pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
+    log.contains("] HB:")
+}
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -41,9 +48,10 @@ pub(crate) fn heartbeat_rendered_if_due(now: Instant, arm_if_unarmed: bool) -> O
     }
     drop(guard);
     let ts = timestamp_now_string();
+    let payload = heartbeat_payload_now();
     Some(stdout_tagged_display_and_log_line(
         MALVIN_WHO,
-        "heartbeat",
+        &payload,
         Some(ts.as_str()),
     ))
 }

@@ -67,7 +67,7 @@ impl DeferredLogSink {
         self.queue.iter().any(|entry| {
             matches!(
                 &entry.payload,
-                DeferredPayload::DisplayLog { log, .. } if log.contains("] heartbeat")
+                DeferredPayload::DisplayLog { log, .. } if crate::output::is_heartbeat_log_line(log)
             )
         })
     }

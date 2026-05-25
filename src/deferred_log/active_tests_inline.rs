@@ -5,12 +5,12 @@ use crate::deferred_log::build_display_log_entry;
 fn pending_has_heartbeat_tracks_display_log_entries() {
     assert!(!pending_has_heartbeat());
     queue_pending(build_display_log_entry(
-        "[malvin.........] heartbeat".into(),
-        "20260524.000000.000 [malvin.........] heartbeat".into(),
+        "[malvin.........] HB: 20260524.000000".into(),
+        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
     ));
     assert!(pending_has_heartbeat());
     assert!(entry_is_heartbeat(
-        &build_display_log_entry("x".into(), "20260524.000000.000 [malvin.........] heartbeat".into())
+        &build_display_log_entry("x".into(), "20260524.000000.000 [malvin.........] HB: 20260524.000000".into())
     ));
     pending_entries().clear();
     assert!(!pending_has_heartbeat());
@@ -27,8 +27,8 @@ fn defer_already_has_heartbeat_sees_sink_queue() {
     sink.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push_entry(build_display_log_entry(
-            "[malvin.........] heartbeat".into(),
-            "20260524.000000.000 [malvin.........] heartbeat".into(),
+            "[malvin.........] HB: 20260524.000000".into(),
+            "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
         ));
     let has = {
         let guard = sink.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -68,7 +68,7 @@ fn deferred_heartbeat_visible_after_unregister_without_force_flush() {
 
     let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
         crate::output::MALVIN_WHO,
-        "heartbeat",
+        "HB: 20260524.000000",
         Some("20260524.000000.000"),
     );
     unsafe {
@@ -109,8 +109,8 @@ fn sync_sink_queue_heartbeat_flag_tracks_sink_queue() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push_entry(build_display_log_entry(
-            "[malvin.........] heartbeat".into(),
-            "20260524.000000.000 [malvin.........] heartbeat".into(),
+            "[malvin.........] HB: 20260524.000000".into(),
+            "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
         ));
     let cached = {
         let _hold = shared

@@ -9,7 +9,7 @@ fn sink_queue_contention_fixture() -> (SharedDeferSink, String, String) {
     let shared = aged_defer_shared("sink_q_contention");
     let (display, log_line) = crate::output::stdout_tagged_display_and_log_line(
         crate::output::MALVIN_WHO,
-        "heartbeat",
+        "HB: 20260524.000000",
         Some("20260524.000000.000"),
     );
     (shared, display, log_line)
@@ -64,11 +64,11 @@ fn try_log_under_mutex_does_not_dup_heartbeat_in_sink_queue() {
         std::env::remove_var("MALVIN_DEFER_LOG_MAX_AGE_MS");
     }
     assert_eq!(
-        terminal.lines().filter(|l| l.contains("heartbeat")).count(),
+        terminal.lines().filter(|l| l.contains("HB:")).count(),
         1
     );
     assert_eq!(
-        log.lines().filter(|l| l.contains("heartbeat")).count(),
+        log.lines().filter(|l| l.contains("HB:")).count(),
         1
     );
 }

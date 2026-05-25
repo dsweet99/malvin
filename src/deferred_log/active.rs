@@ -25,7 +25,7 @@ fn queue_pending(entry: DeferredEntry) {
 fn entry_is_heartbeat(entry: &DeferredEntry) -> bool {
     matches!(
         &entry.payload,
-        DeferredPayload::DisplayLog { log, .. } if log.contains("] heartbeat")
+        DeferredPayload::DisplayLog { log, .. } if crate::output::is_heartbeat_log_line(log)
     )
 }
 

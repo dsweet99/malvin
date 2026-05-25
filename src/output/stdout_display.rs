@@ -121,11 +121,11 @@ mod tests {
 
         init_stdout_style(true);
         let (display, _) =
-            stdout_tagged_display_and_log_line(MALVIN_WHO, "heartbeat", Some("20260524.000000.000"));
+            stdout_tagged_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some("20260524.000000.000"));
         let expected = if stdout_use_color() {
-            format_line_stdout_ansi(MALVIN_WHO, "heartbeat")
+            format_line_stdout_ansi(MALVIN_WHO, "HB: 20260524.000000")
         } else {
-            format_line_stdout(MALVIN_WHO, "heartbeat")
+            format_line_stdout(MALVIN_WHO, "HB: 20260524.000000")
         };
         assert_eq!(display, expected);
         if stdout_use_color() {
@@ -137,11 +137,11 @@ mod tests {
     fn heartbeat_ansi_display_uses_color_branch_without_tty() {
         let (display, log) = crate::output::stdout_log_pair::tagged_display_and_log_line_for_color(
             MALVIN_WHO,
-            "heartbeat",
+            "HB: 20260524.000000",
             Some("20260524.000000.000"),
             true,
         );
-        let expected = format_line_stdout_ansi(MALVIN_WHO, "heartbeat");
+        let expected = format_line_stdout_ansi(MALVIN_WHO, "HB: 20260524.000000");
         assert_eq!(display, expected);
         assert!(display.contains('\x1b'));
         assert!(!display.starts_with("20"));

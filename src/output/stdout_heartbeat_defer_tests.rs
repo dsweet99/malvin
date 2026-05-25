@@ -14,7 +14,7 @@ use crate::output::{
 use super::stdout_heartbeat_test_support::heartbeat_test_guards;
 
 fn heartbeat_lines_at(ts: &str) -> (String, String) {
-    stdout_tagged_display_and_log_line(MALVIN_WHO, "heartbeat", Some(ts))
+    stdout_tagged_display_and_log_line(MALVIN_WHO, "HB: 20260524.000000", Some(ts))
 }
 
 fn emit_heartbeat_at(ts: &str) {
@@ -114,7 +114,7 @@ fn run_deferred_write_heartbeat_log_line_test() -> (String, String) {
 fn heartbeat_defer_helpers_are_exercised() {
     let (_guard, _stdout_guard) = heartbeat_test_guards();
     let (display, log) = heartbeat_lines_at("20260524.000000.000");
-    assert!(log.contains("heartbeat"));
+    assert!(log.contains("HB:"));
     assert!(!display.starts_with("20"));
     emit_heartbeat_at("20260524.000000.001");
     let shared = defer_sink_for_test();
@@ -131,22 +131,22 @@ fn heartbeat_defer_helpers_are_exercised() {
 fn write_heartbeat_log_line_covers_deferred_and_immediate() {
     let (terminal, text) = run_deferred_write_heartbeat_log_line_test();
     let inner = format_log_tag_inner(MALVIN_WHO);
-    let heartbeat_lines: Vec<_> = text.lines().filter(|l| l.contains("heartbeat")).collect();
+    let heartbeat_lines: Vec<_> = text.lines().filter(|l| l.contains("HB:")).collect();
     assert!(!heartbeat_lines.is_empty(), "expected heartbeat log lines: {text:?}");
     for line in heartbeat_lines {
         let ts = line.split_whitespace().next().expect("timestamp");
         assert!(is_log_timestamp_token(ts));
-        assert!(line.contains(&format!("[{inner}] heartbeat")));
+        assert!(line.contains(&format!("[{inner}] HB:")));
     }
-    assert!(terminal.contains("heartbeat"));
+    assert!(terminal.contains("HB:"));
     assert!(!terminal.trim().starts_with("20"));
 }
 
 #[test]
 fn try_emit_heartbeat_if_due_hits_deferred_path() {
     let (deferred_terminal, deferred) = due_active_defer_heartbeat_render_capture();
-    assert!(deferred.contains("heartbeat"));
-    assert!(deferred_terminal.contains("heartbeat"));
+    assert!(deferred.contains("HB:"));
+    assert!(deferred_terminal.contains("HB:"));
     assert!(!deferred_terminal.trim().starts_with("20"));
 }
 
@@ -163,7 +163,7 @@ fn try_emit_heartbeat_if_due_immediate_path_still_emits() {
     let terminal = take_captured_stdout();
     set_stdout_log_path(None);
     let immediate = std::fs::read_to_string(path).unwrap_or_default();
-    assert!(immediate.contains("heartbeat"));
-    assert!(terminal.contains("heartbeat"));
+    assert!(immediate.contains("HB:"));
+    assert!(terminal.contains("HB:"));
     assert!(!terminal.trim().starts_with("20"));
 }

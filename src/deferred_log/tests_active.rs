@@ -186,7 +186,7 @@ fn wall_clock_heartbeat_log_order_follows_defer_queue_fifo() {
         finish_defer_log_test(ctx)
     };
     let queued = text.find("QUEUED_FIRST").expect("queued defer entry in stdout.log");
-    let heartbeat = text.find("heartbeat").expect("heartbeat in stdout.log");
+    let heartbeat = text.find("HB:").expect("heartbeat in stdout.log");
     assert!(
         queued < heartbeat,
         "plan FIFO: heartbeat must not land in stdout.log before older deferred entries; log={text:?}"
@@ -197,7 +197,7 @@ fn wall_clock_heartbeat_log_order_follows_defer_queue_fifo() {
 fn active_defer_session_emits_heartbeat_during_stdout_silence() {
     let text = silence_heartbeat_log_under_active_defer();
     assert!(
-        text.contains("heartbeat"),
+        text.contains("HB:"),
         "plan phase 4: heartbeats must still appear during stdout silence while defer session is active"
     );
 }

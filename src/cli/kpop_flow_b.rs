@@ -158,6 +158,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Restate the problem clearly",
             "Hypothesize",
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
+            "Do not write KPop logs under repo-root `./_kpop/`",
         ],
     );
     let mbc2 = turn.mbc2_pure().unwrap();

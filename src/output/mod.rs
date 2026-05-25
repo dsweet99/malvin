@@ -18,7 +18,7 @@ pub(crate) use stdout_defer::register_defer_stdout_hooks;
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 pub(crate) use stdout_render::{flush_stdout_rendered_line, write_heartbeat_log_line};
 pub(crate) use stdout_heartbeat::heartbeat_rendered_if_due;
-pub(crate) use stdout_heartbeat::mark_heartbeat_emitted;
+pub(crate) use stdout_heartbeat::{is_heartbeat_log_line, mark_heartbeat_emitted};
 
 pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
 
