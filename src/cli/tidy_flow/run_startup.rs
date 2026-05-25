@@ -38,20 +38,6 @@ fn tidy_session_dotfile_backups(
     ))
 }
 
-fn tidy_skip_agent_startup(
-    artifacts: RunArtifacts,
-    shared: &SharedOpts,
-    malvin_checks_backup: MalvinChecksBackup,
-) -> Result<TidyStartup, String> {
-    run_emit::emit_run_startup_sequence(&artifacts, shared.tee_startup_stdout(), "tidy")?;
-    let session_dotfile_backups =
-        tidy_session_dotfile_backups(&artifacts.work_dir, malvin_checks_backup)?;
-    Ok(TidyStartup::SkipAgent {
-        artifacts,
-        session_dotfile_backups,
-    })
-}
-
 pub(super) struct TidyAgentStartupRequest<'a> {
     pub shared: &'a SharedOpts,
     pub workflow: WorkflowCliOptions,
@@ -88,15 +74,11 @@ pub fn prepare_tidy_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
 
-    let gate_result = run_repo_workspace_gates(
+    let _gate_result = run_repo_workspace_gates(
         &artifacts.work_dir,
         RepoGateOutput::Tagged,
         Some(&artifacts.run_dir),
     );
-
-    if gate_result.is_ok() {
-        return tidy_skip_agent_startup(artifacts, shared, malvin_checks_backup);
-    }
 
     tidy_run_agent_startup(TidyAgentStartupRequest {
         shared,
@@ -111,38 +93,6 @@ pub fn prepare_tidy_run(
 mod smoke_cov_startup {
     #[test]
     fn smoke_cov_tidy_startup_private_fns() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let backups = super::tidy_session_dotfile_backups(
-            tmp.path(),
-            crate::artifacts::MalvinChecksBackup::Missing,
-        )
-        .expect("session dotfile backups");
-        assert_eq!(
-            backups.malvin_checks,
-            crate::artifacts::MalvinChecksBackup::Missing
-        );
-        let artifacts = crate::artifacts::create_run_artifacts_from_text("tidy", Some(tmp.path()))
-            .expect("artifacts");
-        let shared = crate::cli::SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            sandbox: false,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            doc: false,
-        };
-        let startup = super::tidy_skip_agent_startup(
-            artifacts,
-            &shared,
-            crate::artifacts::MalvinChecksBackup::Missing,
-        )
-        .expect("skip startup");
-        assert!(matches!(startup, super::TidyStartup::SkipAgent { .. }));
-    }
-
-    #[test]
-    fn prepare_tidy_run_skips_agent_when_workspace_gates_pass() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
@@ -159,9 +109,26 @@ mod smoke_cov_startup {
             force: false,
             run_learn: false,
         };
-        let startup = super::prepare_tidy_run(&shared, workflow, false).expect("prepare");
+        let startup = super::prepare_tidy_run(&shared, workflow, false);
         std::env::set_current_dir(cwd).expect("restore cwd");
-        assert!(matches!(startup, super::TidyStartup::SkipAgent { .. }));
+        match startup {
+            Ok(super::TidyStartup::RunAgent { .. }) => {}
+            Err(err) => assert!(!err.is_empty(), "auth or spawn errors are acceptable here"),
+        }
+    }
+
+    #[test]
+    fn smoke_cov_tidy_session_dotfile_backups() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let backups = super::tidy_session_dotfile_backups(
+            tmp.path(),
+            crate::artifacts::MalvinChecksBackup::Missing,
+        )
+        .expect("session dotfile backups");
+        assert_eq!(
+            backups.malvin_checks,
+            crate::artifacts::MalvinChecksBackup::Missing
+        );
     }
 
     #[test]

@@ -1,3 +1,4 @@
+use super::trace_plain_tee::print_plain_tee_wrapped_line;
 use crate::acp::trace_line_write::TraceTeeStdoutCtx;
 use crate::acp::{PromptTraceWriter, SessionUpdateChunkKind};
 use crate::deferred_log::{
@@ -31,21 +32,6 @@ fn tee_sink_meta(writer: &PromptTraceWriter, ts: &str) -> TeeSinkMeta {
         who: writer.who.clone(),
         ts: ts.to_string(),
         emit_stdout_markdown: writer.emit_stdout_markdown,
-    }
-}
-
-fn print_tee_unprefixed_wrapped_line(line: &str, ts: &str) {
-    let (max_payload, wrap) = crate::output::terminal_wrap::line_wrap_for_prefix_len(
-        0,
-        line,
-        crate::output::terminal_wrap::stdout_allows_log_word_wrap(),
-    );
-    if !wrap {
-        crate::output::print_stdout_raw_line_with_ts(line, Some(ts));
-        return;
-    }
-    for seg in crate::output::terminal_wrap::wrap_words_bounded(max_payload, line) {
-        crate::output::print_stdout_raw_line_with_ts(&seg, Some(ts));
     }
 }
 
@@ -213,10 +199,11 @@ pub(crate) fn trace_tee_stdout_line(
         return;
     }
     if writer.plain_lines || writer.raw_output {
-        if writer.deferred_sink.is_some() {
+        let styled_plain = writer.plain_lines && writer.emit_stdout_markdown && !writer.raw_output;
+        if writer.deferred_sink.is_some() && !styled_plain {
             defer_raw_wrapped_lines(writer, line, ctx.ts);
         } else {
-            print_tee_unprefixed_wrapped_line(line, ctx.ts);
+            print_plain_tee_wrapped_line(line, ctx.ts, styled_plain);
         }
         return;
     }

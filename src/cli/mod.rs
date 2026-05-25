@@ -9,6 +9,7 @@ pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
 mod entrypoint;
+mod entrypoint_checks;
 pub(crate) mod error_run_log;
 mod exit;
 mod kpop_flow;

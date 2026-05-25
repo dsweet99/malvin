@@ -17,14 +17,15 @@ pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 pub(crate) use stdout_render::{flush_stdout_rendered_line, write_heartbeat_log_line};
-pub(crate) use stdout_heartbeat::heartbeat_rendered_if_due;
-pub(crate) use stdout_heartbeat::{is_heartbeat_log_line, mark_heartbeat_emitted};
+pub(crate) use stdout_heartbeat::{
+    heartbeat_rendered_if_due, is_heartbeat_log_line, log_contains_heartbeat, mark_heartbeat_emitted,
+};
 
-pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
+pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi, logical_lines};
 
 #[cfg(test)]
 pub(crate) use stdout_heartbeat::{
-    poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
+    heartbeat_log_offset, poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
     test_set_last_heartbeat_elapsed, HEARTBEAT_TEST_LOCK,
 };
 
@@ -242,9 +243,4 @@ pub fn is_command_prelude_line(line: &str) -> bool {
         return false;
     }
     payload_after_fixed_width_bracket_tag(rest).is_some_and(|payload| payload.starts_with(CMD))
-}
-
-pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
-    text.split_inclusive('\n')
-        .map(|part| part.strip_suffix('\n').unwrap_or(part))
 }

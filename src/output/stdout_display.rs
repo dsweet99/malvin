@@ -4,6 +4,11 @@ use super::{ANSI_RESET, format_log_tag_inner, wrap_words_bounded};
 pub(crate) use super::who_tag_ansi;
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
 
+pub(crate) fn logical_lines(text: &str) -> impl Iterator<Item = &str> {
+    text.split_inclusive('\n')
+        .map(|part| part.strip_suffix('\n').unwrap_or(part))
+}
+
 #[must_use]
 pub fn format_line_stdout(who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
@@ -35,7 +40,7 @@ pub fn print_stdout_line(who: &str, line: &str) {
 }
 
 pub fn print_stdout_text(who: &str, text: &str) {
-    for line in super::logical_lines(text) {
+    for line in logical_lines(text) {
         print_stdout_line(who, line);
     }
 }

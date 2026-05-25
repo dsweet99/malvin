@@ -86,7 +86,7 @@ mod linux_pty {
     }
 
     #[test]
-    fn do_pty_preserves_bold_markers_without_global_no_markdown() {
+    fn do_pty_strips_bold_markers_without_global_no_markdown() {
         let out = run_do_under_script(&[]);
         assert!(
             out.status.success(),
@@ -94,8 +94,12 @@ mod linux_pty {
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
-            stdout.contains("**boldline**"),
-            "expected do stdout to preserve markdown markers (markdown off for do): {stdout:?}"
+            !stdout.contains("**boldline**"),
+            "expected do TTY stdout to render markdown (consume bold markers): {stdout:?}"
+        );
+        assert!(
+            stdout.contains("boldline"),
+            "expected bold text content on do TTY stdout: {stdout:?}"
         );
         assert!(
             !stdout.contains("\"jsonrpc\""),

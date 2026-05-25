@@ -10,7 +10,27 @@ use super::{
 use crate::time_format::heartbeat_payload_now;
 
 pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
-    log.contains("] HB:")
+    if log.contains("] HB:") {
+        return true;
+    }
+    log.split("] ")
+        .nth(1)
+        .is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
+}
+
+pub(crate) fn log_contains_heartbeat(text: &str) -> bool {
+    heartbeat_log_offset(text).is_some()
+}
+
+pub(crate) fn heartbeat_log_offset(text: &str) -> Option<usize> {
+    let mut offset = 0usize;
+    for line in text.lines() {
+        if is_heartbeat_log_line(line) {
+            return Some(offset);
+        }
+        offset += line.len() + 1;
+    }
+    None
 }
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
@@ -120,7 +140,8 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
 #[cfg(test)]
 mod inline_tests {
     use super::{
-        heartbeat_rendered_if_due, mark_heartbeat_emitted, reset_stdout_heartbeat_for_test,
+        heartbeat_log_offset, heartbeat_rendered_if_due, is_heartbeat_log_line,
+        log_contains_heartbeat, mark_heartbeat_emitted, reset_stdout_heartbeat_for_test,
         test_set_last_heartbeat_elapsed, wall_clock_poller_loop, WALL_CLOCK_POLLER_STOP,
         HEARTBEAT_POLL_INTERVAL,
     };
@@ -143,5 +164,23 @@ mod inline_tests {
         std::thread::sleep(HEARTBEAT_POLL_INTERVAL + Duration::from_millis(5));
         WALL_CLOCK_POLLER_STOP.store(true, Ordering::Relaxed);
         handle.join().expect("wall clock poller thread");
+    }
+
+    #[test]
+    fn heartbeat_line_detectors_cover_legacy_and_new_payloads() {
+        assert!(is_heartbeat_log_line(
+            "20260524.000000.000 [malvin.........] HB: 20260524.000000"
+        ));
+        assert!(is_heartbeat_log_line(
+            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+        ));
+        assert!(log_contains_heartbeat(
+            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+        ));
+        assert!(!log_contains_heartbeat("plain agent line"));
+        assert_eq!(
+            heartbeat_log_offset("QUEUED\n20260524.000000.000 [malvin.........] 20260524.000000 Still alive."),
+            Some(7)
+        );
     }
 }

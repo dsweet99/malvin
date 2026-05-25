@@ -21,6 +21,8 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     }
 }
 
+use super::entrypoint_checks::ensure_malvin_checks_for_command;
+
 pub fn print_command_error(message: &str) {
     use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
     use crate::repo_checks::{
@@ -91,6 +93,10 @@ pub fn entrypoint_from(
     }
     let command = cli.command.expect("subcommand when not --doc-only");
     if let Err(e) = require_kiss_for_cli_command(&command) {
+        print_command_error(&e);
+        return Exit::Failure;
+    }
+    if let Err(e) = ensure_malvin_checks_for_command(&command) {
         print_command_error(&e);
         return Exit::Failure;
     }

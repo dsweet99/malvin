@@ -8,6 +8,7 @@ use crate::output::{
     MALVIN_WHO, format_log_tag_inner, init_stdout_style, is_log_timestamp_token, print_stdout_line,
     set_stdout_log_path,
 };
+use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
 
 use super::stdout_heartbeat_test_support::{
     due_heartbeat_render_capture_test, heartbeat_test_guards,
@@ -24,7 +25,7 @@ fn heartbeat_log_line_uses_logger_timestamp_only() {
     let payload = line
         .split_once(&format!("[{inner}] "))
         .map_or("", |(_, rest)| rest);
-    assert!(payload.starts_with("HB: "));
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(&format!("[{inner}] {payload}")));
     assert!(!terminal.trim().starts_with("20"));
     assert!(!terminal.is_empty());
@@ -47,8 +48,14 @@ fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
-    assert!(text.contains("HB:"));
-    assert!(terminal.contains("HB:"));
+    let inner = format_log_tag_inner(MALVIN_WHO);
+    let payload = text
+        .lines()
+        .next()
+        .and_then(|line| line.split_once(&format!("[{inner}] ")))
+        .map_or("", |(_, rest)| rest);
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload));
+    assert!(terminal.contains(payload));
     assert!(!terminal.trim().starts_with("20"));
     if crate::output::stdout_use_color() {
         assert!(terminal.contains('\x1b'));
@@ -74,8 +81,14 @@ fn try_emit_heartbeat_if_due_immediate_when_no_active_sink() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
-    assert!(text.contains("HB:"));
-    assert!(terminal.contains("HB:"));
+    let inner = format_log_tag_inner(MALVIN_WHO);
+    let payload = text
+        .lines()
+        .next()
+        .and_then(|line| line.split_once(&format!("[{inner}] ")))
+        .map_or("", |(_, rest)| rest);
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload));
+    assert!(terminal.contains(payload));
     assert!(!terminal.trim().starts_with("20"));
 }
 
@@ -86,7 +99,13 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         poll_wall_clock_heartbeat_if_due();
     });
-    assert!(text.contains("HB:"));
-    assert!(terminal.contains("HB:"));
+    let inner = format_log_tag_inner(MALVIN_WHO);
+    let payload = text
+        .lines()
+        .next()
+        .and_then(|line| line.split_once(&format!("[{inner}] ")))
+        .map_or("", |(_, rest)| rest);
+    assert!(heartbeat_payload_has_wall_clock_prefix(payload));
+    assert!(terminal.contains(payload));
     assert!(!terminal.trim().starts_with("20"));
 }

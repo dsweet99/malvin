@@ -49,6 +49,7 @@ pub(crate) use coalesce_trace::*;
 
 #[path = "trace_line_write_tee.rs"]
 mod trace_line_write_tee;
+mod trace_plain_tee;
 #[cfg(test)]
 pub(crate) use trace_line_write_tee::format_styled_tool_summary_tee_line;
 #[path = "trace_line_write_tool_summary.rs"]

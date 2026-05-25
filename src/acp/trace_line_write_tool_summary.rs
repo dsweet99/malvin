@@ -98,7 +98,7 @@ pub(crate) async fn write_tool_summary_trace_line(
         },
     )
     .await;
-    if !tee_stdout || trace_file.raw_output {
+    if !tee_stdout || trace_file.raw_output || trace_file.plain_lines {
         return true;
     }
     let tee_plain = summary

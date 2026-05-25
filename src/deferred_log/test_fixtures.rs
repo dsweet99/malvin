@@ -116,3 +116,38 @@ pub fn capture_stdout_render(run: impl FnOnce()) -> (String, String) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     capture_stdout_render_unlocked(run)
 }
+
+pub struct DeferLogTestCtx {
+    pub tmp: tempfile::TempDir,
+    pub stdout_guard: std::sync::MutexGuard<'static, ()>,
+    pub heartbeat_guard: std::sync::MutexGuard<'static, ()>,
+    pub log_path: PathBuf,
+    pub shared: SharedDeferSink,
+}
+
+pub fn defer_log_test_ctx(aged: bool) -> DeferLogTestCtx {
+    let stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let heartbeat_guard = crate::output::HEARTBEAT_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::reset_stdout_heartbeat_for_test();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(log_path.clone()));
+    let shared = if aged {
+        aged_defer_shared("sess")
+    } else {
+        zero_age_defer_shared("sess")
+    };
+    super::register_active_sink(Arc::clone(&shared));
+    super::install_stdout_hooks();
+    DeferLogTestCtx {
+        tmp,
+        stdout_guard,
+        heartbeat_guard,
+        log_path,
+        shared,
+    }
+}

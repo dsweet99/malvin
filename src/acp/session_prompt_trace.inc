@@ -88,9 +88,7 @@ pub(crate) async fn open_live_prompt_trace_writer(
         stdout_replacement: prompt_stdout_replacement(meta.stdout_replacement_who),
         trace_raw_output: meta.trace_raw_output,
         show_thoughts_on_stdout: session.0.show_thoughts_on_stdout,
-        emit_stdout_markdown: session.0.emit_stdout_markdown
-            && !meta.trace_raw_output
-            && !meta.plain_lines,
+        emit_stdout_markdown: session.0.emit_stdout_markdown && !meta.trace_raw_output,
         work_dir: session.0.work_dir.clone(),
         run_timing: session.0.run_timing.clone(),
         session_id: session.0.session_id.clone(),

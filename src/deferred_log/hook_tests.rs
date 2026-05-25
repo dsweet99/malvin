@@ -37,7 +37,13 @@ fn flush_heartbeat_terminal_count(shared: &SharedDeferSink) -> usize {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .force_flush();
     });
-    terminal.lines().filter(|l| l.contains("HB:")).count()
+    terminal
+        .lines()
+        .filter(|l| {
+            l.contains("HB:")
+                || l.split("] ").nth(1).is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
+        })
+        .count()
 }
 
 fn emit_rendered_due_heartbeat() {
@@ -169,4 +175,11 @@ fn unlocked_double_write_heartbeat_enqueues_one_heartbeat() {
     let count = flush_heartbeat_terminal_count(&shared);
     unregister_active_sink();
     assert_eq!(count, 1);
+}
+
+#[test]
+fn defer_log_test_ctx_builds_active_session() {
+    let ctx = super::test_fixtures::defer_log_test_ctx(false);
+    assert!(ctx.log_path.ends_with("stdout.log"));
+    drop(ctx);
 }
