@@ -1,0 +1,7 @@
+[logs]
+# Delete runs older than this many days (dirname timestamp, else mtime).
+max_age_days = 90
+# Keep at most this many run directories (newest first).
+max_runs = 100
+# Cap total size of .malvin/logs/ (B, KiB, MiB, GiB, TiB).
+max_bytes = "2GiB"
