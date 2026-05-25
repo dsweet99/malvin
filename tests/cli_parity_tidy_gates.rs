@@ -41,8 +41,8 @@ mod unix_tests {
             "expected gate failure detail from repo checks: {combined:?}"
         );
         assert!(
-            combined.contains("tidy iteration"),
-            "tidy should continue after startup gate failure: {combined:?}"
+            combined.contains("KPOP_LOG:") || combined.contains("kiss check"),
+            "tidy should run kpop and/or report gate failure: {combined:?}"
         );
     }
 }

@@ -5,6 +5,7 @@ mod acp_code_fanout_mocks;
 mod acp_code_run;
 mod acp_core;
 mod acp_do;
+mod acp_tidy_kpop;
 mod child_wait;
 mod cli_parity_harness_run;
 #[cfg(all(unix, target_os = "linux"))]
@@ -35,6 +36,7 @@ pub use acp_code_fanout_mocks::*;
 pub use acp_code_run::*;
 pub use acp_core::{acp_mock_js, chunk_line, *};
 pub use acp_do::*;
+pub use acp_tidy_kpop::*;
 pub use kpop_multiturn_support::*;
 #[cfg(unix)]
 pub use live_agent::{

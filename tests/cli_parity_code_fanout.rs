@@ -96,15 +96,11 @@ fn review_default_prompts_are_embedded_files() {
 #[test]
 fn review_tidy_contract_tests_exist_on_disk() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for rel in [
-        "tests/tidy_bonus_attempt_index_contract.rs",
-        "tests/tidy_learn_abort_contract.rs",
-    ] {
-        assert!(
-            manifest_dir.join(rel).is_file(),
-            "missing tidy review contract test on disk: {rel}"
-        );
-    }
+    let rel = "tests/tidy_kpop_contract.rs";
+    assert!(
+        manifest_dir.join(rel).is_file(),
+        "missing tidy kpop contract test on disk: {rel}"
+    );
 }
 
 #[cfg_attr(unix, test)]

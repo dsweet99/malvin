@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_streaming_update_js, command_output_with_timeout,
+    MALVIN_TEST_CMD_TIMEOUT, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
     seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
     write_failing_gate_tools,
     write_fake_kiss, write_mock_executable,
@@ -127,7 +127,7 @@ fn malvin_tidy_runs_quality_gates_after_acp() {
     let trace = root.path().join("quality-trace.log");
     write_failing_gate_tools(&bin_dir, &trace);
     let mock = root.path().join("mock-agent-acp-tidy");
-    write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
+    write_mock_executable(&mock, &acp_mock_tidy_kpop_steps_js());
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
 

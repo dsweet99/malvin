@@ -18,7 +18,7 @@ fn sample_command_failure() -> RepoGateCommandFailure {
 #[test]
 fn wrapped_post_run_retry_error_is_classified_as_gate_failure() {
     let gate_err = repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()));
-    let wrapped = format!("post-run gates still failing after one tidy.md retry: {gate_err}");
+    let wrapped = format!("post-run gates still failing after tidy kpop session: {gate_err}");
     assert!(
         is_gate_failure_error(&wrapped),
         "tidy-retry wrapper must not break gate-failure detection; got: {wrapped:?}"
@@ -28,7 +28,7 @@ fn wrapped_post_run_retry_error_is_classified_as_gate_failure() {
 #[test]
 fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
     let wrapped = format!(
-        "post-run gates still failing after one tidy.md retry: {}",
+        "post-run gates still failing after tidy kpop session: {}",
         repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()))
     );
     let stderr = capture_stderr_output(|| print_command_error(&wrapped));
@@ -41,7 +41,7 @@ fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
         "internal gate marker must not be user-facing; got: {stderr:?}"
     );
     assert!(
-        stderr.contains("post-run gates still failing after one tidy.md retry"),
+        stderr.contains("post-run gates still failing after tidy kpop session"),
         "wrapped context should remain visible; got: {stderr:?}"
     );
     assert!(

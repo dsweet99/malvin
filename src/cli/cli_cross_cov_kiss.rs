@@ -39,10 +39,6 @@ fn smoke_cov_cli_cli_units_1a() {
     let _: Option<crate::repo_checks::RepoGateFailure> = None;
     let _ = super::run_emit::emit_run_startup_sequence;
     let _: Option<super::shared_opts::GlobalOpts> = None;
-    let _: Option<super::tidy_flow::recovery::TidyReviewAttemptOutcome> = None;
-    let _ = super::tidy_flow::recovery::run_tidy_concerns_coder_turn;
-    let _ = super::tidy_flow::recovery::tidy_fail_on_abort;
-    let _ = super::tidy_flow::recovery::tidy_review_attempt_with_retries;
 }
 
 #[test]
@@ -60,30 +56,19 @@ fn smoke_cov_cli_cli_units_1b() {
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
     let _ = super::kpop_flow::prepare_kpop_run;
-    let _: Option<super::tidy_flow::recovery::TidyRecoveryPaths> = None;
-    let _: Option<super::tidy_flow::recovery::TidyRecoveryRequest<'static>> = None;
-    let _: Option<super::tidy_flow::recovery::TidyMaxLoopsOneRecovery<'static>> = None;
 }
 
 #[test]
 fn smoke_cov_cli_cli_tidy_flow_units() {
     let _: Option<super::tidy_flow::TidyArgs> = None;
-    let _: Option<super::tidy_flow::TidyStartup> = None;
-    let _: Option<super::tidy_flow::TidyAcpInput<'static>> = None;
-    let _: Option<super::tidy_flow::TidyPromptRestore<'static>> = None;
-    let _ = super::tidy_flow::prepare_tidy_prompt_store;
-    let _ = super::tidy_flow::compose_tidy_prompt;
-    let _ = super::tidy_flow::compose_tidy_concerns_prompt;
+    let _: Option<super::tidy_flow::TidyKpopPrepared> = None;
+    let _ = super::tidy_flow::prepare_tidy_kpop_prompt_store;
+    let _ = super::tidy_flow::tidy_kpop_request;
     let _ = super::tidy_flow::write_checks_do_not_pass_to_review_path;
     let _ = super::tidy_flow::write_checks_do_not_pass_for_artifacts;
-    let _ = super::tidy_flow::run_tidy_prompt;
-    let _ = super::tidy_flow::run_tidy_prompt_with_restore;
-    let _ = super::tidy_flow::run_tidy_interleaved_loop;
-    let _ = super::tidy_flow::run_tidy_acp;
-    let _ = super::tidy_flow::merge_tidy_timing;
-    let _ = super::tidy_flow::tidy_prompt_context;
-    let _ = super::tidy_flow::prepare_tidy_run;
+    let _ = super::tidy_flow::prepare_tidy_kpop_run;
     let _ = super::tidy_flow::run_tidy;
+    let _ = super::tidy_flow::effective_tidy_max_loops;
     let _: Option<super::PlanArgs> = None;
 }
 

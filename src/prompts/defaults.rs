@@ -15,7 +15,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
     "concerns.md",
     HEADER_MD,
     "coding_rules.md",
-    "tidy_concerns.md",
+    "kpop_program.md",
 ];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
@@ -31,8 +31,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "concerns.md",
     "learn.md",
     "summary.md",
-    "tidy.md",
-    "tidy_concerns.md",
+    "kpop_program.md",
+    "tidy_constraints.md",
     "review_plan.md",
     "bug_regression_test.md",
     "bug_fix.md",
@@ -55,8 +55,8 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         "concerns.md" => Some(include_str!("../../default_prompts/concerns.md")),
         "learn.md" => Some(include_str!("../../default_prompts/learn.md")),
         "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
-        "tidy.md" => Some(include_str!("../../default_prompts/tidy.md")),
-        "tidy_concerns.md" => Some(include_str!("../../default_prompts/tidy_concerns.md")),
+        "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
+        "tidy_constraints.md" => Some(include_str!("../../default_prompts/tidy_constraints.md")),
         "review_plan.md" => Some(include_str!("../../default_prompts/review_plan.md")),
         "bug_regression_test.md" => {
             Some(include_str!("../../default_prompts/bug_regression_test.md"))
@@ -171,14 +171,13 @@ mod concerns_embed_tests {
 
     #[test]
     fn embedded_concerns_prompts_contain_acp_mock_routing_substring() {
-        for name in ["concerns.md", "tidy_concerns.md"] {
-            let s = default_file(name).unwrap_or_else(|| panic!("{name} must be embedded"));
-            assert!(
-                s.contains(CONCERNS_ACP_MATCH_SUBSTRING),
-                "acp mocks branch on {CONCERNS_ACP_MATCH_SUBSTRING:?} but {name} does not; \
-                 see tests/common/acp_core.rs and acp_code_fanout_mocks.rs"
-            );
-        }
+        let name = "concerns.md";
+        let s = default_file(name).unwrap_or_else(|| panic!("{name} must be embedded"));
+        assert!(
+            s.contains(CONCERNS_ACP_MATCH_SUBSTRING),
+            "acp mocks branch on {CONCERNS_ACP_MATCH_SUBSTRING:?} but {name} does not; \
+             see tests/common/acp_core.rs and acp_code_fanout_mocks.rs"
+        );
     }
 }
 

@@ -51,25 +51,23 @@ pub struct TidyTestSession {
 }
 
 #[cfg(test)]
-impl TidyTestSession {
-    #[must_use]
-    pub(crate) fn recovery_paths(&self) -> crate::cli::tidy_flow::recovery::TidyRecoveryPaths {
-        crate::cli::tidy_flow::recovery::TidyRecoveryPaths {
-            work_dir: self.artifacts.work_dir.clone(),
-            run_dir: self.artifacts.run_dir.clone(),
-        }
-    }
-}
-
-#[cfg(test)]
 pub fn tidy_test_session(label: &str) -> TidyTestSession {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, label).expect("write plan");
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-    let store = crate::cli::tidy_flow::prepare_tidy_prompt_store().expect("store");
-    let context = crate::workflow_context::workflow_context_paths_only(&artifacts, "tidy");
+    let workflow = crate::cli::WorkflowCliOptions {
+        force: false,
+        run_learn: false,
+    };
+    let store = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store(workflow).expect("store");
+    let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, "tidy");
+    context.insert(
+        "quality_gates".to_string(),
+        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(tmp.path())
+            .expect("gates"),
+    );
     let backups = crate::test_utils::empty_session_dotfile_backups(&artifacts.work_dir);
     TidyTestSession {
         tmp_dir: tmp,
@@ -79,33 +77,6 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
         context,
         backups,
     }
-}
-
-#[cfg(test)]
-pub fn tidy_acp_input_parts<'a>(
-    client: &'a mut crate::acp::AgentClient,
-    artifacts: &'a crate::artifacts::RunArtifacts,
-    store: &'a crate::prompts::PromptStore,
-    context: &'a std::collections::HashMap<String, String>,
-) -> crate::cli::tidy_flow::TidyAcpInput<'a> {
-    crate::cli::tidy_flow::TidyAcpInput {
-        client,
-        artifacts,
-        store,
-        context,
-        run_learn: false,
-        quick: false,
-    }
-}
-
-#[cfg(test)]
-pub fn tidy_acp_input<'a>(session: &'a mut TidyTestSession) -> crate::cli::tidy_flow::TidyAcpInput<'a> {
-    tidy_acp_input_parts(
-        &mut session.client,
-        &session.artifacts,
-        &session.store,
-        &session.context,
-    )
 }
 
 #[cfg(test)]
