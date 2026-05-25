@@ -5,7 +5,7 @@ use super::{
     ADMIN_CHECK_UNTRACKED, HOOK_CLIPPY, HOOK_KISS, HOOK_RUFF, HOOK_UNTRACKED, Language,
     PRE_COMMIT_HEADER, TPL_GITIGNORE, TPL_KISSIGNORE,
 };
-use crate::{lookup_bin_on_path, require_kiss_for_malvin};
+use crate::lookup_bin_on_path;
 
 pub(super) fn build_pre_commit_config(languages: &[Language]) -> String {
     let mut config = PRE_COMMIT_HEADER.to_string();
@@ -53,16 +53,9 @@ pub(super) fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
         "pre-commit",
         "`pre-commit` is not installed; run `pip install pre-commit`.",
     )?;
-    run_command_expect_success(
-        Command::new("pre-commit").arg("install").current_dir(root),
-        "`pre-commit install` failed.",
-    )?;
-    require_kiss_for_malvin("init")?;
-    run_command_expect_success(
-        Command::new("kiss").arg("init").current_dir(root),
-        "`kiss init` failed.",
-    )?;
-    install_git_lfs(root)?;
+    super::init_cmd_bootstrap::ensure_pre_commit_hooks(root)?;
+    super::init_cmd_bootstrap::ensure_kiss_repo_init(root)?;
+    super::init_cmd_bootstrap::ensure_git_lfs_hooks(root)?;
     create_initial_commit(root)
 }
 
@@ -120,23 +113,6 @@ pub(super) fn require_on_path(bin: &str, err: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn install_git_lfs(root: &Path) -> Result<(), String> {
-    let err = "`git lfs` is not available. Install Git LFS so `git lfs version` succeeds.";
-    let status = Command::new("git")
-        .args(["lfs", "version"])
-        .current_dir(root)
-        .status()
-        .map_err(|_| err.to_string())?;
-    if !status.success() {
-        return Err(err.to_string());
-    }
-    run_command_expect_success(
-        Command::new("git")
-            .args(["lfs", "install"])
-            .current_dir(root),
-        "`git lfs install` failed.",
-    )
-}
 
 pub(super) fn run_command_expect_success(cmd: &mut Command, err: &str) -> Result<(), String> {
     let status = cmd.status().map_err(|e| format!("{err} ({e})"))?;
@@ -176,25 +152,3 @@ pub(super) fn write_shell_script(path: &Path, contents: &str, force: bool) -> Re
     Ok(())
 }
 
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-    use std::process::Command;
-
-    #[test]
-    fn install_git_lfs_succeeds_when_git_lfs_available() {
-        let tmp = tempfile::tempdir().unwrap();
-        Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .unwrap();
-        if Command::new("git")
-            .args(["lfs", "version"])
-            .status()
-            .is_ok_and(|s| s.success())
-        {
-            install_git_lfs(tmp.path()).unwrap();
-        }
-    }
-}

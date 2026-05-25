@@ -43,6 +43,9 @@ pub(crate) const HOOK_UNTRACKED: &str = include_str!(concat!(
 #[path = "init_cmd_mid_core.rs"]
 mod init_cmd_mid_core;
 
+#[path = "init_cmd_bootstrap.rs"]
+mod init_cmd_bootstrap;
+
 #[path = "init_cmd_workspace.rs"]
 mod init_cmd_workspace;
 

@@ -85,6 +85,8 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
     let _ = stringify!(h19_thought_stdout_three_space_indent_no_brackets);
     let _ = stringify!(h20_styled_tool_summary_stdout_line_uses_brackets);
     let _ = stringify!(h21_unstyled_tool_summary_omits_brackets);
+    let _ = stringify!(h23_start_and_done_tool_summary_share_payload_brackets);
+    let _ = stringify!(crate::acp_tests::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout);
 }
 
 #[test]

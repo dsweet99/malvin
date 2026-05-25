@@ -43,6 +43,8 @@ pub(crate) mod reader_tests_trace_upgrade_plan;
 
 #[path = "../acp/kpop_stdout_logger_plan_check.rs"]
 mod kpop_stdout_logger_plan_check;
+#[path = "../acp/kpop_stdout_logger_plan_check_bracket.rs"]
+mod kpop_stdout_logger_plan_check_bracket;
 #[path = "../acp/kpop_stdout_logger_plan_check_ext.rs"]
 mod kpop_stdout_logger_plan_check_ext;
 #[path = "../acp/kpop_stdout_logger_plan_check_impl.rs"]
