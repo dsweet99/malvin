@@ -58,6 +58,8 @@ pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
 pub use user_home::user_home_dir;
 pub mod tool_summary;
+mod deferred_log;
+mod cursor_store;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{

@@ -1,9 +1,11 @@
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::{MALVIN_WHO, append_stdout_log_line, format_line_with_timestamp, timestamp_now_string};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
+
+use std::time::Duration;
 
 #[cfg(test)]
 const HEARTBEAT_POLL_INTERVAL: Duration = Duration::from_millis(10);
@@ -16,9 +18,42 @@ static WALL_CLOCK_POLLER: OnceLock<()> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static HEARTBEAT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
+fn heartbeat_log_line_if_due(now: Instant, arm_if_unarmed: bool) -> Option<String> {
+    let mut guard = LAST_HEARTBEAT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if guard.is_none() {
+        if arm_if_unarmed {
+            *guard = Some(now);
+        }
+        return None;
+    }
+    let last = guard.expect("armed heartbeat");
+    if !heartbeat_due(last, now) {
+        return None;
+    }
+    *guard = Some(now);
+    drop(guard);
+    let ts = timestamp_now_string();
+    Some(format_line_with_timestamp(&ts, MALVIN_WHO, "heartbeat"))
+}
+
+pub(crate) fn write_heartbeat_log_line(log_line: &str) {
+    if crate::deferred_log::active_defer_sink_registered() {
+        if crate::output::stdout_defer::try_defer_push_line(log_line.to_string()) {
+            return;
+        }
+    } else if crate::output::stdout_defer::try_defer_push_line(log_line.to_string()) {
+        return;
+    }
+    println!("{log_line}");
+    append_stdout_log_line(log_line);
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn emit_heartbeat_line() {
     let ts = timestamp_now_string();
-    append_stdout_log_line(&format_line_with_timestamp(&ts, MALVIN_WHO, "heartbeat"));
+    write_heartbeat_log_line(&format_line_with_timestamp(&ts, MALVIN_WHO, "heartbeat"));
 }
 
 pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
@@ -27,21 +62,10 @@ pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
 }
 
 pub(crate) fn try_emit_heartbeat_if_due(now: Instant, arm_if_unarmed: bool) {
-    let mut guard = LAST_HEARTBEAT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    match *guard {
-        None if arm_if_unarmed => {
-            *guard = Some(now);
-        }
-        None => {}
-        Some(last) if heartbeat_due(last, now) => {
-            *guard = Some(now);
-            drop(guard);
-            emit_heartbeat_line();
-        }
-        Some(_) => {}
-    }
+    let Some(log_line) = heartbeat_log_line_if_due(now, arm_if_unarmed) else {
+        return;
+    };
+    write_heartbeat_log_line(&log_line);
 }
 
 pub(crate) fn maybe_emit_stdout_heartbeat() {
@@ -86,125 +110,9 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(last);
 }
 
-#[cfg(test)]
-mod tests {
-    use std::time::{Duration, Instant};
-
-    use super::{
-        HEARTBEAT_TEST_LOCK, emit_heartbeat_line, heartbeat_due, maybe_emit_stdout_heartbeat,
-        poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
-        test_set_last_heartbeat_elapsed, try_emit_heartbeat_if_due, wall_clock_poller_loop,
-    };
-    use crate::output::{
-        MALVIN_WHO, format_log_tag_inner, init_stdout_style, is_log_timestamp_token,
-        print_stdout_line, set_stdout_log_path,
-    };
-
-    #[test]
-    fn heartbeat_helpers_smoke() {
-        let now = Instant::now();
-        assert!(!heartbeat_due(now, now));
-        let _ = try_emit_heartbeat_if_due;
-        let _ = poll_wall_clock_heartbeat_if_due;
-        let _ = wall_clock_poller_loop;
-    }
-
-    #[test]
-    fn heartbeat_log_line_uses_logger_timestamp_only() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        emit_heartbeat_line();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(&path).expect("read");
-        let inner = format_log_tag_inner(MALVIN_WHO);
-        let line = text.lines().next().expect("heartbeat line");
-        assert!(
-            is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")),
-            "stdout.log heartbeat line must start with wall-clock prefix; got {line:?}"
-        );
-        let payload = line
-            .split_once(&format!("[{inner}] "))
-            .map_or("", |(_, rest)| rest);
-        assert_eq!(payload, "heartbeat");
-    }
-
-    #[test]
-    fn heartbeat_emits_once_when_interval_not_elapsed() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        reset_stdout_heartbeat_for_test();
-        test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        maybe_emit_stdout_heartbeat();
-        maybe_emit_stdout_heartbeat();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(path).expect("read");
-        assert_eq!(
-            text.matches('[').count(),
-            1,
-            "expected one heartbeat: {text:?}"
-        );
-    }
-
-    #[test]
-    fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        reset_stdout_heartbeat_for_test();
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        print_stdout_line("u", "payload");
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(path).expect("read");
-        assert!(
-            !text.contains(&format!("[{MALVIN_WHO}]")),
-            "first stdout line should not be preceded by an immediate heartbeat: {text:?}"
-        );
-        assert!(
-            text.contains("] payload"),
-            "expected tagged payload in log: {text:?}"
-        );
-    }
-
-    #[test]
-    fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        reset_stdout_heartbeat_for_test();
-        test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        init_stdout_style(true);
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        poll_wall_clock_heartbeat_if_due();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(&path).unwrap_or_default();
-        let inner = format_log_tag_inner(MALVIN_WHO);
-        assert!(
-            text.contains(&format!("[{inner}] heartbeat")),
-            "expected wall-clock heartbeat during stdout silence: {text:?}"
-        );
-    }
+pub(crate) fn heartbeat_log_line_for_defer_sink(
+    now: Instant,
+    arm_if_unarmed: bool,
+) -> Option<String> {
+    heartbeat_log_line_if_due(now, arm_if_unarmed)
 }

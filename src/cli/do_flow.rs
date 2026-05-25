@@ -8,7 +8,8 @@ use crate::artifacts::{
     resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, build_agent};
+use crate::output::stdout_is_interactive;
 use crate::repo_checks;
 use crate::run_timing::TimingPhase;
 use clap::Args;
@@ -44,6 +45,11 @@ fn new_do_client(
     workflow: WorkflowCliOptions,
     thoughts: bool,
 ) -> crate::acp::AgentClient {
+    if stdout_is_interactive() {
+        let mut client = build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
+        client.io.show_thoughts_on_stdout = thoughts;
+        return client;
+    }
     crate::acp::AgentClient::new(
         shared.model.clone(),
         agent_io_options(

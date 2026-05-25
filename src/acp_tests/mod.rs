@@ -46,3 +46,6 @@ mod kpop_stdout_logger_plan_helpers;
 
 #[path = "../acp/cursor_credentials_tests.rs"]
 mod cursor_credentials_tests;
+
+#[path = "../acp/deferred_log_plan_regression.rs"]
+mod deferred_log_plan_regression;

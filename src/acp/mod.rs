@@ -7,6 +7,12 @@ mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
 mod session_types;
 
+#[path = "prompt_trace_writer.rs"]
+mod prompt_trace_writer;
+pub(crate) use prompt_trace_writer::LivePromptTraceArgs;
+#[cfg(test)]
+pub(crate) use prompt_trace_writer::open_kpop_timestamp_trace_writer;
+
 #[path = "wrap_handshake_types.rs"]
 mod wrap_handshake_types;
 #[path = "wrap_session_io.rs"]

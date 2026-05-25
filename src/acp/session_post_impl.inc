@@ -53,8 +53,11 @@ impl AcpSession {
     }
 
     async fn reset_prompt_inflight(&self) {
+        let writer = self.0.trace_writer.lock().await.take();
+        if let Some(mut w) = writer {
+            w.flush_deferred();
+        }
         self.0.busy.store(false, Ordering::SeqCst);
-        *self.0.trace_writer.lock().await = None;
         self.0.prompt_rpc_id.store(0, Ordering::SeqCst);
         if let Some(n) = &self.0.ui_idle_notify {
             n.notify_waiters();
@@ -126,21 +129,22 @@ impl AcpSession {
                 do_split_outgoing_trace_preamble(self, &mut file, split).await?
             }
         };
-        *self.0.trace_writer.lock().await = Some(PromptTraceWriter {
-            file,
-            who: meta.incoming_tag,
-            plain_lines: meta.plain_lines,
-            stdout_replacement: prompt_stdout_replacement(meta.stdout_replacement_who),
-            placeholder_emitted: false,
-            raw_output: meta.trace_raw_output,
-            show_thoughts_on_stdout: self.0.show_thoughts_on_stdout,
-            emit_stdout_markdown: self.0.emit_stdout_markdown
-                && !meta.trace_raw_output
-                && !meta.plain_lines,
-            iterable_closed_warned: false,
-            work_dir: self.0.work_dir.clone(),
-            run_timing: self.0.run_timing.clone(),
-        });
+        *self.0.trace_writer.lock().await = Some(PromptTraceWriter::for_live_prompt(
+            LivePromptTraceArgs {
+                file,
+                who: meta.incoming_tag,
+                plain_lines: meta.plain_lines,
+                stdout_replacement: prompt_stdout_replacement(meta.stdout_replacement_who),
+                trace_raw_output: meta.trace_raw_output,
+                show_thoughts_on_stdout: self.0.show_thoughts_on_stdout,
+                emit_stdout_markdown: self.0.emit_stdout_markdown
+                    && !meta.trace_raw_output
+                    && !meta.plain_lines,
+                work_dir: self.0.work_dir.clone(),
+                run_timing: self.0.run_timing.clone(),
+                session_id: self.0.session_id.clone(),
+            },
+        ));
         self.0.busy.store(true, Ordering::SeqCst);
 
         let id = self.0.next_id.fetch_add(1, Ordering::SeqCst);

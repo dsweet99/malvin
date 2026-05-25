@@ -24,10 +24,15 @@ pub use ansi::tool_summary_stdout_display;
 #[allow(unused_imports)]
 pub(crate) use human_b::relativize_tool_path;
 #[allow(unused_imports)]
-pub(crate) use parse::{json_number, parse_tool_update, tool_phase_label};
+pub(crate) use parse::{json_number, parse_tool_update, tool_phase_label, LineRange, ParsedToolUpdate};
+#[allow(unused_imports)]
+pub(crate) use parse_acp::acp_line_range_field;
+#[allow(unused_imports)]
+pub(crate) use human_a_done::{human_done_line, human_read_done};
+#[allow(unused_imports)]
+pub(crate) use types::TOOL_PHASE_DONE;
 
-use parse::ParsedToolUpdate;
-use types::{ToolCallRecord, TOOL_PHASE_DONE};
+use types::ToolCallRecord;
 use format::format_tool_line;
 use human_a::format_tool_stdout;
 

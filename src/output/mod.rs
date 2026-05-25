@@ -3,13 +3,25 @@
 mod acp_tee;
 mod acp_tee_markdown;
 mod stderr_log;
+mod stdout_defer;
 mod stdout_display;
 mod stdout_heartbeat;
 pub(crate) mod stdout_log_pair;
 pub(crate) mod terminal_wrap;
 
+pub(crate) use stdout_defer::register_defer_stdout_hooks;
+#[allow(unused_imports)]
+pub(crate) use stdout_defer::{try_defer_push_line, try_defer_tagged_stdout};
 pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
-pub(crate) use stdout_heartbeat::maybe_emit_stdout_heartbeat;
+pub(crate) use stdout_heartbeat::{
+    heartbeat_log_line_for_defer_sink, maybe_emit_stdout_heartbeat,
+};
+
+#[cfg(test)]
+pub(crate) use stdout_heartbeat::{
+    poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
+    test_set_last_heartbeat_elapsed, HEARTBEAT_TEST_LOCK,
+};
 
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
@@ -29,6 +41,8 @@ mod acp_tee_termimad_tests;
 mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
+#[cfg(test)]
+mod stdout_heartbeat_tests;
 #[cfg(test)]
 mod stdout_log_tests;
 
@@ -156,6 +170,12 @@ pub(crate) fn stdout_use_color() -> bool {
     log_use_color() && stdout().is_terminal()
 }
 
+/// True when agent stdout should use the styled logging formatter (TTY, not piped).
+#[must_use]
+pub fn stdout_is_interactive() -> bool {
+    stdout().is_terminal()
+}
+
 pub(crate) fn stderr_use_color() -> bool {
     log_use_color() && std::io::stderr().is_terminal()
 }
@@ -178,6 +198,9 @@ pub(crate) fn append_stdout_log_line(line: &str) {
 }
 
 pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
+    if stdout_defer::try_defer_tagged_stdout(display, log) {
+        return;
+    }
     maybe_emit_stdout_heartbeat();
     println!("{display}");
     append_stdout_log_line(log);

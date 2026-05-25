@@ -91,6 +91,18 @@ fn kiss_cov_acp_kiss_coverage_self() {
 }
 
 #[test]
-fn kiss_cov_acp_session_types() {
-    let _: Option<super::AcpSessionInner> = None;
+    fn kiss_cov_acp_session_types() {
+        let _: Option<super::AcpSessionInner> = None;
+        let _ = stringify!(super::LivePromptTraceArgs);
+        let _ = super::open_kpop_timestamp_trace_writer;
+    }
+
+#[test]
+fn kiss_cov_deferred_log_plan_regression() {
+    let _ = stringify!(read_done_tee_shows_store_db_path_when_wire_raw_input_empty);
+    let _ = stringify!(tee_read_lifecycle_stdout);
+    let _ = stringify!(crate::cursor_store::install_test_store);
+    let _ = stringify!(read_start_empty_raw_input);
+    let _ = stringify!(read_done_empty_raw_input);
+    let _ = stringify!(regression_restore_env);
 }

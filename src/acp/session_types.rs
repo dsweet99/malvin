@@ -31,6 +31,11 @@ pub struct PromptTraceWriter {
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    /// ACP session id for Cursor `store.db` enrichment (mirrors the sink session).
+    #[allow(dead_code)]
+    pub session_id: String,
+    /// Deferred stdout sink; `None` when disabled or in tests that emit immediately.
+    pub deferred_sink: Option<crate::deferred_log::SharedDeferSink>,
 }
 
 #[allow(clippy::struct_excessive_bools)]

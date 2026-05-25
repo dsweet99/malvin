@@ -207,6 +207,17 @@ fn timestamp_now_string_cross_module_smoke() {
 }
 
 #[test]
+fn defer_stdout_hooks_smoke() {
+    let _ = crate::output::stdout_defer::register_defer_stdout_hooks;
+    let _ = crate::output::try_defer_tagged_stdout;
+    let _ = crate::output::try_defer_push_line;
+    let _ = crate::output::heartbeat_log_line_for_defer_sink;
+    let _ = crate::output::heartbeat_log_line_for_defer_sink(std::time::Instant::now(), true);
+    let _ = crate::output::try_defer_tagged_stdout("a", "b");
+    let _ = crate::output::try_defer_push_line("line".to_string());
+}
+
+#[test]
 fn output_timestamp_wrapper_nonempty() {
     let _ = crate::stdout_log_path::set_stdout_log_path;
     let _ = super::stdout_use_color;

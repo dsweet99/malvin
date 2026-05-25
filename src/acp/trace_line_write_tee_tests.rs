@@ -22,6 +22,8 @@ fn trace_writer() -> PromptTraceWriter {
         iterable_closed_warned: false,
         work_dir: dir.path().to_path_buf(),
         run_timing: None,
+        session_id: String::new(),
+        deferred_sink: None,
     }
 }
 
