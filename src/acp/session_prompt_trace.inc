@@ -65,3 +65,35 @@ pub(crate) async fn do_split_outgoing_trace_preamble<'a>(
     })
 }
 
+pub(crate) async fn open_live_prompt_trace_writer(
+    session: &AcpSession,
+    text: &str,
+    trace_path: &Path,
+    trace: OutgoingPromptTrace<'_>,
+) -> Result<PromptTraceWriter, String> {
+    trace_prepare_file(trace_path).await?;
+    let mut file = trace_open_truncated(trace_path).await?;
+    let meta = match &trace {
+        OutgoingPromptTrace::Uniform(u) => {
+            uniform_outgoing_trace_preamble(session, &mut file, text, u).await?
+        }
+        OutgoingPromptTrace::DoSplit(split) => {
+            do_split_outgoing_trace_preamble(session, &mut file, split).await?
+        }
+    };
+    Ok(PromptTraceWriter::for_live_prompt(LivePromptTraceArgs {
+        file,
+        who: meta.incoming_tag,
+        plain_lines: meta.plain_lines,
+        stdout_replacement: prompt_stdout_replacement(meta.stdout_replacement_who),
+        trace_raw_output: meta.trace_raw_output,
+        show_thoughts_on_stdout: session.0.show_thoughts_on_stdout,
+        emit_stdout_markdown: session.0.emit_stdout_markdown
+            && !meta.trace_raw_output
+            && !meta.plain_lines,
+        work_dir: session.0.work_dir.clone(),
+        run_timing: session.0.run_timing.clone(),
+        session_id: session.0.session_id.clone(),
+    }))
+}
+

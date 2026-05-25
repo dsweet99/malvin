@@ -28,6 +28,19 @@ impl PromptRoundHealth {
             self.record_agent_chunk(update);
             return;
         }
+        self.record_completed_tool_call(update);
+    }
+
+    fn record_silent_shell_completion(&mut self, update: &serde_json::Map<String, Value>, raw: &serde_json::Map<String, Value>) {
+        if update.get("kind").and_then(|v| v.as_str()) == Some("execute")
+            && raw.get("exitCode").and_then(serde_json::Value::as_u64) == Some(0)
+            && raw_output_text_empty(raw)
+        {
+            self.silent_shell_completions = self.silent_shell_completions.saturating_add(1);
+        }
+    }
+
+    fn record_completed_tool_call(&mut self, update: &serde_json::Map<String, Value>) {
         if update.get("sessionUpdate").and_then(|v| v.as_str()) != Some("tool_call_update") {
             return;
         }
@@ -41,12 +54,7 @@ impl PromptRoundHealth {
             self.record_tool_error(err, update);
             return;
         }
-        if update.get("kind").and_then(|v| v.as_str()) == Some("execute")
-            && raw.get("exitCode").and_then(serde_json::Value::as_u64) == Some(0)
-            && raw_output_text_empty(raw)
-        {
-            self.silent_shell_completions = self.silent_shell_completions.saturating_add(1);
-        }
+        self.record_silent_shell_completion(update, raw);
     }
 
     fn record_agent_chunk(&mut self, update: &serde_json::Map<String, Value>) {
@@ -93,13 +101,6 @@ impl PromptRoundHealth {
     #[must_use]
     pub const fn agent_streamed_kpop_solved(&self) -> bool {
         self.agent_streamed_kpop_solved
-    }
-
-    #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.tool_errors.is_empty()
-            && self.silent_shell_completions == 0
-            && !self.agent_streamed_kpop_solved
     }
 
     #[must_use]

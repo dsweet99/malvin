@@ -45,7 +45,9 @@ impl DeferredLogSink {
 
     pub(crate) fn push_entry_inner(&mut self, entry: DeferredEntry) {
         self.queue.push_back(entry);
+        super::active::sync_sink_queue_heartbeat_flag(self);
         self.drain_ready();
+        super::active::sync_sink_queue_heartbeat_flag(self);
     }
 
     pub fn force_flush(&mut self) {
@@ -53,11 +55,21 @@ impl DeferredLogSink {
         while let Some(entry) = self.queue.pop_front() {
             emit_deferred_entry(&self.format_tool_summary_for_emit(entry));
         }
+        super::active::sync_sink_queue_heartbeat_flag(self);
     }
 
     #[cfg(test)]
     pub fn queue_len(&self) -> usize {
         self.queue.len()
+    }
+
+    pub(crate) fn queue_has_heartbeat(&self) -> bool {
+        self.queue.iter().any(|entry| {
+            matches!(
+                &entry.payload,
+                DeferredPayload::DisplayLog { log, .. } if log.contains("] heartbeat")
+            )
+        })
     }
 
     fn drain_ready(&mut self) {
@@ -197,25 +209,14 @@ pub fn build_raw_line_entry(line: String, who: String, ts: String) -> DeferredEn
     }
 }
 
-pub fn build_heartbeat_entry(log_line: String) -> DeferredEntry {
+pub fn build_display_log_entry(display: String, log: String) -> DeferredEntry {
     DeferredEntry {
         enqueued_at: Instant::now(),
         who: String::new(),
         ts: String::new(),
         emit_stdout_markdown: false,
         kind: None,
-        payload: DeferredPayload::Heartbeat { log_line },
-    }
-}
-
-pub fn build_tagged_stdout_entry(display: String, log: String) -> DeferredEntry {
-    DeferredEntry {
-        enqueued_at: Instant::now(),
-        who: String::new(),
-        ts: String::new(),
-        emit_stdout_markdown: false,
-        kind: None,
-        payload: DeferredPayload::TaggedStdout { display, log },
+        payload: DeferredPayload::DisplayLog { display, log },
     }
 }
 

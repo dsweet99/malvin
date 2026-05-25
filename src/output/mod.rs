@@ -6,16 +6,21 @@ mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_heartbeat;
+mod stdout_render;
+mod stdout_terminal;
+mod test_modules;
 pub(crate) mod stdout_log_pair;
+pub(crate) mod stdout_tee_env;
 pub(crate) mod terminal_wrap;
 
 pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
-pub(crate) use stdout_defer::{try_defer_push_line, try_defer_tagged_stdout};
+pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
+pub(crate) use stdout_render::{flush_stdout_rendered_line, write_heartbeat_log_line};
+pub(crate) use stdout_heartbeat::heartbeat_rendered_if_due;
+pub(crate) use stdout_heartbeat::mark_heartbeat_emitted;
+
 pub(crate) use stdout_display::{format_line_stdout, format_line_stdout_ansi};
-pub(crate) use stdout_heartbeat::{
-    heartbeat_log_line_for_defer_sink, maybe_emit_stdout_heartbeat,
-};
 
 #[cfg(test)]
 pub(crate) use stdout_heartbeat::{
@@ -27,6 +32,10 @@ pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
 
+pub(crate) use acp_tee::{
+    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
+};
+pub(crate) use stdout_display::flush_stdout_raw_line_with_ts;
 pub use acp_tee::{
     AcpTeeDirection, AcpTeeLineFmt, AcpTeeStdoutEvent, TermimadStdoutGate, acp_tee_display_line,
     acp_tee_log_line, format_line_acp_ansi_payload, print_stdout_acp_tee_line,
@@ -41,8 +50,6 @@ mod acp_tee_termimad_tests;
 mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
-#[cfg(test)]
-mod stdout_heartbeat_tests;
 #[cfg(test)]
 mod stdout_log_tests;
 
@@ -61,6 +68,10 @@ pub const MALVIN_WHO: &str = "malvin";
 pub const WARNING_WHO: &str = "warning";
 pub const ERROR_WHO: &str = "error";
 pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
+
+pub(crate) use stdout_terminal::print_stdout_display_line;
+#[cfg(test)]
+pub(crate) use stdout_terminal::{enable_stdout_capture, take_captured_stdout};
 
 #[cfg(test)]
 thread_local! {
@@ -170,11 +181,9 @@ pub(crate) fn stdout_use_color() -> bool {
     log_use_color() && stdout().is_terminal()
 }
 
-/// True when agent stdout should use the styled logging formatter (TTY, not piped).
-#[must_use]
-pub fn stdout_is_interactive() -> bool {
-    stdout().is_terminal()
-}
+pub use stdout_tee_env::{
+    agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive,
+};
 
 pub(crate) fn stderr_use_color() -> bool {
     log_use_color() && std::io::stderr().is_terminal()
@@ -195,15 +204,6 @@ pub(crate) fn append_stdout_log_line(line: &str) {
         .append(true)
         .open(path)
         .and_then(|mut f| writeln!(f, "{line}"));
-}
-
-pub(crate) fn print_stdout_rendered_line(display: &str, log: &str) {
-    if stdout_defer::try_defer_tagged_stdout(display, log) {
-        return;
-    }
-    maybe_emit_stdout_heartbeat();
-    println!("{display}");
-    append_stdout_log_line(log);
 }
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};

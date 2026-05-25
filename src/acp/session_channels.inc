@@ -64,23 +64,56 @@ pub struct SessionInnerAssembly {
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }
 
+#[allow(clippy::type_complexity)]
+fn session_channel_sync() -> (
+    Arc<Mutex<HashMap<u64, ResponseTx>>>,
+    Arc<AtomicBool>,
+    Arc<AtomicU64>,
+    Arc<AtomicBool>,
+    Arc<Mutex<Option<PromptTraceWriter>>>,
+    Arc<AtomicU64>,
+    Arc<Mutex<()>>,
+    Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
+) {
+    (
+        Arc::new(Mutex::new(HashMap::new())),
+        Arc::new(AtomicBool::new(false)),
+        Arc::new(AtomicU64::new(1)),
+        Arc::new(AtomicBool::new(false)),
+        Arc::new(Mutex::new(None)),
+        Arc::new(AtomicU64::new(0)),
+        Arc::new(Mutex::new(())),
+        Arc::new(std::sync::Mutex::new(crate::acp::PromptRoundHealth::default())),
+    )
+}
+
 impl SessionChannelState {
     pub(crate) fn new(stdin: ChildStdin, args: &AcpSpawnArgs<'_>) -> Self {
         let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
+        let (
+            pending,
+            reader_dead,
+            next_id,
+            busy,
+            trace_writer,
+            prompt_rpc_id,
+            prompt_singleflight,
+            prompt_round_health,
+        ) = session_channel_sync();
         Self {
             stdin: Arc::new(Mutex::new(stdin)),
-            pending: Arc::new(Mutex::new(HashMap::new())),
+            pending,
             acp_activity_seq,
             acp_activity_notify,
-            reader_dead: Arc::new(AtomicBool::new(false)),
-            next_id: Arc::new(AtomicU64::new(1)),
-            busy: Arc::new(AtomicBool::new(false)),
-            trace_writer: Arc::new(Mutex::new(None)),
-            prompt_rpc_id: Arc::new(AtomicU64::new(0)),
-            prompt_singleflight: Arc::new(Mutex::new(())),
+            reader_dead,
+            next_id,
+            busy,
+            trace_writer,
+            prompt_rpc_id,
+            prompt_singleflight,
             ui_idle_notify: args.ui_idle_notify.clone(),
             trace_jsonl: trace_jsonl_for_args(args),
-            prompt_round_health: Arc::new(std::sync::Mutex::new(crate::acp::PromptRoundHealth::default())),
+            prompt_round_health,
         }
     }
 

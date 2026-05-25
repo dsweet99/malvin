@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::{
-    build_tagged_stdout_entry, config::DeferredLogConfig, install_stdout_hooks,
+    build_display_log_entry, config::DeferredLogConfig, install_stdout_hooks,
     log_with_heartbeat, register_active_sink, unregister_active_sink, DeferredLogSink,
 };
 
@@ -66,7 +66,7 @@ fn push_tagged_entry(shared: &Arc<std::sync::Mutex<DeferredLogSink>>, display: &
     shared
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .push_entry(build_tagged_stdout_entry(display.to_string(), log.to_string()));
+        .push_entry(build_display_log_entry(display.to_string(), log.to_string()));
 }
 
 fn sink_queue_len(shared: &Arc<std::sync::Mutex<DeferredLogSink>>) -> usize {
@@ -98,15 +98,15 @@ fn exercise_active_defer_hooks(shared: &Arc<std::sync::Mutex<DeferredLogSink>>) 
         &mut shared
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner),
-        build_tagged_stdout_entry("d".to_string(), "l".to_string()),
+        build_display_log_entry("d".to_string(), "l".to_string()),
     );
     crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-    let hb = crate::output::heartbeat_log_line_for_defer_sink(
+    let (display, log) = crate::output::heartbeat_rendered_if_due(
         std::time::Instant::now(),
         false,
     )
     .expect("heartbeat due");
-    assert!(crate::output::try_defer_push_line(hb));
+    assert!(crate::output::try_defer_heartbeat(&display, &log));
 }
 
 #[test]
@@ -124,7 +124,6 @@ fn active_sink_routes_stdout_and_heartbeats() {
     exercise_active_defer_hooks(&shared);
     flush_active_sink(shared);
     assert!(!crate::output::try_defer_tagged_stdout("x", "y"));
-    assert!(!crate::output::try_defer_push_line("z".to_string()));
     crate::output::set_stdout_log_path(None);
     let text = std::fs::read_to_string(log_path).unwrap_or_default();
     assert!(text.contains("defer probe"));
@@ -145,7 +144,7 @@ fn wall_clock_poller_skips_defer_sink_while_session_active() {
     shared
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .push_entry(build_tagged_stdout_entry(
+        .push_entry(build_display_log_entry(
             "queued".to_string(),
             "log".to_string(),
         ));
@@ -201,30 +200,4 @@ fn active_defer_session_emits_heartbeat_during_stdout_silence() {
         text.contains("heartbeat"),
         "plan phase 4: heartbeats must still appear during stdout silence while defer session is active"
     );
-}
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_defer_log_test_helpers() {
-        let _ = std::any::type_name::<super::DeferLogTestCtx>();
-        let _ = super::defer_log_test_ctx;
-        let _ = super::finish_defer_log_test;
-        let _ = super::sink_queue_len;
-    }
-
-    #[test]
-    fn kiss_cov_wall_clock_poller_skips_defer_sink_while_session_active() {
-        let _ = super::wall_clock_poller_skips_defer_sink_while_session_active;
-    }
-
-    #[test]
-    fn kiss_cov_active_sink_routes_stdout_and_heartbeats() {
-        let _ = super::active_sink_routes_stdout_and_heartbeats;
-    }
-
-    #[test]
-    fn kiss_cov_active_defer_session_emits_heartbeat_during_stdout_silence() {
-        let _ = super::active_defer_session_emits_heartbeat_during_stdout_silence;
-    }
 }

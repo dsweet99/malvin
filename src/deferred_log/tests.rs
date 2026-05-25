@@ -2,19 +2,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::cursor_store::{install_test_store, TestStoreSpec, ToolCallArgs};
-use super::config::{
-    defer_log_enabled_from_env, defer_log_max_age_from_env, defer_log_max_drain_from_env,
-    DeferredLogConfig,
-};
-use super::emit::emit_deferred_entry;
+use super::config::DeferredLogConfig;
 use super::enrich::enriched_tool_plain;
-use super::tool_enrich::tool_drain_enrich_fields;
 use super::test_fixtures::{enrich_read_entry, test_tool_entry};
+use super::tool_enrich::tool_drain_enrich_fields;
+use super::types::{DeferredPayload, ToolDrainMeta};
 use super::{
-    build_acp_tee_entry, build_raw_line_entry, DeferredLogSink,
+    build_raw_line_entry, DeferredLogSink,
 };
-use super::sink::build_heartbeat_entry;
-use super::types::{AcpTeeBuild, DeferredPayload, TeeSinkMeta, ToolDrainMeta};
 
 #[test]
 fn fifo_drain_respects_age_gate() {
@@ -145,61 +140,35 @@ fn defer_raw_line_entry_includes_timestamp() {
 }
 
 #[test]
-fn emit_and_build_helpers_smoke() {
-    let _ = defer_log_enabled_from_env;
-    let _ = defer_log_max_age_from_env();
-    let _ = defer_log_max_drain_from_env();
-    let entry = build_heartbeat_entry("line".to_string());
-    emit_deferred_entry(&entry);
-    let _ = build_acp_tee_entry(AcpTeeBuild {
-        tee: TeeSinkMeta {
-            who: "w".to_string(),
-            ts: "ts".to_string(),
-            emit_stdout_markdown: true,
-        },
-        kind: None,
-        line: "x".to_string(),
-        display: None,
-        dim_payload: false,
+fn enrich_fields_use_tracker_kind_when_done_update_omits_kind() {
+    let start = serde_json::json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "tool_wire_read",
+            "kind": "read",
+            "status": "pending",
+            "title": "Read File",
+            "rawInput": {}
+        }}
     });
-    let _ = build_raw_line_entry("raw".to_string(), "w".to_string(), "ts".to_string());
-    let parsed = serde_json::json!({
+    let done = serde_json::json!({
         "method": "session/update",
         "params": {"update": {
             "sessionUpdate": "tool_call_update",
-            "toolCallId": "t",
-            "kind": "read",
+            "toolCallId": "tool_wire_read",
             "status": "completed",
-            "rawInput": {},
-            "rawOutput": {"content": "x"}
+            "rawOutput": {"content": "body"}
         }}
     });
     let mut tracker = crate::tool_summary::ToolSummaryTracker::default();
-    let _ = tool_drain_enrich_fields(&parsed, &tracker, "[Read file · 1ms]");
-    tracker.set_work_dir(PathBuf::from("/tmp"));
-    let _ = tool_drain_enrich_fields(&parsed, &tracker, "[Read file · 1ms]");
+    let _ = crate::tool_summary::tool_summary_lines(&start, &mut tracker, crate::tool_summary::ToolSummaryDetail::Stdout);
+    let (enrich, meta) = tool_drain_enrich_fields(&done, &tracker, "Read file · 1ms");
+    assert!(enrich.is_some(), "done update without kind must still enrich read tools");
+    assert_eq!(enrich.expect("key").kind, "read");
+    assert_eq!(meta.expect("meta").kind, "read");
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_fifo_drain_respects_age_gate() {
-        let _ = super::fifo_drain_respects_age_gate;
-    }
-
-    #[test]
-    fn kiss_cov_edit_enrich_formats_edit_not_read() {
-        let _ = super::edit_enrich_formats_edit_not_read;
-    }
-
-    #[test]
-    fn kiss_cov_defer_raw_line_entry_includes_timestamp() {
-        let _ = super::defer_raw_line_entry_includes_timestamp;
-    }
-
-    #[test]
-    fn kiss_cov_force_flush_drains_without_enrich() {
-        let _ = super::force_flush_drains_without_enrich;
-    }
-
-}
+#[path = "tests_emit.rs"]
+mod tests_emit;

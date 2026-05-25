@@ -1,14 +1,14 @@
 use crate::deferred_log::types::{DeferredEntry, DeferredPayload};
 use crate::output::{
-    print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,
-    print_stdout_raw_line_with_ts, AcpTeeDirection, AcpTeeStdoutEvent,
+    flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
+    flush_stdout_raw_line_with_ts, flush_stdout_rendered_line, AcpTeeDirection, AcpTeeStdoutEvent,
 };
 
 pub fn emit_deferred_entry(entry: &DeferredEntry) {
     match &entry.payload {
         DeferredPayload::ToolSummary { plain, display, .. } => {
             let ev = acp_event(entry, plain);
-            print_stdout_acp_tool_summary_tee(&ev, display);
+            flush_stdout_acp_tool_summary_tee(&ev, display);
         }
         DeferredPayload::AcpTee {
             line,
@@ -24,18 +24,16 @@ pub fn emit_deferred_entry(entry: &DeferredEntry) {
                 emit_stdout_markdown: entry.emit_stdout_markdown,
                 dim_payload: *dim_payload,
             };
-            print_stdout_acp_tee_line_with_timestamp(&ev);
+            flush_stdout_acp_tee_line_with_timestamp(&ev);
         }
         DeferredPayload::RawLine { line } => {
-            print_stdout_raw_line_with_ts(line, Some(&entry.ts));
+            flush_stdout_raw_line_with_ts(line, Some(&entry.ts));
         }
-        DeferredPayload::Heartbeat { log_line } => {
-            println!("{log_line}");
-            crate::output::append_stdout_log_line(log_line);
-        }
-        DeferredPayload::TaggedStdout { display, log } => {
-            println!("{display}");
-            crate::output::append_stdout_log_line(log);
+        DeferredPayload::DisplayLog { display, log } => {
+            flush_stdout_rendered_line(display, log);
+            if log.contains("] heartbeat") {
+                crate::output::mark_heartbeat_emitted(std::time::Instant::now());
+            }
         }
     }
 }
@@ -48,5 +46,20 @@ pub(crate) fn acp_event<'a>(entry: &'a DeferredEntry, plain: &'a str) -> AcpTeeS
         ts: &entry.ts,
         emit_stdout_markdown: entry.emit_stdout_markdown,
         dim_payload: true,
+    }
+}
+
+#[cfg(test)]
+mod emit_tests {
+    use super::acp_event;
+    use crate::deferred_log::test_fixtures::test_tool_entry;
+
+    #[test]
+    fn acp_event_uses_entry_metadata() {
+        let entry = test_tool_entry("Read file · 2ms");
+        let ev = acp_event(&entry, "Read file · 2ms");
+        assert_eq!(ev.line, "Read file · 2ms");
+        assert_eq!(ev.who, entry.who);
+        assert_eq!(ev.ts, entry.ts);
     }
 }

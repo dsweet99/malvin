@@ -18,6 +18,8 @@ mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod init_harness;
 mod kpop_multiturn_support;
+#[cfg(unix)]
+mod live_agent;
 mod process;
 #[cfg(unix)]
 mod tidy_harness;
@@ -34,6 +36,10 @@ pub use acp_code_run::*;
 pub use acp_core::{acp_mock_js, chunk_line, *};
 pub use acp_do::*;
 pub use kpop_multiturn_support::*;
+#[cfg(unix)]
+pub use live_agent::{
+    command_output_live_agent, live_agent_prereqs_met, LIVE_AGENT_CMD_TIMEOUT,
+};
 pub use process::{
     MALVIN_TEST_CMD_TIMEOUT, PlanSpawn, command_output_with_timeout, spawn_malvin_plan,
 };

@@ -75,6 +75,7 @@ mod tests {
             .prompt_round_health
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .format_lines()
             .is_empty());
         child.kill().await.ok();
         let _ = child.wait().await;

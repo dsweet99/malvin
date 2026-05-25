@@ -38,7 +38,6 @@ fn read_done_empty_raw_input() -> Value {
         "params": {"update": {
             "sessionUpdate": "tool_call_update",
             "toolCallId": TOOL_CALL_ID,
-            "kind": "read",
             "status": "completed",
             "title": "Read File",
             "rawInput": {},

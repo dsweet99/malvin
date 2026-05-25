@@ -1,9 +1,36 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use super::config::DeferredLogConfig;
 use super::sink::{build_tool_entry, DeferredLogSink};
 use super::types::{DeferredEntry, EnrichKey, TeeSinkMeta, ToolDrainMeta, ToolSummaryBuild};
+
+pub type SharedDeferSink = Arc<std::sync::Mutex<DeferredLogSink>>;
+
+pub fn zero_age_defer_shared(session: &str) -> SharedDeferSink {
+    Arc::new(std::sync::Mutex::new(DeferredLogSink::new(
+        session.to_string(),
+        PathBuf::new(),
+        DeferredLogConfig {
+            max_age: Duration::from_millis(0),
+            max_drain_per_log: 64,
+            cursor_dir: PathBuf::new(),
+        },
+    )))
+}
+
+pub fn aged_defer_shared(session: &str) -> SharedDeferSink {
+    Arc::new(std::sync::Mutex::new(DeferredLogSink::new(
+        session.to_string(),
+        PathBuf::new(),
+        DeferredLogConfig {
+            max_age: Duration::from_secs(3600),
+            max_drain_per_log: 64,
+            cursor_dir: PathBuf::new(),
+        },
+    )))
+}
 
 pub fn test_tool_entry(plain: &str) -> DeferredEntry {
     build_tool_entry(ToolSummaryBuild {
@@ -68,4 +95,23 @@ pub fn capture_stdout_log(run: impl FnOnce()) -> String {
     run();
     crate::output::set_stdout_log_path(None);
     std::fs::read_to_string(log_path).unwrap_or_default()
+}
+
+pub(crate) fn capture_stdout_render_unlocked(run: impl FnOnce()) -> (String, String) {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(log_path.clone()));
+    crate::output::enable_stdout_capture();
+    run();
+    let terminal = crate::output::take_captured_stdout();
+    crate::output::set_stdout_log_path(None);
+    let log = std::fs::read_to_string(log_path).unwrap_or_default();
+    (terminal, log)
+}
+
+pub fn capture_stdout_render(run: impl FnOnce()) -> (String, String) {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    capture_stdout_render_unlocked(run)
 }

@@ -9,7 +9,7 @@ use crate::tool_summary::LineRange;
 use super::enrich::enriched_tool_plain;
 use super::sink::test_access;
 use super::test_fixtures::{enrich_read_entry, test_tool_entry, zero_age_sink};
-use super::build_tagged_stdout_entry;
+use super::build_display_log_entry;
 use super::types::ToolDrainMeta;
 
 #[test]
@@ -17,7 +17,7 @@ fn fifo_emit_order_abc() {
     let text = super::test_fixtures::capture_stdout_log(|| {
         let mut sink = zero_age_sink("sess", PathBuf::new(), 64);
         for label in ["LOG_MARKER_A", "LOG_MARKER_B", "LOG_MARKER_C"] {
-            sink.push_entry(build_tagged_stdout_entry(
+            sink.push_entry(build_display_log_entry(
                 label.to_string(),
                 label.to_string(),
             ));

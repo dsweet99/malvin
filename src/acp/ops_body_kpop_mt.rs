@@ -1,8 +1,8 @@
 use crate::acp::import_prelude::*;
 use crate::acp::{
     AgentClient, AgentError, AcpSession, AgentKpopMultiturnCtl, KpopFailAfterPrompt, KpopPromptRound,
-    PromptRoundHealth, client_timing_elapsed_ms, kpop_fail_after_prompt, kpop_round, restore_session_dotfiles,
-    spawn_agent_acp_session,
+    PromptRoundHealth, acp_session_take_prompt_round_health, client_timing_elapsed_ms, kpop_fail_after_prompt,
+    kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
 };
 use crate::kpop_progression::KpopBlockMissSnapshot;
 use crate::output::print_log_error;
@@ -22,7 +22,7 @@ fn block_miss_snapshot(
     hypotheses_after: usize,
     health: &PromptRoundHealth,
 ) -> Option<KpopBlockMissSnapshot> {
-    let ctx = state.kpop_block_progress_ctx(hypotheses_before_round)?;
+    let ctx = crate::kpop_progression::kpop_block_progress_ctx(state, hypotheses_before_round)?;
     if ctx.steps_needed == 0 || hypotheses_after > hypotheses_before_round {
         return None;
     }
@@ -59,7 +59,7 @@ async fn multiturn_after_successful_round(
             &after.prompt_health,
         ) {
             let err_text = snapshot.format_no_progress_error();
-            after.state.set_last_block_miss(snapshot);
+            crate::kpop_progression::set_last_block_miss(after.state, snapshot);
             print_log_error(&err_text);
             if after.prompt_health.has_infra_failure() {
                 let _ = session.shutdown().await;
@@ -115,7 +115,7 @@ pub(crate) async fn run_kpop_multiturn_once(
             )
             .await;
         }
-        let prompt_health = s.take_prompt_round_health();
+        let prompt_health = acp_session_take_prompt_round_health(&s);
         multiturn_after_successful_round(
             &s,
             MultiturnRoundAfter {

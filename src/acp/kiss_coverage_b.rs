@@ -41,10 +41,12 @@ fn kiss_cov_acp_session_channels_inc() {
     let _ = stringify!(trace_jsonl_for_args);
     let _ = stringify!(stdin_from_sleep_holder);
     let _ = stringify!(session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set);
+    let _ = stringify!(session_channel_sync);
     let _ = stringify!(rpc_session_prompt_text);
     let _ = stringify!(do_split_trace_preamble);
     let _ = stringify!(uniform_outgoing_trace_preamble);
     let _ = stringify!(do_split_outgoing_trace_preamble);
+    let _ = stringify!(open_live_prompt_trace_writer);
 }
 
 #[test]
@@ -88,6 +90,7 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
 #[test]
 fn kiss_cov_acp_kiss_coverage_self() {
     let _ = stringify!(smoke_reader_loop_eof_pending_error);
+    let _ = stringify!(smoke_acp_session_prompt_round_health);
 }
 
 #[test]

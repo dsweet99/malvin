@@ -18,10 +18,7 @@ pub enum DeferredPayload {
     RawLine {
         line: String,
     },
-    Heartbeat {
-        log_line: String,
-    },
-    TaggedStdout {
+    DisplayLog {
         display: String,
         log: String,
     },

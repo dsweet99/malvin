@@ -4,7 +4,10 @@ use crate::acp::{PromptTraceWriter, TraceChunkCoalescer};
 use crate::deferred_log::{
     build_tool_entry, log_with_heartbeat, tool_drain_enrich_fields, TeeSinkMeta, ToolSummaryBuild,
 };
-use crate::tool_summary::{tool_summary_lines, tool_summary_stdout_display, ToolSummaryDetail};
+use crate::tool_summary::{
+    parse_tool_update, tool_summary_lines, tool_summary_stdout_display, ToolSummaryDetail,
+    TOOL_PHASE_DONE,
+};
 
 fn tool_summary_styled_tee_payload(writer: &PromptTraceWriter, plain: &str) -> (String, String) {
     let plain = if writer.emit_stdout_markdown {
@@ -123,6 +126,11 @@ pub(crate) async fn write_tool_summary_trace_line(
                 ts: &ts,
             },
         });
+    }
+    if let Some(parsed_update) = parse_tool_update(parsed) {
+        if parsed_update.phase == TOOL_PHASE_DONE {
+            coalesce.tool_tracker.calls.remove(&parsed_update.id);
+        }
     }
     true
 }

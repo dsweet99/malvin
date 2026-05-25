@@ -51,6 +51,16 @@ pub(crate) fn stdout_tagged_display_and_log_line(
     tagged_display_and_log_line(who, payload, ts, stdout_use_color())
 }
 
+#[cfg(test)]
+pub(crate) fn tagged_display_and_log_line_for_color(
+    who: &str,
+    payload: &str,
+    ts: Option<&str>,
+    use_color: bool,
+) -> (String, String) {
+    tagged_display_and_log_line(who, payload, ts, use_color)
+}
+
 pub(crate) fn stderr_tagged_display_and_log_line(
     who: &str,
     payload: &str,
@@ -176,32 +186,30 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_resolve_log_timestamp() { let _ = stringify!(resolve_log_timestamp); }
+mod inline_cov {
+    use super::*;
+    use crate::output::{is_log_timestamp_token, MALVIN_WHO};
 
     #[test]
-    fn kiss_cov_tagged_log_line() { let _ = stringify!(tagged_log_line); }
+    fn resolve_log_timestamp_and_tagged_display_helpers() {
+        let ts = resolve_log_timestamp(None);
+        assert!(is_log_timestamp_token(&ts));
+        let (display, log) = tagged_display_and_log_line(MALVIN_WHO, "inline", Some("20260524.000000.000"), false);
+        assert!(!display.starts_with("20"));
+        assert!(log.contains("inline"));
+    }
 
     #[test]
-    fn kiss_cov_tagged_display_line_with_timestamp_ansi() { let _ = stringify!(tagged_display_line_with_timestamp_ansi); }
-
-    #[test]
-    fn kiss_cov_stderr_tagged_display_and_log_line() { let _ = stringify!(stderr_tagged_display_and_log_line); }
-
-    #[test]
-    fn kiss_cov_tagged_display_and_log_line() { let _ = stringify!(tagged_display_and_log_line); }
-
-    #[test]
-    fn kiss_cov_acp_bracket_color() { let _ = stringify!(acp_bracket_color); }
-
-    #[test]
-    fn kiss_cov_acp_bracket_payload() { let _ = stringify!(acp_bracket_payload); }
-
-    #[test]
-    fn kiss_cov_acp_tee_payload_prefix_width() { let _ = super::acp_tee_payload_prefix_width; }
-
-    #[test]
-    fn kiss_cov_stdout_acp_display_and_log() { let _ = super::stdout_acp_display_and_log; }
-
+    fn acp_bracket_helpers_format_payload() {
+        let ctx = AcpTeeLineFmt {
+            ts: "20260524.000000.000",
+            direction: AcpTeeDirection::FromAgent,
+            who: MALVIN_WHO,
+            line: "inline-acp",
+            dim_payload: true,
+        };
+        assert_ne!(acp_bracket_color(AcpTeeDirection::ToAgent), acp_bracket_color(AcpTeeDirection::FromAgent));
+        assert!(acp_bracket_payload(&ctx).contains("inline-acp"));
+    }
 }
+

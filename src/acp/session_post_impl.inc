@@ -7,6 +7,16 @@ pub(crate) fn acp_session_set_run_timing(
         .run_timing = timing;
 }
 
+pub(crate) fn acp_session_take_prompt_round_health(session: &AcpSession) -> PromptRoundHealth {
+    std::mem::take(
+        &mut session
+            .0
+            .prompt_round_health
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner),
+    )
+}
+
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///
@@ -119,32 +129,8 @@ impl AcpSession {
         trace: OutgoingPromptTrace<'_>,
     ) -> Result<(), String> {
         let _prompt_turn = self.0.prompt_singleflight.lock().await;
-        trace_prepare_file(trace_path).await?;
-        let mut file = trace_open_truncated(trace_path).await?;
-        let meta = match &trace {
-            OutgoingPromptTrace::Uniform(u) => {
-                uniform_outgoing_trace_preamble(self, &mut file, text, u).await?
-            }
-            OutgoingPromptTrace::DoSplit(split) => {
-                do_split_outgoing_trace_preamble(self, &mut file, split).await?
-            }
-        };
-        *self.0.trace_writer.lock().await = Some(PromptTraceWriter::for_live_prompt(
-            LivePromptTraceArgs {
-                file,
-                who: meta.incoming_tag,
-                plain_lines: meta.plain_lines,
-                stdout_replacement: prompt_stdout_replacement(meta.stdout_replacement_who),
-                trace_raw_output: meta.trace_raw_output,
-                show_thoughts_on_stdout: self.0.show_thoughts_on_stdout,
-                emit_stdout_markdown: self.0.emit_stdout_markdown
-                    && !meta.trace_raw_output
-                    && !meta.plain_lines,
-                work_dir: self.0.work_dir.clone(),
-                run_timing: self.0.run_timing.clone(),
-                session_id: self.0.session_id.clone(),
-            },
-        ));
+        let writer = open_live_prompt_trace_writer(self, text, trace_path, trace).await?;
+        *self.0.trace_writer.lock().await = Some(writer);
         self.0.busy.store(true, Ordering::SeqCst);
 
         self.0
@@ -197,22 +183,11 @@ impl AcpSession {
         wait_result?;
         Ok(())
     }
-
-    /// Snapshot of ACP tool failures observed during the most recent [`Self::prompt`].
-    #[must_use]
-    pub fn take_prompt_round_health(&self) -> PromptRoundHealth {
-        std::mem::take(
-            &mut self
-                .0
-                .prompt_round_health
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        )
-    }
 }
 
 impl Drop for AcpSession {
     fn drop(&mut self) {}
 }
+
 
 

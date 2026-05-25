@@ -1,13 +1,15 @@
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use super::sink::DeferredLogSink;
-use super::types::DeferredEntry;
+use super::types::{DeferredEntry, DeferredPayload};
 
 pub(crate) type SharedDeferSink = Arc<Mutex<DeferredLogSink>>;
 
 static ACTIVE: OnceLock<Mutex<Option<SharedDeferSink>>> = OnceLock::new();
 static PENDING: OnceLock<Mutex<VecDeque<DeferredEntry>>> = OnceLock::new();
+static SINK_QUEUE_HAS_HEARTBEAT: AtomicBool = AtomicBool::new(false);
 
 fn pending_entries() -> std::sync::MutexGuard<'static, VecDeque<DeferredEntry>> {
     PENDING
@@ -18,6 +20,37 @@ fn pending_entries() -> std::sync::MutexGuard<'static, VecDeque<DeferredEntry>> 
 
 fn queue_pending(entry: DeferredEntry) {
     pending_entries().push_back(entry);
+}
+
+fn entry_is_heartbeat(entry: &DeferredEntry) -> bool {
+    matches!(
+        &entry.payload,
+        DeferredPayload::DisplayLog { log, .. } if log.contains("] heartbeat")
+    )
+}
+
+fn pending_has_heartbeat() -> bool {
+    pending_entries().iter().any(entry_is_heartbeat)
+}
+
+pub(crate) fn sync_sink_queue_heartbeat_flag(sink: &DeferredLogSink) {
+    SINK_QUEUE_HAS_HEARTBEAT.store(sink.queue_has_heartbeat(), Ordering::Relaxed);
+}
+
+fn heartbeat_already_deferred(sink: &SharedDeferSink) -> bool {
+    if pending_has_heartbeat() {
+        return true;
+    }
+    let cached = SINK_QUEUE_HAS_HEARTBEAT.load(Ordering::Relaxed);
+    sink.try_lock().map_or(cached, |guard| {
+        let has = guard.queue_has_heartbeat();
+        SINK_QUEUE_HAS_HEARTBEAT.store(has, Ordering::Relaxed);
+        has
+    })
+}
+
+pub(crate) fn defer_already_has_heartbeat(sink: &DeferredLogSink) -> bool {
+    pending_has_heartbeat() || sink.queue_has_heartbeat()
 }
 
 pub(crate) fn flush_pending_into(sink: &mut DeferredLogSink) {
@@ -57,16 +90,22 @@ pub(crate) fn unregister() {
         guard.take()
     };
     if let Some(sink) = sink {
-        if let Ok(mut guard) = sink.try_lock() {
-            flush_pending_into(&mut guard);
-            pending_entries().clear();
+        match sink.try_lock() {
+            Ok(mut guard) => {
+                flush_pending_into(&mut guard);
+                guard.force_flush();
+            }
+            Err(_) => spill_orphaned_pending(),
         }
+        pending_entries().clear();
     } else {
         spill_orphaned_pending();
         pending_entries().clear();
+        SINK_QUEUE_HAS_HEARTBEAT.store(false, Ordering::Relaxed);
     }
 }
 
+#[cfg(test)]
 pub(crate) fn is_registered() -> bool {
     active_mutex().is_some()
 }
@@ -80,11 +119,12 @@ pub(crate) fn try_log(entry: DeferredEntry) -> bool {
         return false;
     };
     let Ok(mut sink_guard) = sink.try_lock() else {
-        if let Some(log_line) = crate::output::heartbeat_log_line_for_defer_sink(
-            std::time::Instant::now(),
-            true,
-        ) {
-            queue_pending(super::build_heartbeat_entry(log_line));
+        if !heartbeat_already_deferred(&sink) {
+            if let Some((display, log)) =
+                crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), true)
+            {
+                queue_pending(super::build_display_log_entry(display, log));
+            }
         }
         queue_pending(entry);
         return true;
@@ -102,12 +142,21 @@ pub(crate) fn try_push(entry: DeferredEntry) -> bool {
         return false;
     };
     let Ok(mut sink_guard) = sink.try_lock() else {
-        queue_pending(entry);
+        if !(entry_is_heartbeat(&entry) && heartbeat_already_deferred(&sink)) {
+            queue_pending(entry);
+        }
         return true;
     };
+    if entry_is_heartbeat(&entry) && defer_already_has_heartbeat(&sink_guard) {
+        return true;
+    }
     sink_guard.push_entry(entry);
     true
 }
+
+#[cfg(test)]
+#[path = "active_tests_inline.rs"]
+mod active_tests_inline;
 
 #[cfg(test)]
 #[path = "active_tests.rs"]
@@ -116,3 +165,11 @@ mod active_tests;
 #[cfg(test)]
 #[path = "active_tests_pending.rs"]
 mod active_tests_pending;
+
+#[cfg(test)]
+#[path = "active_tests_sink_queue.rs"]
+mod active_tests_sink_queue;
+
+#[cfg(test)]
+#[path = "active_tests_contention_bugs.rs"]
+mod active_tests_contention_bugs;
