@@ -28,15 +28,36 @@ pub(crate) fn parse_tool_call_item(item: &Value) -> Option<(String, ToolCallArgs
     ))
 }
 
-pub fn parse_tool_call_args_from_blob(data: &str) -> Vec<(String, ToolCallArgs)> {
-    if !data.contains("tool-call") {
-        return Vec::new();
-    }
-    let Ok(v) = serde_json::from_str::<Value>(data) else {
-        return Vec::new();
-    };
+pub(crate) fn parse_tool_calls_from_value(v: &Value) -> Vec<(String, ToolCallArgs)> {
     let Some(items) = v.get("content").and_then(Value::as_array) else {
         return Vec::new();
     };
     items.iter().filter_map(parse_tool_call_item).collect()
+}
+
+pub(crate) fn parse_json_blob_payload(data: &str) -> Option<Value> {
+    if let Ok(v) = serde_json::from_str::<Value>(data) {
+        return Some(v);
+    }
+    let mut start = 0usize;
+    while let Some(rel) = data[start..].find('{') {
+        let idx = start + rel;
+        if let Ok(v) = serde_json::from_str::<Value>(&data[idx..]) {
+            return Some(v);
+        }
+        start = idx.saturating_add(1);
+        if start >= data.len() {
+            break;
+        }
+    }
+    None
+}
+
+pub fn parse_tool_call_args_from_blob(data: &str) -> Vec<(String, ToolCallArgs)> {
+    if !data.contains("tool-call") {
+        return Vec::new();
+    }
+    parse_json_blob_payload(data)
+        .map(|v| parse_tool_calls_from_value(&v))
+        .unwrap_or_default()
 }

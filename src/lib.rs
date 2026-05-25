@@ -60,6 +60,7 @@ pub use user_home::user_home_dir;
 pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
+pub use cursor_store::store_db_contains_substring;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{

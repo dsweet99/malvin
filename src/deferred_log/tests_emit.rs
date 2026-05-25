@@ -7,7 +7,7 @@ use crate::deferred_log::config::{
 };
 use crate::deferred_log::emit::emit_deferred_entry;
 use crate::deferred_log::enrich::{enriched_tool_plain, styled_tool_payload, synthetic_tool_done};
-use crate::deferred_log::sink::build_display_log_entry;
+use crate::deferred_log::sink_build::build_display_log_entry;
 use crate::deferred_log::test_fixtures::{
     capture_stdout_log, capture_stdout_render, test_tool_entry, zero_age_defer_shared,
     SharedDeferSink,

@@ -31,7 +31,7 @@ fn fifo_drain_respects_age_gate() {
 }
 
 #[test]
-fn force_flush_drains_without_enrich() {
+fn force_flush_enriches_read_when_store_present() {
     let tmp = tempfile::tempdir().unwrap();
     let fallback = "Read file · 1ms";
     install_test_store(&TestStoreSpec {
@@ -57,8 +57,28 @@ fn force_flush_drains_without_enrich() {
         sink.force_flush();
         assert_eq!(sink.queue_len(), 0);
     });
+    assert!(text.contains("foo.rs"));
+    assert!(!text.contains(fallback));
+}
+
+#[test]
+fn force_flush_emits_fallback_when_store_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let fallback = "Read file · 1ms";
+    let text = super::test_fixtures::capture_stdout_log(|| {
+        let mut sink = DeferredLogSink::new(
+            "missing-sess".to_string(),
+            tmp.path().to_path_buf(),
+            DeferredLogConfig {
+                max_age: Duration::from_secs(60),
+                max_drain_per_log: 64,
+                cursor_dir: tmp.path().to_path_buf(),
+            },
+        );
+        sink.push_entry(enrich_read_entry("toolu_missing", fallback));
+        sink.force_flush();
+    });
     assert!(text.contains(fallback));
-    assert!(!text.contains("foo.rs"));
 }
 
 #[test]

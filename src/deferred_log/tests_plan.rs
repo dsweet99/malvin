@@ -63,6 +63,24 @@ fn ingest_new_blobs_runs_at_most_once_per_drain() {
 }
 
 #[test]
+fn parse_blob_with_binary_prefix_before_json() {
+    let json = serde_json::json!({
+        "role": "assistant",
+        "content": [{
+            "type": "tool-call",
+            "toolCallId": "tool_embedded",
+            "toolName": "Read",
+            "args": {"path": "./defer_enrich_probe.rs"}
+        }]
+    });
+    let blob = format!("\n \u{fffd}binary_prefix {json}");
+    let parsed = parse_tool_call_args_from_blob(&blob);
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0].0, "tool_embedded");
+    assert_eq!(parsed[0].1.path.as_deref(), Some("./defer_enrich_probe.rs"));
+}
+
+#[test]
 fn parse_blob_with_multiple_tool_calls() {
     let blob = serde_json::json!({
         "role": "assistant",

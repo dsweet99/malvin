@@ -69,6 +69,28 @@ fn cursor_store_ingests_tool_call_path() {
 }
 
 #[test]
+#[ignore = "manual: uses live ~/.cursor store.db from defer_enrich e2e"]
+fn live_cursor_store_ingests_read_path() {
+    let session_id = std::env::var("MALVIN_LIVE_SESSION_ID")
+        .unwrap_or_else(|_| "06c114e6-7f81-4763-ae05-f4c1ae2f9e09".to_string());
+    let tool_id = std::env::var("MALVIN_LIVE_TOOL_ID")
+        .unwrap_or_else(|_| "tool_994f8814-1c09-4fc0-9dad-513c39f3ca8".to_string());
+    let home = crate::user_home_dir();
+    let mut cache = CursorStoreCache::new(session_id, home.join(".cursor"));
+    cache.ensure_open();
+    assert!(cache.store_path().is_some(), "store.db must exist");
+    cache.ingest_new_blobs();
+    let path = cache
+        .get(&tool_id)
+        .and_then(|a| a.path.clone())
+        .unwrap_or_else(|| panic!("missing tool-call {tool_id} in store cache"));
+    assert!(
+        path.contains("defer_enrich_probe"),
+        "expected read path in cache, got {path:?}"
+    );
+}
+
+#[test]
 fn legacy_store_path_discovery() {
     let tmp = tempfile::tempdir().unwrap();
     let legacy = tmp.path().join("chats").join("abc123").join("legacy-sess");

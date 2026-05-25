@@ -25,7 +25,7 @@ ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
 CONFIDENCE: 3
 
 TRIGGER: head, tail, url, long job, large file
-ADVICE: Consider redirecting the output to a temp file then studying that to lower the risk of having to rerun a long job or refetch a file over the network.
+ADVICE: Redirect the output to a temp file then study that to lower the risk of having to rerun a long job or refetch a file over the network.
 CONFIDENCE: 3
 
 TRIGGER: large task, many tasks

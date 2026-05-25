@@ -3,6 +3,7 @@ mod config;
 mod emit;
 mod enrich;
 mod sink;
+mod sink_build;
 mod tool_enrich;
 mod types;
 
@@ -28,10 +29,10 @@ pub(crate) use active::{
     flush_pending_into as flush_pending_into_active_sink, register as register_active_sink,
     unregister as unregister_active_sink, SharedDeferSink,
 };
-pub(crate) use sink::{
+pub(crate) use sink_build::{
     build_acp_tee_entry, build_display_log_entry, build_raw_line_entry, build_tool_entry,
-    DeferredLogSink,
 };
+pub(crate) use sink::DeferredLogSink;
 pub(crate) use tool_enrich::tool_drain_enrich_fields;
 pub(crate) use types::{AcpTeeBuild, DeferredEntry, TeeSinkMeta, ToolSummaryBuild};
 

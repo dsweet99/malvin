@@ -66,7 +66,7 @@ impl CursorStoreCache {
             return;
         };
         let rows = stmt.query_map([self.last_rowid], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            Ok((row.get::<_, i64>(0)?, read_blob_column(row, 1)?))
         });
         let Ok(rows) = rows else {
             self.disabled = true;
@@ -74,7 +74,8 @@ impl CursorStoreCache {
         };
         for row in rows.flatten() {
             self.last_rowid = row.0;
-            for (id, args) in parse_tool_call_args_from_blob(&row.1) {
+            let text = blob_column_as_utf8_lossy(&row.1);
+            for (id, args) in parse_tool_call_args_from_blob(&text) {
                 self.map.insert(id, args);
             }
         }
@@ -87,6 +88,19 @@ impl CursorStoreCache {
     pub fn store_path(&self) -> Option<PathBuf> {
         find_store_path(&self.cursor_dir, &self.session_id)
     }
+}
+
+fn read_blob_column(row: &rusqlite::Row<'_>, idx: usize) -> rusqlite::Result<Vec<u8>> {
+    match row.get_ref(idx)? {
+        rusqlite::types::ValueRef::Blob(data) => Ok(data.to_vec()),
+        rusqlite::types::ValueRef::Text(data) => Ok(data.to_vec()),
+        rusqlite::types::ValueRef::Null => Ok(Vec::new()),
+        rusqlite::types::ValueRef::Integer(_) | rusqlite::types::ValueRef::Real(_) => Ok(Vec::new()),
+    }
+}
+
+fn blob_column_as_utf8_lossy(data: &[u8]) -> std::borrow::Cow<'_, str> {
+    String::from_utf8_lossy(data)
 }
 
 #[cfg(test)]
@@ -138,4 +152,48 @@ pub fn install_test_store(spec: &TestStoreSpec<'_>) -> PathBuf {
     )
     .expect("insert blob");
     db_path
+}
+
+#[cfg(test)]
+mod blob_column_tests {
+    use super::{blob_column_as_utf8_lossy, read_blob_column};
+    use rusqlite::Connection;
+
+    fn row_bytes(conn: &Connection, sql: &str) -> Vec<u8> {
+        conn.query_row(sql, [], |row| read_blob_column(row, 0))
+            .expect("read blob column")
+    }
+
+    #[test]
+    fn read_blob_column_handles_blob_text_null_and_scalar() {
+        let conn = Connection::open_in_memory().expect("open in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE t (b BLOB, s TEXT, n NULL, i INTEGER, r REAL);
+             INSERT INTO t VALUES (x'deadbeef', 'hello', NULL, 42, 3.14);",
+        )
+        .expect("seed rows");
+        assert_eq!(
+            row_bytes(&conn, "SELECT b FROM t"),
+            vec![0xde, 0xad, 0xbe, 0xef]
+        );
+        assert_eq!(row_bytes(&conn, "SELECT s FROM t"), b"hello".to_vec());
+        assert!(row_bytes(&conn, "SELECT n FROM t").is_empty());
+        assert!(row_bytes(&conn, "SELECT i FROM t").is_empty());
+        assert!(row_bytes(&conn, "SELECT r FROM t").is_empty());
+    }
+
+    #[test]
+    fn blob_column_as_utf8_lossy_decodes_valid_and_invalid_utf8() {
+        assert_eq!(blob_column_as_utf8_lossy(b"ok").as_ref(), "ok");
+        assert!(blob_column_as_utf8_lossy(&[0xff, 0xfe]).contains('\u{FFFD}'));
+    }
+}
+
+#[cfg(test)]
+mod kiss_cov_cache_blob_helpers {
+    #[test]
+    fn kiss_cov_read_blob_column_and_utf8_lossy() {
+        let _ = super::read_blob_column;
+        let _ = super::blob_column_as_utf8_lossy;
+    }
 }

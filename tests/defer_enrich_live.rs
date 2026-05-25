@@ -80,17 +80,15 @@ fn session_id_from_trace(trace_path: &Path) -> Option<String> {
         let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
             continue;
         };
-        if let Some(id) = v
-            .pointer("/result/sessionId")
-            .and_then(serde_json::Value::as_str)
-        {
-            return Some(id.to_string());
-        }
-        if let Some(id) = v
-            .pointer("/params/sessionId")
-            .and_then(serde_json::Value::as_str)
-        {
-            return Some(id.to_string());
+        for pointer in [
+            "/result/sessionId",
+            "/params/sessionId",
+            "/message/result/sessionId",
+            "/message/params/sessionId",
+        ] {
+            if let Some(id) = v.pointer(pointer).and_then(serde_json::Value::as_str) {
+                return Some(id.to_string());
+            }
         }
     }
     None
@@ -107,9 +105,7 @@ fn cursor_store_path(session_id: &str) -> PathBuf {
 
 #[cfg(unix)]
 fn store_db_contains_path(store_db: &Path, needle: &str) -> bool {
-    std::fs::read(store_db)
-        .ok()
-        .is_some_and(|bytes| bytes.windows(needle.len()).any(|w| w == needle.as_bytes()))
+    malvin::store_db_contains_substring(store_db, needle)
 }
 
 #[cfg(unix)]
