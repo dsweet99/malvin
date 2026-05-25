@@ -69,6 +69,7 @@ pub struct AcpSessionInner {
     /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
     pub log_full_outgoing_prompts: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }

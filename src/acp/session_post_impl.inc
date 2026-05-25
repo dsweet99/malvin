@@ -147,6 +147,12 @@ impl AcpSession {
         ));
         self.0.busy.store(true, Ordering::SeqCst);
 
+        self.0
+            .prompt_round_health
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .reset();
+
         let id = self.0.next_id.fetch_add(1, Ordering::SeqCst);
         self.0.prompt_rpc_id.store(id, Ordering::SeqCst);
 
@@ -190,6 +196,18 @@ impl AcpSession {
         drop(ch);
         wait_result?;
         Ok(())
+    }
+
+    /// Snapshot of ACP tool failures observed during the most recent [`Self::prompt`].
+    #[must_use]
+    pub fn take_prompt_round_health(&self) -> PromptRoundHealth {
+        std::mem::take(
+            &mut self
+                .0
+                .prompt_round_health
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        )
     }
 }
 

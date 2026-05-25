@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
+use super::block_report::{KpopBlockMissSnapshot, KpopBlockProgressCtx};
 use super::counters::{
     KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_mbc2_entries,
     hypotheses_emitted, poisson_block_size, read_exp_log_text,
@@ -22,6 +23,7 @@ pub struct KpopMultiturnState<'a> {
     credit: usize,
     phase: Phase,
     done: bool,
+    last_block_miss: Option<KpopBlockMissSnapshot>,
 }
 impl<'a> KpopMultiturnState<'a> {
     pub fn exp_log_path(&self) -> &std::path::Path {
@@ -72,6 +74,7 @@ impl<'a> KpopMultiturnState<'a> {
             credit: 0,
             phase,
             done: false,
+            last_block_miss: None,
         })
     }
 
@@ -120,6 +123,26 @@ impl<'a> KpopMultiturnState<'a> {
         }
     }
 
+    pub(crate) const fn kpop_block_progress_ctx(&self, hypotheses_now: usize) -> Option<KpopBlockProgressCtx> {
+        let Phase::KpopBlock {
+            target_n,
+            hypotheses_before,
+            attempts,
+        } = &self.phase
+        else {
+            return None;
+        };
+        let done_in_block = hypotheses_now.saturating_sub(*hypotheses_before);
+        Some(KpopBlockProgressCtx {
+            steps_needed: target_n.saturating_sub(done_in_block),
+            attempts_so_far: *attempts,
+        })
+    }
+
+    pub(crate) fn set_last_block_miss(&mut self, snapshot: KpopBlockMissSnapshot) {
+        self.last_block_miss = Some(snapshot);
+    }
+
     fn run_kpop_phase(&mut self, text: &str) -> Result<NextStep, String> {
         let hypotheses_now = hypotheses_emitted(text);
         let (need, hb, tn) = {
@@ -147,8 +170,11 @@ impl<'a> KpopMultiturnState<'a> {
             return Err("internal: expected KpopBlock phase".to_string());
         };
         if *attempts > KPOP_CATCHUP_CAP {
+            if let Some(snapshot) = &self.last_block_miss {
+                return Err(snapshot.format_catchup_exhausted_error());
+            }
             return Err(format!(
-                "KPOP block still incomplete after the initial attempt and {KPOP_CATCHUP_CAP} catch-up attempts.",
+                "KPOP block incomplete after the initial attempt and {KPOP_CATCHUP_CAP} catch-up attempts.",
             ));
         }
         let remaining_budget = self.max_hypotheses.saturating_sub(hypotheses_emitted(text));

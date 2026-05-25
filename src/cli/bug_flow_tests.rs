@@ -6,6 +6,16 @@ use crate::cli::BugArgs;
 use crate::prompts::PromptStore;
 
 #[test]
+fn bug_kpop_request_has_no_unresolved_braces() {
+    let store = PromptStore::default_store();
+    let text = bug_kpop_request(&store).expect("hunt_request");
+    assert!(
+        !text.contains("{{"),
+        "hunt request must render all placeholders: {text:?}"
+    );
+}
+
+#[test]
 fn kpop_args_from_bug_maps_bug_fields() {
     let bug = BugArgs {
         max_hypotheses: 7,

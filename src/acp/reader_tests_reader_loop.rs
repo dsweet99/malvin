@@ -32,6 +32,7 @@ pub(crate) async fn reader_loop_eof_pending_error() -> String {
         acp_verbose: false,
         tee_trace_stdout: false,
         trace_jsonl: None,
+        prompt_round_health: Arc::new(std::sync::Mutex::new(PromptRoundHealth::default())),
     });
     let err = rx.await.unwrap().unwrap_err();
     let _: () = waiter.await.unwrap();

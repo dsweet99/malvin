@@ -12,6 +12,7 @@ pub(crate) struct ReaderSpawnArgs {
     pub acp_verbose: bool,
     pub tee_trace_stdout: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub prompt_round_health: Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
 pub(crate) struct ReaderLoopInput {
@@ -26,6 +27,7 @@ pub(crate) struct ReaderLoopInput {
     pub acp_verbose: bool,
     pub tee_trace_stdout: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub prompt_round_health: Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
 /// JSON-RPC 2.0 allows `id` as string or number; map nonnegative integers (and decimal strings) to
@@ -102,6 +104,7 @@ pub(crate) struct IncomingLineDispatch<'a> {
     pub prompt_cleanup: Option<&'a PromptRpcCleanup>,
     pub acp_verbose: bool,
     pub trace_jsonl: Option<&'a AcpJsonlTrace>,
+    pub prompt_round_health: &'a Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
 pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>) {
@@ -122,6 +125,10 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             let _ = dispatch_response(&msg, d.pending, d.prompt_cleanup).await;
         }
         Some("session/update") => {
+            d.prompt_round_health
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .record_session_update(&msg);
             trace!(target: "malvin::acp", update = %msg, "session/update");
         }
         Some("session/request_permission") => {

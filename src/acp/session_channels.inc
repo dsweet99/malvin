@@ -30,6 +30,7 @@ pub struct SessionChannelState {
     pub(crate) prompt_singleflight: Arc<Mutex<()>>,
     pub(crate) ui_idle_notify: Option<Arc<tokio::sync::Notify>>,
     pub(crate) trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub(crate) prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
 }
 
 fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
@@ -79,6 +80,7 @@ impl SessionChannelState {
             prompt_singleflight: Arc::new(Mutex::new(())),
             ui_idle_notify: args.ui_idle_notify.clone(),
             trace_jsonl: trace_jsonl_for_args(args),
+            prompt_round_health: Arc::new(std::sync::Mutex::new(crate::acp::PromptRoundHealth::default())),
         }
     }
 
@@ -95,6 +97,7 @@ impl SessionChannelState {
             prompt_rpc_id: self.prompt_rpc_id.clone(),
             ui_idle_notify: self.ui_idle_notify.clone(),
             trace_jsonl: self.trace_jsonl.clone(),
+            prompt_round_health: self.prompt_round_health.clone(),
         }
     }
 
@@ -122,6 +125,7 @@ impl SessionChannelState {
             prompts_log_run_dir: parts.telemetry.prompts_log_run_dir,
             log_full_outgoing_prompts: parts.telemetry.log_full_outgoing_prompts,
             trace_jsonl: parts.telemetry.trace_jsonl,
+            prompt_round_health: self.prompt_round_health,
             work_dir: parts.work_dir,
             run_timing: parts.run_timing,
         }

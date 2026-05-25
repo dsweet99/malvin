@@ -18,6 +18,31 @@ pub(crate) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
+pub(crate) fn test_prompt_round_health() -> Arc<std::sync::Mutex<PromptRoundHealth>> {
+    Arc::new(std::sync::Mutex::new(PromptRoundHealth::default()))
+}
+
+#[cfg(test)]
+pub(crate) fn handshake_io_from_stdin(stdin: tokio::process::ChildStdin) -> crate::acp::AcpHandshakeIo {
+    use crate::acp::AcpHandshakeIo;
+    use std::collections::HashMap;
+    use std::sync::atomic::{AtomicBool, AtomicU64};
+    AcpHandshakeIo {
+        stdin: Arc::new(Mutex::new(stdin)),
+        pending: Arc::new(Mutex::new(HashMap::new())),
+        acp_activity_seq: Arc::new(AtomicU64::new(0)),
+        acp_activity_notify: Arc::new(Notify::new()),
+        reader_dead: Arc::new(AtomicBool::new(false)),
+        next_id: Arc::new(AtomicU64::new(1)),
+        busy: Arc::new(AtomicBool::new(false)),
+        trace_writer: Arc::new(Mutex::new(None)),
+        prompt_rpc_id: Arc::new(AtomicU64::new(0)),
+        ui_idle_notify: None,
+        trace_jsonl: None,
+        prompt_round_health: test_prompt_round_health(),
+    }
+}
+
 #[cfg(unix)]
 pub(crate) struct IncomingDispatchParts<'a> {
     pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
@@ -29,6 +54,7 @@ pub(crate) struct IncomingDispatchParts<'a> {
 #[cfg(unix)]
 impl IncomingDispatchParts<'_> {
     pub async fn dispatch_lines(&self, lines: &[&str]) {
+        let prompt_round_health = test_prompt_round_health();
         for line in lines {
             handle_incoming_line(
                 line,
@@ -40,6 +66,7 @@ impl IncomingDispatchParts<'_> {
                     prompt_cleanup: None,
                     acp_verbose: false,
                     trace_jsonl: None,
+                    prompt_round_health: &prompt_round_health,
                 },
             )
             .await;

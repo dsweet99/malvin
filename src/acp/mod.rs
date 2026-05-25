@@ -176,6 +176,10 @@ mod ops_body_kpop;
 pub use ops_body_kpop::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
 pub(crate) use ops_body_kpop::*;
 
+#[path = "prompt_round_health.rs"]
+mod prompt_round_health;
+pub(crate) use prompt_round_health::PromptRoundHealth;
+
 #[path = "ops_body_kpop_mt.rs"]
 mod ops_body_kpop_mt;
 pub(crate) use ops_body_kpop_mt::*;

@@ -135,7 +135,7 @@ fn kpop_catch_up_exhausted_returns_error_when_log_stays_empty() {
         .next_prompt()
         .expect_err("expected catch-up exhaustion");
     assert!(
-        err.contains("initial attempt") && err.contains("catch-up attempts"),
+        err.contains("catch-up attempts"),
         "unexpected error: {err}"
     );
 }

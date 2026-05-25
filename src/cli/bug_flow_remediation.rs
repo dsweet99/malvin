@@ -17,8 +17,10 @@ Malvin will run two coder prompts in order: `bug_regression_test.md`, then `bug_
 ";
 
 pub(super) fn bug_kpop_request(store: &PromptStore) -> Result<String, String> {
+    let mut context = std::collections::HashMap::new();
+    context.insert("hunt_where".to_string(), String::new());
     store
-        .prompt_text("hunt_request.md")
+        .render_prompt_only("hunt_request.md", &context)
         .map(|s| s.trim().to_string())
         .map_err(|e: PromptError| e.0)
 }
