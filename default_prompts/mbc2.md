@@ -20,6 +20,8 @@ Do not evaluate or prune yet. Your goal is boundary exploration, not refinement.
 
 ---
 
+Communication: Write complete sentences or explicit bulleted lists. (But don't write terse fragments.) Write clearly.
+
 MBC2: Generate {{ num_ideas }} ideas based on the user's prompt:
 
 ```text

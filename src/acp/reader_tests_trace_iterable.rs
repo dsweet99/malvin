@@ -1,21 +1,8 @@
 use crate::acp::trace_line_write::TraceFileStdout;
 use crate::acp::*;
-
-fn kpop_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
-    PromptTraceWriter {
-        file,
-        who: "kpop".to_string(),
-        plain_lines: false,
-        stdout_replacement: None,
-        placeholder_emitted: false,
-        raw_output: false,
-        show_thoughts_on_stdout: false,
-        emit_stdout_markdown: false,
-        iterable_closed_warned: false,
-        work_dir: std::path::PathBuf::new(),
-            run_timing: None,
-    }
-}
+use crate::acp_tests::reader_tests_trace_kpop_helpers::{
+    flush_coalesce_lines, kpop_trace_writer, open_kpop_trace_writer,
+};
 
 fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
     assert!(
@@ -45,39 +32,6 @@ fn session_update_message_chunk_json(text: &str) -> serde_json::Value {
             }
         }
     })
-}
-
-async fn open_kpop_trace_writer(path: &std::path::Path) -> PromptTraceWriter {
-    let file = tokio::fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(path)
-        .await
-        .unwrap();
-    kpop_trace_writer(file)
-}
-
-async fn flush_coalesce_lines(
-    writer: &mut PromptTraceWriter,
-    coalesce: &mut TraceChunkCoalescer,
-    tee_stdout: bool,
-) {
-    for (kind, tl, stream) in coalesce.flush_all() {
-        crate::acp::trace_file_write_line(
-            writer,
-            &tl,
-            Some(kind),
-            TraceFileStdout {
-                tee_stdout,
-                stream_iterable_closed: stream,
-                tee_line_override: None,
-                tee_line_display: None,
-                ts: None,
-            },
-        )
-        .await;
-    }
 }
 
 async fn deliver_coalesced_message_chunk(
@@ -151,6 +105,7 @@ async fn trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
         TraceFileStdout {
             tee_stdout: true,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: None,
@@ -200,40 +155,45 @@ async fn iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee() {
     assert_split_iterable_closed_operational(&stderr, &stdout_log);
 }
 
-
 #[cfg(test)]
 mod kiss_cov_auto {
     #[test]
-    fn kiss_cov_kpop_trace_writer() { let _ = stringify!(kpop_trace_writer); }
+    fn kiss_cov_assert_iterable_closed_operational_stderr() {
+        let _ = stringify!(assert_iterable_closed_operational_stderr);
+    }
 
     #[test]
-    fn kiss_cov_assert_iterable_closed_operational_stderr() { let _ = stringify!(assert_iterable_closed_operational_stderr); }
+    fn kiss_cov_session_update_message_chunk_json() {
+        let _ = stringify!(session_update_message_chunk_json);
+    }
 
     #[test]
-    fn kiss_cov_session_update_message_chunk_json() { let _ = stringify!(session_update_message_chunk_json); }
+    fn kiss_cov_deliver_coalesced_message_chunk() {
+        let _ = stringify!(deliver_coalesced_message_chunk);
+    }
 
     #[test]
-    fn kiss_cov_open_kpop_trace_writer() { let _ = stringify!(open_kpop_trace_writer); }
+    fn kiss_cov_assert_split_iterable_closed_operational() {
+        let _ = stringify!(assert_split_iterable_closed_operational);
+    }
 
     #[test]
-    fn kiss_cov_flush_coalesce_lines() { let _ = stringify!(flush_coalesce_lines); }
+    fn kiss_cov_run_split_iterable_closed_fixture() {
+        let _ = stringify!(run_split_iterable_closed_fixture);
+    }
 
     #[test]
-    fn kiss_cov_deliver_coalesced_message_chunk() { let _ = stringify!(deliver_coalesced_message_chunk); }
+    fn kiss_cov_trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
+        let _ = stringify!(trace_file_write_line_iterable_closed_warns_without_kpop_tee);
+    }
 
     #[test]
-    fn kiss_cov_assert_split_iterable_closed_operational() { let _ = stringify!(assert_split_iterable_closed_operational); }
+    fn kiss_cov_readable_iterable_closed_split_coalesce_emits_readable_operational_warning() {
+        let _ = stringify!(readable_iterable_closed_split_coalesce_emits_readable_operational_warning);
+    }
 
     #[test]
-    fn kiss_cov_run_split_iterable_closed_fixture() { let _ = stringify!(run_split_iterable_closed_fixture); }
-
-    #[test]
-    fn kiss_cov_trace_file_write_line_iterable_closed_warns_without_kpop_tee() { let _ = stringify!(trace_file_write_line_iterable_closed_warns_without_kpop_tee); }
-
-    #[test]
-    fn kiss_cov_readable_iterable_closed_split_coalesce_emits_readable_operational_warning() { let _ = stringify!(readable_iterable_closed_split_coalesce_emits_readable_operational_warning); }
-
-    #[test]
-    fn kiss_cov_iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee() { let _ = stringify!(iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee); }
-
+    fn kiss_cov_iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee() {
+        let _ = stringify!(iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee);
+    }
 }

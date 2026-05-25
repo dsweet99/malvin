@@ -102,31 +102,13 @@ fn h4_execute_command_newlines_are_escaped_in_stdout_summary() {
 
 #[tokio::test]
 async fn h6_trace_file_lines_include_timestamp() {
+    use crate::acp::open_kpop_timestamp_trace_writer;
     use crate::acp::trace_line_write::TraceFileStdout;
-    use crate::acp::{PromptTraceWriter, SessionUpdateChunkKind};
+    use crate::acp::SessionUpdateChunkKind;
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-ts.log");
-    let file = tokio::fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(&path)
-        .await
-        .unwrap();
-    let mut writer = PromptTraceWriter {
-        file,
-        who: "kpop".to_string(),
-        plain_lines: false,
-        stdout_replacement: None,
-        placeholder_emitted: false,
-        raw_output: false,
-        show_thoughts_on_stdout: false,
-        emit_stdout_markdown: true,
-        iterable_closed_warned: false,
-        work_dir: std::path::PathBuf::new(),
-            run_timing: None,
-    };
+    let mut writer = open_kpop_timestamp_trace_writer(&path).await;
     crate::acp::trace_file_write_line(
         &mut writer,
         "hello trace",
@@ -134,6 +116,7 @@ async fn h6_trace_file_lines_include_timestamp() {
         TraceFileStdout {
             tee_stdout: false,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: None,

@@ -101,15 +101,20 @@ fn run_malvin_tidy_no_auth_keys(
 }
 
 #[cfg_attr(unix, test)]
-fn malvin_tidy_skips_agent_when_quality_gates_already_pass() {
+fn malvin_tidy_runs_agent_when_quality_gates_already_pass() {
     let fx = tidy_skip_agent_fixture();
     let out = run_malvin_tidy_no_auth_keys(&fx.workspace, &fx.home, &fx.mock, &fx.path);
     assert!(
-        out.status.success(),
-        "expected tidy without agent when gates pass; status={:?} stdout={} stderr={}",
+        !out.status.success(),
+        "expected tidy to run review agent even when gates pass; status={:?} stdout={} stderr={}",
         out.status,
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr),
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("authentication") || stderr.contains("auth") || stderr.contains("API key"),
+        "expected auth failure from agent startup when gates pass; stderr={stderr:?}"
     );
 }
 

@@ -102,10 +102,77 @@ fn resolve_user_at_path_joins_relative_to_cwd() {
 }
 
 #[test]
+fn create_run_artifacts_opts_without_gc_skips_prune() {
+    let tmp = tempfile::tempdir().unwrap();
+    let logs = crate::malvin_logs_root(tmp.path());
+    std::fs::create_dir_all(logs.join("20260101_000000_keepkeep")).unwrap();
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").unwrap();
+    let art = create_run_artifacts_opts(
+        &plan,
+        Some(tmp.path()),
+        crate::run_id::RunDirOptions::without_gc(),
+    )
+    .unwrap();
+    assert!(logs.join("20260101_000000_keepkeep").exists());
+    assert!(art.run_dir.starts_with(&logs));
+}
+
+#[test]
+fn create_run_artifacts_from_text_opts_without_gc() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text_opts(
+        "prompt",
+        Some(tmp.path()),
+        crate::run_id::RunDirOptions::without_gc(),
+    )
+    .unwrap();
+    assert_eq!(art.work_dir, tmp.path());
+}
+
+#[test]
+fn create_kpop_run_artifacts_opts_without_gc() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_kpop_run_artifacts_opts(
+        "kpop body",
+        Some(tmp.path()),
+        crate::run_id::RunDirOptions::without_gc(),
+    )
+    .unwrap();
+    assert!(art.plan_path.ends_with("request.md"));
+}
+
+#[test]
+fn create_run_artifacts_from_text_prunes_old_runs_before_new_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let logs = crate::malvin_logs_root(tmp.path());
+    std::fs::create_dir_all(&logs).unwrap();
+    for name in [
+        "20260101_000000_aaaaaaa1",
+        "20260102_000000_bbbbbbb2",
+        "20260103_000000_ccccccc3",
+    ] {
+        std::fs::create_dir_all(logs.join(name)).unwrap();
+    }
+    std::fs::write(
+        tmp.path().join(".malvin/config.toml"),
+        "[logs]\nmax_age_days = 0\nmax_runs = 2\nmax_bytes = \"\"\n",
+    )
+    .unwrap();
+    let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
+    assert!(!logs.join("20260101_000000_aaaaaaa1").exists());
+    assert!(logs.join("20260102_000000_bbbbbbb2").exists());
+    assert!(logs.join("20260103_000000_ccccccc3").exists());
+    assert!(art.run_dir.starts_with(&logs));
+    assert!(art.run_dir.is_dir());
+}
+
+#[test]
 fn create_kpop_run_artifacts_writes_request_md() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_kpop_run_artifacts("kpop body", Some(tmp.path())).unwrap();
     assert!(art.plan_path.ends_with("request.md"));
+    assert!(art.exp_log_path().is_file());
     assert_eq!(
         std::fs::read_to_string(&art.plan_path).unwrap(),
         "kpop body"
@@ -174,3 +241,4 @@ fn is_existing_md_file_path_rejects_directory() {
     assert!(is_existing_md_file_path("notes.md").is_none());
     std::env::set_current_dir(old_cwd).unwrap();
 }
+

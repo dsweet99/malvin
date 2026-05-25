@@ -22,7 +22,7 @@ You have a budget of 4 hypotheses.
 
 The coding rules below are what the coding agent that implements this plan will see. Your task is *not* to implement the plan. The rules here are for your reference only. They may help you better evaluate the plan.
 
-BEING_CODING_RULES
+BEGIN_CODING_RULES
 
 ```text
 {{ coding_rules }}

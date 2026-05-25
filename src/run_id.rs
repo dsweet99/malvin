@@ -2,15 +2,37 @@ use chrono::Utc;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
+/// Options for [`create_run_dir`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RunDirOptions {
+    pub gc: bool,
+}
+
+impl Default for RunDirOptions {
+    fn default() -> Self {
+        Self { gc: true }
+    }
+}
+
+impl RunDirOptions {
+    #[must_use]
+    pub const fn without_gc() -> Self {
+        Self { gc: false }
+    }
+}
+
 /// Creates `.malvin/logs/<timestamp>_<id>/` under `base_dir` (or the current directory).
 ///
 /// # Errors
 ///
 /// Returns [`std::io::Error`] if directory creation fails or unique id allocation exhausts retries.
-pub fn create_run_dir(base_dir: Option<&Path>) -> std::io::Result<PathBuf> {
+pub fn create_run_dir(base_dir: Option<&Path>, opts: RunDirOptions) -> std::io::Result<PathBuf> {
     let parent = base_dir.unwrap_or_else(|| Path::new("."));
     let run_root = crate::malvin_logs_root(parent);
     std::fs::create_dir_all(&run_root)?;
+    if opts.gc {
+        crate::log_gc::prune_logs_before_run(parent);
+    }
     create_run_dir_with_id(&run_root, |_| build_identifier())
 }
 
@@ -75,7 +97,7 @@ mod collision_tests {
         let tmp = tempfile::tempdir().unwrap();
         let id = build_identifier();
         assert!(!id.is_empty());
-        let dir = create_run_dir(Some(tmp.path())).unwrap();
+        let dir = create_run_dir(Some(tmp.path()), RunDirOptions::default()).unwrap();
         assert!(dir.is_dir());
     }
 }

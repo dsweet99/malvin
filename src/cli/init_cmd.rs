@@ -12,6 +12,10 @@ pub(crate) const TPL_ADVICE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/advice.md"
 ));
+pub(crate) const TPL_CONFIG: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/default_repo/config.toml"
+));
 pub(crate) const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/admin/check_untracked.sh"
@@ -116,9 +120,10 @@ fn emit_init_startup(
     root: &Path,
     tee_startup_stdout: bool,
 ) -> Result<crate::artifacts::RunArtifacts, String> {
-    use crate::artifacts::create_run_artifacts_from_text;
-    let artifacts =
-        create_run_artifacts_from_text("init", Some(root)).map_err(|e| format!("init: {e}"))?;
+    use crate::artifacts::create_run_artifacts_from_text_opts;
+    use crate::run_id::RunDirOptions;
+    let artifacts = create_run_artifacts_from_text_opts("init", Some(root), RunDirOptions::without_gc())
+        .map_err(|e| format!("init: {e}"))?;
     crate::cli::run_emit::emit_run_startup_sequence(&artifacts, tee_startup_stdout, "init")?;
     Ok(artifacts)
 }

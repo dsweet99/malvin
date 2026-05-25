@@ -73,6 +73,7 @@ pub(crate) fn spawn_test_reader_loop(args: TestReaderLoopSpawn) {
             acp_verbose: false,
             tee_trace_stdout: false,
             trace_jsonl: None,
+            prompt_round_health: Arc::new(std::sync::Mutex::new(PromptRoundHealth::default())),
         })
         .await;
     });

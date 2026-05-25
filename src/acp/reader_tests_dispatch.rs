@@ -85,7 +85,7 @@ mod incoming_line_unix {
     use super::*;
 
     macro_rules! incoming_dispatch {
-        ($pending:expr, $stdin:expr, $seq:expr, $notify:expr) => {
+        ($pending:expr, $stdin:expr, $seq:expr, $notify:expr, $health:expr) => {
             IncomingLineDispatch {
                 pending: $pending,
                 stdin: $stdin,
@@ -94,6 +94,7 @@ mod incoming_line_unix {
                 prompt_cleanup: None,
                 acp_verbose: false,
                 trace_jsonl: None,
+                prompt_round_health: $health,
             }
         };
     }
@@ -104,13 +105,15 @@ mod incoming_line_unix {
             let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
             let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
             let (stdin, _child) = sleep_stdin_for_incoming_line_tests().await;
+            let prompt_round_health = crate::acp_tests::reader_tests_helpers::test_prompt_round_health();
             handle_incoming_line(
                 "%%%",
                 incoming_dispatch!(
                     &pending,
                     &stdin,
                     &acp_activity_seq,
-                    &acp_activity_notify
+                    &acp_activity_notify,
+                    &prompt_round_health
                 ),
             )
             .await;
@@ -120,7 +123,8 @@ mod incoming_line_unix {
                     &pending,
                     &stdin,
                     &acp_activity_seq,
-                    &acp_activity_notify
+                    &acp_activity_notify,
+                    &prompt_round_health
                 ),
             )
             .await;

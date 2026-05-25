@@ -11,9 +11,31 @@ pub(crate) const fn retries_noun(n: u32) -> &'static str {
     if n == 1 { "retry" } else { "retries" }
 }
 
+pub(crate) const UPGRADE_PLAN_STOP_MESSAGE: &str = "Upgrade your plan to continue";
+
 pub(crate) fn agent_string_is_upgrade_plan(msg: &str) -> bool {
     msg.to_ascii_lowercase()
         .contains("upgrade your plan to continue")
+}
+
+/// Operational stderr when billing blocks the agent stream (not session `who` tee).
+#[must_use]
+pub(crate) fn operational_upgrade_plan_for_emit(line: &str, stream_upgrade_plan: bool) -> bool {
+    agent_string_is_upgrade_plan(line) || stream_upgrade_plan
+}
+
+#[must_use]
+pub(crate) fn upgrade_plan_stream_from_buffer(buf: &str) -> bool {
+    agent_string_is_upgrade_plan(buf)
+}
+
+pub(crate) fn emit_operational_upgrade_plan_stop(warned: &mut bool) {
+    if *warned {
+        return;
+    }
+    crate::output::print_log_error(UPGRADE_PLAN_STOP_MESSAGE);
+    crate::output::print_log_error("Stopping..");
+    *warned = true;
 }
 
 pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {

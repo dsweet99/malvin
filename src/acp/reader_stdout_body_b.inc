@@ -18,7 +18,7 @@ async fn reader_loop_finish(session: &mut ReaderLoopFinishCtx<'_>) {
 async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
     let mut g = session.trace_writer.lock().await;
     if let Some(ref mut f) = *g {
-        for (kind, tl, stream) in session.trace_coalesce.flush_all() {
+        for (kind, tl, stream, upgrade_plan) in session.trace_coalesce.flush_all() {
             crate::acp::trace_file_write_line(
                 f,
                 &tl,
@@ -26,6 +26,7 @@ async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
                 crate::acp::trace_line_write::TraceFileStdout {
                     tee_stdout: session.trace_opts.tee_trace_stdout,
                     stream_iterable_closed: stream,
+                    stream_upgrade_plan: upgrade_plan,
                     tee_line_override: None,
                     tee_line_display: None,
                     ts: None,
@@ -64,6 +65,7 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         acp_verbose,
         tee_trace_stdout,
         trace_jsonl,
+        prompt_round_health,
     } = inp;
     let trace_opts = ReaderTraceLineOpts {
         acp_verbose,
@@ -84,6 +86,7 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
         prompt_cleanup: prompt_cleanup.as_deref(),
         acp_verbose,
         trace_jsonl: trace_jsonl.as_deref(),
+        prompt_round_health: &prompt_round_health,
     })
     .await;
     reader_loop_finish(&mut ReaderLoopFinishCtx {
@@ -110,6 +113,7 @@ struct ReaderLoopDrainCtx<'a> {
     prompt_cleanup: Option<&'a PromptRpcCleanup>,
     acp_verbose: bool,
     trace_jsonl: Option<&'a AcpJsonlTrace>,
+    prompt_round_health: &'a Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
 async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
@@ -126,6 +130,7 @@ async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
         prompt_cleanup,
         acp_verbose,
         trace_jsonl,
+        prompt_round_health,
     } = ctx;
     let mut lines = BufReader::new(stdout).lines();
     let mut line_io = ReaderLoopLineIo {
@@ -148,6 +153,7 @@ async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
                 prompt_cleanup,
                 acp_verbose,
                 trace_jsonl,
+                prompt_round_health,
             },
         )
         .await;
@@ -177,6 +183,7 @@ pub(crate) fn spawn_acp_stdout_reader(args: ReaderSpawnArgs) -> tokio::task::Joi
             acp_verbose: args.acp_verbose,
             tee_trace_stdout: args.tee_trace_stdout,
             trace_jsonl: args.trace_jsonl,
+            prompt_round_health: args.prompt_round_health,
         })
         .await;
     })

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 pub fn dead_transport_child_stdio() -> (
@@ -56,6 +57,7 @@ pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
         prompts_log_run_dir: None,
         log_full_outgoing_prompts: false,
         trace_jsonl: None,
+        prompt_round_health: Arc::new(Mutex::new(crate::acp::PromptRoundHealth::default())),
         work_dir: std::env::temp_dir(),
         run_timing: None,
     }

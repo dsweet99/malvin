@@ -163,6 +163,44 @@ pub fn acp_mock_code_streaming_long_bold_markdown_js() -> String {
     acp_mock_js("", &prompt)
 }
 
+pub fn acp_mock_code_dry_run_check_plan_lgtm_js() -> String {
+    let lgtm = write_artifact_lgtm();
+    let body = format!(
+        r"    if (promptText.includes('write ONLY the four characters')) {{
+{lgtm}
+{check_done}
+    }} else if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else if (promptText.includes('Summarize the activity')) {{
+{summary}
+    }} else if (promptText.includes('KPop: Review in-scope code for these problems')) {{
+{review}
+    }} else {{
+    }}",
+        check_done = chunk_line("check_plan_done"),
+        implement = chunk_line("implement_phase_ran"),
+        summary = chunk_line("summary_phase_ran"),
+        review = chunk_line("review_phase_ran"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
+pub fn acp_mock_code_dry_run_check_plan_rejects_js() -> String {
+    let body = format!(
+        r"    if (promptText.includes('write ONLY the four characters')) {{
+{non_lgtm}
+{check_done}
+    }} else if (promptText.includes('Implement the plan in')) {{
+{implement}
+    }} else {{
+    }}",
+        non_lgtm = write_artifact_non_lgtm(),
+        check_done = chunk_line("check_plan_rejected"),
+        implement = chunk_line("implement_phase_ran"),
+    );
+    acp_mock_code_with_run_dir_js(&body)
+}
+
 pub fn acp_mock_code_abort_after_implement_js() -> String {
     let review_tail = code_review_fanout_branches(&chunk_line("reviewed"), &write_artifact_lgtm());
     let body = format!(

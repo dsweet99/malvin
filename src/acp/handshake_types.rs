@@ -8,6 +8,7 @@ use tokio::process::{Child, ChildStdin, ChildStdout};
 use tokio::sync::{Mutex, Notify};
 
 use super::super::jsonl_trace::AcpJsonlTrace;
+use super::super::prompt_round_health::PromptRoundHealth;
 use super::super::session_types::{PromptTraceWriter, ResponseTx};
 
 pub struct AcpHandshakeIo {
@@ -22,6 +23,7 @@ pub struct AcpHandshakeIo {
     pub prompt_rpc_id: Arc<AtomicU64>,
     pub ui_idle_notify: Option<Arc<Notify>>,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub prompt_round_health: Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
 pub struct AcpHandshakeSessionOpts {
@@ -39,23 +41,6 @@ pub struct AcpHandshakeContinuation<'a> {
     pub cwd: &'a Path,
     pub rpc_timeout: Duration,
     pub session: AcpHandshakeSessionOpts,
-}
-
-#[cfg(test)]
-fn handshake_io_from_stdin(stdin: ChildStdin) -> AcpHandshakeIo {
-    AcpHandshakeIo {
-        stdin: Arc::new(Mutex::new(stdin)),
-        pending: Arc::new(Mutex::new(HashMap::new())),
-        acp_activity_seq: Arc::new(AtomicU64::new(0)),
-        acp_activity_notify: Arc::new(Notify::new()),
-        reader_dead: Arc::new(AtomicBool::new(false)),
-        next_id: Arc::new(AtomicU64::new(1)),
-        busy: Arc::new(AtomicBool::new(false)),
-        trace_writer: Arc::new(Mutex::new(None)),
-        prompt_rpc_id: Arc::new(AtomicU64::new(0)),
-        ui_idle_notify: None,
-        trace_jsonl: None,
-    }
 }
 
 #[cfg(test)]
@@ -85,7 +70,13 @@ mod tests {
             .spawn()
             .expect("spawn cat");
         let stdin = child.stdin.take().expect("stdin");
-        drop(super::handshake_io_from_stdin(stdin));
+        let io = crate::acp_tests::reader_tests_helpers::handshake_io_from_stdin(stdin);
+        assert!(io
+            .prompt_round_health
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .format_lines()
+            .is_empty());
         child.kill().await.ok();
         let _ = child.wait().await;
     }

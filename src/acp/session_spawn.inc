@@ -27,6 +27,7 @@ fn spawn_handshake_stdout_reader(
         acp_verbose: session.acp_verbose,
         tee_trace_stdout: session.tee_trace_stdout,
         trace_jsonl: io.trace_jsonl.clone(),
+        prompt_round_health: io.prompt_round_health.clone(),
     });
 }
 

@@ -10,6 +10,8 @@ pub const MALVIN_ADVICE_REL: &str = ".malvin/advice.md";
 
 pub const MALVIN_LOGS_REL: &str = ".malvin/logs";
 
+pub const MALVIN_CONFIG_REL: &str = ".malvin/config.toml";
+
 const LEGACY_MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
 #[must_use]
@@ -25,6 +27,11 @@ pub fn malvin_advice_path(work_dir: &Path) -> PathBuf {
 #[must_use]
 pub fn malvin_logs_root(work_dir: &Path) -> PathBuf {
     work_dir.join(MALVIN_LOGS_REL)
+}
+
+#[must_use]
+pub fn malvin_config_path(work_dir: &Path) -> PathBuf {
+    work_dir.join(MALVIN_CONFIG_REL)
 }
 
 /// Walks from `start` toward the filesystem root until a `.malvin/logs` directory exists.
@@ -66,6 +73,7 @@ mod tests {
         assert_eq!(malvin_checks_path(w), w.join(MALVIN_CHECKS_REL));
         assert_eq!(malvin_advice_path(w), w.join(MALVIN_ADVICE_REL));
         assert_eq!(malvin_logs_root(w), w.join(MALVIN_LOGS_REL));
+        assert_eq!(malvin_config_path(w), w.join(MALVIN_CONFIG_REL));
         assert!(!is_malvin_workspace(w));
         std::fs::create_dir_all(w.join(MALVIN_DIR)).unwrap();
         assert!(is_malvin_workspace(w));

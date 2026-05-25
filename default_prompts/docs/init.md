@@ -48,7 +48,7 @@ Init-specific: `--force` on the subcommand is separate from global `--no-force` 
 3. Require `kiss` on PATH and run `kiss init`.
 4. Install git LFS if available.
 5. If the repo has no commits yet: `git add .`, initial commit as malvin (with `--no-verify` to avoid bootstrap cycle). Does not rename the current branch.
-6. Ensure `.malvin/checks`, `.malvin/advice.md`, and `.malvin/logs/` exist (checks seeded with language-appropriate defaults; nextest used when `cargo nextest --version` succeeds).
+6. Ensure `.malvin/checks`, `{{ advice_path }}`, `.malvin/config.toml` (log retention defaults), and `.malvin/logs/` exist (checks seeded with language-appropriate defaults; nextest used when `cargo nextest --version` succeeds).
 
 ## Prompt workflow
 

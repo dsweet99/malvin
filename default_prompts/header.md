@@ -25,7 +25,7 @@ ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
 CONFIDENCE: 3
 
 TRIGGER: head, tail, url, long job, large file
-ADVICE: Consider redirecting the output to a temp file then studying that to lower the risk of having to rerun a long job or refetch a file over the network.
+ADVICE: Redirect the output to a temp file then study that to lower the risk of having to rerun a long job or refetch a file over the network.
 CONFIDENCE: 3
 
 TRIGGER: large task, many tasks
@@ -34,7 +34,7 @@ CONFIDENCE: 3
 
 ### Regular memories
 
-Does the user's request relate to any of the TRIGGER words in `.malvin/advice.md`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
+Does the user's request relate to any of the TRIGGER words in `{{ advice_path }}`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 ## Calibration
 
@@ -74,6 +74,7 @@ Predicted running time: <prediction>
 ## Shorthand
 
 - DCC: Don't Change Code
+- RL: Be sure to look at recent logs.
 
 ## Style
 

@@ -77,6 +77,7 @@ const fn raw_output_suppress_thought_stdout(
 pub(crate) struct TraceFileStdout<'a> {
     pub tee_stdout: bool,
     pub stream_iterable_closed: Option<super::IterableClosedStream>,
+    pub stream_upgrade_plan: bool,
     pub tee_line_override: Option<&'a str>,
     pub tee_line_display: Option<&'a str>,
     /// When set, trace file and stdout tee share this timestamp (tool-summary path).
@@ -121,6 +122,10 @@ pub async fn trace_file_write_line(
     if raw_output_suppress_thought_stdout(kind, writer) {
         return;
     }
+    if super::operational_upgrade_plan_for_emit(line, stdout.stream_upgrade_plan) {
+        super::emit_operational_upgrade_plan_stop(&mut writer.upgrade_plan_warned);
+        return;
+    }
     if let Some(warn) =
         super::operational_iterable_closed_for_emit(line, stdout.stream_iterable_closed)
     {
@@ -152,7 +157,7 @@ pub async fn write_trace_line_coalesced(
     opts: WriteTraceLineCoalescedOpts<'_>,
 ) {
     if let Some((kind, text)) = opts.parsed.and_then(session_update_chunk_parts) {
-        for (kind, tl, stream) in coalesce.feed(kind, text) {
+        for (kind, tl, stream, upgrade_plan) in coalesce.feed(kind, text) {
             trace_file_write_line(
                 trace_file,
                 &tl,
@@ -160,6 +165,7 @@ pub async fn write_trace_line_coalesced(
                 TraceFileStdout {
                     tee_stdout: opts.tee_stdout,
                     stream_iterable_closed: stream,
+                    stream_upgrade_plan: upgrade_plan,
                     tee_line_override: None,
                     tee_line_display: None,
                     ts: None,
@@ -169,7 +175,7 @@ pub async fn write_trace_line_coalesced(
         }
         return;
     }
-    for (kind, tl, stream) in coalesce.flush_all() {
+    for (kind, tl, stream, upgrade_plan) in coalesce.flush_all() {
         trace_file_write_line(
             trace_file,
             &tl,
@@ -177,6 +183,7 @@ pub async fn write_trace_line_coalesced(
             TraceFileStdout {
                 tee_stdout: opts.tee_stdout,
                 stream_iterable_closed: stream,
+                stream_upgrade_plan: upgrade_plan,
                 tee_line_override: None,
                 tee_line_display: None,
                 ts: None,
@@ -197,6 +204,7 @@ pub async fn write_trace_line_coalesced(
         TraceFileStdout {
             tee_stdout: raw_protocol_tee,
             stream_iterable_closed: None,
+            stream_upgrade_plan: false,
             tee_line_override: None,
             tee_line_display: None,
             ts: None,

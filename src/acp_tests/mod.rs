@@ -14,6 +14,8 @@ pub(crate) mod reader_tests_permission;
 pub(crate) mod reader_tests_permission_unix;
 #[path = "../acp/reader_tests_reader_loop.rs"]
 pub(crate) mod reader_tests_reader_loop;
+#[path = "../acp/reader_tests_prompt_round_health.rs"]
+pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
 #[path = "../acp/reader_tests_tool_summary.rs"]
@@ -32,8 +34,12 @@ pub(crate) mod reader_tests_trace_a;
 pub(crate) mod reader_tests_trace_b;
 #[path = "../acp/reader_tests_trace_coalesce_write.rs"]
 pub(crate) mod reader_tests_trace_coalesce_write;
+#[path = "../acp/reader_tests_trace_kpop_helpers.rs"]
+pub(crate) mod reader_tests_trace_kpop_helpers;
 #[path = "../acp/reader_tests_trace_iterable.rs"]
 pub(crate) mod reader_tests_trace_iterable;
+#[path = "../acp/reader_tests_trace_upgrade_plan.rs"]
+pub(crate) mod reader_tests_trace_upgrade_plan;
 
 #[path = "../acp/kpop_stdout_logger_plan_check.rs"]
 mod kpop_stdout_logger_plan_check;
@@ -46,3 +52,6 @@ mod kpop_stdout_logger_plan_helpers;
 
 #[path = "../acp/cursor_credentials_tests.rs"]
 mod cursor_credentials_tests;
+
+#[path = "../acp/deferred_log_plan_regression.rs"]
+mod deferred_log_plan_regression;

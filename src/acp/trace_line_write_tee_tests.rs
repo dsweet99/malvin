@@ -1,5 +1,6 @@
 use super::*;
 use crate::acp::trace_line_write::TraceTeeStdoutCtx;
+use crate::acp::trace_plain_tee::print_tee_unprefixed_wrapped_line;
 
 fn trace_writer() -> PromptTraceWriter {
     let dir = tempfile::tempdir().unwrap();
@@ -20,8 +21,11 @@ fn trace_writer() -> PromptTraceWriter {
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
+        upgrade_plan_warned: false,
         work_dir: dir.path().to_path_buf(),
         run_timing: None,
+        session_id: String::new(),
+        deferred_sink: None,
     }
 }
 

@@ -9,7 +9,7 @@ use super::types::{
     TOOL_PHASE_START,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct LineRange {
     pub(crate) start: u64,
     pub(crate) end: Option<u64>,

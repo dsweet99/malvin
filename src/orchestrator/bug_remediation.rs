@@ -91,6 +91,7 @@ mod tests {
                     run_learn: false,
                     learn_min_elapsed_ms: 0,
                     skip_check_plan: false,
+                    dry_run: false,
                 },
                 progress_callback: Box::new(|_| {}),
                 session_dotfile_backups: SessionDotfileBackups::from_parts(

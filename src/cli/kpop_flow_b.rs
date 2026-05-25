@@ -100,6 +100,7 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
+        ("advice_path", "./.malvin/advice.md"),
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -157,6 +158,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Restate the problem clearly",
             "Hypothesize",
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
+            "Do not write KPop logs under repo-root `./_kpop/`",
         ],
     );
     let mbc2 = turn.mbc2_pure().unwrap();

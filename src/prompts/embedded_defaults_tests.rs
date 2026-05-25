@@ -43,6 +43,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
             "quality_gates_log".to_string(),
             "/q/quality_gates.log".to_string(),
         ),
+        ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
     ])
 }
 

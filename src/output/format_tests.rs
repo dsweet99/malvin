@@ -208,16 +208,27 @@ fn timestamp_now_string_cross_module_smoke() {
 
 #[test]
 fn output_timestamp_wrapper_nonempty() {
-    let _ = crate::stdout_log_path::set_stdout_log_path;
-    let _ = super::stdout_use_color;
-    let _ = super::append_stdout_log_line;
-    let _ = super::print_stdout_rendered_line;
-    let _ = crate::output::stdout_tagged_display_and_log_line;
-    let _ = crate::output::stdout_heartbeat::emit_heartbeat_line;
-    let _ = crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed;
-    let _ = super::stderr_log::print_log_warning;
-    let _ = super::stderr_log::print_log_error;
-    let _ = super::print_stdout_acp_tee_line_with_timestamp;
     assert!(!super::timestamp_now_string().is_empty());
     assert!(!crate::time_format::timestamp_now_string().is_empty());
+}
+
+#[test]
+fn defer_stdout_hooks_route_through_active_sink() {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    let _guard = super::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let shared = Arc::new(std::sync::Mutex::new(
+        crate::deferred_log::DeferredLogSink::for_prompt("fmt_hook".to_string(), PathBuf::new())
+            .expect("defer sink"),
+    ));
+    crate::deferred_log::register_active_sink(Arc::clone(&shared));
+    crate::deferred_log::install_stdout_hooks();
+    assert!(super::try_defer_tagged_stdout("d", "l"));
+    assert!(crate::output::stdout_defer::try_defer_heartbeat("hb-d", "hb-l"));
+    crate::deferred_log::unregister_active_sink();
+    assert!(!super::try_defer_tagged_stdout("d", "l"));
+    assert!(!crate::output::stdout_defer::try_defer_heartbeat("hb-d", "hb-l"));
 }

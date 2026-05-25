@@ -155,7 +155,7 @@ pub fn acp_mock_tidy_lgtm_abort_on_learn_js() -> String {
     let coder = chunk_line("coder");
     let learn_abort = r"      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: tidy learn abort test\n', 'utf8');";
     let between = format!(
-        r" else if (promptText.includes('Edit `.malvin/advice.md`')) {{
+        r" else if (promptText.includes('Edit `./.malvin/advice.md`')) {{
 {learn_abort}
     }}"
     );

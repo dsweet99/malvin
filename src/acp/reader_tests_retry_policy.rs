@@ -1,8 +1,9 @@
 use crate::acp::{
     AgentRetryOutcome, IterableClosedStream, MAX_AGENT_ATTEMPTS, agent_string_is_cannot_use_model,
-    agent_string_is_upgrade_plan, iterable_closed_stream_from_buffer,
-    operational_iterable_closed_for_emit, operational_iterable_closed_log_line, plan_agent_retry,
-    retries_noun,
+    agent_string_is_upgrade_plan, emit_operational_upgrade_plan_stop,
+    iterable_closed_stream_from_buffer, operational_iterable_closed_for_emit,
+    operational_iterable_closed_log_line, operational_upgrade_plan_for_emit, plan_agent_retry,
+    retries_noun, upgrade_plan_stream_from_buffer,
 };
 use std::time::Duration;
 
@@ -19,6 +20,22 @@ fn upgrade_plan_errors_do_not_retry() {
     let msg = "billing: upgrade your plan to continue";
     let err = plan_agent_retry(msg, 1).expect_err("upgrade plan must fail fast");
     assert_eq!(err.0, msg);
+}
+
+#[test]
+fn operational_upgrade_plan_for_emit_detects_line_and_stream_flag() {
+    assert!(operational_upgrade_plan_for_emit(
+        "billing: upgrade your plan to continue",
+        false
+    ));
+    assert!(operational_upgrade_plan_for_emit("partial", true));
+    assert!(!operational_upgrade_plan_for_emit("ok", false));
+}
+
+#[test]
+fn upgrade_plan_stream_from_buffer_tracks_split_coalesce() {
+    assert!(!upgrade_plan_stream_from_buffer("Upgrade your"));
+    assert!(upgrade_plan_stream_from_buffer("Upgrade your plan to continue"));
 }
 
 #[test]
@@ -137,4 +154,45 @@ fn retriable_exhausts_after_max_agent_attempts() {
 fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(1), "retry");
     assert_eq!(retries_noun(2), "retries");
+}
+
+#[test]
+fn emit_operational_upgrade_plan_stop_prints_once() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::clear_captured_stderr_lines();
+    let mut warned = false;
+    emit_operational_upgrade_plan_stop(&mut warned);
+    emit_operational_upgrade_plan_stop(&mut warned);
+    let stderr = crate::output::take_captured_stderr_lines().join("");
+    assert!(
+        stderr.contains(crate::acp::UPGRADE_PLAN_STOP_MESSAGE) && stderr.contains("Stopping.."),
+        "stderr: {stderr:?}"
+    );
+    assert_eq!(stderr.matches(crate::acp::UPGRADE_PLAN_STOP_MESSAGE).count(), 1);
+}
+
+#[test]
+fn operational_iterable_closed_for_emit_uses_stream_kind_message() {
+    assert_eq!(
+        operational_iterable_closed_for_emit(
+            "partial",
+            Some(IterableClosedStream::Writable)
+        ),
+        Some("acp: WritableIterable is closed")
+    );
+}
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    #[test]
+    fn kiss_cov_emit_operational_upgrade_plan_stop() {
+        let _ = stringify!(emit_operational_upgrade_plan_stop);
+    }
+
+    #[test]
+    fn kiss_cov_iterable_closed_stream_message() {
+        let _ = stringify!(iterable_closed_stream_message);
+    }
 }

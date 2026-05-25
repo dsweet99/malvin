@@ -28,9 +28,16 @@ pub struct PromptTraceWriter {
     pub emit_stdout_markdown: bool,
     /// Suppress duplicate operational warnings for iterable-closed within one trace writer.
     pub iterable_closed_warned: bool,
+    /// Suppress duplicate operational errors for upgrade-plan within one trace writer.
+    pub upgrade_plan_warned: bool,
     /// Session workspace root for relativizing tool-summary paths on stdout.
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    /// ACP session id for Cursor `store.db` enrichment (mirrors the sink session).
+    #[allow(dead_code)]
+    pub session_id: String,
+    /// Deferred stdout sink; `None` when disabled or in tests that emit immediately.
+    pub deferred_sink: Option<crate::deferred_log::SharedDeferSink>,
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -64,6 +71,7 @@ pub struct AcpSessionInner {
     /// When true, mirror full outgoing prompt bodies to stdout and `prompts.log`; when false, name-only.
     pub log_full_outgoing_prompts: bool,
     pub trace_jsonl: Option<Arc<AcpJsonlTrace>>,
+    pub prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 }

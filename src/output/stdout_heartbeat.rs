@@ -1,7 +1,37 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use super::{MALVIN_WHO, append_stdout_log_line, format_line_with_timestamp, timestamp_now_string};
+#[cfg(test)]
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use super::{
+    MALVIN_WHO, stdout_tagged_display_and_log_line, timestamp_now_string, write_heartbeat_log_line,
+};
+use crate::time_format::heartbeat_payload_now;
+
+pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
+    if log.contains("] HB:") {
+        return true;
+    }
+    log.split("] ")
+        .nth(1)
+        .is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
+}
+
+pub(crate) fn log_contains_heartbeat(text: &str) -> bool {
+    heartbeat_log_offset(text).is_some()
+}
+
+pub(crate) fn heartbeat_log_offset(text: &str) -> Option<usize> {
+    let mut offset = 0usize;
+    for line in text.lines() {
+        if is_heartbeat_log_line(line) {
+            return Some(offset);
+        }
+        offset += line.len() + 1;
+    }
+    None
+}
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -16,9 +46,34 @@ static WALL_CLOCK_POLLER: OnceLock<()> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static HEARTBEAT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-pub(crate) fn emit_heartbeat_line() {
+pub(crate) fn mark_heartbeat_emitted(now: Instant) {
+    *LAST_HEARTBEAT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(now);
+}
+
+pub(crate) fn heartbeat_rendered_if_due(now: Instant, arm_if_unarmed: bool) -> Option<(String, String)> {
+    let mut guard = LAST_HEARTBEAT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if guard.is_none() {
+        if arm_if_unarmed {
+            *guard = Some(now);
+        }
+        return None;
+    }
+    let last = guard.expect("armed heartbeat");
+    if !heartbeat_due(last, now) {
+        return None;
+    }
+    drop(guard);
     let ts = timestamp_now_string();
-    append_stdout_log_line(&format_line_with_timestamp(&ts, MALVIN_WHO, "heartbeat"));
+    let payload = heartbeat_payload_now();
+    Some(stdout_tagged_display_and_log_line(
+        MALVIN_WHO,
+        &payload,
+        Some(ts.as_str()),
+    ))
 }
 
 pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
@@ -27,21 +82,10 @@ pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
 }
 
 pub(crate) fn try_emit_heartbeat_if_due(now: Instant, arm_if_unarmed: bool) {
-    let mut guard = LAST_HEARTBEAT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    match *guard {
-        None if arm_if_unarmed => {
-            *guard = Some(now);
-        }
-        None => {}
-        Some(last) if heartbeat_due(last, now) => {
-            *guard = Some(now);
-            drop(guard);
-            emit_heartbeat_line();
-        }
-        Some(_) => {}
-    }
+    let Some((display, log)) = heartbeat_rendered_if_due(now, arm_if_unarmed) else {
+        return;
+    };
+    write_heartbeat_log_line(&display, &log);
 }
 
 pub(crate) fn maybe_emit_stdout_heartbeat() {
@@ -52,8 +96,15 @@ pub(crate) fn poll_wall_clock_heartbeat_if_due() {
     try_emit_heartbeat_if_due(Instant::now(), false);
 }
 
+#[cfg(test)]
+static WALL_CLOCK_POLLER_STOP: AtomicBool = AtomicBool::new(false);
+
 pub(crate) fn wall_clock_poller_loop() {
     loop {
+        #[cfg(test)]
+        if WALL_CLOCK_POLLER_STOP.load(Ordering::Relaxed) {
+            break;
+        }
         std::thread::sleep(HEARTBEAT_POLL_INTERVAL);
         poll_wall_clock_heartbeat_if_due();
     }
@@ -87,124 +138,49 @@ pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
 }
 
 #[cfg(test)]
-mod tests {
+mod inline_tests {
+    use super::{
+        heartbeat_log_offset, heartbeat_rendered_if_due, is_heartbeat_log_line,
+        log_contains_heartbeat, mark_heartbeat_emitted, reset_stdout_heartbeat_for_test,
+        test_set_last_heartbeat_elapsed, wall_clock_poller_loop, WALL_CLOCK_POLLER_STOP,
+        HEARTBEAT_POLL_INTERVAL,
+    };
+    use std::sync::atomic::Ordering;
     use std::time::{Duration, Instant};
 
-    use super::{
-        HEARTBEAT_TEST_LOCK, emit_heartbeat_line, heartbeat_due, maybe_emit_stdout_heartbeat,
-        poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
-        test_set_last_heartbeat_elapsed, try_emit_heartbeat_if_due, wall_clock_poller_loop,
-    };
-    use crate::output::{
-        MALVIN_WHO, format_log_tag_inner, init_stdout_style, is_log_timestamp_token,
-        print_stdout_line, set_stdout_log_path,
-    };
-
     #[test]
-    fn heartbeat_helpers_smoke() {
-        let now = Instant::now();
-        assert!(!heartbeat_due(now, now));
-        let _ = try_emit_heartbeat_if_due;
-        let _ = poll_wall_clock_heartbeat_if_due;
-        let _ = wall_clock_poller_loop;
-    }
-
-    #[test]
-    fn heartbeat_log_line_uses_logger_timestamp_only() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        emit_heartbeat_line();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(&path).expect("read");
-        let inner = format_log_tag_inner(MALVIN_WHO);
-        let line = text.lines().next().expect("heartbeat line");
-        assert!(
-            is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")),
-            "stdout.log heartbeat line must start with wall-clock prefix; got {line:?}"
-        );
-        let payload = line
-            .split_once(&format!("[{inner}] "))
-            .map_or("", |(_, rest)| rest);
-        assert_eq!(payload, "heartbeat");
-    }
-
-    #[test]
-    fn heartbeat_emits_once_when_interval_not_elapsed() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+    fn mark_heartbeat_emitted_prevents_immediate_rerender() {
         reset_stdout_heartbeat_for_test();
         test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        maybe_emit_stdout_heartbeat();
-        maybe_emit_stdout_heartbeat();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(path).expect("read");
+        mark_heartbeat_emitted(Instant::now());
+        assert!(heartbeat_rendered_if_due(Instant::now(), false).is_none());
+    }
+
+    #[test]
+    fn wall_clock_poller_loop_exits_when_test_stop_is_set() {
+        reset_stdout_heartbeat_for_test();
+        WALL_CLOCK_POLLER_STOP.store(false, Ordering::Relaxed);
+        let handle = std::thread::spawn(wall_clock_poller_loop);
+        std::thread::sleep(HEARTBEAT_POLL_INTERVAL + Duration::from_millis(5));
+        WALL_CLOCK_POLLER_STOP.store(true, Ordering::Relaxed);
+        handle.join().expect("wall clock poller thread");
+    }
+
+    #[test]
+    fn heartbeat_line_detectors_cover_legacy_and_new_payloads() {
+        assert!(is_heartbeat_log_line(
+            "20260524.000000.000 [malvin.........] HB: 20260524.000000"
+        ));
+        assert!(is_heartbeat_log_line(
+            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+        ));
+        assert!(log_contains_heartbeat(
+            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+        ));
+        assert!(!log_contains_heartbeat("plain agent line"));
         assert_eq!(
-            text.matches('[').count(),
-            1,
-            "expected one heartbeat: {text:?}"
-        );
-    }
-
-    #[test]
-    fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        reset_stdout_heartbeat_for_test();
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        print_stdout_line("u", "payload");
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(path).expect("read");
-        assert!(
-            !text.contains(&format!("[{MALVIN_WHO}]")),
-            "first stdout line should not be preceded by an immediate heartbeat: {text:?}"
-        );
-        assert!(
-            text.contains("] payload"),
-            "expected tagged payload in log: {text:?}"
-        );
-    }
-
-    #[test]
-    fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
-        let _guard = HEARTBEAT_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        reset_stdout_heartbeat_for_test();
-        test_set_last_heartbeat_elapsed(Duration::from_secs(61));
-        init_stdout_style(true);
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("stdout.log");
-        set_stdout_log_path(Some(path.clone()));
-        poll_wall_clock_heartbeat_if_due();
-        set_stdout_log_path(None);
-        let text = std::fs::read_to_string(&path).unwrap_or_default();
-        let inner = format_log_tag_inner(MALVIN_WHO);
-        assert!(
-            text.contains(&format!("[{inner}] heartbeat")),
-            "expected wall-clock heartbeat during stdout silence: {text:?}"
+            heartbeat_log_offset("QUEUED\n20260524.000000.000 [malvin.........] 20260524.000000 Still alive."),
+            Some(7)
         );
     }
 }

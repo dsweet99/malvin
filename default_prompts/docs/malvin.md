@@ -80,6 +80,14 @@ Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under t
 - `quality_gates.log` — workspace gate commands and output when gates run
 - `review.md`, `review_prep.md`, `result.md` — review and abort artifacts for coding workflows
 
+## Deferred stdout logging
+
+During live ACP sessions (`code`, `kpop`, `hunt`, `plan`, `tidy`, and similar agent-backed flows), malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **750ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral. Heartbeats during an active defer session go through the same defer sink (including the wall-clock poller) so `stdout.log` and the terminal stay in FIFO order with agent output.
+
+## Log retention
+
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `./.malvin/logs/` according to `.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_runs`, `max_bytes`). `malvin init` and `malvin do` skip this pruning. `malvin init` seeds the config file with defaults.
+
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for all agent subcommands and `models`).

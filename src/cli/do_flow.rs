@@ -5,10 +5,11 @@ use std::path::Path;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    create_run_artifacts_from_text, resolve_user_request,
+    resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::output::agent_stdout_tee_enabled;
 use crate::repo_checks;
 use crate::run_timing::TimingPhase;
 use clap::Args;
@@ -44,6 +45,22 @@ fn new_do_client(
     workflow: WorkflowCliOptions,
     thoughts: bool,
 ) -> crate::acp::AgentClient {
+    let interactive = agent_stdout_tee_enabled();
+    let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
+    if interactive {
+        return crate::acp::AgentClient::new(
+            shared.model.clone(),
+            agent_io_options(
+                shared,
+                workflow,
+                AgentStdoutTeeFlags {
+                    emit_stdout_markdown: emit_markdown,
+                    raw_output: false,
+                    show_thoughts_on_stdout: thoughts,
+                },
+            ),
+        );
+    }
     crate::acp::AgentClient::new(
         shared.model.clone(),
         agent_io_options(
@@ -88,8 +105,12 @@ async fn prepare_do_run(
     let client = new_do_client(shared, workflow, do_args.thoughts);
     let request = require_cli_request(do_args.request.as_ref(), "do")?;
     let (text, work_dir) = resolve_user_request(&request)?;
-    let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
-        .map_err(|e| e.to_string())?;
+    let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
+        &text,
+        Some(work_dir.as_path()),
+        crate::run_id::RunDirOptions::without_gc(),
+    )
+    .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;

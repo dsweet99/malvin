@@ -48,6 +48,7 @@ async fn code_run_execute(exec: CodeRunExecuteArgs<'_>) -> Result<(), String> {
                 run_learn: workflow.run_learn,
                 learn_min_elapsed_ms: crate::DEFAULT_LEARN_MIN_ELAPSED_MS,
                 skip_check_plan: code.trust_the_plan,
+                dry_run: code.dry_run,
             },
             progress_callback: Box::new(|msg: &str| {
                 print_stdout_line(MALVIN_WHO, msg);

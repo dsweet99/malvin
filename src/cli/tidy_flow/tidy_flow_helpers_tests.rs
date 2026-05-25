@@ -56,6 +56,7 @@ fn prepare_tidy_prompt_store_loads_required_templates() {
         "./.malvin/logs/run/quality_gates.log".to_string(),
     );
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());
+    ctx.insert("advice_path".to_string(), "./.malvin/advice.md".to_string());
     let prompt = crate::cli::tidy_flow::compose_tidy_prompt(&store, &ctx).expect("compose");
     assert!(prompt.contains("tidy") || prompt.len() > 20);
 }
@@ -70,6 +71,7 @@ fn compose_tidy_concerns_includes_review_path_when_present_in_context() {
     );
     ctx.insert("quality_gates".to_string(), "- `kiss check`\n".to_string());
     ctx.insert("plan_path".to_string(), "./plan.md".to_string());
+    ctx.insert("advice_path".to_string(), "./.malvin/advice.md".to_string());
     ctx.insert(
         "review_path".to_string(),
         "./.malvin/logs/run/review.md".to_string(),

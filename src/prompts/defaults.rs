@@ -110,6 +110,39 @@ mod review_plan_embed_tests {
 }
 
 #[cfg(test)]
+mod advice_path_embed_tests {
+    use std::path::Path;
+
+    use crate::artifacts::create_run_artifacts;
+    use crate::orchestrator::workflow_context;
+    use crate::prompts::{PromptStore, merged_coding_rules};
+
+    #[test]
+    fn embedded_learn_and_header_render_without_unresolved_braces() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan_path = tmp.path().join("plan.md");
+        std::fs::write(&plan_path, "plan body\n").expect("write plan");
+        let artifacts =
+            create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
+        let store = PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let learn = store.render("learn.md", &ctx).expect("learn");
+        assert!(!learn.contains("{{"), "learn.md must expand all placeholders");
+        assert!(
+            learn.contains("./.malvin/advice.md"),
+            "learn.md must render advice_path"
+        );
+        let header = merged_coding_rules(&store, &ctx).expect("header");
+        assert!(!header.contains("{{"), "header must expand all placeholders");
+        assert!(
+            header.contains("./.malvin/advice.md"),
+            "header must render advice_path"
+        );
+    }
+}
+
+#[cfg(test)]
 mod review_write_embed_tests {
     use super::default_file;
 

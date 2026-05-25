@@ -37,6 +37,7 @@ async fn smoke_run_check_plan_spawn_fails() {
             run_learn: false,
             learn_min_elapsed_ms: 0,
             skip_check_plan: false,
+            dry_run: false,
         },
         progress_callback: Box::new(|_| {}),
         session_dotfile_backups: empty_dotfile_backups(),

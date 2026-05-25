@@ -7,6 +7,12 @@ mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
 mod session_types;
 
+#[path = "prompt_trace_writer.rs"]
+mod prompt_trace_writer;
+pub(crate) use prompt_trace_writer::LivePromptTraceArgs;
+#[cfg(test)]
+pub(crate) use prompt_trace_writer::open_kpop_timestamp_trace_writer;
+
 #[path = "wrap_handshake_types.rs"]
 mod wrap_handshake_types;
 #[path = "wrap_session_io.rs"]
@@ -43,6 +49,7 @@ pub(crate) use coalesce_trace::*;
 
 #[path = "trace_line_write_tee.rs"]
 mod trace_line_write_tee;
+mod trace_plain_tee;
 #[cfg(test)]
 pub(crate) use trace_line_write_tee::format_styled_tool_summary_tee_line;
 #[path = "trace_line_write_tool_summary.rs"]
@@ -143,7 +150,7 @@ pub(crate) use wrap_session_prompt::*;
 
 #[path = "wrap_session_post.rs"]
 mod wrap_session_post;
-pub(crate) use wrap_session_post::acp_session_set_run_timing;
+pub(crate) use wrap_session_post::{acp_session_set_run_timing, acp_session_take_prompt_round_health};
 
 #[cfg(test)]
 #[path = "session_tests.rs"]
@@ -169,6 +176,10 @@ pub(crate) use wrap_ops_spawn::*;
 mod ops_body_kpop;
 pub use ops_body_kpop::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
 pub(crate) use ops_body_kpop::*;
+
+#[path = "prompt_round_health.rs"]
+mod prompt_round_health;
+pub(crate) use prompt_round_health::PromptRoundHealth;
 
 #[path = "ops_body_kpop_mt.rs"]
 mod ops_body_kpop_mt;

@@ -42,8 +42,11 @@ async fn coalesced_tool_done_omits_full_stdout_in_trace() {
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: true,
         iterable_closed_warned: false,
+        upgrade_plan_warned: false,
         work_dir: std::path::PathBuf::new(),
             run_timing: None,
+            session_id: String::new(),
+            deferred_sink: None,
     };
     let mut coalesce = crate::acp::TraceChunkCoalescer::default();
     write_parsed_trace_line(&mut writer, &mut coalesce, start_line).await;
