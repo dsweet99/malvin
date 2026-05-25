@@ -98,7 +98,7 @@ mod begin_coder_session_guard_tests {
             "m".into(),
             AgentIoOptions {
                 force: false,
-                sandbox: false,
+                no_sandbox: true,
                 no_tee: true,
                 raw_output: true,
                 show_thoughts_on_stdout: false,
@@ -124,7 +124,7 @@ mod begin_coder_session_guard_tests {
             "m".into(),
             AgentIoOptions {
                 force: false,
-                sandbox: false,
+                no_sandbox: true,
                 no_tee: true,
                 raw_output: true,
                 show_thoughts_on_stdout: false,

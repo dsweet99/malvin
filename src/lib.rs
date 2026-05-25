@@ -35,6 +35,11 @@
 
 mod log_gc;
 mod log_gc_config;
+mod agent_sandbox;
+mod agent_sandbox_config;
+#[cfg(test)]
+#[path = "agent_sandbox_unit_tests.rs"]
+mod agent_sandbox_unit_tests;
 mod alnum_id;
 mod malvin_short_id;
 pub use malvin_short_id::{

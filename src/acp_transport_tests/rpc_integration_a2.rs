@@ -11,7 +11,6 @@ pub(crate) async fn handshake_skip_login_session_id(tmp: &Path, bin: &Path) -> S
         george_acp_lane: None,
         model: None,
         force: false,
-        sandbox: false,
     });
     let child = crate::acp::spawn_agent_acp_child(&mut cmd)
         .await

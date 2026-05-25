@@ -43,9 +43,9 @@ pub struct SharedOpts {
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
-    /// Pass `--sandbox` to `cursor-agent` when spawning the ACP child.
+    /// Run the agent on the host instead of a microsandbox microVM.
     #[arg(long, global = true, default_value_t = false)]
-    pub sandbox: bool,
+    pub no_sandbox: bool,
 }
 
 impl SharedOpts {

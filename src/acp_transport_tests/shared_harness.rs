@@ -16,6 +16,7 @@ pub(crate) fn acp_stdio_rpc_inactive(io: InactiveRpcIo) -> AcpStdioRpc {
     AcpStdioRpc {
         reader_dead: io.reader_dead,
         stdin: io.stdin,
+        sandbox_guest_in: None,
         pending: io.pending,
         acp_activity_seq: io.acp_activity_seq,
         acp_activity_notify: io.acp_activity_notify,

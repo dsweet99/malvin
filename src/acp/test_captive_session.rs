@@ -37,7 +37,7 @@ fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
         ui_idle_notify: None,
         model: None,
         force: false,
-        sandbox: false,
+        no_sandbox: true,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
@@ -75,6 +75,8 @@ pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
             telemetry,
             work_dir: cwd.to_path_buf(),
             run_timing: None,
+            sandbox_guest_in: None,
+            sandbox_guard: None,
         },
     )))
 }

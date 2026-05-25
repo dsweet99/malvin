@@ -29,6 +29,7 @@ pub(crate) fn handshake_io_from_stdin(stdin: tokio::process::ChildStdin) -> crat
     use std::sync::atomic::{AtomicBool, AtomicU64};
     AcpHandshakeIo {
         stdin: Arc::new(Mutex::new(stdin)),
+        sandbox_guest_in: None,
         pending: Arc::new(Mutex::new(HashMap::new())),
         acp_activity_seq: Arc::new(AtomicU64::new(0)),
         acp_activity_notify: Arc::new(Notify::new()),
@@ -61,6 +62,7 @@ impl IncomingDispatchParts<'_> {
                 IncomingLineDispatch {
                     pending: self.pending,
                     stdin: self.stdin,
+                    sandbox_guest_in: None,
                     acp_activity_seq: self.acp_activity_seq,
                     acp_activity_notify: self.acp_activity_notify,
                     prompt_cleanup: None,

@@ -13,6 +13,7 @@ use super::super::session_types::{PromptTraceWriter, ResponseTx};
 
 pub struct AcpHandshakeIo {
     pub stdin: Arc<Mutex<ChildStdin>>,
+    pub sandbox_guest_in: Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,
     pub acp_activity_notify: Arc<Notify>,

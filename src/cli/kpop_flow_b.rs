@@ -38,11 +38,11 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     let shared = crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
-        sandbox: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,
         doc: false,
+        no_sandbox: false,
     };
     let kpop = crate::cli::KpopArgs {
         max_hypotheses: 1,

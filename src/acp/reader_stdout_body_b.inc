@@ -7,7 +7,7 @@ pub(crate) struct ReaderLoopFinishCtx<'a> {
     pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
 }
 
-async fn reader_loop_finish(session: &mut ReaderLoopFinishCtx<'_>) {
+pub(crate) async fn reader_loop_finish(session: &mut ReaderLoopFinishCtx<'_>) {
     if session.trace_opts.acp_verbose {
         session.verbose_coalesce.flush_all();
     }
@@ -46,10 +46,10 @@ async fn reader_dead_after_stdout_close(session: &mut ReaderLoopFinishCtx<'_>) {
     }
 }
 
-struct ReaderLoopLineIo<'a> {
-    trace_opts: &'a ReaderTraceLineOpts,
-    trace_writer: &'a Arc<Mutex<Option<PromptTraceWriter>>>,
-    coalescers: &'a mut VerboseTraceCoalesceState<'a>,
+pub(crate) struct ReaderLoopLineIo<'a> {
+    pub trace_opts: &'a ReaderTraceLineOpts,
+    pub trace_writer: &'a Arc<Mutex<Option<PromptTraceWriter>>>,
+    pub coalescers: &'a mut VerboseTraceCoalesceState<'a>,
 }
 
 pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
@@ -148,6 +148,7 @@ async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
             IncomingLineDispatch {
                 pending,
                 stdin,
+                sandbox_guest_in: None,
                 acp_activity_seq,
                 acp_activity_notify,
                 prompt_cleanup,
@@ -160,7 +161,7 @@ async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
     }
 }
 
-async fn reader_loop_on_line(
+pub(crate) async fn reader_loop_on_line(
     line: &str,
     io: &mut ReaderLoopLineIo<'_>,
     dispatch: IncomingLineDispatch<'_>,

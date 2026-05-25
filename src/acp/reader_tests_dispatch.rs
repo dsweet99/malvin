@@ -89,6 +89,7 @@ mod incoming_line_unix {
             IncomingLineDispatch {
                 pending: $pending,
                 stdin: $stdin,
+                sandbox_guest_in: None,
                 acp_activity_seq: $seq,
                 acp_activity_notify: $notify,
                 prompt_cleanup: None,

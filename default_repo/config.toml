@@ -1,3 +1,5 @@
+mem_limit_gb = 4
+
 [logs]
 # Delete runs older than this many days (dirname timestamp, else mtime).
 max_age_days = 90

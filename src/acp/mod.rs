@@ -2,6 +2,7 @@
 //! Agent Client Protocol (`agent acp`) JSON-RPC over stdio.
 
 mod import_prelude;
+mod sandbox_stdio;
 mod jsonl_trace;
 mod outgoing_prompt_trace;
 pub use outgoing_prompt_trace::CoderPromptOptions;
@@ -140,9 +141,17 @@ pub(crate) use wrap_reader_a::*;
 mod wrap_reader_b;
 pub(crate) use wrap_reader_b::*;
 
+#[path = "wrap_sandbox_reader.rs"]
+mod wrap_sandbox_reader;
+pub(crate) use wrap_sandbox_reader::*;
+
 #[path = "wrap_session_spawn.rs"]
 mod wrap_session_spawn;
 pub(crate) use wrap_session_spawn::*;
+
+#[path = "wrap_microsandbox_session.rs"]
+mod wrap_microsandbox_session;
+pub(crate) use wrap_microsandbox_session::*;
 
 #[path = "wrap_session_prompt.rs"]
 mod wrap_session_prompt;

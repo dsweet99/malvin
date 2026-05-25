@@ -18,6 +18,7 @@ use tracing::info;
 pub(crate) struct AcpStdioRpc {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
     pub stdin: Arc<Mutex<ChildStdin>>,
+    pub sandbox_guest_in: Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,
     pub acp_activity_notify: Arc<tokio::sync::Notify>,
@@ -34,8 +35,12 @@ pub(crate) struct RpcLineWriteOpts<'a> {
 
 pub(crate) async fn write_rpc_line(
     stdin: &Arc<Mutex<ChildStdin>>,
+    sandbox_guest_in: Option<&tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
     opts: RpcLineWriteOpts<'_>,
 ) -> Result<(), String> {
+    if let Some(tx) = sandbox_guest_in {
+        return crate::acp::sandbox_stdio::write_guest_line(tx, opts.line).await;
+    }
     if opts.acp_verbose {
         info!(
             target: "malvin::acp::io",
@@ -111,6 +116,7 @@ pub(crate) async fn rpc_request_with_correlation_id(o: RpcOutgoing<'_>) -> Resul
     };
     if let Err(e) = write_rpc_line(
         &io.stdin,
+        io.sandbox_guest_in.as_ref(),
         RpcLineWriteOpts {
             line: &line,
             acp_verbose: io.acp_verbose,

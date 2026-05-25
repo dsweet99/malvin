@@ -76,7 +76,7 @@ fn smoke_agent_io_options_maps_flags() {
         no_markdown: false,
         verbose: false,
         doc: false,
-        sandbox: false,
+        no_sandbox: false,
     };
     let io = agent_io_options(
         &shared,
@@ -200,7 +200,7 @@ fn smoke_shared_opts_tee_startup_stdout() {
         no_markdown: false,
         verbose: false,
         doc: false,
-        sandbox: false,
+        no_sandbox: false,
     };
     assert!(shared.tee_startup_stdout());
 }

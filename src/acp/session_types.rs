@@ -74,6 +74,8 @@ pub struct AcpSessionInner {
     pub prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    pub sandbox_guest_in: Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
+    pub sandbox_guard: Option<std::sync::Arc<crate::agent_sandbox::AgentSandboxGuard>>,
 }
 
 /// Live `agent acp` child process and JSON-RPC session state (cloneable handle; `cancel` may run
@@ -96,8 +98,8 @@ pub struct AcpSpawnArgs<'a> {
     pub model: Option<&'a str>,
     /// When true, passes `agent --force`.
     pub force: bool,
-    /// When true, passes `agent --sandbox` before the `acp` subcommand.
-    pub sandbox: bool,
+    /// When true, spawn the agent on the host instead of a microsandbox microVM.
+    pub no_sandbox: bool,
     /// When true, print each trace line to stdout as it is written (live tee). Set from CLI tee mode.
     pub tee_trace_stdout: bool,
     /// When true, print raw output without timestamps/prefixes (for raw `malvin do`).

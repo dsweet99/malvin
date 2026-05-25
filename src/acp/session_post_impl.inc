@@ -184,6 +184,9 @@ impl AcpSession {
     /// Returns `Err` if waiting on the child after kill fails.
     pub async fn shutdown(&self) -> Result<(), String> {
         self.reset_prompt_inflight().await;
+        if let Some(guard) = self.0.sandbox_guard.clone() {
+            guard.stop_and_wait().await?;
+        }
         unix_process_group::terminate_process_group(self.0.process_group_id).await;
         let mut ch = self.0.child.lock().await;
         let _ = ch.kill().await;
