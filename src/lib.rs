@@ -79,8 +79,8 @@ pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
-    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
-    restore_workspace_session_dotfiles,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
+    create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_request};
 pub use config::DEFAULT_CLI_MODEL;
@@ -190,7 +190,7 @@ mod test_stderr_capture;
 #[cfg(test)]
 mod malvin_test_seed;
 #[cfg(test)]
-pub use malvin_test_seed::seed_malvin_checks;
+pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
 #[cfg(test)]
 pub mod test_utils;
 

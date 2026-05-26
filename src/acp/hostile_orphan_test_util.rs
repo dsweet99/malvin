@@ -107,10 +107,15 @@ pub async fn read_orphan_pid(path: &Path) -> u32 {
     for _ in 0..50 {
         if let Ok(text) = std::fs::read_to_string(path) {
             if let Ok(pid) = text.trim().parse::<u32>() {
-                return pid;
+                if process_alive(pid) {
+                    return pid;
+                }
             }
         }
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    panic!("orphan pid file not written: {}", path.display());
+    panic!(
+        "orphan pid file not written or orphan not alive: {}",
+        path.display()
+    );
 }

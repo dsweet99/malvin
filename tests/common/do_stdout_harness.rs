@@ -60,6 +60,27 @@ pub fn run_do_with_mock(extra_args: &[&str]) -> std::process::Output {
 }
 
 #[cfg(unix)]
+pub fn run_do_with_mock_force_tee(extra_args: &[&str]) -> std::process::Output {
+    let (root, home, workspace) = test_home_workspace();
+    let mock = root.path().join("mock-agent-acp-do-force-tee");
+    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let mut args = vec!["do"];
+    args.extend_from_slice(extra_args);
+    args.push("say hi");
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(&workspace)
+        .env("HOME", &home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .env("MALVIN_FORCE_STDOUT_TEE", "1");
+    cmd.args(args);
+    let out =
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do");
+    drop(root);
+    out
+}
+
+#[cfg(unix)]
 pub fn run_do_with_columns_mock(mock_js: &str, extra_args: &[&str]) -> std::process::Output {
     run_do_with_mock_js(mock_js, extra_args, Some(DO_WRAP_COLUMNS))
 }

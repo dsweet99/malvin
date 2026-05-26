@@ -22,3 +22,4 @@ Quality Gates:
 {{ quality_gates }}
 
 
+Latest & up-to-date quality gate run output is in: `{{ quality_gates_path }}`.

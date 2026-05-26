@@ -72,6 +72,32 @@ mod tests {
     }
 
     #[test]
+    fn tidy_startup_logs_host_resources_in_command_log() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let old = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions {
+            force: false,
+            run_learn: false,
+        })
+        .expect("prepared");
+        crate::cli::run_emit::emit_run_startup_sequence(
+            &prepared.artifacts,
+            crate::cli::run_emit::RunStartupEmitOpts {
+                tee_stdout: false,
+                host_resources: true,
+            },
+            &prepared.startup_emit_request,
+        )
+        .expect("startup");
+        let command_log = prepared.artifacts.run_dir.join("command.log");
+        let log = std::fs::read_to_string(&command_log).expect("log");
+        std::env::set_current_dir(old).expect("restore cwd");
+        assert!(log.contains("Memory:"));
+        assert!(log.contains("CPUs:"));
+    }
+
+    #[test]
     fn tidy_post_kpop_gates_fails_when_gates_fail() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");

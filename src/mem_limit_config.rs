@@ -46,6 +46,34 @@ pub fn default_mem_limit_gb() -> u64 {
 }
 
 #[must_use]
+pub fn system_cpu_count() -> Option<usize> {
+    std::thread::available_parallelism()
+        .ok()
+        .map(std::num::NonZeroUsize::get)
+}
+
+#[must_use]
+pub fn format_host_resources_line() -> String {
+    let memory = system_total_memory_bytes()
+        .map_or_else(|| "unknown".to_string(), format_memory_gib);
+    let cpus = system_cpu_count()
+        .map_or_else(|| "unknown".to_string(), |n| n.to_string());
+    format!("Memory: {memory}, CPUs: {cpus}")
+}
+
+#[must_use]
+pub fn format_memory_gib(bytes: u64) -> String {
+    let gib = bytes / GIB;
+    let remainder = bytes % GIB;
+    if remainder == 0 || remainder < GIB / 20 {
+        format!("{gib} GiB")
+    } else {
+        let tenths = bytes.saturating_mul(10) / GIB;
+        format!("{}.{} GiB", tenths / 10, tenths % 10)
+    }
+}
+
+#[must_use]
 pub fn system_total_memory_bytes() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {

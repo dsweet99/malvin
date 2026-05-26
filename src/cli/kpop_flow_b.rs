@@ -11,7 +11,14 @@ pub fn kpop_emit_startup(
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
     let request = crate::cli::cli_request::require_cli_request(kpop.request.as_ref(), "kpop")?;
-    crate::cli::run_emit::emit_run_startup_sequence(artifacts, shared.tee_startup_stdout(), &request)
+    crate::cli::run_emit::emit_run_startup_sequence(
+        artifacts,
+        crate::cli::run_emit::RunStartupEmitOpts {
+            tee_stdout: shared.tee_startup_stdout(),
+            host_resources: true,
+        },
+        &request,
+    )
 }
 
 pub fn kpop_learn_bundle(
@@ -49,6 +56,8 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         request: Some("smoke".into()),
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
+    let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
+    assert!(log.contains("Memory:"));
     assert!(artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")));
 }
 

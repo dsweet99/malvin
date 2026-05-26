@@ -5,7 +5,7 @@ use crate::output::{MALVIN_WHO, print_stdout_line};
 use crate::cli::kpop_flow::{
     KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_run_acp_multiturn,
 };
-use crate::cli::run_emit::emit_run_startup_sequence;
+use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::workflow_kpop_shared::{
     finish_kpop_acp_session, post_kpop_session_gates, print_kpop_session_log_line,
 };
@@ -56,7 +56,10 @@ async fn run_gate_kpop_multiturn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(
     let prepared = params.prepared;
     emit_run_startup_sequence(
         prepared.artifacts(),
-        params.shared.tee_startup_stdout(),
+        RunStartupEmitOpts {
+            tee_stdout: params.shared.tee_startup_stdout(),
+            host_resources: true,
+        },
         prepared.startup_emit_request(),
     )?;
     let mut state = KpopMultiturnState::new(
@@ -97,7 +100,10 @@ pub(crate) fn finish_gate_kpop_after_pass(
     if !agent_ran {
         emit_run_startup_sequence(
             prepared.artifacts(),
-            shared.tee_startup_stdout(),
+            RunStartupEmitOpts {
+                tee_stdout: shared.tee_startup_stdout(),
+                host_resources: true,
+            },
             prepared.startup_emit_request(),
         )?;
     }

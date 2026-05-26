@@ -34,6 +34,22 @@ fn load_mem_limit_gb_reads_workspace_config() {
 }
 
 #[test]
+fn format_host_resources_line_mentions_memory_and_cpus() {
+    let line = format_host_resources_line();
+    assert!(line.starts_with("Memory: "));
+    assert!(line.contains(", CPUs: "));
+    let cpus = system_cpu_count().expect("cpus");
+    assert!(cpus > 0);
+    assert!(line.contains(&cpus.to_string()));
+}
+
+#[test]
+fn format_memory_gib_rounds_near_whole_gib() {
+    assert_eq!(format_memory_gib(GIB), "1 GiB");
+    assert_eq!(format_memory_gib(2 * GIB), "2 GiB");
+}
+
+#[test]
 fn system_total_memory_bytes_positive_on_host() {
     let bytes = system_total_memory_bytes().expect("host mem");
     assert!(bytes >= GIB);

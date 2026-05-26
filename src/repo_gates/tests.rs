@@ -56,6 +56,21 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
 }
 
 #[test]
+fn ensure_default_malvin_config_file_writes_template_when_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    let config_path = w.join(crate::MALVIN_CONFIG_REL);
+    assert!(!config_path.exists());
+    ensure_default_malvin_config_file(w).unwrap();
+    assert!(config_path.is_file());
+    let text = fs::read_to_string(&config_path).unwrap();
+    assert!(text.contains("mem_limit_gb"));
+    assert!(text.contains("[logs]"));
+    ensure_default_malvin_config_file(w).unwrap();
+    assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
+}
+
+#[test]
 fn ensure_default_malvin_checks_file_writes_builtin_lines() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();

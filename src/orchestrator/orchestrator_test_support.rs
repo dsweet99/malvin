@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{
-    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
-    create_run_artifacts_from_text,
+    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup, RunArtifacts,
+    SessionDotfileBackups, create_run_artifacts_from_text,
 };
 use crate::orchestrator::workflow_context;
 use crate::prompts::PromptStore;
@@ -33,6 +33,7 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
         KissConfigBackup::Missing,
         MalvinChecksBackup::Missing,
         KissignoreBackup::Missing,
+        MalvinConfigBackup::Missing,
     )
 }
 

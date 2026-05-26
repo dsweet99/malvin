@@ -211,6 +211,7 @@ mod tests {
                 kissconfig: crate::artifacts::KissConfigBackup::Missing,
                 malvin_checks: crate::artifacts::MalvinChecksBackup::Missing,
                 kissignore: crate::artifacts::KissignoreBackup::Missing,
+                malvin_config: crate::artifacts::MalvinConfigBackup::Missing,
             },
         });
         assert!(std::sync::Arc::ptr_eq(

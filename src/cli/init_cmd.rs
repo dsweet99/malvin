@@ -53,7 +53,7 @@ mod init_cmd_workspace;
 #[path = "init_cmd_mid_tests.rs"]
 mod init_cmd_mid_tests;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::Args;
 use init_cmd_mid_core::{bootstrap_repo_tooling, resolve_init_root, write_init_templates};
@@ -104,7 +104,7 @@ pub struct RunInitRequest<'a> {
 pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
     let languages = parse_languages(req.languages)?;
     let root = resolve_init_root(req.path)?;
-    let artifacts = emit_init_startup(&root, req.opts.tee_startup_stdout)?;
+    let artifacts = init_cmd_mid_core::emit_init_startup(&root, req.opts.tee_startup_stdout)?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     let r = async {
         write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
@@ -117,18 +117,6 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
         crate::cli::error_run_log::clear_command_error_run_dir();
     }
     r
-}
-
-fn emit_init_startup(
-    root: &Path,
-    tee_startup_stdout: bool,
-) -> Result<crate::artifacts::RunArtifacts, String> {
-    use crate::artifacts::create_run_artifacts_from_text_opts;
-    use crate::run_id::RunDirOptions;
-    let artifacts = create_run_artifacts_from_text_opts("init", Some(root), RunDirOptions::without_gc())
-        .map_err(|e| format!("init: {e}"))?;
-    crate::cli::run_emit::emit_run_startup_sequence(&artifacts, tee_startup_stdout, "init")?;
-    Ok(artifacts)
 }
 
 fn init_summary_combined_body(

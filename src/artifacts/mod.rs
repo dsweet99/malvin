@@ -12,12 +12,15 @@ pub use create::{
 };
 
 pub use crate::session_dotfile_backup::{
-    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
-    backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
-    backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
-    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
+    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
+    SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissconfig_if_present_with_id, backup_workspace_kissignore_if_present,
+    backup_workspace_kissignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
+    backup_workspace_malvin_checks_if_present_with_id,
+    backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
-    restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
+    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
+    restore_workspace_session_dotfiles,
 };
 
 pub use md_request::{is_existing_md_file_path, resolve_user_md_request};

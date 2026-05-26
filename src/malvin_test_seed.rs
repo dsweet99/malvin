@@ -8,3 +8,9 @@ pub fn seed_malvin_checks(work: &Path, content: &str) {
     std::fs::create_dir_all(work.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
     std::fs::write(crate::malvin_checks_path(work), content).expect("write .malvin/checks");
 }
+
+#[cfg(test)]
+pub fn seed_malvin_config(work: &Path, content: &str) {
+    std::fs::create_dir_all(work.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
+    std::fs::write(crate::malvin_config_path(work), content).expect("write .malvin/config.toml");
+}

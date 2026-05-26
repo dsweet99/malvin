@@ -118,14 +118,15 @@ fn exported_constants_match_public_contract() {
 
 #[test]
 fn ansi_who_tag_uses_palette_for_warning_error_and_default() {
-    use crate::terminal_palette::{ANSI_TOOL_CORAL, ANSI_TOOL_NAVY, ANSI_TOOL_SAND};
+    use crate::terminal_palette::{ANSI_TOOL_AMBER, ANSI_TOOL_CORAL, ANSI_TOOL_NAVY};
 
     let ts = "20260413.121314.015";
     let warn = super::format_line_with_timestamp_ansi(ts, super::WARNING_WHO, "");
     let err = super::format_line_with_timestamp_ansi(ts, super::ERROR_WHO, "");
     let default = super::format_line_with_timestamp_ansi(ts, "kpop", "");
-    assert!(warn.contains(ANSI_TOOL_SAND));
+    assert!(warn.contains(ANSI_TOOL_AMBER));
     assert!(err.contains(ANSI_TOOL_CORAL));
+    assert!(!warn.contains(ANSI_TOOL_CORAL));
     assert!(default.contains(ANSI_TOOL_NAVY));
 }
 

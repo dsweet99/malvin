@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
     backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    resolve_user_request,
+    backup_workspace_malvin_config_if_present, resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
@@ -94,6 +94,7 @@ fn snapshot_do_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups
         backup_workspace_kissconfig_if_present(work_dir)?,
         backup_workspace_malvin_checks_if_present(work_dir)?,
         backup_workspace_kissignore_if_present(work_dir)?,
+        backup_workspace_malvin_config_if_present(work_dir)?,
     ))
 }
 
