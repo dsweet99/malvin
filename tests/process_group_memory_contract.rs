@@ -91,6 +91,14 @@ fn kiss_cov_sandbox_contract_and_hostile_symbols() {
     let _ = stringify!(malvin_sandbox_monitor_includes_malvin_spawned_sibling);
     let _ = stringify!(init_malvin_spawn_baseline);
     let _ = stringify!(isolate_child_process_group);
+    let _ = stringify!(malvin_std_command);
+    let _ = stringify!(malvin_tokio_command);
+    let _ = stringify!(assert_dead_before_next_spawn);
+    let _ = stringify!(note_active_sandbox_session);
+    let _ = stringify!(clear_active_sandbox_session);
+    let _ = stringify!(dead_before_next_rejects_live_prior_sandbox);
+    let _ = stringify!(dead_before_next_allows_after_prior_sandbox_cleared);
+    let _ = stringify!(malvin_std_command_spawns_in_isolated_process_group);
     let _ = stringify!(spawn_hostile_agent_exits_after_orphan_fork);
     let _ = stringify!(spawn_hostile_agent);
     let _ = stringify!(spawn_hostile_double_fork_daemon);

@@ -200,6 +200,7 @@ impl AcpSession {
             .map_err(|e| format!("acp wait: {e}"));
         drop(ch);
         wait_result?;
+        crate::malvin_sandbox::clear_active_sandbox_session();
         Ok(())
     }
 }

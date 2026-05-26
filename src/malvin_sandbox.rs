@@ -1,7 +1,8 @@
 //! Host sandbox: process-group isolation and RSS for all malvin-started processes.
 
 use std::collections::HashSet;
-use std::sync::OnceLock;
+use std::ffi::OsStr;
+use std::sync::{Mutex, OnceLock};
 
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
@@ -9,6 +10,13 @@ use crate::acp::sandbox_monitor_pids;
 use crate::process_group_rss::pids_rss_bytes;
 
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
+
+struct ActiveSandboxSession {
+    pgid: Option<u32>,
+    baseline: HashSet<u32>,
+}
+
+static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -45,6 +53,60 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 
 #[cfg(not(unix))]
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
+
+/// Build a std [`std::process::Command`] with sandbox process-group isolation applied.
+#[must_use]
+pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    isolate_child_process_group(&mut cmd);
+    cmd
+}
+
+/// Build a tokio [`tokio::process::Command`] with sandbox process-group isolation applied.
+#[must_use]
+pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(program);
+    isolate_tokio_child_process_group(&mut cmd);
+    cmd
+}
+
+/// Returns an error when a prior malvin sandbox session still has live processes.
+pub fn assert_dead_before_next_spawn() -> Result<(), String> {
+    let still_alive = {
+        let prior = ACTIVE_SANDBOX_SESSION
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        prior
+            .as_ref()
+            .is_some_and(|session| sandbox_still_alive(session.pgid, &session.baseline))
+    };
+    if still_alive {
+        return Err(
+            "previous malvin sandbox processes are still alive; shut them down before starting another"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+/// Records the active malvin sandbox session for dead-before-next enforcement.
+pub fn note_active_sandbox_session(pgid: Option<u32>, baseline: HashSet<u32>) {
+    *ACTIVE_SANDBOX_SESSION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession { pgid, baseline });
+}
+
+/// Clears the recorded sandbox session after teardown completes.
+pub fn clear_active_sandbox_session() {
+    *ACTIVE_SANDBOX_SESSION
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+}
+
+#[cfg(test)]
+pub(crate) fn clear_active_sandbox_session_for_test() {
+    clear_active_sandbox_session();
+}
 
 /// RSS for malvin descendants, the agent process group, and reparented session orphans.
 #[cfg(unix)]
@@ -85,5 +147,12 @@ mod tests {
         let _ = stringify!(isolate_tokio_child_process_group);
         let _ = stringify!(malvin_session_rss_bytes);
         let _ = stringify!(sandbox_still_alive);
+        let _ = stringify!(malvin_std_command);
+        let _ = stringify!(malvin_tokio_command);
+        let _ = stringify!(assert_dead_before_next_spawn);
+        let _ = stringify!(note_active_sandbox_session);
+        let _ = stringify!(clear_active_sandbox_session);
+        let _ = stringify!(ActiveSandboxSession);
+        let _ = stringify!(clear_active_sandbox_session_for_test);
     }
 }

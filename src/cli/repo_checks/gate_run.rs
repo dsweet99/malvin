@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
@@ -101,9 +100,8 @@ fn ensure_kiss_clamp_if_needed_with_details(
         "Running `kiss clamp` (existing code without .kissconfig)",
         run_log_dir,
     );
-    let mut command = Command::new(run_command_for("kiss"));
+    let mut command = crate::malvin_sandbox::malvin_std_command(run_command_for("kiss"));
     command.arg("clamp").current_dir(work_dir);
-    crate::malvin_sandbox::isolate_child_process_group(&mut command);
     apply_fake_path_if_present(&mut command);
     let output = command
         .output()
@@ -168,9 +166,8 @@ fn run_shell_command_line_with_details(
     }
     emit_repo_gate_line(output, &format!("Running `{command_line}`"), run_log_dir);
     let (shell, arg) = shell_binary();
-    let mut command = Command::new(shell);
+    let mut command = crate::malvin_sandbox::malvin_std_command(shell);
     command.arg(arg).arg(command_line).current_dir(work_dir);
-    crate::malvin_sandbox::isolate_child_process_group(&mut command);
     apply_fake_path_if_present(&mut command);
     let output = command
         .output()

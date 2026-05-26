@@ -3,7 +3,7 @@
 pub(crate) mod discover_py;
 
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
@@ -30,7 +30,7 @@ static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 pub fn cargo_nextest_available(work_dir: &Path) -> bool {
     let _ = work_dir;
     *CARGO_NEXTEST_AVAILABLE.get_or_init(|| {
-        Command::new("cargo")
+        crate::malvin_sandbox::malvin_std_command("cargo")
             .args(["nextest", "--version"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())

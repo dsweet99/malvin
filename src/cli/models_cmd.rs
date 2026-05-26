@@ -1,7 +1,6 @@
 //! `malvin models` — list models via the Cursor agent CLI.
 
 use std::path::PathBuf;
-use std::process::Command;
 
 use crate::agent_or_cursor_agent_bin;
 use crate::ansi_strip::strip_ansi_escapes;
@@ -23,7 +22,7 @@ fn resolve_models_cli() -> Result<PathBuf, String> {
 /// Print models from `cursor-agent models` / `agent models` with a short footer.
 pub fn run_models() -> Result<(), String> {
     let bin = resolve_models_cli()?;
-    let output = Command::new(&bin)
+    let output = crate::malvin_sandbox::malvin_std_command(&bin)
         .arg("models")
         .output()
         .map_err(|e| format!("failed to execute {} models: {e}", bin.display()))?;

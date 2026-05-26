@@ -29,7 +29,7 @@ pub(crate) fn auth_probe(args: &[&str]) -> bool {
     if test_no_real_agent_enabled() {
         return false;
     }
-    StdCommand::new(args[0])
+    crate::malvin_sandbox::malvin_std_command(args[0])
         .args(&args[1..])
         .output()
         .is_ok_and(|o| o.status.success())
