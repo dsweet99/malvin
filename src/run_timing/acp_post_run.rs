@@ -86,7 +86,7 @@ pub fn emit_run_timing_after_acp(
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = crate::run_timing::finalize_and_emit_run_timing(run_dir, timing);
+    let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
 }
@@ -100,4 +100,19 @@ pub fn emit_run_timing_json_only_after_acp(
     let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
     client.set_run_timing(None);
     merge_acp_and_timing_results(acp_result, timing_result)
+}
+
+pub fn merge_acp_restore_check_abort_then_print_timing(
+    primary: Result<(), String>,
+    artifacts: &crate::artifacts::RunArtifacts,
+    session_dotfile_backups: &SessionDotfileBackups,
+) -> Result<(), String> {
+    let merged = merge_acp_with_workspace_session_restore_and_check_abort(
+        primary,
+        &artifacts.work_dir,
+        session_dotfile_backups,
+        &artifacts.artifact_result_md(),
+    );
+    crate::run_timing::print_summary_from_run_dir(&artifacts.run_dir).map_err(|e| e.to_string())?;
+    merged
 }

@@ -112,15 +112,22 @@ pub fn hypotheses_emitted(text: &str) -> usize {
     count_kpop_entries(text) + count_mbc2_entries(text)
 }
 
+fn is_kpop_solved_marker_line(line: &str) -> bool {
+    let t = line.trim_start();
+    let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
+        return false;
+    };
+    rest.trim().is_empty()
+}
+
+#[must_use]
+pub fn count_kpop_solved_markers(text: &str) -> usize {
+    text.lines().filter(|line| is_kpop_solved_marker_line(line)).count()
+}
+
 #[must_use]
 pub fn agent_declared_success(text: &str) -> bool {
-    text.lines().any(|line| {
-        let t = line.trim_start();
-        let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
-            return false;
-        };
-        rest.trim().is_empty()
-    })
+    count_kpop_solved_markers(text) > 0
 }
 
 #[cfg(test)]

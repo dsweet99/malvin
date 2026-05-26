@@ -115,6 +115,16 @@ fn success_marker_detected() {
 }
 
 #[test]
+fn count_kpop_solved_markers_counts_exact_lines() {
+    assert_eq!(super::count_kpop_solved_markers(""), 0);
+    assert_eq!(
+        super::count_kpop_solved_markers("## KPOP_SOLVED\n## KPOP_SOLVED\n"),
+        2
+    );
+    assert_eq!(super::count_kpop_solved_markers("## KPOP_SOLVED_extra\n"), 0);
+}
+
+#[test]
 fn success_marker_rejects_heading_prefix_extensions() {
     assert!(!agent_declared_success("## KPOP_SOLVED_extra\n"));
 }

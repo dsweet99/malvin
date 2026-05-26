@@ -18,6 +18,5 @@ If you write code:
 
 
 Quality Gates:
-{{ quality_gates }}
 
-See `{{ quality_gates_log }}` for latest quality gates feedback.
+{{ quality_gates }}

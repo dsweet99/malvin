@@ -4,11 +4,48 @@ use std::path::Path;
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::format_workspace_gate_failure;
 use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::prompts::{PromptError, PromptStore};
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
 pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
     max_loops.max(1)
+}
+
+#[must_use]
+pub(crate) fn gate_kpop_loop_iterations(max_loops: usize) -> usize {
+    effective_max_loops(max_loops).saturating_add(1)
+}
+
+pub(crate) fn kpop_program_context(
+    work_dir: &Path,
+    scope_constraints: &str,
+) -> Result<HashMap<String, String>, String> {
+    let quality_gates =
+        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
+    let mut context = HashMap::new();
+    context.insert(
+        "scope_constraints".to_string(),
+        scope_constraints.trim().to_string(),
+    );
+    context.insert("quality_gates".to_string(), quality_gates);
+    Ok(context)
+}
+
+pub(crate) fn render_kpop_program_request(
+    store: &PromptStore,
+    work_dir: &Path,
+    constraints_prompt: &str,
+    constraints_context: &HashMap<String, String>,
+) -> Result<String, String> {
+    let scope_constraints = store
+        .render_prompt_only(constraints_prompt, constraints_context)
+        .map_err(|e: PromptError| e.0)?;
+    let context = kpop_program_context(work_dir, &scope_constraints)?;
+    store
+        .render_prompt_only("kpop_program.md", &context)
+        .map(|s| s.trim().to_string())
+        .map_err(|e: PromptError| e.0)
 }
 
 pub(crate) fn kpop_workflow_context(
@@ -98,6 +135,12 @@ mod tests {
     fn effective_max_loops_is_at_least_one() {
         assert_eq!(effective_max_loops(0), 1);
         assert_eq!(effective_max_loops(3), 3);
+    }
+
+    #[test]
+    fn gate_kpop_loop_iterations_is_one_plus_max_loops() {
+        assert_eq!(gate_kpop_loop_iterations(0), 2);
+        assert_eq!(gate_kpop_loop_iterations(5), 6);
     }
 
     #[test]

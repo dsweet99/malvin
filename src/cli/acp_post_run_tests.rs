@@ -182,6 +182,18 @@ fn work_dir_with_checks(content: &str) -> (tempfile::TempDir, crate::artifacts::
 }
 
 #[test]
+fn merge_restore_check_abort_then_print_timing_noops_without_json() {
+    use crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing;
+
+    let work = tempfile::tempdir().unwrap();
+    let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("init", Some(work.path())).expect("artifacts");
+    merge_acp_restore_check_abort_then_print_timing(Ok(()), &artifacts, &empty)
+    .expect("merge");
+}
+
+#[test]
 fn merge_with_abort_combines_restore_failure() {
     let tmp = tempfile::tempdir().unwrap();
     let result = abort_result_path(&tmp);

@@ -213,6 +213,8 @@ pub fn finalize_run_timing_json_only(
     finalize_snapshot(timing).write_json_only(run_dir)
 }
 
+pub use report::print_summary_from_run_dir;
+
 #[cfg(test)]
 mod timing_tests;
 
