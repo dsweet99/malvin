@@ -100,7 +100,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
     )
     .await?;
     let trace_jsonl = ch.trace_jsonl.clone();
-    Ok(AcpSession(Arc::new(ch.into_session_inner(
+    let session = AcpSession(Arc::new(ch.into_session_inner(
         SessionInnerAssembly {
             child,
             process_group_id,
@@ -118,7 +118,9 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             work_dir: args.cwd.to_path_buf(),
             run_timing: None,
         },
-    ))))
+    )));
+    crate::acp::process_group_mem_watch::spawn_process_group_memory_watcher(&session, args.cwd);
+    Ok(session)
 }
 
 pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSession, String> {

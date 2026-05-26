@@ -18,11 +18,14 @@ fn smoke_artifacts_create() {
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     assert!(artifacts.plan_path.is_file());
+    assert!(artifacts.quality_gates_log_path().is_file());
     let from_text =
         crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path())).expect("from_text");
     assert!(from_text.plan_path.is_file());
+    assert!(from_text.quality_gates_log_path().is_file());
     let kpop = crate::artifacts::create_kpop_run_artifacts("req", Some(tmp.path())).expect("kpop");
     assert!(kpop.run_dir.join("request.md").is_file());
+    assert!(kpop.quality_gates_log_path().is_file());
     assert_eq!(
         crate::artifacts::work_dir_for_path(&plan),
         tmp.path().canonicalize().unwrap_or_else(|_| tmp.path().to_path_buf()),
@@ -78,6 +81,15 @@ fn smoke_child_health_sample() {
     let health = crate::child_health::sample_child_health(std::process::id());
     let _ = health.exists;
     let _ = health.zombie;
+}
+
+#[test]
+fn smoke_mem_limit_and_process_group_rss() {
+    let gb = crate::mem_limit_config::default_mem_limit_gb();
+    assert!(gb >= 1);
+    let rss = crate::process_group_rss::process_group_rss_bytes(std::process::id())
+        .expect("rss");
+    assert!(rss > 0);
 }
 
 #[test]

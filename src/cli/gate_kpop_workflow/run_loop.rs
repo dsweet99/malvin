@@ -11,6 +11,12 @@ use crate::cli::workflow_kpop_shared::{
 use super::kpop_session::{print_gate_kpop_log_line, run_gate_kpop_session, GateKpopMultiturnCtx};
 use super::params::{GateKpopIterationParams, GateKpopLoopParams};
 
+type GateKpopLoopOutcome = (
+    bool,
+    bool,
+    Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+);
+
 const CONSECUTIVE_KPOP_SOLVED_TO_EXIT: usize = 2;
 
 const fn bump_consecutive_solved_streak(
@@ -42,6 +48,36 @@ fn two_consecutive_solved_with_passing_gates(
 struct GateKpopAgentSession {
     client: crate::acp::AgentClient,
     session_dotfile_backups: SessionDotfileBackups,
+}
+
+fn agent_session_run_timing(
+    agent: Option<&GateKpopAgentSession>,
+) -> Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>> {
+    agent.and_then(|s| s.client.timing.clone())
+}
+
+fn refresh_solved_streak(
+    exp_log_path: &Path,
+    consecutive_solved: usize,
+    markers_before: usize,
+) -> Result<(usize, usize), String> {
+    let solved_markers = count_kpop_solved_markers(&read_exp_log_text(exp_log_path)?);
+    let streak =
+        bump_consecutive_solved_streak(consecutive_solved, markers_before, solved_markers);
+    Ok((streak, solved_markers))
+}
+
+fn gate_kpop_solved_early_exit(
+    consecutive_solved: usize,
+    artifacts: &crate::artifacts::RunArtifacts,
+    agent_ran: bool,
+    agent: Option<&GateKpopAgentSession>,
+) -> Option<GateKpopLoopOutcome> {
+    if two_consecutive_solved_with_passing_gates(consecutive_solved, artifacts) {
+        Some((true, agent_ran, agent_session_run_timing(agent)))
+    } else {
+        None
+    }
 }
 
 fn start_gate_kpop_agent_session(
@@ -84,11 +120,11 @@ async fn run_gate_kpop_on_loop_iteration(
 
 pub(crate) async fn run_gate_kpop_loop(
     params: GateKpopLoopParams<'_>,
-) -> Result<(bool, bool), String> {
+) -> Result<GateKpopLoopOutcome, String> {
     if params.behavior.skip_kpop_on_initial_pass
         && run_kpop_workspace_gates(params.prepared.artifacts()).is_ok()
     {
-        return Ok((true, false));
+        return Ok((true, false, None));
     }
 
     let iterations = gate_kpop_loop_iterations(params.max_loops);
@@ -103,18 +139,21 @@ pub(crate) async fn run_gate_kpop_loop(
         let markers_before = solved_markers;
         run_gate_kpop_on_loop_iteration(&params, &mut agent).await?;
         agent_ran = true;
-        solved_markers = count_kpop_solved_markers(&read_exp_log_text(exp_log_path)?);
-        consecutive_solved =
-            bump_consecutive_solved_streak(consecutive_solved, markers_before, solved_markers);
-        if two_consecutive_solved_with_passing_gates(consecutive_solved, params.prepared.artifacts())
-        {
-            return Ok((true, agent_ran));
+        (consecutive_solved, solved_markers) =
+            refresh_solved_streak(exp_log_path, consecutive_solved, markers_before)?;
+        if let Some(outcome) = gate_kpop_solved_early_exit(
+            consecutive_solved,
+            params.prepared.artifacts(),
+            agent_ran,
+            agent.as_ref(),
+        ) {
+            return Ok(outcome);
         }
     }
     if params.behavior.recheck_gates_after_exhausted && agent_ran && !gates_ok {
         gates_ok = run_kpop_workspace_gates(params.prepared.artifacts()).is_ok();
     }
-    Ok((gates_ok, agent_ran))
+    Ok((gates_ok, agent_ran, agent_session_run_timing(agent.as_ref())))
 }
 
 #[cfg(test)]
@@ -148,8 +187,42 @@ mod tests {
     }
 
     #[test]
-    fn gate_kpop_agent_session_and_loop_helpers_are_covered() {
-        let _ = stringify!(super::GateKpopAgentSession);
+    fn agent_session_run_timing_none_without_agent() {
+        assert!(super::agent_session_run_timing(None).is_none());
+    }
+
+    #[test]
+    fn agent_session_run_timing_clones_client_slot() {
+        let mut client = crate::acp::AgentClient::new(
+            "m".into(),
+            crate::acp::AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        let timing = client.attach_run_timing_for_session();
+        let agent = Some(super::GateKpopAgentSession {
+            client,
+            session_dotfile_backups: crate::artifacts::SessionDotfileBackups {
+                kissconfig: crate::artifacts::KissConfigBackup::Missing,
+                malvin_checks: crate::artifacts::MalvinChecksBackup::Missing,
+                kissignore: crate::artifacts::KissignoreBackup::Missing,
+            },
+        });
+        assert!(std::sync::Arc::ptr_eq(
+            &timing,
+            super::agent_session_run_timing(agent.as_ref()).as_ref().unwrap()
+        ));
+    }
+
+    #[test]
+    fn gate_kpop_loop_session_helpers_are_covered() {
+        let _ = stringify!(super::refresh_solved_streak);
+        let _ = stringify!(super::gate_kpop_solved_early_exit);
         let _ = stringify!(super::start_gate_kpop_agent_session);
         let _ = stringify!(super::run_gate_kpop_on_loop_iteration);
         let _ = stringify!(super::run_gate_kpop_loop);

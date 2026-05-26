@@ -21,7 +21,7 @@ pub async fn run_tidy(
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
     let max_loops = effective_tidy_max_loops(tidy.max_loops);
-    let (gates_ok, agent_ran) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing) = run_gate_kpop_loop(GateKpopLoopParams {
         shared,
         workflow,
         prepared: &prepared,
@@ -32,7 +32,7 @@ pub async fn run_tidy(
     .await?;
 
     let r = if gates_ok {
-        finish_gate_kpop_after_pass(shared, &prepared, agent_ran)
+        finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
         fail_gate_kpop_after_exhausted("malvin tidy", &prepared)
     };

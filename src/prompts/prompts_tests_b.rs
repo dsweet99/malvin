@@ -98,6 +98,18 @@ fn render_fails_when_double_brace_remains() {
         "expected brace rejection, got {:?}",
         err.0
     );
+    assert!(
+        err.0.contains("bug_fix.md"),
+        "expected prompt file in error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn enforce_no_unresolved_braces_in_reports_prompt_file() {
+    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("kpop_program.md"))
+        .expect_err("braces");
+    assert!(err.0.contains("kpop_program.md"));
 }
 
 #[test]

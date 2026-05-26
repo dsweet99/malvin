@@ -28,6 +28,7 @@ pub(crate) use wrap_session_io::*;
 mod session_types_tests;
 
 mod unix_process_group;
+mod process_group_mem_watch;
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
 #[cfg(test)]

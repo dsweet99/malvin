@@ -38,7 +38,8 @@ impl AgentClient {
             .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?
             .clone();
 
-        crate::prompts::enforce_no_unresolved_braces(prompt).map_err(|e| AgentError(e.0))?;
+        crate::prompts::enforce_no_unresolved_braces_in(prompt, stdout_bracket_label)
+            .map_err(|e| AgentError(e.0))?;
 
         let dispatch = CoderSessionPromptDispatch {
             session: &session,

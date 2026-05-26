@@ -1,10 +1,33 @@
-use std::time::{Duration, Instant};
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use super::{
     ReviewPairId, RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
     finalize_run_timing_json_only, record_backoff, record_llm, report,
 };
-use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+fn simulate_gate_kpop_accumulate_iteration(
+    client: &mut crate::acp::AgentClient,
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+    llm_ms: u64,
+) -> Result<(), String> {
+    use crate::acp_post_run::{RunTimingAfterAcp, RunTimingSessionEnd, emit_run_timing_after_acp};
+
+    record_llm(
+        Some(timing),
+        TimingPhase::Implement,
+        Duration::from_millis(llm_ms),
+    );
+    emit_run_timing_after_acp(RunTimingAfterAcp {
+        client,
+        run_dir,
+        timing,
+        acp_result: Ok(()),
+        session_end: RunTimingSessionEnd::AccumulateRun,
+    })
+}
 
 #[test]
 fn run_timing_json_phases_and_review_pair_id_mapping() {
@@ -109,6 +132,72 @@ fn tool_call_wall_duration_accumulates_in_run_timing() {
             .and_then(serde_json::Value::as_u64),
         Some(50)
     );
+}
+
+#[test]
+fn wall_clock_ms_for_json_uses_elapsed_when_wall_end_open() {
+    let mut r = RunTiming::default();
+    r.mark_wall_start(Instant::now());
+    std::thread::sleep(Duration::from_millis(15));
+    let ms = report::wall_clock_ms_for_json(&r).expect("wall ms");
+    assert!(ms >= 10, "open run should report elapsed wall ms, got {ms}");
+    assert!(r.wall_duration().is_none());
+}
+
+#[test]
+fn persist_open_run_timing_json_keeps_wall_end_unset() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_millis(100),
+    );
+    super::persist_open_run_timing_json(tmp.path(), &timing).expect("persist open");
+    assert!(timing.lock().unwrap().wall_end.is_none());
+    let json = std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE)).unwrap();
+    assert!(json.contains("\"implement\": 100"));
+    assert!(json.contains("\"llm_wait_ms\": 100"));
+}
+
+#[test]
+fn accumulate_run_timing_across_two_sessions() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(1_000));
+    super::persist_open_run_timing_json(tmp.path(), &timing).expect("first persist");
+    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(500));
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
+    let llm_ms = report::to_json_value(&timing.lock().unwrap())["llm_wait_ms"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(llm_ms, 1_500);
+}
+
+#[test]
+fn gate_kpop_accumulate_run_timing_sums_llm_wait_across_iterations() {
+    use super::RUN_TIMING_JSON_FILE;
+
+    let mut client = crate::test_agent_client::smoke_agent_client();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let run_dir = tmp.path().join("run");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    let timing = client.ensure_run_timing_for_session();
+    simulate_gate_kpop_accumulate_iteration(&mut client, &run_dir, &timing, 900_000)
+        .expect("first gate-kpop iteration");
+    let timing_second = client.ensure_run_timing_for_session();
+    assert!(Arc::ptr_eq(&timing, &timing_second));
+    simulate_gate_kpop_accumulate_iteration(&mut client, &run_dir, &timing_second, 2_000)
+        .expect("second gate-kpop iteration");
+    finalize_and_emit_run_timing(&run_dir, &timing_second).expect("finalize at run end");
+    let json: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(run_dir.join(RUN_TIMING_JSON_FILE)).expect("run_timing.json"),
+    )
+    .expect("json");
+    assert_eq!(json["llm_wait_ms"].as_u64(), Some(902_000));
+    assert!(client.timing.is_some());
 }
 
 #[test]

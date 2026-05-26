@@ -213,6 +213,21 @@ pub fn finalize_run_timing_json_only(
     finalize_snapshot(timing).write_json_only(run_dir)
 }
 
+/// Persists in-progress timing without closing the run wall clock.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
+pub fn persist_open_run_timing_json(
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+) -> std::io::Result<()> {
+    let g = timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    report::write_json_only(&g, run_dir)
+}
+
 pub use report::print_summary_from_run_dir;
 
 #[cfg(test)]

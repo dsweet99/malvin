@@ -184,7 +184,13 @@ async fn init_summary_coder_turn_with_timing_emit(
         end_res,
         "failed to end coder session",
     );
-    crate::acp_post_run::emit_run_timing_after_acp(client, &artifacts.run_dir, &timing, merged)
+    crate::acp_post_run::emit_run_timing_after_acp(crate::acp_post_run::RunTimingAfterAcp {
+        client,
+        run_dir: &artifacts.run_dir,
+        timing: &timing,
+        acp_result: merged,
+        session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
+    })
 }
 
 async fn run_init_summary_phase(

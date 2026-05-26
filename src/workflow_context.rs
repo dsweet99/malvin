@@ -9,6 +9,16 @@ pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, pat
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }
 
+fn insert_quality_gates_log_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
+    let path = format_prompt_path(&artifacts.quality_gates_log_path(), base);
+    context.insert("quality_gates_log".to_string(), path.clone());
+    context.insert("quality_gates_path".to_string(), path);
+}
+
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     let base = &artifacts.work_dir;
     insert_formatted(context, "plan_path", &artifacts.plan_path, base);
@@ -44,12 +54,7 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         base,
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
-    insert_formatted(
-        context,
-        "quality_gates_log",
-        &artifacts.quality_gates_log_path(),
-        base,
-    );
+    insert_quality_gates_log_paths(context, artifacts, base);
 }
 
 #[must_use]
@@ -184,6 +189,24 @@ mod workflow_context_path_tests {
             "fallback must name the file: {formatted}"
         );
         let _ = std::fs::remove_dir_all(&outside);
+    }
+
+    #[test]
+    fn insert_quality_gates_log_paths_sets_alias() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "p").expect("write");
+        let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        let mut ctx = HashMap::new();
+        super::insert_quality_gates_log_paths(&mut ctx, &artifacts, tmp.path());
+        assert_eq!(
+            ctx.get("quality_gates_path").map(String::as_str),
+            ctx.get("quality_gates_log").map(String::as_str),
+        );
+        assert!(ctx
+            .get("quality_gates_log")
+            .expect("log")
+            .ends_with("quality_gates.log"));
     }
 
     #[test]

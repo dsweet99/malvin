@@ -33,6 +33,17 @@ impl AgentClient {
         crate::run_timing::attach_new_run_timing(&mut self.timing)
     }
 
+    /// Returns existing run timing or installs a new wall clock when none is active.
+    #[must_use]
+    pub fn ensure_run_timing_for_session(
+        &mut self,
+    ) -> std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>> {
+        if let Some(t) = self.timing.clone() {
+            return t;
+        }
+        self.attach_run_timing_for_session()
+    }
+
     pub(crate) fn set_timing_implement_display_name(&self, label: &'static str) {
         let Some(timing) = self.timing.as_ref() else {
             return;

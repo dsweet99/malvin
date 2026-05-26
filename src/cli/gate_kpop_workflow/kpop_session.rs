@@ -66,13 +66,16 @@ async fn run_gate_kpop_multiturn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(
         0.0,
     )?;
     let kpop_prepared = kpop_acp_prepared(prepared, ctx.iteration.session_dotfile_backups);
-    kpop_run_acp_multiturn(KpopAcpMultiturnCtx {
-        client: ctx.iteration.client,
-        prepared: &kpop_prepared,
-        workflow: params.workflow,
-        state: &mut state,
-        store: prepared.store(),
-    })
+    kpop_run_acp_multiturn(
+        KpopAcpMultiturnCtx {
+            client: ctx.iteration.client,
+            prepared: &kpop_prepared,
+            workflow: params.workflow,
+            state: &mut state,
+            store: prepared.store(),
+        },
+        crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun,
+    )
     .await
 }
 
@@ -89,6 +92,7 @@ pub(crate) fn finish_gate_kpop_after_pass(
     shared: &SharedOpts,
     prepared: &GateKpopPrepared,
     agent_ran: bool,
+    run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
     if !agent_ran {
         emit_run_startup_sequence(
@@ -98,8 +102,13 @@ pub(crate) fn finish_gate_kpop_after_pass(
         )?;
     }
     print_stdout_line(MALVIN_WHO, "DONE");
-    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
-        .map_err(|e| e.to_string())?;
+    if let Some(timing) = run_timing {
+        crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
+            .map_err(|e| e.to_string())?;
+    } else {
+        crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

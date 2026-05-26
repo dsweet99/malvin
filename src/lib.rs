@@ -35,6 +35,8 @@
 
 mod log_gc;
 mod log_gc_config;
+pub mod mem_limit_config;
+pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
 pub use malvin_short_id::{

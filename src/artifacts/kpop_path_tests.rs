@@ -1,6 +1,18 @@
 use super::*;
 
 #[test]
+fn create_run_artifacts_scaffolds_empty_quality_gates_log() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
+    let qlog = art.quality_gates_log_path();
+    assert!(qlog.is_file(), "quality_gates.log must exist at {}", qlog.display());
+    assert_eq!(std::fs::read_to_string(&qlog).unwrap(), "");
+    std::fs::write(&qlog, "stale").unwrap();
+    super::create::ensure_quality_gates_log_file(&art).unwrap();
+    assert_eq!(std::fs::read_to_string(&qlog).unwrap(), "");
+}
+
+#[test]
 fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();

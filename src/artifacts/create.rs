@@ -3,6 +3,12 @@ use std::path::{Path, PathBuf};
 
 use super::RunArtifacts;
 
+pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
+    let path = artifacts.quality_gates_log_path();
+    let _ = std::fs::remove_file(&path);
+    std::fs::write(&path, "")
+}
+
 pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
     let exp_log_path = artifacts.exp_log_path();
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
@@ -40,6 +46,7 @@ pub fn create_run_artifacts_opts(
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -71,6 +78,7 @@ pub fn create_run_artifacts_from_text_opts(
         work_dir,
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -102,6 +110,7 @@ pub fn create_kpop_run_artifacts_opts(
         work_dir,
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)

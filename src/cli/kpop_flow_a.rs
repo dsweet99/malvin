@@ -78,6 +78,7 @@ pub struct KpopAcpMultiturnCtx<'a> {
 
 pub(in crate) async fn kpop_run_acp_multiturn(
     ctx: KpopAcpMultiturnCtx<'_>,
+    session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd,
 ) -> Result<(), String> {
     let learn_owned = kpop_learn_bundle(
         ctx.store,
@@ -85,7 +86,14 @@ pub(in crate) async fn kpop_run_acp_multiturn(
         ctx.workflow.run_learn,
         &ctx.prepared.artifacts,
     )?;
-    let timing = ctx.client.attach_run_timing_for_session();
+    let timing = match session_end {
+        crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun => {
+            ctx.client.ensure_run_timing_for_session()
+        }
+        crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize => {
+            ctx.client.attach_run_timing_for_session()
+        }
+    };
     let acp_result = ctx
         .client
         .run_kpop_multiturn(crate::acp::AgentKpopMultiturnCtl {
@@ -98,12 +106,13 @@ pub(in crate) async fn kpop_run_acp_multiturn(
         })
         .await
         .map_err(|e| e.0);
-    crate::acp_post_run::emit_run_timing_after_acp(
-        ctx.client,
-        &ctx.prepared.artifacts.run_dir,
-        &timing,
+    crate::acp_post_run::emit_run_timing_after_acp(crate::acp_post_run::RunTimingAfterAcp {
+        client: ctx.client,
+        run_dir: &ctx.prepared.artifacts.run_dir,
+        timing: &timing,
         acp_result,
-    )
+        session_end,
+    })
 }
 
 fn run_kpop_short_id_lookup(kpop: &KpopArgs) -> Result<(), String> {
@@ -148,13 +157,16 @@ pub async fn run_kpop(
         0.0,
     )?;
 
-    let acp_result = kpop_run_acp_multiturn(KpopAcpMultiturnCtx {
-        client: &mut client,
-        prepared: &prepared,
-        workflow,
-        state: &mut state,
-        store: &store,
-    })
+    let acp_result = kpop_run_acp_multiturn(
+        KpopAcpMultiturnCtx {
+            client: &mut client,
+            prepared: &prepared,
+            workflow,
+            state: &mut state,
+            store: &store,
+        },
+        crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
+    )
     .await;
 
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
