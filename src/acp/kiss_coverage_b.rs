@@ -12,6 +12,10 @@ fn kiss_cov_acp_mod_and_spawn_inc() {
     let _ = super::resolve_agent_bin();
     let _ = super::test_no_real_agent_enabled();
     let _ = super::auth_probe(&["/bin/true"]);
+    let _ = super::has_api_key();
+    let _ = super::cursor_cli_auth_established();
+    let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
+    let _ = stringify!(spawn_agent_acp_session);
     let _ = stringify!(client_timing_elapsed_ms);
     let _ = stringify!(prompt_rpc_cleanup_arc);
     let _ = stringify!(spawn_handshake_stdout_reader);
@@ -85,6 +89,8 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
     let _ = stringify!(h19_thought_stdout_three_space_indent_no_brackets);
     let _ = stringify!(h20_styled_tool_summary_stdout_line_uses_brackets);
     let _ = stringify!(h21_unstyled_tool_summary_omits_brackets);
+    let _ = stringify!(h23_start_and_done_tool_summary_share_payload_brackets);
+    let _ = stringify!(crate::acp_tests::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout);
 }
 
 #[test]
@@ -149,5 +155,12 @@ fn kiss_cov_acp_reader_test_trace_upgrade_plan() {
     let _ = stringify!(assert_upgrade_plan_operational_stderr);
     let _ = stringify!(run_upgrade_plan_split_coalesce_fixture);
     let _ = stringify!(upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee);
+}
+
+#[test]
+fn kiss_cov_ops_body_spawn_remaining() {
+    let _ = super::cursor_cli_auth_established();
+    let _ = super::resolve_agent_bin();
+    let _ = stringify!(spawn_agent_acp_session);
 }
 

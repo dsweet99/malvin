@@ -33,7 +33,6 @@ async fn test_handshake_hits_session_new_error_path() {
         george_acp_lane: None,
         model: None,
         force: false,
-        sandbox: false,
     });
     let child = crate::acp::spawn_agent_acp_child(&mut cmd)
         .await

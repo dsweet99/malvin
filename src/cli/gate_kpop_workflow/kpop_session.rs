@@ -98,6 +98,8 @@ pub(crate) fn finish_gate_kpop_after_pass(
         )?;
     }
     print_stdout_line(MALVIN_WHO, "DONE");
+    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

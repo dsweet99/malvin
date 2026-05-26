@@ -1,6 +1,6 @@
 // Spawn `agent acp`, stdout reader, and JSON-RPC handshake (inlined into `acp` for `kiss` dependency depth).
 
-fn prompt_rpc_cleanup_arc(io: &AcpHandshakeIo) -> Arc<PromptRpcCleanup> {
+pub(crate) fn prompt_rpc_cleanup_arc(io: &AcpHandshakeIo) -> Arc<PromptRpcCleanup> {
     Arc::new(PromptRpcCleanup {
         busy: io.busy.clone(),
         trace_writer: io.trace_writer.clone(),
@@ -133,7 +133,6 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
         george_acp_lane: args.george_acp_lane,
         model: args.model,
         force: args.force,
-        sandbox: args.sandbox,
     });
     let mut child = spawn_agent_acp_child(&mut cmd)
         .await

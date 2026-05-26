@@ -47,7 +47,6 @@ fn ensure_authenticated_err_when_no_credentials_and_probes_disabled() {
         "auth-test".to_string(),
         AgentIoOptions {
             force: false,
-            sandbox: false,
             no_tee: false,
             raw_output: false,
             show_thoughts_on_stdout: true,

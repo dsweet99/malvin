@@ -1,11 +1,15 @@
 use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
+use crate::cli::workflow_kpop_shared::render_kpop_program_request;
 
 pub fn prepare_code_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
+    store
+        .validate_exists("kpop_program.md")
+        .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("code_constraints.md")
         .map_err(|e: PromptError| e.0)?;
@@ -22,10 +26,12 @@ pub fn code_kpop_request(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
     );
-    store
-        .render_prompt_only("code_constraints.md", &context)
-        .map(|s| s.trim().to_string())
-        .map_err(|e: PromptError| e.0)
+    render_kpop_program_request(
+        store,
+        artifacts.work_dir.as_path(),
+        "code_constraints.md",
+        &context,
+    )
 }
 
 #[cfg(test)]
@@ -50,15 +56,20 @@ mod tests {
             text.contains("plan.md"),
             "expected plan_path in code_constraints request: {text:?}"
         );
+        assert!(
+            text.contains("Satisfy all constraints"),
+            "expected kpop_program wrapper: {text:?}"
+        );
     }
 
     #[test]
-    fn prepare_code_kpop_prompt_store_loads_constraints() {
+    fn prepare_code_kpop_prompt_store_loads_program_and_constraints() {
         let workflow = crate::cli::WorkflowCliOptions {
             force: false,
             run_learn: false,
         };
         let store = prepare_code_kpop_prompt_store(workflow).expect("store");
+        assert!(store.validate_exists("kpop_program.md").is_ok());
         assert!(store.validate_exists("code_constraints.md").is_ok());
     }
 }

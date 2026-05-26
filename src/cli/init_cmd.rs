@@ -43,6 +43,9 @@ pub(crate) const HOOK_UNTRACKED: &str = include_str!(concat!(
 #[path = "init_cmd_mid_core.rs"]
 mod init_cmd_mid_core;
 
+#[path = "init_cmd_bootstrap.rs"]
+mod init_cmd_bootstrap;
+
 #[path = "init_cmd_workspace.rs"]
 mod init_cmd_workspace;
 
@@ -211,11 +214,10 @@ async fn run_init_summary_phase(
     let body = init_summary_combined_body(&store, &ctx)?;
     let coder_turn_out =
         init_summary_coder_turn_with_timing_emit(&mut client, artifacts, &body).await;
-    crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
+    crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
         coder_turn_out,
-        &artifacts.work_dir,
+        artifacts,
         &session_dotfile_backups,
-        &artifacts.artifact_result_md(),
     )
 }
 

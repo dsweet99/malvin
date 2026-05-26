@@ -2,6 +2,7 @@
 mod tests {
     use std::process::Command;
 
+    use crate::init_cmd::init_cmd_bootstrap::ensure_git_lfs_hooks;
     use crate::init_cmd::init_cmd_mid_core::{
         build_pre_commit_config, require_on_path, run_command_expect_success, write_shell_script,
         write_text_file,
@@ -120,6 +121,24 @@ mod tests {
         ensure_malvin_workspace_layout(&nested, false, &[Language::Rust]).unwrap();
         let toml = std::fs::read_to_string(nested.join("Cargo.toml")).unwrap();
         assert!(toml.contains("name = \"my_project_2\""));
+    }
+
+    #[test]
+    fn ensure_git_lfs_hooks_idempotent_when_available() {
+        let tmp = tempfile::tempdir().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .unwrap();
+        if Command::new("git")
+            .args(["lfs", "version"])
+            .status()
+            .is_ok_and(|s| s.success())
+        {
+            ensure_git_lfs_hooks(tmp.path()).unwrap();
+            ensure_git_lfs_hooks(tmp.path()).unwrap();
+        }
     }
 
     #[test]

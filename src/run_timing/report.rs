@@ -57,6 +57,22 @@ pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io:
     Ok(())
 }
 
+/// Prints the tagged stdout summary from an existing `run_timing.json`, if present.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when reading under `run_dir` fails.
+pub fn print_summary_from_run_dir(run_dir: &Path) -> io::Result<()> {
+    let path = run_dir.join(RUN_TIMING_JSON_FILE);
+    if !path.is_file() {
+        return Ok(());
+    }
+    let file = std::fs::File::open(path)?;
+    let json: Value = serde_json::from_reader(file)?;
+    print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(&json));
+    Ok(())
+}
+
 #[test]
 fn timing_line_implement_echoes_json_ms_via_same_formatter() {
     use crate::run_timing::{RunTiming, TimingPhase};
@@ -128,6 +144,25 @@ fn duration_ms_u64_converts_duration_to_milliseconds() {
     assert_eq!(duration_ms_u64(Duration::from_millis(0)), 0);
     assert_eq!(duration_ms_u64(Duration::from_millis(123)), 123);
     assert_eq!(duration_ms_u64(Duration::from_secs(5)), 5000);
+}
+
+#[test]
+fn print_summary_from_run_dir_noops_when_json_missing() {
+    let tmp = tempfile::tempdir().unwrap();
+    super::print_summary_from_run_dir(tmp.path()).expect("noop");
+}
+
+#[test]
+fn print_summary_from_run_dir_reads_existing_json() {
+    use crate::run_timing::{RunTiming, TimingPhase};
+
+    let tmp = tempfile::tempdir().unwrap();
+    let mut r = RunTiming::default();
+    r.mark_wall_start(std::time::Instant::now());
+    r.mark_wall_end(std::time::Instant::now());
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+    r.write_json_only(tmp.path()).expect("json");
+    super::print_summary_from_run_dir(tmp.path()).expect("print");
 }
 
 #[test]

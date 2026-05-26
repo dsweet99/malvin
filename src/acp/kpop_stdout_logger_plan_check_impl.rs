@@ -187,6 +187,22 @@ async fn h20_styled_tool_summary_stdout_line_uses_brackets() {
 }
 
 #[tokio::test]
+async fn h23_start_and_done_tool_summary_share_payload_brackets() {
+    let path = "src/acp/trace_line_write.rs";
+    let (start_line, done_line) =
+        super::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout(path).await;
+    super::kpop_stdout_logger_plan_check_bracket::assert_payload_brackets_after_who_tag(
+        &start_line, &done_line,
+    );
+    let start_plain = crate::ansi_strip::strip_ansi_escapes(&start_line);
+    let done_plain = crate::ansi_strip::strip_ansi_escapes(&done_line);
+    super::kpop_stdout_logger_plan_check_bracket::assert_styled_tool_summary_brackets_match(
+        start_plain.split(']').nth(1).expect("payload").trim(),
+        done_plain.split(']').nth(1).expect("payload").trim(),
+    );
+}
+
+#[tokio::test]
 async fn h21_unstyled_tool_summary_omits_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();

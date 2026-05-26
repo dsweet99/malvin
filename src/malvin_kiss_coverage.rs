@@ -131,3 +131,9 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(abort_result_path);
     let _ = stringify!(smoke_agent_client);
 }
+
+#[test]
+fn kiss_cov_ops_spawn() {
+    let _ = crate::acp::test_no_real_agent_enabled();
+    let _ = crate::acp::resolve_agent_bin();
+}

@@ -88,6 +88,7 @@ pub use prompts::{
 };
 pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
+    print_summary_from_run_dir,
 };
 pub use session_dotfile_backup::KissConfigBackup;
 

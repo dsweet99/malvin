@@ -202,7 +202,6 @@ async fn session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set() {
         ui_idle_notify: None,
         model: None,
         force: false,
-        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,

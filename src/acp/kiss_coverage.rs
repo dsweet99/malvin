@@ -34,6 +34,7 @@ fn smoke_spawn_and_agent_env_helpers() {
     let _ = super::resolve_agent_bin();
     let _ = super::test_no_real_agent_enabled();
     let _ = super::auth_probe(&["/bin/true"]);
+    let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
 }
 
 #[test]

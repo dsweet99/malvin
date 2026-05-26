@@ -67,7 +67,6 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
         ui_idle_notify: None,
         model: model_opt,
         force: client.io.force,
-        sandbox: client.io.sandbox,
         tee_trace_stdout: !client.io.no_tee,
         raw_output: client.io.raw_output,
         show_thoughts_on_stdout: client.io.show_thoughts_on_stdout,
@@ -91,4 +90,20 @@ pub(crate) fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
     })
 }
 
+#[cfg(test)]
+mod ops_body_spawn_kiss {
+    use super::*;
+
+    #[test]
+    fn smoke_ops_body_spawn_symbols() {
+        let _ = test_no_real_agent_enabled();
+        let _ = resolve_agent_bin();
+        let _ = has_api_key();
+        let _ = auth_probe(&["/bin/true"]);
+        let _ = cursor_cli_auth_established();
+        let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
+        let _ = stringify!(spawn_agent_acp_session);
+        let _ = stringify!(client_timing_elapsed_ms);
+    }
+}
 

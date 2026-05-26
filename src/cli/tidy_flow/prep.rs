@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
+use crate::cli::workflow_kpop_shared::render_kpop_program_request;
 
 pub fn prepare_tidy_kpop_prompt_store(
     workflow: WorkflowCliOptions,
@@ -21,50 +22,15 @@ pub fn prepare_tidy_kpop_prompt_store(
 pub fn tidy_kpop_request(
     store: &PromptStore,
     work_dir: &Path,
-    artifacts: &crate::artifacts::RunArtifacts,
+    _artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<String, String> {
-    let quality_gates_log = crate::orchestrator::format_prompt_path(
-        &artifacts.quality_gates_log_path(),
-        work_dir,
-    );
-    let mut tidy_context = HashMap::new();
-    tidy_context.insert(
-        "quality_gates_log".to_string(),
-        quality_gates_log.clone(),
-    );
-    let scope_constraints = store
-        .render_prompt_only("tidy_constraints.md", &tidy_context)
-        .map_err(|e: PromptError| e.0)?;
-    let context = kpop_program_context(work_dir, &scope_constraints, &quality_gates_log)?;
-    store
-        .render_prompt_only("kpop_program.md", &context)
-        .map(|s| s.trim().to_string())
-        .map_err(|e: PromptError| e.0)
-}
-
-fn kpop_program_context(
-    work_dir: &Path,
-    scope_constraints: &str,
-    quality_gates_log: &str,
-) -> Result<HashMap<String, String>, String> {
-    let quality_gates =
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
-    let mut context = HashMap::new();
-    context.insert(
-        "scope_constraints".to_string(),
-        scope_constraints.trim().to_string(),
-    );
-    context.insert("quality_gates".to_string(), quality_gates);
-    context.insert(
-        "quality_gates_log".to_string(),
-        quality_gates_log.to_string(),
-    );
-    Ok(context)
+    render_kpop_program_request(store, work_dir, "tidy_constraints.md", &HashMap::new())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::workflow_kpop_shared::kpop_program_context;
 
     #[test]
     fn tidy_kpop_request_has_no_unresolved_braces() {
@@ -83,8 +49,12 @@ mod tests {
             "expected tidy_constraints in request: {text:?}"
         );
         assert!(
-            text.contains("quality_gates.log"),
-            "expected quality_gates_log path from tidy_constraints: {text:?}"
+            !text.contains("quality_gates.log"),
+            "kpop_program must not mention quality_gates.log: {text:?}"
+        );
+        assert!(
+            text.contains("Satisfy all constraints"),
+            "expected kpop_program wrapper: {text:?}"
         );
     }
 
@@ -100,17 +70,13 @@ mod tests {
     }
 
     #[test]
-    fn kpop_program_context_expands_quality_gates_log() {
+    fn kpop_program_context_includes_scope_and_gates() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
         std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
-        let ctx = super::kpop_program_context(tmp.path(), "scope", "./.malvin/logs/run/q.log")
-            .expect("context");
+        let ctx = kpop_program_context(tmp.path(), "scope").expect("context");
         assert_eq!(ctx.get("scope_constraints").map(String::as_str), Some("scope"));
         assert!(ctx.contains_key("quality_gates"));
-        assert_eq!(
-            ctx.get("quality_gates_log").map(String::as_str),
-            Some("./.malvin/logs/run/q.log")
-        );
+        assert!(!ctx.contains_key("quality_gates_log"));
     }
 }

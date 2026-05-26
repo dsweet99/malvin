@@ -9,7 +9,7 @@ cargo install malvin
 
 ## Notes
 
-`malvin` allows all tool calls by default. Run in a sandbox for safety.
+`malvin` allows all tool calls by default.
 
 ## Speed
 

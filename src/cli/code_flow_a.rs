@@ -54,7 +54,6 @@ pub const fn agent_io_options(
 ) -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
         force: workflow.force,
-        sandbox: shared.sandbox,
         no_tee: shared.no_tee,
         raw_output: tee.raw_output,
         show_thoughts_on_stdout: tee.show_thoughts_on_stdout,

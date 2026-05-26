@@ -37,7 +37,6 @@ fn default_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
         ui_idle_notify: None,
         model: None,
         force: false,
-        sandbox: false,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,
