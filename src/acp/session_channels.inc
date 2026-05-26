@@ -62,8 +62,6 @@ pub struct SessionInnerAssembly {
     pub telemetry: SessionReaderTelemetry,
     pub work_dir: PathBuf,
     pub run_timing: Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-    pub sandbox_guest_in: Option<tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
-    pub sandbox_guard: Option<std::sync::Arc<crate::agent_sandbox::AgentSandboxGuard>>,
 }
 
 #[allow(clippy::type_complexity)]
@@ -122,7 +120,6 @@ impl SessionChannelState {
     pub(crate) fn handshake_io(&self) -> AcpHandshakeIo {
         AcpHandshakeIo {
             stdin: self.stdin.clone(),
-            sandbox_guest_in: None,
             pending: self.pending.clone(),
             acp_activity_seq: self.acp_activity_seq.clone(),
             acp_activity_notify: self.acp_activity_notify.clone(),
@@ -164,8 +161,6 @@ impl SessionChannelState {
             prompt_round_health: self.prompt_round_health,
             work_dir: parts.work_dir,
             run_timing: parts.run_timing,
-            sandbox_guest_in: parts.sandbox_guest_in,
-            sandbox_guard: parts.sandbox_guard,
         }
     }
 }
@@ -207,7 +202,6 @@ async fn session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set() {
         ui_idle_notify: None,
         model: None,
         force: false,
-        no_sandbox: true,
         tee_trace_stdout: false,
         raw_output: false,
         show_thoughts_on_stdout: false,

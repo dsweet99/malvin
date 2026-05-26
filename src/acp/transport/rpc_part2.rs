@@ -101,7 +101,6 @@ async fn write_rpc_line_appends_flush_line_readable_on_child_stdout() {
     let (mut child, stdout, stdin) = spawn_cat_rpc_stdio_pair().await;
     write_rpc_line(
         &stdin,
-        None,
         RpcLineWriteOpts {
             line: r#"{"jsonrpc":"2.0","id":1}"#,
             acp_verbose: false,

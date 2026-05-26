@@ -57,14 +57,6 @@ fn smoke_acp_inc_symbols_for_kiss() {
     let _ = stringify!(take_stdio_pipes_from_piped_spawn);
     let _ = stringify!(acp_stdio);
     let _ = stringify!(spawn_acp_session);
-    let _ = stringify!(spawn_acp_session_microsandbox);
-    let _ = stringify!(spawn_microsandbox_stdout_reader);
-    let _ = stringify!(SandboxReaderArgs);
-    let _ = stringify!(spawn_acp_sandbox_stdout_reader);
-    let _ = stringify!(crate::acp::sandbox_stdio::SandboxStdoutStream);
-    let _ = stringify!(crate::acp::sandbox_stdio::SandboxStdoutStream::new);
-    let _ = stringify!(crate::acp::sandbox_stdio::SandboxStdoutStream::poll_read);
-    let _ = stringify!(crate::acp::sandbox_stdio::write_guest_line);
     let _ = stringify!(session_after_stdio);
     let _ = stringify!(kill_child_and_finalize_containment);
     let _ = stringify!(acp_session_set_run_timing);

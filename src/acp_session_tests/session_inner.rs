@@ -60,8 +60,6 @@ pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
         prompt_round_health: Arc::new(Mutex::new(crate::acp::PromptRoundHealth::default())),
         work_dir: std::env::temp_dir(),
         run_timing: None,
-        sandbox_guest_in: None,
-        sandbox_guard: None,
     }
 }
 

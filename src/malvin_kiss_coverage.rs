@@ -133,9 +133,7 @@ fn kiss_cov_cli_helper_symbols() {
 }
 
 #[test]
-fn kiss_cov_agent_sandbox_and_ops_spawn() {
+fn kiss_cov_ops_spawn() {
     let _ = crate::acp::test_no_real_agent_enabled();
     let _ = crate::acp::resolve_agent_bin();
-    let _ = crate::agent_sandbox::sandbox_test_no_real_agent_enabled();
-    let _ = stringify!(resolve_spawn_agent_bin);
 }

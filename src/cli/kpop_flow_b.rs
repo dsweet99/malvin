@@ -42,7 +42,6 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         no_markdown: true,
         verbose: false,
         doc: false,
-        no_sandbox: false,
     };
     let kpop = crate::cli::KpopArgs {
         max_hypotheses: 1,

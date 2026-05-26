@@ -13,6 +13,10 @@ General Constraints:
 - Any code you write is idiomatic. (For example: Don't use ".inc" files in Rust.)
 - When you code, stay in scope.
 
+If you write code:
+- Write real unit tests, even if it seem like you have to write a lot of them. Do your best. Don't use tricks or make superficial unit tests just to pass coverage gates.
+
+
 Quality Gates:
 {{ quality_gates }}
 

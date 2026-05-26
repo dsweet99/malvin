@@ -37,7 +37,6 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["s
 termimad = "0.34"
 unicode-width = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
-microsandbox = "0.4.6"
 
 [dev-dependencies]
 

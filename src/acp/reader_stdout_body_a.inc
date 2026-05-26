@@ -99,7 +99,6 @@ pub(crate) async fn dispatch_response(
 pub(crate) struct IncomingLineDispatch<'a> {
     pub pending: &'a Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub stdin: &'a Arc<Mutex<ChildStdin>>,
-    pub sandbox_guest_in: Option<&'a tokio::sync::mpsc::UnboundedSender<Vec<u8>>>,
     pub acp_activity_seq: &'a Arc<AtomicU64>,
     pub acp_activity_notify: &'a Arc<Notify>,
     pub prompt_cleanup: Option<&'a PromptRpcCleanup>,
@@ -156,7 +155,6 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             };
             if let Err(e) = write_rpc_line(
                 d.stdin,
-                d.sandbox_guest_in,
                 RpcLineWriteOpts {
                     line: &line,
                     acp_verbose: d.acp_verbose,

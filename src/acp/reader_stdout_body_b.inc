@@ -148,7 +148,6 @@ async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
             IncomingLineDispatch {
                 pending,
                 stdin,
-                sandbox_guest_in: None,
                 acp_activity_seq,
                 acp_activity_notify,
                 prompt_cleanup,

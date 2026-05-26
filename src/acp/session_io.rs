@@ -16,7 +16,6 @@ pub fn acp_stdio(s: &AcpSessionInner) -> crate::acp::AcpStdioRpc {
     crate::acp::AcpStdioRpc {
         reader_dead: s.reader_dead.clone(),
         stdin: s.stdin.clone(),
-        sandbox_guest_in: s.sandbox_guest_in.clone(),
         pending: s.pending.clone(),
         acp_activity_seq: s.acp_activity_seq.clone(),
         acp_activity_notify: s.acp_activity_notify.clone(),

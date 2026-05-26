@@ -14,7 +14,6 @@ use crate::prompts::PromptStore;
 pub fn io_opts() -> AgentIoOptions {
     AgentIoOptions {
         force: false,
-        no_sandbox: true,
         no_tee: true,
         raw_output: true,
         show_thoughts_on_stdout: false,

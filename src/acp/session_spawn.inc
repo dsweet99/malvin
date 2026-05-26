@@ -35,7 +35,6 @@ fn handshake_stdio_rpc(io: &AcpHandshakeIo, session: &AcpHandshakeSessionOpts) -
     AcpStdioRpc {
         reader_dead: io.reader_dead.clone(),
         stdin: io.stdin.clone(),
-        sandbox_guest_in: io.sandbox_guest_in.clone(),
         pending: io.pending.clone(),
         acp_activity_seq: io.acp_activity_seq.clone(),
         acp_activity_notify: io.acp_activity_notify.clone(),
@@ -118,16 +117,11 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             },
             work_dir: args.cwd.to_path_buf(),
             run_timing: None,
-            sandbox_guest_in: None,
-            sandbox_guard: None,
         },
     ))))
 }
 
 pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSession, String> {
-    if crate::agent_sandbox::use_microsandbox_for_spawn(args.no_sandbox, args.cwd) {
-        return Box::pin(crate::acp::spawn_acp_session_microsandbox(args)).await;
-    }
     let rpc_timeout = clamp_rpc_timeout(args.rpc_timeout);
     let require_cursor_login_auth =
         requires_cursor_login_auth(args.api_key, args.auth_token);

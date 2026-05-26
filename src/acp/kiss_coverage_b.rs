@@ -158,28 +158,6 @@ fn kiss_cov_acp_reader_test_trace_upgrade_plan() {
 }
 
 #[test]
-fn kiss_cov_microsandbox_and_sandbox_stdio() {
-    let _ = stringify!(spawn_acp_session_microsandbox);
-    let _ = stringify!(microsandbox_cat_stdin_holder);
-    let _ = stringify!(microsandbox_run_handshake);
-    let _ = stringify!(microsandbox_stdio_rpc);
-    let _ = stringify!(microsandbox_session_inner);
-    let _ = stringify!(microsandbox_start_transport);
-    let _ = stringify!(MicrosandboxHandshakeCtx);
-    let _ = stringify!(MicrosandboxSessionAssembly);
-    let _ = stringify!(spawn_microsandbox_stdout_reader);
-    let _ = stringify!(SandboxReaderArgs);
-    let _ = stringify!(spawn_acp_sandbox_stdout_reader);
-    let _ = stringify!(SandboxStdoutStream);
-    let _ = stringify!(write_guest_line);
-    let _ = stringify!(poll_read);
-    let _ = stringify!(sandbox_stdout_stream_reads_channel);
-    let _ = stringify!(write_guest_line_appends_newline);
-    let _ = super::sandbox_stdio::SandboxStdoutStream::new;
-    let _ = super::sandbox_stdio::write_guest_line;
-}
-
-#[test]
 fn kiss_cov_ops_body_spawn_remaining() {
     let _ = super::cursor_cli_auth_established();
     let _ = super::resolve_agent_bin();

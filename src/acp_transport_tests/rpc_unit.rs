@@ -70,7 +70,6 @@ async fn test_write_rpc_line_fails_after_child_stdin_closed() {
     for _ in 0..100 {
         last = write_rpc_line(
             &stdin,
-            None,
             RpcLineWriteOpts {
                 line: r#"{"x":1}"#,
                 acp_verbose: false,
