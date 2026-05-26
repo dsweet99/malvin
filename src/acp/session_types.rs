@@ -1,7 +1,7 @@
 //! Core session state types for `agent acp`.
 use super::jsonl_trace::AcpJsonlTrace;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
@@ -44,6 +44,7 @@ pub struct PromptTraceWriter {
 pub struct AcpSessionInner {
     pub child: Mutex<Child>,
     pub process_group_id: Option<u32>,
+    pub spawn_pid_baseline: HashSet<u32>,
     pub stdin: Arc<Mutex<ChildStdin>>,
     pub pending: Arc<Mutex<HashMap<u64, ResponseTx>>>,
     pub acp_activity_seq: Arc<AtomicU64>,

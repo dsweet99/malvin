@@ -1,9 +1,0 @@
-[package]
-name = "memory_cap_oom"
-version = "0.0.0"
-edition = "2024"
-publish = false
-
-[dependencies]
-microsandbox = "0.4.6"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

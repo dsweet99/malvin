@@ -1,6 +1,26 @@
+use std::collections::HashSet;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
+
+pub(in crate::process_group_rss) fn linux_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    let mut total = 0u64;
+    let mut saw = false;
+    for pid in pids {
+        let status_path = format!("/proc/{pid}/status");
+        let status = match fs::read_to_string(&status_path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == ErrorKind::NotFound => continue,
+            Err(_) => continue,
+        };
+        let Some(bytes) = parse_status_vm_rss_bytes(&status) else {
+            continue;
+        };
+        saw = true;
+        total = total.saturating_add(bytes);
+    }
+    saw.then_some(total)
+}
 
 pub(in crate::process_group_rss) fn linux_process_group_rss_bytes(pgid: u32) -> Option<u64> {
     let entries = fs::read_dir("/proc").ok()?;

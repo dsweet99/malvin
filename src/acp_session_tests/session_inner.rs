@@ -37,6 +37,7 @@ pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
     crate::acp::AcpSessionInner {
         child,
         process_group_id: None,
+        spawn_pid_baseline: std::collections::HashSet::new(),
         stdin,
         pending: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::default())),
         acp_activity_seq,

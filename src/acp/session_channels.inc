@@ -57,6 +57,7 @@ fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
 pub struct SessionInnerAssembly {
     pub child: Child,
     pub process_group_id: Option<u32>,
+    pub spawn_pid_baseline: std::collections::HashSet<u32>,
     pub session_id: String,
     pub rpc_timeout: std::time::Duration,
     pub telemetry: SessionReaderTelemetry,
@@ -138,6 +139,7 @@ impl SessionChannelState {
         AcpSessionInner {
             child: Mutex::new(parts.child),
             process_group_id: parts.process_group_id,
+            spawn_pid_baseline: parts.spawn_pid_baseline,
             stdin: self.stdin,
             pending: self.pending,
             acp_activity_seq: self.acp_activity_seq,
@@ -169,6 +171,7 @@ pub struct SessionAfterStdioIn<'a> {
     pub(crate) args: AcpSpawnArgs<'a>,
     pub(crate) rpc_timeout: std::time::Duration,
     pub(crate) require_cursor_login_auth: bool,
+    pub(crate) spawn_pid_baseline: std::collections::HashSet<u32>,
     pub(crate) child: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: ChildStdout,

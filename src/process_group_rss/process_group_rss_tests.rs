@@ -13,8 +13,20 @@ fn kiss_cov_linux_process_group_rss_symbol_names() {
     let _ = stringify!(parse_status_vm_rss_bytes);
     let _ = stringify!(parse_proc_pid_dir_name);
     let _ = stringify!(process_group_rss_bytes);
+    let _ = stringify!(pids_rss_bytes);
     let _ = stringify!(linux_process_group_rss_bytes);
     let _ = stringify!(macos_process_group_rss_bytes);
+    let _ = stringify!(linux_pids_rss_bytes);
+    let _ = stringify!(macos_pids_rss_bytes);
+    let _ = stringify!(pids_rss_bytes);
+}
+
+#[test]
+fn pids_rss_bytes_includes_current_process() {
+    let mut pids = std::collections::HashSet::new();
+    pids.insert(std::process::id());
+    let rss = super::pids_rss_bytes(&pids).expect("pids rss");
+    assert!(rss > 0);
 }
 
 #[test]

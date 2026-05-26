@@ -183,8 +183,15 @@ impl AcpSession {
     ///
     /// Returns `Err` if waiting on the child after kill fails.
     pub async fn shutdown(&self) -> Result<(), String> {
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(
+            self.0.process_group_id,
+        );
         self.reset_prompt_inflight().await;
-        unix_process_group::terminate_process_group(self.0.process_group_id).await;
+        crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+            self.0.process_group_id,
+            &self.0.spawn_pid_baseline,
+        )
+        .await;
         let mut ch = self.0.child.lock().await;
         let _ = ch.kill().await;
         let wait_result = ch

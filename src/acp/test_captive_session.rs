@@ -69,6 +69,7 @@ pub fn captive_cat_acp_session_for_tests(cwd: &Path) -> AcpSession {
         crate::acp::session_types::SessionInnerAssembly {
             child,
             process_group_id: None,
+            spawn_pid_baseline: std::collections::HashSet::new(),
             session_id: "test-session-id".into(),
             rpc_timeout: args.rpc_timeout,
             telemetry,

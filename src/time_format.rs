@@ -38,7 +38,12 @@ fn random_heartbeat_phrase() -> &'static str {
 pub fn heartbeat_payload_now() -> String {
     let now = chrono::Local::now();
     let ts = now.format("%Y%m%d.%H%M%S");
-    format!("{ts} {}", random_heartbeat_phrase())
+    let mut payload = format!("{ts} {}", random_heartbeat_phrase());
+    if let Some(stats) = crate::active_agent_heartbeat::active_agent_heartbeat_stats() {
+        payload.push(' ');
+        payload.push_str(&stats);
+    }
+    payload
 }
 
 #[must_use]
@@ -66,6 +71,21 @@ mod tests {
     fn heartbeat_payload_now_starts_with_wall_clock_timestamp() {
         let payload = super::heartbeat_payload_now();
         assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn heartbeat_payload_now_includes_agent_stats_when_session_registered() {
+        crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+        let pgid = std::process::id();
+        let baseline = crate::acp::snapshot_pids();
+        crate::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
+        let payload = super::heartbeat_payload_now();
+        assert!(payload.contains("sandbox "));
+        assert!(payload.contains("RSS"));
+        assert!(payload.contains("procs"));
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
+        crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     }
 
     #[test]

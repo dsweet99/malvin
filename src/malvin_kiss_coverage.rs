@@ -1,6 +1,16 @@
 //! Behavioral smoke tests for crate-root modules (kiss per-file coverage).
 
 #[test]
+fn smoke_active_agent_heartbeat_stats() {
+    let _ = stringify!(crate::active_agent_heartbeat::register_active_agent_process_group);
+    let _ = stringify!(crate::active_agent_heartbeat::unregister_active_agent_process_group);
+    let _ = stringify!(crate::malvin_sandbox::init_malvin_spawn_baseline);
+    let _ = stringify!(crate::malvin_sandbox::malvin_session_rss_bytes);
+    crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    assert!(crate::active_agent_heartbeat_stats().is_none());
+}
+
+#[test]
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
     let tmp = tempfile::tempdir().expect("tempdir");

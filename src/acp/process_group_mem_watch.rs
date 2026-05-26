@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -6,14 +7,14 @@ use std::time::Duration;
 use tracing::warn;
 
 use super::session_types::AcpSession;
-use super::unix_process_group;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
-pub(super) struct MemWatchHandles {
+pub struct MemWatchHandles {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
     pub pgid: u32,
     pub limit_bytes: u64,
+    pub spawn_pid_baseline: HashSet<u32>,
 }
 
 pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir: &Path) {
@@ -27,6 +28,7 @@ pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir:
             reader_dead: Arc::clone(&session.0.reader_dead),
             pgid,
             limit_bytes,
+            spawn_pid_baseline: session.0.spawn_pid_baseline.clone(),
         };
         tokio::spawn(async move {
             watch_process_group_memory(handles).await;
@@ -39,26 +41,24 @@ pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir:
 }
 
 #[cfg(unix)]
-fn process_group_still_alive(pgid: u32) -> bool {
-    crate::process_group_rss::process_group_rss_bytes(pgid).is_some()
-}
-
-#[cfg(unix)]
-pub(super) async fn watch_process_group_memory(handles: MemWatchHandles) {
+pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     let MemWatchHandles {
         reader_dead,
         pgid,
         limit_bytes,
+        spawn_pid_baseline,
     } = handles;
     loop {
         tokio::time::sleep(POLL_INTERVAL).await;
         if reader_dead.load(Ordering::SeqCst) {
             return;
         }
-        if !process_group_still_alive(pgid) {
+        if !crate::malvin_sandbox::sandbox_still_alive(Some(pgid), &spawn_pid_baseline) {
             return;
         }
-        let Some(rss) = crate::process_group_rss::process_group_rss_bytes(pgid) else {
+        let Some(rss) =
+            crate::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), &spawn_pid_baseline)
+        else {
             continue;
         };
         if rss <= limit_bytes {
@@ -68,9 +68,13 @@ pub(super) async fn watch_process_group_memory(handles: MemWatchHandles) {
             rss_bytes = rss,
             limit_bytes,
             pgid,
-            "agent process group exceeded memory limit; terminating"
+            "malvin sandbox exceeded memory limit; terminating"
         );
-        unix_process_group::terminate_process_group(Some(pgid)).await;
+        crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+            Some(pgid),
+            &spawn_pid_baseline,
+        )
+        .await;
         return;
     }
 }

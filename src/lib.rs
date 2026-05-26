@@ -36,6 +36,7 @@
 mod log_gc;
 mod log_gc_config;
 pub mod mem_limit_config;
+pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
@@ -58,6 +59,8 @@ mod tracing_init;
 mod user_home;
 pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
+mod active_agent_heartbeat;
+pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
 pub mod tool_summary;
 mod deferred_log;
@@ -69,6 +72,8 @@ pub use acp::{
     AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl,
     AuthError, CoderPromptOptions, KpopFlowOnceArgs,
 };
+#[cfg(unix)]
+pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::startup_request_tag_label;
 pub use artifacts::{

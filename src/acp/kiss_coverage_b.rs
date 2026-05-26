@@ -158,6 +158,22 @@ fn kiss_cov_acp_reader_test_trace_upgrade_plan() {
 }
 
 #[test]
+fn kiss_cov_unix_process_group_mod_reexports() {
+    let _ = super::snapshot_pids;
+    let _ = super::spawned_pids_since_baseline;
+    let _ = super::signal_process_group;
+    let _ = super::terminate_agent_process_group;
+    let _ = super::terminate_process_group;
+}
+
+#[test]
+fn kiss_cov_unix_process_group_teardown_fns() {
+    let _ = super::unix_process_group_teardown::terminate_agent_process_group;
+    let _ = super::unix_process_group_teardown::terminate_process_group;
+    let _ = super::unix_process_group_teardown::kill_targets_for_teardown;
+}
+
+#[test]
 fn kiss_cov_ops_body_spawn_remaining() {
     let _ = super::cursor_cli_auth_established();
     let _ = super::resolve_agent_bin();

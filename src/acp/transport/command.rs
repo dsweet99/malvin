@@ -106,7 +106,7 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
 
 #[cfg(unix)]
 fn isolate_agent_process_group(cmd: &mut Command) {
-    cmd.process_group(0);
+    crate::malvin_sandbox::isolate_tokio_child_process_group(cmd);
 }
 
 #[cfg(not(unix))]

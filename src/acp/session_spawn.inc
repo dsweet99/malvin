@@ -78,6 +78,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         args,
         rpc_timeout,
         require_cursor_login_auth,
+        spawn_pid_baseline,
         child,
         stdin,
         stdout,
@@ -104,6 +105,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         SessionInnerAssembly {
             child,
             process_group_id,
+            spawn_pid_baseline: spawn_pid_baseline.clone(),
             session_id,
             rpc_timeout,
             telemetry: SessionReaderTelemetry {
@@ -119,6 +121,10 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             run_timing: None,
         },
     )));
+    crate::active_agent_heartbeat::register_active_agent_process_group(
+        process_group_id,
+        spawn_pid_baseline.clone(),
+    );
     crate::acp::process_group_mem_watch::spawn_process_group_memory_watcher(&session, args.cwd);
     Ok(session)
 }
@@ -127,6 +133,10 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
     let rpc_timeout = clamp_rpc_timeout(args.rpc_timeout);
     let require_cursor_login_auth =
         requires_cursor_login_auth(args.api_key, args.auth_token);
+    #[cfg(unix)]
+    let spawn_pid_baseline = crate::acp::unix_process_group_ps::snapshot_pids();
+    #[cfg(not(unix))]
+    let spawn_pid_baseline = std::collections::HashSet::new();
     let mut cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
         cwd: args.cwd,
         bin_override: args.bin_override,
@@ -151,6 +161,7 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
         args,
         rpc_timeout,
         require_cursor_login_auth,
+        spawn_pid_baseline,
         child,
         stdin,
         stdout,

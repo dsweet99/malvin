@@ -103,6 +103,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
     );
     let mut command = Command::new(run_command_for("kiss"));
     command.arg("clamp").current_dir(work_dir);
+    crate::malvin_sandbox::isolate_child_process_group(&mut command);
     apply_fake_path_if_present(&mut command);
     let output = command
         .output()
@@ -169,6 +170,7 @@ fn run_shell_command_line_with_details(
     let (shell, arg) = shell_binary();
     let mut command = Command::new(shell);
     command.arg(arg).arg(command_line).current_dir(work_dir);
+    crate::malvin_sandbox::isolate_child_process_group(&mut command);
     apply_fake_path_if_present(&mut command);
     let output = command
         .output()

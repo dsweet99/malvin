@@ -27,8 +27,24 @@ pub(crate) use wrap_session_io::*;
 #[path = "session_types_tests.rs"]
 mod session_types_tests;
 
-mod unix_process_group;
+#[path = "unix_process_group_ps.rs"]
+mod unix_process_group_ps;
+#[path = "unix_process_group_teardown.rs"]
+mod unix_process_group_teardown;
+#[cfg(unix)]
+#[path = "unix_sandbox_monitor.rs"]
+mod unix_sandbox_monitor;
+
+pub use unix_process_group_ps::{snapshot_pids, spawned_pids_since_baseline, signal_process_group};
+pub use unix_process_group_teardown::{terminate_agent_process_group, terminate_process_group};
+#[cfg(unix)]
+pub(crate) use unix_process_group_ps::pid_alive;
+#[cfg(unix)]
+pub use unix_sandbox_monitor::sandbox_monitor_pids;
+
 mod process_group_mem_watch;
+#[cfg(unix)]
+pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
 #[cfg(test)]
@@ -152,6 +168,10 @@ pub(crate) use wrap_session_prompt::*;
 #[path = "wrap_session_post.rs"]
 mod wrap_session_post;
 pub(crate) use wrap_session_post::{acp_session_set_run_timing, acp_session_take_prompt_round_health};
+
+#[cfg(unix)]
+#[path = "hostile_orphan_test_util.rs"]
+pub mod hostile_orphan_test_util;
 
 #[cfg(test)]
 #[path = "session_tests.rs"]
