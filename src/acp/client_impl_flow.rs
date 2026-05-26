@@ -59,6 +59,7 @@ impl AgentClient {
             match run_kpop_multiturn_once(self, &mut ctl).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
+                    ctl.state.reset_for_transport_retry();
                     last_error = e.0;
                     if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
                         .await?
