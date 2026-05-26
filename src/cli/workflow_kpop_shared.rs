@@ -20,6 +20,7 @@ pub(crate) fn gate_kpop_loop_iterations(max_loops: usize) -> usize {
 pub(crate) fn kpop_program_context(
     work_dir: &Path,
     scope_constraints: &str,
+    artifacts: &RunArtifacts,
 ) -> Result<HashMap<String, String>, String> {
     let quality_gates =
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
@@ -29,19 +30,30 @@ pub(crate) fn kpop_program_context(
         scope_constraints.trim().to_string(),
     );
     context.insert("quality_gates".to_string(), quality_gates);
+    context.insert(
+        "quality_gates_path".to_string(),
+        crate::format_prompt_path(
+            &artifacts.quality_gates_log_path(),
+            &artifacts.work_dir,
+        ),
+    );
     Ok(context)
 }
 
 pub(crate) fn render_kpop_program_request(
     store: &PromptStore,
-    work_dir: &Path,
     constraints_prompt: &str,
     constraints_context: &HashMap<String, String>,
+    artifacts: &RunArtifacts,
 ) -> Result<String, String> {
     let scope_constraints = store
         .render_prompt_only(constraints_prompt, constraints_context)
         .map_err(|e: PromptError| e.0)?;
-    let context = kpop_program_context(work_dir, &scope_constraints)?;
+    let context = kpop_program_context(
+        artifacts.work_dir.as_path(),
+        &scope_constraints,
+        artifacts,
+    )?;
     store
         .render_prompt_only("kpop_program.md", &context)
         .map(|s| s.trim().to_string())

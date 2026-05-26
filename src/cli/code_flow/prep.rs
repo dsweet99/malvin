@@ -28,9 +28,9 @@ pub fn code_kpop_request(
     );
     render_kpop_program_request(
         store,
-        artifacts.work_dir.as_path(),
         "code_constraints.md",
         &context,
+        artifacts,
     )
 }
 

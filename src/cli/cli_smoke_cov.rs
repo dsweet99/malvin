@@ -210,7 +210,7 @@ fn smoke_tidy_kpop_request_includes_constraints() {
         .expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let out = super::tidy_flow::tidy_kpop_request(&store, tmp.path(), &artifacts).expect("request");
+    let out = super::tidy_flow::tidy_kpop_request(&store, &artifacts).expect("request");
     assert!(out.contains("Just get quality gates to pass"));
     assert!(out.contains("Satisfy all constraints"));
 }

@@ -22,7 +22,7 @@ pub fn prepare_tidy_kpop_run(
     let work_dir = Path::new(".").to_path_buf();
     let artifacts =
         create_kpop_run_artifacts("tidy", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let request_text = tidy_kpop_request(&store, &work_dir, &artifacts)?;
+    let request_text = tidy_kpop_request(&store, &artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let exp_log_path = artifacts.exp_log_path();
     let malvin_checks_backup =
