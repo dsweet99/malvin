@@ -8,7 +8,7 @@ use crate::acp::write_tool_summary_trace_line;
 use crate::acp::format_styled_tool_summary_tee_line;
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::assert_acp_tool_summary_dim_preserves_bracket;
-use crate::tool_summary::tool_summary_stdout_display;
+use crate::tool_summary::apply_tool_summary_ansi;
 use crate::terminal_palette::ANSI_TOOL_SAND;
 use serde_json::json;
 
@@ -68,8 +68,12 @@ pub(super) fn assert_styled_tool_summary_brackets_match(start_payload: &str, don
         offline_dir.path().to_path_buf(),
     );
     for payload in [start_payload, done_payload] {
-        let bracketed = format!("[{payload}]");
-        let display = tool_summary_stdout_display(&bracketed);
+        let bracketed = if payload.starts_with('[') && payload.ends_with(']') {
+            payload.to_string()
+        } else {
+            format!("[{payload}]")
+        };
+        let display = apply_tool_summary_ansi(&bracketed);
         let styled = format_styled_tool_summary_tee_line(
             &tee_writer,
             &bracketed,
@@ -81,6 +85,7 @@ pub(super) fn assert_styled_tool_summary_brackets_match(start_payload: &str, don
             "styled tool summary must use inbound ACP who color; got {styled:?}"
         );
         assert_acp_tool_summary_dim_preserves_bracket(&styled);
+        crate::output::assert_tool_payload_brackets_share_color(&styled);
     }
 }
 

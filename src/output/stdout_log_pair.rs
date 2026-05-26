@@ -210,28 +210,6 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
 }
 
 #[cfg(test)]
-pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
-    let bracket_end = line.find(']').expect("bracket");
-    assert!(
-        line.contains(ANSI_DIM),
-        "tee dims tool payload; got {line:?}"
-    );
-    assert!(
-        line.find(ANSI_DIM).unwrap() > bracket_end,
-        "dim must apply after who bracket; got {line:?}"
-    );
-    let prefix = &line[..=bracket_end];
-    assert!(
-        prefix.contains(acp_bracket_color(AcpTeeDirection::FromAgent)),
-        "who bracket stays bright; got {line:?}"
-    );
-    assert!(
-        !prefix.contains(ANSI_DIM),
-        "who/bracket prefix must not be dimmed; got {line:?}"
-    );
-}
-
-#[cfg(test)]
 mod inline_cov {
     #[test]
     fn kiss_cov_stdout_log_pair_privates() {

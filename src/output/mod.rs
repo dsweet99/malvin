@@ -97,14 +97,6 @@ pub fn clear_captured_stderr_lines() {
 }
 
 /// Announce one outgoing prompt on stdout with a single bracket line `[{bracket_label}...]`.
-///
-/// With full prompt logging enabled, the ACP session also prints the full rendered prompt when not
-/// in raw-output mode: one plain stdout line per [`logical_lines`] slice, with the same `>`
-/// stem as used for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or
-/// name-only line);
-/// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
-/// split traces keep a plain body on disk but use the `>do` stem on stdout and in `prompts.log`
-/// when verbose.
 pub fn print_outgoing_prompt_log(trace_who: &str, bracket_label: &str) {
     let directional_tag = format_acp_directional_tag_prefix('>', trace_who);
     let bracket_payload = format!("[{bracket_label}...]");
@@ -196,8 +188,6 @@ pub use crate::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::{
     stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
 };
-#[cfg(test)]
-pub(crate) use stdout_log_pair::assert_acp_tool_summary_dim_preserves_bracket;
 
 pub(crate) fn append_stdout_log_line(line: &str) {
     let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
@@ -248,3 +238,8 @@ pub fn is_command_prelude_line(line: &str) -> bool {
     }
     payload_after_fixed_width_bracket_tag(rest).is_some_and(|payload| payload.starts_with(CMD))
 }
+
+#[cfg(test)]
+pub(crate) use test_modules::{
+    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_brackets_share_color,
+};

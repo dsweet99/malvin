@@ -7,6 +7,11 @@ pub(super) mod stdout_render_tests;
 pub(super) mod stdout_log_pair_tests;
 
 #[cfg(test)]
+pub(crate) use stdout_log_pair_tests::{
+    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_brackets_share_color,
+};
+
+#[cfg(test)]
 #[path = "stdout_heartbeat_test_support.rs"]
 pub(super) mod stdout_heartbeat_test_support;
 
