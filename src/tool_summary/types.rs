@@ -5,7 +5,8 @@ pub const TOOL_DISPLAY_MAX_WIDTH: usize = 60;
 pub const TOOL_ELLIPSIS: &str = "...";
 
 pub(crate) use crate::terminal_palette::{
-    ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_SAND, ANSI_TOOL_TEAL,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_SAND,
+    ANSI_TOOL_TEAL,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]

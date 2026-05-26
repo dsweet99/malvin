@@ -152,6 +152,11 @@ fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
             "{bracket}[{inner}]{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
             ctx.line
         )
+    } else if ctx.direction == AcpTeeDirection::FromAgent {
+        format!(
+            "{bracket}[{inner}]{ANSI_RESET} {ANSI_TOOL_TEAL}{}{ANSI_RESET}",
+            ctx.line
+        )
     } else {
         format!("{bracket}[{inner}]{ANSI_RESET} {}", ctx.line)
     }

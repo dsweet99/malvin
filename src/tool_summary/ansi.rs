@@ -1,7 +1,8 @@
 use std::fmt::Write as _;
 
 use super::types::{
-    ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_SAND, ANSI_TOOL_TEAL,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_SAND,
+    ANSI_TOOL_TEAL,
 };
 
 const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
@@ -114,10 +115,9 @@ pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
     }
     if seg.contains("matches") || seg.contains("exit ") || seg.contains("ms") || seg.contains('s')
     {
-        format!("{ANSI_TOOL_SAND}{seg}{ANSI_RESET}")
-    } else {
-        ansi_style_path_tail(seg)
+        return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
+    ansi_style_path_tail(seg)
 }
 
 pub(crate) fn is_byte_size_segment(seg: &str) -> bool {
@@ -126,7 +126,7 @@ pub(crate) fn is_byte_size_segment(seg: &str) -> bool {
 
 pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
     if seg.chars().any(|c| c == '/' || c == '.') || is_byte_size_segment(seg) {
-        return format!("{ANSI_TOOL_TEAL}{seg}{ANSI_RESET}");
+        return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
     format!("{ANSI_TOOL_CREAM}{seg}{ANSI_RESET}")
 }

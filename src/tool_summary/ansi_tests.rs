@@ -3,7 +3,7 @@ use super::{
     is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
 };
 use crate::terminal_palette::ANSI_DIM;
-use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CREAM, ANSI_TOOL_SAND, ANSI_TOOL_TEAL};
+use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CREAM, ANSI_TOOL_SAND};
 
 #[test]
 fn covers_running_and_done_helpers() {
@@ -67,16 +67,30 @@ fn done_line_bolds_read_verb_without_colon_prefix() {
 }
 
 #[test]
-fn byte_size_suffixes_use_teal() {
+fn byte_size_suffixes_use_dim_grey() {
     for (plain, segment) in [
         ("Read file.bbb · 123 B · 1ms", "123 B"),
         ("Read x · 4 KB · 1ms", "4 KB"),
         ("Read x · 2 MB · 1ms", "2 MB"),
     ] {
         let styled = apply_tool_summary_ansi(plain);
-        let teal = format!("{ANSI_TOOL_TEAL}{segment}{ANSI_RESET}");
-        assert!(styled.contains(&teal), "got {styled:?}");
+        let dim = format!("{ANSI_DIM}{segment}{ANSI_RESET}");
+        assert!(styled.contains(&dim), "got {styled:?}");
     }
+}
+
+#[test]
+fn tool_time_segments_use_dim_grey() {
+    let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 42ms");
+    let dim = format!("{ANSI_DIM}42ms{ANSI_RESET}");
+    assert!(styled.contains(&dim), "got {styled:?}");
+}
+
+#[test]
+fn tool_path_args_use_dim_grey() {
+    let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
+    let dim = format!("{ANSI_DIM}./src/foo.rs{ANSI_RESET}");
+    assert!(styled.contains(&dim), "got {styled:?}");
 }
 
 #[test]
