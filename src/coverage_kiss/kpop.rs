@@ -1,23 +1,14 @@
 use std::collections::HashMap;
 
-use rand::{rngs::StdRng, SeedableRng};
-
 use crate::multiturn_prompt::MultiturnPrompt;
 
 #[test]
 fn smoke_kpop_acp_prompt() {
-    assert!(crate::kpop_acp_prompt::kpop_creative_enabled(0.5));
     let _ = crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION;
 }
 
 #[test]
 fn smoke_kpop_progression_and_multiturn() {
-    let _ = crate::kpop_progression::KPOP_CATCHUP_CAP;
-    let mean = crate::kpop_progression::block_mean_from_p_creative(0.5);
-    assert!(mean.is_finite());
-    let mut rng = StdRng::seed_from_u64(1);
-    let _ = crate::kpop_progression::poisson_block_size(&mut rng, mean);
-
     let text = "## Step 1 — KPop a\n";
     assert_eq!(crate::kpop_progression::count_kpop_entries(text), 1);
     assert_eq!(crate::kpop_progression::count_mbc2_entries(text), 0);
@@ -34,7 +25,6 @@ fn smoke_kpop_progression_and_multiturn() {
         crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(crate::MtStubPrompts),
         exp,
         10,
-        0.5,
     )
     .expect("multiturn state");
     assert_eq!(

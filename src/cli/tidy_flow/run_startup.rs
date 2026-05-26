@@ -24,13 +24,11 @@ pub fn prepare_tidy_kpop_run(
         create_kpop_run_artifacts("tidy", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
     let request_text = tidy_kpop_request(&store, &artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
-    let exp_log_path = artifacts.exp_log_path();
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = tidy_kpop_workflow_context(&artifacts)?;
     Ok(GateKpopPrepared {
         artifacts,
-        exp_log_path,
         context,
         request_text: request_text.clone(),
         startup_emit_request: request_text,

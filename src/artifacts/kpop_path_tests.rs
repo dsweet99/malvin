@@ -13,6 +13,18 @@ fn create_run_artifacts_scaffolds_empty_quality_gates_log() {
 }
 
 #[test]
+fn gate_exp_log_path_is_scoped_per_iteration() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
+    let g1 = art.gate_exp_log_path(1);
+    let g2 = art.gate_exp_log_path(2);
+    assert_ne!(g1, g2);
+    assert!(g1.to_string_lossy().contains("_g1.md"));
+    super::create::ensure_gate_exp_log_file(&art, 1).unwrap();
+    assert!(g1.is_file());
+}
+
+#[test]
 fn create_run_artifacts_scaffolds_kpop_exp_log_under_run_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let art = create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();

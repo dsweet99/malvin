@@ -17,6 +17,8 @@ pub(crate) struct GateKpopIterationParams<'a> {
     pub loop_params: &'a GateKpopLoopParams<'a>,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub client: &'a mut crate::acp::AgentClient,
+    pub iteration: usize,
+    pub exp_log_path: std::path::PathBuf,
 }
 
 #[cfg(test)]

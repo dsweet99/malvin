@@ -1,12 +1,9 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-
 use crate::artifacts::{MalvinChecksBackup, RunArtifacts};
 use crate::prompts::PromptStore;
 
 pub(crate) struct GateKpopPrepared {
     pub artifacts: RunArtifacts,
-    pub exp_log_path: PathBuf,
     pub context: HashMap<String, String>,
     pub request_text: String,
     pub startup_emit_request: String,
@@ -19,20 +16,12 @@ impl GateKpopPrepared {
         &self.artifacts
     }
 
-    pub(crate) fn exp_log_path(&self) -> &Path {
-        &self.exp_log_path
-    }
-
     pub(crate) const fn context(&self) -> &HashMap<String, String> {
         &self.context
     }
 
     pub(crate) fn request_text(&self) -> &str {
         &self.request_text
-    }
-
-    pub(crate) fn startup_emit_request(&self) -> &str {
-        &self.startup_emit_request
     }
 
     pub(crate) const fn store(&self) -> &PromptStore {
@@ -53,7 +42,6 @@ mod tests {
         store.ensure_defaults().expect("defaults");
         let prepared = GateKpopPrepared {
             artifacts,
-            exp_log_path: tmp.path().join("exp.md"),
             context: HashMap::new(),
             request_text: "req".into(),
             startup_emit_request: "startup".into(),
@@ -61,6 +49,6 @@ mod tests {
             malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
         };
         assert_eq!(prepared.request_text(), "req");
-        assert_eq!(prepared.startup_emit_request(), "startup");
+        assert_eq!(prepared.startup_emit_request, "startup");
     }
 }

@@ -45,6 +45,10 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
             "/q/quality_gates.log".to_string(),
         ),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
+        (
+            "current_state".to_string(),
+            "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry".to_string(),
+        ),
     ])
 }
 

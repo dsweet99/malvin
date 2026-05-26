@@ -36,6 +36,10 @@ CONFIDENCE: 3
 
 Does the user's request relate to any of the TRIGGER words in `{{ advice_path }}`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
+### Current state
+`{{ current_state }}`
+
+
 ## Calibration
 
 Before any potentially long (>3 minutes) task, estimate how long it'll take and write that out as

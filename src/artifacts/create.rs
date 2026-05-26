@@ -10,7 +10,17 @@ pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io
 }
 
 pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    let exp_log_path = artifacts.exp_log_path();
+    write_empty_exp_log(&artifacts.exp_log_path())
+}
+
+pub(crate) fn ensure_gate_exp_log_file(
+    artifacts: &RunArtifacts,
+    iteration: usize,
+) -> std::io::Result<PathBuf> {
+    write_empty_exp_log(&artifacts.gate_exp_log_path(iteration))
+}
+
+fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
             ErrorKind::InvalidInput,
@@ -18,8 +28,8 @@ pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Res
         )
     })?;
     std::fs::create_dir_all(exp_parent)?;
-    std::fs::write(&exp_log_path, "")?;
-    Ok(exp_log_path)
+    std::fs::write(exp_log_path, "")?;
+    Ok(exp_log_path.to_path_buf())
 }
 
 pub fn create_run_artifacts(

@@ -24,9 +24,12 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
-    /// Maximum `KPop` hypothesis steps before stopping (alias: `--max-hypotheses`).
-    #[arg(long, default_value_t = 3, alias = "max-hypotheses")]
+    /// Maximum gate-loop iterations before stopping.
+    #[arg(long, default_value_t = 3)]
     pub max_loops: usize,
+    /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
+    #[arg(long, default_value_t = 10)]
+    pub max_hypotheses: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
@@ -43,6 +46,7 @@ mod tests {
     fn kpop_args_from_tidy_maps_max_loops() {
         let tidy = TidyArgs {
             max_loops: 0,
+            max_hypotheses: 10,
             no_learn: true,
             quick: false,
         };

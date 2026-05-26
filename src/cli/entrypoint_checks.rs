@@ -29,6 +29,7 @@ mod tests {
 
         ensure_malvin_checks_for_command(&Commands::Code(CodeArgs {
             max_loops: 1,
+            max_hypotheses: 10,
             no_learn: false,
             trust_the_plan: false,
             dry_run: false,

@@ -1,4 +1,4 @@
-use super::KPOP_CATCHUP_CAP;
+const KPOP_CATCHUP_CAP: u32 = 0;
 
 pub(crate) struct KpopBlockProgressCtx {
     pub steps_needed: usize,
@@ -55,6 +55,7 @@ impl KpopBlockMissSnapshot {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub fn format_catchup_exhausted_error(&self) -> String {
         let exp = self.exp_log_path.display();
         let mut out = format!(

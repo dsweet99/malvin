@@ -43,6 +43,36 @@ impl KpopTurnPrompts<'_> {
         )
     }
 
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when a prompt template cannot be rendered.
+    pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
+        let mut ctx = self.base.clone();
+        ctx.insert("want".to_string(), max_hypotheses.to_string());
+        ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+        ctx.insert("user_request".to_string(), self.request_text.to_string());
+        let header = self
+            .store
+            .render_prompt_only("header.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let common = self
+            .store
+            .render_prompt_only("kpop_common.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let body = self
+            .store
+            .render_prompt_only("kpop_block.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        Ok(format!(
+            "{}\n\n{}\n\n{}",
+            header.trim_end(),
+            common.trim_end(),
+            body.trim_end()
+        ))
+    }
+
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.

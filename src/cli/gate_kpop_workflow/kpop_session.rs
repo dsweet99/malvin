@@ -1,13 +1,13 @@
-use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
-use crate::kpop_progression::KpopMultiturnState;
+use crate::kpop_turn_prompts::KpopTurnPrompts;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
-use crate::cli::kpop_flow::{
-    KpopAcpMultiturnCtx, KpopPrepared, KpopTurnPrompts, kpop_run_acp_multiturn,
+use crate::acp::{
+    kpop_fail_after_prompt, kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
+    KpopFailAfterPrompt, KpopPromptRound,
 };
-use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::workflow_kpop_shared::{
-    finish_kpop_acp_session, post_kpop_session_gates, print_kpop_session_log_line,
+    clear_quality_gates_log_for_next_agent, finish_kpop_acp_session, gate_iteration_context,
+    post_kpop_session_gates,
 };
 use crate::cli::SharedOpts;
 
@@ -25,65 +25,80 @@ pub(crate) fn post_gate_kpop_gates(
     post_kpop_session_gates(command, prepared.artifacts())
 }
 
-pub(crate) fn print_gate_kpop_log_line(prepared: &GateKpopPrepared) {
-    print_kpop_session_log_line(prepared.artifacts(), prepared.exp_log_path());
+pub(crate) fn print_gate_kpop_log_line(prepared: &GateKpopPrepared, exp_log_path: &std::path::Path) {
+    crate::cli::workflow_kpop_shared::print_kpop_session_log_line(
+        prepared.artifacts(),
+        exp_log_path,
+    );
 }
 
-fn kpop_turn_prompts(prepared: &GateKpopPrepared) -> KpopMultiturnPrompts<'_> {
-    KpopMultiturnPrompts::Turn(KpopTurnPrompts {
-        store: prepared.store(),
-        base: prepared.context(),
-        request_text: prepared.request_text(),
-        prepend_rules_once: true,
-    })
-}
-
-fn kpop_acp_prepared(
-    prepared: &GateKpopPrepared,
-    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-) -> KpopPrepared {
-    KpopPrepared {
-        artifacts: prepared.artifacts().clone(),
-        exp_log_path: prepared.exp_log_path().to_path_buf(),
-        context: prepared.context().clone(),
-        text: prepared.request_text().to_string(),
-        session_dotfile_backups: session_dotfile_backups.clone(),
-    }
-}
-
-async fn run_gate_kpop_multiturn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+fn build_gate_kpop_prompt(ctx: &GateKpopMultiturnCtx<'_>) -> Result<String, String> {
     let params = ctx.iteration.loop_params;
     let prepared = params.prepared;
-    emit_run_startup_sequence(
-        prepared.artifacts(),
-        RunStartupEmitOpts {
-            tee_stdout: params.shared.tee_startup_stdout(),
-            host_resources: true,
-        },
-        prepared.startup_emit_request(),
-    )?;
-    let mut state = KpopMultiturnState::new(
-        kpop_turn_prompts(prepared),
-        prepared.exp_log_path().to_path_buf(),
-        params.max_hypotheses,
-        0.0,
-    )?;
-    let kpop_prepared = kpop_acp_prepared(prepared, ctx.iteration.session_dotfile_backups);
-    kpop_run_acp_multiturn(
-        KpopAcpMultiturnCtx {
-            client: ctx.iteration.client,
-            prepared: &kpop_prepared,
-            workflow: params.workflow,
-            state: &mut state,
-            store: prepared.store(),
-        },
-        crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun,
-    )
+    KpopTurnPrompts {
+        store: prepared.store(),
+        base: &gate_iteration_context(
+            prepared.context(),
+            prepared.artifacts(),
+            &ctx.iteration.exp_log_path,
+            ctx.iteration.iteration,
+        ),
+        request_text: prepared.request_text(),
+        prepend_rules_once: false,
+    }
+    .gate_kpop_single_turn_prompt(params.max_hypotheses)
+}
+
+async fn dispatch_gate_kpop_prompt(
+    ctx: &GateKpopMultiturnCtx<'_>,
+    session: &crate::acp::AcpSession,
+    prompt: &str,
+) -> Result<(), String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    if let Err(e) = kpop_round(KpopPromptRound {
+        session,
+        client: ctx.iteration.client,
+        text: prompt,
+        log: prepared.artifacts().log_path("kpop").as_path(),
+        who: "kpop",
+        phase: crate::run_timing::TimingPhase::Implement,
+    })
     .await
+    {
+        return kpop_fail_after_prompt(
+            session,
+            KpopFailAfterPrompt {
+                cwd: prepared.artifacts().work_dir.as_path(),
+                session_dotfile_backups: ctx.iteration.session_dotfile_backups,
+                err: e,
+                phase: "prompt",
+            },
+        )
+        .await
+        .map_err(|e| e.0);
+    }
+    Ok(())
+}
+
+async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    clear_quality_gates_log_for_next_agent(prepared.artifacts())?;
+    let prompt = build_gate_kpop_prompt(ctx)?;
+    let s = spawn_agent_acp_session(ctx.iteration.client, &prepared.artifacts().work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    dispatch_gate_kpop_prompt(ctx, &s, &prompt).await?;
+    restore_session_dotfiles(
+        prepared.artifacts().work_dir.as_path(),
+        ctx.iteration.session_dotfile_backups,
+    )
+    .map_err(|e| e.to_string())?;
+    s.shutdown().await.map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
-    run_gate_kpop_multiturn(ctx).await?;
+    run_gate_kpop_single_acp_turn(ctx).await?;
     finish_kpop_acp_session(
         ctx.iteration.loop_params.prepared.artifacts(),
         ctx.iteration.session_dotfile_backups,
@@ -92,21 +107,11 @@ pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) ->
 }
 
 pub(crate) fn finish_gate_kpop_after_pass(
-    shared: &SharedOpts,
+    _shared: &SharedOpts,
     prepared: &GateKpopPrepared,
-    agent_ran: bool,
+    _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
-    if !agent_ran {
-        emit_run_startup_sequence(
-            prepared.artifacts(),
-            RunStartupEmitOpts {
-                tee_stdout: shared.tee_startup_stdout(),
-                host_resources: true,
-            },
-            prepared.startup_emit_request(),
-        )?;
-    }
     print_stdout_line(MALVIN_WHO, "DONE");
     if let Some(timing) = run_timing {
         crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
@@ -129,10 +134,10 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
 mod tests {
     #[test]
     fn gate_kpop_session_helpers_are_covered() {
-        let _ = stringify!(super::run_gate_kpop_multiturn);
+        let _ = stringify!(super::run_gate_kpop_single_acp_turn);
+        let _ = stringify!(super::build_gate_kpop_prompt);
+        let _ = stringify!(super::dispatch_gate_kpop_prompt);
         let _ = stringify!(super::GateKpopMultiturnCtx);
         let _ = stringify!(super::print_gate_kpop_log_line);
-        let _ = stringify!(super::kpop_turn_prompts);
-        let _ = stringify!(super::kpop_acp_prepared);
     }
 }

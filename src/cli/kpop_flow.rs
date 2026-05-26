@@ -1,7 +1,5 @@
 //! `KPop` subcommand: artifacts, prompt assembly, and ACP dispatch.
 
-pub use crate::KpopTurnPrompts;
-
 #[path = "kpop_flow_a.rs"]
 mod kpop_flow_a;
 #[path = "kpop_flow_b.rs"]

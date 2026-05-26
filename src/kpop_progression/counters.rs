@@ -1,65 +1,5 @@
 use std::path::Path;
 
-use rand::Rng;
-
-pub const KPOP_CATCHUP_CAP: u32 = 3;
-
-#[must_use]
-pub fn block_mean_from_p_creative(p_creative: f64) -> f64 {
-    if crate::kpop_acp_prompt::kpop_creative_enabled(p_creative) {
-        let p = p_creative.clamp(0.0, 1.0);
-        ((1.0 - p) / p).max(1.0)
-    } else {
-        10.0
-    }
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-)]
-fn poisson_large_mean_normal_approx(rng: &mut impl Rng, lambda: f64) -> usize {
-    let u1 = f64::max(f64::MIN_POSITIVE, rng.r#gen::<f64>());
-    let u2 = rng.r#gen::<f64>();
-    let z = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
-    let raw = (lambda + z * lambda.sqrt()).round();
-    poisson_normal_draw_clamp(raw)
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss
-)]
-fn poisson_normal_draw_clamp(raw: f64) -> usize {
-    if raw <= 0.0 {
-        return 0;
-    }
-    if raw > usize::MAX as f64 {
-        return usize::MAX;
-    }
-    raw as usize
-}
-
-#[must_use]
-pub fn poisson_block_size(rng: &mut impl Rng, mean: f64) -> usize {
-    let lambda = mean.max(1e-12);
-    let l = (-lambda).exp();
-    if l == 0.0 {
-        return poisson_large_mean_normal_approx(rng, lambda);
-    }
-    let mut k = 0_usize;
-    let mut p = 1.0_f64;
-    loop {
-        k += 1;
-        p *= rng.r#gen::<f64>();
-        if p <= l {
-            return k - 1;
-        }
-    }
-}
-
 /// Reads the experiment log at `path` into a string.
 ///
 /// # Errors
@@ -112,17 +52,15 @@ pub fn hypotheses_emitted(text: &str) -> usize {
     count_kpop_entries(text) + count_mbc2_entries(text)
 }
 
-fn is_kpop_solved_marker_line(line: &str) -> bool {
-    let t = line.trim_start();
-    let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
-        return false;
-    };
-    rest.trim().is_empty()
-}
-
 #[must_use]
 pub fn count_kpop_solved_markers(text: &str) -> usize {
-    text.lines().filter(|line| is_kpop_solved_marker_line(line)).count()
+    text.lines()
+        .filter(|line| {
+            let t = line.trim_start();
+            t.strip_prefix("## KPOP_SOLVED")
+                .is_some_and(|rest| rest.trim().is_empty())
+        })
+        .count()
 }
 
 #[must_use]
@@ -132,12 +70,7 @@ pub fn agent_declared_success(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use rand::SeedableRng;
-    use rand::rngs::StdRng;
-
-    use super::{
-        is_kpop_step_label, poisson_large_mean_normal_approx, poisson_normal_draw_clamp, step_kind,
-    };
+    use super::{is_kpop_step_label, step_kind};
 
     #[test]
     fn step_kind_classifies_kpop_mbc2_and_rejects_kpopulation() {
@@ -152,20 +85,6 @@ mod tests {
         assert!(is_kpop_step_label("kpop"));
         assert!(!is_kpop_step_label("kpopulation"));
         assert!(!is_kpop_step_label("foo"));
-    }
-
-    #[test]
-    fn poisson_normal_draw_clamp_zero_and_max() {
-        assert_eq!(poisson_normal_draw_clamp(-1.0), 0);
-        assert_eq!(poisson_normal_draw_clamp(0.0), 0);
-        assert_eq!(poisson_normal_draw_clamp(1.0e20), usize::MAX);
-    }
-
-    #[test]
-    fn poisson_large_mean_normal_approx_returns_draw_near_mean() {
-        let mut rng = StdRng::seed_from_u64(99);
-        let n = poisson_large_mean_normal_approx(&mut rng, 5000.0);
-        assert!(n > 1000 && n < 10_000);
     }
 }
 

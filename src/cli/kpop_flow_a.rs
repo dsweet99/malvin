@@ -154,7 +154,6 @@ pub async fn run_kpop(
         builder,
         prepared.exp_log_path.clone(),
         kpop.max_hypotheses,
-        0.0,
     )?;
 
     let acp_result = kpop_run_acp_multiturn(

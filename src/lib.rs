@@ -35,7 +35,9 @@
 
 mod log_gc;
 mod log_gc_config;
+mod current_state;
 pub mod mem_limit_config;
+pub use current_state::format_current_state;
 pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;

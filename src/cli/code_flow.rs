@@ -24,6 +24,9 @@ pub struct CodeArgs {
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
+    /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
+    #[arg(long, default_value_t = 10)]
+    pub max_hypotheses: usize,
     #[arg(long, default_value_t = false)]
     pub no_learn: bool,
     /// Deprecated: check-plan phase removed; code now uses the kpop gate workflow.
@@ -51,6 +54,7 @@ mod tests {
     fn kpop_args_from_code_maps_max_loops() {
         let code = CodeArgs {
             max_loops: 0,
+            max_hypotheses: 10,
             no_learn: true,
             trust_the_plan: false,
             dry_run: false,

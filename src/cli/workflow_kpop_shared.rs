@@ -94,6 +94,30 @@ pub fn write_checks_do_not_pass_for_artifacts(artifacts: &RunArtifacts) -> Resul
     write_checks_do_not_pass_to_review_path(&artifacts.workspace_review_md())
 }
 
+pub(crate) fn clear_quality_gates_log_for_next_agent(artifacts: &RunArtifacts) -> Result<(), String> {
+    crate::artifacts::ensure_quality_gates_log_file(artifacts).map_err(|e| e.to_string())
+}
+
+pub(crate) fn gate_iteration_context(
+    base: &HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    exp_log_path: &Path,
+    iteration: usize,
+) -> HashMap<String, String> {
+    let mut ctx = base.clone();
+    let exp_log = crate::format_prompt_path(exp_log_path, &artifacts.work_dir);
+    ctx.insert("exp_log".to_string(), exp_log);
+    ctx.insert(
+        "current_state".to_string(),
+        crate::current_state::format_current_state(
+            artifacts.work_dir.as_path(),
+            Some(iteration),
+            Some(artifacts),
+        ),
+    );
+    ctx
+}
+
 pub(crate) fn run_kpop_workspace_gates(artifacts: &RunArtifacts) -> Result<(), String> {
     run_repo_workspace_gates(
         artifacts.work_dir.as_path(),
@@ -174,5 +198,49 @@ mod tests {
         write_checks_do_not_pass_for_artifacts(&artifacts).expect("write");
         assert!(artifacts.artifact_review_md().exists());
         assert!(artifacts.workspace_review_md().exists());
+    }
+
+    #[test]
+    fn clear_quality_gates_log_for_next_agent_empties_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        let qlog = artifacts.quality_gates_log_path();
+        std::fs::write(&qlog, "stale output").expect("write");
+        clear_quality_gates_log_for_next_agent(&artifacts).expect("clear");
+        assert_eq!(std::fs::read_to_string(&qlog).expect("read"), "");
+    }
+
+    #[test]
+    fn gate_iteration_context_overrides_exp_log() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        let base = kpop_workflow_context(&artifacts, "code").expect("ctx");
+        let iter_log = artifacts.gate_exp_log_path(2);
+        let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
+        let exp = ctx.get("exp_log").expect("exp_log");
+        assert!(exp.contains("_g2.md"));
+    }
+
+    #[test]
+    fn render_kpop_program_request_includes_scope() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        let store = crate::prompts::PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let mut ctx = std::collections::HashMap::new();
+        ctx.insert("plan_path".to_string(), "./plan.md".into());
+        let text = render_kpop_program_request(
+            &store,
+            "code_constraints.md",
+            &ctx,
+            &artifacts,
+        )
+        .expect("render");
+        assert!(text.contains("quality_gates"));
     }
 }

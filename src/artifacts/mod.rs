@@ -10,6 +10,7 @@ pub use create::{
     create_kpop_run_artifacts, create_kpop_run_artifacts_opts, create_run_artifacts,
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
+pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
 
 pub use crate::session_dotfile_backup::{
     KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
@@ -68,14 +69,23 @@ impl RunArtifacts {
 
     #[must_use]
     pub fn exp_log_path(&self) -> PathBuf {
+        self.gate_exp_log_path(0)
+    }
+
+    /// Gate-loop experiment log; `iteration` 0 is the legacy `exp_log_{slug}.md` scaffold.
+    #[must_use]
+    pub fn gate_exp_log_path(&self, iteration: usize) -> PathBuf {
         let slug = self
             .run_dir
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("run");
-        self.run_dir
-            .join("_kpop")
-            .join(format!("exp_log_{slug}.md"))
+        let name = if iteration == 0 {
+            format!("exp_log_{slug}.md")
+        } else {
+            format!("exp_log_{slug}_g{iteration}.md")
+        };
+        self.run_dir.join("_kpop").join(name)
     }
 
     #[must_use]

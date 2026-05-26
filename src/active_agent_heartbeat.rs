@@ -57,6 +57,20 @@ fn current_active_agent_sandbox() -> Option<ActiveAgentSandbox> {
         })
 }
 
+pub(crate) struct ActiveAgentStatsSource {
+    pub pgid: u32,
+    pub spawn_baseline: HashSet<u32>,
+}
+
+/// Live agent PG and spawn baseline for sandbox RSS queries (e.g. `current_state`).
+#[must_use]
+pub fn active_agent_process_group_for_stats() -> Option<ActiveAgentStatsSource> {
+    current_active_agent_sandbox().map(|entry| ActiveAgentStatsSource {
+        pgid: entry.pgid,
+        spawn_baseline: entry.spawn_baseline,
+    })
+}
+
 /// RSS and process-count suffix for heartbeat payloads, when an agent session is live.
 #[must_use]
 pub fn active_agent_heartbeat_stats() -> Option<String> {
@@ -118,11 +132,20 @@ mod tests {
         clear_active_agent_process_groups_for_test();
         let pgid = std::process::id();
         let baseline = snapshot_pids();
-        register_active_agent_process_group(Some(pgid), baseline);
+        register_active_agent_process_group(Some(pgid), baseline.clone());
         let stats = active_agent_heartbeat_stats().expect("stats");
         assert!(stats.contains("RSS"));
         assert!(stats.contains("procs"));
+        let source = super::active_agent_process_group_for_stats().expect("source");
+        assert_eq!(source.pgid, pgid);
+        assert_eq!(source.spawn_baseline, baseline);
         unregister_active_agent_process_group(Some(pgid));
         clear_active_agent_process_groups_for_test();
+    }
+
+    #[test]
+    fn active_agent_process_group_for_stats_none_when_unregistered() {
+        clear_active_agent_process_groups_for_test();
+        assert!(super::active_agent_process_group_for_stats().is_none());
     }
 }
