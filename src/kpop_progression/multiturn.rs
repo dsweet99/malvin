@@ -90,4 +90,21 @@ impl<'a> KpopMultiturnState<'a> {
     }
 
     pub const fn record_mbc2_prompt_completed(&mut self) {}
+
+    /// Clears the in-flight prompt latch after a failed ACP transport attempt so the outer
+    /// retry loop can call [`Self::next_prompt`] again.
+    pub(crate) fn reset_for_transport_retry(&mut self) {
+        self.prompt_sent = false;
+        let Ok(text) = read_exp_log_text(&self.exp_log_path) else {
+            self.done = false;
+            return;
+        };
+        if !agent_declared_success(&text) && hypotheses_emitted(&text) < self.max_hypotheses {
+            self.done = false;
+        }
+    }
 }
+
+#[cfg(test)]
+#[path = "multiturn_transport_retry_tests.rs"]
+mod multiturn_transport_retry_tests;

@@ -1,7 +1,7 @@
 
 ## Observation
 
-1) What *new*, interesting/surprising things did you learn in this chat about?:
+1) What (up to 3) *new*, interesting/surprising things did you learn in this chat about?:
 
 - Codebase structure (where things live)
 - Algorithms/methods + notable results
@@ -12,6 +12,8 @@
 - The subject matter being address by this coding project
 
 Look for cases of "If I'd known then what I know now, I'd have had a easier time". Newness should be decided relative to the existing `{{ advice_path }}` file.
+
+Be conservative. There might very well be zero things worth noting.
 
 2) Summarize them in a list.
 
