@@ -16,7 +16,7 @@ fn prompt_stdout_replacement_is_always_none() {
     assert_eq!(crate::acp::prompt_stdout_replacement("learn"), None);
 }
 
-fn mem_watch_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
+pub(crate) fn mem_watch_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
     AcpSpawnArgs {
         cwd,
         bin_override: None,
@@ -92,7 +92,7 @@ fn acp_session_from_sleep_child(
     )))
 }
 
-fn session_with_sleep_child_for_mem_watch(cwd: &Path) -> (AcpSession, u32) {
+pub(crate) fn session_with_sleep_child_for_mem_watch(cwd: &Path) -> (AcpSession, u32) {
     let (child, stdin, pgid) = spawn_sleep_child_in_new_process_group(cwd);
     let session = acp_session_from_sleep_child(cwd, child, stdin, pgid);
     (session, pgid)
@@ -114,6 +114,8 @@ async fn watch_process_group_memory_kills_over_limit_child() {
         .child
         .lock()
         .await
+        .as_mut()
+        .expect("child")
         .wait()
         .await
         .expect("wait");

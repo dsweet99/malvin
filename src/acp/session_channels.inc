@@ -137,7 +137,7 @@ impl SessionChannelState {
 
     pub(crate) fn into_session_inner(self, parts: SessionInnerAssembly) -> AcpSessionInner {
         AcpSessionInner {
-            child: Mutex::new(parts.child),
+            child: Mutex::new(Some(parts.child)),
             process_group_id: parts.process_group_id,
             spawn_pid_baseline: parts.spawn_pid_baseline,
             stdin: self.stdin,

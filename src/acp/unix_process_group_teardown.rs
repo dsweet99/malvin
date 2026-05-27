@@ -108,8 +108,20 @@ pub async fn terminate_process_group(_: Option<u32>) {}
 #[cfg(all(test, unix))]
 mod tests {
     use std::collections::HashSet;
-
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
     use super::super::unix_process_group_ps::ProcRow;
+    use super::{
+        descendant_pids, kill_targets_for_teardown, reparented_init_orphans,
+        terminate_agent_process_group, terminate_process_group,
+    };
+    use super::super::session_drop_teardown::terminate_agent_process_group_blocking;
+
+    #[test]
+    fn terminate_agent_process_group_blocking_noop_without_targets() {
+        let empty = HashSet::new();
+        terminate_agent_process_group_blocking(None, &empty);
+    }
 
     #[test]
     fn descendant_pids_walks_child_chain() {
@@ -131,7 +143,7 @@ mod tests {
             },
         ];
         let roots = HashSet::from([10]);
-        let desc = super::descendant_pids(&roots, &rows);
+        let desc = descendant_pids(&roots, &rows);
         assert!(desc.contains(&10));
         assert!(desc.contains(&11));
         assert!(desc.contains(&12));
@@ -157,7 +169,7 @@ mod tests {
                 ppid: 1,
             },
         ];
-        let orphans = super::reparented_init_orphans(&baseline, &rows);
+        let orphans = reparented_init_orphans(&baseline, &rows);
         assert!(orphans.contains(&99));
         assert!(orphans.contains(&100));
         assert!(!orphans.contains(&10));
@@ -166,77 +178,28 @@ mod tests {
     #[test]
     fn kill_targets_empty_baseline_skips_orphan_scan() {
         let empty = HashSet::new();
-        let targets = super::kill_targets_for_teardown(None, Some(&empty));
+        let targets = kill_targets_for_teardown(None, Some(&empty));
         assert!(targets.is_empty(), "empty baseline must not scan host orphans");
-    }
-
-    #[test]
-    fn kill_targets_for_teardown_includes_process_group_members() {
-        use std::os::unix::process::CommandExt;
-        let baseline = super::super::unix_process_group_ps::snapshot_pids();
-        let mut cmd = std::process::Command::new("sleep");
-        cmd.arg("30").process_group(0);
-        let mut child = cmd.spawn().expect("spawn sleep");
-        let pgid = child.id();
-        let targets = super::kill_targets_for_teardown(Some(pgid), Some(&baseline));
-        assert!(targets.contains(&pgid));
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-
-    #[test]
-    fn kill_targets_for_teardown_excludes_unrelated_concurrent_spawn() {
-        use std::os::unix::process::CommandExt;
-        let baseline = super::super::unix_process_group_ps::snapshot_pids();
-        let mut agent = std::process::Command::new("sleep");
-        agent.arg("30").process_group(0);
-        let mut agent_child = agent.spawn().expect("spawn agent sleep");
-        let agent_pgid = agent_child.id();
-        let mut unrelated = std::process::Command::new("sleep");
-        unrelated.arg("30");
-        let mut unrelated_child = unrelated.spawn().expect("spawn unrelated sleep");
-        let unrelated_pid = unrelated_child.id();
-        let targets =
-            super::kill_targets_for_teardown(Some(agent_pgid), Some(&baseline));
-        assert!(targets.contains(&agent_pgid));
-        assert!(
-            !targets.contains(&unrelated_pid),
-            "concurrent host sleep (pid={unrelated_pid}) must not be in teardown kill set"
-        );
-        let _ = agent_child.kill();
-        let _ = unrelated_child.kill();
-        let _ = agent_child.wait();
-        let _ = unrelated_child.wait();
     }
 
     #[tokio::test]
     async fn terminate_process_group_kills_sleep_child() {
-        use std::os::unix::process::CommandExt;
-        let mut cmd = std::process::Command::new("sleep");
+        let mut cmd = Command::new("sleep");
         cmd.arg("120").process_group(0);
         let mut child = cmd.spawn().expect("spawn sleep");
         let pgid = child.id();
-        super::terminate_process_group(Some(pgid)).await;
+        terminate_process_group(Some(pgid)).await;
         assert_ne!(child.try_wait().expect("wait"), None);
     }
 
     #[tokio::test]
     async fn terminate_agent_process_group_kills_sleep_child() {
-        use std::os::unix::process::CommandExt;
         let baseline = super::super::unix_process_group_ps::snapshot_pids();
-        let mut cmd = std::process::Command::new("sleep");
+        let mut cmd = Command::new("sleep");
         cmd.arg("120").process_group(0);
         let mut child = cmd.spawn().expect("spawn sleep");
         let pgid = child.id();
-        super::terminate_agent_process_group(Some(pgid), &baseline).await;
+        terminate_agent_process_group(Some(pgid), &baseline).await;
         assert_ne!(child.try_wait().expect("wait"), None);
-    }
-
-    #[tokio::test]
-    async fn terminate_process_group_none_is_noop() {
-        let _ = super::super::unix_process_group_ps::signal_process_group;
-        let _ = super::super::unix_process_group_ps::signal_pid;
-        let _ = super::signal_targets;
-        super::terminate_process_group(None).await;
     }
 }

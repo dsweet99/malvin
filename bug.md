@@ -196,3 +196,84 @@ pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
 - Treat `None` RSS as over-limit after brief retries, or fail the run with “cannot enforce mem_limit_gb”.
 - Log at `warn!` on each consecutive `None` sample; metric for enforcement blind spots.
 - Add a unit/integration test that forces `malvin_session_rss_bytes` → `None` and asserts teardown or workflow failure.
+
+---
+
+# Bug: `check_abort` ignores `ABORT:` when `result.md` cannot be read
+
+**Status:** Unfixed.
+
+## Severity
+
+High. Prompts tell the agent to write `ABORT: …` to `{{ result_path }}` (artifact `result.md`) when it cannot proceed honestly. If that file exists but is unreadable, malvin treats the run as **non-abort** and every post-session merge path that calls `check_abort` may return success when the primary ACP result is `Ok(())`.
+
+## Summary
+
+`check_abort` loads `result.md` with `std::fs::read_to_string(result_path).ok()?` and scans lines for `ABORT:`. Any read error (permissions, transient I/O, etc.) becomes `None`, same as a missing file or a file with no abort line. There is no distinction between “no abort signal” and “could not read abort signal.”
+
+After gate-kpop, `do`, `ideas`, `kpop`, and `init` flows call `merge_acp_with_workspace_session_restore_and_check_abort`, which only fails the merge when `check_abort` returns `Some`. A successful ACP session plus an unreadable abort file therefore exits as success.
+
+## Affected code
+
+1. **Read errors become “no abort”:**
+
+```23:31:src/orchestrator/helpers.rs
+pub fn check_abort(result_path: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(result_path).ok()?;
+    let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("ABORT:") {
+            return Some(rest.trim_start().to_string());
+        }
+    }
+    None
+}
+```
+
+2. **Post-session merge only honors `Some` abort:**
+
+```53:74:src/run_timing/acp_post_run.rs
+pub fn merge_acp_with_workspace_session_restore_and_check_abort(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    session_dotfile_backups: &SessionDotfileBackups,
+    result_path: &Path,
+) -> Result<(), String> {
+    let merge_result =
+        merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
+    if let Some(abort) = crate::orchestrator::check_abort(result_path) {
+        return match merge_result {
+            Ok(()) => Err(format!("ABORT: {abort}")),
+            // ...
+        };
+    }
+    merge_result
+}
+```
+
+3. **Orchestrator abort gate uses the same helper** via `fail_on_abort_for_artifacts` → `check_abort(&artifacts.artifact_result_md())`.
+
+4. **Prompts bind abort to artifact path** (`workflow_context` inserts `result_path` → `artifact_result_md()`), so the intended file is the run log `result.md`, not workspace root.
+
+## Minimal reproduction (logic)
+
+1. Create `.malvin/logs/<run>/result.md` containing `ABORT: cannot proceed\n`.
+2. Remove read permission for the operator (e.g. `chmod 000` on that file).
+3. Call `check_abort` on that path.
+
+**Expected (fail-closed):** return `Some("cannot proceed")`, or a hard error that abort cannot be verified.
+
+**Actual:** `read_to_string` fails → `check_abort` returns `None` → merge returns `Ok(())` when ACP succeeded.
+
+## Impact
+
+- **Silent violation of agent stop protocol:** The agent explicitly refused to invent work; malvin reports success.
+- **Downstream automation:** CI or scripts that only check malvin exit status miss the abort.
+- **Distinct from missing file:** A missing `result.md` correctly yields `None`; an unreadable file with `ABORT:` is indistinguishable from “no abort”.
+
+## Suggested fix direction (not implemented here)
+
+- Map `read_to_string` errors to `Err` (or `Some` with a synthetic abort) instead of `None`.
+- When the file exists but is not readable, fail the merge with “cannot read result_path for ABORT”.
+- Add a unit test: write `ABORT:` then `chmod 000`; assert `check_abort` or merge does not return success.
+
