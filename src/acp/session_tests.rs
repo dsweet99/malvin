@@ -37,7 +37,7 @@ pub(crate) fn mem_watch_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {
     }
 }
 
-fn mem_watch_test_telemetry() -> SessionReaderTelemetry {
+pub(crate) fn mem_watch_test_telemetry() -> SessionReaderTelemetry {
     SessionReaderTelemetry {
         acp_verbose: false,
         raw_output: false,
@@ -49,7 +49,7 @@ fn mem_watch_test_telemetry() -> SessionReaderTelemetry {
     }
 }
 
-fn spawn_sleep_child_in_new_process_group(
+pub(crate) fn spawn_sleep_child_in_new_process_group(
     cwd: &Path,
 ) -> (tokio::process::Child, tokio::process::ChildStdin, u32) {
     let mut cmd = Command::new("sleep");
@@ -70,7 +70,7 @@ fn spawn_sleep_child_in_new_process_group(
     (child, stdin, pgid)
 }
 
-fn acp_session_from_sleep_child(
+pub(crate) fn acp_session_from_sleep_child(
     cwd: &Path,
     child: tokio::process::Child,
     stdin: tokio::process::ChildStdin,

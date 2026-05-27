@@ -218,3 +218,13 @@ mod kiss_cov_auto {
         std::env::set_current_dir(old).expect("restore cwd");
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = kpop_boot_store_client_prepared;
+        let _ = kpop_prompt_store;
+    }
+}

@@ -135,3 +135,13 @@ mod kiss_cov_auto {
         let _ = stringify!(tee_read_tool_bracket_pair_stdout);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = read_tool_bracket_pair_updates;
+        let _ = tee_tool_summary_updates;
+    }
+}

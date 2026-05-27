@@ -15,7 +15,7 @@ pub(crate) async fn reader_loop_finish(session: &mut ReaderLoopFinishCtx<'_>) {
     reader_dead_after_stdout_close(session).await;
 }
 
-async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
+pub(crate) async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
     let mut g = session.trace_writer.lock().await;
     if let Some(ref mut f) = *g {
         for (kind, tl, stream, upgrade_plan) in session.trace_coalesce.flush_all() {
@@ -37,7 +37,7 @@ async fn flush_trace_coalesce(session: &mut ReaderLoopFinishCtx<'_>) {
     }
 }
 
-async fn reader_dead_after_stdout_close(session: &mut ReaderLoopFinishCtx<'_>) {
+pub(crate) async fn reader_dead_after_stdout_close(session: &mut ReaderLoopFinishCtx<'_>) {
     session.reader_dead.store(true, Ordering::SeqCst);
     let closed_msg = "acp stdout closed".to_string();
     let mut g = session.pending.lock().await;
@@ -100,7 +100,7 @@ pub(crate) async fn reader_loop(inp: ReaderLoopInput) {
     .await;
 }
 
-struct ReaderLoopDrainCtx<'a> {
+pub(crate) struct ReaderLoopDrainCtx<'a> {
     stdout: tokio::process::ChildStdout,
     trace_opts: &'a ReaderTraceLineOpts,
     trace_writer: &'a Arc<Mutex<Option<PromptTraceWriter>>>,
@@ -116,7 +116,7 @@ struct ReaderLoopDrainCtx<'a> {
     prompt_round_health: &'a Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
-async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
+pub(crate) async fn reader_loop_drain_stdout(ctx: ReaderLoopDrainCtx<'_>) {
     let ReaderLoopDrainCtx {
         stdout,
         trace_opts,

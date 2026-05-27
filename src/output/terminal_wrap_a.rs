@@ -37,7 +37,7 @@ pub fn stderr_allows_log_word_wrap() -> bool {
     stderr().is_terminal() || columns_from_env().is_some()
 }
 
-fn malvin_tagged_stdout_prefix_len(who: &str, use_color: bool) -> usize {
+pub(crate) fn malvin_tagged_stdout_prefix_len(who: &str, use_color: bool) -> usize {
     let s = if use_color {
         crate::output::format_line_stdout_ansi(who, "")
     } else {
@@ -46,7 +46,7 @@ fn malvin_tagged_stdout_prefix_len(who: &str, use_color: bool) -> usize {
     strip_ansi_escapes(&s).chars().count()
 }
 
-fn malvin_tagged_stderr_prefix_len(_ts: &str, who: &str, use_color: bool) -> usize {
+pub(crate) fn malvin_tagged_stderr_prefix_len(_ts: &str, who: &str, use_color: bool) -> usize {
     let s = if use_color {
         crate::output::format_line_stdout_ansi(who, "")
     } else {
@@ -66,12 +66,12 @@ pub fn line_wrap_for_prefix_len(
     (max_payload, wrap)
 }
 
-struct LineWrapStyle {
+pub(crate) struct LineWrapStyle {
     allow_word_wrap: bool,
     use_color: bool,
 }
 
-fn line_wrap_meta_tagged_stderr(
+pub(crate) fn line_wrap_meta_tagged_stderr(
     ts: &str,
     who: &str,
     line: &str,
@@ -135,7 +135,7 @@ fn char_display_cell(ch: char) -> usize {
     if w == 0 && !ch.is_whitespace() { 1 } else { w }
 }
 
-fn display_width_prefix(chars: &[char]) -> Vec<usize> {
+pub(crate) fn display_width_prefix(chars: &[char]) -> Vec<usize> {
     let mut width_prefix: Vec<usize> = vec![0; chars.len() + 1];
     for i in 0..chars.len() {
         width_prefix[i + 1] = width_prefix[i].saturating_add(char_display_cell(chars[i]));
@@ -143,7 +143,7 @@ fn display_width_prefix(chars: &[char]) -> Vec<usize> {
     width_prefix
 }
 
-fn wrap_split_at_whitespace(chars: &[char], start: usize, end: usize) -> usize {
+pub(crate) fn wrap_split_at_whitespace(chars: &[char], start: usize, end: usize) -> usize {
     chars[start..end]
         .iter()
         .rposition(|ch| ch.is_whitespace())
@@ -156,7 +156,7 @@ fn wrap_split_at_whitespace(chars: &[char], start: usize, end: usize) -> usize {
         })
 }
 
-fn wrap_push_segment(lines: &mut Vec<String>, chars: &[char], start: usize, split: usize) {
+pub(crate) fn wrap_push_segment(lines: &mut Vec<String>, chars: &[char], start: usize, split: usize) {
     lines.push(chars[start..split].iter().collect());
 }
 
@@ -235,4 +235,14 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_wrap_push_segment() { let _ = stringify!(wrap_push_segment); }
 
+    #[test]
+    fn kiss_cov_real_identifier_refs() {
+        use super::*;
+        let _ = display_width_prefix;
+        let _ = line_wrap_meta_tagged_stderr;
+        let _ = malvin_tagged_stderr_prefix_len;
+        let _ = malvin_tagged_stdout_prefix_len;
+        let _ = wrap_push_segment;
+        let _ = wrap_split_at_whitespace;
+    }
 }

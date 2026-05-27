@@ -1,10 +1,10 @@
 #[cfg(unix)]
-mod shutdown_kills_descendants {
+pub(crate) mod shutdown_kills_descendants {
     use super::super::unix_helpers::{
         process_exists, wait_for_pid_file, write_descendant_spawning_acp_mock,
     };
 
-    async fn spawn_descendant_mock_session(
+    pub(crate) async fn spawn_descendant_mock_session(
         tmp: &tempfile::TempDir,
         bin: &std::path::Path,
     ) -> (crate::acp::AcpSession, std::path::PathBuf) {
@@ -17,7 +17,10 @@ mod shutdown_kills_descendants {
         (session, prompt_log)
     }
 
-    async fn assert_descendant_killed_after_shutdown(session: crate::acp::AcpSession, pid: u32) {
+    pub(crate) async fn assert_descendant_killed_after_shutdown(
+        session: crate::acp::AcpSession,
+        pid: u32,
+    ) {
         session.shutdown().await.expect("shutdown should complete");
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
@@ -51,3 +54,8 @@ mod shutdown_kills_descendants {
         assert_descendant_killed_after_shutdown(session, pid).await;
     }
 }
+
+#[cfg(all(test, unix))]
+pub(crate) use shutdown_kills_descendants::{
+    assert_descendant_killed_after_shutdown, spawn_descendant_mock_session,
+};

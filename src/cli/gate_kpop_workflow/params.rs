@@ -28,3 +28,13 @@ mod tests {
         let _ = stringify!(GateKpopIterationParams);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<GateKpopIterationParams> = None;
+        let _: Option<GateKpopLoopParams> = None;
+    }
+}

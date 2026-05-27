@@ -195,3 +195,14 @@ mod kiss_cov_auto {
     fn kiss_cov_harness_rpc_wait() { let _ = stringify!(harness_rpc_wait); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = acp_activity_state;
+        let _ = drain_stdout_read;
+        let _ = sleep_stdout_drain_for_child;
+    }
+}

@@ -23,7 +23,7 @@ pub struct AcpTeeLineFmt<'a> {
     pub dim_payload: bool,
 }
 
-fn resolve_log_timestamp(ts: Option<&str>) -> String {
+pub(crate) fn resolve_log_timestamp(ts: Option<&str>) -> String {
     ts.map_or_else(timestamp_now_string, str::to_string)
 }
 
@@ -87,9 +87,9 @@ pub(crate) fn stderr_tagged_display_and_log_line(
 }
 
 #[derive(Copy, Clone)]
-enum TaggedDisplayStyle { Plain, Ansi, HeartbeatAnsi }
+pub(crate) enum TaggedDisplayStyle { Plain, Ansi, HeartbeatAnsi }
 
-fn tagged_stdout_display(who: &str, payload: &str, style: TaggedDisplayStyle) -> String {
+pub(crate) fn tagged_stdout_display(who: &str, payload: &str, style: TaggedDisplayStyle) -> String {
     match style {
         TaggedDisplayStyle::Plain => format_line_stdout(who, payload),
         TaggedDisplayStyle::Ansi => format_line_stdout_ansi(who, payload),
@@ -105,7 +105,7 @@ macro_rules! tagged_log_pair {
     }};
 }
 
-fn tagged_display_and_log_line(
+pub(crate) fn tagged_display_and_log_line(
     who: &str,
     payload: &str,
     ts: Option<&str>,
@@ -119,7 +119,7 @@ fn tagged_display_and_log_line(
     tagged_log_pair!(who, payload, ts, style)
 }
 
-fn heartbeat_display_and_log_line(
+pub(crate) fn heartbeat_display_and_log_line(
     who: &str,
     payload: &str,
     ts: Option<&str>,
@@ -138,21 +138,21 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
     (line.to_string(), format!("{ts} {line}"))
 }
 
-const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
+pub(crate) const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
         AcpTeeDirection::ToAgent => ANSI_TOOL_NAVY,
         AcpTeeDirection::FromAgent => ANSI_TOOL_DARK,
     }
 }
 
-fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: bool) -> String {
+pub(crate) fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: bool) -> String {
     if !use_color || ctx.dim_payload || ctx.direction != AcpTeeDirection::FromAgent {
         return payload.to_string();
     }
     agent_rendered_markup_payload(payload)
 }
 
-fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
+pub(crate) fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     let inner = format_log_tag_inner(ctx.who);
     let bracket = acp_bracket_color(ctx.direction);
     if ctx.dim_payload {

@@ -185,6 +185,22 @@ mod orchestrator_tests;
 #[cfg(test)]
 mod malvin_kiss_coverage;
 
+#[cfg(test)]
+#[path = "acp/transport/rpc_part1_kiss_test.rs"]
+mod acp_rpc_part1_kiss_test;
+
+
+#[cfg(test)]
+mod agent_phase_kiss_cov;
+
+#[cfg(test)]
+#[path = "output/output_kiss_cov.rs"]
+mod output_kiss_cov;
+
+#[cfg(test)]
+#[path = "cli/source_detect_kiss_cov.rs"]
+mod source_detect_kiss_cov;
+
 #[cfg(all(test, unix))]
 mod test_stderr_capture;
 

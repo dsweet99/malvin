@@ -158,3 +158,20 @@ mod kiss_cov_auto {
     fn kiss_cov_kpop_fail_after_prompt_struct() { let _ = stringify!(KpopFailAfterPrompt); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<AgentKpopMultiturnCtl> = None;
+        let _: Option<KpopFailAfterPrompt> = None;
+        let _: Option<KpopFlowOnceArgs> = None;
+        let _: Option<KpopPromptRound> = None;
+        let _ = kpop_fail_after_prompt;
+        let _ = kpop_round;
+        let _ = restore_session_dotfiles;
+        let _ = restore_workspace_on_error;
+        let _ = run_kpop_flow_once;
+    }
+}

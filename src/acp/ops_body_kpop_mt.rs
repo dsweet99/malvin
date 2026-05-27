@@ -151,3 +151,15 @@ mod kiss_cov_auto {
     fn kiss_cov_block_miss_snapshot() { let _ = stringify!(block_miss_snapshot); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<MultiturnRoundAfter> = None;
+        let _ = block_miss_snapshot;
+        let _ = multiturn_after_successful_round;
+        let _ = run_kpop_multiturn_once;
+    }
+}

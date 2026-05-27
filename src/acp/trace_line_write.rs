@@ -64,7 +64,7 @@ pub async fn reader_loop_verbose_and_trace_line(
     }
 }
 
-const fn raw_output_suppress_thought_stdout(
+pub(crate) const fn raw_output_suppress_thought_stdout(
     kind: Option<SessionUpdateChunkKind>,
     writer: &PromptTraceWriter,
 ) -> bool {
@@ -245,3 +245,4 @@ mod kiss_cov_auto {
     fn kiss_cov_write_trace_line_coalesced() { let _ = stringify!(write_trace_line_coalesced); }
 
 }
+

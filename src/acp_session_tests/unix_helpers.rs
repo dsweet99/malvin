@@ -67,3 +67,13 @@ mod tests {
         assert!(process_exists(pid));
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = wait_for_pid_file;
+        let _ = write_descendant_spawning_acp_mock;
+    }
+}

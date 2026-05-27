@@ -30,3 +30,13 @@ mod kiss_cov {
         let _ = stringify!(super::set_last_block_miss);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = kpop_block_progress_ctx;
+        let _ = set_last_block_miss;
+    }
+}

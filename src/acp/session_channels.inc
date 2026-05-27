@@ -33,11 +33,11 @@ pub struct SessionChannelState {
     pub(crate) prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
 }
 
-fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+pub(crate) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-fn random_agent_name() -> String {
+pub(crate) fn random_agent_name() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(5)
@@ -45,7 +45,7 @@ fn random_agent_name() -> String {
         .collect()
 }
 
-fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
+pub(crate) fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
     args.prompts_log_run_dir.map(|run_dir| {
         Arc::new(AcpJsonlTrace::new(
             run_dir.join("trace.jsonl"),
@@ -66,7 +66,7 @@ pub struct SessionInnerAssembly {
 }
 
 #[allow(clippy::type_complexity)]
-fn session_channel_sync() -> (
+pub(crate) fn session_channel_sync() -> (
     Arc<Mutex<HashMap<u64, ResponseTx>>>,
     Arc<AtomicBool>,
     Arc<AtomicU64>,

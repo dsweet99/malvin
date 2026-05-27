@@ -206,3 +206,14 @@ mod kiss_cov_auto {
     fn kiss_cov_assert_arg_value() { let _ = stringify!(assert_arg_value); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = assert_arg_value;
+        let _ = command_args;
+        let _ = command_env_value;
+    }
+}

@@ -2,7 +2,7 @@
 
 mod acp_tee;
 mod acp_tee_markdown;
-mod stderr_log;
+pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_heartbeat;

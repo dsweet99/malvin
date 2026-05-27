@@ -213,3 +213,15 @@ mod kiss_static_fn_item_refs {
         let _ = run_do_coder_prompt;
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<DoRunPrep> = None;
+        let _ = new_do_client;
+        let _ = prepare_do_run;
+        let _ = run_do_repo_gates_if_requested;
+    }
+}

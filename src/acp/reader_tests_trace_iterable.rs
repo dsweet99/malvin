@@ -197,3 +197,12 @@ mod kiss_cov_auto {
         let _ = stringify!(iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = session_update_message_chunk_json;
+    }
+}

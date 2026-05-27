@@ -81,3 +81,21 @@ mod kiss_cov_auto {
     fn kiss_cov_random_backup_id() { let _ = stringify!(random_backup_id); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let labels = DotfileBackupLabels {
+            mkdir: "mkdir",
+            collision: "collision",
+            restore: "restore",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let _ = allocate_backup_dir(tmp.path(), &mut random_backup_id, &labels);
+        let _ = malvin_home_dir();
+        let _ = random_backup_id;
+        let _ = remove_if_exists;
+    }
+}

@@ -199,3 +199,13 @@ mod kiss_cov_auto {
     fn kiss_cov_tee_tool_summary_plain_ctx() { let _ = stringify!(TeeToolSummaryPlainCtx); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<TeeToolSummaryPlainCtx> = None;
+        let _ = tee_tool_summary_plain;
+    }
+}

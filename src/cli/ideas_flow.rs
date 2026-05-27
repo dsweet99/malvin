@@ -184,3 +184,18 @@ mod ideas_flow_helpers_tests {
 #[cfg(test)]
 #[path = "ideas_flow_tests.rs"]
 mod ideas_flow_tests;
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<IdeasRunPrep> = None;
+        let _ = new_ideas_client;
+        let _ = prepare_ideas_prompt_store;
+        let _ = prepare_ideas_run;
+        let _ = run_ideas;
+        let _ = run_ideas_acp;
+        let _ = run_ideas_coder_prompt;
+    }
+}

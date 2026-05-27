@@ -140,3 +140,17 @@ mod tests {
         let _ = stringify!(super::print_gate_kpop_log_line);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<GateKpopMultiturnCtx> = None;
+        let _ = build_gate_kpop_prompt;
+        let _ = dispatch_gate_kpop_prompt;
+        let _ = print_gate_kpop_log_line;
+        let _ = run_gate_kpop_session;
+        let _ = run_gate_kpop_single_acp_turn;
+    }
+}

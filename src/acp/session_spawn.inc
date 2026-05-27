@@ -9,7 +9,7 @@ pub(crate) fn prompt_rpc_cleanup_arc(io: &AcpHandshakeIo) -> Arc<PromptRpcCleanu
     })
 }
 
-fn spawn_handshake_stdout_reader(
+pub(crate) fn spawn_handshake_stdout_reader(
     stdout: ChildStdout,
     io: &AcpHandshakeIo,
     session: &AcpHandshakeSessionOpts,
@@ -31,7 +31,10 @@ fn spawn_handshake_stdout_reader(
     });
 }
 
-fn handshake_stdio_rpc(io: &AcpHandshakeIo, session: &AcpHandshakeSessionOpts) -> AcpStdioRpc {
+pub(crate) fn handshake_stdio_rpc(
+    io: &AcpHandshakeIo,
+    session: &AcpHandshakeSessionOpts,
+) -> AcpStdioRpc {
     AcpStdioRpc {
         reader_dead: io.reader_dead.clone(),
         stdin: io.stdin.clone(),

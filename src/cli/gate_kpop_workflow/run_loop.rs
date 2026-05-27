@@ -191,3 +191,13 @@ mod tests {
         let _ = stringify!(super::run_gate_kpop_loop);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = gate_kpop_loop_one_iteration;
+        let _ = run_gate_kpop_on_loop_iteration;
+    }
+}

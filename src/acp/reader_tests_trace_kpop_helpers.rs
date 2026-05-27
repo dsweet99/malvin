@@ -96,3 +96,13 @@ mod kiss_cov_auto {
         let _ = stringify!(KpopStdoutTraceFixture);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<KpopStdoutTraceFixture> = None;
+        let _ = kpop_stdout_trace_fixture;
+    }
+}

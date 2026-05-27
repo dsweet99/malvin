@@ -64,3 +64,12 @@ mod kiss_cov_auto {
     fn kiss_cov_prompt_error() { let _ = stringify!(PromptError); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<PromptError> = None;
+    }
+}

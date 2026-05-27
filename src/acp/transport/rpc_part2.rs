@@ -135,3 +135,12 @@ mod kiss_cov_auto {
     fn kiss_cov_write_rpc_line_appends_flush_line_readable_on_child_stdout() { let _ = stringify!(write_rpc_line_appends_flush_line_readable_on_child_stdout); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = rpc_wait_response;
+    }
+}

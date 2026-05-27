@@ -6,7 +6,7 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
     let (stdin, drain) = true_child_stdin_stdout_drained_after_exit().await;
 
     let pending: Arc<Mutex<HashMap<u64, ResponseTx>>> = Arc::new(Mutex::new(HashMap::new()));
-    let (acp_activity_seq, acp_activity_notify) = acp_activity_state();
+    let (acp_activity_seq, acp_activity_notify) = super::shared_harness::acp_activity_state();
     let reader_dead = Arc::new(AtomicBool::new(false));
     let next_id = Arc::new(AtomicU64::new(1));
 
