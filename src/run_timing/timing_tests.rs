@@ -177,6 +177,31 @@ fn accumulate_run_timing_across_two_sessions() {
 }
 
 #[test]
+fn run_timing_without_wall_start_yields_null_wall_ms() {
+    let mut r = RunTiming::default();
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+    assert!(report::wall_clock_ms_for_json(&r).is_none());
+}
+
+#[test]
+fn attach_new_run_timing_enables_wall_ms_after_finalize() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_millis(100),
+    );
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
+    let json: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE)).expect("run_timing.json"),
+    )
+    .expect("json");
+    assert!(json["wall_clock_ms"].as_u64().is_some());
+}
+
+#[test]
 fn gate_kpop_accumulate_run_timing_sums_llm_wait_across_iterations() {
     use super::RUN_TIMING_JSON_FILE;
 

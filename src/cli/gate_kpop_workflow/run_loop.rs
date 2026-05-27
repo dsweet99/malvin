@@ -122,8 +122,8 @@ pub(crate) async fn run_gate_kpop_loop(
     }
 
     let iterations = gate_kpop_loop_iterations(params.max_loops);
-    let run_timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
-    let run_timing_slot = Some(Arc::clone(&run_timing));
+    let mut run_timing_slot = None;
+    let run_timing = crate::run_timing::attach_new_run_timing(&mut run_timing_slot);
     let mut consecutive_solved = 0usize;
     for iteration in 1..=iterations {
         let (streak, early) =
@@ -135,7 +135,7 @@ pub(crate) async fn run_gate_kpop_loop(
     }
     let gates_ok = params.behavior.recheck_gates_after_exhausted
         && run_kpop_workspace_gates(params.prepared.artifacts()).is_ok();
-    Ok((gates_ok, true, run_timing_slot))
+    Ok((gates_ok, true, Some(run_timing)))
 }
 
 #[cfg(test)]
