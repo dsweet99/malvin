@@ -163,6 +163,13 @@ pub fn attach_new_run_timing(
     timing
 }
 
+/// Anchors one wall-clock interval for a gate-kpop `code` loop (shared across iterations).
+#[must_use]
+pub fn attach_gate_kpop_loop_run_timing() -> Arc<Mutex<RunTiming>> {
+    let mut slot = None;
+    attach_new_run_timing(&mut slot)
+}
+
 pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {
     let Some(t) = timing else {
         return;
@@ -232,5 +239,8 @@ pub use report::print_summary_from_run_dir;
 
 #[cfg(test)]
 mod timing_tests;
+
+#[cfg(test)]
+mod gate_kpop_timing_regressions;
 
 pub mod acp_post_run;

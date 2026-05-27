@@ -122,8 +122,7 @@ pub(crate) async fn run_gate_kpop_loop(
     }
 
     let iterations = gate_kpop_loop_iterations(params.max_loops);
-    let mut run_timing_slot = None;
-    let run_timing = crate::run_timing::attach_new_run_timing(&mut run_timing_slot);
+    let run_timing = crate::run_timing::attach_gate_kpop_loop_run_timing();
     let mut consecutive_solved = 0usize;
     for iteration in 1..=iterations {
         let (streak, early) =

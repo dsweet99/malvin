@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use super::{
@@ -6,28 +5,6 @@ use super::{
     finalize_run_timing_json_only, record_backoff, record_llm, report,
 };
 use std::time::{Duration, Instant};
-
-fn simulate_gate_kpop_accumulate_iteration(
-    client: &mut crate::acp::AgentClient,
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-    llm_ms: u64,
-) -> Result<(), String> {
-    use crate::acp_post_run::{RunTimingAfterAcp, RunTimingSessionEnd, emit_run_timing_after_acp};
-
-    record_llm(
-        Some(timing),
-        TimingPhase::Implement,
-        Duration::from_millis(llm_ms),
-    );
-    emit_run_timing_after_acp(RunTimingAfterAcp {
-        client,
-        run_dir,
-        timing,
-        acp_result: Ok(()),
-        session_end: RunTimingSessionEnd::AccumulateRun,
-    })
-}
 
 #[test]
 fn run_timing_json_phases_and_review_pair_id_mapping() {
@@ -199,30 +176,6 @@ fn attach_new_run_timing_enables_wall_ms_after_finalize() {
     )
     .expect("json");
     assert!(json["wall_clock_ms"].as_u64().is_some());
-}
-
-#[test]
-fn gate_kpop_accumulate_run_timing_sums_llm_wait_across_iterations() {
-    use super::RUN_TIMING_JSON_FILE;
-
-    let mut client = crate::test_agent_client::smoke_agent_client();
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let run_dir = tmp.path().join("run");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    let timing = client.ensure_run_timing_for_session();
-    simulate_gate_kpop_accumulate_iteration(&mut client, &run_dir, &timing, 900_000)
-        .expect("first gate-kpop iteration");
-    let timing_second = client.ensure_run_timing_for_session();
-    assert!(Arc::ptr_eq(&timing, &timing_second));
-    simulate_gate_kpop_accumulate_iteration(&mut client, &run_dir, &timing_second, 2_000)
-        .expect("second gate-kpop iteration");
-    finalize_and_emit_run_timing(&run_dir, &timing_second).expect("finalize at run end");
-    let json: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(run_dir.join(RUN_TIMING_JSON_FILE)).expect("run_timing.json"),
-    )
-    .expect("json");
-    assert_eq!(json["llm_wait_ms"].as_u64(), Some(902_000));
-    assert!(client.timing.is_some());
 }
 
 #[test]
