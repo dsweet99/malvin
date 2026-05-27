@@ -27,6 +27,9 @@ pub struct CodeArgs {
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+    #[arg(long, default_value_t = false)]
+    pub tenacious: bool,
     /// Deprecated: check-plan phase removed; code now uses the kpop gate workflow.
     #[arg(long, default_value_t = false, hide = true, conflicts_with = "dry_run")]
     pub trust_the_plan: bool,
@@ -49,21 +52,24 @@ mod tests {
     use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
-    fn kpop_args_from_code_maps_max_loops() {
+    fn code_effective_max_loops_is_at_least_one() {
         let code = CodeArgs {
             max_loops: 0,
             max_hypotheses: 10,
+            tenacious: false,
             trust_the_plan: false,
             dry_run: false,
             skip_pre_checks: false,
             fast: false,
             request: Some("req".to_string()),
         };
-        let kpop = crate::cli::KpopArgs {
-            max_hypotheses: effective_code_max_loops(code.max_loops),
+        let _kpop = crate::cli::KpopArgs {
+            max_loops: 1,
+            max_hypotheses: 10,
+            tenacious: false,
             request: Some("req".to_string()),
         };
-        assert_eq!(kpop.max_hypotheses, 1);
+        assert_eq!(effective_code_max_loops(code.max_loops), 1);
     }
 
     #[test]

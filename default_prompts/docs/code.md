@@ -30,6 +30,10 @@ Maximum **review cycles** after implementation. Each cycle:
 
 Value `0` is treated as `1` (at least one review attempt). Plan check retries also respect this budget.
 
+### `--tenacious`
+
+Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+
 ### `--trust-the-plan`
 
 Skip the **check plan** phase. Use when the plan was already reviewed (e.g. via `malvin plan`) and you want to go straight to implementation.

@@ -25,9 +25,17 @@ Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malv
 
 ## Options
 
+### `--max-loops <N>` (default: 1)
+
+Run the kpop agent up to `N` times. Each run uses its own experiment log under `_kpop/` (for example `exp_log_<run>_g2.md` on the second run). Malvin stops early when a run’s log contains a line exactly `## KPOP_SOLVED`.
+
 ### `--max-hypotheses <N>` (default: 10)
 
-Stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` (em dash, en dash, or hyphen before the kind). Alias: `--max-loops`.
+Per agent run: stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` (em dash, en dash, or hyphen before the kind).
+
+### `--tenacious`
+
+Expand to `--max-acp-retries=9999` and `--max-loops=9999` (same as on `malvin code` and `malvin tidy`).
 
 ### Global options
 

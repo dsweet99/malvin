@@ -38,7 +38,9 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         doc: false,
     };
     let kpop = crate::cli::KpopArgs {
+        max_loops: 1,
         max_hypotheses: 1,
+        tenacious: false,
         request: Some("smoke".into()),
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");

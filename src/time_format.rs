@@ -15,7 +15,7 @@ pub fn heartbeat_payload_now() -> String {
     let ts = now.format("%Y%m%d.%H%M%S");
     let mut payload = format!("{ts} {}", crate::agent_phase::heartbeat_label());
     if let Some(stats) = crate::active_agent_heartbeat::active_agent_heartbeat_stats() {
-        payload.push(' ');
+        payload.push_str(", ");
         payload.push_str(&stats);
     }
     payload
@@ -56,7 +56,7 @@ mod tests {
         let baseline = crate::acp::snapshot_pids();
         crate::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
         let payload = super::heartbeat_payload_now();
-        assert!(payload.contains("sandbox "));
+        assert!(payload.contains("sandbox: "));
         assert!(payload.contains("RSS"));
         assert!(payload.contains("procs"));
         crate::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));

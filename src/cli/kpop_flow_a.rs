@@ -1,13 +1,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::KpopTurnPrompts;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
 };
-use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::kpop_progression::KpopMultiturnState;
-use crate::output::{MALVIN_WHO, print_stdout_line};
 use crate::prompts::PromptStore;
 
 use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_kpop_prompt_store};
@@ -23,6 +20,7 @@ pub(in crate) fn kpop_prompt_store(
 
 pub struct KpopPrepared {
     pub(in crate) artifacts: RunArtifacts,
+    #[allow(dead_code)]
     pub(in crate) exp_log_path: PathBuf,
     pub(in crate) context: HashMap<String, String>,
     pub(in crate) text: String,
@@ -53,7 +51,7 @@ pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, Strin
     })
 }
 
-fn kpop_boot_store_client_prepared(
+pub(crate) fn kpop_boot_store_client_prepared(
     kpop: &KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
@@ -123,36 +121,17 @@ pub async fn run_kpop(
 
     let (store, mut client, prepared) = kpop_boot_store_client_prepared(&kpop, shared, workflow)?;
 
-    let kpop_id = crate::malvin_short_id();
-    let log_line = crate::cli::bug_id_lookup_kpop::kpop_log_line(
-        &kpop_id,
-        &prepared.artifacts.work_dir,
-        &prepared.artifacts.run_dir,
-        &prepared.exp_log_path,
-    );
-    print_stdout_line(MALVIN_WHO, &log_line);
-
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
-    let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
-        store: &store,
-        base: &prepared.context,
-        request_text: &prepared.text,
-        prepend_rules_once: true,
-    });
-    let mut state = KpopMultiturnState::new(
-        builder,
-        prepared.exp_log_path.clone(),
-        kpop.max_hypotheses,
-    )?;
-
-    let acp_result = kpop_run_acp_multiturn(
-        KpopAcpMultiturnCtx {
+    let acp_result = super::kpop_flow_run_loop::run_kpop_agent_loops(
+        super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
+            kpop: &kpop,
+            shared,
+            workflow,
+            store: &store,
             client: &mut client,
             prepared: &prepared,
-            state: &mut state,
         },
-        crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
     )
     .await;
 
@@ -210,8 +189,9 @@ mod kiss_cov_auto {
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(cwd).expect("chdir");
         let kpop = KpopArgs {
+            max_loops: 1,
             max_hypotheses: 1,
-            
+            tenacious: false,
             request: Some("Ma1b2c".into()),
         };
         run_kpop_short_id_lookup(&kpop).expect("lookup dump");

@@ -17,6 +17,11 @@ pub fn smoke_agent_client() -> crate::acp::AgentClient {
 }
 
 #[cfg(test)]
+pub fn acp_mock_js_for_test(preamble: &str, prompt_handler: &str) -> String {
+    crate::acp_mock_js(preamble, prompt_handler)
+}
+
+#[cfg(test)]
 pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     #[cfg(unix)]
     {

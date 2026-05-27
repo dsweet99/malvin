@@ -113,36 +113,58 @@ pub fn entrypoint_from(
 }
 
 fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String> {
+    let mut shared = shared.clone();
     match command {
-        Commands::Code(code) => run_code_command(code, shared),
-        Commands::Kpop(kpop) => run_async_cli(|| {
-            run_kpop(
-                kpop.clone(),
-                shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
-        Commands::Tidy(tidy) => run_async_cli(|| {
-            run_tidy(
-                tidy.clone(),
-                shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
+        Commands::Code(mut code) => {
+            super::loop_opts::apply_tenacious(
+                &mut code.max_loops,
+                &mut shared.max_acp_retries,
+                code.tenacious,
+            );
+            run_code_command(code, &shared)
+        }
+        Commands::Kpop(mut kpop) => {
+            super::loop_opts::apply_tenacious(
+                &mut kpop.max_loops,
+                &mut shared.max_acp_retries,
+                kpop.tenacious,
+            );
+            run_async_cli(|| {
+                run_kpop(
+                    kpop,
+                    &shared,
+                    WorkflowCliOptions {
+                        force: !shared.no_force,
+                    },
+                )
+            })
+        }
+        Commands::Tidy(mut tidy) => {
+            super::loop_opts::apply_tenacious(
+                &mut tidy.max_loops,
+                &mut shared.max_acp_retries,
+                tidy.tenacious,
+            );
+            run_async_cli(|| {
+                run_tidy(
+                    tidy,
+                    &shared,
+                    WorkflowCliOptions {
+                        force: !shared.no_force,
+                    },
+                )
+            })
+        },
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
-                shared,
+                &shared,
                 WorkflowCliOptions {
                     force: !shared.no_force,
                 },
             )
         }),
-        Commands::Invent(ideas) => run_invent_command(ideas, shared),
+        Commands::Invent(ideas) => run_invent_command(ideas, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -193,6 +215,10 @@ fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Result<(), Strin
         )
     })
 }
+
+#[cfg(test)]
+#[path = "entrypoint_tenacious_tests.rs"]
+mod entrypoint_tenacious_tests;
 
 #[cfg(test)]
 mod entrypoint_doc_tests {

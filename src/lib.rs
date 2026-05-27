@@ -67,6 +67,8 @@ pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
+mod acp_test_mock_js;
+pub use acp_test_mock_js::acp_mock_js;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
@@ -212,4 +214,4 @@ pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
 pub mod test_utils;
 
 #[cfg(test)]
-mod test_agent_client;
+pub mod test_agent_client;

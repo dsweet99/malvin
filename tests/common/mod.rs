@@ -20,6 +20,7 @@ mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod init_harness;
 mod kpop_multiturn_support;
+mod kpop_outer_loop_support;
 #[cfg(unix)]
 mod live_agent;
 mod process;
@@ -42,6 +43,7 @@ pub use acp_do::*;
 pub use acp_do_dotfiles::*;
 pub use acp_tidy_kpop::*;
 pub use kpop_multiturn_support::*;
+pub use kpop_outer_loop_support::*;
 #[cfg(unix)]
 pub use live_agent::{
     command_output_live_agent, live_agent_prereqs_met, LIVE_AGENT_CMD_TIMEOUT,

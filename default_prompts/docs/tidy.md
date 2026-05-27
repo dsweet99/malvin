@@ -26,6 +26,10 @@ Maximum **outer iterations**. Each iteration:
 
 `0` is treated as `1`. If the last iteration still fails gates after its KPop session, malvin exits with a gate-failure error.
 
+### `--tenacious`
+
+Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+
 ### Global options
 
 See `malvin.md`. `--no-markdown` affects agent stdout when the tidy loop runs the agent (no effect on the fast path when gates already pass).

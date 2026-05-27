@@ -30,6 +30,9 @@ pub struct TidyArgs {
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+    #[arg(long, default_value_t = false)]
+    pub tenacious: bool,
     /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
     #[arg(long, short = 'q', default_value_t = false, hide = true)]
     pub quick: bool,
@@ -41,18 +44,15 @@ mod tests {
     use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
-    fn kpop_args_from_tidy_maps_max_loops() {
+    fn tidy_effective_max_loops_is_at_least_one() {
         let tidy = TidyArgs {
             max_loops: 0,
             max_hypotheses: 10,
+            tenacious: false,
             quick: false,
         };
-        let kpop = crate::cli::KpopArgs {
-            max_hypotheses: effective_tidy_max_loops(tidy.max_loops),
-            request: Some("req".to_string()),
-        };
-        assert_eq!(kpop.max_hypotheses, 1);
-        assert_eq!(kpop.request.as_deref(), Some("req"));
+        assert_eq!(effective_tidy_max_loops(tidy.max_loops), 1);
+        assert_eq!(tidy.max_hypotheses, 10);
     }
 
     #[test]

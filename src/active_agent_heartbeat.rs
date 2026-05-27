@@ -83,7 +83,7 @@ fn format_agent_stats(pgid: u32, spawn_baseline: &HashSet<u32>) -> Option<String
     let rss = crate::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), spawn_baseline)?;
     let procs = crate::acp::sandbox_monitor_pids(Some(pgid), spawn_baseline).len();
     let rss_label = crate::log_gc::format_freed(rss);
-    Some(format!("sandbox {rss_label} RSS, {procs} procs"))
+    Some(format!("sandbox: {rss_label} RSS, {procs} procs"))
 }
 
 #[cfg(not(unix))]

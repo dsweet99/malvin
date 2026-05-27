@@ -46,22 +46,22 @@ mod linux_pty {
     }
 
     #[test]
-    fn kpop_max_loops_alias_is_accepted() {
+    fn kpop_max_loops_controls_outer_agent_runs() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_update_js(),
-            "kpop --max-loops 1 investigate",
+            "kpop --max-loops 1 --max-hypotheses 1 investigate",
             None,
         );
         assert_eq!(
             run.output.status.code(),
             Some(1),
-            "legacy --max-loops should fail along expected mocked flow: {0:?}",
+            "expected kpop failure exit from script -e: {0:?}",
             run.output
         );
         let stderr = String::from_utf8_lossy(&run.output.stderr);
         assert!(
             !stderr.contains("unexpected argument '--max-loops'"),
-            "legacy --max-loops should be accepted as alias for --max-hypotheses: {stderr:?}"
+            "--max-loops must be a distinct outer-loop flag: {stderr:?}"
         );
     }
 

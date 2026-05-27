@@ -21,6 +21,7 @@ pub(crate) mod tidy_flow;
 mod code_flow;
 mod code_flow_a;
 mod gate_kpop_workflow;
+mod loop_opts;
 mod workflow_kpop_shared;
 
 pub use code_flow_a::{
