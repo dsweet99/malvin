@@ -116,6 +116,34 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
 }
 
 #[test]
+fn agent_message_prefix_rendered_payload_uses_teal() {
+    use super::acp_tee_markdown::teal_rendered_markup_payload;
+    use crate::output::stdout_log_pair::{format_line_acp_ansi_payload, AcpTeeLineFmt};
+
+    let ctx = AcpTeeLineFmt {
+        ts: "20260413.121314.015",
+        direction: AcpTeeDirection::FromAgent,
+        who: "<stem",
+        line: "hello agent",
+        dim_payload: false,
+    };
+    let teal = teal_rendered_markup_payload("hello agent");
+    assert!(
+        teal.contains(&format!("{ANSI_TOOL_TEAL}hello agent")),
+        "teal wrapper should color agent payload; got {teal:?}"
+    );
+    let prefix = format_line_acp_ansi_payload(&AcpTeeLineFmt {
+        line: "",
+        ..ctx
+    });
+    let full = format!("{prefix}{teal}");
+    assert!(
+        full.contains(&teal),
+        "prefix-rendered tee line should carry teal payload; got {full:?}"
+    );
+}
+
+#[test]
 fn ansi_acp_tee_agent_message_payload_uses_teal_green() {
     let line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         ts: "20260413.121314.015",

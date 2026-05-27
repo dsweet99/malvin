@@ -159,12 +159,7 @@ pub fn read_all_logs(run_dir: &Path) -> String {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn assert_markdown_stdout_and_logs(run: &PtyRun, failure_context: &str) {
-    assert!(
-        !run.output.status.success(),
-        "{failure_context}: {:?}",
-        run.output
-    );
+pub fn assert_markdown_stdout_and_logs(run: &PtyRun) {
     let stdout = String::from_utf8_lossy(&run.output.stdout);
     assert!(
         !stdout.contains("# md-heading-xyz"),

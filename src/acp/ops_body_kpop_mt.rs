@@ -58,13 +58,16 @@ async fn multiturn_after_successful_round(
             hypotheses_after,
             &after.prompt_health,
         ) {
-            let err_text = snapshot.format_no_progress_error();
+            let mut err_text = snapshot.format_no_progress_error();
             crate::kpop_progression::set_last_block_miss(after.state, snapshot);
-            print_log_error(&err_text);
             if after.prompt_health.has_infra_failure() {
-                let _ = session.shutdown().await;
-                return Err(AgentError(err_text));
+                err_text.push_str(
+                    "\nLikely infra failure during this prompt (see ACP tool issues above).",
+                );
             }
+            print_log_error(&err_text);
+            let _ = session.shutdown().await;
+            return Err(AgentError(err_text));
         }
         after.state.record_kpop_block_prompt_completed();
     } else {

@@ -8,7 +8,7 @@ use tracing::warn;
 
 use super::session_types::AcpSession;
 
-const POLL_INTERVAL: Duration = Duration::from_secs(3);
+const POLL_INTERVAL: Duration = Duration::from_millis(500);
 
 pub struct MemWatchHandles {
     pub reader_dead: Arc<std::sync::atomic::AtomicBool>,
@@ -49,32 +49,30 @@ pub async fn watch_process_group_memory(handles: MemWatchHandles) {
         spawn_pid_baseline,
     } = handles;
     loop {
-        tokio::time::sleep(POLL_INTERVAL).await;
         if reader_dead.load(Ordering::SeqCst) {
             return;
         }
         if !crate::malvin_sandbox::sandbox_still_alive(Some(pgid), &spawn_pid_baseline) {
             return;
         }
-        let Some(rss) =
+        if let Some(rss) =
             crate::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), &spawn_pid_baseline)
-        else {
-            continue;
-        };
-        if rss <= limit_bytes {
-            continue;
+        {
+            if rss > limit_bytes {
+                warn!(
+                    rss_bytes = rss,
+                    limit_bytes,
+                    pgid,
+                    "malvin sandbox exceeded memory limit; terminating"
+                );
+                crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+                    Some(pgid),
+                    &spawn_pid_baseline,
+                )
+                .await;
+                return;
+            }
         }
-        warn!(
-            rss_bytes = rss,
-            limit_bytes,
-            pgid,
-            "malvin sandbox exceeded memory limit; terminating"
-        );
-        crate::acp::unix_process_group_teardown::terminate_agent_process_group(
-            Some(pgid),
-            &spawn_pid_baseline,
-        )
-        .await;
-        return;
+        tokio::time::sleep(POLL_INTERVAL).await;
     }
 }

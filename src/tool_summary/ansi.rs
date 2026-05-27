@@ -70,15 +70,15 @@ pub(crate) fn tool_line_colon_prefix(seg: &str) -> (&str, &str) {
     ("", seg)
 }
 
-pub(crate) fn ansi_style_cream_verb(verb: &str) -> String {
-    format!("{ANSI_BOLD}{ANSI_TOOL_CREAM}{verb}{ANSI_RESET}")
+pub(crate) fn ansi_style_sand_verb(verb: &str) -> String {
+    format!("{ANSI_BOLD}{ANSI_TOOL_SAND}{verb}{ANSI_RESET}")
 }
 
 pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
     let (colon, body) = tool_line_colon_prefix(seg);
     let verb_end = body.find(' ').unwrap_or(body.len());
     let (verb, tail) = body.split_at(verb_end);
-    format!("{colon}{}{}", ansi_style_cream_verb(verb), ansi_style_path_tail(tail))
+    format!("{colon}{}{}", ansi_style_sand_verb(verb), ansi_style_path_tail(tail))
 }
 
 pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
@@ -86,7 +86,7 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     for prefix in DONE_VERB_PREFIXES {
         if let Some(tail) = body.strip_prefix(prefix) {
             let verb = prefix.trim_end();
-            let mut out = format!("{colon}{}", ansi_style_cream_verb(verb));
+            let mut out = format!("{colon}{}", ansi_style_sand_verb(verb));
             if !tail.is_empty() {
                 out.push(' ');
                 out.push_str(&ansi_style_path_tail(tail));
@@ -125,7 +125,7 @@ pub(crate) fn is_byte_size_segment(seg: &str) -> bool {
 }
 
 pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
-    if seg.chars().any(|c| c == '/' || c == '.') || is_byte_size_segment(seg) {
+    if is_byte_size_segment(seg) {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
     format!("{ANSI_TOOL_CREAM}{seg}{ANSI_RESET}")

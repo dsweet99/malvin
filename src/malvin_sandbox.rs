@@ -7,7 +7,7 @@ use std::sync::{Mutex, OnceLock};
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
 #[cfg(unix)]
-use crate::process_group_rss::pids_rss_bytes;
+use crate::process_group_rss::pids_sandbox_bytes;
 
 static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 
@@ -116,7 +116,7 @@ pub fn malvin_session_rss_bytes(
     session_baseline: &HashSet<u32>,
 ) -> Option<u64> {
     let pids = sandbox_monitor_pids(agent_pgid, session_baseline);
-    pids_rss_bytes(&pids)
+    pids_sandbox_bytes(&pids)
 }
 
 #[cfg(not(unix))]

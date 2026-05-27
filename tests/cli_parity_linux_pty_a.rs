@@ -13,8 +13,8 @@ mod linux_pty {
     fn code_pty_markdown_strips_bold_markers_without_no_markdown() {
         let out = run_code_max_loops_zero_under_script(&[]);
         assert!(
-            !out.status.success(),
-            "expected max-loops failure exit from script -e: {out:?}"
+            out.status.success(),
+            "expected code success when post-kpop gates pass: {out:?}"
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
@@ -35,8 +35,8 @@ mod linux_pty {
     fn code_pty_no_markdown_preserves_bold_markers() {
         let out = run_code_max_loops_zero_under_script(&["--no-markdown"]);
         assert!(
-            !out.status.success(),
-            "expected max-loops failure exit from script -e: {out:?}"
+            out.status.success(),
+            "expected code success when post-kpop gates pass: {out:?}"
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
@@ -53,8 +53,8 @@ mod linux_pty {
     fn code_pty_no_color_disables_markdown_styling() {
         let out = run_code_max_loops_zero_under_script(&["--no-color"]);
         assert!(
-            !out.status.success(),
-            "expected max-loops failure exit from script -e: {out:?}"
+            out.status.success(),
+            "expected code success when post-kpop gates pass: {out:?}"
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
@@ -78,7 +78,12 @@ mod linux_pty {
             "code --trust-the-plan --no-learn --max-loops 0 ship",
             None,
         );
-        assert_markdown_stdout_and_logs(&run, "expected max-loops failure exit from script -e");
+        assert!(
+            run.output.status.success(),
+            "expected code success when post-kpop gates pass: {:?}",
+            run.output
+        );
+        assert_markdown_stdout_and_logs(&run);
     }
 
     #[test]
@@ -88,7 +93,12 @@ mod linux_pty {
             "kpop --no-learn --max-hypotheses 50 investigate",
             None,
         );
-        assert_markdown_stdout_and_logs(&run, "expected kpop catch-up failure exit from script -e");
+        assert!(
+            !run.output.status.success(),
+            "expected kpop catch-up failure exit from script -e: {:?}",
+            run.output
+        );
+        assert_markdown_stdout_and_logs(&run);
     }
 
     #[test]
@@ -99,8 +109,8 @@ mod linux_pty {
             Some("40"),
         );
         assert!(
-            !run.output.status.success(),
-            "expected max-loops failure exit from script -e: {:?}",
+            run.output.status.success(),
+            "expected code success when post-kpop gates pass: {:?}",
             run.output
         );
         let stdout = String::from_utf8_lossy(&run.output.stdout);

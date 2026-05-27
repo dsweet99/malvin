@@ -1,7 +1,8 @@
 use super::{
-    ANSI_DIM, ANSI_RESET, format_heartbeat_stdout_ansi, format_line_stdout,
-    format_line_stdout_ansi, format_log_tag_inner, stderr_use_color, stdout_use_color,
-    timestamp_now_string, who_tag_ansi,
+    acp_tee_markdown::teal_rendered_markup_payload, ANSI_DIM, ANSI_RESET,
+    format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
+    format_log_tag_inner, stderr_use_color, stdout_use_color, timestamp_now_string,
+    who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
@@ -144,6 +145,13 @@ const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     }
 }
 
+fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: bool) -> String {
+    if !use_color || ctx.dim_payload || ctx.direction != AcpTeeDirection::FromAgent {
+        return payload.to_string();
+    }
+    teal_rendered_markup_payload(payload)
+}
+
 fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     let inner = format_log_tag_inner(ctx.who);
     let bracket = acp_bracket_color(ctx.direction);
@@ -154,8 +162,8 @@ fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
         )
     } else if ctx.direction == AcpTeeDirection::FromAgent {
         format!(
-            "{bracket}[{inner}]{ANSI_RESET} {ANSI_TOOL_TEAL}{}{ANSI_RESET}",
-            ctx.line
+            "{bracket}[{inner}]{ANSI_RESET} {}",
+            acp_from_agent_payload(ctx, ctx.line, true)
         )
     } else {
         format!("{bracket}[{inner}]{ANSI_RESET} {}", ctx.line)
@@ -208,8 +216,9 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
     ctx: &AcpTeeLineFmt<'_>,
     rendered_payload: &str,
 ) -> (String, String) {
+    let display_payload = acp_from_agent_payload(ctx, rendered_payload, stdout_use_color());
     (
-        format!("{}{rendered_payload}", acp_tee_payload_prefix(ctx)),
+        format!("{}{display_payload}", acp_tee_payload_prefix(ctx)),
         format!("{}{rendered_payload}", acp_tee_log_prefix(ctx)),
     )
 }
@@ -225,5 +234,6 @@ mod inline_cov {
         let _ = stringify!(TaggedDisplayStyle);
         let _ = stringify!(acp_bracket_color);
         let _ = stringify!(acp_bracket_payload);
+        let _ = stringify!(acp_from_agent_payload);
     }
 }

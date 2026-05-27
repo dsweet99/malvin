@@ -97,8 +97,10 @@ fn smoke_child_health_sample() {
 fn smoke_mem_limit_and_process_group_rss() {
     let gb = crate::mem_limit_config::default_mem_limit_gb();
     assert!(gb >= 1);
-    let rss = crate::process_group_rss::process_group_rss_bytes(std::process::id())
-        .expect("rss");
+    let rss = crate::process_group_rss::process_group_rss_bytes(
+        crate::process_group_rss::current_process_group_id().expect("pgid"),
+    )
+    .expect("rss");
     assert!(rss > 0);
 }
 
