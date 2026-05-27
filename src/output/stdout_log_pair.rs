@@ -6,7 +6,7 @@ use super::{
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::terminal_palette::{ANSI_TOOL_DARK, ANSI_TOOL_TEAL};
+use crate::terminal_palette::{ANSI_TOOL_DARK, ANSI_TOOL_NAVY};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -140,7 +140,7 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
 
 const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
-        AcpTeeDirection::ToAgent => ANSI_TOOL_TEAL,
+        AcpTeeDirection::ToAgent => ANSI_TOOL_NAVY,
         AcpTeeDirection::FromAgent => ANSI_TOOL_DARK,
     }
 }

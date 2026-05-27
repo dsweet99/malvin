@@ -22,6 +22,47 @@ fn smoke_agent_phase_kpop_and_reporting() {
 }
 
 #[test]
+fn smoke_emit_without_log_path_skips_disk_append() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(None);
+    crate::output::enable_stdout_capture();
+    crate::output::emit_stdout_rendered_immediate("[probe] x", "20260524.000000.000 [probe] x");
+    let terminal = crate::output::take_captured_stdout();
+    assert_eq!(terminal.trim(), "[probe] x");
+    crate::output::set_stdout_log_path(Some(path.clone()));
+    crate::output::emit_stdout_rendered_immediate("[probe] y", "20260524.000000.000 [probe] y");
+    crate::output::set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    assert!(text.contains("[probe] y"));
+}
+
+#[test]
+fn smoke_publish_heartbeat_live_terminal() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(path.clone()));
+    crate::output::enable_stdout_capture();
+    crate::output::reset_stdout_heartbeat_for_test();
+    crate::output::test_set_last_heartbeat_elapsed(std::time::Duration::from_secs(61));
+    let display = "[malvin.........] 20260524.000000 Waiting";
+    crate::output::publish_heartbeat_live_terminal(display);
+    let terminal = crate::output::take_captured_stdout();
+    crate::output::set_stdout_log_path(None);
+    assert_eq!(terminal.trim(), display);
+    assert!(std::fs::read_to_string(path).unwrap_or_default().is_empty());
+    assert!(
+        crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false).is_none()
+    );
+}
+
+#[test]
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
     let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK

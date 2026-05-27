@@ -16,9 +16,13 @@ pub(crate) mod terminal_wrap;
 pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
-pub(crate) use stdout_render::{flush_stdout_rendered_line, write_heartbeat_log_line};
+pub(crate) use stdout_render::{
+    flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
+};
+#[cfg(test)]
+pub(crate) use stdout_render::emit_stdout_rendered_immediate;
 pub(crate) use stdout_heartbeat::{
-    heartbeat_rendered_if_due, is_heartbeat_log_line, log_contains_heartbeat, mark_heartbeat_emitted,
+    heartbeat_rendered_if_due, log_contains_heartbeat,
 };
 
 pub(crate) use stdout_display::{

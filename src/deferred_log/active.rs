@@ -53,6 +53,10 @@ pub(crate) fn defer_already_has_heartbeat(sink: &DeferredLogSink) -> bool {
     pending_has_heartbeat() || sink.queue_has_heartbeat()
 }
 
+pub(crate) fn heartbeat_live_pending() -> bool {
+    pending_has_heartbeat() || SINK_QUEUE_HAS_HEARTBEAT.load(Ordering::Relaxed)
+}
+
 pub(crate) fn flush_pending_into(sink: &mut DeferredLogSink) {
     let drained: Vec<DeferredEntry> = pending_entries().drain(..).collect();
     for entry in drained {
@@ -123,6 +127,7 @@ pub(crate) fn try_log(entry: DeferredEntry) -> bool {
             if let Some((display, log)) =
                 crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), true)
             {
+                crate::output::publish_heartbeat_live_terminal(&display);
                 queue_pending(super::build_display_log_entry(display, log));
             }
         }

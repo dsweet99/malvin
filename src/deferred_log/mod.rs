@@ -42,6 +42,7 @@ pub(crate) fn log_with_heartbeat(sink: &mut DeferredLogSink, entry: DeferredEntr
             std::time::Instant::now(),
             true,
         ) {
+            crate::output::publish_heartbeat_live_terminal(&display);
             sink.push_entry(build_display_log_entry(display, log));
         }
     }
@@ -63,10 +64,17 @@ fn defer_tagged_stdout_hook(display: &str, log: &str) -> bool {
 }
 
 fn defer_heartbeat_hook(display: &str, log: &str) -> bool {
-    active::try_push(build_display_log_entry(
+    let show_live = !active::heartbeat_live_pending();
+    if !active::try_push(build_display_log_entry(
         display.to_string(),
         log.to_string(),
-    ))
+    )) {
+        return false;
+    }
+    if show_live {
+        crate::output::publish_heartbeat_live_terminal(display);
+    }
+    true
 }
 
 #[cfg(test)]

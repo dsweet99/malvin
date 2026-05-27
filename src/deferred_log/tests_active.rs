@@ -149,6 +149,26 @@ fn active_defer_session_emits_heartbeat_during_stdout_silence() {
     );
 }
 
+#[test]
+fn active_defer_session_shows_heartbeat_on_live_terminal_before_log_flush() {
+    let ctx = defer_log_test_ctx(true);
+    crate::output::enable_stdout_capture();
+    crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
+    crate::output::poll_wall_clock_heartbeat_if_due();
+    let terminal = crate::output::take_captured_stdout();
+    let log_before_flush =
+        std::fs::read_to_string(&ctx.log_path).unwrap_or_default();
+    assert!(
+        crate::output::log_contains_heartbeat(&terminal),
+        "heartbeat must reach live terminal while defer session blocks log drain; terminal={terminal:?}"
+    );
+    assert!(
+        !crate::output::log_contains_heartbeat(&log_before_flush),
+        "heartbeat log line must stay queued until flush; log={log_before_flush:?}"
+    );
+    let _ = finish_defer_log_test(ctx);
+}
+
 #[cfg(test)]
 mod kiss_cov_active_tests {
     use crate::deferred_log::test_fixtures::defer_log_test_ctx;
