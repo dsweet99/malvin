@@ -98,6 +98,44 @@ pub(crate) fn is_safe_kill_target(pid: u32, protected: &HashSet<u32>) -> bool {
 }
 
 #[cfg(unix)]
+pub(crate) fn read_proc_cmdline(pid: u32) -> Option<Vec<u8>> {
+    std::fs::read(format!("/proc/{pid}/cmdline")).ok()
+}
+
+#[cfg(unix)]
+pub(crate) fn read_proc_environ(pid: u32) -> Option<Vec<u8>> {
+    std::fs::read(format!("/proc/{pid}/environ")).ok()
+}
+
+/// True when argv ends with `acp` and names the Cursor `agent` binary (malvin's ACP child pattern).
+#[cfg(unix)]
+pub(crate) fn looks_like_agent_acp_cmdline(cmdline: &[u8]) -> bool {
+    let args: Vec<&[u8]> = cmdline
+        .split(|&b| b == 0)
+        .filter(|part| !part.is_empty())
+        .collect();
+    let Some(last) = args.last() else {
+        return false;
+    };
+    if *last != b"acp" {
+        return false;
+    }
+    args.iter().any(|arg| *arg == b"agent" || arg.ends_with(b"/agent"))
+}
+
+#[cfg(unix)]
+pub(crate) fn looks_like_malvin_agent_acp(pid: u32) -> bool {
+    if read_proc_cmdline(pid).is_some_and(|cmdline| looks_like_agent_acp_cmdline(&cmdline)) {
+        return true;
+    }
+    read_proc_environ(pid).is_some_and(|environ| {
+        environ
+            .split(|&b| b == 0)
+            .any(|entry| entry.starts_with(b"MALVIN_WORKSPACE="))
+    })
+}
+
+#[cfg(unix)]
 pub fn spawned_pids_since_baseline(baseline: &HashSet<u32>) -> HashSet<u32> {
     let rows = list_proc_rows().unwrap_or_default();
     let protected = host_protected_pids(&rows);
@@ -177,71 +215,5 @@ pub fn spawned_pids_since_baseline(
 pub fn signal_process_group(_: u32, _: i32) {}
 
 #[cfg(all(test, unix))]
-mod tests {
-    #[test]
-    fn parse_u32_field_parses_integers() {
-        assert_eq!(super::parse_u32_field(" 42 "), Some(42));
-        assert_eq!(super::parse_u32_field("x"), None);
-    }
-
-    #[test]
-    fn list_proc_rows_includes_current_process() {
-        let rows = super::list_proc_rows().expect("proc rows");
-        assert!(rows.iter().any(|row| row.pid == std::process::id()));
-    }
-
-    #[test]
-    fn parse_pid_list_reads_ps_output() {
-        let pids = super::parse_pid_list(b"  42\n19531\n");
-        assert_eq!(pids.len(), 2);
-        assert!(pids.contains(&42));
-        assert!(pids.contains(&19_531));
-    }
-
-    #[test]
-    fn parse_proc_rows_reads_ps_output() {
-        let rows = super::parse_proc_rows(b"  42  42    1\n19531 19531 42\n");
-        assert_eq!(rows.len(), 2);
-        assert_eq!(rows[0].pid, 42);
-        assert_eq!(rows[0].pgid, 42);
-        assert_eq!(rows[0].ppid, 1);
-    }
-
-    #[test]
-    fn list_pids_from_ps_returns_current_process() {
-        let pids = super::list_pids_from_ps().expect("ps listing");
-        assert!(pids.contains(&std::process::id()));
-    }
-
-    #[test]
-    fn is_safe_kill_target_rejects_init_and_self() {
-        let protected = super::host_protected_pids(&[]);
-        assert!(!super::is_safe_kill_target(super::INIT_PID, &protected));
-        assert!(!super::is_safe_kill_target(std::process::id(), &protected));
-        assert!(super::is_safe_kill_target(
-            std::process::id().saturating_add(1),
-            &protected
-        ));
-    }
-
-    #[test]
-    fn process_group_member_pids_includes_self() {
-        let me = std::process::id();
-        let rows = super::list_proc_rows().expect("proc rows");
-        let pgid = rows
-            .iter()
-            .find(|row| row.pid == me)
-            .map(|row| row.pgid)
-            .expect("current process row");
-        let members = super::process_group_member_pids(pgid);
-        assert!(members.contains(&me));
-    }
-
-    #[test]
-    fn spawned_pids_since_baseline_excludes_baseline_members() {
-        let mut baseline = super::snapshot_pids();
-        baseline.insert(std::process::id());
-        let spawned = super::spawned_pids_since_baseline(&baseline);
-        assert!(!spawned.contains(&std::process::id()));
-    }
-}
+#[path = "unix_process_group_ps_tests.rs"]
+pub(crate) mod unix_process_group_ps_tests;

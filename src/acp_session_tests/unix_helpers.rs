@@ -10,15 +10,17 @@ pub(super) fn process_exists(pid: u32) -> bool {
 
 #[cfg(unix)]
 pub(super) async fn wait_for_pid_file(path: &std::path::Path) -> u32 {
-    for _ in 0..100 {
+    for _ in 0..300 {
         if let Ok(raw) = tokio::fs::read_to_string(path).await {
             if let Ok(pid) = raw.trim().parse::<u32>() {
-                return pid;
+                if process_exists(pid) {
+                    return pid;
+                }
             }
         }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     }
-    panic!("pid file was not written: {}", path.display());
+    panic!("pid file was not written or process not alive: {}", path.display());
 }
 
 #[cfg(unix)]
@@ -26,8 +28,9 @@ pub(super) async fn write_descendant_spawning_acp_mock(bin: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
     let script = r"#!/usr/bin/env node
+const fs = require('fs');
 const readline = require('readline');
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 function send(id, result) {
   console.log(JSON.stringify({ jsonrpc: '2.0', id, result }));
@@ -43,7 +46,9 @@ rl.on('line', (line) => {
   } else if (msg.method === 'session/new') {
     send(msg.id, { sessionId: 't1' });
   } else if (msg.method === 'session/prompt') {
-    spawnSync('/bin/sh', ['-c', 'nohup sleep 30 >/dev/null 2>&1 & echo $! > descendant.pid'], { cwd: process.cwd() });
+    const child = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' });
+    child.unref();
+    fs.writeFileSync('descendant.pid', String(child.pid));
     send(msg.id, {});
   } else {
     send(msg.id, {});

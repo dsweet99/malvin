@@ -21,6 +21,7 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
     {
+        crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
         let _ = MALVIN_SPAWN_BASELINE.get_or_init(crate::acp::snapshot_pids);
     }
     #[cfg(not(unix))]
@@ -142,6 +143,7 @@ mod tests {
     #[test]
     fn kiss_cov_malvin_sandbox_symbols() {
         let _ = stringify!(init_malvin_spawn_baseline);
+        let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
         let _ = stringify!(malvin_spawn_baseline);
         let _ = stringify!(isolate_child_process_group);
         let _ = stringify!(isolate_tokio_child_process_group);

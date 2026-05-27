@@ -36,12 +36,14 @@ mod unix_process_group_teardown;
 mod unix_sandbox_monitor;
 
 pub use unix_process_group_ps::{snapshot_pids, spawned_pids_since_baseline, signal_process_group};
-pub use unix_process_group_teardown::{terminate_agent_process_group, terminate_process_group};
+pub use unix_process_group_teardown::{
+    reap_baseline_amnestied_agent_orphans_blocking, terminate_agent_process_group,
+    terminate_process_group,
+};
 #[cfg(unix)]
 pub(crate) use unix_process_group_ps::pid_alive;
 #[cfg(unix)]
 pub use unix_sandbox_monitor::sandbox_monitor_pids;
-
 mod process_group_mem_watch;
 #[cfg(unix)]
 pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
@@ -244,6 +246,5 @@ mod inc_kiss_coverage;
 #[cfg(test)]
 #[path = "session_tests_kiss_cov.rs"]
 mod session_tests_kiss_cov;
-
 #[cfg(test)]
 pub(crate) mod spawn_test_args;
