@@ -116,7 +116,7 @@ Existing unit test `sync_review_file_for_attempt_writes_workspace_text_to_artifa
 
 # Bug: sandbox memory limit is fail-open when RSS/PSS measurement returns `None`
 
-**Status:** Unfixed.
+**Status (fixed):** `watch_process_group_memory` fail-closes after `MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES` (3) consecutive `None` RSS samples and terminates the sandbox. Regression: `watch_process_group_memory_fail_closed_when_rss_unavailable`.
 
 ## Severity
 
