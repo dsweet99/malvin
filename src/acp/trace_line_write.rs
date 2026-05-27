@@ -100,6 +100,9 @@ pub async fn trace_file_write_line(
     kind: Option<SessionUpdateChunkKind>,
     stdout: TraceFileStdout<'_>,
 ) {
+    if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
+        crate::agent_phase::note_thought_activity();
+    }
     let display_line = format_trace_display_line(line, kind);
     let ts = stdout
         .ts

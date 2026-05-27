@@ -59,6 +59,8 @@ pub fn emit_run_startup_sequence(
     opts: RunStartupEmitOpts,
     cli_request: &str,
 ) -> Result<(), String> {
+    crate::agent_phase::reset_for_run();
+    crate::agent_phase::note_orienting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
     if opts.host_resources {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;

@@ -164,7 +164,7 @@ pub async fn run_kpop(
     );
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
-        print_stdout_line(MALVIN_WHO, "DONE");
+        crate::agent_phase::print_done_with_reporting_phase();
     }
     crate::run_timing::print_summary_from_run_dir(&prepared.artifacts.run_dir)
         .map_err(|e| e.to_string())?;

@@ -111,10 +111,7 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         &shared,
         agent_io_options(
             &shared,
-            WorkflowCliOptions {
-                force: false,
-                run_learn: false,
-            },
+            WorkflowCliOptions { force: false },
             AgentStdoutTeeFlags {
                 emit_stdout_markdown: false,
                 raw_output: true,

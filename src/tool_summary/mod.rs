@@ -32,7 +32,7 @@ pub(crate) use parse_acp::acp_line_range_field;
 #[allow(unused_imports)]
 pub(crate) use human_a_done::{human_done_line, human_read_done};
 #[allow(unused_imports)]
-pub(crate) use types::TOOL_PHASE_DONE;
+pub(crate) use types::{TOOL_PHASE_DONE, TOOL_PHASE_RUNNING, TOOL_PHASE_START};
 
 use types::ToolCallRecord;
 use format::format_tool_line;
@@ -45,6 +45,7 @@ pub fn tool_summary_lines(
 ) -> Option<ToolSummaryLines> {
     let parsed = parse_tool_update(v)?;
     tracker.apply(&parsed);
+    crate::agent_phase::observe_tool_update(&parsed, tracker);
     let log = format_tool_line(&parsed, tracker, ToolSummaryDetail::Log);
     let mut stdout_deferred = None;
     let stdout = match detail {

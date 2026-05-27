@@ -1,5 +1,4 @@
 use crate::kpop_turn_prompts::KpopTurnPrompts;
-use crate::output::{MALVIN_WHO, print_stdout_line};
 
 use crate::acp::{
     kpop_fail_after_prompt, kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
@@ -112,7 +111,7 @@ pub(crate) fn finish_gate_kpop_after_pass(
     _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
-    print_stdout_line(MALVIN_WHO, "DONE");
+    crate::agent_phase::print_done_with_reporting_phase();
     if let Some(timing) = run_timing {
         crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
             .map_err(|e| e.to_string())?;

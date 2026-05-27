@@ -140,10 +140,15 @@ fn run_malvin_checks_with_details(
     run_log_dir: Option<&Path>,
     commands: &[String],
 ) -> Result<(), RepoGateFailure> {
-    for command in commands.iter().filter(|c| !c.trim().is_empty()) {
-        run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
-    }
-    Ok(())
+    crate::agent_phase::enter_verifying();
+    let result = (|| {
+        for command in commands.iter().filter(|c| !c.trim().is_empty()) {
+            run_shell_command_line_with_details(work_dir, output, run_log_dir, command)?;
+        }
+        Ok(())
+    })();
+    crate::agent_phase::leave_verifying();
+    result
 }
 
 const fn shell_binary() -> (&'static str, &'static str) {

@@ -16,6 +16,7 @@ impl AgentClient {
         session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     ) -> Result<(), AgentError> {
         client.set_timing_implement_display_name("kpop");
+        crate::agent_phase::enter_kpop();
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
@@ -23,7 +24,10 @@ impl AgentClient {
         for attempt in 1..=max_attempts {
             attempts_used = attempt;
             match run_kpop_flow_once(client, flow, session_dotfile_backups).await {
-                Ok(()) => return Ok(()),
+                Ok(()) => {
+                    crate::agent_phase::leave_kpop();
+                    return Ok(());
+                }
                 Err(e) => {
                     last_error = e.0;
                     if backoff_after_agent_failure(
@@ -41,6 +45,7 @@ impl AgentClient {
         }
 
         let retries = attempts_used.saturating_sub(1);
+        crate::agent_phase::leave_kpop();
         let noun = retries_noun(retries);
         Err(AgentError(format!(
             "agent acp (kpop flow) failed after {retries} {noun}. Last error:\n{last_error}"
@@ -57,6 +62,7 @@ impl AgentClient {
         mut ctl: AgentKpopMultiturnCtl<'_, '_>,
     ) -> Result<(), AgentError> {
         self.set_timing_implement_display_name("kpop");
+        crate::agent_phase::enter_kpop();
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
@@ -64,7 +70,10 @@ impl AgentClient {
         for attempt in 1..=max_attempts {
             attempts_used = attempt;
             match run_kpop_multiturn_once(self, &mut ctl).await {
-                Ok(()) => return Ok(()),
+                Ok(()) => {
+                    crate::agent_phase::leave_kpop();
+                    return Ok(());
+                }
                 Err(e) => {
                     ctl.state.reset_for_transport_retry();
                     last_error = e.0;
@@ -82,6 +91,7 @@ impl AgentClient {
             }
         }
 
+        crate::agent_phase::leave_kpop();
         let retries = attempts_used.saturating_sub(1);
         let noun = retries_noun(retries);
         Err(AgentError(format!(

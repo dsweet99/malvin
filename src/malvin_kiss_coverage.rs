@@ -11,8 +11,24 @@ fn smoke_active_agent_heartbeat_stats() {
 }
 
 #[test]
+fn smoke_agent_phase_kpop_and_reporting() {
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    crate::agent_phase::enter_kpop();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "KPop cycling");
+    crate::agent_phase::leave_kpop();
+}
+
+#[test]
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    assert!(crate::time_format::heartbeat_payload_now().contains("Orienting"));
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("out.log");
     crate::stdout_log_path::set_stdout_log_path(Some(path.clone()));
