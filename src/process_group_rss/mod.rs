@@ -54,6 +54,27 @@ pub fn process_group_rss_bytes(pgid: u32) -> Option<u64> {
     }
 }
 
+/// Sandbox memory for `pids`: PSS on Linux when available, else summed RSS.
+#[must_use]
+pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    if pids.is_empty() {
+        return Some(0);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::linux_pids_sandbox_bytes(pids)
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::macos_pids_rss_bytes(pids)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = pids;
+        None
+    }
+}
+
 /// Sum RSS for each pid in `pids`, or `None` if every query failed.
 #[must_use]
 pub fn pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {

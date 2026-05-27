@@ -2,6 +2,29 @@ use std::collections::HashSet;
 use std::fs;
 use std::io::ErrorKind;
 
+pub(in crate::process_group_rss) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    linux_pids_pss_bytes(pids).or_else(|| linux_pids_rss_bytes(pids))
+}
+
+pub(in crate::process_group_rss) fn linux_pids_pss_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    let mut total = 0u64;
+    let mut saw = false;
+    for pid in pids {
+        let rollup_path = format!("/proc/{pid}/smaps_rollup");
+        let rollup = match fs::read_to_string(&rollup_path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == ErrorKind::NotFound => continue,
+            Err(_) => continue,
+        };
+        let Some(bytes) = parse_smaps_rollup_pss_bytes(&rollup) else {
+            continue;
+        };
+        saw = true;
+        total = total.saturating_add(bytes);
+    }
+    saw.then_some(total)
+}
+
 pub(in crate::process_group_rss) fn linux_pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     let mut total = 0u64;
     let mut saw = false;
@@ -75,8 +98,16 @@ pub(in crate::process_group_rss) fn parse_stat_pgrp(stat_line: &str) -> Option<u
 }
 
 pub(in crate::process_group_rss) fn parse_status_vm_rss_bytes(status: &str) -> Option<u64> {
-    status.lines().find_map(|line| {
-        let rest = line.strip_prefix("VmRSS:")?;
+    parse_proc_kib_field(status, "VmRSS:")
+}
+
+pub(in crate::process_group_rss) fn parse_smaps_rollup_pss_bytes(rollup: &str) -> Option<u64> {
+    parse_proc_kib_field(rollup, "Pss:")
+}
+
+pub(in crate::process_group_rss) fn parse_proc_kib_field(text: &str, prefix: &str) -> Option<u64> {
+    text.lines().find_map(|line| {
+        let rest = line.strip_prefix(prefix)?;
         let kb_str = rest.trim().strip_suffix(" kB")?.trim();
         let kb: u64 = kb_str.parse().ok()?;
         kb.checked_mul(1024)

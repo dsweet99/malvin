@@ -64,6 +64,7 @@ fn kiss_cov_process_group_rss_platform_symbols() {
     let _ = stringify!(macos_process_group_rss_bytes);
     let _ = stringify!(other_process_group_rss_bytes);
     let _ = stringify!(pids_rss_bytes);
+    let _ = stringify!(pids_sandbox_bytes);
     let _ = stringify!(malvin_session_rss_bytes);
     let _ = stringify!(sandbox_monitor_pids);
 }

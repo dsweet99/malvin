@@ -4,8 +4,9 @@ use super::process_group_rss_bytes;
 
 #[cfg(target_os = "linux")]
 use super::linux::{
-    linux_process_group_rss_bytes, parse_proc_pid_dir_name, parse_stat_pgrp,
-    parse_status_vm_rss_bytes,
+    linux_pids_pss_bytes, linux_pids_sandbox_bytes, linux_process_group_rss_bytes,
+    parse_proc_kib_field, parse_proc_pid_dir_name, parse_smaps_rollup_pss_bytes,
+    parse_stat_pgrp, parse_status_vm_rss_bytes,
 };
 
 #[test]
@@ -18,8 +19,13 @@ fn kiss_cov_linux_process_group_rss_symbol_names() {
     let _ = stringify!(linux_process_group_rss_bytes);
     let _ = stringify!(macos_process_group_rss_bytes);
     let _ = stringify!(linux_pids_rss_bytes);
+    let _ = stringify!(linux_pids_pss_bytes);
+    let _ = stringify!(linux_pids_sandbox_bytes);
+    let _ = stringify!(parse_smaps_rollup_pss_bytes);
+    let _ = stringify!(parse_proc_kib_field);
     let _ = stringify!(macos_pids_rss_bytes);
     let _ = stringify!(pids_rss_bytes);
+    let _ = stringify!(pids_sandbox_bytes);
 }
 
 #[test]
@@ -49,6 +55,36 @@ fn parse_stat_pgrp_reads_process_group_field() {
 fn parse_status_vm_rss_bytes_converts_kib_to_bytes() {
     let status = "Name:\tsleep\nVmRSS:\t  2048 kB\n";
     assert_eq!(parse_status_vm_rss_bytes(status), Some(2048 * 1024));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn parse_smaps_rollup_pss_bytes_converts_kib_to_bytes() {
+    let rollup = "Pss:               1024 kB\n";
+    assert_eq!(parse_smaps_rollup_pss_bytes(rollup), Some(1024 * 1024));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn parse_proc_kib_field_reads_prefixed_line() {
+    assert_eq!(parse_proc_kib_field("Pss:  512 kB\n", "Pss:"), Some(512 * 1024));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn linux_pids_sandbox_bytes_uses_self_pss_or_rss() {
+    let mut pids = std::collections::HashSet::new();
+    pids.insert(std::process::id());
+    let sandbox = linux_pids_sandbox_bytes(&pids).expect("sandbox bytes");
+    assert!(sandbox > 0);
+    // PSS/RSS can shift between back-to-back /proc reads; sandbox must prefer PSS when present.
+    if let Some(pss) = linux_pids_pss_bytes(&pids) {
+        let slack = 4 * 1024 * 1024;
+        assert!(
+            sandbox.abs_diff(pss) <= slack,
+            "sandbox={sandbox} pss={pss}"
+        );
+    }
 }
 
 #[cfg(target_os = "linux")]
