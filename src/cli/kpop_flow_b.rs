@@ -34,6 +34,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         no_tee: true,
         no_markdown: true,
         verbose: false,
+        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
     };
     let kpop = crate::cli::KpopArgs {

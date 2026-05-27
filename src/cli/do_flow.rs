@@ -8,7 +8,7 @@ use crate::artifacts::{
     backup_workspace_malvin_config_if_present, resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
 use crate::output::agent_stdout_tee_enabled;
 use crate::repo_checks;
 use crate::run_timing::TimingPhase;
@@ -48,8 +48,8 @@ fn new_do_client(
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
     if interactive {
-        return crate::acp::AgentClient::new(
-            shared.model.clone(),
+        return new_agent_client(
+            shared,
             agent_io_options(
                 shared,
                 workflow,
@@ -61,8 +61,8 @@ fn new_do_client(
             ),
         );
     }
-    crate::acp::AgentClient::new(
-        shared.model.clone(),
+    new_agent_client(
+        shared,
         agent_io_options(
             shared,
             workflow,

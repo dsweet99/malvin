@@ -75,6 +75,7 @@ fn smoke_agent_io_options_maps_flags() {
         no_tee: true,
         no_markdown: false,
         verbose: false,
+        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
     };
     let io = agent_io_options(
@@ -92,6 +93,37 @@ fn smoke_agent_io_options_maps_flags() {
     assert!(!io.show_thoughts_on_stdout);
     assert!(io.emit_stdout_markdown);
     assert!(!io.log_full_outgoing_prompts);
+}
+
+#[test]
+fn smoke_new_agent_client_maps_max_acp_retries() {
+    use super::{AgentStdoutTeeFlags, WorkflowCliOptions, agent_io_options, new_agent_client};
+    let shared = super::SharedOpts {
+        model: "m".into(),
+        no_force: false,
+        no_tee: true,
+        no_markdown: false,
+        verbose: false,
+        max_acp_retries: 7,
+        doc: false,
+    };
+    let client = new_agent_client(
+        &shared,
+        agent_io_options(
+            &shared,
+            WorkflowCliOptions {
+                force: false,
+                run_learn: false,
+            },
+            AgentStdoutTeeFlags {
+                emit_stdout_markdown: false,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+            },
+        ),
+    );
+    assert_eq!(client.model, "m");
+    assert_eq!(client.max_acp_retries, 7);
 }
 
 #[test]
@@ -195,6 +227,7 @@ fn smoke_shared_opts_tee_startup_stdout() {
         no_tee: false,
         no_markdown: false,
         verbose: false,
+        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
     };
     assert!(shared.tee_startup_stdout());

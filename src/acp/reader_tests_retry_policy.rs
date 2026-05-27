@@ -1,11 +1,14 @@
 use crate::acp::{
-    AgentRetryOutcome, IterableClosedStream, MAX_AGENT_ATTEMPTS, agent_string_is_cannot_use_model,
+    AgentRetryOutcome, IterableClosedStream, agent_string_is_cannot_use_model,
     agent_string_is_upgrade_plan, emit_operational_upgrade_plan_stop,
     iterable_closed_stream_from_buffer, operational_iterable_closed_for_emit,
     operational_iterable_closed_log_line, operational_upgrade_plan_for_emit, plan_agent_retry,
     retries_noun, upgrade_plan_stream_from_buffer,
 };
+use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
+
+const TEST_MAX_ATTEMPTS: u32 = DEFAULT_MAX_ACP_RETRIES;
 
 #[test]
 fn upgrade_plan_substring_is_detected_case_insensitively() {
@@ -18,7 +21,7 @@ fn upgrade_plan_substring_is_detected_case_insensitively() {
 #[test]
 fn upgrade_plan_errors_do_not_retry() {
     let msg = "billing: upgrade your plan to continue";
-    let err = plan_agent_retry(msg, 1).expect_err("upgrade plan must fail fast");
+    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("upgrade plan must fail fast");
     assert_eq!(err.0, msg);
 }
 
@@ -42,14 +45,14 @@ fn upgrade_plan_stream_from_buffer_tracks_split_coalesce() {
 fn cannot_use_model_errors_do_not_retry() {
     let msg = "Error: Cannot use this model with that provider";
     assert!(agent_string_is_cannot_use_model(msg));
-    let err = plan_agent_retry(msg, 1).expect_err("invalid model must fail fast");
+    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("invalid model must fail fast");
     assert_eq!(err.0, msg);
 }
 
 #[test]
 fn cannot_use_model_fails_fast_even_when_error_also_looks_retriable() {
     let msg = "rpc [unavailable]: Cannot use this model";
-    let err = plan_agent_retry(msg, 1).expect_err("model error must beat retriable match");
+    let err = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).expect_err("model error must beat retriable match");
     assert_eq!(err.0, msg);
 }
 
@@ -99,7 +102,7 @@ fn transient_errors_retry_with_backoff() {
     ] {
         assert!(
             matches!(
-                plan_agent_retry(msg, 1).unwrap(),
+                plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
                 AgentRetryOutcome::Sleep(_)
             ),
             "{msg}"
@@ -116,7 +119,7 @@ fn unknown_errors_retry_with_backoff() {
     ] {
         assert!(
             matches!(
-                plan_agent_retry(msg, 1).unwrap(),
+                plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap(),
                 AgentRetryOutcome::Sleep(_)
             ),
             "{msg}"
@@ -125,7 +128,7 @@ fn unknown_errors_retry_with_backoff() {
 }
 
 fn assert_retriable_sleep_secs(attempt: u32, expected_secs: u64) {
-    let out = plan_agent_retry("timed out", attempt).unwrap();
+    let out = plan_agent_retry("timed out", attempt, TEST_MAX_ATTEMPTS).unwrap();
     match out {
         AgentRetryOutcome::Sleep(d) => assert_eq!(d, Duration::from_secs(expected_secs)),
         AgentRetryOutcome::StopRetrying => {
@@ -146,8 +149,19 @@ fn retriable_second_attempt_sleeps_three_seconds() {
 
 #[test]
 fn retriable_exhausts_after_max_agent_attempts() {
-    let out = plan_agent_retry("timed out", MAX_AGENT_ATTEMPTS).unwrap();
+    let out = plan_agent_retry("timed out", TEST_MAX_ATTEMPTS, TEST_MAX_ATTEMPTS).unwrap();
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
+}
+
+#[test]
+fn retriable_exhausts_after_custom_max_attempts() {
+    let custom_max = 5_u32;
+    let out = plan_agent_retry("timed out", custom_max, custom_max).unwrap();
+    assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
+    assert!(matches!(
+        plan_agent_retry("timed out", custom_max - 1, custom_max).unwrap(),
+        AgentRetryOutcome::Sleep(_)
+    ));
 }
 
 #[test]

@@ -6,11 +6,12 @@ pub(crate) async fn backoff_after_agent_failure(
     timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
     last_error: &str,
     attempt: u32,
+    max_attempts: u32,
 ) -> Result<bool, AgentError> {
     crate::output::print_log_error(&format!(
         "agent acp attempt {attempt} failed: {last_error}"
     ));
-    match plan_agent_retry(last_error, attempt) {
+    match plan_agent_retry(last_error, attempt, max_attempts) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {

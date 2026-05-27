@@ -25,8 +25,8 @@ mod workflow_kpop_shared;
 
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
-    format_workspace_gate_failure, prepare_kpop_prompt_store, prepare_prompt_store,
-    AgentStdoutTeeFlags, WorkflowCliOptions,
+    format_workspace_gate_failure, new_agent_client, prepare_kpop_prompt_store,
+    prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub use code_flow::{run_code, CodeArgs};
 

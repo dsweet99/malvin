@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::acp::{
     backoff_after_agent_failure, outgoing_prompt_trace, AgentClient, AgentError,
-    CoderSessionPromptDispatch, MAX_AGENT_ATTEMPTS, coder_prompt_exhausted_error,
+    CoderSessionPromptDispatch, coder_prompt_exhausted_error,
     dispatch_coder_session_prompt, record_coder_prompt_llm_timing,
 };
 
@@ -72,7 +72,8 @@ async fn run_coder_prompt_with_retries(
 ) -> Result<(), AgentError> {
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
-    for attempt in 1..=MAX_AGENT_ATTEMPTS {
+    let max_attempts = client.max_acp_retries;
+    for attempt in 1..=max_attempts {
         attempts_used = attempt;
         let t0 = Instant::now();
         let prompt_res = dispatch_coder_session_prompt(&dispatch).await;
@@ -84,8 +85,13 @@ async fn run_coder_prompt_with_retries(
             Err(e) => {
                 record_coder_prompt_llm_timing(client.timing.as_ref(), llm_phase, t0.elapsed());
                 last_error = e;
-                if backoff_after_agent_failure(client.timing.as_ref(), &last_error, attempt)
-                    .await?
+                if backoff_after_agent_failure(
+                    client.timing.as_ref(),
+                    &last_error,
+                    attempt,
+                    max_attempts,
+                )
+                .await?
                 {
                     break;
                 }

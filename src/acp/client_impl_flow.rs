@@ -1,6 +1,6 @@
 use crate::acp::{
     backoff_after_agent_failure, AgentClient, AgentError, AgentKpopMultiturnCtl, AcpSession,
-    KpopFlowOnceArgs, MAX_AGENT_ATTEMPTS, retries_noun, run_kpop_flow_once,
+    KpopFlowOnceArgs, retries_noun, run_kpop_flow_once,
     run_kpop_multiturn_once,
 };
 
@@ -19,14 +19,20 @@ impl AgentClient {
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
-        for attempt in 1..=MAX_AGENT_ATTEMPTS {
+        let max_attempts = client.max_acp_retries;
+        for attempt in 1..=max_attempts {
             attempts_used = attempt;
             match run_kpop_flow_once(client, flow, session_dotfile_backups).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(client.timing.as_ref(), &last_error, attempt)
-                        .await?
+                    if backoff_after_agent_failure(
+                        client.timing.as_ref(),
+                        &last_error,
+                        attempt,
+                        max_attempts,
+                    )
+                    .await?
                     {
                         break;
                     }
@@ -54,15 +60,21 @@ impl AgentClient {
         let mut last_error = String::new();
 
         let mut attempts_used = 0_u32;
-        for attempt in 1..=MAX_AGENT_ATTEMPTS {
+        let max_attempts = self.max_acp_retries;
+        for attempt in 1..=max_attempts {
             attempts_used = attempt;
             match run_kpop_multiturn_once(self, &mut ctl).await {
                 Ok(()) => return Ok(()),
                 Err(e) => {
                     ctl.state.reset_for_transport_retry();
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
-                        .await?
+                    if backoff_after_agent_failure(
+                        self.timing.as_ref(),
+                        &last_error,
+                        attempt,
+                        max_attempts,
+                    )
+                    .await?
                     {
                         break;
                     }
