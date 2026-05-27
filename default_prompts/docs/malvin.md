@@ -44,7 +44,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `invent` always use plain stdout** regardless of this flag.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `invent`, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` always uses plain stdout** regardless of this flag.
 
 ### `-v` / `--verbose`
 

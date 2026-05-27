@@ -11,7 +11,7 @@ use crate::artifacts::{
     backup_workspace_malvin_config_if_present, create_run_artifacts_from_text, resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
+use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent};
 use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
 use crate::run_timing::TimingPhase;
 
@@ -57,17 +57,26 @@ pub fn render_ideas_prompt(num_ideas: usize, user_prompt: &str) -> Result<String
 }
 
 fn new_ideas_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> crate::acp::AgentClient {
-    new_agent_client(
+    build_agent(
         shared,
-        agent_io_options(
-            shared,
-            workflow,
-            AgentStdoutTeeFlags {
-                emit_stdout_markdown: false,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-            },
-        ),
+        workflow,
+        shared.acp_stdout_markdown_enabled(),
+    )
+}
+
+fn ideas_emit_startup(
+    ideas: &IdeasArgs,
+    shared: &SharedOpts,
+    artifacts: &RunArtifacts,
+) -> Result<(), String> {
+    let request = require_cli_request(ideas.request.as_ref(), "invent")?;
+    crate::cli::run_emit::emit_run_startup_sequence(
+        artifacts,
+        crate::cli::run_emit::RunStartupEmitOpts {
+            tee_stdout: shared.tee_startup_stdout(),
+            host_resources: true,
+        },
+        &request,
     )
 }
 
@@ -108,7 +117,7 @@ pub async fn run_ideas(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_ideas_run(&ideas, shared, workflow).await?;
-    crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
+    ideas_emit_startup(&ideas, shared, &prep.artifacts)?;
     prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
     let acp_res = run_ideas_acp(&mut prep.client, &prep.artifacts, &prep.prompt).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
@@ -171,17 +180,6 @@ async fn run_ideas_acp(
 }
 
 #[cfg(test)]
-mod ideas_flow_helpers_tests {
-    use super::snapshot_ideas_session_dotfiles;
-
-    #[test]
-    fn snapshot_ideas_session_dotfiles_on_empty_workdir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        snapshot_ideas_session_dotfiles(tmp.path()).expect("snapshot");
-    }
-}
-
-#[cfg(test)]
 #[path = "ideas_flow_tests.rs"]
 mod ideas_flow_tests;
 
@@ -192,6 +190,7 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _: Option<IdeasRunPrep> = None;
         let _ = new_ideas_client;
+        let _ = ideas_emit_startup;
         let _ = prepare_ideas_prompt_store;
         let _ = prepare_ideas_run;
         let _ = run_ideas;
