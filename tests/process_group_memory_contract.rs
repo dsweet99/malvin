@@ -16,7 +16,7 @@ fn load_mem_limit_gb_reads_workspace_config_file() {
 
 #[test]
 fn process_group_rss_bytes_reports_current_group() {
-    let pgid = std::process::id();
+    let pgid = malvin::process_group_rss::current_process_group_id().expect("pgid");
     let rss = process_group_rss_bytes(pgid).expect("rss");
     assert!(rss > 0);
 }
@@ -24,14 +24,16 @@ fn process_group_rss_bytes_reports_current_group() {
 #[cfg(target_os = "macos")]
 #[test]
 fn macos_host_process_group_rss_bytes_positive() {
-    let rss = process_group_rss_bytes(std::process::id()).expect("macos rss");
+    let pgid = malvin::process_group_rss::current_process_group_id().expect("pgid");
+    let rss = process_group_rss_bytes(pgid).expect("macos rss");
     assert!(rss > 0);
 }
 
 #[cfg(target_os = "linux")]
 #[test]
 fn linux_host_process_group_rss_bytes_positive() {
-    let rss = process_group_rss_bytes(std::process::id()).expect("linux rss");
+    let pgid = malvin::process_group_rss::current_process_group_id().expect("pgid");
+    let rss = process_group_rss_bytes(pgid).expect("linux rss");
     assert!(rss > 0);
 }
 

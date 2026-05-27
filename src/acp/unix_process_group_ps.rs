@@ -151,12 +151,14 @@ pub fn signal_process_group(process_group_id: u32, signal: i32) {
 
 #[cfg(unix)]
 pub(crate) fn process_group_member_pids(pgid: u32) -> HashSet<u32> {
-    let out = std::process::Command::new("ps")
-        .args(["-g", &pgid.to_string(), "-o", "pid="])
-        .stderr(Stdio::null())
-        .output()
-        .ok();
-    out.map(|o| parse_pid_list(&o.stdout)).unwrap_or_default()
+    list_proc_rows()
+        .map(|rows| {
+            rows.into_iter()
+                .filter(|row| row.pgid == pgid)
+                .map(|row| row.pid)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[cfg(not(unix))]
@@ -224,9 +226,15 @@ mod tests {
 
     #[test]
     fn process_group_member_pids_includes_self() {
-        let pgid = std::process::id();
+        let me = std::process::id();
+        let rows = super::list_proc_rows().expect("proc rows");
+        let pgid = rows
+            .iter()
+            .find(|row| row.pid == me)
+            .map(|row| row.pgid)
+            .expect("current process row");
         let members = super::process_group_member_pids(pgid);
-        assert!(members.contains(&pgid));
+        assert!(members.contains(&me));
     }
 
     #[test]

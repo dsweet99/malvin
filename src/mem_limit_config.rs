@@ -92,13 +92,12 @@ pub fn system_total_memory_bytes() -> Option<u64> {
 #[cfg(target_os = "linux")]
 pub(crate) fn linux_total_memory_bytes() -> Option<u64> {
     let raw = std::fs::read_to_string("/proc/meminfo").ok()?;
-    for line in raw.lines() {
+    raw.lines().find_map(|line| {
         let rest = line.strip_prefix("MemTotal:")?;
         let kb_str = rest.trim().strip_suffix(" kB")?.trim();
         let kb: u64 = kb_str.parse().ok()?;
-        return kb.checked_mul(1024);
-    }
-    None
+        kb.checked_mul(1024)
+    })
 }
 
 #[cfg(target_os = "macos")]

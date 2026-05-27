@@ -1,3 +1,4 @@
+#[cfg(target_os = "macos")]
 use super::macos::macos_process_group_rss_bytes;
 use super::process_group_rss_bytes;
 
@@ -31,7 +32,7 @@ fn pids_rss_bytes_includes_current_process() {
 
 #[test]
 fn process_group_rss_bytes_includes_current_group() {
-    let pgid = std::process::id();
+    let pgid = super::current_process_group_id().expect("pgid");
     let rss = process_group_rss_bytes(pgid).expect("rss");
     assert!(rss > 0);
 }
@@ -60,7 +61,7 @@ fn parse_proc_pid_dir_name_accepts_digits() {
 #[cfg(target_os = "linux")]
 #[test]
 fn linux_process_group_rss_bytes_includes_self() {
-    let pgid = std::process::id();
+    let pgid = super::current_process_group_id().expect("pgid");
     let rss = linux_process_group_rss_bytes(pgid).expect("linux rss");
     assert!(rss > 0);
 }
@@ -68,7 +69,7 @@ fn linux_process_group_rss_bytes_includes_self() {
 #[cfg(target_os = "macos")]
 #[test]
 fn macos_process_group_rss_bytes_includes_self() {
-    let pgid = std::process::id();
+    let pgid = super::current_process_group_id().expect("pgid");
     let rss = macos_process_group_rss_bytes(pgid).expect("macos rss");
     assert!(rss > 0);
 }
