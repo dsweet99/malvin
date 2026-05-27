@@ -58,8 +58,8 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 ) -> Result<(), String> {
     let merge_result =
         merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
-    if let Some(abort) = crate::orchestrator::check_abort(result_path) {
-        return match merge_result {
+    match crate::orchestrator::check_abort(result_path) {
+        Ok(Some(abort)) => match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
             Err(merge_error) => {
                 let detail = if merge_error.contains("workspace session restore failed:") {
@@ -69,9 +69,10 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
                 };
                 Err(format!("ABORT: {abort}; {detail}"))
             }
-        };
+        },
+        Ok(None) => merge_result,
+        Err(e) => Err(format!("cannot read result file for ABORT check: {e}")),
     }
-    merge_result
 }
 
 pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {

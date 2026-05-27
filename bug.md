@@ -201,7 +201,7 @@ pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
 
 # Bug: `check_abort` ignores `ABORT:` when `result.md` cannot be read
 
-**Status:** Unfixed.
+**Status (fixed):** `check_abort` returns `Err` on unreadable `result.md` (not `None`); merge and `fail_on_abort_for_artifacts` surface `cannot read result file for ABORT check`. Regression: `check_abort_returns_err_when_result_unreadable`.
 
 ## Severity
 

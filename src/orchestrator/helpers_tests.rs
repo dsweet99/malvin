@@ -53,7 +53,10 @@ fn check_abort_returns_message_after_prefix_not_entire_file() {
     let tmp = tempfile::tempdir().unwrap();
     let p = tmp.path().join("result.md");
     std::fs::write(&p, "context line\nABORT: stop here\nmore\n").unwrap();
-    assert_eq!(check_abort(&p).as_deref(), Some("stop here"));
+    assert_eq!(
+        check_abort(&p).expect("read result").as_deref(),
+        Some("stop here")
+    );
 }
 
 #[test]
@@ -61,7 +64,7 @@ fn check_abort_returns_none_when_no_abort_line() {
     let tmp = tempfile::tempdir().unwrap();
     let p = tmp.path().join("result.md");
     std::fs::write(&p, "ok\n").unwrap();
-    assert!(check_abort(&p).is_none());
+    assert!(check_abort(&p).expect("read result").is_none());
 }
 
 #[test]
@@ -71,7 +74,31 @@ fn check_abort_strips_utf8_bom_before_matching_abort_line() {
     let mut bytes: Vec<u8> = vec![0xEF, 0xBB, 0xBF];
     bytes.extend_from_slice(b"ABORT: bom case\n");
     std::fs::write(&p, bytes).unwrap();
-    assert_eq!(check_abort(&p).as_deref(), Some("bom case"));
+    assert_eq!(
+        check_abort(&p).expect("read result").as_deref(),
+        Some("bom case")
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn check_abort_returns_err_when_result_unreadable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let p = tmp.path().join("result.md");
+    std::fs::write(&p, "ABORT: cannot proceed\n").unwrap();
+    let saved_mode = std::fs::metadata(&p).unwrap().permissions().mode();
+    std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o000)).unwrap();
+    let result = check_abort(&p);
+    std::fs::set_permissions(&p, std::fs::Permissions::from_mode(saved_mode)).unwrap();
+    assert!(
+        matches!(
+            result,
+            Err(ref e) if e.kind() == std::io::ErrorKind::PermissionDenied
+        ),
+        "unreadable result.md must not be treated as no abort: {result:?}"
+    );
 }
 
 #[test]
