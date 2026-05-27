@@ -102,8 +102,11 @@ impl PromptRoundHealth {
     }
 
     #[must_use]
-    pub const fn has_infra_failure(&self) -> bool {
-        !self.tool_errors.is_empty() || self.silent_shell_completions >= 2
+    pub fn has_infra_failure(&self) -> bool {
+        self.tool_errors
+            .iter()
+            .any(|detail| !is_agent_side_tool_error(detail))
+            || self.silent_shell_completions >= 2
     }
 
     #[must_use]
@@ -164,6 +167,15 @@ fn raw_output_text_empty(raw: &serde_json::Map<String, Value>) -> bool {
     stdout.is_empty() && stderr.is_empty()
 }
 
+fn is_agent_side_tool_error(detail: &str) -> bool {
+    let lower = detail.to_ascii_lowercase();
+    lower.contains("rg: :")
+        || lower.contains("io error for operation on :")
+        || lower.contains("glob pattern")
+        || lower.contains("not allowed")
+        || lower.contains("matches every file")
+}
+
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::*;
@@ -172,5 +184,6 @@ mod kiss_cov_gate_refs {
         let _ = completed_tool_call_raw;
         let _ = raw_output_text_empty;
         let _ = silent_shell_completion;
+        let _ = is_agent_side_tool_error;
     }
 }

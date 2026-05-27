@@ -12,10 +12,7 @@ pub(crate) const fn kpop_block_progress_ctx(
     if steps_needed == 0 {
         return None;
     }
-    Some(KpopBlockProgressCtx {
-        steps_needed,
-        attempts_so_far: 0,
-    })
+    Some(KpopBlockProgressCtx { steps_needed })
 }
 
 pub(crate) fn set_last_block_miss(state: &mut KpopMultiturnState, snapshot: KpopBlockMissSnapshot) {

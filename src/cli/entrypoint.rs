@@ -1,4 +1,4 @@
-use clap::{CommandFactory, Parser};
+use clap::CommandFactory;
 
 use super::models_cmd;
 use super::{
@@ -62,7 +62,7 @@ pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
     crate::init_from_env();
-    let cli = match Cli::try_parse_from(args) {
+    let cli = match super::config_defaults::parse_cli_with_config_defaults(args) {
         Ok(cli) => cli,
         Err(e) => {
             use clap::error::ErrorKind;

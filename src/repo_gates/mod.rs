@@ -24,11 +24,6 @@ pub const DEFAULT_RUST_TEST: &str = "cargo test";
 
 pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
 
-const DEFAULT_MALVIN_CONFIG: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/config.toml"
-));
-
 static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
 #[must_use]
@@ -103,16 +98,7 @@ pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> 
 }
 
 pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> {
-    let config_path = crate::malvin_config_path(work_dir);
-    if config_path.is_file() {
-        return Ok(());
-    }
-    if let Some(parent) = config_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
-    }
-    std::fs::write(&config_path, DEFAULT_MALVIN_CONFIG)
-        .map_err(|e| format!("write {}: {e}", config_path.display()))
+    crate::malvin_config_file::ensure_malvin_config_file(work_dir)
 }
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {

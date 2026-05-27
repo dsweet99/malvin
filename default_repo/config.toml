@@ -1,5 +1,11 @@
 mem_limit_gb = 4
 
+[agent]
+model = "auto"
+max_hypotheses = 10
+max_loops = 1
+max_acp_retries = 3
+
 [logs]
 # Delete runs older than this many days (dirname timestamp, else mtime).
 max_age_days = 90

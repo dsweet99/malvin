@@ -43,7 +43,7 @@ mod tests {
         assert!(
             std::fs::read_to_string(&config)
                 .expect("read config")
-                .contains("mem_limit_gb")
+                .contains("[agent]")
         );
 
         std::fs::remove_file(&checks).expect("remove checks");

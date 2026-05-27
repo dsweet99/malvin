@@ -75,7 +75,7 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
     [
         ("plan_path", "./.malvin/logs/run42/plan.md"),
         ("kpop_log_dir", "./.malvin/logs/run42/_kpop"),
-        ("review_path", "./review.md"),
+        ("review_path", "./.malvin/logs/run42/review.md"),
         ("result_path", "./.malvin/logs/run42/result.md"),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
         ("malvin_command", "kpop"),
@@ -145,7 +145,6 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Complete up to `2` KPOP iterations",
             "iterations budget",
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
-            "Do not write KPop logs under repo-root `./_kpop/`",
         ],
     );
     assert!(

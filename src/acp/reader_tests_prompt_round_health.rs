@@ -2,6 +2,39 @@ use crate::acp::PromptRoundHealth;
 use serde_json::json;
 
 #[test]
+fn agent_side_search_errors_are_not_infra_failures() {
+    let msg = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "tool_call_update",
+            "kind": "tool",
+            "status": "completed",
+            "rawOutput": {"error": "rg: : IO error for operation on : No such file or directory (os error 2)"}
+        }}
+    });
+    let mut h = PromptRoundHealth::default();
+    h.record_session_update(&msg);
+    assert!(!h.has_infra_failure());
+    assert!(h.format_lines()[0].contains("rg: : IO error"));
+}
+
+#[test]
+fn agent_side_glob_policy_errors_are_not_infra_failures() {
+    let msg = json!({
+        "method": "session/update",
+        "params": {"update": {
+            "sessionUpdate": "tool_call_update",
+            "kind": "tool",
+            "status": "completed",
+            "rawOutput": {"error": "Glob pattern \"**/*\" matches every file and is not allowed"}
+        }}
+    });
+    let mut h = PromptRoundHealth::default();
+    h.record_session_update(&msg);
+    assert!(!h.has_infra_failure());
+}
+
+#[test]
 fn records_service_unavailable_on_search_tool() {
     let msg = json!({
         "method": "session/update",

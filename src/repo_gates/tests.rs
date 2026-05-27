@@ -64,8 +64,8 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
     ensure_default_malvin_config_file(w).unwrap();
     assert!(config_path.is_file());
     let text = fs::read_to_string(&config_path).unwrap();
-    assert!(text.contains("mem_limit_gb"));
     assert!(text.contains("[logs]"));
+    assert!(text.contains("[agent]"));
     ensure_default_malvin_config_file(w).unwrap();
     assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
 }

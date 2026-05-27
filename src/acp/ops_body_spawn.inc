@@ -45,6 +45,19 @@ pub(crate) fn cursor_cli_auth_established() -> bool {
         || auth_probe(&["agent", "whoami"])
 }
 
+pub(crate) fn resolve_acp_session_cwd(cwd: &Path) -> Result<PathBuf, AgentError> {
+    let base = if cwd.as_os_str().is_empty() || cwd == Path::new(".") {
+        std::env::current_dir().map_err(|e| AgentError(e.to_string()))?
+    } else if cwd.is_absolute() {
+        cwd.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|e| AgentError(e.to_string()))?
+            .join(cwd)
+    };
+    Ok(base.canonicalize().unwrap_or(base))
+}
+
 pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) -> Result<AcpSession, AgentError> {
     let bin = resolve_agent_bin();
     if bin.is_none() && test_no_real_agent_enabled() {
@@ -53,11 +66,12 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
                 .to_string(),
         ));
     }
+    let cwd = resolve_acp_session_cwd(cwd)?;
     let rpc_secs = crate::support_paths::acp_rpc_timeout_secs_from_env();
     let model = client.model.trim();
     let model_opt = (!model.is_empty()).then_some(model);
     let mut session = AcpSession::spawn(AcpSpawnArgs {
-        cwd,
+        cwd: &cwd,
         bin_override: bin.as_deref(),
         api_key: None,
         auth_token: None,
@@ -92,7 +106,16 @@ mod ops_body_spawn_kiss {
         let _ = auth_probe(&["/bin/true"]);
         let _ = cursor_cli_auth_established();
         let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
+        let _ = stringify!(resolve_acp_session_cwd);
         let _ = stringify!(spawn_agent_acp_session);
+    }
+
+    #[test]
+    fn resolve_acp_session_cwd_expands_dot() {
+        let cwd = std::env::current_dir().expect("cwd");
+        let resolved = resolve_acp_session_cwd(Path::new(".")).expect("resolve");
+        assert!(resolved.is_absolute());
+        assert_eq!(resolved, cwd.canonicalize().unwrap_or(cwd));
     }
 }
 

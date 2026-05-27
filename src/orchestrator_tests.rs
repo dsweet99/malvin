@@ -6,12 +6,11 @@ use crate::orchestrator::{
 use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
 
-fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+fn tmp_review_artifact() -> (tempfile::TempDir, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
-    (t, workspace, artifact)
+    (t, artifact)
 }
 
 #[test]
@@ -52,23 +51,20 @@ fn is_lgtm_reads_file() {
 }
 
 #[test]
-fn sync_review_file_returns_artifact_when_workspace_empty() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "").unwrap();
+fn sync_review_file_returns_artifact_when_present() {
+    let (_t, artifact) = tmp_review_artifact();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
+    let out = sync_review_file(&artifact).unwrap();
     assert_eq!(out.as_deref(), Some("LGTM\n"));
     assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
-fn sync_review_file_returns_artifact_when_workspace_whitespace_only() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "  \n\t\n").unwrap();
-    std::fs::write(&artifact, "LGTM\n").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(out.as_deref(), Some("LGTM\n"));
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
+fn sync_review_file_returns_none_when_artifact_whitespace_only() {
+    let (_t, artifact) = tmp_review_artifact();
+    std::fs::write(&artifact, "  \n\t\n").unwrap();
+    let out = sync_review_file(&artifact).unwrap();
+    assert_eq!(out, None);
 }
 
 #[test]
@@ -115,11 +111,10 @@ fn prefer_primary_errors_chains_timing_when_workflow_and_end_fail() {
 }
 
 #[test]
-fn sync_review_file_prefers_nonempty_artifact_over_workspace() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "LGTM\n").unwrap();
+fn sync_review_file_returns_nonempty_artifact_text() {
+    let (_t, artifact) = tmp_review_artifact();
     std::fs::write(&artifact, "old").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
+    let out = sync_review_file(&artifact).unwrap();
     assert_eq!(out.as_deref(), Some("old"));
     assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "old");
 }

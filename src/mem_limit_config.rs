@@ -3,8 +3,6 @@
 use std::path::Path;
 
 use crate::log_gc_config::read_u64;
-use crate::output::print_log_warning;
-use crate::workspace_paths::malvin_config_path;
 
 const GIB: u64 = 1024 * 1024 * 1024;
 const DEFAULT_CAP_GB: u64 = 4;
@@ -18,14 +16,7 @@ pub fn load_mem_limit_bytes(work_dir: &Path) -> u64 {
 
 #[must_use]
 pub fn load_mem_limit_gb(work_dir: &Path) -> u64 {
-    let path = malvin_config_path(work_dir);
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return default_mem_limit_gb();
-    };
-    parse_mem_limit_gb(&text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse {}: {msg}", path.display()));
-        default_mem_limit_gb()
-    })
+    crate::malvin_config_file::load_malvin_config(work_dir).mem_limit_gb
 }
 
 pub(crate) fn parse_mem_limit_gb(text: &str) -> Result<u64, String> {

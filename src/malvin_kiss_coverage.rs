@@ -189,8 +189,8 @@ fn kiss_cov_cross_file_symbols_b() {
     let _ = stringify!(who_tag_ansi);
     let _ = stringify!(emit_stderr_log_line);
     let _ = stringify!(emit_stderr_log_lines);
-    let _ = stringify!(read_artifact_review_text);
-    let _ = stringify!(CodeReviewAttemptOutcome);
+    let _ = stringify!(read_artifact_review_for_fanout_attempt);
+    let _ = stringify!(sync_review_file_for_attempt);
 }
 
 #[test]

@@ -1,4 +1,4 @@
-//! Shared `review.md` workspace ↔ run artifact sync and LGTM detection.
+//! Run artifact `review.md` LGTM detection and read helpers.
 
 mod attempt;
 
@@ -40,19 +40,14 @@ fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Res
 ///
 /// Returns [`std::io::Error`] when reading or writing review files fails.
 pub fn sync_review_file(
-    workspace_review_path: &std::path::Path,
     artifact_review_path: &std::path::Path,
 ) -> std::io::Result<Option<String>> {
-    sync_review_file_for_attempt(artifact_review_path, workspace_review_path)
-        .map_err(std::io::Error::other)
+    sync_review_file_for_attempt(artifact_review_path).map_err(std::io::Error::other)
 }
 
 #[cfg(test)]
-fn sync_review_then_is_lgtm(
-    workspace_review_path: &std::path::Path,
-    artifact_review_path: &std::path::Path,
-) -> std::io::Result<bool> {
-    let content = sync_review_file(workspace_review_path, artifact_review_path)?;
+fn sync_review_then_is_lgtm(artifact_review_path: &std::path::Path) -> std::io::Result<bool> {
+    let content = sync_review_file(artifact_review_path)?;
     Ok(content.as_deref().is_some_and(is_lgtm_str))
 }
 

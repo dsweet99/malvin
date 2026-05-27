@@ -55,12 +55,6 @@ impl RunArtifacts {
         self.run_dir.join("review_prep.md")
     }
 
-    /// Workspace `review.md` under [`Self::work_dir`].
-    #[must_use]
-    pub fn workspace_review_md(&self) -> PathBuf {
-        self.work_dir.join("review.md")
-    }
-
     /// Run-directory `result.md` for concerns ABORT signaling.
     #[must_use]
     pub fn artifact_result_md(&self) -> PathBuf {

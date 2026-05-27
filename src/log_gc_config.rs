@@ -1,8 +1,5 @@
 use std::path::Path;
 
-use crate::output::print_log_warning;
-use crate::workspace_paths::malvin_config_path;
-
 const DEFAULT_MAX_AGE_DAYS: u64 = 90;
 const DEFAULT_MAX_RUNS: u64 = 100;
 const DEFAULT_MAX_BYTES: &str = "2GiB";
@@ -26,14 +23,7 @@ impl Default for LogsGcConfig {
 }
 
 pub fn load_logs_gc_config(work_dir: &Path) -> LogsGcConfig {
-    let path = malvin_config_path(work_dir);
-    let Ok(text) = std::fs::read_to_string(&path) else {
-        return LogsGcConfig::default();
-    };
-    parse_logs_gc_config(&text).unwrap_or_else(|msg| {
-        print_log_warning(&format!("could not parse {}: {msg}", path.display()));
-        LogsGcConfig::default()
-    })
+    crate::malvin_config_file::load_malvin_config(work_dir).logs
 }
 
 pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {

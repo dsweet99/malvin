@@ -90,8 +90,7 @@ pub fn write_checks_do_not_pass_to_review_path(review_path: &Path) -> Result<(),
 }
 
 pub fn write_checks_do_not_pass_for_artifacts(artifacts: &RunArtifacts) -> Result<(), String> {
-    write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())?;
-    write_checks_do_not_pass_to_review_path(&artifacts.workspace_review_md())
+    write_checks_do_not_pass_to_review_path(&artifacts.artifact_review_md())
 }
 
 pub(crate) fn clear_quality_gates_log_for_next_agent(artifacts: &RunArtifacts) -> Result<(), String> {
@@ -195,9 +194,13 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
+        let workspace_review = tmp.path().join("review.md");
         write_checks_do_not_pass_for_artifacts(&artifacts).expect("write");
         assert!(artifacts.artifact_review_md().exists());
-        assert!(artifacts.workspace_review_md().exists());
+        assert!(
+            !workspace_review.exists(),
+            "gate-failure marker must not be written to workspace ./review.md"
+        );
     }
 
     #[test]
