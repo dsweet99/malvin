@@ -80,16 +80,6 @@ pub(crate) async fn spawn_agent_acp_session(client: &AgentClient, cwd: &Path) ->
     Ok(session)
 }
 
-pub(crate) fn client_timing_elapsed_ms(client: &AgentClient) -> u64 {
-    client.timing.as_ref().map_or(0, |t| {
-        let d = t
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .elapsed_so_far();
-        u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
-    })
-}
-
 #[cfg(test)]
 mod ops_body_spawn_kiss {
     use super::*;
@@ -103,7 +93,6 @@ mod ops_body_spawn_kiss {
         let _ = cursor_cli_auth_established();
         let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
         let _ = stringify!(spawn_agent_acp_session);
-        let _ = stringify!(client_timing_elapsed_ms);
     }
 }
 

@@ -29,10 +29,6 @@ Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malv
 
 Stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` (em dash, en dash, or hyphen before the kind). Alias: `--max-loops`.
 
-### `--no-learn`
-
-Skip the **learn** prompt at the end of the multiturn session (if elapsed time meets the learn threshold).
-
 ### Global options
 
 See `malvin.md`. `--no-markdown` styles agent stdout. `--no-force` disables agent `--force`.
@@ -68,12 +64,6 @@ Stops when any of:
 - Experiment log contains a line exactly `## KPOP_SOLVED` (agent-declared success)
 - Typed step line count ≥ `--max-hypotheses`
 - Internal error
-
-## Post-run (optional)
-
-| Prompt role (effect) | When |
-|----------------------|------|
-| **Learn** — Session reflection | End of multiturn, if not `--no-learn` and elapsed ≥ 5 min |
 
 ## Artifacts
 

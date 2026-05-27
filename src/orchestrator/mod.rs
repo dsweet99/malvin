@@ -60,10 +60,6 @@ pub(crate) fn prefer_primary_errors_over_timing(
 #[derive(Debug, Clone)]
 pub struct WorkflowConfig {
     pub max_loops: usize,
-    pub run_learn: bool,
-    /// Skip learn phase if elapsed time is below this threshold (milliseconds).
-    /// Default: `300_000` (5 minutes). Set to 0 to always run learn when `run_learn` is true.
-    pub learn_min_elapsed_ms: u64,
 }
 
 pub struct Orchestrator<'a> {
@@ -74,8 +70,6 @@ pub struct Orchestrator<'a> {
     pub progress_callback: Box<dyn FnMut(&str) + Send + 'a>,
     pub session_dotfile_backups: SessionDotfileBackups,
 }
-
-pub use crate::learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 
 impl Orchestrator<'_> {
     pub(super) fn attach_run_timing(&mut self) -> Arc<Mutex<RunTiming>> {

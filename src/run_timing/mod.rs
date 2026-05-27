@@ -18,7 +18,6 @@ pub enum TimingPhase {
     ReviewFanout,
     ReviewWrite,
     Concerns,
-    Learn,
     Summary,
 }
 
@@ -47,7 +46,6 @@ pub struct RunTiming {
     review_fanout: Duration,
     review_write: Duration,
     concerns: Duration,
-    learn: Duration,
     summary: Duration,
     tool_calls: Duration,
 }
@@ -65,7 +63,6 @@ impl Default for RunTiming {
             review_fanout: Duration::ZERO,
             review_write: Duration::ZERO,
             concerns: Duration::ZERO,
-            learn: Duration::ZERO,
             summary: Duration::ZERO,
             tool_calls: Duration::ZERO,
         }
@@ -104,7 +101,6 @@ impl RunTiming {
                 self.review_write = self.review_write.saturating_add(d);
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
-            TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
             TimingPhase::Summary => self.summary = self.summary.saturating_add(d),
         }
     }

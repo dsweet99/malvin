@@ -41,7 +41,6 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "review_fanout": ms(r.review_fanout),
             "review_write": ms(r.review_write),
             "concerns": ms(r.concerns),
-            "learn": ms(r.learn),
             "summary": ms(r.summary),
         }
     })
@@ -144,7 +143,6 @@ fn timing_line_uses_one_decimal_and_includes_all_buckets() {
     assert!(line.contains("wall = "));
     assert!(line.contains("llm_wait = "));
     assert!(line.contains("implement = 0.1s"));
-    assert!(line.contains("learn = "));
     assert!(line.contains("summary = "));
 }
 

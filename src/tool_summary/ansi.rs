@@ -1,8 +1,7 @@
 use std::fmt::Write as _;
 
 use super::types::{
-    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_CREAM, ANSI_TOOL_SAND,
-    ANSI_TOOL_TEAL,
+    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_DARK, ANSI_TOOL_TEAL,
 };
 
 const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
@@ -21,8 +20,8 @@ pub(crate) fn split_outer_brackets(plain: &str) -> (&str, &str, &str) {
         .map_or(("", plain, ""), |inner| ("[", inner, "]"))
 }
 
-fn sand_bracket(bracket: &str) -> String {
-    format!("{ANSI_TOOL_SAND}{bracket}{ANSI_RESET}")
+fn dark_bracket(bracket: &str) -> String {
+    format!("{ANSI_TOOL_DARK}{bracket}{ANSI_RESET}")
 }
 
 pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
@@ -30,18 +29,18 @@ pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
     let mut out = if open.is_empty() {
         String::new()
     } else {
-        sand_bracket(open)
+        dark_bracket(open)
     };
     let mut rest = inner;
     while let Some(idx) = rest.find('·') {
         let (left, right) = rest.split_at(idx);
         out.push_str(&ansi_style_tool_segment(left));
-        let _ = write!(out, "{ANSI_TOOL_CREAM}·{ANSI_RESET}");
+        let _ = write!(out, "{ANSI_TOOL_TEAL}·{ANSI_RESET}");
         rest = right.trim_start_matches('·').trim_start();
     }
     out.push_str(&ansi_style_tool_segment(rest));
     if !close.is_empty() {
-        out.push_str(&sand_bracket(close));
+        out.push_str(&dark_bracket(close));
     }
     out
 }
@@ -70,15 +69,15 @@ pub(crate) fn tool_line_colon_prefix(seg: &str) -> (&str, &str) {
     ("", seg)
 }
 
-pub(crate) fn ansi_style_sand_verb(verb: &str) -> String {
-    format!("{ANSI_BOLD}{ANSI_TOOL_SAND}{verb}{ANSI_RESET}")
+pub(crate) fn ansi_style_dark_verb(verb: &str) -> String {
+    format!("{ANSI_BOLD}{ANSI_TOOL_DARK}{verb}{ANSI_RESET}")
 }
 
 pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
     let (colon, body) = tool_line_colon_prefix(seg);
     let verb_end = body.find(' ').unwrap_or(body.len());
     let (verb, tail) = body.split_at(verb_end);
-    format!("{colon}{}{}", ansi_style_sand_verb(verb), ansi_style_path_tail(tail))
+    format!("{colon}{}{}", ansi_style_dark_verb(verb), ansi_style_path_tail(tail))
 }
 
 pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
@@ -86,7 +85,7 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
     for prefix in DONE_VERB_PREFIXES {
         if let Some(tail) = body.strip_prefix(prefix) {
             let verb = prefix.trim_end();
-            let mut out = format!("{colon}{}", ansi_style_sand_verb(verb));
+            let mut out = format!("{colon}{}", ansi_style_dark_verb(verb));
             if !tail.is_empty() {
                 out.push(' ');
                 out.push_str(&ansi_style_path_tail(tail));
@@ -128,7 +127,7 @@ pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
     if is_byte_size_segment(seg) {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
-    format!("{ANSI_TOOL_CREAM}{seg}{ANSI_RESET}")
+    format!("{ANSI_TOOL_TEAL}{seg}{ANSI_RESET}")
 }
 
 #[cfg(test)]

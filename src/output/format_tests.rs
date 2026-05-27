@@ -1,6 +1,6 @@
 use super::acp_tee::{AcpTeeDirection, print_stdout_acp_tee_line};
 use super::{
-    LEARNING_PLACEHOLDER, LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
+    LOG_TAG_INNER_WIDTH, MALVIN_WHO, format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_line_with_timestamp_ansi, format_log_tag_inner,
     init_stdout_style, is_command_prelude_line, print_outgoing_prompt_log, print_stderr_line,
     print_stdout_line, print_stdout_raw_line, print_stdout_text, set_stdout_log_path,
@@ -113,7 +113,6 @@ fn exported_constants_match_public_contract() {
     assert_eq!(MALVIN_WHO, "malvin");
     assert_eq!(super::WARNING_WHO, "warning");
     assert_eq!(super::ERROR_WHO, "error");
-    assert_eq!(LEARNING_PLACEHOLDER, "[learning...]");
 }
 
 #[test]

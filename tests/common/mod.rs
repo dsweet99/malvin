@@ -52,8 +52,8 @@ pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
-    bin_path_with_kiss_fail_until_n_passes, spawn_tidy, spawn_tidy_with_learn,
-    spawn_tidy_with_timeout, workspace_kiss_check_only,
+    bin_path_with_kiss_fail_until_n_passes, spawn_tidy, spawn_tidy_with_timeout,
+    workspace_kiss_check_only,
 };
 pub use workspace::{
     only_run_dir, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, seed_malvin_config,

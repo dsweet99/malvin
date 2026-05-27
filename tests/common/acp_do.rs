@@ -87,21 +87,6 @@ pub fn acp_mock_tidy_abort_after_first_coder_turn_js() -> String {
 }
 
 #[must_use]
-pub fn acp_mock_tidy_lgtm_abort_on_learn_js() -> String {
-    let review_tail = format!("{}\n      {}", write_artifact_lgtm(), chunk_line("review"));
-    let coder = chunk_line("coder");
-    let learn_abort = r"      fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: tidy learn abort test\n', 'utf8');";
-    let between = format!(
-        r" else if (promptText.includes('Edit `./.malvin/advice.md`')) {{
-{learn_abort}
-    }}"
-    );
-    let body =
-        acp_mock_tidy_fanout_branches(&write_review_prep_output(), &review_tail, &between, &coder);
-    acp_mock_code_with_run_dir_js(&body)
-}
-
-#[must_use]
 pub fn acp_mock_tidy_fanout_lgtm_js() -> String {
     let body = acp_mock_tidy_fanout_body(&format!(
         "{}\n      {}",

@@ -60,7 +60,7 @@ mod tests {
     fn prepare_tidy_kpop_prompt_store_loads_program_and_constraints() {
         let workflow = crate::cli::WorkflowCliOptions {
             force: false,
-            run_learn: false,
+            
         };
         let store = prepare_tidy_kpop_prompt_store(workflow).expect("store");
         assert!(store.validate_exists("kpop_program.md").is_ok());

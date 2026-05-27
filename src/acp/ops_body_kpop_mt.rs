@@ -1,8 +1,8 @@
 use crate::acp::import_prelude::*;
 use crate::acp::{
     AgentClient, AgentError, AcpSession, AgentKpopMultiturnCtl, KpopFailAfterPrompt, KpopPromptRound,
-    PromptRoundHealth, acp_session_take_prompt_round_health, client_timing_elapsed_ms, kpop_fail_after_prompt,
-    kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
+    PromptRoundHealth, acp_session_take_prompt_round_health, kpop_fail_after_prompt, kpop_round,
+    restore_session_dotfiles, spawn_agent_acp_session,
 };
 use crate::kpop_progression::KpopBlockMissSnapshot;
 use crate::output::print_log_error;
@@ -133,48 +133,8 @@ pub(crate) async fn run_kpop_multiturn_once(
         .await?;
     }
 
-    kpop_multiturn_learn_phase(&s, client, ctl).await?;
-
     s.shutdown().await.map_err(AgentError)
 }
-
-async fn kpop_multiturn_learn_phase(
-    session: &AcpSession,
-    client: &AgentClient,
-    ctl: &AgentKpopMultiturnCtl<'_, '_>,
-) -> Result<(), AgentError> {
-    let Some((learn_body, learn_log)) = &ctl.learn else {
-        return Ok(());
-    };
-    let elapsed_ms = client_timing_elapsed_ms(client);
-    let should_learn = crate::should_run_learn_check(ctl.learn_min_elapsed_ms, elapsed_ms);
-    if !should_learn {
-        return Ok(());
-    }
-    if let Err(e) = kpop_round(KpopPromptRound {
-        session,
-        client,
-        text: learn_body.as_str(),
-        log: learn_log.as_path(),
-        who: "learn",
-        phase: crate::run_timing::TimingPhase::Learn,
-    })
-    .await
-    {
-        return kpop_fail_after_prompt(
-            session,
-            KpopFailAfterPrompt {
-                cwd: ctl.cwd,
-                session_dotfile_backups: ctl.session_dotfile_backups,
-                err: e,
-                phase: "learn",
-            },
-        )
-        .await;
-    }
-    restore_session_dotfiles(ctl.cwd, ctl.session_dotfile_backups)
-}
-
 
 #[cfg(test)]
 mod kiss_cov_auto {
@@ -186,9 +146,6 @@ mod kiss_cov_auto {
 
     #[test]
     fn kiss_cov_run_kpop_multiturn_once() { let _ = stringify!(run_kpop_multiturn_once); }
-
-    #[test]
-    fn kiss_cov_kpop_multiturn_learn_phase() { let _ = stringify!(kpop_multiturn_learn_phase); }
 
     #[test]
     fn kiss_cov_block_miss_snapshot() { let _ = stringify!(block_miss_snapshot); }

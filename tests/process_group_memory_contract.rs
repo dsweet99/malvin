@@ -108,7 +108,7 @@ fn kiss_cov_sandbox_contract_and_hostile_symbols() {
     let _ = stringify!(hostile_agent_double_fork_daemon_dies_on_process_group_teardown);
     let _ = stringify!(read_orphan_pid);
     let _ = stringify!(process_alive);
-    let _ = stringify!(prompt_stdout_replacement_maps_learn_placeholder);
+    let _ = stringify!(prompt_stdout_replacement_is_always_none);
 }
 
 #[test]

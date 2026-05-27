@@ -1,5 +1,5 @@
 use super::{ANSI_DIM, ANSI_RESET};
-use crate::terminal_palette::ANSI_TOOL_TEAL;
+use crate::terminal_palette::ANSI_TOOL_WHITE;
 use termimad::MadSkin;
 
 #[derive(Clone, Copy, Debug)]
@@ -82,9 +82,9 @@ fn needs_block_markdown_render(line: &str) -> bool {
     is_markdown_heading(line) || is_markdown_list_item(line) || is_markdown_ordered_list_item(line)
 }
 
-pub(crate) fn teal_rendered_markup_payload(rendered: &str) -> String {
-    let wrapped = rendered.replace(ANSI_RESET, &format!("{ANSI_RESET}{ANSI_TOOL_TEAL}"));
-    format!("{ANSI_TOOL_TEAL}{wrapped}{ANSI_RESET}")
+pub(crate) fn agent_rendered_markup_payload(rendered: &str) -> String {
+    let wrapped = rendered.replace(ANSI_RESET, &format!("{ANSI_RESET}{ANSI_TOOL_WHITE}"));
+    format!("{ANSI_TOOL_WHITE}{wrapped}{ANSI_RESET}")
 }
 
 fn dim_rendered_markup_payload(rendered: &str) -> String {
@@ -116,8 +116,8 @@ mod termimad_tests {
         assert!(termimad_text_lines_for_stdout("# h", gate, 80).is_none());
         let dimmed = dim_rendered_markup_payload("x");
         assert!(dimmed.contains(super::ANSI_DIM));
-        let teal = super::teal_rendered_markup_payload("agent");
-        assert!(teal.contains(super::ANSI_TOOL_TEAL));
+        let agent = super::agent_rendered_markup_payload("agent");
+        assert!(agent.contains(super::ANSI_TOOL_WHITE));
         let on = TermimadStdoutGate {
             emit_stdout_markdown: true,
             dim_payload: false,

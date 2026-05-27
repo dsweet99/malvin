@@ -115,39 +115,30 @@ pub fn entrypoint_from(
 fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String> {
     match command {
         Commands::Code(code) => run_code_command(code, shared),
-        Commands::Kpop(kpop) => {
-            let run_learn = !kpop.no_learn;
-            run_async_cli(|| {
-                run_kpop(
-                    kpop.clone(),
-                    shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                        run_learn,
-                    },
-                )
-            })
-        }
-        Commands::Tidy(tidy) => {
-            let run_learn = !tidy.no_learn;
-            run_async_cli(|| {
-                run_tidy(
-                    tidy.clone(),
-                    shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                        run_learn,
-                    },
-                )
-            })
-        }
+        Commands::Kpop(kpop) => run_async_cli(|| {
+            run_kpop(
+                kpop.clone(),
+                shared,
+                WorkflowCliOptions {
+                    force: !shared.no_force,
+                },
+            )
+        }),
+        Commands::Tidy(tidy) => run_async_cli(|| {
+            run_tidy(
+                tidy.clone(),
+                shared,
+                WorkflowCliOptions {
+                    force: !shared.no_force,
+                },
+            )
+        }),
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
                 shared,
                 WorkflowCliOptions {
                     force: !shared.no_force,
-                    run_learn: false,
                 },
             )
         }),
@@ -182,7 +173,6 @@ fn run_invent_command(
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,
-                run_learn: false,
             },
         )
     })
@@ -193,14 +183,12 @@ fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Result<(), Strin
         code.skip_pre_checks = true;
         code.trust_the_plan = true;
     }
-    let run_learn = !code.no_learn;
     run_async_cli(|| {
         super::run_code(
             code,
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,
-                run_learn,
             },
         )
     })

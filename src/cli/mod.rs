@@ -54,4 +54,3 @@ pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use tidy_flow::run_tidy;
-pub const LEARN_MIN_ELAPSED_MS: u64 = crate::DEFAULT_LEARN_MIN_ELAPSED_MS;

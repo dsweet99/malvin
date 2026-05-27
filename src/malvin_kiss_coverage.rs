@@ -43,8 +43,7 @@ fn smoke_artifacts_create() {
 }
 
 #[test]
-fn smoke_artifacts_resolve_and_learn_gate() {
-    assert!(crate::learn_gate::should_run_learn_check(0, 0));
+fn smoke_artifacts_resolve_user_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "hello").expect("write plan");

@@ -36,7 +36,7 @@ fn spawn_malvin_tidy_with_mock_path(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
+        .args(["tidy"]);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
 }
 
@@ -96,7 +96,7 @@ fn run_malvin_tidy_no_auth_keys(
         .env_remove("AGENT_API_KEY")
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
+        .args(["tidy"]);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
 }
 

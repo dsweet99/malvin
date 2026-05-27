@@ -75,7 +75,7 @@ mod linux_pty {
     fn code_stdout_markdown_styles_stdout_but_logs_stay_raw() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
-            "code --trust-the-plan --no-learn --max-loops 0 ship",
+            "code --trust-the-plan --max-loops 0 ship",
             None,
         );
         assert!(
@@ -90,7 +90,7 @@ mod linux_pty {
     fn kpop_stdout_markdown_styles_stdout_but_logs_stay_raw() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
-            "kpop --no-learn --max-hypotheses 50 investigate",
+            "kpop --max-hypotheses 50 investigate",
             None,
         );
         assert!(
@@ -105,7 +105,7 @@ mod linux_pty {
     fn code_stdout_markdown_wrap_keeps_long_bold_span_styled() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_long_bold_markdown_js(),
-            "code --trust-the-plan --no-learn --max-loops 0 ship",
+            "code --trust-the-plan --max-loops 0 ship",
             Some("40"),
         );
         assert!(

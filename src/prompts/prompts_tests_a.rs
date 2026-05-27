@@ -22,7 +22,6 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            run_learn: false,
             require_mbc2: false,
         })
         .expect("kpop-only ok");
@@ -42,7 +41,6 @@ fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            run_learn: false,
             require_mbc2: false,
         })
         .expect("schedule without MBC2 should not require mbc2.md");
@@ -58,7 +56,6 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            run_learn: false,
             require_mbc2: true,
         })
         .unwrap_err();
@@ -77,10 +74,8 @@ fn kpop_validation_may_omit_coding_rules_without_error() {
     std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
     std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let validation = store.validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-        run_learn: false,
-        require_mbc2: false,
-    });
+    let validation = store
+        .validate_kpop_prompts(crate::prompts::KpopPromptValidation { require_mbc2: false });
     assert!(
         validation.is_ok(),
         "kpop validation should unexpectedly pass: {validation:?}"

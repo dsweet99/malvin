@@ -26,10 +26,6 @@ Maximum **outer iterations**. Each iteration:
 
 `0` is treated as `1`. If the last iteration still fails gates after its KPop session, malvin exits with a gate-failure error.
 
-### `--no-learn`
-
-Skip the **learn** prompt after a KPop session (when elapsed time would allow it).
-
 ### Global options
 
 See `malvin.md`. `--no-markdown` affects agent stdout when the tidy loop runs the agent (no effect on the fast path when gates already pass).
@@ -56,7 +52,6 @@ Each outer iteration that still fails gates runs **one** KPop multiturn session:
 |------|--------|
 | 1 | Emit startup (first agent iteration only) and KPop log line |
 | 2 | **KPop tidy** — Agent works through falsifiable hypotheses per `kpop_program.md` and `tidy_constraints.md`, logging to `./.malvin/logs/<run>/_kpop/exp_log_<token>.md` |
-| 3 | Optional **learn** after session when not `--no-learn` and elapsed ≥ 5 min |
 
 There is no separate reviewer fan-out or `tidy` / `tidy_concerns` coder loop; remediation is entirely the KPop session.
 
@@ -80,7 +75,6 @@ There is no separate reviewer fan-out or `tidy` / `tidy_concerns` coder loop; re
 ```text
 malvin tidy
 malvin tidy --max-loops 5
-malvin tidy --no-learn
 ```
 
 Typical recovery flow after failed code:

@@ -8,7 +8,6 @@ use super::{merge_header_and_coding_rules, render_template};
 
 #[derive(Debug, Clone, Copy)]
 pub struct KpopPromptValidation {
-    pub run_learn: bool,
     pub require_mbc2: bool,
 }
 
@@ -133,9 +132,6 @@ impl PromptStore {
         }
         if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
             missing.push("mbc2.md");
-        }
-        if validation.run_learn && self.prompt_text("learn.md").is_err() {
-            missing.push("learn.md");
         }
         if missing.is_empty() {
             return Ok(());

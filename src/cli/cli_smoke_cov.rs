@@ -79,10 +79,7 @@ fn smoke_agent_io_options_maps_flags() {
     };
     let io = agent_io_options(
         &shared,
-        WorkflowCliOptions {
-            force: true,
-            run_learn: true,
-        },
+        WorkflowCliOptions { force: true },
         AgentStdoutTeeFlags {
             emit_stdout_markdown: true,
             raw_output: true,

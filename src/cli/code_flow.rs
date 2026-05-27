@@ -27,8 +27,6 @@ pub struct CodeArgs {
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,
-    #[arg(long, default_value_t = false)]
-    pub no_learn: bool,
     /// Deprecated: check-plan phase removed; code now uses the kpop gate workflow.
     #[arg(long, default_value_t = false, hide = true, conflicts_with = "dry_run")]
     pub trust_the_plan: bool,
@@ -55,7 +53,6 @@ mod tests {
         let code = CodeArgs {
             max_loops: 0,
             max_hypotheses: 10,
-            no_learn: true,
             trust_the_plan: false,
             dry_run: false,
             skip_pre_checks: false,
@@ -64,11 +61,9 @@ mod tests {
         };
         let kpop = crate::cli::KpopArgs {
             max_hypotheses: effective_code_max_loops(code.max_loops),
-            no_learn: code.no_learn,
             request: Some("req".to_string()),
         };
         assert_eq!(kpop.max_hypotheses, 1);
-        assert!(kpop.no_learn);
     }
 
     #[test]
@@ -92,10 +87,7 @@ mod tests {
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
-            crate::cli::WorkflowCliOptions {
-                force: false,
-                run_learn: false,
-            },
+            crate::cli::WorkflowCliOptions { force: false },
             "ship it",
         )
         .expect("prepared");
@@ -124,10 +116,7 @@ mod tests {
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
-            crate::cli::WorkflowCliOptions {
-                force: false,
-                run_learn: false,
-            },
+            crate::cli::WorkflowCliOptions { force: false },
             "ship it",
         )
         .expect("prepared");

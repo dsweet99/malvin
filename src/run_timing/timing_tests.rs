@@ -19,7 +19,6 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
         "review_fanout",
         "review_write",
         "concerns",
-        "learn",
         "summary",
     ] {
         assert!(phases.get(key).is_some(), "missing {key}");

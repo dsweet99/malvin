@@ -1,5 +1,4 @@
 use crate::artifacts::RunArtifacts;
-use crate::orchestrator::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 use crate::orchestrator::{
     WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
     workflow_context,
@@ -218,26 +217,4 @@ fn clear_review_file_returns_error_on_permission_denied() {
         result.is_err(),
         "clear_review_file should return error on permission denied"
     );
-}
-
-const FIVE_MIN_MS: u64 = DEFAULT_LEARN_MIN_ELAPSED_MS;
-
-#[test]
-fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(should_run_learn_check(0, 0));
-    assert!(should_run_learn_check(0, 1));
-    assert!(should_run_learn_check(0, FIVE_MIN_MS));
-}
-
-#[test]
-fn should_run_learn_check_below_threshold_skips() {
-    assert!(!should_run_learn_check(FIVE_MIN_MS, 0));
-    assert!(!should_run_learn_check(FIVE_MIN_MS, 299_999));
-}
-
-#[test]
-fn should_run_learn_check_at_or_above_threshold_runs() {
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS));
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS + 1));
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS * 2));
 }

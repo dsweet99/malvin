@@ -4,7 +4,7 @@ use super::acp_tee::{
     print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,
 };
 use crate::output::stdout_log_pair::acp_tee_log_prefix;
-use crate::terminal_palette::ANSI_TOOL_TEAL;
+use crate::terminal_palette::ANSI_TOOL_WHITE;
 
 #[test]
 fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
@@ -108,16 +108,16 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     assert_ne!(to_line, from_line);
     assert!(to_line.ends_with(" out"));
     assert!(
-        from_line.contains(&format!("{ANSI_TOOL_TEAL}in")),
-        "FromAgent payload should be teal/green; got {from_line:?}"
+        from_line.contains(&format!("{ANSI_TOOL_WHITE}in")),
+        "FromAgent payload should be white; got {from_line:?}"
     );
     assert!(!to_line.starts_with("20260413"));
     assert!(!from_line.starts_with("20260413"));
 }
 
 #[test]
-fn agent_message_prefix_rendered_payload_uses_teal() {
-    use super::acp_tee_markdown::teal_rendered_markup_payload;
+fn agent_message_prefix_rendered_payload_uses_white() {
+    use super::acp_tee_markdown::agent_rendered_markup_payload;
     use crate::output::stdout_log_pair::{format_line_acp_ansi_payload, AcpTeeLineFmt};
 
     let ctx = AcpTeeLineFmt {
@@ -127,24 +127,24 @@ fn agent_message_prefix_rendered_payload_uses_teal() {
         line: "hello agent",
         dim_payload: false,
     };
-    let teal = teal_rendered_markup_payload("hello agent");
+    let white = agent_rendered_markup_payload("hello agent");
     assert!(
-        teal.contains(&format!("{ANSI_TOOL_TEAL}hello agent")),
-        "teal wrapper should color agent payload; got {teal:?}"
+        white.contains(&format!("{ANSI_TOOL_WHITE}hello agent")),
+        "white wrapper should color agent payload; got {white:?}"
     );
     let prefix = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         line: "",
         ..ctx
     });
-    let full = format!("{prefix}{teal}");
+    let full = format!("{prefix}{white}");
     assert!(
-        full.contains(&teal),
-        "prefix-rendered tee line should carry teal payload; got {full:?}"
+        full.contains(&white),
+        "prefix-rendered tee line should carry white payload; got {full:?}"
     );
 }
 
 #[test]
-fn ansi_acp_tee_agent_message_payload_uses_teal_green() {
+fn ansi_acp_tee_agent_message_payload_uses_white() {
     let line = format_line_acp_ansi_payload(&AcpTeeLineFmt {
         ts: "20260413.121314.015",
         direction: AcpTeeDirection::FromAgent,
@@ -152,13 +152,13 @@ fn ansi_acp_tee_agent_message_payload_uses_teal_green() {
         line: "hello agent",
         dim_payload: false,
     });
-    let teal = format!(
-        "{ANSI_TOOL_TEAL}hello agent{}",
+    let white = format!(
+        "{ANSI_TOOL_WHITE}hello agent{}",
         crate::terminal_palette::ANSI_RESET
     );
     assert!(
-        line.contains(&teal),
-        "regular agent payload should be teal/green; got {line:?}"
+        line.contains(&white),
+        "regular agent payload should be white; got {line:?}"
     );
 }
 

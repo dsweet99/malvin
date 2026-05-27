@@ -14,10 +14,6 @@ pub async fn run_code(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let workflow = WorkflowCliOptions {
-        force: workflow.force,
-        run_learn: !code.no_learn,
-    };
     let cli_request = crate::cli::cli_request::require_cli_request(code.request.as_ref(), "code")?;
     let prepared = prepare_code_kpop_run(workflow, &cli_request)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));

@@ -1,9 +1,5 @@
-pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
-    if who == "learn" {
-        Some(crate::malvin_constants::LEARNING_PLACEHOLDER)
-    } else {
-        None
-    }
+pub(crate) const fn prompt_stdout_replacement(_who: &str) -> Option<&'static str> {
+    None
 }
 
 pub(crate) async fn rpc_session_prompt_text(
@@ -37,4 +33,3 @@ pub(crate) async fn do_split_trace_preamble(
     trace_write_invocation_and_do_split_prompt(file, split).await?;
     Ok(())
 }
-

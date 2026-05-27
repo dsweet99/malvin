@@ -56,7 +56,6 @@ mod tests {
         assert!(md.starts_with("# malvin "));
         let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
             max_hypotheses: 1,
-            no_learn: true,
             request: None,
         }));
         assert!(md.starts_with("# malvin "));
@@ -77,7 +76,6 @@ mod tests {
     fn print_doc_some_writes_subcommand_md() {
         let cmd = Commands::Kpop(KpopArgs {
             max_hypotheses: 1,
-            no_learn: true,
             request: None,
         });
         let out = capture_doc(Some(&cmd)).expect("capture");

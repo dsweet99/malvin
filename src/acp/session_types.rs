@@ -18,7 +18,7 @@ pub struct PromptTraceWriter {
     pub who: String,
     pub plain_lines: bool,
     pub stdout_replacement: Option<&'static str>,
-    /// For learn tee: emit [`crate::output::LEARNING_PLACEHOLDER`] at most once to stdout.
+    /// Reserved for optional stdout replacement (unused).
     pub placeholder_emitted: bool,
     /// When true, print raw output without timestamps/prefixes.
     pub raw_output: bool,

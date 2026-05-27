@@ -30,8 +30,6 @@ pub struct TidyArgs {
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,
-    #[arg(long, default_value_t = false)]
-    pub no_learn: bool,
     /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
     #[arg(long, short = 'q', default_value_t = false, hide = true)]
     pub quick: bool,
@@ -47,16 +45,13 @@ mod tests {
         let tidy = TidyArgs {
             max_loops: 0,
             max_hypotheses: 10,
-            no_learn: true,
             quick: false,
         };
         let kpop = crate::cli::KpopArgs {
             max_hypotheses: effective_tidy_max_loops(tidy.max_loops),
-            no_learn: tidy.no_learn,
             request: Some("req".to_string()),
         };
         assert_eq!(kpop.max_hypotheses, 1);
-        assert!(kpop.no_learn);
         assert_eq!(kpop.request.as_deref(), Some("req"));
     }
 
@@ -80,10 +75,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions {
-            force: false,
-            run_learn: false,
-        })
+        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
         .expect("prepared");
         crate::cli::run_emit::emit_run_startup_sequence(
             &prepared.artifacts,
@@ -109,10 +101,7 @@ mod tests {
         let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
-        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions {
-            force: false,
-            run_learn: false,
-        })
+        let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
         .expect("prepared");
         let err = post_gate_kpop_gates("malvin tidy", &prepared).expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

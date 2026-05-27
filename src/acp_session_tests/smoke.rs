@@ -1,8 +1,5 @@
 #[test]
-fn smoke_prompt_stdout_replacement_learn_vs_coder() {
-    assert_eq!(
-        crate::acp::prompt_stdout_replacement("learn"),
-        Some(crate::output::LEARNING_PLACEHOLDER)
-    );
+fn smoke_prompt_stdout_replacement_is_none() {
+    assert_eq!(crate::acp::prompt_stdout_replacement("learn"), None);
     assert_eq!(crate::acp::prompt_stdout_replacement("coder"), None);
 }

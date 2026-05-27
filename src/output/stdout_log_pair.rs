@@ -1,12 +1,12 @@
 use super::{
-    acp_tee_markdown::teal_rendered_markup_payload, ANSI_DIM, ANSI_RESET,
+    acp_tee_markdown::agent_rendered_markup_payload, ANSI_DIM, ANSI_RESET,
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
     format_log_tag_inner, stderr_use_color, stdout_use_color, timestamp_now_string,
     who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::terminal_palette::{ANSI_TOOL_SAND, ANSI_TOOL_TEAL};
+use crate::terminal_palette::{ANSI_TOOL_DARK, ANSI_TOOL_TEAL};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,7 +141,7 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
 const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
         AcpTeeDirection::ToAgent => ANSI_TOOL_TEAL,
-        AcpTeeDirection::FromAgent => ANSI_TOOL_SAND,
+        AcpTeeDirection::FromAgent => ANSI_TOOL_DARK,
     }
 }
 
@@ -149,7 +149,7 @@ fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: boo
     if !use_color || ctx.dim_payload || ctx.direction != AcpTeeDirection::FromAgent {
         return payload.to_string();
     }
-    teal_rendered_markup_payload(payload)
+    agent_rendered_markup_payload(payload)
 }
 
 fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {

@@ -15,7 +15,7 @@ malvin [OPTIONS] <COMMAND>
 | `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn for a single user request |
 | `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
-| `code` | Implement a plan with review and optional learn loop |
+| `code` | Implement a plan with review loop |
 | `kpop` | Popperian scientific investigation (hypothesis-driven experiment log) |
 | `tidy` | Fix workspace until quality gates pass |
 | `models` | List models available from the Cursor agent CLI |

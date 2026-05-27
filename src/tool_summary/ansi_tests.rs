@@ -1,9 +1,9 @@
 use super::{
-    ansi_style_done_verb, ansi_style_running_verb, ansi_style_sand_verb, apply_tool_summary_ansi,
+    ansi_style_dark_verb, ansi_style_done_verb, ansi_style_running_verb, apply_tool_summary_ansi,
     is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
 };
 use crate::terminal_palette::ANSI_DIM;
-use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ANSI_TOOL_CREAM, ANSI_TOOL_SAND};
+use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ANSI_TOOL_DARK, ANSI_TOOL_TEAL};
 
 #[test]
 fn covers_running_and_done_helpers() {
@@ -19,29 +19,29 @@ fn tool_line_colon_prefix_splits_leading_marker() {
 }
 
 #[test]
-fn ansi_style_sand_verb_wraps_verb_in_palette() {
-    let styled = ansi_style_sand_verb("Edit");
+fn ansi_style_dark_verb_wraps_verb_in_palette() {
+    let styled = ansi_style_dark_verb("Edit");
     assert!(styled.contains("Edit"));
-    assert!(styled.contains(ANSI_TOOL_SAND));
+    assert!(styled.contains(ANSI_TOOL_DARK));
 }
 
 #[test]
 fn bracket_wrapped_running_line_bolds_run_verb() {
     let styled = apply_tool_summary_ansi("[Run echo hi…]");
-    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_SAND}Run");
+    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Run");
     assert!(
         styled.contains(&run_verb),
-        "expected sand bold on Run inside brackets; got {styled:?}"
+        "expected dark bold on Run inside brackets; got {styled:?}"
     );
 }
 
 #[test]
 fn bracket_wrapped_done_line_bolds_run_verb() {
     let styled = apply_tool_summary_ansi("[Run echo hi · 1ms · ✓]");
-    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_SAND}Run");
+    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Run");
     assert!(
         styled.contains(&run_verb),
-        "expected sand bold on Run in done line; got {styled:?}"
+        "expected dark bold on Run in done line; got {styled:?}"
     );
     assert!(styled.contains('['));
 }
@@ -49,20 +49,20 @@ fn bracket_wrapped_done_line_bolds_run_verb() {
 #[test]
 fn bracket_wrapped_reading_running_line_bolds_verb() {
     let styled = apply_tool_summary_ansi("[Reading ./src/foo.rs…]");
-    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_SAND}Reading");
+    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Reading");
     assert!(
         styled.contains(&verb),
-        "expected sand bold on Reading; got {styled:?}"
+        "expected dark bold on Reading; got {styled:?}"
     );
 }
 
 #[test]
 fn done_line_bolds_read_verb_without_colon_prefix() {
     let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
-    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_SAND}Read");
+    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Read");
     assert!(
         styled.contains(&verb),
-        "expected sand bold on Read; got {styled:?}"
+        "expected dark bold on Read; got {styled:?}"
     );
 }
 
@@ -87,10 +87,10 @@ fn tool_time_segments_use_dim_grey() {
 }
 
 #[test]
-fn tool_path_args_use_cream() {
+fn tool_path_args_use_teal() {
     let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
-    let cream = format!("{ANSI_TOOL_CREAM}./src/foo.rs{ANSI_RESET}");
-    assert!(styled.contains(&cream), "got {styled:?}");
+    let teal = format!("{ANSI_TOOL_TEAL}./src/foo.rs{ANSI_RESET}");
+    assert!(styled.contains(&teal), "got {styled:?}");
 }
 
 #[test]
@@ -105,13 +105,13 @@ fn split_outer_brackets_and_byte_size_segments() {
         "{ANSI_DIM}{}{ANSI_RESET}",
         apply_tool_summary_ansi("[Run echo hi · 1ms · ✓]")
     );
-    assert!(dimmed.contains(&format!("{ANSI_DIM}{ANSI_TOOL_SAND}[")));
-    assert!(dimmed.contains(&format!("{ANSI_TOOL_SAND}]")));
+    assert!(dimmed.contains(&format!("{ANSI_DIM}{ANSI_TOOL_DARK}[")));
+    assert!(dimmed.contains(&format!("{ANSI_TOOL_DARK}]")));
 }
 
 #[test]
-fn edit_search_and_editing_verbs_use_bold_sand() {
-    let sand = format!("{ANSI_BOLD}{ANSI_TOOL_SAND}");
+fn edit_search_and_editing_verbs_use_bold_dark() {
+    let dark = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}");
     for plain in [
         "Edit src/foo.rs · 1ms",
         "Editing src/foo.rs…",
@@ -119,7 +119,7 @@ fn edit_search_and_editing_verbs_use_bold_sand() {
         "Search rg needle · 1ms",
     ] {
         assert!(
-            apply_tool_summary_ansi(plain).contains(&sand),
+            apply_tool_summary_ansi(plain).contains(&dark),
             "got {plain:?}"
         );
     }

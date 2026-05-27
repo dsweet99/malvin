@@ -12,7 +12,7 @@ use crate::prompts::PromptStore;
 
 use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_kpop_prompt_store};
 
-use super::kpop_flow_b::{kpop_emit_startup, kpop_learn_bundle};
+use super::kpop_flow_b::kpop_emit_startup;
 
 pub(in crate) fn kpop_prompt_store(
     _kpop: &KpopArgs,
@@ -71,21 +71,13 @@ fn kpop_boot_store_client_prepared(
 pub struct KpopAcpMultiturnCtx<'a> {
     pub client: &'a mut crate::acp::AgentClient,
     pub prepared: &'a KpopPrepared,
-    pub workflow: WorkflowCliOptions,
     pub state: &'a mut KpopMultiturnState<'a>,
-    pub store: &'a PromptStore,
 }
 
 pub(in crate) async fn kpop_run_acp_multiturn(
     ctx: KpopAcpMultiturnCtx<'_>,
     session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd,
 ) -> Result<(), String> {
-    let learn_owned = kpop_learn_bundle(
-        ctx.store,
-        &ctx.prepared.context,
-        ctx.workflow.run_learn,
-        &ctx.prepared.artifacts,
-    )?;
     let timing = match session_end {
         crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun => {
             ctx.client.ensure_run_timing_for_session()
@@ -99,8 +91,6 @@ pub(in crate) async fn kpop_run_acp_multiturn(
         .run_kpop_multiturn(crate::acp::AgentKpopMultiturnCtl {
             cwd: &ctx.prepared.artifacts.work_dir,
             kpop_log: ctx.prepared.artifacts.log_path("kpop"),
-            learn: learn_owned,
-            learn_min_elapsed_ms: crate::DEFAULT_LEARN_MIN_ELAPSED_MS,
             state: ctx.state,
             session_dotfile_backups: &ctx.prepared.session_dotfile_backups,
         })
@@ -160,9 +150,7 @@ pub async fn run_kpop(
         KpopAcpMultiturnCtx {
             client: &mut client,
             prepared: &prepared,
-            workflow,
             state: &mut state,
-            store: &store,
         },
         crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
     )
@@ -223,7 +211,7 @@ mod kiss_cov_auto {
         std::env::set_current_dir(cwd).expect("chdir");
         let kpop = KpopArgs {
             max_hypotheses: 1,
-            no_learn: true,
+            
             request: Some("Ma1b2c".into()),
         };
         run_kpop_short_id_lookup(&kpop).expect("lookup dump");

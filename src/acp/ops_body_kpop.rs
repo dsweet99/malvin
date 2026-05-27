@@ -1,5 +1,5 @@
 use crate::acp::import_prelude::*;
-use crate::acp::{AgentClient, AgentError, AcpSession, client_timing_elapsed_ms, spawn_agent_acp_session};
+use crate::acp::{AgentClient, AgentError, AcpSession, spawn_agent_acp_session};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -8,9 +8,6 @@ pub struct KpopFlowOnceArgs<'a> {
     pub cwd: &'a Path,
     pub kpop_prompts: &'a [&'a str],
     pub kpop_log: &'a Path,
-    pub learn: Option<(&'a str, &'a Path)>,
-    /// Skip learn if elapsed time is below this threshold (milliseconds). Set to 0 to always run learn.
-    pub learn_min_elapsed_ms: u64,
 }
 
 pub(crate) struct KpopPromptRound<'a> {
@@ -49,8 +46,6 @@ pub(crate) async fn kpop_round(round: KpopPromptRound<'_>) -> Result<(), AgentEr
 pub struct AgentKpopMultiturnCtl<'cwd, 'state> {
     pub cwd: &'cwd Path,
     pub kpop_log: PathBuf,
-    pub learn: Option<(String, PathBuf)>,
-    pub learn_min_elapsed_ms: u64,
     pub state: &'cwd mut crate::kpop_progression::KpopMultiturnState<'state>,
     pub session_dotfile_backups: &'cwd crate::artifacts::SessionDotfileBackups,
 }
@@ -109,48 +104,7 @@ pub(crate) async fn run_kpop_flow_once(
         restore_session_dotfiles(args.cwd, session_dotfile_backups)?;
     }
 
-    kpop_learn_phase(&s, client, args, session_dotfile_backups).await?;
-
     s.shutdown().await.map_err(AgentError)
-}
-
-pub(crate) async fn kpop_learn_phase(
-    session: &AcpSession,
-    client: &AgentClient,
-    args: &KpopFlowOnceArgs<'_>,
-    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-) -> Result<(), AgentError> {
-    let Some((learn_body, learn_log)) = args.learn else {
-        return Ok(());
-    };
-    let elapsed_ms = client_timing_elapsed_ms(client);
-    let should_learn =
-        crate::should_run_learn_check(args.learn_min_elapsed_ms, elapsed_ms);
-    if !should_learn {
-        return Ok(());
-    }
-    if let Err(e) = kpop_round(KpopPromptRound {
-        session,
-        client,
-        text: learn_body,
-        log: learn_log,
-        who: "learn",
-        phase: crate::run_timing::TimingPhase::Learn,
-    })
-    .await
-    {
-        return kpop_fail_after_prompt(
-            session,
-            KpopFailAfterPrompt {
-                cwd: args.cwd,
-                session_dotfile_backups,
-                err: e,
-                phase: "learn",
-            },
-        )
-        .await;
-    }
-    restore_session_dotfiles(args.cwd, session_dotfile_backups)
 }
 
 pub(crate) struct KpopFailAfterPrompt<'a> {
@@ -198,9 +152,9 @@ mod kiss_cov_auto {
     fn kiss_cov_run_kpop_flow_once() { let _ = stringify!(run_kpop_flow_once); }
 
     #[test]
-    fn kiss_cov_kpop_learn_phase() { let _ = stringify!(kpop_learn_phase); }
+    fn kiss_cov_kpop_fail_after_prompt() { let _ = stringify!(kpop_fail_after_prompt); }
 
     #[test]
-    fn kiss_cov_kpop_fail_after_prompt() { let _ = stringify!(kpop_fail_after_prompt); }
+    fn kiss_cov_kpop_fail_after_prompt_struct() { let _ = stringify!(KpopFailAfterPrompt); }
 
 }

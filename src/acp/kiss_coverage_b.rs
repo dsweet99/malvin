@@ -16,7 +16,6 @@ fn kiss_cov_acp_mod_and_spawn_inc() {
     let _ = super::cursor_cli_auth_established();
     let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
     let _ = stringify!(spawn_agent_acp_session);
-    let _ = stringify!(client_timing_elapsed_ms);
     let _ = stringify!(prompt_rpc_cleanup_arc);
     let _ = stringify!(spawn_handshake_stdout_reader);
     let _ = stringify!(handshake_stdio_rpc);

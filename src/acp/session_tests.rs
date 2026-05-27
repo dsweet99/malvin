@@ -11,12 +11,9 @@ use crate::acp::{AcpSession, AcpSpawnArgs};
 use tokio::process::Command;
 
 #[test]
-fn prompt_stdout_replacement_maps_learn_placeholder() {
+fn prompt_stdout_replacement_is_always_none() {
     assert_eq!(crate::acp::prompt_stdout_replacement(crate::output::MALVIN_WHO), None);
-    assert_eq!(
-        crate::acp::prompt_stdout_replacement("learn"),
-        Some(crate::malvin_constants::LEARNING_PLACEHOLDER)
-    );
+    assert_eq!(crate::acp::prompt_stdout_replacement("learn"), None);
 }
 
 fn mem_watch_test_spawn_args(cwd: &Path) -> AcpSpawnArgs<'_> {

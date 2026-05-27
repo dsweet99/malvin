@@ -45,7 +45,6 @@ mod malvin_short_id;
 pub use malvin_short_id::{
     is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id, MALVIN_SHORT_ID_LEN,
 };
-mod learn_gate;
 mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
@@ -59,7 +58,6 @@ pub use run_id::{build_identifier, create_run_dir, RunDirOptions};
 pub mod session_dotfile_backup;
 mod tracing_init;
 mod user_home;
-pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
 mod active_agent_heartbeat;
 pub use active_agent_heartbeat::active_agent_heartbeat_stats;

@@ -1,9 +1,11 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-
 use crate::artifacts::RunArtifacts;
 use crate::cli::{KpopArgs, SharedOpts};
-use crate::prompts::{PromptError, PromptStore};
+
+#[cfg(test)]
+use std::collections::HashMap;
+
+#[cfg(test)]
+use crate::prompts::PromptStore;
 
 pub fn kpop_emit_startup(
     kpop: &KpopArgs,
@@ -21,22 +23,6 @@ pub fn kpop_emit_startup(
     )
 }
 
-pub fn kpop_learn_bundle(
-    store: &PromptStore,
-    context: &HashMap<String, String>,
-    run_learn: bool,
-    artifacts: &RunArtifacts,
-) -> Result<Option<(String, PathBuf)>, String> {
-    if !run_learn {
-        return Ok(None);
-    }
-    let learn_prompt = store
-        .render("learn.md", context)
-        .map_err(|e: PromptError| e.0)?;
-    let learn_log = artifacts.log_path("learn_kpop");
-    Ok(Some((learn_prompt, learn_log)))
-}
-
 #[test]
 fn kpop_emit_startup_creates_malvin_run_under_root() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -52,28 +38,12 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     };
     let kpop = crate::cli::KpopArgs {
         max_hypotheses: 1,
-        no_learn: true,
         request: Some("smoke".into()),
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
     let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
     assert!(log.contains("Memory:"));
     assert!(artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")));
-}
-
-#[test]
-fn kpop_learn_bundle_none_when_learn_disabled() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("kpop", Some(tmp.path())).expect("art");
-    let store = crate::prompts::PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let ctx = HashMap::new();
-    assert!(
-        kpop_learn_bundle(&store, &ctx, false, &artifacts)
-            .expect("bundle")
-            .is_none()
-    );
 }
 
 #[test]

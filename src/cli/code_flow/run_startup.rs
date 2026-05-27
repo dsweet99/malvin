@@ -55,7 +55,7 @@ mod tests {
         let prepared = prepare_code_kpop_run(
             crate::cli::WorkflowCliOptions {
                 force: false,
-                run_learn: false,
+                
             },
             &format!("@{}", plan.display()),
         )

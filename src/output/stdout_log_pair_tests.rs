@@ -108,28 +108,28 @@ fn acp_bracket_payload_supports_dim_mode() {
 
 #[cfg(test)]
 pub(crate) fn assert_tool_payload_brackets_share_color(line: &str) {
-    use crate::terminal_palette::{ANSI_DIM, ANSI_RESET, ANSI_TOOL_SAND};
+    use crate::terminal_palette::{ANSI_DIM, ANSI_RESET, ANSI_TOOL_DARK};
 
     let dim_sep = format!("{ANSI_RESET} {ANSI_DIM}");
     let dim_start = line
         .find(&dim_sep)
         .unwrap_or_else(|| panic!("expected dim tool payload; got {line:?}"));
     let payload = &line[dim_start + dim_sep.len()..];
-    let sand_open = format!("{ANSI_TOOL_SAND}[");
-    let sand_close = format!("{ANSI_TOOL_SAND}]");
+    let dark_open = format!("{ANSI_TOOL_DARK}[");
+    let dark_close = format!("{ANSI_TOOL_DARK}]");
     assert!(
-        payload.starts_with(&sand_open),
-        "payload open bracket must use sand color; got {payload:?} in {line:?}"
+        payload.starts_with(&dark_open),
+        "payload open bracket must use dark color; got {payload:?} in {line:?}"
     );
     assert!(
-        payload.contains(&sand_close),
-        "payload close bracket must use sand color; got {payload:?} in {line:?}"
+        payload.contains(&dark_close),
+        "payload close bracket must use dark color; got {payload:?} in {line:?}"
     );
 }
 
 #[cfg(test)]
 pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
-    use crate::terminal_palette::{ANSI_DIM, ANSI_TOOL_SAND};
+    use crate::terminal_palette::{ANSI_DIM, ANSI_TOOL_DARK};
 
     let bracket_end = line.find(']').expect("bracket");
     assert!(
@@ -142,8 +142,8 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
     );
     let prefix = &line[..=bracket_end];
     assert!(
-        prefix.contains(ANSI_TOOL_SAND),
-        "who bracket stays bright; got {line:?}"
+        prefix.contains(ANSI_TOOL_DARK),
+        "who bracket stays dark; got {line:?}"
     );
     assert!(
         !prefix.contains(ANSI_DIM),

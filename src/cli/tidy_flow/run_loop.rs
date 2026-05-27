@@ -14,10 +14,6 @@ pub async fn run_tidy(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let workflow = WorkflowCliOptions {
-        force: workflow.force,
-        run_learn: !tidy.no_learn,
-    };
     let prepared = prepare_tidy_kpop_run(workflow)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 

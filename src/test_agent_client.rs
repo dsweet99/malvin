@@ -58,7 +58,7 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let workflow = crate::cli::WorkflowCliOptions {
         force: false,
-        run_learn: false,
+        
     };
     let store = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store(workflow).expect("store");
     let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, "tidy");

@@ -11,7 +11,7 @@ mod linux_pty {
     fn kpop_timing_uses_kpop_label_not_implement() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_update_js(),
-            "kpop --no-learn --max-hypotheses 1 investigate",
+            "kpop --max-hypotheses 1 investigate",
             None,
         );
         assert!(
@@ -49,7 +49,7 @@ mod linux_pty {
     fn kpop_max_loops_alias_is_accepted() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_update_js(),
-            "kpop --no-learn --max-loops 1 investigate",
+            "kpop --max-loops 1 investigate",
             None,
         );
         assert_eq!(

@@ -70,7 +70,6 @@ pub(crate) use self::terminal_wrap::{
 pub const MALVIN_WHO: &str = "malvin";
 pub const WARNING_WHO: &str = "warning";
 pub const ERROR_WHO: &str = "error";
-pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
 
 pub(crate) use stdout_terminal::print_stdout_display_line;
 #[cfg(test)]

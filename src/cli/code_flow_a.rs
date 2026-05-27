@@ -3,7 +3,6 @@ use super::SharedOpts;
 #[derive(Debug, Clone, Copy)]
 pub struct WorkflowCliOptions {
     pub force: bool,
-    pub run_learn: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -14,7 +13,7 @@ pub struct AgentStdoutTeeFlags {
 }
 
 pub fn prepare_prompt_store(
-    workflow: WorkflowCliOptions,
+    _workflow: WorkflowCliOptions,
 ) -> Result<crate::prompts::PromptStore, String> {
     use crate::prompts::{PromptError, PromptStore};
     let store = PromptStore::default_store();
@@ -23,26 +22,18 @@ pub fn prepare_prompt_store(
     store
         .validate_exists("summary.md")
         .map_err(|e: PromptError| e.0)?;
-    if workflow.run_learn {
-        store
-            .validate_exists("learn.md")
-            .map_err(|e: PromptError| e.0)?;
-    }
     Ok(store)
 }
 
 pub fn prepare_kpop_prompt_store(
-    workflow: WorkflowCliOptions,
+    _workflow: WorkflowCliOptions,
     require_mbc2: bool,
 ) -> Result<crate::prompts::PromptStore, String> {
     use crate::prompts::{PromptError, PromptStore};
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            run_learn: workflow.run_learn,
-            require_mbc2,
-        })
+        .validate_kpop_prompts(crate::prompts::KpopPromptValidation { require_mbc2 })
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
 }

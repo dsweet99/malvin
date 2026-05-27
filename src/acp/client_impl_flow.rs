@@ -5,7 +5,7 @@ use crate::acp::{
 };
 
 impl AgentClient {
-    /// Standalone `KPop`: one ACP session without injected repo style; optional `learn.md` in the same session.
+    /// Standalone `KPop`: one ACP multiturn session without injected repo style.
     ///
     /// # Errors
     ///

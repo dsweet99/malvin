@@ -189,7 +189,7 @@ async fn run_init_summary_phase(
     use crate::prompts::{PromptError, PromptStore};
     let workflow = crate::cli::WorkflowCliOptions {
         force: !shared.no_force,
-        run_learn: false,
+        
     };
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;

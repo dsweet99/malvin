@@ -1,6 +1,6 @@
 # malvin code
 
-Implement a **plan** using the full malvin coding pipeline: optional plan validation, implementation, multi-attempt code review, optional learning, and a closing summary.
+Implement a **plan** using the full malvin coding pipeline: optional plan validation, implementation, multi-attempt code review, and a closing summary.
 
 ## Intention
 
@@ -30,10 +30,6 @@ Maximum **review cycles** after implementation. Each cycle:
 
 Value `0` is treated as `1` (at least one review attempt). Plan check retries also respect this budget.
 
-### `--no-learn`
-
-Skip the **learn** prompt after a successful review (even if elapsed time would normally allow learn).
-
 ### `--trust-the-plan`
 
 Skip the **check plan** phase. Use when the plan was already reviewed (e.g. via `malvin plan`) and you want to go straight to implementation.
@@ -44,7 +40,7 @@ Skip workspace quality gates **before** the ACP session starts. Default: gates m
 
 ### Global options
 
-See `malvin.md`. `--no-markdown` affects agent stdout styling. `--no-force` disables agent `--force`. Learn runs unless `--no-learn` is set on the subcommand (there is no global `--no-learn`).
+See `malvin.md`. `--no-markdown` affects agent stdout styling. `--no-force` disables agent `--force`.
 
 ## Requirements
 
@@ -54,7 +50,7 @@ See `malvin.md`. `--no-markdown` affects agent stdout styling. `--no-force` disa
 
 ## Prompt workflow
 
-Single long-lived coder session: main work, then optional learn, then summary.
+Single long-lived coder session: main work, then summary.
 
 ### Phase A — Before summary (main loop)
 
@@ -78,8 +74,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 
 | Order | Prompt role (effect) | Notes |
 |-------|----------------------|-------|
-| 4 | **Learn** (optional) — Reflect on the session and suggest process/repo improvements. Skipped if `--no-learn`, or if elapsed time &lt; 5 minutes (default threshold). | After review succeeds |
-| 5 | **Summary** — Short user-facing recap of what was done. |  |
+| 4 | **Summary** — Short user-facing recap of what was done. | After review succeeds |
 
 ## Artifacts
 
@@ -87,7 +82,7 @@ Loop exits on LGTM or exhausted `--max-loops`.
 - `review.md`, `review_prep.md` — review pipeline
 - `result.md` — `ABORT:` prefix stops the workflow
 - `quality_gates.log` — gate commands
-- Phase logs: `check_plan`, `implement`, `concerns`, `learn`, `summary`, etc.
+- Phase logs: `check_plan`, `implement`, `concerns`, `summary`, etc.
 
 ## Session safety
 

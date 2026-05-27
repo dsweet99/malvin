@@ -43,10 +43,6 @@ Discover and remediate in one invocation. Mutually exclusive with `<BUG_ID>`.
 
 Same as `malvin kpop`: budget counts `## Step <n> — KPOP …` headings in the experiment log. Alias: `--max-loops`.
 
-### `--no-learn`
-
-Skip **learn** in the remediation orchestrator when not `--no-learn`.
-
 ### Global options
 
 See `malvin.md`.
@@ -81,8 +77,6 @@ Single coder session:
 
 Plan check is **skipped** (`trust_the_plan` equivalent). Review loop from `code` is **not** used in remediation.
 
-Optional **learn** follows the same rules as `code` when not `--no-learn`.
-
 ## Comparison to `kpop` + `code`
 
 | | `hunt` | Manual pipeline |
@@ -102,5 +96,5 @@ Optional **learn** follows the same rules as `code` when not `--no-learn`.
 ```text
 malvin hunt
 malvin hunt --fix --max-hypotheses 15 
-malvin hunt Ma1b2c --no-learn
+malvin hunt Ma1b2c
 ```
