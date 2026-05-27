@@ -7,6 +7,7 @@ pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
 mod entrypoint;
+mod entrypoint_commands;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 mod exit;
@@ -20,6 +21,7 @@ pub(crate) mod tidy_flow;
 
 mod code_flow;
 mod code_flow_a;
+mod constrain_flow;
 mod gate_kpop_workflow;
 mod loop_opts;
 mod workflow_kpop_shared;
@@ -30,6 +32,7 @@ pub use code_flow_a::{
     prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub use code_flow::{run_code, CodeArgs};
+pub use constrain_flow::{run_constrain, ConstrainArgs};
 
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]

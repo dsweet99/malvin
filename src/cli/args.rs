@@ -40,6 +40,8 @@ pub enum Commands {
     Invent(InventArgs),
     /// Write code
     Code(crate::cli::code_flow::CodeArgs),
+    /// Write a regression test and code to satisfy constraints
+    Constrain(crate::cli::constrain_flow::ConstrainArgs),
     /// Reason scientifically (q&a, research, optimization, ...)
     Kpop(KpopArgs),
     /// Ensure all checks pass

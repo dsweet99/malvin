@@ -2,14 +2,14 @@ use clap::{CommandFactory, Parser};
 
 use super::models_cmd;
 use super::{
-    Cli, CodeArgs, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_ideas, run_kpop,
-    run_tidy,
+    Cli, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     use crate::require_kiss_for_malvin;
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
+        Commands::Constrain(_) => require_kiss_for_malvin("constrain"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Do(_)
         | Commands::Init(_)
@@ -121,7 +121,15 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 &mut shared.max_acp_retries,
                 code.tenacious,
             );
-            run_code_command(code, &shared)
+            super::entrypoint_commands::run_code_command(code, &shared)
+        }
+        Commands::Constrain(mut constrain) => {
+            super::loop_opts::apply_tenacious(
+                &mut constrain.max_loops,
+                &mut shared.max_acp_retries,
+                constrain.tenacious,
+            );
+            super::entrypoint_commands::run_constrain_command(constrain, &shared)
         }
         Commands::Kpop(mut kpop) => {
             super::loop_opts::apply_tenacious(
@@ -164,7 +172,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 },
             )
         }),
-        Commands::Invent(ideas) => run_invent_command(ideas, &shared),
+        Commands::Invent(ideas) => super::entrypoint_commands::run_invent_command(ideas, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -183,37 +191,6 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
         }
         Commands::Models(_) => models_cmd::run_models(),
     }
-}
-
-fn run_invent_command(
-    ideas: crate::ideas_flow::IdeasArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
-    run_async_cli(|| {
-        run_ideas(
-            ideas,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
-        )
-    })
-}
-
-fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
-    if code.fast {
-        code.skip_pre_checks = true;
-        code.trust_the_plan = true;
-    }
-    run_async_cli(|| {
-        super::run_code(
-            code,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
-        )
-    })
 }
 
 #[cfg(test)]
@@ -237,12 +214,14 @@ mod entrypoint_doc_tests {
 
 #[cfg(test)]
 mod kiss_cov_gate_refs {
+    use crate::cli::entrypoint_commands;
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = dispatch_command;
         let _ = run_async_cli(|| async { Ok(()) });
-        let _ = run_code_command;
-        let _ = run_invent_command;
+        let _ = entrypoint_commands::run_code_command;
+        let _ = entrypoint_commands::run_constrain_command;
+        let _ = entrypoint_commands::run_invent_command;
     }
 }

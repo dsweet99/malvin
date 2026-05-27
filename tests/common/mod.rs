@@ -27,6 +27,8 @@ mod process;
 #[cfg(unix)]
 mod code_harness;
 #[cfg(unix)]
+mod constrain_harness;
+#[cfg(unix)]
 mod tidy_harness;
 mod workspace;
 
@@ -51,6 +53,8 @@ pub use live_agent::{
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 #[cfg(unix)]
 pub use code_harness::{spawn_code, CodeSpawn};
+#[cfg(unix)]
+pub use constrain_harness::{spawn_constrain, ConstrainSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,

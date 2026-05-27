@@ -12,6 +12,7 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
         Commands::Invent(_) => include_str!("../../default_prompts/docs/invent.md"),
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
+        Commands::Constrain(_) => include_str!("../../default_prompts/docs/constrain.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
         Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),

@@ -12,8 +12,8 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = super::entrypoint::print_command_error;
     let _ = super::entrypoint::require_kiss_for_cli_command;
     let _ = stringify!(super::entrypoint::run_async_cli);
-    let _ = stringify!(super::entrypoint::run_code_command);
-    let _ = stringify!(super::entrypoint::run_invent_command);
+    let _ = stringify!(super::entrypoint_commands::run_code_command);
+    let _ = stringify!(super::entrypoint_commands::run_invent_command);
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
@@ -91,6 +91,17 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
     let _ = super::tidy_flow::prepare_tidy_kpop_run;
     let _ = super::tidy_flow::run_tidy;
     let _ = super::tidy_flow::effective_tidy_max_loops;
+}
+
+#[test]
+fn smoke_cov_cli_constrain_flow_units() {
+    let _: Option<super::ConstrainArgs> = None;
+    let _: Option<super::constrain_flow::ConstrainKpopPrepared> = None;
+    let _ = super::constrain_flow::prepare_constrain_kpop_prompt_store;
+    let _ = super::constrain_flow::constrain_kpop_request;
+    let _ = super::constrain_flow::prepare_constrain_kpop_run;
+    let _ = super::constrain_flow::run_constrain;
+    let _ = super::constrain_flow::effective_constrain_max_loops;
 }
 
 #[test]
