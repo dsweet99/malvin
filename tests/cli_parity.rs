@@ -68,13 +68,14 @@ fn help_no_markdown_description_is_disable_styled_markdown() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let line = s
+    let idx = s
         .lines()
-        .find(|line| line.contains("--no-markdown"))
+        .position(|line| line.contains("--no-markdown"))
         .unwrap_or_else(|| panic!("expected --no-markdown in root help: {s}"));
+    let window = s.lines().skip(idx).take(2).collect::<Vec<_>>().join("\n");
     assert!(
-        line.contains("Disable styled markdown"),
-        "expected --no-markdown help to say 'Disable styled markdown': {line:?}"
+        window.contains("Disable styled markdown"),
+        "expected --no-markdown help to say 'Disable styled markdown': {window:?}"
     );
 }
 
@@ -102,6 +103,27 @@ fn help_omits_removed_ground_sync_plan_and_hunt_commands() {
     assert!(
         !contains_help_subcommand(&s, "hunt"),
         "hunt was removed; help was: {s}"
+    );
+}
+
+#[cfg_attr(unix, test)]
+fn help_lists_max_acp_retries_with_default_three() {
+    let out = run_root_help_output();
+    assert!(
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(help_option_count(&s, "--max-acp-retries"), 1);
+    let idx = s
+        .lines()
+        .position(|line| line.contains("--max-acp-retries"))
+        .unwrap_or_else(|| panic!("expected --max-acp-retries in root help: {s}"));
+    let window = s.lines().skip(idx).take(2).collect::<Vec<_>>().join("\n");
+    assert!(
+        window.contains("[default: 3]"),
+        "expected --max-acp-retries help to show default 3: {window:?}"
     );
 }
 

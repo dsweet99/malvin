@@ -96,13 +96,24 @@ pub fn format_code_pre_check_failure(detail: &str) -> String {
     format_pre_check_gate_failure("malvin code", detail)
 }
 
+pub fn new_agent_client(
+    shared: &SharedOpts,
+    io: crate::acp::AgentIoOptions,
+) -> crate::acp::AgentClient {
+    crate::acp::AgentClient::with_max_acp_retries(
+        shared.model.clone(),
+        io,
+        shared.max_acp_retries,
+    )
+}
+
 pub fn build_agent(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     emit_stdout_markdown: bool,
 ) -> crate::acp::AgentClient {
-    crate::acp::AgentClient::new(
-        shared.model.to_string(),
+    new_agent_client(
+        shared,
         agent_io_options(
             shared,
             workflow,

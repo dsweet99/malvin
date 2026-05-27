@@ -11,7 +11,7 @@ use crate::artifacts::{
     backup_workspace_malvin_config_if_present, create_run_artifacts_from_text, resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
 use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
 use crate::run_timing::TimingPhase;
 
@@ -57,8 +57,8 @@ pub fn render_ideas_prompt(num_ideas: usize, user_prompt: &str) -> Result<String
 }
 
 fn new_ideas_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> crate::acp::AgentClient {
-    crate::acp::AgentClient::new(
-        shared.model.clone(),
+    new_agent_client(
+        shared,
         agent_io_options(
             shared,
             workflow,

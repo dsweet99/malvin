@@ -1,9 +1,8 @@
 use crate::acp::import_prelude::*;
-// Bounded retries for transient ACP JSON-RPC failures (see product plan: up to 3 attempts, 1s / 3s backoff).
+use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
+// Bounded retries for transient ACP JSON-RPC failures (default [`DEFAULT_MAX_ACP_RETRIES`] attempts, 1s / 3s backoff).
 // Covers `session/prompt` and spawn/handshake (`initialize` / `authenticate` / `session/new`) via
 // [`AgentClient::begin_coder_session`], which retries the full `agent acp` session setup.
-
-pub(crate) const MAX_AGENT_ATTEMPTS: u32 = 3;
 
 /// English noun for `n` retry attempts after the first try (`n` is `attempts_used - 1` in callers).
 #[must_use]
@@ -101,15 +100,19 @@ pub(crate) enum AgentRetryOutcome {
 
 /// Blacklist-default retry policy for bounded ACP attempts: upgrade-plan and cannot-use-model
 /// errors fail fast with [`Err`]; all other errors retry with 1s then 3s sleeps until
-/// [`MAX_AGENT_ATTEMPTS`]. Unknown permanent failures may spend ~4s extra before stopping.
-pub(crate) fn plan_agent_retry(last_error: &str, attempt: u32) -> Result<AgentRetryOutcome, AgentError> {
+/// `max_attempts`. Unknown permanent failures may spend ~4s extra before stopping.
+pub(crate) fn plan_agent_retry(
+    last_error: &str,
+    attempt: u32,
+    max_attempts: u32,
+) -> Result<AgentRetryOutcome, AgentError> {
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
     if last_error.contains("made no progress on the experiment log") {
         return Ok(AgentRetryOutcome::StopRetrying);
     }
-    if attempt >= MAX_AGENT_ATTEMPTS {
+    if attempt >= max_attempts {
         return Ok(AgentRetryOutcome::StopRetrying);
     }
     let secs = if attempt == 1 { 1_u64 } else { 3_u64 };

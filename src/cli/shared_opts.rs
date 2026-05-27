@@ -1,6 +1,6 @@
-//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, and `no_tee` affect `malvin code`, `malvin kpop`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `init` summary, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`.
+//! Shared CLI flags (`SharedOpts`) are parsed globally for every subcommand. `model`, `no_force`, `no_tee`, and `max_acp_retries` affect `malvin code`, `malvin kpop`, and `malvin do`. `--verbose` logs full outgoing agent prompts to stdout and `prompts.log` (default is prompt name only). `--no-markdown` disables styled ACP stdout for subcommands that use `acp_stdout_markdown_enabled()` (`code`, `kpop`, `tidy` when the agent runs, `init` summary, and `do` on a TTY). It is a no-op for `models` (no agent). Piped `malvin do` output stays plain regardless of `--no-markdown`.
 
-pub use crate::config::DEFAULT_CLI_MODEL;
+pub use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use clap::Args;
 
 const NO_TEE_HELPTEXT: &str = "Omit stdout streaming [default: tee on].";
@@ -40,6 +40,9 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
+    /// Max bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
+    #[arg(long = "max-acp-retries", global = true, default_value_t = DEFAULT_MAX_ACP_RETRIES)]
+    pub max_acp_retries: u32,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,

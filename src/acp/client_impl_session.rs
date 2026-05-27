@@ -2,17 +2,32 @@ use std::path::Path;
 
 use crate::acp::{
     backoff_after_agent_failure, spawn_agent_acp_session, AgentClient, AgentError, AgentIoOptions,
-    AuthError, MAX_AGENT_ATTEMPTS, retries_noun,
+    AuthError, retries_noun,
 };
+use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 
 impl AgentClient {
     #[must_use]
     pub const fn new(model: String, io: AgentIoOptions) -> Self {
+        Self::with_max_acp_retries(model, io, DEFAULT_MAX_ACP_RETRIES)
+    }
+
+    #[must_use]
+    pub const fn with_max_acp_retries(
+        model: String,
+        io: AgentIoOptions,
+        max_acp_retries: u32,
+    ) -> Self {
         Self {
             model,
             io,
             prompts_log_run_dir: None,
             coder_session: None,
+            max_acp_retries: if max_acp_retries == 0 {
+                1
+            } else {
+                max_acp_retries
+            },
             timing: None,
         }
     }
@@ -86,7 +101,8 @@ impl AgentClient {
         }
         let mut last_error = String::new();
         let mut attempts_used = 0_u32;
-        for attempt in 1..=MAX_AGENT_ATTEMPTS {
+        let max_attempts = self.max_acp_retries;
+        for attempt in 1..=max_attempts {
             attempts_used = attempt;
             match spawn_agent_acp_session(self, cwd).await {
                 Ok(mut s) => {
@@ -96,8 +112,13 @@ impl AgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
-                    if backoff_after_agent_failure(self.timing.as_ref(), &last_error, attempt)
-                        .await?
+                    if backoff_after_agent_failure(
+                        self.timing.as_ref(),
+                        &last_error,
+                        attempt,
+                        max_attempts,
+                    )
+                    .await?
                     {
                         break;
                     }
