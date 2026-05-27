@@ -111,3 +111,88 @@ Existing unit test `sync_review_file_for_attempt_writes_workspace_text_to_artifa
 - After `review_write`, require non-empty artifact `review.md` (retry or fail like `check_plan`).
 - For fan-out attempts, do **not** fall back to workspace `review.md` for LGTM (or re-clear workspace review after fan-out, before `review_write`).
 - Optionally drop `workspace_review_path` from fan-out `ReviewerPromptPair` entirely so reviewers are not anchored to the legacy workspace review file.
+
+---
+
+# Bug: sandbox memory limit is fail-open when RSS/PSS measurement returns `None`
+
+**Status:** Unfixed.
+
+## Severity
+
+High. Malvin advertises a sandbox memory cap in `current_state` and `.malvin/config.toml` (`mem_limit_gb`), but the enforcement loop **never kills** the agent when it cannot obtain a byte total. A run can exceed the configured limit for the whole session while malvin reports success.
+
+## Summary
+
+On Unix, `spawn_process_group_memory_watcher` polls `malvin_session_rss_bytes` every 500ms and terminates the agent process group only when `rss > limit_bytes` inside `if let Some(rss)`. When `malvin_session_rss_bytes` returns `None`, the watcher sleeps and continues — **unknown is treated as under limit**, not as fail-closed.
+
+`malvin_session_rss_bytes` delegates to `pids_sandbox_bytes`, which returns `None` when **no** monitored pid yields readable `/proc` data (all `smaps_rollup` / `status` reads fail or pids disappear). There is no fallback kill, no user-visible warning, and no test requiring termination on measurement failure.
+
+## Affected code
+
+1. **Watcher only acts on `Some(rss)`** — no `else` branch for measurement failure:
+
+```58:76:src/acp/process_group_mem_watch.rs
+        if let Some(rss) =
+            crate::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), &spawn_pid_baseline)
+        {
+            if rss > limit_bytes {
+                warn!(
+                    rss_bytes = rss,
+                    limit_bytes,
+                    pgid,
+                    "malvin sandbox exceeded memory limit; terminating"
+                );
+                crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+                    Some(pgid),
+                    &spawn_pid_baseline,
+                )
+                .await;
+                return;
+            }
+        }
+        tokio::time::sleep(POLL_INTERVAL).await;
+```
+
+2. **`pids_sandbox_bytes` returns `None` when every pid query fails** (`saw` stays false):
+
+```5:26:src/process_group_rss/linux.rs
+pub(in crate::process_group_rss) fn linux_pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    linux_pids_pss_bytes(pids).or_else(|| linux_pids_rss_bytes(pids))
+}
+// ...
+    saw.then_some(total)
+```
+
+3. **Empty pid set is treated as 0 bytes (under limit)** — distinct from `None`, but same fail-open spirit:
+
+```59:62:src/process_group_rss/mod.rs
+pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
+    if pids.is_empty() {
+        return Some(0);
+    }
+```
+
+4. **User-facing cap is still advertised** via `load_mem_limit_bytes` / `format_current_state` even when enforcement is blind.
+
+## Minimal reproduction (logic)
+
+1. Configure a low `mem_limit_gb` in `.malvin/config.toml`.
+2. Run an agent session where `sandbox_monitor_pids` is non-empty but every `/proc/{pid}/smaps_rollup` and `/proc/{pid}/status` read fails (permissions, race right after fork, or mocked I/O errors in a unit test).
+3. Let the agent allocate memory aggressively.
+
+**Expected (fail-closed):** terminate the sandbox, or surface a hard error that the limit cannot be enforced.
+
+**Actual:** watcher loop never enters the `rss > limit_bytes` branch; session continues until external OOM or normal completion.
+
+## Impact
+
+- **False sense of safety:** Operators and prompts rely on “Sandbox memory: limit N GiB” in `current_state`.
+- **Host OOM risk:** Unbounded agent memory while malvin exits 0.
+- **Nondeterministic enforcement:** Transient `/proc` failures (load, namespaces, short-lived pids) create windows with no cap.
+
+## Suggested fix direction (not implemented here)
+
+- Treat `None` RSS as over-limit after brief retries, or fail the run with “cannot enforce mem_limit_gb”.
+- Log at `warn!` on each consecutive `None` sample; metric for enforcement blind spots.
+- Add a unit/integration test that forces `malvin_session_rss_bytes` → `None` and asserts teardown or workflow failure.
