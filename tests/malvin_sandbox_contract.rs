@@ -17,6 +17,32 @@ use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::atomic::AtomicBool;
 
+/// Regression: watcher must keep enforcing after ACP stdout closes (`reader_dead`).
+#[cfg(unix)]
+#[tokio::test]
+async fn watch_process_group_memory_enforces_after_reader_dead() {
+    use std::sync::atomic::AtomicBool;
+
+    let baseline = snapshot_pids();
+    let mut agent = Command::new("sleep");
+    agent.arg("120").process_group(0);
+    let mut agent_child = agent.spawn().expect("spawn");
+    let agent_pgid = agent_child.id();
+    let reader_dead = Arc::new(AtomicBool::new(true));
+    watch_process_group_memory(MemWatchHandles {
+        reader_dead,
+        pgid: agent_pgid,
+        limit_bytes: 1,
+        spawn_pid_baseline: baseline,
+    })
+    .await;
+    assert_ne!(
+        agent_child.try_wait().expect("wait"),
+        None,
+        "watcher must kill sandbox child after reader_dead, not exit early"
+    );
+}
+
 /// OOM watcher with `limit_bytes = 1` must tear down a live agent sleep child.
 #[cfg(unix)]
 #[tokio::test]
@@ -78,6 +104,7 @@ fn malvin_sandbox_monitor_includes_malvin_spawned_sibling() {
 
 #[test]
 fn kiss_cov_malvin_sandbox_contract_symbols() {
+    let _ = stringify!(watch_process_group_memory_enforces_after_reader_dead);
     let _ = stringify!(malvin_oom_watcher_kills_agent_sleep_at_low_limit);
     let _ = stringify!(malvin_process_group_teardown_kills_agent_sleep);
     let _ = stringify!(malvin_sandbox_monitor_includes_malvin_spawned_sibling);

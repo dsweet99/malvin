@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -43,15 +42,12 @@ pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir:
 #[cfg(unix)]
 pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     let MemWatchHandles {
-        reader_dead,
         pgid,
         limit_bytes,
         spawn_pid_baseline,
+        ..
     } = handles;
     loop {
-        if reader_dead.load(Ordering::SeqCst) {
-            return;
-        }
         if !crate::malvin_sandbox::sandbox_still_alive(Some(pgid), &spawn_pid_baseline) {
             return;
         }

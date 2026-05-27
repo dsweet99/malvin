@@ -82,6 +82,7 @@ fn kiss_cov_process_group_mem_watch_symbols() {
     let _ = stringify!(watch_process_group_memory_kills_over_limit_child);
     let _ = stringify!(watch_process_group_memory_kills_setsid_orphan_on_oom);
     let _ = stringify!(watch_process_group_memory_kills_orphan_after_agent_pg_exits);
+    let _ = stringify!(watch_process_group_memory_enforces_after_reader_dead);
     let _ = stringify!(spawn_process_group_memory_watcher_starts_for_session);
     let _ = stringify!(malvin_child_outside_agent_pg_counts_in_sandbox_rss);
     let _ = stringify!(spawn_sleep_seconds);
