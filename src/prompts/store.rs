@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use super::PromptError;
 use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
 use super::enforce_no_unresolved_braces_in;
-use super::{merge_header_and_coding_rules, render_template};
+use super::render_template;
 
 #[derive(Debug, Clone, Copy)]
 pub struct KpopPromptValidation {
@@ -166,10 +166,7 @@ impl PromptStore {
     ) -> Result<String, PromptError> {
         let prompt_text = self.prompt_text(filename)?;
         let mut render_context: HashMap<String, String> = context.clone();
-        render_context.insert(
-            "coding_rules".to_string(),
-            merged_coding_rules(self, context)?,
-        );
+        render_context.insert("coding_rules".to_string(), String::new());
         let out = render_template(&prompt_text, &render_context);
         enforce_no_unresolved_braces_in(&out, Some(filename))?;
         Ok(out)
@@ -190,13 +187,6 @@ impl PromptStore {
         Ok(out)
     }
 
-    pub(crate) fn load_coding_rules(&self) -> String {
-        self.prompt_text("coding_rules.md")
-            .unwrap_or_default()
-            .trim()
-            .to_string()
-    }
-
     pub(crate) fn load_header(&self) -> String {
         self.prompt_text(HEADER_MD)
             .unwrap_or_default()
@@ -207,19 +197,15 @@ impl PromptStore {
 
 /// # Errors
 ///
-/// Returns [`PromptError`] when prompts cannot be loaded, rendered, or validated.
-pub fn merged_coding_rules(
+/// Returns [`PromptError`] when `header.md` cannot be loaded, rendered, or validated.
+pub fn render_header(
     store: &PromptStore,
     context: &std::collections::HashMap<String, String>,
 ) -> Result<String, PromptError> {
-    let render_context: std::collections::HashMap<String, String> = context.clone();
     let header_raw = store.load_header();
-    let header_expanded = render_template(&header_raw, &render_context);
-    let rules_raw = store.load_coding_rules();
-    let rules_expanded = render_template(&rules_raw, &render_context);
-    let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
-    enforce_no_unresolved_braces_in(&merged, Some("coding_rules.md"))?;
-    Ok(merged)
+    let header_expanded = render_template(&header_raw, context);
+    enforce_no_unresolved_braces_in(&header_expanded, Some(HEADER_MD))?;
+    Ok(header_expanded)
 }
 
 /// # Errors

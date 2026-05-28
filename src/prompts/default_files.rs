@@ -29,7 +29,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
             "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
-            "coding_rules.md" => Some(include_str!("../../default_prompts/coding_rules.md")),
             _ => None,
         })
 }

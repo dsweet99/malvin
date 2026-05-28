@@ -45,7 +45,7 @@ pub struct PromptError(pub String);
 
 pub use crate::user_home::user_home_dir;
 pub use store::{
-    KpopPromptValidation, PromptStore, merged_coding_rules, render_mbc2_for_scheduled_kpop_block,
+    KpopPromptValidation, PromptStore, render_header, render_mbc2_for_scheduled_kpop_block,
 };
 
 #[cfg(test)]

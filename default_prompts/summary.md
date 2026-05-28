@@ -13,4 +13,4 @@ Output your summary in the format
 *tl;dr* <TLDR>
 ```
 
-where EXECUTIVE_SUMMARY is brief and TLDR is super-brief. Write in complete sentences so that a human reading can easisly understand.
+where EXECUTIVE_SUMMARY is brief and TLDR is super-brief. Write in complete sentences so that a human reading can easily understand.

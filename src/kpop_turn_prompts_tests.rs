@@ -24,7 +24,7 @@ fn kpop_turn_prompts_render() {
         "kpop_common.md",
         "kpop_block.md",
         "mbc2.md",
-        "coding_rules.md",
+        "header.md",
     ] {
         std::fs::write(root.join(name), "body").expect("write");
     }

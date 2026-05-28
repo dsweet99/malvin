@@ -95,7 +95,7 @@ pub use output::{
 };
 pub use prompts::DO_HEADER_MD;
 pub use prompts::{
-    HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, merged_coding_rules,
+    HEADER_MD, PromptError, PromptStore, malformed_brace_placeholders, render_header,
 };
 pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,

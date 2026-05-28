@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::prompts::{PromptError, PromptStore, merged_coding_rules};
+use crate::prompts::{PromptError, PromptStore, render_header};
 
 #[derive(Debug)]
 pub struct KpopTurnPrompts<'a> {
@@ -26,7 +26,7 @@ impl KpopTurnPrompts<'_> {
             .render_prompt_only(body_file, ctx)
             .map_err(|e: PromptError| e.0)?;
         let rules = if with_rules {
-            Some(merged_coding_rules(self.store, ctx).map_err(|e: PromptError| e.0)?)
+            Some(render_header(self.store, ctx).map_err(|e: PromptError| e.0)?)
         } else {
             None
         };

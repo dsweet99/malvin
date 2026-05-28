@@ -27,7 +27,7 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
         .expect("kpop-only ok");
     assert!(
         store.validate_required().is_err(),
-        "full workflow should still require kpop_program/coding_rules when only header is present"
+        "full workflow should still require kpop_program when only header is present"
     );
 }
 
@@ -67,30 +67,14 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
 }
 
 #[test]
-fn kpop_validation_may_omit_coding_rules_without_error() {
+fn render_expands_coding_rules_placeholder_to_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "H").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
     std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let validation = store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation { require_mbc2: false });
-    assert!(
-        validation.is_ok(),
-        "kpop validation should unexpectedly pass: {validation:?}"
-    );
     let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
-    assert_eq!(out, "H");
-}
-
-#[test]
-fn load_coding_rules_swallows_missing_prompt_file() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::fs::write(root.join("header.md"), "H").unwrap();
-    let store = PromptStore::with_root(root.to_path_buf());
-    assert_eq!(store.load_coding_rules(), "");
+    assert_eq!(out, "");
 }
 
 #[test]
@@ -102,15 +86,15 @@ fn load_header_swallows_missing_prompt_file() {
 }
 
 #[test]
-fn validate_required_fails_when_header_or_coding_rules_missing() {
+fn validate_required_fails_when_header_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("kpop_program.md"), "x").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store.validate_required().unwrap_err();
     assert!(
-        err.0.contains("header.md") && err.0.contains("coding_rules.md"),
-        "expected missing header + coding_rules in error: {}",
+        err.0.contains("header.md"),
+        "expected missing header in error: {}",
         err.0
     );
 }
