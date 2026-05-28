@@ -24,20 +24,24 @@ fn seed_tidy_workspace(workspace: &Path) {
 }
 
 #[cfg(unix)]
-fn spawn_malvin_tidy_with_mock_path(
-    workspace: &Path,
-    home: &Path,
-    mock: &Path,
-    path: &str,
-) -> std::process::Output {
+struct MalvinTidySpawn<'a> {
+    workspace: &'a Path,
+    home: &'a Path,
+    mock: &'a Path,
+    path: &'a str,
+    timeout: std::time::Duration,
+}
+
+#[cfg(unix)]
+fn spawn_malvin_tidy(c: &MalvinTidySpawn<'_>) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(workspace)
-        .env("HOME", home)
+    cmd.current_dir(c.workspace)
+        .env("HOME", c.home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", mock)
-        .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
+        .env("MALVIN_AGENT_ACP_BIN", c.mock)
+        .env("PATH", c.path)
+        .args(["tidy", "--max-loops", "1"]);
+    command_output_with_timeout(&mut cmd, c.timeout).expect("spawn malvin")
 }
 
 #[cfg(unix)]
@@ -96,7 +100,7 @@ fn run_malvin_tidy_no_auth_keys(
         .env_remove("AGENT_API_KEY")
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", path)
-        .args(["tidy", "--no-learn"]);
+        .args(["tidy"]);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
 }
 
@@ -132,7 +136,13 @@ fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
 
-    let out = spawn_malvin_tidy_with_mock_path(&workspace, &home, &mock, &path);
+    let out = spawn_malvin_tidy(&MalvinTidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path: &path,
+        timeout: MALVIN_TEST_CMD_TIMEOUT + MALVIN_TEST_CMD_TIMEOUT,
+    });
 
     assert!(
         !out.status.success(),

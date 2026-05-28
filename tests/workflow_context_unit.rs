@@ -34,6 +34,10 @@ fn workflow_context_paths_include_review_and_gates_log() {
     let ctx = workflow_context_paths_only(&artifacts, "tidy");
     assert!(ctx.contains_key("review_path"));
     assert!(ctx.contains_key("quality_gates_log"));
+    assert_eq!(
+        ctx.get("quality_gates_path").map(String::as_str),
+        ctx.get("quality_gates_log").map(String::as_str),
+    );
     assert!(ctx.contains_key("kpop_log_dir"));
 }
 

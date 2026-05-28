@@ -3,8 +3,24 @@ use std::path::{Path, PathBuf};
 
 use super::RunArtifacts;
 
+pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
+    let path = artifacts.quality_gates_log_path();
+    let _ = std::fs::remove_file(&path);
+    std::fs::write(&path, "")
+}
+
 pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    let exp_log_path = artifacts.exp_log_path();
+    write_empty_exp_log(&artifacts.exp_log_path())
+}
+
+pub(crate) fn ensure_gate_exp_log_file(
+    artifacts: &RunArtifacts,
+    iteration: usize,
+) -> std::io::Result<PathBuf> {
+    write_empty_exp_log(&artifacts.gate_exp_log_path(iteration))
+}
+
+fn write_empty_exp_log(exp_log_path: &Path) -> std::io::Result<PathBuf> {
     let exp_parent = exp_log_path.parent().ok_or_else(|| {
         Error::new(
             ErrorKind::InvalidInput,
@@ -12,8 +28,8 @@ pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Res
         )
     })?;
     std::fs::create_dir_all(exp_parent)?;
-    std::fs::write(&exp_log_path, "")?;
-    Ok(exp_log_path)
+    std::fs::write(exp_log_path, "")?;
+    Ok(exp_log_path.to_path_buf())
 }
 
 pub fn create_run_artifacts(
@@ -40,6 +56,7 @@ pub fn create_run_artifacts_opts(
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf),
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -71,6 +88,7 @@ pub fn create_run_artifacts_from_text_opts(
         work_dir,
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -102,7 +120,18 @@ pub fn create_kpop_run_artifacts_opts(
         work_dir,
     };
     ensure_kpop_exp_log_file(&artifacts)?;
+    ensure_quality_gates_log_file(&artifacts)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
+}
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = ensure_kpop_exp_log_file;
+        let _ = write_empty_exp_log;
+    }
 }

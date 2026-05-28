@@ -2,7 +2,7 @@
 
 mod acp_tee;
 mod acp_tee_markdown;
-mod stderr_log;
+pub(crate) mod stderr_log;
 mod stdout_defer;
 mod stdout_display;
 mod stdout_heartbeat;
@@ -16,9 +16,13 @@ pub(crate) mod terminal_wrap;
 pub(crate) use stdout_defer::register_defer_stdout_hooks;
 #[allow(unused_imports)]
 pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
-pub(crate) use stdout_render::{flush_stdout_rendered_line, write_heartbeat_log_line};
+pub(crate) use stdout_render::{
+    flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
+};
+#[cfg(test)]
+pub(crate) use stdout_render::emit_stdout_rendered_immediate;
 pub(crate) use stdout_heartbeat::{
-    heartbeat_rendered_if_due, is_heartbeat_log_line, log_contains_heartbeat, mark_heartbeat_emitted,
+    heartbeat_rendered_if_due, log_contains_heartbeat,
 };
 
 pub(crate) use stdout_display::{
@@ -34,6 +38,7 @@ pub(crate) use stdout_heartbeat::{
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
+pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
 
 pub(crate) use acp_tee::{
     flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,
@@ -70,7 +75,6 @@ pub(crate) use self::terminal_wrap::{
 pub const MALVIN_WHO: &str = "malvin";
 pub const WARNING_WHO: &str = "warning";
 pub const ERROR_WHO: &str = "error";
-pub use crate::malvin_constants::LEARNING_PLACEHOLDER;
 
 pub(crate) use stdout_terminal::print_stdout_display_line;
 #[cfg(test)]
@@ -97,14 +101,6 @@ pub fn clear_captured_stderr_lines() {
 }
 
 /// Announce one outgoing prompt on stdout with a single bracket line `[{bracket_label}...]`.
-///
-/// With full prompt logging enabled, the ACP session also prints the full rendered prompt when not
-/// in raw-output mode: one plain stdout line per [`logical_lines`] slice, with the same `>`
-/// stem as used for that mode’s stdout lines. Optional `prompts.log` mirrors that (full body or
-/// name-only line);
-/// for uniform prompts the trace **file** always records the full outgoing text, while `malvin do`
-/// split traces keep a plain body on disk but use the `>do` stem on stdout and in `prompts.log`
-/// when verbose.
 pub fn print_outgoing_prompt_log(trace_who: &str, bracket_label: &str) {
     let directional_tag = format_acp_directional_tag_prefix('>', trace_who);
     let bracket_payload = format!("[{bracket_label}...]");
@@ -119,7 +115,7 @@ static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 use crate::terminal_palette::{
-    ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_NAVY, ANSI_TOOL_SAND,
+    ANSI_DIM, ANSI_RESET, ANSI_TOOL_AMBER, ANSI_TOOL_CORAL, ANSI_TOOL_NAVY,
 };
 
 #[must_use]
@@ -154,7 +150,7 @@ pub fn format_line(who: &str, line: &str) -> String {
 
 pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
-        WARNING_WHO => ANSI_TOOL_SAND,
+        WARNING_WHO => ANSI_TOOL_AMBER,
         ERROR_WHO => ANSI_TOOL_CORAL,
         _ => ANSI_TOOL_NAVY,
     }
@@ -196,8 +192,6 @@ pub use crate::stdout_log_path::set_stdout_log_path;
 pub(crate) use stdout_log_pair::{
     stdout_heartbeat_display_and_log_line, stdout_tagged_display_and_log_line,
 };
-#[cfg(test)]
-pub(crate) use stdout_log_pair::assert_acp_tool_summary_dim_preserves_bracket;
 
 pub(crate) fn append_stdout_log_line(line: &str) {
     let Some(path) = crate::stdout_log_path::clone_stdout_log_path() else {
@@ -248,3 +242,8 @@ pub fn is_command_prelude_line(line: &str) -> bool {
     }
     payload_after_fixed_width_bracket_tag(rest).is_some_and(|payload| payload.starts_with(CMD))
 }
+
+#[cfg(test)]
+pub(crate) use test_modules::{
+    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_brackets_share_color,
+};

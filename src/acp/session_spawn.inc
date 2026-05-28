@@ -9,7 +9,7 @@ pub(crate) fn prompt_rpc_cleanup_arc(io: &AcpHandshakeIo) -> Arc<PromptRpcCleanu
     })
 }
 
-fn spawn_handshake_stdout_reader(
+pub(crate) fn spawn_handshake_stdout_reader(
     stdout: ChildStdout,
     io: &AcpHandshakeIo,
     session: &AcpHandshakeSessionOpts,
@@ -31,7 +31,10 @@ fn spawn_handshake_stdout_reader(
     });
 }
 
-fn handshake_stdio_rpc(io: &AcpHandshakeIo, session: &AcpHandshakeSessionOpts) -> AcpStdioRpc {
+pub(crate) fn handshake_stdio_rpc(
+    io: &AcpHandshakeIo,
+    session: &AcpHandshakeSessionOpts,
+) -> AcpStdioRpc {
     AcpStdioRpc {
         reader_dead: io.reader_dead.clone(),
         stdin: io.stdin.clone(),
@@ -78,6 +81,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
         args,
         rpc_timeout,
         require_cursor_login_auth,
+        spawn_pid_baseline,
         child,
         stdin,
         stdout,
@@ -100,10 +104,11 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
     )
     .await?;
     let trace_jsonl = ch.trace_jsonl.clone();
-    Ok(AcpSession(Arc::new(ch.into_session_inner(
+    let session = AcpSession(Arc::new(ch.into_session_inner(
         SessionInnerAssembly {
             child,
             process_group_id,
+            spawn_pid_baseline: spawn_pid_baseline.clone(),
             session_id,
             rpc_timeout,
             telemetry: SessionReaderTelemetry {
@@ -118,13 +123,28 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
             work_dir: args.cwd.to_path_buf(),
             run_timing: None,
         },
-    ))))
+    )));
+    crate::active_agent_heartbeat::register_active_agent_process_group(
+        process_group_id,
+        spawn_pid_baseline.clone(),
+    );
+    crate::malvin_sandbox::note_active_sandbox_session(
+        process_group_id,
+        spawn_pid_baseline.clone(),
+    );
+    crate::acp::process_group_mem_watch::spawn_process_group_memory_watcher(&session, args.cwd);
+    Ok(session)
 }
 
 pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSession, String> {
+    crate::malvin_sandbox::assert_dead_before_next_spawn()?;
     let rpc_timeout = clamp_rpc_timeout(args.rpc_timeout);
     let require_cursor_login_auth =
         requires_cursor_login_auth(args.api_key, args.auth_token);
+    #[cfg(unix)]
+    let spawn_pid_baseline = crate::acp::unix_process_group_ps::snapshot_pids();
+    #[cfg(not(unix))]
+    let spawn_pid_baseline = std::collections::HashSet::new();
     let mut cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
         cwd: args.cwd,
         bin_override: args.bin_override,
@@ -149,6 +169,7 @@ pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSessi
         args,
         rpc_timeout,
         require_cursor_login_auth,
+        spawn_pid_baseline,
         child,
         stdin,
         stdout,

@@ -1,8 +1,75 @@
 //! Behavioral smoke tests for crate-root modules (kiss per-file coverage).
 
 #[test]
+fn smoke_active_agent_heartbeat_stats() {
+    let _ = stringify!(crate::active_agent_heartbeat::register_active_agent_process_group);
+    let _ = stringify!(crate::active_agent_heartbeat::unregister_active_agent_process_group);
+    let _ = stringify!(crate::malvin_sandbox::init_malvin_spawn_baseline);
+    let _ = stringify!(crate::malvin_sandbox::malvin_session_rss_bytes);
+    crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    assert!(crate::active_agent_heartbeat_stats().is_none());
+}
+
+#[test]
+fn smoke_agent_phase_kpop_and_reporting() {
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    crate::agent_phase::enter_kpop();
+    assert_eq!(crate::agent_phase::heartbeat_label(), "KPop cycling");
+    crate::agent_phase::leave_kpop();
+}
+
+#[test]
+fn smoke_emit_without_log_path_skips_disk_append() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(None);
+    crate::output::enable_stdout_capture();
+    crate::output::emit_stdout_rendered_immediate("[probe] x", "20260524.000000.000 [probe] x");
+    let terminal = crate::output::take_captured_stdout();
+    assert_eq!(terminal.trim(), "[probe] x");
+    crate::output::set_stdout_log_path(Some(path.clone()));
+    crate::output::emit_stdout_rendered_immediate("[probe] y", "20260524.000000.000 [probe] y");
+    crate::output::set_stdout_log_path(None);
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    assert!(text.contains("[probe] y"));
+}
+
+#[test]
+fn smoke_publish_heartbeat_live_terminal() {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(path.clone()));
+    crate::output::enable_stdout_capture();
+    crate::output::reset_stdout_heartbeat_for_test();
+    crate::output::test_set_last_heartbeat_elapsed(std::time::Duration::from_secs(61));
+    let display = "[malvin.........] 20260524.000000 Waiting";
+    crate::output::publish_heartbeat_live_terminal(display);
+    let terminal = crate::output::take_captured_stdout();
+    crate::output::set_stdout_log_path(None);
+    assert_eq!(terminal.trim(), display);
+    assert!(std::fs::read_to_string(path).unwrap_or_default().is_empty());
+    assert!(
+        crate::output::heartbeat_rendered_if_due(std::time::Instant::now(), false).is_none()
+    );
+}
+
+#[test]
 fn smoke_time_format_and_stdout_log_path() {
     assert!(!crate::time_format::timestamp_now_string().is_empty());
+    let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::agent_phase::reset_phase_state_for_test();
+    assert!(crate::time_format::heartbeat_payload_now().contains("Orienting"));
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("out.log");
     crate::stdout_log_path::set_stdout_log_path(Some(path.clone()));
@@ -18,11 +85,14 @@ fn smoke_artifacts_create() {
     let artifacts =
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     assert!(artifacts.plan_path.is_file());
+    assert!(artifacts.quality_gates_log_path().is_file());
     let from_text =
         crate::artifacts::create_run_artifacts_from_text("x", Some(tmp.path())).expect("from_text");
     assert!(from_text.plan_path.is_file());
+    assert!(from_text.quality_gates_log_path().is_file());
     let kpop = crate::artifacts::create_kpop_run_artifacts("req", Some(tmp.path())).expect("kpop");
     assert!(kpop.run_dir.join("request.md").is_file());
+    assert!(kpop.quality_gates_log_path().is_file());
     assert_eq!(
         crate::artifacts::work_dir_for_path(&plan),
         tmp.path().canonicalize().unwrap_or_else(|_| tmp.path().to_path_buf()),
@@ -30,8 +100,7 @@ fn smoke_artifacts_create() {
 }
 
 #[test]
-fn smoke_artifacts_resolve_and_learn_gate() {
-    assert!(crate::learn_gate::should_run_learn_check(0, 0));
+fn smoke_artifacts_resolve_user_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "hello").expect("write plan");
@@ -70,7 +139,6 @@ fn smoke_kpop_multiturn_builder_type() {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
     let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
     assert_eq!(smoke.kpop_block(1, 0).expect("kpop"), "k");
-    assert_eq!(smoke.mbc2_turn().expect("mbc2"), "m");
 }
 
 #[test]
@@ -78,6 +146,17 @@ fn smoke_child_health_sample() {
     let health = crate::child_health::sample_child_health(std::process::id());
     let _ = health.exists;
     let _ = health.zombie;
+}
+
+#[test]
+fn smoke_mem_limit_and_process_group_rss() {
+    let gb = crate::mem_limit_config::default_mem_limit_gb();
+    assert!(gb >= 1);
+    let rss = crate::process_group_rss::process_group_rss_bytes(
+        crate::process_group_rss::current_process_group_id().expect("pgid"),
+    )
+    .expect("rss");
+    assert!(rss > 0);
 }
 
 #[test]
@@ -109,8 +188,8 @@ fn kiss_cov_cross_file_symbols_b() {
     let _ = stringify!(who_tag_ansi);
     let _ = stringify!(emit_stderr_log_line);
     let _ = stringify!(emit_stderr_log_lines);
-    let _ = stringify!(read_artifact_review_text);
-    let _ = stringify!(CodeReviewAttemptOutcome);
+    let _ = stringify!(read_artifact_review_for_fanout_attempt);
+    let _ = stringify!(sync_review_file_for_attempt);
 }
 
 #[test]

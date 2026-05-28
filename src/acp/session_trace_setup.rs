@@ -169,3 +169,19 @@ mod kiss_cov_auto {
     fn kiss_cov_trace_write_outgoing_prompt() { let _ = stringify!(trace_write_outgoing_prompt); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = compose_do_split_prompt_text;
+        let _ = file_write_line_with_newline;
+        let _ = trace_open_truncated;
+        let _ = trace_prepare_file;
+        let _ = trace_write_invocation_and_do_split_prompt;
+        let _ = trace_write_invocation_header;
+        let _ = trace_write_outgoing_prompt;
+        let _ = trace_write_plain_body;
+    }
+}

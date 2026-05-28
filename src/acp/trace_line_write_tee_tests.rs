@@ -1,6 +1,7 @@
 use super::*;
 use crate::acp::trace_line_write::TraceTeeStdoutCtx;
 use crate::acp::trace_plain_tee::print_tee_unprefixed_wrapped_line;
+use crate::tool_summary::apply_tool_summary_ansi;
 
 fn trace_writer() -> PromptTraceWriter {
     let dir = tempfile::tempdir().unwrap();
@@ -138,15 +139,36 @@ fn format_styled_tool_summary_tee_line_applies_dim_after_bracket() {
     let writer = trace_writer();
     let plain = "Run echo hi · 1ms · ✓";
     let bracketed = format!("[{plain}]");
-    let display = crate::tool_summary::tool_summary_stdout_display(&bracketed);
+    let display = apply_tool_summary_ansi(&bracketed);
     let line = format_styled_tool_summary_tee_line(&writer, &bracketed, &display, "20260413.121314.015");
     crate::output::assert_acp_tool_summary_dim_preserves_bracket(&line);
+    crate::output::assert_tool_payload_brackets_share_color(&line);
+}
+
+#[test]
+fn styled_tool_payload_open_bracket_matches_close_bracket_color() {
+    let writer = trace_writer();
+    for plain in [
+        "Run echo hi · 1ms · ✓",
+        "Reading ./src/foo.rs…",
+        "Read ./src/foo.rs · 1ms",
+    ] {
+        let bracketed = format!("[{plain}]");
+        let display = apply_tool_summary_ansi(&bracketed);
+        let line = format_styled_tool_summary_tee_line(
+            &writer,
+            &bracketed,
+            &display,
+            "20260413.121314.015",
+        );
+        crate::output::assert_tool_payload_brackets_share_color(&line);
+    }
 }
 
 #[test]
 fn trace_tee_stdout_line_styled_tool_summary_dims_payload() {
     let plain = "Run echo hi · 1ms · ✓";
-    let display = crate::tool_summary::tool_summary_stdout_display(&format!("[{plain}]"));
+    let display = apply_tool_summary_ansi(&format!("[{plain}]"));
     let ts = "20260413.121314.015";
     let log = with_stdout_log(true, || {
         let mut writer = trace_writer();

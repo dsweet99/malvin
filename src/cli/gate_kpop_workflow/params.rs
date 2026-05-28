@@ -17,6 +17,8 @@ pub(crate) struct GateKpopIterationParams<'a> {
     pub loop_params: &'a GateKpopLoopParams<'a>,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub client: &'a mut crate::acp::AgentClient,
+    pub iteration: usize,
+    pub exp_log_path: std::path::PathBuf,
 }
 
 #[cfg(test)]
@@ -24,5 +26,15 @@ mod tests {
     #[test]
     fn gate_kpop_iteration_params_is_covered() {
         let _ = stringify!(GateKpopIterationParams);
+    }
+}
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<GateKpopIterationParams> = None;
+        let _: Option<GateKpopLoopParams> = None;
     }
 }

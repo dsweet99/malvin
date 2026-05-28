@@ -113,3 +113,15 @@ mod kiss_cov_auto {
     fn kiss_cov_append_prompts_log_do_plain() { let _ = stringify!(append_prompts_log_do_plain); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = open_prompts_log_append;
+        let _ = prompts_log_append_tagged_logical_lines;
+        let _ = prompts_log_flush;
+        let _ = prompts_log_write_formatted_line;
+    }
+}

@@ -1,9 +1,3 @@
-use std::sync::OnceLock;
-
-use rand::seq::SliceRandom;
-
-const HEARTBEAT_PHRASES_RAW: &str = include_str!("../default_prompts/heartbeats.txt");
-
 #[must_use]
 pub fn timestamp_now_string() -> String {
     let now = chrono::Local::now();
@@ -14,31 +8,17 @@ pub fn timestamp_now_string() -> String {
     )
 }
 
-fn heartbeat_phrases() -> &'static [&'static str] {
-    static PHRASES: OnceLock<Vec<&'static str>> = OnceLock::new();
-    PHRASES.get_or_init(|| {
-        HEARTBEAT_PHRASES_RAW
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .collect()
-    })
-    .as_slice()
-}
-
-fn random_heartbeat_phrase() -> &'static str {
-    let phrases = heartbeat_phrases();
-    phrases
-        .choose(&mut rand::thread_rng())
-        .copied()
-        .unwrap_or("Still alive, still alive.")
-}
-
-/// Wall-clock payload for stdout heartbeats (`YYYYMMDD.HHMMSS {phrase}`).
+/// Wall-clock payload for stdout heartbeats (`YYYYMMDD.HHMMSS {status}`).
 #[must_use]
 pub fn heartbeat_payload_now() -> String {
     let now = chrono::Local::now();
     let ts = now.format("%Y%m%d.%H%M%S");
-    format!("{ts} {}", random_heartbeat_phrase())
+    let mut payload = format!("{ts} {}", crate::agent_phase::heartbeat_label());
+    if let Some(stats) = crate::active_agent_heartbeat::active_agent_heartbeat_stats() {
+        payload.push_str(", ");
+        payload.push_str(&stats);
+    }
+    payload
 }
 
 #[must_use]
@@ -68,11 +48,29 @@ mod tests {
         assert!(super::heartbeat_payload_has_wall_clock_prefix(&payload));
     }
 
+    #[cfg(unix)]
     #[test]
-    fn heartbeat_phrases_ignore_blank_lines() {
-        let phrases = super::heartbeat_phrases();
-        assert!(!phrases.is_empty());
-        assert!(phrases.iter().all(|p| !p.trim().is_empty()));
+    fn heartbeat_payload_now_includes_agent_stats_when_session_registered() {
+        crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+        let pgid = std::process::id();
+        let baseline = crate::acp::snapshot_pids();
+        crate::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
+        let payload = super::heartbeat_payload_now();
+        assert!(payload.contains("sandbox: "));
+        assert!(payload.contains("RSS"));
+        assert!(payload.contains("procs"));
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
+        crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
+    }
+
+    #[test]
+    fn heartbeat_payload_uses_agent_phase_label() {
+        let _guard = crate::agent_phase::AGENT_PHASE_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        crate::agent_phase::reset_phase_state_for_test();
+        let payload = super::heartbeat_payload_now();
+        assert!(payload.contains("Orienting"));
     }
 
     #[test]
@@ -83,8 +81,4 @@ mod tests {
         assert!(!super::heartbeat_payload_has_wall_clock_prefix("HB: old"));
     }
 
-    #[test]
-    fn kiss_cov_random_heartbeat_phrase() {
-        let _ = super::random_heartbeat_phrase();
-    }
 }

@@ -4,13 +4,12 @@ mod tests {
 
     use crate::init_cmd::init_cmd_bootstrap::ensure_git_lfs_hooks;
     use crate::init_cmd::init_cmd_mid_core::{
-        build_pre_commit_config, require_on_path, run_command_expect_success, write_shell_script,
-        write_text_file,
+        build_pre_commit_config, emit_init_startup, require_on_path, run_command_expect_success,
+        write_shell_script, write_text_file,
     };
     use crate::init_cmd::init_cmd_workspace::ensure_malvin_workspace_layout;
     use crate::init_cmd::{
-        emit_init_startup, parse_languages, resolve_init_root, Language, ADMIN_CHECK_UNTRACKED,
-        TPL_GITIGNORE,
+        parse_languages, resolve_init_root, Language, ADMIN_CHECK_UNTRACKED, TPL_GITIGNORE,
     };
 
     #[test]

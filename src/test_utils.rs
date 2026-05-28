@@ -216,6 +216,7 @@ pub fn empty_session_dotfile_backups(work: &Path) -> crate::artifacts::SessionDo
         crate::artifacts::backup_workspace_kissconfig_if_present(work).unwrap(),
         crate::artifacts::backup_workspace_malvin_checks_if_present(work).unwrap(),
         crate::artifacts::backup_workspace_kissignore_if_present(work).unwrap(),
+        crate::artifacts::backup_workspace_malvin_config_if_present(work).unwrap(),
     )
 }
 

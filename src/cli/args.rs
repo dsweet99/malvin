@@ -14,17 +14,31 @@ pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
 #[derive(Parser, Debug)]
+#[allow(clippy::struct_excessive_bools)]
 #[command(
     name = "malvin",
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
-    disable_help_subcommand = true
+    disable_help_subcommand = true,
+    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). Use subcommands for do, code, constrain, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
+    /// Gate-loop iterations for bare `malvin REQUEST` (kpop).
+    #[arg(long = "max-loops", default_value_t = 1)]
+    pub bare_max_loops: usize,
+    /// `KPop` hypothesis budget per gate session for bare kpop invocations.
+    #[arg(long = "max-hypotheses", default_value_t = 10)]
+    pub bare_max_hypotheses: usize,
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare kpop invocations.
+    #[arg(long = "tenacious", default_value_t = false)]
+    pub bare_tenacious: bool,
+    /// When no subcommand: kpop request text or path.
+    #[arg(value_name = "REQUEST")]
+    pub bare_args: Vec<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -40,7 +54,10 @@ pub enum Commands {
     Invent(InventArgs),
     /// Write code
     Code(crate::cli::code_flow::CodeArgs),
-    /// Reason scientifically (q&a, research, optimization, ...)
+    /// Write a regression test and code to satisfy constraints
+    Constrain(crate::cli::constrain_flow::ConstrainArgs),
+    /// Reason scientifically (prefer bare `malvin REQUEST`)
+    #[command(hide = true)]
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),

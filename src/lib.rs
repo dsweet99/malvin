@@ -35,12 +35,17 @@
 
 mod log_gc;
 mod log_gc_config;
+mod malvin_config_file;
+mod current_state;
+pub mod mem_limit_config;
+pub use current_state::format_current_state;
+pub mod malvin_sandbox;
+pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
 pub use malvin_short_id::{
     is_valid_malvin_short_id, malvin_short_id, validate_malvin_short_id, MALVIN_SHORT_ID_LEN,
 };
-mod learn_gate;
 mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
@@ -54,26 +59,32 @@ pub use run_id::{build_identifier, create_run_dir, RunDirOptions};
 pub mod session_dotfile_backup;
 mod tracing_init;
 mod user_home;
-pub use learn_gate::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 pub(crate) mod time_format;
+pub mod agent_phase;
+mod active_agent_heartbeat;
+pub use active_agent_heartbeat::active_agent_heartbeat_stats;
 pub use user_home::user_home_dir;
 pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
+mod acp_test_mock_js;
+pub use acp_test_mock_js::acp_mock_js;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
     AcpSession, AcpSpawnArgs, AgentClient, AgentError, AgentIoOptions, AgentKpopMultiturnCtl,
     AuthError, CoderPromptOptions, KpopFlowOnceArgs,
 };
+#[cfg(unix)]
+pub use acp::{snapshot_pids, terminate_agent_process_group};
 pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
     backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
-    backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
-    restore_workspace_session_dotfiles,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
+    create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
 pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_request};
 pub use config::DEFAULT_CLI_MODEL;
@@ -95,8 +106,6 @@ pub use session_dotfile_backup::KissConfigBackup;
 pub mod artifacts;
 mod child_health;
 pub mod config;
-mod kpop_acp_prompt;
-pub use kpop_acp_prompt::kpop_creative_enabled;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
 pub use kpop_test_stubs::{
@@ -177,15 +186,31 @@ mod orchestrator_tests;
 #[cfg(test)]
 mod malvin_kiss_coverage;
 
+#[cfg(test)]
+#[path = "acp/transport/rpc_part1_kiss_test.rs"]
+mod acp_rpc_part1_kiss_test;
+
+
+#[cfg(test)]
+mod agent_phase_kiss_cov;
+
+#[cfg(test)]
+#[path = "output/output_kiss_cov.rs"]
+mod output_kiss_cov;
+
+#[cfg(test)]
+#[path = "cli/source_detect_kiss_cov.rs"]
+mod source_detect_kiss_cov;
+
 #[cfg(all(test, unix))]
 mod test_stderr_capture;
 
 #[cfg(test)]
 mod malvin_test_seed;
 #[cfg(test)]
-pub use malvin_test_seed::seed_malvin_checks;
+pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
 #[cfg(test)]
 pub mod test_utils;
 
 #[cfg(test)]
-mod test_agent_client;
+pub mod test_agent_client;

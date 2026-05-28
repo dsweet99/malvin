@@ -149,6 +149,33 @@ fn contended_unregister_stale_flag_bundles_duplicate_heartbeat() {
 }
 
 #[test]
+fn contended_try_push_publishes_heartbeat_on_live_terminal() {
+    let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _heartbeat_guard = crate::output::HEARTBEAT_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::output::reset_stdout_heartbeat_for_test();
+    crate::deferred_log::install_stdout_hooks();
+    let shared = zero_age_defer_shared("try_push_live");
+    register(Arc::clone(&shared));
+    crate::output::enable_stdout_capture();
+    {
+        let _hold = shared
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        assert!(try_push(heartbeat_entry()));
+    }
+    let terminal = crate::output::take_captured_stdout();
+    unregister();
+    assert!(
+        crate::output::log_contains_heartbeat(&terminal),
+        "heartbeat must reach live terminal while defer sink mutex is held; terminal={terminal:?}"
+    );
+}
+
+#[test]
 fn contended_try_push_dedupes_explicit_heartbeat() {
     let _stdout_guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()

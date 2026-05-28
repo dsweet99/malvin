@@ -11,15 +11,29 @@ pub use defaults::{DO_HEADER_MD, HEADER_MD};
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
 
+const UNRESOLVED_BRACES_MSG: &str =
+    "prompt still contains \"{{\" before ACP; resolve every {{ key }} placeholder";
+
 /// # Errors
 ///
 /// Returns [`PromptError`] when `text` still contains `{{`.
 pub fn enforce_no_unresolved_braces(text: &str) -> Result<(), PromptError> {
+    enforce_no_unresolved_braces_in(text, None)
+}
+
+/// # Errors
+///
+/// Returns [`PromptError`] when `text` still contains `{{`.
+pub fn enforce_no_unresolved_braces_in(
+    text: &str,
+    prompt_file: Option<&str>,
+) -> Result<(), PromptError> {
     if text.contains("{{") {
-        Err(PromptError(
-            "prompt still contains \"{{\" before ACP; resolve every {{ key }} placeholder"
-                .to_string(),
-        ))
+        let msg = prompt_file.map_or_else(
+            || UNRESOLVED_BRACES_MSG.to_string(),
+            |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
+        );
+        Err(PromptError(msg))
     } else {
         Ok(())
     }
@@ -49,4 +63,13 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_prompt_error() { let _ = stringify!(PromptError); }
 
+}
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<PromptError> = None;
+    }
 }

@@ -3,12 +3,11 @@ use std::path::PathBuf;
 
 use super::PromptError;
 use super::defaults::{DEFAULT_PROMPTS, HEADER_MD, REQUIRED_PROMPTS, default_file};
-use super::enforce_no_unresolved_braces;
+use super::enforce_no_unresolved_braces_in;
 use super::{merge_header_and_coding_rules, render_template};
 
 #[derive(Debug, Clone, Copy)]
 pub struct KpopPromptValidation {
-    pub run_learn: bool,
     pub require_mbc2: bool,
 }
 
@@ -134,9 +133,6 @@ impl PromptStore {
         if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
             missing.push("mbc2.md");
         }
-        if validation.run_learn && self.prompt_text("learn.md").is_err() {
-            missing.push("learn.md");
-        }
         if missing.is_empty() {
             return Ok(());
         }
@@ -175,7 +171,7 @@ impl PromptStore {
             merged_coding_rules(self, context)?,
         );
         let out = render_template(&prompt_text, &render_context);
-        enforce_no_unresolved_braces(&out)?;
+        enforce_no_unresolved_braces_in(&out, Some(filename))?;
         Ok(out)
     }
 
@@ -190,7 +186,7 @@ impl PromptStore {
         let prompt_text = self.prompt_text(filename)?;
         let render_context: HashMap<String, String> = context.clone();
         let out = render_template(&prompt_text, &render_context);
-        enforce_no_unresolved_braces(&out)?;
+        enforce_no_unresolved_braces_in(&out, Some(filename))?;
         Ok(out)
     }
 
@@ -222,7 +218,7 @@ pub fn merged_coding_rules(
     let rules_raw = store.load_coding_rules();
     let rules_expanded = render_template(&rules_raw, &render_context);
     let merged = merge_header_and_coding_rules(&header_expanded, &rules_expanded);
-    enforce_no_unresolved_braces(&merged)?;
+    enforce_no_unresolved_braces_in(&merged, Some("coding_rules.md"))?;
     Ok(merged)
 }
 

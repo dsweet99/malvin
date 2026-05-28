@@ -1,3 +1,0 @@
-[workspace]
-resolver = "2"
-members = ["date_in_sandbox", "memory_cap_oom", "detached_children"]

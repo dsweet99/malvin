@@ -9,11 +9,6 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     "/default_repo/gitignore"
 ));
 
-const DEFAULT_PROMPTS_REVIEW_PLAN: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_prompts/review_plan.md"
-));
-
 #[cfg(unix)]
 fn run_root_help_output() -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -68,13 +63,14 @@ fn help_no_markdown_description_is_disable_styled_markdown() {
         String::from_utf8_lossy(&out.stderr)
     );
     let s = String::from_utf8_lossy(&out.stdout);
-    let line = s
+    let idx = s
         .lines()
-        .find(|line| line.contains("--no-markdown"))
+        .position(|line| line.contains("--no-markdown"))
         .unwrap_or_else(|| panic!("expected --no-markdown in root help: {s}"));
+    let window = s.lines().skip(idx).take(2).collect::<Vec<_>>().join("\n");
     assert!(
-        line.contains("Disable styled markdown"),
-        "expected --no-markdown help to say 'Disable styled markdown': {line:?}"
+        window.contains("Disable styled markdown"),
+        "expected --no-markdown help to say 'Disable styled markdown': {window:?}"
     );
 }
 
@@ -105,12 +101,24 @@ fn help_omits_removed_ground_sync_plan_and_hunt_commands() {
     );
 }
 
-#[test]
-fn default_prompts_review_plan_uses_spaced_brace_placeholders() {
-    let bad = malvin::prompts::malformed_brace_placeholders(DEFAULT_PROMPTS_REVIEW_PLAN);
+#[cfg_attr(unix, test)]
+fn help_lists_max_acp_retries_with_default_three() {
+    let out = run_root_help_output();
     assert!(
-        bad.is_empty(),
-        "review_plan.md must use {{ key }} placeholders: {bad:?}"
+        out.status.success(),
+        "help failed: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(help_option_count(&s, "--max-acp-retries"), 1);
+    let idx = s
+        .lines()
+        .position(|line| line.contains("--max-acp-retries"))
+        .unwrap_or_else(|| panic!("expected --max-acp-retries in root help: {s}"));
+    let window = s.lines().skip(idx).take(2).collect::<Vec<_>>().join("\n");
+    assert!(
+        window.contains("[default: 3]"),
+        "expected --max-acp-retries help to show default 3: {window:?}"
     );
 }
 

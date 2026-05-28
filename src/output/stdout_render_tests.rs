@@ -15,8 +15,12 @@ fn tagged_pair(payload: &str) -> (String, String) {
     stdout_tagged_display_and_log_line(MALVIN_WHO, payload, Some("20260524.000000.000"))
 }
 
-fn heartbeat_pair(payload: &str) -> (String, String) {
-    stdout_heartbeat_display_and_log_line(MALVIN_WHO, payload, Some("20260524.000000.000"))
+fn heartbeat_pair(suffix: &str) -> (String, String) {
+    stdout_heartbeat_display_and_log_line(
+        MALVIN_WHO,
+        &format!("20260524.000000 {suffix}"),
+        Some("20260524.000000.000"),
+    )
 }
 
 fn with_render_capture<F: FnOnce()>(run: F) -> (String, String) {
@@ -227,23 +231,4 @@ fn heartbeat_route_defers_then_flush_preserves_split() {
     assert_eq!(terminal.trim(), display);
     assert_eq!(disk.lines().next().expect("log line"), log);
     assert!(!terminal.starts_with("20"));
-}
-
-#[test]
-fn emit_without_log_path_skips_disk_append() {
-    let _guard = STDOUT_LOG_TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(None);
-    crate::output::enable_stdout_capture();
-    emit_stdout_rendered_immediate("[probe] x", "20260524.000000.000 [probe] x");
-    let terminal = crate::output::take_captured_stdout();
-    assert_eq!(terminal.trim(), "[probe] x");
-    crate::output::set_stdout_log_path(Some(path.clone()));
-    emit_stdout_rendered_immediate("[probe] y", "20260524.000000.000 [probe] y");
-    crate::output::set_stdout_log_path(None);
-    let text = std::fs::read_to_string(path).unwrap_or_default();
-    assert!(text.contains("[probe] y"));
 }

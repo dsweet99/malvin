@@ -87,7 +87,7 @@ pub(crate) fn agent_program(bin_override: Option<&Path>) -> String {
 }
 
 pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Command {
-    let mut cmd = Command::new(agent_program(args.bin_override));
+    let mut cmd = crate::malvin_sandbox::malvin_tokio_command(agent_program(args.bin_override));
     forward_parent_env(&mut cmd);
     let api_key = effective_cursor_api_key(args.api_key);
     let auth_token = effective_cursor_auth_token(args.auth_token);
@@ -100,17 +100,8 @@ pub(crate) fn build_agent_acp_command(args: &BuildAgentAcpCommandArgs<'_>) -> Co
     }
     apply_acp_tail(&mut cmd, args.cwd, args.george_acp_lane);
     prepend_standard_path_for_child(&mut cmd);
-    isolate_agent_process_group(&mut cmd);
     cmd
 }
-
-#[cfg(unix)]
-fn isolate_agent_process_group(cmd: &mut Command) {
-    cmd.process_group(0);
-}
-
-#[cfg(not(unix))]
-fn isolate_agent_process_group(_: &mut Command) {}
 
 pub(crate) async fn spawn_agent_acp_child(cmd: &mut Command) -> Result<Child, io::Error> {
     const ATTEMPTS: u32 = 16;
@@ -169,7 +160,6 @@ fn transport_command_kiss_static_refs() {
     let _ = apply_api_and_auth;
     let _ = apply_acp_tail;
     let _ = agent_program;
-    let _ = isolate_agent_process_group;
     let _ = spawn_agent_acp_child;
     let _ = executable_text_busy;
 }

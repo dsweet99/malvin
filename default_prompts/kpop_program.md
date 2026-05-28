@@ -9,8 +9,8 @@ General Constraints:
 - No serious bugs in scope
 - No serious time-complexity inefficiencies in scope
 - No serious memory-complexity inefficiencies in scope
-- *Absolutely* no "cheats" to avoid violations of kiss metrics (run `kiss stats` to see a table of kiss metrics). Check, especially, import patterns and unit tests. Unit tests must be earnest (not wildly detailed, just earnest) attempts to test. 
-- Any code you write is idiomatic. (For example: Don't use ".inc" files in Rust.)
+- Each unit test tests something meanigful. Simple tests are fine. Bogus tests are not.
+- Any code you write should be idiomatic. (For example: Don't use ".inc" files in Rust.)
 - When you code, stay in scope.
 
 If you write code:
@@ -20,3 +20,6 @@ If you write code:
 Quality Gates:
 
 {{ quality_gates }}
+
+
+Latest & up-to-date quality gate run output is in: `{{ quality_gates_path }}`.

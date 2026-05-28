@@ -26,7 +26,7 @@ Number of ideas to ask for in the rendered prompt. Default: **3**. Maps to `{{ n
 
 ### Global options
 
-See `malvin.md`. Agent stdout is **plain/raw** (like `do`); `--no-markdown` does not change styling. `--verbose` logs full prompt bodies.
+See `malvin.md`. `--no-markdown` styles agent stdout. `--verbose` logs full prompt bodies.
 
 ## Prompt workflow
 

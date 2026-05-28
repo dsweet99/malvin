@@ -1,10 +1,10 @@
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
 
 use super::{
     ReviewPairId, RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
     finalize_run_timing_json_only, record_backoff, record_llm, report,
 };
-use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 #[test]
 fn run_timing_json_phases_and_review_pair_id_mapping() {
@@ -19,7 +19,6 @@ fn run_timing_json_phases_and_review_pair_id_mapping() {
         "review_fanout",
         "review_write",
         "concerns",
-        "learn",
         "summary",
     ] {
         assert!(phases.get(key).is_some(), "missing {key}");
@@ -109,6 +108,73 @@ fn tool_call_wall_duration_accumulates_in_run_timing() {
             .and_then(serde_json::Value::as_u64),
         Some(50)
     );
+}
+
+#[test]
+fn wall_clock_ms_for_json_uses_elapsed_when_wall_end_open() {
+    let mut r = RunTiming::default();
+    r.mark_wall_start(Instant::now());
+    std::thread::sleep(Duration::from_millis(15));
+    let ms = report::wall_clock_ms_for_json(&r).expect("wall ms");
+    assert!(ms >= 10, "open run should report elapsed wall ms, got {ms}");
+    assert!(r.wall_duration().is_none());
+}
+
+#[test]
+fn persist_open_run_timing_json_keeps_wall_end_unset() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_millis(100),
+    );
+    super::persist_open_run_timing_json(tmp.path(), &timing).expect("persist open");
+    assert!(timing.lock().unwrap().wall_end.is_none());
+    let json = std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE)).unwrap();
+    assert!(json.contains("\"implement\": 100"));
+    assert!(json.contains("\"llm_wait_ms\": 100"));
+}
+
+#[test]
+fn accumulate_run_timing_across_two_sessions() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(1_000));
+    super::persist_open_run_timing_json(tmp.path(), &timing).expect("first persist");
+    record_llm(Some(&timing), TimingPhase::Implement, Duration::from_millis(500));
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
+    let llm_ms = report::to_json_value(&timing.lock().unwrap())["llm_wait_ms"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(llm_ms, 1_500);
+}
+
+#[test]
+fn run_timing_without_wall_start_yields_null_wall_ms() {
+    let mut r = RunTiming::default();
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+    assert!(report::wall_clock_ms_for_json(&r).is_none());
+}
+
+#[test]
+fn attach_new_run_timing_enables_wall_ms_after_finalize() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut slot: Option<Arc<Mutex<RunTiming>>> = None;
+    let timing = attach_new_run_timing(&mut slot);
+    record_llm(
+        Some(&timing),
+        TimingPhase::Implement,
+        Duration::from_millis(100),
+    );
+    finalize_and_emit_run_timing(tmp.path(), &timing).expect("finalize");
+    let json: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(tmp.path().join(super::RUN_TIMING_JSON_FILE)).expect("run_timing.json"),
+    )
+    .expect("json");
+    assert!(json["wall_clock_ms"].as_u64().is_some());
 }
 
 #[test]

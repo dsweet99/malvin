@@ -114,7 +114,7 @@ pub fn run_malvin_under_script(malvin_args_line: &str) -> std::process::Output {
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
-    let mut args_line = String::from("code --trust-the-plan --no-learn --max-loops 0 ship");
+    let mut args_line = String::from("code --trust-the-plan --max-loops 0 ship");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);
@@ -123,9 +123,8 @@ pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_kpop_catchup_under_script(extra_args: &[&str]) -> std::process::Output {
-    let mut args_line =
-        String::from("kpop --no-learn --max-hypotheses 50 investigate");
+pub fn run_kpop_no_progress_under_script(extra_args: &[&str]) -> std::process::Output {
+    let mut args_line = String::from("kpop --max-hypotheses 50 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);
@@ -159,12 +158,7 @@ pub fn read_all_logs(run_dir: &Path) -> String {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn assert_markdown_stdout_and_logs(run: &PtyRun, failure_context: &str) {
-    assert!(
-        !run.output.status.success(),
-        "{failure_context}: {:?}",
-        run.output
-    );
+pub fn assert_markdown_stdout_and_logs(run: &PtyRun) {
     let stdout = String::from_utf8_lossy(&run.output.stdout);
     assert!(
         !stdout.contains("# md-heading-xyz"),

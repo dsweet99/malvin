@@ -18,6 +18,8 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
+#[path = "backoff_helpers_tests.rs"]
+mod backoff_helpers_tests;
 #[path = "../acp/reader_tests_tool_summary.rs"]
 pub(crate) mod reader_tests_tool_summary;
 #[path = "../acp/reader_tests_tool_summary_human.rs"]
@@ -34,6 +36,9 @@ pub(crate) mod reader_tests_trace_a;
 pub(crate) mod reader_tests_trace_b;
 #[path = "../acp/reader_tests_trace_coalesce_write.rs"]
 pub(crate) mod reader_tests_trace_coalesce_write;
+#[cfg(test)]
+#[path = "reader_trace_coalesce_kiss_cov.rs"]
+mod reader_trace_coalesce_kiss_cov;
 #[path = "../acp/reader_tests_trace_kpop_helpers.rs"]
 pub(crate) mod reader_tests_trace_kpop_helpers;
 #[path = "../acp/reader_tests_trace_iterable.rs"]
@@ -51,6 +56,9 @@ mod kpop_stdout_logger_plan_check_ext;
 mod kpop_stdout_logger_plan_check_impl;
 #[path = "../acp/kpop_stdout_logger_plan_helpers.rs"]
 mod kpop_stdout_logger_plan_helpers;
+#[cfg(test)]
+#[path = "../acp/kpop_stdout_logger_plan_helpers_kiss.rs"]
+mod kpop_stdout_logger_plan_helpers_kiss;
 
 #[path = "../acp/cursor_credentials_tests.rs"]
 mod cursor_credentials_tests;

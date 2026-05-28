@@ -10,13 +10,6 @@ impl MtStubPrompts {
     pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
         Ok(format!("stub kpop want={want}"))
     }
-
-    /// # Errors
-    ///
-    /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_turn(&mut self) -> Result<String, String> {
-        Ok("stub mbc2".into())
-    }
 }
 
 #[derive(Debug, Default)]
@@ -28,13 +21,6 @@ impl EchoPrompts {
     /// Returns `Err` when prompt assembly fails (stub never fails).
     pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
         Ok(format!("K{want}"))
-    }
-
-    /// # Errors
-    ///
-    /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_turn(&mut self) -> Result<String, String> {
-        Ok("M".into())
     }
 }
 
@@ -58,13 +44,6 @@ impl CaptureWants {
     pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
         self.wants.lock().expect("wants lock").push(want);
         Ok(format!("stub kpop want={want}"))
-    }
-
-    /// # Errors
-    ///
-    /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn mbc2_turn(&mut self) -> Result<String, String> {
-        Ok("stub mbc2".into())
     }
 }
 

@@ -30,8 +30,12 @@ fn begin_defer_heartbeat_session(session: &str) -> SharedDeferSink {
     shared
 }
 
-fn flush_heartbeat_terminal_count(shared: &SharedDeferSink) -> usize {
+fn flush_heartbeat_terminal_count(
+    shared: &SharedDeferSink,
+    before_flush: impl FnOnce(),
+) -> usize {
     let (terminal, _log) = crate::deferred_log::test_fixtures::capture_stdout_render(|| {
+        before_flush();
         shared
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -44,15 +48,6 @@ fn flush_heartbeat_terminal_count(shared: &SharedDeferSink) -> usize {
                 || l.split("] ").nth(1).is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
         })
         .count()
-}
-
-fn emit_rendered_due_heartbeat() {
-    use std::time::Instant;
-
-    let Some((display, log)) = crate::output::heartbeat_rendered_if_due(Instant::now(), false) else {
-        panic!("heartbeat must be due");
-    };
-    crate::output::write_heartbeat_log_line(&display, &log);
 }
 
 fn heartbeat_display_log_line() -> (String, String) {
@@ -75,7 +70,7 @@ fn defer_hooks_invoke_active_paths() {
 }
 
 #[test]
-fn log_with_heartbeat_leaves_clock_due_until_deferred_heartbeat_visible() {
+fn log_with_heartbeat_marks_clock_when_live_terminal_published() {
     use std::time::Instant;
 
     let shared = aged_defer_shared("hb_clock");
@@ -86,8 +81,8 @@ fn log_with_heartbeat_leaves_clock_due_until_deferred_heartbeat_visible() {
         build_display_log_entry("tag".into(), "tag".into()),
     );
     assert!(
-        crate::output::heartbeat_rendered_if_due(Instant::now(), false).is_some(),
-        "interval clock must not advance until deferred heartbeat reaches terminal"
+        crate::output::heartbeat_rendered_if_due(Instant::now(), false).is_none(),
+        "interval clock must advance once bundled heartbeat is on the live terminal"
     );
     unregister_active_sink();
 }
@@ -96,12 +91,13 @@ fn log_with_heartbeat_leaves_clock_due_until_deferred_heartbeat_visible() {
 fn write_heartbeat_then_log_with_heartbeat_enqueues_one_heartbeat() {
     let shared = begin_defer_heartbeat_session("hb_dup");
     let (display, log_line) = heartbeat_display_log_line();
-    crate::output::write_heartbeat_log_line(&display, &log_line);
-    log_with_heartbeat(
-        &mut shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
-        build_display_log_entry("tag".into(), "tag".into()),
-    );
-    let count = flush_heartbeat_terminal_count(&shared);
+    let count = flush_heartbeat_terminal_count(&shared, || {
+        crate::output::write_heartbeat_log_line(&display, &log_line);
+        log_with_heartbeat(
+            &mut shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+            build_display_log_entry("tag".into(), "tag".into()),
+        );
+    });
     unregister_active_sink();
     assert_eq!(count, 1, "defer sink must not accumulate duplicate bundled heartbeats");
 }
@@ -129,24 +125,30 @@ fn log_with_heartbeat_pushes_due_inline_heartbeat() {
 #[test]
 fn double_try_emit_while_deferred_enqueues_one_heartbeat() {
     let shared = begin_defer_heartbeat_session("double_try_emit");
-    emit_rendered_due_heartbeat();
-    assert_eq!(
-        shared
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .queue_len(),
-        1
-    );
-    emit_rendered_due_heartbeat();
-    assert_eq!(
-        shared
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .queue_len(),
-        1,
-        "second try_emit must not enqueue duplicate deferred heartbeat"
-    );
-    let count = flush_heartbeat_terminal_count(&shared);
+    let (display, log_line) = crate::output::heartbeat_rendered_if_due(
+        std::time::Instant::now(),
+        false,
+    )
+    .expect("heartbeat due");
+    let count = flush_heartbeat_terminal_count(&shared, || {
+        crate::output::write_heartbeat_log_line(&display, &log_line);
+        assert_eq!(
+            shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .queue_len(),
+            1
+        );
+        crate::output::write_heartbeat_log_line(&display, &log_line);
+        assert_eq!(
+            shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .queue_len(),
+            1,
+            "second try_emit must not enqueue duplicate deferred heartbeat"
+        );
+    });
     unregister_active_sink();
     assert_eq!(count, 1);
 }
@@ -155,24 +157,25 @@ fn double_try_emit_while_deferred_enqueues_one_heartbeat() {
 fn unlocked_double_write_heartbeat_enqueues_one_heartbeat() {
     let shared = begin_defer_heartbeat_session("double_write_hb");
     let (display, log_line) = heartbeat_display_log_line();
-    crate::output::write_heartbeat_log_line(&display, &log_line);
-    assert_eq!(
-        shared
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .queue_len(),
-        1
-    );
-    crate::output::write_heartbeat_log_line(&display, &log_line);
-    assert_eq!(
-        shared
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .queue_len(),
-        1,
-        "unlocked double write_heartbeat must not enqueue duplicate heartbeat"
-    );
-    let count = flush_heartbeat_terminal_count(&shared);
+    let count = flush_heartbeat_terminal_count(&shared, || {
+        crate::output::write_heartbeat_log_line(&display, &log_line);
+        assert_eq!(
+            shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .queue_len(),
+            1
+        );
+        crate::output::write_heartbeat_log_line(&display, &log_line);
+        assert_eq!(
+            shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .queue_len(),
+            1,
+            "unlocked double write_heartbeat must not enqueue duplicate heartbeat"
+        );
+    });
     unregister_active_sink();
     assert_eq!(count, 1);
 }

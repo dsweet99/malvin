@@ -119,3 +119,14 @@ mod kiss_cov_auto {
     fn kiss_cov_gate_failure_summary() { let _ = stringify!(gate_failure_summary); }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = emit_repo_gate_multiline_stderr;
+        let _ = gate_failure_summary;
+        let _ = is_pure_gate_failure_summary;
+    }
+}

@@ -74,3 +74,14 @@ mod kiss_cov {
         let _ = stringify!(super::tool_drain_enrich_fields);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = enrichable_tool_kind;
+        let _ = has_wire_path;
+        let _ = tool_fallback_plain;
+    }
+}

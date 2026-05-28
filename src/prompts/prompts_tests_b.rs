@@ -2,27 +2,6 @@ use std::collections::HashMap;
 
 use crate::prompts::*;
 
-#[test]
-fn validate_kpop_prompts_requires_learn_when_run_learn() {
-    let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::fs::write(root.join("header.md"), "").unwrap();
-    std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
-    let store = PromptStore::with_root(root.to_path_buf());
-    let err = store
-        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
-            run_learn: true,
-            require_mbc2: false,
-        })
-        .unwrap_err();
-    assert!(
-        err.0.contains("learn.md"),
-        "expected learn missing error, got {:?}",
-        err.0
-    );
-}
-
 fn write_nested_coding_rules_fixture(root: &std::path::Path) {
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(
@@ -98,6 +77,18 @@ fn render_fails_when_double_brace_remains() {
         "expected brace rejection, got {:?}",
         err.0
     );
+    assert!(
+        err.0.contains("bug_fix.md"),
+        "expected prompt file in error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn enforce_no_unresolved_braces_in_reports_prompt_file() {
+    let err = crate::prompts::enforce_no_unresolved_braces_in("x {{ y }} z", Some("kpop_program.md"))
+        .expect_err("braces");
+    assert!(err.0.contains("kpop_program.md"));
 }
 
 #[test]
@@ -125,33 +116,3 @@ fn merge_header_and_coding_rules_handles_empty() {
     assert_eq!(merge_header_and_coding_rules("  ", "  "), "");
 }
 
-#[test]
-fn learn_prompt_has_consistent_memory_target_guidance() {
-    let store = PromptStore::default_store();
-    store.ensure_defaults().unwrap();
-    let ctx = HashMap::from([(
-        "advice_path".to_string(),
-        "./.malvin/advice.md".to_string(),
-    )]);
-    let learn = store.render_prompt_only("learn.md", &ctx).unwrap();
-    assert!(
-        learn.contains("Edit `./.malvin/advice.md`"),
-        "expected consistent memory-path guidance in learn prompt"
-    );
-    assert!(
-        learn.contains("relative to the existing `./.malvin/advice.md`"),
-        "expected advice file guidance in learn prompt"
-    );
-}
-
-#[test]
-fn learn_prompt_has_no_obvious_typo() {
-    let learn = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/default_prompts/learn.md"
-    ));
-    assert!(
-        !learn.contains("oncrement"),
-        "expected learn typo to be fixed"
-    );
-}

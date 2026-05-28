@@ -1,5 +1,5 @@
 #![allow(unused_imports, clippy::wildcard_imports)]
-mod inline {
+pub(crate) mod inline {
     #![allow(clippy::wildcard_imports)]
     use super::super::jsonl_trace::AcpJsonlTrace;
     use super::super::session_types::*;
@@ -10,6 +10,7 @@ mod inline {
     use tokio::process::{Child, ChildStdin, ChildStdout};
     use tokio::sync::{Mutex, Notify};
     include!("session_channels.inc");
+
 }
 
 pub(crate) use inline::*;

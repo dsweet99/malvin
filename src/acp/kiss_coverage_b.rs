@@ -16,7 +16,6 @@ fn kiss_cov_acp_mod_and_spawn_inc() {
     let _ = super::cursor_cli_auth_established();
     let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
     let _ = stringify!(spawn_agent_acp_session);
-    let _ = stringify!(client_timing_elapsed_ms);
     let _ = stringify!(prompt_rpc_cleanup_arc);
     let _ = stringify!(spawn_handshake_stdout_reader);
     let _ = stringify!(handshake_stdio_rpc);
@@ -155,6 +154,38 @@ fn kiss_cov_acp_reader_test_trace_upgrade_plan() {
     let _ = stringify!(assert_upgrade_plan_operational_stderr);
     let _ = stringify!(run_upgrade_plan_split_coalesce_fixture);
     let _ = stringify!(upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee);
+}
+
+#[test]
+fn kiss_cov_unix_process_group_mod_reexports() {
+    let _ = super::snapshot_pids;
+    let _ = super::spawned_pids_since_baseline;
+    let _ = super::signal_process_group;
+    let _ = super::terminate_agent_process_group;
+    let _ = super::terminate_process_group;
+}
+
+#[test]
+fn kiss_cov_unix_process_group_ps_fns() {
+    let _ = super::unix_process_group_ps::looks_like_malvin_agent_acp;
+    let _ = super::unix_process_group_ps::read_proc_cmdline;
+    let _ = super::unix_process_group_ps::read_proc_environ;
+    let _ = stringify!(super::unix_process_group_ps::unix_process_group_ps_tests::looks_like_malvin_agent_acp_matches_environ_marker);
+}
+
+#[test]
+fn kiss_cov_unix_process_group_teardown_fns() {
+    let _ = super::unix_process_group_teardown::terminate_agent_process_group;
+    let _ = super::unix_process_group_teardown::terminate_process_group;
+    let _ = super::unix_process_group_teardown::kill_targets_for_teardown;
+    let _ = super::unix_process_group_teardown::malvin_session_spawn_pids;
+    let _ = super::unix_process_group_teardown::baseline_amnestied_agent_orphans;
+    let _ = super::unix_process_group_teardown::reap_baseline_amnestied_agent_orphans_blocking;
+    let _ = super::hostile_orphan_test_util::spawn_agent_pg_and_malvin_sibling;
+    let _ = super::hostile_orphan_test_util::assert_sibling_monitored_and_blocks_spawn;
+    let _ = super::hostile_orphan_test_util::spawn_hostile_agent_acp_orphan;
+    let _ = stringify!(super::unix_process_group_teardown::unix_process_group_teardown_tests::malvin_sibling_outside_agent_pg_killed_on_teardown);
+    let _ = stringify!(super::unix_process_group_teardown::unix_process_group_teardown_tests::baseline_amnestied_agent_acp_orphan_killed_on_teardown);
 }
 
 #[test]

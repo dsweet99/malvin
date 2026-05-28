@@ -65,7 +65,7 @@ pub fn run_code_with_mock_js_trust_plan_in_workspace(
 ) -> (std::process::Output, tempfile::TempDir, std::path::PathBuf) {
     let (root, home, workspace) = test_home_workspace();
     let (_bin_dir, mock, path) = prep_acp_mock_on_path(&root, "mock-agent-acp-code", mock_js);
-    let mut args = vec!["code", "--no-learn"];
+    let mut args = vec!["code"];
     if opts.trust_plan {
         args.push("--trust-the-plan");
     }
@@ -117,7 +117,7 @@ pub fn assert_review_abort_behavior(
     );
     assert!(
         !combined.contains(should_stop_prompt),
-        "ABORT should stop before learn after review LGTM: {combined:?}"
+        "ABORT should stop before summary after review LGTM: {combined:?}"
     );
 }
 
@@ -173,7 +173,6 @@ pub fn run_code_default_max_loops_never_lgtm_with_mock() -> std::process::Output
             .env("PATH", path)
             .args([
                 "code",
-                "--no-learn",
                 "--trust-the-plan",
                 "--no-tee",
                 "ship it",

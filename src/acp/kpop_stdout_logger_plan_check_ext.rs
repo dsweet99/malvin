@@ -184,7 +184,7 @@ fn h22_rendered_tool_summary_tee(
         .stdout
         .expect("stdout summary");
     let plain_bracketed = format!("[{plain}]");
-    let display = tool_summary_stdout_display(&plain_bracketed);
+    let display = crate::tool_summary::apply_tool_summary_ansi(&plain_bracketed);
     let tee_writer = h22_tee_writer(work_dir);
     format_styled_tool_summary_tee_line(&tee_writer, &plain_bracketed, &display, ts)
 }

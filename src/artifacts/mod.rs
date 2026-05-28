@@ -10,14 +10,18 @@ pub use create::{
     create_kpop_run_artifacts, create_kpop_run_artifacts_opts, create_run_artifacts,
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
+pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
 
 pub use crate::session_dotfile_backup::{
-    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, SessionDotfileBackups,
-    backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
-    backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
-    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
+    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
+    SessionDotfileBackups, backup_workspace_kissconfig_if_present,
+    backup_workspace_kissconfig_if_present_with_id, backup_workspace_kissignore_if_present,
+    backup_workspace_kissignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
+    backup_workspace_malvin_checks_if_present_with_id,
+    backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
-    restore_workspace_malvin_checks_backup, restore_workspace_session_dotfiles,
+    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
+    restore_workspace_session_dotfiles,
 };
 
 pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
@@ -51,12 +55,6 @@ impl RunArtifacts {
         self.run_dir.join("review_prep.md")
     }
 
-    /// Workspace `review.md` under [`Self::work_dir`].
-    #[must_use]
-    pub fn workspace_review_md(&self) -> PathBuf {
-        self.work_dir.join("review.md")
-    }
-
     /// Run-directory `result.md` for concerns ABORT signaling.
     #[must_use]
     pub fn artifact_result_md(&self) -> PathBuf {
@@ -65,14 +63,23 @@ impl RunArtifacts {
 
     #[must_use]
     pub fn exp_log_path(&self) -> PathBuf {
+        self.gate_exp_log_path(0)
+    }
+
+    /// Gate-loop experiment log; `iteration` 0 is the legacy `exp_log_{slug}.md` scaffold.
+    #[must_use]
+    pub fn gate_exp_log_path(&self, iteration: usize) -> PathBuf {
         let slug = self
             .run_dir
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("run");
-        self.run_dir
-            .join("_kpop")
-            .join(format!("exp_log_{slug}.md"))
+        let name = if iteration == 0 {
+            format!("exp_log_{slug}.md")
+        } else {
+            format!("exp_log_{slug}_g{iteration}.md")
+        };
+        self.run_dir.join("_kpop").join(name)
     }
 
     #[must_use]

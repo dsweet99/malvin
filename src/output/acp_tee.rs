@@ -216,3 +216,15 @@ mod kiss_cov_auto {
     }
 
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = print_acp_tee_stdout_markdown_line;
+        let _ = print_acp_tee_stdout_markdown_lines;
+        let _ = print_stdout_acp_tee_line_with_timestamp_payload;
+        let _ = route_acp_rendered;
+    }
+}

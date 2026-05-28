@@ -2,13 +2,12 @@ use serde_json::Value;
 
 use crate::run_timing::RUN_TIMING_SUMMARY_PREFIX;
 
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 7] = [
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 6] = [
     "check_plan",
     "implement",
     "review_fanout",
     "review_write",
     "concerns",
-    "learn",
     "summary",
 ];
 
@@ -114,11 +113,11 @@ mod tests {
         timing_stdout_append_phase_fields(
             &mut s,
             &mut first,
-            &json!({ "phases_ms": { "learn": 40 } }),
+            &json!({ "phases_ms": { "concerns": 40 } }),
         );
         assert!(s.contains("wall = "));
         assert!(s.contains("tool_calls = "));
-        assert!(s.contains("learn = "));
+        assert!(s.contains("concerns = "));
     }
 
     #[test]
@@ -145,8 +144,7 @@ mod tests {
                 "review_fanout": 3,
                 "review_write": 4,
                 "concerns": 5,
-                "learn": 6,
-                "summary": 7
+                "summary": 6
             }
         });
         let line = format_timing_stdout_line_from_json(&json);
@@ -161,6 +159,6 @@ mod tests {
             "phase_display_names": { "implement": "raw" }
         });
         assert_eq!(phase_display_name(&json, "implement"), "raw");
-        assert_eq!(phase_display_name(&json, "learn"), "learn");
+        assert_eq!(phase_display_name(&json, "summary"), "summary");
     }
 }

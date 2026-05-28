@@ -3,11 +3,12 @@ mod common;
 #[cfg(unix)]
 use common::{
     acp_mock_do_creates_kissconfig_js, acp_mock_do_creates_kissignore_js,
-    acp_mock_do_streaming_update_js, acp_mock_do_tampers_kissconfig_js,
-    acp_mock_do_tampers_kissconfig_js_only, acp_mock_do_tampers_kissignore_js,
-    acp_mock_do_tampers_kissignore_js_only, acp_mock_do_tampers_malvin_checks_js,
-    acp_mock_do_tampers_malvin_checks_js_only, assert_stdout_has_no_chrome, first_do_log_path,
-    run_do_with_mock, run_do_with_named_mock_bin, run_malvin_do_home_workspace,
+    acp_mock_do_streaming_update_js,
+    acp_mock_do_tampers_kissconfig_js, acp_mock_do_tampers_kissconfig_js_only,
+    acp_mock_do_tampers_kissignore_js, acp_mock_do_tampers_kissignore_js_only,
+    acp_mock_do_tampers_malvin_checks_js, acp_mock_do_tampers_malvin_checks_js_only,
+    assert_stdout_has_no_chrome, first_do_log_path,
+    run_do_with_mock, run_do_with_mock_force_tee, run_do_with_named_mock_bin, run_malvin_do_home_workspace,
     stdout_lines_preserve_shape, test_home_workspace,
 };
 
@@ -140,6 +141,31 @@ fn do_restores_kissignore_after_tamper_when_present_at_start() {
     let restored =
         std::fs::read_to_string(workspace.join(".kissignore")).expect("read .kissignore");
     assert_eq!(restored, "i\n");
+}
+
+#[cfg_attr(unix, test)]
+fn do_stdout_omits_outgoing_prompt_bracket_line() {
+    let out = run_do_with_mock_force_tee(&[]);
+    assert!(out.status.success(), "malvin do failed: {out:?}");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let who = malvin::output::format_acp_directional_tag_prefix('>', "do");
+    let inner = malvin::output::format_log_tag_inner(&who);
+    assert!(
+        !stdout.contains(&format!("[{inner}] [do...]")),
+        "forced tee must not print padded >do bracket line on stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("[do...]"),
+        "forced tee must not print outgoing prompt bracket on stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains(">do"),
+        "forced tee must not print >do stem on stdout: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("agent message"),
+        "expected agent output on stdout: {stdout:?}"
+    );
 }
 
 #[cfg_attr(unix, test)]

@@ -17,6 +17,11 @@ pub fn smoke_agent_client() -> crate::acp::AgentClient {
 }
 
 #[cfg(test)]
+pub fn acp_mock_js_for_test(preamble: &str, prompt_handler: &str) -> String {
+    crate::acp_mock_js(preamble, prompt_handler)
+}
+
+#[cfg(test)]
 pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     #[cfg(unix)]
     {
@@ -58,7 +63,7 @@ pub fn tidy_test_session(label: &str) -> TidyTestSession {
         crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let workflow = crate::cli::WorkflowCliOptions {
         force: false,
-        run_learn: false,
+        
     };
     let store = crate::cli::tidy_flow::prepare_tidy_kpop_prompt_store(workflow).expect("store");
     let mut context = crate::workflow_context::workflow_context_paths_only(&artifacts, "tidy");

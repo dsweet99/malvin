@@ -43,6 +43,36 @@ impl KpopTurnPrompts<'_> {
         )
     }
 
+    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when a prompt template cannot be rendered.
+    pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
+        let mut ctx = self.base.clone();
+        ctx.insert("want".to_string(), max_hypotheses.to_string());
+        ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+        ctx.insert("user_request".to_string(), self.request_text.to_string());
+        let header = self
+            .store
+            .render_prompt_only("header.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let common = self
+            .store
+            .render_prompt_only("kpop_common.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        let body = self
+            .store
+            .render_prompt_only("kpop_block.md", &ctx)
+            .map_err(|e: PromptError| e.0)?;
+        Ok(format!(
+            "{}\n\n{}\n\n{}",
+            header.trim_end(),
+            common.trim_end(),
+            body.trim_end()
+        ))
+    }
+
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
@@ -62,25 +92,6 @@ impl KpopTurnPrompts<'_> {
         let prompt = self.render_turn_with_body("kpop_block.md", &ctx, with_rules)?;
         self.prepend_rules_once = false;
         Ok(prompt)
-    }
-
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn mbc2_turn(&mut self) -> Result<String, String> {
-        let mut ctx = self.base.clone();
-        ctx.insert("user_request".to_string(), self.request_text.to_string());
-        ctx.insert("num_ideas".to_string(), "1".to_string());
-        ctx.insert("user_prompt".to_string(), self.request_text.to_string());
-        let body = self
-            .store
-            .render_prompt_only("mbc2.md", &ctx)
-            .map_err(|e: PromptError| e.0)?;
-        let exp_log = ctx.get("exp_log").cloned().unwrap_or_default();
-        Ok(format!(
-            "{}\n\nIn this turn, produce exactly one MBC2 hypothesis. Do not falsify it in this turn. Record it as `## Step K — MBC2 …` in {exp_log}.",
-            body.trim_end()
-        ))
     }
 }
 

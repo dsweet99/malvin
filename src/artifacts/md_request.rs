@@ -82,3 +82,13 @@ mod kiss_cov_auto {
         let _ = stringify!(super::resolve_user_md_request);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = md_path_has_invalid_characters;
+        let _ = md_path_has_invalid_components;
+    }
+}

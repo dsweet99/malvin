@@ -32,14 +32,21 @@ impl AcpSession {
         if self.0.reader_dead.load(Ordering::SeqCst) {
             return false;
         }
-        let mut ch = self.0.child.lock().await;
-        match ch.try_wait() {
-            Ok(Some(_)) => false,
-            Ok(None) => true,
-            Err(e) => {
-                warn!(error = %e, "child try_wait failed; assuming still alive");
-                true
-            }
+        {
+            let mut slot = self.0.child.lock().await;
+            let Some(ch) = slot.as_mut() else {
+                return false;
+            };
+            let alive = match ch.try_wait() {
+                Ok(Some(_)) => false,
+                Ok(None) => true,
+                Err(e) => {
+                    warn!(error = %e, "child try_wait failed; assuming still alive");
+                    true
+                }
+            };
+            drop(slot);
+            alive
         }
     }
 
@@ -50,7 +57,13 @@ impl AcpSession {
 
     async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
         let io = acp_stdio(&self.0);
-        let child_pid = self.0.child.lock().await.id();
+        let child_pid = self
+            .0
+            .child
+            .lock()
+            .await
+            .as_ref()
+            .and_then(tokio::process::Child::id);
         rpc_request(RpcRequestNext {
             io: &io,
             next_id: &self.0.next_id,
@@ -183,22 +196,36 @@ impl AcpSession {
     ///
     /// Returns `Err` if waiting on the child after kill fails.
     pub async fn shutdown(&self) -> Result<(), String> {
+        crate::active_agent_heartbeat::unregister_active_agent_process_group(
+            self.0.process_group_id,
+        );
         self.reset_prompt_inflight().await;
-        unix_process_group::terminate_process_group(self.0.process_group_id).await;
-        let mut ch = self.0.child.lock().await;
-        let _ = ch.kill().await;
-        let wait_result = ch
-            .wait()
-            .await
-            .map_err(|e| format!("acp wait: {e}"));
-        drop(ch);
-        wait_result?;
+        crate::acp::unix_process_group_teardown::terminate_agent_process_group(
+            self.0.process_group_id,
+            &self.0.spawn_pid_baseline,
+        )
+        .await;
+        {
+            let mut slot = self.0.child.lock().await;
+            let Some(mut ch) = slot.take() else {
+                crate::malvin_sandbox::clear_active_sandbox_session();
+                return Ok(());
+            };
+            let _ = ch.kill().await;
+            ch.wait()
+                .await
+                .map_err(|e| format!("acp wait: {e}"))?;
+            drop(slot);
+        }
+        crate::malvin_sandbox::clear_active_sandbox_session();
         Ok(())
     }
 }
 
 impl Drop for AcpSession {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        crate::acp::session_drop_teardown::acp_session_drop_if_last(&self.0);
+    }
 }
 
 

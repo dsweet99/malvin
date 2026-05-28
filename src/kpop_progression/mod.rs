@@ -16,9 +16,8 @@ mod counters_tests;
 mod multiturn_kiss;
 
 pub use counters::{
-    KPOP_CATCHUP_CAP, agent_declared_success, block_mean_from_p_creative, count_kpop_entries,
-    count_kpop_solved_markers, count_mbc2_entries, hypotheses_emitted, poisson_block_size,
-    read_exp_log_text,
+    agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
+    hypotheses_emitted, read_exp_log_text,
 };
 pub(crate) use block_report::KpopBlockMissSnapshot;
 pub use multiturn::KpopMultiturnState;

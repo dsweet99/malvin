@@ -105,3 +105,48 @@ fn acp_bracket_payload_supports_dim_mode() {
     let payload = format_line_acp_ansi_payload(&ctx);
     assert!(payload.contains("dim-payload"));
 }
+
+#[cfg(test)]
+pub(crate) fn assert_tool_payload_brackets_share_color(line: &str) {
+    use crate::terminal_palette::{ANSI_DIM, ANSI_RESET, ANSI_TOOL_DARK};
+
+    let dim_sep = format!("{ANSI_RESET} {ANSI_DIM}");
+    let dim_start = line
+        .find(&dim_sep)
+        .unwrap_or_else(|| panic!("expected dim tool payload; got {line:?}"));
+    let payload = &line[dim_start + dim_sep.len()..];
+    let dark_open = format!("{ANSI_TOOL_DARK}[");
+    let dark_close = format!("{ANSI_TOOL_DARK}]");
+    assert!(
+        payload.starts_with(&dark_open),
+        "payload open bracket must use dark color; got {payload:?} in {line:?}"
+    );
+    assert!(
+        payload.contains(&dark_close),
+        "payload close bracket must use dark color; got {payload:?} in {line:?}"
+    );
+}
+
+#[cfg(test)]
+pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
+    use crate::terminal_palette::{ANSI_DIM, ANSI_TOOL_DARK};
+
+    let bracket_end = line.find(']').expect("bracket");
+    assert!(
+        line.contains(ANSI_DIM),
+        "tee dims tool payload; got {line:?}"
+    );
+    assert!(
+        line.find(ANSI_DIM).unwrap() > bracket_end,
+        "dim must apply after who bracket; got {line:?}"
+    );
+    let prefix = &line[..=bracket_end];
+    assert!(
+        prefix.contains(ANSI_TOOL_DARK),
+        "who bracket stays dark; got {line:?}"
+    );
+    assert!(
+        !prefix.contains(ANSI_DIM),
+        "who/bracket prefix must not be dimmed; got {line:?}"
+    );
+}

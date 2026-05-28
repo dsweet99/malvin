@@ -2,12 +2,15 @@ use clap::Args;
 
 #[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
-    /// Total `KPop` hypothesis steps (## Step headings in the exp log) before stopping.
-    #[arg(long, default_value_t = 10, alias = "max-loops")]
+    /// How many times to run the kpop agent (stops early when the exp log contains `## KPOP_SOLVED`).
+    #[arg(long, default_value_t = 1)]
+    pub max_loops: usize,
+    /// Total `KPop` hypothesis steps (## Step headings in the exp log) per agent run.
+    #[arg(long, default_value_t = 10)]
     pub max_hypotheses: usize,
-    /// Skip learning.
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = false)]
-    pub no_learn: bool,
+    pub tenacious: bool,
     /// Request or `@file` → `.malvin/logs/.../request.md`.
     pub request: Option<String>,
 }

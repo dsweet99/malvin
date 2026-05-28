@@ -3,11 +3,11 @@
 
 use std::path::{Path, PathBuf};
 
-fn entry_name_has_extension(path: &Path, ext: &str) -> bool {
+pub(crate) fn entry_name_has_extension(path: &Path, ext: &str) -> bool {
     path.extension().and_then(|e| e.to_str()) == Some(ext)
 }
 
-fn entry_name_is_workspace_marker(path: &Path) -> bool {
+pub(crate) fn entry_name_is_workspace_marker(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| {
@@ -15,7 +15,7 @@ fn entry_name_is_workspace_marker(path: &Path) -> bool {
         })
 }
 
-fn resolved_symlink_target(link: &Path) -> Option<PathBuf> {
+pub(crate) fn resolved_symlink_target(link: &Path) -> Option<PathBuf> {
     let target = std::fs::read_link(link).ok()?;
     Some(if target.is_absolute() {
         target
@@ -24,11 +24,11 @@ fn resolved_symlink_target(link: &Path) -> Option<PathBuf> {
     })
 }
 
-fn symlink_resolves_to_existing_file(link: &Path) -> bool {
+pub(crate) fn symlink_resolves_to_existing_file(link: &Path) -> bool {
     std::fs::metadata(link).is_ok_and(|m| m.is_file())
 }
 
-fn entry_or_symlink_file_target_matches(link: &Path, matches: impl Fn(&Path) -> bool) -> bool {
+pub(crate) fn entry_or_symlink_file_target_matches(link: &Path, matches: impl Fn(&Path) -> bool) -> bool {
     if symlink_resolves_to_existing_file(link) && matches(link) {
         return true;
     }

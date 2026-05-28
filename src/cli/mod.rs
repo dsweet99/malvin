@@ -1,12 +1,16 @@
 mod args;
 mod args_bug_kpop;
+mod bare_invoke;
 mod bug_id_lookup;
 mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
+mod config_defaults;
+mod config_loop;
 mod entrypoint;
+mod entrypoint_commands;
 mod entrypoint_checks;
 pub(crate) mod error_run_log;
 mod exit;
@@ -20,15 +24,18 @@ pub(crate) mod tidy_flow;
 
 mod code_flow;
 mod code_flow_a;
+mod constrain_flow;
 mod gate_kpop_workflow;
+mod loop_opts;
 mod workflow_kpop_shared;
 
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
-    format_workspace_gate_failure, prepare_kpop_prompt_store, prepare_prompt_store,
-    AgentStdoutTeeFlags, WorkflowCliOptions,
+    format_workspace_gate_failure, new_agent_client, prepare_kpop_prompt_store,
+    prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub use code_flow::{run_code, CodeArgs};
+pub use constrain_flow::{run_constrain, ConstrainArgs};
 
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
@@ -48,10 +55,10 @@ mod gate_error_regression;
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;
 pub use args::{Cli, Commands, InventArgs, KpopArgs};
+pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;
 pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
 pub use tidy_flow::run_tidy;
-pub const LEARN_MIN_ELAPSED_MS: u64 = crate::DEFAULT_LEARN_MIN_ELAPSED_MS;

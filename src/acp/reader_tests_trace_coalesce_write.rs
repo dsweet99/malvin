@@ -1,6 +1,6 @@
 use crate::acp::*;
 
-fn kpop_coalesce_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
+pub(crate) fn kpop_coalesce_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
     PromptTraceWriter {
         file,
         who: "kpop".to_string(),
@@ -43,7 +43,7 @@ async fn write_coalesced_line(
     crate::acp::trace_line_write::write_trace_line_coalesced(writer, coalesce, opts).await;
 }
 
-async fn deliver_tool_call_session_updates(
+pub(crate) async fn deliver_tool_call_session_updates(
     writer: &mut PromptTraceWriter,
     coalesce: &mut TraceChunkCoalescer,
 ) {

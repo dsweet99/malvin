@@ -8,6 +8,10 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
         ("plan_path".to_string(), "p".to_string()),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
         ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
+        (
+            "current_state".to_string(),
+            "User: test\nRetry: not a retry".to_string(),
+        ),
     ])
 }
 
@@ -34,5 +38,4 @@ fn kpop_turn_prompts_render() {
         prepend_rules_once: true,
     };
     let _ = prompts.kpop_block(1, 0).expect("kpop");
-    let _ = prompts.mbc2_turn().expect("mbc2");
 }

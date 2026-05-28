@@ -40,11 +40,7 @@ mod session_flow_smoke_tests {
             client,
             prompts: store,
             artifacts,
-            config: WorkflowConfig {
-                max_loops: 1,
-                run_learn: false,
-                learn_min_elapsed_ms: 0,
-            },
+            config: WorkflowConfig { max_loops: 1 },
             progress_callback: Box::new(|_| {}),
             session_dotfile_backups: empty_dotfile_backups(),
         }

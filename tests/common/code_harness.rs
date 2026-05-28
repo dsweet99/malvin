@@ -19,7 +19,7 @@ pub fn spawn_code(c: &CodeSpawn<'_>) -> std::process::Output {
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", c.mock)
         .env("PATH", c.path_var)
-        .args(["code", "--no-learn"]);
+        .args(["code"]);
     cmd.args(c.extra_args);
     cmd.arg(c.request);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")

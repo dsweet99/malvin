@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 pub fn dead_transport_child_stdio() -> (
-    tokio::sync::Mutex<tokio::process::Child>,
+    tokio::sync::Mutex<Option<tokio::process::Child>>,
     Arc<tokio::sync::Mutex<tokio::process::ChildStdin>>,
 ) {
     let mut child = tokio::process::Command::new("cat")
@@ -13,7 +13,7 @@ pub fn dead_transport_child_stdio() -> (
         .spawn()
         .expect("spawn cat");
     let stdin = Arc::new(tokio::sync::Mutex::new(child.stdin.take().expect("stdin")));
-    (tokio::sync::Mutex::new(child), stdin)
+    (tokio::sync::Mutex::new(Some(child)), stdin)
 }
 
 pub fn dead_transport_sync_channels() -> (
@@ -37,6 +37,7 @@ pub fn dead_transport_session_inner() -> crate::acp::AcpSessionInner {
     crate::acp::AcpSessionInner {
         child,
         process_group_id: None,
+        spawn_pid_baseline: std::collections::HashSet::new(),
         stdin,
         pending: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::default())),
         acp_activity_seq,

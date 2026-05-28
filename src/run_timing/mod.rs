@@ -18,7 +18,6 @@ pub enum TimingPhase {
     ReviewFanout,
     ReviewWrite,
     Concerns,
-    Learn,
     Summary,
 }
 
@@ -47,7 +46,6 @@ pub struct RunTiming {
     review_fanout: Duration,
     review_write: Duration,
     concerns: Duration,
-    learn: Duration,
     summary: Duration,
     tool_calls: Duration,
 }
@@ -65,7 +63,6 @@ impl Default for RunTiming {
             review_fanout: Duration::ZERO,
             review_write: Duration::ZERO,
             concerns: Duration::ZERO,
-            learn: Duration::ZERO,
             summary: Duration::ZERO,
             tool_calls: Duration::ZERO,
         }
@@ -104,7 +101,6 @@ impl RunTiming {
                 self.review_write = self.review_write.saturating_add(d);
             }
             TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
-            TimingPhase::Learn => self.learn = self.learn.saturating_add(d),
             TimingPhase::Summary => self.summary = self.summary.saturating_add(d),
         }
     }
@@ -163,6 +159,13 @@ pub fn attach_new_run_timing(
     timing
 }
 
+/// Anchors one wall-clock interval for a gate-kpop `code` loop (shared across iterations).
+#[must_use]
+pub fn attach_gate_kpop_loop_run_timing() -> Arc<Mutex<RunTiming>> {
+    let mut slot = None;
+    attach_new_run_timing(&mut slot)
+}
+
 pub fn record_llm(timing: Option<&Arc<Mutex<RunTiming>>>, phase: TimingPhase, elapsed: Duration) {
     let Some(t) = timing else {
         return;
@@ -213,9 +216,27 @@ pub fn finalize_run_timing_json_only(
     finalize_snapshot(timing).write_json_only(run_dir)
 }
 
+/// Persists in-progress timing without closing the run wall clock.
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when writing under `run_dir` fails.
+pub fn persist_open_run_timing_json(
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+) -> std::io::Result<()> {
+    let g = timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    report::write_json_only(&g, run_dir)
+}
+
 pub use report::print_summary_from_run_dir;
 
 #[cfg(test)]
 mod timing_tests;
+
+#[cfg(test)]
+mod gate_kpop_timing_regressions;
 
 pub mod acp_post_run;

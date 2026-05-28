@@ -1,6 +1,6 @@
 #![allow(unused_imports, clippy::wildcard_imports)]
 mod inline {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::process::Command as StdCommand;
     use std::time::Duration;
     use super::super::import_prelude::*;

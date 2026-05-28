@@ -11,8 +11,6 @@ fn smoke_review_sync() {
             .is_none()
     );
 
-    let ws = tmp.path().join("workspace_review.md");
-    std::fs::write(&ws, "LGTM").expect("ws review");
-    let synced = crate::review_sync::sync_review_file_for_attempt(&art, &ws).expect("sync");
-    assert!(synced.is_none(), "empty artifact must not adopt workspace LGTM");
+    let synced = crate::review_sync::sync_review_file_for_attempt(&art).expect("sync");
+    assert!(synced.is_none(), "missing artifact must not produce review text");
 }

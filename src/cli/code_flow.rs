@@ -24,8 +24,12 @@ pub struct CodeArgs {
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = 5)]
     pub max_loops: usize,
+    /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
+    #[arg(long, default_value_t = 10)]
+    pub max_hypotheses: usize,
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = false)]
-    pub no_learn: bool,
+    pub tenacious: bool,
     /// Deprecated: check-plan phase removed; code now uses the kpop gate workflow.
     #[arg(long, default_value_t = false, hide = true, conflicts_with = "dry_run")]
     pub trust_the_plan: bool,
@@ -48,23 +52,24 @@ mod tests {
     use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
-    fn kpop_args_from_code_maps_max_loops() {
+    fn code_effective_max_loops_is_at_least_one() {
         let code = CodeArgs {
             max_loops: 0,
-            no_learn: true,
+            max_hypotheses: 10,
+            tenacious: false,
             trust_the_plan: false,
             dry_run: false,
             skip_pre_checks: false,
             fast: false,
             request: Some("req".to_string()),
         };
-        let kpop = crate::cli::KpopArgs {
-            max_hypotheses: effective_code_max_loops(code.max_loops),
-            no_learn: code.no_learn,
+        let _kpop = crate::cli::KpopArgs {
+            max_loops: 1,
+            max_hypotheses: 10,
+            tenacious: false,
             request: Some("req".to_string()),
         };
-        assert_eq!(kpop.max_hypotheses, 1);
-        assert!(kpop.no_learn);
+        assert_eq!(effective_code_max_loops(code.max_loops), 1);
     }
 
     #[test]
@@ -83,6 +88,32 @@ mod tests {
     }
 
     #[test]
+    fn code_startup_logs_host_resources_in_command_log() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let old = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+        let prepared = prepare_code_kpop_run(
+            crate::cli::WorkflowCliOptions { force: false },
+            "ship it",
+        )
+        .expect("prepared");
+        crate::cli::run_emit::emit_run_startup_sequence(
+            &prepared.artifacts,
+            crate::cli::run_emit::RunStartupEmitOpts {
+                tee_stdout: false,
+                host_resources: true,
+            },
+            &prepared.startup_emit_request,
+        )
+        .expect("startup");
+        let command_log = prepared.artifacts.run_dir.join("command.log");
+        let log = std::fs::read_to_string(&command_log).expect("log");
+        std::env::set_current_dir(old).expect("restore cwd");
+        assert!(log.contains("Memory:"));
+        assert!(log.contains("CPUs:"));
+    }
+
+    #[test]
     fn code_post_kpop_gates_fails_when_gates_fail() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
@@ -91,10 +122,7 @@ mod tests {
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
-            crate::cli::WorkflowCliOptions {
-                force: false,
-                run_learn: false,
-            },
+            crate::cli::WorkflowCliOptions { force: false },
             "ship it",
         )
         .expect("prepared");

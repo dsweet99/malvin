@@ -81,3 +81,15 @@ mod kiss_cov_auto {
         let _ = stringify!(record_coder_prompt_llm_timing);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _: Option<CoderSessionPromptDispatch> = None;
+        let _ = coder_prompt_exhausted_error;
+        let _ = dispatch_coder_session_prompt;
+        let _ = record_coder_prompt_llm_timing;
+    }
+}

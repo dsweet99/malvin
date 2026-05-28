@@ -99,14 +99,14 @@ async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
     let tmp = tempfile::tempdir().unwrap();
     let run_dir = tmp.path().join(".malvin/logs").join("r");
     tokio::fs::create_dir_all(&run_dir).await.unwrap();
-    append_prompts_log_uniform(Some(&run_dir), "learn", "learn.md", None)
+    append_prompts_log_uniform(Some(&run_dir), "summary", "summary.md", None)
         .await
         .unwrap();
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
         .await
         .unwrap();
-    assert_eq!(content.matches(">learn").count(), 1);
-    assert!(content.contains("] [learn.md...]"));
+    assert_eq!(content.matches(">summary").count(), 1);
+    assert!(content.contains("] [summary.md...]"));
 }
 
 #[tokio::test]

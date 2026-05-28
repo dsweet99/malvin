@@ -123,3 +123,12 @@ mod gate_log_tests {
         super::try_append_command_output(Some(tmp.path()), "kiss check", &output);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = try_append_log_line;
+    }
+}

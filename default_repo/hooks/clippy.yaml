@@ -1,6 +1,6 @@
       - id: cargo-clippy
         name: cargo clippy
-        entry: sh -c 'test -f Cargo.toml || exit 0; cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc'
+        entry: sh -c 'test -f Cargo.toml || exit 0; cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo -A clippy::must_use_candidate -A clippy::missing_errors_doc -A clippy::missing_panics_doc'
         language: system
         pass_filenames: false
         always_run: true

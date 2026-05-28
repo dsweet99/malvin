@@ -9,6 +9,16 @@ pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, pat
     ctx.insert(key.to_string(), format_prompt_path(path, base));
 }
 
+fn insert_quality_gates_log_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
+    let path = format_prompt_path(&artifacts.quality_gates_log_path(), base);
+    context.insert("quality_gates_log".to_string(), path.clone());
+    context.insert("quality_gates_path".to_string(), path);
+}
+
 fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
     let base = &artifacts.work_dir;
     insert_formatted(context, "plan_path", &artifacts.plan_path, base);
@@ -44,11 +54,17 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         base,
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
-    insert_formatted(
-        context,
-        "quality_gates_log",
-        &artifacts.quality_gates_log_path(),
-        base,
+    insert_quality_gates_log_paths(context, artifacts, base);
+}
+
+fn insert_current_state(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
+    context.insert(
+        "current_state".to_string(),
+        crate::current_state::format_current_state(base, None, Some(artifacts)),
     );
 }
 
@@ -59,6 +75,7 @@ pub fn workflow_context_paths_only(
 ) -> HashMap<String, String> {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
+    insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), malvin_command.to_string());
     context
 }
@@ -119,93 +136,5 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
 }
 
 #[cfg(test)]
-mod workflow_context_path_tests {
-    use std::collections::HashMap;
-    use std::path::{Path, PathBuf};
-
-    use super::{
-        format_prompt_path, insert_artifact_paths, insert_formatted, resolve_nonexistent_path,
-        resolve_path_against_base,
-    };
-
-    #[test]
-    fn resolve_path_against_base_resolves_relative_plan_path() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let base = tmp.path().canonicalize().expect("base");
-        let resolved = resolve_path_against_base(Path::new("plan.md"), &base);
-        assert!(resolved.ends_with("plan.md"));
-    }
-
-    #[test]
-    fn resolve_path_against_base_resolves_absolute_missing_file_under_base() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let base = tmp.path().canonicalize().expect("base");
-        let abs = tmp.path().join("src/foo.rs");
-        let resolved = resolve_path_against_base(&abs, &base);
-        assert!(
-            resolved.starts_with(&base),
-            "expected resolved path under base, got {}",
-            resolved.display()
-        );
-        assert!(resolved.ends_with("src/foo.rs"));
-    }
-
-    #[test]
-    fn resolve_nonexistent_path_cases() {
-        let _ = stringify!(resolve_nonexistent_path);
-        assert_eq!(resolve_nonexistent_path(Path::new("")), PathBuf::from(""));
-
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let base = tmp.path().canonicalize().expect("base");
-        let missing = tmp.path().join("nested/missing.md");
-        let resolved = resolve_nonexistent_path(&missing);
-        assert!(resolved.starts_with(&base));
-        assert!(resolved.ends_with("nested/missing.md"));
-
-        let deep = tmp.path().join("a/b/c/d.md");
-        let deep_resolved = resolve_nonexistent_path(&deep);
-        assert!(deep_resolved.starts_with(&base));
-        assert!(deep_resolved.ends_with("a/b/c/d.md"));
-    }
-
-    #[test]
-    fn format_prompt_path_fallback_uses_resolved_path_display() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let outside = std::env::temp_dir().join(format!("malvin_outside_{}", std::process::id()));
-        std::fs::create_dir_all(&outside).expect("outside dir");
-        let missing = outside.join("missing.md");
-        let formatted = format_prompt_path(&missing, tmp.path());
-        assert!(
-            !formatted.starts_with("./"),
-            "outside path must not be relativized: {formatted}"
-        );
-        assert!(
-            formatted.contains("missing.md"),
-            "fallback must name the file: {formatted}"
-        );
-        let _ = std::fs::remove_dir_all(&outside);
-    }
-
-    #[test]
-    fn insert_artifact_paths_populates_expected_keys() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let plan = tmp.path().join("plan.md");
-        std::fs::write(&plan, "p").expect("write");
-        let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-        let mut ctx = HashMap::new();
-        insert_artifact_paths(&mut ctx, &artifacts);
-        assert!(ctx.contains_key("result_path"));
-        assert!(ctx.contains_key("review_prep_path"));
-        assert!(ctx.contains_key("advice_path"));
-    }
-
-    #[test]
-    fn insert_formatted_stores_workflow_relative_path() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let plan = tmp.path().join("plan.md");
-        std::fs::write(&plan, "p").expect("write");
-        let mut ctx = HashMap::new();
-        insert_formatted(&mut ctx, "plan_path", &plan, tmp.path());
-        assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
-    }
-}
+#[path = "workflow_context_tests.rs"]
+mod workflow_context_tests;

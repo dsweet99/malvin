@@ -1,11 +1,12 @@
 use super::{
-    ANSI_DIM, ANSI_RESET, format_heartbeat_stdout_ansi, format_line_stdout,
-    format_line_stdout_ansi, format_log_tag_inner, stderr_use_color, stdout_use_color,
-    timestamp_now_string, who_tag_ansi,
+    acp_tee_markdown::agent_rendered_markup_payload, ANSI_DIM, ANSI_RESET,
+    format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
+    format_log_tag_inner, stderr_use_color, stdout_use_color, timestamp_now_string,
+    who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::terminal_palette::{ANSI_TOOL_SAND, ANSI_TOOL_TEAL};
+use crate::terminal_palette::{ANSI_TOOL_DARK, ANSI_TOOL_NAVY};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -22,7 +23,7 @@ pub struct AcpTeeLineFmt<'a> {
     pub dim_payload: bool,
 }
 
-fn resolve_log_timestamp(ts: Option<&str>) -> String {
+pub(crate) fn resolve_log_timestamp(ts: Option<&str>) -> String {
     ts.map_or_else(timestamp_now_string, str::to_string)
 }
 
@@ -86,9 +87,9 @@ pub(crate) fn stderr_tagged_display_and_log_line(
 }
 
 #[derive(Copy, Clone)]
-enum TaggedDisplayStyle { Plain, Ansi, HeartbeatAnsi }
+pub(crate) enum TaggedDisplayStyle { Plain, Ansi, HeartbeatAnsi }
 
-fn tagged_stdout_display(who: &str, payload: &str, style: TaggedDisplayStyle) -> String {
+pub(crate) fn tagged_stdout_display(who: &str, payload: &str, style: TaggedDisplayStyle) -> String {
     match style {
         TaggedDisplayStyle::Plain => format_line_stdout(who, payload),
         TaggedDisplayStyle::Ansi => format_line_stdout_ansi(who, payload),
@@ -104,7 +105,7 @@ macro_rules! tagged_log_pair {
     }};
 }
 
-fn tagged_display_and_log_line(
+pub(crate) fn tagged_display_and_log_line(
     who: &str,
     payload: &str,
     ts: Option<&str>,
@@ -118,7 +119,7 @@ fn tagged_display_and_log_line(
     tagged_log_pair!(who, payload, ts, style)
 }
 
-fn heartbeat_display_and_log_line(
+pub(crate) fn heartbeat_display_and_log_line(
     who: &str,
     payload: &str,
     ts: Option<&str>,
@@ -137,20 +138,32 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
     (line.to_string(), format!("{ts} {line}"))
 }
 
-const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
+pub(crate) const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
-        AcpTeeDirection::ToAgent => ANSI_TOOL_TEAL,
-        AcpTeeDirection::FromAgent => ANSI_TOOL_SAND,
+        AcpTeeDirection::ToAgent => ANSI_TOOL_NAVY,
+        AcpTeeDirection::FromAgent => ANSI_TOOL_DARK,
     }
 }
 
-fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
+pub(crate) fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: bool) -> String {
+    if !use_color || ctx.dim_payload || ctx.direction != AcpTeeDirection::FromAgent {
+        return payload.to_string();
+    }
+    agent_rendered_markup_payload(payload)
+}
+
+pub(crate) fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     let inner = format_log_tag_inner(ctx.who);
     let bracket = acp_bracket_color(ctx.direction);
     if ctx.dim_payload {
         format!(
             "{bracket}[{inner}]{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
             ctx.line
+        )
+    } else if ctx.direction == AcpTeeDirection::FromAgent {
+        format!(
+            "{bracket}[{inner}]{ANSI_RESET} {}",
+            acp_from_agent_payload(ctx, ctx.line, true)
         )
     } else {
         format!("{bracket}[{inner}]{ANSI_RESET} {}", ctx.line)
@@ -203,32 +216,11 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
     ctx: &AcpTeeLineFmt<'_>,
     rendered_payload: &str,
 ) -> (String, String) {
+    let display_payload = acp_from_agent_payload(ctx, rendered_payload, stdout_use_color());
     (
-        format!("{}{rendered_payload}", acp_tee_payload_prefix(ctx)),
+        format!("{}{display_payload}", acp_tee_payload_prefix(ctx)),
         format!("{}{rendered_payload}", acp_tee_log_prefix(ctx)),
     )
-}
-
-#[cfg(test)]
-pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
-    let bracket_end = line.find(']').expect("bracket");
-    assert!(
-        line.contains(ANSI_DIM),
-        "tee dims tool payload; got {line:?}"
-    );
-    assert!(
-        line.find(ANSI_DIM).unwrap() > bracket_end,
-        "dim must apply after who bracket; got {line:?}"
-    );
-    let prefix = &line[..=bracket_end];
-    assert!(
-        prefix.contains(acp_bracket_color(AcpTeeDirection::FromAgent)),
-        "who bracket stays bright; got {line:?}"
-    );
-    assert!(
-        !prefix.contains(ANSI_DIM),
-        "who/bracket prefix must not be dimmed; got {line:?}"
-    );
 }
 
 #[cfg(test)]
@@ -242,5 +234,6 @@ mod inline_cov {
         let _ = stringify!(TaggedDisplayStyle);
         let _ = stringify!(acp_bracket_color);
         let _ = stringify!(acp_bracket_payload);
+        let _ = stringify!(acp_from_agent_payload);
     }
 }

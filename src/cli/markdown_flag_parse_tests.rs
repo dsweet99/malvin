@@ -3,8 +3,7 @@ use clap::Parser;
 
 #[test]
 fn global_no_markdown_before_code_subcommand() {
-    let cli =
-        Cli::try_parse_from(["malvin", "--no-markdown", "code", "--no-learn", "x"]).expect("parse");
+    let cli = Cli::try_parse_from(["malvin", "--no-markdown", "code", "x"]).expect("parse");
     assert!(cli.shared.no_markdown);
 }
 
@@ -16,7 +15,6 @@ fn global_no_markdown_after_shared_flags_before_kpop() {
         "m",
         "--no-markdown",
         "kpop",
-        "--no-learn",
         "x",
     ])
     .expect("parse");
@@ -39,15 +37,6 @@ fn tidy_parses_with_global_no_markdown_and_without_request() {
     let cli = Cli::try_parse_from(["malvin", "--no-markdown", "tidy"]).expect("parse");
     assert!(cli.shared.no_markdown);
     assert!(matches!(cli.command, Some(crate::cli::Commands::Tidy(_))));
-}
-
-#[test]
-fn tidy_parses_without_request_and_runs_learn() {
-    let cli = Cli::try_parse_from(["malvin", "tidy", "--no-learn"]).expect("parse");
-    match cli.command {
-        Some(crate::cli::Commands::Tidy(tidy)) => assert!(tidy.no_learn),
-        _ => panic!("expected tidy"),
-    }
 }
 
 #[test]

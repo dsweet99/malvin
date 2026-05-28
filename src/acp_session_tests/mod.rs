@@ -12,3 +12,7 @@ mod unix_helpers;
 #[cfg(unix)]
 #[path = "unix_shutdown.rs"]
 mod unix_shutdown;
+
+#[cfg(all(test, unix))]
+#[path = "kiss_unix_shutdown.rs"]
+mod kiss_unix_shutdown;

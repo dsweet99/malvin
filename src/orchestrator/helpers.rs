@@ -19,26 +19,42 @@ pub fn clear_review_file(p: &Path) -> std::io::Result<()> {
     }
 }
 
-#[must_use]
-pub fn check_abort(result_path: &Path) -> Option<String> {
-    let content = std::fs::read_to_string(result_path).ok()?;
+/// Reads `result_path` for an `ABORT:` line.
+///
+/// Returns `Ok(None)` when the file is missing or has no abort line.
+/// Returns `Ok(Some(msg))` when an `ABORT:` line is present.
+/// Returns `Err` when the file exists but cannot be read (fail-closed).
+///
+/// # Errors
+///
+/// Returns [`std::io::Error`] when `result_path` cannot be read for reasons other than
+/// [`NotFound`](std::io::ErrorKind::NotFound).
+pub fn check_abort(result_path: &Path) -> Result<Option<String>, std::io::Error> {
+    let content = match std::fs::read_to_string(result_path) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e),
+    };
     let text = content.strip_prefix('\u{FEFF}').unwrap_or(&content);
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("ABORT:") {
-            return Some(rest.trim_start().to_string());
+            return Ok(Some(rest.trim_start().to_string()));
         }
     }
-    None
+    Ok(None)
 }
 
 /// # Errors
 ///
 /// Returns [`WorkflowError`] when `result.md` contains an `ABORT:` line.
 pub fn fail_on_abort_for_artifacts(artifacts: &crate::artifacts::RunArtifacts) -> Result<(), super::WorkflowError> {
-    if let Some(abort_msg) = check_abort(&artifacts.artifact_result_md()) {
-        return Err(super::WorkflowError(format!("ABORT: {abort_msg}")));
+    match check_abort(&artifacts.artifact_result_md()) {
+        Ok(Some(abort_msg)) => Err(super::WorkflowError(format!("ABORT: {abort_msg}"))),
+        Ok(None) => Ok(()),
+        Err(e) => Err(super::WorkflowError(format!(
+            "cannot read result file for ABORT check: {e}"
+        ))),
     }
-    Ok(())
 }
 
 /// Stem used in log name segments for coder prompts (`bug_fix.md`, `summary.md`, …).

@@ -33,7 +33,7 @@ fn emit_run_timing_after_acp_writes_json() {
     use std::sync::{Arc, Mutex};
     use std::time::Instant;
 
-    use crate::acp_post_run::emit_run_timing_after_acp;
+    use crate::acp_post_run::{RunTimingAfterAcp, RunTimingSessionEnd, emit_run_timing_after_acp};
     use crate::run_timing::RUN_TIMING_JSON_FILE;
 
     let mut client = crate::test_agent_client::smoke_agent_client();
@@ -46,7 +46,14 @@ fn emit_run_timing_after_acp_writes_json() {
         g.mark_wall_start(Instant::now());
         g.mark_wall_end(Instant::now());
     }
-    emit_run_timing_after_acp(&mut client, &run_dir, &timing, Ok(())).expect("emit timing");
+    emit_run_timing_after_acp(RunTimingAfterAcp {
+        client: &mut client,
+        run_dir: &run_dir,
+        timing: &timing,
+        acp_result: Ok(()),
+        session_end: RunTimingSessionEnd::Finalize,
+    })
+    .expect("emit timing");
     assert!(run_dir.join(RUN_TIMING_JSON_FILE).is_file());
 }
 

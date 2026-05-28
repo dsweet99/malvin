@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 
 use crate::prompts::{PromptError, PromptStore};
 
@@ -21,10 +20,9 @@ pub fn prepare_tidy_kpop_prompt_store(
 
 pub fn tidy_kpop_request(
     store: &PromptStore,
-    work_dir: &Path,
-    _artifacts: &crate::artifacts::RunArtifacts,
+    artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<String, String> {
-    render_kpop_program_request(store, work_dir, "tidy_constraints.md", &HashMap::new())
+    render_kpop_program_request(store, "tidy_constraints.md", &HashMap::new(), artifacts)
 }
 
 #[cfg(test)]
@@ -39,7 +37,7 @@ mod tests {
             crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let text = tidy_kpop_request(&store, tmp.path(), &artifacts).expect("request");
+        let text = tidy_kpop_request(&store, &artifacts).expect("request");
         assert!(
             !text.contains("{{"),
             "tidy kpop request must expand all placeholders: {text:?}"
@@ -49,8 +47,8 @@ mod tests {
             "expected tidy_constraints in request: {text:?}"
         );
         assert!(
-            !text.contains("quality_gates.log"),
-            "kpop_program must not mention quality_gates.log: {text:?}"
+            text.contains("quality_gates.log"),
+            "expected quality_gates_path in kpop request: {text:?}"
         );
         assert!(
             text.contains("Satisfy all constraints"),
@@ -62,7 +60,7 @@ mod tests {
     fn prepare_tidy_kpop_prompt_store_loads_program_and_constraints() {
         let workflow = crate::cli::WorkflowCliOptions {
             force: false,
-            run_learn: false,
+            
         };
         let store = prepare_tidy_kpop_prompt_store(workflow).expect("store");
         assert!(store.validate_exists("kpop_program.md").is_ok());
@@ -74,9 +72,12 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
         std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
-        let ctx = kpop_program_context(tmp.path(), "scope").expect("context");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
+        let ctx = kpop_program_context(tmp.path(), "scope", &artifacts).expect("context");
         assert_eq!(ctx.get("scope_constraints").map(String::as_str), Some("scope"));
         assert!(ctx.contains_key("quality_gates"));
+        assert!(ctx.contains_key("quality_gates_path"));
         assert!(!ctx.contains_key("quality_gates_log"));
     }
 }

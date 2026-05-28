@@ -66,4 +66,59 @@ mod ideas_tests {
             _ => panic!("expected Ideas"),
         }
     }
+
+    #[test]
+    fn ideas_client_uses_styled_agent_io_not_raw_do_style() {
+        use crate::cli::{SharedOpts, WorkflowCliOptions};
+        let shared = SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: false,
+            verbose: false,
+            max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+            doc: false,
+        };
+        let client = crate::cli::build_agent(
+            &shared,
+            WorkflowCliOptions { force: false },
+            shared.acp_stdout_markdown_enabled(),
+        );
+        assert!(
+            !client.io.raw_output,
+            "invent must use styled logging, not do-style raw_output"
+        );
+        assert!(client.io.show_thoughts_on_stdout);
+        assert!(client.io.emit_stdout_markdown);
+    }
+
+    #[test]
+    fn ideas_emit_startup_logs_host_resources() {
+        use crate::cli::SharedOpts;
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let artifacts =
+            crate::artifacts::create_run_artifacts_from_text("topic", Some(tmp.path()))
+                .expect("art");
+        let shared = SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+            doc: false,
+        };
+        crate::cli::run_emit::emit_run_startup_sequence(
+            &artifacts,
+            crate::cli::run_emit::RunStartupEmitOpts {
+                tee_stdout: shared.tee_startup_stdout(),
+                host_resources: true,
+            },
+            "topic",
+        )
+        .expect("startup");
+        let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
+        assert!(log.contains("Memory:"));
+        assert!(log.contains("CPUs:"));
+    }
 }

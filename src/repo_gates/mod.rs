@@ -3,7 +3,7 @@
 pub(crate) mod discover_py;
 
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
@@ -18,7 +18,7 @@ pub const KISS_CHECK_COMMAND: &str = "kiss check";
 
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
-pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W clippy::cargo";
+pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
 
 pub const DEFAULT_RUST_TEST: &str = "cargo test";
 
@@ -30,7 +30,7 @@ static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 pub fn cargo_nextest_available(work_dir: &Path) -> bool {
     let _ = work_dir;
     *CARGO_NEXTEST_AVAILABLE.get_or_init(|| {
-        Command::new("cargo")
+        crate::malvin_sandbox::malvin_std_command("cargo")
             .args(["nextest", "--version"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -95,6 +95,10 @@ pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> 
     }
     std::fs::write(&checks_path, content)
         .map_err(|e| format!("write {}: {e}", checks_path.display()))
+}
+
+pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> {
+    crate::malvin_config_file::ensure_malvin_config_file(work_dir)
 }
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {

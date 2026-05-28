@@ -6,6 +6,8 @@ const fn acp_mock_kpop_steps_body() -> &'static str {
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
     const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
+    const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
+    const target = targetMatch ? targetMatch[0] : null;
     const root = path.join(process.cwd(), '.malvin', 'logs');
     if (fs.existsSync(root)) {
       const runs = fs.readdirSync(root, { withFileTypes: true })
@@ -16,7 +18,8 @@ const fn acp_mock_kpop_steps_body() -> &'static str {
       outer: for (const run of runs) {
         const kpopDir = path.join(root, run, '_kpop');
         if (!fs.existsSync(kpopDir)) continue;
-        for (const name of fs.readdirSync(kpopDir)) {
+        const names = target ? [target] : fs.readdirSync(kpopDir);
+        for (const name of names) {
           if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
           const expPath = path.join(kpopDir, name);
           let existing = '';

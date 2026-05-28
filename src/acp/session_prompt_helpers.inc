@@ -1,9 +1,5 @@
-pub(crate) fn prompt_stdout_replacement(who: &str) -> Option<&'static str> {
-    if who == "learn" {
-        Some(crate::malvin_constants::LEARNING_PLACEHOLDER)
-    } else {
-        None
-    }
+pub(crate) const fn prompt_stdout_replacement(_who: &str) -> Option<&'static str> {
+    None
 }
 
 pub(crate) async fn rpc_session_prompt_text(
@@ -16,7 +12,13 @@ pub(crate) async fn rpc_session_prompt_text(
         "prompt": [{ "type": "text", "text": text }]
     });
     let io = acp_stdio(&session.0);
-    let child_pid = session.0.child.lock().await.id();
+    let child_pid = session
+        .0
+        .child
+        .lock()
+        .await
+        .as_ref()
+        .and_then(tokio::process::Child::id);
     rpc_request_with_correlation_id(RpcOutgoing {
         io: &io,
         id,
@@ -31,13 +33,9 @@ pub(crate) async fn rpc_session_prompt_text(
 
 pub(crate) async fn do_split_trace_preamble(
     file: &mut tokio::fs::File,
-    raw_output: bool,
+    _raw_output: bool,
     split: &DoPromptTraceSplit<'_>,
 ) -> Result<(), String> {
     trace_write_invocation_and_do_split_prompt(file, split).await?;
-    if !raw_output {
-        crate::output::print_outgoing_prompt_log("do", "do");
-    }
     Ok(())
 }
-

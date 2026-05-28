@@ -28,9 +28,9 @@ pub fn code_kpop_request(
     );
     render_kpop_program_request(
         store,
-        artifacts.work_dir.as_path(),
         "code_constraints.md",
         &context,
+        artifacts,
     )
 }
 
@@ -66,7 +66,7 @@ mod tests {
     fn prepare_code_kpop_prompt_store_loads_program_and_constraints() {
         let workflow = crate::cli::WorkflowCliOptions {
             force: false,
-            run_learn: false,
+            
         };
         let store = prepare_code_kpop_prompt_store(workflow).expect("store");
         assert!(store.validate_exists("kpop_program.md").is_ok());

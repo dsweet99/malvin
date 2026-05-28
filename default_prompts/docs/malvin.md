@@ -5,22 +5,30 @@ malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent`
 ## Usage
 
 ```text
-malvin [OPTIONS] <COMMAND>
+malvin [OPTIONS] [<COMMAND> | REQUEST]
 ```
+
+Bare invocation (no subcommand):
+
+- `malvin REQUEST` — KPop investigation (same as legacy `malvin kpop REQUEST`)
+
+Use subcommands for other workflows: `do`, `code`, `constrain`, `tidy`, etc.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | `init` | Bootstrap a repo with malvin templates and tooling |
-| `do` | One-shot agent turn for a single user request |
+| `do` | One-shot agent turn (non-looping) |
 | `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
-| `code` | Implement a plan with review and optional learn loop |
-| `kpop` | Popperian scientific investigation (hypothesis-driven experiment log) |
-| `tidy` | Fix workspace until quality gates pass |
+| `code` | Implement a plan with review loop |
+| `constrain` | Regression test first, then implementation |
+| `tidy` | Fix quality gates and related workspace issues |
 | `models` | List models available from the Cursor agent CLI |
 
-See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `tidy.md`, `models.md`.
+Hidden (backward compatible): `kpop`.
+
+See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `constrain.md`, `kpop.md`, `tidy.md`, `models.md`.
 
 ## Global options
 
@@ -44,7 +52,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` and `invent` always use plain stdout** regardless of this flag.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `invent`, and the `init` summary phase). No effect on `models` (no agent session). Note: **`do` always uses plain stdout** regardless of this flag.
 
 ### `-v` / `--verbose`
 
@@ -103,4 +111,4 @@ Examples:
 
 - `malvin do "fix the typo"` — work dir `.`, request is literal text
 - `malvin code plan.md` — read `plan.md`, work dir is its parent
-- `malvin kpop @notes/request.md` — KPOP stores copy as `request.md` in the run dir
+- `malvin @notes/request.md` — KPop stores copy as `request.md` in the run dir (bare kpop)

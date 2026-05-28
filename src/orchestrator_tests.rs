@@ -1,5 +1,4 @@
 use crate::artifacts::RunArtifacts;
-use crate::orchestrator::{DEFAULT_LEARN_MIN_ELAPSED_MS, should_run_learn_check};
 use crate::orchestrator::{
     WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
     workflow_context,
@@ -7,12 +6,11 @@ use crate::orchestrator::{
 use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
 
-fn tmp_review_paths() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+fn tmp_review_artifact() -> (tempfile::TempDir, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();
-    let workspace = t.path().join("review.md");
     let artifact = t.path().join("run").join("review.md");
     std::fs::create_dir_all(artifact.parent().unwrap()).unwrap();
-    (t, workspace, artifact)
+    (t, artifact)
 }
 
 #[test]
@@ -25,26 +23,6 @@ fn prompt_md_stem_strips_suffix_without_panicking_on_short_names() {
 }
 
 #[test]
-fn legacy_slice_stem_diverges_from_prompt_md_stem() {
-    fn legacy_stem(s: &str) -> &str {
-        &s[..s.len().saturating_sub(3)]
-    }
-    assert_eq!(
-        legacy_stem("bug_fix.md"),
-        prompt_md_stem("bug_fix.md")
-    );
-    assert_eq!(
-        legacy_stem("summary.md"),
-        prompt_md_stem("summary.md")
-    );
-    assert_ne!(
-        legacy_stem("readme.markdown"),
-        prompt_md_stem("readme.markdown")
-    );
-    assert_ne!(legacy_stem("review_1.MD"), prompt_md_stem("review_1.MD"));
-}
-
-#[test]
 fn is_lgtm_reads_file() {
     let t = tempfile::tempdir().unwrap();
     let p = t.path().join("r.md");
@@ -53,23 +31,20 @@ fn is_lgtm_reads_file() {
 }
 
 #[test]
-fn sync_review_file_returns_artifact_when_workspace_empty() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "").unwrap();
+fn sync_review_file_returns_artifact_when_present() {
+    let (_t, artifact) = tmp_review_artifact();
     std::fs::write(&artifact, "LGTM\n").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
+    let out = sync_review_file(&artifact).unwrap();
     assert_eq!(out.as_deref(), Some("LGTM\n"));
     assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
 }
 
 #[test]
-fn sync_review_file_returns_artifact_when_workspace_whitespace_only() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "  \n\t\n").unwrap();
-    std::fs::write(&artifact, "LGTM\n").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
-    assert_eq!(out.as_deref(), Some("LGTM\n"));
-    assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "LGTM\n");
+fn sync_review_file_returns_none_when_artifact_whitespace_only() {
+    let (_t, artifact) = tmp_review_artifact();
+    std::fs::write(&artifact, "  \n\t\n").unwrap();
+    let out = sync_review_file(&artifact).unwrap();
+    assert_eq!(out, None);
 }
 
 #[test]
@@ -116,11 +91,10 @@ fn prefer_primary_errors_chains_timing_when_workflow_and_end_fail() {
 }
 
 #[test]
-fn sync_review_file_prefers_nonempty_artifact_over_workspace() {
-    let (_t, workspace, artifact) = tmp_review_paths();
-    std::fs::write(&workspace, "LGTM\n").unwrap();
+fn sync_review_file_returns_nonempty_artifact_text() {
+    let (_t, artifact) = tmp_review_artifact();
     std::fs::write(&artifact, "old").unwrap();
-    let out = sync_review_file(&workspace, &artifact).unwrap();
+    let out = sync_review_file(&artifact).unwrap();
     assert_eq!(out.as_deref(), Some("old"));
     assert_eq!(std::fs::read_to_string(&artifact).unwrap(), "old");
 }
@@ -218,26 +192,4 @@ fn clear_review_file_returns_error_on_permission_denied() {
         result.is_err(),
         "clear_review_file should return error on permission denied"
     );
-}
-
-const FIVE_MIN_MS: u64 = DEFAULT_LEARN_MIN_ELAPSED_MS;
-
-#[test]
-fn should_run_learn_check_zero_threshold_always_runs() {
-    assert!(should_run_learn_check(0, 0));
-    assert!(should_run_learn_check(0, 1));
-    assert!(should_run_learn_check(0, FIVE_MIN_MS));
-}
-
-#[test]
-fn should_run_learn_check_below_threshold_skips() {
-    assert!(!should_run_learn_check(FIVE_MIN_MS, 0));
-    assert!(!should_run_learn_check(FIVE_MIN_MS, 299_999));
-}
-
-#[test]
-fn should_run_learn_check_at_or_above_threshold_runs() {
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS));
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS + 1));
-    assert!(should_run_learn_check(FIVE_MIN_MS, FIVE_MIN_MS * 2));
 }

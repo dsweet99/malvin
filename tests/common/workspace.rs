@@ -8,6 +8,12 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
     std::fs::write(workspace.join(".malvin/checks"), content).expect("write .malvin/checks");
 }
 
+pub fn seed_malvin_config(workspace: &Path, content: &str) {
+    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
+    std::fs::write(workspace.join(".malvin/config.toml"), content)
+        .expect("write .malvin/config.toml");
+}
+
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
     let home = root.path().join("home");

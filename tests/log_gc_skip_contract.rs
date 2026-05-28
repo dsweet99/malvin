@@ -82,7 +82,6 @@ fn run_malvin_code_in_workspace(
             .args([
                 "--no-tee",
                 "code",
-                "--no-learn",
                 "--max-loops",
                 "1",
                 "ship it",

@@ -191,6 +191,18 @@ fn cli_accepts_all_shared_flags_before_subcommand() {
 }
 
 #[test]
+fn cli_accepts_max_acp_retries_global_flag() {
+    use crate::cli::Cli;
+    use crate::config::DEFAULT_MAX_ACP_RETRIES;
+
+    let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
+    assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
+
+    let cli = Cli::try_parse_from(["malvin", "--max-acp-retries", "5", "do", "task"]).expect("parse");
+    assert_eq!(cli.shared.max_acp_retries, 5);
+}
+
+#[test]
 fn cli_accepts_verbose_short_and_long_global_flags() {
     use crate::cli::Cli;
     use crate::cli::Commands;

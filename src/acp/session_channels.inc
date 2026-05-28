@@ -33,11 +33,11 @@ pub struct SessionChannelState {
     pub(crate) prompt_round_health: Arc<std::sync::Mutex<crate::acp::PromptRoundHealth>>,
 }
 
-fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
+pub(crate) fn acp_activity_state() -> (Arc<AtomicU64>, Arc<Notify>) {
     (Arc::new(AtomicU64::new(0)), Arc::new(Notify::new()))
 }
 
-fn random_agent_name() -> String {
+pub(crate) fn random_agent_name() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(5)
@@ -45,7 +45,7 @@ fn random_agent_name() -> String {
         .collect()
 }
 
-fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
+pub(crate) fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
     args.prompts_log_run_dir.map(|run_dir| {
         Arc::new(AcpJsonlTrace::new(
             run_dir.join("trace.jsonl"),
@@ -57,6 +57,7 @@ fn trace_jsonl_for_args(args: &AcpSpawnArgs<'_>) -> Option<Arc<AcpJsonlTrace>> {
 pub struct SessionInnerAssembly {
     pub child: Child,
     pub process_group_id: Option<u32>,
+    pub spawn_pid_baseline: std::collections::HashSet<u32>,
     pub session_id: String,
     pub rpc_timeout: std::time::Duration,
     pub telemetry: SessionReaderTelemetry,
@@ -65,7 +66,7 @@ pub struct SessionInnerAssembly {
 }
 
 #[allow(clippy::type_complexity)]
-fn session_channel_sync() -> (
+pub(crate) fn session_channel_sync() -> (
     Arc<Mutex<HashMap<u64, ResponseTx>>>,
     Arc<AtomicBool>,
     Arc<AtomicU64>,
@@ -136,8 +137,9 @@ impl SessionChannelState {
 
     pub(crate) fn into_session_inner(self, parts: SessionInnerAssembly) -> AcpSessionInner {
         AcpSessionInner {
-            child: Mutex::new(parts.child),
+            child: Mutex::new(Some(parts.child)),
             process_group_id: parts.process_group_id,
+            spawn_pid_baseline: parts.spawn_pid_baseline,
             stdin: self.stdin,
             pending: self.pending,
             acp_activity_seq: self.acp_activity_seq,
@@ -169,6 +171,7 @@ pub struct SessionAfterStdioIn<'a> {
     pub(crate) args: AcpSpawnArgs<'a>,
     pub(crate) rpc_timeout: std::time::Duration,
     pub(crate) require_cursor_login_auth: bool,
+    pub(crate) spawn_pid_baseline: std::collections::HashSet<u32>,
     pub(crate) child: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) stdout: ChildStdout,

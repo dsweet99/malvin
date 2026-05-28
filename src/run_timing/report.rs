@@ -15,8 +15,17 @@ pub(super) fn duration_ms_u64(d: Duration) -> u64 {
     u64::try_from(d.as_millis()).unwrap_or(u64::MAX)
 }
 
+pub(super) fn wall_clock_ms_for_json(r: &RunTiming) -> Option<u64> {
+    r.wall_duration()
+        .map(duration_ms_u64)
+        .or_else(|| {
+            r.wall_start
+                .map(|_| duration_ms_u64(r.elapsed_so_far()))
+        })
+}
+
 pub(super) fn to_json_value(r: &RunTiming) -> Value {
-    let wall_ms = r.wall_duration().map(duration_ms_u64);
+    let wall_ms = wall_clock_ms_for_json(r);
     let ms = duration_ms_u64;
     json!({
         "wall_clock_ms": wall_ms,
@@ -32,7 +41,6 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
             "review_fanout": ms(r.review_fanout),
             "review_write": ms(r.review_write),
             "concerns": ms(r.concerns),
-            "learn": ms(r.learn),
             "summary": ms(r.summary),
         }
     })
@@ -135,7 +143,6 @@ fn timing_line_uses_one_decimal_and_includes_all_buckets() {
     assert!(line.contains("wall = "));
     assert!(line.contains("llm_wait = "));
     assert!(line.contains("implement = 0.1s"));
-    assert!(line.contains("learn = "));
     assert!(line.contains("summary = "));
 }
 

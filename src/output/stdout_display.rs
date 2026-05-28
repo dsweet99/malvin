@@ -1,5 +1,6 @@
 use super::stdout_line_wrap_meta;
 use super::{ANSI_RESET, format_log_tag_inner, wrap_words_bounded};
+use crate::terminal_palette::ANSI_TOOL_NAVY;
 
 pub(crate) use super::who_tag_ansi;
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
@@ -26,8 +27,7 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
 #[must_use]
 pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
-    let tag_color = who_tag_ansi(who);
-    format!("{tag_color}[{inner}] {line}{ANSI_RESET}")
+    format!("{ANSI_TOOL_NAVY}[{inner}] {line}{ANSI_RESET}")
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
@@ -164,7 +164,7 @@ mod tests {
         assert!(log.starts_with("20260524.000000.000"));
         assert!(
             display.starts_with(ANSI_TOOL_NAVY),
-            "heartbeat line must open with who-tag navy; got {display:?}"
+            "heartbeat line must open with navy who-tag; got {display:?}"
         );
         let reset_before_payload = format!("]{}{} ", super::ANSI_RESET, payload);
         assert!(

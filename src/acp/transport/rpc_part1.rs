@@ -240,3 +240,4 @@ mod kiss_cov_auto {
     fn kiss_cov_rpc_wait_with_timeout() { let _ = stringify!(rpc_wait_with_timeout); }
 
 }
+

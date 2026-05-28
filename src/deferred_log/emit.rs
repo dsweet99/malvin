@@ -30,9 +30,11 @@ pub fn emit_deferred_entry(entry: &DeferredEntry) {
             flush_stdout_raw_line_with_ts(line, Some(&entry.ts));
         }
         DeferredPayload::DisplayLog { display, log } => {
-            flush_stdout_rendered_line(display, log);
-            if crate::output::is_heartbeat_log_line(log) {
-                crate::output::mark_heartbeat_emitted(std::time::Instant::now());
+            if crate::output::log_contains_heartbeat(log) {
+                let _ = display;
+                crate::output::append_stdout_log_line(log);
+            } else {
+                flush_stdout_rendered_line(display, log);
             }
         }
     }

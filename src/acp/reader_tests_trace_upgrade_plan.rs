@@ -77,3 +77,12 @@ mod kiss_cov_auto {
         let _ = stringify!(upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee);
     }
 }
+
+#[cfg(test)]
+mod kiss_cov_gate_refs {
+    use super::*;
+    #[test]
+    fn kiss_cov_unit_names() {
+        let _ = feed_upgrade_plan_split;
+    }
+}

@@ -6,6 +6,15 @@ use std::sync::{Arc, Mutex};
 use crate::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles};
 use crate::run_timing::RunTiming;
 
+/// Whether an ACP session end should finalize run timing or keep accumulating for a longer workflow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunTimingSessionEnd {
+    /// Standalone command (`kpop`, `do`, …): write final JSON and clear the client timing slot.
+    Finalize,
+    /// Gate-kpop loop iteration: persist progress JSON; keep wall clock and buckets on the client.
+    AccumulateRun,
+}
+
 pub fn merge_acp_and_timing_results(
     acp_result: Result<(), String>,
     timing_result: std::io::Result<()>,
@@ -49,8 +58,8 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
 ) -> Result<(), String> {
     let merge_result =
         merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
-    if let Some(abort) = crate::orchestrator::check_abort(result_path) {
-        return match merge_result {
+    match crate::orchestrator::check_abort(result_path) {
+        Ok(Some(abort)) => match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
             Err(merge_error) => {
                 let detail = if merge_error.contains("workspace session restore failed:") {
@@ -60,9 +69,10 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
                 };
                 Err(format!("ABORT: {abort}; {detail}"))
             }
-        };
+        },
+        Ok(None) => merge_result,
+        Err(e) => Err(format!("cannot read result file for ABORT check: {e}")),
     }
-    merge_result
 }
 
 pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
@@ -70,6 +80,7 @@ pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
         || merge_error.contains("kissconfig restore:")
         || merge_error.contains("malvin_checks restore:")
         || merge_error.contains("kissignore restore:")
+        || merge_error.contains("malvin_config restore:")
 }
 
 pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
@@ -80,15 +91,27 @@ pub(crate) fn duplicate_safe_restore_error(merge_error: &str) -> String {
     }
 }
 
-pub fn emit_run_timing_after_acp(
-    client: &mut crate::acp::AgentClient,
-    run_dir: &Path,
-    timing: &Arc<Mutex<RunTiming>>,
-    acp_result: Result<(), String>,
-) -> Result<(), String> {
-    let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
-    client.set_run_timing(None);
-    merge_acp_and_timing_results(acp_result, timing_result)
+pub struct RunTimingAfterAcp<'a> {
+    pub client: &'a mut crate::acp::AgentClient,
+    pub run_dir: &'a Path,
+    pub timing: &'a Arc<Mutex<RunTiming>>,
+    pub acp_result: Result<(), String>,
+    pub session_end: RunTimingSessionEnd,
+}
+
+pub fn emit_run_timing_after_acp(req: RunTimingAfterAcp<'_>) -> Result<(), String> {
+    let timing_result = match req.session_end {
+        RunTimingSessionEnd::Finalize => {
+            crate::run_timing::finalize_run_timing_json_only(req.run_dir, req.timing)
+        }
+        RunTimingSessionEnd::AccumulateRun => {
+            crate::run_timing::persist_open_run_timing_json(req.run_dir, req.timing)
+        }
+    };
+    if matches!(req.session_end, RunTimingSessionEnd::Finalize) {
+        req.client.set_run_timing(None);
+    }
+    merge_acp_and_timing_results(req.acp_result, timing_result)
 }
 
 pub fn emit_run_timing_json_only_after_acp(
@@ -97,9 +120,13 @@ pub fn emit_run_timing_json_only_after_acp(
     timing: &Arc<Mutex<RunTiming>>,
     acp_result: Result<(), String>,
 ) -> Result<(), String> {
-    let timing_result = crate::run_timing::finalize_run_timing_json_only(run_dir, timing);
-    client.set_run_timing(None);
-    merge_acp_and_timing_results(acp_result, timing_result)
+    emit_run_timing_after_acp(RunTimingAfterAcp {
+        client,
+        run_dir,
+        timing,
+        acp_result,
+        session_end: RunTimingSessionEnd::Finalize,
+    })
 }
 
 pub fn merge_acp_restore_check_abort_then_print_timing(
