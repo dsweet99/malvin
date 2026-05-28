@@ -12,7 +12,6 @@ pub struct KpopMultiturnState<'a> {
     pub max_hypotheses: usize,
     pub(crate) prompt_sent: bool,
     pub(crate) done: bool,
-    pub(crate) last_block_miss: Option<super::block_report::KpopBlockMissSnapshot>,
 }
 
 impl<'a> KpopMultiturnState<'a> {
@@ -50,7 +49,6 @@ impl<'a> KpopMultiturnState<'a> {
             max_hypotheses: params.max_hypotheses,
             prompt_sent: false,
             done: false,
-            last_block_miss: None,
         })
     }
 

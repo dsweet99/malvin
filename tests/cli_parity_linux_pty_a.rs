@@ -5,7 +5,7 @@ mod linux_pty {
     use crate::common::{
         acp_mock_code_streaming_long_bold_markdown_js, acp_mock_code_streaming_rich_markdown_js,
         assert_markdown_stdout_and_logs, only_run_dir, read_all_logs,
-        run_code_max_loops_zero_under_script, run_kpop_no_progress_under_script,
+        run_code_max_loops_zero_under_script, run_kpop_bold_markdown_under_script,
         run_malvin_under_script_with_mock,
     };
 
@@ -94,8 +94,8 @@ mod linux_pty {
             None,
         );
         assert!(
-            !run.output.status.success(),
-            "expected kpop no-progress failure exit from script -e: {:?}",
+            run.output.status.success(),
+            "expected kpop success when agent streams markdown only: {:?}",
             run.output
         );
         assert_markdown_stdout_and_logs(&run);
@@ -140,10 +140,10 @@ mod linux_pty {
 
     #[test]
     fn kpop_pty_markdown_strips_bold_markers_without_no_markdown() {
-        let out = run_kpop_no_progress_under_script(&[]);
+        let out = run_kpop_bold_markdown_under_script(&[]);
         assert!(
-            !out.status.success(),
-            "expected kpop no-progress failure exit from script -e: {out:?}"
+            out.status.success(),
+            "expected kpop success when agent streams markdown only: {out:?}"
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
@@ -162,10 +162,10 @@ mod linux_pty {
 
     #[test]
     fn kpop_pty_no_markdown_preserves_bold_markers() {
-        let out = run_kpop_no_progress_under_script(&["--no-markdown"]);
+        let out = run_kpop_bold_markdown_under_script(&["--no-markdown"]);
         assert!(
-            !out.status.success(),
-            "expected kpop no-progress failure exit from script -e: {out:?}"
+            out.status.success(),
+            "expected kpop success when agent streams markdown only: {out:?}"
         );
         let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(

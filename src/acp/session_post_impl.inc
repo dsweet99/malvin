@@ -7,16 +7,6 @@ pub(crate) fn acp_session_set_run_timing(
         .run_timing = timing;
 }
 
-pub(crate) fn acp_session_take_prompt_round_health(session: &AcpSession) -> PromptRoundHealth {
-    std::mem::take(
-        &mut session
-            .0
-            .prompt_round_health
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner),
-    )
-}
-
 impl AcpSession {
     /// Spawn `agent acp`, run `initialize` / `authenticate` / `session/new`.
     ///

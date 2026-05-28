@@ -9,5 +9,4 @@ mod inline {
 }
 
 pub(crate) use inline::acp_session_set_run_timing;
-pub(crate) use inline::acp_session_take_prompt_round_health;
 pub(crate) use inline::*;

@@ -169,7 +169,7 @@ pub(crate) use wrap_session_prompt::*;
 
 #[path = "wrap_session_post.rs"]
 mod wrap_session_post;
-pub(crate) use wrap_session_post::{acp_session_set_run_timing, acp_session_take_prompt_round_health};
+pub(crate) use wrap_session_post::acp_session_set_run_timing;
 mod session_drop_teardown;
 
 #[cfg(unix)]

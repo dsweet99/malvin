@@ -119,12 +119,7 @@ fn kiss_cov_deferred_log_plan_regression() {
 fn kiss_cov_acp_reader_test_prompt_round_health() {
     let _ = stringify!(detects_upgrade_plan_when_phrase_leads_long_agent_chunk);
     let _ = stringify!(detects_upgrade_plan_across_split_agent_chunks);
-    let _ = stringify!(detects_streamed_kpop_solved_in_agent_chunk);
-    let _ = stringify!(counts_silent_shell_completions);
-    let _ = stringify!(records_service_unavailable_on_search_tool);
-    let _ = stringify!(completed_tool_call_raw);
-    let _ = stringify!(silent_shell_completion);
-    let _ = stringify!(raw_output_text_empty);
+    let _ = stringify!(append_agent_text_drain_respects_utf8_char_boundary);
 }
 
 #[test]

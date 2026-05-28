@@ -71,12 +71,12 @@ mod tests {
             .expect("spawn cat");
         let stdin = child.stdin.take().expect("stdin");
         let io = crate::acp_tests::reader_tests_helpers::handshake_io_from_stdin(stdin);
-        assert!(io
-            .prompt_round_health
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .format_lines()
-            .is_empty());
+        assert!(
+            !io.prompt_round_health
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .upgrade_plan_seen()
+        );
         child.kill().await.ok();
         let _ = child.wait().await;
     }
