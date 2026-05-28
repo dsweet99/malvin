@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
-
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
 };
@@ -20,8 +18,6 @@ pub(in crate) fn kpop_prompt_store(
 
 pub struct KpopPrepared {
     pub(in crate) artifacts: RunArtifacts,
-    #[allow(dead_code)]
-    pub(in crate) exp_log_path: PathBuf,
     pub(in crate) context: HashMap<String, String>,
     pub(in crate) text: String,
     pub(in crate) session_dotfile_backups: SessionDotfileBackups,
@@ -34,7 +30,6 @@ pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, Strin
     let (text, work_dir) = resolve_user_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let exp_log_path = artifacts.exp_log_path();
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     let mut context = workflow_context_paths_only(&artifacts, "kpop");
@@ -44,7 +39,6 @@ pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, Strin
     );
     Ok(KpopPrepared {
         artifacts,
-        exp_log_path,
         context,
         text,
         session_dotfile_backups,
@@ -126,8 +120,6 @@ pub async fn run_kpop(
     let acp_result = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
             kpop: &kpop,
-            shared,
-            workflow,
             store: &store,
             client: &mut client,
             prepared: &prepared,

@@ -106,8 +106,6 @@ pub use session_dotfile_backup::KissConfigBackup;
 pub mod artifacts;
 mod child_health;
 pub mod config;
-mod kpop_acp_prompt;
-pub use kpop_acp_prompt::kpop_creative_enabled;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
 pub use kpop_test_stubs::{

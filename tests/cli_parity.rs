@@ -9,11 +9,6 @@ const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
     "/default_repo/gitignore"
 ));
 
-const DEFAULT_PROMPTS_REVIEW_PLAN: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_prompts/review_plan.md"
-));
-
 #[cfg(unix)]
 fn run_root_help_output() -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -124,15 +119,6 @@ fn help_lists_max_acp_retries_with_default_three() {
     assert!(
         window.contains("[default: 3]"),
         "expected --max-acp-retries help to show default 3: {window:?}"
-    );
-}
-
-#[test]
-fn default_prompts_review_plan_uses_spaced_brace_placeholders() {
-    let bad = malvin::prompts::malformed_brace_placeholders(DEFAULT_PROMPTS_REVIEW_PLAN);
-    assert!(
-        bad.is_empty(),
-        "review_plan.md must use {{ key }} placeholders: {bad:?}"
     );
 }
 

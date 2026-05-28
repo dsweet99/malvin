@@ -3,11 +3,6 @@ use std::collections::HashMap;
 use crate::multiturn_prompt::MultiturnPrompt;
 
 #[test]
-fn smoke_kpop_acp_prompt() {
-    let _ = crate::kpop_acp_prompt::CREATIVE_MIN_INTERACTION;
-}
-
-#[test]
 fn smoke_kpop_progression_and_multiturn() {
     let text = "## Step 1 — KPop a\n";
     assert_eq!(crate::kpop_progression::count_kpop_entries(text), 1);
@@ -32,10 +27,8 @@ fn smoke_kpop_progression_and_multiturn() {
         Some("exp.md")
     );
 
-    match MultiturnPrompt::KpopBlock("z".into()) {
-        MultiturnPrompt::KpopBlock(s) => assert_eq!(s, "z"),
-        MultiturnPrompt::Mbc2(_) => panic!("expected kpop block variant"),
-    }
+    let MultiturnPrompt::KpopBlock(s) = MultiturnPrompt::KpopBlock("z".into());
+    assert_eq!(s, "z");
 }
 
 #[test]

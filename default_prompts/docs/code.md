@@ -36,7 +36,7 @@ Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
 
 ### `--trust-the-plan`
 
-Skip the **check plan** phase. Use when the plan was already reviewed (e.g. via `malvin plan`) and you want to go straight to implementation.
+Skip the **check plan** phase. Use when the plan was already reviewed externally and you want to go straight to implementation.
 
 ### `--skip-pre-checks`
 

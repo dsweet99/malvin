@@ -169,8 +169,6 @@ mod tests {
                         kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
                     run_kpop_agent_loops(RunKpopAgentLoopsParams {
                         kpop: &kpop,
-                        shared: &shared,
-                        workflow,
                         store: &store,
                         client: &mut client,
                         prepared: &prepared,

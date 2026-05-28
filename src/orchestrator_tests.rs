@@ -23,26 +23,6 @@ fn prompt_md_stem_strips_suffix_without_panicking_on_short_names() {
 }
 
 #[test]
-fn legacy_slice_stem_diverges_from_prompt_md_stem() {
-    fn legacy_stem(s: &str) -> &str {
-        &s[..s.len().saturating_sub(3)]
-    }
-    assert_eq!(
-        legacy_stem("bug_fix.md"),
-        prompt_md_stem("bug_fix.md")
-    );
-    assert_eq!(
-        legacy_stem("summary.md"),
-        prompt_md_stem("summary.md")
-    );
-    assert_ne!(
-        legacy_stem("readme.markdown"),
-        prompt_md_stem("readme.markdown")
-    );
-    assert_ne!(legacy_stem("review_1.MD"), prompt_md_stem("review_1.MD"));
-}
-
-#[test]
 fn is_lgtm_reads_file() {
     let t = tempfile::tempdir().unwrap();
     let p = t.path().join("r.md");

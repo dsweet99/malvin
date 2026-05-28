@@ -10,7 +10,6 @@ struct MultiturnRoundAfter<'a, 'b> {
     cwd: &'a Path,
     session_dotfile_backups: &'a crate::artifacts::SessionDotfileBackups,
     state: &'a mut crate::kpop_progression::KpopMultiturnState<'b>,
-    is_kpop_block: bool,
     hypotheses_before_round: usize,
     prompt_health: PromptRoundHealth,
 }
@@ -50,27 +49,23 @@ async fn multiturn_after_successful_round(
             after.state.max_hypotheses
         )));
     }
-    if after.is_kpop_block {
-        if let Some(snapshot) = block_miss_snapshot(
-            after.state,
-            after.hypotheses_before_round,
-            hypotheses_after,
-            &after.prompt_health,
-        ) {
-            let mut err_text = snapshot.format_no_progress_error();
-            crate::kpop_progression::set_last_block_miss(after.state, snapshot);
-            if after.prompt_health.has_infra_failure() {
-                err_text.push_str(
-                    "\nLikely infra failure during this prompt (see ACP tool issues above).",
-                );
-            }
-            let _ = session.shutdown().await;
-            return Err(AgentError(err_text));
+    if let Some(snapshot) = block_miss_snapshot(
+        after.state,
+        after.hypotheses_before_round,
+        hypotheses_after,
+        &after.prompt_health,
+    ) {
+        let mut err_text = snapshot.format_no_progress_error();
+        crate::kpop_progression::set_last_block_miss(after.state, snapshot);
+        if after.prompt_health.has_infra_failure() {
+            err_text.push_str(
+                "\nLikely infra failure during this prompt (see ACP tool issues above).",
+            );
         }
-        after.state.record_kpop_block_prompt_completed();
-    } else {
-        after.state.record_mbc2_prompt_completed();
+        let _ = session.shutdown().await;
+        return Err(AgentError(err_text));
     }
+    after.state.record_kpop_block_prompt_completed();
     Ok(())
 }
 
@@ -90,7 +85,6 @@ pub(crate) async fn run_kpop_multiturn_once(
                 return Err(AgentError(e));
             }
         };
-        let is_kpop_block = matches!(prompt, crate::multiturn_prompt::MultiturnPrompt::KpopBlock(_));
         let hypotheses_before_round = crate::kpop_progression::read_exp_log_text(ctl.state.exp_log_path())
             .map_err(AgentError)
             .map(|text| crate::kpop_progression::hypotheses_emitted(&text))?;
@@ -123,7 +117,6 @@ pub(crate) async fn run_kpop_multiturn_once(
                 cwd: ctl.cwd,
                 session_dotfile_backups: ctl.session_dotfile_backups,
                 state: ctl.state,
-                is_kpop_block,
                 hypotheses_before_round,
                 prompt_health,
             },

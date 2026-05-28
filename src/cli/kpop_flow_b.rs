@@ -155,18 +155,4 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         !kpop.contains("remaining_hypotheses"),
         "kpop_block must not reference remaining_hypotheses: {kpop:?}"
     );
-    let mbc2 = turn.mbc2_turn().unwrap();
-    assert!(
-        !mbc2.contains("Regular memories"),
-        "mbc2 should not include header/coding rules"
-    );
-    assert!(mbc2.contains("# MBC2"));
-    assert_prompt_contains_each(
-        &mbc2,
-        &[
-            "do the thing",
-            "produce exactly one MBC2 hypothesis",
-            ".malvin/logs/run42/_kpop/exp_log_run42.md",
-        ],
-    );
 }

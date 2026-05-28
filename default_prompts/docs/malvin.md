@@ -23,11 +23,12 @@ Use subcommands for other workflows: `do`, `code`, `constrain`, `tidy`, etc.
 | `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
 | `code` | Implement a plan with review loop |
 | `constrain` | Regression test first, then implementation |
+| `tidy` | Fix quality gates and related workspace issues |
 | `models` | List models available from the Cursor agent CLI |
 
 Hidden (backward compatible): `kpop`.
 
-See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `tidy.md`, `models.md`.
+See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `constrain.md`, `kpop.md`, `tidy.md`, `models.md`.
 
 ## Global options
 

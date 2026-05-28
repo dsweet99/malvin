@@ -38,5 +38,4 @@ fn kpop_turn_prompts_render() {
         prepend_rules_once: true,
     };
     let _ = prompts.kpop_block(1, 0).expect("kpop");
-    let _ = prompts.mbc2_turn().expect("mbc2");
 }

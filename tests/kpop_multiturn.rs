@@ -52,9 +52,7 @@ fn kpop_want_equals_max_hypotheses_in_single_prompt() {
     })
     .unwrap();
     let first = state.next_prompt().expect("prompt").expect("first");
-    let MultiturnPrompt::KpopBlock(s) = first else {
-        panic!("expected kpop block");
-    };
+    let MultiturnPrompt::KpopBlock(s) = first;
     let want = parse_kpop_want(&s).expect("want");
     assert_eq!(want, 3);
 }
@@ -71,9 +69,7 @@ fn kpop_single_prompt_then_stop_even_after_agent_writes_steps() {
     })
     .unwrap();
     let first = state.next_prompt().expect("prompt");
-    let MultiturnPrompt::KpopBlock(s) = first.expect("first") else {
-        panic!("expected kpop block");
-    };
+    let MultiturnPrompt::KpopBlock(s) = first.expect("first");
     let want = parse_kpop_want(&s).expect("want in stub");
     for step in 1..=want {
         append_kpop_line(&path, step);

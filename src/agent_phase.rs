@@ -1,6 +1,6 @@
 //! Infers agent phase labels for stdout heartbeats from malvin runtime signals.
 //!
-//! Labels match the taxonomy in `statuses.md` (embedded here; not read at compile time).
+//! Phase labels for stdout heartbeats (Orienting, Researching, …).
 
 #[path = "agent_phase_signal.rs"]
 mod agent_phase_signal;

@@ -15,7 +15,6 @@ pub const REQUIRED_PROMPTS: &[&str] = &[
 ];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
-    "kpop.md",
     "kpop_common.md",
     "kpop_block.md",
     "mbc2.md",

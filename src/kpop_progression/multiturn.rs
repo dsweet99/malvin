@@ -89,8 +89,6 @@ impl<'a> KpopMultiturnState<'a> {
         // Single-prompt sessions: no catch-up rounds.
     }
 
-    pub const fn record_mbc2_prompt_completed(&mut self) {}
-
     /// Clears the in-flight prompt latch after a failed ACP transport attempt so the outer
     /// retry loop can call [`Self::next_prompt`] again.
     pub(crate) fn reset_for_transport_retry(&mut self) {
