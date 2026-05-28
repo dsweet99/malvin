@@ -1,8 +1,6 @@
-use clap::CommandFactory;
-
 use super::models_cmd;
 use super::{
-    Cli, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
@@ -95,8 +93,7 @@ pub fn entrypoint_from(
     };
     prepare_cli_output(&cli.global);
     if cli.command.is_none() && !cli.shared.doc {
-        let mut cmd = Cli::command();
-        let _ = cmd.print_help();
+        let _ = super::commands_help::print_commands_only_help();
         return Exit::Success;
     }
     if cli.shared.doc {

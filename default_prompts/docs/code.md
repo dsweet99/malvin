@@ -1,10 +1,19 @@
 # malvin code
 
-Implement a **plan** using the full malvin coding pipeline: optional plan validation, implementation, multi-attempt code review, and a closing summary.
+Implement a **plan** using malvin’s **KPop gate loop**: repeated agent sessions scoped by `code_constraints.md` until quality gates pass and the experiment log records consecutive success.
+
+## Summary
+
+| | |
+|---|---|
+| Input | Plan text or path to `.md` → `plan.md` in the run dir |
+| Loop | Outer gate iterations; each runs one KPop session |
+| Success | Two consecutive `## KPOP_SOLVED` markers **and** passing `.malvin/checks` gates |
+| Requires | `kiss` on PATH; Cursor agent CLI |
 
 ## Intention
 
-Take a written plan (inline or from a file) and drive the repo to a reviewed state with quality gates enforced before each review cycle. This is the primary “build this feature” command.
+Take a written plan and drive the workspace to a gate-clean state while following coding rules embedded in prompts. This is the primary “build this feature” command.
 
 ## Usage
 
@@ -16,86 +25,65 @@ malvin code [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Plan text or a path to an existing `.md` file (no whitespace in the path string; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
+Plan text or a path to an existing `.md` file (no whitespace in the path; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
 
 ## Options
 
 ### `--max-loops <N>` (default: 5)
 
-Maximum **review cycles** after implementation. Each cycle:
+Outer gate-loop budget. Malvin runs up to `max(N, 1) + 1` outer iterations (see `malvin --doc`, section “Gate-loop commands”).
 
-1. Reviewer fan-out + review write aggregation
-2. If not LGTM: **concerns** coder turn to address feedback
-3. Repeat until LGTM or budget exhausted
+### `--max-hypotheses <N>` (default: 10)
 
-Value `0` is treated as `1` (at least one review attempt). Plan check retries also respect this budget.
+Per-session hypothesis budget: maximum `## Step … — KPOP` lines the agent should add in one gate-loop iteration (`{{ want }}` in the rendered prompt).
 
 ### `--tenacious`
 
-Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+Sets `--max-acp-retries=9999` and `--max-loops=9999`.
 
-### `--trust-the-plan`
+## Global options
 
-Skip the **check plan** phase. Use when the plan was already reviewed externally and you want to go straight to implementation.
+See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--verbose`, `--no-color`, `--background`, `--max-acp-retries`, `--doc`.
 
-### `--skip-pre-checks`
+## Workflow
 
-Skip workspace quality gates **before** the ACP session starts. Default: gates must pass or malvin exits with guidance to run `malvin tidy` or retry with this flag.
+1. **Startup** — Create run dir, copy plan to `plan.md`, emit command line and paths.
+2. **Gate loop** (`GateLoopBehavior::CODE`) — Unlike `tidy`, **always** enters the loop (no “gates already pass” fast path).
+3. **Per outer iteration:**
+   - Render `kpop_program.md` with `code_constraints.md` as scope.
+   - Run one KPop agent session; log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
+   - Snapshot/restore `.kissconfig`, `.kissignore`, `.malvin/checks`.
+   - Track consecutive sessions that end with `## KPOP_SOLVED`.
+4. **Exit** — Success when two consecutive solved markers align with passing workspace gates; otherwise fail after exhaustion (gates rechecked).
 
-### Global options
+## Prompt roles
 
-See `malvin.md`. `--no-markdown` affects agent stdout styling. `--no-force` disables agent `--force`.
-
-## Requirements
-
-- `kiss` on PATH (CLI refuses to start otherwise)
-- Cursor agent CLI
-- Passing pre-checks unless `--skip-pre-checks`
-
-## Prompt workflow
-
-Single long-lived coder session: main work, then summary.
-
-### Phase A — Before summary (main loop)
-
-| Order | Prompt role (effect) | Notes |
-|-------|----------------------|-------|
-| 1 | **Check plan** (skipped if `--trust-the-plan`) — Agent reviews `plan.md`; must write LGTM (or actionable feedback) to `review.md`. Failure aborts the run. | Retries if review file missing |
-| 2 | **Implement** — Agent implements the plan in the workspace. | Main coding turn |
-| 3–N | **Review loop** (up to `--max-loops`) | See below |
-
-**Each review iteration:**
-
-| Sub-step | Prompt role (effect) |
-|----------|----------------------|
-| 3a | **Pre-review quality gates** — Run `.malvin/checks` commands. If any fail, malvin writes gate output to `review.md` and skips to concerns (3d). |
-| 3b | **Reviewers spawn** — Parallel reviewer agents produce structured review material into run artifacts. |
-| 3c | **Review write** — Aggregates reviewer output into a single review verdict in `review.md`. |
-| 3d | If not LGTM: **Concerns** — Agent addresses review feedback and updates code. |
-| 3e | Abort check on `result.md` between steps. |
-
-Loop exits on LGTM or exhausted `--max-loops`.
-
-| Order | Prompt role (effect) | Notes |
-|-------|----------------------|-------|
-| 4 | **Summary** — Short user-facing recap of what was done. | After review succeeds |
+| Artifact | Role |
+|----------|------|
+| `code_constraints.md` | Plan-specific scope (constraints, plan path) |
+| `kpop_program.md` | Shared KPop multiturn instructions + quality gates |
+| `header.md` / coding rules | Prepended on first turn via shared KPop machinery |
 
 ## Artifacts
 
 - `./.malvin/logs/<run>/plan.md` — input plan
-- `review.md`, `review_prep.md` — review pipeline
-- `result.md` — `ABORT:` prefix stops the workflow
-- `quality_gates.log` — gate commands
-- Phase logs: `check_plan`, `implement`, `concerns`, `summary`, etc.
+- `_kpop/exp_log_*.md` — experiment log (authoritative for KPop steps)
+- `kpop.log` — session transcript
+- `quality_gates.log` — gate command output
+- `result.md` — `ABORT:` stops the workflow when checked
 
-## Session safety
+## Related commands
 
-`.kissconfig`, `.kissignore`, and `.malvin/checks` are snapshotted before the session and restored after so agent edits do not persist unintentionally.
+| Command | When |
+|---------|------|
+| `malvin constrain` | Test-first regression, then implementation |
+| `malvin tidy` | Fix gates without a feature plan |
+| `malvin kpop` / bare `malvin` | Investigation without a shipping plan |
 
 ## Examples
 
 ```text
 malvin code plan.md
-malvin code --trust-the-plan plan.md --max-loops 3
-malvin code --skip-pre-checks "Add widget API per plan.md"
+malvin code --max-loops 3 --max-hypotheses 15 "Add widget API per plan.md"
+malvin --model sonnet-4 code @plans/feature.md
 ```

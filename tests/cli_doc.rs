@@ -17,7 +17,7 @@ fn malvin_doc_prints_full_malvin_md() {
 }
 
 #[test]
-fn bare_malvin_matches_help_and_exits_zero() {
+fn bare_malvin_shows_commands_only_and_exits_zero() {
     let bin = env!("CARGO_BIN_EXE_malvin");
     let bare = std::process::Command::new(bin)
         .output()
@@ -32,6 +32,27 @@ fn bare_malvin_matches_help_and_exits_zero() {
         String::from_utf8_lossy(&bare.stderr)
     );
     assert!(help.status.success());
-    assert_eq!(bare.stdout, help.stdout);
-    assert_eq!(bare.stderr, help.stderr);
+    let bare_s = String::from_utf8_lossy(&bare.stdout);
+    let help_s = String::from_utf8_lossy(&help.stdout);
+    assert_ne!(
+        bare.stdout, help.stdout,
+        "bare malvin must not duplicate full --help"
+    );
+    assert!(bare_s.contains("Commands:"), "bare stdout: {bare_s}");
+    assert!(
+        bare_s.contains("malvin --help"),
+        "bare stdout must point to --help: {bare_s}"
+    );
+    assert!(
+        !bare_s.contains("Options:"),
+        "bare stdout must omit options: {bare_s}"
+    );
+    assert!(
+        help_s.contains("Options:"),
+        "full help must list options: {help_s}"
+    );
+    assert!(
+        help_s.contains("--no-color"),
+        "full help must list global flags: {help_s}"
+    );
 }

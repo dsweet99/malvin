@@ -7,6 +7,7 @@ pub(crate) mod cli_request;
 pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
+mod commands_help;
 mod config_defaults;
 mod config_loop;
 mod entrypoint;
