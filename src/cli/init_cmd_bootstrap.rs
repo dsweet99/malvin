@@ -135,6 +135,21 @@ mod unit_tests {
     }
 
     #[test]
+    fn ensure_pre_commit_hooks_fails_without_git_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pre-commit-config.yaml"),
+            "repos: []\n",
+        )
+        .unwrap();
+        let err = ensure_pre_commit_hooks(tmp.path()).unwrap_err();
+        assert!(
+            err.contains("`pre-commit install` failed"),
+            "expected pre-commit install failure without git; got: {err:?}"
+        );
+    }
+
+    #[test]
     fn kiss_repo_initialized_false_when_missing() {
         let tmp = tempfile::tempdir().unwrap();
         assert!(!kiss_repo_initialized(tmp.path()));

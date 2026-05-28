@@ -10,14 +10,36 @@ use common::{
     malvin_init_output, tempdir_seeded_dirty_keep,
 };
 
+fn init_combined_output(out: &std::process::Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    )
+}
+
+/// Regression for bug.md: `malvin init python` in an empty directory must not fail on
+/// `pre-commit install` before git exists.
 #[test]
-fn malvin_init_runs_git_init_when_not_in_repo() {
+fn malvin_init_empty_directory_does_not_fail_pre_commit_install() {
     let project = tempfile::tempdir().unwrap();
     assert!(!project.path().join(".git").exists());
     let out = malvin_init_output(project.path(), &["python"]);
-    assert!(out.status.success(), "malvin init failed: {out:?}");
+    let combined = init_combined_output(&out);
+    assert!(
+        out.status.success(),
+        "malvin init failed on empty directory: {combined:?}"
+    );
+    assert!(
+        !combined.contains("`pre-commit install` failed"),
+        "bug.md regression: pre-commit install must succeed after git init; got: {combined:?}"
+    );
     assert!(project.path().join(".git").exists());
     assert_git_branch_main(project.path());
+    assert!(
+        project.path().join(".git/hooks/pre-commit").is_file(),
+        "pre-commit hook should be installed"
+    );
 }
 
 #[test]
