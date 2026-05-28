@@ -20,33 +20,24 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare invocation: malvin REQUEST runs kpop; malvin --do REQUEST runs do; malvin @code|@constrain|@tidy … runs that workflow."
+    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). Use subcommands for do, code, constrain, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOpts,
     #[command(flatten)]
     pub shared: SharedOpts,
-    /// One-shot agent request (replaces `malvin do REQUEST`).
-    #[arg(long = "do")]
-    pub do_mode: bool,
-    /// With `--do`: run repository quality gates before the prompt.
-    #[arg(long = "repo-gates", default_value_t = false)]
-    pub do_repo_gates: bool,
-    /// With `--do`: show agent thought tokens on stdout when interactive.
-    #[arg(long = "thoughts", default_value_t = false)]
-    pub do_thoughts: bool,
-    /// Gate-loop iterations for bare `malvin REQUEST` / `@workflow` invocations.
+    /// Gate-loop iterations for bare `malvin REQUEST` (kpop).
     #[arg(long = "max-loops", default_value_t = 1)]
     pub bare_max_loops: usize,
-    /// `KPop` hypothesis budget per gate session for bare invocations.
+    /// `KPop` hypothesis budget per gate session for bare kpop invocations.
     #[arg(long = "max-hypotheses", default_value_t = 10)]
     pub bare_max_hypotheses: usize,
-    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare invocations.
+    /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare kpop invocations.
     #[arg(long = "tenacious", default_value_t = false)]
     pub bare_tenacious: bool,
-    /// When no subcommand: kpop request, `--do` request, or `@workflow` selector plus optional request.
-    #[arg(value_name = "ARG")]
+    /// When no subcommand: kpop request text or path.
+    #[arg(value_name = "REQUEST")]
     pub bare_args: Vec<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -56,8 +47,7 @@ pub struct Cli {
 pub enum Commands {
     /// Prep this repo
     Init(InitArgs),
-    /// Respond to a single, generic request (prefer `malvin --do REQUEST`)
-    #[command(hide = true)]
+    /// Respond to a single, generic request
     Do(DoArgs),
     /// Be creative
     #[command(name = "invent")]

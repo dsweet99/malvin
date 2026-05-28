@@ -37,12 +37,10 @@ pub fn apply_workspace_config_defaults(
     cli: &mut Cli,
 ) -> Result<(), String> {
     let Some(command) = cli.command.as_mut() else {
-        if !cli.do_mode && cli.bare_args.is_empty() {
+        if cli.bare_args.is_empty() {
             return Ok(());
         }
-        return Err(
-            "internal: bare command not resolved (missing REQUEST or unknown @workflow)".into(),
-        );
+        return Err("internal: bare kpop request not resolved".into());
     };
     match command {
         Commands::Do(_) | Commands::Models(_) => return Ok(()),
