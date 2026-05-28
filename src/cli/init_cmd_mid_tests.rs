@@ -110,6 +110,12 @@ mod tests {
         assert!(tmp.path().join(crate::MALVIN_CONFIG_REL).is_file());
         assert!(tmp.path().join(".malvin/logs").is_dir());
         assert!(tmp.path().join("Cargo.toml").is_file());
+        let checks = std::fs::read_to_string(tmp.path().join(".malvin/checks")).unwrap();
+        assert!(checks.contains("cargo clippy"));
+        assert!(
+            checks.contains("cargo nextest run") || checks.contains("cargo test"),
+            "checks: {checks}"
+        );
     }
 
     #[test]

@@ -12,12 +12,12 @@ pub(super) fn ensure_malvin_workspace_layout(
 ) -> Result<(), String> {
     std::fs::create_dir_all(crate::malvin_logs_root(root))
         .map_err(|e| format!("init: mkdir {}: {e}", crate::MALVIN_LOGS_REL))?;
-    crate::repo_gates::ensure_default_malvin_checks_file(root)?;
-    write_text_file(&crate::malvin_advice_path(root), TPL_ADVICE, force)?;
-    write_text_file(&crate::malvin_config_path(root), TPL_CONFIG, force)?;
     if languages.contains(&Language::Rust) {
         ensure_cargo_toml(root, force)?;
     }
+    crate::repo_gates::ensure_default_malvin_checks_file(root)?;
+    write_text_file(&crate::malvin_advice_path(root), TPL_ADVICE, force)?;
+    write_text_file(&crate::malvin_config_path(root), TPL_CONFIG, force)?;
     Ok(())
 }
 
