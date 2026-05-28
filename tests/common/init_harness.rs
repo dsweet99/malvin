@@ -74,6 +74,15 @@ pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::O
     cmd.output().expect("spawn malvin init")
 }
 
+pub fn gate_exp_logs_with_kpop_solved(run_dir: &Path) -> Vec<std::path::PathBuf> {
+    super::gate_exp_logs_in_run(run_dir)
+        .into_iter()
+        .filter(|p| {
+            std::fs::read_to_string(p).is_ok_and(|text| text.contains("## KPOP_SOLVED"))
+        })
+        .collect()
+}
+
 pub fn git_stdout(project: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
         .args(args)

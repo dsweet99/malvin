@@ -3,18 +3,10 @@
 mod common;
 
 use std::fs;
-use std::path::Path;
 
 use common::{
-    gate_exp_logs_in_run, git_commit_all, git_init, malvin_init_output, only_run_dir,
+    gate_exp_logs_with_kpop_solved, git_commit_all, git_init, malvin_init_output, only_run_dir,
 };
-
-fn gate_exp_logs_with_kpop_solved(run_dir: &Path) -> Vec<std::path::PathBuf> {
-    gate_exp_logs_in_run(run_dir)
-        .into_iter()
-        .filter(|p| fs::read_to_string(p).is_ok_and(|text| text.contains("## KPOP_SOLVED")))
-        .collect()
-}
 
 fn committed_repo_with_readme() -> tempfile::TempDir {
     let project = tempfile::tempdir().unwrap();
