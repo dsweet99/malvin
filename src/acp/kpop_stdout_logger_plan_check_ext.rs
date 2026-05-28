@@ -183,10 +183,9 @@ fn h22_rendered_tool_summary_tee(
         .unwrap()
         .stdout
         .expect("stdout summary");
-    let plain_bracketed = format!("[{plain}]");
-    let display = crate::tool_summary::apply_tool_summary_ansi(&plain_bracketed);
+    let display = crate::tool_summary::apply_tool_summary_ansi(&plain);
     let tee_writer = h22_tee_writer(work_dir);
-    format_styled_tool_summary_tee_line(&tee_writer, &plain_bracketed, &display, ts)
+    format_styled_tool_summary_tee_line(&tee_writer, &plain, &display, ts)
 }
 
 #[tokio::test]

@@ -47,20 +47,25 @@ pub(super) fn read_tool_bracket_pair_updates(
     (start, pending, done)
 }
 
-pub(super) fn assert_payload_brackets_after_who_tag(start_line: &str, done_line: &str) {
-    assert!(start_line.contains("[Reading"), "got {start_line:?}");
-    assert!(done_line.contains("[Read "), "got {done_line:?}");
+pub(super) fn assert_payload_omits_brackets_after_who_tag(start_line: &str, done_line: &str) {
+    assert!(start_line.contains("Reading"), "got {start_line:?}");
+    assert!(done_line.contains("Read "), "got {done_line:?}");
     for line in [start_line, done_line] {
         let plain = strip_ansi_escapes(line);
         let who_end = plain.find(']').expect("who bracket");
+        let payload = plain[who_end + 1..].trim_start();
         assert!(
-            plain[who_end + 1..].trim_start().starts_with('['),
-            "payload must open with [ after who tag; got {plain:?}"
+            !payload.starts_with('['),
+            "payload must not open with [ after who tag; got {plain:?}"
+        );
+        assert!(
+            !payload.ends_with(']'),
+            "payload must not end with ] after who tag; got {plain:?}"
         );
     }
 }
 
-pub(super) fn assert_styled_tool_summary_brackets_match(start_payload: &str, done_payload: &str) {
+pub(super) fn assert_styled_tool_summary_payloads_match(start_payload: &str, done_payload: &str) {
     let offline_dir = tempfile::tempdir().unwrap();
     let offline_file = std::fs::File::create(offline_dir.path().join("tee-offline")).unwrap();
     let tee_writer = styled_markdown_trace_writer(
@@ -68,15 +73,15 @@ pub(super) fn assert_styled_tool_summary_brackets_match(start_payload: &str, don
         offline_dir.path().to_path_buf(),
     );
     for payload in [start_payload, done_payload] {
-        let bracketed = if payload.starts_with('[') && payload.ends_with(']') {
-            payload.to_string()
-        } else {
-            format!("[{payload}]")
-        };
-        let display = apply_tool_summary_ansi(&bracketed);
+        let plain = payload
+            .trim()
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .to_string();
+        let display = apply_tool_summary_ansi(&plain);
         let styled = format_styled_tool_summary_tee_line(
             &tee_writer,
-            &bracketed,
+            &plain,
             &display,
             "20260413.121314.015",
         );
@@ -85,7 +90,7 @@ pub(super) fn assert_styled_tool_summary_brackets_match(start_payload: &str, don
             "styled tool summary must use inbound ACP who color; got {styled:?}"
         );
         assert_acp_tool_summary_dim_preserves_bracket(&styled);
-        crate::output::assert_tool_payload_brackets_share_color(&styled);
+        crate::output::assert_tool_payload_uses_verb_styling(&styled);
     }
 }
 
@@ -129,8 +134,8 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_bracket_helpers() {
         let _ = stringify!(read_tool_bracket_pair_updates);
-        let _ = stringify!(assert_payload_brackets_after_who_tag);
-        let _ = stringify!(assert_styled_tool_summary_brackets_match);
+        let _ = stringify!(assert_payload_omits_brackets_after_who_tag);
+        let _ = stringify!(assert_styled_tool_summary_payloads_match);
         let _ = stringify!(tee_tool_summary_updates);
         let _ = stringify!(tee_read_tool_bracket_pair_stdout);
     }
