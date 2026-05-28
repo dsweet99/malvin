@@ -12,11 +12,55 @@ pub fn git_init(project: &Path) {
     );
 }
 
+pub fn acp_mock_init_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const isKpop = promptText.includes('KPOP') || promptText.includes('init_constraints');
+    if (isKpop) {
+      const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
+      const target = targetMatch ? targetMatch[0] : null;
+      const root = path.join(process.cwd(), '.malvin', 'logs');
+      if (fs.existsSync(root)) {
+        const runs = fs.readdirSync(root, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+          .sort()
+          .reverse();
+        outer: for (const run of runs) {
+          const kpopDir = path.join(root, run, '_kpop');
+          if (!fs.existsSync(kpopDir)) continue;
+          const names = target
+            ? [target]
+            : fs.readdirSync(kpopDir).filter((n) => /_g\d+\.md$/.test(n)).sort();
+          for (const name of names) {
+            if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
+            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
+            break outer;
+          }
+        }
+      }
+      const checksPath = path.join(process.cwd(), '.malvin', 'checks');
+      fs.mkdirSync(path.dirname(checksPath), { recursive: true });
+      fs.writeFileSync(checksPath, 'kiss check\n');
+    }";
+    let kpop_done =
+        super::acp_core::session_update_chunk_line("agent_message_chunk", r"'init kpop ok\n'");
+    let summary_done =
+        super::acp_core::session_update_chunk_line("agent_message_chunk", r"'init summary ok\n'");
+    super::acp_core::acp_mock_js(
+        "",
+        &format!(
+            "{body}\n    if (!isKpop) {{ {summary_done} }} else {{ {kpop_done} }}"
+        ),
+    )
+}
+
 pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::Output {
     let mock_home = tempfile::tempdir().expect("mock home tempdir");
     let pre_commit_home = tempfile::tempdir().expect("pre-commit home tempdir");
     let mock_bin = mock_home.path().join("mock-acp-init");
-    let js = super::acp_core::acp_mock_js("", "");
+    let js = acp_mock_init_js();
     super::write_mock_executable(&mock_bin, &js);
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.arg("init");

@@ -1,17 +1,52 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GateKpopExitPolicy {
+    /// Two consecutive `## KPOP_SOLVED` markers and passing gates; restore checks each turn.
+    CodeTidy,
+    /// One `## KPOP_SOLVED` and valid checks file; do not restore `.malvin/checks` between turns.
+    InitDiscovery,
+}
+
+#[derive(Clone, Copy)]
 pub(crate) struct GateLoopBehavior {
     pub skip_kpop_on_initial_pass: bool,
     pub recheck_gates_after_exhausted: bool,
+    pub exit: GateKpopExitPolicy,
 }
 
 impl GateLoopBehavior {
     pub const CODE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: true,
+        exit: GateKpopExitPolicy::CodeTidy,
     };
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,
+        exit: GateKpopExitPolicy::CodeTidy,
     };
+    pub const INIT: Self = Self {
+        skip_kpop_on_initial_pass: false,
+        recheck_gates_after_exhausted: false,
+        exit: GateKpopExitPolicy::InitDiscovery,
+    };
+
+    #[must_use]
+    pub const fn consecutive_kpop_solved_to_exit(self) -> usize {
+        match self.exit {
+            GateKpopExitPolicy::CodeTidy => 2,
+            GateKpopExitPolicy::InitDiscovery => 1,
+        }
+    }
+
+    #[must_use]
+    pub const fn require_passing_gates_for_exit(self) -> bool {
+        matches!(self.exit, GateKpopExitPolicy::CodeTidy)
+    }
+
+    #[must_use]
+    pub const fn restore_malvin_checks_after_session(self) -> bool {
+        matches!(self.exit, GateKpopExitPolicy::CodeTidy)
+    }
 }
 
 #[cfg(test)]
@@ -30,5 +65,11 @@ mod tests {
                 GateLoopBehavior::TIDY.recheck_gates_after_exhausted,
             ),
         );
+    }
+
+    #[test]
+    fn init_discovery_behavior_differs_from_code() {
+        assert_eq!(GateLoopBehavior::INIT.exit, GateKpopExitPolicy::InitDiscovery);
+        assert_eq!(GateLoopBehavior::CODE.exit, GateKpopExitPolicy::CodeTidy);
     }
 }

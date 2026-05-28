@@ -50,19 +50,17 @@ pub fn merge_acp_with_workspace_session_restore(
     prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed")
 }
 
-pub fn merge_acp_with_workspace_session_restore_and_check_abort(
+pub fn merge_acp_with_custom_restore_and_check_abort(
     primary: Result<(), String>,
-    work_dir: &Path,
-    session_dotfile_backups: &SessionDotfileBackups,
+    restore_res: Result<(), String>,
     result_path: &Path,
 ) -> Result<(), String> {
-    let merge_result =
-        merge_acp_with_workspace_session_restore(primary, work_dir, session_dotfile_backups);
+    let merge_result = prefer_primary_over_secondary(primary, restore_res, "workspace session restore failed");
     match crate::orchestrator::check_abort(result_path) {
         Ok(Some(abort)) => match merge_result {
             Ok(()) => Err(format!("ABORT: {abort}")),
             Err(merge_error) => {
-                let detail = if merge_error.contains("workspace session restore failed:") {
+                let detail = if merge_error_mentions_restore(&merge_error) {
                     duplicate_safe_restore_error(&merge_error)
                 } else {
                     merge_error
@@ -73,6 +71,16 @@ pub fn merge_acp_with_workspace_session_restore_and_check_abort(
         Ok(None) => merge_result,
         Err(e) => Err(format!("cannot read result file for ABORT check: {e}")),
     }
+}
+
+pub fn merge_acp_with_workspace_session_restore_and_check_abort(
+    primary: Result<(), String>,
+    work_dir: &Path,
+    session_dotfile_backups: &SessionDotfileBackups,
+    result_path: &Path,
+) -> Result<(), String> {
+    let restore_res = restore_workspace_session_dotfiles(work_dir, session_dotfile_backups);
+    merge_acp_with_custom_restore_and_check_abort(primary, restore_res, result_path)
 }
 
 pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
@@ -142,4 +150,23 @@ pub fn merge_acp_restore_check_abort_then_print_timing(
     );
     crate::run_timing::print_summary_from_run_dir(&artifacts.run_dir).map_err(|e| e.to_string())?;
     merged
+}
+
+#[cfg(test)]
+mod merge_custom_restore_tests {
+    use super::*;
+
+    #[test]
+    fn custom_restore_merge_prefers_primary_error() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let result = tmp.path().join("result.md");
+        std::fs::write(&result, "ok\n").expect("write");
+        let err = merge_acp_with_custom_restore_and_check_abort(
+            Err("agent failed".to_string()),
+            Ok(()),
+            &result,
+        )
+        .expect_err("primary");
+        assert!(err.contains("agent failed"));
+    }
 }

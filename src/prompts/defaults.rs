@@ -23,6 +23,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "tidy_constraints.md",
     "code_constraints.md",
     "constrain_constraints.md",
+    "init_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
     "coding_rules.md",

@@ -48,6 +48,26 @@ fn session_snapshot_bundle_round_trip() {
 }
 
 #[test]
+fn restore_excluding_malvin_checks_leaves_checks_unchanged() {
+    with_isolated_home(|work| {
+        seed_pair(work);
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        let (k, m, _, c) = workspace_four_paths(work);
+        std::fs::write(&m, b"agent-edited\n").unwrap();
+        std::fs::write(&k, b"k-agent\n").unwrap();
+        seed_malvin_config(work, "c-agent\n");
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        assert_eq!(std::fs::read_to_string(&m).unwrap(), "agent-edited\n");
+        assert_eq!(std::fs::read_to_string(&k).unwrap(), "k\n");
+        assert_eq!(std::fs::read_to_string(&c).unwrap(), "c\n");
+        crate::session_dotfile_backup::restore_workspace_session_dotfiles_excluding_malvin_checks(
+            work, &bundle,
+        )
+        .unwrap();
+    });
+}
+
+#[test]
 fn restore_session_dotfiles_strips_legacy_root_checks_file() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();

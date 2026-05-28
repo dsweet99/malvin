@@ -7,6 +7,7 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
         "constrain_constraints.md" => {
             Some(include_str!("../../default_prompts/constrain_constraints.md"))
         }
+        "init_constraints.md" => Some(include_str!("../../default_prompts/init_constraints.md")),
         _ => None,
     }
 }
@@ -42,6 +43,7 @@ mod tests {
         assert!(default_constraints_prompt("tidy_constraints.md").is_some());
         assert!(default_constraints_prompt("code_constraints.md").is_some());
         assert!(default_constraints_prompt("constrain_constraints.md").is_some());
+        assert!(default_constraints_prompt("init_constraints.md").is_some());
         assert!(default_constraints_prompt("missing.md").is_none());
         assert!(default_kpop_prompt("kpop_block.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());

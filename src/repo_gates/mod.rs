@@ -1,6 +1,7 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub(crate) mod discover_py;
+pub mod init_discovery;
 
 use std::path::Path;
 use std::process::Stdio;
@@ -77,6 +78,16 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
         return load_malvin_checks(&checks_path);
     }
     Ok(builtin_gate_command_lines(work_dir))
+}
+
+/// Overwrite `.malvin/checks` with language/tooling builtins (for init `--force` rediscovery).
+pub fn refresh_provisional_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
+    let checks_path = crate::malvin_checks_path(work_dir);
+    if checks_path.is_file() {
+        std::fs::remove_file(&checks_path)
+            .map_err(|e| format!("remove {}: {e}", checks_path.display()))?;
+    }
+    ensure_default_malvin_checks_file(work_dir)
 }
 
 pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> {

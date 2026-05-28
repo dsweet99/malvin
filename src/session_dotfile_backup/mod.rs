@@ -172,6 +172,12 @@ impl SessionDotfileBackups {
     pub fn restore(&self, work_dir: &Path) -> Result<(), String> {
         restore_workspace_session_dotfiles(work_dir, self)
     }
+
+    /// Restore kiss and malvin config dotfiles only; leave `.malvin/checks` unchanged.
+    #[allow(clippy::missing_errors_doc)]
+    pub fn restore_excluding_malvin_checks(&self, work_dir: &Path) -> Result<(), String> {
+        restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, self)
+    }
 }
 
 #[allow(clippy::missing_errors_doc)]
@@ -179,16 +185,40 @@ pub fn restore_workspace_session_dotfiles(
     work_dir: &Path,
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
+    restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, bundle)?;
+    restore_slot(work_dir, &bundle.malvin_checks, 1)
+        .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
+}
+
+#[allow(clippy::missing_errors_doc)]
+pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
+    work_dir: &Path,
+    bundle: &SessionDotfileBackups,
+) -> Result<(), String> {
     restore_slot(work_dir, &bundle.kissconfig, 0)?;
-    restore_slot(work_dir, &bundle.malvin_checks, 1)?;
     restore_slot(work_dir, &bundle.kissignore, 2)?;
     restore_slot(work_dir, &bundle.malvin_config, 3)
-        .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
 }
 
 #[cfg(test)]
 mod slot_helpers {
     use super::*;
+
+    #[test]
+    fn restore_excluding_malvin_checks_on_bundle() {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tmp.path();
+        std::fs::create_dir_all(work.join(".malvin")).unwrap();
+        std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
+        let bundle = SessionDotfileBackups::from_parts(
+            DotfileBackupState::Missing,
+            DotfileBackupState::Missing,
+            DotfileBackupState::Missing,
+            DotfileBackupState::Missing,
+        );
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
+    }
 
     #[test]
     fn dotfile_slot_helpers_and_session_restore_noop() {
