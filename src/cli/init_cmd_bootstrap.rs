@@ -4,6 +4,32 @@ use std::process::Command;
 use super::init_cmd_mid_core::run_command_expect_success;
 use crate::require_kiss_for_malvin;
 
+fn inside_git_work_tree(root: &Path) -> bool {
+    Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(root)
+        .output()
+        .is_ok_and(|o| {
+            o.status.success()
+                && String::from_utf8_lossy(&o.stdout).trim().eq_ignore_ascii_case("true")
+        })
+}
+
+pub(super) fn ensure_git_repo(root: &Path) -> Result<(), String> {
+    if inside_git_work_tree(root) {
+        return Ok(());
+    }
+    run_command_expect_success(
+        Command::new("git").arg("init").current_dir(root),
+        "`git init` failed.",
+    )?;
+    let _ = Command::new("git")
+        .args(["symbolic-ref", "HEAD", "refs/heads/main"])
+        .current_dir(root)
+        .status();
+    Ok(())
+}
+
 fn pre_commit_hooks_installed(root: &Path) -> bool {
     let hook = root.join(".git/hooks/pre-commit");
     hook.is_file()
@@ -72,13 +98,39 @@ mod unit_tests {
     use std::process::Command;
 
     #[test]
+    fn inside_git_work_tree_false_without_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(!inside_git_work_tree(tmp.path()));
+    }
+
+    #[test]
+    fn ensure_git_repo_creates_repo_on_main() {
+        let tmp = tempfile::tempdir().unwrap();
+        ensure_git_repo(tmp.path()).unwrap();
+        assert!(inside_git_work_tree(tmp.path()));
+        let branch = Command::new("git")
+            .args(["branch", "--show-current"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        assert!(branch.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&branch.stdout).trim(),
+            "main"
+        );
+    }
+
+    #[test]
+    fn ensure_git_repo_skips_when_already_inside_work_tree() {
+        let tmp = tempfile::tempdir().unwrap();
+        ensure_git_repo(tmp.path()).unwrap();
+        ensure_git_repo(tmp.path()).unwrap();
+    }
+
+    #[test]
     fn pre_commit_hooks_installed_false_without_hook() {
         let tmp = tempfile::tempdir().unwrap();
-        Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .unwrap();
+        ensure_git_repo(tmp.path()).unwrap();
         assert!(!pre_commit_hooks_installed(tmp.path()));
     }
 

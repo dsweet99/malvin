@@ -159,7 +159,6 @@ pub struct InitOk {
 impl InitOk {
     pub fn new(init_args: &[&str]) -> Self {
         let project = tempfile::tempdir().unwrap();
-        git_init(project.path());
         let out = malvin_init_output(project.path(), init_args);
         assert!(out.status.success(), "malvin init failed: {out:?}");
         Self { project }

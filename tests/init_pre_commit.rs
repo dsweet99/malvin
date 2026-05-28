@@ -5,7 +5,7 @@ mod common;
 use std::process::Command;
 
 use common::InitOk;
-use common::{git_init, git_stdout, malvin_init_output};
+use common::{git_stdout, malvin_init_output};
 
 #[test]
 fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
@@ -134,7 +134,6 @@ fn malvin_init_creates_expected_files_for_both_languages() {
 #[test]
 fn malvin_init_language_args_are_case_insensitive() {
     let project = tempfile::tempdir().unwrap();
-    git_init(project.path());
     let out = malvin_init_output(project.path(), &["PYTHON", "Rust"]);
     assert!(
         out.status.success(),

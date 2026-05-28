@@ -17,6 +17,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
+    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_repo);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_pre_commit_hooks);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_kiss_repo_init);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_lfs_hooks);

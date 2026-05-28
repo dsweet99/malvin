@@ -50,11 +50,12 @@ See `malvin --doc`. Init uses the agent for discovery (when it runs) and the sum
 ## What init does (before the agent)
 
 1. Write templates: `.gitignore`, `.kissignore`, `.pre-commit-config.yaml`, `admin/check_untracked.sh` (respecting `--force`).
-2. Run `pre-commit install`.
-3. Require `kiss` on PATH; run `kiss init`.
-4. Install git LFS if available.
-5. If the repo has no commits: `git add .`, initial commit as malvin (`--no-verify`). Does not rename the current branch.
-6. Ensure `.malvin/checks`, `{{ advice_path }}`, `.malvin/config.toml`, and `.malvin/logs/` exist (checks seeded with language-appropriate defaults when missing).
+2. Run `git init` when the target is not already inside a git work tree (default branch `main`).
+3. Run `pre-commit install`.
+4. Require `kiss` on PATH; run `kiss init`.
+5. Install git LFS if available.
+6. If the repo has no commits: `git add .`, initial commit as malvin (`--no-verify`). Does not rename the current branch.
+7. Ensure `.malvin/checks`, `{{ advice_path }}`, `.malvin/config.toml`, and `.malvin/logs/` exist (checks seeded with language-appropriate defaults when missing).
 
 ## Checks discovery (existing repos)
 
