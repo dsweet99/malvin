@@ -1,6 +1,6 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
-mod acp_tee;
+pub(crate) mod acp_tee;
 mod acp_tee_markdown;
 pub(crate) mod stderr_log;
 mod stdout_defer;

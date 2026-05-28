@@ -29,7 +29,7 @@ Plan text or a path to an existing `.md` file (no whitespace in the path; case-s
 
 ## Options
 
-### `--max-loops <N>` (default: 5)
+### `--max-loops <N>` (default: 3)
 
 Outer gate-loop budget. Malvin runs up to `max(N, 1) + 1` outer iterations (see `malvin --doc`, section “Gate-loop commands”).
 

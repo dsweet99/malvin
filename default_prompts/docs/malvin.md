@@ -95,7 +95,7 @@ When no subcommand is given, these global flags apply to the kpop workflow (same
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 1 | How many separate kpop agent runs (each with its own experiment log) |
+| `--max-loops` | 1 | How many separate kpop agent runs (each with its own experiment log); code/tidy use config `max_loops_code` (default 3) when unset |
 | `--max-hypotheses` | 10 | `## Step … — KPOP` budget per agent run |
 | `--tenacious` | off | Sets `--max-acp-retries=9999` and `--max-loops=9999` |
 

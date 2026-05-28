@@ -22,7 +22,7 @@ pub(crate) fn effective_constrain_max_loops(max_loops: usize) -> usize {
 #[allow(clippy::struct_excessive_bools)]
 pub struct ConstrainArgs {
     /// Maximum gate-loop iterations before stopping.
-    #[arg(long, default_value_t = 5)]
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS)]
     pub max_loops: usize,
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]

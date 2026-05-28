@@ -185,6 +185,10 @@ async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
     assert!(!line.contains("[Run"), "got {line:?}");
     assert!(line.contains("Run "), "got {line:?}");
     assert!(line.contains("echo hi"), "got {line:?}");
+    assert!(
+        line.contains("]    Run "),
+        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+    );
 }
 
 #[tokio::test]
@@ -214,4 +218,8 @@ async fn h21_unstyled_tool_summary_omits_brackets() {
     let line = stdout.lines().find(|l| l.contains("Run ")).expect("tool summary");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
     assert!(!line.contains("[Run"), "got {line:?}");
+    assert!(
+        line.contains("]    Run "),
+        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+    );
 }

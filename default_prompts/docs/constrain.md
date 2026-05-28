@@ -33,7 +33,7 @@ Same as `malvin code`:
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 5 | Outer gate-loop budget |
+| `--max-loops` | 1 | Outer gate-loop budget |
 | `--max-hypotheses` | 10 | Hypothesis steps per gate session |
 | `--tenacious` | off | `--max-acp-retries=9999` and `--max-loops=9999` |
 

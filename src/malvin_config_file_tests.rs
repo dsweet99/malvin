@@ -1,5 +1,6 @@
 use super::{
-    AgentConfig, DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS, ensure_config_parent_dir,
+    AgentConfig, DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
+    ensure_config_parent_dir,
     ensure_malvin_config_file, load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
@@ -37,6 +38,7 @@ fn open_malvin_config_creates_file_with_all_sections() {
     assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
     assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
+    assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
     assert_eq!(cfg.agent.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
 }
 
@@ -72,6 +74,7 @@ max_acp_retries = 5
             model: "gpt-5".to_string(),
             max_hypotheses: 7,
             max_loops: 3,
+            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
         }
     );
@@ -90,6 +93,19 @@ max_acp_retries = "4"
     assert_eq!(agent.max_hypotheses, 11);
     assert_eq!(agent.max_loops, 2);
     assert_eq!(agent.max_acp_retries, 4);
+}
+
+#[test]
+fn parse_agent_config_reads_max_loops_code() {
+    let text = r#"
+[agent]
+model = "m"
+max_loops = 1
+max_loops_code = 4
+"#;
+    let agent = parse_agent_config(text).expect("parse");
+    assert_eq!(agent.max_loops, 1);
+    assert_eq!(agent.max_loops_code, 4);
 }
 
 #[test]

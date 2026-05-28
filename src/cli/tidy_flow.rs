@@ -25,7 +25,7 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
 #[derive(Args, Debug, Clone)]
 pub struct TidyArgs {
     /// Maximum gate-loop iterations before stopping.
-    #[arg(long, default_value_t = 3)]
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
     /// `KPop` hypothesis budget per gate session (`{{ want }}` in the agent prompt).
     #[arg(long, default_value_t = 10)]
