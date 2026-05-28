@@ -58,6 +58,25 @@ pub fn entrypoint() -> Exit {
     entrypoint_from(std::env::args_os())
 }
 
+fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+    crate::output::init_stdout_style(global.no_color);
+    crate::output::set_stdout_suppressed(global.background);
+}
+
+fn finish_entrypoint(res: Result<(), String>) -> Exit {
+    match res {
+        Ok(()) => {
+            super::error_run_log::clear_command_error_run_dir();
+            Exit::Success
+        }
+        Err(e) => {
+            print_command_error(&e);
+            super::error_run_log::clear_command_error_run_dir();
+            Exit::Failure
+        }
+    }
+}
+
 pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
@@ -74,7 +93,7 @@ pub fn entrypoint_from(
             return exit;
         }
     };
-    crate::output::init_stdout_style(cli.global.no_color);
+    prepare_cli_output(&cli.global);
     if cli.command.is_none() && !cli.shared.doc {
         let mut cmd = Cli::command();
         let _ = cmd.print_help();
@@ -98,18 +117,7 @@ pub fn entrypoint_from(
         print_command_error(&e);
         return Exit::Failure;
     }
-    let res = dispatch_command(command, &cli.shared);
-    match res {
-        Ok(()) => {
-            super::error_run_log::clear_command_error_run_dir();
-            Exit::Success
-        }
-        Err(e) => {
-            print_command_error(&e);
-            super::error_run_log::clear_command_error_run_dir();
-            Exit::Failure
-        }
-    }
+    finish_entrypoint(dispatch_command(command, &cli.shared))
 }
 
 fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String> {
@@ -198,19 +206,8 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
 mod entrypoint_tenacious_tests;
 
 #[cfg(test)]
-mod entrypoint_doc_tests {
-    use super::{Exit, entrypoint_from};
-
-    #[test]
-    fn entrypoint_from_doc_argv_exits_success() {
-        assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
-    }
-
-    #[test]
-    fn entrypoint_from_bare_malvin_exits_success() {
-        assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
-    }
-}
+#[path = "entrypoint_doc_tests.rs"]
+mod entrypoint_doc_tests;
 
 #[cfg(test)]
 mod kiss_cov_gate_refs {

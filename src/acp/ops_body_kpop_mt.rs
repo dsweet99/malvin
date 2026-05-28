@@ -5,7 +5,6 @@ use crate::acp::{
     restore_session_dotfiles, spawn_agent_acp_session,
 };
 use crate::kpop_progression::KpopBlockMissSnapshot;
-use crate::output::print_log_error;
 
 struct MultiturnRoundAfter<'a, 'b> {
     cwd: &'a Path,
@@ -65,7 +64,6 @@ async fn multiturn_after_successful_round(
                     "\nLikely infra failure during this prompt (see ACP tool issues above).",
                 );
             }
-            print_log_error(&err_text);
             let _ = session.shutdown().await;
             return Err(AgentError(err_text));
         }

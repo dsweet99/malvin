@@ -38,14 +38,14 @@ pub fn prepare_kpop_prompt_store(
     Ok(store)
 }
 
-pub const fn agent_io_options(
+pub fn agent_io_options(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     tee: AgentStdoutTeeFlags,
 ) -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
         force: workflow.force,
-        no_tee: shared.no_tee,
+        no_tee: shared.no_tee || crate::output::stdout_suppressed(),
         raw_output: tee.raw_output,
         show_thoughts_on_stdout: tee.show_thoughts_on_stdout,
         emit_stdout_markdown: tee.emit_stdout_markdown,

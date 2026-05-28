@@ -93,7 +93,22 @@ pub(crate) fn ansi_style_done_verb(seg: &str) -> String {
             return out;
         }
     }
+    if body_is_search_done_verb(body) {
+        let tail = body.strip_prefix("Search").unwrap_or(body).trim_start();
+        let mut out = format!("{colon}{}", ansi_style_dark_verb("Search"));
+        if !tail.is_empty() {
+            out.push(' ');
+            out.push_str(&ansi_style_path_tail(tail));
+        }
+        return out;
+    }
     format!("{colon}{}", ansi_style_path_tail(body))
+}
+
+fn body_is_search_done_verb(body: &str) -> bool {
+    body.strip_prefix("Search").is_some_and(|rest| {
+        rest.is_empty() || rest.starts_with(' ') || rest.starts_with('·')
+    })
 }
 
 pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
@@ -108,7 +123,7 @@ pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
     }
     if body.starts_with("Read ")
         || body.starts_with("Edit ")
-        || body.starts_with("Search ")
+        || body_is_search_done_verb(body)
     {
         return ansi_style_done_verb(seg);
     }
@@ -128,6 +143,28 @@ pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
     format!("{ANSI_TOOL_TEAL}{seg}{ANSI_RESET}")
+}
+
+#[cfg(test)]
+mod inline_tests {
+    use super::{apply_tool_summary_ansi, body_is_search_done_verb};
+
+    #[test]
+    fn body_is_search_done_verb_covers_bare_and_spaced_forms() {
+        assert!(body_is_search_done_verb("Search"));
+        assert!(body_is_search_done_verb("Search "));
+        assert!(body_is_search_done_verb("Search · matches"));
+        assert!(body_is_search_done_verb("Search needle · 1ms"));
+        assert!(!body_is_search_done_verb("Searching"));
+        assert!(!body_is_search_done_verb("Research"));
+    }
+
+    #[test]
+    fn bracket_wrapped_search_done_uses_dark_brackets() {
+        let styled = apply_tool_summary_ansi("[Search · matches]");
+        assert!(styled.contains('[') && styled.contains(']'));
+        assert!(styled.contains("Search"));
+    }
 }
 
 #[cfg(test)]

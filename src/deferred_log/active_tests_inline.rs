@@ -2,6 +2,22 @@ use super::*;
 use crate::deferred_log::build_display_log_entry;
 
 #[test]
+fn defer_sink_mutex_held_without_registration() {
+    assert!(!defer_sink_mutex_held());
+}
+
+#[test]
+fn heartbeat_live_pending_tracks_pending_queue() {
+    assert!(!heartbeat_live_pending());
+    queue_pending(build_display_log_entry(
+        "[malvin.........] HB: 20260524.000000".into(),
+        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+    ));
+    assert!(heartbeat_live_pending());
+    pending_entries().clear();
+}
+
+#[test]
 fn pending_has_heartbeat_tracks_display_log_entries() {
     assert!(!pending_has_heartbeat());
     queue_pending(build_display_log_entry(

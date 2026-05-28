@@ -138,6 +138,17 @@ pub(crate) fn try_log(entry: DeferredEntry) -> bool {
     true
 }
 
+pub(crate) fn defer_sink_mutex_held() -> bool {
+    let sink = {
+        let guard = active_mutex();
+        guard.as_ref().cloned()
+    };
+    let Some(sink) = sink else {
+        return false;
+    };
+    sink.try_lock().is_err()
+}
+
 pub(crate) fn try_push(entry: DeferredEntry) -> bool {
     let sink = {
         let guard = active_mutex();
@@ -147,6 +158,13 @@ pub(crate) fn try_push(entry: DeferredEntry) -> bool {
         return false;
     };
     let Ok(mut sink_guard) = sink.try_lock() else {
+        if entry_is_heartbeat(&entry) {
+            if let DeferredPayload::DisplayLog { display, .. } = &entry.payload {
+                if !heartbeat_already_deferred(&sink) {
+                    crate::output::publish_heartbeat_live_terminal(display);
+                }
+            }
+        }
         if !(entry_is_heartbeat(&entry) && heartbeat_already_deferred(&sink)) {
             queue_pending(entry);
         }

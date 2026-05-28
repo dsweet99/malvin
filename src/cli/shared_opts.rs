@@ -12,6 +12,9 @@ pub struct GlobalOpts {
     /// Turn off color output.
     #[arg(long, global = true, default_value_t = false)]
     pub no_color: bool,
+    /// Suppress all stdout (run logs under `.malvin/logs` are unchanged).
+    #[arg(short = 'b', long, global = true, default_value_t = false)]
+    pub background: bool,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -50,8 +53,8 @@ pub struct SharedOpts {
 
 impl SharedOpts {
     #[must_use]
-    pub(crate) const fn tee_startup_stdout(&self) -> bool {
-        !self.no_tee
+    pub(crate) fn tee_startup_stdout(&self) -> bool {
+        !self.no_tee && !crate::output::stdout_suppressed()
     }
 
     #[must_use]

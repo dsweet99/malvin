@@ -110,6 +110,21 @@ fn split_outer_brackets_and_byte_size_segments() {
 }
 
 #[test]
+fn search_done_without_query_uses_dark_verb_not_teal() {
+    let styled = apply_tool_summary_ansi("Search · matches");
+    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Search");
+    let teal = format!("{ANSI_TOOL_TEAL}Search");
+    assert!(
+        styled.contains(&verb),
+        "Search without query must use dark verb color; got {styled:?}"
+    );
+    assert!(
+        !styled.contains(&teal),
+        "Search verb must not be teal; got {styled:?}"
+    );
+}
+
+#[test]
 fn edit_search_and_editing_verbs_use_bold_dark() {
     let dark = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}");
     for plain in [
@@ -117,6 +132,7 @@ fn edit_search_and_editing_verbs_use_bold_dark() {
         "Editing src/foo.rs…",
         "Searching rg foo…",
         "Search rg needle · 1ms",
+        "Search · matches",
     ] {
         assert!(
             apply_tool_summary_ansi(plain).contains(&dark),

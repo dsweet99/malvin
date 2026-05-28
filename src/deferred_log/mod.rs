@@ -71,7 +71,7 @@ fn defer_heartbeat_hook(display: &str, log: &str) -> bool {
     )) {
         return false;
     }
-    if show_live {
+    if show_live && !active::defer_sink_mutex_held() {
         crate::output::publish_heartbeat_live_terminal(display);
     }
     true

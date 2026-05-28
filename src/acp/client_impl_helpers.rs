@@ -8,13 +8,13 @@ pub(crate) async fn backoff_after_agent_failure(
     attempt: u32,
     max_attempts: u32,
 ) -> Result<bool, AgentError> {
-    crate::output::print_log_error(&format!(
-        "agent acp attempt {attempt} failed: {last_error}"
-    ));
     match plan_agent_retry(last_error, attempt, max_attempts) {
         Err(e) => Err(e),
         Ok(AgentRetryOutcome::StopRetrying) => Ok(true),
         Ok(AgentRetryOutcome::Sleep(d)) => {
+            crate::output::print_log_error(&format!(
+                "agent acp attempt {attempt} failed: {last_error}"
+            ));
             crate::run_timing::record_backoff(timing, d);
             tokio_sleep(d).await;
             Ok(false)

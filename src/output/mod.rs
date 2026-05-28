@@ -38,6 +38,7 @@ pub(crate) use stdout_heartbeat::{
 pub use stdout_display::{
     print_stdout_line, print_stdout_raw_line, print_stdout_raw_line_with_ts, print_stdout_text,
 };
+pub use stdout_terminal::{set_stdout_suppressed, stdout_suppressed};
 
 pub(crate) use acp_tee::{
     flush_stdout_acp_tee_line_with_timestamp, flush_stdout_acp_tool_summary_tee,

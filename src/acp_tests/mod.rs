@@ -18,6 +18,8 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
+#[path = "backoff_helpers_tests.rs"]
+mod backoff_helpers_tests;
 #[path = "../acp/reader_tests_tool_summary.rs"]
 pub(crate) mod reader_tests_tool_summary;
 #[path = "../acp/reader_tests_tool_summary_human.rs"]
