@@ -1,7 +1,14 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub(crate) mod discover_py;
+pub mod discover_init_checks;
+pub(crate) mod discover_init_checks_signals;
 pub mod init_discovery;
+pub(crate) mod init_discovery_validate;
+
+#[cfg(test)]
+#[path = "discover_init_checks_tests.rs"]
+mod discover_init_checks_tests;
 
 use std::path::Path;
 use std::process::Stdio;
@@ -56,7 +63,7 @@ pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
         || crate::is_malvin_workspace(work_dir)
 }
 
-fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
+pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
     let mut out = vec![KISS_CHECK_COMMAND.to_string()];
     let (has_py, has_pytest) = python_ruff_and_pytest_flags(work_dir);
     if has_py {

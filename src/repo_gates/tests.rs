@@ -176,6 +176,24 @@ fn smoke_cov_repo_gates_units() {
 }
 
 #[test]
+fn refresh_provisional_malvin_checks_file_replaces_existing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    std::fs::create_dir_all(w.join(".malvin")).unwrap();
+    std::fs::write(w.join(".malvin/checks"), "old\n").unwrap();
+    refresh_provisional_malvin_checks_file(w).unwrap();
+    let text = std::fs::read_to_string(w.join(".malvin/checks")).unwrap();
+    assert!(text.contains("kiss check"));
+    assert!(!text.contains("old"));
+}
+
+#[test]
+fn smoke_cov_discover_init_checks_finalize() {
+    let _ = crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
+    let _ = crate::repo_gates::discover_init_checks::checks_cover_precommit_signals;
+}
+
+#[test]
 fn default_rust_test_command_matches_nextest_probe() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();

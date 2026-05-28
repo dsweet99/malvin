@@ -4,6 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 use super::discover_py::python_ruff_and_pytest_flags;
+pub use super::init_discovery_validate::validate_checks_command_lines;
 
 /// Whether the repo has at least one git commit.
 #[must_use]
@@ -67,33 +68,6 @@ pub fn init_discovery_decision(
         run: true,
         skip_reason: None,
     }
-}
-
-/// Structural validation for a proposed `.malvin/checks` file (no full gate run).
-pub fn validate_checks_command_lines(lines: &[String]) -> Result<(), String> {
-    if lines.is_empty() {
-        return Err("checks file has no commands".to_string());
-    }
-    for (i, line) in lines.iter().enumerate() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            return Err(format!("checks line {} is empty", i + 1));
-        }
-        if trimmed.starts_with('#') {
-            return Err(format!("checks line {} is comment-only", i + 1));
-        }
-        let first = trimmed.split_whitespace().next().unwrap_or("");
-        if first.is_empty() {
-            return Err(format!("checks line {} has no command", i + 1));
-        }
-        if crate::lookup_bin_on_path(first).is_none() {
-            return Err(format!(
-                "checks line {}: command not found on PATH: {first}",
-                i + 1
-            ));
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -186,19 +160,6 @@ mod tests {
     }
 
     #[test]
-    fn validate_checks_rejects_missing_binary() {
-        assert!(
-            validate_checks_command_lines(&["definitely_not_a_malvin_binary_xyz".to_string()])
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn validate_checks_rejects_comment_only() {
-        assert!(validate_checks_command_lines(&["# only".to_string()]).is_err());
-    }
-
-    #[test]
     fn empty_repo_skip_implies_no_summary_phase() {
         let tmp = tempfile::tempdir().unwrap();
         std::process::Command::new("git")
@@ -216,12 +177,5 @@ mod tests {
         assert!(!d.run);
         let run_summary = d.run || d.skip_reason != Some("empty repo; using builtin checks");
         assert!(!run_summary);
-    }
-
-    #[test]
-    fn validate_checks_accepts_kiss_on_path() {
-        if crate::lookup_bin_on_path("kiss").is_some() {
-            validate_checks_command_lines(&["kiss check".to_string()]).unwrap();
-        }
     }
 }

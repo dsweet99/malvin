@@ -9,6 +9,7 @@ use crate::malvin_checks_path;
 use crate::malvin_config_file::{self, AgentConfig};
 use crate::output::{MALVIN_WHO, print_stderr_line};
 use crate::prompts::{PromptError, PromptStore};
+use crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
 use crate::repo_gates::init_discovery::{InitDiscoveryDecision, validate_checks_command_lines};
 use crate::repo_gates::load_malvin_checks;
 
@@ -45,7 +46,7 @@ fn load_init_agent_config(work_dir: &Path) -> AgentConfig {
 
 fn init_discovery_checks_valid(work_dir: &Path) -> Result<(), String> {
     let lines = load_malvin_checks(&malvin_checks_path(work_dir))?;
-    validate_checks_command_lines(&lines)
+    validate_checks_command_lines(work_dir, &lines)
 }
 
 fn init_discovery_succeeded(artifacts: &RunArtifacts, iterations: usize) -> Result<bool, String> {
@@ -102,6 +103,7 @@ pub(crate) async fn run_init_discovery_kpop(
                 .to_string(),
         );
     }
+    finalize_init_checks_from_repo(&artifacts.work_dir)?;
     init_discovery_checks_valid(&artifacts.work_dir)?;
     Ok(gates_ok)
 }

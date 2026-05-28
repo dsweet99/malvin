@@ -5,7 +5,8 @@ mod common;
 use std::fs;
 
 use common::{
-    gate_exp_logs_with_kpop_solved, git_init, malvin_init_output, only_run_dir,
+    assert_deduped_precommit_checks, gate_exp_logs_with_kpop_solved, git_init,
+    malvin_init_output, only_run_dir, seed_precommit_dedupe_fixture,
 };
 
 fn combined_output(out: &std::process::Output) -> String {
@@ -142,4 +143,20 @@ fn malvin_init_unborn_head_with_precommit_only_triggers_discovery() {
         "expected KPop discovery exp log with ## KPOP_SOLVED under {}",
         run_dir.display()
     );
+}
+
+#[test]
+fn malvin_init_dedupes_precommit_hook_entries_into_checks() {
+    let project = tempfile::tempdir().unwrap();
+    seed_precommit_dedupe_fixture(project.path());
+
+    let out = malvin_init_output(project.path(), &["python"]);
+    assert!(
+        out.status.success(),
+        "malvin init failed: {:?}",
+        combined_output(&out)
+    );
+
+    let checks = fs::read_to_string(project.path().join(".malvin/checks")).expect("checks");
+    assert_deduped_precommit_checks(&checks);
 }

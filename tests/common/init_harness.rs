@@ -12,6 +12,52 @@ pub fn git_init(project: &Path) {
     );
 }
 
+pub fn assert_deduped_precommit_checks(checks: &str) {
+    let lines: Vec<&str> = checks
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        lines.first() == Some(&"kiss check"),
+        "kiss check must be first; got: {lines:?}"
+    );
+    assert_eq!(
+        lines.iter().filter(|l| **l == "ruff check .").count(),
+        1,
+        "expected exactly one deduped ruff line; got: {lines:?}"
+    );
+    assert!(
+        lines.contains(&"python3 -m compileall -q ."),
+        "expected pre-commit compileall hook; got: {lines:?}"
+    );
+    assert!(
+        !lines.iter().any(|l| l.contains("compileall -q src")),
+        "Makefile lint must not override pre-commit signal; got: {lines:?}"
+    );
+    assert_eq!(
+        lines.len(),
+        3,
+        "expected kiss + deduped ruff + compileall; got: {lines:?}"
+    );
+}
+
+pub fn seed_precommit_dedupe_fixture(project: &Path) {
+    git_init(project);
+    std::fs::write(project.join("lib.py"), "x = 1\n").expect("write lib.py");
+    std::fs::write(
+        project.join(".pre-commit-config.yaml"),
+        "repos:\n- repo: local\n  hooks:\n  - id: ruff-a\n    entry: ruff check .\n    language: system\n  - id: ruff-b\n    entry: ruff check .\n    language: system\n  - id: compile\n    entry: python3 -m compileall -q .\n    language: system\n",
+    )
+    .expect("write pre-commit config");
+    std::fs::write(
+        project.join("Makefile"),
+        "lint:\n\tpython3 -m compileall -q src\n",
+    )
+    .expect("write makefile");
+    git_commit_all(project, "seed tooling");
+}
+
 pub fn acp_mock_init_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
