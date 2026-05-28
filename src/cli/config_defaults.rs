@@ -37,7 +37,12 @@ pub fn apply_workspace_config_defaults(
     cli: &mut Cli,
 ) -> Result<(), String> {
     let Some(command) = cli.command.as_mut() else {
-        return Ok(());
+        if !cli.do_mode && cli.bare_args.is_empty() {
+            return Ok(());
+        }
+        return Err(
+            "internal: bare command not resolved (missing REQUEST or unknown @workflow)".into(),
+        );
     };
     match command {
         Commands::Do(_) | Commands::Models(_) => return Ok(()),
@@ -110,6 +115,9 @@ pub fn parse_cli_with_config_defaults(
     let cmd = Cli::command();
     let matches = cmd.get_matches_from(args);
     let mut cli = Cli::from_arg_matches(&matches)?;
+    if let Err(e) = super::bare_invoke::resolve_bare_command(&mut cli, &matches) {
+        return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));
+    }
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(clap::Error::raw(
             clap::error::ErrorKind::InvalidValue,

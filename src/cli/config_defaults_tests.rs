@@ -198,6 +198,19 @@ fn apply_workspace_config_defaults_for_invent() {
 }
 
 #[test]
+fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let cwd = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let cli = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
+    match cli.command.expect("command") {
+        Commands::Kpop(kpop) => assert_eq!(kpop.request.as_deref(), Some("hello")),
+        other => panic!("expected kpop, got {other:?}"),
+    }
+    std::env::set_current_dir(cwd).expect("restore cwd");
+}
+
+#[test]
 fn parse_cli_with_config_defaults_uses_bundled_agent_defaults() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = std::env::current_dir().expect("cwd");

@@ -5,20 +5,28 @@ malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent`
 ## Usage
 
 ```text
-malvin [OPTIONS] <COMMAND>
+malvin [OPTIONS] [<COMMAND> | REQUEST]
 ```
+
+Bare invocation (no subcommand):
+
+- `malvin REQUEST` — KPop investigation (same as legacy `malvin kpop REQUEST`)
+- `malvin --do REQUEST` — one-shot agent turn (same as legacy `malvin do REQUEST`)
+- `malvin @code REQUEST` — implement a plan (`code` workflow)
+- `malvin @constrain REQUEST` — regression test first, then implementation
+- `malvin @tidy` — fix workspace until quality gates pass
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
 | `init` | Bootstrap a repo with malvin templates and tooling |
-| `do` | One-shot agent turn for a single user request |
 | `invent` | One-shot MBC2 boundary exploration (batch ideation from `mbc2.md`) |
 | `code` | Implement a plan with review loop |
-| `kpop` | Popperian scientific investigation (hypothesis-driven experiment log) |
-| `tidy` | Fix workspace until quality gates pass |
+| `constrain` | Regression test first, then implementation |
 | `models` | List models available from the Cursor agent CLI |
+
+Hidden (backward compatible): `do`, `kpop`.
 
 See the matching doc in this directory: `init.md`, `do.md`, `invent.md`, `code.md`, `kpop.md`, `tidy.md`, `models.md`.
 
@@ -101,6 +109,6 @@ Several commands accept a positional request.
 
 Examples:
 
-- `malvin do "fix the typo"` — work dir `.`, request is literal text
-- `malvin code plan.md` — read `plan.md`, work dir is its parent
-- `malvin kpop @notes/request.md` — KPOP stores copy as `request.md` in the run dir
+- `malvin --do "fix the typo"` — work dir `.`, request is literal text
+- `malvin @code plan.md` — read `plan.md`, work dir is its parent
+- `malvin @notes/request.md` — KPop stores copy as `request.md` in the run dir (bare kpop)

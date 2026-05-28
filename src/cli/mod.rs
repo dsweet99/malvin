@@ -1,5 +1,6 @@
 mod args;
 mod args_bug_kpop;
+mod bare_invoke;
 mod bug_id_lookup;
 mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
@@ -54,6 +55,7 @@ mod gate_error_regression;
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;
 pub use args::{Cli, Commands, InventArgs, KpopArgs};
+pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;
 pub use kpop_flow::run_kpop;
