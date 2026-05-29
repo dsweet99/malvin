@@ -37,7 +37,7 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [REQUEST]... [COMMAND]".to_string());
+    lines.push("Usage: malvin [COMMAND|REQUEST]".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
@@ -76,7 +76,7 @@ mod tests {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [REQUEST]... [COMMAND]"));
+        assert!(text.contains("Usage: malvin [COMMAND|REQUEST]"));
         assert!(text.contains("Pass REQUEST with no subcommand"));
         assert!(text.contains("Commands:"));
         assert!(!text.contains("kpop"));
@@ -87,7 +87,7 @@ mod tests {
         let help = render_commands_only_help();
         assert!(help.contains("Commands:"));
         assert!(help.contains("init"));
-        assert!(help.contains("Usage: malvin [REQUEST]... [COMMAND]"));
+        assert!(help.contains("Usage: malvin [COMMAND|REQUEST]"));
         assert!(help.contains("Pass REQUEST with no subcommand"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
