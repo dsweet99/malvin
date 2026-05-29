@@ -1,6 +1,6 @@
 # malvin kpop
 
-**KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `code` / `constrain` / `tidy`—focused on understanding, not shipping a pre-written plan.
+**KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `code` / `tidy`—focused on understanding, not shipping a pre-written plan.
 
 Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, `kpop` subcommand is hidden but equivalent).
 

@@ -158,7 +158,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
         Commands::Code(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
-        Commands::Constrain(a) => assert_eq!((a.max_loops, a.max_hypotheses), (9, 42)),
         Commands::Tidy(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         other => panic!("unexpected command {other:?}"),
     }
@@ -168,7 +167,6 @@ fn assert_workflow_defaults(argv: &[&str]) {
 fn apply_workspace_config_defaults_for_workflow_commands() {
     with_seeded_agent_config(|| {
         assert_workflow_defaults(&["malvin", "code", "hello"]);
-        assert_workflow_defaults(&["malvin", "constrain", "hello"]);
         assert_workflow_defaults(&["malvin", "tidy"]);
     });
 }

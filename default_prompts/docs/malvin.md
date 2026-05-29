@@ -18,7 +18,7 @@ Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
 
-Use subcommands for other workflows: `init`, `do`, `invent`, `code`, `constrain`, `tidy`, `models`.
+Use subcommands for other workflows: `init`, `do`, `invent`, `code`, `tidy`, `models`.
 
 ## Commands
 
@@ -28,7 +28,6 @@ Use subcommands for other workflows: `init`, `do`, `invent`, `code`, `constrain`
 | `do` | One-shot agent turn (non-looping) |
 | `invent` | One-shot MBC2 boundary exploration (batch ideation) |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
-| `constrain` | Test-first constraint workflow via the KPop gate loop (`constrain_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `models` | List models available from the Cursor agent CLI |
 
@@ -62,7 +61,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `constrain`, `kpop`, `tidy` when the agent runs, `invent`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `invent`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -124,7 +123,7 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for agent subcommands and `models`).
-- **kiss**: required before `code`, `constrain`, and `tidy` start; installed/configured by `init`.
+- **kiss**: required before `code` and `tidy` start; installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.
 
 ## Request syntax
@@ -133,7 +132,7 @@ Several commands accept a positional request.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| `code`, `constrain` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| `code` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 | `do`, `kpop`, `invent`, bare `malvin` | `@<path>` reads file contents; work dir is the file’s parent | `.` for literal text |
 
 Examples:
@@ -147,11 +146,11 @@ malvin kpop @notes/question.md
 
 ## Gate-loop commands (shared pattern)
 
-`code`, `constrain`, and `tidy` share an outer **gate loop** implemented in `gate_kpop_workflow`:
+`code` and `tidy` share an outer **gate loop** implemented in `gate_kpop_workflow`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md`, `constrain_constraints.md`, or `tidy_constraints.md`) rendered through `kpop_program.md`.
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md` or `tidy_constraints.md`) rendered through `kpop_program.md`.
 2. The agent records hypotheses in `./.malvin/logs/<run>/_kpop/exp_log_<n>.md`.
 3. Malvin exits early when **two consecutive** sessions write `## KPOP_SOLVED` and workspace quality gates pass.
-4. Otherwise the loop continues until the outer budget is exhausted; `code` and `constrain` recheck gates after exhaustion, `tidy` may exit without recheck depending on configuration.
+4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 
-See `malvin code --doc`, `malvin constrain --doc`, and `malvin tidy --doc` for command-specific behavior.
+See `malvin code --doc` and `malvin tidy --doc` for command-specific behavior.

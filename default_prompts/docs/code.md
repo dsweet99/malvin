@@ -76,7 +76,6 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 
 | Command | When |
 |---------|------|
-| `malvin constrain` | Test-first regression, then implementation |
 | `malvin tidy` | Fix gates without a feature plan |
 | `malvin kpop` / bare `malvin` | Investigation without a shipping plan |
 

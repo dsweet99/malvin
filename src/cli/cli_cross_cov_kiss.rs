@@ -94,17 +94,6 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 }
 
 #[test]
-fn smoke_cov_cli_constrain_flow_units() {
-    let _: Option<super::ConstrainArgs> = None;
-    let _: Option<super::constrain_flow::ConstrainKpopPrepared> = None;
-    let _ = super::constrain_flow::prepare_constrain_kpop_prompt_store;
-    let _ = super::constrain_flow::constrain_kpop_request;
-    let _ = super::constrain_flow::prepare_constrain_kpop_run;
-    let _ = super::constrain_flow::run_constrain;
-    let _ = super::constrain_flow::effective_constrain_max_loops;
-}
-
-#[test]
 fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<super::SharedOpts> = None;
     let _: Option<super::Cli> = None;

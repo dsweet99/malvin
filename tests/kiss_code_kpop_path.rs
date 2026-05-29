@@ -103,11 +103,6 @@ fn malvin_code_fails_fast_when_kiss_missing_from_path() {
 }
 
 #[test]
-fn malvin_constrain_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["constrain", "x"]);
-}
-
-#[test]
 fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
     assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
 }

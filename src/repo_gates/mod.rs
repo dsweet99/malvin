@@ -3,12 +3,19 @@
 pub(crate) mod discover_py;
 pub mod discover_init_checks;
 pub(crate) mod discover_init_checks_signals;
+#[cfg(test)]
+#[path = "discover_init_checks_fixtures.rs"]
+mod discover_init_checks_fixtures;
 pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
 
 #[cfg(test)]
 #[path = "discover_init_checks_tests.rs"]
 mod discover_init_checks_tests;
+
+#[cfg(test)]
+#[path = "discover_init_checks_merge_tests.rs"]
+mod discover_init_checks_merge_tests;
 
 use std::path::Path;
 use std::process::Stdio;

@@ -2,7 +2,7 @@ use crate::repo_gates::discover_init_checks::*;
 use crate::repo_gates::discover_init_checks_signals::{
     canonical_tool, ensure_kiss_check_first, parse_makefile_targets, parse_yaml_scalar,
 };
-use crate::repo_gates::KISS_CHECK_COMMAND;
+use crate::repo_gates::{KISS_CHECK_COMMAND};
 
 #[test]
 fn precommit_hook_entries_parses_quoted_and_plain() {
@@ -199,4 +199,21 @@ fn checks_cover_precommit_signals_detects_missing_hook() {
         tmp.path(),
         &["kiss check".to_string(), "ruff check .".to_string()]
     ));
+}
+
+#[test]
+fn finalize_init_checks_from_repo_writes_malvin_checks() {
+    if crate::lookup_bin_on_path("kiss").is_none() || crate::lookup_bin_on_path("ruff").is_none() {
+        return;
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        tmp.path().join(".pre-commit-config.yaml"),
+        "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
+    )
+    .unwrap();
+    finalize_init_checks_from_repo(tmp.path()).unwrap();
+    let checks = std::fs::read_to_string(tmp.path().join(".malvin/checks")).unwrap();
+    assert!(checks.contains("kiss check"));
+    assert!(checks.contains("ruff check ."));
 }

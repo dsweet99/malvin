@@ -3,7 +3,8 @@
 use std::path::Path;
 
 pub(crate) fn checks_command_invocation_resolvable(work_dir: &Path, line: &str) -> bool {
-    let first = line.split_whitespace().next().unwrap_or("");
+    let trimmed = effective_command_line_for_validation(line);
+    let first = trimmed.split_whitespace().next().unwrap_or("");
     if first.is_empty() {
         return false;
     }
@@ -11,6 +12,13 @@ pub(crate) fn checks_command_invocation_resolvable(work_dir: &Path, line: &str) 
         return true;
     }
     work_dir.join(first).is_file()
+}
+
+fn effective_command_line_for_validation(line: &str) -> &str {
+    let trimmed = line.trim();
+    trimmed
+        .rfind(" && ")
+        .map_or(trimmed, |idx| trimmed[idx + 4..].trim())
 }
 
 /// Structural validation for a proposed `.malvin/checks` file (no full gate run).
@@ -76,6 +84,30 @@ mod tests {
     fn checks_command_invocation_resolvable_rejects_missing() {
         let tmp = tempfile::tempdir().unwrap();
         assert!(!checks_command_invocation_resolvable(tmp.path(), "missing_bin_xyz"));
+    }
+
+    #[test]
+    fn effective_command_line_for_validation_uses_last_and_segment() {
+        assert_eq!(
+            effective_command_line_for_validation("cd rust && cargo clippy"),
+            "cargo clippy"
+        );
+        assert_eq!(
+            effective_command_line_for_validation("kiss check"),
+            "kiss check"
+        );
+    }
+
+    #[test]
+    fn validate_checks_accepts_compound_cd_and_cargo_clippy() {
+        if crate::lookup_bin_on_path("cargo").is_some() {
+            let tmp = tempfile::tempdir().unwrap();
+            validate_checks_command_lines(
+                tmp.path(),
+                &["cd rust && cargo clippy --all-targets -- -D warnings".to_string()],
+            )
+            .unwrap();
+        }
     }
 
     #[test]

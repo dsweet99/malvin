@@ -5,8 +5,8 @@ mod common;
 use std::fs;
 
 use common::{
-    assert_deduped_precommit_checks, gate_exp_logs_with_kpop_solved, git_init,
-    malvin_init_output, only_run_dir, seed_precommit_dedupe_fixture,
+    assert_deduped_precommit_checks, gate_exp_logs_with_kpop_solved, git_init, malvin_init_output,
+    only_run_dir, seed_enn_like_hybrid_fixture, seed_precommit_dedupe_fixture,
 };
 
 fn combined_output(out: &std::process::Output) -> String {
@@ -45,8 +45,8 @@ fn malvin_init_empty_repo_skips_discovery_and_summary_uses_builtin_checks() {
         "expected kiss builtin; got: {checks:?}"
     );
     assert!(
-        !checks.contains("ruff"),
-        "python-only empty repo should not seed ruff; got: {checks:?}"
+        checks.lines().any(|l| l.trim() == "ruff check ."),
+        "python-only empty repo should seed ruff from init template; got: {checks:?}"
     );
 
     let run_dir = only_run_dir(project.path());
@@ -159,4 +159,25 @@ fn malvin_init_dedupes_precommit_hook_entries_into_checks() {
 
     let checks = fs::read_to_string(project.path().join(".malvin/checks")).expect("checks");
     assert_deduped_precommit_checks(&checks);
+}
+
+/// Regression for enn: Python+Rust hybrid (`rust/Cargo.toml`, no root manifest),
+/// Makefile `lint` runs clippy, pre-commit has ruff but no clippy hook.
+#[test]
+fn malvin_init_python_rust_subdir_includes_clippy_from_makefile_lint() {
+    let project = tempfile::tempdir().unwrap();
+    seed_enn_like_hybrid_fixture(project.path());
+
+    let out = malvin_init_output(project.path(), &["python"]);
+    assert!(
+        out.status.success(),
+        "malvin init failed: {:?}",
+        combined_output(&out)
+    );
+
+    let checks = fs::read_to_string(project.path().join(".malvin/checks")).expect("checks");
+    assert!(
+        checks.lines().any(|l| l.contains("cargo clippy")),
+        "enn regression: expected clippy in .malvin/checks after init; got: {checks:?}"
+    );
 }

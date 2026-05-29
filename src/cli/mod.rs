@@ -25,7 +25,6 @@ pub(crate) mod tidy_flow;
 
 mod code_flow;
 mod code_flow_a;
-mod constrain_flow;
 mod gate_kpop_workflow;
 pub(crate) mod init_discovery_flow;
 mod loop_opts;
@@ -37,7 +36,6 @@ pub use code_flow_a::{
     prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub use code_flow::{run_code, CodeArgs};
-pub use constrain_flow::{run_constrain, ConstrainArgs};
 
 #[cfg(test)]
 #[path = "workflow_kpop_shared_tests.rs"]

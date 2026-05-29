@@ -2,7 +2,7 @@ use super::Commands;
 
 pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
-        Commands::Do(_) | Commands::Models(_) => Ok(()),
+        Commands::Do(_) | Commands::Models(_) | Commands::Init(_) => Ok(()),
         _ => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_checks_file(&cwd)?;
@@ -14,7 +14,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::ensure_malvin_checks_for_command;
-    use crate::cli::args::{DoArgs, ModelsArgs};
+    use crate::cli::args::{DoArgs, InitArgs, ModelsArgs};
     use crate::cli::{CodeArgs, Commands};
 
     #[test]
@@ -59,6 +59,15 @@ mod tests {
 
         ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs {}))
             .expect("models must not create checks");
+        assert!(!checks.exists());
+        assert!(!config.exists());
+
+        ensure_malvin_checks_for_command(&Commands::Init(InitArgs {
+            force: false,
+            languages: vec!["rust".to_string()],
+            path: None,
+        }))
+        .expect("init must not pre-seed checks at entrypoint");
         assert!(!checks.exists());
         assert!(!config.exists());
 

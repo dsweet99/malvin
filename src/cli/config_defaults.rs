@@ -61,16 +61,6 @@ pub fn apply_workspace_config_defaults(
                 config_max_hypotheses: agent.max_hypotheses,
             },
         ),
-        Commands::Constrain(constrain) => apply_loop_defaults(
-            matches,
-            "constrain",
-            LoopDefaultMut {
-                max_loops: &mut constrain.max_loops,
-                max_hypotheses: &mut constrain.max_hypotheses,
-                config_max_loops: agent.max_loops,
-                config_max_hypotheses: agent.max_hypotheses,
-            },
-        ),
         Commands::Kpop(kpop) => apply_loop_defaults(
             matches,
             "kpop",
