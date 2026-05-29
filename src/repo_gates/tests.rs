@@ -176,6 +176,60 @@ fn smoke_cov_repo_gates_units() {
 }
 
 #[test]
+fn refresh_provisional_malvin_checks_file_replaces_existing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    std::fs::create_dir_all(w.join(".malvin")).unwrap();
+    std::fs::write(w.join(".malvin/checks"), "old\n").unwrap();
+    refresh_provisional_malvin_checks_file(w).unwrap();
+    let text = std::fs::read_to_string(w.join(".malvin/checks")).unwrap();
+    assert!(text.contains("kiss check"));
+    assert!(!text.contains("old"));
+}
+
+#[test]
+fn augment_init_checks_adds_ruff_from_precommit_template() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    std::fs::create_dir_all(w.join(".malvin")).unwrap();
+    std::fs::write(w.join(".malvin/checks"), "kiss check\n").unwrap();
+    std::fs::write(
+        w.join(".pre-commit-config.yaml"),
+        "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
+    )
+    .unwrap();
+    crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates(w)
+        .unwrap();
+    let checks = std::fs::read_to_string(w.join(".malvin/checks")).unwrap();
+    assert!(checks.contains("ruff check ."));
+    assert!(checks.contains(DEFAULT_PYTEST_CHECK));
+}
+
+#[test]
+fn augment_init_checks_adds_pytest_when_ruff_already_present() {
+    let tmp = tempfile::tempdir().unwrap();
+    let w = tmp.path();
+    std::fs::create_dir_all(w.join(".malvin")).unwrap();
+    std::fs::write(
+        w.join(".malvin/checks"),
+        "kiss check\nruff check .\n",
+    )
+    .unwrap();
+    crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates(w)
+        .unwrap();
+    let checks = std::fs::read_to_string(w.join(".malvin/checks")).unwrap();
+    assert!(checks.contains("ruff check ."));
+    assert!(checks.contains(DEFAULT_PYTEST_CHECK));
+}
+
+#[test]
+fn smoke_cov_discover_init_checks_finalize() {
+    let _ = crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
+    let _ = crate::repo_gates::discover_init_checks::checks_cover_precommit_signals;
+    let _ = crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates;
+}
+
+#[test]
 fn default_rust_test_command_matches_nextest_probe() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();

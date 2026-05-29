@@ -21,12 +21,8 @@ pub fn enriched_tool_plain(
     styled_tool_payload(&plain, emit_stdout_markdown)
 }
 
-pub(crate) fn styled_tool_payload(plain: &str, emit_stdout_markdown: bool) -> (String, String) {
-    let plain = if emit_stdout_markdown {
-        format!("[{plain}]")
-    } else {
-        plain.to_string()
-    };
+pub(crate) fn styled_tool_payload(plain: &str, _emit_stdout_markdown: bool) -> (String, String) {
+    let plain = plain.to_string();
     let display = tool_summary_stdout_display(&plain);
     (plain, display)
 }

@@ -1,10 +1,18 @@
 # malvin invent
 
-Run a **single** MBC2 (boundary exploration) ideation turn: the agent generates structurally distant ideas from your prompt without evaluating or pruning them.
+One **single-turn** MBC2 (boundary exploration) session: structurally distant ideas from your prompt, without evaluation or pruning.
+
+## Summary
+
+| | |
+|---|---|
+| Input | `<REQUEST>` text or `@file` |
+| Prompt | `default_prompts/mbc2.md` with `num_ideas` and `user_prompt` |
+| Log | `ideas.log` |
 
 ## Intention
 
-Batch creative exploration separate from the full `kpop` hypothesis loop. Uses `default_prompts/mbc2.md` with your request and a configurable idea count.
+Batch creative exploration separate from the `kpop` hypothesis loop. Use before committing to `code` or a long investigation.
 
 ## Usage
 
@@ -16,36 +24,33 @@ malvin invent [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-The user’s topic as literal text, or `@<path>` to read from a file (same rules as `do` / `kpop`).
+Topic as literal text, or `@<path>` (same rules as `do` / `kpop`).
 
 ## Options
 
-### `--num-ideas <N>`
+### `--num-ideas <N>` (default: 3)
 
-Number of ideas to ask for in the rendered prompt. Default: **3**. Maps to `{{ num_ideas }}` in `mbc2.md`.
+Ideas to request in the rendered prompt (`{{ num_ideas }}` in `mbc2.md`).
 
-### Global options
+## Global options
 
-See `malvin.md`. `--no-markdown` styles agent stdout. `--verbose` logs full prompt bodies.
+See `malvin --doc`. `--no-markdown` styles agent stdout when enabled.
 
 ## Prompt workflow
 
-Exactly **one** coder prompt per invocation: rendered `mbc2.md` only (no coding header or repo rules merge).
-
-| Step | Role | Log |
-|------|------|-----|
-| 1 | **MBC2 prompt** — boundary-exploration instructions plus `num_ideas` and `user_prompt` | `ideas.log` |
+Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo rules merge).
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks` before the session; restores after.
-- Writes `ideas.log`, `stdout.log`, `prompts.log`, timing JSON as applicable.
-- Checks `result.md` for ABORT after the session (same abort protocol as `do`).
+- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks`; restores after.
+- Checks `result.md` for `ABORT:` after the session.
 
-## When to use
+## Related commands
 
-- Explore many idea variants before committing to a `kpop` or `code` workflow.
-- One-shot brainstorming piped to a file or terminal.
+| Command | When |
+|---------|------|
+| `malvin kpop` | Test hypotheses and record `## Step` lines |
+| `malvin do` | General single-turn coding task with full header |
 
 ## Examples
 

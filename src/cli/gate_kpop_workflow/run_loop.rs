@@ -17,29 +17,37 @@ type GateKpopLoopOutcome = (
     Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
 );
 
-const CONSECUTIVE_KPOP_SOLVED_TO_EXIT: usize = 2;
-
 fn session_wrote_kpop_solved(exp_log_path: &Path) -> Result<bool, String> {
     let text = read_exp_log_text(exp_log_path)?;
     Ok(agent_declared_success(&text))
 }
 
-fn two_consecutive_solved_with_passing_gates(
+fn kpop_solved_early_exit(
+    behavior: super::behavior::GateLoopBehavior,
     consecutive_solved: usize,
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> bool {
-    consecutive_solved >= CONSECUTIVE_KPOP_SOLVED_TO_EXIT
-        && run_kpop_workspace_gates(artifacts).is_ok()
+    if consecutive_solved < behavior.consecutive_kpop_solved_to_exit() {
+        return false;
+    }
+    if behavior.require_passing_gates_for_exit() {
+        run_kpop_workspace_gates(artifacts).is_ok()
+    } else {
+        true
+    }
 }
 
-fn gate_kpop_solved_early_exit(
+struct GateKpopEarlyExitCtx<'a> {
+    behavior: super::behavior::GateLoopBehavior,
     consecutive_solved: usize,
-    artifacts: &crate::artifacts::RunArtifacts,
+    artifacts: &'a crate::artifacts::RunArtifacts,
     agent_ran: bool,
-    run_timing: Option<&Arc<Mutex<crate::run_timing::RunTiming>>>,
-) -> Option<GateKpopLoopOutcome> {
-    if two_consecutive_solved_with_passing_gates(consecutive_solved, artifacts) {
-        Some((true, agent_ran, run_timing.cloned()))
+    run_timing: Option<&'a Arc<Mutex<crate::run_timing::RunTiming>>>,
+}
+
+fn gate_kpop_solved_early_exit(ctx: GateKpopEarlyExitCtx<'_>) -> Option<GateKpopLoopOutcome> {
+    if kpop_solved_early_exit(ctx.behavior, ctx.consecutive_solved, ctx.artifacts) {
+        Some((true, ctx.agent_ran, ctx.run_timing.cloned()))
     } else {
         None
     }
@@ -103,12 +111,13 @@ async fn gate_kpop_loop_one_iteration(
     run_gate_kpop_on_loop_iteration(params, iteration, run_timing).await?;
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
     let streak = refresh_consecutive_solved_streak(consecutive_solved, &exp_log_path)?;
-    let early = gate_kpop_solved_early_exit(
-        streak,
-        params.prepared.artifacts(),
-        true,
-        Some(run_timing),
-    );
+    let early = gate_kpop_solved_early_exit(GateKpopEarlyExitCtx {
+        behavior: params.behavior,
+        consecutive_solved: streak,
+        artifacts: params.prepared.artifacts(),
+        agent_ran: true,
+        run_timing: Some(run_timing),
+    });
     Ok((streak, early))
 }
 
@@ -161,27 +170,52 @@ mod tests {
     }
 
     #[test]
-    fn two_consecutive_solved_with_passing_gates_checks_streak_and_workspace() {
+    fn kpop_solved_early_exit_checks_streak_and_workspace() {
+        use super::super::behavior::GateLoopBehavior;
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
         std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
         let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-        assert!(!super::two_consecutive_solved_with_passing_gates(1, &artifacts));
-        assert!(super::two_consecutive_solved_with_passing_gates(2, &artifacts));
+        assert!(!super::kpop_solved_early_exit(GateLoopBehavior::CODE, 1, &artifacts));
+        assert!(super::kpop_solved_early_exit(GateLoopBehavior::CODE, 2, &artifacts));
+        assert!(super::kpop_solved_early_exit(GateLoopBehavior::INIT, 1, &artifacts));
     }
 
     #[test]
     fn gate_kpop_solved_early_exit_needs_streak_and_gates() {
+        use super::super::behavior::GateLoopBehavior;
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
         std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
         let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-        assert!(super::gate_kpop_solved_early_exit(1, &artifacts, true, None).is_none());
-        assert!(super::gate_kpop_solved_early_exit(2, &artifacts, true, None).is_some());
+        let none = super::gate_kpop_solved_early_exit(super::GateKpopEarlyExitCtx {
+            behavior: GateLoopBehavior::CODE,
+            consecutive_solved: 1,
+            artifacts: &artifacts,
+            agent_ran: true,
+            run_timing: None,
+        });
+        assert!(none.is_none());
+        let code_ok = super::gate_kpop_solved_early_exit(super::GateKpopEarlyExitCtx {
+            behavior: GateLoopBehavior::CODE,
+            consecutive_solved: 2,
+            artifacts: &artifacts,
+            agent_ran: true,
+            run_timing: None,
+        });
+        assert!(code_ok.is_some());
+        let init_ok = super::gate_kpop_solved_early_exit(super::GateKpopEarlyExitCtx {
+            behavior: GateLoopBehavior::INIT,
+            consecutive_solved: 1,
+            artifacts: &artifacts,
+            agent_ran: true,
+            run_timing: None,
+        });
+        assert!(init_ok.is_some());
     }
 
     #[test]

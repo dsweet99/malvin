@@ -9,7 +9,7 @@ General Constraints:
 - No serious bugs in scope
 - No serious time-complexity inefficiencies in scope
 - No serious memory-complexity inefficiencies in scope
-- Each unit test tests something meanigful. Simple tests are fine. Bogus tests are not.
+- Each unit test tests something meanignful. Simple tests are fine. Bogus tests are not.
 - Any code you write should be idiomatic. (For example: Don't use ".inc" files in Rust.)
 - When you code, stay in scope.
 

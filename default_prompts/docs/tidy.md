@@ -1,10 +1,19 @@
 # malvin tidy
 
-Ensure the workspace passes **quality gates** (commands listed in `.malvin/checks`). If gates already pass, exit quickly without calling the agent. Otherwise run up to `--max-loops` **KPop tidy** sessions, re-checking gates between each session.
+Bring the workspace back to a **gate-clean** state using the KPop gate loop scoped by `tidy_constraints.md`.
+
+## Summary
+
+| | |
+|---|---|
+| Input | None (implicit goal: pass `.malvin/checks`) |
+| Fast path | If gates pass on first check, **no agent** — prints `DONE` |
+| Loop | Outer gate iterations when gates fail |
+| Requires | `kiss` on PATH; Cursor agent CLI only when gates fail |
 
 ## Intention
 
-Recover a dirty repo to a check-clean state—use after failed `code` pre-checks, CI drift, or local gate failures—without requiring a feature plan.
+Recover after failed `code` pre-checks, CI drift, or local gate failures—without a feature plan.
 
 ## Usage
 
@@ -12,77 +21,59 @@ Recover a dirty repo to a check-clean state—use after failed `code` pre-checks
 malvin tidy [OPTIONS]
 ```
 
-No positional arguments. Session work directory is always `.` (cwd).
+No positional arguments. Work directory is always `.` (cwd).
 
 ## Options
 
 ### `--max-loops <N>` (default: 3)
 
-Maximum **outer iterations**. Each iteration:
+Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
 
-1. Run **all** workspace quality gates (every non-empty line in `.malvin/checks`), appending full output to `./.malvin/logs/<run>/quality_gates.log`.
-2. If **all** gates pass: stop (no agent on this iteration).
-3. If any gate fails: run one **KPop tidy** multiturn session (hypothesis steps per `kpop_program.md` / `--max-loops` alias semantics for inner KPop budget).
+### `--max-hypotheses <N>` (default: 10)
 
-`0` is treated as `1`. If the last iteration still fails gates after its KPop session, malvin exits with a gate-failure error.
+Hypothesis budget per KPop session inside the gate loop.
 
 ### `--tenacious`
 
-Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
+Sets `--max-acp-retries=9999` and `--max-loops=9999`.
 
-### Global options
+## Global options
 
-See `malvin.md`. `--no-markdown` affects agent stdout when the tidy loop runs the agent (no effect on the fast path when gates already pass).
+See `malvin --doc`.
 
-## Requirements
+## Workflow
 
-- `kiss` on PATH (CLI entry check)
-- Cursor agent CLI (only when gates fail)
+| Phase | Behavior |
+|-------|----------|
+| First gate check | Run all commands in `.malvin/checks`; append output to `quality_gates.log` |
+| Gates pass | Emit startup summary, print `DONE`, exit (no ACP session) |
+| Gates fail | Print failure details to stderr; enter gate loop (`GateLoopBehavior::TIDY`) |
 
-## Startup behavior
+**Gate loop (when agent runs):**
 
-| Condition | Behavior |
-|-----------|----------|
-| Workspace gates **pass** on the first check | **Skip agent** — emit startup (command line, plan text, logs path), print `DONE`. No ACP session. |
-| Gates **fail** | Print gate failure details to stderr, start agent on first failing iteration, enter KPop tidy. |
-
-Gate failure messages on stderr use the standard malvin gate-failure format before the agent runs.
-
-## Prompt workflow (when agent runs)
-
-Each outer iteration that still fails gates runs **one** KPop multiturn session:
-
-| Step | Effect |
-|------|--------|
-| 1 | Emit startup (first agent iteration only) and KPop log line |
-| 2 | **KPop tidy** — Agent works through falsifiable hypotheses per `kpop_program.md` and `tidy_constraints.md`, logging to `./.malvin/logs/<run>/_kpop/exp_log_<token>.md` |
-
-There is no separate reviewer fan-out or `tidy` / `tidy_concerns` coder loop; remediation is entirely the KPop session.
+1. Each outer iteration runs one KPop session with `tidy_constraints.md` + `kpop_program.md`.
+2. Agent logs to `_kpop/exp_log_<iteration>.md`.
+3. Early exit on two consecutive `## KPOP_SOLVED` with passing gates.
+4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
 
 ## Comparison to `code`
 
 | | `tidy` | `code` |
 |---|--------|--------|
-| Input plan | None (implicit: fix checks) | User plan |
-| Check plan | No | Yes (unless `--trust-the-plan`) |
-| Implement | KPop tidy sessions | Coder + review loop |
-| Pre-check at CLI | Self (gates decide skip/run) | Gates before session |
+| User plan | None | `plan.md` from request |
+| Skip agent if gates pass | Yes | No |
+| Constraints file | `tidy_constraints.md` | `code_constraints.md` |
+| Recheck gates after exhaustion | No | Yes |
 
 ## Artifacts
 
-- `./.malvin/logs/<run>/` with `plan.md` containing the rendered tidy KPop request
-- `quality_gates.log`, KPop experiment log under `_kpop/`, phase logs
-- `stdout.log` when agent runs
+- `./.malvin/logs/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
+- `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
 
 ## Examples
 
 ```text
 malvin tidy
-malvin tidy --max-loops 5
-```
-
-Typical recovery flow after failed code:
-
-```text
-malvin tidy && malvin code @plan.md
+malvin tidy --max-loops 5 --max-hypotheses 20
+malvin tidy && malvin code plan.md
 ```

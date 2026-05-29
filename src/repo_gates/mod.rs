@@ -1,6 +1,21 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub(crate) mod discover_py;
+pub mod discover_init_checks;
+pub(crate) mod discover_init_checks_signals;
+#[cfg(test)]
+#[path = "discover_init_checks_fixtures.rs"]
+mod discover_init_checks_fixtures;
+pub mod init_discovery;
+pub(crate) mod init_discovery_validate;
+
+#[cfg(test)]
+#[path = "discover_init_checks_tests.rs"]
+mod discover_init_checks_tests;
+
+#[cfg(test)]
+#[path = "discover_init_checks_merge_tests.rs"]
+mod discover_init_checks_merge_tests;
 
 use std::path::Path;
 use std::process::Stdio;
@@ -55,7 +70,7 @@ pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
         || crate::is_malvin_workspace(work_dir)
 }
 
-fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
+pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
     let mut out = vec![KISS_CHECK_COMMAND.to_string()];
     let (has_py, has_pytest) = python_ruff_and_pytest_flags(work_dir);
     if has_py {
@@ -77,6 +92,16 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
         return load_malvin_checks(&checks_path);
     }
     Ok(builtin_gate_command_lines(work_dir))
+}
+
+/// Overwrite `.malvin/checks` with language/tooling builtins (for init `--force` rediscovery).
+pub fn refresh_provisional_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
+    let checks_path = crate::malvin_checks_path(work_dir);
+    if checks_path.is_file() {
+        std::fs::remove_file(&checks_path)
+            .map_err(|e| format!("remove {}: {e}", checks_path.display()))?;
+    }
+    ensure_default_malvin_checks_file(work_dir)
 }
 
 pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> {

@@ -21,14 +21,6 @@ fn smoke_acp_reader_helper_production_symbols() {
     let _: Option<crate::acp_tests::reader_tests_helpers::CatSession> = None;
 }
 
-#[tokio::test]
-async fn smoke_acp_session_prompt_round_health() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let session = crate::acp::test_captive_session::captive_cat_acp_session_for_tests(dir.path());
-    let health = super::acp_session_take_prompt_round_health(&session);
-    assert!(health.format_lines().is_empty());
-}
-
 #[test]
 fn smoke_spawn_and_agent_env_helpers() {
     let _ = super::resolve_agent_bin();
@@ -60,5 +52,4 @@ fn smoke_acp_inc_symbols_for_kiss() {
     let _ = stringify!(session_after_stdio);
     let _ = stringify!(kill_child_and_finalize_containment);
     let _ = stringify!(acp_session_set_run_timing);
-    let _ = stringify!(acp_session_take_prompt_round_health);
 }

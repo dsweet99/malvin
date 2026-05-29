@@ -79,6 +79,22 @@ async fn dispatch_gate_kpop_prompt(
     Ok(())
 }
 
+fn restore_gate_kpop_session_dotfiles(ctx: &GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    let work_dir = prepared.artifacts().work_dir.as_path();
+    let backups = ctx.iteration.session_dotfile_backups;
+    if ctx
+        .iteration
+        .loop_params
+        .behavior
+        .restore_malvin_checks_after_session()
+    {
+        restore_session_dotfiles(work_dir, backups).map_err(|e| e.to_string())
+    } else {
+        backups.restore_excluding_malvin_checks(work_dir)
+    }
+}
+
 async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
     let prepared = ctx.iteration.loop_params.prepared;
     clear_quality_gates_log_for_next_agent(prepared.artifacts())?;
@@ -87,11 +103,7 @@ async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Re
         .await
         .map_err(|e| e.to_string())?;
     dispatch_gate_kpop_prompt(ctx, &s, &prompt).await?;
-    restore_session_dotfiles(
-        prepared.artifacts().work_dir.as_path(),
-        ctx.iteration.session_dotfile_backups,
-    )
-    .map_err(|e| e.to_string())?;
+    restore_gate_kpop_session_dotfiles(ctx)?;
     s.shutdown().await.map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -101,6 +113,10 @@ pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) ->
     finish_kpop_acp_session(
         ctx.iteration.loop_params.prepared.artifacts(),
         ctx.iteration.session_dotfile_backups,
+        ctx.iteration
+            .loop_params
+            .behavior
+            .restore_malvin_checks_after_session(),
     )
     .await
 }

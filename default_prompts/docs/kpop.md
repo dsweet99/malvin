@@ -1,63 +1,67 @@
 # malvin kpop
 
-**KPOP** (Popperian scientific investigator): a multiturn hypothesis-driven workflow. The agent maintains an experiment log under `_kpop/` in the run directory, emitting structured `## Step` hypotheses until success, budget exhaustion, or `## KPOP_SOLVED`.
+**KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `code` / `tidy`—focused on understanding, not shipping a pre-written plan.
+
+Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, `kpop` subcommand is hidden but equivalent).
+
+## Summary
+
+| | |
+|---|---|
+| Input | Investigation brief → `request.md` |
+| Loop | `--max-loops` separate agent **runs** (each with its own experiment log) |
+| Per run | Up to `--max-hypotheses` typed `## Step … — KPOP` lines |
+| Lookup | `malvin kpop <KPOP_ID>` prints a prior log (no agent) |
 
 ## Intention
 
-Scientifically explore a question or codebase behavior: formulate falsifiable hypotheses, test them, and record outcomes. Distinct from `code`—focused on investigation, not shipping a pre-written plan. For MBC2 creative interleave turns, use **`malvin invent`**.
+Explore questions or codebase behavior scientifically: falsifiable hypotheses, tests, recorded outcomes. For MBC2 creative ideation without evaluation, use **`malvin invent`**.
 
 ## Usage
 
 ```text
-malvin kpop [OPTIONS] <REQUEST>
-malvin kpop <KPOP_ID>
+malvin [OPTIONS] <REQUEST>              # bare kpop
+malvin kpop [OPTIONS] <REQUEST>         # hidden alias
+malvin kpop <KPOP_ID>                   # log lookup only
 ```
 
 ## Arguments
 
 ### `<REQUEST>` (investigation brief)
 
-Investigation brief as text or `@<path>`. Stored as `request.md` in the run dir (not `plan.md`).
+Text or `@<path>`. Stored as `request.md` in the run dir (not `plan.md`).
 
 ### `<KPOP_ID>` (log lookup)
 
-Short id `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/.malvin/logs/**` for a tagged `KPOP_LOG: <id> …` line and prints the experiment log to stdout. No agent session.
+Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/.malvin/logs/**` for `KPOP_LOG: <id>` and prints the experiment log. No agent session.
 
 ## Options
 
-### `--max-loops <N>` (default: 1)
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `--max-loops` | 1 | Separate kpop agent runs; stops early when a run’s log contains `## KPOP_SOLVED` |
+| `--max-hypotheses` | 10 | `## Step … — KPOP` budget **per** agent run |
+| `--tenacious` | off | `--max-acp-retries=9999` and `--max-loops=9999` |
 
-Run the kpop agent up to `N` times. Each run uses its own experiment log under `_kpop/` (for example `exp_log_<run>_g2.md` on the second run). Malvin stops early when a run’s log contains a line exactly `## KPOP_SOLVED`.
+Bare `malvin REQUEST` uses the same flags at the top level (see `malvin --doc`).
 
-### `--max-hypotheses <N>` (default: 10)
+## Global options
 
-Per agent run: stop after this many typed step lines exist in the experiment log: `## Step <n> — KPOP …` (em dash, en dash, or hyphen before the kind).
-
-### `--tenacious`
-
-Expand to `--max-acp-retries=9999` and `--max-loops=9999` (same as on `malvin code` and `malvin tidy`).
-
-### Global options
-
-See `malvin.md`. `--no-markdown` styles agent stdout. `--no-force` disables agent `--force`.
-
-## Requirements
-
-- Cursor agent CLI
-- Does **not** require kiss at CLI entry (unlike `code`)
+See `malvin --doc`. Does **not** require `kiss` at CLI entry (unlike `code` / `tidy`).
 
 ## Multiturn architecture
 
-Each turn uses the **KPOP block** prompt: the agent adds hypotheses as `## Step` lines in the experiment log.
+Each agent run:
 
-| Prompt role (effect) |
-|----------------------|
-| **KPOP common** — Shared rules, quality-gates markdown for the workspace, and request text. Coding rules prepended once. |
-| **KPOP block** — Agent adds new `## Step` hypotheses in one turn. |
+| Piece | Role |
+|-------|------|
+| **KPOP common** | Shared rules, workspace quality-gates markdown, request text |
+| **KPOP block** | Agent adds new `## Step` hypotheses in one turn batch |
+| Experiment log | `./.malvin/logs/<run>/_kpop/exp_log_<run>.md` (second run may use `_g2` suffix, etc.) |
 
-## KPOP_LOG
+## KPOP_LOG line
 
-At the start of a normal run, malvin prints:
+At startup malvin prints:
 
 ```text
 [malvin] KPOP_LOG: Ma3bx9 ./.malvin/logs/<run_id>/_kpop/exp_log_<run_id>.md
@@ -69,21 +73,30 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 
 Stops when any of:
 
-- Experiment log contains a line exactly `## KPOP_SOLVED` (agent-declared success)
-- Typed step line count ≥ `--max-hypotheses`
+- Experiment log contains a line exactly `## KPOP_SOLVED`
+- Typed step count reaches `--max-hypotheses`
+- `--max-loops` runs complete without early success
 - Internal error
 
 ## Artifacts
 
-- `./.malvin/logs/<run>/request.md` — input brief
-- `./.malvin/logs/<run>/_kpop/exp_log_<run>.md` — experiment log (authoritative)
+- `request.md` — input brief
+- `_kpop/exp_log_*.md` — experiment log (authoritative)
 - `kpop.log` — multiturn transcript
 - `quality_gates.log` when gates are embedded in prompts
+
+## Related commands
+
+| Command | When |
+|---------|------|
+| `malvin invent` | Creative MBC2 ideas, not hypothesis testing |
+| `malvin code` | Implement a plan with gate loop + `code_constraints.md` |
+| `malvin do` | Single-turn task without KPop logging |
 
 ## Examples
 
 ```text
-malvin kpop "Why does cache invalidation fail under load?"
+malvin "Why does cache invalidation fail under load?"
 malvin kpop @questions/regression.md --max-hypotheses 20
 malvin kpop Ma3bx9
 ```

@@ -12,11 +12,120 @@ pub fn git_init(project: &Path) {
     );
 }
 
+pub fn assert_deduped_precommit_checks(checks: &str) {
+    let lines: Vec<&str> = checks
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    assert!(
+        lines.first() == Some(&"kiss check"),
+        "kiss check must be first; got: {lines:?}"
+    );
+    assert_eq!(
+        lines.iter().filter(|l| **l == "ruff check .").count(),
+        1,
+        "expected exactly one deduped ruff line; got: {lines:?}"
+    );
+    assert!(
+        lines.contains(&"python3 -m compileall -q ."),
+        "expected pre-commit compileall hook; got: {lines:?}"
+    );
+    assert!(
+        !lines.iter().any(|l| l.contains("compileall -q src")),
+        "Makefile lint must not override pre-commit signal; got: {lines:?}"
+    );
+    assert_eq!(
+        lines.len(),
+        3,
+        "expected kiss + deduped ruff + compileall; got: {lines:?}"
+    );
+}
+
+pub fn seed_precommit_dedupe_fixture(project: &Path) {
+    git_init(project);
+    std::fs::write(project.join("lib.py"), "x = 1\n").expect("write lib.py");
+    std::fs::write(
+        project.join(".pre-commit-config.yaml"),
+        "repos:\n- repo: local\n  hooks:\n  - id: ruff-a\n    entry: ruff check .\n    language: system\n  - id: ruff-b\n    entry: ruff check .\n    language: system\n  - id: compile\n    entry: python3 -m compileall -q .\n    language: system\n",
+    )
+    .expect("write pre-commit config");
+    std::fs::write(
+        project.join("Makefile"),
+        "lint:\n\tpython3 -m compileall -q src\n",
+    )
+    .expect("write makefile");
+    git_commit_all(project, "seed tooling");
+}
+
+pub fn acp_mock_init_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const isKpop = promptText.includes('KPOP') || promptText.includes('init_constraints');
+    if (isKpop) {
+      const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
+      const target = targetMatch ? targetMatch[0] : null;
+      const root = path.join(process.cwd(), '.malvin', 'logs');
+      if (fs.existsSync(root)) {
+        const runs = fs.readdirSync(root, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+          .sort()
+          .reverse();
+        outer: for (const run of runs) {
+          const kpopDir = path.join(root, run, '_kpop');
+          if (!fs.existsSync(kpopDir)) continue;
+          const names = target
+            ? [target]
+            : fs.readdirSync(kpopDir).filter((n) => /_g\d+\.md$/.test(n)).sort();
+          for (const name of names) {
+            if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
+            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
+            break outer;
+          }
+        }
+      }
+      const checksPath = path.join(process.cwd(), '.malvin', 'checks');
+      fs.mkdirSync(path.dirname(checksPath), { recursive: true });
+      fs.writeFileSync(checksPath, 'kiss check\n');
+    }";
+    let kpop_done =
+        super::acp_core::session_update_chunk_line("agent_message_chunk", r"'init kpop ok\n'");
+    let summary_done =
+        super::acp_core::session_update_chunk_line("agent_message_chunk", r"'init summary ok\n'");
+    super::acp_core::acp_mock_js(
+        "",
+        &format!(
+            "{body}\n    if (!isKpop) {{ {summary_done} }} else {{ {kpop_done} }}"
+        ),
+    )
+}
+
+/// Run `malvin init` with CWD set to `project` (no `--path`), matching in-place user usage.
+pub fn malvin_init_output_in_place(project: &Path, init_args: &[&str]) -> std::process::Output {
+    let mock_home = tempfile::tempdir().expect("mock home tempdir");
+    let pre_commit_home = tempfile::tempdir().expect("pre-commit home tempdir");
+    let mock_bin = mock_home.path().join("mock-acp-init");
+    let js = acp_mock_init_js();
+    super::write_mock_executable(&mock_bin, &js);
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.arg("init");
+    for a in init_args {
+        cmd.arg(a);
+    }
+    cmd.current_dir(project);
+    cmd.env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
+        .env("PRE_COMMIT_HOME", pre_commit_home.path());
+    cmd.output().expect("spawn malvin init")
+}
+
 pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::Output {
     let mock_home = tempfile::tempdir().expect("mock home tempdir");
     let pre_commit_home = tempfile::tempdir().expect("pre-commit home tempdir");
     let mock_bin = mock_home.path().join("mock-acp-init");
-    let js = super::acp_core::acp_mock_js("", "");
+    let js = acp_mock_init_js();
     super::write_mock_executable(&mock_bin, &js);
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.arg("init");
@@ -28,6 +137,15 @@ pub fn malvin_init_output(project: &Path, init_args: &[&str]) -> std::process::O
         .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
         .env("PRE_COMMIT_HOME", pre_commit_home.path());
     cmd.output().expect("spawn malvin init")
+}
+
+pub fn gate_exp_logs_with_kpop_solved(run_dir: &Path) -> Vec<std::path::PathBuf> {
+    super::gate_exp_logs_in_run(run_dir)
+        .into_iter()
+        .filter(|p| {
+            std::fs::read_to_string(p).is_ok_and(|text| text.contains("## KPOP_SOLVED"))
+        })
+        .collect()
 }
 
 pub fn git_stdout(project: &Path, args: &[&str]) -> String {
@@ -115,7 +233,6 @@ pub struct InitOk {
 impl InitOk {
     pub fn new(init_args: &[&str]) -> Self {
         let project = tempfile::tempdir().unwrap();
-        git_init(project.path());
         let out = malvin_init_output(project.path(), init_args);
         assert!(out.status.success(), "malvin init failed: {out:?}");
         Self { project }

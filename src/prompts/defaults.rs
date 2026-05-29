@@ -8,11 +8,7 @@ pub use default_files::default_file;
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 
-pub const REQUIRED_PROMPTS: &[&str] = &[
-    HEADER_MD,
-    "coding_rules.md",
-    "kpop_program.md",
-];
+pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
@@ -22,10 +18,9 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_program.md",
     "tidy_constraints.md",
     "code_constraints.md",
-    "constrain_constraints.md",
+    "init_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
-    "coding_rules.md",
 ];
 
 #[cfg(test)]
@@ -50,7 +45,7 @@ mod advice_path_embed_tests {
 
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context;
-    use crate::prompts::{PromptStore, merged_coding_rules};
+    use crate::prompts::{PromptStore, render_header};
 
     #[test]
     fn embedded_header_render_without_unresolved_braces() {
@@ -62,7 +57,7 @@ mod advice_path_embed_tests {
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
         let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
-        let header = merged_coding_rules(&store, &ctx).expect("header");
+        let header = render_header(&store, &ctx).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
             header.contains("./.malvin/advice.md"),

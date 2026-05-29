@@ -8,7 +8,7 @@ pub(super) mod stdout_log_pair_tests;
 
 #[cfg(test)]
 pub(crate) use stdout_log_pair_tests::{
-    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_brackets_share_color,
+    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_uses_verb_styling,
 };
 
 #[cfg(test)]

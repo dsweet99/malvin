@@ -1,15 +1,12 @@
-use clap::CommandFactory;
-
 use super::models_cmd;
 use super::{
-    Cli, Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     use crate::require_kiss_for_malvin;
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
-        Commands::Constrain(_) => require_kiss_for_malvin("constrain"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Do(_)
         | Commands::Init(_)
@@ -95,8 +92,7 @@ pub fn entrypoint_from(
     };
     prepare_cli_output(&cli.global);
     if cli.command.is_none() && !cli.shared.doc {
-        let mut cmd = Cli::command();
-        let _ = cmd.print_help();
+        let _ = super::commands_help::print_commands_only_help();
         return Exit::Success;
     }
     if cli.shared.doc {
@@ -130,14 +126,6 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
                 code.tenacious,
             );
             super::entrypoint_commands::run_code_command(code, &shared)
-        }
-        Commands::Constrain(mut constrain) => {
-            super::loop_opts::apply_tenacious(
-                &mut constrain.max_loops,
-                &mut shared.max_acp_retries,
-                constrain.tenacious,
-            );
-            super::entrypoint_commands::run_constrain_command(constrain, &shared)
         }
         Commands::Kpop(mut kpop) => {
             super::loop_opts::apply_tenacious(
@@ -218,7 +206,6 @@ mod kiss_cov_gate_refs {
         let _ = dispatch_command;
         let _ = run_async_cli(|| async { Ok(()) });
         let _ = entrypoint_commands::run_code_command;
-        let _ = entrypoint_commands::run_constrain_command;
         let _ = entrypoint_commands::run_invent_command;
     }
 }

@@ -10,6 +10,7 @@ use crate::workspace_paths::malvin_config_path;
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 10;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
+pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -20,7 +21,10 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 pub struct AgentConfig {
     pub model: String,
     pub max_hypotheses: usize,
+    /// Gate-loop budget for kpop and bare invocation.
     pub max_loops: usize,
+    /// Gate-loop budget for code and tidy.
+    pub max_loops_code: usize,
     pub max_acp_retries: u32,
 }
 
@@ -30,6 +34,7 @@ impl Default for AgentConfig {
             model: DEFAULT_CLI_MODEL.to_string(),
             max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_loops: DEFAULT_MAX_LOOPS,
+            max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
         }
     }
@@ -164,18 +169,18 @@ pub(crate) fn parse_agent_config(text: &str) -> Result<AgentConfig, String> {
     let agent = value
         .get("agent")
         .ok_or_else(|| "missing [agent] section".to_string())?;
+    Ok(agent_config_from_table(agent))
+}
+
+pub(crate) fn agent_config_from_table(agent: &toml::Value) -> AgentConfig {
     let defaults = AgentConfig::default();
-    let model = read_string(agent.get("model")).unwrap_or(defaults.model);
-    let max_hypotheses = read_usize(agent.get("max_hypotheses")).unwrap_or(defaults.max_hypotheses);
-    let max_loops = read_usize(agent.get("max_loops")).unwrap_or(defaults.max_loops);
-    let max_acp_retries =
-        read_u32(agent.get("max_acp_retries")).unwrap_or(defaults.max_acp_retries);
-    Ok(AgentConfig {
-        model,
-        max_hypotheses,
-        max_loops,
-        max_acp_retries,
-    })
+    AgentConfig {
+        model: read_string(agent.get("model")).unwrap_or(defaults.model),
+        max_hypotheses: read_usize(agent.get("max_hypotheses")).unwrap_or(defaults.max_hypotheses),
+        max_loops: read_usize(agent.get("max_loops")).unwrap_or(defaults.max_loops),
+        max_loops_code: read_usize(agent.get("max_loops_code")).unwrap_or(defaults.max_loops_code),
+        max_acp_retries: read_u32(agent.get("max_acp_retries")).unwrap_or(defaults.max_acp_retries),
+    }
 }
 
 pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {

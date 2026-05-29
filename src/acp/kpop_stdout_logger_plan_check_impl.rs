@@ -159,7 +159,7 @@ async fn h19_thought_stdout_three_space_indent_no_brackets() {
 }
 
 #[tokio::test]
-async fn h20_styled_tool_summary_stdout_line_uses_brackets() {
+async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) =
@@ -182,21 +182,26 @@ async fn h20_styled_tool_summary_stdout_line_uses_brackets() {
     let stdout = finish_stdout_log_fixture(fixture);
     let line = stdout.lines().find(|l| l.contains("Run ")).expect("tool summary");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
-    assert!(line.contains("[Run"), "got {line:?}");
+    assert!(!line.contains("[Run"), "got {line:?}");
+    assert!(line.contains("Run "), "got {line:?}");
     assert!(line.contains("echo hi"), "got {line:?}");
+    assert!(
+        line.contains("]    Run "),
+        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+    );
 }
 
 #[tokio::test]
-async fn h23_start_and_done_tool_summary_share_payload_brackets() {
+async fn h23_start_and_done_tool_summary_omit_payload_brackets() {
     let path = "src/acp/trace_line_write.rs";
     let (start_line, done_line) =
         super::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout(path).await;
-    super::kpop_stdout_logger_plan_check_bracket::assert_payload_brackets_after_who_tag(
+    super::kpop_stdout_logger_plan_check_bracket::assert_payload_omits_brackets_after_who_tag(
         &start_line, &done_line,
     );
     let start_plain = crate::ansi_strip::strip_ansi_escapes(&start_line);
     let done_plain = crate::ansi_strip::strip_ansi_escapes(&done_line);
-    super::kpop_stdout_logger_plan_check_bracket::assert_styled_tool_summary_brackets_match(
+    super::kpop_stdout_logger_plan_check_bracket::assert_styled_tool_summary_payloads_match(
         start_plain.split(']').nth(1).expect("payload").trim(),
         done_plain.split(']').nth(1).expect("payload").trim(),
     );
@@ -213,4 +218,8 @@ async fn h21_unstyled_tool_summary_omits_brackets() {
     let line = stdout.lines().find(|l| l.contains("Run ")).expect("tool summary");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
     assert!(!line.contains("[Run"), "got {line:?}");
+    assert!(
+        line.contains("]    Run "),
+        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+    );
 }

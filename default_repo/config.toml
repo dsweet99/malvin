@@ -4,6 +4,7 @@ mem_limit_gb = 4
 model = "auto"
 max_hypotheses = 10
 max_loops = 1
+max_loops_code = 3
 max_acp_retries = 3
 
 [logs]

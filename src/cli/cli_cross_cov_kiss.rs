@@ -17,6 +17,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
+    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_repo);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_pre_commit_hooks);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_kiss_repo_init);
     let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_lfs_hooks);
@@ -24,7 +25,6 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = stringify!(crate::init_cmd::init_cmd_mid_core::emit_init_startup);
     let _ = stringify!(crate::init_cmd::repo_already_has_commits);
     let _ = crate::init_cmd::run_init;
-    let _ = stringify!(crate::init_cmd::run_init_summary_phase);
 }
 
 #[test]
@@ -91,17 +91,6 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
     let _ = super::tidy_flow::prepare_tidy_kpop_run;
     let _ = super::tidy_flow::run_tidy;
     let _ = super::tidy_flow::effective_tidy_max_loops;
-}
-
-#[test]
-fn smoke_cov_cli_constrain_flow_units() {
-    let _: Option<super::ConstrainArgs> = None;
-    let _: Option<super::constrain_flow::ConstrainKpopPrepared> = None;
-    let _ = super::constrain_flow::prepare_constrain_kpop_prompt_store;
-    let _ = super::constrain_flow::constrain_kpop_request;
-    let _ = super::constrain_flow::prepare_constrain_kpop_run;
-    let _ = super::constrain_flow::run_constrain;
-    let _ = super::constrain_flow::effective_constrain_max_loops;
 }
 
 #[test]

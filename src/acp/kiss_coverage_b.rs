@@ -86,9 +86,9 @@ fn kiss_cov_acp_kpop_stdout_logger_plan_check_impl() {
     let _ = stringify!(h17_relativize_tool_path_under_work_dir);
     let _ = stringify!(h18_raw_output_writer_suppresses_tool_stdout_tee);
     let _ = stringify!(h19_thought_stdout_three_space_indent_no_brackets);
-    let _ = stringify!(h20_styled_tool_summary_stdout_line_uses_brackets);
+    let _ = stringify!(h20_styled_tool_summary_stdout_line_omits_payload_brackets);
     let _ = stringify!(h21_unstyled_tool_summary_omits_brackets);
-    let _ = stringify!(h23_start_and_done_tool_summary_share_payload_brackets);
+    let _ = stringify!(h23_start_and_done_tool_summary_omit_payload_brackets);
     let _ = stringify!(crate::acp_tests::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout);
 }
 
@@ -119,12 +119,7 @@ fn kiss_cov_deferred_log_plan_regression() {
 fn kiss_cov_acp_reader_test_prompt_round_health() {
     let _ = stringify!(detects_upgrade_plan_when_phrase_leads_long_agent_chunk);
     let _ = stringify!(detects_upgrade_plan_across_split_agent_chunks);
-    let _ = stringify!(detects_streamed_kpop_solved_in_agent_chunk);
-    let _ = stringify!(counts_silent_shell_completions);
-    let _ = stringify!(records_service_unavailable_on_search_tool);
-    let _ = stringify!(completed_tool_call_raw);
-    let _ = stringify!(silent_shell_completion);
-    let _ = stringify!(raw_output_text_empty);
+    let _ = stringify!(append_agent_text_drain_respects_utf8_char_boundary);
 }
 
 #[test]

@@ -19,6 +19,8 @@ mod do_stdout_harness;
 mod do_stdout_harness_extra;
 #[cfg(unix)]
 mod init_harness;
+#[cfg(unix)]
+mod enn_hybrid_fixture;
 mod kpop_multiturn_support;
 mod kpop_outer_loop_support;
 #[cfg(unix)]
@@ -26,8 +28,6 @@ mod live_agent;
 mod process;
 #[cfg(unix)]
 mod code_harness;
-#[cfg(unix)]
-mod constrain_harness;
 #[cfg(unix)]
 mod tidy_harness;
 mod workspace;
@@ -54,8 +54,6 @@ pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 #[cfg(unix)]
 pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]
-pub use constrain_harness::{spawn_constrain, ConstrainSpawn};
-#[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
     bin_path_with_kiss_fail_until_n_passes, spawn_tidy, spawn_tidy_with_timeout,
@@ -73,6 +71,8 @@ pub use do_stdout_harness::*;
 pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
+#[cfg(unix)]
+pub use enn_hybrid_fixture::*;
 
 #[cfg(test)]
 mod acp_mock_syntax_tests;

@@ -16,19 +16,20 @@ pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> b
 pub(crate) struct LoopDefaultMut<'a> {
     pub max_loops: &'a mut usize,
     pub max_hypotheses: &'a mut usize,
+    pub config_max_loops: usize,
+    pub config_max_hypotheses: usize,
 }
 
 pub(crate) fn apply_loop_defaults(
     matches: &ArgMatches,
     subcommand: &str,
     loops: LoopDefaultMut<'_>,
-    agent: &AgentConfig,
 ) {
     if !subcommand_flag_from_command_line(matches, subcommand, "max_loops") {
-        *loops.max_loops = agent.max_loops;
+        *loops.max_loops = loops.config_max_loops;
     }
     if !subcommand_flag_from_command_line(matches, subcommand, "max_hypotheses") {
-        *loops.max_hypotheses = agent.max_hypotheses;
+        *loops.max_hypotheses = loops.config_max_hypotheses;
     }
 }
 
@@ -56,17 +57,9 @@ pub fn apply_workspace_config_defaults(
             LoopDefaultMut {
                 max_loops: &mut code.max_loops,
                 max_hypotheses: &mut code.max_hypotheses,
+                config_max_loops: agent.max_loops_code,
+                config_max_hypotheses: agent.max_hypotheses,
             },
-            &agent,
-        ),
-        Commands::Constrain(constrain) => apply_loop_defaults(
-            matches,
-            "constrain",
-            LoopDefaultMut {
-                max_loops: &mut constrain.max_loops,
-                max_hypotheses: &mut constrain.max_hypotheses,
-            },
-            &agent,
         ),
         Commands::Kpop(kpop) => apply_loop_defaults(
             matches,
@@ -74,8 +67,9 @@ pub fn apply_workspace_config_defaults(
             LoopDefaultMut {
                 max_loops: &mut kpop.max_loops,
                 max_hypotheses: &mut kpop.max_hypotheses,
+                config_max_loops: agent.max_loops,
+                config_max_hypotheses: agent.max_hypotheses,
             },
-            &agent,
         ),
         Commands::Tidy(tidy) => apply_loop_defaults(
             matches,
@@ -83,8 +77,9 @@ pub fn apply_workspace_config_defaults(
             LoopDefaultMut {
                 max_loops: &mut tidy.max_loops,
                 max_hypotheses: &mut tidy.max_hypotheses,
+                config_max_loops: agent.max_loops_code,
+                config_max_hypotheses: agent.max_hypotheses,
             },
-            &agent,
         ),
         Commands::Do(_)
         | Commands::Init(_)

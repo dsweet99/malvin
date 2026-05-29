@@ -1,10 +1,18 @@
 # malvin do
 
-Respond to a **single** user request in one agent session. This is malvin’s lightweight, non-looping mode: no plan check, no review fan-out, no implement/review cycle.
+One **single-turn** agent session: no gate loop, no KPop experiment log, no review fan-out.
+
+## Summary
+
+| | |
+|---|---|
+| Input | `<REQUEST>` text or `@file` |
+| Output | Plain stdout (no markdown styling) |
+| Log | `do.log` under `./.malvin/logs/<run>/` |
 
 ## Intention
 
-Answer a question, perform a one-off task, or continue an informal conversation without the full `code` pipeline. Output is plain text on stdout (no markdown styling), suitable for terminals and pipes.
+Answer a question, perform a one-off task, or continue informal work without the `code` pipeline. Suitable for terminals and pipes.
 
 ## Usage
 
@@ -16,49 +24,56 @@ malvin do [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-The user’s task as literal text, or `@<path>` to read from a file.
+Literal text, or `@<path>` to read from a file.
 
-- Literal: work directory is `.` (cwd).
-- `@file`: file contents become the request; work directory is the file’s parent.
-- Run copy is stored as `plan.md` under `./.malvin/logs/<run>/`.
+| Form | Work directory | Stored as |
+|------|----------------|-----------|
+| Literal | `.` (cwd) | `plan.md` in run dir |
+| `@file` | Parent of file | `plan.md` |
 
 ## Options
 
 ### `--repo-gates`
 
-Before the agent runs, execute workspace quality gates (commands from `.malvin/checks`, with `kiss clamp` preparation). Uses the no-clamp variant for gates only in the sense that this path calls `run_repo_workspace_gates_no_kiss_clamp` so gates do not implicitly create `.kissconfig`. Failure aborts before any prompt.
+Before the agent runs, execute workspace quality gates from `.malvin/checks` (via `run_repo_workspace_gates_no_kiss_clamp`). Failure aborts before any prompt.
 
 ### `--thoughts`
 
-When the agent emits “thought” tokens, stream them to stdout as well (in addition to normal output).
+Stream agent “thought” tokens to stdout in addition to normal output.
 
-### Global options
+## Global options
 
-See `malvin.md`. **`do` ignores `--no-markdown`** for agent output: stdout is always raw/plain. `--verbose` logs full prompt bodies. `--no-tee` disables live streaming.
+See `malvin --doc`. Notable for `do`:
+
+| Flag | Effect on `do` |
+|------|----------------|
+| `--no-markdown` | Ignored for styling — stdout is always plain |
+| `--no-tee` | Disables live streaming |
+| `--verbose` | Full prompt bodies in `prompts.log` |
 
 ## Prompt workflow
 
-Exactly **one** coder prompt per invocation.
+One coder prompt per invocation:
 
-| Step | Prompt role (effect) | Log |
-|------|----------------------|-----|
-| 1 | **Coding header** (`header.md`) — Full malvin coding context (identity, history/memory guidance, repo rules). | `do.log` |
-| 2 | **Do header** (`do_header.md`) — Tells the agent it is malvin in do mode; plaintext replies; points at `./.malvin/logs/.../do.log` for prior do sessions. | `do.log` |
-| — | **User request** — Appended after both headers (not a separate file). | `do.log` |
+| Piece | Role |
+|-------|------|
+| `header.md` | Full malvin coding context |
+| `do_header.md` | Do-mode persona; points at prior `do.log` files |
+| User request | Appended after headers |
 
-No `implement`, `review`, `concerns`, `learn`, or `summary` phases.
+No implement, review, concerns, learn, or summary phases.
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks` before the session; restores after.
-- Writes `do.log`, `stdout.log`, `prompts.log`, timing JSON as applicable.
-- Checks `result.md` for ABORT after the session (coding-style abort protocol).
+- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks`; restores after.
+- Checks `result.md` for `ABORT:` after the session.
 
-## When to use
+## Related commands
 
-- Quick questions or small edits without a written plan.
-- Piped/redirected workflows that need clean plaintext.
-- Inspecting or continuing prior work via recent `./.malvin/logs/*/do.log` (agent is steered to look there in the do header).
+| Command | When |
+|---------|------|
+| `malvin code` | Multi-iteration plan implementation |
+| `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
 
 ## Examples
 

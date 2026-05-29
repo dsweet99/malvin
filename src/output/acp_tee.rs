@@ -4,13 +4,43 @@ pub use super::acp_tee_markdown::{
     TermimadStdoutGate, termimad_inline_payload_for_stdout, termimad_text_lines_for_stdout,
 };
 pub use super::stdout_log_pair::{
-    AcpTeeDirection, AcpTeeLineFmt, acp_tee_display_line, acp_tee_log_line,
+    acp_tee_display_line, acp_tee_log_line, AcpTeeDirection, AcpTeeLineFmt,
     format_line_acp_ansi_payload,
 };
 pub(crate) use super::stdout_log_pair::{acp_tee_payload_prefix, acp_tee_payload_prefix_width};
 
 use super::stdout_render::{route_stdout_rendered_line, StdoutRenderPrelude};
 use super::timestamp_now_string;
+
+/// Leading spaces for tool-summary payloads in `stdout.log` (matches thought tee indent).
+pub(crate) const TOOL_CALL_LOG_INDENT: &str = "   ";
+
+pub(crate) fn indent_tool_call_log_payload(payload: &str) -> String {
+    format!("{TOOL_CALL_LOG_INDENT}{payload}")
+}
+
+fn tool_summary_tee_display_and_log<'a>(
+    ev: &AcpTeeStdoutEvent<'a>,
+    display_payload: &str,
+) -> (String, String) {
+    let log_payload = indent_tool_call_log_payload(ev.line);
+    let display_indented = indent_tool_call_log_payload(display_payload);
+    let display_ctx = AcpTeeLineFmt {
+        ts: ev.ts,
+        direction: ev.direction,
+        who: ev.who,
+        line: &display_indented,
+        dim_payload: ev.dim_payload,
+    };
+    let log_ctx = AcpTeeLineFmt {
+        ts: ev.ts,
+        direction: ev.direction,
+        who: ev.who,
+        line: &log_payload,
+        dim_payload: ev.dim_payload,
+    };
+    super::stdout_log_pair::stdout_acp_display_and_log(&display_ctx, &log_ctx)
+}
 
 fn route_acp_rendered(display: &str, log: &str, prelude: StdoutRenderPrelude) {
     route_stdout_rendered_line(display, log, prelude);
@@ -42,40 +72,12 @@ pub fn print_stdout_acp_tee_line(direction: AcpTeeDirection, who: &str, line: &s
 
 /// Same as [`print_stdout_acp_tee_line`], but uses `ts` for the line prefix (shared with disk trace).
 pub fn print_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
-    let display_ctx = AcpTeeLineFmt {
-        ts: ev.ts,
-        direction: ev.direction,
-        who: ev.who,
-        line: display_payload,
-        dim_payload: ev.dim_payload,
-    };
-    let log_ctx = AcpTeeLineFmt {
-        ts: ev.ts,
-        direction: ev.direction,
-        who: ev.who,
-        line: ev.line,
-        dim_payload: ev.dim_payload,
-    };
-    let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(&display_ctx, &log_ctx);
+    let (display, log) = tool_summary_tee_display_and_log(ev, display_payload);
     route_acp_rendered(&display, &log, StdoutRenderPrelude::TaggedWithHeartbeat);
 }
 
 pub(crate) fn flush_stdout_acp_tool_summary_tee(ev: &AcpTeeStdoutEvent<'_>, display_payload: &str) {
-    let display_ctx = AcpTeeLineFmt {
-        ts: ev.ts,
-        direction: ev.direction,
-        who: ev.who,
-        line: display_payload,
-        dim_payload: ev.dim_payload,
-    };
-    let log_ctx = AcpTeeLineFmt {
-        ts: ev.ts,
-        direction: ev.direction,
-        who: ev.who,
-        line: ev.line,
-        dim_payload: ev.dim_payload,
-    };
-    let (display, log) = super::stdout_log_pair::stdout_acp_display_and_log(&display_ctx, &log_ctx);
+    let (display, log) = tool_summary_tee_display_and_log(ev, display_payload);
     route_acp_rendered(&display, &log, StdoutRenderPrelude::FlushOnly);
 }
 

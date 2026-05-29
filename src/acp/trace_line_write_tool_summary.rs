@@ -9,12 +9,8 @@ use crate::tool_summary::{
     TOOL_PHASE_DONE,
 };
 
-fn tool_summary_styled_tee_payload(writer: &PromptTraceWriter, plain: &str) -> (String, String) {
-    let plain = if writer.emit_stdout_markdown {
-        format!("[{plain}]")
-    } else {
-        plain.to_string()
-    };
+fn tool_summary_styled_tee_payload(_writer: &PromptTraceWriter, plain: &str) -> (String, String) {
+    let plain = plain.to_string();
     let display = tool_summary_stdout_display(&plain);
     (plain, display)
 }
@@ -170,10 +166,10 @@ mod tool_summary_styled_tee_tests {
     }
 
     #[test]
-    fn styled_payload_wraps_in_brackets() {
+    fn styled_payload_omits_brackets() {
         let w = writer(true);
         let (plain, _) = tool_summary_styled_tee_payload(&w, "Run x");
-        assert_eq!(plain, "[Run x]");
+        assert_eq!(plain, "Run x");
     }
 
     #[test]

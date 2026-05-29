@@ -73,6 +73,14 @@ fn thought_stdout_payload_indents_three_spaces() {
 }
 
 #[test]
+fn tool_call_log_payload_indents_three_spaces() {
+    assert_eq!(
+        crate::output::acp_tee::indent_tool_call_log_payload("Run echo hi · 1ms · ✓"),
+        "   Run echo hi · 1ms · ✓"
+    );
+}
+
+#[test]
 fn trace_tee_stdout_line_noop_when_tee_disabled() {
     let mut writer = trace_writer();
     trace_tee_stdout_line(
@@ -138,37 +146,35 @@ fn trace_tee_stdout_event_respects_dim_payload_flag() {
 fn format_styled_tool_summary_tee_line_applies_dim_after_bracket() {
     let writer = trace_writer();
     let plain = "Run echo hi · 1ms · ✓";
-    let bracketed = format!("[{plain}]");
-    let display = apply_tool_summary_ansi(&bracketed);
-    let line = format_styled_tool_summary_tee_line(&writer, &bracketed, &display, "20260413.121314.015");
+    let display = apply_tool_summary_ansi(plain);
+    let line = format_styled_tool_summary_tee_line(&writer, plain, &display, "20260413.121314.015");
     crate::output::assert_acp_tool_summary_dim_preserves_bracket(&line);
-    crate::output::assert_tool_payload_brackets_share_color(&line);
+    crate::output::assert_tool_payload_uses_verb_styling(&line);
 }
 
 #[test]
-fn styled_tool_payload_open_bracket_matches_close_bracket_color() {
+fn styled_tool_payload_uses_verb_styling_without_brackets() {
     let writer = trace_writer();
     for plain in [
         "Run echo hi · 1ms · ✓",
         "Reading ./src/foo.rs…",
         "Read ./src/foo.rs · 1ms",
     ] {
-        let bracketed = format!("[{plain}]");
-        let display = apply_tool_summary_ansi(&bracketed);
+        let display = apply_tool_summary_ansi(plain);
         let line = format_styled_tool_summary_tee_line(
             &writer,
-            &bracketed,
+            plain,
             &display,
             "20260413.121314.015",
         );
-        crate::output::assert_tool_payload_brackets_share_color(&line);
+        crate::output::assert_tool_payload_uses_verb_styling(&line);
     }
 }
 
 #[test]
 fn trace_tee_stdout_line_styled_tool_summary_dims_payload() {
     let plain = "Run echo hi · 1ms · ✓";
-    let display = apply_tool_summary_ansi(&format!("[{plain}]"));
+    let display = apply_tool_summary_ansi(plain);
     let ts = "20260413.121314.015";
     let log = with_stdout_log(true, || {
         let mut writer = trace_writer();

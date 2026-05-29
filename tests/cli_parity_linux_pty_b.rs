@@ -15,8 +15,8 @@ mod linux_pty {
             None,
         );
         assert!(
-            !run.output.status.success(),
-            "expected kpop failure exit from script -e: {:?}",
+            run.output.status.success(),
+            "expected kpop success when mock streams only chat: {:?}",
             run.output
         );
         let stdout = String::from_utf8_lossy(&run.output.stdout);
@@ -52,10 +52,9 @@ mod linux_pty {
             "kpop --max-loops 1 --max-hypotheses 1 investigate",
             None,
         );
-        assert_eq!(
-            run.output.status.code(),
-            Some(1),
-            "expected kpop failure exit from script -e: {0:?}",
+        assert!(
+            run.output.status.success(),
+            "expected kpop success when mock streams only chat: {0:?}",
             run.output
         );
         let stderr = String::from_utf8_lossy(&run.output.stderr);

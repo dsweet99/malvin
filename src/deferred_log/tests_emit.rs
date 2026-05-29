@@ -73,7 +73,8 @@ fn styled_tool_payload_formats_plain_and_markdown() {
     assert_eq!(plain, "Read file · 1ms");
     assert!(!display.is_empty());
     let (md_plain, _md_display) = styled_tool_payload("Read file · 1ms", true);
-    assert!(md_plain.starts_with('['));
+    assert_eq!(md_plain, "Read file · 1ms");
+    assert!(!md_plain.starts_with('['));
     let meta = ToolDrainMeta {
         tool_call_id: "t1".to_string(),
         kind: "read".to_string(),

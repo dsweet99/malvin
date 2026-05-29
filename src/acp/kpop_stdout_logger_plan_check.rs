@@ -178,11 +178,12 @@ fn h7_live_stdout_log_both_tool_summary_and_thought_tee_timestamped() {
     );
     let plain = "Run rg foo · 1ms · ✓";
     let ts = "20260413.121314.015";
+    let indented = crate::output::acp_tee::indent_tool_call_log_payload(plain);
     let ctx = AcpTeeLineFmt {
         ts,
         direction: AcpTeeDirection::FromAgent,
         who: "<check_plan",
-        line: plain,
+        line: &indented,
         dim_payload: false,
     };
     assert_eq!(lines[0], acp_tee_log_line(&ctx));

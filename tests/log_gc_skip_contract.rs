@@ -4,7 +4,7 @@ mod common;
 
 use std::path::Path;
 
-use common::{git_init, malvin_init_output, run_do_with_mock, test_home_workspace};
+use common::{malvin_init_output, run_do_with_mock, test_home_workspace};
 
 const SEED_RUN: &str = "20260101_000000_seedseed";
 const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
@@ -35,7 +35,6 @@ fn seed_old_run(work_dir: &Path) -> std::path::PathBuf {
 #[test]
 fn malvin_init_does_not_prune_preexisting_log_dirs() {
     let project = tempfile::tempdir().expect("tempdir");
-    git_init(project.path());
     let seed = seed_log_run(project.path());
     let out = malvin_init_output(project.path(), &["python"]);
     assert!(out.status.success(), "malvin init failed: {out:?}");

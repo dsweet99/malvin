@@ -134,11 +134,12 @@ fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
 
     let log_line = std::fs::read_to_string(path).unwrap();
     let log_line = log_line.trim_end();
+    let indented = crate::output::acp_tee::indent_tool_call_log_payload(plain);
     let ctx = AcpTeeLineFmt {
         ts,
         direction: AcpTeeDirection::FromAgent,
         who: "<kpop",
-        line: plain,
+        line: &indented,
         dim_payload: false,
     };
     assert_eq!(log_line, acp_tee_log_line(&ctx));
@@ -183,10 +184,9 @@ fn h22_rendered_tool_summary_tee(
         .unwrap()
         .stdout
         .expect("stdout summary");
-    let plain_bracketed = format!("[{plain}]");
-    let display = crate::tool_summary::apply_tool_summary_ansi(&plain_bracketed);
+    let display = crate::tool_summary::apply_tool_summary_ansi(&plain);
     let tee_writer = h22_tee_writer(work_dir);
-    format_styled_tool_summary_tee_line(&tee_writer, &plain_bracketed, &display, ts)
+    format_styled_tool_summary_tee_line(&tee_writer, &plain, &display, ts)
 }
 
 #[tokio::test]

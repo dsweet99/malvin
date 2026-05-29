@@ -1,6 +1,6 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
 
-mod acp_tee;
+pub(crate) mod acp_tee;
 mod acp_tee_markdown;
 pub(crate) mod stderr_log;
 mod stdout_defer;
@@ -245,5 +245,5 @@ pub fn is_command_prelude_line(line: &str) -> bool {
 
 #[cfg(test)]
 pub(crate) use test_modules::{
-    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_brackets_share_color,
+    assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_uses_verb_styling,
 };

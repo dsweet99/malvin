@@ -49,6 +49,9 @@ mod init_cmd_bootstrap;
 #[path = "init_cmd_workspace.rs"]
 mod init_cmd_workspace;
 
+#[path = "init_cmd_summary.rs"]
+mod init_cmd_summary;
+
 #[cfg(test)]
 #[path = "init_cmd_mid_tests.rs"]
 mod init_cmd_mid_tests;
@@ -104,115 +107,41 @@ pub struct RunInitRequest<'a> {
 pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
     let languages = parse_languages(req.languages)?;
     let root = resolve_init_root(req.path)?;
+    let checks_existed_before = crate::malvin_checks_path(&root).is_file();
     let artifacts = init_cmd_mid_core::emit_init_startup(&root, req.opts.tee_startup_stdout)?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
+    let discovery_decision = crate::repo_gates::init_discovery::init_discovery_decision(
+        &root,
+        crate::repo_gates::init_discovery::InitDiscoveryRequest {
+            checks_existed_before_bootstrap: checks_existed_before,
+            force_overwrite: req.opts.overwrite_templates,
+        },
+    );
+    let run_summary = discovery_decision.run
+        || discovery_decision.skip_reason != Some("empty repo; using builtin checks");
     let r = async {
         write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
         ensure_malvin_workspace_layout(&root, req.opts.overwrite_templates, &languages)?;
         bootstrap_repo_tooling(&root)?;
-        run_init_summary_phase(req.shared, &artifacts).await
+        if discovery_decision.run && req.opts.overwrite_templates && checks_existed_before {
+            crate::repo_gates::refresh_provisional_malvin_checks_file(&root)?;
+        }
+        if discovery_decision.run {
+            crate::cli::init_discovery_flow::run_init_discovery_kpop(req.shared, &artifacts).await?;
+        } else {
+            crate::cli::init_discovery_flow::emit_init_discovery_skip(discovery_decision);
+        }
+        if run_summary {
+            init_cmd_summary::run_init_summary_phase(req.shared, &artifacts).await
+        } else {
+            Ok(())
+        }
     }
     .await;
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
     }
     r
-}
-
-fn init_summary_combined_body(
-    store: &crate::prompts::PromptStore,
-    ctx: &std::collections::HashMap<String, String>,
-) -> Result<String, String> {
-    use crate::prompts::{HEADER_MD, PromptError};
-    let header_body = store
-        .render_prompt_only(HEADER_MD, ctx)
-        .map_err(|e: PromptError| e.0)?;
-    let summary_only = store
-        .render("summary.md", ctx)
-        .map_err(|e: PromptError| e.0)?;
-    Ok(format!(
-        "{}\n\n{}",
-        header_body.trim_end(),
-        summary_only.trim_end()
-    ))
-}
-
-async fn init_summary_coder_turn_with_timing_emit(
-    client: &mut crate::acp::AgentClient,
-    artifacts: &crate::artifacts::RunArtifacts,
-    body: &str,
-) -> Result<(), String> {
-    use crate::run_timing::TimingPhase;
-    let timing = client.attach_run_timing_for_session();
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .set_implement_display_name("init");
-    let begin_res = client.begin_coder_session(&artifacts.work_dir).await;
-    if let Err(e) = begin_res {
-        client.set_run_timing(None);
-        return Err(e.to_string());
-    }
-    let prompt_res = client
-        .run_coder_prompt(
-            body,
-            &artifacts.log_path("summary"),
-            "summary",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Summary),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-            },
-        )
-        .await
-        .map_err(|e| e.to_string());
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged = crate::acp_post_run::prefer_primary_over_secondary(
-        prompt_res,
-        end_res,
-        "failed to end coder session",
-    );
-    crate::acp_post_run::emit_run_timing_after_acp(crate::acp_post_run::RunTimingAfterAcp {
-        client,
-        run_dir: &artifacts.run_dir,
-        timing: &timing,
-        acp_result: merged,
-        session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize,
-    })
-}
-
-async fn run_init_summary_phase(
-    shared: &crate::cli::SharedOpts,
-    artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<(), String> {
-    use crate::orchestrator::workflow_context;
-    use crate::prompts::{PromptError, PromptStore};
-    let workflow = crate::cli::WorkflowCliOptions {
-        force: !shared.no_force,
-        
-    };
-    let store = PromptStore::default_store();
-    store.ensure_defaults().map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists("summary.md")
-        .map_err(|e: PromptError| e.0)?;
-    let ctx = workflow_context(artifacts, &store, "init").map_err(|e: PromptError| e.0)?;
-    let session_dotfile_backups =
-        crate::artifacts::SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
-    let mut client =
-        crate::cli::build_agent(shared, workflow, shared.acp_stdout_markdown_enabled());
-    client
-        .ensure_authenticated()
-        .map_err(|e: crate::acp::AuthError| e.to_string())?;
-    client.prompts_log_run_dir = Some(artifacts.run_dir.clone());
-    let body = init_summary_combined_body(&store, &ctx)?;
-    let coder_turn_out =
-        init_summary_coder_turn_with_timing_emit(&mut client, artifacts, &body).await;
-    crate::acp_post_run::merge_acp_restore_check_abort_then_print_timing(
-        coder_turn_out,
-        artifacts,
-        &session_dotfile_backups,
-    )
 }
 
 pub fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
@@ -238,8 +167,6 @@ mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = init_summary_coder_turn_with_timing_emit;
-        let _ = init_summary_combined_body;
-        let _ = run_init_summary_phase;
+        let _ = run_init;
     }
 }

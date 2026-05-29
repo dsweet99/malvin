@@ -2,18 +2,6 @@
 
 use std::collections::HashMap;
 
-#[must_use]
-pub fn merge_header_and_coding_rules(header_expanded: &str, rules_expanded: &str) -> String {
-    let h = header_expanded.trim();
-    let r = rules_expanded.trim();
-    match (h.is_empty(), r.is_empty()) {
-        (true, true) => String::new(),
-        (true, false) => r.to_string(),
-        (false, true) => h.to_string(),
-        (false, false) => format!("{h}\n\n{r}"),
-    }
-}
-
 #[allow(clippy::implicit_hasher)]
 pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> String {
     let mut keys: Vec<&String> = context.keys().collect();
@@ -97,7 +85,7 @@ mod template_kiss {
     #[test]
     fn malformed_brace_placeholders_rejects_unspaced_key() {
         let _ = crate::prompts::render_mbc2_for_scheduled_kpop_block;
-        let _ = crate::prompts::merged_coding_rules;
+        let _ = crate::prompts::render_header;
         let _ = super::is_spaced_brace_placeholder_inner;
         let bad = super::malformed_brace_placeholders("x {{plan_path}} y");
         assert_eq!(bad.len(), 1);
