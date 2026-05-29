@@ -118,6 +118,7 @@ pub(crate) fn gate_iteration_context(
 }
 
 pub(crate) fn run_kpop_workspace_gates(artifacts: &RunArtifacts) -> Result<(), String> {
+    clear_quality_gates_log_for_next_agent(artifacts)?;
     run_repo_workspace_gates(
         artifacts.work_dir.as_path(),
         RepoGateOutput::Tagged,

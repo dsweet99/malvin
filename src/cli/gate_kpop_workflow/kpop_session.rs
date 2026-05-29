@@ -5,8 +5,7 @@ use crate::acp::{
     KpopFailAfterPrompt, KpopPromptRound,
 };
 use crate::cli::workflow_kpop_shared::{
-    clear_quality_gates_log_for_next_agent, finish_kpop_acp_session, gate_iteration_context,
-    post_kpop_session_gates,
+    finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
 };
 use crate::cli::SharedOpts;
 
@@ -97,7 +96,6 @@ fn restore_gate_kpop_session_dotfiles(ctx: &GateKpopMultiturnCtx<'_>) -> Result<
 
 async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
     let prepared = ctx.iteration.loop_params.prepared;
-    clear_quality_gates_log_for_next_agent(prepared.artifacts())?;
     let prompt = build_gate_kpop_prompt(ctx)?;
     let s = spawn_agent_acp_session(ctx.iteration.client, &prepared.artifacts().work_dir)
         .await

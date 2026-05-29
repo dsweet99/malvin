@@ -56,6 +56,21 @@ fn clear_quality_gates_log_for_next_agent_empties_file() {
 }
 
 #[test]
+fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
+    std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
+    let err = run_kpop_workspace_gates(&artifacts).expect_err("gates fail");
+    assert!(err.contains("kiss"));
+    let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
+    assert!(log.contains("Running `kiss`"));
+    assert!(log.contains("[stdout]"));
+    assert!(!log.contains("stale output"));
+}
+
+#[test]
 fn gate_iteration_context_overrides_exp_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
