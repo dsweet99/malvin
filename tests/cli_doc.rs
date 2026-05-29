@@ -40,6 +40,10 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     );
     assert!(bare_s.contains("Commands:"), "bare stdout: {bare_s}");
     assert!(
+        bare_s.contains("[REQUEST]"),
+        "bare stdout must mention REQUEST: {bare_s}"
+    );
+    assert!(
         bare_s.contains("malvin --help"),
         "bare stdout must point to --help: {bare_s}"
     );

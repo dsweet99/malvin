@@ -31,21 +31,29 @@ fn format_command_lines(subs: &[&Command]) -> Vec<String> {
         .collect()
 }
 
-/// Build subcommand catalog text for bare `malvin`.
-pub fn render_commands_only_help() -> String {
-    let cmd = Cli::command();
+fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(about) = cmd.get_about() {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [COMMAND]".to_string());
+    lines.push("Usage: malvin [REQUEST]... [COMMAND]".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
-    lines.extend(format_command_lines(&visible_subcommands(&cmd)));
-    lines.push(String::new());
-    lines.push("Use `malvin --help` to see options.".to_string());
-    format!("{}\n", lines.join("\n"))
+    lines.extend(format_command_lines(&visible_subcommands(cmd)));
+    lines.extend([
+        String::new(),
+        "Pass REQUEST with no subcommand to investigate scientifically.".to_string(),
+        String::new(),
+        "Use `malvin --help` to see options.".to_string(),
+    ]);
+    lines
+}
+
+/// Build subcommand catalog text for bare `malvin`.
+pub fn render_commands_only_help() -> String {
+    let cmd = Cli::command();
+    format!("{}\n", commands_only_help_lines(&cmd).join("\n"))
 }
 
 /// Write subcommand catalog for bare `malvin`; full flags live under `malvin --help`.
@@ -63,10 +71,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn commands_only_help_lines_includes_request_usage_and_epilog() {
+        use clap::CommandFactory;
+        let cmd = Cli::command();
+        let lines = commands_only_help_lines(&cmd);
+        let text = lines.join("\n");
+        assert!(text.contains("Usage: malvin [REQUEST]... [COMMAND]"));
+        assert!(text.contains("Pass REQUEST with no subcommand"));
+        assert!(text.contains("Commands:"));
+        assert!(!text.contains("kpop"));
+    }
+
+    #[test]
     fn render_commands_only_help_lists_subcommands_not_options() {
         let help = render_commands_only_help();
         assert!(help.contains("Commands:"));
         assert!(help.contains("init"));
+        assert!(help.contains("Usage: malvin [REQUEST]... [COMMAND]"));
+        assert!(help.contains("Pass REQUEST with no subcommand"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
@@ -112,6 +134,7 @@ mod tests {
         let _ = stringify!(
             visible_subcommands,
             format_command_lines,
+            commands_only_help_lines,
             render_commands_only_help,
             write_commands_only_help,
             print_commands_only_help
