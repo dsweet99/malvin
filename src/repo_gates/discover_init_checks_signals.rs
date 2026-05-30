@@ -102,10 +102,10 @@ pub(super) fn gate_tool_signals(line: &str) -> Vec<&'static str> {
     if trimmed.contains("cargo clippy") {
         out.push("cargo-clippy");
     }
-    if trimmed.starts_with("ruff ") {
+    let tool = canonical_tool(trimmed);
+    if tool == "ruff" {
         out.push("ruff");
     }
-    let tool = canonical_tool(trimmed);
     if tool == "pytest" {
         out.push("pytest");
     }

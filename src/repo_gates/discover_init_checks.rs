@@ -14,7 +14,7 @@ pub use super::discover_init_checks_signals::{
 use super::discover_init_checks_signals::canonical_tool;
 
 fn lines_contain_ruff(lines: &[String]) -> bool {
-    lines.iter().any(|l| l.trim().starts_with("ruff "))
+    lines_contain_tool(lines, "ruff")
 }
 
 fn lines_contain_tool(lines: &[String], tool: &str) -> bool {
@@ -26,7 +26,7 @@ fn precommit_ruff_and_pytest(root: &Path) -> (Option<String>, Option<String>) {
     let mut pytest = None;
     for entry in precommit_hook_entries(root) {
         let trimmed = entry.trim();
-        if ruff.is_none() && trimmed.starts_with("ruff ") {
+        if ruff.is_none() && canonical_tool(trimmed) == "ruff" {
             ruff = Some(trimmed.to_string());
         }
         if pytest.is_none() && canonical_tool(trimmed) == "pytest" {
@@ -130,6 +130,19 @@ mod augment_helpers_tests {
         let (ruff, pytest) = precommit_ruff_and_pytest(tmp.path());
         assert_eq!(ruff.as_deref(), Some("ruff check ."));
         assert_eq!(pytest.as_deref(), Some("pytest -sv tests"));
+    }
+
+    #[test]
+    fn precommit_ruff_and_pytest_accepts_mixed_case_ruff_entry() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pre-commit-config.yaml"),
+            "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: RuFf cHEcK .\n",
+        )
+        .unwrap();
+        let (ruff, pytest) = precommit_ruff_and_pytest(tmp.path());
+        assert_eq!(ruff.as_deref(), Some("RuFf cHEcK ."));
+        assert!(pytest.is_none());
     }
 
     #[test]

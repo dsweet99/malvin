@@ -1,9 +1,10 @@
 use crate::acp::{
-    AgentRetryOutcome, IterableClosedStream, agent_string_is_cannot_use_model,
-    agent_string_is_upgrade_plan, emit_operational_upgrade_plan_stop,
-    iterable_closed_stream_from_buffer, operational_iterable_closed_for_emit,
-    operational_iterable_closed_log_line, operational_upgrade_plan_for_emit, plan_agent_retry,
-    retries_noun, upgrade_plan_stream_from_buffer,
+    AgentRetryOutcome, IterableClosedStream, agent_error_requires_coder_session_teardown,
+    agent_string_is_cannot_use_model, agent_string_is_upgrade_plan,
+    emit_operational_upgrade_plan_stop, iterable_closed_stream_from_buffer,
+    operational_iterable_closed_for_emit, operational_iterable_closed_log_line,
+    operational_upgrade_plan_for_emit, plan_agent_retry, retries_noun,
+    upgrade_plan_stream_from_buffer,
 };
 use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
@@ -108,6 +109,23 @@ fn transient_errors_retry_with_backoff() {
             "{msg}"
         );
     }
+}
+
+#[test]
+fn child_health_transport_errors_require_coder_session_teardown() {
+    for msg in [
+        "acp child process appears hung",
+        "acp child process is not running",
+        "acp child process is zombie",
+        "acp stdout closed",
+        "acp: WritableIterable is closed",
+    ] {
+        assert!(
+            agent_error_requires_coder_session_teardown(msg),
+            "{msg}"
+        );
+    }
+    assert!(!agent_error_requires_coder_session_teardown("request timed out"));
 }
 
 #[test]
