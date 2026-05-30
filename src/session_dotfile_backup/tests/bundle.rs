@@ -5,7 +5,7 @@ use crate::artifacts::{
     SessionDotfileBackups,
 };
 use crate::repo_gates::{KISSCONFIG_FILE, KISSIGNORE_FILE, MALVIN_CHECKS_FILE};
-use crate::{MALVIN_CONFIG_REL, seed_malvin_config};
+use crate::{seed_malvin_config};
 use crate::test_utils::with_isolated_home;
 
 fn workspace_four_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf, PathBuf) {
@@ -13,7 +13,7 @@ fn workspace_four_paths(work: &Path) -> (PathBuf, PathBuf, PathBuf, PathBuf) {
         work.join(KISSCONFIG_FILE),
         work.join(MALVIN_CHECKS_FILE),
         work.join(KISSIGNORE_FILE),
-        work.join(MALVIN_CONFIG_REL),
+        crate::malvin_config_path(work),
     )
 }
 

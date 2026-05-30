@@ -12,10 +12,6 @@ pub(crate) const TPL_ADVICE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/advice.md"
 ));
-pub(crate) const TPL_CONFIG: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/config.toml"
-));
 pub(crate) const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/admin/check_untracked.sh"

@@ -57,17 +57,17 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
 
 #[test]
 fn ensure_default_malvin_config_file_writes_template_when_missing() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    let config_path = w.join(crate::MALVIN_CONFIG_REL);
-    assert!(!config_path.exists());
-    ensure_default_malvin_config_file(w).unwrap();
-    assert!(config_path.is_file());
-    let text = fs::read_to_string(&config_path).unwrap();
-    assert!(text.contains("[logs]"));
-    assert!(text.contains("[agent]"));
-    ensure_default_malvin_config_file(w).unwrap();
-    assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
+    crate::test_utils::with_isolated_home(|work| {
+        let config_path = crate::malvin_config_path(work);
+        assert!(!config_path.exists());
+        ensure_default_malvin_config_file(work).unwrap();
+        assert!(config_path.is_file());
+        let text = fs::read_to_string(&config_path).unwrap();
+        assert!(text.contains("[logs]"));
+        assert!(text.contains("[agent]"));
+        ensure_default_malvin_config_file(work).unwrap();
+        assert_eq!(fs::read_to_string(&config_path).unwrap(), text);
+    });
 }
 
 #[test]

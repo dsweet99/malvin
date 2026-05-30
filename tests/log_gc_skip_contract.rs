@@ -16,11 +16,11 @@ fn seed_log_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     seed
 }
 
-fn write_gc_config_age_only(work_dir: &Path) {
-    std::fs::create_dir_all(work_dir.join(".malvin")).expect("mkdir .malvin");
+fn write_gc_config_age_only(home: &Path) {
+    std::fs::create_dir_all(home.join(".malvin")).expect("mkdir .malvin");
     std::fs::write(
-        work_dir.join(".malvin/config.toml"),
-        "[logs]\nmax_age_days = 30\nmax_runs = 0\nmax_bytes = \"\"\n",
+        home.join(".malvin/config.toml"),
+        "[logs]\nmax_age_days = 30\nmax_bytes = \"\"\n",
     )
     .expect("write config");
 }
@@ -100,7 +100,7 @@ fn malvin_code_prunes_preexisting_log_dirs() {
     use common::{combined_cli_output, test_home_workspace};
 
     let (root, home, workspace) = test_home_workspace();
-    write_gc_config_age_only(&workspace);
+    write_gc_config_age_only(&home);
     let old = seed_old_run(&workspace, &home);
 
     let out = run_malvin_code_in_workspace(&root, &workspace, &home);

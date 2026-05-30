@@ -63,8 +63,8 @@ pub use tidy_harness::{
 };
 pub use workspace::{
     malvin_run_logs_bucket, only_run_dir, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks,
-    seed_malvin_config, test_home_workspace, write_failing_gate_tools, write_fake_kiss,
-    write_mock_executable,
+    seed_malvin_config, test_home_workspace, with_isolated_home, write_failing_gate_tools,
+    write_fake_kiss, write_mock_executable,
 };
 
 #[cfg(unix)]

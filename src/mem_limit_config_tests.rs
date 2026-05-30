@@ -3,13 +3,13 @@ use crate::malvin_config_path;
 
 #[test]
 fn parse_mem_limit_gb_reads_top_level_key() {
-    let gb = parse_mem_limit_gb("mem_limit_gb = 2\n[logs]\nmax_runs = 1\n").expect("parse");
+    let gb = parse_mem_limit_gb("mem_limit_gb = 2\n[logs]\nmax_age_days = 1\n").expect("parse");
     assert_eq!(gb, 2);
 }
 
 #[test]
 fn parse_mem_limit_gb_defaults_when_key_missing() {
-    let gb = parse_mem_limit_gb("[logs]\nmax_runs = 1\n").expect("parse");
+    let gb = parse_mem_limit_gb("[logs]\nmax_age_days = 1\n").expect("parse");
     assert_eq!(gb, default_mem_limit_gb());
 }
 
@@ -20,18 +20,20 @@ fn parse_mem_limit_gb_rejects_zero() {
 
 #[test]
 fn load_mem_limit_bytes_missing_config_uses_default() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let bytes = load_mem_limit_bytes(tmp.path());
-    assert_eq!(bytes, default_mem_limit_gb().saturating_mul(GIB));
+    crate::test_utils::with_isolated_home(|work| {
+        let bytes = load_mem_limit_bytes(work);
+        assert_eq!(bytes, default_mem_limit_gb().saturating_mul(GIB));
+    });
 }
 
 #[test]
-fn load_mem_limit_gb_reads_workspace_config() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = malvin_config_path(tmp.path());
-    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&path, "mem_limit_gb = 6\n[logs]\nmax_runs = 1\n").expect("write");
-    assert_eq!(load_mem_limit_gb(tmp.path()), 6);
+fn load_mem_limit_gb_reads_home_config() {
+    crate::test_utils::with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "mem_limit_gb = 6\n[logs]\nmax_age_days = 1\n").expect("write");
+        assert_eq!(load_mem_limit_gb(work), 6);
+    });
 }
 
 #[test]

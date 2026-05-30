@@ -118,7 +118,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `./.malvin/logs/` according to `.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_runs`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` seeds the config file with defaults.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin/logs/<hash>/` according to `~/.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.
 
 ## External dependencies
 

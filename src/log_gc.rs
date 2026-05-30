@@ -132,17 +132,10 @@ pub(crate) fn needs_prune(run_dirs: &[PathBuf], config: &LogsGcConfig) -> bool {
     if run_dirs.is_empty() {
         return false;
     }
-    if over_run_count(run_dirs, config.max_runs) {
-        return true;
-    }
     if over_byte_cap(run_dirs, config.max_bytes) {
         return true;
     }
     over_age_limit(run_dirs.last(), config.max_age_days)
-}
-
-pub(crate) const fn over_run_count(run_dirs: &[PathBuf], max_runs: u64) -> bool {
-    max_runs > 0 && run_dirs.len() as u64 > max_runs
 }
 
 pub(crate) fn over_byte_cap(run_dirs: &[PathBuf], max_bytes: Option<u64>) -> bool {

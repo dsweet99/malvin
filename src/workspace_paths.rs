@@ -11,6 +11,7 @@ pub const MALVIN_ADVICE_REL: &str = ".malvin/advice.md";
 /// Legacy repo-relative logs path (pre-relocation); retained for docs and migration tests.
 pub const MALVIN_LOGS_REL: &str = ".malvin/logs";
 
+/// Relative path under `$HOME` (not the workspace).
 pub const MALVIN_CONFIG_REL: &str = ".malvin/config.toml";
 
 /// Run-directory file recording the canonical workspace cwd for this run.
@@ -42,9 +43,15 @@ pub fn malvin_home_logs_root() -> PathBuf {
     crate::user_home_dir().join(".malvin").join("logs")
 }
 
+/// `~/.malvin/config.toml` (global user config; `work_dir` is ignored).
 #[must_use]
-pub fn malvin_config_path(work_dir: &Path) -> PathBuf {
-    work_dir.join(MALVIN_CONFIG_REL)
+pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
+    malvin_home_config_path()
+}
+
+#[must_use]
+pub fn malvin_home_config_path() -> PathBuf {
+    crate::user_home_dir().join(MALVIN_CONFIG_REL)
 }
 
 /// Alphanumeric (hex) digest of the canonical absolute path of `work_dir`.
@@ -132,7 +139,7 @@ mod tests {
         let w = tmp.path();
         assert_eq!(malvin_checks_path(w), w.join(MALVIN_CHECKS_REL));
         assert_eq!(malvin_advice_path(w), w.join(MALVIN_ADVICE_REL));
-        assert_eq!(malvin_config_path(w), w.join(MALVIN_CONFIG_REL));
+        assert_eq!(malvin_config_path(w), malvin_home_config_path());
         assert!(!is_malvin_workspace(w));
         std::fs::create_dir_all(w.join(MALVIN_DIR)).unwrap();
         assert!(is_malvin_workspace(w));

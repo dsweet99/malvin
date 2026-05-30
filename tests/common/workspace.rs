@@ -9,9 +9,36 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
 }
 
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
-    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
-    std::fs::write(workspace.join(".malvin/config.toml"), content)
-        .expect("write .malvin/config.toml");
+    let path = malvin::malvin_config_path(workspace);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin");
+    }
+    std::fs::write(path, content).expect("write ~/.malvin/config.toml");
+}
+
+/// Run `f` with `HOME` pointed at a fresh temp directory and restore afterward.
+pub fn with_isolated_home<F>(f: F)
+where
+    F: FnOnce(&Path, &Path),
+{
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    let work = root.path().join("work");
+    std::fs::create_dir_all(&work).expect("mkdir work");
+    let old_home = std::env::var_os("HOME");
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("HOME", &home);
+    }
+    f(&work, &home);
+    #[allow(unsafe_code)]
+    unsafe {
+        match old_home {
+            Some(h) => std::env::set_var("HOME", h),
+            None => std::env::remove_var("HOME"),
+        }
+    }
 }
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {

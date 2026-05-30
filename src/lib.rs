@@ -50,7 +50,7 @@ mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
     canonical_work_dir_for_logs, find_malvin_logs_root, is_malvin_workspace, malvin_advice_path,
-    malvin_checks_path, malvin_config_path, malvin_home_logs_root, malvin_logs_root,
+    malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
     read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
     write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
     MALVIN_LOGS_REL, WORK_DIR_MANIFEST,

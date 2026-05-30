@@ -103,19 +103,20 @@ mod tests {
 
     #[test]
     fn ensure_malvin_workspace_layout_writes_checks_advice_and_logs() {
-        let tmp = tempfile::tempdir().unwrap();
-        ensure_malvin_workspace_layout(tmp.path(), false, &[Language::Rust]).unwrap();
-        assert!(tmp.path().join(".malvin/checks").is_file());
-        assert!(tmp.path().join(crate::MALVIN_ADVICE_REL).is_file());
-        assert!(tmp.path().join(crate::MALVIN_CONFIG_REL).is_file());
-        assert!(crate::malvin_logs_root(tmp.path()).is_dir());
-        assert!(tmp.path().join("Cargo.toml").is_file());
-        let checks = std::fs::read_to_string(tmp.path().join(".malvin/checks")).unwrap();
-        assert!(checks.contains("cargo clippy"));
-        assert!(
-            checks.contains("cargo nextest run") || checks.contains("cargo test"),
-            "checks: {checks}"
-        );
+        crate::test_utils::with_isolated_home(|work| {
+            ensure_malvin_workspace_layout(work, false, &[Language::Rust]).unwrap();
+            assert!(work.join(".malvin/checks").is_file());
+            assert!(work.join(crate::MALVIN_ADVICE_REL).is_file());
+            assert!(crate::malvin_logs_root(work).is_dir());
+            assert!(crate::malvin_home_config_path().is_file());
+            assert!(work.join("Cargo.toml").is_file());
+            let checks = std::fs::read_to_string(work.join(".malvin/checks")).unwrap();
+            assert!(checks.contains("cargo clippy"));
+            assert!(
+                checks.contains("cargo nextest run") || checks.contains("cargo test"),
+                "checks: {checks}"
+            );
+        });
     }
 
     #[test]

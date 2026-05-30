@@ -1,17 +1,21 @@
 //! Process-group RSS cap and config loading (sandbox plan).
 
+mod common;
+
 use malvin::mem_limit_config::{default_mem_limit_gb, load_mem_limit_bytes, load_mem_limit_gb};
 use malvin::process_group_rss::process_group_rss_bytes;
-use malvin::workspace_paths::malvin_config_path;
+
+use common::with_isolated_home;
 
 #[test]
-fn load_mem_limit_gb_reads_workspace_config_file() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = malvin_config_path(tmp.path());
-    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&path, "mem_limit_gb = 5\n[logs]\nmax_runs = 1\n").expect("write");
-    assert_eq!(load_mem_limit_gb(tmp.path()), 5);
-    assert_eq!(load_mem_limit_bytes(tmp.path()), 5 * 1024 * 1024 * 1024);
+fn load_mem_limit_gb_reads_home_config_file() {
+    with_isolated_home(|work, _home| {
+        let path = malvin::malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "mem_limit_gb = 5\n[logs]\nmax_age_days = 1\n").expect("write");
+        assert_eq!(load_mem_limit_gb(work), 5);
+        assert_eq!(load_mem_limit_bytes(work), 5 * 1024 * 1024 * 1024);
+    });
 }
 
 #[test]
@@ -73,6 +77,8 @@ fn kiss_cov_process_group_rss_platform_symbols() {
 fn kiss_cov_process_group_mem_watch_symbols() {
     let _ = stringify!(spawn_process_group_memory_watcher);
     let _ = stringify!(watch_process_group_memory);
+    let _ = stringify!(watch_process_group_memory_with_rss_sampler);
+    let _ = stringify!(watch_process_group_memory_fail_closed_when_rss_unavailable);
     let _ = stringify!(MemWatchHandles);
     let _ = stringify!(mem_watch_test_spawn_args);
     let _ = stringify!(mem_watch_test_telemetry);
@@ -108,6 +114,7 @@ fn kiss_cov_sandbox_contract_and_hostile_symbols() {
     let _ = stringify!(spawn_hostile_double_fork_daemon);
     let _ = stringify!(hostile_agent_double_fork_daemon_dies_on_process_group_teardown);
     let _ = stringify!(read_orphan_pid);
+    let _ = stringify!(wait_for_init_reparent);
     let _ = stringify!(process_alive);
     let _ = stringify!(prompt_stdout_replacement_is_always_none);
 }
@@ -133,4 +140,7 @@ fn kiss_cov_process_group_teardown_symbols() {
     let _ = stringify!(kill_targets_for_teardown);
     let _ = stringify!(process_group_member_pids);
     let _ = stringify!(signal_targets);
+    let _ = stringify!(signal_targets_noop_for_empty_set);
+    let _ = stringify!(terminate_process_group_kills_sleep_child);
+    let _ = stringify!(terminate_agent_process_group_kills_sleep_child);
 }

@@ -40,43 +40,17 @@ fn is_run_log_dir_name_matches_malvin_run_dirs() {
 
 #[test]
 fn load_logs_gc_config_uses_defaults_when_missing() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cfg = load_logs_gc_config(tmp.path());
-    assert_eq!(cfg, LogsGcConfig::default());
+    crate::test_utils::with_isolated_home(|work| {
+        let cfg = load_logs_gc_config(work);
+        assert_eq!(cfg, LogsGcConfig::default());
+    });
 }
 
 #[test]
 fn parse_logs_gc_config_reads_toml() {
-    let cfg = parse_logs_gc_config(
-        "[logs]\nmax_age_days = 7\nmax_runs = 3\nmax_bytes = \"1MiB\"\n",
-    )
-    .expect("parse");
+    let cfg = parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
     assert_eq!(cfg.max_age_days, 7);
-    assert_eq!(cfg.max_runs, 3);
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
-}
-
-#[test]
-fn prune_removes_oldest_when_over_max_runs() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let logs = crate::workspace_paths::malvin_logs_root(tmp.path());
-    std::fs::create_dir_all(&logs).expect("mkdir");
-    for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
-        std::fs::create_dir_all(logs.join(name)).expect("run dir");
-        std::fs::write(logs.join(name).join("x.log"), "data").expect("write");
-    }
-    let mut runs = list_run_dirs(&logs);
-    runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    let config = LogsGcConfig {
-        max_age_days: 0,
-        max_runs: 2,
-        max_bytes: None,
-    };
-    let (removed, freed) = prune_run_dirs(&mut runs, &config);
-    assert_eq!(removed, 1);
-    assert!(!logs.join(RUN_OLDEST).exists());
-    assert!(logs.join(RUN_NEWEST).exists());
-    assert!(format_freed(freed).contains('B') || format_freed(freed).contains("KiB"));
 }
 
 #[test]
@@ -88,15 +62,8 @@ fn log_gc_helpers_cover_policy_edges() {
     let runs = vec![old.clone()];
     let config = LogsGcConfig {
         max_age_days: 30,
-        max_runs: 100,
         max_bytes: Some(0),
     };
-    assert!(!over_run_count(&runs, 0));
-    assert!(!over_run_count(&runs, 1));
-    assert!(over_run_count(
-        &[PathBuf::from("a"), PathBuf::from("b")],
-        1
-    ));
     assert!(over_byte_cap(&runs, Some(0)));
     assert!(!over_byte_cap(&runs, None));
     assert!(over_age_limit(runs.last(), config.max_age_days));
@@ -109,7 +76,9 @@ fn log_gc_helpers_cover_policy_edges() {
         None
     );
     assert!(split_byte_size("1GiB").is_some());
-    prune_logs_before_run(tmp.path());
+    crate::test_utils::with_isolated_home(|work| {
+        prune_logs_before_run(work);
+    });
 }
 
 #[test]
@@ -128,7 +97,6 @@ fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
         max_age_days: 0,
-        max_runs: 1,
         max_bytes: None,
     };
     prune_run_dirs(&mut runs, &config);
@@ -148,7 +116,6 @@ fn prune_leaves_non_run_log_subdirs_untouched() {
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
         max_age_days: 0,
-        max_runs: 1,
         max_bytes: None,
     };
     prune_run_dirs(&mut runs, &config);
@@ -165,7 +132,6 @@ fn prune_removes_run_dir_when_over_age_limit() {
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
         max_age_days: 30,
-        max_runs: 0,
         max_bytes: None,
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config);
@@ -193,7 +159,6 @@ fn prune_removes_oldest_when_over_byte_cap() {
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
         max_age_days: 0,
-        max_runs: 100,
         max_bytes: Some(3000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config);
@@ -212,6 +177,7 @@ fn undeletable_oldest_run_fixture() -> (tempfile::TempDir, PathBuf, PathBuf) {
     let oldest = logs.join(RUN_OLDEST);
     for name in [RUN_OLDEST, RUN_MID, RUN_NEWEST] {
         std::fs::create_dir_all(logs.join(name)).expect("run dir");
+        std::fs::write(logs.join(name).join("payload"), vec![0u8; 600]).expect("write");
     }
     std::fs::set_permissions(&oldest, std::fs::Permissions::from_mode(0o000)).expect("chmod");
     (tmp, logs, oldest)
@@ -227,8 +193,7 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
         max_age_days: 0,
-        max_runs: 2,
-        max_bytes: None,
+        max_bytes: Some(1000),
     };
     let (removed, _) = prune_run_dirs(&mut runs, &config);
 
@@ -236,7 +201,7 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     assert_eq!(
         list_run_dirs(&logs).len(),
         2,
-        "after a failed delete, GC must still enforce max_runs on disk (got {removed} removed)"
+        "after a failed delete, GC must still enforce byte cap on disk (got {removed} removed)"
     );
     assert!(
         oldest.is_dir(),

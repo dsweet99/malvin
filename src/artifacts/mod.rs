@@ -156,5 +156,9 @@ pub fn resolve_user_request(arg: &str) -> Result<(String, PathBuf), String> {
 mod tests;
 
 #[cfg(test)]
+#[path = "log_gc_hook_tests.rs"]
+mod log_gc_hook_tests;
+
+#[cfg(test)]
 #[path = "kpop_path_tests.rs"]
 mod kpop_path_tests;

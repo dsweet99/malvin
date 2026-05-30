@@ -1,14 +1,12 @@
 use std::path::Path;
 
 const DEFAULT_MAX_AGE_DAYS: u64 = 90;
-const DEFAULT_MAX_RUNS: u64 = 100;
 const DEFAULT_MAX_BYTES: &str = "2GiB";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::struct_field_names)]
 pub struct LogsGcConfig {
     pub max_age_days: u64,
-    pub max_runs: u64,
     pub max_bytes: Option<u64>,
 }
 
@@ -16,7 +14,6 @@ impl Default for LogsGcConfig {
     fn default() -> Self {
         Self {
             max_age_days: DEFAULT_MAX_AGE_DAYS,
-            max_runs: DEFAULT_MAX_RUNS,
             max_bytes: parse_byte_size(DEFAULT_MAX_BYTES),
         }
     }
@@ -32,14 +29,12 @@ pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
         .map_err(|e| format!("invalid TOML: {e}"))?;
     let logs = value.get("logs").ok_or_else(|| "missing [logs] section".to_string())?;
     let max_age_days = read_u64(logs.get("max_age_days")).unwrap_or(DEFAULT_MAX_AGE_DAYS);
-    let max_runs = read_u64(logs.get("max_runs")).unwrap_or(DEFAULT_MAX_RUNS);
     let max_bytes = match logs.get("max_bytes") {
         Some(v) => parse_max_bytes_value(v)?,
         None => parse_byte_size(DEFAULT_MAX_BYTES),
     };
     Ok(LogsGcConfig {
         max_age_days,
-        max_runs,
         max_bytes,
     })
 }
