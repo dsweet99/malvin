@@ -23,8 +23,10 @@ Do not evaluate or prune yet. Your goal is boundary exploration, not refinement.
 Communication: Write complete sentences or explicit bulleted lists. Don't write terse fragments. Write clearly.
 Include a tl;dr at the bottom stating your idea simply and plainly in 1-3 sentences.
 
-MBC2: Generate {{ num_ideas }} ideas based on the user's prompt:
+MBC2: Generate ideas based on the user's prompt:
 
 ```text
 {{ user_prompt }}
 ```
+
+If the user does not specify a number of ideas, generate 3.

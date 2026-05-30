@@ -61,10 +61,7 @@ mod tests {
             request: None,
         }));
         assert!(md.starts_with("# malvin "));
-        let md = command_doc_markdown(&Commands::Invent(InventArgs {
-            num_ideas: 3,
-            request: None,
-        }));
+        let md = command_doc_markdown(&Commands::Invent(InventArgs { request: None }));
         assert!(md.starts_with("# malvin invent"));
     }
 

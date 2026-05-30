@@ -7,7 +7,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 | | |
 |---|---|
 | Input | `<REQUEST>` text or `@file` |
-| Prompt | `default_prompts/mbc2.md` with `num_ideas` and `user_prompt` |
+| Prompt | `default_prompts/mbc2.md` with `user_prompt` |
 | Log | `ideas.log` |
 
 ## Intention
@@ -26,19 +26,13 @@ malvin invent [OPTIONS] <REQUEST>
 
 Topic as literal text, or `@<path>` (same rules as `do` / `kpop`).
 
-## Options
-
-### `--num-ideas <N>` (default: 3)
-
-Ideas to request in the rendered prompt (`{{ num_ideas }}` in `mbc2.md`).
-
 ## Global options
 
 See `malvin --doc`. `--no-markdown` styles agent stdout when enabled.
 
 ## Prompt workflow
 
-Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo rules merge).
+Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo rules merge). The prompt instructs the model to generate 3 ideas when no count is specified.
 
 ## Session behavior
 
@@ -56,5 +50,5 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ```text
 malvin invent "Alternative cache invalidation strategies for our API"
-malvin invent --num-ideas 5 @notes/topic.md
+malvin invent @notes/topic.md
 ```

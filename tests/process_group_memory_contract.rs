@@ -79,6 +79,7 @@ fn kiss_cov_process_group_mem_watch_symbols() {
     let _ = stringify!(watch_process_group_memory);
     let _ = stringify!(watch_process_group_memory_with_rss_sampler);
     let _ = stringify!(watch_process_group_memory_fail_closed_when_rss_unavailable);
+    let _ = stringify!(watch_process_group_memory_writes_sandbox_oom_marker);
     let _ = stringify!(MemWatchHandles);
     let _ = stringify!(mem_watch_test_spawn_args);
     let _ = stringify!(mem_watch_test_telemetry);
