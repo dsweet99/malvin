@@ -36,8 +36,14 @@
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
+mod gate_loop_session;
+mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
+pub use sandbox_oom::{
+    OOM_REASON_MEASUREMENT_FAIL_CLOSED, OOM_REASON_MEMORY_LIMIT, SandboxOomKillFacts,
+    SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
+};
 pub use current_state::format_current_state;
 pub mod malvin_sandbox;
 pub mod process_group_rss;

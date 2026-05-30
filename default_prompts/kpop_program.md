@@ -15,9 +15,9 @@ General Constraints:
 If you write code:
 - Stay in scope.
 - Write real unit tests, even if it seems like you have to write a lot of them. Do your best. Don't use tricks or make superficial unit tests just to pass coverage gates.
-- Write adversarial tests that break overfitting or special-casing coding.
+- Look for signs of overfitting (e.g., special-casing for unit tests, not capturing the concept a test is meant to test, etc.)
 - Write metamorphic tests to help prevent overfitting.
-- Write fuzzing tests. It's ok (even beneficial) to use a random seed, as long as you print it out (to aid debugging) *and* the true requirement is that the test pass for all seeds.
+- Write fuzzing tests to help prevent overfitting. It's ok (even beneficial) to use a random seed, as long as you print it out (to aid debugging) *and* the true requirement is that the test pass for all seeds.
 
 Quality Gates:
 

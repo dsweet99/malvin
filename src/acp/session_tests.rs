@@ -107,6 +107,7 @@ async fn watch_process_group_memory_kills_over_limit_child() {
         pgid,
         limit_bytes: 1,
         spawn_pid_baseline: session.0.spawn_pid_baseline.clone(),
+        run_dir: None,
     })
     .await;
     let status = session
@@ -198,6 +199,7 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
         pgid,
         limit_bytes: 1,
         spawn_pid_baseline: spawn_baseline,
+        run_dir: None,
     })
     .await;
     tokio::time::sleep(Duration::from_millis(200)).await;
@@ -230,6 +232,7 @@ async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
         pgid,
         limit_bytes: 1,
         spawn_pid_baseline: spawn_baseline,
+        run_dir: None,
     })
     .await;
     let _ = agent.wait();

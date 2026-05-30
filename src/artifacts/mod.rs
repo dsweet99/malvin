@@ -27,7 +27,7 @@ pub use crate::session_dotfile_backup::{
 pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
 pub use startup_tag::startup_request_tag_label;
 
-pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};
+pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
 
 /// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
@@ -95,6 +95,11 @@ impl RunArtifacts {
     #[must_use]
     pub fn trace_jsonl_path(&self) -> PathBuf {
         self.run_dir.join(TRACE_JSONL)
+    }
+
+    #[must_use]
+    pub fn sandbox_oom_json_path(&self) -> PathBuf {
+        self.run_dir.join(SANDBOX_OOM_JSON)
     }
 }
 

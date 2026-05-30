@@ -46,6 +46,7 @@ pub(crate) async fn run_kpop_agent_loops(
         let mut state =
             KpopMultiturnState::new(builder, exp_log_path.clone(), params.kpop.max_hypotheses)?;
 
+        crate::gate_loop_session::set_active_gate_iteration(Some(exp_iter));
         last_acp = kpop_run_acp_multiturn(
             KpopAcpMultiturnCtx {
                 client: params.client,
@@ -59,6 +60,7 @@ pub(crate) async fn run_kpop_agent_loops(
             },
         )
         .await;
+        crate::gate_loop_session::set_active_gate_iteration(None);
         if last_acp.is_err() {
             break;
         }

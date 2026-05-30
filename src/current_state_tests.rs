@@ -41,11 +41,11 @@ fn infer_gate_retry_reasons_empty_for_first_iteration() {
 }
 
 #[test]
-fn previous_session_oom_killed_false_when_log_missing() {
+fn gate_iteration_oom_killed_false_when_marker_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    assert!(!super::previous_session_oom_killed(&artifacts));
+    assert!(!crate::sandbox_oom::gate_iteration_oom_killed(&artifacts, 1));
 }
 
 #[test]
@@ -86,13 +86,21 @@ fn format_retry_line_second_iteration_is_retry_without_solved() {
 }
 
 #[test]
-fn format_retry_line_detects_oom_in_kpop_log() {
+fn format_retry_line_detects_oom_from_sandbox_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    std::fs::write(
-        artifacts.log_path("kpop"),
-        "malvin sandbox exceeded memory limit; terminating\n",
+    crate::sandbox_oom::record_sandbox_oom_kill(
+        &artifacts.run_dir,
+        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
+            1,
+            crate::sandbox_oom::SandboxOomKillFacts {
+                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+                rss_bytes: Some(999),
+                limit_bytes: 512,
+                pgid: 42,
+            },
+        ),
     )
     .expect("write");
     let line = format_retry_line(Some(2), Some(&artifacts));
@@ -147,13 +155,21 @@ fn append_oom_reason_records_memory_kill() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    std::fs::write(
-        artifacts.log_path("kpop"),
-        "malvin sandbox exceeded memory limit\n",
+    crate::sandbox_oom::record_sandbox_oom_kill(
+        &artifacts.run_dir,
+        crate::sandbox_oom::SandboxOomKillRecord::from_facts(
+            1,
+            crate::sandbox_oom::SandboxOomKillFacts {
+                reason: crate::sandbox_oom::OOM_REASON_MEMORY_LIMIT,
+                rss_bytes: Some(999),
+                limit_bytes: 512,
+                pgid: 42,
+            },
+        ),
     )
     .expect("write");
     let mut reasons = Vec::new();
-    super::append_oom_reason(&mut reasons, &artifacts);
+    super::append_oom_reason(&mut reasons, &artifacts, 1);
     assert!(reasons.iter().any(|r| r.contains("OOM")));
 }
 
