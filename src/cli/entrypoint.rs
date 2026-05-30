@@ -56,6 +56,11 @@ pub fn entrypoint() -> Exit {
 }
 
 fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+    let theme = std::env::current_dir()
+        .ok()
+        .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
+        .unwrap_or_default();
+    crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style(global.no_color);
     crate::output::set_stdout_suppressed(global.background);
 }

@@ -1,4 +1,6 @@
 mem_limit_gb = 4
+# Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
+theme = "dark"
 
 [agent]
 model = "auto"

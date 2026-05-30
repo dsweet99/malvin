@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
+use crate::terminal_palette::TerminalTheme;
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
@@ -43,6 +44,7 @@ impl Default for AgentConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
+    pub theme: TerminalTheme,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
 }
@@ -155,10 +157,29 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         print_log_warning(&format!("could not parse [agent]: {msg}"));
         AgentConfig::default()
     });
+    let theme = parse_theme(text).unwrap_or_else(|msg| {
+        print_log_warning(&format!("could not parse theme: {msg}"));
+        TerminalTheme::Dark
+    });
     MalvinConfig {
         mem_limit_gb,
+        theme,
         logs,
         agent,
+    }
+}
+
+pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
+    let value: toml::Value = text
+        .parse()
+        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let Some(raw) = read_string(value.get("theme")) else {
+        return Ok(TerminalTheme::Dark);
+    };
+    match raw.to_ascii_lowercase().as_str() {
+        "dark" => Ok(TerminalTheme::Dark),
+        "light" => Ok(TerminalTheme::Light),
+        other => Err(format!("unsupported theme {other:?}; use \"dark\" or \"light\"")),
     }
 }
 

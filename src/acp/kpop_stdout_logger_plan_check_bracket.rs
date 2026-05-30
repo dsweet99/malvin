@@ -9,7 +9,7 @@ use crate::acp::format_styled_tool_summary_tee_line;
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::assert_acp_tool_summary_dim_preserves_bracket;
 use crate::tool_summary::apply_tool_summary_ansi;
-use crate::terminal_palette::ANSI_TOOL_DARK;
+use crate::terminal_palette::ansi_tool_dark;
 use serde_json::json;
 
 pub(super) fn read_tool_bracket_pair_updates(
@@ -86,7 +86,7 @@ pub(super) fn assert_styled_tool_summary_payloads_match(start_payload: &str, don
             "20260413.121314.015",
         );
         assert!(
-            styled.contains(ANSI_TOOL_DARK),
+            styled.contains(ansi_tool_dark()),
             "styled tool summary must use inbound ACP who color; got {styled:?}"
         );
         assert_acp_tool_summary_dim_preserves_bracket(&styled);

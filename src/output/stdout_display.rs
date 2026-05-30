@@ -1,6 +1,6 @@
 use super::stdout_line_wrap_meta;
 use super::{ANSI_RESET, format_log_tag_inner, wrap_words_bounded};
-use crate::terminal_palette::ANSI_TOOL_NAVY;
+use crate::terminal_palette::ansi_tool_navy;
 
 pub(crate) use super::who_tag_ansi;
 pub(crate) use super::stdout_render::{flush_stdout_rendered_line, print_stdout_rendered_line};
@@ -27,7 +27,7 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
 #[must_use]
 pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
     let inner = format_log_tag_inner(who);
-    format!("{ANSI_TOOL_NAVY}[{inner}] {line}{ANSI_RESET}")
+    format!("{}[{inner}] {line}{ANSI_RESET}", ansi_tool_navy())
 }
 
 pub fn print_stdout_line(who: &str, line: &str) {
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn heartbeat_ansi_display_uses_uniform_who_tag_color() {
-        use crate::terminal_palette::ANSI_TOOL_NAVY;
+        use crate::terminal_palette::ansi_tool_navy;
 
         let payload = "20260524.000000 Still alive.";
         let (display, log) = crate::output::stdout_log_pair::heartbeat_display_and_log_line_for_color(
@@ -163,7 +163,7 @@ mod tests {
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20260524.000000.000"));
         assert!(
-            display.starts_with(ANSI_TOOL_NAVY),
+            display.starts_with(ansi_tool_navy()),
             "heartbeat line must open with navy who-tag; got {display:?}"
         );
         let reset_before_payload = format!("]{}{} ", super::ANSI_RESET, payload);

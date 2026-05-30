@@ -1,12 +1,12 @@
 use super::{
-    acp_tee_markdown::agent_rendered_markup_payload, ANSI_DIM, ANSI_RESET,
+    acp_tee_markdown::agent_rendered_markup_payload,
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
     format_log_tag_inner, stderr_use_color, stdout_use_color, timestamp_now_string,
     who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
-use crate::terminal_palette::{ANSI_TOOL_DARK, ANSI_TOOL_NAVY};
+use crate::terminal_palette::{ansi_tool_dark, ansi_tool_navy, ANSI_DIM, ANSI_RESET};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -138,10 +138,10 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
     (line.to_string(), format!("{ts} {line}"))
 }
 
-pub(crate) const fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
+pub(crate) fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
     match direction {
-        AcpTeeDirection::ToAgent => ANSI_TOOL_NAVY,
-        AcpTeeDirection::FromAgent => ANSI_TOOL_DARK,
+        AcpTeeDirection::ToAgent => ansi_tool_navy(),
+        AcpTeeDirection::FromAgent => ansi_tool_dark(),
     }
 }
 

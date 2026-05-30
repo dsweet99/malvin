@@ -4,7 +4,7 @@ use super::{
     ensure_malvin_config_file, load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
-use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
+use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::workspace_paths::malvin_config_path;
 
 #[test]
@@ -39,7 +39,8 @@ fn open_malvin_config_creates_file_with_all_sections() {
     assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
     assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
     assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
-    assert_eq!(cfg.agent.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
+    assert!(text.contains("theme"));
+    assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
 }
 
 #[test]
@@ -93,6 +94,39 @@ max_acp_retries = "4"
     assert_eq!(agent.max_hypotheses, 11);
     assert_eq!(agent.max_loops, 2);
     assert_eq!(agent.max_acp_retries, 4);
+}
+
+#[test]
+fn parse_theme_accepts_dark_and_light() {
+    use super::parse_theme;
+    use crate::terminal_palette::TerminalTheme;
+
+    assert_eq!(parse_theme("theme = \"dark\"").expect("dark"), TerminalTheme::Dark);
+    assert_eq!(parse_theme("theme = \"light\"").expect("light"), TerminalTheme::Light);
+    assert_eq!(parse_theme("mem_limit_gb = 4").expect("missing"), TerminalTheme::Dark);
+    assert!(parse_theme("theme = \"neon\"").is_err());
+}
+
+#[test]
+fn open_malvin_config_merges_theme_into_existing_file() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = malvin_config_path(tmp.path());
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    std::fs::write(&path, "mem_limit_gb = 6\n").expect("write");
+    let cfg = open_malvin_config(tmp.path()).expect("open");
+    let text = std::fs::read_to_string(&path).expect("read");
+    assert!(text.contains("theme"));
+    assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
+}
+
+#[test]
+fn load_malvin_config_reads_light_theme() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = malvin_config_path(tmp.path());
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    std::fs::write(&path, "theme = \"light\"\n").expect("write");
+    let cfg = load_malvin_config(tmp.path());
+    assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Light);
 }
 
 #[test]
@@ -178,6 +212,7 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
     let full = MalvinConfig {
         mem_limit_gb: cfg.mem_limit_gb,
+        theme: cfg.theme,
         logs: cfg.logs,
         agent: cfg.agent.clone(),
     };

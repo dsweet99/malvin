@@ -115,7 +115,7 @@ static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 use crate::terminal_palette::{
-    ANSI_DIM, ANSI_RESET, ANSI_TOOL_AMBER, ANSI_TOOL_CORAL, ANSI_TOOL_NAVY,
+    ansi_tool_amber, ansi_tool_coral, ansi_tool_navy, ANSI_DIM, ANSI_RESET,
 };
 
 #[must_use]
@@ -150,9 +150,9 @@ pub fn format_line(who: &str, line: &str) -> String {
 
 pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
-        WARNING_WHO => ANSI_TOOL_AMBER,
-        ERROR_WHO => ANSI_TOOL_CORAL,
-        _ => ANSI_TOOL_NAVY,
+        WARNING_WHO => ansi_tool_amber(),
+        ERROR_WHO => ansi_tool_coral(),
+        _ => ansi_tool_navy(),
     }
 }
 

@@ -1,7 +1,7 @@
 use std::fmt::Write as _;
 
 use super::types::{
-    ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_CORAL, ANSI_TOOL_DARK, ANSI_TOOL_TEAL,
+    ansi_tool_coral, ansi_tool_dark, ansi_tool_teal, ANSI_BOLD, ANSI_DIM, ANSI_RESET,
 };
 
 const DONE_VERB_PREFIXES: &[&str] = &["Read ", "Edit ", "Search ", "Run "];
@@ -21,7 +21,7 @@ pub(crate) fn split_outer_brackets(plain: &str) -> (&str, &str, &str) {
 }
 
 fn dark_bracket(bracket: &str) -> String {
-    format!("{ANSI_TOOL_DARK}{bracket}{ANSI_RESET}")
+    format!("{}{bracket}{ANSI_RESET}", ansi_tool_dark())
 }
 
 pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
@@ -35,7 +35,7 @@ pub(crate) fn apply_tool_summary_ansi(plain: &str) -> String {
     while let Some(idx) = rest.find('·') {
         let (left, right) = rest.split_at(idx);
         out.push_str(&ansi_style_tool_segment(left));
-        let _ = write!(out, "{ANSI_TOOL_TEAL}·{ANSI_RESET}");
+        let _ = write!(out, "{}·{ANSI_RESET}", ansi_tool_teal());
         rest = right.trim_start_matches('·').trim_start();
     }
     out.push_str(&ansi_style_tool_segment(rest));
@@ -51,10 +51,10 @@ pub(crate) fn ansi_style_tool_segment(seg: &str) -> String {
         return String::new();
     }
     if seg.contains('✓') {
-        return seg.replace('✓', &format!("{ANSI_TOOL_TEAL}✓{ANSI_RESET}"));
+        return seg.replace('✓', &format!("{}✓{ANSI_RESET}", ansi_tool_teal()));
     }
     if seg.contains('✗') {
-        return seg.replace('✗', &format!("{ANSI_TOOL_CORAL}✗{ANSI_RESET}"));
+        return seg.replace('✗', &format!("{}✗{ANSI_RESET}", ansi_tool_coral()));
     }
     ansi_style_tool_segment_running_or_path(seg)
 }
@@ -70,7 +70,7 @@ pub(crate) fn tool_line_colon_prefix(seg: &str) -> (&str, &str) {
 }
 
 pub(crate) fn ansi_style_dark_verb(verb: &str) -> String {
-    format!("{ANSI_BOLD}{ANSI_TOOL_DARK}{verb}{ANSI_RESET}")
+    format!("{ANSI_BOLD}{}{verb}{ANSI_RESET}", ansi_tool_dark())
 }
 
 pub(crate) fn ansi_style_running_verb(seg: &str) -> String {
@@ -142,7 +142,7 @@ pub(crate) fn ansi_style_path_tail(seg: &str) -> String {
     if is_byte_size_segment(seg) {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
-    format!("{ANSI_TOOL_TEAL}{seg}{ANSI_RESET}")
+    format!("{}{seg}{ANSI_RESET}", ansi_tool_teal())
 }
 
 #[cfg(test)]

@@ -108,19 +108,19 @@ fn acp_bracket_payload_supports_dim_mode() {
 
 #[cfg(test)]
 pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
-    use crate::terminal_palette::{ANSI_BOLD, ANSI_DIM, ANSI_RESET, ANSI_TOOL_DARK};
+    use crate::terminal_palette::{ansi_tool_dark, ANSI_BOLD, ANSI_DIM, ANSI_RESET};
 
     let dim_sep = format!("{ANSI_RESET} {ANSI_DIM}");
     let dim_start = line
         .find(&dim_sep)
         .unwrap_or_else(|| panic!("expected dim tool payload; got {line:?}"));
     let payload = &line[dim_start + dim_sep.len()..];
-    let dark_verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}");
+    let dark_verb = format!("{ANSI_BOLD}{}", ansi_tool_dark());
     assert!(
         payload.contains(&dark_verb),
         "payload verb must use dark bold styling; got {payload:?} in {line:?}"
     );
-    let dark_open = format!("{ANSI_TOOL_DARK}[");
+    let dark_open = format!("{}[", ansi_tool_dark());
     assert!(
         !payload.starts_with(&dark_open),
         "payload must not start with styled open bracket; got {payload:?} in {line:?}"
@@ -129,7 +129,7 @@ pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
 
 #[cfg(test)]
 pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
-    use crate::terminal_palette::{ANSI_DIM, ANSI_TOOL_DARK};
+    use crate::terminal_palette::{ansi_tool_dark, ANSI_DIM};
 
     let bracket_end = line.find(']').expect("bracket");
     assert!(
@@ -142,7 +142,7 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
     );
     let prefix = &line[..=bracket_end];
     assert!(
-        prefix.contains(ANSI_TOOL_DARK),
+        prefix.contains(ansi_tool_dark()),
         "who bracket stays dark; got {line:?}"
     );
     assert!(
