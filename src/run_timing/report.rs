@@ -36,12 +36,7 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         },
         "tool_calls_ms": ms(r.tool_calls),
         "phases_ms": {
-            "check_plan": ms(r.check_plan),
             "implement": ms(r.implement),
-            "review_fanout": ms(r.review_fanout),
-            "review_write": ms(r.review_write),
-            "concerns": ms(r.concerns),
-            "summary": ms(r.summary),
         }
     })
 }
@@ -108,10 +103,10 @@ fn timing_line_from_json_matches_to_json_value_snapshot() {
     let mut r = RunTiming::default();
     r.mark_wall_start(std::time::Instant::now());
     r.mark_wall_end(std::time::Instant::now());
-    r.add_llm_phase(TimingPhase::Concerns, Duration::from_millis(500));
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(500));
     let json = to_json_value(&r);
     let line = format_timing_stdout_line_from_json(&json);
-    assert!(line.contains("concerns = "));
+    assert!(line.contains("implement = "));
 }
 
 #[test]
@@ -131,7 +126,7 @@ fn timing_line_uses_phase_display_name_alias_when_present() {
 }
 
 #[test]
-fn timing_line_uses_one_decimal_and_includes_all_buckets() {
+fn timing_line_uses_one_decimal_and_includes_live_buckets() {
     use crate::run_timing::{RUN_TIMING_SUMMARY_PREFIX, RunTiming, TimingPhase};
 
     let mut r = RunTiming::default();
@@ -143,7 +138,9 @@ fn timing_line_uses_one_decimal_and_includes_all_buckets() {
     assert!(line.contains("wall = "));
     assert!(line.contains("llm_wait = "));
     assert!(line.contains("implement = 0.1s"));
-    assert!(line.contains("summary = "));
+    assert!(!line.contains("summary = "));
+    assert!(!line.contains("concerns = "));
+    assert!(!line.contains("check_plan = "));
 }
 
 #[test]

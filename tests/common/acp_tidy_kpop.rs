@@ -8,15 +8,18 @@ const fn acp_mock_kpop_steps_body() -> &'static str {
     const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
     const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
     const target = targetMatch ? targetMatch[0] : null;
-    const root = path.join(process.cwd(), '.malvin', 'logs');
+    const os = require('os');
+    const root = path.join(os.homedir(), '.malvin', 'logs');
     if (fs.existsSync(root)) {
-      const runs = fs.readdirSync(root, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name)
-        .sort()
-        .reverse();
-      outer: for (const run of runs) {
-        const kpopDir = path.join(root, run, '_kpop');
+      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const bucket = path.join(root, hash.name);
+        const runs = fs.readdirSync(bucket, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+          .sort()
+          .reverse();
+        for (const run of runs) {
+        const kpopDir = path.join(bucket, run, '_kpop');
         if (!fs.existsSync(kpopDir)) continue;
         const names = target ? [target] : fs.readdirSync(kpopDir);
         for (const name of names) {
@@ -36,6 +39,7 @@ const fn acp_mock_kpop_steps_body() -> &'static str {
           }
           break outer;
         }
+        }
       }
     }"
 }
@@ -54,7 +58,7 @@ pub fn acp_mock_code_kpop_steps_js() -> String {
 }
 
 pub fn acp_mock_code_kpop_abort_result_js() -> String {
-    let abort_tail = r"        const resultPath = path.join(root, run, 'result.md');
+    let abort_tail = r"        const resultPath = path.join(bucket, run, 'result.md');
         fs.writeFileSync(resultPath, 'ABORT: code kpop stop\n');";
     let body = acp_mock_kpop_steps_body().replace("break outer;", abort_tail);
     let done = session_update_chunk_line("agent_message_chunk", r"'abort\n'");

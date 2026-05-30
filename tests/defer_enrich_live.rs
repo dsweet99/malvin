@@ -133,7 +133,8 @@ fn defer_enrich_live_read_shows_path_in_stdout_log() {
         combined_output(&out)
     );
 
-    let run_dir = only_run_dir(workspace.path());
+    let home = malvin::user_home_dir();
+    let run_dir = only_run_dir(workspace.path(), &home);
     let stdout_log = run_dir.join("stdout.log");
     let stdout = std::fs::read_to_string(&stdout_log).unwrap_or_else(|e| {
         panic!(

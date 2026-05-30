@@ -32,7 +32,7 @@ mod linux_pty {
             !stdout.contains("implement = "),
             "did not expect implement timing label in kpop output: {stdout:?}"
         );
-        let run_dir = only_run_dir(&run.workspace);
+        let run_dir = only_run_dir(&run.workspace, &run.home);
         let timing_path = run_dir.join("run_timing.json");
         let timing_text = std::fs::read_to_string(&timing_path).expect("read run_timing.json");
         assert!(

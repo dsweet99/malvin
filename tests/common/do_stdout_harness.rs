@@ -166,9 +166,10 @@ pub fn nonempty_stdout_lines(stdout: &[u8]) -> Vec<String> {
 }
 
 #[cfg(unix)]
-pub fn first_do_log_path(workspace: &std::path::Path) -> std::path::PathBuf {
-    let sub = std::fs::read_dir(workspace.join(".malvin/logs"))
-        .expect(".malvin/logs")
+pub fn first_do_log_path(workspace: &std::path::Path, home: &std::path::Path) -> std::path::PathBuf {
+    let bucket = super::malvin_run_logs_bucket(workspace, home);
+    let sub = std::fs::read_dir(&bucket)
+        .expect("read home malvin logs bucket")
         .flatten()
         .find(|e| e.path().is_dir())
         .expect("run dir");

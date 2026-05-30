@@ -1,4 +1,4 @@
-//! Challenging integration tests for `malvin init` discovery/summary decision matrix.
+//! Challenging integration tests for `malvin init` discovery decision matrix.
 
 mod common;
 
@@ -18,11 +18,11 @@ fn combined_output(out: &std::process::Output) -> String {
 }
 
 #[test]
-fn malvin_init_empty_repo_skips_discovery_and_summary_uses_builtin_checks() {
+fn malvin_init_empty_repo_skips_discovery_and_uses_builtin_checks() {
     let project = tempfile::tempdir().unwrap();
     assert!(!project.path().join(".git").exists());
 
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, home) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out.status.success(),
         "malvin init failed: {:?}",
@@ -33,10 +33,6 @@ fn malvin_init_empty_repo_skips_discovery_and_summary_uses_builtin_checks() {
     assert!(
         combined.contains("empty repo; using builtin checks"),
         "expected empty-repo discovery skip message; got: {combined:?}"
-    );
-    assert!(
-        !combined.contains("init summary ok"),
-        "empty-repo fast path must not run summary agent; got: {combined:?}"
     );
 
     let checks = fs::read_to_string(project.path().join(".malvin/checks")).expect("checks");
@@ -49,7 +45,7 @@ fn malvin_init_empty_repo_skips_discovery_and_summary_uses_builtin_checks() {
         "python-only empty repo should seed ruff from init template; got: {checks:?}"
     );
 
-    let run_dir = only_run_dir(project.path());
+    let run_dir = only_run_dir(project.path(), home.path());
     assert!(
         gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
         "empty repo must not run KPop discovery"
@@ -57,9 +53,9 @@ fn malvin_init_empty_repo_skips_discovery_and_summary_uses_builtin_checks() {
 }
 
 #[test]
-fn malvin_init_second_run_on_empty_repo_runs_summary_without_discovery() {
+fn malvin_init_second_run_on_empty_repo_skips_discovery_without_agent() {
     let project = tempfile::tempdir().unwrap();
-    let out1 = malvin_init_output(project.path(), &["python"]);
+    let (out1, _home1) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out1.status.success(),
         "first init failed: {:?}",
@@ -70,12 +66,8 @@ fn malvin_init_second_run_on_empty_repo_runs_summary_without_discovery() {
         first_combined.contains("empty repo; using builtin checks"),
         "first init should take empty-repo path"
     );
-    assert!(
-        !first_combined.contains("init summary ok"),
-        "first init on empty tree must not run summary"
-    );
 
-    let out2 = malvin_init_output(project.path(), &["python"]);
+    let (out2, _home2) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out2.status.success(),
         "second init failed: {:?}",
@@ -85,10 +77,6 @@ fn malvin_init_second_run_on_empty_repo_runs_summary_without_discovery() {
     assert!(
         combined.contains("checks already present; discovery skipped"),
         "second init should skip discovery because checks exist; got: {combined:?}"
-    );
-    assert!(
-        combined.contains("init summary ok"),
-        "second init on still-empty tree should run summary when skip reason is not empty-repo; got: {combined:?}"
     );
     assert!(
         !combined.contains("empty repo; using builtin checks"),
@@ -114,7 +102,7 @@ fn malvin_init_unborn_head_with_precommit_only_triggers_discovery() {
         "repo must have no commits before init"
     );
 
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, home) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out.status.success(),
         "malvin init failed: {:?}",
@@ -137,7 +125,7 @@ fn malvin_init_unborn_head_with_precommit_only_triggers_discovery() {
         "mock discovery should write kiss check; got: {checks:?}"
     );
 
-    let run_dir = only_run_dir(project.path());
+    let run_dir = only_run_dir(project.path(), home.path());
     assert!(
         !gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
         "expected KPop discovery exp log with ## KPOP_SOLVED under {}",
@@ -150,7 +138,7 @@ fn malvin_init_dedupes_precommit_hook_entries_into_checks() {
     let project = tempfile::tempdir().unwrap();
     seed_precommit_dedupe_fixture(project.path());
 
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, _home) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out.status.success(),
         "malvin init failed: {:?}",
@@ -168,7 +156,7 @@ fn malvin_init_python_rust_subdir_includes_clippy_from_makefile_lint() {
     let project = tempfile::tempdir().unwrap();
     seed_enn_like_hybrid_fixture(project.path());
 
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, _home) = malvin_init_output(project.path(), &["python"]);
     assert!(
         out.status.success(),
         "malvin init failed: {:?}",

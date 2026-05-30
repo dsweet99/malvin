@@ -49,8 +49,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run);
     let _: Option<crate::init_cmd::RunInitOptions> = None;
     let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
-    let _ = stringify!(crate::init_cmd::init_summary_combined_body);
-    let _ = stringify!(crate::init_cmd::init_summary_coder_turn_with_timing_emit);
+    let _ = stringify!(crate::init_cmd::run_init);
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
     let _ = super::kpop_flow::prepare_kpop_run;

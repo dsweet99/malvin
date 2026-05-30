@@ -2,14 +2,7 @@ use serde_json::Value;
 
 use crate::run_timing::RUN_TIMING_SUMMARY_PREFIX;
 
-const PHASE_MS_KEYS_JSON_ORDER: [&str; 6] = [
-    "check_plan",
-    "implement",
-    "review_fanout",
-    "review_write",
-    "concerns",
-    "summary",
-];
+const PHASE_MS_KEYS_JSON_ORDER: [&str; 1] = ["implement"];
 
 fn format_ms_one_decimal_s(ms: u64) -> String {
     let tenth_secs = (ms.saturating_add(50)) / 100;
@@ -113,11 +106,11 @@ mod tests {
         timing_stdout_append_phase_fields(
             &mut s,
             &mut first,
-            &json!({ "phases_ms": { "concerns": 40 } }),
+            &json!({ "phases_ms": { "implement": 40 } }),
         );
         assert!(s.contains("wall = "));
         assert!(s.contains("tool_calls = "));
-        assert!(s.contains("concerns = "));
+        assert!(s.contains("implement = "));
     }
 
     #[test]
@@ -132,25 +125,21 @@ mod tests {
     }
 
     #[test]
-    fn timing_line_includes_tool_calls_and_all_phase_buckets() {
+    fn timing_line_includes_tool_calls_and_implement_bucket() {
         let json = json!({
             "wall_clock_ms": 1000,
             "llm_wait_ms": 100,
             "agent_retry_backoff_ms": 50,
             "tool_calls_ms": 200,
             "phases_ms": {
-                "check_plan": 1,
-                "implement": 2,
-                "review_fanout": 3,
-                "review_write": 4,
-                "concerns": 5,
-                "summary": 6
+                "implement": 2
             }
         });
         let line = format_timing_stdout_line_from_json(&json);
         assert!(line.contains("tool_calls = "));
-        assert!(line.contains("check_plan = "));
-        assert!(line.contains("summary = "));
+        assert!(line.contains("implement = "));
+        assert!(!line.contains("summary = "));
+        assert!(!line.contains("concerns = "));
     }
 
     #[test]
@@ -159,6 +148,6 @@ mod tests {
             "phase_display_names": { "implement": "raw" }
         });
         assert_eq!(phase_display_name(&json, "implement"), "raw");
-        assert_eq!(phase_display_name(&json, "summary"), "summary");
+        assert_eq!(phase_display_name(&json, "kpop"), "kpop");
     }
 }

@@ -1,32 +1,31 @@
 use std::sync::{Arc, Mutex};
 
 use super::{
-    ReviewPairId, RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
+    RunTiming, TimingPhase, attach_new_run_timing, finalize_and_emit_run_timing,
     finalize_run_timing_json_only, record_backoff, record_llm, report,
 };
 use std::time::{Duration, Instant};
 
 #[test]
-fn run_timing_json_phases_and_review_pair_id_mapping() {
+fn run_timing_json_phases_include_only_implement() {
     let mut r = RunTiming::default();
     r.mark_wall_start(Instant::now());
     r.mark_wall_end(Instant::now());
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(10));
     let phases = report::to_json_value(&r).get("phases_ms").unwrap().clone();
-    for key in [
+    assert!(phases.get("implement").is_some());
+    for dead in [
         "check_plan",
-        "implement",
         "review_fanout",
         "review_write",
         "concerns",
         "summary",
     ] {
-        assert!(phases.get(key).is_some(), "missing {key}");
+        assert!(
+            phases.get(dead).is_none(),
+            "dead phase key {dead} must not appear in JSON"
+        );
     }
-    assert_eq!(
-        ReviewPairId::Fanout.review_phase(),
-        TimingPhase::ReviewFanout
-    );
 }
 
 #[test]
@@ -74,17 +73,17 @@ fn record_llm_and_backoff_noop_when_timing_slot_none() {
 }
 
 #[test]
-fn check_plan_phase_accumulates_timing() {
+fn implement_phase_accumulates_timing() {
     let mut r = RunTiming::default();
     r.mark_wall_start(Instant::now());
-    r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(100));
-    r.add_llm_phase(TimingPhase::CheckPlan, Duration::from_millis(50));
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(50));
     r.mark_wall_end(Instant::now());
-    assert_eq!(r.check_plan, Duration::from_millis(150));
+    assert_eq!(r.implement, Duration::from_millis(150));
     assert_eq!(r.llm_wait, Duration::from_millis(150));
     let json = report::to_json_value(&r);
     let phases = json.get("phases_ms").unwrap();
-    assert_eq!(phases.get("check_plan").unwrap().as_u64().unwrap(), 150);
+    assert_eq!(phases.get("implement").unwrap().as_u64().unwrap(), 150);
 }
 
 #[test]

@@ -185,7 +185,7 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
 
 #[cfg_attr(unix, test)]
 fn do_trace_log_contains_thought_when_hidden_from_stdout() {
-    let (out, _root, workspace) = run_do_with_named_mock_bin(
+    let (out, root, workspace) = run_do_with_named_mock_bin(
         "mock-agent-acp-do",
         &acp_mock_do_streaming_update_js(),
         &[],
@@ -197,7 +197,7 @@ fn do_trace_log_contains_thought_when_hidden_from_stdout() {
         !stdout.contains("hidden thought"),
         "default do should hide thought on stdout: {stdout:?}"
     );
-    let log_path = first_do_log_path(&workspace);
+    let log_path = first_do_log_path(&workspace, &root.path().join("home"));
     let log = std::fs::read_to_string(&log_path).expect("do.log");
     assert!(
         log.contains("hidden thought"),

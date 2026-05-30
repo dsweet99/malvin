@@ -51,12 +51,29 @@ pub fn workflow_ctx_for_smoke(
 
 #[cfg(test)]
 mod tests {
-    use super::io_opts;
+    use super::{empty_dotfile_backups, io_opts, no_session_client, workflow_ctx_for_smoke};
 
     #[test]
     fn io_opts_disables_tee_and_markdown() {
         let o = io_opts();
         assert!(o.no_tee);
         assert!(!o.emit_stdout_markdown);
+    }
+
+    #[test]
+    fn no_session_client_and_empty_backups_smoke() {
+        let _ = no_session_client();
+        let backups = empty_dotfile_backups();
+        assert!(matches!(
+            backups.kissconfig,
+            crate::artifacts::KissConfigBackup::Missing
+        ));
+    }
+
+    #[test]
+    fn workflow_ctx_for_smoke_builds_context() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (_artifacts, _store, ctx) = workflow_ctx_for_smoke(&tmp, "support_smoke");
+        assert!(ctx.contains_key("plan_path"));
     }
 }

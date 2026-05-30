@@ -142,10 +142,8 @@ fn create_kpop_run_artifacts_opts_without_gc() {
     assert!(art.plan_path.ends_with("request.md"));
 }
 
-#[test]
-fn create_run_artifacts_from_text_prunes_old_runs_before_new_dir() {
-    let tmp = tempfile::tempdir().unwrap();
-    let logs = crate::malvin_logs_root(tmp.path());
+fn seed_home_logs_for_gc_test(work_dir: &std::path::Path) -> std::path::PathBuf {
+    let logs = crate::malvin_logs_root(work_dir);
     std::fs::create_dir_all(&logs).unwrap();
     for name in [
         "20260101_000000_aaaaaaa1",
@@ -154,11 +152,19 @@ fn create_run_artifacts_from_text_prunes_old_runs_before_new_dir() {
     ] {
         std::fs::create_dir_all(logs.join(name)).unwrap();
     }
+    std::fs::create_dir_all(work_dir.join(".malvin")).unwrap();
     std::fs::write(
-        tmp.path().join(".malvin/config.toml"),
+        work_dir.join(".malvin/config.toml"),
         "[logs]\nmax_age_days = 0\nmax_runs = 2\nmax_bytes = \"\"\n",
     )
     .unwrap();
+    logs
+}
+
+#[test]
+fn create_run_artifacts_from_text_prunes_old_runs_before_new_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let logs = seed_home_logs_for_gc_test(tmp.path());
     let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
     assert!(!logs.join("20260101_000000_aaaaaaa1").exists());
     assert!(logs.join("20260102_000000_bbbbbbb2").exists());

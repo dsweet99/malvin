@@ -31,7 +31,7 @@ pub struct Cli {
     #[arg(long = "max-loops", default_value_t = 1)]
     pub bare_max_loops: usize,
     /// Number of hypotheses per `KPop` round for bare kpop invocations.
-    #[arg(long = "max-hypotheses", default_value_t = 10)]
+    #[arg(long = "max-hypotheses", default_value_t = 5)]
     pub bare_max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare kpop invocations.
     #[arg(long = "tenacious", default_value_t = false)]

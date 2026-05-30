@@ -6,7 +6,7 @@ pub struct KpopArgs {
     #[arg(long, default_value_t = 1)]
     pub max_loops: usize,
     /// Total `KPop` hypothesis steps (## Step headings in the exp log) per agent run.
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 5)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = false)]

@@ -18,8 +18,8 @@ mod tests {
         let artifacts = emit_init_startup(tmp.path(), false).unwrap();
         assert_eq!(artifacts.work_dir, tmp.path());
         assert!(
-            artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")),
-            "init run dir must live under .malvin/logs"
+            artifacts.run_dir.starts_with(crate::malvin_logs_root(tmp.path())),
+            "init run dir must live under home malvin logs bucket"
         );
         assert!(artifacts.run_dir.exists());
     }
@@ -108,7 +108,7 @@ mod tests {
         assert!(tmp.path().join(".malvin/checks").is_file());
         assert!(tmp.path().join(crate::MALVIN_ADVICE_REL).is_file());
         assert!(tmp.path().join(crate::MALVIN_CONFIG_REL).is_file());
-        assert!(tmp.path().join(".malvin/logs").is_dir());
+        assert!(crate::malvin_logs_root(tmp.path()).is_dir());
         assert!(tmp.path().join("Cargo.toml").is_file());
         let checks = std::fs::read_to_string(tmp.path().join(".malvin/checks")).unwrap();
         assert!(checks.contains("cargo clippy"));

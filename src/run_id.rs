@@ -21,7 +21,7 @@ impl RunDirOptions {
     }
 }
 
-/// Creates `.malvin/logs/<timestamp>_<id>/` under `base_dir` (or the current directory).
+/// Creates `~/.malvin/logs/<hash>/<timestamp>_<id>/` for `base_dir` (or the current directory).
 ///
 /// # Errors
 ///

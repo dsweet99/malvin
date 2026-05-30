@@ -46,7 +46,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
     let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
     assert!(log.contains("Memory:"));
-    assert!(artifacts.run_dir.starts_with(tmp.path().join(".malvin/logs")));
+    assert!(artifacts.run_dir.starts_with(crate::malvin_logs_root(tmp.path())));
 }
 
 #[test]

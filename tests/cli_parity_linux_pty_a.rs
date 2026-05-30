@@ -126,7 +126,7 @@ mod linux_pty {
             !stdout.contains("wrap-bold-xyz**"),
             "expected wrapped stdout to avoid leaking closing bold markers: {stdout:?}"
         );
-        let run_dir = only_run_dir(&run.workspace);
+        let run_dir = only_run_dir(&run.workspace, &run.home);
         let logs = read_all_logs(&run_dir);
         assert!(
             logs.contains("**wrap-bold-xyz wrap-bold-xyz"),

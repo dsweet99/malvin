@@ -57,6 +57,7 @@ pub fn create_run_artifacts_opts(
     };
     ensure_kpop_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
+    crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -89,6 +90,7 @@ pub fn create_run_artifacts_from_text_opts(
     };
     ensure_kpop_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
+    crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
@@ -121,6 +123,7 @@ pub fn create_kpop_run_artifacts_opts(
     };
     ensure_kpop_exp_log_file(&artifacts)?;
     ensure_quality_gates_log_file(&artifacts)?;
+    crate::write_work_dir_manifest(&artifacts.run_dir, &artifacts.work_dir)?;
     #[cfg(not(test))]
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)

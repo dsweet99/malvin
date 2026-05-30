@@ -10,8 +10,12 @@ pub(super) fn ensure_malvin_workspace_layout(
     force: bool,
     languages: &[Language],
 ) -> Result<(), String> {
-    std::fs::create_dir_all(crate::malvin_logs_root(root))
-        .map_err(|e| format!("init: mkdir {}: {e}", crate::MALVIN_LOGS_REL))?;
+    std::fs::create_dir_all(crate::malvin_logs_root(root)).map_err(|e| {
+        format!(
+            "init: mkdir {}: {e}",
+            crate::malvin_logs_root(root).display()
+        )
+    })?;
     if languages.contains(&Language::Rust) {
         ensure_cargo_toml(root, force)?;
     }

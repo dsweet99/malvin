@@ -56,11 +56,19 @@ pub fn write_mock_executable(path: &std::path::Path, js: &str) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+/// Home-directory run logs bucket for `workspace` when `HOME` is set to `home`.
+#[must_use]
+pub fn malvin_run_logs_bucket(workspace: &Path, home: &Path) -> PathBuf {
+    home.join(".malvin")
+        .join("logs")
+        .join(malvin::workspace_logs_hash(workspace))
+}
+
 #[cfg(unix)]
-pub fn only_run_dir(workspace: &Path) -> PathBuf {
-    let run_root = workspace.join(".malvin/logs");
+pub fn only_run_dir(workspace: &Path, home: &Path) -> PathBuf {
+    let run_root = malvin_run_logs_bucket(workspace, home);
     let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
-        .expect("read .malvin/logs")
+        .expect("read home malvin logs bucket")
         .map(|entry| entry.expect("dir entry").path())
         .filter(|path| path.is_dir())
         .collect();

@@ -29,7 +29,7 @@ fn assert_init_succeeded(out: &std::process::Output) {
 #[test]
 fn malvin_init_runs_discovery_on_committed_existing_repo() {
     let project = committed_repo_with_readme();
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, home) = malvin_init_output(project.path(), &["python"]);
     assert_init_succeeded(&out);
 
     let checks = fs::read_to_string(project.path().join(".malvin/checks")).expect("checks");
@@ -38,7 +38,7 @@ fn malvin_init_runs_discovery_on_committed_existing_repo() {
         "mock discovery should write kiss check; got: {checks:?}"
     );
 
-    let run_dir = only_run_dir(project.path());
+    let run_dir = only_run_dir(project.path(), home.path());
     assert!(
         !gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
         "expected at least one gate exp log with ## KPOP_SOLVED under {}",

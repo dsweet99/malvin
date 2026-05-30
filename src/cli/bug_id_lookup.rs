@@ -94,11 +94,17 @@ fn scan_malvin_logs(
     for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
-        if path.is_dir() {
-            scan_malvin_logs(&path, id, kind, out)?;
+        if !path.is_dir() {
+            continue;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if crate::log_gc::is_run_log_dir_name(&name) {
             if let Some(m) = bug_id_lookup_log::match_run_logs(&path, id, kind) {
                 out.push(m);
             }
+        } else {
+            scan_malvin_logs(&path, id, kind, out)?;
         }
     }
     Ok(())
@@ -109,6 +115,9 @@ fn work_dir_from_run_dir(run_dir: &Path, cwd: &Path) -> PathBuf {
 }
 
 fn workspace_root_from_run_dir(run_dir: &Path) -> Option<PathBuf> {
+    if let Some(ws) = crate::read_work_dir_manifest(run_dir) {
+        return Some(ws);
+    }
     let logs_segment = Path::new(crate::MALVIN_LOGS_REL).file_name()?;
     let malvin_segment = Path::new(crate::MALVIN_DIR).file_name()?;
     let mut cursor = run_dir;

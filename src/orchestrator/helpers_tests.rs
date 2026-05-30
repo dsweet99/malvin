@@ -123,28 +123,6 @@ fn insert_artifact_paths_populates_context() {
 }
 
 #[test]
-fn summary_render_uses_malvin_output_path_run_dir() {
-    let tmp = tempfile::tempdir().unwrap();
-    let artifacts =
-        crate::artifacts::create_run_artifacts_from_text("plan", Some(tmp.path())).unwrap();
-    let store = crate::prompts::PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &store, "code").unwrap();
-    let rendered = store.render("summary.md", &ctx).unwrap();
-    assert!(
-        rendered.contains("Review the files in ./.malvin/logs/"),
-        "summary must point at the run directory, got {rendered:?}"
-    );
-    assert!(
-        !rendered.contains("Review the files in .  Summarize"),
-        "summary must not collapse malvin_output_path to dot, got {rendered:?}"
-    );
-    assert!(
-        !rendered.contains("{{ malvin_output_path }}"),
-        "summary must render malvin_output_path, got {rendered:?}"
-    );
-}
-
-#[test]
 fn format_prompt_path_uses_display_when_not_under_base() {
     let tmp = tempfile::tempdir().unwrap();
     let outside = std::env::temp_dir().join(format!("malvin_outside_{}", std::process::id()));

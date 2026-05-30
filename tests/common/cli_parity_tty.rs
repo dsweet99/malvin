@@ -8,6 +8,7 @@ use std::process::Command;
 #[cfg(all(unix, target_os = "linux"))]
 pub struct PtyRun {
     pub _root: tempfile::TempDir,
+    pub home: PathBuf,
     pub workspace: PathBuf,
     pub output: std::process::Output,
 }
@@ -96,6 +97,7 @@ pub fn run_malvin_under_script_with_mock(
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin");
     PtyRun {
         _root: env.root,
+        home: env.home,
         workspace: env.workspace,
         output,
     }
@@ -180,7 +182,7 @@ pub fn assert_markdown_stdout_and_logs(run: &PtyRun) {
         !stdout.contains("\"jsonrpc\""),
         "stdout leaked JSON-RPC protocol lines: {stdout:?}"
     );
-    let run_dir = super::only_run_dir(&run.workspace);
+    let run_dir = super::only_run_dir(&run.workspace, &run.home);
     let logs = read_all_logs(&run_dir);
     assert!(
         logs.contains("# md-heading-xyz"),

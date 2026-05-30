@@ -28,8 +28,6 @@ pub(crate) mod orchestrator_test_support;
 #[cfg(test)]
 mod orchestrator_kiss_coverage;
 
-pub mod session_flow;
-
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
 pub struct WorkflowError(pub String);
@@ -90,4 +88,32 @@ impl Orchestrator<'_> {
     }
 }
 
-mod coder_prompt_impl;
+#[cfg(test)]
+mod orchestrator_smoke_tests {
+    use super::*;
+    use crate::orchestrator::orchestrator_test_support::{
+        empty_dotfile_backups, no_session_client, workflow_ctx_for_smoke,
+    };
+    use crate::prompts::PromptStore;
+
+    #[test]
+    fn workflow_config_and_orchestrator_smoke_fields() {
+        let cfg = WorkflowConfig { max_loops: 3 };
+        assert_eq!(cfg.max_loops, 3);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (artifacts, store, _ctx) = workflow_ctx_for_smoke(&tmp, "orch_smoke");
+        let mut client = no_session_client();
+        let mut orch = Orchestrator {
+            client: &mut client,
+            prompts: &store,
+            artifacts: &artifacts,
+            config: WorkflowConfig { max_loops: 1 },
+            progress_callback: Box::new(|_| {}),
+            session_dotfile_backups: empty_dotfile_backups(),
+        };
+        let timing = orch.attach_run_timing();
+        orch.fail_on_abort_result().expect("no abort");
+        orch.emit_run_timing_artifact(&timing)
+            .expect("timing artifact");
+    }
+}

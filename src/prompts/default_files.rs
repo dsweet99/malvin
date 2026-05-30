@@ -23,7 +23,6 @@ pub fn default_file(name: &str) -> Option<&'static str> {
     default_constraints_prompt(name)
         .or_else(|| default_kpop_prompt(name))
         .or_else(|| match name {
-            "summary.md" => Some(include_str!("../../default_prompts/summary.md")),
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             _ => None,

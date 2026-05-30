@@ -9,7 +9,7 @@ use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace_paths::malvin_config_path;
 
-pub const DEFAULT_MAX_HYPOTHESES: usize = 10;
+pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 

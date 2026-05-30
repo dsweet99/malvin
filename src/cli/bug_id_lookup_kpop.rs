@@ -46,10 +46,32 @@ pub(crate) fn is_kpop_lookup_request(request: Option<&str>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::path::{Path, PathBuf};
+
     use super::{
         dump_kpop_log_to_stdout, is_kpop_lookup_request, kpop_log_line, lookup_kpop_id,
     };
     use crate::output::{format_log_tag_inner, MALVIN_WHO};
+
+    fn seed_home_run(
+        home: &Path,
+        cwd: &Path,
+        run_name: &str,
+    ) -> (PathBuf, PathBuf) {
+        let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+        let run_dir = bucket.join(run_name);
+        std::fs::create_dir_all(&run_dir).expect("mkdir run");
+        crate::write_work_dir_manifest(&run_dir, cwd).expect("work_dir manifest");
+        let exp = run_dir.join("_kpop").join(format!("exp_log_{run_name}.md"));
+        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
+        (run_dir, exp)
+    }
+
+    fn with_test_home<F: FnOnce(&Path, &Path)>(f: F) {
+        crate::test_utils::with_isolated_home(|cwd| {
+            f(&crate::user_home_dir(), cwd);
+        });
+    }
 
     #[test]
     fn kiss_static_fn_item_refs() {
@@ -61,112 +83,112 @@ mod tests {
 
     #[test]
     fn kpop_lookup_finds_unique_kpop_log_line() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let run_dir = cwd.join(".malvin/logs").join("20260101_abc");
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        let exp = run_dir.join("_kpop").join("exp_log_20260101_abc.md");
-        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-        std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
-        let rel = "./.malvin/logs/20260101_abc/_kpop/exp_log_20260101_abc.md";
-        std::fs::write(
-            run_dir.join("stdout.log"),
-            format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Ma1b2c {rel}\n",
-                format_log_tag_inner(MALVIN_WHO)
-            ),
-        )
-        .expect("stdout");
-        let path = lookup_kpop_id(cwd, "Ma1b2c").expect("lookup");
-        assert_eq!(path, exp);
-    }
-
-    #[test]
-    fn kpop_lookup_duplicate_ids_errors_with_two_runs() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        for name in ["run_a", "run_b"] {
-            let run_dir = cwd.join(".malvin/logs").join(name);
-            std::fs::create_dir_all(&run_dir).expect("mkdir");
+        with_test_home(|home, cwd| {
+            let (run_dir, exp) = seed_home_run(home, cwd, "20260101_000000_abcabcab");
+            std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
+            let rel = format!(
+                "{}/_kpop/exp_log_20260101_000000_abcabcab.md",
+                run_dir.display()
+            );
             std::fs::write(
                 run_dir.join("stdout.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Mdup01 ./x\n",
+                    "20260101.000000.000 [{}] KPOP_LOG: Ma1b2c {rel}\n",
                     format_log_tag_inner(MALVIN_WHO)
                 ),
             )
             .expect("stdout");
-        }
-        let err = lookup_kpop_id(cwd, "Mdup01").unwrap_err();
-        assert!(err.contains("ambiguous"), "got: {err}");
+            let path = lookup_kpop_id(cwd, "Ma1b2c").expect("lookup");
+            assert_eq!(path, exp);
+        });
+    }
+
+    #[test]
+    fn kpop_lookup_duplicate_ids_errors_with_two_runs() {
+        with_test_home(|home, cwd| {
+            for name in ["20260101_000000_runaaa01", "20260101_000000_runaaa02"] {
+                let (run_dir, _) = seed_home_run(home, cwd, name);
+                std::fs::write(
+                    run_dir.join("stdout.log"),
+                    format!(
+                        "20260101.000000.000 [{}] KPOP_LOG: Mdup01 ./x\n",
+                        format_log_tag_inner(MALVIN_WHO)
+                    ),
+                )
+                .expect("stdout");
+            }
+            let err = lookup_kpop_id(cwd, "Mdup01").unwrap_err();
+            assert!(err.contains("ambiguous"), "got: {err}");
+        });
     }
 
     #[test]
     fn kpop_lookup_not_found() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin/logs")).expect("mkdir");
-        let err = lookup_kpop_id(tmp.path(), "Mnope1").unwrap_err();
-        assert!(err.contains("no KPOP id"), "got: {err}");
+        with_test_home(|home, cwd| {
+            let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+            std::fs::create_dir_all(bucket).expect("mkdir");
+            let err = lookup_kpop_id(cwd, "Mnope1").unwrap_err();
+            assert!(err.contains("no KPOP id"), "got: {err}");
+        });
     }
 
     #[test]
     fn kpop_lookup_reads_command_log() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let run_dir = cwd.join(".malvin/logs").join("run_cmd");
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        let exp = run_dir.join("_kpop").join("exp_log_run_cmd.md");
-        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-        std::fs::write(&exp, "log\n").expect("exp");
-        let rel = "./.malvin/logs/run_cmd/_kpop/exp_log_run_cmd.md";
-        std::fs::write(
-            run_dir.join("command.log"),
-            format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Mcmd01 {rel}\n",
-                format_log_tag_inner(MALVIN_WHO)
-            ),
-        )
-        .expect("command.log");
-        let path = lookup_kpop_id(cwd, "Mcmd01").expect("lookup");
-        assert_eq!(path, exp);
+        with_test_home(|home, cwd| {
+            let (run_dir, exp) = seed_home_run(home, cwd, "20260101_000000_runcmdab");
+            std::fs::write(&exp, "log\n").expect("exp");
+            let rel = format!(
+                "{}/_kpop/exp_log_20260101_000000_runcmdab.md",
+                run_dir.display()
+            );
+            std::fs::write(
+                run_dir.join("command.log"),
+                format!(
+                    "20260101.000000.000 [{}] KPOP_LOG: Mcmd01 {rel}\n",
+                    format_log_tag_inner(MALVIN_WHO)
+                ),
+            )
+            .expect("command.log");
+            let path = lookup_kpop_id(cwd, "Mcmd01").expect("lookup");
+            assert_eq!(path, exp);
+        });
     }
 
     #[test]
     fn kpop_lookup_nested_malvin_tree() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let run_dir = cwd.join(".malvin/logs").join("outer").join("inner");
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        let exp = run_dir.join("_kpop").join("exp_log_inner.md");
-        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-        std::fs::write(&exp, "log\n").expect("exp");
-        let rel = "./.malvin/logs/outer/inner/_kpop/exp_log_inner.md";
-        std::fs::write(
-            run_dir.join("stdout.log"),
-            format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Mnest1 {rel}\n",
-                format_log_tag_inner(MALVIN_WHO)
-            ),
-        )
-        .expect("stdout");
-        let path = lookup_kpop_id(cwd, "Mnest1").expect("lookup");
-        assert_eq!(path, exp);
+        with_test_home(|home, cwd| {
+            let (run_dir, exp) = seed_home_run(home, cwd, "20260101_000000_innerabc");
+            std::fs::write(&exp, "log\n").expect("exp");
+            let rel = format!(
+                "{}/_kpop/exp_log_20260101_000000_innerabc.md",
+                run_dir.display()
+            );
+            std::fs::write(
+                run_dir.join("stdout.log"),
+                format!(
+                    "20260101.000000.000 [{}] KPOP_LOG: Mnest1 {rel}\n",
+                    format_log_tag_inner(MALVIN_WHO)
+                ),
+            )
+            .expect("stdout");
+            let path = lookup_kpop_id(cwd, "Mnest1").expect("lookup");
+            assert_eq!(path, exp);
+        });
     }
 
     #[test]
     fn kpop_lookup_rejects_missing_exp_log_path() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let run_dir = cwd.join(".malvin/logs").join("20260103_nope");
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        std::fs::write(
-            run_dir.join("stdout.log"),
-            format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Mbad01 ./.malvin/logs/missing/exp_log_x.md\n",
-                format_log_tag_inner(MALVIN_WHO)
-            ),
-        )
-        .expect("stdout");
-        assert!(lookup_kpop_id(cwd, "Mbad01").is_err());
+        with_test_home(|home, cwd| {
+            let (run_dir, _) = seed_home_run(home, cwd, "20260103_000000_nopeabcd");
+            std::fs::write(
+                run_dir.join("stdout.log"),
+                format!(
+                    "20260101.000000.000 [{}] KPOP_LOG: Mbad01 ./missing/exp_log_x.md\n",
+                    format_log_tag_inner(MALVIN_WHO)
+                ),
+            )
+            .expect("stdout");
+            assert!(lookup_kpop_id(cwd, "Mbad01").is_err());
+        });
     }
 }
