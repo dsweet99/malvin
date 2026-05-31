@@ -147,7 +147,7 @@ pub async fn run_kpop(
 mod kiss_cov_auto {
     use super::run_kpop_short_id_lookup;
     use crate::cli::KpopArgs;
-    use crate::output::{format_log_tag_inner, MALVIN_WHO};
+    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
 
     #[test]
     fn kiss_cov_kpop_prompt_store() { let _ = stringify!(kpop_prompt_store); }
@@ -176,8 +176,8 @@ mod kiss_cov_auto {
             std::fs::write(
                 run_dir.join("stdout.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Ma1b2c {rel}\n",
-                    format_log_tag_inner(MALVIN_WHO)
+                    "20260101.000000.000 {}KPOP_LOG: Ma1b2c {rel}\n",
+                    format_who_tag_prefix(MALVIN_WHO)
                 ),
             )
             .expect("stdout");

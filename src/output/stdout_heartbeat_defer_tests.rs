@@ -7,7 +7,7 @@ use crate::output::stdout_heartbeat::{
 };
 use crate::output::{
     enable_stdout_capture, take_captured_stdout, write_heartbeat_log_line, MALVIN_WHO,
-    format_log_tag_inner, is_log_timestamp_token, set_stdout_log_path,
+    format_who_tag_prefix, is_log_timestamp_token, set_stdout_log_path,
 };
 
 use crate::output::log_contains_heartbeat;
@@ -131,7 +131,7 @@ fn heartbeat_defer_helpers_are_exercised() {
 #[test]
 fn write_heartbeat_log_line_covers_deferred_and_immediate() {
     let (terminal, text) = run_deferred_write_heartbeat_log_line_test();
-    let inner = format_log_tag_inner(MALVIN_WHO);
+    let prefix = format_who_tag_prefix(MALVIN_WHO);
     let heartbeat_lines: Vec<_> = text
         .lines()
         .filter(|l| l.contains("HB:") || log_contains_heartbeat(&format!("{l}\n")))
@@ -141,9 +141,9 @@ fn write_heartbeat_log_line_covers_deferred_and_immediate() {
         let ts = line.split_whitespace().next().expect("timestamp");
         assert!(is_log_timestamp_token(ts));
         assert!(
-            line.contains(&format!("[{inner}] HB:"))
+            line.contains(&format!("{prefix}HB:"))
                 || crate::time_format::heartbeat_payload_has_wall_clock_prefix(
-                    line.split("] ").nth(1).unwrap_or(""),
+                    line.split("| ").nth(1).unwrap_or(""),
                 )
         );
     }
@@ -187,7 +187,7 @@ mod kiss_cov_defer_tests {
 
     #[test]
     fn log_contains_heartbeat_and_heartbeat_log_offset() {
-        let sample = "20260524.000000.000 [malvin.........] 20260524.000000 Still alive.";
+        let sample = "20260524.000000.000 malvin.| 20260524.000000 Still alive.";
         assert!(crate::output::log_contains_heartbeat(sample));
         assert_eq!(crate::output::heartbeat_log_offset(sample), Some(0));
     }

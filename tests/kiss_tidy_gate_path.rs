@@ -118,7 +118,7 @@ fn malvin_tidy_skips_agent_when_quality_gates_already_pass() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("DONE"), "expected fast-path DONE; stdout={stdout:?}");
     assert!(
-        !stdout.contains("[>kpop") && !stdout.contains("[<kpop"),
+        !stdout.contains(">kpop|") && !stdout.contains("<kpop|"),
         "agent must not run when gates already pass; stdout={stdout:?}"
     );
 }

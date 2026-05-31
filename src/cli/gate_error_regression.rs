@@ -1,3 +1,4 @@
+use crate::output::{format_who_tag_delim, ERROR_WHO};
 use crate::repo_checks::{
     GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, is_gate_failure_error,
     repo_gate_failure_to_string,
@@ -31,10 +32,11 @@ fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
         "post-run gates still failing after tidy kpop session: {}",
         repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()))
     );
+    let error_tag = format_who_tag_delim(ERROR_WHO);
     let stderr = capture_stderr_output(|| print_command_error(&wrapped));
     assert!(
-        !stderr.contains("[error"),
-        "wrapped gate failures must not be painted as [error]; got: {stderr:?}"
+        !stderr.contains(&error_tag),
+        "wrapped gate failures must not be painted as error who-tag; got: {stderr:?}"
     );
     assert!(
         !stderr.contains(GATE_FAILURE_MARKER),

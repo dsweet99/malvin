@@ -22,10 +22,7 @@ impl MalvinRunLogKind {
 }
 
 pub(super) fn malvin_log_tag_marker() -> String {
-    format!(
-        "[{}] ",
-        crate::output::format_log_tag_inner(crate::output::MALVIN_WHO)
-    )
+    crate::output::format_who_tag_prefix(crate::output::MALVIN_WHO)
 }
 
 pub(super) fn malvin_tagged_line_payload(line: &str) -> Option<&str> {
@@ -75,14 +72,14 @@ pub(super) fn match_run_logs(
 
 #[test]
 fn match_run_logs_reads_command_log_for_kpop() {
-    use crate::output::{format_log_tag_inner, MALVIN_WHO};
+    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     let id = "Mcmd01";
     let line = format!(
-        "20260101.000000.000 [{}] KPOP_LOG: {id} ./exp.md\n",
-        format_log_tag_inner(MALVIN_WHO)
+        "20260101.000000.000 {}KPOP_LOG: {id} ./exp.md\n",
+        format_who_tag_prefix(MALVIN_WHO)
     );
     std::fs::write(run_dir.join("command.log"), line).expect("write");
     let m = match_run_logs(&run_dir, id, MalvinRunLogKind::Kpop).expect("match");

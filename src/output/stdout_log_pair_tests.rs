@@ -131,22 +131,22 @@ pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
 pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
     use crate::terminal_palette::{ansi_tool_dark, ANSI_DIM};
 
-    let bracket_end = line.find(']').expect("bracket");
+    let bracket_end = line.find('|').expect("who pipe delimiter");
     assert!(
         line.contains(ANSI_DIM),
         "tee dims tool payload; got {line:?}"
     );
     assert!(
         line.find(ANSI_DIM).unwrap() > bracket_end,
-        "dim must apply after who bracket; got {line:?}"
+        "dim must apply after who pipe; got {line:?}"
     );
     let prefix = &line[..=bracket_end];
     assert!(
         prefix.contains(ansi_tool_dark()),
-        "who bracket stays dark; got {line:?}"
+        "who prefix stays dark; got {line:?}"
     );
     assert!(
         !prefix.contains(ANSI_DIM),
-        "who/bracket prefix must not be dimmed; got {line:?}"
+        "who prefix must not be dimmed; got {line:?}"
     );
 }

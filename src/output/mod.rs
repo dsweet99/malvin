@@ -9,6 +9,7 @@ mod stdout_heartbeat;
 mod stdout_render;
 mod stdout_terminal;
 mod test_modules;
+mod who_tag;
 pub(crate) mod stdout_log_pair;
 pub(crate) mod stdout_tee_env;
 pub(crate) mod terminal_wrap;
@@ -59,6 +60,9 @@ mod acp_tee_tests;
 #[cfg(test)]
 mod format_tests;
 #[cfg(test)]
+#[path = "format_tests_b.rs"]
+mod format_tests_b;
+#[cfg(test)]
 mod stdout_log_tests;
 
 #[cfg(test)]
@@ -72,9 +76,9 @@ pub(crate) use self::terminal_wrap::{
     stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
 };
 
-pub const MALVIN_WHO: &str = "malvin";
-pub const WARNING_WHO: &str = "warning";
-pub const ERROR_WHO: &str = "error";
+pub const MALVIN_WHO: &str = who_tag::WHO_O;
+pub const WARNING_WHO: &str = "w";
+pub const ERROR_WHO: &str = "e";
 
 pub(crate) use stdout_terminal::print_stdout_display_line;
 #[cfg(test)]
@@ -100,41 +104,47 @@ pub fn clear_captured_stderr_lines() {
     CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
 }
 
-/// Announce one outgoing prompt on stdout with a single bracket line `[{bracket_label}...]`.
-pub fn print_outgoing_prompt_log(trace_who: &str, bracket_label: &str) {
-    let directional_tag = format_acp_directional_tag_prefix('>', trace_who);
+/// Record one outgoing prompt summary in stdout.log only (not on the live terminal).
+pub fn print_outgoing_prompt_log(_trace_who: &str, bracket_label: &str) {
     let bracket_payload = format!("[{bracket_label}...]");
-    print_stdout_acp_tee_line(AcpTeeDirection::ToAgent, &directional_tag, &bracket_payload);
+    let ts = timestamp_now_string();
+    append_stdout_log_line(&stdout_log_pair::tagged_log_line(
+        &ts,
+        who_tag::WHO_U,
+        &bracket_payload,
+    ));
 }
 
-/// Fixed width (Unicode scalars) for the bracket label in log lines (`[…] …`).
-pub const LOG_TAG_INNER_WIDTH: usize = 15;
+pub fn append_outgoing_prompt_log_lines(body: &str) {
+    let ts = timestamp_now_string();
+    for line in stdout_display::logical_lines(body) {
+        append_stdout_log_line(&stdout_log_pair::tagged_log_line(
+            &ts,
+            who_tag::WHO_U,
+            line,
+        ));
+    }
+}
+
+pub use who_tag::{
+    format_acp_directional_tag_prefix, format_log_tag_inner, format_who_tag_delim,
+    format_who_tag_prefix, is_command_prelude_line, LOG_TAG_INNER_WIDTH, WHO_B, WHO_H, WHO_M,
+    WHO_O, WHO_T, WHO_U,
+};
+
+#[allow(unused_imports)]
+pub(crate) use who_tag::{
+    is_log_timestamp_token, payload_after_fixed_width_bracket_tag,
+    payload_after_fixed_width_who_tag,
+};
 
 static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
 #[cfg(test)]
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-use crate::terminal_palette::{
+pub(crate) use crate::terminal_palette::{
     ansi_tool_amber, ansi_tool_coral, ansi_tool_navy, ANSI_DIM, ANSI_RESET,
 };
-
-#[must_use]
-pub fn format_log_tag_inner(label: &str) -> String {
-    let mut s: String = label.chars().take(LOG_TAG_INNER_WIDTH).collect();
-    while s.chars().count() < LOG_TAG_INNER_WIDTH {
-        s.push('.');
-    }
-    s
-}
-
-/// Outgoing (`>`) or incoming (`<`) ACP trace label before fixed-width padding (e.g. `>implement`).
-#[must_use]
-pub fn format_acp_directional_tag_prefix(direction: char, stem: &str) -> String {
-    let mut s = String::new();
-    s.push(direction);
-    s.push_str(stem);
-    s
-}
 
 #[must_use]
 pub fn format_line_with_timestamp(ts: &str, who: &str, line: &str) -> String {
@@ -152,6 +162,7 @@ pub(crate) fn who_tag_ansi(who: &str) -> &'static str {
     match who {
         WARNING_WHO => ansi_tool_amber(),
         ERROR_WHO => ansi_tool_coral(),
+        who_tag::WHO_B => ANSI_DIM,
         _ => ansi_tool_navy(),
     }
 }
@@ -206,42 +217,6 @@ pub(crate) fn append_stdout_log_line(line: &str) {
 }
 
 pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
-
-pub(crate) fn payload_after_fixed_width_bracket_tag(line: &str) -> Option<&str> {
-    let after_open = line.strip_prefix('[')?;
-    let (tag_end, _) = after_open.char_indices().nth(LOG_TAG_INNER_WIDTH)?;
-    after_open[tag_end..].strip_prefix("] ")
-}
-
-const LOG_TIMESTAMP_LEN: usize = 19;
-
-pub(crate) fn is_log_timestamp_token(token: &str) -> bool {
-    let b = token.as_bytes();
-    b.len() == LOG_TIMESTAMP_LEN
-        && b[8] == b'.'
-        && b[15] == b'.'
-        && b[..8].iter().all(u8::is_ascii_digit)
-        && b[9..15].iter().all(u8::is_ascii_digit)
-        && b[16..].iter().all(u8::is_ascii_digit)
-}
-
-#[must_use]
-pub fn is_command_prelude_line(line: &str) -> bool {
-    const CMD: &str = "Command: ";
-    if line.starts_with(CMD) {
-        return true;
-    }
-    if let Some(payload) = payload_after_fixed_width_bracket_tag(line) {
-        return payload.starts_with(CMD);
-    }
-    let Some((ts, rest)) = line.split_once(' ') else {
-        return false;
-    };
-    if !is_log_timestamp_token(ts) {
-        return false;
-    }
-    payload_after_fixed_width_bracket_tag(rest).is_some_and(|payload| payload.starts_with(CMD))
-}
 
 #[cfg(test)]
 pub(crate) use test_modules::{

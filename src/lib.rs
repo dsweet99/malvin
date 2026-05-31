@@ -98,7 +98,8 @@ pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_use
 pub use config::DEFAULT_CLI_MODEL;
 pub use kpop_progression::agent_declared_success;
 pub use output::{
-    ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, init_stdout_style,
+    ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, format_who_tag_prefix,
+    init_stdout_style,
     print_log_error, print_log_warning, print_stderr_line, print_stdout_line, print_stdout_text,
 };
 pub use prompts::DO_HEADER_MD;

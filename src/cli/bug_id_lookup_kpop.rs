@@ -51,7 +51,7 @@ mod tests {
     use super::{
         dump_kpop_log_to_stdout, is_kpop_lookup_request, kpop_log_line, lookup_kpop_id,
     };
-    use crate::output::{format_log_tag_inner, MALVIN_WHO};
+    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
 
     fn seed_home_run(
         home: &Path,
@@ -93,8 +93,8 @@ mod tests {
             std::fs::write(
                 run_dir.join("stdout.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Ma1b2c {rel}\n",
-                    format_log_tag_inner(MALVIN_WHO)
+                    "20260101.000000.000 {}KPOP_LOG: Ma1b2c {rel}\n",
+                    format_who_tag_prefix(MALVIN_WHO)
                 ),
             )
             .expect("stdout");
@@ -111,8 +111,8 @@ mod tests {
                 std::fs::write(
                     run_dir.join("stdout.log"),
                     format!(
-                        "20260101.000000.000 [{}] KPOP_LOG: Mdup01 ./x\n",
-                        format_log_tag_inner(MALVIN_WHO)
+                        "20260101.000000.000 {}KPOP_LOG: Mdup01 ./x\n",
+                        format_who_tag_prefix(MALVIN_WHO)
                     ),
                 )
                 .expect("stdout");
@@ -144,8 +144,8 @@ mod tests {
             std::fs::write(
                 run_dir.join("command.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Mcmd01 {rel}\n",
-                    format_log_tag_inner(MALVIN_WHO)
+                    "20260101.000000.000 {}KPOP_LOG: Mcmd01 {rel}\n",
+                    format_who_tag_prefix(MALVIN_WHO)
                 ),
             )
             .expect("command.log");
@@ -166,8 +166,8 @@ mod tests {
             std::fs::write(
                 run_dir.join("stdout.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Mnest1 {rel}\n",
-                    format_log_tag_inner(MALVIN_WHO)
+                    "20260101.000000.000 {}KPOP_LOG: Mnest1 {rel}\n",
+                    format_who_tag_prefix(MALVIN_WHO)
                 ),
             )
             .expect("stdout");
@@ -183,8 +183,8 @@ mod tests {
             std::fs::write(
                 run_dir.join("stdout.log"),
                 format!(
-                    "20260101.000000.000 [{}] KPOP_LOG: Mbad01 ./missing/exp_log_x.md\n",
-                    format_log_tag_inner(MALVIN_WHO)
+                    "20260101.000000.000 {}KPOP_LOG: Mbad01 ./missing/exp_log_x.md\n",
+                    format_who_tag_prefix(MALVIN_WHO)
                 ),
             )
             .expect("stdout");

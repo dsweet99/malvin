@@ -13,7 +13,7 @@ pub(crate) async fn open_trace_writer(
         .unwrap();
     let writer = crate::acp::PromptTraceWriter {
         file,
-        who: "<kpop".to_string(),
+        who: crate::output::WHO_M.to_string(),
         plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,
@@ -36,7 +36,7 @@ pub(crate) fn styled_markdown_trace_writer(
 ) -> crate::acp::PromptTraceWriter {
     crate::acp::PromptTraceWriter {
         file,
-        who: "<tidy".to_string(),
+        who: crate::output::WHO_M.to_string(),
         plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,

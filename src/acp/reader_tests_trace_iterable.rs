@@ -15,7 +15,7 @@ fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
         "operational warning must use warning who, got: {stderr:?}"
     );
     assert!(
-        !stderr.contains("[<kpop"),
+        !stderr.contains("m|"),
         "iterable-closed must not be tee'd with session who: {stderr:?}"
     );
 }
@@ -56,14 +56,14 @@ async fn deliver_coalesced_message_chunk(
 }
 
 fn assert_split_iterable_closed_operational(stderr: &str, stdout_log: &str) {
-    let kpop_tag = format!("[{}]", crate::output::format_log_tag_inner("kpop"));
+    let agent_tag = crate::output::format_who_tag_delim(crate::output::WHO_M);
     assert!(
         stderr.contains(crate::output::WARNING_WHO)
             && stderr.contains("acp: WritableIterable is closed"),
         "split iterable-closed delivery must emit one operational warning, got: {stderr:?}"
     );
     assert!(
-        !stdout_log.contains(&kpop_tag),
+        !stdout_log.contains(&agent_tag),
         "no coalesced fragment may tee with session who when stream contains iterable-closed, log: {stdout_log:?}"
     );
 }

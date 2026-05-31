@@ -8,7 +8,7 @@ use std::time::Duration;
 
 fn defer_heartbeat_under_held_mutex(shared: &SharedDeferSink) {
     let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(
-        crate::output::MALVIN_WHO,
+        crate::output::WHO_H,
         "HB: 20260524.000000",
         Some("20260524.000000.000"),
     );
@@ -57,8 +57,8 @@ fn heartbeat_contention_pending_len() -> usize {
 
 fn try_push_heartbeat_while_mutex_held(shared: &SharedDeferSink) {
     let hb = build_display_log_entry(
-        "[malvin.........] HB: 20260524.000000".into(),
-        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+        "h| HB: 20260524.000000".into(),
+        "20260524.000000.000 h| HB: 20260524.000000".into(),
     );
     let _acp_hold = shared
         .lock()
@@ -111,8 +111,8 @@ fn pending_flush_covers_queue_and_drain_paths() {
         crate::deferred_log::config::DeferredLogConfig::from_env(),
     )));
     super::queue_pending(build_display_log_entry(
-        "[malvin.........] pending-hb".into(),
-        "20260524.000000.000 [malvin.........] pending-hb".into(),
+        "malvin.| pending-hb".into(),
+        "20260524.000000.000 malvin.| pending-hb".into(),
     ));
     assert_eq!(super::pending_len(), 1);
     super::flush_pending_into(
@@ -169,7 +169,7 @@ fn try_defer_heartbeat_under_mutex_flushes_display_log_split() {
         .lines()
         .find(|l| l.contains("HB:"))
         .expect("heartbeat log line");
-    assert!(line.contains("20260524.000000.000 [malvin.........] HB:"));
+    assert!(line.contains("20260524.000000.000 h| HB:"));
 }
 
 #[test]
@@ -183,13 +183,13 @@ fn unregister_spills_orphaned_pending_without_active_sink() {
     let (terminal, text) =
         crate::deferred_log::test_fixtures::capture_stdout_render_unlocked(|| {
             super::queue_pending(build_display_log_entry(
-                "[malvin.........] ORPHAN_ACTIVE".into(),
-                "20260524.000000.000 [malvin.........] ORPHAN_ACTIVE".into(),
+                "malvin.| ORPHAN_ACTIVE".into(),
+                "20260524.000000.000 malvin.| ORPHAN_ACTIVE".into(),
             ));
             unregister();
         });
     assert!(text.contains("ORPHAN_ACTIVE"));
-    assert!(terminal.contains("[malvin.........] ORPHAN_ACTIVE"));
+    assert!(terminal.contains("malvin.| ORPHAN_ACTIVE"));
     assert!(!terminal.starts_with("20"));
 }
 

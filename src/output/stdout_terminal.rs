@@ -52,8 +52,8 @@ mod tests {
     #[test]
     fn capture_routes_display_without_real_stdout() {
         enable_stdout_capture();
-        print_stdout_display_line("[malvin.........] cap");
-        assert_eq!(take_captured_stdout(), "[malvin.........] cap");
+        print_stdout_display_line("malvin.| cap");
+        assert_eq!(take_captured_stdout(), "malvin.| cap");
     }
 
     #[test]
@@ -61,7 +61,7 @@ mod tests {
         set_stdout_suppressed(true);
         assert!(super::stdout_suppressed());
         enable_stdout_capture();
-        print_stdout_display_line("[malvin.........] hidden");
+        print_stdout_display_line("malvin.| hidden");
         assert!(take_captured_stdout().is_empty());
         set_stdout_suppressed(false);
         assert!(!super::stdout_suppressed());

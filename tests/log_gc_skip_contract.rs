@@ -1,5 +1,7 @@
 //! Integration smoke: GC skip for `do`/`init`, GC-on for `code`.
 
+use malvin::output::{format_who_tag_delim, MALVIN_WHO};
+
 mod common;
 
 use std::path::Path;
@@ -114,7 +116,7 @@ fn malvin_code_prunes_preexisting_log_dirs() {
         "malvin code must GC before creating run dir: {combined:?}"
     );
     assert!(
-        combined.contains("[malvin"),
+        combined.contains(&format_who_tag_delim(MALVIN_WHO)),
         "prune line must use standard malvin logger tag: {combined:?}"
     );
     assert!(!old.exists(), "malvin code must GC aged seeded run dir");

@@ -52,7 +52,7 @@ pub(super) fn assert_payload_omits_brackets_after_who_tag(start_line: &str, done
     assert!(done_line.contains("Read "), "got {done_line:?}");
     for line in [start_line, done_line] {
         let plain = strip_ansi_escapes(line);
-        let who_end = plain.find(']').expect("who bracket");
+        let who_end = plain.find('|').expect("who pipe delimiter");
         let payload = plain[who_end + 1..].trim_start();
         assert!(
             !payload.starts_with('['),

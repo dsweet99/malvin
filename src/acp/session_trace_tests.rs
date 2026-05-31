@@ -2,6 +2,7 @@ use crate::acp::{
     append_prompts_log_do_plain, append_prompts_log_uniform, DoOutgoingTraceParts,
     PROMPTS_LOG_FILE_NAME, trace_write_outgoing_prompt_do, trace_write_tagged_body,
 };
+use crate::output::{format_who_tag_delim, WHO_U};
 
 #[tokio::test]
 async fn trace_write_tagged_body_writes_prefixed_lines() {
@@ -16,7 +17,7 @@ async fn trace_write_tagged_body_writes_prefixed_lines() {
     trace_write_tagged_body(&mut file, "test", "line1\nline2").await.unwrap();
     drop(file);
     let content = std::fs::read_to_string(path).unwrap();
-    assert!(content.contains("test"), "should include stem");
+    assert!(content.contains(&format_who_tag_delim(WHO_U)), "should include user tag");
     assert!(content.contains("line1"), "should include line1");
     assert!(content.contains("line2"), "should include line2");
 }
@@ -62,10 +63,11 @@ async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
         .await
         .unwrap();
-    assert_eq!(content.matches(">bug_fix").count(), 3);
-    assert!(content.contains("] a"));
-    assert!(content.contains("] b"));
-    assert!(content.contains("] c"));
+    let user_tag = format_who_tag_delim(WHO_U);
+    assert_eq!(content.matches(&user_tag).count(), 3);
+    assert!(content.contains("| a"));
+    assert!(content.contains("| b"));
+    assert!(content.contains("| c"));
 }
 
 #[tokio::test]
@@ -87,11 +89,11 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
         .await
         .unwrap();
     assert!(
-        content.contains(">do"),
-        "prompts.log should match stdout directional stem for do: {content}"
+        content.contains(&format_who_tag_delim(WHO_U)),
+        "prompts.log should use user tag for do: {content}"
     );
-    assert!(content.contains("] H"));
-    assert!(content.contains("] U"));
+    assert!(content.contains("| H"));
+    assert!(content.contains("| U"));
 }
 
 #[tokio::test]
@@ -105,8 +107,8 @@ async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
         .await
         .unwrap();
-    assert_eq!(content.matches(">summary").count(), 1);
-    assert!(content.contains("] [summary.md...]"));
+    assert_eq!(content.matches(&format_who_tag_delim(WHO_U)).count(), 1);
+    assert!(content.contains("| [summary.md...]"));
 }
 
 #[tokio::test]
@@ -127,8 +129,8 @@ async fn append_prompts_log_do_plain_name_only_writes_do_summary() {
     let content = tokio::fs::read_to_string(run_dir.join(PROMPTS_LOG_FILE_NAME))
         .await
         .unwrap();
-    assert!(content.contains(">do"));
-    assert!(content.contains("] [do...]"));
+    assert!(content.contains(&format_who_tag_delim(WHO_U)));
+    assert!(content.contains("| [do...]"));
     assert!(!content.contains("SECRET"));
 }
 

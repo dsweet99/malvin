@@ -1,11 +1,13 @@
 use super::{
     acp_tee_markdown::agent_rendered_markup_payload,
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
-    format_log_tag_inner, stderr_use_color, stdout_use_color, timestamp_now_string,
+    format_who_tag_delim, format_who_tag_prefix, stderr_use_color, stdout_use_color,
+    timestamp_now_string,
     who_tag_ansi,
 };
 
 use crate::ansi_strip::strip_ansi_escapes;
+use crate::output::WHO_B;
 use crate::terminal_palette::{ansi_tool_dark, ansi_tool_navy, ANSI_DIM, ANSI_RESET};
 use unicode_width::UnicodeWidthStr;
 
@@ -28,8 +30,7 @@ pub(crate) fn resolve_log_timestamp(ts: Option<&str>) -> String {
 }
 
 pub(crate) fn tagged_log_line(ts: &str, who: &str, payload: &str) -> String {
-    let inner = format_log_tag_inner(who);
-    format!("{ts} [{inner}] {payload}")
+    format!("{ts} {}{payload}", format_who_tag_prefix(who))
 }
 
 pub(crate) fn tagged_display_line_with_timestamp_ansi(
@@ -37,9 +38,9 @@ pub(crate) fn tagged_display_line_with_timestamp_ansi(
     who: &str,
     payload: &str,
 ) -> String {
-    let inner = format_log_tag_inner(who);
+    let delim = format_who_tag_delim(who);
     let tag_color = who_tag_ansi(who);
-    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}[{inner}]{ANSI_RESET} {payload}")
+    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}{delim}{ANSI_RESET} {payload}")
 }
 
 pub(crate) fn stdout_tagged_display_and_log_line(
@@ -153,20 +154,23 @@ pub(crate) fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use
 }
 
 pub(crate) fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
-    let inner = format_log_tag_inner(ctx.who);
+    let delim = format_who_tag_delim(ctx.who);
+    if ctx.who == WHO_B {
+        return format!("{ANSI_DIM}{delim} {}{ANSI_RESET}", ctx.line);
+    }
     let bracket = acp_bracket_color(ctx.direction);
     if ctx.dim_payload {
         format!(
-            "{bracket}[{inner}]{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
+            "{bracket}{delim}{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
             ctx.line
         )
     } else if ctx.direction == AcpTeeDirection::FromAgent {
         format!(
-            "{bracket}[{inner}]{ANSI_RESET} {}",
+            "{bracket}{delim}{ANSI_RESET} {}",
             acp_from_agent_payload(ctx, ctx.line, true)
         )
     } else {
-        format!("{bracket}[{inner}]{ANSI_RESET} {}", ctx.line)
+        format!("{bracket}{delim}{ANSI_RESET} {}", ctx.line)
     }
 }
 
@@ -209,7 +213,11 @@ pub(crate) fn stdout_acp_display_and_log(
     display: &AcpTeeLineFmt<'_>,
     log: &AcpTeeLineFmt<'_>,
 ) -> (String, String) {
-    (acp_tee_display_line(display), acp_tee_log_line(log))
+    let log_line = acp_tee_log_line(log);
+    if display.direction == AcpTeeDirection::ToAgent {
+        return (String::new(), log_line);
+    }
+    (acp_tee_display_line(display), log_line)
 }
 
 pub(crate) fn stdout_acp_prefix_rendered_line(

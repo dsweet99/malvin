@@ -4,7 +4,7 @@ use crate::acp::*;
 pub(crate) fn kpop_trace_writer(file: tokio::fs::File) -> PromptTraceWriter {
     PromptTraceWriter {
         file,
-        who: "kpop".to_string(),
+        who: crate::output::WHO_M.to_string(),
         plain_lines: false,
         stdout_replacement: None,
         placeholder_emitted: false,

@@ -45,7 +45,7 @@ fn flush_heartbeat_terminal_count(
         .lines()
         .filter(|l| {
             l.contains("HB:")
-                || l.split("] ").nth(1).is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
+                || l.split("| ").nth(1).is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
         })
         .count()
 }

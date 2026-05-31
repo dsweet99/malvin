@@ -10,8 +10,8 @@ fn defer_sink_mutex_held_without_registration() {
 fn heartbeat_live_pending_tracks_pending_queue() {
     assert!(!heartbeat_live_pending());
     queue_pending(build_display_log_entry(
-        "[malvin.........] HB: 20260524.000000".into(),
-        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+        "malvin.| HB: 20260524.000000".into(),
+        "20260524.000000.000 malvin.| HB: 20260524.000000".into(),
     ));
     assert!(heartbeat_live_pending());
     pending_entries().clear();
@@ -21,12 +21,12 @@ fn heartbeat_live_pending_tracks_pending_queue() {
 fn pending_has_heartbeat_tracks_display_log_entries() {
     assert!(!pending_has_heartbeat());
     queue_pending(build_display_log_entry(
-        "[malvin.........] HB: 20260524.000000".into(),
-        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+        "malvin.| HB: 20260524.000000".into(),
+        "20260524.000000.000 malvin.| HB: 20260524.000000".into(),
     ));
     assert!(pending_has_heartbeat());
     assert!(entry_is_heartbeat(
-        &build_display_log_entry("x".into(), "20260524.000000.000 [malvin.........] HB: 20260524.000000".into())
+        &build_display_log_entry("x".into(), "20260524.000000.000 malvin.| HB: 20260524.000000".into())
     ));
     pending_entries().clear();
     assert!(!pending_has_heartbeat());
@@ -43,8 +43,8 @@ fn defer_already_has_heartbeat_sees_sink_queue() {
     sink.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push_entry(build_display_log_entry(
-            "[malvin.........] HB: 20260524.000000".into(),
-            "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+            "malvin.| HB: 20260524.000000".into(),
+            "20260524.000000.000 malvin.| HB: 20260524.000000".into(),
         ));
     let has = {
         let guard = sink.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -65,8 +65,8 @@ fn spill_orphaned_pending_preserves_display_log_split() {
     assert_eq!(initial, pending_len());
     let (terminal, log) = crate::deferred_log::test_fixtures::capture_stdout_render(|| {
         queue_pending(build_display_log_entry(
-            "[malvin.........] spill-inline".into(),
-            "20260524.000000.000 [malvin.........] spill-inline".into(),
+            "malvin.| spill-inline".into(),
+            "20260524.000000.000 malvin.| spill-inline".into(),
         ));
         spill_orphaned_pending();
     });
@@ -125,8 +125,8 @@ fn sync_sink_queue_heartbeat_flag_tracks_sink_queue() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .push_entry(build_display_log_entry(
-            "[malvin.........] HB: 20260524.000000".into(),
-            "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+            "malvin.| HB: 20260524.000000".into(),
+            "20260524.000000.000 malvin.| HB: 20260524.000000".into(),
         ));
     let cached = {
         let _hold = shared

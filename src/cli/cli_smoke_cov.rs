@@ -186,7 +186,7 @@ fn smoke_run_emit_echo_primary_noop_when_not_plain() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "plan").expect("write plan");
-    super::run_emit::echo_primary_to_stdout(&plan, false, "malvin").expect("echo");
+    super::run_emit::echo_primary_to_stdout(&plan, false).expect("echo");
 }
 
 #[test]
