@@ -133,12 +133,12 @@ pub async fn run_kpop(
         &prepared.session_dotfile_backups,
         &prepared.artifacts.artifact_result_md(),
     );
+    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts.run_dir)
+        .map_err(|e| e.to_string())?;
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
         crate::agent_phase::print_done_with_reporting_phase();
     }
-    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts.run_dir)
-        .map_err(|e| e.to_string())?;
     r
 }
 

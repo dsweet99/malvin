@@ -150,7 +150,6 @@ pub(crate) fn finish_gate_kpop_after_pass(
     _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
-    crate::agent_phase::print_done_with_reporting_phase();
     if let Some(timing) = run_timing {
         crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
             .map_err(|e| e.to_string())?;
@@ -158,6 +157,7 @@ pub(crate) fn finish_gate_kpop_after_pass(
         crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
             .map_err(|e| e.to_string())?;
     }
+    crate::agent_phase::print_done_with_reporting_phase();
     Ok(())
 }
 
