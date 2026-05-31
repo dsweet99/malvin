@@ -8,7 +8,7 @@ use super::{
 
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::WHO_B;
-use crate::terminal_palette::{ansi_tool_dark, ansi_tool_navy, ANSI_DIM, ANSI_RESET};
+use crate::terminal_palette::{ANSI_DIM, ANSI_RESET};
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -139,11 +139,8 @@ pub(crate) fn stdout_raw_display_and_log_line(line: &str, ts: Option<&str>) -> (
     (line.to_string(), format!("{ts} {line}"))
 }
 
-pub(crate) fn acp_bracket_color(direction: AcpTeeDirection) -> &'static str {
-    match direction {
-        AcpTeeDirection::ToAgent => ansi_tool_navy(),
-        AcpTeeDirection::FromAgent => ansi_tool_dark(),
-    }
+pub(crate) fn acp_bracket_color(who: &str) -> &'static str {
+    who_tag_ansi(who)
 }
 
 pub(crate) fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use_color: bool) -> String {
@@ -158,7 +155,7 @@ pub(crate) fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
     if ctx.who == WHO_B {
         return format!("{ANSI_DIM}{prefix}{}{ANSI_RESET}", ctx.line);
     }
-    let bracket = acp_bracket_color(ctx.direction);
+    let bracket = acp_bracket_color(ctx.who);
     if ctx.dim_payload {
         format!(
             "{bracket}{prefix}{ANSI_RESET}{ANSI_DIM}{}{ANSI_RESET}",

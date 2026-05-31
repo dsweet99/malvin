@@ -87,7 +87,7 @@ pub(super) fn assert_styled_tool_summary_payloads_match(start_payload: &str, don
         );
         assert!(
             styled.contains(ansi_tool_dark()),
-            "styled tool summary must use inbound ACP who color; got {styled:?}"
+            "styled tool summary payload verbs use dark bold; got {styled:?}"
         );
         assert_acp_tool_summary_dim_preserves_bracket(&styled);
         crate::output::assert_tool_payload_uses_verb_styling(&styled);
