@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::artifacts::RunArtifacts;
-use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore};
+use crate::prompts::{DO_HEADER_MD, HEADER_DO_MD, PromptError, PromptStore};
 
 pub(crate) struct DoCoderRun {
     pub combined: String,
@@ -12,7 +12,7 @@ pub fn prepare_do_prompt_store() -> Result<PromptStore, String> {
     let store = PromptStore::default_store();
     store.ensure_defaults().map_err(|e: PromptError| e.0)?;
     store
-        .validate_exists(HEADER_MD)
+        .validate_exists(HEADER_DO_MD)
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists(DO_HEADER_MD)
@@ -42,7 +42,7 @@ pub fn combine_do_acp_prompt_header_and_user(
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context;
     let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
-    combine_do_prompt_file_and_user(store, text, HEADER_MD, &context)
+    combine_do_prompt_file_and_user(store, text, HEADER_DO_MD, &context)
 }
 
 pub fn combine_do_raw_header_and_user(

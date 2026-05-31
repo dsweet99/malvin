@@ -33,13 +33,8 @@ fn timing_stdout_append_fixed_ms_fields(s: &mut String, first: &mut bool, v: &Va
         Some(ms) => timing_line_append_part(s, first, "wall", &format_ms_one_decimal_s(ms)),
         None => timing_line_append_part(s, first, "wall", "n/a"),
     }
-    for (json_key, line_key) in [
-        ("llm_wait_ms", "llm_wait"),
-        ("agent_retry_backoff_ms", "agent_retry_backoff"),
-    ] {
-        let ms = v.get(json_key).and_then(Value::as_u64).unwrap_or(0);
-        timing_line_append_part(s, first, line_key, &format_ms_one_decimal_s(ms));
-    }
+    let llm_wait_ms = v.get("llm_wait_ms").and_then(Value::as_u64).unwrap_or(0);
+    timing_line_append_part(s, first, "llm_wait", &format_ms_one_decimal_s(llm_wait_ms));
     if let Some(ms) = v.get("tool_calls_ms").and_then(Value::as_u64) {
         timing_line_append_part(s, first, "tool_calls", &format_ms_one_decimal_s(ms));
     }
@@ -111,6 +106,7 @@ mod tests {
         assert!(s.contains("wall = "));
         assert!(s.contains("tool_calls = "));
         assert!(s.contains("implement = "));
+        assert!(!s.contains("agent_retry_backoff = "));
     }
 
     #[test]
@@ -138,8 +134,26 @@ mod tests {
         let line = format_timing_stdout_line_from_json(&json);
         assert!(line.contains("tool_calls = "));
         assert!(line.contains("implement = "));
+        assert!(!line.contains("agent_retry_backoff = "));
         assert!(!line.contains("summary = "));
         assert!(!line.contains("concerns = "));
+    }
+
+    #[test]
+    fn timing_line_omits_agent_retry_backoff_even_when_present_in_json() {
+        let json = json!({
+            "wall_clock_ms": 532_200,
+            "llm_wait_ms": 505_400,
+            "agent_retry_backoff_ms": 0,
+            "tool_calls_ms": 254_200,
+            "phases_ms": { "implement": 505_400 }
+        });
+        let line = format_timing_stdout_line_from_json(&json);
+        assert!(line.contains("wall = 532.2s"));
+        assert!(line.contains("llm_wait = 505.4s"));
+        assert!(line.contains("tool_calls = 254.2s"));
+        assert!(line.contains("implement = 505.4s"));
+        assert!(!line.contains("agent_retry_backoff"));
     }
 
     #[test]

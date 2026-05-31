@@ -1,4 +1,4 @@
-use super::{DO_HEADER_MD, HEADER_MD};
+use super::{DO_HEADER_MD, HEADER_DO_MD, HEADER_MD};
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
@@ -24,6 +24,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
         .or_else(|| default_kpop_prompt(name))
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
+            HEADER_DO_MD => Some(include_str!("../../default_prompts/header_do.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             _ => None,
         })
