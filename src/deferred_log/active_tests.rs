@@ -169,7 +169,7 @@ fn try_defer_heartbeat_under_mutex_flushes_display_log_split() {
         .lines()
         .find(|l| l.contains("HB:"))
         .expect("heartbeat log line");
-    assert!(line.contains("20260524.000000.000 h| HB:"));
+    assert!(line.contains("20260524.000000.000 h|HB:"));
 }
 
 #[test]

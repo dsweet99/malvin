@@ -10,11 +10,12 @@ use super::{
 use crate::time_format::heartbeat_payload_now;
 
 pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
-    if log.contains("| HB:") {
+    if log.contains("| HB:") || log.contains("|HB:") {
         return true;
     }
-    log.split("| ")
+    log.split('|')
         .nth(1)
+        .map(str::trim_start)
         .is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
 }
 

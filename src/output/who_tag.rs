@@ -45,7 +45,8 @@ pub fn format_acp_directional_tag_prefix(direction: char, _stem: &str) -> String
 
 pub(crate) fn payload_after_fixed_width_who_tag(line: &str) -> Option<&str> {
     let (tag_end, _) = line.char_indices().nth(LOG_TAG_INNER_WIDTH)?;
-    line[tag_end..].strip_prefix("| ")
+    let rest = line[tag_end..].strip_prefix('|')?;
+    Some(rest.strip_prefix(' ').unwrap_or(rest))
 }
 
 pub(crate) fn payload_after_fixed_width_bracket_tag(line: &str) -> Option<&str> {

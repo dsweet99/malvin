@@ -60,9 +60,9 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
     crate::acp::trace_file_write_line(&mut writer, "hello", None, TRACE_STDOUT_OFF).await;
     drop(writer);
     let s = tokio::fs::read_to_string(&path).await.unwrap();
-    let prefix = crate::output::format_who_tag_prefix("review_1");
+    let delim = crate::output::format_who_tag_delim("review_1");
     assert!(
-        s.contains(&format!(" {prefix}hello\n")),
+        s.contains(&format!(" {delim}hello\n")),
         "expected prompt-prefixed trace line, got {s:?}"
     );
 }

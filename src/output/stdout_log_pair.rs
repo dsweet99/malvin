@@ -1,7 +1,7 @@
 use super::{
     acp_tee_markdown::agent_rendered_markup_payload,
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
-    format_who_tag_delim, format_who_tag_prefix, stderr_use_color, stdout_use_color,
+    format_who_tag_delim, stderr_use_color, stdout_use_color,
     timestamp_now_string,
     who_tag_ansi,
 };
@@ -30,7 +30,7 @@ pub(crate) fn resolve_log_timestamp(ts: Option<&str>) -> String {
 }
 
 pub(crate) fn tagged_log_line(ts: &str, who: &str, payload: &str) -> String {
-    format!("{ts} {}{payload}", format_who_tag_prefix(who))
+    format!("{ts} {}{payload}", format_who_tag_delim(who))
 }
 
 pub(crate) fn tagged_display_line_with_timestamp_ansi(

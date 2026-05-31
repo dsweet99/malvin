@@ -132,6 +132,7 @@ fn heartbeat_defer_helpers_are_exercised() {
 fn write_heartbeat_log_line_covers_deferred_and_immediate() {
     let (terminal, text) = run_deferred_write_heartbeat_log_line_test();
     let prefix = format_who_tag_prefix(MALVIN_WHO);
+    let delim = crate::output::format_who_tag_delim(MALVIN_WHO);
     let heartbeat_lines: Vec<_> = text
         .lines()
         .filter(|l| l.contains("HB:") || log_contains_heartbeat(&format!("{l}\n")))
@@ -142,8 +143,9 @@ fn write_heartbeat_log_line_covers_deferred_and_immediate() {
         assert!(is_log_timestamp_token(ts));
         assert!(
             line.contains(&format!("{prefix}HB:"))
+                || line.contains(&format!("{delim}HB:"))
                 || crate::time_format::heartbeat_payload_has_wall_clock_prefix(
-                    line.split("| ").nth(1).unwrap_or(""),
+                    line.split('|').nth(1).map_or("", str::trim_start),
                 )
         );
     }

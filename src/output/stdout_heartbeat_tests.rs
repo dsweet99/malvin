@@ -5,8 +5,8 @@ use crate::output::stdout_heartbeat::{
     try_emit_heartbeat_if_due,
 };
 use crate::output::{
-    WHO_H, format_who_tag_prefix, init_stdout_style, is_log_timestamp_token, print_stdout_line,
-    set_stdout_log_path,
+    WHO_H, format_who_tag_delim, format_who_tag_prefix, init_stdout_style, is_log_timestamp_token,
+    print_stdout_line, set_stdout_log_path,
 };
 use crate::time_format::heartbeat_payload_has_wall_clock_prefix;
 
@@ -19,14 +19,15 @@ fn heartbeat_log_line_uses_logger_timestamp_only() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
-    let prefix = format_who_tag_prefix(WHO_H);
+    let log_delim = format_who_tag_delim(WHO_H);
+    let display_prefix = format_who_tag_prefix(WHO_H);
     let line = text.lines().next().expect("heartbeat line");
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
     let payload = line
-        .split_once(&prefix)
+        .split_once(&log_delim)
         .map_or("", |(_, rest)| rest);
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
-    assert!(terminal.contains(&format!("{prefix}{payload}")));
+    assert!(terminal.contains(&format!("{display_prefix}{payload}")));
     assert!(!terminal.trim().starts_with("20"));
     assert!(!terminal.is_empty());
 }
@@ -37,14 +38,15 @@ fn heartbeat_emits_once_when_interval_not_elapsed() {
         maybe_emit_stdout_heartbeat();
         maybe_emit_stdout_heartbeat();
     });
-    let marker = format_who_tag_prefix(WHO_H);
+    let log_delim = format_who_tag_delim(WHO_H);
+    let display_prefix = format_who_tag_prefix(WHO_H);
     assert_eq!(
-        text.matches(&marker).count(),
+        text.matches(&log_delim).count(),
         1,
         "expected one heartbeat: {text:?}"
     );
     assert_eq!(
-        terminal.matches(&marker).count(),
+        terminal.matches(&display_prefix).count(),
         1,
         "expected one heartbeat: {terminal:?}"
     );
@@ -57,11 +59,11 @@ fn due_heartbeat_terminal_uses_color_without_wall_clock_prefix() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
-    let prefix = format_who_tag_prefix(WHO_H);
+    let log_delim = format_who_tag_delim(WHO_H);
     let payload = text
         .lines()
         .next()
-        .and_then(|line| line.split_once(&prefix))
+        .and_then(|line| line.split_once(&log_delim))
         .map_or("", |(_, rest)| rest);
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(payload));
@@ -82,7 +84,7 @@ fn first_tagged_stdout_line_is_not_preceded_by_immediate_heartbeat() {
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read");
     assert!(!text.contains(&format!("{}|", crate::output::WHO_H)));
-    assert!(text.contains("| payload"));
+    assert!(text.contains("|payload"));
 }
 
 #[test]
@@ -90,11 +92,11 @@ fn try_emit_heartbeat_if_due_immediate_when_no_active_sink() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         try_emit_heartbeat_if_due(Instant::now(), false);
     });
-    let prefix = format_who_tag_prefix(WHO_H);
+    let log_delim = format_who_tag_delim(WHO_H);
     let payload = text
         .lines()
         .next()
-        .and_then(|line| line.split_once(&prefix))
+        .and_then(|line| line.split_once(&log_delim))
         .map_or("", |(_, rest)| rest);
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(payload));
@@ -108,11 +110,11 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
     let (terminal, text) = due_heartbeat_render_capture_test(|| {
         poll_wall_clock_heartbeat_if_due();
     });
-    let prefix = format_who_tag_prefix(WHO_H);
+    let log_delim = format_who_tag_delim(WHO_H);
     let payload = text
         .lines()
         .next()
-        .and_then(|line| line.split_once(&prefix))
+        .and_then(|line| line.split_once(&log_delim))
         .map_or("", |(_, rest)| rest);
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(payload));

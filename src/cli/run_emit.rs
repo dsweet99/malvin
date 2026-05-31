@@ -72,7 +72,7 @@ pub fn emit_run_startup_sequence(
 #[cfg(test)]
 mod tests {
     use super::{emit_host_resources_line, emit_run_startup_sequence, RunStartupEmitOpts};
-    use crate::output::{format_who_tag_prefix, WHO_U};
+    use crate::output::{format_who_tag_delim, WHO_U};
 
     #[test]
     fn emit_command_line_uses_user_who_tag() {
@@ -81,9 +81,9 @@ mod tests {
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         super::emit_command_line(&run_dir, false).expect("emit");
         let text = std::fs::read_to_string(run_dir.join("command.log")).expect("read");
-        let prefix = format_who_tag_prefix(WHO_U);
+        let delim = format_who_tag_delim(WHO_U);
         assert!(
-            text.contains(&format!(" {prefix}Command: ")),
+            text.contains(&format!(" {delim}Command: ")),
             "command.log must tag user startup with u|; got {text:?}"
         );
     }

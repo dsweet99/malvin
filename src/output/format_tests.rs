@@ -3,17 +3,17 @@ use super::{
     LOG_TAG_INNER_WIDTH, MALVIN_WHO, WHO_M, WHO_O, WHO_T, WHO_U,
     format_acp_directional_tag_prefix,
     format_line, format_line_with_timestamp, format_line_with_timestamp_ansi, format_log_tag_inner,
-    format_who_tag_prefix, init_stdout_style, is_command_prelude_line,
+    format_who_tag_delim, format_who_tag_prefix, init_stdout_style, is_command_prelude_line,
     print_outgoing_prompt_log, print_stderr_line, print_stdout_line, print_stdout_raw_line,
     print_stdout_text, set_stdout_log_path,
 };
 
 #[test]
 fn formats_expected_mini_header() {
-    let prefix = format_who_tag_prefix(WHO_M);
+    let delim = format_who_tag_delim(WHO_M);
     assert_eq!(
         format_line_with_timestamp("20260413.121314.015", WHO_M, "hello"),
-        format!("20260413.121314.015 {prefix}hello")
+        format!("20260413.121314.015 {delim}hello")
     );
 }
 
@@ -52,7 +52,7 @@ fn detects_prefixed_and_unprefixed_command_prelude() {
         "Command: malvin code @plan.md"
     )));
     assert!(!is_command_prelude_line(
-        "20260413.121314.015 m| not a command line"
+        "20260413.121314.015 m|not a command line"
     ));
 }
 
@@ -112,13 +112,14 @@ fn who_tag_payload_and_timestamp_token_helpers() {
         Some("Command: x")
     );
     assert_eq!(
-        payload_after_fixed_width_who_tag(&format!("{}bad", format_who_tag_prefix(MALVIN_WHO).trim_end())),
-        None
+        payload_after_fixed_width_who_tag(&format!("{}bad", format_who_tag_delim(MALVIN_WHO))),
+        Some("bad")
     );
     assert_eq!(
-        payload_after_fixed_width_bracket_tag(&format!("{}bad", format_who_tag_prefix(MALVIN_WHO).trim_end())),
-        None
+        payload_after_fixed_width_bracket_tag(&format!("{}bad", format_who_tag_delim(MALVIN_WHO))),
+        Some("bad")
     );
+    assert_eq!(payload_after_fixed_width_who_tag("no-pipe-tag"), None);
 }
 
 #[test]
@@ -176,7 +177,7 @@ fn stdout_log_timestamps_disk_but_not_live_display() {
         super::is_log_timestamp_token(log_line.split_whitespace().next().unwrap_or("")),
         "stdout.log line must be timestamped: {log_line:?}"
     );
-    assert!(log_line.contains("| m"));
+    assert!(log_line.contains("|m"));
 }
 
 #[test]

@@ -49,9 +49,9 @@ fn outgoing_prompt_log_who_tag_uses_stem_bracket_keeps_md() {
     print_outgoing_prompt_log("bug_fix", "bug_fix.md");
     set_stdout_log_path(None);
     let text = std::fs::read_to_string(path).expect("read stdout log");
-    let prefix = super::format_who_tag_prefix(WHO_U);
+    let delim = super::format_who_tag_delim(WHO_U);
     assert!(
-        text.contains(&format!("{prefix}[bug_fix.md...]")),
+        text.contains(&format!("{delim}[bug_fix.md...]")),
         "expected user who tag and .md bracket payload: {text:?}"
     );
     assert!(

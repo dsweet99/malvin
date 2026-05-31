@@ -106,7 +106,7 @@ mod tests {
         );
         assert!(!display.starts_with("20"));
         assert!(log.starts_with("20"));
-        assert!(log.contains("| payload"));
+        assert!(log.contains("|payload"));
     }
 
     #[test]

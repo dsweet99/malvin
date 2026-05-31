@@ -65,9 +65,9 @@ async fn append_prompts_log_uniform_appends_tagged_timestamped_lines() {
         .unwrap();
     let user_tag = format_who_tag_delim(WHO_U);
     assert_eq!(content.matches(&user_tag).count(), 3);
-    assert!(content.contains("| a"));
-    assert!(content.contains("| b"));
-    assert!(content.contains("| c"));
+    assert!(content.contains("|a"));
+    assert!(content.contains("|b"));
+    assert!(content.contains("|c"));
 }
 
 #[tokio::test]
@@ -92,8 +92,8 @@ async fn append_prompts_log_do_plain_uses_do_stem_like_stdout() {
         content.contains(&format_who_tag_delim(WHO_U)),
         "prompts.log should use user tag for do: {content}"
     );
-    assert!(content.contains("| H"));
-    assert!(content.contains("| U"));
+    assert!(content.contains("|H"));
+    assert!(content.contains("|U"));
 }
 
 #[tokio::test]
@@ -108,7 +108,7 @@ async fn append_prompts_log_uniform_name_only_writes_one_summary_line() {
         .await
         .unwrap();
     assert_eq!(content.matches(&format_who_tag_delim(WHO_U)).count(), 1);
-    assert!(content.contains("| [summary.md...]"));
+    assert!(content.contains("|[summary.md...]"));
 }
 
 #[tokio::test]
@@ -130,7 +130,7 @@ async fn append_prompts_log_do_plain_name_only_writes_do_summary() {
         .await
         .unwrap();
     assert!(content.contains(&format_who_tag_delim(WHO_U)));
-    assert!(content.contains("| [do...]"));
+    assert!(content.contains("|[do...]"));
     assert!(!content.contains("SECRET"));
 }
 
