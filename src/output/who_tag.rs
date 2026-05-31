@@ -1,6 +1,6 @@
 //! Fixed-width who-tag formatting and log-line payload parsing.
 
-/// Fixed width (Unicode scalars) for the who label in log lines (`…| …`).
+/// Fixed width (Unicode scalars) for the who label in log lines (`…|payload`; display uses `…| payload`).
 pub const LOG_TAG_INNER_WIDTH: usize = 1;
 
 /// General operational info (e.g. "Running kiss check").

@@ -12,7 +12,7 @@ pub(crate) use super::stdout_log_pair::{acp_tee_payload_prefix, acp_tee_payload_
 use super::stdout_render::{route_stdout_rendered_line, StdoutRenderPrelude};
 use super::timestamp_now_string;
 
-/// Leading spaces for tool-summary payloads in `stdout.log` (matches thought tee indent).
+/// Leading space for tool-summary payloads on the live terminal (log lines omit it).
 pub(crate) const TOOL_CALL_LOG_INDENT: &str = " ";
 
 pub(crate) fn indent_tool_call_log_payload(payload: &str) -> String {
@@ -23,7 +23,7 @@ fn tool_summary_tee_display_and_log<'a>(
     ev: &AcpTeeStdoutEvent<'a>,
     display_payload: &str,
 ) -> (String, String) {
-    let log_payload = indent_tool_call_log_payload(ev.line);
+    let log_payload = ev.line;
     let display_indented = indent_tool_call_log_payload(display_payload);
     let display_ctx = AcpTeeLineFmt {
         ts: ev.ts,

@@ -68,7 +68,7 @@ fn thought_stdout_payload_indents_one_space() {
         Some(SessionUpdateChunkKind::Thought),
         &writer,
     );
-    assert_eq!(out, " internal reasoning");
+    assert_eq!(out, "internal reasoning");
 }
 
 #[test]

@@ -58,7 +58,7 @@ fn heartbeat_contention_pending_len() -> usize {
 fn try_push_heartbeat_while_mutex_held(shared: &SharedDeferSink) {
     let hb = build_display_log_entry(
         "h| HB: 20260524.000000".into(),
-        "20260524.000000.000 h| HB: 20260524.000000".into(),
+        "20260524.000000.000 h|HB: 20260524.000000".into(),
     );
     let _acp_hold = shared
         .lock()
@@ -112,7 +112,7 @@ fn pending_flush_covers_queue_and_drain_paths() {
     )));
     super::queue_pending(build_display_log_entry(
         "malvin.| pending-hb".into(),
-        "20260524.000000.000 malvin.| pending-hb".into(),
+        "20260524.000000.000 malvin.|pending-hb".into(),
     ));
     assert_eq!(super::pending_len(), 1);
     super::flush_pending_into(
@@ -184,7 +184,7 @@ fn unregister_spills_orphaned_pending_without_active_sink() {
         crate::deferred_log::test_fixtures::capture_stdout_render_unlocked(|| {
             super::queue_pending(build_display_log_entry(
                 "malvin.| ORPHAN_ACTIVE".into(),
-                "20260524.000000.000 malvin.| ORPHAN_ACTIVE".into(),
+                "20260524.000000.000 malvin.|ORPHAN_ACTIVE".into(),
             ));
             unregister();
         });

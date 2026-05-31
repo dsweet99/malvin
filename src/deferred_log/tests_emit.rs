@@ -23,7 +23,7 @@ use crate::deferred_log::types::{DeferredPayload, ToolDrainMeta};
 #[test]
 fn emit_display_log_entry_writes_timestamped_log_line() {
     let display = "malvin.| deferred-hb".to_string();
-    let log = "20260524.000000.000 malvin.| deferred-hb".to_string();
+    let log = "20260524.000000.000 malvin.|deferred-hb".to_string();
     let (terminal, text) = capture_stdout_render(|| {
         emit_deferred_entry(&build_display_log_entry(display.clone(), log.clone()));
     });

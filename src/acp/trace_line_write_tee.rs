@@ -17,9 +17,7 @@ pub(crate) fn trace_stdout_tee_payload(
     if writer.plain_lines || writer.raw_output {
         return line.to_string();
     }
-    if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
-        return format!(" {line}");
-    }
+    let _ = kind;
     line.to_string()
 }
 

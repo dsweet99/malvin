@@ -58,7 +58,7 @@ fn pending_entries_emitted_on_unregister_then_force_flush() {
         let marker = "PENDING_TEARDOWN_MARKER";
         let hb = build_display_log_entry(
             format!("malvin.| {marker}"),
-            format!("20260524.000000.000 malvin.| {marker}"),
+            format!("20260524.000000.000 malvin.|{marker}"),
         );
         {
             let _acp_hold = shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner);

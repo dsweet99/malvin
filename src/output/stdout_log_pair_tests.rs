@@ -1,10 +1,14 @@
 use crate::output::stdout_log_pair::{
-    acp_tee_payload_prefix, acp_tee_payload_prefix_width,
+    acp_tee_log_line, acp_tee_payload_prefix, acp_tee_payload_prefix_width,
     format_line_acp_ansi_payload, stderr_tagged_display_and_log_line, stdout_acp_display_and_log,
     tagged_display_and_log_line_for_color, tagged_display_line_with_timestamp_ansi, tagged_log_line,
     AcpTeeDirection, AcpTeeLineFmt,
 };
-use crate::output::{format_heartbeat_stdout_ansi, format_line_stdout, is_log_timestamp_token, stdout_tagged_display_and_log_line, MALVIN_WHO};
+use crate::output::{
+    format_heartbeat_stdout_ansi, format_line_stdout, format_who_tag_delim, format_who_tag_prefix,
+    is_log_timestamp_token, stdout_tagged_display_and_log_line, ERROR_WHO, MALVIN_WHO, WARNING_WHO,
+    WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U,
+};
 
 #[test]
 fn heartbeat_stdout_ansi_keeps_who_color_through_payload() {
@@ -149,4 +153,76 @@ pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
         !prefix.contains(ANSI_DIM),
         "who prefix must not be dimmed; got {line:?}"
     );
+}
+
+fn log_line_uses_delim_without_trailing_space(log: &str, who: &str, payload: &str) -> bool {
+    let delim = format_who_tag_delim(who);
+    log.ends_with(&format!("{delim}{payload}"))
+}
+
+const FUZZ_WHO_TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H];
+
+#[test]
+fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
+    const TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T, WHO_U, WHO_H, ERROR_WHO, WARNING_WHO];
+    let ts = "20260524.000000.000";
+    for who in TAGS {
+        let payload = "probe payload";
+        let log = tagged_log_line(ts, who, payload);
+        assert!(
+            log_line_uses_delim_without_trailing_space(&log, who, payload),
+            "who={who}: {log:?}"
+        );
+    }
+}
+
+#[test]
+fn display_log_metamorphic_single_space_after_pipe() {
+    const TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T];
+    let ts = "20260524.000000.000";
+    for who in TAGS {
+        for payload in ["Run cargo test", "internal reasoning", ""] {
+            let (display, log) =
+                tagged_display_and_log_line_for_color(who, payload, Some(ts), false);
+            assert_eq!(log, tagged_log_line(ts, who, payload));
+            assert_eq!(display, format!("{}{payload}", format_who_tag_prefix(who)));
+        }
+    }
+}
+
+#[test]
+fn acp_tee_log_line_omits_space_after_who_pipe() {
+    let payload = "Run echo hi · 1ms · ✓";
+    let ctx = AcpTeeLineFmt {
+        ts: "20260524.000000.000",
+        direction: AcpTeeDirection::FromAgent,
+        who: WHO_T,
+        line: payload,
+        dim_payload: true,
+    };
+    let log = acp_tee_log_line(&ctx);
+    assert!(log_line_uses_delim_without_trailing_space(&log, WHO_T, payload), "{log:?}");
+}
+
+#[test]
+fn tagged_log_line_no_pipe_space_fuzz() {
+    use rand::{Rng, SeedableRng};
+
+    let seed = std::env::var("LOG_PIPE_FUZZ_SEED")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(rand::random);
+    eprintln!("tagged_log_line_no_pipe_space_fuzz seed: {seed}");
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let ts = "20260524.000000.000";
+    for _ in 0..200 {
+        let who = FUZZ_WHO_TAGS[rng.gen_range(0..FUZZ_WHO_TAGS.len())];
+        let lead_spaces: String = (0..rng.gen_range(0..3)).map(|_| ' ').collect();
+        let payload = format!("{lead_spaces}payload{}", rng.gen_range(0..u32::MAX));
+        let log = tagged_log_line(ts, who, &payload);
+        assert!(
+            log_line_uses_delim_without_trailing_space(&log, who, &payload),
+            "seed={seed} log={log:?}"
+        );
+    }
 }

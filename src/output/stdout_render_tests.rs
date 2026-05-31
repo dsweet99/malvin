@@ -53,7 +53,7 @@ fn with_log<F: FnOnce()>(run: F) -> String {
 #[test]
 fn immediate_emit_prints_display_not_log_on_terminal() {
     let display = "malvin.| hb-probe";
-    let log = "20260524.000000.000 malvin.| hb-probe";
+    let log = "20260524.000000.000 malvin.|hb-probe";
     let (terminal, disk) = with_render_capture(|| emit_stdout_rendered_immediate(display, log));
     assert_eq!(terminal.trim(), display);
     assert_eq!(disk.lines().next().expect("log line"), log);
@@ -81,7 +81,7 @@ fn flush_raw_line_with_ts_writes_log_without_defer() {
 #[test]
 fn flush_only_writes_timestamped_log_not_display_prefix() {
     let display = "malvin.| flush-probe";
-    let log = "20260524.000000.000 malvin.| flush-probe";
+    let log = "20260524.000000.000 malvin.|flush-probe";
     let (terminal, disk) = with_render_capture(|| flush_stdout_rendered_line(display, log));
     assert_eq!(disk.lines().next().expect("log line"), log);
     assert_eq!(terminal.trim(), display);
