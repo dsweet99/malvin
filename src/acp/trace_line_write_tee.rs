@@ -18,7 +18,7 @@ pub(crate) fn trace_stdout_tee_payload(
         return line.to_string();
     }
     if matches!(kind, Some(SessionUpdateChunkKind::Thought)) {
-        return format!("   {line}");
+        return format!(" {line}");
     }
     line.to_string()
 }

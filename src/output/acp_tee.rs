@@ -13,7 +13,7 @@ use super::stdout_render::{route_stdout_rendered_line, StdoutRenderPrelude};
 use super::timestamp_now_string;
 
 /// Leading spaces for tool-summary payloads in `stdout.log` (matches thought tee indent).
-pub(crate) const TOOL_CALL_LOG_INDENT: &str = "   ";
+pub(crate) const TOOL_CALL_LOG_INDENT: &str = " ";
 
 pub(crate) fn indent_tool_call_log_payload(payload: &str) -> String {
     format!("{TOOL_CALL_LOG_INDENT}{payload}")

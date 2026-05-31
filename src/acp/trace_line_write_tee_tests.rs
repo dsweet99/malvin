@@ -61,21 +61,21 @@ fn format_trace_display_line_brackets_thoughts() {
 }
 
 #[test]
-fn thought_stdout_payload_indents_three_spaces() {
+fn thought_stdout_payload_indents_one_space() {
     let writer = trace_writer();
     let out = trace_stdout_tee_payload(
         "internal reasoning",
         Some(SessionUpdateChunkKind::Thought),
         &writer,
     );
-    assert_eq!(out, "   internal reasoning");
+    assert_eq!(out, " internal reasoning");
 }
 
 #[test]
-fn tool_call_log_payload_indents_three_spaces() {
+fn tool_call_log_payload_indents_one_space() {
     assert_eq!(
         crate::output::acp_tee::indent_tool_call_log_payload("Run echo hi · 1ms · ✓"),
-        "   Run echo hi · 1ms · ✓"
+        " Run echo hi · 1ms · ✓"
     );
 }
 
