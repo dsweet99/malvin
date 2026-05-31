@@ -30,6 +30,7 @@ fn ansi_thought_tag_uses_uniform_dim_grey() {
     use crate::terminal_palette::{ansi_tool_dark, ansi_tool_navy, ANSI_DIM};
 
     let line = format_line_stdout_ansi(WHO_B, "fail with max_abs=1.0.");
+    assert!(line.contains("b| "), "thought display must space after pipe; got {line:?}");
     assert!(line.contains(ANSI_DIM));
     assert!(!line.contains(ansi_tool_navy()));
     assert!(!line.contains(ansi_tool_dark()));

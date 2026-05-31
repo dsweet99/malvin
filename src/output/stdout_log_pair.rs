@@ -1,7 +1,7 @@
 use super::{
     acp_tee_markdown::agent_rendered_markup_payload,
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi,
-    format_who_tag_delim, stderr_use_color, stdout_use_color,
+    format_who_tag_delim, format_who_tag_prefix, stderr_use_color, stdout_use_color,
     timestamp_now_string,
     who_tag_ansi,
 };
@@ -38,9 +38,9 @@ pub(crate) fn tagged_display_line_with_timestamp_ansi(
     who: &str,
     payload: &str,
 ) -> String {
-    let delim = format_who_tag_delim(who);
+    let prefix = format_who_tag_prefix(who);
     let tag_color = who_tag_ansi(who);
-    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}{delim}{ANSI_RESET} {payload}")
+    format!("{ANSI_DIM}{ts}{ANSI_RESET} {tag_color}{prefix}{ANSI_RESET}{payload}")
 }
 
 pub(crate) fn stdout_tagged_display_and_log_line(
@@ -154,23 +154,23 @@ pub(crate) fn acp_from_agent_payload(ctx: &AcpTeeLineFmt<'_>, payload: &str, use
 }
 
 pub(crate) fn acp_bracket_payload(ctx: &AcpTeeLineFmt<'_>) -> String {
-    let delim = format_who_tag_delim(ctx.who);
+    let prefix = format_who_tag_prefix(ctx.who);
     if ctx.who == WHO_B {
-        return format!("{ANSI_DIM}{delim} {}{ANSI_RESET}", ctx.line);
+        return format!("{ANSI_DIM}{prefix}{}{ANSI_RESET}", ctx.line);
     }
     let bracket = acp_bracket_color(ctx.direction);
     if ctx.dim_payload {
         format!(
-            "{bracket}{delim}{ANSI_RESET} {ANSI_DIM}{}{ANSI_RESET}",
+            "{bracket}{prefix}{ANSI_RESET}{ANSI_DIM}{}{ANSI_RESET}",
             ctx.line
         )
     } else if ctx.direction == AcpTeeDirection::FromAgent {
         format!(
-            "{bracket}{delim}{ANSI_RESET} {}",
+            "{bracket}{prefix}{ANSI_RESET}{}",
             acp_from_agent_payload(ctx, ctx.line, true)
         )
     } else {
-        format!("{bracket}{delim}{ANSI_RESET} {}", ctx.line)
+        format!("{bracket}{prefix}{ANSI_RESET}{}", ctx.line)
     }
 }
 

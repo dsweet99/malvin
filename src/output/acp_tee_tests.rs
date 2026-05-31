@@ -106,7 +106,7 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     assert!(to_line.contains('\x1b'));
     assert!(from_line.contains('\x1b'));
     assert_ne!(to_line, from_line);
-    assert!(to_line.ends_with(" out"));
+    assert!(to_line.ends_with("out"));
     assert!(
         from_line.contains(&format!("{}in", ansi_tool_white())),
         "FromAgent payload should be white; got {from_line:?}"

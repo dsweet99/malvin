@@ -114,7 +114,7 @@ fn acp_bracket_payload_supports_dim_mode() {
 pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
     use crate::terminal_palette::{ansi_tool_dark, ANSI_BOLD, ANSI_DIM, ANSI_RESET};
 
-    let dim_sep = format!("{ANSI_RESET} {ANSI_DIM}");
+    let dim_sep = format!("{ANSI_RESET}{ANSI_DIM}");
     let dim_start = line
         .find(&dim_sep)
         .unwrap_or_else(|| panic!("expected dim tool payload; got {line:?}"));
@@ -177,7 +177,7 @@ fn tagged_log_line_omits_space_after_who_pipe_for_all_tags() {
 }
 
 #[test]
-fn display_log_metamorphic_single_space_after_pipe() {
+fn display_log_metamorphic_pipe_space_only_for_thought_and_tool() {
     const TAGS: &[&str] = &[WHO_O, WHO_M, WHO_B, WHO_T];
     let ts = "20260524.000000.000";
     for who in TAGS {
@@ -186,8 +186,21 @@ fn display_log_metamorphic_single_space_after_pipe() {
                 tagged_display_and_log_line_for_color(who, payload, Some(ts), false);
             assert_eq!(log, tagged_log_line(ts, who, payload));
             assert_eq!(display, format!("{}{payload}", format_who_tag_prefix(who)));
+            assert!(log_line_uses_delim_without_trailing_space(&log, who, payload));
         }
     }
+}
+
+#[test]
+fn log_rejects_decorative_space_after_who_pipe() {
+    let ts = "20260524.000000.000";
+    let who = WHO_O;
+    let payload = "Logs: /tmp/run";
+    let log = tagged_log_line(ts, who, payload);
+    let delim = format_who_tag_delim(who);
+    let bad = format!("{ts} {delim} {payload}");
+    assert_ne!(log, bad, "log must not insert decorative space after who pipe");
+    assert!(log_line_uses_delim_without_trailing_space(&log, who, payload));
 }
 
 #[test]

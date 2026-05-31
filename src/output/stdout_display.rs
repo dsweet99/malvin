@@ -19,14 +19,14 @@ pub fn format_line_stdout(who: &str, line: &str) -> String {
 
 #[must_use]
 pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
-    let delim = super::format_who_tag_delim(who);
+    let prefix = format_who_tag_prefix(who);
     match who {
-        WARNING_WHO => format!("{}{delim} {line}{ANSI_RESET}", ansi_tool_amber()),
-        ERROR_WHO => format!("{}{delim} {line}{ANSI_RESET}", ansi_tool_coral()),
-        WHO_B => format!("{}{delim} {line}{ANSI_RESET}", super::ANSI_DIM),
+        WARNING_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_tool_amber()),
+        ERROR_WHO => format!("{}{prefix}{line}{ANSI_RESET}", ansi_tool_coral()),
+        WHO_B => format!("{}{prefix}{line}{ANSI_RESET}", super::ANSI_DIM),
         _ => {
             let tag_color = who_tag_ansi(who);
-            format!("{tag_color}{delim}{ANSI_RESET} {line}")
+            format!("{tag_color}{prefix}{ANSI_RESET}{line}")
         }
     }
 }
@@ -35,7 +35,7 @@ pub fn format_line_stdout_ansi(who: &str, line: &str) -> String {
 #[must_use]
 pub fn format_heartbeat_stdout_ansi(who: &str, line: &str) -> String {
     format!(
-        "{}{} {line}{ANSI_RESET}",
+        "{}{}{line}{ANSI_RESET}",
         ansi_tool_navy(),
         super::format_who_tag_delim(who)
     )
@@ -95,7 +95,7 @@ mod tests {
         let plain = format_line_stdout(WHO_M, "hello");
         let ansi = format_line_stdout_ansi(WHO_M, "hello");
         assert!(ansi.contains('\x1b'));
-        assert!(ansi.ends_with(" hello"));
+        assert!(ansi.ends_with("hello"));
         assert!(!plain.contains('\x1b'));
     }
 
@@ -174,7 +174,7 @@ mod tests {
             display.starts_with(ansi_tool_navy()),
             "heartbeat line must open with navy who-tag; got {display:?}"
         );
-        let reset_before_payload = format!("|{} {payload}", super::ANSI_RESET);
+        let reset_before_payload = format!("|{}{payload}", super::ANSI_RESET);
         assert!(
             !display.contains(&reset_before_payload),
             "must not reset color before payload"

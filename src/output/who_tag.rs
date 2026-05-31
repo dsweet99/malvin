@@ -1,6 +1,6 @@
 //! Fixed-width who-tag formatting and log-line payload parsing.
 
-/// Fixed width (Unicode scalars) for the who label in log lines (`…|payload`; display uses `…| payload`).
+/// Fixed width (Unicode scalars) for the who label in log lines (`…|payload`; display may use `…| ` for `b`/`t`).
 pub const LOG_TAG_INNER_WIDTH: usize = 1;
 
 /// General operational info (e.g. "Running kiss check").
@@ -27,10 +27,20 @@ pub fn format_who_tag_delim(label: &str) -> String {
     format!("{}|", format_log_tag_inner(label))
 }
 
-/// Who-tag prefix before payload: `{delim} `.
+#[must_use]
+pub(crate) fn who_tag_display_space_after_pipe(label: &str) -> bool {
+    matches!(format_log_tag_inner(label).as_str(), WHO_B | WHO_T)
+}
+
+/// Who-tag prefix before payload on display: `{delim}` or `{delim} ` for thought/tool tags.
 #[must_use]
 pub fn format_who_tag_prefix(label: &str) -> String {
-    format!("{} ", format_who_tag_delim(label))
+    let delim = format_who_tag_delim(label);
+    if who_tag_display_space_after_pipe(label) {
+        format!("{delim} ")
+    } else {
+        delim
+    }
 }
 
 /// Map legacy outbound/inbound direction to the single-char who tag (no `>`/`<` stem).
@@ -89,6 +99,28 @@ mod tests {
         format_acp_directional_tag_prefix, format_who_tag_prefix, payload_after_fixed_width_bracket_tag,
         WHO_M, WHO_U,
     };
+
+    #[test]
+    fn who_tag_display_space_after_pipe_classifies_tags() {
+        use super::{who_tag_display_space_after_pipe, WHO_B, WHO_H, WHO_M, WHO_O, WHO_T, WHO_U};
+
+        assert!(who_tag_display_space_after_pipe(WHO_B));
+        assert!(who_tag_display_space_after_pipe(WHO_T));
+        assert!(!who_tag_display_space_after_pipe(WHO_M));
+        assert!(!who_tag_display_space_after_pipe(WHO_O));
+        assert!(!who_tag_display_space_after_pipe(WHO_H));
+        assert!(!who_tag_display_space_after_pipe(WHO_U));
+    }
+
+    #[test]
+    fn display_prefix_adds_space_after_pipe_for_thought_and_tool_only() {
+        use super::{format_who_tag_delim, WHO_B, WHO_M, WHO_O, WHO_T};
+
+        assert_eq!(format_who_tag_prefix(WHO_B), "b| ");
+        assert_eq!(format_who_tag_prefix(WHO_T), "t| ");
+        assert_eq!(format_who_tag_prefix(WHO_M), format_who_tag_delim(WHO_M));
+        assert_eq!(format_who_tag_prefix(WHO_O), format_who_tag_delim(WHO_O));
+    }
 
     #[test]
     fn bracket_tag_alias_delegates_to_pipe_parser() {

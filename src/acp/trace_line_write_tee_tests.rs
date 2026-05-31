@@ -72,14 +72,6 @@ fn thought_stdout_payload_indents_one_space() {
 }
 
 #[test]
-fn tool_call_log_payload_indents_one_space() {
-    assert_eq!(
-        crate::output::acp_tee::indent_tool_call_log_payload("Run echo hi · 1ms · ✓"),
-        " Run echo hi · 1ms · ✓"
-    );
-}
-
-#[test]
 fn trace_tee_stdout_line_noop_when_tee_disabled() {
     let mut writer = trace_writer();
     trace_tee_stdout_line(

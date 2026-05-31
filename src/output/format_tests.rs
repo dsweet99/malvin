@@ -36,7 +36,7 @@ fn ansi_timestamp_line_keeps_payload_plain() {
     assert!(!plain.contains('\x1b'));
     let ansi = format_line_with_timestamp_ansi("20260413.121314.015", WHO_M, "hello");
     assert!(ansi.contains('\x1b'));
-    assert!(ansi.ends_with(" hello"));
+    assert!(ansi.ends_with("hello"));
 }
 
 #[test]
