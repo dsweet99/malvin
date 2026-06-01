@@ -19,9 +19,20 @@ fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     }
 }
 
+fn default_plan_prompt(name: &str) -> Option<&'static str> {
+    match name {
+        "plan_1a_restate.md" => Some(include_str!("../../default_prompts/plan_1a_restate.md")),
+        "plan_1b_critique.md" => Some(include_str!("../../default_prompts/plan_1b_critique.md")),
+        "plan_2_decisions.md" => Some(include_str!("../../default_prompts/plan_2_decisions.md")),
+        "plan_3_rewrite.md" => Some(include_str!("../../default_prompts/plan_3_rewrite.md")),
+        _ => None,
+    }
+}
+
 pub fn default_file(name: &str) -> Option<&'static str> {
     default_constraints_prompt(name)
         .or_else(|| default_kpop_prompt(name))
+        .or_else(|| default_plan_prompt(name))
         .or_else(|| match name {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             HEADER_DO_MD => Some(include_str!("../../default_prompts/header_do.md")),
@@ -32,7 +43,17 @@ pub fn default_file(name: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{default_constraints_prompt, default_file, default_kpop_prompt};
+    use super::{default_constraints_prompt, default_file, default_kpop_prompt, default_plan_prompt};
+
+    #[test]
+    fn default_plan_prompt_embeds_all_plan_templates() {
+        assert!(default_plan_prompt("plan_1a_restate.md").is_some());
+        assert!(default_plan_prompt("plan_1b_critique.md").is_some());
+        assert!(default_plan_prompt("plan_2_decisions.md").is_some());
+        assert!(default_plan_prompt("plan_3_rewrite.md").is_some());
+        assert!(default_plan_prompt("missing.md").is_none());
+        assert!(default_file("plan_1a_restate.md").is_some());
+    }
 
     #[test]
     fn default_constraints_prompt_embeds_code_and_tidy() {

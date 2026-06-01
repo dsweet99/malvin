@@ -84,7 +84,8 @@ pub fn apply_workspace_config_defaults(
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Invent(_)
-        | Commands::Models(_) => {}
+        | Commands::Models(_)
+        | Commands::Plan(_) => {}
     }
     Ok(())
 }

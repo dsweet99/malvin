@@ -8,11 +8,14 @@ const UPGRADE_PLAN_WINDOW: usize = 128;
 pub struct PromptRoundHealth {
     upgrade_plan_seen: bool,
     agent_text_acc: String,
+    full_agent_response: String,
 }
 
 impl PromptRoundHealth {
     pub fn reset(&mut self) {
-        *self = Self::default();
+        self.upgrade_plan_seen = false;
+        self.agent_text_acc.clear();
+        self.full_agent_response.clear();
     }
 
     pub fn record_session_update(&mut self, msg: &Value) {
@@ -37,6 +40,7 @@ impl PromptRoundHealth {
         let Some(text) = text else {
             return;
         };
+        self.full_agent_response.push_str(text);
         self.append_agent_text_for_upgrade_plan(text);
     }
 
@@ -60,5 +64,10 @@ impl PromptRoundHealth {
     #[must_use]
     pub const fn upgrade_plan_seen(&self) -> bool {
         self.upgrade_plan_seen
+    }
+
+    #[must_use]
+    pub fn agent_response_text(&self) -> &str {
+        &self.full_agent_response
     }
 }

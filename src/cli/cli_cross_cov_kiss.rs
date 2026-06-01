@@ -102,6 +102,10 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = stringify!(crate::ideas_flow::render_ideas_prompt);
     let _ = stringify!(crate::ideas_flow::build_ideas_render_context);
     let _ = stringify!(crate::ideas_flow::run_ideas);
+    let _: Option<crate::plan_flow::PlanArgs> = None;
+    let _ = stringify!(crate::plan_flow::run_plan);
+    let _ = stringify!(crate::plan_flow::prepare_plan_prompt_store);
+    let _ = stringify!(crate::cli::adversarial_profile::adversarial_profile_active);
     let _: Option<super::models_cmd::ModelsArgs> = None;
     let _: Option<super::WorkflowCliOptions> = None;
     let _: Option<super::AgentStdoutTeeFlags> = None;

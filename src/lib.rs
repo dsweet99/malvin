@@ -164,6 +164,9 @@ pub mod do_flow;
 #[path = "cli/ideas_flow.rs"]
 pub mod ideas_flow;
 
+#[path = "cli/plan_flow.rs"]
+pub mod plan_flow;
+
 #[path = "cli/mod.rs"]
 pub mod cli;
 

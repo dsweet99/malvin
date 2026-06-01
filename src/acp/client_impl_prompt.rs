@@ -63,6 +63,21 @@ impl AgentClient {
         }
         Ok(())
     }
+
+    /// Full agent message text from the last completed coder prompt on the open session.
+    #[must_use]
+    pub fn last_coder_prompt_agent_response(&self) -> Option<String> {
+        let session = self.coder_session.as_ref()?;
+        Some(
+            session
+                .0
+                .prompt_round_health
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .agent_response_text()
+                .to_string(),
+        )
+    }
 }
 
 async fn run_coder_prompt_with_retries(

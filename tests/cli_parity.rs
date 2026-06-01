@@ -75,7 +75,7 @@ fn help_no_markdown_description_is_disable_styled_markdown() {
 }
 
 #[cfg_attr(unix, test)]
-fn help_omits_removed_ground_sync_plan_and_hunt_commands() {
+fn help_omits_removed_ground_sync_and_hunt_commands() {
     let out = run_root_help_output();
     assert!(
         out.status.success(),
@@ -92,12 +92,12 @@ fn help_omits_removed_ground_sync_plan_and_hunt_commands() {
         "sync was removed; help was: {s}"
     );
     assert!(
-        !contains_help_subcommand(&s, "plan"),
-        "plan was removed; help was: {s}"
-    );
-    assert!(
         !contains_help_subcommand(&s, "hunt"),
         "hunt was removed; help was: {s}"
+    );
+    assert!(
+        contains_help_subcommand(&s, "plan"),
+        "plan subcommand should appear in help; help was: {s}"
     );
 }
 

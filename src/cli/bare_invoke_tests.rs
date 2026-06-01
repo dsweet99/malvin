@@ -47,7 +47,7 @@ fn bare_flags_forward_to_kpop() {
         Some(Commands::Kpop(k)) => assert_eq!(k.max_loops, 4),
         other => panic!("expected kpop, got {other:?}"),
     }
-    let tenacious = parse_and_resolve(&["malvin", "--tenacious", "plan"]);
+    let tenacious = parse_and_resolve(&["malvin", "--tenacious", "investigate bug"]);
     match tenacious.command {
         Some(Commands::Kpop(k)) => assert!(k.tenacious),
         other => panic!("expected kpop, got {other:?}"),

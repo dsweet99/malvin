@@ -26,6 +26,7 @@ pub(crate) mod tidy_flow;
 mod code_flow;
 mod code_flow_a;
 mod gate_kpop_workflow;
+pub(crate) mod adversarial_profile;
 pub(crate) mod init_discovery_flow;
 mod loop_opts;
 mod workflow_kpop_shared;
@@ -54,11 +55,15 @@ mod cli_cross_cov_kiss;
 #[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]
+#[path = "cli_smoke_cov_plan.rs"]
+mod cli_smoke_cov_plan;
+#[cfg(test)]
 mod gate_error_regression;
 
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;
-pub use args::{Cli, Commands, InventArgs, KpopArgs};
+pub use crate::plan_flow::{prepare_plan_prompt_store, run_plan};
+pub use args::{Cli, Commands, InventArgs, KpopArgs, PlanArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;
