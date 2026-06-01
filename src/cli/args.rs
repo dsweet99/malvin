@@ -48,7 +48,7 @@ pub struct Cli {
 pub enum Commands {
     /// Prep this repo
     Init(InitArgs),
-    /// Respond to a single, generic request
+    /// Respond simply
     Do(DoArgs),
     /// Be creative
     #[command(name = "invent")]
