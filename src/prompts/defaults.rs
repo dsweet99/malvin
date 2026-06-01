@@ -74,6 +74,14 @@ mod advice_path_embed_tests {
             header.contains("./.malvin/advice.md"),
             "header must render advice_path"
         );
+        assert!(
+            !header.contains("{{"),
+            "header must expand all placeholders including logs_dir"
+        );
+        assert!(
+            header.contains(".malvin/logs"),
+            "header must render logs_dir to home logs bucket"
+        );
     }
 }
 

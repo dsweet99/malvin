@@ -10,6 +10,7 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
             "plan/with $ and\nmulti-line path".to_string(),
         ),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
+        ("logs_dir".to_string(), "./.malvin/logs/run42".to_string()),
         ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
         (
             "current_state".to_string(),
