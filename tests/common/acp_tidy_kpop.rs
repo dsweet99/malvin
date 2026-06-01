@@ -1,52 +1,77 @@
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
-const fn acp_mock_kpop_steps_body() -> &'static str {
+const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     r"    const fs = require('fs');
     const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
-    const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
-    const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
-    const target = targetMatch ? targetMatch[0] : null;
-    const os = require('os');
-    const root = path.join(os.homedir(), '.malvin', 'logs');
-    if (fs.existsSync(root)) {
-      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-        const bucket = path.join(root, hash.name);
-        const runs = fs.readdirSync(bucket, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-          .sort()
-          .reverse();
-        for (const run of runs) {
-        const kpopDir = path.join(bucket, run, '_kpop');
-        if (!fs.existsSync(kpopDir)) continue;
-        const names = target ? [target] : fs.readdirSync(kpopDir);
-        for (const name of names) {
-          if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
-          const expPath = path.join(kpopDir, name);
-          let existing = '';
-          try { existing = fs.readFileSync(expPath, 'utf8'); } catch { continue; }
-          const stepRe = /^## Step (\d+) — KPOP/m;
-          let maxStep = 0;
-          for (const line of existing.split('\n')) {
-            const m = line.match(stepRe);
-            if (m) maxStep = Math.max(maxStep, parseInt(m[1], 10));
+    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';"
+}
+
+const fn acp_mock_kpop_iteration_body() -> &'static str {
+    r"      const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
+      const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
+      const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
+      const target = targetMatch ? targetMatch[0] : null;
+      const os = require('os');
+      const root = path.join(os.homedir(), '.malvin', 'logs');
+      if (fs.existsSync(root)) {
+        outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+          const bucket = path.join(root, hash.name);
+          const runs = fs.readdirSync(bucket, { withFileTypes: true })
+            .filter((e) => e.isDirectory())
+            .map((e) => e.name)
+            .sort()
+            .reverse();
+          for (const run of runs) {
+          const kpopDir = path.join(bucket, run, '_kpop');
+          if (!fs.existsSync(kpopDir)) continue;
+          const names = target ? [target] : fs.readdirSync(kpopDir);
+          for (const name of names) {
+            if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
+            const expPath = path.join(kpopDir, name);
+            let existing = '';
+            try { existing = fs.readFileSync(expPath, 'utf8'); } catch { continue; }
+            const stepRe = /^## Step (\d+) — KPOP/m;
+            let maxStep = 0;
+            for (const line of existing.split('\n')) {
+              const m = line.match(stepRe);
+              if (m) maxStep = Math.max(maxStep, parseInt(m[1], 10));
+            }
+            for (let i = 1; i <= want; i += 1) {
+              const step = maxStep + i;
+              fs.appendFileSync(expPath, `\n## Step ${step} — KPOP mock\n`);
+            }
+            break outer;
           }
-          for (let i = 1; i <= want; i += 1) {
-            const step = maxStep + i;
-            fs.appendFileSync(expPath, `\n## Step ${step} — KPOP mock\n`);
           }
-          break outer;
         }
-        }
-      }
-    }"
+      }"
+}
+
+fn acp_mock_kpop_steps_body() -> String {
+    format!(
+        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n    }}",
+        acp_mock_kpop_prompt_preamble(),
+        acp_mock_kpop_iteration_body()
+    )
 }
 
 pub fn acp_mock_kpop_steps_js(chunk: &str) -> String {
     let done = session_update_chunk_line("agent_message_chunk", chunk);
     acp_mock_js("", &format!("{}\n{done}", acp_mock_kpop_steps_body()))
+}
+
+pub fn acp_mock_kpop_steps_with_summarize_js(chunk: &str) -> String {
+    let kpop_done = session_update_chunk_line("agent_message_chunk", chunk);
+    let summarize_done =
+        session_update_chunk_line("agent_message_chunk", r"'SUMMARIZE_OK\n'");
+    acp_mock_js(
+        "",
+        &format!(
+            "{}\n    if (promptText.includes('Summarize the activity')) {{\n{summarize_done}\n    }} else if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n{kpop_done}\n    }}",
+            acp_mock_kpop_prompt_preamble(),
+            acp_mock_kpop_iteration_body(),
+        ),
+    )
 }
 
 pub fn acp_mock_tidy_kpop_steps_js() -> String {

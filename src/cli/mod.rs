@@ -30,6 +30,11 @@ pub(crate) mod adversarial_profile;
 pub(crate) mod init_discovery_flow;
 mod loop_opts;
 mod workflow_kpop_shared;
+mod kpop_summarize;
+
+#[cfg(test)]
+#[path = "kpop_summarize_tests.rs"]
+mod kpop_summarize_tests;
 
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,

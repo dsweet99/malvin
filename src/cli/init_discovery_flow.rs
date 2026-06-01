@@ -87,7 +87,7 @@ pub(crate) async fn run_init_discovery_kpop(
     let max_loops = agent_cfg.max_loops;
     let max_hypotheses = agent_cfg.max_hypotheses;
     let iterations = gate_kpop_loop_iterations(max_loops);
-    let (gates_ok, _agent_ran, _timing) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, _timing) = run_gate_kpop_loop(GateKpopLoopParams {
         shared,
         workflow,
         prepared: &prepared,
@@ -95,6 +95,18 @@ pub(crate) async fn run_init_discovery_kpop(
         max_hypotheses,
         behavior: GateLoopBehavior::INIT,
     })
+    .await?;
+    crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
+        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
+            max_loops,
+            agent_ran,
+            shared,
+            workflow,
+            store: &prepared.store,
+            artifacts: &prepared.artifacts,
+            malvin_command: "malvin init",
+        },
+    )
     .await?;
     let solved = init_discovery_succeeded(&prepared.artifacts, iterations)?;
     if !solved {

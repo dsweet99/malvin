@@ -39,6 +39,19 @@ pub async fn run_code(
     })
     .await?;
 
+    crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
+        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
+            max_loops,
+            agent_ran,
+            shared,
+            workflow,
+            store: prepared.store(),
+            artifacts: prepared.artifacts(),
+            malvin_command: "malvin code",
+        },
+    )
+    .await?;
+
     let r = if gates_ok {
         finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
