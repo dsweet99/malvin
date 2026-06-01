@@ -34,22 +34,34 @@ impl From<std::io::Error> for PlanFileError {
     }
 }
 
-/// Byte offset before the machine block (`---` line), if exactly one unambiguous block exists.
+/// Byte offset at the start of the machine block (`---` line), if exactly one unambiguous block exists.
 #[must_use]
 pub fn find_machine_block_start(content: &str) -> Option<usize> {
-    let marker = format!("\n---\n{BEGIN_MALVIN_MARKER}");
-    let at_start = format!("---\n{BEGIN_MALVIN_MARKER}");
-    if content.starts_with(&at_start) {
-        return Some(0);
-    }
-    if let Some(idx) = content.find(&marker) {
-        let user = &content[..idx];
-        if user.contains(BEGIN_MALVIN_MARKER) {
-            return None;
+    for (marker, eol_len) in machine_block_marker_patterns() {
+        if let Some(idx) = content.find(&marker) {
+            let user = &content[..idx];
+            if user.contains(BEGIN_MALVIN_MARKER) {
+                return None;
+            }
+            return Some(idx + eol_len);
         }
-        return Some(idx + 1);
+    }
+    for at_start in ["---\n", "---\r\n"] {
+        let marker = format!("{at_start}{BEGIN_MALVIN_MARKER}");
+        if content.starts_with(&marker) {
+            return Some(0);
+        }
     }
     None
+}
+
+fn machine_block_marker_patterns() -> [(String, usize); 4] {
+    [
+        (format!("\n---\n{BEGIN_MALVIN_MARKER}"), 1),
+        (format!("\r\n---\r\n{BEGIN_MALVIN_MARKER}"), 2),
+        (format!("\n---\r\n{BEGIN_MALVIN_MARKER}"), 1),
+        (format!("\r\n---\n{BEGIN_MALVIN_MARKER}"), 2),
+    ]
 }
 
 /// Returns `user_span_end` when a single machine block is present; errors when markers are ambiguous.

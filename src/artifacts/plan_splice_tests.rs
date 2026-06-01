@@ -120,6 +120,54 @@ fn extract_fence_body_distinguishes_markdown_fence_from_plain_opener() {
 }
 
 #[test]
+fn validate_post_1b_rejects_critique_heading_in_restatement_prose() {
+    let content = concat!(
+        "# Plan\n\n---\nBEGIN_MALVIN\n",
+        "## Restatement\n",
+        "See ## Critique below.\n\n",
+        "## Open questions\n",
+        "1. q?\n",
+    );
+    assert!(validate_post_1b(content).is_err());
+}
+
+#[test]
+fn validate_post_2_rejects_decisions_heading_in_critique_prose() {
+    let content = concat!(
+        "# Plan\n\n---\nBEGIN_MALVIN\n",
+        "## Restatement\n",
+        "r\n\n",
+        "## Critique\n",
+        "Pending ## DECISIONS\n\n",
+        "## Open questions\n",
+        "1. q?\n",
+    );
+    assert!(validate_post_2(content).is_err());
+}
+
+#[test]
+fn find_machine_block_start_supports_crlf_delimiters() {
+    let content = "# User\r\n\r\n---\r\nBEGIN_MALVIN\r\n## Restatement\r\n";
+    assert_eq!(find_machine_block_start(content), Some(10));
+}
+
+#[test]
+fn detect_rerun_user_span_end_with_crlf_machine_block() {
+    let content = "# User\r\n\r\n---\r\nBEGIN_MALVIN\r\n## Restatement\r\n";
+    assert_eq!(detect_rerun_user_span_end(content), Ok(Some(10)));
+}
+
+#[test]
+fn prepare_plan_file_for_run_truncates_crlf_machine_block() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("plan.md");
+    std::fs::write(&path, "# User\r\n\r\n---\r\nBEGIN_MALVIN\r\nmachine\r\n").expect("write");
+    let prior = prepare_plan_file_for_run(&path).expect("prep");
+    assert_eq!(prior, Some(10));
+    assert_eq!(std::fs::read_to_string(&path).expect("read"), "# User\r\n\r\n");
+}
+
+#[test]
 fn kiss_cov_plan_splice_symbols() {
     let _ = stringify!(find_machine_block_start);
     let _ = stringify!(splice_plan_file);

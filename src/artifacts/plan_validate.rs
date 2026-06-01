@@ -12,11 +12,17 @@ pub fn record_user_span_end_after_1a(content: &str) -> Result<usize, PlanFileErr
         .ok_or_else(|| PlanFileError::MissingSection("--- BEGIN_MALVIN after Prompt 1a"))
 }
 
+fn line_is_section_heading(line: &str, heading: &str) -> bool {
+    line.trim() == heading
+}
+
 fn section_present_after_marker(content: &str, section: &str) -> bool {
     let Some(idx) = content.find(BEGIN_MALVIN_MARKER) else {
         return false;
     };
-    content[idx..].contains(section)
+    content[idx..]
+        .lines()
+        .any(|line| line_is_section_heading(line, section))
 }
 
 pub fn validate_post_1a(content: &str) -> Result<(), PlanFileError> {
@@ -56,6 +62,12 @@ mod private_fn_coverage {
     use super::*;
 
     #[test]
+    fn line_is_section_heading_matches_trimmed_line() {
+        assert!(line_is_section_heading("  ## Critique  ", SECTION_CRITIQUE));
+        assert!(!line_is_section_heading("See ## Critique below.", SECTION_CRITIQUE));
+    }
+
+    #[test]
     fn section_present_after_marker_without_begin_malvin() {
         assert!(!section_present_after_marker("## Restatement only", SECTION_RESTATEMENT));
     }
@@ -64,5 +76,13 @@ mod private_fn_coverage {
     fn section_present_after_marker_with_begin_malvin() {
         let content = format!("{BEGIN_MALVIN_MARKER}\n{SECTION_RESTATEMENT}\n");
         assert!(section_present_after_marker(&content, SECTION_RESTATEMENT));
+    }
+
+    #[test]
+    fn section_present_after_marker_rejects_heading_in_prose() {
+        let content = format!(
+            "{BEGIN_MALVIN_MARKER}\n{SECTION_RESTATEMENT}\nSee {SECTION_CRITIQUE} below.\n\n{SECTION_OPEN_QUESTIONS}\n1. q\n"
+        );
+        assert!(!section_present_after_marker(&content, SECTION_CRITIQUE));
     }
 }
