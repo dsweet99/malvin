@@ -134,12 +134,11 @@ fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
 
     let log_line = std::fs::read_to_string(path).unwrap();
     let log_line = log_line.trim_end();
-    let indented = crate::output::acp_tee::indent_tool_call_log_payload(plain);
     let ctx = AcpTeeLineFmt {
         ts,
         direction: AcpTeeDirection::FromAgent,
         who: "<kpop",
-        line: &indented,
+        line: plain,
         dim_payload: false,
     };
     assert_eq!(log_line, acp_tee_log_line(&ctx));

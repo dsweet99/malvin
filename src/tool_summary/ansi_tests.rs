@@ -3,7 +3,7 @@ use super::{
     is_byte_size_segment, split_outer_brackets, tool_line_colon_prefix,
 };
 use crate::terminal_palette::ANSI_DIM;
-use crate::tool_summary::types::{ANSI_BOLD, ANSI_RESET, ANSI_TOOL_DARK, ANSI_TOOL_TEAL};
+use crate::tool_summary::types::{ansi_tool_dark, ansi_tool_teal, ANSI_BOLD, ANSI_RESET};
 
 #[test]
 fn covers_running_and_done_helpers() {
@@ -22,13 +22,13 @@ fn tool_line_colon_prefix_splits_leading_marker() {
 fn ansi_style_dark_verb_wraps_verb_in_palette() {
     let styled = ansi_style_dark_verb("Edit");
     assert!(styled.contains("Edit"));
-    assert!(styled.contains(ANSI_TOOL_DARK));
+    assert!(styled.contains(ansi_tool_dark()));
 }
 
 #[test]
 fn bracket_wrapped_running_line_bolds_run_verb() {
     let styled = apply_tool_summary_ansi("[Run echo hi…]");
-    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Run");
+    let run_verb = format!("{ANSI_BOLD}{}Run", ansi_tool_dark());
     assert!(
         styled.contains(&run_verb),
         "expected dark bold on Run inside brackets; got {styled:?}"
@@ -38,7 +38,7 @@ fn bracket_wrapped_running_line_bolds_run_verb() {
 #[test]
 fn bracket_wrapped_done_line_bolds_run_verb() {
     let styled = apply_tool_summary_ansi("[Run echo hi · 1ms · ✓]");
-    let run_verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Run");
+    let run_verb = format!("{ANSI_BOLD}{}Run", ansi_tool_dark());
     assert!(
         styled.contains(&run_verb),
         "expected dark bold on Run in done line; got {styled:?}"
@@ -49,7 +49,7 @@ fn bracket_wrapped_done_line_bolds_run_verb() {
 #[test]
 fn bracket_wrapped_reading_running_line_bolds_verb() {
     let styled = apply_tool_summary_ansi("[Reading ./src/foo.rs…]");
-    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Reading");
+    let verb = format!("{ANSI_BOLD}{}Reading", ansi_tool_dark());
     assert!(
         styled.contains(&verb),
         "expected dark bold on Reading; got {styled:?}"
@@ -59,7 +59,7 @@ fn bracket_wrapped_reading_running_line_bolds_verb() {
 #[test]
 fn done_line_bolds_read_verb_without_colon_prefix() {
     let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
-    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Read");
+    let verb = format!("{ANSI_BOLD}{}Read", ansi_tool_dark());
     assert!(
         styled.contains(&verb),
         "expected dark bold on Read; got {styled:?}"
@@ -89,7 +89,7 @@ fn tool_time_segments_use_dim_grey() {
 #[test]
 fn tool_path_args_use_teal() {
     let styled = apply_tool_summary_ansi("Read ./src/foo.rs · 1ms");
-    let teal = format!("{ANSI_TOOL_TEAL}./src/foo.rs{ANSI_RESET}");
+    let teal = format!("{}./src/foo.rs{ANSI_RESET}", ansi_tool_teal());
     assert!(styled.contains(&teal), "got {styled:?}");
 }
 
@@ -105,15 +105,15 @@ fn split_outer_brackets_and_byte_size_segments() {
         "{ANSI_DIM}{}{ANSI_RESET}",
         apply_tool_summary_ansi("[Run echo hi · 1ms · ✓]")
     );
-    assert!(dimmed.contains(&format!("{ANSI_DIM}{ANSI_TOOL_DARK}[")));
-    assert!(dimmed.contains(&format!("{ANSI_TOOL_DARK}]")));
+    assert!(dimmed.contains(&format!("{ANSI_DIM}{}[", ansi_tool_dark())));
+    assert!(dimmed.contains(&format!("{}]", ansi_tool_dark())));
 }
 
 #[test]
 fn search_done_without_query_uses_dark_verb_not_teal() {
     let styled = apply_tool_summary_ansi("Search · matches");
-    let verb = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}Search");
-    let teal = format!("{ANSI_TOOL_TEAL}Search");
+    let verb = format!("{ANSI_BOLD}{}Search", ansi_tool_dark());
+    let teal = format!("{}Search", ansi_tool_teal());
     assert!(
         styled.contains(&verb),
         "Search without query must use dark verb color; got {styled:?}"
@@ -126,7 +126,7 @@ fn search_done_without_query_uses_dark_verb_not_teal() {
 
 #[test]
 fn edit_search_and_editing_verbs_use_bold_dark() {
-    let dark = format!("{ANSI_BOLD}{ANSI_TOOL_DARK}");
+    let dark = format!("{ANSI_BOLD}{}", ansi_tool_dark());
     for plain in [
         "Edit src/foo.rs · 1ms",
         "Editing src/foo.rs…",

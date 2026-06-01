@@ -51,7 +51,7 @@ fn smoke_publish_heartbeat_live_terminal() {
     crate::output::enable_stdout_capture();
     crate::output::reset_stdout_heartbeat_for_test();
     crate::output::test_set_last_heartbeat_elapsed(std::time::Duration::from_secs(61));
-    let display = "[malvin.........] 20260524.000000 Waiting";
+    let display = "malvin.| 20260524.000000 Waiting";
     crate::output::publish_heartbeat_live_terminal(display);
     let terminal = crate::output::take_captured_stdout();
     crate::output::set_stdout_log_path(None);

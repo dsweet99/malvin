@@ -15,7 +15,7 @@ fn assert_upgrade_plan_operational_stderr(stderr: &str, trace: &str) {
         "upgrade-plan must emit operational errors, got: {stderr:?}"
     );
     assert!(
-        !stderr.contains("[<kpop"),
+        !stderr.contains("m|"),
         "upgrade-plan must not be tee'd with session who: {stderr:?}"
     );
 }
@@ -50,7 +50,7 @@ async fn upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee() 
     let (stderr, trace, stdout_log) = run_upgrade_plan_split_coalesce_fixture().await;
     assert_upgrade_plan_operational_stderr(&stderr, &trace);
     assert!(
-        !stdout_log.contains("[<kpop"),
+        !stdout_log.contains("m|"),
         "upgrade-plan must not appear in deferred stdout tee: {stdout_log:?}"
     );
 }

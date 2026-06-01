@@ -25,12 +25,12 @@ impl Drop for EnvHomeGuard {
 #[test]
 fn default_store_uses_embedded_prompts_when_home_unset() {
     let prompt = default_store_with_unset_home();
-    assert!(prompt.contains("# SUMMARY"));
+    assert!(prompt.contains("Know thyself, agent"));
 }
 
 fn default_store_with_unset_home() -> String {
     let (store, context) = default_prompt_store_with_unset_home();
-    render_default_summary(&store, &context)
+    render_default_header(&store, &context)
 }
 
 fn default_embedded_placeholder_context() -> HashMap<String, String> {
@@ -78,11 +78,11 @@ fn with_unset_home_profile(profile: std::path::PathBuf) -> EnvHomeGuard {
     guard
 }
 
-fn render_default_summary(
+fn render_default_header(
     store: &super::PromptStore,
     context: &HashMap<String, String>,
 ) -> String {
-    store.render("summary.md", context).expect("render")
+    store.render("header.md", context).expect("render")
 }
 
 #[test]
@@ -90,6 +90,6 @@ fn smoke_cov_embedded_defaults_units() {
     let _: Option<EnvHomeGuard> = None;
     let _ = default_prompt_store_with_unset_home;
     let _ = with_unset_home_profile;
-    let _ = render_default_summary;
+    let _ = render_default_header;
     let _ = default_embedded_placeholder_context;
 }

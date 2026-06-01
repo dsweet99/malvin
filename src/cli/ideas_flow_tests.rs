@@ -9,28 +9,28 @@ mod ideas_tests {
     };
 
     #[test]
-    fn render_ideas_prompt_substitutes_num_ideas_and_user_prompt() {
-        let out = render_ideas_prompt(7, "ALPHA_PROMPT").expect("render");
-        assert!(out.contains('7'));
+    fn render_ideas_prompt_substitutes_user_prompt() {
+        let out = render_ideas_prompt("ALPHA_PROMPT").expect("render");
         assert!(out.contains("ALPHA_PROMPT"));
         assert!(!out.contains("{{"));
         assert!(malformed_brace_placeholders(&out).is_empty());
+        assert!(out.contains("generate 3"));
     }
 
     #[test]
     fn render_mbc2_for_scheduled_kpop_block_matches_render_ideas_prompt() {
         let store = PromptStore::default_store();
-        let ctx = build_ideas_render_context(3, "BETA");
+        let ctx = build_ideas_render_context("BETA");
         let a = render_mbc2_for_scheduled_kpop_block(&store, &ctx).expect("block");
-        let b = render_ideas_prompt(3, "BETA").expect("prompt");
+        let b = render_ideas_prompt("BETA").expect("prompt");
         assert_eq!(a, b);
     }
 
     #[test]
     fn build_ideas_render_context_keys() {
-        let ctx = build_ideas_render_context(5, "x");
-        assert_eq!(ctx.get("num_ideas").map(String::as_str), Some("5"));
+        let ctx = build_ideas_render_context("x");
         assert_eq!(ctx.get("user_prompt").map(String::as_str), Some("x"));
+        assert!(!ctx.contains_key("num_ideas"));
     }
 
     #[test]
@@ -39,22 +39,16 @@ mod ideas_tests {
         match cli.command {
             Some(Commands::Invent(m)) => {
                 assert_eq!(m.request.as_deref(), Some("explore edges"));
-                assert_eq!(m.num_ideas, 3);
             }
             _ => panic!("expected Ideas subcommand"),
         }
     }
 
     #[test]
-    fn cli_accepts_ideas_num_ideas() {
-        let cli = Cli::try_parse_from(["malvin", "invent", "--num-ideas", "9", "q"]).expect("parse");
-        match cli.command {
-            Some(Commands::Invent(m)) => {
-                assert_eq!(m.num_ideas, 9);
-                assert_eq!(m.request.as_deref(), Some("q"));
-            }
-            _ => panic!("expected Ideas subcommand"),
-        }
+    fn cli_rejects_removed_num_ideas_flag() {
+        let err = Cli::try_parse_from(["malvin", "invent", "--num-ideas", "9", "q"])
+            .expect_err("removed flag should fail");
+        assert!(err.to_string().contains("num-ideas"));
     }
 
     #[test]

@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 use crate::kpop_turn_prompts::KpopTurnPrompts;
-use crate::prompts::PromptStore;
+use crate::prompts::{PromptStore, render_header};
 
 fn kpop_turn_test_context() -> HashMap<String, String> {
     HashMap::from([
-        ("plan_path".to_string(), "p".to_string()),
+        (
+            "plan_path".to_string(),
+            "plan/with $ and\nmulti-line path".to_string(),
+        ),
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
         ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
         (
@@ -15,27 +18,119 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
     ])
 }
 
-#[test]
-fn kpop_turn_prompts_render() {
+fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let root = tmp.path().join("prompts");
     std::fs::create_dir_all(&root).expect("mkdir");
-    for name in [
-        "kpop_common.md",
-        "kpop_block.md",
-        "mbc2.md",
-        "header.md",
+    for (name, body) in [
+        ("header.md", "<<hdr plan={{ plan_path }}>>\n"),
+        (
+            "kpop_common.md",
+            "<<common want={{ want }} rem={{ remaining_hypotheses }}>>\n",
+        ),
+        ("kpop_block.md", "<<block req={{ user_request }}>>\n"),
+        ("mbc2.md", "MBC2\n"),
     ] {
-        std::fs::write(root.join(name), "body").expect("write");
+        std::fs::write(root.join(name), body).expect("write");
     }
     let store = PromptStore::with_root(root);
     store.ensure_defaults().expect("defaults");
-    let ctx = kpop_turn_test_context();
+    (tmp, store)
+}
+
+fn kpop_block_turn_context(
+    base: &HashMap<String, String>,
+    want: usize,
+    remaining_after_this_turn: usize,
+    request_text: &str,
+) -> HashMap<String, String> {
+    let mut ctx = base.clone();
+    ctx.insert("want".to_string(), want.to_string());
+    ctx.insert(
+        "remaining_hypotheses".to_string(),
+        remaining_after_this_turn.to_string(),
+    );
+    ctx.insert("user_request".to_string(), request_text.to_string());
+    ctx
+}
+
+fn expected_kpop_block_output(
+    store: &PromptStore,
+    ctx: &HashMap<String, String>,
+    with_rules: bool,
+) -> String {
+    let common = store
+        .render_prompt_only("kpop_common.md", ctx)
+        .expect("common");
+    let body = store
+        .render_prompt_only("kpop_block.md", ctx)
+        .expect("block");
+    if with_rules {
+        let header = render_header(store, ctx).expect("header");
+        format!(
+            "{}\n\n{}\n\n{}",
+            header.trim_end(),
+            common.trim_end(),
+            body.trim_end()
+        )
+    } else {
+        format!("{}\n\n{}", common.trim_end(), body.trim_end())
+    }
+}
+
+#[test]
+fn kpop_block_matches_independently_rendered_sections() {
+    let (_tmp, store) = kpop_turn_test_store();
+    let base = kpop_turn_test_context();
+    let request_text = "fix the bug\nwant=99 remaining=99";
     let mut prompts = KpopTurnPrompts {
         store: &store,
-        base: &ctx,
-        request_text: "req",
+        base: &base,
+        request_text,
         prepend_rules_once: true,
     };
-    let _ = prompts.kpop_block(1, 0).expect("kpop");
+
+    let ctx_first = kpop_block_turn_context(&base, 3, 7, request_text);
+    let first = prompts.kpop_block(3, 7).expect("first kpop turn");
+    assert_eq!(
+        first,
+        expected_kpop_block_output(&store, &ctx_first, true),
+        "first turn should equal header + common + block with exact composition"
+    );
+
+    let ctx_second = kpop_block_turn_context(&base, 1, 0, request_text);
+    let second = prompts.kpop_block(1, 0).expect("second kpop turn");
+    assert_eq!(
+        second,
+        expected_kpop_block_output(&store, &ctx_second, false),
+        "after prepend_rules_once is consumed, output should omit header"
+    );
+}
+
+#[test]
+fn kpop_block_without_prepend_rules_never_includes_header() {
+    let (_tmp, store) = kpop_turn_test_store();
+    let base = kpop_turn_test_context();
+    let request_text = "no header please";
+    let mut prompts = KpopTurnPrompts {
+        store: &store,
+        base: &base,
+        request_text,
+        prepend_rules_once: false,
+    };
+
+    for (want, remaining) in [(0, 0_usize), (42, usize::MAX)] {
+        let ctx = kpop_block_turn_context(&base, want, remaining, request_text);
+        let out = prompts.kpop_block(want, remaining).expect("kpop turn");
+        assert_eq!(
+            out,
+            expected_kpop_block_output(&store, &ctx, false),
+            "prepend_rules_once=false should never prepend header"
+        );
+        let header = render_header(&store, &ctx).expect("header");
+        assert!(
+            !out.contains(header.trim()),
+            "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
+        );
+    }
 }

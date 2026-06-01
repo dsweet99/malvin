@@ -49,8 +49,7 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run);
     let _: Option<crate::init_cmd::RunInitOptions> = None;
     let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
-    let _ = stringify!(crate::init_cmd::init_summary_combined_body);
-    let _ = stringify!(crate::init_cmd::init_summary_coder_turn_with_timing_emit);
+    let _ = stringify!(crate::init_cmd::run_init);
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
     let _ = super::kpop_flow::prepare_kpop_run;
@@ -103,6 +102,10 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = stringify!(crate::ideas_flow::render_ideas_prompt);
     let _ = stringify!(crate::ideas_flow::build_ideas_render_context);
     let _ = stringify!(crate::ideas_flow::run_ideas);
+    let _: Option<crate::plan_flow::PlanArgs> = None;
+    let _ = stringify!(crate::plan_flow::run_plan);
+    let _ = stringify!(crate::plan_flow::prepare_plan_prompt_store);
+    let _ = stringify!(crate::cli::adversarial_profile::adversarial_profile_active);
     let _: Option<super::models_cmd::ModelsArgs> = None;
     let _: Option<super::WorkflowCliOptions> = None;
     let _: Option<super::AgentStdoutTeeFlags> = None;

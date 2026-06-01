@@ -18,7 +18,7 @@ Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
 
-Use subcommands for other workflows: `init`, `do`, `invent`, `code`, `tidy`, `models`.
+Use subcommands for other workflows: `init`, `do`, `invent`, `plan`, `code`, `tidy`, `models`.
 
 ## Commands
 
@@ -27,6 +27,7 @@ Use subcommands for other workflows: `init`, `do`, `invent`, `code`, `tidy`, `mo
 | `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn (non-looping) |
 | `invent` | One-shot MBC2 boundary exploration (batch ideation) |
+| `plan` | Four-prompt planning workflow on a persistent `plan.md` |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `models` | List models available from the Cursor agent CLI |
@@ -118,7 +119,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `./.malvin/logs/` according to `.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_runs`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` seeds the config file with defaults.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin/logs/<hash>/` according to `~/.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.
 
 ## External dependencies
 

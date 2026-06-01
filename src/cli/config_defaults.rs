@@ -1,4 +1,4 @@
-//! Apply workspace `.malvin/config.toml` defaults to parsed CLI values when flags were not set.
+//! Apply workspace `~/.malvin/config.toml` defaults to parsed CLI values when flags were not set.
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
@@ -84,7 +84,8 @@ pub fn apply_workspace_config_defaults(
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Invent(_)
-        | Commands::Models(_) => {}
+        | Commands::Models(_)
+        | Commands::Plan(_) => {}
     }
     Ok(())
 }

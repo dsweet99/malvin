@@ -9,6 +9,8 @@ pub struct AgentClient {
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<std::path::PathBuf>,
     pub(crate) coder_session: Option<AcpSession>,
+    /// Coder session cwd from the last successful [`super::AgentClient::begin_coder_session`].
+    pub(crate) coder_session_cwd: Option<std::path::PathBuf>,
     /// Bounded attempts per ACP spawn or `session/prompt` (from `--max-acp-retries`).
     pub(crate) max_acp_retries: u32,
     /// When set (e.g. `malvin code` orchestrator), LLM waits and retry backoff are recorded.

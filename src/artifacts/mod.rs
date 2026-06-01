@@ -1,6 +1,7 @@
 //! Run directories and log paths.
 
 mod md_request;
+mod plan_splice;
 mod startup_tag;
 mod create;
 
@@ -11,6 +12,14 @@ pub use create::{
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
 pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
+
+pub use plan_splice::{
+    BEGIN_MALVIN_MARKER, PlanFileError, PlanRunMetadata, detect_rerun_user_span_end,
+    extract_decisions_section, extract_fenced_markdown_block, find_machine_block_start,
+    prepare_plan_file_for_run, read_plan_file, read_plan_metadata, record_user_span_end_after_1a,
+    snapshot_plan_artifact, splice_plan_file, validate_post_1a, validate_post_1b, validate_post_2,
+    write_plan_file_atomic, write_plan_metadata,
+};
 
 pub use crate::session_dotfile_backup::{
     KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
@@ -27,7 +36,7 @@ pub use crate::session_dotfile_backup::{
 pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
 pub use startup_tag::startup_request_tag_label;
 
-pub use crate::malvin_constants::{QUALITY_GATES_LOG, STDOUT_LOG, TRACE_JSONL};
+pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};
 
 /// One workflow run: isolated `.malvin/logs/<stamp>_<token>/` with copied plan.
 #[derive(Debug, Clone)]
@@ -96,6 +105,11 @@ impl RunArtifacts {
     pub fn trace_jsonl_path(&self) -> PathBuf {
         self.run_dir.join(TRACE_JSONL)
     }
+
+    #[must_use]
+    pub fn sandbox_oom_json_path(&self) -> PathBuf {
+        self.run_dir.join(SANDBOX_OOM_JSON)
+    }
 }
 
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
@@ -154,6 +168,10 @@ pub fn resolve_user_request(arg: &str) -> Result<(String, PathBuf), String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "log_gc_hook_tests.rs"]
+mod log_gc_hook_tests;
 
 #[cfg(test)]
 #[path = "kpop_path_tests.rs"]

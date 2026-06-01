@@ -12,10 +12,6 @@ pub(crate) const TPL_ADVICE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/advice.md"
 ));
-pub(crate) const TPL_CONFIG: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/config.toml"
-));
 pub(crate) const ADMIN_CHECK_UNTRACKED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/default_repo/admin/check_untracked.sh"
@@ -48,9 +44,6 @@ mod init_cmd_bootstrap;
 
 #[path = "init_cmd_workspace.rs"]
 mod init_cmd_workspace;
-
-#[path = "init_cmd_summary.rs"]
-mod init_cmd_summary;
 
 #[cfg(test)]
 #[path = "init_cmd_mid_tests.rs"]
@@ -117,8 +110,6 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
             force_overwrite: req.opts.overwrite_templates,
         },
     );
-    let run_summary = discovery_decision.run
-        || discovery_decision.skip_reason != Some("empty repo; using builtin checks");
     let r = async {
         write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
         ensure_malvin_workspace_layout(&root, req.opts.overwrite_templates, &languages)?;
@@ -127,13 +118,11 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
             crate::repo_gates::refresh_provisional_malvin_checks_file(&root)?;
         }
         if discovery_decision.run {
-            crate::cli::init_discovery_flow::run_init_discovery_kpop(req.shared, &artifacts).await?;
+            crate::cli::init_discovery_flow::run_init_discovery_kpop(req.shared, &artifacts)
+                .await
+                .map(|_| ())
         } else {
             crate::cli::init_discovery_flow::emit_init_discovery_skip(discovery_decision);
-        }
-        if run_summary {
-            init_cmd_summary::run_init_summary_phase(req.shared, &artifacts).await
-        } else {
             Ok(())
         }
     }

@@ -149,9 +149,9 @@ fn do_stdout_omits_outgoing_prompt_bracket_line() {
     assert!(out.status.success(), "malvin do failed: {out:?}");
     let stdout = String::from_utf8_lossy(&out.stdout);
     let who = malvin::output::format_acp_directional_tag_prefix('>', "do");
-    let inner = malvin::output::format_log_tag_inner(&who);
+    let prefix = malvin::output::format_who_tag_prefix(&who);
     assert!(
-        !stdout.contains(&format!("[{inner}] [do...]")),
+        !stdout.contains(&format!("{prefix}[do...]")),
         "forced tee must not print padded >do bracket line on stdout: {stdout:?}"
     );
     assert!(
@@ -160,7 +160,11 @@ fn do_stdout_omits_outgoing_prompt_bracket_line() {
     );
     assert!(
         !stdout.contains(">do"),
-        "forced tee must not print >do stem on stdout: {stdout:?}"
+        "forced tee must not print legacy directional stem on stdout: {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("u|"),
+        "forced tee must not print outgoing user tag on stdout: {stdout:?}"
     );
     assert!(
         stdout.contains("agent message"),
@@ -185,7 +189,7 @@ fn do_stdout_shows_plain_output_without_jsonrpc_lines() {
 
 #[cfg_attr(unix, test)]
 fn do_trace_log_contains_thought_when_hidden_from_stdout() {
-    let (out, _root, workspace) = run_do_with_named_mock_bin(
+    let (out, root, workspace) = run_do_with_named_mock_bin(
         "mock-agent-acp-do",
         &acp_mock_do_streaming_update_js(),
         &[],
@@ -197,7 +201,7 @@ fn do_trace_log_contains_thought_when_hidden_from_stdout() {
         !stdout.contains("hidden thought"),
         "default do should hide thought on stdout: {stdout:?}"
     );
-    let log_path = first_do_log_path(&workspace);
+    let log_path = first_do_log_path(&workspace, &root.path().join("home"));
     let log = std::fs::read_to_string(&log_path).expect("do.log");
     assert!(
         log.contains("hidden thought"),
@@ -216,7 +220,7 @@ fn do_repo_gates_keeps_gate_diagnostics_off_stdout() {
     let lines = stdout_lines_preserve_shape(&out.stdout);
     assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
     assert!(
-        lines.iter().all(|l| !l.contains(":[malvin]:")),
+        lines.iter().all(|l| !l.contains(":malvin|:")),
         "did not expect tagged repo-gate stdout lines, got: {lines:?}"
     );
     assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");

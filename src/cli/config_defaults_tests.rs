@@ -32,25 +32,27 @@ fn write_agent_config(work_dir: &std::path::Path) {
 }
 
 fn with_seeded_agent_config(f: impl FnOnce()) {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cwd = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    crate::malvin_config_file::open_malvin_config(tmp.path()).expect("seed");
-    write_agent_config(tmp.path());
-    f();
-    std::env::set_current_dir(cwd).expect("restore cwd");
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        crate::malvin_config_file::open_malvin_config(work).expect("seed");
+        write_agent_config(work);
+        f();
+        std::env::set_current_dir(cwd).expect("restore cwd");
+    });
 }
 
 #[test]
 fn write_agent_config_adds_agent_section_to_partial_file() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = crate::malvin_config_path(tmp.path());
-    std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&path, "mem_limit_gb = 2\n").expect("write");
-    write_agent_config(tmp.path());
-    let text = std::fs::read_to_string(&path).expect("read");
-    assert!(text.contains("[agent]"));
-    assert!(text.contains("model = \"cfg-model\""));
+    crate::test_utils::with_isolated_home(|work| {
+        let path = crate::malvin_config_path(work);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&path, "mem_limit_gb = 2\n").expect("write");
+        write_agent_config(work);
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(text.contains("[agent]"));
+        assert!(text.contains("model = \"cfg-model\""));
+    });
 }
 
 #[test]
@@ -173,16 +175,17 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
 
 #[test]
 fn apply_workspace_config_defaults_skips_do() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cwd = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let config_path = crate::malvin_config_path(tmp.path());
-    assert!(!config_path.exists());
-    let do_matches = Cli::command().get_matches_from(["malvin", "do", "hello"]);
-    let mut do_cli = Cli::from_arg_matches(&do_matches).expect("cli");
-    apply_workspace_config_defaults(&do_matches, &mut do_cli).expect("apply");
-    assert!(!config_path.exists());
-    std::env::set_current_dir(cwd).expect("restore cwd");
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        let config_path = crate::malvin_config_path(work);
+        assert!(!config_path.exists());
+        let do_matches = Cli::command().get_matches_from(["malvin", "do", "hello"]);
+        let mut do_cli = Cli::from_arg_matches(&do_matches).expect("cli");
+        apply_workspace_config_defaults(&do_matches, &mut do_cli).expect("apply");
+        assert!(!config_path.exists());
+        std::env::set_current_dir(cwd).expect("restore cwd");
+    });
 }
 
 #[test]
@@ -197,31 +200,33 @@ fn apply_workspace_config_defaults_for_invent() {
 
 #[test]
 fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cwd = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let cli = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
-    match cli.command.expect("command") {
-        Commands::Kpop(kpop) => assert_eq!(kpop.request.as_deref(), Some("hello")),
-        other => panic!("expected kpop, got {other:?}"),
-    }
-    std::env::set_current_dir(cwd).expect("restore cwd");
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        let cli = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
+        match cli.command.expect("command") {
+            Commands::Kpop(kpop) => assert_eq!(kpop.request.as_deref(), Some("hello")),
+            other => panic!("expected kpop, got {other:?}"),
+        }
+        std::env::set_current_dir(cwd).expect("restore cwd");
+    });
 }
 
 #[test]
 fn parse_cli_with_config_defaults_uses_bundled_agent_defaults() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cwd = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let cli = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
-    assert_eq!(cli.shared.model, DEFAULT_CLI_MODEL);
-    assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
-    match cli.command.expect("command") {
-        Commands::Kpop(kpop) => {
-            assert_eq!(kpop.max_loops, DEFAULT_MAX_LOOPS);
-            assert_eq!(kpop.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
+    crate::test_utils::with_isolated_home(|work| {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(work).expect("chdir");
+        let cli = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
+        assert_eq!(cli.shared.model, DEFAULT_CLI_MODEL);
+        assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
+        match cli.command.expect("command") {
+            Commands::Kpop(kpop) => {
+                assert_eq!(kpop.max_loops, DEFAULT_MAX_LOOPS);
+                assert_eq!(kpop.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
+            }
+            other => panic!("expected kpop, got {other:?}"),
         }
-        other => panic!("expected kpop, got {other:?}"),
-    }
-    std::env::set_current_dir(cwd).expect("restore cwd");
+        std::env::set_current_dir(cwd).expect("restore cwd");
+    });
 }

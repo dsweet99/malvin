@@ -6,7 +6,7 @@ mod store;
 mod template;
 pub use template::*;
 
-pub use defaults::{DO_HEADER_MD, HEADER_MD};
+pub use defaults::{DO_HEADER_MD, HEADER_DO_MD, HEADER_MD, PLAN_1A_RESTATE_MD, PLAN_1B_CRITIQUE_MD, PLAN_2_DECISIONS_MD, PLAN_3_REWRITE_MD};
 
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};

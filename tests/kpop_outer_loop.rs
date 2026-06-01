@@ -18,15 +18,19 @@ mod linux {
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const m = promptText.match(/exp_log_[^\s`]+\.md/);
     const target = m ? m[0] : null;
-    const root = path.join(process.cwd(), '.malvin', 'logs');
+    const os = require('os');
+    const root = path.join(os.homedir(), '.malvin', 'logs');
     if (target && fs.existsSync(root)) {
-      const runs = fs.readdirSync(root, { withFileTypes: true })
-        .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
-      outer: for (const run of runs) {
-        const p = path.join(root, run, '_kpop', target);
-        if (fs.existsSync(p)) {
-          fs.appendFileSync(p, '\n## Step 1 — KPOP mock\n## KPOP_SOLVED\n');
-          break outer;
+      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const bucket = path.join(root, hash.name);
+        const runs = fs.readdirSync(bucket, { withFileTypes: true })
+          .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
+        for (const run of runs) {
+          const p = path.join(bucket, run, '_kpop', target);
+          if (fs.existsSync(p)) {
+            fs.appendFileSync(p, '\n## Step 1 — KPOP mock\n## KPOP_SOLVED\n');
+            break outer;
+          }
         }
       }
     }";
@@ -41,7 +45,7 @@ mod linux {
         assert!(out.status.success(), "kpop should succeed: {out:?}");
         assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 1);
         assert_eq!(
-            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"))).len(),
+            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"), &root.path().join("home"))).len(),
             1
         );
     }
@@ -50,7 +54,7 @@ mod linux {
     fn kpop_max_loops_one_uses_legacy_exp_log_path() {
         let (out, root) = run_kpop_outer_loop(&acp_mock_kpop_steps_js(r"'step\n'"), &[]);
         assert!(out.status.success(), "kpop should succeed: {out:?}");
-        let run_dir = only_run_dir(&root.path().join("workspace"));
+        let run_dir = only_run_dir(&root.path().join("workspace"), &root.path().join("home"));
         let legacy = exp_logs_in_run(&run_dir)
             .into_iter()
             .find(|p| {
@@ -69,7 +73,7 @@ mod linux {
         assert!(out.status.success(), "kpop should finish two outer loops: {out:?}");
         assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 2);
         assert_eq!(
-            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"))).len(),
+            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"), &root.path().join("home"))).len(),
             2
         );
     }

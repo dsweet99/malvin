@@ -57,8 +57,8 @@ One coder prompt per invocation:
 
 | Piece | Role |
 |-------|------|
-| `header.md` | Full malvin coding context |
-| `do_header.md` | Do-mode persona; points at prior `do.log` files |
+| `header_do.md` | Malvin coding context without log-reading mandates |
+| `do_header.md` | Do-mode persona; direct answer only |
 | User request | Appended after headers |
 
 No implement, review, concerns, learn, or summary phases.

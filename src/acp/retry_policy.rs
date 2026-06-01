@@ -41,6 +41,17 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("cannot use this model")
 }
 
+/// Child-health / transport failures where the open coder session must be torn down before retry.
+#[must_use]
+pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
+    let text = msg.to_ascii_lowercase();
+    text.contains("acp child process appears hung")
+        || text.contains("acp child process is not running")
+        || text.contains("acp child process is zombie")
+        || text.contains("acp stdout closed")
+        || text.contains("iterable is closed")
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum IterableClosedStream {
     Writable,

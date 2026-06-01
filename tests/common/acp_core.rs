@@ -25,9 +25,18 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
         r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
-    const runRoot = path.join(process.cwd(), '.malvin', 'logs');
-    const runDirNames = fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-    const runDir = path.join(runRoot, runDirNames[0]);
+    const os = require('os');
+    const runRoot = path.join(os.homedir(), '.malvin', 'logs');
+    let runDir = null;
+    outer: for (const hash of fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory())) {{
+      const bucket = path.join(runRoot, hash.name);
+      const runDirNames = fs.readdirSync(bucket, {{ withFileTypes: true }}).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+      if (runDirNames.length > 0) {{
+        runDir = path.join(bucket, runDirNames[0]);
+        break outer;
+      }}
+    }}
+    if (!runDir) throw new Error('no run dir');
 {body}"
     );
     acp_mock_js("", &prompt)
@@ -132,21 +141,25 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
 pub fn acp_mock_bug_kpop_solved_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
-    const root = path.join(process.cwd(), '.malvin', 'logs');
+    const os = require('os');
+    const root = path.join(os.homedir(), '.malvin', 'logs');
     if (fs.existsSync(root)) {
-      const runs = fs.readdirSync(root, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name)
-        .sort()
-        .reverse();
-      outer: for (const run of runs) {
-        const kpopDir = path.join(root, run, '_kpop');
+      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const bucket = path.join(root, hash.name);
+        const runs = fs.readdirSync(bucket, { withFileTypes: true })
+          .filter((e) => e.isDirectory())
+          .map((e) => e.name)
+          .sort()
+          .reverse();
+        for (const run of runs) {
+        const kpopDir = path.join(bucket, run, '_kpop');
         if (!fs.existsSync(kpopDir)) continue;
         for (const name of fs.readdirSync(kpopDir)) {
           if (name.startsWith('exp_log_') && name.endsWith('.md')) {
             fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
             break outer;
           }
+        }
         }
       }
     }";

@@ -36,8 +36,14 @@
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
+mod gate_loop_session;
+mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
+pub use sandbox_oom::{
+    OOM_REASON_MEASUREMENT_FAIL_CLOSED, OOM_REASON_MEMORY_LIMIT, SandboxOomKillFacts,
+    SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
+};
 pub use current_state::format_current_state;
 pub mod malvin_sandbox;
 pub mod process_group_rss;
@@ -49,9 +55,11 @@ pub use malvin_short_id::{
 mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
-    find_malvin_logs_root, is_malvin_workspace, malvin_advice_path, malvin_checks_path,
-    malvin_config_path, malvin_logs_root, remove_legacy_malvin_checks_file, MALVIN_ADVICE_REL,
-    MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR, MALVIN_LOGS_REL,
+    canonical_work_dir_for_logs, find_malvin_logs_root, is_malvin_workspace, malvin_advice_path,
+    malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
+    read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
+    write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
+    MALVIN_LOGS_REL, WORK_DIR_MANIFEST,
 };
 mod terminal_palette;
 mod run_id;
@@ -90,7 +98,8 @@ pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_use
 pub use config::DEFAULT_CLI_MODEL;
 pub use kpop_progression::agent_declared_success;
 pub use output::{
-    ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, init_stdout_style,
+    ERROR_WHO, MALVIN_WHO, WARNING_WHO, format_line, format_log_tag_inner, format_who_tag_prefix,
+    init_stdout_style,
     print_log_error, print_log_warning, print_stderr_line, print_stdout_line, print_stdout_text,
 };
 pub use prompts::DO_HEADER_MD;
@@ -154,6 +163,9 @@ pub mod do_flow;
 
 #[path = "cli/ideas_flow.rs"]
 pub mod ideas_flow;
+
+#[path = "cli/plan_flow.rs"]
+pub mod plan_flow;
 
 #[path = "cli/mod.rs"]
 pub mod cli;

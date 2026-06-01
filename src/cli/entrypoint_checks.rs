@@ -19,58 +19,59 @@ mod tests {
 
     #[test]
     fn ensure_malvin_checks_for_command_writes_defaults_except_do_and_models() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(tmp.path()).expect("chdir");
-        let checks = tmp.path().join(".malvin/checks");
-        let config = tmp.path().join(".malvin/config.toml");
-        assert!(!checks.exists());
-        assert!(!config.exists());
+        crate::test_utils::with_isolated_home(|work| {
+            let cwd = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(work).expect("chdir");
+            let checks = work.join(".malvin/checks");
+            let config = crate::malvin_config_path(work);
+            assert!(!checks.exists());
+            assert!(!config.exists());
 
-        ensure_malvin_checks_for_command(&Commands::Code(CodeArgs {
-            max_loops: 1,
-            max_hypotheses: 10,
-            tenacious: false,
-            trust_the_plan: false,
-            dry_run: false,
-            skip_pre_checks: false,
-            fast: false,
-            request: None,
-        }))
-        .expect("code should materialize checks");
-        assert!(checks.is_file());
-        assert!(config.is_file());
-        assert!(
-            std::fs::read_to_string(&config)
-                .expect("read config")
-                .contains("[agent]")
-        );
+            ensure_malvin_checks_for_command(&Commands::Code(CodeArgs {
+                max_loops: 1,
+                max_hypotheses: 10,
+                tenacious: false,
+                trust_the_plan: false,
+                dry_run: false,
+                skip_pre_checks: false,
+                fast: false,
+                request: None,
+            }))
+            .expect("code should materialize checks");
+            assert!(checks.is_file());
+            assert!(config.is_file());
+            assert!(
+                std::fs::read_to_string(&config)
+                    .expect("read config")
+                    .contains("[agent]")
+            );
 
-        std::fs::remove_file(&checks).expect("remove checks");
-        std::fs::remove_file(&config).expect("remove config");
-        ensure_malvin_checks_for_command(&Commands::Do(DoArgs {
-            repo_gates: false,
-            thoughts: false,
-            request: None,
-        }))
-        .expect("do must not create checks");
-        assert!(!checks.exists());
-        assert!(!config.exists());
+            std::fs::remove_file(&checks).expect("remove checks");
+            std::fs::remove_file(&config).expect("remove config");
+            ensure_malvin_checks_for_command(&Commands::Do(DoArgs {
+                repo_gates: false,
+                thoughts: false,
+                request: None,
+            }))
+            .expect("do must not create checks");
+            assert!(!checks.exists());
+            assert!(!config.exists());
 
-        ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs {}))
-            .expect("models must not create checks");
-        assert!(!checks.exists());
-        assert!(!config.exists());
+            ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs {}))
+                .expect("models must not create checks");
+            assert!(!checks.exists());
+            assert!(!config.exists());
 
-        ensure_malvin_checks_for_command(&Commands::Init(InitArgs {
-            force: false,
-            languages: vec!["rust".to_string()],
-            path: None,
-        }))
-        .expect("init must not pre-seed checks at entrypoint");
-        assert!(!checks.exists());
-        assert!(!config.exists());
+            ensure_malvin_checks_for_command(&Commands::Init(InitArgs {
+                force: false,
+                languages: vec!["rust".to_string()],
+                path: None,
+            }))
+            .expect("init must not pre-seed checks at entrypoint");
+            assert!(!checks.exists());
+            assert!(!config.exists());
 
-        std::env::set_current_dir(cwd).expect("restore cwd");
+            std::env::set_current_dir(cwd).expect("restore cwd");
+        });
     }
 }

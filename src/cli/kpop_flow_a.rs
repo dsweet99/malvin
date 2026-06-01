@@ -133,12 +133,12 @@ pub async fn run_kpop(
         &prepared.session_dotfile_backups,
         &prepared.artifacts.artifact_result_md(),
     );
+    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts.run_dir)
+        .map_err(|e| e.to_string())?;
     if r.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
         crate::agent_phase::print_done_with_reporting_phase();
     }
-    crate::run_timing::print_summary_from_run_dir(&prepared.artifacts.run_dir)
-        .map_err(|e| e.to_string())?;
     r
 }
 
@@ -147,7 +147,7 @@ pub async fn run_kpop(
 mod kiss_cov_auto {
     use super::run_kpop_short_id_lookup;
     use crate::cli::KpopArgs;
-    use crate::output::{format_log_tag_inner, MALVIN_WHO};
+    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
 
     #[test]
     fn kiss_cov_kpop_prompt_store() { let _ = stringify!(kpop_prompt_store); }
@@ -162,32 +162,36 @@ mod kiss_cov_auto {
 
     #[test]
     fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let cwd = tmp.path();
-        let run_dir = cwd.join(".malvin/logs").join("20260101_abc");
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        let exp = run_dir.join("_kpop").join("exp_log_20260101_abc.md");
-        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-        std::fs::write(&exp, "lookup ok\n").expect("write exp");
-        let rel = "./.malvin/logs/20260101_abc/_kpop/exp_log_20260101_abc.md";
-        std::fs::write(
-            run_dir.join("stdout.log"),
-            format!(
-                "20260101.000000.000 [{}] KPOP_LOG: Ma1b2c {rel}\n",
-                format_log_tag_inner(MALVIN_WHO)
-            ),
-        )
-        .expect("stdout");
-        let old = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(cwd).expect("chdir");
-        let kpop = KpopArgs {
-            max_loops: 1,
-            max_hypotheses: 1,
-            tenacious: false,
-            request: Some("Ma1b2c".into()),
-        };
-        run_kpop_short_id_lookup(&kpop).expect("lookup dump");
-        std::env::set_current_dir(old).expect("restore cwd");
+        crate::test_utils::with_isolated_home(|cwd| {
+            let home = crate::user_home_dir();
+            let run_name = "20260101_000000_abcabcab";
+            let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+            let run_dir = bucket.join(run_name);
+            std::fs::create_dir_all(&run_dir).expect("mkdir");
+            crate::write_work_dir_manifest(&run_dir, cwd).expect("manifest");
+            let exp = run_dir.join("_kpop").join(format!("exp_log_{run_name}.md"));
+            std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
+            std::fs::write(&exp, "lookup ok\n").expect("write exp");
+            let rel = format!("{}/_kpop/exp_log_{run_name}.md", run_dir.display());
+            std::fs::write(
+                run_dir.join("stdout.log"),
+                format!(
+                    "20260101.000000.000 {}KPOP_LOG: Ma1b2c {rel}\n",
+                    format_who_tag_prefix(MALVIN_WHO)
+                ),
+            )
+            .expect("stdout");
+            let old = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(cwd).expect("chdir");
+            let kpop = KpopArgs {
+                max_loops: 1,
+                max_hypotheses: 1,
+                tenacious: false,
+                request: Some("Ma1b2c".into()),
+            };
+            run_kpop_short_id_lookup(&kpop).expect("lookup dump");
+            std::env::set_current_dir(old).expect("restore cwd");
+        });
     }
 }
 

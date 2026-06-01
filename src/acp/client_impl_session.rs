@@ -23,6 +23,7 @@ impl AgentClient {
             io,
             prompts_log_run_dir: None,
             coder_session: None,
+            coder_session_cwd: None,
             max_acp_retries: if max_acp_retries == 0 {
                 1
             } else {
@@ -107,6 +108,7 @@ impl AgentClient {
             match spawn_agent_acp_session(self, cwd).await {
                 Ok(mut s) => {
                     crate::acp::acp_session_set_run_timing(&mut s, self.timing.clone());
+                    self.coder_session_cwd = Some(crate::acp::resolve_acp_session_cwd(cwd)?);
                     self.coder_session = Some(s);
                     return Ok(());
                 }

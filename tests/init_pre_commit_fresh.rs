@@ -31,7 +31,7 @@ fn init_combined_output(out: &std::process::Output) -> String {
 fn malvin_init_rust_empty_directory_seeds_rust_quality_gates() {
     let project = tempfile::tempdir().unwrap();
     assert!(!project.path().join("Cargo.toml").exists());
-    let out = malvin_init_output_in_place(project.path(), &["rust"]);
+    let (out, _home) = malvin_init_output_in_place(project.path(), &["rust"]);
     let combined = init_combined_output(&out);
     assert!(
         out.status.success(),
@@ -67,7 +67,7 @@ fn malvin_init_rust_empty_directory_seeds_rust_quality_gates() {
 fn malvin_init_python_empty_directory_seeds_python_quality_gates() {
     let project = tempfile::tempdir().unwrap();
     assert!(!project.path().join(".pre-commit-config.yaml").exists());
-    let out = malvin_init_output_in_place(project.path(), &["python"]);
+    let (out, _home) = malvin_init_output_in_place(project.path(), &["python"]);
     let combined = init_combined_output(&out);
     assert!(
         out.status.success(),
@@ -97,7 +97,7 @@ fn malvin_init_python_empty_directory_seeds_python_quality_gates() {
 fn malvin_init_empty_directory_does_not_fail_pre_commit_install() {
     let project = tempfile::tempdir().unwrap();
     assert!(!project.path().join(".git").exists());
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, _home) = malvin_init_output(project.path(), &["python"]);
     let combined = init_combined_output(&out);
     assert!(
         out.status.success(),
@@ -128,15 +128,19 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
         "init must write {MALVIN_ADVICE_REL}"
     );
     assert!(
-        w.path().join(MALVIN_CONFIG_REL).is_file(),
-        "init must write {MALVIN_CONFIG_REL}"
+        w.home_path().join(".malvin/config.toml").is_file(),
+        "init must write ~/.malvin/config.toml"
+    );
+    assert!(
+        !w.path().join(MALVIN_CONFIG_REL).exists(),
+        "init must not write workspace-local config"
     );
 }
 
 #[test]
 fn malvin_init_does_not_autocommit_preexisting_repo_changes() {
     let project = tempdir_seeded_dirty_keep();
-    let out = malvin_init_output(project.path(), &["python"]);
+    let (out, _home) = malvin_init_output(project.path(), &["python"]);
     assert!(out.status.success(), "malvin init failed: {out:?}");
     assert_git_head_commit_count(project.path(), "1");
     assert_eq!(

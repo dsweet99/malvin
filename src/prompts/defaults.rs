@@ -6,7 +6,13 @@ mod default_files;
 pub use default_files::default_file;
 
 pub const HEADER_MD: &str = "header.md";
+pub const HEADER_DO_MD: &str = "header_do.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
+
+pub const PLAN_1A_RESTATE_MD: &str = "plan_1a_restate.md";
+pub const PLAN_1B_CRITIQUE_MD: &str = "plan_1b_critique.md";
+pub const PLAN_2_DECISIONS_MD: &str = "plan_2_decisions.md";
+pub const PLAN_3_REWRITE_MD: &str = "plan_3_rewrite.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -14,12 +20,16 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
     "kpop_block.md",
     "mbc2.md",
-    "summary.md",
     "kpop_program.md",
     "tidy_constraints.md",
     "code_constraints.md",
     "init_constraints.md",
+    PLAN_1A_RESTATE_MD,
+    PLAN_1B_CRITIQUE_MD,
+    PLAN_2_DECISIONS_MD,
+    PLAN_3_REWRITE_MD,
     HEADER_MD,
+    HEADER_DO_MD,
     DO_HEADER_MD,
 ];
 
@@ -77,6 +87,31 @@ mod do_header_tests {
         let lower = s.to_ascii_lowercase();
         assert!(s.ends_with('\n'));
         assert!(lower.contains("no stream of consciousness"));
+        assert!(lower.contains("do not restate"));
+        assert!(!lower.contains("user request is:"));
         assert!(!s.contains("You'll\n find"));
+    }
+}
+
+#[cfg(test)]
+mod header_do_tests {
+    use super::HEADER_DO_MD;
+    use super::default_file;
+
+    #[test]
+    fn embedded_header_do_omits_log_reading_mandate() {
+        let s = default_file(HEADER_DO_MD).expect("header_do must be embedded");
+        let lower = s.to_ascii_lowercase();
+        assert!(!lower.contains("recent logs"));
+        assert!(!lower.contains("rl: be sure to look at recent logs"));
+        assert!(!lower.contains("## history"));
+        assert!(
+            !lower.contains("## definition: claims vs hypotheses"),
+            "do coding header must not impose epistemic log-citation rules"
+        );
+        assert!(
+            !lower.contains("cite evidence"),
+            "do coding header must not require evidence citations"
+        );
     }
 }

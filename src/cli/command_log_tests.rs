@@ -1,6 +1,6 @@
 use std::os::unix::fs::PermissionsExt;
 
-use crate::output::{MALVIN_WHO, format_log_tag_inner};
+use crate::output::{WHO_U, format_who_tag_delim};
 use tempfile::tempdir;
 
 use super::run_emit::emit_command_line;
@@ -14,9 +14,9 @@ fn emit_command_line_writes_command_log_when_run_dir_is_writable() {
     let p = run.join("command.log");
     assert!(p.is_file(), "command.log should record argv beside the run");
     let text = std::fs::read_to_string(&p).expect("read command.log");
-    let inner = format_log_tag_inner(MALVIN_WHO);
+    let delim = format_who_tag_delim(WHO_U);
     assert!(
-        text.contains(&format!(" [{inner}] Command: ")) && text.ends_with('\n'),
+        text.contains(&format!(" {delim}Command: ")) && text.ends_with('\n'),
         "command.log should match stdout line format; got {text:?}"
     );
 }
@@ -33,9 +33,9 @@ fn emit_command_line_writes_command_log_when_stdout_echo_suppressed() {
         "command.log should still record argv when tee is off"
     );
     let text = std::fs::read_to_string(&p).expect("read command.log");
-    let inner = format_log_tag_inner(MALVIN_WHO);
+    let delim = format_who_tag_delim(WHO_U);
     assert!(
-        text.contains(&format!(" [{inner}] Command: ")) && text.ends_with('\n'),
+        text.contains(&format!(" {delim}Command: ")) && text.ends_with('\n'),
         "command.log should match stdout format when tee is off; got {text:?}"
     );
 }

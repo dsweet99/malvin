@@ -46,6 +46,7 @@ pub(crate) async fn run_kpop_agent_loops(
         let mut state =
             KpopMultiturnState::new(builder, exp_log_path.clone(), params.kpop.max_hypotheses)?;
 
+        crate::gate_loop_session::set_active_gate_iteration(Some(exp_iter));
         last_acp = kpop_run_acp_multiturn(
             KpopAcpMultiturnCtx {
                 client: params.client,
@@ -59,6 +60,7 @@ pub(crate) async fn run_kpop_agent_loops(
             },
         )
         .await;
+        crate::gate_loop_session::set_active_gate_iteration(None);
         if last_acp.is_err() {
             break;
         }
@@ -105,15 +107,19 @@ mod tests {
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
     const target = targetMatch ? targetMatch[0] : null;
-    const root = path.join(process.cwd(), '.malvin', 'logs');
+    const os = require('os');
+    const root = path.join(os.homedir(), '.malvin', 'logs');
     if (target && fs.existsSync(root)) {
-      const runs = fs.readdirSync(root, { withFileTypes: true })
-        .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
-      outer: for (const run of runs) {
-        const p = path.join(root, run, '_kpop', target);
-        if (fs.existsSync(p)) {
-          fs.appendFileSync(p, `\n## Step 1 — KPOP mock\n`);
-          break outer;
+      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+        const bucket = path.join(root, hash.name);
+        const runs = fs.readdirSync(bucket, { withFileTypes: true })
+          .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
+        for (const run of runs) {
+          const p = path.join(bucket, run, '_kpop', target);
+          if (fs.existsSync(p)) {
+            fs.appendFileSync(p, `\n## Step 1 — KPOP mock\n`);
+            break outer;
+          }
         }
       }
     }";

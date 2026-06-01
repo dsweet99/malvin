@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use super::*;
+use crate::output::{format_who_tag_delim, ERROR_WHO, MALVIN_WHO, WARNING_WHO};
 use crate::repo_checks::command_support::set_fake_command_dir;
 use crate::test_stderr_capture::capture_stderr_output;
 
@@ -67,15 +68,18 @@ fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_one_gate_bin(bin_dir.path(), "failgate");
     let _guard = set_fake_command_dir(bin_dir.path());
+    let malvin_tag = format_who_tag_delim(MALVIN_WHO);
+    let error_tag = format_who_tag_delim(ERROR_WHO);
+    let warning_tag = format_who_tag_delim(WARNING_WHO);
     let stderr = capture_stderr_output(|| {
         let _ = run_repo_workspace_gates_no_kiss_clamp(work, RepoGateOutput::Stderr, None);
     });
     assert!(
-        stderr.contains("[malvin") && stderr.contains("failgate"),
+        stderr.contains(&malvin_tag) && stderr.contains("failgate"),
         "gate failure body must use malvin tag, got: {stderr:?}"
     );
     assert!(
-        !stderr.contains("[error") && !stderr.contains("[warning"),
+        !stderr.contains(&error_tag) && !stderr.contains(&warning_tag),
         "gate failure must not use error or warning tags, got: {stderr:?}"
     );
 }

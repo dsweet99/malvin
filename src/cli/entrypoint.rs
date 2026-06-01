@@ -12,7 +12,8 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Init(_)
         | Commands::Kpop(_)
         | Commands::Invent(_)
-        | Commands::Models(_) => Ok(()),
+        | Commands::Models(_)
+        | Commands::Plan(_) => Ok(()),
     }
 }
 
@@ -56,6 +57,11 @@ pub fn entrypoint() -> Exit {
 }
 
 fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+    let theme = std::env::current_dir()
+        .ok()
+        .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
+        .unwrap_or_default();
+    crate::terminal_palette::init_terminal_theme(theme);
     crate::output::init_stdout_style(global.no_color);
     crate::output::set_stdout_suppressed(global.background);
 }
@@ -169,6 +175,7 @@ fn dispatch_command(command: Commands, shared: &SharedOpts) -> Result<(), String
             )
         }),
         Commands::Invent(ideas) => super::entrypoint_commands::run_invent_command(ideas, &shared),
+        Commands::Plan(plan) => super::entrypoint_commands::run_plan_command(plan, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();
@@ -207,5 +214,6 @@ mod kiss_cov_gate_refs {
         let _ = run_async_cli(|| async { Ok(()) });
         let _ = entrypoint_commands::run_code_command;
         let _ = entrypoint_commands::run_invent_command;
+        let _ = entrypoint_commands::run_plan_command;
     }
 }

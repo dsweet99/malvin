@@ -31,6 +31,14 @@ const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
     }
 }
 
+fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
+    if slot == 3 {
+        crate::malvin_config_path(work_dir)
+    } else {
+        work_dir.join(DOTFILE_ROWS[slot].rel)
+    }
+}
+
 const KISSCONFIG_FILE: &str = ".kissconfig";
 const KISSIGNORE_FILE: &str = ".kissignore";
 
@@ -98,7 +106,7 @@ pub(super) fn backup_slot(
     generate_id: &mut impl FnMut(usize) -> String,
 ) -> Result<DotfileBackupState, String> {
     let spec = &DOTFILE_ROWS[slot];
-    let src = work_dir.join(spec.rel);
+    let src = dotfile_source_path(slot, work_dir);
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
     }
@@ -118,7 +126,7 @@ pub(super) fn backup_slot(
 
 pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
-    let dst = work_dir.join(spec.rel);
+    let dst = dotfile_source_path(slot, work_dir);
     let lbls = labels(spec);
     match backup {
         DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
@@ -201,41 +209,8 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
 }
 
 #[cfg(test)]
-mod slot_helpers {
-    use super::*;
-
-    #[test]
-    fn restore_excluding_malvin_checks_on_bundle() {
-        let tmp = tempfile::tempdir().unwrap();
-        let work = tmp.path();
-        std::fs::create_dir_all(work.join(".malvin")).unwrap();
-        std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
-        let bundle = SessionDotfileBackups::from_parts(
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-        );
-        bundle.restore_excluding_malvin_checks(work).unwrap();
-        assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
-    }
-
-    #[test]
-    fn dotfile_slot_helpers_and_session_restore_noop() {
-        let _ = labels(&DOTFILE_ROWS[0]);
-        let tmp = tempfile::tempdir().unwrap();
-        let mut id = |n: usize| format!("slot{n}");
-        let _ = backup_slot(0, tmp.path(), &mut id);
-        let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
-        let bundle = SessionDotfileBackups::from_parts(
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-            DotfileBackupState::Missing,
-        );
-        restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
-    }
-}
+#[path = "tests/slot_helpers.rs"]
+mod slot_helpers;
 
 #[cfg(test)]
 mod tests;

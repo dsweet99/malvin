@@ -69,13 +69,13 @@ async fn run_gate_kpop_on_loop_iteration(
         params.workflow,
         params.shared.acp_stdout_markdown_enabled(),
     );
-    client.set_run_timing(Some(Arc::clone(run_timing)));
-    client.prompts_log_run_dir = Some(params.prepared.artifacts().run_dir.clone());
+    wire_gate_kpop_client(&mut client, params, run_timing);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot(&params.prepared.artifacts().work_dir)?;
     print_gate_kpop_log_line(params.prepared, &exp_log_path);
 
+    crate::gate_loop_session::set_active_gate_iteration(Some(iteration));
     let mut iteration_params = GateKpopIterationParams {
         loop_params: params,
         session_dotfile_backups: &session_dotfile_backups,
@@ -86,7 +86,18 @@ async fn run_gate_kpop_on_loop_iteration(
     let mut ctx = GateKpopMultiturnCtx {
         iteration: &mut iteration_params,
     };
-    run_gate_kpop_session(&mut ctx).await
+    let result = run_gate_kpop_session(&mut ctx).await;
+    crate::gate_loop_session::set_active_gate_iteration(None);
+    result
+}
+
+fn wire_gate_kpop_client(
+    client: &mut crate::acp::AgentClient,
+    params: &GateKpopLoopParams<'_>,
+    run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
+) {
+    client.set_run_timing(Some(Arc::clone(run_timing)));
+    client.prompts_log_run_dir = Some(params.prepared.artifacts().run_dir.clone());
 }
 
 use crate::artifacts::SessionDotfileBackups;
@@ -221,6 +232,7 @@ mod tests {
     #[test]
     fn gate_kpop_loop_session_helpers_are_covered() {
         let _ = stringify!(super::run_gate_kpop_on_loop_iteration);
+        let _ = stringify!(super::wire_gate_kpop_client);
         let _ = stringify!(super::gate_kpop_loop_one_iteration);
         let _ = stringify!(super::run_gate_kpop_loop);
     }
@@ -233,5 +245,6 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = gate_kpop_loop_one_iteration;
         let _ = run_gate_kpop_on_loop_iteration;
+        let _ = wire_gate_kpop_client;
     }
 }

@@ -4,7 +4,7 @@ use super::acp_tee::{
     print_stdout_acp_tee_line_with_timestamp, print_stdout_acp_tool_summary_tee,
 };
 use crate::output::stdout_log_pair::acp_tee_log_prefix;
-use crate::terminal_palette::ANSI_TOOL_WHITE;
+use crate::terminal_palette::ansi_tool_white;
 
 #[test]
 fn kpop_h1_and_h5_timestamp_present_on_acp_tee_helpers() {
@@ -106,9 +106,9 @@ fn ansi_acp_tee_directions_use_distinct_bracket_colors() {
     assert!(to_line.contains('\x1b'));
     assert!(from_line.contains('\x1b'));
     assert_ne!(to_line, from_line);
-    assert!(to_line.ends_with(" out"));
+    assert!(to_line.ends_with("out"));
     assert!(
-        from_line.contains(&format!("{ANSI_TOOL_WHITE}in")),
+        from_line.contains(&format!("{}in", ansi_tool_white())),
         "FromAgent payload should be white; got {from_line:?}"
     );
     assert!(!to_line.starts_with("20260413"));
@@ -129,7 +129,7 @@ fn agent_message_prefix_rendered_payload_uses_white() {
     };
     let white = agent_rendered_markup_payload("hello agent");
     assert!(
-        white.contains(&format!("{ANSI_TOOL_WHITE}hello agent")),
+        white.contains(&format!("{}hello agent", ansi_tool_white())),
         "white wrapper should color agent payload; got {white:?}"
     );
     let prefix = format_line_acp_ansi_payload(&AcpTeeLineFmt {
@@ -153,7 +153,8 @@ fn ansi_acp_tee_agent_message_payload_uses_white() {
         dim_payload: false,
     });
     let white = format!(
-        "{ANSI_TOOL_WHITE}hello agent{}",
+        "{}hello agent{}",
+        ansi_tool_white(),
         crate::terminal_palette::ANSI_RESET
     );
     assert!(

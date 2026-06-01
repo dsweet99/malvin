@@ -57,7 +57,7 @@ pub fn fail_on_abort_for_artifacts(artifacts: &crate::artifacts::RunArtifacts) -
     }
 }
 
-/// Stem used in log name segments for coder prompts (`bug_fix.md`, `summary.md`, …).
+/// Stem used in log name segments for coder prompts (`bug_fix.md`, …).
 /// Strips a trailing `.md` when present (case-sensitive); otherwise returns `filename` unchanged. Avoids panics on short names.
 #[must_use]
 pub(crate) fn prompt_md_stem(filename: &str) -> &str {

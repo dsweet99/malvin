@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 fn heartbeat_entry() -> crate::deferred_log::DeferredEntry {
     build_display_log_entry(
-        "[malvin.........] HB: 20260524.000000".into(),
-        "20260524.000000.000 [malvin.........] HB: 20260524.000000".into(),
+        "malvin.| HB: 20260524.000000".into(),
+        "20260524.000000.000 malvin.|HB: 20260524.000000".into(),
     )
 }
 

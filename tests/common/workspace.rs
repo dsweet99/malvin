@@ -9,9 +9,36 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
 }
 
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
-    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
-    std::fs::write(workspace.join(".malvin/config.toml"), content)
-        .expect("write .malvin/config.toml");
+    let path = malvin::malvin_config_path(workspace);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin");
+    }
+    std::fs::write(path, content).expect("write ~/.malvin/config.toml");
+}
+
+/// Run `f` with `HOME` pointed at a fresh temp directory and restore afterward.
+pub fn with_isolated_home<F>(f: F)
+where
+    F: FnOnce(&Path, &Path),
+{
+    let root = tempfile::tempdir().expect("tempdir");
+    let home = root.path().join("home");
+    std::fs::create_dir_all(&home).expect("mkdir home");
+    let work = root.path().join("work");
+    std::fs::create_dir_all(&work).expect("mkdir work");
+    let old_home = std::env::var_os("HOME");
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("HOME", &home);
+    }
+    f(&work, &home);
+    #[allow(unsafe_code)]
+    unsafe {
+        match old_home {
+            Some(h) => std::env::set_var("HOME", h),
+            None => std::env::remove_var("HOME"),
+        }
+    }
 }
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -56,11 +83,19 @@ pub fn write_mock_executable(path: &std::path::Path, js: &str) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+/// Home-directory run logs bucket for `workspace` when `HOME` is set to `home`.
+#[must_use]
+pub fn malvin_run_logs_bucket(workspace: &Path, home: &Path) -> PathBuf {
+    home.join(".malvin")
+        .join("logs")
+        .join(malvin::workspace_logs_hash(workspace))
+}
+
 #[cfg(unix)]
-pub fn only_run_dir(workspace: &Path) -> PathBuf {
-    let run_root = workspace.join(".malvin/logs");
+pub fn only_run_dir(workspace: &Path, home: &Path) -> PathBuf {
+    let run_root = malvin_run_logs_bucket(workspace, home);
     let dirs: Vec<PathBuf> = std::fs::read_dir(&run_root)
-        .expect("read .malvin/logs")
+        .expect("read home malvin logs bucket")
         .map(|entry| entry.expect("dir entry").path())
         .filter(|path| path.is_dir())
         .collect();

@@ -154,7 +154,11 @@ async fn h19_thought_stdout_three_space_indent_no_brackets() {
     let trace = tokio::fs::read_to_string(&fixture.trace_path).await.unwrap();
     let stdout = finish_stdout_log_fixture(fixture);
     assert!(trace.contains("[internal reasoning]"), "got {trace:?}");
-    assert!(stdout.contains("   internal reasoning"), "got {stdout:?}");
+    assert!(
+        stdout.contains("b|internal reasoning"),
+        "thought log must not add a space after the who pipe; got {stdout:?}"
+    );
+    assert!(!stdout.contains("b| internal reasoning"), "got {stdout:?}");
     assert!(!stdout.contains("[internal reasoning]"), "got {stdout:?}");
 }
 
@@ -186,8 +190,8 @@ async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
     assert!(line.contains("Run "), "got {line:?}");
     assert!(line.contains("echo hi"), "got {line:?}");
     assert!(
-        line.contains("]    Run "),
-        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+        line.contains("|Run "),
+        "tool-call log lines must not add a space after the who pipe; got {line:?}"
     );
 }
 
@@ -202,8 +206,8 @@ async fn h23_start_and_done_tool_summary_omit_payload_brackets() {
     let start_plain = crate::ansi_strip::strip_ansi_escapes(&start_line);
     let done_plain = crate::ansi_strip::strip_ansi_escapes(&done_line);
     super::kpop_stdout_logger_plan_check_bracket::assert_styled_tool_summary_payloads_match(
-        start_plain.split(']').nth(1).expect("payload").trim(),
-        done_plain.split(']').nth(1).expect("payload").trim(),
+        start_plain.split('|').nth(1).expect("payload").trim(),
+        done_plain.split('|').nth(1).expect("payload").trim(),
     );
 }
 
@@ -219,7 +223,7 @@ async fn h21_unstyled_tool_summary_omits_brackets() {
     assert!(is_log_timestamp_token(line.split_whitespace().next().unwrap_or("")));
     assert!(!line.contains("[Run"), "got {line:?}");
     assert!(
-        line.contains("]    Run "),
-        "tool-call log lines must be indented three spaces after who tag; got {line:?}"
+        line.contains("|Run "),
+        "tool-call log lines must not add a space after the who pipe; got {line:?}"
     );
 }

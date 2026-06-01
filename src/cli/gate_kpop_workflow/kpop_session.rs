@@ -1,12 +1,11 @@
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::acp::{
-    kpop_fail_after_prompt, kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
-    KpopFailAfterPrompt, KpopPromptRound,
+    backoff_after_agent_failure, kpop_fail_after_prompt, kpop_round, restore_session_dotfiles,
+    spawn_agent_acp_session, KpopFailAfterPrompt, KpopPromptRound,
 };
 use crate::cli::workflow_kpop_shared::{
-    clear_quality_gates_log_for_next_agent, finish_kpop_acp_session, gate_iteration_context,
-    post_kpop_session_gates,
+    finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
 };
 use crate::cli::SharedOpts;
 
@@ -97,7 +96,6 @@ fn restore_gate_kpop_session_dotfiles(ctx: &GateKpopMultiturnCtx<'_>) -> Result<
 
 async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
     let prepared = ctx.iteration.loop_params.prepared;
-    clear_quality_gates_log_for_next_agent(prepared.artifacts())?;
     let prompt = build_gate_kpop_prompt(ctx)?;
     let s = spawn_agent_acp_session(ctx.iteration.client, &prepared.artifacts().work_dir)
         .await
@@ -109,16 +107,41 @@ async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Re
 }
 
 pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
-    run_gate_kpop_single_acp_turn(ctx).await?;
-    finish_kpop_acp_session(
-        ctx.iteration.loop_params.prepared.artifacts(),
-        ctx.iteration.session_dotfile_backups,
-        ctx.iteration
-            .loop_params
-            .behavior
-            .restore_malvin_checks_after_session(),
-    )
-    .await
+    let max_attempts = ctx.iteration.client.max_acp_retries;
+    let mut last_error = String::new();
+    let mut attempts_used = 0_u32;
+    for attempt in 1..=max_attempts {
+        attempts_used = attempt;
+        match run_gate_kpop_single_acp_turn(ctx).await {
+            Ok(()) => {
+                return finish_kpop_acp_session(
+                    ctx.iteration.loop_params.prepared.artifacts(),
+                    ctx.iteration.session_dotfile_backups,
+                    ctx.iteration
+                        .loop_params
+                        .behavior
+                        .restore_malvin_checks_after_session(),
+                )
+                .await;
+            }
+            Err(e) => {
+                last_error = e;
+                let timing = ctx.iteration.client.timing.as_ref();
+                match backoff_after_agent_failure(timing, &last_error, attempt, max_attempts)
+                    .await
+                {
+                    Err(err) => return Err(err.0),
+                    Ok(true) => break,
+                    Ok(false) => {}
+                }
+            }
+        }
+    }
+    let retries = attempts_used.saturating_sub(1);
+    let noun = crate::acp::retries_noun(retries);
+    Err(format!(
+        "agent acp (gate kpop) failed after {retries} {noun}. Last error:\n{last_error}"
+    ))
 }
 
 pub(crate) fn finish_gate_kpop_after_pass(
@@ -127,7 +150,6 @@ pub(crate) fn finish_gate_kpop_after_pass(
     _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
-    crate::agent_phase::print_done_with_reporting_phase();
     if let Some(timing) = run_timing {
         crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
             .map_err(|e| e.to_string())?;
@@ -135,6 +157,7 @@ pub(crate) fn finish_gate_kpop_after_pass(
         crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
             .map_err(|e| e.to_string())?;
     }
+    crate::agent_phase::print_done_with_reporting_phase();
     Ok(())
 }
 

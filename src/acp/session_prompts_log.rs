@@ -53,14 +53,14 @@ async fn prompts_log_flush(f: &mut tokio::fs::File) -> Result<(), String> {
 
 pub(crate) async fn append_prompts_log_uniform(
     run_dir: Option<&std::path::Path>,
-    trace_stem: &str,
+    _trace_stem: &str,
     bracket_label: &str,
     prompt_text: Option<&str>,
 ) -> Result<(), String> {
     let Some(mut f) = open_prompts_log_append(run_dir).await? else {
         return Ok(());
     };
-    let tag = crate::output::format_acp_directional_tag_prefix('>', trace_stem);
+    let tag = crate::output::WHO_U;
     if let Some(body) = prompt_text {
         prompts_log_append_tagged_logical_lines(&mut f, &tag, body).await?;
     } else {
@@ -79,7 +79,7 @@ pub(crate) async fn append_prompts_log_do_plain(
     let Some(mut f) = open_prompts_log_append(run_dir).await? else {
         return Ok(());
     };
-    let tag = crate::output::format_acp_directional_tag_prefix('>', "do");
+    let tag = crate::output::WHO_U;
     if include_full_combined {
         let combined = compose_do_split_prompt_text(parts);
         prompts_log_append_tagged_logical_lines(&mut f, &tag, &combined).await?;

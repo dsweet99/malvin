@@ -18,9 +18,6 @@ use crate::run_timing::TimingPhase;
 /// Arguments for [`run_ideas`].
 #[derive(Args, Debug)]
 pub struct IdeasArgs {
-    /// Number of ideas to request in the rendered `mbc2.md` prompt.
-    #[arg(long = "num-ideas", default_value_t = 3)]
-    pub num_ideas: usize,
     /// Request or `@file` → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
@@ -40,19 +37,16 @@ fn prepare_ideas_prompt_store() -> Result<PromptStore, String> {
     Ok(store)
 }
 
-pub fn build_ideas_render_context(num_ideas: usize, user_prompt: &str) -> HashMap<String, String> {
-    HashMap::from([
-        ("num_ideas".into(), num_ideas.to_string()),
-        ("user_prompt".into(), user_prompt.to_string()),
-    ])
+pub fn build_ideas_render_context(user_prompt: &str) -> HashMap<String, String> {
+    HashMap::from([("user_prompt".into(), user_prompt.to_string())])
 }
 
 /// # Errors
 ///
 /// Returns a message when `mbc2.md` cannot be loaded or rendered.
-pub fn render_ideas_prompt(num_ideas: usize, user_prompt: &str) -> Result<String, String> {
+pub fn render_ideas_prompt(user_prompt: &str) -> Result<String, String> {
     let store = prepare_ideas_prompt_store()?;
-    let ctx = build_ideas_render_context(num_ideas, user_prompt);
+    let ctx = build_ideas_render_context(user_prompt);
     render_mbc2_for_scheduled_kpop_block(&store, &ctx).map_err(|e| e.0)
 }
 
@@ -101,7 +95,7 @@ async fn prepare_ideas_run(
         .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prompt = render_ideas_prompt(ideas.num_ideas, &text)?;
+    let prompt = render_ideas_prompt(&text)?;
     let session_dotfile_backups = snapshot_ideas_session_dotfiles(&artifacts.work_dir)?;
     Ok(IdeasRunPrep {
         client,

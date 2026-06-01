@@ -5,17 +5,17 @@ use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::{
-    MALVIN_WHO, stdout_heartbeat_display_and_log_line, timestamp_now_string,
-    write_heartbeat_log_line,
+    stdout_heartbeat_display_and_log_line, timestamp_now_string, write_heartbeat_log_line, WHO_H,
 };
 use crate::time_format::heartbeat_payload_now;
 
 pub(crate) fn is_heartbeat_log_line(log: &str) -> bool {
-    if log.contains("] HB:") {
+    if log.contains("| HB:") || log.contains("|HB:") {
         return true;
     }
-    log.split("] ")
+    log.split('|')
         .nth(1)
+        .map(str::trim_start)
         .is_some_and(crate::time_format::heartbeat_payload_has_wall_clock_prefix)
 }
 
@@ -71,7 +71,7 @@ pub(crate) fn heartbeat_rendered_if_due(now: Instant, arm_if_unarmed: bool) -> O
     let ts = timestamp_now_string();
     let payload = heartbeat_payload_now();
     Some(stdout_heartbeat_display_and_log_line(
-        MALVIN_WHO,
+        WHO_H,
         &payload,
         Some(ts.as_str()),
     ))
@@ -170,17 +170,17 @@ mod inline_tests {
     #[test]
     fn heartbeat_line_detectors_cover_legacy_and_new_payloads() {
         assert!(is_heartbeat_log_line(
-            "20260524.000000.000 [malvin.........] HB: 20260524.000000"
+            "20260524.000000.000 malvin.| HB: 20260524.000000"
         ));
         assert!(is_heartbeat_log_line(
-            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+            "20260524.000000.000 malvin.| 20260524.000000 Still alive."
         ));
         assert!(log_contains_heartbeat(
-            "20260524.000000.000 [malvin.........] 20260524.000000 Still alive."
+            "20260524.000000.000 malvin.| 20260524.000000 Still alive."
         ));
         assert!(!log_contains_heartbeat("plain agent line"));
         assert_eq!(
-            heartbeat_log_offset("QUEUED\n20260524.000000.000 [malvin.........] 20260524.000000 Still alive."),
+            heartbeat_log_offset("QUEUED\n20260524.000000.000 malvin.| 20260524.000000 Still alive."),
             Some(7)
         );
     }

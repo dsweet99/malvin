@@ -9,7 +9,7 @@ use crate::acp::format_styled_tool_summary_tee_line;
 use crate::ansi_strip::strip_ansi_escapes;
 use crate::output::assert_acp_tool_summary_dim_preserves_bracket;
 use crate::tool_summary::apply_tool_summary_ansi;
-use crate::terminal_palette::ANSI_TOOL_DARK;
+use crate::terminal_palette::ansi_tool_dark;
 use serde_json::json;
 
 pub(super) fn read_tool_bracket_pair_updates(
@@ -52,7 +52,7 @@ pub(super) fn assert_payload_omits_brackets_after_who_tag(start_line: &str, done
     assert!(done_line.contains("Read "), "got {done_line:?}");
     for line in [start_line, done_line] {
         let plain = strip_ansi_escapes(line);
-        let who_end = plain.find(']').expect("who bracket");
+        let who_end = plain.find('|').expect("who pipe delimiter");
         let payload = plain[who_end + 1..].trim_start();
         assert!(
             !payload.starts_with('['),
@@ -86,8 +86,8 @@ pub(super) fn assert_styled_tool_summary_payloads_match(start_payload: &str, don
             "20260413.121314.015",
         );
         assert!(
-            styled.contains(ANSI_TOOL_DARK),
-            "styled tool summary must use inbound ACP who color; got {styled:?}"
+            styled.contains(ansi_tool_dark()),
+            "styled tool summary payload verbs use dark bold; got {styled:?}"
         );
         assert_acp_tool_summary_dim_preserves_bracket(&styled);
         crate::output::assert_tool_payload_uses_verb_styling(&styled);

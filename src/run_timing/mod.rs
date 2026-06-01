@@ -13,25 +13,7 @@ pub const RUN_TIMING_SUMMARY_PREFIX: &str = "TIMING: ";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TimingPhase {
-    CheckPlan,
     Implement,
-    ReviewFanout,
-    ReviewWrite,
-    Concerns,
-    Summary,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ReviewPairId {
-    Fanout,
-}
-
-impl ReviewPairId {
-    #[must_use]
-    pub const fn review_phase(self) -> TimingPhase {
-        let Self::Fanout = self;
-        TimingPhase::ReviewFanout
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -40,13 +22,8 @@ pub struct RunTiming {
     wall_end: Option<Instant>,
     llm_wait: Duration,
     agent_retry_backoff: Duration,
-    check_plan: Duration,
     implement: Duration,
     implement_display_name: &'static str,
-    review_fanout: Duration,
-    review_write: Duration,
-    concerns: Duration,
-    summary: Duration,
     tool_calls: Duration,
 }
 
@@ -57,13 +34,8 @@ impl Default for RunTiming {
             wall_end: None,
             llm_wait: Duration::ZERO,
             agent_retry_backoff: Duration::ZERO,
-            check_plan: Duration::ZERO,
             implement: Duration::ZERO,
             implement_display_name: "implement",
-            review_fanout: Duration::ZERO,
-            review_write: Duration::ZERO,
-            concerns: Duration::ZERO,
-            summary: Duration::ZERO,
             tool_calls: Duration::ZERO,
         }
     }
@@ -90,19 +62,9 @@ impl RunTiming {
     }
 
     pub const fn add_llm_phase(&mut self, phase: TimingPhase, d: Duration) {
+        let TimingPhase::Implement = phase;
         self.llm_wait = self.llm_wait.saturating_add(d);
-        match phase {
-            TimingPhase::CheckPlan => self.check_plan = self.check_plan.saturating_add(d),
-            TimingPhase::Implement => self.implement = self.implement.saturating_add(d),
-            TimingPhase::ReviewFanout => {
-                self.review_fanout = self.review_fanout.saturating_add(d);
-            }
-            TimingPhase::ReviewWrite => {
-                self.review_write = self.review_write.saturating_add(d);
-            }
-            TimingPhase::Concerns => self.concerns = self.concerns.saturating_add(d),
-            TimingPhase::Summary => self.summary = self.summary.saturating_add(d),
-        }
+        self.implement = self.implement.saturating_add(d);
     }
 
     pub const fn add_agent_retry_backoff(&mut self, d: Duration) {

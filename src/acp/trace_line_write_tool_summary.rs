@@ -42,7 +42,7 @@ fn tee_tool_summary_plain(ctx: TeeToolSummaryPlainCtx<'_>) {
             &mut guard,
             build_tool_entry(ToolSummaryBuild {
                 tee: TeeSinkMeta {
-                    who: ctx.trace_file.who.clone(),
+                    who: crate::output::WHO_T.to_string(),
                     ts: ctx.ts,
                     emit_stdout_markdown: ctx.trace_file.emit_stdout_markdown,
                 },

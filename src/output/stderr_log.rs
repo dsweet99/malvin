@@ -75,7 +75,7 @@ mod stderr_log_tests {
             !crate::output::is_log_timestamp_token(display.split_whitespace().next().unwrap_or("")),
             "live stderr display must omit wall-clock prefix; got {display:?}"
         );
-        assert!(display.contains("[malvin"));
+        assert!(display.contains(&crate::output::format_who_tag_delim(crate::output::MALVIN_WHO)));
         assert!(display.contains("VIOLATION:test_coverage:probe"));
 
         let log_text = std::fs::read_to_string(path).expect("read log");
@@ -110,7 +110,7 @@ mod stderr_log_tests {
         );
         for line in &lines {
             assert!(
-                line.contains("[error"),
+                line.contains(&crate::output::format_who_tag_delim(super::ERROR_WHO)),
                 "each physical line must carry the error tag: {line:?}"
             );
         }

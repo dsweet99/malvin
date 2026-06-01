@@ -1,4 +1,4 @@
-//! `do` subcommand: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
+//! `do` subcommand: one coder ACP prompt with dual headers (`header_do.md` + `do_header.md`) and user request.
 
 use std::path::Path;
 

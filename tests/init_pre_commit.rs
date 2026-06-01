@@ -134,7 +134,7 @@ fn malvin_init_creates_expected_files_for_both_languages() {
 #[test]
 fn malvin_init_language_args_are_case_insensitive() {
     let project = tempfile::tempdir().unwrap();
-    let out = malvin_init_output(project.path(), &["PYTHON", "Rust"]);
+    let (out, _home) = malvin_init_output(project.path(), &["PYTHON", "Rust"]);
     assert!(
         out.status.success(),
         "malvin init with mixed case should succeed: {out:?}"

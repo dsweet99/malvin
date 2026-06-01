@@ -158,24 +158,4 @@ mod tests {
         assert!(d.run);
         assert!(d.skip_reason.is_none());
     }
-
-    #[test]
-    fn empty_repo_skip_implies_no_summary_phase() {
-        let tmp = tempfile::tempdir().unwrap();
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(tmp.path())
-            .status()
-            .unwrap();
-        let d = init_discovery_decision(
-            tmp.path(),
-            InitDiscoveryRequest {
-                checks_existed_before_bootstrap: false,
-                force_overwrite: false,
-            },
-        );
-        assert!(!d.run);
-        let run_summary = d.run || d.skip_reason != Some("empty repo; using builtin checks");
-        assert!(!run_summary);
-    }
 }

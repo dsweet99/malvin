@@ -48,28 +48,36 @@ fn workflow_context_paths_use_relative_prompt_paths() {
     std::fs::write(&plan, "p").expect("write");
     let artifacts = create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
     let ctx = workflow_context_paths_only(&artifacts, "tidy");
+    let advice = ctx.get("advice_path").expect("advice_path");
+    assert!(
+        advice.starts_with("./"),
+        "advice_path should be relative to work_dir, got {advice:?}"
+    );
+    let plan = ctx.get("plan_path").expect("plan_path");
+    assert!(
+        plan.starts_with("./") || plan.starts_with('/'),
+        "plan_path should be workdir-relative or absolute (home logs), got {plan:?}"
+    );
     for key in [
-        "plan_path",
         "review_path",
         "review_prep_path",
         "result_path",
         "malvin_output_path",
         "quality_gates_log",
         "kpop_log_dir",
-        "advice_path",
+        "exp_log",
     ] {
         let path = ctx.get(key).unwrap_or_else(|| panic!("missing {key}"));
         assert!(
-            path.starts_with("./"),
-            "{key} should be relative to work_dir, got {path:?}"
+            path.starts_with("./") || path.starts_with('/'),
+            "{key} should be workdir-relative or absolute (home logs), got {path:?}"
+        );
+        assert!(
+            path.contains(".malvin"),
+            "{key} should reference malvin paths, got {path:?}"
         );
     }
     assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
-    let advice = ctx.get("advice_path").expect("advice_path");
-    assert!(
-        advice.starts_with("./"),
-        "advice_path should be relative to work_dir, got {advice:?}"
-    );
 }
 
 #[test]

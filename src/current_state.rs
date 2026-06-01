@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use crate::artifacts::RunArtifacts;
+use crate::sandbox_oom::gate_iteration_oom_killed;
 use crate::mem_limit_config::{
     format_memory_gib, load_mem_limit_bytes, system_total_memory_bytes,
 };
@@ -118,7 +119,7 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
     }
     let mut reasons = Vec::new();
     append_unsolved_reason(&mut reasons, artifacts, prev);
-    append_oom_reason(&mut reasons, artifacts);
+    append_oom_reason(&mut reasons, artifacts, prev);
     append_gates_reason(&mut reasons, artifacts, prev);
     reasons
 }
@@ -131,8 +132,8 @@ fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, p
     }
 }
 
-fn append_oom_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts) {
-    if previous_session_oom_killed(artifacts) {
+fn append_oom_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
+    if gate_iteration_oom_killed(artifacts, prev) {
         reasons.push("previous agent killed: sandbox exceeded memory limit (OOM)".to_string());
     }
 }
@@ -153,14 +154,6 @@ fn read_prev_exp_solved(artifacts: &RunArtifacts, prev: usize) -> Option<bool> {
     std::fs::read_to_string(path)
         .ok()
         .map(|text| crate::kpop_progression::agent_declared_success(&text))
-}
-
-fn previous_session_oom_killed(artifacts: &RunArtifacts) -> bool {
-    let kpop_log = artifacts.log_path("kpop");
-    let Ok(text) = std::fs::read_to_string(&kpop_log) else {
-        return false;
-    };
-    text.contains("exceeded memory limit") || text.contains("sandbox exceeded memory")
 }
 
 #[cfg(test)]

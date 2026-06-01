@@ -1,14 +1,15 @@
-//! Unified `.malvin/config.toml` schema, default merge-on-open, and typed accessors.
+//! Unified `~/.malvin/config.toml` schema, default merge-on-open, and typed accessors.
 
 use std::path::Path;
 
 use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
+use crate::terminal_palette::TerminalTheme;
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace_paths::malvin_config_path;
 
-pub const DEFAULT_MAX_HYPOTHESES: usize = 10;
+pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
@@ -43,11 +44,12 @@ impl Default for AgentConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
+    pub theme: TerminalTheme,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
 }
 
-/// Ensure `.malvin/config.toml` exists and contains every known key (writes missing defaults).
+/// Ensure `~/.malvin/config.toml` exists and contains every known key (writes missing defaults).
 pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
     let _ = open_malvin_config(work_dir)?;
     Ok(())
@@ -155,10 +157,29 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         print_log_warning(&format!("could not parse [agent]: {msg}"));
         AgentConfig::default()
     });
+    let theme = parse_theme(text).unwrap_or_else(|msg| {
+        print_log_warning(&format!("could not parse theme: {msg}"));
+        TerminalTheme::Dark
+    });
     MalvinConfig {
         mem_limit_gb,
+        theme,
         logs,
         agent,
+    }
+}
+
+pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
+    let value: toml::Value = text
+        .parse()
+        .map_err(|e| format!("invalid TOML: {e}"))?;
+    let Some(raw) = read_string(value.get("theme")) else {
+        return Ok(TerminalTheme::Dark);
+    };
+    match raw.to_ascii_lowercase().as_str() {
+        "dark" => Ok(TerminalTheme::Dark),
+        "light" => Ok(TerminalTheme::Light),
+        other => Err(format!("unsupported theme {other:?}; use \"dark\" or \"light\"")),
     }
 }
 

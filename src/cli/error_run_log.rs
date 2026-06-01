@@ -46,6 +46,7 @@ pub fn append_command_error_to_run_log(message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::{format_who_tag_delim, ERROR_WHO};
     use tempfile::tempdir;
 
     #[test]
@@ -60,7 +61,7 @@ mod tests {
             "unexpected log contents: {text:?}"
         );
         assert!(
-            text.contains("[error"),
+            text.contains(&format_who_tag_delim(ERROR_WHO)),
             "expected error tag in log line: {text:?}"
         );
     }
