@@ -96,7 +96,7 @@ pub(crate) async fn run_init_discovery_kpop(
         behavior: GateLoopBehavior::INIT,
     })
     .await?;
-    crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
+    let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
             max_loops,
             agent_ran,
@@ -107,7 +107,17 @@ pub(crate) async fn run_init_discovery_kpop(
             malvin_command: "malvin init",
         },
     )
-    .await?;
+    .await;
+    let discovery_r = finish_init_discovery_kpop(&prepared, &artifacts.work_dir, iterations, gates_ok);
+    crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(discovery_r, summarize_res)
+}
+
+fn finish_init_discovery_kpop(
+    prepared: &GateKpopPrepared,
+    work_dir: &std::path::Path,
+    iterations: usize,
+    gates_ok: bool,
+) -> Result<bool, String> {
     let solved = init_discovery_succeeded(&prepared.artifacts, iterations)?;
     if !solved {
         return Err(
@@ -115,8 +125,8 @@ pub(crate) async fn run_init_discovery_kpop(
                 .to_string(),
         );
     }
-    finalize_init_checks_from_repo(&artifacts.work_dir)?;
-    init_discovery_checks_valid(&artifacts.work_dir)?;
+    finalize_init_checks_from_repo(work_dir)?;
+    init_discovery_checks_valid(work_dir)?;
     Ok(gates_ok)
 }
 
@@ -207,5 +217,6 @@ mod kiss_cov_gate_refs {
         let _ = init_discovery_checks_valid;
         let _ = init_discovery_succeeded;
         let _ = run_init_discovery_kpop;
+        let _ = finish_init_discovery_kpop;
     }
 }

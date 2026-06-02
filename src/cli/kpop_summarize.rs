@@ -28,6 +28,20 @@ pub(crate) fn outer_loop_summarize_warranted(max_loops: usize) -> bool {
     effective_max_loops(max_loops) > 1
 }
 
+/// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
+///
+/// Summarize runs before this merge; when the primary workflow failed, that error must
+/// not be replaced by a summarize failure.
+pub(crate) fn prefer_gate_outcome_over_summarize<T>(
+    gate: Result<T, String>,
+    summarize: Result<(), String>,
+) -> Result<T, String> {
+    match gate {
+        Err(e) => Err(e),
+        Ok(v) => summarize.map(|()| v),
+    }
+}
+
 pub(crate) fn is_written_exp_log_path(path: &Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())

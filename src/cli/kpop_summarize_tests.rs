@@ -6,7 +6,8 @@ use std::path::Path;
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
     exp_log_paths_markdown, insert_summarize_log_context, is_written_exp_log_path,
-    list_written_exp_logs, outer_loop_summarize_warranted, render_kpop_summarize_prompt,
+    list_written_exp_logs, outer_loop_summarize_warranted,
+    prefer_gate_outcome_over_summarize, render_kpop_summarize_prompt,
     run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt, OuterLoopSummarizeParams,
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -60,6 +61,45 @@ fn render_kpop_summarize_prompt_includes_activity_heading() {
     assert!(prompt.contains("Summarize the activity"));
     assert!(prompt.contains("Executive summary"));
     assert!(!prompt.contains("{{"));
+    assert!(
+        prompt.contains(".malvin/logs"),
+        "summarize header must render logs_dir to home logs bucket"
+    );
+}
+
+#[test]
+fn prefer_gate_outcome_over_summarize_keeps_gate_error() {
+    let gate: Result<(), String> = Err("gates exhausted".to_string());
+    let summarize = Err("summarize auth failed".to_string());
+    let merged = prefer_gate_outcome_over_summarize(gate, summarize).expect_err("gate wins");
+    assert_eq!(merged, "gates exhausted");
+}
+
+#[test]
+fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
+    let gate: Result<(), String> = Ok(());
+    let summarize = Err("summarize failed".to_string());
+    let merged = prefer_gate_outcome_over_summarize(gate, summarize).expect_err("summarize");
+    assert_eq!(merged, "summarize failed");
+}
+
+#[test]
+fn run_outer_loop_summarize_if_warranted_skips_when_agent_did_not_run() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
+    let store = PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+    let mut params = summarize_params(2, &shared, &store, &artifacts);
+    params.agent_ran = false;
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        run_outer_loop_summarize_if_warranted(&params)
+            .await
+            .expect("skip");
+    });
+    assert!(!artifacts.log_path("summary").exists());
 }
 
 #[test]
@@ -206,11 +246,3 @@ fn list_written_exp_logs_collects_kpop_dir_md_files() {
     assert!(paths[0].ends_with("exp_log_a.md"));
 }
 
-#[test]
-fn kiss_cov_kpop_summarize_privates() {
-    let _ = stringify!(run_summarize_coder_prompt);
-    let _ = stringify!(list_written_exp_logs);
-    let _ = stringify!(is_written_exp_log_path);
-    let _ = stringify!(insert_summarize_log_context);
-    let _ = stringify!(run_summarize_agent_session);
-}

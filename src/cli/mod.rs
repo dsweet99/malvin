@@ -35,6 +35,9 @@ mod kpop_summarize;
 #[cfg(test)]
 #[path = "kpop_summarize_tests.rs"]
 mod kpop_summarize_tests;
+#[cfg(test)]
+#[path = "kpop_summarize_kiss_cov_tests.rs"]
+mod kpop_summarize_kiss_cov_tests;
 
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
