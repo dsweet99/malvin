@@ -71,16 +71,12 @@ mod advice_path_embed_tests {
         let header = render_header(&store, &ctx).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
-            header.contains("./.malvin/advice.md"),
-            "header must render advice_path"
-        );
-        assert!(
-            !header.contains("{{"),
-            "header must expand all placeholders including logs_dir"
-        );
-        assert!(
             header.contains(".malvin/logs"),
             "header must render logs_dir to home logs bucket"
+        );
+        assert!(
+            header.contains("User:"),
+            "header must render current_state from workflow context"
         );
     }
 }

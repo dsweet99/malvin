@@ -133,7 +133,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert_substrings_monotonic(
         &kpop,
         &[
-            "Regular memories",
+            "Know thyself, agent",
             "# Definition: KPop",
             "# This KPOP turn",
         ],
