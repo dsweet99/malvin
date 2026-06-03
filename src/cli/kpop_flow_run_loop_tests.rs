@@ -14,6 +14,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
     let shared = SharedOpts {
         model: DEFAULT_CLI_MODEL.into(),
         no_force: true,
+        no_tenacious: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,

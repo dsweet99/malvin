@@ -9,7 +9,7 @@ pub struct KpopArgs {
     #[arg(long, default_value_t = 5)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
     /// Request or `@file` → `.malvin/logs/.../request.md`.
     pub request: Option<String>,

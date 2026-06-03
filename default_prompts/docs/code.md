@@ -37,9 +37,13 @@ Outer gate-loop budget. Malvin runs up to `max(N, 1) + 1` outer iterations (see 
 
 Per-session hypothesis budget: maximum `## Step … — KPOP` lines the agent should add in one gate-loop iteration (`{{ want }}` in the rendered prompt).
 
-### `--tenacious`
+### `--tenacious` (default: on)
 
 Sets `--max-acp-retries=9999` and `--max-loops=9999`.
+
+### `--no-tenacious`
+
+Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 

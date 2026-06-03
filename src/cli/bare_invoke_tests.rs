@@ -52,6 +52,16 @@ fn bare_flags_forward_to_kpop() {
         Some(Commands::Kpop(k)) => assert!(k.tenacious),
         other => panic!("expected kpop, got {other:?}"),
     }
+    let default_tenacious = parse_and_resolve(&["malvin", "investigate bug"]);
+    match default_tenacious.command {
+        Some(Commands::Kpop(k)) => assert!(k.tenacious),
+        other => panic!("expected kpop, got {other:?}"),
+    }
+    let no_tenacious = parse_and_resolve(&["malvin", "--no-tenacious", "investigate bug"]);
+    match no_tenacious.command {
+        Some(Commands::Kpop(_)) => assert!(no_tenacious.shared.no_tenacious),
+        other => panic!("expected kpop, got {other:?}"),
+    }
 }
 
 #[test]

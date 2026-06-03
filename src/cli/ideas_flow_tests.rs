@@ -67,6 +67,7 @@ mod ideas_tests {
         let shared = SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            no_tenacious: false,
             no_tee: true,
             no_markdown: false,
             verbose: false,
@@ -96,6 +97,7 @@ mod ideas_tests {
         let shared = SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
             no_force: true,
+            no_tenacious: false,
             no_tee: true,
             no_markdown: true,
             verbose: false,

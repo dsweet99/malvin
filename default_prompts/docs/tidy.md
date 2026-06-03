@@ -33,9 +33,13 @@ Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
 
 Hypothesis budget per KPop session inside the gate loop.
 
-### `--tenacious`
+### `--tenacious` (default: on)
 
 Sets `--max-acp-retries=9999` and `--max-loops=9999`.
+
+### `--no-tenacious`
+
+Restore normal loop/retry budgets (global flag; see `malvin --doc`).
 
 ## Global options
 

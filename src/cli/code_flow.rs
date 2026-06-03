@@ -28,7 +28,7 @@ pub struct CodeArgs {
     #[arg(long, default_value_t = 5)]
     pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
     /// Deprecated: check-plan phase removed; code now uses the kpop gate workflow.
     #[arg(long, default_value_t = false, hide = true, conflicts_with = "dry_run")]

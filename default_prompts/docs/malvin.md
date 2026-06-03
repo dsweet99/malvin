@@ -56,6 +56,10 @@ Model id passed to the Cursor agent for subcommands that spawn a session. Defaul
 
 By default malvin passes `--force` to `cursor-agent` so tool calls proceed without interactive approval. `--no-force` disables that (the agent may wait for IDE approval).
 
+### `--no-tenacious`
+
+By default gate-loop commands (`code`, `kpop`, `tidy`, bare `malvin REQUEST`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
+
 ### `--no-tee`
 
 By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `./.malvin/logs/`.
@@ -97,7 +101,8 @@ When no subcommand is given, these global flags apply to the kpop workflow (same
 |------|---------|---------|
 | `--max-loops` | 1 | How many separate kpop agent runs (each with its own experiment log); code/tidy use config `max_loops_code` (default 3) when unset |
 | `--max-hypotheses` | 10 | `## Step … — KPOP` budget per agent run |
-| `--tenacious` | off | Sets `--max-acp-retries=9999` and `--max-loops=9999` |
+| `--tenacious` | on | Sets `--max-acp-retries=9999` and `--max-loops=9999` |
+| `--no-tenacious` | off | Restore normal loop/retry budgets |
 
 ## Run directories and logs
 

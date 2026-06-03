@@ -35,7 +35,7 @@ pub struct Cli {
     #[arg(long = "max-hypotheses", default_value_t = 5)]
     pub bare_max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare kpop invocations.
-    #[arg(long = "tenacious", default_value_t = false)]
+    #[arg(long = "tenacious", default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub bare_tenacious: bool,
     /// When no subcommand: kpop request text or path.
     #[arg(value_name = "REQUEST")]
