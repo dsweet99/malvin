@@ -153,11 +153,13 @@ mod tests {
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = doc_text;
         let _ = print_doc;
+        let _ = stringify!(print_doc_to_writer);
     }
 }

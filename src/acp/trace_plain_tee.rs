@@ -52,7 +52,10 @@ pub(crate) fn print_plain_tee_wrapped_line(line: &str, ts: &str, emit_stdout_mar
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
+#[allow(unused_imports)]
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
     fn kiss_cov_print_tee_unprefixed_wrapped_line() {
         let _ = super::print_tee_unprefixed_wrapped_line;

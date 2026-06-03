@@ -79,6 +79,7 @@ fn spawned_pids_since_baseline_excludes_baseline_members() {
     assert!(!spawned.contains(&std::process::id()));
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn read_proc_cmdline_and_environ_reads_current_process() {
     let me = std::process::id();
@@ -88,6 +89,7 @@ fn read_proc_cmdline_and_environ_reads_current_process() {
     assert!(super::read_proc_environ(me).is_some());
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn looks_like_malvin_agent_acp_matches_environ_marker() {
     let mut child = std::process::Command::new("sh");

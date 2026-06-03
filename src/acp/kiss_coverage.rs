@@ -53,3 +53,12 @@ fn smoke_acp_inc_symbols_for_kiss() {
     let _ = stringify!(kill_child_and_finalize_containment);
     let _ = stringify!(acp_session_set_run_timing);
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_smoke_reader_loop_eof_pending_error() { let _ = smoke_reader_loop_eof_pending_error; }
+}

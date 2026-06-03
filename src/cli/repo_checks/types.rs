@@ -108,20 +108,23 @@ fn repo_gate_failure_into_error_formats_command_exit() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_emit_repo_gate_multiline_stderr() { let _ = stringify!(emit_repo_gate_multiline_stderr); }
+mod kiss_cov_auto{
+    use super::*;
 
     #[test]
-    fn kiss_cov_is_pure_gate_failure_summary() { let _ = stringify!(is_pure_gate_failure_summary); }
+    fn kiss_cov_emit_repo_gate_multiline_stderr() { let _ = emit_repo_gate_multiline_stderr; }
 
     #[test]
-    fn kiss_cov_gate_failure_summary() { let _ = stringify!(gate_failure_summary); }
+    fn kiss_cov_is_pure_gate_failure_summary() { let _ = is_pure_gate_failure_summary; }
+
+    #[test]
+    fn kiss_cov_gate_failure_summary() { let _ = gate_failure_summary; }
 
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

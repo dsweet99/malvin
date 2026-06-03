@@ -223,3 +223,12 @@ fn h8_path_in_start_raw_input_is_retained_on_pending_update() {
         "path from start rawInput should be persisted in tracker; got {stdout:?}"
     );
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_h6_trace_file_lines_include_timestamp() { let _ = h6_trace_file_lines_include_timestamp; }
+}

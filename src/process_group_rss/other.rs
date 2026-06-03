@@ -3,7 +3,8 @@ pub(super) fn other_process_group_rss_bytes(_pgid: u32) -> Option<u64> {
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

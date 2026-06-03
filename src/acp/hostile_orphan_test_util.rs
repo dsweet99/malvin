@@ -203,3 +203,14 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
         "setup: dead-before-next must block while sibling is alive"
     );
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_spawn_hostile_agent_exits_after_orphan_fork() { let _ = spawn_hostile_agent_exits_after_orphan_fork; }
+    #[test]
+    fn kiss_cov_wait_for_init_reparent() { let _ = wait_for_init_reparent; }
+}

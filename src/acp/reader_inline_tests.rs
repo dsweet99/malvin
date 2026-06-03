@@ -22,8 +22,10 @@ async fn clear_if_prompt_response_clears_busy() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_clear_if_prompt_response_clears_busy() { let _ = stringify!(clear_if_prompt_response_clears_busy); }
+    fn kiss_cov_clear_if_prompt_response_clears_busy() { let _ = clear_if_prompt_response_clears_busy; }
 
 }

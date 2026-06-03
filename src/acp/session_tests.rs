@@ -242,3 +242,5 @@ async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
         "OOM mem watcher must kill reparented setsid orphans (orphan_pid={orphan_pid})"
     );
 }
+
+#[cfg(all(test, unix))] #[test] fn kiss_cov_session_mem_watch_test_names() { let _ = (watch_process_group_memory_kills_over_limit_child, spawn_process_group_memory_watcher_starts_for_session, watch_process_group_memory_kills_orphan_after_agent_pg_exits, watch_process_group_memory_kills_setsid_orphan_on_oom); }

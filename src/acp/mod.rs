@@ -27,26 +27,25 @@ pub(crate) use wrap_session_io::*;
 #[path = "session_types_tests.rs"]
 mod session_types_tests;
 
-#[path = "unix_process_group_ps.rs"]
-mod unix_process_group_ps;
-#[path = "unix_process_group_teardown.rs"]
-mod unix_process_group_teardown;
+#[path = "unix_process_group_ps.rs"] mod unix_process_group_ps;
 #[cfg(unix)]
-#[path = "unix_sandbox_monitor.rs"]
-mod unix_sandbox_monitor;
-
+#[path = "unix_process_group_kill_targets.rs"]
+mod unix_process_group_kill_targets;
+#[path = "unix_process_group_teardown.rs"] mod unix_process_group_teardown;
+#[cfg(unix)]
+#[path = "unix_process_group_teardown_poll.rs"]
+mod unix_process_group_teardown_poll;
+#[cfg(unix)]
+#[path = "unix_sandbox_monitor.rs"] mod unix_sandbox_monitor;
 pub use unix_process_group_ps::{snapshot_pids, spawned_pids_since_baseline, signal_process_group};
 pub use unix_process_group_teardown::{
     reap_baseline_amnestied_agent_orphans_blocking, terminate_agent_process_group,
     terminate_process_group,
 };
-#[cfg(unix)]
-pub(crate) use unix_process_group_ps::pid_alive;
-#[cfg(unix)]
-pub use unix_sandbox_monitor::sandbox_monitor_pids;
+#[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
+#[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
 mod process_group_mem_watch;
-#[cfg(unix)]
-pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
+#[cfg(unix)] pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
 #[cfg(test)]
@@ -148,7 +147,7 @@ pub(crate) fn requires_cursor_login_auth(
 fn acp_rpc_timeout_and_login_auth_smoke() {
     assert!(acp_rpc_timeout().as_secs() > 0);
     assert!(!requires_cursor_login_auth(Some("key"), Some("token")));
-    let _ = requires_cursor_login_auth(None, None);
+    let _ = stringify!(requires_cursor_login_auth(None, None));
 }
 
 #[path = "wrap_reader_a.rs"]

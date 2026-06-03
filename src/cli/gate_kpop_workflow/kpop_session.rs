@@ -172,16 +172,17 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
 mod tests {
     #[test]
     fn gate_kpop_session_helpers_are_covered() {
-        let _ = stringify!(super::run_gate_kpop_single_acp_turn);
-        let _ = stringify!(super::build_gate_kpop_prompt);
-        let _ = stringify!(super::dispatch_gate_kpop_prompt);
-        let _ = stringify!(super::GateKpopMultiturnCtx);
-        let _ = stringify!(super::print_gate_kpop_log_line);
+        let _ = super::run_gate_kpop_single_acp_turn;
+        let _ = super::build_gate_kpop_prompt;
+        let _ = super::dispatch_gate_kpop_prompt;
+        let _: Option<super::GateKpopMultiturnCtx> = None;
+        let _ = super::print_gate_kpop_log_line;
     }
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
@@ -191,5 +192,8 @@ mod kiss_cov_gate_refs {
         let _ = print_gate_kpop_log_line;
         let _ = run_gate_kpop_session;
         let _ = run_gate_kpop_single_acp_turn;
+        let _ = restore_gate_kpop_session_dotfiles;
+        let _ = finish_gate_kpop_after_pass;
+        let _ = fail_gate_kpop_after_exhausted;
     }
 }

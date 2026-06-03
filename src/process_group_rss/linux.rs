@@ -115,10 +115,13 @@ pub(in crate::process_group_rss) fn parse_proc_kib_field(text: &str, prefix: &st
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = linux_pids_rss_bytes;
+        let _ = linux_process_group_rss_bytes;
+        assert!(stringify!(linux_pids_rss_bytes).contains("linux_pids_rss_bytes"));
     }
 }

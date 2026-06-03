@@ -4,8 +4,11 @@
 use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 #[cfg(unix)]
 use malvin::acp::hostile_orphan_test_util::{
-    assert_sibling_monitored_and_blocks_spawn, process_alive, read_orphan_pid,
-    spawn_agent_pg_and_malvin_sibling, spawn_hostile_agent_acp_orphan,
+    assert_sibling_monitored_and_blocks_spawn, spawn_agent_pg_and_malvin_sibling,
+};
+#[cfg(target_os = "linux")]
+use malvin::acp::hostile_orphan_test_util::{
+    process_alive, read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 #[cfg(unix)]
 use malvin::malvin_sandbox::{
@@ -112,7 +115,10 @@ fn malvin_sandbox_monitor_includes_malvin_spawned_sibling() {
 }
 
 /// Regression: baseline-amnestied init-reparented `agent acp` orphans must die on teardown.
-#[cfg(unix)]
+///
+/// Linux-only: `looks_like_malvin_agent_acp` reads `/proc/{pid}/environ`; init-reparent timing
+/// is asserted via `wait_for_init_reparent` (see `unix_process_group_teardown_tests.rs`).
+#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     clear_active_sandbox_session();
@@ -120,6 +126,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let (mut agent, agent_pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
     let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    wait_for_init_reparent(orphan_pid).await;
     let mut baseline = snapshot_pids();
     baseline.insert(orphan_pid);
 
@@ -163,6 +170,7 @@ fn kiss_cov_malvin_sandbox_contract_symbols() {
     let _ = stringify!(malvin_process_group_teardown_kills_agent_sleep);
     let _ = stringify!(malvin_sandbox_monitor_includes_malvin_spawned_sibling);
     let _ = stringify!(malvin_sibling_outside_agent_pg_killed_on_teardown);
+    #[cfg(target_os = "linux")]
     let _ = stringify!(baseline_amnestied_agent_acp_orphan_killed_on_teardown);
     #[cfg(unix)]
     {
@@ -174,10 +182,10 @@ fn kiss_cov_malvin_sandbox_contract_symbols() {
         let _ = stringify!(MemWatchHandles);
         let _ = stringify!(assert_dead_before_next_spawn);
         let _ = stringify!(clear_active_sandbox_session);
-        let _ = malvin::acp::hostile_orphan_test_util::spawn_agent_pg_and_malvin_sibling;
-        let _ = malvin::acp::hostile_orphan_test_util::assert_sibling_monitored_and_blocks_spawn;
-        let _ = malvin::acp::hostile_orphan_test_util::spawn_hostile_agent_acp_orphan;
-        let _ = malvin::acp::hostile_orphan_test_util::process_alive;
-        let _ = malvin::acp::hostile_orphan_test_util::read_orphan_pid;
+        let _ = stringify!(malvin::acp::hostile_orphan_test_util::spawn_agent_pg_and_malvin_sibling);
+        let _ = stringify!(malvin::acp::hostile_orphan_test_util::assert_sibling_monitored_and_blocks_spawn);
+        let _ = stringify!(malvin::acp::hostile_orphan_test_util::spawn_hostile_agent_acp_orphan);
+        let _ = stringify!(malvin::acp::hostile_orphan_test_util::process_alive);
+        let _ = stringify!(malvin::acp::hostile_orphan_test_util::read_orphan_pid);
     }
 }

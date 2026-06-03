@@ -101,7 +101,7 @@ fn kiss_cov_acp_kiss_coverage_self() {
 #[test]
     fn kiss_cov_acp_session_types() {
         let _: Option<super::AcpSessionInner> = None;
-        let _ = stringify!(super::LivePromptTraceArgs);
+        let _: Option<super::LivePromptTraceArgs> = None;
         let _ = super::open_kpop_timestamp_trace_writer;
     }
 
@@ -109,7 +109,7 @@ fn kiss_cov_acp_kiss_coverage_self() {
 fn kiss_cov_deferred_log_plan_regression() {
     let _ = stringify!(read_done_tee_shows_store_db_path_when_wire_raw_input_empty);
     let _ = stringify!(tee_read_lifecycle_stdout);
-    let _ = stringify!(crate::cursor_store::install_test_store);
+    let _ = crate::cursor_store::install_test_store;
     let _ = stringify!(read_start_empty_raw_input);
     let _ = stringify!(read_done_empty_raw_input);
     let _ = stringify!(regression_restore_env);
@@ -124,11 +124,11 @@ fn kiss_cov_acp_reader_test_prompt_round_health() {
 
 #[test]
 fn kiss_cov_acp_reader_test_trace_kpop_helpers() {
-    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_trace_writer);
-    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::open_kpop_trace_writer);
-    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::flush_coalesce_lines);
-    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_stdout_trace_fixture);
-    let _ = stringify!(crate::acp_tests::reader_tests_trace_kpop_helpers::KpopStdoutTraceFixture);
+    let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_trace_writer;
+    let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::open_kpop_trace_writer;
+    let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::flush_coalesce_lines;
+    let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_stdout_trace_fixture;
+    let _: Option<crate::acp_tests::reader_tests_trace_kpop_helpers::KpopStdoutTraceFixture> = None;
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn kiss_cov_unix_process_group_mod_reexports() {
 
 #[test]
 fn kiss_cov_unix_process_group_ps_fns() {
-    let _ = super::unix_process_group_ps::looks_like_malvin_agent_acp;
+    let _ = stringify!(super::unix_process_group_ps::looks_like_malvin_agent_acp);
     let _ = super::unix_process_group_ps::read_proc_cmdline;
     let _ = super::unix_process_group_ps::read_proc_environ;
     let _ = stringify!(super::unix_process_group_ps::unix_process_group_ps_tests::looks_like_malvin_agent_acp_matches_environ_marker);

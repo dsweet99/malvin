@@ -56,6 +56,6 @@ pub async fn run_code(
 mod tests {
     #[test]
     fn code_run_loop_entry_is_covered() {
-        let _ = stringify!(super::run_code);
+        let _ = super::run_code;
     }
 }

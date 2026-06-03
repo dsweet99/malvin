@@ -77,7 +77,8 @@ pub(crate) fn build_do_coder_run(artifacts: &RunArtifacts, text: &str) -> Result
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

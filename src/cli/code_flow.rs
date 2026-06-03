@@ -83,7 +83,7 @@ mod tests {
         let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
         let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
         let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateKpopPrepared);
+        let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
         let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE);
     }
 

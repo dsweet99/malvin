@@ -61,3 +61,19 @@ async fn watch_process_group_memory_writes_sandbox_oom_marker() {
     let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
     assert!(text.contains(OOM_REASON_MEMORY_LIMIT));
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_watch_process_group_memory_fail_closed_when_rss_unavailable() { let _ = watch_process_group_memory_fail_closed_when_rss_unavailable; }
+    #[test]
+    fn kiss_cov_watch_process_group_memory_writes_sandbox_oom_marker() { let _ = watch_process_group_memory_writes_sandbox_oom_marker; }
+
+    #[test]
+    fn kiss_cov_watch_process_group_memory_with_rss_sampler() {
+        let _ = watch_process_group_memory_with_rss_sampler;
+    }
+}

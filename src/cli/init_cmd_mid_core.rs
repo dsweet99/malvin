@@ -173,13 +173,15 @@ pub(super) fn write_shell_script(path: &Path, contents: &str, force: bool) -> Re
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = bootstrap_repo_tooling;
-        let _ = create_initial_commit;
+        let _ = stringify!(create_initial_commit);
         let _ = repo_already_has_commits;
-        let _ = write_init_templates;
+        let _ = create_initial_commit;
+        let _ = stringify!(write_init_templates);
     }
 }

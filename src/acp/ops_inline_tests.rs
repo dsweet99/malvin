@@ -188,7 +188,8 @@ mod resolve_agent_bin_unix_tests {
 mod ops_inline_tests_cursor_auth;
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

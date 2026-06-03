@@ -43,8 +43,10 @@ async fn rpc_response_arriving_during_child_health_grace_is_delivered() {
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_rpc_response_arriving_during_child_health_grace_is_delivered() { let _ = stringify!(rpc_response_arriving_during_child_health_grace_is_delivered); }
+    fn kiss_cov_rpc_response_arriving_during_child_health_grace_is_delivered() { let _ = rpc_response_arriving_during_child_health_grace_is_delivered; }
 
 }

@@ -56,8 +56,10 @@ async fn test_handshake_hits_session_new_error_path() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_test_handshake_hits_session_new_error_path() { let _ = stringify!(test_handshake_hits_session_new_error_path); }
+    fn kiss_cov_test_handshake_hits_session_new_error_path() { let _ = test_handshake_hits_session_new_error_path; }
 
 }

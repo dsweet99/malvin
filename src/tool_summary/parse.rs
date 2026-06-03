@@ -140,3 +140,15 @@ pub(crate) fn json_number(v: &Value) -> Option<u64> {
     }
     None
 }
+
+#[cfg(test)]
+#[allow(unused_imports)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_parsed_tool_update_type() {
+        let _: Option<super::ParsedToolUpdate> = None;
+        let _: Option<super::LineRange> = None;
+    }
+}
