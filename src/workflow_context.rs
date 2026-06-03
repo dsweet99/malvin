@@ -54,6 +54,12 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         base,
     );
     insert_formatted(context, "malvin_output_path", &artifacts.run_dir, base);
+    insert_formatted(
+        context,
+        "logs_dir",
+        &crate::malvin_logs_root(base),
+        base,
+    );
     insert_quality_gates_log_paths(context, artifacts, base);
 }
 

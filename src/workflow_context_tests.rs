@@ -83,6 +83,23 @@ fn insert_quality_gates_log_paths_sets_alias() {
 }
 
 #[test]
+fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let mut ctx = HashMap::new();
+    insert_artifact_paths(&mut ctx, &artifacts);
+    let logs_dir = ctx.get("logs_dir").expect("logs_dir");
+    let expected = format_prompt_path(&crate::malvin_logs_root(tmp.path()), tmp.path());
+    assert_eq!(logs_dir, &expected);
+    assert!(
+        logs_dir.contains(".malvin/logs"),
+        "logs_dir should point at home logs bucket, got {logs_dir:?}"
+    );
+}
+
+#[test]
 fn insert_artifact_paths_populates_expected_keys() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
@@ -93,6 +110,7 @@ fn insert_artifact_paths_populates_expected_keys() {
     assert!(ctx.contains_key("result_path"));
     assert!(ctx.contains_key("review_prep_path"));
     assert!(ctx.contains_key("advice_path"));
+    assert!(ctx.contains_key("logs_dir"));
 }
 
 #[test]

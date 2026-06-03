@@ -43,7 +43,7 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
         String::new(),
-        "Pass REQUEST with no subcommand to investigate scientifically.".to_string(),
+        "Pass REQUEST with no subcommand to KPop.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);

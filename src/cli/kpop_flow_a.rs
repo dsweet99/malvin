@@ -117,7 +117,7 @@ pub async fn run_kpop(
 
     kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
 
-    let acp_result = super::kpop_flow_run_loop::run_kpop_agent_loops(
+    let loops = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
             kpop: &kpop,
             store: &store,
@@ -126,6 +126,25 @@ pub async fn run_kpop(
         },
     )
     .await;
+    let acp_result = loops.acp_result;
+
+    let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
+        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
+            max_loops: kpop.max_loops,
+            agent_ran: loops.agent_ran,
+            shared,
+            workflow,
+            store: &store,
+            artifacts: &prepared.artifacts,
+            malvin_command: "malvin kpop",
+        },
+    )
+    .await;
+    let acp_result = crate::acp_post_run::prefer_primary_over_secondary(
+        acp_result,
+        summarize_res,
+        "outer-loop summarize",
+    );
 
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_result,

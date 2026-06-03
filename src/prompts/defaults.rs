@@ -21,6 +21,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_block.md",
     "mbc2.md",
     "kpop_program.md",
+    "kpop_summarize.md",
     "tidy_constraints.md",
     "code_constraints.md",
     "init_constraints.md",
@@ -70,8 +71,12 @@ mod advice_path_embed_tests {
         let header = render_header(&store, &ctx).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
-            header.contains("./.malvin/advice.md"),
-            "header must render advice_path"
+            header.contains(".malvin/logs"),
+            "header must render logs_dir to home logs bucket"
+        );
+        assert!(
+            header.contains("User:"),
+            "header must render current_state from workflow context"
         );
     }
 }

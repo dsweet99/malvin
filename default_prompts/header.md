@@ -12,29 +12,9 @@
 
 ## History
 
-You might want to read your recent logs in, say, `ls -ltr .malvin/logs | tail -n 3`. They might give you some useful context about the user's query. The user might implicitly treat successive malvin sessions as continuations of previous session -- or they might not. Please carefully distinguish what information in the logs might be relevant and what might not be.
+You might want to read your recent logs in, say, `ls -ltr {{ logs_dir }} | tail -n 3`. They might give you some useful context about the user's query. The user might implicitly treat successive malvin sessions as continuations of previous session -- or they might not. Please carefully distinguish what information in the logs might be relevant and what might not be.
 
 When you read information into your context label it as "HISTORY" with a number indicating how old it is.
-
-## Memories
-
-### Implanted memories
-
-TRIGGER: .kissconfig
-ADVICE: Never modify .kissconfig unless explicitly asked to by the user.
-CONFIDENCE: 3
-
-TRIGGER: head, tail, url, long job, large file
-ADVICE: Redirect the output to a temp file then study that to lower the risk of having to rerun a long job or refetch a file over the network.
-CONFIDENCE: 3
-
-TRIGGER: large task, many tasks
-ADVICE: Consider improving efficiency with ad hoc use of CS/engineering algorithm methods like: caching, hashing, divide-and-conquer, timing/analyzing a small subset, parallelization, planning.
-CONFIDENCE: 3
-
-### Regular memories
-
-Does the user's request relate to any of the TRIGGER words in `{{ advice_path }}`? Search for keywords in that file and in the implanted memories. Read the associated ADVICE on the following line. It might be very helpful and save you a lot of time.
 
 ### Current state
 `{{ current_state }}`
@@ -73,7 +53,6 @@ Predicted running time: <prediction>
   - Hypothesis: “suggests”, “may”, “indicates”.
   - Claim (with evidence): “shows”, “demonstrates”, “causes”.
 - Label any statement which is a hypothesis as such.
-- The use plan,`{{ plan_path }}`, when present, overrides ADVICE. ADVICE is not binding.
 
 ## Shorthand
 

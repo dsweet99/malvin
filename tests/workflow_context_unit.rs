@@ -66,6 +66,7 @@ fn workflow_context_paths_use_relative_prompt_paths() {
         "quality_gates_log",
         "kpop_log_dir",
         "exp_log",
+        "logs_dir",
     ] {
         let path = ctx.get(key).unwrap_or_else(|| panic!("missing {key}"));
         assert!(

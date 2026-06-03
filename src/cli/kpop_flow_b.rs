@@ -82,6 +82,7 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
         ("advice_path", "./.malvin/advice.md"),
+        ("logs_dir", "./.malvin/logs/run42"),
         (
             "current_state",
             "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry",
@@ -132,7 +133,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert_substrings_monotonic(
         &kpop,
         &[
-            "Regular memories",
+            "Know thyself, agent",
             "# Definition: KPop",
             "# This KPOP turn",
         ],
