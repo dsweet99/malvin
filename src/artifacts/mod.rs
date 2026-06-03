@@ -16,7 +16,8 @@ pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file}
 pub use plan_splice::{
     BEGIN_MALVIN_MARKER, PlanFileError, PlanRunMetadata, detect_rerun_user_span_end,
     extract_decisions_section, extract_fenced_markdown_block, find_machine_block_start,
-    prepare_plan_file_for_run, read_plan_file, read_plan_metadata, record_user_span_end_after_1a,
+    prepare_plan_file_for_prompt_1a, prepare_plan_file_for_run, read_plan_file, read_plan_metadata,
+    record_user_span_end_after_1a,
     snapshot_plan_artifact, splice_plan_file, validate_post_1a, validate_post_1b, validate_post_2,
     write_plan_file_atomic, write_plan_metadata,
 };

@@ -2,8 +2,9 @@
 
 use crate::artifacts::{
     PlanRunMetadata, RunArtifacts, extract_decisions_section, extract_fenced_markdown_block,
-    read_plan_file, record_user_span_end_after_1a, snapshot_plan_artifact, splice_plan_file,
-    validate_post_1a, validate_post_1b, validate_post_2, write_plan_metadata,
+    prepare_plan_file_for_prompt_1a, read_plan_file, record_user_span_end_after_1a,
+    snapshot_plan_artifact, splice_plan_file, validate_post_1a, validate_post_1b, validate_post_2,
+    write_plan_metadata,
 };
 use crate::prompts::PromptStore;
 use crate::run_timing::TimingPhase;
@@ -53,6 +54,7 @@ async fn run_plan_four_prompts(prep: &mut PlanRunPrep) -> Result<(), String> {
 }
 
 async fn run_plan_prompt_1a(prep: &mut PlanRunPrep) -> Result<usize, String> {
+    prepare_plan_file_for_prompt_1a(&prep.source_plan_path).map_err(|e| e.to_string())?;
     let prompt = render_plan_1a(&prep.store, &prep.render_ctx)?;
     run_plan_coder_prompt(&mut prep.client, &prep.artifacts, &prompt, "plan_1a").await?;
     let content = read_plan_file(&prep.source_plan_path).map_err(|e| e.to_string())?;
@@ -158,6 +160,7 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_pipeline_symbols() {
         let _ = stringify!(run_plan_acp);
         let _ = run_plan_coder_prompt;
+        let _ = stringify!(prepare_plan_file_for_prompt_1a);
         let _ = run_plan_prompt_1a;
         let _ = run_plan_prompt_1b;
         let _ = run_plan_prompt_2;

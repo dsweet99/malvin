@@ -154,3 +154,26 @@ fn prepare_plan_file_for_run_truncates_machine_block() {
     assert_eq!(prior, Some(8));
     assert_eq!(std::fs::read_to_string(&path).expect("read"), "# User\n\n");
 }
+
+#[test]
+fn prose_begin_malvin_substring_does_not_count_as_marker_line() {
+    let content = "# Plan\n\nSee BEGIN_MALVIN in docs.\n\n---\nBEGIN_MALVIN\n## Restatement\n";
+    assert_eq!(detect_rerun_user_span_end(content), Ok(Some(35)));
+}
+
+#[test]
+fn find_machine_block_start_supports_mixed_eol_delimiters() {
+    let lf_crlf = "# User\n\n---\r\nBEGIN_MALVIN\r\n## Restatement\r\n";
+    assert_eq!(find_machine_block_start(lf_crlf), Some(8));
+    let crlf_lf = "# User\r\n\r\n---\nBEGIN_MALVIN\n## Restatement\n";
+    assert_eq!(find_machine_block_start(crlf_lf), Some(10));
+}
+
+#[test]
+fn whole_line_begin_malvin_in_user_span_is_duplicate() {
+    let content = "# Plan\nBEGIN_MALVIN\n\n---\nBEGIN_MALVIN\n## Restatement\n";
+    assert_eq!(
+        detect_rerun_user_span_end(content),
+        Err(PlanFileError::DuplicateBeginMalvinMarkers)
+    );
+}

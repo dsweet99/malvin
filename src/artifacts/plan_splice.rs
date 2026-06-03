@@ -6,20 +6,28 @@ use std::path::{Path, PathBuf};
 mod plan_metadata;
 #[path = "plan_validate.rs"]
 mod plan_validate;
+#[path = "plan_splice_boundary.rs"]
+mod plan_splice_boundary;
+#[path = "plan_splice_prepare.rs"]
+mod plan_splice_prepare;
 
 pub use plan_metadata::{PlanRunMetadata, read_plan_metadata, write_plan_metadata};
 pub use plan_validate::{
     extract_decisions_section, record_user_span_end_after_1a, validate_post_1a, validate_post_1b,
     validate_post_2,
 };
+pub use plan_splice_boundary::{detect_rerun_user_span_end, find_machine_block_start};
+pub use plan_splice_prepare::prepare_plan_file_for_prompt_1a;
 
 pub const BEGIN_MALVIN_MARKER: &str = "BEGIN_MALVIN";
 pub(crate) const PLAN_METADATA_FILE: &str = "plan_metadata.json";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum PlanFileError {
-    #[error("plan file has ambiguous BEGIN_MALVIN markers; re-run requires a single machine block")]
-    AmbiguousMarkers,
+    #[error("plan file has duplicate BEGIN_MALVIN marker lines; re-run requires a single machine block")]
+    DuplicateBeginMalvinMarkers,
+    #[error("plan file has malformed machine block delimiter; expected newline-delimited --- then BEGIN_MALVIN")]
+    MalformedMachineBlockDelimiter,
     #[error("plan file missing required section {0}")]
     MissingSection(&'static str),
     #[error("plan prompt 3 response missing fenced markdown block")]
@@ -32,50 +40,6 @@ impl From<std::io::Error> for PlanFileError {
     fn from(e: std::io::Error) -> Self {
         Self::Io(e.to_string())
     }
-}
-
-/// Byte offset at the start of the machine block (`---` line), if exactly one unambiguous block exists.
-#[must_use]
-pub fn find_machine_block_start(content: &str) -> Option<usize> {
-    for (marker, eol_len) in machine_block_marker_patterns() {
-        if let Some(idx) = content.find(&marker) {
-            let user = &content[..idx];
-            if user.contains(BEGIN_MALVIN_MARKER) {
-                return None;
-            }
-            return Some(idx + eol_len);
-        }
-    }
-    for at_start in ["---\n", "---\r\n"] {
-        let marker = format!("{at_start}{BEGIN_MALVIN_MARKER}");
-        if content.starts_with(&marker) {
-            return Some(0);
-        }
-    }
-    None
-}
-
-fn machine_block_marker_patterns() -> [(String, usize); 4] {
-    [
-        (format!("\n---\n{BEGIN_MALVIN_MARKER}"), 1),
-        (format!("\r\n---\r\n{BEGIN_MALVIN_MARKER}"), 2),
-        (format!("\n---\r\n{BEGIN_MALVIN_MARKER}"), 1),
-        (format!("\r\n---\n{BEGIN_MALVIN_MARKER}"), 2),
-    ]
-}
-
-/// Returns `user_span_end` when a single machine block is present; errors when markers are ambiguous.
-pub fn detect_rerun_user_span_end(content: &str) -> Result<Option<usize>, PlanFileError> {
-    let count = content.matches(BEGIN_MALVIN_MARKER).count();
-    if count == 0 {
-        return Ok(None);
-    }
-    if count > 1 {
-        return Err(PlanFileError::AmbiguousMarkers);
-    }
-    find_machine_block_start(content)
-        .ok_or(PlanFileError::AmbiguousMarkers)
-        .map(Some)
 }
 
 pub fn read_plan_file(path: &Path) -> Result<String, PlanFileError> {
@@ -132,7 +96,7 @@ fn extract_fence_body(text: &str, fence: &str) -> Option<String> {
     Some(after_open[..close].to_string())
 }
 
-fn ensure_user_span_trailing_newlines(spliced: &mut String) {
+pub(crate) fn ensure_user_span_trailing_newlines(spliced: &mut String) {
     if !spliced.ends_with('\n') && !spliced.is_empty() {
         spliced.push('\n');
     }
@@ -144,8 +108,17 @@ fn ensure_user_span_trailing_newlines(spliced: &mut String) {
     }
 }
 
-fn append_machine_block(spliced: &mut String, fenced_body: &str) {
-    spliced.push_str("\n---\n");
+pub(crate) fn append_machine_block(spliced: &mut String, fenced_body: &str) {
+    if !spliced.is_empty() && !spliced.ends_with('\n') {
+        spliced.push('\n');
+    }
+    if !spliced.is_empty()
+        && !spliced.ends_with("\n\n")
+        && !spliced.ends_with("\r\n\r\n")
+    {
+        spliced.push('\n');
+    }
+    spliced.push_str("---\n");
     spliced.push_str(BEGIN_MALVIN_MARKER);
     spliced.push('\n');
     spliced.push_str(fenced_body.trim_end());
