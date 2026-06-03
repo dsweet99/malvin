@@ -1,13 +1,15 @@
-**Prompt 3**
+# Plan Prompt 3 — rewrite
 
-# Plan prompt 3 — rewrite
+You are running **Prompt 3** of `malvin plan`. Read `{{ plan_path }}` including `## Critique`, `## Open questions`, and `## DECISIONS`.
 
-Work on `{{ plan_path }}`.
+Emit the **revised implementation plan** as your session response inside **one** fenced markdown block (use ` ```markdown ` … ` ``` `). Do **not** edit `{{ plan_path }}` directly — malvin will splice your fenced block.
+
+The revised plan must:
+
+- Incorporate critique fixes and every `DECISIONS` entry.
+- Name unit tests or acceptance checks for each concept, behavior, and constraint.
+- Be normative spec only (no restatement/critique/open-questions/decisions sections).
 
 {{ adversarial_overlay }}
 
-The plan file on disk already has the machine block through `## DECISIONS`.
-
-Respond with a single **fenced markdown block** containing the full revised plan the user should adopt.
-
-Do **not** edit `{{ plan_path }}` directly in this step.
+Write complete sentences inside the fenced block.

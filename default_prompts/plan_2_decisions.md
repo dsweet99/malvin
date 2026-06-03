@@ -1,13 +1,15 @@
-**Prompt 2**
+# Plan Prompt 2 — research and decide
 
-# Plan prompt 2 — decisions
+You are running **Prompt 2** of `malvin plan`. Read `{{ plan_path }}`, especially `## Open questions`.
 
-Work on `{{ plan_path }}`.
+Research answers using the codebase, malvin logs, and external sources where appropriate. Make best-effort decisions on remaining questions; favor correctness; cite evidence (code path, log id, URL).
 
-{{ adversarial_overlay }}
+Append section `## DECISIONS` to `{{ plan_path }}` **immediately after** `## Open questions`. Each entry:
 
-The plan already has `## Restatement`, `## Critique`, and `## Open questions`.
+- Matches an open-question number (or `0` when there were zero open questions — document that no numbered questions existed and record one deliberate attempt to falsify an implicit plan assumption).
+- States a verdict.
+- Cites evidence.
 
-Append `## DECISIONS` **immediately after** the open-questions section. Each decision line should use the form `N. **Verdict:** … **Evidence:** …`.
+Do **not** rewrite the plan body. Do **not** remove prior sections.
 
-Do **not** remove or rewrite earlier sections.
+Write complete sentences. Use the file editing tools to append to `{{ plan_path }}`.

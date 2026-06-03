@@ -142,4 +142,7 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(prepare_ideas_run);
     let _ = stringify!(run_ideas_coder_prompt);
     let _ = stringify!(run_ideas_acp);
+    let _ = stringify!(test_kpop_args);
+    let _ = stringify!(install_mock_agent_env);
+    let _ = stringify!(write_mock_agent);
 }

@@ -14,6 +14,7 @@ fn default_kpop_prompt(name: &str) -> Option<&'static str> {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
+        "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
         _ => None,
     }

@@ -1,15 +1,19 @@
-**Prompt 1b**
+# Plan Prompt 1b — critique and open questions
 
-# Plan prompt 1b — critique
+You are running **Prompt 1b** of `malvin plan`. The file `{{ plan_path }}` already contains the user plan, `---`, `BEGIN_MALVIN`, and `## Restatement` from Prompt 1a.
 
-Work on `{{ plan_path }}`.
+Append to `{{ plan_path }}`:
+
+1. Section `## Critique` — critique the **original user text above `---`** (not the restatement). Use the restatement only to verify comprehension. Address at minimum:
+   - Errors and gaps
+   - Soundness
+   - Simplicity (too simple / too complex)
+   - Unit-test enforcement (will each concept, behavior, and constraint be enforced by a unit test?)
+   - Overfitting guard (does the plan guard against overfitting to a spec, test, or metric?)
+2. Section `## Open questions` — numbered list (`1.`, `2.`, …) of unresolved items. Free prose allowed inside entries but numbering is required.
+
+Do **not** rewrite the user plan or restatement. Do **not** add `## DECISIONS`.
 
 {{ adversarial_overlay }}
 
-The plan file already contains `BEGIN_MALVIN` and `## Restatement` from prompt 1a.
-
-Critique the **original user text above `---`** (or above `BEGIN_MALVIN` if there is no `---`), **not the restatement**.
-
-Append `## Critique` and `## Open questions` (numbered list) after the restatement block.
-
-Do **not** rewrite the user span or add `## DECISIONS`.
+Write complete sentences. Use the file editing tools to append to `{{ plan_path }}`.

@@ -38,11 +38,25 @@ pub async fn run_tidy(
     })
     .await?;
 
-    let r = if gates_ok {
+    let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
+        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
+            max_loops,
+            agent_ran,
+            shared,
+            workflow,
+            store: prepared.store(),
+            artifacts: prepared.artifacts(),
+            malvin_command: "malvin tidy",
+        },
+    )
+    .await;
+
+    let gate_r = if gates_ok {
         finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
         fail_gate_kpop_after_exhausted("malvin tidy", &prepared)
     };
+    let r = crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
 
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();
