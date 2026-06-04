@@ -37,6 +37,8 @@ Content above the first machine `---` is user context. Content below `BEGIN_MALV
 
 Intermediate sections (restatement, critique, open questions, decisions) live in run-dir snapshots (`plan.p1a.md`, `plan.p1b.md`, `plan.p2.decisions.md`), not in the final plan file.
 
+Before Prompt 1a, malvin atomically appends `\n---\nBEGIN_MALVIN\n## Restatement\n` to the plan file. The agent fills in restatement prose only; it must not add or move the delimiter lines.
+
 ## Re-run
 
 Re-running replaces the machine block (from the first `---` / `BEGIN_MALVIN` through EOF) with a fresh pass. User text above the machine block is preserved.

@@ -35,7 +35,7 @@ fn ambiguous_markers_without_clean_rerun_fail_validation() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(
         &plan,
-        "BEGIN_MALVIN in user\n\n---\nBEGIN_MALVIN\n## Restatement\n",
+        "# Plan\n\n---\nBEGIN_MALVIN\na\n\n---\nBEGIN_MALVIN\nb\n",
     )
     .expect("write");
     assert!(validate_plan_markers_before_run(&plan).is_err());

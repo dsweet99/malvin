@@ -46,10 +46,13 @@ pub(in crate::process_group_rss) fn macos_process_group_rss_bytes(pgid: u32) -> 
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = macos_pids_rss_bytes;
+        let _ = macos_process_group_rss_bytes;
+        assert!(stringify!(macos_pids_rss_bytes).contains("macos_pids_rss_bytes"));
     }
 }

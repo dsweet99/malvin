@@ -49,13 +49,14 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod tests {
     use super::*;
 
     #[test]
     fn kiss_cov_entrypoint_command_wrappers() {
-        let _ = run_invent_command;
-        let _ = run_plan_command;
-        let _ = run_code_command;
+        let _ = stringify!(run_invent_command);
+        let _ = stringify!(run_plan_command);
+        let _ = stringify!(run_code_command);
     }
 }

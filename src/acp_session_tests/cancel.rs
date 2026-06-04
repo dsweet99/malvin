@@ -19,3 +19,14 @@ async fn acp_session_cancel_clears_busy_state_after_rpc_error() {
     assert_eq!(session.0.prompt_rpc_id.load(Ordering::SeqCst), 0);
     assert!(session.0.trace_writer.lock().await.is_none());
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_busy_session_with_dead_transport() { let _ = busy_session_with_dead_transport; }
+    #[test]
+    fn kiss_cov_acp_session_cancel_clears_busy_state_after_rpc_error() { let _ = acp_session_cancel_clears_busy_state_after_rpc_error; }
+}

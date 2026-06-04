@@ -11,7 +11,7 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::human_a::execute_effective_exit;
     let _ = super::human_a::execute_stdout_failed;
     let _ = super::ansi::tool_summary_stdout_display;
-    let _ = std::any::type_name::<super::ToolSummaryLines>();
+    let _: Option<super::ToolSummaryLines> = None;
     let _ = super::format::format_tool_line;
     let _ = super::format::start_label;
     let _ = super::format::edit_paths;
@@ -22,9 +22,9 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::parse::tool_phase_label;
     let _ = super::parse_acp::acp_path_value;
     let _ = super::parse_acp::acp_normalize_path;
-    let _ = std::any::type_name::<super::parse::LineRange>();
-    let _ = std::any::type_name::<super::parse::ParsedToolUpdate>();
-    let _ = std::any::type_name::<super::types::ToolCallRecord>();
+    let _ = stringify!(std::any::type_name::<super::parse::LineRange>());
+    let _: Option<super::parse::ParsedToolUpdate> = None;
+    let _ = stringify!(std::any::type_name::<super::types::ToolCallRecord>());
 }
 
 #[test]

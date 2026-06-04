@@ -69,6 +69,6 @@ pub async fn run_tidy(
 mod tests {
     #[test]
     fn tidy_run_loop_entry_is_covered() {
-        let _ = stringify!(super::run_tidy);
+        let _ = super::run_tidy;
     }
 }

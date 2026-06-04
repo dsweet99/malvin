@@ -66,7 +66,7 @@ pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Comma
         BareLoopOpts {
             max_loops: 1,
             max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
-            tenacious: false,
+            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
         },
     );
     Ok(Commands::Kpop(KpopArgs {

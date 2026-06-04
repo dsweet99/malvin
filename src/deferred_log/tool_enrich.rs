@@ -68,15 +68,16 @@ pub(crate) fn tool_drain_enrich_fields(
 mod kiss_cov {
     #[test]
     fn kiss_cov_tool_enrich_helpers() {
-        let _ = stringify!(super::tool_fallback_plain);
-        let _ = stringify!(super::enrichable_tool_kind);
-        let _ = stringify!(super::has_wire_path);
-        let _ = stringify!(super::tool_drain_enrich_fields);
+        let _ = super::tool_fallback_plain;
+        let _ = super::enrichable_tool_kind;
+        let _ = super::has_wire_path;
+        let _ = super::tool_drain_enrich_fields;
     }
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

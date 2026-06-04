@@ -1,1 +1,3 @@
-- Satisfy any constraints listed in `{{ plan_path }}`. If `{{ plan_path }}` has direct instructions, be sure you have followed them.
+- Satisfy any constraints listed in `{{ plan_path }}`.
+- If `{{ plan_path }}` contains a plan: Complete the entire plan.
+- If `{{ plan_path }}` has explicit instructions: Carry out all of the instructions

@@ -7,13 +7,13 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = super::build_agent;
     let _ = super::prepare_kpop_prompt_store;
     let _ = super::prepare_prompt_store;
-    let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user);
+    let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(super::entrypoint::dispatch_command);
     let _ = super::entrypoint::print_command_error;
     let _ = super::entrypoint::require_kiss_for_cli_command;
     let _ = stringify!(super::entrypoint::run_async_cli);
-    let _ = stringify!(super::entrypoint_commands::run_code_command);
-    let _ = stringify!(super::entrypoint_commands::run_invent_command);
+    let _ = super::entrypoint_commands::run_code_command;
+    let _ = super::entrypoint_commands::run_invent_command;
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
@@ -41,15 +41,15 @@ fn smoke_cov_cli_cli_units_1a() {
 
 #[test]
 fn smoke_cov_cli_cli_units_1b() {
-    let _ = stringify!(crate::do_flow::do_flow_prompt::DoCoderRun);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::prepare_do_prompt_store);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run_with_store);
-    let _ = stringify!(crate::do_flow::do_flow_prompt::build_do_coder_run);
+    let _: Option<crate::do_flow::do_flow_prompt::DoCoderRun> = None;
+    let _ = crate::do_flow::do_flow_prompt::prepare_do_prompt_store;
+    let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
+    let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
+    let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
+    let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
     let _: Option<crate::init_cmd::RunInitOptions> = None;
     let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
-    let _ = stringify!(crate::init_cmd::run_init);
+    let _ = crate::init_cmd::run_init;
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
     let _ = super::kpop_flow::prepare_kpop_run;
@@ -70,11 +70,11 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = super::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = super::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = super::workflow_kpop_shared::finish_kpop_acp_session;
-    let _ = super::gate_kpop_workflow::run_gate_kpop_loop;
-    let _ = super::gate_kpop_workflow::post_gate_kpop_gates;
-    let _ = super::gate_kpop_workflow::finish_gate_kpop_after_pass;
-    let _ = super::gate_kpop_workflow::fail_gate_kpop_after_exhausted;
-    let _ = stringify!(super::gate_kpop_workflow::GateKpopLoopParams);
+    let _ = stringify!(super::gate_kpop_workflow::run_gate_kpop_loop);
+    let _ = stringify!(super::gate_kpop_workflow::post_gate_kpop_gates);
+    let _ = stringify!(super::gate_kpop_workflow::finish_gate_kpop_after_pass);
+    let _ = stringify!(super::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
+    let _: Option<super::gate_kpop_workflow::GateKpopLoopParams> = None;
 }
 
 #[test]
@@ -99,17 +99,17 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<super::Commands> = None;
     let _: Option<crate::do_flow::DoArgs> = None;
     let _: Option<crate::ideas_flow::IdeasArgs> = None;
-    let _ = stringify!(crate::ideas_flow::render_ideas_prompt);
-    let _ = stringify!(crate::ideas_flow::build_ideas_render_context);
-    let _ = stringify!(crate::ideas_flow::run_ideas);
+    let _ = crate::ideas_flow::render_ideas_prompt;
+    let _ = crate::ideas_flow::build_ideas_render_context;
+    let _ = crate::ideas_flow::run_ideas;
     let _: Option<crate::plan_flow::PlanArgs> = None;
-    let _ = stringify!(crate::plan_flow::run_plan);
-    let _ = stringify!(crate::plan_flow::prepare_plan_prompt_store);
-    let _ = stringify!(crate::cli::adversarial_profile::adversarial_profile_active);
+    let _ = crate::plan_flow::run_plan;
+    let _ = crate::plan_flow::prepare_plan_prompt_store;
+    let _ = crate::cli::adversarial_profile::adversarial_profile_active;
     let _: Option<super::models_cmd::ModelsArgs> = None;
     let _: Option<super::WorkflowCliOptions> = None;
     let _: Option<super::AgentStdoutTeeFlags> = None;
-    let _ = stringify!(crate::do_flow::prepare_do_prompt_store);
+    let _ = crate::do_flow::prepare_do_prompt_store;
     let _: Option<super::kpop_flow::KpopAcpMultiturnCtx> = None;
 }
 
@@ -142,4 +142,7 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(prepare_ideas_run);
     let _ = stringify!(run_ideas_coder_prompt);
     let _ = stringify!(run_ideas_acp);
+    let _ = stringify!(test_kpop_args);
+    let _ = stringify!(install_mock_agent_env);
+    let _ = stringify!(write_mock_agent);
 }

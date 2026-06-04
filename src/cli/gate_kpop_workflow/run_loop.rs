@@ -231,20 +231,19 @@ mod tests {
 
     #[test]
     fn gate_kpop_loop_session_helpers_are_covered() {
-        let _ = stringify!(super::run_gate_kpop_on_loop_iteration);
-        let _ = stringify!(super::wire_gate_kpop_client);
-        let _ = stringify!(super::gate_kpop_loop_one_iteration);
-        let _ = stringify!(super::run_gate_kpop_loop);
+        let _ = super::run_gate_kpop_on_loop_iteration;
+        let _ = super::wire_gate_kpop_client;
+        let _ = super::gate_kpop_loop_one_iteration;
+        let _ = super::run_gate_kpop_loop;
     }
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod kiss_cov_gate_refs {
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = gate_kpop_loop_one_iteration;
-        let _ = run_gate_kpop_on_loop_iteration;
-        let _ = wire_gate_kpop_client;
+        let _ = (gate_kpop_loop_one_iteration, run_gate_kpop_on_loop_iteration, wire_gate_kpop_client);
     }
 }

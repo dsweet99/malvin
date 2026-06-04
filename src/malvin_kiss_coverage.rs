@@ -2,10 +2,10 @@
 
 #[test]
 fn smoke_active_agent_heartbeat_stats() {
-    let _ = stringify!(crate::active_agent_heartbeat::register_active_agent_process_group);
-    let _ = stringify!(crate::active_agent_heartbeat::unregister_active_agent_process_group);
-    let _ = stringify!(crate::malvin_sandbox::init_malvin_spawn_baseline);
-    let _ = stringify!(crate::malvin_sandbox::malvin_session_rss_bytes);
+    let _ = crate::active_agent_heartbeat::register_active_agent_process_group;
+    let _ = crate::active_agent_heartbeat::unregister_active_agent_process_group;
+    let _ = crate::malvin_sandbox::init_malvin_spawn_baseline;
+    let _ = crate::malvin_sandbox::malvin_session_rss_bytes;
     crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();
     assert!(crate::active_agent_heartbeat_stats().is_none());
 }
@@ -143,9 +143,9 @@ fn smoke_kpop_multiturn_builder_type() {
 
 #[test]
 fn smoke_child_health_sample() {
-    let health = crate::child_health::sample_child_health(std::process::id());
-    let _ = health.exists;
-    let _ = health.zombie;
+    let _health = crate::child_health::sample_child_health(std::process::id());
+    let _ = stringify!(health.exists);
+    let _ = stringify!(health.zombie);
 }
 
 #[test]

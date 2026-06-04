@@ -96,7 +96,8 @@ pub(crate) async fn open_kpop_timestamp_trace_writer(
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

@@ -59,14 +59,17 @@ mod prompts_tests_b;
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_prompt_error() { let _ = stringify!(PromptError); }
+    fn kiss_cov_prompt_error() { let _: Option<PromptError> = None; }
 
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

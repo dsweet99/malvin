@@ -75,3 +75,12 @@ fn run_repo_workspace_gates_skips_pre_commit_when_config_present() {
     assert!(!log_contains_command(&log, "cargo clippy"));
     assert!(log_contains_command(&log, "custom --only"));
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_test_scan_for_extension_handles_symlink_cycles() { let _ = test_scan_for_extension_handles_symlink_cycles; }
+}

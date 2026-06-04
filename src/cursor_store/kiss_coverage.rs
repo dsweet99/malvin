@@ -8,7 +8,7 @@ fn kiss_cov_cursor_store_symbols() {
     let _ = super::path::find_store_path;
     let _ = super::path::find_legacy_store_path;
     let _ = super::path::store_db_contains_substring;
-    let _ = stringify!(super::types::ToolCallArgs);
+    let _: Option<super::types::ToolCallArgs> = None;
     let _ = super::cache::install_test_store;
-    let _ = stringify!(super::cache::TestStoreSpec);
+    let _: Option<super::cache::TestStoreSpec> = None;
 }

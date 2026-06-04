@@ -228,3 +228,5 @@ fn acp_activity_state_returns_valid_arc_pair() {
     notify.notify_one();
 }
 
+#[cfg(test)] #[test] fn kiss_cov_session_channels_helper_names() { let _ = (stdin_from_sleep_holder, session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set); }
+

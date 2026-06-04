@@ -127,8 +127,10 @@ fn acp_spawn_args_george_fixture_sized() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_prompt_trace_writer() { let _ = stringify!(PromptTraceWriter); }
+    fn kiss_cov_prompt_trace_writer() { let _: Option<PromptTraceWriter> = None; }
 
 }

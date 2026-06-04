@@ -19,17 +19,17 @@ fn embedded_dashes_in_user_span_do_not_false_positive() {
 }
 
 #[test]
-fn begin_malvin_in_user_span_is_ambiguous() {
+fn begin_malvin_prose_in_user_span_does_not_block_machine_block() {
     let content = "BEGIN_MALVIN in user\n\n---\nBEGIN_MALVIN\n## Restatement\n";
-    assert!(detect_rerun_user_span_end(content).is_err());
+    assert_eq!(detect_rerun_user_span_end(content), Ok(Some(22)));
 }
 
 #[test]
-fn multiple_begin_malvin_markers_are_ambiguous() {
+fn multiple_begin_malvin_markers_are_duplicate() {
     let content = "# Plan\n\n---\nBEGIN_MALVIN\na\n\n---\nBEGIN_MALVIN\nb\n";
     assert_eq!(
         detect_rerun_user_span_end(content),
-        Err(PlanFileError::AmbiguousMarkers)
+        Err(PlanFileError::DuplicateBeginMalvinMarkers)
     );
 }
 
@@ -172,4 +172,6 @@ fn kiss_cov_plan_splice_symbols() {
     let _ = stringify!(find_machine_block_start);
     let _ = stringify!(splice_plan_file);
     let _ = stringify!(extract_fenced_markdown_block);
+    let _ = stringify!(detect_rerun_user_span_end);
+    let _ = stringify!(prepare_plan_file_for_prompt_1a);
 }

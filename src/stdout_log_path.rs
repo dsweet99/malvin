@@ -37,7 +37,7 @@ mod kiss_coverage {
         assert_eq!(super::clone_stdout_log_path(), Some(path));
         super::set_stdout_log_path(None);
         assert!(super::clone_stdout_log_path().is_none());
-        let _ = stringify!(super::set_stdout_log_path);
-        let _ = stringify!(super::clone_stdout_log_path);
+        let _ = super::set_stdout_log_path;
+        let _ = super::clone_stdout_log_path;
     }
 }

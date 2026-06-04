@@ -105,7 +105,7 @@ pub(crate) fn apply_shared_config_defaults(
 
 pub fn parse_cli_with_config_defaults(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
-) -> Result<Cli, clap::Error> {
+) -> Result<(Cli, ArgMatches), clap::Error> {
     let cmd = Cli::command();
     let matches = cmd.get_matches_from(args);
     let mut cli = Cli::from_arg_matches(&matches)?;
@@ -118,7 +118,7 @@ pub fn parse_cli_with_config_defaults(
             e,
         ));
     }
-    Ok(cli)
+    Ok((cli, matches))
 }
 
 #[cfg(test)]

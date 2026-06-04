@@ -4,7 +4,9 @@ use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
 
 fn parse(argv: &[&str]) -> Cli {
-    parse_cli_with_config_defaults(argv).expect("parse")
+    parse_cli_with_config_defaults(argv)
+        .expect("parse")
+        .0
 }
 
 #[test]

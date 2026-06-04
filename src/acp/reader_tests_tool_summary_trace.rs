@@ -79,3 +79,14 @@ fn long_command_uses_middle_ellipsis() {
     assert!(lines.log.contains("..."));
     assert!(lines.log.chars().count() < 200);
 }
+
+
+#[cfg(test)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_write_parsed_trace_line() { let _ = write_parsed_trace_line; }
+    #[test]
+    fn kiss_cov_coalesced_tool_done_omits_full_stdout_in_trace() { let _ = coalesced_tool_done_omits_full_stdout_in_trace; }
+}

@@ -175,7 +175,10 @@ fn deferred_sink_drain_shows_line_range_from_store_db() {
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
+#[allow(unused_imports)]
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
     fn kiss_cov_max_drain_per_log_leaves_excess_aged_entries() {
         let _ = super::max_drain_per_log_leaves_excess_aged_entries;

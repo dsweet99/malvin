@@ -20,6 +20,8 @@ fn plan_1a_prompt_forbids_critique_in_contract() {
     assert!(!text.contains("{{"));
     assert!(text.contains("Do **not** fix, critique"));
     assert!(text.contains("Do **not** add `## Critique`"));
+    assert!(text.contains("malvin already appended"));
+    assert!(text.contains("Do **not** include the literal text `BEGIN_MALVIN`"));
 }
 
 #[test]

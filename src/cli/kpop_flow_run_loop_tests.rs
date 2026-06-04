@@ -1,56 +1,55 @@
 //! Tests for [`super::kpop_flow_run_loop`].
 
 #[cfg(unix)]
-mod unix_cov {
-    #![allow(unsafe_code)]
-
-    use super::super::kpop_flow_run_loop::{run_kpop_agent_loops, RunKpopAgentLoopsParams};
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::Path;
-
-    use crate::cli::kpop_flow::kpop_boot_store_client_prepared;
+pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::cli::SharedOpts, crate::cli::WorkflowCliOptions) {
     use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions};
     use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 
-    fn test_kpop_args(max_loops: usize) -> (KpopArgs, SharedOpts, WorkflowCliOptions) {
-        let kpop = KpopArgs {
-            max_loops,
-            max_hypotheses: 10,
-            tenacious: false,
-            request: Some("investigate".into()),
-        };
-        let shared = SharedOpts {
-            model: DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
-            doc: false,
-        };
-        let workflow = WorkflowCliOptions { force: false };
-        (kpop, shared, workflow)
-    }
+    let kpop = KpopArgs {
+        max_loops,
+        max_hypotheses: 10,
+        tenacious: false,
+        request: Some("investigate".into()),
+    };
+    let shared = SharedOpts {
+        model: DEFAULT_CLI_MODEL.into(),
+        no_force: true,
+        no_tenacious: false,
+        no_tee: true,
+        no_markdown: true,
+        verbose: false,
+        max_acp_retries: DEFAULT_MAX_ACP_RETRIES,
+        doc: false,
+    };
+    let workflow = WorkflowCliOptions { force: false };
+    (kpop, shared, workflow)
+}
 
-    fn install_mock_agent_env(workspace: &Path, mock: &Path) {
-        write_mock_agent(mock);
-        let bin_dir = workspace.join("bin");
-        std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-        crate::test_agent_client::install_exit_gate_bin(&bin_dir, "kiss", 0);
-        let path = format!(
-            "{}:{}",
-            bin_dir.display(),
-            std::env::var("PATH").unwrap_or_default()
-        );
-        unsafe {
-            std::env::set_var("MALVIN_AGENT_ACP_BIN", mock);
-            std::env::set_var("PATH", path);
-            std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
-        }
-    }
+#[cfg(unix)]
+pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::path::Path) {
+    #![allow(unsafe_code)]
 
-    fn write_mock_agent(path: &Path) {
-        let body = r"    const fs = require('fs');
+    write_mock_agent(mock);
+    let bin_dir = workspace.join("bin");
+    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
+    crate::test_agent_client::install_exit_gate_bin(&bin_dir, "kiss", 0);
+    let path = format!(
+        "{}:{}",
+        bin_dir.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+    unsafe {
+        std::env::set_var("MALVIN_AGENT_ACP_BIN", mock);
+        std::env::set_var("PATH", path);
+        std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
+    }
+}
+
+#[cfg(unix)]
+pub(crate) fn write_mock_agent(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let body = r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
@@ -71,15 +70,23 @@ mod unix_cov {
         }
       }
     }";
-        let handler = format!(
-            "{body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
-        );
-        let script = format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler));
-        std::fs::write(path, script).expect("write mock");
-        let mut perms = std::fs::metadata(path).expect("meta").permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(path, perms).expect("chmod");
-    }
+    let handler = format!(
+        "{body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
+    );
+    let script = format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler));
+    std::fs::write(path, script).expect("write mock");
+    let mut perms = std::fs::metadata(path).expect("meta").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(path, perms).expect("chmod");
+}
+
+#[cfg(unix)]
+mod unix_cov {
+    use super::super::kpop_flow_run_loop::{run_kpop_agent_loops, RunKpopAgentLoopsParams};
+
+    use crate::cli::kpop_flow::kpop_boot_store_client_prepared;
+
+    use super::{install_mock_agent_env, test_kpop_args};
 
     #[test]
     fn run_kpop_agent_loops_propagates_exp_log_setup_error() {

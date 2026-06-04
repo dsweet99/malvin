@@ -24,11 +24,14 @@ fn kiss_cov_reader_stdout_body_b_inc() {
 
 #[test]
 fn kiss_cov_session_channels_inc() {
+    use crate::acp::wrap_session_channels::inline::*;
     let _: Option<crate::acp::SessionAfterStdioIn<'_>> = None;
-    let _ = crate::acp::acp_activity_state;
-    let _ = crate::acp::random_agent_name;
-    let _ = crate::acp::session_channel_sync;
-    let _ = crate::acp::trace_jsonl_for_args;
+    let _ = acp_activity_state;
+    let _ = random_agent_name;
+    let _ = session_channel_sync;
+    let _ = trace_jsonl_for_args;
+    let _ = stringify!(stdin_from_sleep_holder);
+    let _ = stringify!(session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set);
 }
 
 #[test]
@@ -59,3 +62,4 @@ fn kiss_cov_trace_line_write() {
     let _ = crate::acp::reader_loop_verbose_and_trace_line;
     let _ = crate::acp::trace_line_write::write_trace_line_coalesced;
 }
+

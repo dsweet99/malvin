@@ -217,7 +217,9 @@ fn operational_iterable_closed_for_emit_uses_stream_kind_message() {
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
     fn kiss_cov_emit_operational_upgrade_plan_stop() {
         let _ = stringify!(emit_operational_upgrade_plan_stop);

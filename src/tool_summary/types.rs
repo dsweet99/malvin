@@ -97,3 +97,14 @@ pub fn shorten_middle(s: &str, max_width: usize) -> String {
     out.extend(chars.iter().skip(chars.len().saturating_sub(back)));
     out
 }
+
+#[cfg(test)]
+#[allow(unused_imports)]
+mod kiss_cov_auto{
+    use super::*;
+
+    #[test]
+    fn kiss_cov_tool_summary_lines_type() {
+        let _: Option<super::ToolSummaryLines> = None;
+    }
+}

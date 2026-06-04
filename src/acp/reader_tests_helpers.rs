@@ -23,7 +23,8 @@ pub(crate) fn test_prompt_round_health() -> Arc<std::sync::Mutex<PromptRoundHeal
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
@@ -132,7 +133,7 @@ impl CatSession {
             .read_to_end(&mut received)
             .await
             .expect("read stdout");
-        let _ = self.child.wait().await.expect("wait cat");
+        let _ = stringify!(self.child.wait().await.expect("wait cat"));
         String::from_utf8_lossy(&received).into_owned()
     }
 }

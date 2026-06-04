@@ -17,14 +17,17 @@ pub(crate) struct RpcWaitArgs<'a> {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_rpc_wait_args() { let _ = stringify!(RpcWaitArgs); }
+    fn kiss_cov_rpc_wait_args() { let _: Option<RpcWaitArgs> = None; }
 
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

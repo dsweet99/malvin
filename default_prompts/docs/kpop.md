@@ -41,7 +41,8 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 |------|---------|---------|
 | `--max-loops` | 1 | Separate kpop agent runs; stops early when a run’s log contains `## KPOP_SOLVED` |
 | `--max-hypotheses` | 10 | `## Step … — KPOP` budget **per** agent run |
-| `--tenacious` | off | `--max-acp-retries=9999` and `--max-loops=9999` |
+| `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
+| `--no-tenacious` | off | Restore normal loop/retry budgets |
 
 Bare `malvin REQUEST` uses the same flags at the top level (see `malvin --doc`).
 

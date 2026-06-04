@@ -170,7 +170,8 @@ fn trace_chunk_coalescer_iterable_closed_flag_survives_split_feed() {
 }
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

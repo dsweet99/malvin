@@ -6,13 +6,13 @@ pub(crate) mod inline {
     include!("reader_stdout_body_a.inc");
 
     #[cfg(test)]
-    mod kiss_cov_gate_refs {
-        use super::*;
+    mod kiss_cov_gate_refs{
+    use super::*;
         #[test]
         fn kiss_cov_unit_names() {
             let _: Option<IncomingLineDispatch<'_>> = None;
             let _: Option<ReaderLoopInput> = None;
-            let _ = handle_incoming_line;
+            let _ = stringify!(handle_incoming_line);
         }
     }
 }

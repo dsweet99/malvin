@@ -72,6 +72,7 @@ fn smoke_agent_io_options_maps_flags() {
     let shared = super::SharedOpts {
         model: "m".into(),
         no_force: false,
+        no_tenacious: false,
         no_tee: true,
         no_markdown: false,
         verbose: false,
@@ -101,6 +102,7 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
     let shared = super::SharedOpts {
         model: "m".into(),
         no_force: false,
+        no_tenacious: false,
         no_tee: true,
         no_markdown: false,
         verbose: false,
@@ -221,6 +223,7 @@ fn smoke_shared_opts_tee_startup_stdout() {
     let shared = super::SharedOpts {
         model: "m".into(),
         no_force: false,
+        no_tenacious: false,
         no_tee: false,
         no_markdown: false,
         verbose: false,

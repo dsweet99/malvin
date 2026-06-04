@@ -166,7 +166,7 @@ fn active_defer_session_shows_heartbeat_on_live_terminal_before_log_flush() {
         !crate::output::log_contains_heartbeat(&log_before_flush),
         "heartbeat log line must stay queued until flush; log={log_before_flush:?}"
     );
-    let _ = finish_defer_log_test(ctx);
+    finish_defer_log_test(ctx);
 }
 
 #[cfg(test)]

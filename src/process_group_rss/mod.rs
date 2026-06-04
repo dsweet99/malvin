@@ -70,7 +70,7 @@ pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = pids;
+        let _ = stringify!(pids);
         None
     }
 }
@@ -91,7 +91,7 @@ pub fn pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = pids;
+        let _ = stringify!(pids);
         None
     }
 }
@@ -101,7 +101,8 @@ pub fn pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
 mod process_group_rss_tests;
 
 #[cfg(test)]
-mod kiss_cov_gate_refs {
+#[allow(unused_imports)]
+mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {

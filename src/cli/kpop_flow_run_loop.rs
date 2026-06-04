@@ -120,6 +120,8 @@ mod unit_tests {
     #[test]
     fn kiss_cov_run_kpop_agent_loops_outcome() {
         let _ = std::any::type_name::<RunKpopAgentLoopsOutcome>();
+        let _ = std::any::type_name::<RunKpopAgentLoopsParams>();
+        let _ = run_kpop_agent_loops;
         let _ = clear_legacy_gate_exp_log;
     }
 

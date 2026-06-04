@@ -81,6 +81,7 @@ pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
     crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
+        no_tenacious: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,
@@ -104,7 +105,7 @@ pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
     } else if (promptText.includes('**Prompt 1b**')) {
       fs.appendFileSync(planPath, '\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n');
     } else if (promptText.includes('**Prompt 1a**')) {
-      fs.appendFileSync(planPath, '\n---\nBEGIN_MALVIN\n## Restatement\nrestated\n');
+      fs.appendFileSync(planPath, 'restated\n');
     }
 "#;
     let script = format!("#!/usr/bin/env node\n{}", crate::acp_mock_js("", handler));

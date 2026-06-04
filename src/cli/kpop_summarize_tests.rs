@@ -18,6 +18,7 @@ fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     SharedOpts {
         model: DEFAULT_CLI_MODEL.into(),
         no_force: true,
+        no_tenacious: false,
         no_tee: true,
         no_markdown: true,
         verbose: false,
@@ -117,7 +118,7 @@ fn exp_log_paths_markdown_lists_existing_files() {
     assert!(md.contains("exp_log_test_g1.md"));
 }
 
-fn write_mock_summarize_agent(path: &std::path::Path) {
+pub(crate) fn write_mock_summarize_agent(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
     let handler = r"    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';

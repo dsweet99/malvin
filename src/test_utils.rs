@@ -61,6 +61,9 @@ rl.on('line', (line) => {
 });
 "#;
 
+#[path = "test_utils_acp_rpc_trace.rs"] mod acp_rpc_trace;
+pub use acp_rpc_trace::write_acp_jsonrpc_mock_rpc_trace;
+
 /// `session/cancel` returns JSON-RPC error; `session/prompt` blocks on a release file so tests can
 /// prove prompt/cancel interleaving without paying real sleep time.
 #[cfg(unix)]
@@ -137,7 +140,7 @@ fn acp_mock_start_log_header(start_log: Option<&Path>) -> String {
         .unwrap_or_default()
 }
 
-async fn write_acp_mock_script_with_optional_log(
+pub(crate) async fn write_acp_mock_script_with_optional_log(
     path: &Path,
     start_log: Option<&Path>,
     script_tail: &str,

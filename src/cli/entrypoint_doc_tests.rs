@@ -1,4 +1,4 @@
-use super::{finish_entrypoint, prepare_cli_output, Exit, entrypoint_from};
+use super::{finish_entrypoint, prepare_cli_output, run_async_cli, Exit, entrypoint_from};
 use crate::cli::args::GlobalOpts;
 
 #[test]
@@ -57,4 +57,9 @@ fn finish_entrypoint_success_and_failure_paths() {
         assert_eq!(finish_entrypoint(Err("boom".into())), Exit::Failure);
     });
     assert!(stderr.contains("boom"), "stderr={stderr:?}");
+}
+
+#[test]
+fn run_async_cli_runs_immediate_ok_future() {
+    assert!(run_async_cli(|| async { Ok(()) }).is_ok());
 }

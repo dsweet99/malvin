@@ -96,6 +96,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let mut shared = SharedOpts {
         model: "old".into(),
         no_force: false,
+        no_tenacious: false,
         no_tee: false,
         no_markdown: false,
         verbose: false,
@@ -203,7 +204,7 @@ fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let cli = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         match cli.command.expect("command") {
             Commands::Kpop(kpop) => assert_eq!(kpop.request.as_deref(), Some("hello")),
             other => panic!("expected kpop, got {other:?}"),
@@ -217,7 +218,7 @@ fn parse_cli_with_config_defaults_uses_bundled_agent_defaults() {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let cli = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
         assert_eq!(cli.shared.model, DEFAULT_CLI_MODEL);
         assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
         match cli.command.expect("command") {

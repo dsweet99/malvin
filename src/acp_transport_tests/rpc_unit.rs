@@ -115,8 +115,10 @@ fn test_agent_program_prefers_nonempty_override() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_auto{
+    use super::*;
+
     #[test]
-    fn kiss_cov_test_write_rpc_line_fails_after_child_stdin_closed() { let _ = stringify!(test_write_rpc_line_fails_after_child_stdin_closed); }
+    fn kiss_cov_test_write_rpc_line_fails_after_child_stdin_closed() { let _ = test_write_rpc_line_fails_after_child_stdin_closed; }
 
 }

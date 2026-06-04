@@ -30,7 +30,7 @@ fn resolve_path_against_base_resolves_absolute_missing_file_under_base() {
 
 #[test]
 fn resolve_nonexistent_path_cases() {
-    let _ = stringify!(resolve_nonexistent_path);
+    let _ = resolve_nonexistent_path;
     assert_eq!(resolve_nonexistent_path(Path::new("")), PathBuf::from(""));
 
     let tmp = tempfile::tempdir().expect("tempdir");

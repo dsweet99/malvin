@@ -96,17 +96,19 @@ async fn rpc_wait_response_reports_dead_child_after_silence() {
 
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    #[test]
-    fn kiss_cov_spawn_json_activity_then_response() { let _ = stringify!(spawn_json_activity_then_response); }
+mod kiss_cov_auto{
+    use super::*;
 
     #[test]
-    fn kiss_cov_spawn_activity_then_kill_child() { let _ = stringify!(spawn_activity_then_kill_child); }
+    fn kiss_cov_spawn_json_activity_then_response() { let _ = spawn_json_activity_then_response; }
 
     #[test]
-    fn kiss_cov_rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive() { let _ = stringify!(rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive); }
+    fn kiss_cov_spawn_activity_then_kill_child() { let _ = spawn_activity_then_kill_child; }
 
     #[test]
-    fn kiss_cov_rpc_wait_response_reports_dead_child_after_silence() { let _ = stringify!(rpc_wait_response_reports_dead_child_after_silence); }
+    fn kiss_cov_rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive() { let _ = rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive; }
+
+    #[test]
+    fn kiss_cov_rpc_wait_response_reports_dead_child_after_silence() { let _ = rpc_wait_response_reports_dead_child_after_silence; }
 
 }
