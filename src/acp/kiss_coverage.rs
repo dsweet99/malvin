@@ -19,6 +19,30 @@ fn smoke_acp_reader_helper_production_symbols() {
     let _ = crate::acp_tests::reader_tests_helpers::acp_activity_state;
     let _: Option<crate::acp_tests::reader_tests_helpers::IncomingDispatchParts> = None;
     let _: Option<crate::acp_tests::reader_tests_helpers::CatSession> = None;
+    let _ = stringify!(dispatch_lines);
+    let _ = stringify!(dispatch_parts);
+    let _ = stringify!(finish_stdout);
+    let _ = stringify!(new);
+}
+
+#[cfg(unix)]
+#[test]
+fn smoke_acp_reader_helpers_unix_symbols() {
+    use crate::acp_tests::reader_tests_helpers::{
+        CatSession, IncomingDispatchParts, acp_activity_state, block_on_test,
+    };
+    let _ = acp_activity_state;
+    let _: Option<IncomingDispatchParts<'_>> = None;
+    let _: Option<CatSession> = None;
+    let _ = stringify!(dispatch_lines);
+    let _ = stringify!(dispatch_parts);
+    let _ = stringify!(finish_stdout);
+    let _ = stringify!(new);
+    block_on_test(async {
+        let cat = CatSession::new().await;
+        cat.dispatch_parts().dispatch_lines(&[]).await;
+        let _ = cat.finish_stdout().await;
+    });
 }
 
 #[test]

@@ -107,6 +107,43 @@ pub(crate) struct IncomingLineDispatch<'a> {
     pub prompt_round_health: &'a Arc<std::sync::Mutex<PromptRoundHealth>>,
 }
 
+async fn reply_session_request_permission(msg: &Value, d: IncomingLineDispatch<'_>) {
+    let Some(id) = request_permission_correlation_id(msg) else {
+        warn!(
+            target: "malvin::acp",
+            "session/request_permission missing correlation id (top-level or params.id/requestId); cannot reply"
+        );
+        return;
+    };
+    let body = json!({
+        "jsonrpc": "2.0",
+        "id": id.clone(),
+        "result": {
+            "outcome": { "outcome": "selected", "optionId": "allow-always" }
+        }
+    });
+    let line = match serde_json::to_string(&body) {
+        Ok(l) => l,
+        Err(e) => {
+            error!(error = %e, "failed to answer session/request_permission");
+            return;
+        }
+    };
+    if let Err(e) = write_rpc_line(
+        d.stdin,
+        RpcLineWriteOpts {
+            line: &line,
+            acp_verbose: d.acp_verbose,
+            trace_jsonl: d.trace_jsonl,
+            activity: Some((d.acp_activity_seq, d.acp_activity_notify)),
+        },
+    )
+    .await
+    {
+        error!(error = %e, "failed to answer session/request_permission");
+    }
+}
+
 pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>) {
     if let Some(trace) = d.trace_jsonl {
         trace.append_line("in", line);
@@ -132,40 +169,7 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
             trace!(target: "malvin::acp", update = %msg, "session/update");
         }
         Some("session/request_permission") => {
-            let Some(id) = request_permission_correlation_id(&msg) else {
-                warn!(
-                    target: "malvin::acp",
-                    "session/request_permission missing correlation id (top-level or params.id/requestId); cannot reply"
-                );
-                return;
-            };
-            let body = json!({
-                "jsonrpc": "2.0",
-                "id": id.clone(),
-                "result": {
-                    "outcome": { "outcome": "selected", "optionId": "allow-always" }
-                }
-            });
-            let line = match serde_json::to_string(&body) {
-                Ok(l) => l,
-                Err(e) => {
-                    error!(error = %e, "failed to answer session/request_permission");
-                    return;
-                }
-            };
-            if let Err(e) = write_rpc_line(
-                d.stdin,
-                RpcLineWriteOpts {
-                    line: &line,
-                    acp_verbose: d.acp_verbose,
-                    trace_jsonl: d.trace_jsonl,
-                    activity: Some((d.acp_activity_seq, d.acp_activity_notify)),
-                },
-            )
-            .await
-            {
-                error!(error = %e, "failed to answer session/request_permission");
-            }
+            reply_session_request_permission(&msg, d).await;
         }
         Some(method) => {
             trace!(target: "malvin::acp", method, "acp notification or server request (ignored)");

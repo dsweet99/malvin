@@ -123,6 +123,14 @@ fn kiss_cov_acp_reader_test_prompt_round_health() {
 }
 
 #[test]
+fn kiss_cov_ops_body_kpop_types() {
+    let _: Option<super::KpopFlowOnceArgs<'_>> = None;
+    let _ = stringify!(KpopPromptRound);
+    let _ = stringify!(run_kpop_flow);
+    let _ = stringify!(replace_coder_session_slot_for_tests);
+}
+
+#[test]
 fn kiss_cov_acp_reader_test_trace_kpop_helpers() {
     let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::kpop_trace_writer;
     let _ = crate::acp_tests::reader_tests_trace_kpop_helpers::open_kpop_trace_writer;

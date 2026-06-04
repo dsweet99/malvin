@@ -111,11 +111,10 @@ pub fn entrypoint_from(
         };
     }
     let command = cli.command.expect("subcommand when not --doc-only");
-    if let Err(e) = require_kiss_for_cli_command(&command) {
-        print_command_error(&e);
-        return Exit::Failure;
-    }
-    if let Err(e) = ensure_malvin_checks_for_command(&command) {
+    let preflight_err = require_kiss_for_cli_command(&command)
+        .err()
+        .or_else(|| ensure_malvin_checks_for_command(&command).err());
+    if let Some(e) = preflight_err {
         print_command_error(&e);
         return Exit::Failure;
     }

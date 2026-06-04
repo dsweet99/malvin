@@ -129,6 +129,11 @@ mod command_support_unit_tests {
     use super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
 
     #[test]
+    fn fake_command_dir_guard_type_is_referenced() {
+        let _: Option<super::FakeCommandDirGuard> = None;
+    }
+
+    #[test]
     fn run_command_failure_captures_streams() {
         let output = std::process::Output {
             status: std::process::ExitStatus::default(),

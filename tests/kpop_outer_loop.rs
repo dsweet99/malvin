@@ -52,7 +52,7 @@ mod linux {
 
     #[test]
     fn kpop_max_loops_one_uses_legacy_exp_log_path() {
-        let (out, root) = run_kpop_outer_loop(&acp_mock_kpop_steps_js(r"'step\n'"), &[]);
+        let (out, root) = run_kpop_outer_loop(&acp_mock_kpop_steps_js(r"'step\n'"), &["--max-loops", "1"]);
         assert!(out.status.success(), "kpop should succeed: {out:?}");
         let run_dir = only_run_dir(&root.path().join("workspace"), &root.path().join("home"));
         let legacy = exp_logs_in_run(&run_dir)

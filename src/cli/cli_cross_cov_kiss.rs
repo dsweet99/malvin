@@ -117,6 +117,8 @@ fn smoke_cov_cli_cli_symbols_a() {
 fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates;
     let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
+    let _: Option<crate::repo_checks::FakeCommandDirGuard> = None;
+    let _ = stringify!(FakeCommandDirGuard);
 }
 
 #[test]

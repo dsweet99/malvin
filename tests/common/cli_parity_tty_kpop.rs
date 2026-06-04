@@ -37,6 +37,8 @@ pub fn run_kpop_multiturn_investigate(
         .env("PATH", path)
         .args([
             "kpop",
+            "--max-loops",
+            "2",
             "--max-hypotheses",
             "1",
             "investigate",

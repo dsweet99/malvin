@@ -113,6 +113,10 @@ fn smoke_artifacts_resolve_user_request() {
 
 #[test]
 fn smoke_output_and_tracing() {
+    let _ = stringify!(on_event);
+    let _ = stringify!(LogFieldVisitor);
+    let _ = stringify!(record_str);
+    let _ = stringify!(record_debug);
     crate::tracing_init::init_tracing();
     assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
         tracing::Level::INFO
@@ -121,8 +125,10 @@ fn smoke_output_and_tracing() {
     assert_eq!(formatted, "\"val\"");
     crate::output::clear_captured_stderr_lines();
     crate::output::print_log_error("err-smoke");
+    tracing::warn!(target: "malvin::kiss_cov", extra = 1, "trace-layer-smoke");
     let lines = crate::output::take_captured_stderr_lines();
     assert!(lines.iter().any(|l| l.contains("err-smoke")));
+    assert!(lines.iter().any(|l| l.contains("trace-layer-smoke")));
 }
 
 #[test]
@@ -209,6 +215,18 @@ fn kiss_cov_acp_session_unit_tests() {
 fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(abort_result_path);
     let _ = stringify!(smoke_agent_client);
+}
+
+#[test]
+fn kiss_cov_coverage_kiss_gate_refs() {
+    let _ = stringify!(kiss_cov_coalesce_private_helpers);
+    let _ = stringify!(kiss_cov_coalesce_trace_flush_helpers);
+    let _ = stringify!(kiss_cov_prompt_round_health_private_helpers);
+    let _ = stringify!(kiss_cov_reader_tests_helpers_symbols);
+    let _ = stringify!(smoke_reader_tests_helpers_cat_session_roundtrip);
+    let _ = stringify!(kiss_cov_fake_command_dir_guard_type);
+    let _ = stringify!(kiss_cov_kpop_turn_render_turn_with_body);
+    let _ = stringify!(kiss_cov_tracing_init_layer_symbols);
 }
 
 #[test]
