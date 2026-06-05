@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Run malvin on Modal, forwarding host CLI arguments to the remote malvin process.
 
 Runtime dependency: install Modal with ``pip install modal`` or ``uv pip install modal``.
@@ -21,6 +23,8 @@ from types import SimpleNamespace
 from typing import Any, TextIO
 from unittest.mock import MagicMock, patch
 
+import click
+from click.testing import CliRunner
 import modal
 from modal.stream_type import StreamType
 
@@ -150,13 +154,32 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
             sandbox.terminate()
 
 
-def main(*malvin_args: str) -> None:
-    """Modal entry: ``modal run ops/malvin_modal.py -- [MALVIN_ARGS...]``."""
-    code = run_malvin_remote(list(malvin_args))
+@click.command(
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+)
+@click.option(
+    "--self-test",
+    is_flag=True,
+    help="Run local unit tests without Modal credentials.",
+)
+@click.pass_context
+def cli(ctx: click.Context, self_test: bool) -> None:
+    """Run malvin on Modal, forwarding arguments to the remote process."""
+    if self_test:
+        run_unit_tests()
+        raise SystemExit(0)
+    code = run_malvin_remote(list(ctx.args))
     raise SystemExit(code)
 
 
-app.local_entrypoint()(main)
+@app.local_entrypoint()
+def main(*arglist: str) -> None:
+    """Modal entry: ``modal run ops/malvin_modal.py -- [MALVIN_ARGS...]``."""
+    cli.main(args=list(arglist), prog_name="modal run ops/malvin_modal.py", standalone_mode=True)
 
 
 def _test_static_helpers() -> None:
@@ -207,10 +230,11 @@ def _test_modal_remote() -> None:
 
 
 def run_unit_tests() -> None:
-    """UT-ARGV, UT-IGNORE, UT-RELAY, UT-EXIT, UT-MODAL — no Modal network."""
+    """UT-ARGV, UT-IGNORE, UT-RELAY, UT-EXIT, UT-MODAL, UT-CLICK — no Modal network."""
     _test_static_helpers()
     _test_cursor_and_stream()
     _test_modal_remote()
+    _test_click_cli()
 
 
 def test_kiss_static_coverage() -> None:
@@ -225,19 +249,32 @@ def test_kiss_static_coverage() -> None:
         finish_process,
         stream_process_output,
         run_malvin_remote,
+        cli,
         main,
         run_unit_tests,
     )
-    assert len(symbols) == 11
+    assert len(symbols) == 12
+
+
+def _test_click_cli() -> None:
+    runner = CliRunner()
+    with patch(f"{__name__}.run_unit_tests") as mock_run_tests:
+        result = runner.invoke(cli, ["--self-test"])
+        assert result.exit_code == 0, result.output
+        mock_run_tests.assert_called_once()
+    fake_proc = SimpleNamespace(
+        stdout=iter(["remote-out"]),
+        stderr=iter(["remote-err"]),
+        returncode=7,
+        wait=lambda: None,
+    )
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+        result = runner.invoke(cli, ["--version"])
+    assert result.exit_code == 7
+    fake_sandbox.terminate.assert_called_once()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2 and sys.argv[1] == "--self-test":
-        run_unit_tests()
-        sys.exit(0)
-    print(
-        "Use: modal run ops/malvin_modal.py -- [MALVIN_ARGS...]\n"
-        "     python ops/malvin_modal.py --self-test",
-        file=sys.stderr,
-    )
-    sys.exit(2)
+    cli(prog_name="python ops/malvin_modal.py")
