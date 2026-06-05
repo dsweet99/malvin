@@ -36,6 +36,9 @@ mod kpop_summarize;
 #[path = "kpop_summarize_tests.rs"]
 mod kpop_summarize_tests;
 #[cfg(test)]
+#[path = "kpop_summarize_mock_tests.rs"]
+mod kpop_summarize_mock_tests;
+#[cfg(test)]
 #[path = "kpop_summarize_kiss_cov_tests.rs"]
 mod kpop_summarize_kiss_cov_tests;
 #[cfg(test)]

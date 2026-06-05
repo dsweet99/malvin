@@ -5,12 +5,14 @@ use std::path::{Path, PathBuf};
 
 pub(crate) use alloc::{allocate_backup_dir, malvin_home_dir, remove_if_exists, DotfileBackupLabels};
 pub use wrappers::{
+    backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
     backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
     backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
-    restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
-    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
+    restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
+    restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
+    restore_workspace_malvin_config_backup,
 };
 
 struct DotfileSpecRow {
@@ -41,8 +43,9 @@ fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
 
 const KISSCONFIG_FILE: &str = ".kissconfig";
 const KISSIGNORE_FILE: &str = ".kissignore";
+const GITIGNORE_FILE: &str = ".gitignore";
 
-const DOTFILE_ROWS: [DotfileSpecRow; 4] = [
+const DOTFILE_ROWS: [DotfileSpecRow; 5] = [
     DotfileSpecRow {
         rel: KISSCONFIG_FILE,
         home_subdir: "kissconfigs",
@@ -79,6 +82,15 @@ const DOTFILE_ROWS: [DotfileSpecRow; 4] = [
         copy_err: ".malvin/config.toml backup copy",
         restore_copy_err: "malvin_config restore",
     },
+    DotfileSpecRow {
+        rel: GITIGNORE_FILE,
+        home_subdir: "gitignore_snapshots",
+        mkdir_lbl: "gitignore backup mkdir",
+        collision_lbl: "gitignore backup mkdir",
+        restore_lbl: "gitignore restore",
+        copy_err: ".gitignore backup copy",
+        restore_copy_err: "gitignore restore",
+    },
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,6 +103,16 @@ pub type KissConfigBackup = DotfileBackupState;
 pub type MalvinChecksBackup = DotfileBackupState;
 pub type KissignoreBackup = DotfileBackupState;
 pub type MalvinConfigBackup = DotfileBackupState;
+pub type GitignoreBackup = DotfileBackupState;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionDotfileParts {
+    pub kissconfig: KissConfigBackup,
+    pub malvin_checks: MalvinChecksBackup,
+    pub kissignore: KissignoreBackup,
+    pub malvin_config: MalvinConfigBackup,
+    pub gitignore: GitignoreBackup,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileBackups {
@@ -98,6 +120,7 @@ pub struct SessionDotfileBackups {
     pub malvin_checks: MalvinChecksBackup,
     pub kissignore: KissignoreBackup,
     pub malvin_config: MalvinConfigBackup,
+    pub gitignore: GitignoreBackup,
 }
 
 pub(super) fn backup_slot(
@@ -144,17 +167,13 @@ pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: u
 
 impl SessionDotfileBackups {
     #[must_use]
-    pub const fn from_parts(
-        kissconfig: KissConfigBackup,
-        malvin_checks: MalvinChecksBackup,
-        kissignore: KissignoreBackup,
-        malvin_config: MalvinConfigBackup,
-    ) -> Self {
+    pub fn from_parts(parts: SessionDotfileParts) -> Self {
         Self {
-            kissconfig,
-            malvin_checks,
-            kissignore,
-            malvin_config,
+            kissconfig: parts.kissconfig,
+            malvin_checks: parts.malvin_checks,
+            kissignore: parts.kissignore,
+            malvin_config: parts.malvin_config,
+            gitignore: parts.gitignore,
         }
     }
 
@@ -173,6 +192,7 @@ impl SessionDotfileBackups {
             malvin_checks: backup_slot(1, work_dir, &mut generate_id)?,
             kissignore: backup_slot(2, work_dir, &mut generate_id)?,
             malvin_config: backup_slot(3, work_dir, &mut generate_id)?,
+            gitignore: backup_slot(4, work_dir, &mut generate_id)?,
         })
     }
 
@@ -205,7 +225,8 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
 ) -> Result<(), String> {
     restore_slot(work_dir, &bundle.kissconfig, 0)?;
     restore_slot(work_dir, &bundle.kissignore, 2)?;
-    restore_slot(work_dir, &bundle.malvin_config, 3)
+    restore_slot(work_dir, &bundle.malvin_config, 3)?;
+    restore_slot(work_dir, &bundle.gitignore, 4)
 }
 
 #[cfg(test)]

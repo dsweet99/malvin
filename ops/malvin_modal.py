@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import io
 import os
+import subprocess
 import sys
 import threading
 from types import SimpleNamespace
@@ -125,6 +126,47 @@ def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
         thread.join()
 
 
+def run_local_malvin_usage() -> str:
+    """Return bare ``malvin`` usage text from a local subprocess when available."""
+    try:
+        result = subprocess.run(
+            ["malvin"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return (
+            "malvin not found on PATH.\n"
+            "Install malvin locally or pass malvin arguments after `--`.\n"
+        )
+    if result.stdout.strip():
+        return result.stdout
+    if result.stderr.strip():
+        return result.stderr
+    return "malvin produced no usage output.\n"
+
+
+def render_empty_argv_help(ctx: click.Context) -> str:
+    """Compose malvin usage followed by wrapper usage for empty forwarded argv."""
+    malvin_text = run_local_malvin_usage().rstrip()
+    wrapper_text = ctx.get_help().rstrip()
+    return f"{malvin_text}\n\n{wrapper_text}\n"
+
+
+def print_empty_argv_help(ctx: click.Context) -> None:
+    """Print composite help for empty forwarded argv."""
+    sys.stdout.write(render_empty_argv_help(ctx))
+    sys.stdout.flush()
+
+
+def sandbox_app() -> modal.App:
+    """Return an initialized Modal app for sandbox creation."""
+    if app.app_id is not None:
+        return app
+    return modal.App.lookup(APP_NAME, create_if_missing=True)
+
+
 def run_malvin_remote(malvin_argv: list[str]) -> int:
     """Create sandbox, exec malvin, stream I/O, terminate sandbox."""
     image = workspace_image()
@@ -132,7 +174,7 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
     sandbox: modal.Sandbox | None = None
     try:
         sandbox = modal.Sandbox.create(
-            app=app,
+            app=sandbox_app(),
             image=image,
             workdir=WORKSPACE,
             secrets=secrets,
@@ -171,6 +213,9 @@ def cli(ctx: click.Context, self_test: bool) -> None:
     """Run malvin on Modal, forwarding arguments to the remote process."""
     if self_test:
         run_unit_tests()
+        raise SystemExit(0)
+    if not ctx.args:
+        print_empty_argv_help(ctx)
         raise SystemExit(0)
     code = run_malvin_remote(list(ctx.args))
     raise SystemExit(code)
@@ -233,7 +278,10 @@ def run_unit_tests() -> None:
     """UT-ARGV, UT-IGNORE, UT-RELAY, UT-EXIT, UT-MODAL, UT-CLICK — no Modal network."""
     _test_static_helpers()
     _test_cursor_and_stream()
+    _test_sandbox_app()
     _test_modal_remote()
+    _test_render_empty_argv_help()
+    _test_empty_argv_help()
     _test_click_cli()
 
 
@@ -248,12 +296,57 @@ def test_kiss_static_coverage() -> None:
         cursor_secrets,
         finish_process,
         stream_process_output,
+        run_local_malvin_usage,
+        render_empty_argv_help,
+        print_empty_argv_help,
+        sandbox_app,
         run_malvin_remote,
         cli,
         main,
         run_unit_tests,
     )
-    assert len(symbols) == 12
+    assert len(symbols) == 16
+
+
+def _test_sandbox_app() -> None:
+    lookup_app = SimpleNamespace(app_id="lookup-id")
+    module_app = SimpleNamespace(app_id="module-id")
+    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
+        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
+            assert sandbox_app() is lookup_app
+        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
+    with patch(f"{__name__}.app", module_app):
+        assert sandbox_app() is module_app
+
+
+def _test_render_empty_argv_help() -> None:
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    fake_wrapper = "Usage: python ops/malvin_modal.py [OPTIONS]\n"
+    ctx = MagicMock()
+    ctx.get_help.return_value = fake_wrapper
+    with patch(f"{__name__}.run_local_malvin_usage", return_value=fake_malvin):
+        output = render_empty_argv_help(ctx)
+    malvin_block, wrapper_block = output.split("\n\n", 1)
+    assert malvin_block == fake_malvin.rstrip()
+    assert wrapper_block == f"{fake_wrapper.rstrip()}\n"
+    ctx.get_help.assert_called_once()
+
+
+def _test_empty_argv_help() -> None:
+    runner = CliRunner()
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    with patch(f"{__name__}.run_local_malvin_usage", return_value=fake_malvin):
+        with patch(f"{__name__}.run_malvin_remote") as mock_remote:
+            result = runner.invoke(
+                cli,
+                [],
+                prog_name="python ops/malvin_modal.py",
+            )
+    assert result.exit_code == 0, result.output
+    malvin_block, wrapper_block = result.output.split("\n\n", 1)
+    assert malvin_block == fake_malvin.rstrip()
+    assert wrapper_block.startswith("Usage: python ops/malvin_modal.py")
+    mock_remote.assert_not_called()
 
 
 def _test_click_cli() -> None:

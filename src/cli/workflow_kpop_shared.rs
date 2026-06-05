@@ -117,7 +117,16 @@ pub(crate) fn gate_iteration_context(
     ctx
 }
 
-pub(crate) fn run_kpop_workspace_gates(artifacts: &RunArtifacts) -> Result<(), String> {
+pub(crate) fn run_kpop_workspace_gates(
+    artifacts: &RunArtifacts,
+    session_dotfile_backups: &SessionDotfileBackups,
+    restore_malvin_checks: bool,
+) -> Result<(), String> {
+    if restore_malvin_checks {
+        session_dotfile_backups.restore(&artifacts.work_dir)?;
+    } else {
+        session_dotfile_backups.restore_excluding_malvin_checks(&artifacts.work_dir)?;
+    }
     clear_quality_gates_log_for_next_agent(artifacts)?;
     run_repo_workspace_gates(
         artifacts.work_dir.as_path(),
@@ -129,8 +138,11 @@ pub(crate) fn run_kpop_workspace_gates(artifacts: &RunArtifacts) -> Result<(), S
 pub(crate) fn post_kpop_session_gates(
     command: &str,
     artifacts: &RunArtifacts,
+    session_dotfile_backups: &SessionDotfileBackups,
+    restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    if run_kpop_workspace_gates(artifacts).is_ok() {
+    if run_kpop_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok()
+    {
         return Ok(());
     }
     write_checks_do_not_pass_for_artifacts(artifacts)?;

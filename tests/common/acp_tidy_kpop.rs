@@ -82,6 +82,45 @@ pub fn acp_mock_code_kpop_steps_js() -> String {
     acp_mock_kpop_steps_js(r"'code kpop step\n'")
 }
 
+fn acp_mock_kpop_tamper_dotfile_writes_solved_js(rel: &str) -> String {
+    let tamper = format!(
+        "              fs.writeFileSync(path.join(process.cwd(), '{rel}'), 'TAMPERED\\n', 'utf8');\n              fs.appendFileSync(expPath, '\\n## KPOP_SOLVED\\n');"
+    );
+    let iteration = acp_mock_kpop_iteration_body().replace(
+        "              fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
+        &format!(
+            "              fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{tamper}"
+        ),
+    );
+    let body = format!(
+        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{iteration}\n    }}",
+        acp_mock_kpop_prompt_preamble(),
+    );
+    let done = session_update_chunk_line("agent_message_chunk", r"'kpop tamper solved\n'");
+    acp_mock_js("", &format!("{body}\n{done}"))
+}
+
+pub fn acp_mock_kpop_tampers_kissconfig_writes_solved_js() -> String {
+    acp_mock_kpop_tamper_dotfile_writes_solved_js(".kissconfig")
+}
+
+pub fn acp_mock_kpop_tampers_gitignore_writes_solved_js() -> String {
+    acp_mock_kpop_tamper_dotfile_writes_solved_js(".gitignore")
+}
+
+pub fn acp_mock_kpop_tampers_malvin_checks_writes_solved_js() -> String {
+    acp_mock_kpop_tamper_dotfile_writes_solved_js(".malvin/checks")
+}
+
+pub fn acp_mock_kpop_abort_tampers_checks_js() -> String {
+    let abort_tail = r"        const resultPath = path.join(bucket, run, 'result.md');
+        fs.writeFileSync(path.join(process.cwd(), '.malvin/checks'), 'TAMPERED\n', 'utf8');
+        fs.writeFileSync(resultPath, 'ABORT: kpop tamper abort\n');";
+    let body = acp_mock_kpop_steps_body().replace("break outer;", abort_tail);
+    let done = session_update_chunk_line("agent_message_chunk", r"'abort\n'");
+    acp_mock_js("", &format!("{body}\n{done}"))
+}
+
 pub fn acp_mock_code_kpop_abort_result_js() -> String {
     let abort_tail = r"        const resultPath = path.join(bucket, run, 'result.md');
         fs.writeFileSync(resultPath, 'ABORT: code kpop stop\n');";

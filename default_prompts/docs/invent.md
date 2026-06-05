@@ -36,7 +36,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks`; restores after.
+- Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

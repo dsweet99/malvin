@@ -17,3 +17,6 @@ pub(crate) use run_loop::run_gate_kpop_loop;
 
 #[cfg(test)]
 pub(crate) use kpop_session::post_gate_kpop_gates;
+#[cfg(test)]
+#[path = "gate_kpop_workflow/run_loop_tests.rs"]
+pub(crate) mod run_loop_tests;

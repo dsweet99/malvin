@@ -11,9 +11,10 @@ pub(crate) mod plan_flow_prompt;
 mod plan_flow_pipeline;
 
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_config_if_present, create_run_artifacts_opts, detect_rerun_user_span_end,
+    RunArtifacts, SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
+    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
+    create_run_artifacts_opts, detect_rerun_user_span_end,
     is_existing_md_file_path, read_plan_file,
 };
 use crate::cli::adversarial_profile::resolve_work_dir_for_plan;
@@ -58,12 +59,13 @@ fn prepare_source_plan(path: &Path) -> Result<(), String> {
 }
 
 fn snapshot_plan_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    Ok(SessionDotfileBackups::from_parts(
-        backup_workspace_kissconfig_if_present(work_dir)?,
-        backup_workspace_malvin_checks_if_present(work_dir)?,
-        backup_workspace_kissignore_if_present(work_dir)?,
-        backup_workspace_malvin_config_if_present(work_dir)?,
-    ))
+    Ok(SessionDotfileBackups::from_parts(SessionDotfileParts {
+        kissconfig: backup_workspace_kissconfig_if_present(work_dir)?,
+        malvin_checks: backup_workspace_malvin_checks_if_present(work_dir)?,
+        kissignore: backup_workspace_kissignore_if_present(work_dir)?,
+        malvin_config: backup_workspace_malvin_config_if_present(work_dir)?,
+        gitignore: backup_workspace_gitignore_if_present(work_dir)?,
+    }))
 }
 
 fn create_plan_run_artifacts(source_plan_path: &Path) -> Result<(RunArtifacts, PathBuf), String> {

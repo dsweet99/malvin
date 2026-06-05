@@ -174,12 +174,35 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     const kpopAttempts = (typeof this.kpopAttempts === 'undefined') ? 0 : this.kpopAttempts;
     this.kpopAttempts = kpopAttempts + 1;
     const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+    const gitignore = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); } catch { return ''; } })();
     if (kpopAttempts === 0) {
       fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
-    } else if (kiss !== 'k = 1\n') {
-      fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
+      fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'TAMPERED', 'utf8');
+    } else {
+      if (kiss !== 'k = 1\n') {
+        fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
+      }
+      if (gitignore !== 'g = 1\n') {
+        fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: gitignore tamper restored incorrectly\n', 'utf8');
+      }
     }";
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
+    acp_mock_js("", &format!("    {body}\n{done}"))
+}
+
+#[cfg(all(unix, target_os = "linux"))]
+pub fn acp_mock_kpop_outer_loop_tampers_gitignore_then_resnapshots_js() -> String {
+    let body = r"    const fs = require('fs');
+    const path = require('path');
+    const outer = (typeof this.outerRuns === 'undefined') ? 0 : this.outerRuns;
+    this.outerRuns = outer + 1;
+    const gitignore = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); } catch { return ''; } })();
+    if (outer === 0) {
+      fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'TAMPERED-OUTER-1', 'utf8');
+    } else if (gitignore !== 'baseline-gitignore\n') {
+      fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: outer run 2 saw run-1 gitignore tampering\n', 'utf8');
+    }";
+    let done = session_update_chunk_line("agent_message_chunk", r"'outer kpop done\n'");
     acp_mock_js("", &format!("    {body}\n{done}"))
 }
 

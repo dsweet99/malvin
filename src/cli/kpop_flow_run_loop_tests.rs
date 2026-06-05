@@ -114,6 +114,49 @@ mod unix_cov {
     }
 
     #[test]
+    fn kpop_outer_loop_resnapshots_each_agent_run() {
+        crate::test_utils::with_isolated_home(|workspace| {
+            let rt = tokio::runtime::Runtime::new().expect("runtime");
+            rt.block_on(async {
+                std::fs::write(workspace.join(".gitignore"), "baseline\n").expect("gitignore");
+                let mock_body = r"    const fs = require('fs');
+    const path = require('path');
+    const outer = (typeof this.outerRuns === 'undefined') ? 0 : this.outerRuns;
+    this.outerRuns = outer + 1;
+    if (outer === 0) {
+      fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'tampered\n', 'utf8');
+    } else {
+      const gi = fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8');
+      if (gi !== 'baseline\n') {
+        throw new Error('outer run 2 did not resnapshot gitignore');
+      }
+    }";
+                let mock = workspace.join("mock-resnapshot");
+                let handler = format!(
+                    "{mock_body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
+                );
+                let script = format!(
+                    "#!/usr/bin/env node\n{}\n",
+                    crate::acp_mock_js("", &handler)
+                );
+                std::fs::write(&mock, script).expect("write mock");
+                install_mock_agent_env(workspace, &mock);
+                let (kpop, shared, workflow) = test_kpop_args(2);
+                let (store, mut client, prepared) =
+                    kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
+                let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
+                    kpop: &kpop,
+                    store: &store,
+                    client: &mut client,
+                    prepared: &prepared,
+                })
+                .await;
+                outcome.acp_result.expect("resnapshot outer loops");
+            });
+        });
+    }
+
+    #[test]
     fn run_kpop_agent_loops_executes_mock_agent() {
         crate::test_utils::with_isolated_home(|workspace| {
             let rt = tokio::runtime::Runtime::new().expect("runtime");

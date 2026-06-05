@@ -9,12 +9,13 @@ fn restore_excluding_malvin_checks_on_bundle() {
     let work = tmp.path();
     std::fs::create_dir_all(work.join(".malvin")).unwrap();
     std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
-    let bundle = SessionDotfileBackups::from_parts(
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-    );
+    let bundle = SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
+        kissconfig: DotfileBackupState::Missing,
+        malvin_checks: DotfileBackupState::Missing,
+        kissignore: DotfileBackupState::Missing,
+        malvin_config: DotfileBackupState::Missing,
+        gitignore: DotfileBackupState::Missing,
+    });
     bundle.restore_excluding_malvin_checks(work).unwrap();
     assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
 }
@@ -28,12 +29,13 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
     let mut id = |n: usize| format!("slot{n}");
     let _ = backup_slot(0, tmp.path(), &mut id);
     let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
-    let bundle = SessionDotfileBackups::from_parts(
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-    );
+    let bundle = SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
+        kissconfig: DotfileBackupState::Missing,
+        malvin_checks: DotfileBackupState::Missing,
+        kissignore: DotfileBackupState::Missing,
+        malvin_config: DotfileBackupState::Missing,
+        gitignore: DotfileBackupState::Missing,
+    });
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
 }
 

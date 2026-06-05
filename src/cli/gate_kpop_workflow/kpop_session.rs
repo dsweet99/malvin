@@ -19,8 +19,15 @@ pub(crate) struct GateKpopMultiturnCtx<'a> {
 pub(crate) fn post_gate_kpop_gates(
     command: &str,
     prepared: &GateKpopPrepared,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+    restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    post_kpop_session_gates(command, prepared.artifacts())
+    post_kpop_session_gates(
+        command,
+        prepared.artifacts(),
+        session_dotfile_backups,
+        restore_malvin_checks,
+    )
 }
 
 pub(crate) fn print_gate_kpop_log_line(prepared: &GateKpopPrepared, exp_log_path: &std::path::Path) {
@@ -164,8 +171,15 @@ pub(crate) fn finish_gate_kpop_after_pass(
 pub(crate) fn fail_gate_kpop_after_exhausted(
     command: &str,
     prepared: &GateKpopPrepared,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+    restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    post_gate_kpop_gates(command, prepared)
+    post_gate_kpop_gates(
+        command,
+        prepared,
+        session_dotfile_backups,
+        restore_malvin_checks,
+    )
 }
 
 #[cfg(test)]

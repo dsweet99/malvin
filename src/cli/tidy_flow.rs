@@ -103,7 +103,16 @@ mod tests {
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
         .expect("prepared");
-        let err = post_gate_kpop_gates("malvin tidy", &prepared).expect_err("gates");
+        let backups =
+            crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+        let err = post_gate_kpop_gates(
+            "malvin tidy",
+            &prepared,
+            &backups,
+            crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY
+                .restore_malvin_checks_after_session(),
+        )
+        .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(err.contains("quality gates"));
     }

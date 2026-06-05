@@ -3,9 +3,10 @@
 use std::path::Path;
 
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_config_if_present, resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
+    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
+    resolve_user_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
@@ -90,12 +91,13 @@ fn run_do_repo_gates_if_requested(
 }
 
 fn snapshot_do_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    Ok(SessionDotfileBackups::from_parts(
-        backup_workspace_kissconfig_if_present(work_dir)?,
-        backup_workspace_malvin_checks_if_present(work_dir)?,
-        backup_workspace_kissignore_if_present(work_dir)?,
-        backup_workspace_malvin_config_if_present(work_dir)?,
-    ))
+    Ok(SessionDotfileBackups::from_parts(SessionDotfileParts {
+        kissconfig: backup_workspace_kissconfig_if_present(work_dir)?,
+        malvin_checks: backup_workspace_malvin_checks_if_present(work_dir)?,
+        kissignore: backup_workspace_kissignore_if_present(work_dir)?,
+        malvin_config: backup_workspace_malvin_config_if_present(work_dir)?,
+        gitignore: backup_workspace_gitignore_if_present(work_dir)?,
+    }))
 }
 
 async fn prepare_do_run(

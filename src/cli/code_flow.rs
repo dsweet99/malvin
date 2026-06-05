@@ -75,6 +75,7 @@ mod tests {
     #[test]
     fn kiss_cov_code_kpop_helpers() {
         let _ = stringify!(run_loop::run_code);
+        let _ = stringify!(crate::cli::kpop_summarize::code_outer_loop_summarize_params);
         let _ = stringify!(run_startup::code_kpop_workflow_context);
         let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
         let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
@@ -126,7 +127,16 @@ mod tests {
             "ship it",
         )
         .expect("prepared");
-        let err = post_gate_kpop_gates("malvin code", &prepared).expect_err("gates");
+        let backups =
+            crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+        let err = post_gate_kpop_gates(
+            "malvin code",
+            &prepared,
+            &backups,
+            crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE
+                .restore_malvin_checks_after_session(),
+        )
+        .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(err.contains("quality gates"));
     }

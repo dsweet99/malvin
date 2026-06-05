@@ -28,7 +28,7 @@ pub async fn run_tidy(
 
     let max_loops = effective_tidy_max_loops(tidy.max_loops);
     let max_hypotheses = tidy.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
         shared,
         workflow,
         prepared: &prepared,
@@ -54,7 +54,12 @@ pub async fn run_tidy(
     let gate_r = if gates_ok {
         finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
-        fail_gate_kpop_after_exhausted("malvin tidy", &prepared)
+        fail_gate_kpop_after_exhausted(
+            "malvin tidy",
+            &prepared,
+            &last_backups,
+            GateLoopBehavior::TIDY.restore_malvin_checks_after_session(),
+        )
     };
     let r = crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
 

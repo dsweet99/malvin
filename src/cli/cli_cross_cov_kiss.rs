@@ -75,6 +75,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = stringify!(super::gate_kpop_workflow::finish_gate_kpop_after_pass);
     let _ = stringify!(super::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
     let _: Option<super::gate_kpop_workflow::GateKpopLoopParams> = None;
+    let _ = super::gate_kpop_workflow::run_loop_tests::gate_early_exit_fixture;
 }
 
 #[test]

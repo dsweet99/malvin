@@ -68,6 +68,7 @@ pub struct KpopAcpMultiturnCtx<'a> {
 
 pub(in crate) async fn kpop_run_acp_multiturn(
     ctx: KpopAcpMultiturnCtx<'_>,
+    session_dotfile_backups: &SessionDotfileBackups,
     session_end: crate::run_timing::acp_post_run::RunTimingSessionEnd,
 ) -> Result<(), String> {
     let timing = match session_end {
@@ -84,7 +85,7 @@ pub(in crate) async fn kpop_run_acp_multiturn(
             cwd: &ctx.prepared.artifacts.work_dir,
             kpop_log: ctx.prepared.artifacts.log_path("kpop"),
             state: ctx.state,
-            session_dotfile_backups: &ctx.prepared.session_dotfile_backups,
+            session_dotfile_backups,
         })
         .await
         .map_err(|e| e.0);
@@ -129,15 +130,15 @@ pub async fn run_kpop(
     let acp_result = loops.acp_result;
 
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
-        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops: kpop.max_loops,
-            agent_ran: loops.agent_ran,
-            shared,
-            workflow,
-            store: &store,
-            artifacts: &prepared.artifacts,
-            malvin_command: "malvin kpop",
-        },
+        &crate::cli::kpop_summarize::kpop_outer_loop_summarize_params(
+            crate::cli::kpop_summarize::KpopOuterLoopSummarizeInputs {
+                max_loops: kpop.max_loops,
+                agent_ran: loops.agent_ran,
+                shared,
+            },
+            &store,
+            &prepared.artifacts,
+        ),
     )
     .await;
     let acp_result = crate::acp_post_run::prefer_primary_over_secondary(

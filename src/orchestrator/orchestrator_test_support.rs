@@ -29,12 +29,13 @@ pub fn no_session_client() -> AgentClient {
 
 #[must_use]
 pub fn empty_dotfile_backups() -> SessionDotfileBackups {
-    SessionDotfileBackups::from_parts(
-        KissConfigBackup::Missing,
-        MalvinChecksBackup::Missing,
-        KissignoreBackup::Missing,
-        MalvinConfigBackup::Missing,
-    )
+    SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
+        kissconfig: KissConfigBackup::Missing,
+        malvin_checks: MalvinChecksBackup::Missing,
+        kissignore: KissignoreBackup::Missing,
+        malvin_config: MalvinConfigBackup::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+    })
 }
 
 /// Fresh run artifacts, default prompt store, and a `workflow_context` map under `tmp`.

@@ -29,7 +29,7 @@ pub async fn run_code(
 
     let max_loops = effective_code_max_loops(code.max_loops);
     let max_hypotheses = code.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
         shared,
         workflow,
         prepared: &prepared,
@@ -40,22 +40,26 @@ pub async fn run_code(
     .await?;
 
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
-        &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
-            agent_ran,
-            shared,
-            workflow,
-            store: prepared.store(),
-            artifacts: prepared.artifacts(),
-            malvin_command: "malvin code",
-        },
+        &crate::cli::kpop_summarize::code_outer_loop_summarize_params(
+            crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
+                max_loops,
+                agent_ran,
+                shared,
+                workflow,
+            },
+            &prepared,
+        ),
     )
     .await;
-
     let gate_r = if gates_ok {
         finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
-        fail_gate_kpop_after_exhausted("malvin code", &prepared)
+        fail_gate_kpop_after_exhausted(
+            "malvin code",
+            &prepared,
+            &last_backups,
+            GateLoopBehavior::CODE.restore_malvin_checks_after_session(),
+        )
     };
     let r = crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
 
@@ -68,8 +72,51 @@ pub async fn run_code(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::cli::SharedOpts;
+    use crate::config::DEFAULT_CLI_MODEL;
+
     #[test]
     fn code_run_loop_entry_is_covered() {
         let _ = super::run_code;
+    }
+
+    #[test]
+    fn code_outer_loop_summarize_params_builds_code_context() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        let old = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+        let prepared = super::super::run_startup::prepare_code_kpop_run(
+            WorkflowCliOptions { force: false },
+            "ship it",
+        )
+        .expect("prepared");
+        let shared = SharedOpts {
+            model: DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tenacious: false,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            max_acp_retries: 1,
+            doc: false,
+        };
+        let workflow = WorkflowCliOptions { force: false };
+        let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(
+            crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
+                max_loops: 2,
+                agent_ran: true,
+                shared: &shared,
+                workflow,
+            },
+            &prepared,
+        );
+        std::env::set_current_dir(old).expect("restore cwd");
+        assert_eq!(params.max_loops, 2);
+        assert!(params.agent_ran);
+        assert_eq!(params.malvin_command, "malvin code");
+        assert!(std::ptr::eq(params.store, &raw const *prepared.store()));
+        assert!(std::ptr::eq(params.artifacts, &raw const *prepared.artifacts()));
     }
 }
