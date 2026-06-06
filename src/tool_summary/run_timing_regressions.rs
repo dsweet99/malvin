@@ -42,7 +42,26 @@ fn completed_tool_call_evicts_tracker_when_run_timing_wired() {
     tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Log).unwrap();
 
     assert_eq!(tracker.call_count(), 0);
-    assert_eq!(tool_calls_ms_from_timing(&timing), 0);
+}
+
+#[test]
+fn completed_tool_call_records_wall_time_when_run_timing_wired() {
+    let timing = crate::run_timing::RunTiming::new_arc();
+    let mut tracker = ToolSummaryTracker::default();
+    tracker.set_run_timing(Some(std::sync::Arc::clone(&timing)));
+
+    let start = tool_call_json("tool_timed", "tool_call", "pending");
+    let done = tool_call_json("tool_timed", "tool_call_update", "completed");
+    tool_summary_lines(&start, &mut tracker, ToolSummaryDetail::Log).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(15));
+    tool_summary_lines(&done, &mut tracker, ToolSummaryDetail::Log).unwrap();
+
+    assert_eq!(tracker.call_count(), 0);
+    assert!(
+        tool_calls_ms_from_timing(&timing) >= 10,
+        "expected at least 10ms of tool wall time, got {}",
+        tool_calls_ms_from_timing(&timing)
+    );
 }
 
 #[test]
