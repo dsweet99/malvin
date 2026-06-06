@@ -120,7 +120,9 @@ pub(crate) fn plan_agent_retry(
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
-    if last_error.contains("workspace session restore failed") {
+    if last_error.contains("workspace session restore failed")
+        || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
+    {
         return Ok(AgentRetryOutcome::StopRetrying);
     }
     if attempt >= max_attempts {

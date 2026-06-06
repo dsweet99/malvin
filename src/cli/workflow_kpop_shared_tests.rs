@@ -103,25 +103,24 @@ fn kpop_gates_restore_fixture(
     (artifacts, backups)
 }
 
+fn kissconfig_restore_failure_fixture(
+    work: &std::path::Path,
+) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+    std::fs::write(work.join(".kissconfig"), "orig\n").expect("kissconfig");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    std::fs::remove_file(work.join(".kissconfig")).expect("remove kissconfig");
+    std::fs::create_dir(work.join(".kissconfig")).expect("kissconfig dir");
+    (artifacts, backups)
+}
+
 #[test]
 fn restore_failure_prevents_gate_run() {
-    use crate::session_dotfile_backup::DotfileBackupState;
-
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
-    let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    let backups = crate::artifacts::SessionDotfileBackups::from_parts(
-        crate::artifacts::SessionDotfileParts {
-            kissconfig: DotfileBackupState::Present(tmp.path().join("nonexistent-kissconfig")),
-            malvin_checks: DotfileBackupState::Missing,
-            kissignore: DotfileBackupState::Missing,
-            malvin_config: DotfileBackupState::Missing,
-            gitignore: DotfileBackupState::Missing,
-            malvin_config_workspace: DotfileBackupState::Missing,
-        },
-    );
+    let (artifacts, backups) = kissconfig_restore_failure_fixture(tmp.path());
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
     assert!(err.contains("kissconfig restore"));
 }

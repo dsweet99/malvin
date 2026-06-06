@@ -19,10 +19,17 @@ pub use wrappers::{
 
 use slots::{backup_slot, restore_slot};
 
+/// Captured dotfile bytes at snapshot time plus the historical disk location under `~/.malvin`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DotfileBackupPayload {
+    pub backup_path: std::path::PathBuf,
+    pub bytes: Vec<u8>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DotfileBackupState {
     Missing,
-    Present(std::path::PathBuf),
+    Present(DotfileBackupPayload),
 }
 
 pub type KissConfigBackup = DotfileBackupState;

@@ -48,11 +48,11 @@ fn dotfile_source_path_slot_three_uses_home_config() {
         crate::seed_malvin_config(work, "home-config\n");
         let mut id = |n: usize| format!("cfg{n}");
         let backup = backup_slot(3, work, &mut id).unwrap();
-        let DotfileBackupState::Present(path) = backup else {
+        let DotfileBackupState::Present(payload) = backup else {
             panic!("expected home config backup");
         };
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), "home-config\n");
-        assert!(path.starts_with(
+        assert_eq!(String::from_utf8(payload.bytes).unwrap(), "home-config\n");
+        assert!(payload.backup_path.starts_with(
             malvin_home_dir().join(".malvin").join("malvin_config_snapshots")
         ));
         assert_eq!(

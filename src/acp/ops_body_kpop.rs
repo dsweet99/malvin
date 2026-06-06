@@ -63,12 +63,18 @@ pub(crate) fn restore_session_dotfiles_after_success(
 ) -> Result<(), AgentError> {
     match restore_session_dotfiles(cwd, session_dotfile_backups) {
         Ok(()) => Ok(()),
-        Err(e) => Err(restore_workspace_on_error(
-            cwd,
-            session_dotfile_backups,
-            e,
-            "restore",
-        )),
+        Err(first) => {
+            if restore_session_dotfiles(cwd, session_dotfile_backups).is_ok() {
+                Ok(())
+            } else {
+                Err(restore_workspace_on_error(
+                    cwd,
+                    session_dotfile_backups,
+                    first,
+                    "restore",
+                ))
+            }
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+mod backup_integrity;
 mod bundle;
 mod gitignore;
 mod kissconfig;

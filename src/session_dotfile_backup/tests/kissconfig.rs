@@ -24,10 +24,10 @@ fn kissconfig_backup_round_trip_restores_workspace_file() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".kissconfig"), "KISS=ORIGINAL\n").unwrap();
         let backup = backup_workspace_kissconfig_if_present(work).unwrap();
-        let KissConfigBackup::Present(path) = &backup else {
+        let KissConfigBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
-        assert!(path.is_file());
+        assert!(payload.backup_path.is_file());
         std::fs::write(work.join(".kissconfig"), "KISS=MODIFIED\n").unwrap();
         restore_workspace_kissconfig_backup(work, &backup).unwrap();
         assert_eq!(
@@ -78,11 +78,11 @@ fn kissconfig_backup_retries_on_existing_collision() {
         })
         .unwrap();
 
-        let KissConfigBackup::Present(path) = &backup else {
+        let KissConfigBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
 
-        assert_eq!(path.parent(), Some(dir.join("bbbbb").as_path()));
+        assert_eq!(payload.backup_path.parent(), Some(dir.join("bbbbb").as_path()));
         assert!(dir.join("bbbbb").join(".kissconfig").is_file());
         assert!(!dir.join("aaaaa").join(".kissconfig").exists());
     });

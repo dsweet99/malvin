@@ -107,11 +107,15 @@ pub(super) fn backup_slot(
     if let Some(parent) = dest_file.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", spec.mkdir_lbl))?;
     }
-    if let Err(e) = std::fs::copy(&src, &dest_file) {
+    let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", spec.copy_err))?;
+    if let Err(e) = std::fs::write(&dest_file, &bytes) {
         let _ = std::fs::remove_dir_all(&dest_dir);
         return Err(format!("{}: {e}", spec.copy_err));
     }
-    Ok(DotfileBackupState::Present(dest_file))
+    Ok(DotfileBackupState::Present(super::DotfileBackupPayload {
+        backup_path: dest_file,
+        bytes,
+    }))
 }
 
 pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
@@ -120,14 +124,13 @@ pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: u
     let lbls = labels(spec);
     match backup {
         DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
-        DotfileBackupState::Present(backup_path) => {
+        DotfileBackupState::Present(payload) => {
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)
                     .map_err(|e| format!("{}: {e}", spec.restore_lbl))?;
             }
-            std::fs::copy(backup_path, &dst)
+            std::fs::write(&dst, &payload.bytes)
                 .map_err(|e| format!("{}: {e}", spec.restore_copy_err))
-                .map(|_| ())
         }
     }
 }
