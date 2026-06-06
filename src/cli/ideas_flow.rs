@@ -60,7 +60,7 @@ fn ideas_emit_startup(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    let request = require_cli_request(ideas.request.as_ref(), "invent")?;
+    let request = require_cli_request(ideas.request.as_ref(), "inspire")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
         crate::cli::run_emit::RunStartupEmitOpts {

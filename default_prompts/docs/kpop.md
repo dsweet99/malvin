@@ -15,7 +15,7 @@ Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, 
 
 ## Intention
 
-Explore questions or codebase behavior scientifically: falsifiable hypotheses, tests, recorded outcomes. For MBC2 creative ideation without evaluation, use **`malvin invent`**.
+Explore questions or codebase behavior scientifically: falsifiable hypotheses, tests, recorded outcomes. For MBC2 creative ideation without evaluation, use **`malvin inspire`**.
 
 ## Usage
 
@@ -90,7 +90,7 @@ Stops when any of:
 
 | Command | When |
 |---------|------|
-| `malvin invent` | Creative MBC2 ideas, not hypothesis testing |
+| `malvin inspire` | Creative MBC2 ideas, not hypothesis testing |
 | `malvin code` | Implement a plan with gate loop + `code_constraints.md` |
 | `malvin do` | Single-turn task without KPop logging |
 

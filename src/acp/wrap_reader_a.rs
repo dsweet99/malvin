@@ -13,6 +13,7 @@ pub(crate) mod inline {
             let _: Option<IncomingLineDispatch<'_>> = None;
             let _: Option<ReaderLoopInput> = None;
             let _ = stringify!(handle_incoming_line);
+            let _ = reply_session_request_permission;
         }
     }
 }

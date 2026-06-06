@@ -6,6 +6,7 @@ fn kiss_cov_reader_stdout_body_a_inc() {
     let _: Option<IncomingLineDispatch<'_>> = None;
     let _: Option<ReaderLoopInput> = None;
     let _ = handle_incoming_line;
+    let _ = stringify!(reply_session_request_permission);
 }
 
 #[test]

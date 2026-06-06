@@ -11,7 +11,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
-        | Commands::Invent(_)
+        | Commands::Inspire(_)
         | Commands::Models(_)
         | Commands::Plan(_) => Ok(()),
     }
@@ -186,7 +186,7 @@ fn dispatch_command(
                 },
             )
         }),
-        Commands::Invent(ideas) => super::entrypoint_commands::run_invent_command(ideas, &shared),
+        Commands::Inspire(ideas) => super::entrypoint_commands::run_inspire_command(ideas, &shared),
         Commands::Plan(plan) => super::entrypoint_commands::run_plan_command(plan, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();
@@ -226,7 +226,7 @@ mod kiss_cov_gate_refs{
         let _ = (dispatch_command, finish_entrypoint);
         assert!(stringify!(run_async_cli).contains("run_async_cli"));
         let _ = entrypoint_commands::run_code_command;
-        let _ = entrypoint_commands::run_invent_command;
+        let _ = entrypoint_commands::run_inspire_command;
         let _ = entrypoint_commands::run_plan_command;
     }
 }

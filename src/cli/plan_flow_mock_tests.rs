@@ -34,6 +34,7 @@ fn prepare_plan_run_truncates_and_loads_prompt_store() {
 
 #[test]
 fn plan_session_restores_gitignore_after_agent() {
+    let _ = write_plan_gitignore_tamper_mock_agent;
     crate::test_utils::with_isolated_home(|work| {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {

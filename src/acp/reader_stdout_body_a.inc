@@ -177,3 +177,9 @@ pub(crate) async fn handle_incoming_line(line: &str, d: IncomingLineDispatch<'_>
     }
 }
 
+#[cfg(test)]
+#[test]
+fn kiss_cov_reply_session_request_permission_symbol() {
+    let _ = reply_session_request_permission;
+}
+

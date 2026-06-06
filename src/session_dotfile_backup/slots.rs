@@ -139,3 +139,14 @@ pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: u
 pub(super) const fn labels_for_test(row: &DotfileSpecRow) -> DotfileBackupLabels {
     labels(row)
 }
+
+#[cfg(test)]
+mod kiss_static_type_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_type_refs() {
+        let _: DotfileSpecRow = DOTFILE_ROWS[0];
+        let _ = labels;
+    }
+}

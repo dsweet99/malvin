@@ -18,7 +18,7 @@ Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
 
-Use subcommands for other workflows: `init`, `do`, `invent`, `plan`, `code`, `tidy`, `models`.
+Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`.
 
 ## Commands
 
@@ -26,7 +26,7 @@ Use subcommands for other workflows: `init`, `do`, `invent`, `plan`, `code`, `ti
 |---------|---------|
 | `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn (non-looping) |
-| `invent` | One-shot MBC2 boundary exploration (batch ideation) |
+| `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `plan` | Four-prompt planning workflow on a persistent `plan.md` |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
@@ -66,7 +66,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `invent`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -139,7 +139,7 @@ Several commands accept a positional request.
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
 | `code` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
-| `do`, `kpop`, `invent`, bare `malvin` | `@<path>` reads file contents; work dir is the file’s parent | `.` for literal text |
+| `do`, `kpop`, `inspire`, bare `malvin` | `@<path>` reads file contents; work dir is the file’s parent | `.` for literal text |
 
 Examples:
 

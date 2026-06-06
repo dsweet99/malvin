@@ -52,7 +52,7 @@ When the plan path matches `*adversarial*` or `*adv_system*`, or `smell_registry
 | Command | When |
 |---------|------|
 | `malvin code @PLAN_PATH` | Implement the revised plan |
-| `malvin invent` | Creative exploration before planning |
+| `malvin inspire` | Creative exploration before planning |
 | `malvin kpop` | Hypothesis-driven investigation |
 
 ## Examples

@@ -190,12 +190,12 @@ fn apply_workspace_config_defaults_skips_do() {
 }
 
 #[test]
-fn apply_workspace_config_defaults_for_invent() {
+fn apply_workspace_config_defaults_for_inspire() {
     with_seeded_agent_config(|| {
-        let invent = Cli::command().get_matches_from(["malvin", "invent", "ideas"]);
-        let mut invent_cli = Cli::from_arg_matches(&invent).expect("cli");
-        apply_workspace_config_defaults(&invent, &mut invent_cli).expect("apply");
-        assert_eq!(invent_cli.shared.model, "cfg-model");
+        let inspire = Cli::command().get_matches_from(["malvin", "inspire", "ideas"]);
+        let mut inspire_cli = Cli::from_arg_matches(&inspire).expect("cli");
+        apply_workspace_config_defaults(&inspire, &mut inspire_cli).expect("apply");
+        assert_eq!(inspire_cli.shared.model, "cfg-model");
     });
 }
 

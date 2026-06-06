@@ -25,7 +25,12 @@ fn restore_excluding_malvin_checks_on_bundle() {
 #[test]
 fn dotfile_slot_helpers_and_session_restore_noop() {
     for row in &DOTFILE_ROWS {
-        let _ = labels_for_test(row);
+        let labels = labels_for_test(row);
+        assert!(!row.rel.is_empty());
+        assert!(!row.home_subdir.is_empty());
+        assert!(!labels.mkdir.is_empty());
+        assert!(!labels.collision.is_empty());
+        assert!(!labels.restore.is_empty());
     }
     let tmp = tempfile::tempdir().unwrap();
     let mut id = |n: usize| format!("slot{n}");

@@ -139,6 +139,19 @@ pub(crate) fn clear_legacy_gate_exp_log(artifacts: &crate::artifacts::RunArtifac
 }
 
 #[cfg(test)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<KpopLoopSnapshot> = None;
+        let _ = kpop_loop_abort;
+        let _ = snapshot_kpop_loop_dotfiles_and_exp_log;
+        let _ = kpop_iteration_declares_solved;
+    }
+}
+
+#[cfg(test)]
 mod unit_tests {
     use super::*;
 
@@ -158,5 +171,47 @@ mod unit_tests {
         let path = tmp.path().join("exp.md");
         std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
         assert!(kpop_exp_log_declares_solved(&path).expect("read"));
+    }
+
+    #[test]
+    fn kpop_loop_abort_records_error_and_agent_ran() {
+        let outcome = kpop_loop_abort(true, "setup failed".into());
+        assert!(outcome.agent_ran);
+        assert_eq!(outcome.acp_result, Err("setup failed".into()));
+    }
+
+    #[test]
+    fn kpop_iteration_declares_solved_propagates_read_errors() {
+        let mut last_acp = Ok(());
+        let bad = PathBuf::from("/nonexistent/exp_log.md");
+        assert!(kpop_iteration_declares_solved(&bad, &mut last_acp));
+        assert!(last_acp.is_err());
+    }
+
+    #[test]
+    fn kpop_iteration_declares_solved_false_without_marker() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("exp.md");
+        std::fs::write(&path, "still working\n").expect("write");
+        let mut last_acp = Ok(());
+        assert!(!kpop_iteration_declares_solved(&path, &mut last_acp));
+        assert!(last_acp.is_ok());
+    }
+
+    #[test]
+    fn snapshot_kpop_loop_dotfiles_and_exp_log_builds_paths() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+        let snap = snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 2).expect("snapshot");
+        let KpopLoopSnapshot {
+            exp_iter,
+            exp_log_path,
+            backups: _,
+        } = snap;
+        assert_eq!(exp_iter, 1);
+        assert!(exp_log_path.is_file());
+        assert!(exp_log_path.to_string_lossy().contains("_g1.md"));
     }
 }

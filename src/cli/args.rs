@@ -7,7 +7,7 @@ use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
-pub use crate::ideas_flow::IdeasArgs as InventArgs;
+pub use crate::ideas_flow::IdeasArgs as InspireArgs;
 pub use crate::init_cmd::InitArgs;
 pub use crate::plan_flow::PlanArgs;
 
@@ -51,8 +51,8 @@ pub enum Commands {
     /// Respond simply
     Do(DoArgs),
     /// Be creative
-    #[command(name = "invent")]
-    Invent(InventArgs),
+    #[command(name = "inspire")]
+    Inspire(InspireArgs),
     /// Write code
     Code(crate::cli::code_flow::CodeArgs),
     /// Reason scientifically (prefer bare `malvin REQUEST`)
