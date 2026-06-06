@@ -120,6 +120,9 @@ pub(crate) fn plan_agent_retry(
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
+    if last_error.contains("workspace session restore failed") {
+        return Ok(AgentRetryOutcome::StopRetrying);
+    }
     if attempt >= max_attempts {
         return Ok(AgentRetryOutcome::StopRetrying);
     }

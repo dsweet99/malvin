@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::artifacts::{
     KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    SessionDotfileBackups,
+    MalvinConfigWorkspaceBackup, SessionDotfileBackups,
 };
 use crate::repo_gates::{KISSCONFIG_FILE, KISSIGNORE_FILE, MALVIN_CHECKS_FILE};
 use crate::{seed_malvin_config};
@@ -90,6 +90,7 @@ fn restore_session_dotfiles_strips_legacy_root_checks_file() {
         kissignore: KissignoreBackup::Missing,
         malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     })
     .restore(work)
     .unwrap();
@@ -117,6 +118,18 @@ fn gitignore_missing_at_snapshot_removes_agent_created_file() {
         std::fs::write(&gi, b"agent-created\n").unwrap();
         bundle.restore(work).unwrap();
         assert!(!gi.exists());
+    });
+}
+
+#[test]
+fn workspace_malvin_config_missing_at_snapshot_removes_agent_created_file() {
+    with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).unwrap();
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        let cfg = work.join(crate::MALVIN_CONFIG_REL);
+        std::fs::write(&cfg, b"agent-created\n").unwrap();
+        bundle.restore(work).unwrap();
+        assert!(!cfg.exists());
     });
 }
 

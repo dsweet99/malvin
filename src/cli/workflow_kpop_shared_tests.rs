@@ -119,6 +119,7 @@ fn restore_failure_prevents_gate_run() {
             kissignore: DotfileBackupState::Missing,
             malvin_config: DotfileBackupState::Missing,
             gitignore: DotfileBackupState::Missing,
+            malvin_config_workspace: DotfileBackupState::Missing,
         },
     );
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");

@@ -1,7 +1,8 @@
+use super::alloc::malvin_home_dir;
 use super::{
-    backup_slot, dotfile_source_path, labels, malvin_home_dir, restore_slot,
-    restore_workspace_session_dotfiles, DotfileBackupState, DOTFILE_ROWS, SessionDotfileBackups,
+    restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
 };
+use super::slots::{backup_slot, dotfile_source_path, labels_for_test, restore_slot, DOTFILE_ROWS};
 
 #[test]
 fn restore_excluding_malvin_checks_on_bundle() {
@@ -15,6 +16,7 @@ fn restore_excluding_malvin_checks_on_bundle() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: DotfileBackupState::Missing,
+        malvin_config_workspace: DotfileBackupState::Missing,
     });
     bundle.restore_excluding_malvin_checks(work).unwrap();
     assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
@@ -23,7 +25,7 @@ fn restore_excluding_malvin_checks_on_bundle() {
 #[test]
 fn dotfile_slot_helpers_and_session_restore_noop() {
     for row in &DOTFILE_ROWS {
-        let _ = labels(row);
+        let _ = labels_for_test(row);
     }
     let tmp = tempfile::tempdir().unwrap();
     let mut id = |n: usize| format!("slot{n}");
@@ -35,6 +37,7 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: DotfileBackupState::Missing,
+        malvin_config_workspace: DotfileBackupState::Missing,
     });
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
 }

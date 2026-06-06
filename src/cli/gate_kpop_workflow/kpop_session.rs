@@ -2,7 +2,7 @@ use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::acp::{
     backoff_after_agent_failure, kpop_fail_after_prompt, kpop_round, restore_session_dotfiles,
-    spawn_agent_acp_session, KpopFailAfterPrompt, KpopPromptRound,
+    spawn_agent_acp_session, AgentError, KpopFailAfterPrompt, KpopPromptRound,
 };
 use crate::cli::workflow_kpop_shared::{
     finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
@@ -108,7 +108,20 @@ async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Re
         .await
         .map_err(|e| e.to_string())?;
     dispatch_gate_kpop_prompt(ctx, &s, &prompt).await?;
-    restore_gate_kpop_session_dotfiles(ctx)?;
+    if let Err(restore_err) = restore_gate_kpop_session_dotfiles(ctx) {
+        let prepared = ctx.iteration.loop_params.prepared;
+        return kpop_fail_after_prompt(
+            &s,
+            KpopFailAfterPrompt {
+                cwd: prepared.artifacts().work_dir.as_path(),
+                session_dotfile_backups: ctx.iteration.session_dotfile_backups,
+                err: AgentError(restore_err),
+                phase: "restore",
+            },
+        )
+        .await
+        .map_err(|e| e.0);
+    }
     s.shutdown().await.map_err(|e| e.to_string())?;
     Ok(())
 }

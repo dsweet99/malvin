@@ -1,13 +1,6 @@
 //! `do` subcommand: one coder ACP prompt with dual headers (`header_do.md` + `do_header.md`) and user request.
 
-use std::path::Path;
-
-use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
-    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
-    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
-    resolve_user_request,
-};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_request};
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
 use crate::output::agent_stdout_tee_enabled;
@@ -90,15 +83,6 @@ fn run_do_repo_gates_if_requested(
     Ok(())
 }
 
-fn snapshot_do_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    Ok(SessionDotfileBackups::from_parts(SessionDotfileParts {
-        kissconfig: backup_workspace_kissconfig_if_present(work_dir)?,
-        malvin_checks: backup_workspace_malvin_checks_if_present(work_dir)?,
-        kissignore: backup_workspace_kissignore_if_present(work_dir)?,
-        malvin_config: backup_workspace_malvin_config_if_present(work_dir)?,
-        gitignore: backup_workspace_gitignore_if_present(work_dir)?,
-    }))
-}
 
 async fn prepare_do_run(
     do_args: &DoArgs,
@@ -118,7 +102,7 @@ async fn prepare_do_run(
     run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let coder = do_flow_prompt::build_do_coder_run(&artifacts, &text)?;
-    let session_dotfile_backups = snapshot_do_session_dotfiles(&artifacts.work_dir)?;
+    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     Ok(DoRunPrep {
         client,
         artifacts,
@@ -195,12 +179,12 @@ async fn run_do_acp(
 
 #[cfg(test)]
 mod do_snapshot_tests {
-    use super::snapshot_do_session_dotfiles;
+    use super::SessionDotfileBackups;
 
     #[test]
     fn snapshot_do_session_dotfiles_on_empty_workdir() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        snapshot_do_session_dotfiles(tmp.path()).expect("snapshot");
+        SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     }
 }
 

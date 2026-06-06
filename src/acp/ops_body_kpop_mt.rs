@@ -1,7 +1,7 @@
 use crate::acp::import_prelude::*;
 use crate::acp::{
     AgentClient, AgentError, AcpSession, AgentKpopMultiturnCtl, KpopFailAfterPrompt, KpopPromptRound,
-    kpop_fail_after_prompt, kpop_round, restore_session_dotfiles, spawn_agent_acp_session,
+    kpop_fail_after_prompt, kpop_round, restore_session_dotfiles_after_success, spawn_agent_acp_session,
 };
 
 struct MultiturnRoundAfter<'a, 'b> {
@@ -14,7 +14,7 @@ async fn multiturn_after_successful_round(
     _session: &AcpSession,
     after: MultiturnRoundAfter<'_, '_>,
 ) -> Result<(), AgentError> {
-    restore_session_dotfiles(after.cwd, after.session_dotfile_backups)?;
+    restore_session_dotfiles_after_success(after.cwd, after.session_dotfile_backups)?;
     let exp_text = crate::kpop_progression::read_exp_log_text(after.state.exp_log_path())
         .map_err(AgentError)?;
     let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);

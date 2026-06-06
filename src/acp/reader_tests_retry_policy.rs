@@ -183,6 +183,13 @@ fn retriable_exhausts_after_custom_max_attempts() {
 }
 
 #[test]
+fn restore_failure_stops_retrying_without_sleep() {
+    let msg = "prompt failed; workspace session restore failed (restore): disk full";
+    let out = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
+    assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
+}
+
+#[test]
 fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(1), "retry");
     assert_eq!(retries_noun(2), "retries");
