@@ -10,8 +10,11 @@ mod plan_validate;
 mod plan_splice_boundary;
 #[path = "plan_splice_prepare.rs"]
 mod plan_splice_prepare;
+#[path = "plan_splice_fence.rs"]
+mod plan_splice_fence;
 
 pub use plan_metadata::{PlanRunMetadata, read_plan_metadata, write_plan_metadata};
+pub use plan_splice_fence::extract_fenced_markdown_block;
 pub use plan_validate::{
     extract_decisions_section, record_user_span_end_after_1a, validate_post_1a, validate_post_1b,
     validate_post_2,
@@ -64,36 +67,6 @@ pub fn truncate_plan_for_rerun(path: &Path, user_span_end: usize) -> Result<(), 
         .ok_or_else(|| PlanFileError::Io("user_span_end out of range".to_string()))?
         .to_string();
     write_plan_file_atomic(path, &truncated)
-}
-
-/// Extract inner text from the first ```markdown or ``` fenced block in `response`.
-pub fn extract_fenced_markdown_block(response: &str) -> Result<String, PlanFileError> {
-    let trimmed = response.trim();
-    for fence in ["```markdown", "```md", "```"] {
-        if let Some(body) = extract_fence_body(trimmed, fence) {
-            if !body.trim().is_empty() {
-                return Ok(body.trim().to_string());
-            }
-        }
-    }
-    Err(PlanFileError::MissingFencedBlock)
-}
-
-fn extract_fence_body(text: &str, fence: &str) -> Option<String> {
-    let start = text.find(fence)?;
-    if fence == "```" {
-        let after_marker = &text[start + fence.len()..];
-        if after_marker.starts_with("markdown") || after_marker.starts_with("md") {
-            return None;
-        }
-    }
-    let mut after_open = &text[start + fence.len()..];
-    if let Some(stripped) = after_open.strip_prefix('\r') {
-        after_open = stripped;
-    }
-    after_open = after_open.strip_prefix('\n').unwrap_or(after_open);
-    let close = after_open.find("\n```").or_else(|| after_open.rfind("```"))?;
-    Some(after_open[..close].to_string())
 }
 
 pub(crate) fn ensure_user_span_trailing_newlines(spliced: &mut String) {
@@ -164,11 +137,6 @@ pub fn prepare_plan_file_for_run(path: &Path) -> Result<Option<usize>, PlanFileE
 #[cfg(test)]
 mod private_fn_coverage {
     use super::*;
-
-    #[test]
-    fn extract_fence_body_skips_plain_fence_with_markdown_prefix() {
-        assert!(extract_fence_body("```markdown\nx\n```", "```").is_none());
-    }
 
     #[test]
     fn ensure_user_span_trailing_newlines_noop_for_empty() {

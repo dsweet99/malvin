@@ -49,6 +49,7 @@ from deepswe_run import (
     DEFAULT_CHECKS_CODE,
     DEFAULT_CHECKS_DO,
     apply_patch,
+    default_deepswe_results_dir,
     materialize_workspace,
     parse_task_dir,
     reset_workspace,
@@ -110,6 +111,7 @@ def malvin_upload_ignore() -> list[str]:
     return [
         "target/",
         "experiments/",
+        ".cargo/",
         ".malvin/logs",
         ".git",
         ".kissignore",
@@ -198,15 +200,17 @@ def mount_local_toolchain(
             str(malvin_repo.resolve()),
             remote_path=MALVIN_TOOLCHAIN_REMOTE,
             ignore=malvin_upload_ignore(),
+            copy=True,
         )
         .add_local_dir(
             str(kiss_repo.resolve()),
             remote_path=KISS_TOOLCHAIN_REMOTE,
             ignore=kiss_upload_ignore(),
+            copy=True,
         )
         .run_commands(
             f"bash -lc 'cargo install --path {KISS_TOOLCHAIN_REMOTE} --locked'",
-            f"bash -lc 'cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked'",
+            f"bash -lc 'RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked'",
             "curl -fsSL https://cursor.com/install | bash",
             "/root/.local/bin/agent --version || true",
         )
@@ -431,8 +435,8 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
 @click.option(
     "--results-dir",
     type=click.Path(file_okay=False, path_type=Path),
-    default=Path("results/deepswe"),
-    show_default=True,
+    default=None,
+    show_default="~/.malvin/deepswe-results",
 )
 @click.option(
     "--command",
@@ -464,7 +468,7 @@ def main(
     self_test: bool,
     task_dir: Path | None,
     workspace: Path | None,
-    results_dir: Path,
+    results_dir: Path | None,
     malvin_command: str,
     grade_only: bool,
     apply_solution: bool,
@@ -481,8 +485,9 @@ def main(
     if extra:
         malvin_args = malvin_args + extra
     spec = parse_task_dir(task_dir)
-    workspace = workspace or (results_dir / spec.task_id / "workspace")
-    run_root = results_dir / spec.task_id / f"modal_{timestamp_dir()}"
+    results_root = results_dir or default_deepswe_results_dir()
+    workspace = workspace or (results_root / spec.task_id / "workspace")
+    run_root = results_root / spec.task_id / f"modal_{timestamp_dir()}"
 
     click.echo(f"Task: {spec.task_id}")
     click.echo(f"Workspace: {workspace.resolve()}")
@@ -571,6 +576,14 @@ def _test_repo_roots() -> None:
     assert (malvin_repo / "ops" / "deepswe_modal.py").is_file()
     kiss_repo = kiss_repo_root()
     assert kiss_repo.name == "kiss"
+
+
+def _test_default_deepswe_results_dir() -> None:
+    results = default_deepswe_results_dir()
+    malvin_repo = malvin_repo_root()
+    assert results.is_absolute()
+    assert malvin_repo not in results.parents
+    assert results.name == "deepswe-results"
 
 
 def _test_cursor_cidrs() -> None:
@@ -786,6 +799,7 @@ def _test_self_test_flag() -> None:
 def run_unit_tests() -> None:
     """Local tests for deepswe_modal helpers (no Modal network)."""
     _test_repo_roots()
+    _test_default_deepswe_results_dir()
     _test_cursor_cidrs()
     _test_network_kwargs()
     _test_stream_helpers()

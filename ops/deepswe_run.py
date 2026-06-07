@@ -38,6 +38,11 @@ DEFAULT_CHECKS_DO = "true\n"
 MALVIN_CMD = os.environ.get("MALVIN", "malvin")
 
 
+def default_deepswe_results_dir() -> Path:
+    """Eval artifact root outside the malvin repo so quality gates are not polluted."""
+    return Path.home() / ".malvin" / "deepswe-results"
+
+
 @dataclass(frozen=True)
 class TaskSpec:
     task_dir: Path
@@ -332,14 +337,14 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
     "--workspace",
     type=click.Path(file_okay=False, path_type=Path),
     default=None,
-    help="Git checkout for the task repo (default: results/deepswe/<task-id>/workspace).",
+    help="Git checkout for the task repo (default: <results-dir>/<task-id>/workspace).",
 )
 @click.option(
     "--results-dir",
     type=click.Path(file_okay=False, path_type=Path),
-    default=Path("results/deepswe"),
-    show_default=True,
-    help="Root directory for run artifacts.",
+    default=None,
+    show_default="~/.malvin/deepswe-results",
+    help="Root directory for run artifacts (outside the malvin repo by default).",
 )
 @click.option(
     "--command",
@@ -392,7 +397,7 @@ def main(
     ctx: click.Context,
     task_dir: Path,
     workspace: Path | None,
-    results_dir: Path,
+    results_dir: Path | None,
     malvin_command: str,
     checks_override: str | None,
     grade_only: bool,
@@ -408,8 +413,9 @@ def main(
     if extra:
         malvin_args = malvin_args + extra
     spec = parse_task_dir(task_dir)
-    run_root = results_dir / spec.task_id / timestamp_dir()
-    workspace = workspace or (results_dir / spec.task_id / "workspace")
+    results_root = results_dir or default_deepswe_results_dir()
+    run_root = results_root / spec.task_id / timestamp_dir()
+    workspace = workspace or (results_root / spec.task_id / "workspace")
     logs_dir = run_root / "verifier_logs"
     click.echo(f"Task: {spec.task_id}")
     click.echo(f"Workspace: {workspace.resolve()}")

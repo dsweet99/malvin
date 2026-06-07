@@ -140,6 +140,16 @@ fn repo_root_gitignore_ignores_malvin_logs_and_target() {
 }
 
 #[test]
+fn init_template_gitignore_ignores_deepswe_results() {
+    assert!(
+        INIT_TEMPLATE_GITIGNORE
+            .lines()
+            .any(|line| line.trim() == "results/"),
+        "init template .gitignore should ignore DeepSWE eval artifacts under results/"
+    );
+}
+
+#[test]
 fn init_template_gitignore_is_consistent_with_git_check_ignore() {
     const TEMPLATE: &str = INIT_TEMPLATE_GITIGNORE;
     let tmp = tempfile::tempdir().unwrap();

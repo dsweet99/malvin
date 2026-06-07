@@ -6,4 +6,5 @@ target/
 .malvin_checks
 /log
 /log_2
+results/
 *.md~
