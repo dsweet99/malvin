@@ -22,6 +22,9 @@ pub struct MemWatchHandles {
 pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir: &Path) {
     #[cfg(unix)]
     {
+        if crate::acp::test_no_real_agent_enabled() {
+            return;
+        }
         let limit_bytes = crate::mem_limit_config::load_mem_limit_bytes(work_dir);
         let Some(pgid) = session.0.process_group_id else {
             return;

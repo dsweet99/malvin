@@ -51,7 +51,7 @@ mod unix_tests {
     }
 
     #[test]
-    fn startup_gate_failure_omits_code_pre_check_guidance() {
+    fn startup_gate_failure_messaging_and_kpop_session() {
         let fx = TidyStartupGateFixture::new();
         let combined = combined_cli_output(&fx.spawn());
         assert!(
@@ -62,22 +62,10 @@ mod unix_tests {
             !combined.contains("implementation did not start"),
             "tidy startup gate failure must not claim implementation never started: {combined:?}"
         );
-    }
-
-    #[test]
-    fn startup_gate_failure_reports_kiss_check() {
-        let fx = TidyStartupGateFixture::new();
-        let combined = combined_cli_output(&fx.spawn());
         assert!(
             combined.contains("kiss check"),
             "expected gate failure detail from repo checks: {combined:?}"
         );
-    }
-
-    #[test]
-    fn startup_gate_failure_runs_kpop_session() {
-        let fx = TidyStartupGateFixture::new();
-        let combined = combined_cli_output(&fx.spawn());
         assert!(
             combined.contains("KPOP_LOG:"),
             "tidy should run kpop when startup gates fail: {combined:?}"

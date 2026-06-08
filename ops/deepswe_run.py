@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Run malvin against a DeepSWE Harbor task and grade with the official verifier.
 
-Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin on the host
-and grades on Modal by default (split topology: full Cursor API egress for the agent,
-air-gapped Harbor verifier in Modal). ``solve --local TASK_NAME`` runs both phases in
+Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin in a Modal
+sandbox with open egress, harvests the workspace, then grades in a separate Modal
+sandbox with ``block_network=True``. ``solve --local TASK_NAME`` runs both phases in
 one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
@@ -1264,6 +1264,25 @@ def _test_solve_modal_dry_run() -> None:
     assert "Dry run: grade-only on Modal" in result.output
 
 
+def _test_solve_modal_full_dry_run() -> None:
+    """Default solve uses two Modal sandboxes (open-egress agent, block_network grade)."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Runtime: modal" in result.output
+    assert "Dry run: malvin agent in Modal sandbox (open egress)" in result.output
+    assert "Dry run: Harbor grade in separate Modal sandbox (block_network)" in result.output
+    assert "Running agent on host" not in result.output
+
+
 def _test_solve_command_in_help() -> None:
     from click.testing import CliRunner
 
@@ -1372,6 +1391,7 @@ def run_self_tests() -> None:
     _test_docker_local_eval_cmd()
     _test_solve_dry_run()
     _test_solve_modal_dry_run()
+    _test_solve_modal_full_dry_run()
     _test_solve_command_in_help()
     _test_bare_invocation_shows_usage()
     _test_list_deepswe_tasks()

@@ -9,28 +9,17 @@ pub fn acp_mock_init_js() -> String {
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const isKpop = promptText.includes('KPOP') || promptText.includes('init_constraints');
     if (isKpop) {
-      const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
-      const target = targetMatch ? targetMatch[0] : null;
-      const os = require('os');
-      const root = path.join(os.homedir(), '.malvin', 'logs');
-      if (fs.existsSync(root)) {
-        outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-          const bucket = path.join(root, hash.name);
-          const runs = fs.readdirSync(bucket, { withFileTypes: true })
-            .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
-          for (const run of runs) {
-            const kpopDir = path.join(bucket, run, '_kpop');
-            if (!fs.existsSync(kpopDir)) continue;
-            const names = target
-              ? [target]
-              : fs.readdirSync(kpopDir).filter((n) => /_g\d+\.md$/.test(n)).sort();
-            for (const name of names) {
-              if (!name.startsWith('exp_log_') || !name.endsWith('.md')) continue;
-              fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
-              break outer;
-            }
-          }
-        }
+      const pathMatch = promptText.match(/([^\s`]+\/_kpop\/exp_log_[^\s`]+\.md)/);
+      let expPath = null;
+      if (pathMatch) {
+        let p = pathMatch[1];
+        if (p.startsWith('./')) expPath = path.join(process.cwd(), p.slice(2));
+        else if (p.startsWith('/')) expPath = p;
+        else expPath = path.join(process.cwd(), p);
+      }
+      if (expPath) {
+        fs.mkdirSync(path.dirname(expPath), { recursive: true });
+        fs.appendFileSync(expPath, '\n## KPOP_SOLVED\n');
       }
       const checksPath = path.join(process.cwd(), '.malvin', 'checks');
       fs.mkdirSync(path.dirname(checksPath), { recursive: true });
@@ -39,6 +28,37 @@ pub fn acp_mock_init_js() -> String {
     let kpop_done =
         super::acp_core::session_update_chunk_line("agent_message_chunk", r"'init kpop ok\n'");
     super::acp_core::acp_mock_js("", &format!("{body}\n    if (isKpop) {{ {kpop_done} }}"))
+}
+
+fn apply_malvin_init_test_env(
+    cmd: &mut Command,
+    home: &Path,
+    mock_bin: &Path,
+    pre_commit_home: &Path,
+) {
+    cmd.env("HOME", home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_TEST_NO_REAL_AGENT", "1")
+        .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
+        .env("PRE_COMMIT_HOME", pre_commit_home);
+}
+
+fn configure_malvin_init_cmd(
+    cmd: &mut Command,
+    project: &Path,
+    init_args: &[&str],
+    in_place: bool,
+) {
+    cmd.arg("init");
+    cmd.args(super::INTEGRATION_TEST_MALVIN_ARGS);
+    for a in init_args {
+        cmd.arg(a);
+    }
+    if in_place {
+        cmd.current_dir(project);
+    } else {
+        cmd.args(["--path"]).arg(project);
+    }
 }
 
 fn spawn_malvin_init(
@@ -51,19 +71,8 @@ fn spawn_malvin_init(
     let mock_bin = home.join("mock-acp-init");
     write_mock_executable(&mock_bin, &acp_mock_init_js());
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.arg("init");
-    for a in init_args {
-        cmd.arg(a);
-    }
-    if in_place {
-        cmd.current_dir(project);
-    } else {
-        cmd.args(["--path"]).arg(project);
-    }
-    cmd.env("HOME", home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
-        .env("PRE_COMMIT_HOME", pre_commit_home.path());
+    configure_malvin_init_cmd(&mut cmd, project, init_args, in_place);
+    apply_malvin_init_test_env(&mut cmd, home, &mock_bin, pre_commit_home.path());
     cmd.output().expect("spawn malvin init")
 }
 

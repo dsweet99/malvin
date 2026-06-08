@@ -26,7 +26,9 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
     {
-        crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
+        if !crate::acp::test_no_real_agent_enabled() {
+            crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
+        }
         let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(crate::acp::snapshot_pids));
     }
     #[cfg(not(unix))]

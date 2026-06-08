@@ -25,9 +25,7 @@ pub(crate) async fn signal_targets(targets: &HashSet<u32>, process_group_id: Opt
 }
 
 #[cfg(unix)]
-pub(crate) use super::unix_process_group_teardown_poll::{
-    teardown_agent_sandbox_blocking, SHUTDOWN_CANCEL_TIMEOUT,
-};
+pub(crate) use super::unix_process_group_teardown_poll::teardown_agent_sandbox_blocking;
 
 #[cfg(unix)]
 pub async fn terminate_agent_process_group(

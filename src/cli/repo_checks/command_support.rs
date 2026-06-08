@@ -53,7 +53,7 @@ thread_local! {
 }
 
 #[cfg(test)]
-fn test_fake_command_path(command: &str) -> Option<PathBuf> {
+pub fn test_fake_command_path(command: &str) -> Option<PathBuf> {
     TEST_FAKE_COMMAND_DIR.with(|dir| {
         let d = {
             let mut borrowed = dir.borrow_mut();

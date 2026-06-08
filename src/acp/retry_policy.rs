@@ -64,6 +64,7 @@ pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
         || text.contains("acp child process is zombie")
         || text.contains("acp stdout closed")
         || text.contains("iterable is closed")
+        || text.contains("connection stalled")
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

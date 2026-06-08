@@ -14,7 +14,11 @@ pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
 
 #[must_use]
 pub(crate) fn gate_kpop_loop_iterations(max_loops: usize) -> usize {
-    effective_max_loops(max_loops).saturating_add(1)
+    let base = effective_max_loops(max_loops);
+    if crate::acp::test_no_real_agent_enabled() {
+        return base;
+    }
+    base.saturating_add(1)
 }
 
 pub(crate) fn kpop_program_context(

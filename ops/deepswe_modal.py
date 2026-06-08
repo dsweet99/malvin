@@ -5,10 +5,11 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-The default ``solve`` path runs malvin on the **host** (full Cursor API egress) and
-grades in a Modal sandbox with ``block_network=True``. Agent-in-sandbox with a Cursor
-API ``cidr_allowlist`` remains available via ``run_deepswe_run_in_sandbox`` for
-remote ``--runtime in-sandbox`` callers. malvin and kiss are built from local source
+The default ``solve`` path runs malvin in a Modal sandbox with **open egress** (no
+CIDR allowlist), harvests the workspace, then grades in a separate Modal sandbox with
+``block_network=True``. Agent-in-sandbox with a Cursor API ``cidr_allowlist`` remains
+available via ``run_deepswe_run_in_sandbox(open_network=False)`` for diagnostics.
+malvin and kiss are built from local source
 trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
@@ -40,6 +41,7 @@ import io
 import json
 import os
 import socket
+import stat
 import sys
 import tarfile
 import tempfile
@@ -66,7 +68,6 @@ from deepswe_run import (
     materialize_workspace,
     parse_task_dir,
     reset_workspace,
-    run_malvin,
     timestamp_dir,
     write_plan_and_checks,
 )
@@ -527,6 +528,49 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
         return None
 
 
+# Root-owned ``.git`` objects from the Modal sandbox cannot overwrite host checkout files.
+HARVEST_WORKSPACE_TAR_EXCLUDES = (
+    "--exclude=./.git",
+    "--exclude=./.malvin/logs",
+)
+
+
+def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> None:
+    """Extract agent workspace tarball without root-owned permission clashes on reuse."""
+    for member in archive.getmembers():
+        if member.isdir():
+            continue
+        target = workspace / member.name
+        if not target.is_file():
+            continue
+        if os.access(target, os.W_OK):
+            continue
+        try:
+            target.chmod(target.stat().st_mode | stat.S_IWUSR)
+        except OSError:
+            target.unlink(missing_ok=True)
+    archive.extractall(workspace)
+
+
+def harvest_sandbox_workspace(sandbox: modal.Sandbox, workspace: Path) -> dict[str, Any]:
+    """Copy remote ``/app`` from a Modal sandbox into local ``workspace``."""
+    excludes = " ".join(HARVEST_WORKSPACE_TAR_EXCLUDES)
+    prep = sandbox.exec(
+        "bash",
+        "-lc",
+        f"tar -czf /tmp/deepswe_workspace.tgz -C {APP_REMOTE} {excludes} .",
+        workdir=APP_REMOTE,
+    )
+    prep.wait()
+    blob = read_remote_bytes(sandbox, "/tmp/deepswe_workspace.tgz")
+    if not blob:
+        return {"harvested": False}
+    workspace.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as archive:
+        _extract_tar_over_workspace(archive, workspace)
+    return {"harvested": True, "workspace": str(workspace.resolve())}
+
+
 def harvest_sandbox_logs(sandbox: modal.Sandbox, out_dir: Path) -> dict[str, Any]:
     """Archive remote Harbor and malvin logs into ``out_dir/sandbox_logs/``."""
     prep = sandbox.exec(
@@ -586,19 +630,22 @@ def run_deepswe_run_in_sandbox(
     malvin_argv: list[str],
     grade_only: bool,
     skip_grade: bool = False,
+    open_network: bool = False,
     cursor_secrets: list[modal.Secret],
     artifacts_dir: Path | None = None,
+    harvest_workspace: Path | None = None,
     timeout: int = 7200,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Exec ``deepswe_run.py`` once in a Modal sandbox (agent + grade in one command)."""
     sandbox: modal.Sandbox | None = None
     run_logs_remote = f"{LOGS_REMOTE}/run"
     try:
-        network = (
-            sandbox_network_kwargs(cursor_api_only=False, block_all=True)
-            if grade_only
-            else agent_sandbox_network_kwargs(image)
-        )
+        if grade_only:
+            network = sandbox_network_kwargs(cursor_api_only=False, block_all=True)
+        elif open_network:
+            network = sandbox_network_kwargs(cursor_api_only=False, block_all=False)
+        else:
+            network = agent_sandbox_network_kwargs(image)
         resources = (
             grade_sandbox_resource_kwargs()
             if grade_only
@@ -653,6 +700,12 @@ def run_deepswe_run_in_sandbox(
             agent_result = {"exit_code": int(proc.returncode or 0)}
         elif agent_result is not None and "exit_code" not in agent_result:
             agent_result["exit_code"] = int(proc.returncode or 0)
+        if harvest_workspace is not None:
+            harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
+            if agent_result is not None:
+                agent_result["workspace_harvest"] = harvest_info
+            elif not grade_only:
+                agent_result = {"workspace_harvest": harvest_info}
         if artifacts_dir is not None:
             artifacts_dir.mkdir(parents=True, exist_ok=True)
             model_patch = read_remote_file(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
@@ -661,7 +714,11 @@ def run_deepswe_run_in_sandbox(
             metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
             if metadata_text:
                 (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
-            grade_result["harvest"] = harvest_sandbox_logs(sandbox, artifacts_dir)
+            harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+            if grade_only:
+                grade_result["harvest"] = harvest
+            elif agent_result is not None:
+                agent_result["harvest"] = harvest
         return agent_result, grade_result
     finally:
         if sandbox is not None:
@@ -741,9 +798,9 @@ def run_modal_eval(
         if grade_only:
             click.echo("Dry run: grade-only on Modal (block_network sandbox)")
         else:
-            click.echo("Dry run: malvin agent on host")
+            click.echo("Dry run: malvin agent in Modal sandbox (open egress)")
             if not skip_grade:
-                click.echo("Dry run: Harbor grade on Modal (block_network sandbox)")
+                click.echo("Dry run: Harbor grade in separate Modal sandbox (block_network)")
         return
 
     materialize_workspace(spec, workspace, dry_run=False)
@@ -760,14 +817,14 @@ def run_modal_eval(
     checks = checks_override
     if checks is None:
         checks = DEFAULT_CHECKS_CODE if malvin_command == "code" else DEFAULT_CHECKS_DO
-    grade_img = mount_eval_context(
-        harbor_image(spec, dockerfile=spec.dockerfile),
-        task_dir=spec.task_dir,
-        workspace=workspace,
-        tests_dir=spec.tests_dir,
-        deepswe_run_py=deepswe_run_py,
-    )
     if grade_only:
+        grade_img = mount_eval_context(
+            harbor_image(spec, dockerfile=spec.dockerfile),
+            task_dir=spec.task_dir,
+            workspace=workspace,
+            tests_dir=spec.tests_dir,
+            deepswe_run_py=deepswe_run_py,
+        )
         agent_result, grade_result = run_deepswe_run_in_sandbox(
             grade_img,
             command=malvin_command,
@@ -785,17 +842,43 @@ def run_modal_eval(
             checks_override=checks,
             dry_run=False,
         )
-        click.echo("Running agent on host (malvin has full Cursor API egress)...")
-        agent_result = run_malvin(
+        malvin_repo, kiss_repo = validate_toolchain_repos()
+        agent_img = harbor_agent_image(
+            spec,
             workspace,
-            command=malvin_command,
-            malvin_args=tuple(malvin_args),
-            dry_run=False,
+            spec.tests_dir,
+            dockerfile=spec.dockerfile,
+            malvin_repo=malvin_repo,
+            kiss_repo=kiss_repo,
+            deepswe_run_py=deepswe_run_py,
         )
+        agent_artifacts = run_root / "agent_sandbox"
+        click.echo("Running malvin agent in Modal sandbox (open egress)...")
+        agent_result, _ = run_deepswe_run_in_sandbox(
+            agent_img,
+            command=malvin_command,
+            malvin_argv=list(malvin_args),
+            grade_only=False,
+            skip_grade=True,
+            open_network=True,
+            cursor_secrets=cursor_secrets(),
+            artifacts_dir=agent_artifacts,
+            harvest_workspace=workspace,
+        )
+        if agent_result is None:
+            agent_result = {"exit_code": 1}
+        agent_result["runtime"] = "modal-agent-sandbox"
         if skip_grade:
             grade_result = {"pass": None, "reward": None, "skipped": True}
         else:
-            click.echo("Running Harbor verifier on Modal...")
+            grade_img = mount_eval_context(
+                harbor_image(spec, dockerfile=spec.dockerfile),
+                task_dir=spec.task_dir,
+                workspace=workspace,
+                tests_dir=spec.tests_dir,
+                deepswe_run_py=deepswe_run_py,
+            )
+            click.echo("Running Harbor verifier in Modal sandbox (block_network)...")
             _, grade_result = run_deepswe_run_in_sandbox(
                 grade_img,
                 command=malvin_command,
@@ -805,6 +888,7 @@ def run_modal_eval(
                 cursor_secrets=[],
                 artifacts_dir=run_root,
             )
+            grade_result["runtime"] = "modal-grade-sandbox"
 
     malvin_log = find_latest_malvin_log(workspace)
     metadata = {
@@ -1111,6 +1195,70 @@ def _test_agent_sandbox_network() -> None:
     fake_sandbox.terminate.assert_called_once()
 
 
+def _test_agent_sandbox_open_network() -> None:
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"agent": {"exit_code": 0}, "grade": {"skipped": True}})
+    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    image = MagicMock()
+    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
+        agent_result, _grade = run_deepswe_run_in_sandbox(
+            image,
+            command="code",
+            malvin_argv=[],
+            grade_only=False,
+            skip_grade=True,
+            open_network=True,
+            cursor_secrets=[],
+        )
+    assert "cidr_allowlist" not in mock_create.call_args.kwargs
+    assert "block_network" not in mock_create.call_args.kwargs
+    assert agent_result["exit_code"] == 0
+
+
+def _test_harvest_sandbox_workspace() -> None:
+    fake_proc = MagicMock()
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    payload = b"fake tarball"
+    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = payload
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp) / "workspace"
+        with patch(f"{__name__}.read_remote_bytes", return_value=payload):
+            with patch("tarfile.open") as mock_tar:
+                mock_archive = MagicMock()
+                mock_tar.return_value.__enter__.return_value = mock_archive
+                result = harvest_sandbox_workspace(fake_sandbox, workspace)
+    assert result["harvested"] is True
+    mock_archive.extractall.assert_called_once_with(workspace)
+    exec_cmd = fake_sandbox.exec.call_args.args[2]
+    assert "--exclude=./.git" in exec_cmd
+
+
+def _test_extract_tar_over_workspace_readonly_target() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        readonly = workspace / "locked.py"
+        readonly.write_text("old\n", encoding="utf-8")
+        readonly.chmod(stat.S_IRUSR)
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as archive:
+            data = b"new\n"
+            info = tarfile.TarInfo(name="locked.py")
+            info.size = len(data)
+            info.mode = 0o644
+            info.uid = 0
+            info.gid = 0
+            archive.addfile(info, io.BytesIO(data))
+        buf.seek(0)
+        with tarfile.open(fileobj=buf, mode="r:gz") as archive:
+            _extract_tar_over_workspace(archive, workspace)
+        assert readonly.read_text(encoding="utf-8") == "new\n"
+
+
 def _test_mount_eval_context_recipe() -> None:
     malvin_repo = malvin_repo_root()
     recorder = _RecordingImage()
@@ -1268,8 +1416,8 @@ def _test_self_test_flag() -> None:
     mock_tests.assert_called_once()
 
 
-def _test_run_modal_eval_host_agent_modal_grade() -> None:
-    """solve path: malvin on host, Harbor grade in block_network Modal sandbox."""
+def _test_run_modal_eval_modal_agent_modal_grade() -> None:
+    """solve path: malvin in open-egress Modal sandbox, Harbor grade in block_network sandbox."""
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"
     if not task.is_dir():
@@ -1279,20 +1427,20 @@ def _test_run_modal_eval_host_agent_modal_grade() -> None:
         workspace.mkdir()
         (workspace / "plan.md").write_text("task\n", encoding="utf-8")
         results = Path(tmp) / "results"
+        fake_agent = {"exit_code": 0, "agent_seconds": 1.0}
         fake_grade = {"pass": True, "reward": 1}
         with (
             patch(f"{__name__}.materialize_workspace"),
             patch(f"{__name__}.write_plan_and_checks"),
+            patch(f"{__name__}.validate_toolchain_repos", return_value=(Path("/m"), Path("/k"))),
+            patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),
             patch(f"{__name__}.harbor_image", return_value=MagicMock()),
             patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
             patch(
-                f"{__name__}.run_malvin",
-                return_value={"exit_code": 0, "agent_seconds": 1.0},
-            ) as mock_malvin,
-            patch(
                 f"{__name__}.run_deepswe_run_in_sandbox",
-                return_value=(None, fake_grade),
-            ) as mock_grade,
+                side_effect=[(fake_agent, {"skipped": True}), (None, fake_grade)],
+            ) as mock_sandbox,
+            patch(f"{__name__}.cursor_secrets", return_value=[MagicMock()]),
             patch(f"{__name__}.find_latest_malvin_log", return_value=None),
         ):
             run_modal_eval(
@@ -1304,10 +1452,14 @@ def _test_run_modal_eval_host_agent_modal_grade() -> None:
                 skip_grade=False,
                 dry_run=False,
             )
-        mock_malvin.assert_called_once()
-        mock_grade.assert_called_once()
-        assert mock_grade.call_args.kwargs["grade_only"] is True
-        assert mock_grade.call_args.kwargs["cursor_secrets"] == []
+        assert mock_sandbox.call_count == 2
+        agent_call, grade_call = mock_sandbox.call_args_list
+        assert agent_call.kwargs["grade_only"] is False
+        assert agent_call.kwargs["skip_grade"] is True
+        assert agent_call.kwargs["open_network"] is True
+        assert agent_call.kwargs["harvest_workspace"] == workspace
+        assert grade_call.kwargs["grade_only"] is True
+        assert grade_call.kwargs["cursor_secrets"] == []
         reward_files = list(results.rglob("reward.txt"))
         assert reward_files, results
         assert reward_files[0].read_text(encoding="utf-8").strip() == "1"
@@ -1334,10 +1486,13 @@ def run_unit_tests() -> None:
     _test_docstring_normative_command()
     _test_grade_in_sandbox_network()
     _test_agent_sandbox_network()
+    _test_agent_sandbox_open_network()
+    _test_harvest_sandbox_workspace()
+    _test_extract_tar_over_workspace_readonly_target()
     _test_mount_eval_context_recipe()
     _test_sandbox_app()
     _test_self_test_flag()
-    _test_run_modal_eval_host_agent_modal_grade()
+    _test_run_modal_eval_modal_agent_modal_grade()
 
 
 if __name__ == "__main__":

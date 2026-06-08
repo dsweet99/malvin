@@ -119,6 +119,7 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp child process is zombie",
         "acp stdout closed",
         "acp: WritableIterable is closed",
+        "Error: T: Connection stalled",
     ] {
         assert!(
             agent_error_requires_coder_session_teardown(msg),

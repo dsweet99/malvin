@@ -5,8 +5,11 @@ use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 
 #[cfg(unix)]
 use malvin::acp::hostile_orphan_test_util::{
-    process_alive, read_orphan_pid, spawn_hostile_agent, spawn_hostile_agent_acp_orphan,
-    spawn_hostile_double_fork_daemon,
+    process_alive, read_orphan_pid, spawn_hostile_agent, spawn_hostile_double_fork_daemon,
+};
+#[cfg(target_os = "linux")]
+use malvin::acp::hostile_orphan_test_util::{
+    spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 
 /// After the same teardown `AcpSession::shutdown` uses, a hostile session-leader orphan must not
@@ -56,7 +59,10 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
 }
 
 /// Baseline amnesty must not protect init-reparented `agent acp` orphans from teardown.
-#[cfg(unix)]
+///
+/// Linux-only: `looks_like_malvin_agent_acp` reads `/proc/{pid}/environ` (see
+/// `malvin_sandbox_contract::baseline_amnestied_agent_acp_orphan_killed_on_teardown`).
+#[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -64,6 +70,7 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
     let spawn_baseline = snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
     let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    wait_for_init_reparent(orphan_pid).await;
     let mut baseline = spawn_baseline;
     baseline.insert(orphan_pid);
     assert!(
