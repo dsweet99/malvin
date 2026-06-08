@@ -42,14 +42,14 @@ fn ansi_timestamp_line_keeps_payload_plain() {
 #[test]
 fn detects_prefixed_and_unprefixed_command_prelude() {
     let prefix = format_who_tag_prefix(MALVIN_WHO);
-    assert!(is_command_prelude_line("Command: malvin code @plan.md"));
+    assert!(is_command_prelude_line("Command: malvin code plan.md"));
     assert!(is_command_prelude_line(&format!(
-        "{prefix}Command: malvin code @plan.md"
+        "{prefix}Command: malvin code plan.md"
     )));
     assert!(is_command_prelude_line(&format_line_with_timestamp(
         "20260413.121314.015",
         MALVIN_WHO,
-        "Command: malvin code @plan.md"
+        "Command: malvin code plan.md"
     )));
     assert!(!is_command_prelude_line(
         "20260413.121314.015 m|not a command line"

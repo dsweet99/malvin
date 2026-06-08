@@ -57,12 +57,12 @@ mod tests {
                 force: false,
                 
             },
-            &format!("@{}", plan.display()),
+            "plan.md",
         )
         .expect("prepared");
         std::env::set_current_dir(old).expect("restore cwd");
         assert!(prepared.request_text.contains("plan.md"));
-        assert_eq!(prepared.startup_emit_request, format!("@{}", plan.display()));
+        assert_eq!(prepared.startup_emit_request, "plan.md");
     }
 }
 

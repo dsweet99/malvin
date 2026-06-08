@@ -89,5 +89,5 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 ```text
 malvin code plan.md
 malvin code --max-loops 3 --max-hypotheses 15 "Add widget API per plan.md"
-malvin --model sonnet-4 code @plans/feature.md
+malvin --model sonnet-4 code plans/feature.md
 ```

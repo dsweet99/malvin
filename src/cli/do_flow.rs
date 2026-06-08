@@ -1,6 +1,6 @@
 //! `do` subcommand: one coder ACP prompt with dual headers (`header_do.md` + `do_header.md`) and user request.
 
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_request};
+use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
 use crate::output::agent_stdout_tee_enabled;
@@ -23,7 +23,7 @@ pub struct DoArgs {
     pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
-    /// Request or `@file` → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
 
@@ -91,7 +91,7 @@ async fn prepare_do_run(
 ) -> Result<DoRunPrep, String> {
     let client = new_do_client(shared, workflow, do_args.thoughts);
     let request = require_cli_request(do_args.request.as_ref(), "do")?;
-    let (text, work_dir) = resolve_user_request(&request)?;
+    let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
         Some(work_dir.as_path()),

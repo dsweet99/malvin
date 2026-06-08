@@ -11,6 +11,6 @@ pub struct KpopArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
-    /// Request or `@file` → `.malvin/logs/.../request.md`.
+    /// Existing `.md` path or literal text → `.malvin/logs/.../request.md`.
     pub request: Option<String>,
 }

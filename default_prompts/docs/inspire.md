@@ -6,7 +6,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 
 | | |
 |---|---|
-| Input | `<REQUEST>` text or `@file` |
+| Input | `<REQUEST>` text or existing `.md` path |
 | Prompt | `default_prompts/mbc2.md` with `user_prompt` |
 | Log | `ideas.log` |
 
@@ -24,7 +24,7 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Topic as literal text, or `@<path>` (same rules as `do` / `kpop`).
+Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
 
 ## Global options
 
@@ -50,5 +50,5 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ```text
 malvin inspire "Alternative cache invalidation strategies for our API"
-malvin inspire @notes/topic.md
+malvin inspire notes/topic.md
 ```

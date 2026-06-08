@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use clap::Args;
 
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent};
@@ -15,7 +15,7 @@ use crate::run_timing::TimingPhase;
 /// Arguments for [`run_ideas`].
 #[derive(Args, Debug)]
 pub struct IdeasArgs {
-    /// Request or `@file` → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
 
@@ -79,7 +79,7 @@ async fn prepare_ideas_run(
 ) -> Result<IdeasRunPrep, String> {
     let client = new_ideas_client(shared, workflow);
     let request = require_cli_request(ideas.request.as_ref(), "ideas")?;
-    let (text, work_dir) = resolve_user_request(&request)?;
+    let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));

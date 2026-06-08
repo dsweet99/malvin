@@ -138,8 +138,7 @@ Several commands accept a positional request.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| `code` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
-| `do`, `kpop`, `inspire`, bare `malvin` | `@<path>` reads file contents; work dir is the file’s parent | `.` for literal text |
+| `code`, `plan`, `do`, `kpop`, `inspire`, bare `malvin` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 Examples:
 
@@ -147,7 +146,7 @@ Examples:
 malvin do "fix the typo"
 malvin code plan.md
 malvin "Why does the cache miss?"          # bare kpop
-malvin kpop @notes/question.md
+malvin kpop notes/question.md
 ```
 
 ## Gate-loop commands (shared pattern)

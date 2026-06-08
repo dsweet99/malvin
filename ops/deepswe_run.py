@@ -9,16 +9,16 @@ runs both phases in the current environment (Modal sandbox or an outer ``docker 
 
 Examples::
 
+    python ops/deepswe_run.py tasks
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
-    python ops/deepswe_run.py --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --apply-solution --grade-only
-    python ops/deepswe_run.py --task /task --workspace /app --runtime in-sandbox --command code
+    python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
+    python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
+    python ops/deepswe_run.py run --task /task --workspace /app --runtime in-sandbox --command code
 
 Local unit tests (no agent run)::
 
-    python ops/deepswe_run.py --self-test
+    python ops/deepswe_run.py self-test
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import click
 
@@ -106,6 +107,18 @@ def resolve_local_task_dir(task_name: str) -> Path:
             f"(set DEEPSWE_TASKS or clone deep-swe next to malvin)"
         )
     return task_dir
+
+
+def list_deepswe_tasks() -> list[str]:
+    """Return sorted DeepSWE task ids under ``default_deepswe_tasks_root()``."""
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        return []
+    return sorted(
+        entry.name
+        for entry in tasks_root.iterdir()
+        if entry.is_dir() and (entry / "task.toml").is_file()
+    )
 
 
 @dataclass(frozen=True)
@@ -305,7 +318,7 @@ def local_agent_image_tag(task_id: str) -> str:
 
 
 def _toolchain_copy_ignore(src: str, names: list[str], *, extra: tuple[str, ...]) -> set[str]:
-    skip = {".git", "target", "__pycache__", ".cargo", "experiments", "results"}
+    skip = {".git", "target", "__pycache__", ".cargo", "experiments", "results", "reports"}
     skip.update(extra)
     return {name for name in names if name in skip}
 
@@ -399,6 +412,7 @@ def docker_local_eval_cmd(
     inner = [
         "python3",
         DEEPSWE_RUN_REMOTE,
+        "run",
         "--task",
         "/task",
         "--workspace",
@@ -641,7 +655,7 @@ def run_malvin(
     plan = workspace / "plan.md"
     if not dry_run and not plan.is_file():
         raise click.ClickException(f"Missing plan.md in workspace: {plan}")
-    cmd = [MALVIN_CMD, command, f"@{plan.name}", *malvin_args]
+    cmd = [MALVIN_CMD, command, plan.name, *malvin_args]
     click.echo(f"Running agent: {' '.join(cmd)}")
     t0 = time.monotonic()
     if dry_run:
@@ -676,7 +690,7 @@ def run_modal_solve(
     dry_run: bool,
     malvin_args: tuple[str, ...],
 ) -> None:
-    """Dispatch ``solve TASK_NAME`` to Modal (lazy import keeps --self-test Modal-free)."""
+    """Dispatch ``solve TASK_NAME`` to Modal (lazy import keeps self-test Modal-free)."""
     try:
         from deepswe_modal import run_modal_eval
     except ModuleNotFoundError as exc:
@@ -741,7 +755,7 @@ def run_task(
             )
             return
     elif task_dir is None:
-        raise click.ClickException("Provide solve TASK_NAME or --task PATH")
+        raise click.ClickException("Provide solve TASK_NAME or run --task PATH")
     in_sandbox = runtime == "in-sandbox"
     spec = parse_task_dir(task_dir)
     results_root = results_dir or default_deepswe_results_dir()
@@ -895,7 +909,7 @@ def run_task(
 
 
 def _task_kernel_options(f: Any) -> Any:
-    """Click options shared by the path-based task kernel (group default)."""
+    """Click options for the path-based ``run`` subcommand."""
     f = click.option(
         "--task",
         "task_dir",
@@ -973,11 +987,6 @@ def _task_kernel_options(f: Any) -> Any:
         is_flag=True,
         help="Print commands without executing.",
     )(f)
-    f = click.option(
-        "--self-test",
-        is_flag=True,
-        help="Run unit tests and exit (no task run).",
-    )(f)
     return f
 
 
@@ -1030,8 +1039,13 @@ def _local_solve_options(f: Any) -> Any:
     return f
 
 
-@click.group(
-    invoke_without_command=True,
+@click.group()
+def cli() -> None:
+    """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
+
+
+@cli.command(
+    "run",
     context_settings={
         "ignore_unknown_options": True,
         "allow_extra_args": True,
@@ -1039,7 +1053,7 @@ def _local_solve_options(f: Any) -> Any:
 )
 @_task_kernel_options
 @click.pass_context
-def cli(
+def run_task_cli(
     ctx: click.Context,
     task_dir: Path | None,
     workspace: Path | None,
@@ -1054,14 +1068,10 @@ def cli(
     reset_workspace_flag: bool,
     docker_image: str | None,
     dry_run: bool,
-    self_test: bool,
 ) -> None:
-    """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
-    if ctx.invoked_subcommand is not None:
-        return
-    if self_test:
-        run_self_tests()
-        return
+    """Run malvin on a task directory (path-based harness entry point)."""
+    if task_dir is None:
+        raise click.ClickException("run requires --task PATH")
     run_task(
         local_task_name=None,
         task_dir=task_dir,
@@ -1080,6 +1090,28 @@ def cli(
         malvin_args=(),
         extra_args=tuple(ctx.args),
     )
+
+
+@cli.command("tasks")
+def tasks_cmd() -> None:
+    """List all available DeepSWE tasks."""
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        raise click.ClickException(
+            f"DeepSWE tasks directory not found: {tasks_root} "
+            f"(set DEEPSWE_TASKS or clone deep-swe next to malvin)"
+        )
+    task_ids = list_deepswe_tasks()
+    if not task_ids:
+        raise click.ClickException(f"No DeepSWE tasks found under {tasks_root}")
+    for task_id in task_ids:
+        click.echo(task_id)
+
+
+@cli.command("self-test")
+def self_test_cmd() -> None:
+    """Run unit tests and exit (no task run)."""
+    run_self_tests()
 
 
 @cli.command("solve")
@@ -1178,6 +1210,7 @@ def _test_docker_local_eval_cmd() -> None:
         checks_override=None,
     )
     joined = " ".join(cmd)
+    assert " run " in joined or joined.endswith(" run")
     assert "--runtime in-sandbox" in joined
     assert DEEPSWE_RUN_REMOTE in joined
     assert "malvin code" not in joined or "--command code" in joined
@@ -1235,7 +1268,44 @@ def _test_solve_command_in_help() -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0, result.output
-    assert "solve" in result.output
+    for name in ("solve", "tasks", "run", "self-test"):
+        assert name in result.output, name
+    assert "--task" not in result.output.split("Commands:")[0]
+
+
+def _test_bare_invocation_shows_usage() -> None:
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    result = runner.invoke(cli, [])
+    assert result.exit_code != 0, result.output
+    assert "Missing command" in result.output or "Usage:" in result.output
+
+
+def _test_list_deepswe_tasks() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        return
+    task_ids = list_deepswe_tasks()
+    assert task_ids, tasks_root
+    assert task_ids == sorted(task_ids)
+    sample = tasks_root / "bandit-interprocedural-taint-checks"
+    if sample.is_dir():
+        assert "bandit-interprocedural-taint-checks" in task_ids
+
+
+def _test_tasks_command() -> None:
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        return
+    runner = CliRunner()
+    result = runner.invoke(cli, ["tasks"])
+    assert result.exit_code == 0, result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    assert lines == sorted(lines)
+    assert "bandit-interprocedural-taint-checks" in lines
 
 
 def docker_daemon_available() -> bool:
@@ -1247,6 +1317,22 @@ def docker_daemon_available() -> bool:
         check=False,
     )
     return proc.returncode == 0
+
+
+def _test_run_malvin_uses_plan_name_not_at_notation() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / "plan.md").write_text("task\n", encoding="utf-8")
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            captured["cmd"] = cmd
+            return subprocess.CompletedProcess(cmd, 0)
+
+        with patch("subprocess.run", fake_run):
+            run_malvin(workspace, command="code", malvin_args=(), dry_run=False)
+        assert captured["cmd"][2] == "plan.md"
+        assert "@" not in captured["cmd"][2]
 
 
 def _test_local_grade_only_apply_solution() -> None:
@@ -1285,6 +1371,10 @@ def run_self_tests() -> None:
     _test_solve_dry_run()
     _test_solve_modal_dry_run()
     _test_solve_command_in_help()
+    _test_bare_invocation_shows_usage()
+    _test_list_deepswe_tasks()
+    _test_tasks_command()
+    _test_run_malvin_uses_plan_name_not_at_notation()
     _test_local_grade_only_apply_solution()
     click.echo("deepswe_run self-tests passed")
 

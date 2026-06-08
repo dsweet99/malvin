@@ -44,6 +44,7 @@ import tempfile
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, TextIO
 from unittest.mock import MagicMock, patch
 
@@ -98,6 +99,13 @@ GRADE_SANDBOX_MEMORY_MIB = 2048
 app = modal.App(APP_NAME)
 
 
+def sandbox_app() -> modal.App:
+    """Return an initialized Modal app for sandbox creation."""
+    if app.app_id is not None:
+        return app
+    return modal.App.lookup(APP_NAME, create_if_missing=True)
+
+
 def malvin_repo_root() -> Path:
     """Return the malvin repository root (parent of ``ops/``)."""
     return Path(__file__).resolve().parent.parent
@@ -130,11 +138,12 @@ def malvin_upload_ignore() -> list[str]:
         "target/",
         "experiments/",
         ".cargo/",
-        ".malvin/logs",
+        ".malvin/",
         ".git",
         ".kissignore",
         "__pycache__/",
         "results/",
+        "reports/",
     ]
 
 
@@ -267,7 +276,7 @@ def _run_modal_cidr_probe_script(
     probe_image = cidr_probe_image()
     sandbox: modal.Sandbox | None = None
     create_kwargs: dict[str, Any] = {
-        "app": app,
+        "app": sandbox_app(),
         "image": probe_image,
         "timeout": timeout,
     }
@@ -456,11 +465,14 @@ def mount_eval_context(
     deepswe_run_py: Path,
 ) -> modal.Image:
     """Layer workspace, tests, task metadata, and ``deepswe_run.py`` for one remote exec."""
+    prepared = image.run_commands(
+        "python3 -m pip install --break-system-packages click"
+    )
     return (
-        mount_task_tree(image, workspace, tests_dir)
+        prepared.add_local_dir(str(workspace.resolve()), remote_path=APP_REMOTE)
+        .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
         .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
-        .run_commands("python3 -m pip install --break-system-packages click")
     )
 
 
@@ -588,7 +600,7 @@ def run_deepswe_run_in_sandbox(
             else agent_sandbox_resource_kwargs()
         )
         sandbox = modal.Sandbox.create(
-            app=app,
+            app=sandbox_app(),
             image=image,
             workdir=APP_REMOTE,
             secrets=cursor_secrets if not grade_only else [],
@@ -599,6 +611,7 @@ def run_deepswe_run_in_sandbox(
         argv = [
             "python3",
             DEEPSWE_RUN_REMOTE,
+            "run",
             "--task",
             TASK_REMOTE,
             "--workspace",
@@ -1048,6 +1061,7 @@ def _test_grade_in_sandbox_network() -> None:
     exec_argv = fake_sandbox.exec.call_args.args
     assert exec_argv[0] == "python3"
     assert exec_argv[1] == DEEPSWE_RUN_REMOTE
+    assert exec_argv[2] == "run"
     assert "--grade-only" in exec_argv
     assert grade_result["reward"] == 1
     fake_sandbox.terminate.assert_called_once()
@@ -1173,6 +1187,8 @@ def _test_upload_ignore_patterns() -> None:
     kiss_ignores = kiss_upload_ignore()
     assert "target/" in malvin_ignores
     assert "target/" in kiss_ignores
+    assert "reports/" in malvin_ignores
+    assert ".malvin/" in malvin_ignores
     assert "Cargo.toml" not in malvin_ignores
     assert "src/" not in malvin_ignores
 
@@ -1225,6 +1241,17 @@ def _test_docstring_normative_command() -> None:
     assert "Gate B" in doc
 
 
+def _test_sandbox_app() -> None:
+    lookup_app = SimpleNamespace(app_id="lookup-id")
+    module_app = SimpleNamespace(app_id="module-id")
+    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
+        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
+            assert sandbox_app() is lookup_app
+        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
+    with patch(f"{__name__}.app", module_app):
+        assert sandbox_app() is module_app
+
+
 def _test_self_test_flag() -> None:
     runner = CliRunner()
     with patch(f"{__name__}.run_unit_tests") as mock_tests:
@@ -1255,6 +1282,7 @@ def run_unit_tests() -> None:
     _test_grade_in_sandbox_network()
     _test_agent_sandbox_network()
     _test_mount_eval_context_recipe()
+    _test_sandbox_app()
     _test_self_test_flag()
 
 

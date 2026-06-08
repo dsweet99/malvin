@@ -100,15 +100,18 @@ fn smoke_artifacts_create() {
 }
 
 #[test]
-fn smoke_artifacts_resolve_user_request() {
+fn smoke_artifacts_resolve_user_md_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "hello").expect("write plan");
-    let path_str = plan.to_str().expect("utf8 path");
-    assert!(crate::artifacts::resolve_user_at_path(path_str).is_ok());
-    let (text, _) = crate::artifacts::resolve_at_file(path_str).expect("resolve file");
+    let (text, _) = crate::artifacts::resolve_user_md_request("hello").expect("literal");
     assert_eq!(text, "hello");
-    assert!(crate::artifacts::resolve_user_request("hello").is_ok());
+    let _guard = crate::test_utils::test_env_lock();
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let (text, _) = crate::artifacts::resolve_user_md_request("plan.md").expect("md path");
+    std::env::set_current_dir(old).expect("restore cwd");
+    assert_eq!(text, "hello");
 }
 
 #[test]

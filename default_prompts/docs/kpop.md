@@ -29,7 +29,7 @@ malvin kpop <KPOP_ID>                   # log lookup only
 
 ### `<REQUEST>` (investigation brief)
 
-Text or `@<path>`. Stored as `request.md` in the run dir (not `plan.md`).
+Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
 ### `<KPOP_ID>` (log lookup)
 
@@ -98,6 +98,6 @@ Stops when any of:
 
 ```text
 malvin "Why does cache invalidation fail under load?"
-malvin kpop @questions/regression.md --max-hypotheses 20
+malvin kpop questions/regression.md --max-hypotheses 20
 malvin kpop Ma3bx9
 ```

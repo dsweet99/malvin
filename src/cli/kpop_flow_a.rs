@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_md_request,
 };
 use crate::kpop_progression::KpopMultiturnState;
 use crate::prompts::PromptStore;
@@ -27,7 +27,7 @@ pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, Strin
     use crate::cli::cli_request::require_cli_request;
     use crate::orchestrator::workflow_context_paths_only;
     let request = require_cli_request(kpop.request.as_ref(), "kpop")?;
-    let (text, work_dir) = resolve_user_request(&request)?;
+    let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
     let session_dotfile_backups =

@@ -126,51 +126,6 @@ pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
         )
 }
 
-pub(crate) fn resolve_user_at_path(rest: &str) -> Result<PathBuf, String> {
-    if rest.is_empty() {
-        return Err("Empty path after `@`.".to_string());
-    }
-    let path = Path::new(rest);
-    if !path.exists() {
-        return Err(format!("Path does not exist: {}", path.display()));
-    }
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let resolved = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        cwd.join(path)
-    };
-    if resolved.is_file() {
-        return Ok(resolved);
-    }
-    if resolved.is_dir() {
-        return Err(format!(
-            "Path is a directory, not a file: {}",
-            resolved.display()
-        ));
-    }
-    Err(format!("Path is not a file: {}", resolved.display()))
-}
-
-pub(crate) fn resolve_at_file(rest: &str) -> Result<(String, PathBuf), String> {
-    let path = resolve_user_at_path(rest)?;
-    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    Ok((text, work_dir_for_path(&path)))
-}
-
-/// Resolve CLI `request`: `@path` reads an existing file; otherwise treat as literal text.
-///
-/// # Errors
-///
-/// Returns a message when `@` is used but the path is missing or unreadable.
-pub fn resolve_user_request(arg: &str) -> Result<(String, PathBuf), String> {
-    let arg = arg.trim();
-    arg.strip_prefix('@').map_or_else(
-        || Ok((arg.to_string(), PathBuf::from("."))),
-        resolve_at_file,
-    )
-}
-
 #[cfg(test)]
 mod tests;
 
