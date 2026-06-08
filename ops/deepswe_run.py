@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Run malvin against a DeepSWE Harbor task and grade with the official verifier.
 
-Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin and the
-Harbor verifier on Modal by default. ``solve --local TASK_NAME`` runs both phases
-in one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
+Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin on the host
+and grades on Modal by default (split topology: full Cursor API egress for the agent,
+air-gapped Harbor verifier in Modal). ``solve --local TASK_NAME`` runs both phases in
+one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
 
@@ -1259,7 +1260,8 @@ def _test_solve_modal_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "docker run" not in result.output
-    assert "Dry run: would materialize workspace and exec deepswe_run on Modal" in result.output
+    assert "Dry run: would materialize workspace" in result.output
+    assert "Dry run: grade-only on Modal" in result.output
 
 
 def _test_solve_command_in_help() -> None:

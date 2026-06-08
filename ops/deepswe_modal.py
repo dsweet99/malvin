@@ -5,9 +5,11 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-Agent sandboxes restrict outbound network to Cursor API endpoints. Grade-only
-sandboxes block all network access. malvin and kiss are built from local source
-trees (``MALVIN_REPO`` / ``KISS_REPO``), not crates.io.
+The default ``solve`` path runs malvin on the **host** (full Cursor API egress) and
+grades in a Modal sandbox with ``block_network=True``. Agent-in-sandbox with a Cursor
+API ``cidr_allowlist`` remains available via ``run_deepswe_run_in_sandbox`` for
+remote ``--runtime in-sandbox`` callers. malvin and kiss are built from local source
+trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
 ``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; kiss at
@@ -59,9 +61,12 @@ from deepswe_run import (
     DEFAULT_CHECKS_DO,
     apply_patch,
     default_deepswe_results_dir,
+    default_deepswe_tasks_root,
+    find_latest_malvin_log,
     materialize_workspace,
     parse_task_dir,
     reset_workspace,
+    run_malvin,
     timestamp_dir,
     write_plan_and_checks,
 )
@@ -732,11 +737,13 @@ def run_modal_eval(
     click.echo(f"Artifacts: {run_root.resolve()}")
 
     if dry_run:
-        click.echo("Dry run: would materialize workspace and exec deepswe_run on Modal")
+        click.echo("Dry run: would materialize workspace")
         if grade_only:
-            click.echo("Dry run: grade-only (block_network sandbox)")
-        elif skip_grade:
-            click.echo("Dry run: agent phase only (--skip-grade)")
+            click.echo("Dry run: grade-only on Modal (block_network sandbox)")
+        else:
+            click.echo("Dry run: malvin agent on host")
+            if not skip_grade:
+                click.echo("Dry run: Harbor grade on Modal (block_network sandbox)")
         return
 
     materialize_workspace(spec, workspace, dry_run=False)
@@ -753,43 +760,14 @@ def run_modal_eval(
     checks = checks_override
     if checks is None:
         checks = DEFAULT_CHECKS_CODE if malvin_command == "code" else DEFAULT_CHECKS_DO
-    if not grade_only:
-        malvin_repo, kiss_repo = validate_toolchain_repos()
-        click.echo(f"malvin source: {malvin_repo.resolve()}")
-        click.echo(f"kiss source: {kiss_repo.resolve()}")
-        write_plan_and_checks(
-            spec,
-            workspace,
-            command=malvin_command,
-            checks_override=checks,
-            dry_run=False,
-        )
-        combined = harbor_agent_image(
-            spec,
-            workspace,
-            spec.tests_dir,
-            dockerfile=spec.dockerfile,
-            malvin_repo=malvin_repo,
-            kiss_repo=kiss_repo,
-            deepswe_run_py=deepswe_run_py,
-        )
-        agent_result, grade_result = run_deepswe_run_in_sandbox(
-            combined,
-            command=malvin_command,
-            malvin_argv=list(malvin_args),
-            grade_only=False,
-            skip_grade=skip_grade,
-            cursor_secrets=cursor_secrets(),
-            artifacts_dir=run_root,
-        )
-    else:
-        grade_img = mount_eval_context(
-            harbor_image(spec, dockerfile=spec.dockerfile),
-            task_dir=spec.task_dir,
-            workspace=workspace,
-            tests_dir=spec.tests_dir,
-            deepswe_run_py=deepswe_run_py,
-        )
+    grade_img = mount_eval_context(
+        harbor_image(spec, dockerfile=spec.dockerfile),
+        task_dir=spec.task_dir,
+        workspace=workspace,
+        tests_dir=spec.tests_dir,
+        deepswe_run_py=deepswe_run_py,
+    )
+    if grade_only:
         agent_result, grade_result = run_deepswe_run_in_sandbox(
             grade_img,
             command=malvin_command,
@@ -799,7 +777,36 @@ def run_modal_eval(
             cursor_secrets=[],
             artifacts_dir=run_root,
         )
+    else:
+        write_plan_and_checks(
+            spec,
+            workspace,
+            command=malvin_command,
+            checks_override=checks,
+            dry_run=False,
+        )
+        click.echo("Running agent on host (malvin has full Cursor API egress)...")
+        agent_result = run_malvin(
+            workspace,
+            command=malvin_command,
+            malvin_args=tuple(malvin_args),
+            dry_run=False,
+        )
+        if skip_grade:
+            grade_result = {"pass": None, "reward": None, "skipped": True}
+        else:
+            click.echo("Running Harbor verifier on Modal...")
+            _, grade_result = run_deepswe_run_in_sandbox(
+                grade_img,
+                command=malvin_command,
+                malvin_argv=list(malvin_args),
+                grade_only=True,
+                skip_grade=False,
+                cursor_secrets=[],
+                artifacts_dir=run_root,
+            )
 
+    malvin_log = find_latest_malvin_log(workspace)
     metadata = {
         "task_id": spec.task_id,
         "runtime": "modal",
@@ -808,6 +815,7 @@ def run_modal_eval(
         "malvin_args": list(malvin_args),
         "agent": agent_result,
         "grade": grade_result,
+        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
     write_metadata(run_root, metadata)
@@ -1260,6 +1268,51 @@ def _test_self_test_flag() -> None:
     mock_tests.assert_called_once()
 
 
+def _test_run_modal_eval_host_agent_modal_grade() -> None:
+    """solve path: malvin on host, Harbor grade in block_network Modal sandbox."""
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "bandit-interprocedural-taint-checks"
+    if not task.is_dir():
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp) / "workspace"
+        workspace.mkdir()
+        (workspace / "plan.md").write_text("task\n", encoding="utf-8")
+        results = Path(tmp) / "results"
+        fake_grade = {"pass": True, "reward": 1}
+        with (
+            patch(f"{__name__}.materialize_workspace"),
+            patch(f"{__name__}.write_plan_and_checks"),
+            patch(f"{__name__}.harbor_image", return_value=MagicMock()),
+            patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
+            patch(
+                f"{__name__}.run_malvin",
+                return_value={"exit_code": 0, "agent_seconds": 1.0},
+            ) as mock_malvin,
+            patch(
+                f"{__name__}.run_deepswe_run_in_sandbox",
+                return_value=(None, fake_grade),
+            ) as mock_grade,
+            patch(f"{__name__}.find_latest_malvin_log", return_value=None),
+        ):
+            run_modal_eval(
+                task_dir=task,
+                workspace=workspace,
+                results_dir=results,
+                malvin_command="code",
+                grade_only=False,
+                skip_grade=False,
+                dry_run=False,
+            )
+        mock_malvin.assert_called_once()
+        mock_grade.assert_called_once()
+        assert mock_grade.call_args.kwargs["grade_only"] is True
+        assert mock_grade.call_args.kwargs["cursor_secrets"] == []
+        reward_files = list(results.rglob("reward.txt"))
+        assert reward_files, results
+        assert reward_files[0].read_text(encoding="utf-8").strip() == "1"
+
+
 def run_unit_tests() -> None:
     """Local tests for deepswe_modal helpers (no Modal network)."""
     _test_repo_roots()
@@ -1284,6 +1337,7 @@ def run_unit_tests() -> None:
     _test_mount_eval_context_recipe()
     _test_sandbox_app()
     _test_self_test_flag()
+    _test_run_modal_eval_host_agent_modal_grade()
 
 
 if __name__ == "__main__":
