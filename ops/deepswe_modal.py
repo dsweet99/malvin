@@ -5,10 +5,10 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-The default ``solve`` path runs malvin in a Modal sandbox with **open egress** (no
-CIDR allowlist), harvests the workspace, then grades in a separate Modal sandbox with
-``block_network=True``. Agent-in-sandbox with a Cursor API ``cidr_allowlist`` remains
-available via ``run_deepswe_run_in_sandbox(open_network=False)`` for diagnostics.
+The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
+``cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
+in a separate Modal sandbox with ``block_network=True``. Open egress remains
+available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
 malvin and kiss are built from local source
 trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
 
@@ -93,6 +93,7 @@ CURSOR_API_HOSTS = (
     "api.cursor.com",
     "api3.cursor.sh",
     "repo42.cursor.sh",
+    "marketplace.cursorapi.com",
 )
 
 # Modal Sandbox.create defaults are 0.125 CPU and 128 MiB — too small for malvin +
@@ -266,6 +267,57 @@ print(json.dumps(sorted(cidrs)))
 )
 
 
+ALLOWLIST_FIXPOINT_SCRIPT = """
+import json
+import socket
+import ssl
+
+HOSTS = {hosts!r}
+CONNECTS_PER_HOST = 8
+CONNECT_TIMEOUT_SEC = 4
+
+
+def dns_ipv4(host: str) -> set[str]:
+    out: set[str] = set()
+    try:
+        for info in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM):
+            ip = info[4][0]
+            if ":" not in ip:
+                out.add(ip)
+    except socket.gaierror:
+        pass
+    return out
+
+
+def observe_peer_ips(host: str) -> set[str]:
+    seen: set[str] = set()
+    ctx = ssl.create_default_context()
+    for _ in range(CONNECTS_PER_HOST):
+        try:
+            with socket.create_connection((host, 443), CONNECT_TIMEOUT_SEC) as sock:
+                seen.add(sock.getpeername()[0])
+                with ctx.wrap_socket(sock, server_hostname=host):
+                    pass
+        except OSError:
+            continue
+    return seen
+
+
+cidrs: set[str] = set()
+for host in HOSTS:
+    for ip in dns_ipv4(host) | observe_peer_ips(host):
+        if ":" not in ip:
+            cidrs.add(f"{{ip}}/32")
+if not cidrs:
+    raise SystemExit(
+        "Could not observe Cursor API peer IPs under egress allowlist"
+    )
+print(json.dumps(sorted(cidrs)))
+""".format(
+    hosts=list(CURSOR_API_HOSTS),
+)
+
+
 def cidr_probe_image() -> modal.Image:
     """Minimal image for Modal egress DNS probes (same sandbox network as agent runs)."""
     return modal.Image.debian_slim(python_version="3.12")
@@ -336,13 +388,23 @@ def resolve_cursor_api_cidrs_under_allowlist(
     *,
     timeout: int = 300,
 ) -> list[str]:
-    """Resolve Cursor API DNS from inside a Modal sandbox with a seeded CIDR allowlist."""
-    return _run_modal_cidr_probe_script(
+    """DNS + best-effort TLS peer observation under a seeded CIDR allowlist."""
+    dns_cidrs = _run_modal_cidr_probe_script(
         MODAL_EGRESS_DNS_SCRIPT,
         cidr_allowlist=seed_cidrs,
         timeout=timeout,
         error_label="Modal egress allowlist DNS probe failed",
     )
+    try:
+        tls_cidrs = _run_modal_cidr_probe_script(
+            ALLOWLIST_FIXPOINT_SCRIPT,
+            cidr_allowlist=seed_cidrs,
+            timeout=timeout,
+            error_label="Modal egress allowlist TLS probe failed",
+        )
+    except click.ClickException:
+        tls_cidrs = []
+    return modal_cidr_allowlist(sorted(set(dns_cidrs) | set(tls_cidrs)))
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
@@ -354,9 +416,9 @@ def resolve_agent_sandbox_cidrs(
     image: modal.Image | None = None,
     *,
     timeout: int = 300,
-    fixpoint_rounds: int = 3,
+    fixpoint_rounds: int = 5,
 ) -> list[str]:
-    """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
+    """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist TLS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
@@ -376,7 +438,7 @@ def resolve_agent_sandbox_cidrs(
     click.echo(
         f"Cursor API allowlist: {len(cidrs)} IPv4 CIDRs "
         f"(host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
-        f"allowlist_dns_fixpoint=+{fixpoint_added})"
+        f"allowlist_tls_fixpoint=+{fixpoint_added})"
     )
     return cidrs
 
@@ -798,7 +860,7 @@ def run_modal_eval(
         if grade_only:
             click.echo("Dry run: grade-only on Modal (block_network sandbox)")
         else:
-            click.echo("Dry run: malvin agent in Modal sandbox (open egress)")
+            click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
             if not skip_grade:
                 click.echo("Dry run: Harbor grade in separate Modal sandbox (block_network)")
         return
@@ -853,14 +915,13 @@ def run_modal_eval(
             deepswe_run_py=deepswe_run_py,
         )
         agent_artifacts = run_root / "agent_sandbox"
-        click.echo("Running malvin agent in Modal sandbox (open egress)...")
+        click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
         agent_result, _ = run_deepswe_run_in_sandbox(
             agent_img,
             command=malvin_command,
             malvin_argv=list(malvin_args),
             grade_only=False,
             skip_grade=True,
-            open_network=True,
             cursor_secrets=cursor_secrets(),
             artifacts_dir=agent_artifacts,
             harvest_workspace=workspace,
@@ -1417,7 +1478,7 @@ def _test_self_test_flag() -> None:
 
 
 def _test_run_modal_eval_modal_agent_modal_grade() -> None:
-    """solve path: malvin in open-egress Modal sandbox, Harbor grade in block_network sandbox."""
+    """solve path: malvin in Cursor-allowlist Modal sandbox, Harbor grade in block_network sandbox."""
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"
     if not task.is_dir():
@@ -1456,7 +1517,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         agent_call, grade_call = mock_sandbox.call_args_list
         assert agent_call.kwargs["grade_only"] is False
         assert agent_call.kwargs["skip_grade"] is True
-        assert agent_call.kwargs["open_network"] is True
+        assert agent_call.kwargs.get("open_network") is not True
         assert agent_call.kwargs["harvest_workspace"] == workspace
         assert grade_call.kwargs["grade_only"] is True
         assert grade_call.kwargs["cursor_secrets"] == []

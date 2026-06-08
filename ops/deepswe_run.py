@@ -2,8 +2,8 @@
 """Run malvin against a DeepSWE Harbor task and grade with the official verifier.
 
 Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin in a Modal
-sandbox with open egress, harvests the workspace, then grades in a separate Modal
-sandbox with ``block_network=True``. ``solve --local TASK_NAME`` runs both phases in
+sandbox with a Cursor API CIDR allowlist, harvests the workspace, then grades in a
+separate Modal sandbox with ``block_network=True``. ``solve --local TASK_NAME`` runs both phases in
 one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
@@ -1265,7 +1265,7 @@ def _test_solve_modal_dry_run() -> None:
 
 
 def _test_solve_modal_full_dry_run() -> None:
-    """Default solve uses two Modal sandboxes (open-egress agent, block_network grade)."""
+    """Default solve uses two Modal sandboxes (Cursor-allowlist agent, block_network grade)."""
     from click.testing import CliRunner
 
     tasks_root = default_deepswe_tasks_root()
@@ -1278,7 +1278,7 @@ def _test_solve_modal_full_dry_run() -> None:
     )
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
-    assert "Dry run: malvin agent in Modal sandbox (open egress)" in result.output
+    assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
     assert "Dry run: Harbor grade in separate Modal sandbox (block_network)" in result.output
     assert "Running agent on host" not in result.output
 
