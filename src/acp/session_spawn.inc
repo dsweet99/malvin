@@ -131,13 +131,15 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
     crate::malvin_sandbox::note_active_sandbox_session(
         process_group_id,
         spawn_pid_baseline.clone(),
-    );
+        args.cwd,
+    )?;
     crate::acp::process_group_mem_watch::spawn_process_group_memory_watcher(&session, args.cwd);
     Ok(session)
 }
 
 pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSession, String> {
     crate::malvin_sandbox::assert_dead_before_next_spawn()?;
+    crate::malvin_sandbox::assert_no_peer_acp_spawn_lock(args.cwd)?;
     let rpc_timeout = clamp_rpc_timeout(args.rpc_timeout);
     let require_cursor_login_auth =
         requires_cursor_login_auth(args.api_key, args.auth_token);

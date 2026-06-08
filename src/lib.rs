@@ -45,6 +45,7 @@ pub use sandbox_oom::{
     SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
 };
 pub use current_state::format_current_state;
+mod acp_spawn_lock;
 pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;

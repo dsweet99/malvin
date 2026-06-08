@@ -32,6 +32,9 @@ from modal.stream_type import StreamType
 APP_NAME = "malvin-modal"
 WORKSPACE = "/workspace"
 CURSOR_ENV_KEYS = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"]
+# Modal Sandbox.create defaults (0.125 CPU, 128 MiB) are too small for malvin + cursor-agent.
+SANDBOX_CPU = 2.0
+SANDBOX_MEMORY_MIB = 4096
 
 app = modal.App(APP_NAME)
 
@@ -179,6 +182,8 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
             workdir=WORKSPACE,
             secrets=secrets,
             timeout=3600,
+            cpu=SANDBOX_CPU,
+            memory=SANDBOX_MEMORY_MIB,
         )
         proc = sandbox.exec(
             "malvin",
