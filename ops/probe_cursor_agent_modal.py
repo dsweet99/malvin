@@ -17,6 +17,7 @@ from deepswe_modal import (
     app,
     cursor_secrets,
     harbor_agent_image,
+    sandbox_app,
     stream_process_output,
     validate_toolchain_repos,
 )
@@ -43,7 +44,7 @@ agent --version 2>&1 || true
 echo '=== auth status ==='
 agent auth status 2>&1 || true
 
-run_probe 'cursor-agent --force -p Hello' cursor-agent --force -p Hello
+run_probe 'cursor-agent --force --trust -p Hello' cursor-agent --force --trust -p Hello
 if [ "${QUICK:-0}" != 1 ]; then
   run_probe 'cursor-agent --force --trust -p Hello' cursor-agent --force --trust -p Hello
   run_probe 'cursor-agent --force --yolo -p Hello' cursor-agent --force --yolo -p Hello
@@ -53,6 +54,10 @@ if [ "${VARIANT:-}" = trust_auto ]; then
   run_probe 'cursor-agent --force --trust --model auto -p Hello' cursor-agent --force --trust --model auto -p Hello
 fi
 run_probe 'HTTPS api2.cursor.sh' curl -sS --max-time 15 -o /dev/null -w 'http_code=%{http_code} time=%{time_total}s\n' https://api2.cursor.sh/ || echo curl_failed
+if [ "${MALVIN_PROBE:-0}" = 1 ]; then
+  echo 'Reply with exactly: ok' > plan.md
+  run_probe 'malvin code plan.md (90s cap)' timeout 90 malvin code plan.md
+fi
 exit 0
 """
 
@@ -65,6 +70,7 @@ def probe_in_sandbox(
     open_network: bool = False,
     quick: bool = False,
     variant: str = "",
+    malvin_probe: bool = False,
 ) -> None:
     sandbox: modal.Sandbox | None = None
     try:
@@ -73,14 +79,17 @@ def probe_in_sandbox(
         else:
             net_kwargs = agent_sandbox_network_kwargs(image)
         sandbox = modal.Sandbox.create(
-            app=app,
+            app=sandbox_app(),
             image=image,
             workdir=APP_REMOTE,
             secrets=secrets,
             timeout=timeout,
             **net_kwargs,
         )
-        quick_prefix = f"QUICK={1 if quick else 0}; VARIANT={variant!r}; "
+        quick_prefix = (
+            f"QUICK={1 if quick else 0}; VARIANT={variant!r}; "
+            f"MALVIN_PROBE={1 if malvin_probe else 0}; "
+        )
         proc = sandbox.exec(
             "bash",
             "-lc",
@@ -126,12 +135,18 @@ def probe_in_sandbox(
     show_default=True,
     help="Probe variant label (e.g. trust_auto).",
 )
+@click.option(
+    "--malvin-probe",
+    is_flag=True,
+    help="Also run `malvin code plan.md` (90s cap) after cursor-agent probes.",
+)
 def main(
     task_dir: Path,
     workspace: Path | None,
     open_network: bool,
     quick: bool,
     variant: str,
+    malvin_probe: bool,
 ) -> None:
     """Build harbor agent image and exec cursor-agent --force -p Hello in Modal."""
     spec = parse_task_dir(task_dir)
@@ -144,6 +159,7 @@ def main(
     malvin_repo, kiss_repo = validate_toolchain_repos()
     click.echo(f"Task: {spec.task_id}")
     click.echo(f"Workspace: {workspace.resolve()}")
+    deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     image = harbor_agent_image(
         spec,
         workspace,
@@ -151,6 +167,7 @@ def main(
         dockerfile=spec.dockerfile,
         malvin_repo=malvin_repo,
         kiss_repo=kiss_repo,
+        deepswe_run_py=deepswe_run_py,
     )
     click.echo("Running cursor-agent probe in Modal sandbox...")
     if open_network:
@@ -163,6 +180,7 @@ def main(
         open_network=open_network,
         quick=quick,
         variant=variant,
+        malvin_probe=malvin_probe,
     )
 
 

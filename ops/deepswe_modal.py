@@ -96,12 +96,16 @@ CURSOR_API_HOSTS = (
     "marketplace.cursorapi.com",
 )
 
+# Agent sessions must reach these; geo/direct fallbacks are best-effort under the cap.
+CRITICAL_CURSOR_API_HOSTS = ("api2.cursor.sh", "api.cursor.com")
+
 # Modal Sandbox.create defaults are 0.125 CPU and 128 MiB — too small for malvin +
 # cursor-agent. Match malvin's default mem_limit_gb (default_repo/config.toml).
 AGENT_SANDBOX_CPU = 2.0
 AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
 GRADE_SANDBOX_MEMORY_MIB = 2048
+MODAL_MAX_CIDR_ALLOWLIST = 100
 
 app = modal.App(APP_NAME)
 
@@ -222,7 +226,7 @@ import socket
 import ssl
 
 HOSTS = {hosts!r}
-CONNECTS_PER_HOST = 30
+CONNECTS_PER_HOST = 50
 CONNECT_TIMEOUT_SEC = 8
 
 
@@ -266,15 +270,15 @@ print(json.dumps(sorted(cidrs)))
     hosts=list(CURSOR_API_HOSTS),
 )
 
-
-ALLOWLIST_FIXPOINT_SCRIPT = """
+# TLS peer observation under a converged allowlist (after DNS fixpoint).
+RESOLVE_CURSOR_CIDRS_UNDER_ALLOWLIST_SCRIPT = """
 import json
 import socket
 import ssl
 
 HOSTS = {hosts!r}
-CONNECTS_PER_HOST = 8
-CONNECT_TIMEOUT_SEC = 4
+CONNECTS_PER_HOST = 15
+CONNECT_TIMEOUT_SEC = 5
 
 
 def dns_ipv4(host: str) -> set[str]:
@@ -310,12 +314,111 @@ for host in HOSTS:
             cidrs.add(f"{{ip}}/32")
 if not cidrs:
     raise SystemExit(
-        "Could not observe Cursor API peer IPs under egress allowlist"
+        "Could not observe Cursor API peer IPs inside allowlist sandbox"
     )
 print(json.dumps(sorted(cidrs)))
 """.format(
     hosts=list(CURSOR_API_HOSTS),
 )
+
+VALIDATE_CURSOR_HTTPS_UNDER_ALLOWLIST_SCRIPT = """
+import json
+import socket
+import ssl
+import urllib.request
+
+HOSTS = {hosts!r}
+CONNECTS_PER_HOST = 15
+CONNECT_TIMEOUT_SEC = 8
+
+
+def https_ok(host: str) -> bool:
+    try:
+        req = urllib.request.Request(f"https://{{host}}/", method="HEAD")
+        with urllib.request.urlopen(req, timeout=CONNECT_TIMEOUT_SEC) as resp:
+            return resp.status < 500
+    except Exception:
+        return False
+
+
+def tls_peer_ips(host: str) -> set[str]:
+    seen: set[str] = set()
+    ctx = ssl.create_default_context()
+    for _ in range(CONNECTS_PER_HOST):
+        try:
+            with socket.create_connection((host, 443), CONNECT_TIMEOUT_SEC) as sock:
+                seen.add(sock.getpeername()[0])
+                with ctx.wrap_socket(sock, server_hostname=host):
+                    pass
+        except OSError:
+            continue
+    return seen
+
+
+failed: list[str] = []
+extra_ips: set[str] = set()
+for host in HOSTS:
+    if not https_ok(host):
+        failed.append(host)
+        for ip in tls_peer_ips(host):
+            if ":" not in ip:
+                extra_ips.add(ip)
+print(json.dumps({{"failed_hosts": failed, "extra_ips": sorted(extra_ips)}}))
+""".format(
+    hosts=list(CURSOR_API_HOSTS),
+)
+
+ALLOWLIST_CIDR_PROBE_TIMEOUT = 600
+
+OBSERVE_AGENT_PEERS_SCRIPT = r"""
+import json
+import socket
+import struct
+import subprocess
+import time
+
+
+def hex_endpoint(raw: str) -> tuple[str, int]:
+    addr_hex, port_hex = raw.split(":")
+    return socket.inet_ntoa(struct.pack("<L", int(addr_hex, 16))), int(port_hex, 16)
+
+
+def tcp_peers(pid: int) -> set[tuple[str, int]]:
+    out: set[tuple[str, int]] = set()
+    path = f"/proc/{pid}/net/tcp"
+    try:
+        with open(path, encoding="ascii") as handle:
+            for line in handle.read().splitlines()[1:]:
+                cols = line.split()
+                if len(cols) < 4 or cols[3] != "01":
+                    continue
+                ip, port = hex_endpoint(cols[2])
+                out.add((ip, port))
+    except OSError:
+        pass
+    return out
+
+
+proc = subprocess.Popen(
+    ["cursor-agent", "--force", "--trust", "-p", "Hello"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+)
+seen: set[str] = set()
+for _ in range(40):
+    if proc.poll() is not None:
+        break
+    for ip, _port in tcp_peers(proc.pid):
+        seen.add(ip)
+    time.sleep(0.25)
+try:
+    proc.communicate(timeout=30)
+except subprocess.TimeoutExpired:
+    proc.kill()
+    proc.communicate()
+print(json.dumps({"peer_ips": sorted(seen)}))
+"""
 
 
 def cidr_probe_image() -> modal.Image:
@@ -323,23 +426,46 @@ def cidr_probe_image() -> modal.Image:
     return modal.Image.debian_slim(python_version="3.12")
 
 
+def agent_peer_probe_image() -> modal.Image:
+    """Minimal image with cursor-agent for live TCP peer observation."""
+    return (
+        modal.Image.debian_slim(python_version="3.12")
+        .apt_install("curl")
+        .run_commands(
+            "curl -fsSL https://cursor.com/install | bash",
+            "/root/.local/bin/agent --version || true",
+        )
+        .env({"PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"})
+    )
+
+
+def _probe_sandbox_timeout(requested: int) -> int:
+    """Sandbox lifetime must cover worst-case TLS peer probes under an allowlist."""
+    return max(requested, ALLOWLIST_CIDR_PROBE_TIMEOUT)
+
+
 def _run_modal_cidr_probe_script(
     script: str,
     *,
     cidr_allowlist: list[str] | None = None,
-    timeout: int = 300,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
     error_label: str,
+    probe_image: modal.Image | None = None,
+    secrets: list[modal.Secret] | None = None,
 ) -> list[str]:
     """Exec a probe script in a Modal sandbox and parse a JSON CIDR list from stdout."""
-    probe_image = cidr_probe_image()
+    image = probe_image or cidr_probe_image()
     sandbox: modal.Sandbox | None = None
+    sandbox_timeout = _probe_sandbox_timeout(timeout)
     create_kwargs: dict[str, Any] = {
         "app": sandbox_app(),
-        "image": probe_image,
-        "timeout": timeout,
+        "image": image,
+        "timeout": sandbox_timeout,
     }
     if cidr_allowlist is not None:
         create_kwargs["cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
+    if secrets:
+        create_kwargs["secrets"] = secrets
     try:
         sandbox = modal.Sandbox.create(**create_kwargs)
         proc = sandbox.exec(
@@ -352,7 +478,14 @@ def _run_modal_cidr_probe_script(
         )
         stdout = proc.stdout.read()
         stderr = proc.stderr.read()
-        proc.wait()
+        try:
+            proc.wait()
+        except modal.exception.NotFoundError as exc:
+            detail = (stderr or stdout or str(exc)).strip()
+            raise click.ClickException(
+                f"{error_label}: sandbox expired before probe finished"
+                + (f": {detail}" if detail else "")
+            ) from exc
         if proc.returncode != 0:
             detail = (stderr or stdout or "").strip()
             raise click.ClickException(
@@ -388,23 +521,212 @@ def resolve_cursor_api_cidrs_under_allowlist(
     *,
     timeout: int = 300,
 ) -> list[str]:
-    """DNS + best-effort TLS peer observation under a seeded CIDR allowlist."""
-    dns_cidrs = _run_modal_cidr_probe_script(
+    """Resolve Cursor API DNS from inside a Modal sandbox with a seeded CIDR allowlist."""
+    return _run_modal_cidr_probe_script(
         MODAL_EGRESS_DNS_SCRIPT,
         cidr_allowlist=seed_cidrs,
         timeout=timeout,
         error_label="Modal egress allowlist DNS probe failed",
     )
+
+
+def resolve_cursor_api_cidrs_under_allowlist_peers(
+    seed_cidrs: list[str],
+    *,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+) -> list[str]:
+    """Observe TLS peer IPs reachable under a converged CIDR allowlist."""
+    return _run_modal_cidr_probe_script(
+        RESOLVE_CURSOR_CIDRS_UNDER_ALLOWLIST_SCRIPT,
+        cidr_allowlist=seed_cidrs,
+        timeout=timeout,
+        error_label="Modal egress allowlist peer probe failed",
+    )
+
+
+def validate_cursor_https_under_allowlist(
+    seed_cidrs: list[str],
+    *,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+) -> dict[str, Any]:
+    """Return failed Cursor API hosts and extra peer IPs under a CIDR allowlist."""
+    sandbox: modal.Sandbox | None = None
     try:
-        tls_cidrs = _run_modal_cidr_probe_script(
-            ALLOWLIST_FIXPOINT_SCRIPT,
-            cidr_allowlist=seed_cidrs,
-            timeout=timeout,
-            error_label="Modal egress allowlist TLS probe failed",
+        sandbox = modal.Sandbox.create(
+            app=sandbox_app(),
+            image=cidr_probe_image(),
+            timeout=_probe_sandbox_timeout(timeout),
+            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
-    except click.ClickException:
-        tls_cidrs = []
-    return modal_cidr_allowlist(sorted(set(dns_cidrs) | set(tls_cidrs)))
+        proc = sandbox.exec(
+            "python3",
+            "-c",
+            VALIDATE_CURSOR_HTTPS_UNDER_ALLOWLIST_SCRIPT,
+            stdout=StreamType.PIPE,
+            stderr=StreamType.PIPE,
+            text=True,
+        )
+        stdout = proc.stdout.read()
+        stderr = proc.stderr.read()
+        try:
+            proc.wait()
+        except modal.exception.NotFoundError as exc:
+            detail = (stderr or stdout or str(exc)).strip()
+            raise click.ClickException(
+                "Modal allowlist HTTPS validation: sandbox expired before probe finished"
+                + (f": {detail}" if detail else "")
+            ) from exc
+        if proc.returncode != 0:
+            detail = (stderr or stdout or "").strip()
+            raise click.ClickException(
+                "Modal allowlist HTTPS validation failed"
+                + (f": {detail}" if detail else "")
+            )
+        payload = json.loads(stdout.strip() or "{}")
+        if not isinstance(payload, dict):
+            raise click.ClickException(
+                "Modal allowlist HTTPS validation: invalid payload"
+            )
+        failed = payload.get("failed_hosts", [])
+        extra = payload.get("extra_ips", [])
+        if not isinstance(failed, list) or not isinstance(extra, list):
+            raise click.ClickException(
+                "Modal allowlist HTTPS validation: invalid payload fields"
+            )
+        return {"failed_hosts": failed, "extra_ips": extra}
+    finally:
+        if sandbox is not None:
+            sandbox.terminate()
+
+
+def resolve_cursor_api_cidrs_from_agent_peers(
+    *,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+) -> list[str]:
+    """Observe TCP peers during a live cursor-agent hello under open egress."""
+    if not cursor_secrets():
+        return []
+    sandbox: modal.Sandbox | None = None
+    try:
+        sandbox = modal.Sandbox.create(
+            app=sandbox_app(),
+            image=agent_peer_probe_image(),
+            secrets=cursor_secrets(),
+            timeout=_probe_sandbox_timeout(timeout),
+        )
+        proc = sandbox.exec(
+            "python3",
+            "-c",
+            OBSERVE_AGENT_PEERS_SCRIPT,
+            stdout=StreamType.PIPE,
+            stderr=StreamType.PIPE,
+            text=True,
+        )
+        stdout = proc.stdout.read()
+        stderr = proc.stderr.read()
+        try:
+            proc.wait()
+        except modal.exception.NotFoundError as exc:
+            detail = (stderr or stdout or str(exc)).strip()
+            raise click.ClickException(
+                "Modal agent peer probe: sandbox expired before probe finished"
+                + (f": {detail}" if detail else "")
+            ) from exc
+        if stderr.strip():
+            click.echo(stderr, err=True)
+        payload = json.loads(stdout.strip() or "{}")
+        peer_ips = payload.get("peer_ips", [])
+        if not isinstance(peer_ips, list):
+            if proc.returncode != 0:
+                detail = (stderr or stdout or "").strip()
+                raise click.ClickException(
+                    "Modal agent peer probe failed"
+                    + (f": {detail}" if detail else "")
+                )
+            raise click.ClickException("Modal agent peer probe: invalid payload")
+        if proc.returncode != 0 and peer_ips:
+            click.echo(
+                f"Modal agent peer probe exit={proc.returncode} "
+                f"but observed {len(peer_ips)} peer IP(s); merging into allowlist",
+                err=True,
+            )
+        elif proc.returncode != 0:
+            detail = (stderr or stdout or "").strip()
+            raise click.ClickException(
+                "Modal agent peer probe failed"
+                + (f": {detail}" if detail else "")
+            )
+        return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
+    finally:
+        if sandbox is not None:
+            sandbox.terminate()
+
+
+def resolve_agent_session_peers_under_allowlist(
+    seed_cidrs: list[str],
+    *,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+) -> list[str]:
+    """Observe TCP peers during cursor-agent hello under a converged CIDR allowlist."""
+    if not cursor_secrets():
+        return []
+    sandbox: modal.Sandbox | None = None
+    try:
+        sandbox = modal.Sandbox.create(
+            app=sandbox_app(),
+            image=agent_peer_probe_image(),
+            secrets=cursor_secrets(),
+            timeout=_probe_sandbox_timeout(timeout),
+            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+        )
+        proc = sandbox.exec(
+            "python3",
+            "-c",
+            OBSERVE_AGENT_PEERS_SCRIPT,
+            stdout=StreamType.PIPE,
+            stderr=StreamType.PIPE,
+            text=True,
+        )
+        stdout = proc.stdout.read()
+        stderr = proc.stderr.read()
+        try:
+            proc.wait()
+        except modal.exception.NotFoundError as exc:
+            detail = (stderr or stdout or str(exc)).strip()
+            raise click.ClickException(
+                "Modal agent peer probe under allowlist: sandbox expired before probe finished"
+                + (f": {detail}" if detail else "")
+            ) from exc
+        if stderr.strip():
+            click.echo(stderr, err=True)
+        payload = json.loads(stdout.strip() or "{}")
+        peer_ips = payload.get("peer_ips", [])
+        if not isinstance(peer_ips, list):
+            if proc.returncode != 0:
+                detail = (stderr or stdout or "").strip()
+                raise click.ClickException(
+                    "Modal agent peer probe under allowlist failed"
+                    + (f": {detail}" if detail else "")
+                )
+            raise click.ClickException(
+                "Modal agent peer probe under allowlist: invalid payload"
+            )
+        if proc.returncode != 0 and peer_ips:
+            click.echo(
+                f"Allowlist agent peer probe exit={proc.returncode} "
+                f"but observed {len(peer_ips)} peer IP(s); merging into allowlist",
+                err=True,
+            )
+        elif proc.returncode != 0:
+            detail = (stderr or stdout or "").strip()
+            raise click.ClickException(
+                "Modal agent peer probe under allowlist failed"
+                + (f": {detail}" if detail else "")
+            )
+        return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
+    finally:
+        if sandbox is not None:
+            sandbox.terminate()
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
@@ -412,35 +734,258 @@ def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
     return modal_cidr_allowlist(sorted({cidr for group in cidr_lists for cidr in group}))
 
 
+def compress_ipv4_cidrs(
+    cidrs: list[str],
+    *,
+    max_cidrs: int = MODAL_MAX_CIDR_ALLOWLIST,
+) -> list[str]:
+    """Merge co-located /32s into /24s so the list fits Modal's allowlist cap."""
+    import ipaddress
+
+    by_24: dict[str, list[str]] = {}
+    wider: list[str] = []
+    for cidr in cidrs:
+        net = ipaddress.ip_network(cidr, strict=False)
+        if net.prefixlen == 32:
+            parent = str(ipaddress.ip_network(f"{net.network_address}/24", strict=False))
+            by_24.setdefault(parent, []).append(cidr)
+        else:
+            wider.append(cidr)
+    merged: set[str] = set(wider)
+    for parent, _hosts in by_24.items():
+        # Always widen /32 to /24 so DNS round-robin within the same subnet stays allowed.
+        merged.add(parent)
+    ordered = sorted(merged)
+    if len(ordered) <= max_cidrs:
+        return ordered
+    # Still over cap: promote every /32 to its /24 parent.
+    promoted: set[str] = set(wider)
+    for parent, hosts in by_24.items():
+        promoted.add(parent)
+    ordered = sorted(promoted)
+    if len(ordered) <= max_cidrs:
+        return ordered
+    # Still over cap: merge co-located /24 (and narrower) entries into /16 parents.
+    by_16: dict[str, list[str]] = {}
+    keep: set[str] = set()
+    for cidr in ordered:
+        net = ipaddress.ip_network(cidr, strict=False)
+        if net.prefixlen <= 16:
+            keep.add(cidr)
+            continue
+        parent16 = str(ipaddress.ip_network(f"{net.network_address}/16", strict=False))
+        by_16.setdefault(parent16, []).append(cidr)
+    merged16: set[str] = set(keep)
+    for parent, members in by_16.items():
+        merged16.add(parent if len(members) >= 2 else members[0])
+    ordered = sorted(merged16)
+    if len(ordered) <= max_cidrs:
+        return ordered
+    merged16 = set(keep)
+    for parent in by_16:
+        merged16.add(parent)
+    ordered = sorted(merged16)
+    if len(ordered) <= max_cidrs:
+        return ordered
+    # Still over cap: merge /16 and narrower into /8 parents.
+    by_8: dict[str, list[str]] = {}
+    keep8: set[str] = set()
+    for cidr in ordered:
+        net = ipaddress.ip_network(cidr, strict=False)
+        if net.prefixlen <= 8:
+            keep8.add(cidr)
+            continue
+        parent8 = str(ipaddress.ip_network(f"{net.network_address}/8", strict=False))
+        by_8.setdefault(parent8, []).append(cidr)
+    merged8: set[str] = set(keep8)
+    for parent, members in by_8.items():
+        merged8.add(parent if len(members) >= 2 else members[0])
+    ordered = sorted(merged8)
+    if len(ordered) <= max_cidrs:
+        return ordered
+    merged8 = set(keep8)
+    for parent in by_8:
+        merged8.add(parent)
+    ordered = sorted(merged8)
+    if len(ordered) > max_cidrs:
+        raise click.ClickException(
+            f"Cursor API CIDR allowlist has {len(ordered)} entries after /8 "
+            f"compression; Modal allows at most {max_cidrs}"
+        )
+    return ordered
+
+
+def allowlist_near_modal_cap(cidrs: list[str], *, headroom: int = 2) -> bool:
+    """Return True when compressed allowlist is within ``headroom`` of Modal's cap."""
+    try:
+        return len(compress_ipv4_cidrs(cidrs)) >= MODAL_MAX_CIDR_ALLOWLIST - headroom
+    except click.ClickException:
+        return True
+
+
+def _merge_allowlist_agent_peers(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    max_rounds: int = 3,
+    label: str = "allowlist agent peer",
+) -> tuple[list[str], int]:
+    """Observe cursor-agent TCP peers under the current allowlist and merge /32 CIDRs."""
+    added_total = 0
+    for _ in range(max_rounds):
+        before = len(cidrs)
+        try:
+            seed = compress_ipv4_cidrs(cidrs)
+            raw_peers = resolve_agent_session_peers_under_allowlist(
+                seed, timeout=timeout
+            )
+            if not raw_peers:
+                break
+            cidrs = union_ipv4_cidrs(cidrs, modal_cidr_allowlist(raw_peers))
+            added = len(cidrs) - before
+            added_total += added
+            if added == 0:
+                break
+            if allowlist_near_modal_cap(cidrs):
+                break
+        except click.ClickException as exc:
+            click.echo(f"{label} probe skipped: {exc}", err=True)
+            break
+    return cidrs, added_total
+
+
 def resolve_agent_sandbox_cidrs(
     image: modal.Image | None = None,
     *,
     timeout: int = 300,
-    fixpoint_rounds: int = 5,
+    fixpoint_rounds: int = 8,
 ) -> list[str]:
-    """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist TLS fixpoint."""
+    """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
     )
-    cidrs = union_ipv4_cidrs(host_cidrs, open_modal_cidrs)
+    agent_peer_added = 0
+    agent_peer_cidrs = modal_cidr_allowlist(
+        resolve_cursor_api_cidrs_from_agent_peers(timeout=timeout)
+    )
+    cidrs = union_ipv4_cidrs(host_cidrs, open_modal_cidrs, agent_peer_cidrs)
+    agent_peer_added = len(agent_peer_cidrs)
     fixpoint_added = 0
     for _ in range(fixpoint_rounds):
         before = len(cidrs)
         allowlist_dns = modal_cidr_allowlist(
-            resolve_cursor_api_cidrs_under_allowlist(cidrs, timeout=timeout)
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            )
         )
         cidrs = union_ipv4_cidrs(cidrs, allowlist_dns)
         fixpoint_added += len(cidrs) - before
         if len(cidrs) == before:
             break
-    click.echo(
-        f"Cursor API allowlist: {len(cidrs)} IPv4 CIDRs "
-        f"(host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
-        f"allowlist_tls_fixpoint=+{fixpoint_added})"
+        if allowlist_near_modal_cap(cidrs):
+            break
+    peer_added = 0
+    before_peers = len(cidrs)
+    try:
+        peer_cidrs = modal_cidr_allowlist(
+            resolve_cursor_api_cidrs_under_allowlist_peers(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            )
+        )
+        cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
+        peer_added = len(cidrs) - before_peers
+    except click.ClickException as exc:
+        click.echo(f"Allowlist TLS peer probe skipped: {exc}", err=True)
+    allowlist_agent_peer_added = 0
+    https_validation_added = 0
+    for _ in range(5):
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        if not failed_hosts:
+            break
+        before = len(cidrs)
+        extra_ips = validation.get("extra_ips", [])
+        cidrs = union_ipv4_cidrs(cidrs, [f"{ip}/32" for ip in extra_ips if isinstance(ip, str)])
+        try:
+            peer_cidrs = modal_cidr_allowlist(
+                resolve_cursor_api_cidrs_under_allowlist_peers(
+                    compress_ipv4_cidrs(cidrs), timeout=timeout
+                )
+            )
+            cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
+        except click.ClickException as exc:
+            click.echo(f"HTTPS validation peer probe skipped: {exc}", err=True)
+        allowlist_dns = modal_cidr_allowlist(
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            )
+        )
+        cidrs = union_ipv4_cidrs(cidrs, allowlist_dns)
+        https_validation_added += len(cidrs) - before
+        click.echo(
+            f"Allowlist HTTPS validation: {len(failed_hosts)} host(s) failed "
+            f"({', '.join(str(h) for h in failed_hosts[:3])}"
+            f"{'...' if len(failed_hosts) > 3 else ''}); "
+            f"added {len(cidrs) - before} CIDR(s)",
+            err=True,
+        )
+        if len(cidrs) == before:
+            break
+        if allowlist_near_modal_cap(cidrs):
+            break
+        post_round, added = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=1, label="HTTPS-round agent peer"
+        )
+        cidrs = post_round
+        allowlist_agent_peer_added += added
+    else:
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        critical_failed = [
+            host for host in failed_hosts if host in CRITICAL_CURSOR_API_HOSTS
+        ]
+        if critical_failed:
+            raise click.ClickException(
+                "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+                f"validation rounds: {', '.join(str(h) for h in critical_failed)}"
+            )
+        if failed_hosts:
+            click.echo(
+                "Allowlist HTTPS validation: non-critical host(s) still unreachable "
+                f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
+                err=True,
+            )
+    cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=3, label="Post-HTTPS agent peer"
     )
-    return cidrs
+    allowlist_agent_peer_added += post_https_agent_peers
+    seed = compress_ipv4_cidrs(cidrs)
+    final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+    critical_failed = [
+        host
+        for host in final_validation.get("failed_hosts", [])
+        if host in CRITICAL_CURSOR_API_HOSTS
+    ]
+    if critical_failed:
+        raise click.ClickException(
+            "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+            f"post-HTTPS agent peer merge: {', '.join(str(h) for h in critical_failed)}"
+        )
+    compressed = compress_ipv4_cidrs(cidrs)
+    click.echo(
+        f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
+        f"(raw={len(cidrs)}, host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
+        f"agent_session_peers={agent_peer_added}, "
+        f"allowlist_dns_fixpoint=+{fixpoint_added}, allowlist_peer=+{peer_added}, "
+        f"allowlist_agent_peers=+{allowlist_agent_peer_added}, "
+        f"https_validation=+{https_validation_added})"
+    )
+    return compressed
 
 
 def agent_sandbox_network_kwargs(
@@ -1128,6 +1673,25 @@ def _test_sandbox_resource_kwargs() -> None:
     assert grade == {"cpu": 1.0, "memory": 2048}
 
 
+def _test_compress_ipv4_cidrs() -> None:
+    merged = compress_ipv4_cidrs(
+        ["18.204.92.138/32", "18.204.92.140/32", "3.2.3.4/32"]
+    )
+    assert merged == ["18.204.92.0/24", "3.2.3.0/24"]
+    assert len(compress_ipv4_cidrs([f"10.0.{i}.1/32" for i in range(50)])) == 50
+    many_24 = [f"18.{i // 256}.{i % 256}.0/24" for i in range(102)]
+    assert len(compress_ipv4_cidrs(many_24)) <= MODAL_MAX_CIDR_ALLOWLIST
+    # /8 promotion when /16 merge still exceeds Modal's cap.
+    crowded = [f"10.{i // 256}.{i % 256}.0/24" for i in range(120)]
+    assert len(compress_ipv4_cidrs(crowded)) <= MODAL_MAX_CIDR_ALLOWLIST
+
+
+def _test_allowlist_near_modal_cap() -> None:
+    assert not allowlist_near_modal_cap(["1.1.1.1/32"])
+    crowded = [f"{i}.0.0.0/16" for i in range(1, 106)]
+    assert allowlist_near_modal_cap(crowded)
+
+
 def _test_agent_sandbox_cidrs_union() -> None:
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
@@ -1142,13 +1706,31 @@ def _test_agent_sandbox_cidrs_union() -> None:
                     ["5.5.5.5/32"],
                 ],
             ):
-                cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
+                with patch(
+                    f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+                    return_value=["6.6.6.6/32"],
+                ):
+                    with patch(
+                        f"{__name__}.resolve_cursor_api_cidrs_from_agent_peers",
+                        return_value=["7.7.7.7/32"],
+                    ):
+                        with patch(
+                            f"{__name__}.resolve_agent_session_peers_under_allowlist",
+                            return_value=[],
+                        ):
+                            with patch(
+                                f"{__name__}.validate_cursor_https_under_allowlist",
+                                return_value={"failed_hosts": [], "extra_ips": []},
+                            ):
+                                cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
     assert cidrs == [
-        "1.1.1.1/32",
-        "2.2.2.2/32",
-        "3.3.3.3/32",
-        "4.4.4.4/32",
-        "5.5.5.5/32",
+        "1.1.1.0/24",
+        "2.2.2.0/24",
+        "3.3.3.0/24",
+        "4.4.4.0/24",
+        "5.5.5.0/24",
+        "6.6.6.0/24",
+        "7.7.7.0/24",
     ]
 
 
@@ -1458,6 +2040,11 @@ def _test_docstring_normative_command() -> None:
     assert "Gate B" in doc
 
 
+def _test_probe_sandbox_timeout() -> None:
+    assert _probe_sandbox_timeout(120) == ALLOWLIST_CIDR_PROBE_TIMEOUT
+    assert _probe_sandbox_timeout(900) == 900
+
+
 def _test_sandbox_app() -> None:
     lookup_app = SimpleNamespace(app_id="lookup-id")
     module_app = SimpleNamespace(app_id="module-id")
@@ -1534,6 +2121,8 @@ def run_unit_tests() -> None:
     _test_modal_cidr_allowlist_ipv4_only()
     _test_network_kwargs()
     _test_sandbox_resource_kwargs()
+    _test_compress_ipv4_cidrs()
+    _test_allowlist_near_modal_cap()
     _test_agent_sandbox_cidrs_union()
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
@@ -1551,6 +2140,7 @@ def run_unit_tests() -> None:
     _test_harvest_sandbox_workspace()
     _test_extract_tar_over_workspace_readonly_target()
     _test_mount_eval_context_recipe()
+    _test_probe_sandbox_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
     _test_run_modal_eval_modal_agent_modal_grade()
