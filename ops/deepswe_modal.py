@@ -112,8 +112,55 @@ AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
 GRADE_SANDBOX_MEMORY_MIB = 2048
 MODAL_MAX_CIDR_ALLOWLIST = 100
+ALLOWLIST_CACHE_TTL_SEC = 86400
 
 app = modal.App(APP_NAME)
+
+
+def cursor_api_allowlist_cache_path() -> Path:
+    """Path for persisted Modal Cursor API CIDR allowlist."""
+    return Path.home() / ".malvin" / "cursor_api_allowlist.json"
+
+
+def read_cursor_api_allowlist_cache() -> list[str] | None:
+    """Return cached allowlist when fresh; ``None`` when missing or stale."""
+    path = cursor_api_allowlist_cache_path()
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        cidrs = payload.get("cidrs")
+        if not isinstance(cidrs, list) or not cidrs:
+            return None
+        ts = payload.get("timestamp_utc")
+        if isinstance(ts, str):
+            cached_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            if age > ALLOWLIST_CACHE_TTL_SEC:
+                return None
+        return [str(cidr) for cidr in cidrs]
+    except (json.JSONDecodeError, OSError, TypeError, ValueError):
+        return None
+
+
+def write_cursor_api_allowlist_cache(cidrs: list[str]) -> None:
+    """Persist a compressed allowlist for subsequent solves."""
+    path = cursor_api_allowlist_cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cidrs": cidrs,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def critical_cursor_hosts_failed(failed_hosts: list[Any]) -> list[str]:
+    """Return critical Cursor API hostnames that failed HTTPS validation."""
+    return [
+        str(host)
+        for host in failed_hosts
+        if str(host) in CRITICAL_CURSOR_API_HOSTS
+    ]
 
 
 def sandbox_app() -> modal.App:
@@ -911,6 +958,14 @@ def resolve_agent_sandbox_cidrs(
 ) -> list[str]:
     """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
+    if os.environ.get("DEEPSWE_REFRESH_ALLOWLIST_CACHE") != "1":
+        cached = read_cursor_api_allowlist_cache()
+        if cached is not None:
+            click.echo(
+                f"Using cached Cursor API allowlist ({len(cached)} CIDRs from "
+                f"{cursor_api_allowlist_cache_path()})"
+            )
+            return cached
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
@@ -953,7 +1008,15 @@ def resolve_agent_sandbox_cidrs(
         seed = compress_ipv4_cidrs(cidrs)
         validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
         failed_hosts = validation.get("failed_hosts", [])
-        if not failed_hosts:
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if not critical_failed:
+            if failed_hosts:
+                click.echo(
+                    "Allowlist HTTPS validation: non-critical host(s) unreachable "
+                    f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                    f"{'...' if len(failed_hosts) > 5 else ''}); continuing",
+                    err=True,
+                )
             break
         before = len(cidrs)
         extra_ips = validation.get("extra_ips", [])
@@ -1009,23 +1072,26 @@ def resolve_agent_sandbox_cidrs(
                 f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
                 err=True,
             )
+    seed = compress_ipv4_cidrs(cidrs)
+    # Always observe cursor-agent peers under the converged allowlist. Skipping
+    # this when critical HTTPS hosts pass caused allowlist_agent_peers=+0 and
+    # Connection stalled in the agent sandbox (streaming peers differ from TLS).
     cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=3, label="Post-HTTPS agent peer"
+        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
     )
     allowlist_agent_peer_added += post_https_agent_peers
     seed = compress_ipv4_cidrs(cidrs)
     final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-    critical_failed = [
-        host
-        for host in final_validation.get("failed_hosts", [])
-        if host in CRITICAL_CURSOR_API_HOSTS
-    ]
+    critical_failed = critical_cursor_hosts_failed(
+        final_validation.get("failed_hosts", [])
+    )
     if critical_failed:
         raise click.ClickException(
             "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
             f"post-HTTPS agent peer merge: {', '.join(str(h) for h in critical_failed)}"
         )
     compressed = compress_ipv4_cidrs(cidrs)
+    write_cursor_api_allowlist_cache(compressed)
     click.echo(
         f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
         f"(raw={len(cidrs)}, host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
@@ -1741,6 +1807,11 @@ def _test_allowlist_near_modal_cap() -> None:
 
 
 def _test_agent_sandbox_cidrs_union() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        _test_agent_sandbox_cidrs_union_body()
+
+
+def _test_agent_sandbox_cidrs_union_body() -> None:
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
             f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
@@ -1770,7 +1841,8 @@ def _test_agent_sandbox_cidrs_union() -> None:
                                 f"{__name__}.validate_cursor_https_under_allowlist",
                                 return_value={"failed_hosts": [], "extra_ips": []},
                             ):
-                                cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
+                                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                                    cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
     assert cidrs == [
         "1.1.1.0/24",
         "2.2.2.0/24",
@@ -1780,6 +1852,75 @@ def _test_agent_sandbox_cidrs_union() -> None:
         "6.6.6.0/24",
         "7.7.7.0/24",
     ]
+
+
+def _test_critical_cursor_hosts_failed() -> None:
+    failed = ["api2geo.cursor.sh", "api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(failed) == ["api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(["api2geo.cursor.sh"]) == []
+
+
+def _test_cursor_api_allowlist_cache() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = Path(tmp) / "cursor_api_allowlist.json"
+        with patch(f"{__name__}.cursor_api_allowlist_cache_path", return_value=cache):
+            assert read_cursor_api_allowlist_cache() is None
+            write_cursor_api_allowlist_cache(["10.0.0.1/32", "10.0.0.2/32"])
+            loaded = read_cursor_api_allowlist_cache()
+            assert loaded == ["10.0.0.1/32", "10.0.0.2/32"]
+            stale = {
+                "cidrs": ["1.1.1.1/32"],
+                "timestamp_utc": "2020-01-01T00:00:00+00:00",
+            }
+            cache.write_text(json.dumps(stale) + "\n", encoding="utf-8")
+            assert read_cursor_api_allowlist_cache() is None
+
+
+def _test_resolve_agent_sandbox_cidrs_uses_cache() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["9.9.9.9/32"]):
+        with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
+            result = resolve_agent_sandbox_cidrs()
+    mock_dns.assert_not_called()
+    assert result == ["9.9.9.9/32"]
+
+
+def _test_post_https_agent_peer_merge_always_runs() -> None:
+    """Post-HTTPS peer merge must run even when critical HTTPS hosts already pass."""
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+            with patch(
+                f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
+                return_value=["2.2.2.2/32"],
+            ):
+                with patch(
+                    f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+                    return_value=["4.4.4.4/32"],
+                ):
+                    with patch(
+                        f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+                        return_value=[],
+                    ):
+                        with patch(
+                            f"{__name__}.resolve_cursor_api_cidrs_from_agent_peers",
+                            return_value=["3.3.3.3/32"],
+                        ):
+                            with patch(
+                                f"{__name__}.validate_cursor_https_under_allowlist",
+                                return_value={"failed_hosts": [], "extra_ips": []},
+                            ):
+                                with patch(
+                                    f"{__name__}._merge_allowlist_agent_peers",
+                                    return_value=(["1.1.1.1/32", "8.8.8.8/32"], 1),
+                                ) as mock_merge:
+                                    with patch(
+                                        f"{__name__}.write_cursor_api_allowlist_cache"
+                                    ):
+                                        cidrs = resolve_agent_sandbox_cidrs(
+                                            fixpoint_rounds=1
+                                        )
+    mock_merge.assert_called_once()
+    assert mock_merge.call_args.kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "8.8.8.0/24" in cidrs
 
 
 def _test_agent_sandbox_network_kwargs() -> None:
@@ -2195,6 +2336,10 @@ def run_unit_tests() -> None:
     _test_compress_ipv4_cidrs()
     _test_allowlist_near_modal_cap()
     _test_agent_sandbox_cidrs_union()
+    _test_critical_cursor_hosts_failed()
+    _test_cursor_api_allowlist_cache()
+    _test_resolve_agent_sandbox_cidrs_uses_cache()
+    _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
     _test_cursor_secrets()
