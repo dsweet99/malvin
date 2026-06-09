@@ -13,7 +13,7 @@ cargo install malvin
 
 ## Speed
 
-`malvin` like to run unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
+`malvin` likes to run unit tests. It does its best to only run what's necessary, but these tools can help speed things up:
 
 - [Python] [pytest-testmon](https://www.testmon.org) Runs only unit tests affected by code changes
 - [Rust] [cargo-nextest](https://nexte.st) Faster than `cargo test`
