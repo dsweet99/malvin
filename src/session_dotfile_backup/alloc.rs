@@ -1,17 +1,6 @@
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-#[must_use]
-pub(crate) fn malvin_home_dir() -> PathBuf {
-    if let Some(h) = std::env::var_os("HOME").filter(|s| !s.is_empty()) {
-        return PathBuf::from(h);
-    }
-    if let Some(h) = std::env::var_os("USERPROFILE").filter(|s| !s.is_empty()) {
-        return PathBuf::from(h);
-    }
-    std::env::temp_dir()
-}
-
 pub(crate) struct DotfileBackupLabels {
     pub mkdir: &'static str,
     pub collision: &'static str,
@@ -87,9 +76,10 @@ mod tests {
 #[cfg(test)]
 mod kiss_cov_auto {
     use super::*;
+    use crate::user_home_dir;
 
     #[test]
-    fn kiss_cov_malvin_home_dir() { let _ = malvin_home_dir; }
+    fn kiss_cov_malvin_home_dir() { let _ = user_home_dir; }
 
     #[test]
     fn kiss_cov_dotfile_backup_labels() { let _: Option<DotfileBackupLabels> = None; }
@@ -110,6 +100,7 @@ mod kiss_cov_auto {
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs{
     use super::*;
+    use crate::user_home_dir;
     #[test]
     fn kiss_cov_unit_names() {
         let _labels = DotfileBackupLabels {
@@ -119,7 +110,7 @@ mod kiss_cov_gate_refs{
         };
         let _tmp = tempfile::tempdir().expect("tempdir");
         let _ = stringify!(allocate_backup_dir);
-        let _ = malvin_home_dir;
+        let _ = user_home_dir;
         let _ = random_backup_id;
         let _ = remove_if_exists;
     }

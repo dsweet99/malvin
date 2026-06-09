@@ -43,6 +43,21 @@ pub fn malvin_home_logs_root() -> PathBuf {
     crate::user_home_dir().join(".malvin").join("logs")
 }
 
+/// `~/.malvin/snapshots/` — session dotfile backups (kissconfig, gitignore tree, etc.).
+pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
+
+#[must_use]
+pub fn malvin_home_snapshots_root() -> PathBuf {
+    crate::user_home_dir()
+        .join(".malvin")
+        .join(MALVIN_SNAPSHOTS_DIR)
+}
+
+#[must_use]
+pub fn snapshot_category_dir(category: &str) -> PathBuf {
+    malvin_home_snapshots_root().join(category)
+}
+
 /// `~/.malvin/config.toml` (global user config; `work_dir` is ignored).
 #[must_use]
 pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
@@ -175,6 +190,13 @@ mod tests {
         let root = malvin_logs_root(&w);
         assert!(root.starts_with(malvin_home_logs_root()));
         assert!(!root.starts_with(w));
+    }
+
+    #[test]
+    fn malvin_snapshots_root_lives_under_home() {
+        let root = malvin_home_snapshots_root();
+        assert!(root.ends_with(".malvin/snapshots") || root.ends_with(".malvin\\snapshots"));
+        assert_eq!(snapshot_category_dir("gitignore"), root.join("gitignore"));
     }
 
     #[test]

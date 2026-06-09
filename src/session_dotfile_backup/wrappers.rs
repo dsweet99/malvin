@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::alloc;
-use super::{GitignoreBackup, KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup};
+use super::{KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup};
 
 #[allow(clippy::missing_errors_doc)]
 pub fn backup_workspace_kissconfig_if_present(work_dir: &Path) -> Result<KissConfigBackup, String> {
@@ -89,27 +89,6 @@ pub fn restore_workspace_malvin_config_backup(
     backup: &MalvinConfigBackup,
 ) -> Result<(), String> {
     super::slots::restore_slot(work_dir, backup, 3)
-}
-
-#[allow(clippy::missing_errors_doc)]
-pub fn backup_workspace_gitignore_if_present(work_dir: &Path) -> Result<GitignoreBackup, String> {
-    backup_workspace_gitignore_if_present_with_id(work_dir, super::alloc::random_backup_id)
-}
-
-#[allow(clippy::missing_errors_doc)]
-pub fn backup_workspace_gitignore_if_present_with_id(
-    work_dir: &Path,
-    mut generate_id: impl FnMut(usize) -> String,
-) -> Result<GitignoreBackup, String> {
-    super::slots::backup_slot(4, work_dir, &mut generate_id)
-}
-
-#[allow(clippy::missing_errors_doc)]
-pub fn restore_workspace_gitignore_backup(
-    work_dir: &Path,
-    backup: &GitignoreBackup,
-) -> Result<(), String> {
-    super::slots::restore_slot(work_dir, backup, 4)
 }
 
 #[allow(clippy::missing_errors_doc)]

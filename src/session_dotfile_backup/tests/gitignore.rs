@@ -3,6 +3,7 @@ use crate::artifacts::{
     backup_workspace_gitignore_if_present_with_id, restore_workspace_gitignore_backup,
 };
 use crate::test_utils::with_isolated_home;
+use crate::workspace_paths::snapshot_category_dir;
 
 #[test]
 fn gitignore_backup_skips_when_workspace_file_missing() {
@@ -20,10 +21,11 @@ fn gitignore_backup_round_trip_restores_workspace_file() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".gitignore"), "ORIGINAL\n").unwrap();
         let backup = backup_workspace_gitignore_if_present(work).unwrap();
-        let GitignoreBackup::Present(payload) = &backup else {
+        let GitignoreBackup::Present { backup_root, files } = &backup else {
             panic!("expected backup path");
         };
-        assert!(payload.backup_path.is_file());
+        assert!(backup_root.join(".gitignore").is_file());
+        assert_eq!(files.len(), 1);
         std::fs::write(work.join(".gitignore"), "MODIFIED\n").unwrap();
         restore_workspace_gitignore_backup(work, &backup).unwrap();
         assert_eq!(
@@ -47,10 +49,7 @@ fn gitignore_backup_missing_restores_by_removing_created_workspace_file() {
 #[test]
 fn gitignore_backup_retries_on_existing_collision() {
     with_isolated_home(|work| {
-        let home = std::env::var_os("HOME").unwrap();
-        let dir = std::path::Path::new(&home)
-            .join(".malvin")
-            .join("gitignore_snapshots");
+        let dir = snapshot_category_dir("gitignore");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
 
@@ -64,10 +63,10 @@ fn gitignore_backup_retries_on_existing_collision() {
         })
         .unwrap();
 
-        let GitignoreBackup::Present(payload) = &backup else {
+        let GitignoreBackup::Present { backup_root, .. } = &backup else {
             panic!("expected backup path");
         };
-        assert_eq!(payload.backup_path.parent(), Some(dir.join("bbbbb").as_path()));
+        assert_eq!(backup_root.as_path(), dir.join("bbbbb").as_path());
         assert!(dir.join("bbbbb").join(".gitignore").is_file());
     });
 }

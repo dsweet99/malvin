@@ -1,4 +1,4 @@
-use super::alloc::malvin_home_dir;
+use crate::workspace_paths::snapshot_category_dir;
 use super::{
     restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
 };
@@ -15,7 +15,7 @@ fn restore_excluding_malvin_checks_on_bundle() {
         malvin_checks: DotfileBackupState::Missing,
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
-        gitignore: DotfileBackupState::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     });
     bundle.restore_excluding_malvin_checks(work).unwrap();
@@ -41,7 +41,7 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
         malvin_checks: DotfileBackupState::Missing,
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
-        gitignore: DotfileBackupState::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     });
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
@@ -57,9 +57,7 @@ fn dotfile_source_path_slot_three_uses_home_config() {
             panic!("expected home config backup");
         };
         assert_eq!(String::from_utf8(payload.bytes).unwrap(), "home-config\n");
-        assert!(payload.backup_path.starts_with(
-            malvin_home_dir().join(".malvin").join("malvin_config_snapshots")
-        ));
+        assert!(payload.backup_path.starts_with(snapshot_category_dir("malvin_config")));
         assert_eq!(
             dotfile_source_path(3, work),
             crate::malvin_config_path(work)
