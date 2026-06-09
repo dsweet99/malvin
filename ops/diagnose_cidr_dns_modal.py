@@ -72,7 +72,7 @@ def main() -> None:
 
     print(f"=== ALLOWLIST ({len(seed)} CIDRs from open DNS+peers) ===")
     allow_sb = modal.Sandbox.create(
-        app=app, image=image, timeout=180, cidr_allowlist=seed,
+        app=app, image=image, timeout=180, outbound_cidr_allowlist=seed,
     )
     try:
         proc = allow_sb.exec(

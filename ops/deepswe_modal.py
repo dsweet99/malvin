@@ -6,7 +6,7 @@ Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
 The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
-``cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
+``outbound_cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
 in a separate Modal sandbox with ``block_network=True``. Open egress remains
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
 malvin and kiss are built from local source
@@ -467,7 +467,7 @@ def _run_modal_cidr_probe_script(
         "timeout": sandbox_timeout,
     }
     if cidr_allowlist is not None:
-        create_kwargs["cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
+        create_kwargs["outbound_cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
     if secrets:
         create_kwargs["secrets"] = secrets
     try:
@@ -559,7 +559,7 @@ def validate_cursor_https_under_allowlist(
             app=sandbox_app(),
             image=cidr_probe_image(),
             timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
         proc = sandbox.exec(
             "python3",
@@ -678,7 +678,7 @@ def resolve_agent_session_peers_under_allowlist(
             image=agent_peer_probe_image(),
             secrets=cursor_secrets(),
             timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
         proc = sandbox.exec(
             "python3",
@@ -1022,7 +1022,7 @@ def sandbox_network_kwargs(
         return {"block_network": True}
     if cursor_api_only:
         cidrs = cidr_allowlist if cidr_allowlist is not None else resolve_cursor_api_cidrs()
-        return {"cidr_allowlist": modal_cidr_allowlist(cidrs)}
+        return {"outbound_cidr_allowlist": modal_cidr_allowlist(cidrs)}
     return {}
 
 
@@ -1656,12 +1656,12 @@ def _test_network_kwargs() -> None:
     assert blocked == {"block_network": True}
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.2.3.4/32"]):
         allowed = sandbox_network_kwargs(cursor_api_only=True, block_all=False)
-    assert allowed == {"cidr_allowlist": ["1.2.3.4/32"]}
+    assert allowed == {"outbound_cidr_allowlist": ["1.2.3.4/32"]}
     assert sandbox_network_kwargs(
         cursor_api_only=True,
         block_all=False,
         cidr_allowlist=["9.9.9.9/32"],
-    ) == {"cidr_allowlist": ["9.9.9.9/32"]}
+    ) == {"outbound_cidr_allowlist": ["9.9.9.9/32"]}
     assert sandbox_network_kwargs(cursor_api_only=False, block_all=False) == {}
 
 
@@ -1741,7 +1741,7 @@ def _test_agent_sandbox_network_kwargs() -> None:
     ) as mock_resolve:
         kwargs = agent_sandbox_network_kwargs(image)
     mock_resolve.assert_called_once_with(image, timeout=300)
-    assert kwargs == {"cidr_allowlist": ["10.0.0.1/32"]}
+    assert kwargs == {"outbound_cidr_allowlist": ["10.0.0.1/32"]}
 
 
 def _test_stream_helpers() -> None:
@@ -1823,7 +1823,7 @@ def _test_agent_sandbox_network() -> None:
                 grade_only=False,
                 cursor_secrets=[],
             )
-    assert mock_create.call_args.kwargs["cidr_allowlist"] == ["9.9.9.9/32"]
+    assert mock_create.call_args.kwargs["outbound_cidr_allowlist"] == ["9.9.9.9/32"]
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
@@ -1855,7 +1855,7 @@ def _test_agent_sandbox_open_network() -> None:
             open_network=True,
             cursor_secrets=[],
         )
-    assert "cidr_allowlist" not in mock_create.call_args.kwargs
+    assert "outbound_cidr_allowlist" not in mock_create.call_args.kwargs
     assert "block_network" not in mock_create.call_args.kwargs
     assert agent_result["exit_code"] == 0
 

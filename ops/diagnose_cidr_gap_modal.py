@@ -57,7 +57,7 @@ def main() -> None:
         release_modal_sandbox(probe)
 
     allow = modal.Sandbox.create(
-        app=app, image=image, timeout=180, cidr_allowlist=cidrs,
+        app=app, image=image, timeout=180, outbound_cidr_allowlist=cidrs,
     )
     try:
         print(f"gap_sec={time.time()-t0:.1f}")

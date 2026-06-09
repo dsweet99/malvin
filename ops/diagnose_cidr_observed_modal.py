@@ -61,7 +61,7 @@ def main() -> None:
     print(f"allowlist_size={len(cidrs)}")
 
     allow_sb = modal.Sandbox.create(
-        app=app, image=image, timeout=180, cidr_allowlist=cidrs,
+        app=app, image=image, timeout=180, outbound_cidr_allowlist=cidrs,
     )
     try:
         proc = allow_sb.exec(

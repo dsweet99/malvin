@@ -79,7 +79,7 @@ def main() -> None:
     print(f"=== ALLOWLIST sandbox ({len(cidrs)} IPv4 CIDRs) ===")
     allow_sandbox = modal.Sandbox.create(
         app=app, image=image, timeout=180,
-        **{"cidr_allowlist": cidrs},
+        **{"outbound_cidr_allowlist": cidrs},
     )
     try:
         proc = allow_sandbox.exec(

@@ -54,7 +54,7 @@ def main() -> None:
 
     print(f"=== ALLOWLIST dns-only ({len(seed)} CIDRs) ===")
     allow_sb = modal.Sandbox.create(
-        app=app, image=image, timeout=120, cidr_allowlist=seed,
+        app=app, image=image, timeout=120, outbound_cidr_allowlist=seed,
     )
     try:
         proc = allow_sb.exec(
