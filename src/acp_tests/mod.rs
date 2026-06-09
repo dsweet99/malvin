@@ -18,8 +18,6 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
-#[path = "../acp/reader_tests_retry_policy_spawn_lock.rs"]
-pub(crate) mod reader_tests_retry_policy_spawn_lock;
 #[path = "../acp/reader_tests_retry_policy_session_new.rs"]
 pub(crate) mod reader_tests_retry_policy_session_new;
 #[path = "backoff_helpers_tests.rs"]

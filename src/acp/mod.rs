@@ -29,12 +29,6 @@ mod session_types_tests;
 
 #[path = "unix_process_group_ps.rs"] mod unix_process_group_ps;
 #[cfg(unix)]
-#[path = "unix_process_group_ancestry.rs"]
-mod unix_process_group_ancestry;
-#[cfg(all(test, unix))]
-#[path = "unix_process_group_ancestry_tests.rs"]
-mod unix_process_group_ancestry_tests;
-#[cfg(unix)]
 #[path = "unix_process_group_kill_targets.rs"]
 mod unix_process_group_kill_targets;
 #[path = "unix_process_group_teardown.rs"] mod unix_process_group_teardown;
@@ -49,7 +43,6 @@ pub use unix_process_group_teardown::{
     terminate_process_group,
 };
 #[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
-#[cfg(unix)] pub(crate) use unix_process_group_ancestry::holder_is_ancestor_of_process;
 #[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
 #[cfg(unix)]
 pub(crate) use unix_process_group_kill_targets::{

@@ -5,10 +5,6 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
-use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
-pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
-pub use crate::acp_spawn_lock::wait_for_peer_acp_spawn_lock;
-
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
 #[cfg(unix)]
@@ -19,7 +15,6 @@ static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 struct ActiveSandboxSession {
     pgid: Option<u32>,
     baseline: HashSet<u32>,
-    work_dir: std::path::PathBuf,
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
@@ -102,31 +97,25 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 pub fn note_active_sandbox_session(
     pgid: Option<u32>,
     baseline: HashSet<u32>,
-    work_dir: &Path,
+    _work_dir: &Path,
 ) -> Result<(), String> {
-    acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
         pgid,
         baseline,
-        work_dir: work_dir.to_path_buf(),
     });
     Ok(())
 }
 
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
-    let work_dir = ACTIVE_SANDBOX_SESSION
+    ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .take()
-        .map(|session| session.work_dir);
+        .take();
     #[cfg(unix)]
     crate::acp::clear_session_spawn_affiliation();
-    if let Some(work_dir) = work_dir {
-        release_acp_spawn_lock(&work_dir);
-    }
 }
 
 #[cfg(test)]
@@ -180,7 +169,6 @@ mod tests {
         let _ = stringify!(assert_dead_before_next_spawn);
         let _ = stringify!(note_active_sandbox_session);
         let _ = stringify!(clear_active_sandbox_session);
-        let _ = super::wait_for_peer_acp_spawn_lock;
         let _ = stringify!(ActiveSandboxSession);
         let _ = super::clear_active_sandbox_session_for_test;
         let _ = super::init_malvin_spawn_baseline;

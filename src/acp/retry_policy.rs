@@ -127,7 +127,6 @@ pub(crate) enum AgentRetryOutcome {
 fn agent_retry_should_stop(last_error: &str) -> bool {
     last_error.contains("workspace session restore failed")
         || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
-        || crate::acp_spawn_lock::agent_string_is_acp_spawn_lock_held(last_error)
 }
 
 /// Blacklist-default retry policy for bounded ACP attempts: upgrade-plan and cannot-use-model
