@@ -139,7 +139,7 @@ pub(crate) async fn session_after_stdio(inp: SessionAfterStdioIn<'_>) -> Result<
 
 pub(crate) async fn spawn_acp_session(args: AcpSpawnArgs<'_>) -> Result<AcpSession, String> {
     crate::malvin_sandbox::assert_dead_before_next_spawn()?;
-    crate::malvin_sandbox::assert_no_peer_acp_spawn_lock(args.cwd)?;
+    crate::acp_spawn_lock::wait_for_peer_acp_spawn_lock(args.cwd).await?;
     let rpc_timeout = clamp_rpc_timeout(args.rpc_timeout);
     let require_cursor_login_auth =
         requires_cursor_login_auth(args.api_key, args.auth_token);

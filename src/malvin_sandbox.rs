@@ -7,6 +7,7 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
+pub use crate::acp_spawn_lock::wait_for_peer_acp_spawn_lock;
 
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
@@ -179,6 +180,7 @@ mod tests {
         let _ = stringify!(assert_dead_before_next_spawn);
         let _ = stringify!(note_active_sandbox_session);
         let _ = stringify!(clear_active_sandbox_session);
+        let _ = super::wait_for_peer_acp_spawn_lock;
         let _ = stringify!(ActiveSandboxSession);
         let _ = super::clear_active_sandbox_session_for_test;
         let _ = super::init_malvin_spawn_baseline;

@@ -197,6 +197,7 @@ fn restore_failure_stops_retrying_without_sleep() {
     assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 
+
 #[test]
 fn retries_noun_singular_and_plural() {
     assert_eq!(retries_noun(1), "retry");

@@ -40,6 +40,7 @@ connections after ``terminate()``; older releases use a command-router close fal
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import os
@@ -49,6 +50,7 @@ import sys
 import tarfile
 import tempfile
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -373,6 +375,8 @@ print(json.dumps({{"failed_hosts": failed, "extra_ips": sorted(extra_ips)}}))
 )
 
 ALLOWLIST_CIDR_PROBE_TIMEOUT = 600
+PROBE_CONNECT_RETRIES = 3
+PROBE_CONNECT_RETRY_DELAY_SEC = 10
 
 OBSERVE_AGENT_PEERS_SCRIPT = r"""
 import json
@@ -448,7 +452,17 @@ def _probe_sandbox_timeout(requested: int) -> int:
     return max(requested, ALLOWLIST_CIDR_PROBE_TIMEOUT)
 
 
-def _run_modal_cidr_probe_script(
+def _is_transient_modal_probe_error(exc: BaseException) -> bool:
+    """True when Modal sandbox command-router connection may succeed on retry."""
+    if isinstance(exc, TimeoutError):
+        return True
+    if isinstance(exc, asyncio.CancelledError):
+        return True
+    message = str(exc).lower()
+    return "connection" in message and ("stalled" in message or "reset" in message)
+
+
+def _run_modal_cidr_probe_script_once(
     script: str,
     *,
     cidr_allowlist: list[str] | None = None,
@@ -457,7 +471,7 @@ def _run_modal_cidr_probe_script(
     probe_image: modal.Image | None = None,
     secrets: list[modal.Secret] | None = None,
 ) -> list[str]:
-    """Exec a probe script in a Modal sandbox and parse a JSON CIDR list from stdout."""
+    """Exec one probe attempt in a Modal sandbox and parse a JSON CIDR list from stdout."""
     image = probe_image or cidr_probe_image()
     sandbox: modal.Sandbox | None = None
     sandbox_timeout = _probe_sandbox_timeout(timeout)
@@ -503,6 +517,41 @@ def _run_modal_cidr_probe_script(
         return sorted(cidrs)
     finally:
         release_modal_sandbox(sandbox)
+
+
+def _run_modal_cidr_probe_script(
+    script: str,
+    *,
+    cidr_allowlist: list[str] | None = None,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+    error_label: str,
+    probe_image: modal.Image | None = None,
+    secrets: list[modal.Secret] | None = None,
+) -> list[str]:
+    """Exec a probe script in a Modal sandbox with retries on transient router timeouts."""
+    last_exc: BaseException | None = None
+    for attempt in range(1, PROBE_CONNECT_RETRIES + 1):
+        try:
+            return _run_modal_cidr_probe_script_once(
+                script,
+                cidr_allowlist=cidr_allowlist,
+                timeout=timeout,
+                error_label=error_label,
+                probe_image=probe_image,
+                secrets=secrets,
+            )
+        except BaseException as exc:
+            if not _is_transient_modal_probe_error(exc) or attempt >= PROBE_CONNECT_RETRIES:
+                raise
+            last_exc = exc
+            click.echo(
+                f"{error_label}: transient Modal connection error "
+                f"(attempt {attempt}/{PROBE_CONNECT_RETRIES}), retrying in "
+                f"{PROBE_CONNECT_RETRY_DELAY_SEC}s: {exc}",
+                err=True,
+            )
+            time.sleep(PROBE_CONNECT_RETRY_DELAY_SEC)
+    raise last_exc  # pragma: no cover - loop always returns or re-raises
 
 
 def resolve_cursor_api_cidrs_in_modal_sandbox(
@@ -2044,6 +2093,29 @@ def _test_probe_sandbox_timeout() -> None:
     assert _probe_sandbox_timeout(900) == 900
 
 
+def _test_is_transient_modal_probe_error() -> None:
+    assert _is_transient_modal_probe_error(TimeoutError())
+    assert _is_transient_modal_probe_error(asyncio.CancelledError())
+    assert not _is_transient_modal_probe_error(click.ClickException("probe failed"))
+
+
+def _test_run_modal_cidr_probe_script_retries_transient_timeout() -> None:
+    calls = {"n": 0}
+
+    def flaky_once(*args: Any, **kwargs: Any) -> list[str]:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise TimeoutError("command router connect")
+        return ["1.2.3.4/32"]
+
+    with patch(f"{__name__}._run_modal_cidr_probe_script_once", side_effect=flaky_once):
+        with patch(f"{__name__}.time.sleep") as mock_sleep:
+            cidrs = _run_modal_cidr_probe_script("script", error_label="probe")
+    assert cidrs == ["1.2.3.4/32"]
+    assert calls["n"] == 2
+    mock_sleep.assert_called_once_with(PROBE_CONNECT_RETRY_DELAY_SEC)
+
+
 def _test_sandbox_app() -> None:
     lookup_app = SimpleNamespace(app_id="lookup-id")
     module_app = SimpleNamespace(app_id="module-id")
@@ -2140,6 +2212,8 @@ def run_unit_tests() -> None:
     _test_extract_tar_over_workspace_readonly_target()
     _test_mount_eval_context_recipe()
     _test_probe_sandbox_timeout()
+    _test_is_transient_modal_probe_error()
+    _test_run_modal_cidr_probe_script_retries_transient_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
     from modal_sandbox_lifecycle import _test_release_modal_sandbox
