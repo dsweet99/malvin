@@ -10,6 +10,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     app,
     cidr_probe_image,
@@ -72,7 +73,7 @@ def main() -> None:
         stream_process_output(proc, sys.stdout, sys.stderr)
         proc.wait()
     finally:
-        open_sandbox.terminate()
+        release_modal_sandbox(open_sandbox)
 
     cidrs = resolve_agent_sandbox_cidrs(image)
     print(f"=== ALLOWLIST sandbox ({len(cidrs)} IPv4 CIDRs) ===")
@@ -88,7 +89,7 @@ def main() -> None:
         stream_process_output(proc, sys.stdout, sys.stderr)
         proc.wait()
     finally:
-        allow_sandbox.terminate()
+        release_modal_sandbox(allow_sandbox)
 
 
 if __name__ == "__main__":

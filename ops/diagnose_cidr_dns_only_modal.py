@@ -11,6 +11,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import CURSOR_API_HOSTS, app, cidr_probe_image, stream_process_output
 
 DNS_SCRIPT = """
@@ -49,7 +50,7 @@ def main() -> None:
         print(f"open_dns_hosts={len(open_dns)} seed_cidrs={len(seed)}")
         print(json.dumps(open_dns, indent=2))
     finally:
-        open_sb.terminate()
+        release_modal_sandbox(open_sb)
 
     print(f"=== ALLOWLIST dns-only ({len(seed)} CIDRs) ===")
     allow_sb = modal.Sandbox.create(
@@ -72,7 +73,7 @@ def main() -> None:
             print(f"allow_extra_ips={extra}")
             print(f"seed_not_in_allow_dns={missing}")
     finally:
-        allow_sb.terminate()
+        release_modal_sandbox(allow_sb)
 
 
 if __name__ == "__main__":

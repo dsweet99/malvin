@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TextIO
 from unittest.mock import MagicMock, patch
@@ -28,6 +29,9 @@ import click
 from click.testing import CliRunner
 import modal
 from modal.stream_type import StreamType
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 
 APP_NAME = "malvin-modal"
 WORKSPACE = "/workspace"
@@ -197,8 +201,7 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
         stream_process_output(proc, sys.stdout, sys.stderr)
         return finish_process(proc)
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 @click.command(
@@ -276,7 +279,7 @@ def _test_modal_remote() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
         code = run_malvin_remote(["--version"])
     assert code == 7
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def run_unit_tests() -> None:
@@ -371,7 +374,7 @@ def _test_click_cli() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
         result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 7
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 if __name__ == "__main__":

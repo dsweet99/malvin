@@ -11,6 +11,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import app, cidr_probe_image, stream_process_output
 
 PEER_SCRIPT = r"""
@@ -54,7 +55,7 @@ def main() -> None:
         peers = json.loads(out.strip())
         print(f"observed_peer_ips={peers}")
     finally:
-        open_sb.terminate()
+        release_modal_sandbox(open_sb)
 
     cidrs = [f"{ip}/32" for ip in peers]
     print(f"allowlist_size={len(cidrs)}")
@@ -70,7 +71,7 @@ def main() -> None:
         stream_process_output(proc, sys.stdout, sys.stderr)
         proc.wait()
     finally:
-        allow_sb.terminate()
+        release_modal_sandbox(allow_sb)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import app, cidr_probe_image, stream_process_output
 
 SCRIPT = r"""
@@ -67,7 +68,7 @@ def main() -> None:
         print(json.dumps(data, indent=2))
         seed = sorted({f"{ip}/32" for ip in data["dns_ips"] + data["peer_ips"] if ":" not in ip})
     finally:
-        open_sb.terminate()
+        release_modal_sandbox(open_sb)
 
     print(f"=== ALLOWLIST ({len(seed)} CIDRs from open DNS+peers) ===")
     allow_sb = modal.Sandbox.create(
@@ -81,7 +82,7 @@ def main() -> None:
         stream_process_output(proc, sys.stdout, sys.stderr)
         proc.wait()
     finally:
-        allow_sb.terminate()
+        release_modal_sandbox(allow_sb)
 
 
 if __name__ == "__main__":

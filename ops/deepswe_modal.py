@@ -33,6 +33,9 @@ Examples::
 Local unit tests (no Modal credentials)::
 
     python ops/deepswe_modal.py --self-test
+
+Runtime dependency: Modal >= 1.4 recommended (``Sandbox.detach`` releases gRPC
+connections after ``terminate()``; older releases use a command-router close fallback).
 """
 
 from __future__ import annotations
@@ -58,6 +61,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_run import (
     DEFAULT_CHECKS_CODE,
     DEFAULT_CHECKS_DO,
@@ -498,8 +502,7 @@ def _run_modal_cidr_probe_script(
             raise click.ClickException(f"{error_label}: empty CIDR list")
         return sorted(cidrs)
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_cursor_api_cidrs_in_modal_sandbox(
@@ -595,8 +598,7 @@ def validate_cursor_https_under_allowlist(
             )
         return {"failed_hosts": failed, "extra_ips": extra}
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_cursor_api_cidrs_from_agent_peers(
@@ -658,8 +660,7 @@ def resolve_cursor_api_cidrs_from_agent_peers(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_agent_session_peers_under_allowlist(
@@ -725,8 +726,7 @@ def resolve_agent_session_peers_under_allowlist(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
@@ -1328,8 +1328,7 @@ def run_deepswe_run_in_sandbox(
                 agent_result["harvest"] = harvest
         return agent_result, grade_result
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def harbor_agent_image(
@@ -1799,7 +1798,7 @@ def _test_grade_in_sandbox_network() -> None:
     assert exec_argv[2] == "run"
     assert "--grade-only" in exec_argv
     assert grade_result["reward"] == 1
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_network() -> None:
@@ -1835,7 +1834,7 @@ def _test_agent_sandbox_network() -> None:
     assert "in-sandbox" in exec_argv
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_open_network() -> None:
@@ -2143,6 +2142,9 @@ def run_unit_tests() -> None:
     _test_probe_sandbox_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
+    from modal_sandbox_lifecycle import _test_release_modal_sandbox
+
+    _test_release_modal_sandbox()
     _test_run_modal_eval_modal_agent_modal_grade()
 
 

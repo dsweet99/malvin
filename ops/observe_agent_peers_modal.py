@@ -12,6 +12,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     APP_REMOTE,
     OBSERVE_AGENT_PEERS_SCRIPT,
@@ -57,7 +58,7 @@ def observe_in_sandbox(
         return json.loads(stdout.strip() or "{}")
     finally:
         if sandbox is not None:
-            sandbox.terminate()
+            release_modal_sandbox(sandbox)
 
 
 @click.command()
