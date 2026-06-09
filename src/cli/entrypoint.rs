@@ -3,6 +3,8 @@ use super::{
     Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 
+use super::args::Cli;
+
 pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     use crate::require_kiss_for_malvin;
     match cmd {
@@ -96,8 +98,12 @@ pub fn entrypoint_from(
             return exit;
         }
     };
+    dispatch_parsed_cli(cli, matches)
+}
+
+fn dispatch_parsed_cli(cli: Cli, matches: clap::ArgMatches) -> Exit {
     prepare_cli_output(&cli.global);
-    if cli.command.is_none() && !cli.shared.doc {
+    if cli.command.is_none() && cli.bare_args.is_empty() && !cli.shared.doc {
         let _ = super::commands_help::print_commands_only_help();
         return Exit::Success;
     }
@@ -109,6 +115,11 @@ pub fn entrypoint_from(
                 Exit::Failure
             }
         };
+    }
+    if cli.command.is_none() && cli.bare_args.len() > 1 {
+        return finish_entrypoint(super::entrypoint_commands::run_bare_sequential_kpop(
+            &cli, &matches, &cli.shared,
+        ));
     }
     let command = cli.command.expect("subcommand when not --doc-only");
     let preflight_err = require_kiss_for_cli_command(&command)

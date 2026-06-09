@@ -43,7 +43,8 @@ pub struct CodeArgs {
     #[arg(short = 'f', default_value_t = false, hide = true)]
     pub fast: bool,
     /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan.md`.
-    pub request: Option<String>,
+    #[arg(value_name = "PLAN", num_args = 1..)]
+    pub requests: Vec<String>,
 }
 
 #[cfg(test)]
@@ -61,7 +62,7 @@ mod tests {
             dry_run: false,
             skip_pre_checks: false,
             fast: false,
-            request: Some("req".to_string()),
+            requests: vec!["req".to_string()],
         };
         let _kpop = crate::cli::KpopArgs {
             max_loops: 1,

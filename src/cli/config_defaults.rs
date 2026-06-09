@@ -33,22 +33,42 @@ pub(crate) fn apply_loop_defaults(
     }
 }
 
+pub(crate) fn apply_bare_sequential_config_defaults(
+    matches: &ArgMatches,
+    cli: &mut Cli,
+    agent: &AgentConfig,
+) {
+    apply_shared_config_defaults(matches, &mut cli.shared, agent);
+    if !subcommand_flag_from_command_line(matches, "kpop", "max_loops") {
+        cli.bare_max_loops = agent.max_loops;
+    }
+    if !subcommand_flag_from_command_line(matches, "kpop", "max_hypotheses") {
+        cli.bare_max_hypotheses = agent.max_hypotheses;
+    }
+}
+
 pub fn apply_workspace_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
 ) -> Result<(), String> {
+    if matches!(cli.command, Some(Commands::Do(_) | Commands::Models(_))) {
+        return Ok(());
+    }
+
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
+
+    if cli.command.is_none() && cli.bare_args.len() > 1 {
+        apply_bare_sequential_config_defaults(matches, cli, &agent);
+        return Ok(());
+    }
+
     let Some(command) = cli.command.as_mut() else {
         if cli.bare_args.is_empty() {
             return Ok(());
         }
         return Err("internal: bare kpop request not resolved".into());
     };
-    match command {
-        Commands::Do(_) | Commands::Models(_) => return Ok(()),
-        _ => {}
-    }
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
     match command {
         Commands::Code(code) => apply_loop_defaults(

@@ -4,6 +4,7 @@ mod bare_invoke;
 mod bug_id_lookup;
 mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;
+mod sequential_requests;
 pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;

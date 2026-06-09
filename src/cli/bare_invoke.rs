@@ -30,9 +30,9 @@ pub(crate) fn require_bare_request(
 }
 
 pub(crate) struct BareLoopOpts {
-    max_loops: usize,
-    max_hypotheses: usize,
-    tenacious: bool,
+    pub(crate) max_loops: usize,
+    pub(crate) max_hypotheses: usize,
+    pub(crate) tenacious: bool,
 }
 
 pub(crate) fn bare_loop_opts(cli: &Cli, matches: &ArgMatches, defaults: BareLoopOpts) -> BareLoopOpts {
@@ -82,7 +82,7 @@ pub(crate) fn resolve_bare_command(cli: &mut Cli, matches: &ArgMatches) -> Resul
     if cli.command.is_some() || cli.shared.doc {
         return Ok(());
     }
-    if cli.bare_args.is_empty() {
+    if cli.bare_args.is_empty() || cli.bare_args.len() > 1 {
         return Ok(());
     }
     cli.command = Some(resolve_bare_kpop(cli, matches)?);
