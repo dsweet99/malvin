@@ -325,7 +325,7 @@ def _test_sandbox_app() -> None:
 
 
 def _test_render_empty_argv_help() -> None:
-    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]...\n"
     fake_wrapper = "Usage: python ops/malvin_modal.py [OPTIONS]\n"
     ctx = MagicMock()
     ctx.get_help.return_value = fake_wrapper
@@ -339,7 +339,7 @@ def _test_render_empty_argv_help() -> None:
 
 def _test_empty_argv_help() -> None:
     runner = CliRunner()
-    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]...\n"
     with patch(f"{__name__}.run_local_malvin_usage", return_value=fake_malvin):
         with patch(f"{__name__}.run_malvin_remote") as mock_remote:
             result = runner.invoke(

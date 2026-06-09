@@ -1,4 +1,4 @@
-//! Bare CLI invocation (`malvin REQUEST` → kpop) contract tests.
+//! Bare CLI invocation (`malvin REQUEST...` → kpop) contract tests.
 
 use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;

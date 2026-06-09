@@ -8,7 +8,7 @@ Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, 
 
 | | |
 |---|---|
-| Input | Investigation brief → `request.md` |
+| Input | One or more investigation briefs → `request.md` per run dir |
 | Loop | `--max-loops` separate agent **runs** (each with its own experiment log) |
 | Per run | Up to `--max-hypotheses` typed `## Step … — KPOP` lines |
 | Lookup | `malvin kpop <KPOP_ID>` prints a prior log (no agent) |
@@ -20,16 +20,18 @@ Explore questions or codebase behavior scientifically: falsifiable hypotheses, t
 ## Usage
 
 ```text
-malvin [OPTIONS] <REQUEST>              # bare kpop
-malvin kpop [OPTIONS] <REQUEST>         # hidden alias
+malvin [OPTIONS] <REQUEST>...           # bare kpop
+malvin kpop [OPTIONS] <REQUEST>         # hidden alias (single request)
 malvin kpop <KPOP_ID>                   # log lookup only
 ```
 
 ## Arguments
 
-### `<REQUEST>` (investigation brief)
+### `<REQUEST>...` (investigation brief, one or more for bare invocation)
 
 Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
+
+Bare `malvin REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations. The hidden `kpop` subcommand accepts a single request only.
 
 ### `<KPOP_ID>` (log lookup)
 
@@ -98,6 +100,7 @@ Stops when any of:
 
 ```text
 malvin "Why does cache invalidation fail under load?"
+malvin req_1.md req_2.md req_3.md
 malvin kpop questions/regression.md --max-hypotheses 20
 malvin kpop Ma3bx9
 ```

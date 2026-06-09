@@ -21,7 +21,7 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). Use subcommands for do, code, and tidy."
+    after_help = "Bare invocation: malvin REQUEST... runs kpop on each request in sequence (same as malvin kpop REQUEST). Use subcommands for do, code, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]

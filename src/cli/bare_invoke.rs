@@ -1,4 +1,4 @@
-//! Resolve bare `malvin [OPTIONS] REQUEST` invocations (no subcommand) into kpop.
+//! Resolve bare `malvin [OPTIONS] REQUEST...` invocations (no subcommand) into kpop.
 
 use clap::parser::ValueSource;
 use clap::ArgMatches;

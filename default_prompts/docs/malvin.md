@@ -11,12 +11,13 @@ malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent`
 ## Usage
 
 ```text
-malvin [OPTIONS] [<COMMAND> | REQUEST]
+malvin [OPTIONS] [<COMMAND> | REQUEST...]
 ```
 
 Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
+- `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `./.malvin/logs/`
 
 Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`.
 
@@ -140,12 +141,20 @@ Several commands accept a positional request.
 |---------|---------------|----------------|
 | `code`, `plan`, `do`, `kpop`, `inspire`, bare `malvin` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
+### Sequential requests
+
+`malvin` and `malvin code` accept **multiple** positional arguments. Malvin runs each request as a separate invocation in order, waiting for each to finish before starting the next. Each run gets its own directory under `./.malvin/logs/`. This matches calling `malvin` (or `malvin code`) once per argument from the shell.
+
+`malvin plan` accepts only a single plan file.
+
 Examples:
 
 ```text
 malvin do "fix the typo"
 malvin code plan.md
+malvin code plan_1.md plan_2.md plan_3.md
 malvin "Why does the cache miss?"          # bare kpop
+malvin req_1.md req_2.md req_3.md          # bare kpop, sequential
 malvin kpop notes/question.md
 ```
 
