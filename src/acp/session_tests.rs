@@ -182,7 +182,7 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();
     let (mut agent, pgid) =
         spawn_hostile_agent_exits_after_orphan_fork(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: setsid orphan should be running"
@@ -222,7 +222,7 @@ async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_agent(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: setsid orphan should be running before OOM teardown"

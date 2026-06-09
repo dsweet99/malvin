@@ -20,7 +20,7 @@ pub fn process_alive(pid: u32) -> bool {
 pub fn spawn_hostile_double_fork_daemon(cwd: &Path, orphan_pid_file: &Path) -> (std::process::Child, u32) {
     use std::os::unix::process::CommandExt;
     let script = format!(
-        r#"python3 -c 'import os,sys
+        r#"python3 -c 'import os,sys,time
 pid=os.fork()
 if pid==0:
  os.setsid()
@@ -28,6 +28,7 @@ if pid==0:
  if g==0:
   open(sys.argv[1],"w").write(str(os.getpid()))
   os.execvp("sleep",["sleep","120"])
+ time.sleep(0.2)
  os._exit(0)
 os.waitpid(pid,0)' "{}"
 exec sleep 60
@@ -54,13 +55,15 @@ pub fn spawn_hostile_agent_exits_after_orphan_fork(
 ) -> (std::process::Child, u32) {
     use std::os::unix::process::CommandExt;
     let script = format!(
-        r#"python3 -c 'import os,sys
+        r#"python3 -c 'import os,sys,time
 pid=os.fork()
 if pid==0:
+ open(sys.argv[1],"w").write(str(os.getpid()))
+ time.sleep(0.2)
  os.setsid()
  os.execvp("sleep",["sleep","120"])
 else:
- open(sys.argv[1],"w").write(str(pid))
+ time.sleep(0.5)
  os._exit(0)' "{}"
 "#,
         orphan_pid_file.display()
@@ -80,13 +83,13 @@ else:
 pub fn spawn_hostile_agent(cwd: &Path, orphan_pid_file: &Path) -> (std::process::Child, u32) {
     use std::os::unix::process::CommandExt;
     let script = format!(
-        r#"python3 -c 'import os,sys
+        r#"python3 -c 'import os,sys,time
 pid=os.fork()
 if pid==0:
+ open(sys.argv[1],"w").write(str(os.getpid()))
+ time.sleep(0.2)
  os.setsid()
- os.execvp("sleep",["sleep","120"])
-else:
- open(sys.argv[1],"w").write(str(pid))' "{}"
+ os.execvp("sleep",["sleep","120"])' "{}"
 exec sleep 60
 "#,
         orphan_pid_file.display()
@@ -103,22 +106,17 @@ exec sleep 60
     (child, pgid)
 }
 
-pub async fn read_orphan_pid(path: &Path) -> u32 {
-    for _ in 0..50 {
-        if let Ok(text) = std::fs::read_to_string(path) {
-            if let Ok(pid) = text.trim().parse::<u32>() {
-                if process_alive(pid) {
-                    return pid;
-                }
-            }
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    panic!(
-        "orphan pid file not written or orphan not alive: {}",
-        path.display()
-    );
-}
+#[path = "hostile_orphan_read_pid.rs"]
+mod hostile_orphan_read_pid;
+pub use hostile_orphan_read_pid::read_orphan_pid;
+
+#[path = "hostile_orphan_user_shell.rs"]
+mod hostile_orphan_user_shell;
+pub use hostile_orphan_user_shell::{
+    cleanup_user_coincidental_test, setup_user_init_reparented_daemon,
+    spawn_isolated_agent_sleep, spawn_user_coincidental_daemon,
+    spawn_user_shell_cooperator,
+};
 
 pub async fn wait_for_init_reparent(pid: u32) {
     for _ in 0..50 {
@@ -145,8 +143,8 @@ pub fn spawn_hostile_agent_acp_orphan(
         r#"python3 -c 'import os,sys
 pid=os.fork()
 if pid==0:
- os.setsid()
  open(sys.argv[1],"w").write(str(os.getpid()))
+ os.setsid()
  os.environ["MALVIN_WORKSPACE"]="/tmp/malvin-hostile-orptest"
  os.execvp("sleep",["sleep","120"])
 else:

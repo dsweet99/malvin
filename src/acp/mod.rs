@@ -44,6 +44,10 @@ pub use unix_process_group_teardown::{
 };
 #[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
 #[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
+#[cfg(unix)]
+pub(crate) use unix_process_group_kill_targets::{
+    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
+};
 mod process_group_mem_watch;
 #[cfg(unix)] pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
@@ -231,19 +235,14 @@ mod tee_strip_tests;
 
 #[doc(hidden)]
 pub mod test_captive_session;
-
-#[cfg(test)]
-mod kiss_coverage;
-
+#[cfg(test)] mod kiss_coverage;
 #[cfg(test)]
 #[path = "kiss_coverage_b.rs"]
 mod kiss_coverage_b;
-
 #[cfg(test)]
 #[path = "inc_kiss_coverage.rs"]
 mod inc_kiss_coverage;
 #[cfg(test)]
 #[path = "session_tests_kiss_cov.rs"]
 mod session_tests_kiss_cov;
-#[cfg(test)]
-pub(crate) mod spawn_test_args;
+#[cfg(test)] pub(crate) mod spawn_test_args;

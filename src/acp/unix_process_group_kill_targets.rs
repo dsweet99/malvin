@@ -2,6 +2,15 @@
 
 use std::collections::{HashMap, HashSet};
 
+#[path = "session_spawn_affiliation.rs"]
+mod session_spawn_affiliation;
+#[cfg(test)]
+#[path = "session_spawn_affiliation_tests.rs"]
+mod session_spawn_affiliation_tests;
+pub(crate) use session_spawn_affiliation::{
+    clear_session_spawn_affiliation, is_session_affiliated_pid, note_session_affiliated_pid,
+    refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
+};
 use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
     looks_like_malvin_agent_acp, process_group_member_pids,
@@ -32,6 +41,7 @@ pub(crate) fn reparented_init_orphans(baseline: &HashSet<u32>, rows: &[ProcRow])
             !baseline.contains(&row.pid)
                 && is_safe_kill_target(row.pid, &protected)
                 && row.ppid == INIT_PID
+                && session_affiliated_or_agent_acp(row.pid)
         })
         .map(|row| row.pid)
         .collect()
@@ -73,6 +83,7 @@ pub(crate) fn malvin_session_spawn_pids(
             rows.iter()
                 .find(|row| row.pid == *pid)
                 .is_some_and(|row| row.pgid == my_pgid)
+                && session_affiliated_or_agent_acp(*pid)
         })
         .collect()
 }
@@ -81,6 +92,9 @@ pub(crate) fn kill_targets_for_teardown(
     process_group_id: Option<u32>,
     spawn_baseline: Option<&HashSet<u32>>,
 ) -> HashSet<u32> {
+    if let Some(baseline) = spawn_baseline.filter(|b| !b.is_empty()) {
+        refresh_session_spawn_affiliation(process_group_id, baseline);
+    }
     let rows = list_proc_rows().unwrap_or_default();
     let mut targets = HashSet::new();
     if let Some(pgid) = process_group_id {

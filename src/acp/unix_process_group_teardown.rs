@@ -10,7 +10,7 @@ pub(crate) use super::unix_process_group_kill_targets::baseline_amnestied_agent_
 pub(crate) use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 #[cfg(all(unix, test))]
 pub(crate) use super::unix_process_group_kill_targets::{
-    descendant_pids, malvin_session_spawn_pids, reparented_init_orphans,
+    descendant_pids, malvin_session_spawn_pids,
 };
 
 #[cfg(unix)]

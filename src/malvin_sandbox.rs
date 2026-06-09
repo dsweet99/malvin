@@ -121,6 +121,8 @@ pub fn clear_active_sandbox_session() {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take()
         .map(|session| session.work_dir);
+    #[cfg(unix)]
+    crate::acp::clear_session_spawn_affiliation();
     if let Some(work_dir) = work_dir {
         release_acp_spawn_lock(&work_dir);
     }
@@ -150,6 +152,7 @@ pub fn malvin_session_rss_bytes(_: Option<u32>, _: &HashSet<u32>) -> Option<u64>
 
 #[cfg(unix)]
 pub(crate) fn sandbox_still_alive(agent_pgid: Option<u32>, session_baseline: &HashSet<u32>) -> bool {
+    crate::acp::refresh_session_spawn_affiliation(agent_pgid, session_baseline);
     sandbox_monitor_pids(agent_pgid, session_baseline)
         .into_iter()
         .any(crate::acp::pid_alive)
