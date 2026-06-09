@@ -120,6 +120,48 @@ fn extract_fence_body_distinguishes_markdown_fence_from_plain_opener() {
 }
 
 #[test]
+fn extract_fenced_markdown_block_with_multiple_nested_fences() {
+    let response = concat!(
+        "```markdown\n",
+        "# Plan\n",
+        "```json\n",
+        "{}\n",
+        "```\n",
+        "```bash\n",
+        "echo hi\n",
+        "```\n",
+        "Done.\n",
+        "```\n",
+    );
+    let body = extract_fenced_markdown_block(response).expect("fence");
+    assert!(body.contains("```json"));
+    assert!(body.contains("echo hi"));
+    assert!(body.contains("Done."));
+}
+
+#[test]
+fn extract_fenced_markdown_block_with_nested_bash_fences() {
+    let response = concat!(
+        "```markdown\n",
+        "# Implementation plan\n",
+        "\n",
+        "Run:\n",
+        "```bash\n",
+        "modal run ops/deepswe_modal.py\n",
+        "```\n",
+        "\n",
+        "## Quality gates\n",
+        "- cargo nextest run\n",
+        "```\n",
+    );
+    let body = extract_fenced_markdown_block(response).expect("fence");
+    assert!(body.contains("# Implementation plan"));
+    assert!(body.contains("modal run ops/deepswe_modal.py"));
+    assert!(body.contains("## Quality gates"));
+    assert!(body.contains("cargo nextest run"));
+}
+
+#[test]
 fn validate_post_1b_rejects_critique_heading_in_restatement_prose() {
     let content = concat!(
         "# Plan\n\n---\nBEGIN_MALVIN\n",

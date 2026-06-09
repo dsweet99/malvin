@@ -2,7 +2,11 @@
 
 use std::collections::HashSet;
 use std::ffi::OsStr;
+use std::path::Path;
 use std::sync::{Mutex, OnceLock};
+
+use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
+pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
 
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
@@ -14,6 +18,7 @@ static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 struct ActiveSandboxSession {
     pgid: Option<u32>,
     baseline: HashSet<u32>,
+    work_dir: std::path::PathBuf,
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
@@ -21,7 +26,9 @@ static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
     {
-        crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
+        if !crate::acp::test_no_real_agent_enabled() {
+            crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
+        }
         let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(crate::acp::snapshot_pids));
     }
     #[cfg(not(unix))]
@@ -91,17 +98,32 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 }
 
 /// Records the active malvin sandbox session for dead-before-next enforcement.
-pub fn note_active_sandbox_session(pgid: Option<u32>, baseline: HashSet<u32>) {
+pub fn note_active_sandbox_session(
+    pgid: Option<u32>,
+    baseline: HashSet<u32>,
+    work_dir: &Path,
+) -> Result<(), String> {
+    acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession { pgid, baseline });
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
+        pgid,
+        baseline,
+        work_dir: work_dir.to_path_buf(),
+    });
+    Ok(())
 }
 
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
-    *ACTIVE_SANDBOX_SESSION
+    let work_dir = ACTIVE_SANDBOX_SESSION
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
+        .map(|session| session.work_dir);
+    if let Some(work_dir) = work_dir {
+        release_acp_spawn_lock(&work_dir);
+    }
 }
 
 #[cfg(test)]
@@ -155,23 +177,12 @@ mod tests {
         let _ = stringify!(note_active_sandbox_session);
         let _ = stringify!(clear_active_sandbox_session);
         let _ = stringify!(ActiveSandboxSession);
-        let _ = stringify!(clear_active_sandbox_session_for_test);
-    }
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _: Option<ActiveSandboxSession> = None;
-        let _ = clear_active_sandbox_session_for_test;
-        let _ = init_malvin_spawn_baseline;
-        let _ = isolate_child_process_group;
-        let _ = isolate_tokio_child_process_group;
-        let _ = malvin_spawn_baseline;
-        let _ = stringify!(malvin_tokio_command("true"));
-        let _ = sandbox_still_alive;
+        let _ = super::clear_active_sandbox_session_for_test;
+        let _ = super::init_malvin_spawn_baseline;
+        let _ = super::malvin_spawn_baseline;
+        let _ = super::isolate_child_process_group;
+        let _ = super::isolate_tokio_child_process_group;
+        let _ = stringify!(super::malvin_tokio_command("true"));
+        let _ = super::sandbox_still_alive;
     }
 }

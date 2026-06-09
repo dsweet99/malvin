@@ -17,7 +17,16 @@ pub fn lookup_bin_on_path(bin: &str) -> Option<PathBuf> {
 
 #[must_use]
 pub fn agent_or_cursor_agent_bin() -> Option<PathBuf> {
-    lookup_bin_on_path("agent").or_else(|| lookup_bin_on_path("cursor-agent"))
+    for name in ["agent", "cursor-agent"] {
+        #[cfg(test)]
+        if let Some(fake) = crate::repo_checks::test_fake_command_path(name) {
+            return Some(fake);
+        }
+        if let Some(path) = lookup_bin_on_path(name) {
+            return Some(path);
+        }
+    }
+    None
 }
 
 #[allow(clippy::missing_errors_doc)]

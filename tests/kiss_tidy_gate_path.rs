@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
+    MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
     seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
     write_failing_gate_tools,
     write_fake_kiss, write_mock_executable,
@@ -40,7 +40,9 @@ fn spawn_malvin_tidy(c: &MalvinTidySpawn<'_>) -> std::process::Output {
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", c.mock)
         .env("PATH", c.path)
-        .args(["tidy", "--max-loops", "1"]);
+        .args(["tidy"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(["--max-loops", "1"]);
     command_output_with_timeout(&mut cmd, c.timeout).expect("spawn malvin")
 }
 
@@ -101,6 +103,7 @@ fn run_malvin_tidy_no_auth_keys(
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", path)
         .args(["tidy"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
 }
 
@@ -127,6 +130,7 @@ fn malvin_tidy_skips_agent_when_quality_gates_already_pass() {
 fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
     let (root, home, workspace) = test_home_workspace();
     seed_tidy_workspace(&workspace);
+    seed_malvin_checks(&workspace, "kiss check\n");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let trace = root.path().join("quality-trace.log");
@@ -141,7 +145,7 @@ fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
         home: &home,
         mock: &mock,
         path: &path,
-        timeout: MALVIN_TEST_CMD_TIMEOUT + MALVIN_TEST_CMD_TIMEOUT,
+        timeout: MALVIN_TEST_CMD_TIMEOUT,
     });
 
     assert!(

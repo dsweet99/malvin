@@ -62,7 +62,8 @@ fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
     std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
-    let err = run_kpop_workspace_gates(&artifacts).expect_err("gates fail");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+    let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
     assert!(err.contains("kiss"));
     let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
     assert!(log.contains("Running `kiss`"));
@@ -80,6 +81,48 @@ fn gate_iteration_context_overrides_exp_log() {
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
     let exp = ctx.get("exp_log").expect("exp_log");
     assert!(exp.contains("_g2.md"));
+}
+
+#[test]
+fn run_kpop_workspace_gates_restores_before_executing_checks() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
+    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
+    std::fs::write(tmp.path().join(".malvin/checks"), "false\n").expect("tamper");
+    run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
+}
+
+fn kpop_gates_restore_fixture(
+    work: &std::path::Path,
+) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    (artifacts, backups)
+}
+
+fn kissconfig_restore_failure_fixture(
+    work: &std::path::Path,
+) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+    std::fs::write(work.join(".kissconfig"), "orig\n").expect("kissconfig");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    std::fs::remove_file(work.join(".kissconfig")).expect("remove kissconfig");
+    std::fs::create_dir(work.join(".kissconfig")).expect("kissconfig dir");
+    (artifacts, backups)
+}
+
+#[test]
+fn restore_failure_prevents_gate_run() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (artifacts, backups) = kissconfig_restore_failure_fixture(tmp.path());
+    let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
+    assert!(err.contains("kissconfig restore"));
 }
 
 #[test]

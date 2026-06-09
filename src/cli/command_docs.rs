@@ -10,7 +10,7 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     match cmd {
         Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
-        Commands::Invent(_) => include_str!("../../default_prompts/docs/invent.md"),
+        Commands::Inspire(_) => include_str!("../../default_prompts/docs/inspire.md"),
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
         Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
@@ -41,7 +41,7 @@ pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::cli::Cli;
-    use crate::cli::args::{Commands, InventArgs, KpopArgs, PlanArgs};
+    use crate::cli::args::{Commands, InspireArgs, KpopArgs, PlanArgs};
     use crate::cli::models_cmd::ModelsArgs;
     use clap::Parser;
 
@@ -62,8 +62,8 @@ mod tests {
             request: None,
         }));
         assert!(md.starts_with("# malvin "));
-        let md = command_doc_markdown(&Commands::Invent(InventArgs { request: None }));
-        assert!(md.starts_with("# malvin invent"));
+        let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
+        assert!(md.starts_with("# malvin inspire"));
     }
 
     #[test]

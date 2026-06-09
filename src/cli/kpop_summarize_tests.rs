@@ -6,15 +6,15 @@ use std::path::Path;
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
     exp_log_paths_markdown, insert_summarize_log_context, is_written_exp_log_path,
-    list_written_exp_logs, outer_loop_summarize_warranted,
+    kpop_outer_loop_summarize_params, list_written_exp_logs, outer_loop_summarize_warranted,
     prefer_gate_outcome_over_summarize, render_kpop_summarize_prompt,
-    run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt, OuterLoopSummarizeParams,
+    run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt, KpopOuterLoopSummarizeInputs,
 };
-use crate::cli::{SharedOpts, WorkflowCliOptions};
+use crate::cli::SharedOpts;
 use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::prompts::PromptStore;
 
-fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
+pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     SharedOpts {
         model: DEFAULT_CLI_MODEL.into(),
         no_force: true,
@@ -27,21 +27,40 @@ fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     }
 }
 
-fn summarize_params<'a>(
-    max_loops: usize,
-    shared: &'a SharedOpts,
-    store: &'a PromptStore,
-    artifacts: &'a crate::artifacts::RunArtifacts,
-) -> OuterLoopSummarizeParams<'a> {
-    OuterLoopSummarizeParams {
+fn kpop_inputs<'a>(max_loops: usize, shared: &'a SharedOpts) -> KpopOuterLoopSummarizeInputs<'a> {
+    KpopOuterLoopSummarizeInputs {
         max_loops,
         agent_ran: true,
         shared,
-        workflow: WorkflowCliOptions { force: false },
-        store,
-        artifacts,
-        malvin_command: "malvin kpop",
     }
+}
+
+fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
+{
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
+    let store = PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+    (tmp, artifacts, store, shared)
+}
+
+#[test]
+fn kpop_outer_loop_summarize_params_builds_kpop_context() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
+    let store = PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+    let params = kpop_outer_loop_summarize_params(kpop_inputs(2, &shared), &store, &artifacts);
+    assert_eq!(params.max_loops, 2);
+    assert!(params.agent_ran);
+    assert_eq!(params.malvin_command, "malvin kpop");
+    assert!(!params.workflow.force);
+    assert!(std::ptr::eq(params.store, &raw const store));
+    assert!(std::ptr::eq(params.artifacts, &raw const artifacts));
 }
 
 #[test]
@@ -86,13 +105,8 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
 
 #[test]
 fn run_outer_loop_summarize_if_warranted_skips_when_agent_did_not_run() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let store = PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
-    let mut params = summarize_params(2, &shared, &store, &artifacts);
+    let (_tmp, artifacts, store, shared) = summarize_test_workspace();
+    let mut params = kpop_outer_loop_summarize_params(kpop_inputs(2, &shared), &store, &artifacts);
     params.agent_ran = false;
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
@@ -116,61 +130,6 @@ fn exp_log_paths_markdown_lists_existing_files() {
     };
     let md = exp_log_paths_markdown(&artifacts);
     assert!(md.contains("exp_log_test_g1.md"));
-}
-
-pub(crate) fn write_mock_summarize_agent(path: &std::path::Path) {
-    use std::os::unix::fs::PermissionsExt;
-
-    let handler = r"    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    if (promptText.includes('Summarize the activity')) {
-      const fs = require('fs');
-      const path = require('path');
-      fs.appendFileSync(path.join(process.cwd(), 'summary_probe.log'), promptText);
-    }
-    console.log(JSON.stringify({ jsonrpc: '2.0', method: 'session/update', params: { update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'summary\n' } } } }));";
-    std::fs::write(path, format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", handler)))
-        .expect("write mock");
-    let mut perms = std::fs::metadata(path).expect("meta").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
-}
-
-fn with_summarize_mock_agent<F>(f: F)
-where
-    F: FnOnce(&std::path::Path, &PromptStore, &crate::artifacts::RunArtifacts),
-{
-    crate::test_utils::with_isolated_home(|workspace| {
-        std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir");
-        let artifacts = create_kpop_run_artifacts("kpop", Some(workspace)).expect("artifacts");
-        let store = PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let mock = workspace.join("mock-summarize-agent");
-        write_mock_summarize_agent(&mock);
-        unsafe {
-            std::env::set_var("MALVIN_AGENT_ACP_BIN", &mock);
-            std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
-        }
-        f(workspace, &store, &artifacts);
-    });
-}
-
-#[test]
-fn run_outer_loop_summarize_if_warranted_runs_mock_summary_agent() {
-    with_summarize_mock_agent(|workspace, store, artifacts| {
-        let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        rt.block_on(async {
-            run_outer_loop_summarize_if_warranted(&summarize_params(2, &shared, store, artifacts))
-                .await
-                .expect("summarize");
-        });
-        let probe = workspace.join("summary_probe.log");
-        assert!(probe.is_file(), "mock summarize agent should run");
-        let text = std::fs::read_to_string(probe).expect("read probe");
-        assert!(text.contains("Summarize the activity"));
-        assert!(text.contains("Executive summary"));
-        assert!(artifacts.log_path("summary").is_file());
-    });
 }
 
 #[test]
@@ -220,17 +179,16 @@ fn is_written_exp_log_path_filters_non_matching_names() {
 
 #[test]
 fn run_outer_loop_summarize_if_warranted_skips_single_loop() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let store = PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let shared = summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+    let (_tmp, artifacts, store, shared) = summarize_test_workspace();
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
-        run_outer_loop_summarize_if_warranted(&summarize_params(1, &shared, &store, &artifacts))
-            .await
-            .expect("skip");
+        run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
+            kpop_inputs(1, &shared),
+            &store,
+            &artifacts,
+        ))
+        .await
+        .expect("skip");
     });
     assert!(!artifacts.log_path("summary").exists());
 }
@@ -246,4 +204,3 @@ fn list_written_exp_logs_collects_kpop_dir_md_files() {
     assert_eq!(paths.len(), 1);
     assert!(paths[0].ends_with("exp_log_a.md"));
 }
-

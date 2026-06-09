@@ -22,6 +22,8 @@ mod init_harness_run;
 #[cfg(unix)]
 mod init_harness;
 #[cfg(unix)]
+mod integration_cli_args;
+#[cfg(unix)]
 mod enn_hybrid_fixture;
 mod kpop_multiturn_support;
 mod kpop_outer_loop_support;
@@ -73,6 +75,8 @@ pub use do_stdout_harness::*;
 pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
+#[cfg(unix)]
+pub use integration_cli_args::INTEGRATION_TEST_MALVIN_ARGS;
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 

@@ -5,8 +5,8 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js, command_output_with_timeout,
-    test_home_workspace, write_mock_executable,
+    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js,
+    command_output_with_timeout, test_home_workspace, write_mock_executable,
 };
 
 #[cfg(unix)]
@@ -26,6 +26,7 @@ pub fn run_do_with_named_mock_bin(
     let mock = root.path().join(mock_bin_name);
     write_mock_executable(&mock, mock_js);
     let mut args = vec!["do"];
+    args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -65,6 +66,7 @@ pub fn run_do_with_mock_force_tee(extra_args: &[&str]) -> std::process::Output {
     let mock = root.path().join("mock-agent-acp-do-force-tee");
     write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
     let mut args = vec!["do"];
+    args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(extra_args);
     args.push("say hi");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));

@@ -43,6 +43,7 @@ pub fn run_kpop_outer_loop(
     let mock = root.path().join("mock-agent-acp-kpop-outer");
     write_mock_executable(&mock, mock_js);
     fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
+    fs::write(workspace.join(".gitignore"), "baseline-gitignore\n").expect("gitignore");
     let mut cmd = malvin_kpop_outer_cmd(&root, &home, &mock, extra_args);
     let output = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn");
     (output, root)

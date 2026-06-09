@@ -6,7 +6,7 @@ One **single-turn** agent session: no gate loop, no KPop experiment log, no revi
 
 | | |
 |---|---|
-| Input | `<REQUEST>` text or `@file` |
+| Input | `<REQUEST>` text or existing `.md` path |
 | Output | Plain stdout (no markdown styling) |
 | Log | `do.log` under `./.malvin/logs/<run>/` |
 
@@ -24,12 +24,12 @@ malvin do [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Literal text, or `@<path>` to read from a file.
+Literal text, or an existing `.md` file path (same rules as `code`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
 | Literal | `.` (cwd) | `plan.md` in run dir |
-| `@file` | Parent of file | `plan.md` |
+| `path/to/file.md` | Parent of file | `plan.md` |
 
 ## Options
 
@@ -65,7 +65,7 @@ No implement, review, concerns, learn, or summary phases.
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks`; restores after.
+- Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands
@@ -79,6 +79,6 @@ No implement, review, concerns, learn, or summary phases.
 
 ```text
 malvin do "List failing tests and suggest fixes"
-malvin do @notes/task.md
+malvin do notes/task.md
 malvin do --repo-gates "Refactor foo.rs to use Result"
 ```

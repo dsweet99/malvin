@@ -24,10 +24,10 @@ fn kissignore_backup_round_trip_restores_workspace_file() {
     with_isolated_home(|work| {
         std::fs::write(work.join(".kissignore"), "ORIGINAL\n").unwrap();
         let backup = backup_workspace_kissignore_if_present(work).unwrap();
-        let KissignoreBackup::Present(path) = &backup else {
+        let KissignoreBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
-        assert!(path.is_file());
+        assert!(payload.backup_path.is_file());
         std::fs::write(work.join(".kissignore"), "MODIFIED\n").unwrap();
         restore_workspace_kissignore_backup(work, &backup).unwrap();
         assert_eq!(
@@ -80,11 +80,11 @@ fn kissignore_backup_retries_on_existing_collision() {
         })
         .unwrap();
 
-        let KissignoreBackup::Present(path) = &backup else {
+        let KissignoreBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
 
-        assert_eq!(path.parent(), Some(dir.join("bbbbb").as_path()));
+        assert_eq!(payload.backup_path.parent(), Some(dir.join("bbbbb").as_path()));
         assert!(dir.join("bbbbb").join(".kissignore").is_file());
         assert!(!dir.join("aaaaa").join(".kissignore").exists());
     });

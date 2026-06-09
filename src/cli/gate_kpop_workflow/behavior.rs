@@ -72,4 +72,18 @@ mod tests {
         assert_eq!(GateLoopBehavior::INIT.exit, GateKpopExitPolicy::InitDiscovery);
         assert_eq!(GateLoopBehavior::CODE.exit, GateKpopExitPolicy::CodeTidy);
     }
+
+    #[test]
+    fn code_tidy_exit_policy_requires_two_solved_and_passing_gates() {
+        assert_eq!(GateLoopBehavior::CODE.consecutive_kpop_solved_to_exit(), 2);
+        assert_eq!(GateLoopBehavior::TIDY.consecutive_kpop_solved_to_exit(), 2);
+        assert!(GateLoopBehavior::CODE.require_passing_gates_for_exit());
+        assert!(GateLoopBehavior::TIDY.require_passing_gates_for_exit());
+    }
+
+    #[test]
+    fn init_discovery_exit_policy_requires_one_solved_without_gate_pass() {
+        assert_eq!(GateLoopBehavior::INIT.consecutive_kpop_solved_to_exit(), 1);
+        assert!(!GateLoopBehavior::INIT.require_passing_gates_for_exit());
+    }
 }

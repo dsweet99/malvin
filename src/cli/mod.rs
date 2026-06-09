@@ -36,6 +36,9 @@ mod kpop_summarize;
 #[path = "kpop_summarize_tests.rs"]
 mod kpop_summarize_tests;
 #[cfg(test)]
+#[path = "kpop_summarize_mock_tests.rs"]
+mod kpop_summarize_mock_tests;
+#[cfg(test)]
 #[path = "kpop_summarize_kiss_cov_tests.rs"]
 mod kpop_summarize_kiss_cov_tests;
 #[cfg(test)]
@@ -74,7 +77,7 @@ mod gate_error_regression;
 pub use crate::do_flow::run_do;
 pub use crate::ideas_flow::run_ideas;
 pub use crate::plan_flow::{prepare_plan_prompt_store, run_plan};
-pub use args::{Cli, Commands, InventArgs, KpopArgs, PlanArgs};
+pub use args::{Cli, Commands, InspireArgs, KpopArgs, PlanArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;

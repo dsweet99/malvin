@@ -45,6 +45,7 @@ pub use sandbox_oom::{
     SandboxOomKillRecord, gate_iteration_oom_killed, record_sandbox_oom_kill,
 };
 pub use current_state::format_current_state;
+mod acp_spawn_lock;
 pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;
@@ -94,7 +95,7 @@ pub use artifacts::{
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
     create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
-pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_request};
+pub use artifacts::{create_kpop_run_artifacts, create_run_artifacts, resolve_user_md_request};
 pub use config::DEFAULT_CLI_MODEL;
 pub use kpop_progression::agent_declared_success;
 pub use output::{

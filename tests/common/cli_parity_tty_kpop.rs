@@ -29,6 +29,7 @@ pub fn run_kpop_multiturn_investigate(
 
     let (root, home, workspace, mock, path) = kpop_multiturn_prep(mock_js);
     std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("write kissconfig");
+    std::fs::write(workspace.join(".gitignore"), "g = 1\n").expect("write gitignore");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(&workspace)
         .env("HOME", &home)
@@ -37,6 +38,8 @@ pub fn run_kpop_multiturn_investigate(
         .env("PATH", path)
         .args([
             "kpop",
+            "--max-loops",
+            "2",
             "--max-hypotheses",
             "1",
             "investigate",

@@ -9,7 +9,7 @@ Four **sequential** agent prompts on **one persistent session** to reflect on a 
 | Input | Existing `.md` plan file |
 | Session | One persistent agent session (Prompt 1a → 1b → 2 → 3) |
 | Output | In-place update of `PLAN_PATH` after Prompt 3 splice |
-| Downstream | Post-Prompt-3 file is valid input for `malvin code @PLAN_PATH` |
+| Downstream | Post-Prompt-3 file is valid input for `malvin code <PLAN_PATH>` |
 
 ## Usage
 
@@ -51,8 +51,8 @@ When the plan path matches `*adversarial*` or `*adv_system*`, or `smell_registry
 
 | Command | When |
 |---------|------|
-| `malvin code @PLAN_PATH` | Implement the revised plan |
-| `malvin invent` | Creative exploration before planning |
+| `malvin code <PLAN_PATH>` | Implement the revised plan |
+| `malvin inspire` | Creative exploration before planning |
 | `malvin kpop` | Hypothesis-driven investigation |
 
 ## Examples

@@ -66,7 +66,7 @@ When the repo is not empty for discovery and `.malvin/checks` was missing (or `-
 | KPop | Agent inspects tooling and writes `.malvin/checks` | `_kpop/exp_log_*_gN.md` |
 | Summary | Agent explains what was installed and which checks were chosen | `summary.log` |
 
-Discovery uses **discovery semantics**: a single `## KPOP_SOLVED` and a structurally valid checks file are enough; gates need not pass on first run. Session restore during discovery skips `.malvin/checks` so agent edits persist; kiss config, kissignore, and malvin config still restore per turn.
+Discovery uses **discovery semantics**: a single `## KPOP_SOLVED` and a structurally valid checks file are enough; gates need not pass on first run. Session restore during discovery skips `.malvin/checks` so agent edits persist; `.kissconfig`, `.kissignore`, `.gitignore`, and `.malvin/config.toml` still restore after each discovery prompt. Enforcement gate runs restore those four paths before reading checks; they do not restore `.malvin/checks` during discovery validation.
 
 Skip discovery when:
 

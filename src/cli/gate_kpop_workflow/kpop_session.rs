@@ -2,7 +2,7 @@ use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::acp::{
     backoff_after_agent_failure, kpop_fail_after_prompt, kpop_round, restore_session_dotfiles,
-    spawn_agent_acp_session, KpopFailAfterPrompt, KpopPromptRound,
+    spawn_agent_acp_session, AgentError, KpopFailAfterPrompt, KpopPromptRound,
 };
 use crate::cli::workflow_kpop_shared::{
     finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
@@ -19,8 +19,15 @@ pub(crate) struct GateKpopMultiturnCtx<'a> {
 pub(crate) fn post_gate_kpop_gates(
     command: &str,
     prepared: &GateKpopPrepared,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+    restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    post_kpop_session_gates(command, prepared.artifacts())
+    post_kpop_session_gates(
+        command,
+        prepared.artifacts(),
+        session_dotfile_backups,
+        restore_malvin_checks,
+    )
 }
 
 pub(crate) fn print_gate_kpop_log_line(prepared: &GateKpopPrepared, exp_log_path: &std::path::Path) {
@@ -101,7 +108,20 @@ async fn run_gate_kpop_single_acp_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Re
         .await
         .map_err(|e| e.to_string())?;
     dispatch_gate_kpop_prompt(ctx, &s, &prompt).await?;
-    restore_gate_kpop_session_dotfiles(ctx)?;
+    if let Err(restore_err) = restore_gate_kpop_session_dotfiles(ctx) {
+        let prepared = ctx.iteration.loop_params.prepared;
+        return kpop_fail_after_prompt(
+            &s,
+            KpopFailAfterPrompt {
+                cwd: prepared.artifacts().work_dir.as_path(),
+                session_dotfile_backups: ctx.iteration.session_dotfile_backups,
+                err: AgentError(restore_err),
+                phase: "restore",
+            },
+        )
+        .await
+        .map_err(|e| e.0);
+    }
     s.shutdown().await.map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -164,8 +184,15 @@ pub(crate) fn finish_gate_kpop_after_pass(
 pub(crate) fn fail_gate_kpop_after_exhausted(
     command: &str,
     prepared: &GateKpopPrepared,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+    restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    post_gate_kpop_gates(command, prepared)
+    post_gate_kpop_gates(
+        command,
+        prepared,
+        session_dotfile_backups,
+        restore_malvin_checks,
+    )
 }
 
 #[cfg(test)]

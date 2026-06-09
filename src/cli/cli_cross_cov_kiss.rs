@@ -13,7 +13,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = super::entrypoint::require_kiss_for_cli_command;
     let _ = stringify!(super::entrypoint::run_async_cli);
     let _ = super::entrypoint_commands::run_code_command;
-    let _ = super::entrypoint_commands::run_invent_command;
+    let _ = super::entrypoint_commands::run_inspire_command;
     let _: Option<super::exit::Exit> = None;
     let _: Option<crate::init_cmd::InitArgs> = None;
     let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
@@ -75,6 +75,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = stringify!(super::gate_kpop_workflow::finish_gate_kpop_after_pass);
     let _ = stringify!(super::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
     let _: Option<super::gate_kpop_workflow::GateKpopLoopParams> = None;
+    let _ = super::gate_kpop_workflow::run_loop_tests::gate_early_exit_fixture;
 }
 
 #[test]
@@ -117,6 +118,8 @@ fn smoke_cov_cli_cli_symbols_a() {
 fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates;
     let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
+    let _: Option<crate::repo_checks::FakeCommandDirGuard> = None;
+    let _ = stringify!(FakeCommandDirGuard);
 }
 
 #[test]

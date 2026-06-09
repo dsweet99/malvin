@@ -8,13 +8,14 @@ mod unix_tests {
     use super::common::{
         CodeSpawn, acp_mock_code_kpop_steps_js, combined_cli_output,
         seed_git_kiss_cargo_gate_workspace, spawn_code, test_home_workspace,
-        write_failing_gate_tools, write_mock_executable,
+        workspace_kiss_check_only, write_failing_gate_tools, write_mock_executable,
     };
 
     #[test]
     fn gate_loop_failure_surfaces_guidance_message() {
         let (root, home, workspace) = test_home_workspace();
         seed_git_kiss_cargo_gate_workspace(&workspace);
+        workspace_kiss_check_only(&workspace);
         let bin_dir = root.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
         let trace = root.path().join("gate-trace.log");

@@ -150,13 +150,14 @@ async fn terminate_agent_process_group_kills_sleep_child() {
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
-    let (mut agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
+    let (agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
     let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
     wait_for_init_reparent(orphan_pid).await;
     let mut baseline = super::super::unix_process_group_ps::snapshot_pids();
     baseline.insert(orphan_pid);
     terminate_agent_process_group(Some(pgid), &baseline).await;
     let _ = stringify!(agent.wait());
+    drop(agent);
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
         !process_alive(orphan_pid),

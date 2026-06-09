@@ -22,6 +22,54 @@ pub(crate) struct OuterLoopSummarizeParams<'a> {
     pub malvin_command: &'a str,
 }
 
+/// Inputs for [`code_outer_loop_summarize_params`].
+pub(crate) struct CodeOuterLoopSummarizeInputs<'a> {
+    pub max_loops: usize,
+    pub agent_ran: bool,
+    pub shared: &'a SharedOpts,
+    pub workflow: WorkflowCliOptions,
+}
+
+#[must_use]
+pub(crate) const fn code_outer_loop_summarize_params<'a>(
+    inputs: CodeOuterLoopSummarizeInputs<'a>,
+    prepared: &'a crate::cli::code_flow::CodeKpopPrepared,
+) -> OuterLoopSummarizeParams<'a> {
+    OuterLoopSummarizeParams {
+        max_loops: inputs.max_loops,
+        agent_ran: inputs.agent_ran,
+        shared: inputs.shared,
+        workflow: inputs.workflow,
+        store: prepared.store(),
+        artifacts: prepared.artifacts(),
+        malvin_command: "malvin code",
+    }
+}
+
+/// Inputs for [`kpop_outer_loop_summarize_params`].
+pub(crate) struct KpopOuterLoopSummarizeInputs<'a> {
+    pub max_loops: usize,
+    pub agent_ran: bool,
+    pub shared: &'a SharedOpts,
+}
+
+#[must_use]
+pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
+    inputs: KpopOuterLoopSummarizeInputs<'a>,
+    store: &'a PromptStore,
+    artifacts: &'a RunArtifacts,
+) -> OuterLoopSummarizeParams<'a> {
+    OuterLoopSummarizeParams {
+        max_loops: inputs.max_loops,
+        agent_ran: inputs.agent_ran,
+        shared: inputs.shared,
+        workflow: WorkflowCliOptions { force: false },
+        store,
+        artifacts,
+        malvin_command: "malvin kpop",
+    }
+}
+
 /// Whether an outer-loop summarize agent should run after `KPop` sessions complete.
 #[must_use]
 pub(crate) fn outer_loop_summarize_warranted(max_loops: usize) -> bool {

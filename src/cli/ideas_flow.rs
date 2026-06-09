@@ -1,14 +1,11 @@
 //! `ideas` subcommand: one-shot MBC2 boundary-exploration prompt from `mbc2.md`.
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use clap::Args;
 
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_config_if_present, create_run_artifacts_from_text, resolve_user_request,
+    RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
 use crate::cli::cli_request::require_cli_request;
 use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent};
@@ -18,7 +15,7 @@ use crate::run_timing::TimingPhase;
 /// Arguments for [`run_ideas`].
 #[derive(Args, Debug)]
 pub struct IdeasArgs {
-    /// Request or `@file` → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
     pub request: Option<String>,
 }
 
@@ -63,7 +60,7 @@ fn ideas_emit_startup(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    let request = require_cli_request(ideas.request.as_ref(), "invent")?;
+    let request = require_cli_request(ideas.request.as_ref(), "inspire")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
         crate::cli::run_emit::RunStartupEmitOpts {
@@ -74,14 +71,6 @@ fn ideas_emit_startup(
     )
 }
 
-fn snapshot_ideas_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    Ok(SessionDotfileBackups::from_parts(
-        backup_workspace_kissconfig_if_present(work_dir)?,
-        backup_workspace_malvin_checks_if_present(work_dir)?,
-        backup_workspace_kissignore_if_present(work_dir)?,
-        backup_workspace_malvin_config_if_present(work_dir)?,
-    ))
-}
 
 async fn prepare_ideas_run(
     ideas: &IdeasArgs,
@@ -90,13 +79,13 @@ async fn prepare_ideas_run(
 ) -> Result<IdeasRunPrep, String> {
     let client = new_ideas_client(shared, workflow);
     let request = require_cli_request(ideas.request.as_ref(), "ideas")?;
-    let (text, work_dir) = resolve_user_request(&request)?;
+    let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
         .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt = render_ideas_prompt(&text)?;
-    let session_dotfile_backups = snapshot_ideas_session_dotfiles(&artifacts.work_dir)?;
+    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
     Ok(IdeasRunPrep {
         client,
         artifacts,

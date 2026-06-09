@@ -57,6 +57,27 @@ pub(crate) fn restore_session_dotfiles(
     crate::artifacts::restore_workspace_session_dotfiles(cwd, bundle).map_err(AgentError)
 }
 
+pub(crate) fn restore_session_dotfiles_after_success(
+    cwd: &Path,
+    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
+) -> Result<(), AgentError> {
+    match restore_session_dotfiles(cwd, session_dotfile_backups) {
+        Ok(()) => Ok(()),
+        Err(first) => {
+            if restore_session_dotfiles(cwd, session_dotfile_backups).is_ok() {
+                Ok(())
+            } else {
+                Err(restore_workspace_on_error(
+                    cwd,
+                    session_dotfile_backups,
+                    first,
+                    "restore",
+                ))
+            }
+        }
+    }
+}
+
 fn restore_workspace_on_error(
     cwd: &Path,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
@@ -101,7 +122,7 @@ pub(crate) async fn run_kpop_flow_once(
             )
             .await;
         }
-        restore_session_dotfiles(args.cwd, session_dotfile_backups)?;
+        restore_session_dotfiles_after_success(args.cwd, session_dotfile_backups)?;
     }
 
     s.shutdown().await.map_err(AgentError)

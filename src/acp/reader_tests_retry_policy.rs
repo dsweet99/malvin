@@ -119,6 +119,7 @@ fn child_health_transport_errors_require_coder_session_teardown() {
         "acp child process is zombie",
         "acp stdout closed",
         "acp: WritableIterable is closed",
+        "Error: T: Connection stalled",
     ] {
         assert!(
             agent_error_requires_coder_session_teardown(msg),
@@ -180,6 +181,20 @@ fn retriable_exhausts_after_custom_max_attempts() {
         plan_agent_retry("timed out", custom_max - 1, custom_max).unwrap(),
         AgentRetryOutcome::Sleep(_)
     ));
+}
+
+#[test]
+fn slot_restore_error_stops_retrying_without_sleep() {
+    let msg = "kissconfig restore: disk full";
+    let out = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
+    assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
+}
+
+#[test]
+fn restore_failure_stops_retrying_without_sleep() {
+    let msg = "prompt failed; workspace session restore failed (restore): disk full";
+    let out = plan_agent_retry(msg, 1, TEST_MAX_ATTEMPTS).unwrap();
+    assert!(matches!(out, AgentRetryOutcome::StopRetrying), "{out:?}");
 }
 
 #[test]

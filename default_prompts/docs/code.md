@@ -56,7 +56,8 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 3. **Per outer iteration:**
    - Render `kpop_program.md` with `code_constraints.md` as scope.
    - Run one KPop agent session; log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
-   - Snapshot/restore `.kissconfig`, `.kissignore`, `.malvin/checks`.
+   - Snapshot at each outer iteration; restore after each prompt: `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`.
+   - Restore all protected files immediately before post-session quality gates (gate pass/fail is not proof of restore).
    - Track consecutive sessions that end with `## KPOP_SOLVED`.
 4. **Exit** — Success when two consecutive solved markers align with passing workspace gates; otherwise fail after exhaustion (gates rechecked).
 
@@ -88,5 +89,5 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 ```text
 malvin code plan.md
 malvin code --max-loops 3 --max-hypotheses 15 "Add widget API per plan.md"
-malvin --model sonnet-4 code @plans/feature.md
+malvin --model sonnet-4 code plans/feature.md
 ```

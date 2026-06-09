@@ -53,7 +53,7 @@ thread_local! {
 }
 
 #[cfg(test)]
-fn test_fake_command_path(command: &str) -> Option<PathBuf> {
+pub fn test_fake_command_path(command: &str) -> Option<PathBuf> {
     TEST_FAKE_COMMAND_DIR.with(|dir| {
         let d = {
             let mut borrowed = dir.borrow_mut();
@@ -127,6 +127,11 @@ pub fn apply_fake_path_if_present(_: &mut Command) {}
 #[cfg(test)]
 mod command_support_unit_tests {
     use super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
+
+    #[test]
+    fn fake_command_dir_guard_type_is_referenced() {
+        let _: Option<super::FakeCommandDirGuard> = None;
+    }
 
     #[test]
     fn run_command_failure_captures_streams() {

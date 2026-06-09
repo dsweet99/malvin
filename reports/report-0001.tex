@@ -1,0 +1,879 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{makecell}
+\usepackage{threeparttable}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fvextra}
+\usepackage[table]{xcolor}
+\usepackage{colortbl}
+
+\definecolor{passbg}{HTML}{DFF0D8}
+\definecolor{failbg}{HTML}{F2DEDE}
+ 
+\newcommand{\outcellle}[2]{% 
+  \ifnum#1>#2\relax
+    \cellcolor{failbg}#1%
+  \else
+    \cellcolor{passbg}#1%
+  \fi}
+\newcommand{\outcelleq}[2]{%
+  \ifnum#1=#2\relax
+    \cellcolor{passbg}#1%
+  \else
+    \cellcolor{failbg}#1%
+  \fi}
+
+\newcommand{\placeholder}[1]{\textcolor{gray}{\textit{[#1]}}}
+\newcommand{\todo}{\placeholder{TODO}}
+\newcommand{\tbd}{\placeholder{TBD}}
+\newcommand{\missdata}{---}
+\newcommand{\na}{n/a}
+\newcommand{\yes}{Y}  
+\newcommand{\no}{N}
+\newcommand{\exptidy}[1]{\makecell[l]{\texttt{exp-rich-tidy}\\[1pt]\hspace{0.75em}\texttt{#1}}}
+\newcommand{\richrev}{46cebbb032f920eb096efbaf23cdc6fe9dd541f7}
+
+\DefineVerbatimEnvironment{kpopdef}{Verbatim}{%
+  breaklines=true,breakanywhere=true,fontsize=\footnotesize,commandchars=\\\`\`}
+
+\DefineVerbatimEnvironment{pycode}{Verbatim}{%
+  breaklines=true,breakanywhere=true,fontsize=\scriptsize,baselinestretch=0.9}
+
+
+\title{\texttt{malvin} \texttt{tidy} on \texttt{rich}: Preliminary Evaluation Report}
+\author{David Sweet, Cursor}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\texttt{malvin} is an agent harness designed for long-duration, multi-step coding tasks. It combines operational 
+robustness with two novel features: (i) a linter (\texttt{kiss}) that reports violations of code-complexity metric
+ limits, and (ii) a scientific-reasoning loop (KPop) that emphasizes falsification rather than validation.
+We evaluate \texttt{malvin} on 
+ the task of refactoring a well-known Python repo, \texttt{rich}. The main challenge is to reduce the code's complexity
+  as measured by three well-defined metrics without increasing any of the 23 other \texttt{kiss} metrics
+  or breaking any \texttt{rich} unit 
+  tests. Additionally, we hide a second test suite (the unit tests of \texttt{glances}, a repo that depends 
+  on \texttt{rich}) and use 
+  it to manually evaluate the agent's final codebase. \texttt{malvin}
+  completed in 21 hours, passing all tests and bringing all three structural
+  caps---function length, nesting depth, and import
+  cycles---into compliance. By contrast, a bare \texttt{cursor-agent} did not and left unit tests failing. Finally,
+  evaluations of \texttt{malvin} ablations suggest that
+  both \texttt{kiss} and KPop are essential for passing the evaluation.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+
+Bare coding agents, such as Cursor's Agent, Anthropic's Claude, or OpenAI's Codex are known to struggle on
+long, complex tasks \cite{ProgramBench}, \cite{DeepSWE}, \cite{FrontierCode}, yet practitioner's rarely
+use bare coding agents. Often the bare agent will sit inside a custom harness resembling an optimizer:
+
+\begin{kpopdef}
+while test do not pass:
+  prompt bare agent to improve code
+\end{kpopdef}
+
+\texttt{malvin} is one such harness. \texttt{malvin} may be understood as a "non-convex satisficer", repeatedly suggesting code 
+changes until some constraints are met. (Contrast this with an "optimizer", which would have as its goal finding
+ the highest metric value possible.) The underlying LLM agent, \texttt{cursor-agent}~\cite{cursor-agent-cli}, suggests code changes,
+  and the constraints
+ are provided by linters, unit tests, and prompts.
+ 
+ One linter, \texttt{kiss}~\cite{kiss2026structural}, has been developed by the author
+ for this project. \texttt{kiss} measures various code complexity metrics, and reports violations of constraints on
+ them. Code complexity metrics have been associated \cite{antinyan,sjoberg} with difficulty in understanding and
+  maintaining code, although evidence can be mixed \cite{useful}. Agents are known to produce overly complex code. One
+  study shows complexity increases after the introduction of the Cursor coding agent to public github repos
+   \cite{he2026speedcostqualitycursor}. Another notes that agents produce longer functions than humans coders so
+    \cite{ProgramBench}. We find that a
+ coding agent will respond to \texttt{kiss} violations by suggesting refactors. For example,
+  Figure~\ref{fig:analyze-text-stats} 
+ shows a function before and after an agent responded to a message that a function was too long.
+
+\begin{figure}[ht]
+  \centering
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \textbf{Long-Function Violation}\\[0.4em]
+    \begin{pycode}
+def analyze_text_statistics(
+    text: str,
+    *,
+    top_n: int = 10,
+    min_word_length: int = 2,
+    stop_words: Iterable[str] | None = None,
+) -> TextStatistics:
+    if top_n < 1:
+        raise ValueError("top_n must be at least 1")
+    ...
+    punctuation = ".,;:!?\"'()[]{}<>/\\|@#$%^&*+-=_~`"
+    cleaned_tokens: list[str] = []
+    for raw_line in raw_lines:
+        for raw_token in raw_line.split():
+            token = raw_token.strip(punctuation).lower()
+            ...
+            cleaned_tokens.append(token)
+
+    # ... 22 lines omitted ...
+
+    return TextStatistics(
+        char_count=char_count,
+        word_count=word_count,
+        ...
+        unique_word_count=unique_word_count,
+    )
+    \end{pycode}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \textbf{After Refactoring}\\[0.4em]
+    \begin{pycode}
+def analyze_text_statistics(
+    text: str,
+    *,
+    top_n: int = 10,
+    min_word_length: int = 2,
+    stop_words: Iterable[str] | None = None,
+) -> TextStatistics:
+    _validate_text_stats_params(top_n, min_word_length)
+    normalized_stop = {word.lower() for word in (stop_words or ())}
+    raw_lines = text.splitlines()
+    char_count, line_count, non_empty_line_count = _line_counts(text, raw_lines)
+    cleaned_tokens = _tokenize_text(raw_lines, min_word_length, normalized_stop)
+    if not cleaned_tokens:
+        return _empty_text_statistics(char_count, line_count, non_empty_line_count)
+    return _text_statistics_from_tokens(
+        cleaned_tokens,
+        char_count,
+        line_count,
+        non_empty_line_count,
+        top_n,
+    )
+    \end{pycode}
+  \end{minipage}
+  \caption{Same public API, different structure: \texttt{analyze\_text\_statistics} before \texttt{kiss}-driven
+   refactor (67 lines, excerpted) and after. The refactored version delegates to helpers (\texttt{\_line\_counts}, \texttt{\_tokenize\_text}, etc.) defined elsewhere in the file.}
+  \label{fig:analyze-text-stats}
+\end{figure}
+
+\section{Experiments}
+\label{sec:experiments}
+
+The \texttt{rich} repo contains a 53-node import cycle, has a maximum of 127 statements per function, and 
+shows indentation depth as large as 13. These are signs of complex code. In our experiments, we instruct the
+agents to reduce the maximum indentation level to 5, the maximum number of statements per function to 25, and to remove
+all import cycles completely. Such refactorings are generally considered desirable \cite{meta} by software
+engineers.
+
+\subsection{Run protocol}
+\label{sec:protocol}
+
+Before each experiment run on the fork baseline (\texttt{rich} v15.0.0):
+\begin{enumerate}[nosep]
+  \item Delete the user's \texttt{malvin} logs directory \texttt{\textasciitilde/.malvin/logs} (cross-run history outside the \texttt{rich} repo).
+  \item Delete the local \texttt{glances/} directory.
+  \item Run \texttt{malvin tidy}, which instructs \texttt{malvin} to refactor the code until all
+   linters (\texttt{ruff} 
+  and \texttt{kiss}) and unit tests (\texttt{pytest}) pass. The linters and unit tests are listed in a file called
+  \texttt{.malvin/checks}.
+\end{enumerate}
+The agent then operates on the \texttt{rich} checkout; per-run artifacts accumulate under \texttt{.malvin/logs/} 
+inside that repo. After the agent finishes, we clone \texttt{glances}, install the modified \texttt{rich} tree as its 
+dependency, and run {\texttt{glances}}'s test suite (the hidden eval); \texttt{glances} never appears in check scripts or
+ \texttt{malvin tidy} prompts.
+
+ Note that all runs used Cursor's \texttt{auto} model mode.
+
+\subsection{Code availability}
+\label{sec:code}
+
+Post-run \texttt{rich} trees for every experiment are archived in \url{github.com/dsweet99/exp-rich} (a
+ fork of \texttt{rich}). Each experiment run lives on its own branch; Table~\ref{tab:branches} maps run
+  identifiers to branch names. The fork baseline is \texttt{master} at \texttt{\richrev}. The \texttt{malvin}
+   harness used in these runs is open source at \url{github.com/dsweet99/malvin}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Experiment branches on \url{github.com/dsweet99/exp-rich}.}
+  \label{tab:branches}
+  \small
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    Experiment & Branch \\
+    \midrule
+    fork baseline (v15.0.0) & \texttt{master} \\
+    \texttt{exp-rich-tidy} & \texttt{dsweet/tidy} \\
+    \exptidy{-no-coverage-yes-complexity} & \texttt{dsweet/exp-tidy-no-coverage-yes-complexity} \\
+    \exptidy{-yes-coverage-no-complexity} & \texttt{dsweet/tidy-yes-coverage-no-complexity} \\
+    \exptidy{-no-kiss} & \texttt{dsweet/tidy-no-kiss} \\
+    \exptidy{-no-kpop} & \texttt{dsweet/exp-tidy-no-kpop} \\
+    \texttt{exp-rich-cursor-kiss} & \texttt{dsweet/exp-cursor-kiss} \\
+    \texttt{exp-rich-cursor} & \texttt{dsweet/exp-rich-cursor} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{\texttt{malvin} ablations}
+\label{sec:ablations}
+
+\texttt{malvin tidy} combines four components:
+
+\textbf{Components of \texttt{malvin tidy}.}
+
+The \texttt{malvin} harness consists of four components
+
+\begin{itemize}[nosep]
+  \item \textbf{\texttt{kiss} test-coverage checks} --- per-file test-coverage checks (85\% in these runs).
+  \item \textbf{\texttt{kiss} complexity checks} --- complexity-metric constraints beyond the three structural targets (see 
+  appendix~\ref{app:kiss-stats}) such as "too many function arguments" and "duplicate code".
+  \item \textbf{KPop loop} --- Popperian hypothesize/falsify loop inside each agent turn, plus an 
+  outer \texttt{malvin tidy} loop until \texttt{.malvin/checks} pass (Appendix~\ref{app:kpop}).
+  \item \textbf{Operational reliability} --- retries (e.g., for network or API failures), memory limits, and process-group cleanup.
+\end{itemize}
+
+Table~\ref{tab:results} ablates KPop, \texttt{kiss} coverage, \texttt{kiss} complexity, or the whole harness while holding
+ the \texttt{rich} fork baseline fixed.
+
+Structural targets (\texttt{statements\_per\_function}, \texttt{max\_indentation\_depth}, \texttt{cycle\_size}) are enforced in every \texttt{malvin tidy} run in Table~\ref{tab:results}; ablations below toggle the \emph{additional} \texttt{kiss} families, KPop, or the \texttt{malvin} harness itself.
+
+\textbf{What each experiment removes or replaces.}
+\begin{description}[
+  nosep,
+  leftmargin=!,
+  labelwidth=!,
+  widest=\texttt{exp-rich-tidy-no-coverage-yes-complexity},
+  align=left,
+  font=\normalfont
+]
+  \item[\texttt{exp-rich-tidy}] Nothing (full \texttt{malvin tidy}).
+  \item[\texttt{exp-rich-tidy-no-kiss}] \texttt{kiss} coverage and complexity checks; structural targets only.
+  \item[\texttt{exp-rich-tidy-yes-coverage-no-complexity}] \texttt{kiss} complexity checks only.
+  \item[\texttt{exp-rich-tidy-no-coverage-yes-complexity}] \texttt{kiss} test-coverage checks only.
+  \item[\texttt{exp-rich-tidy-no-kpop}] KPop program (Appendix~\ref{app:kpop}); outer \texttt{malvin tidy} loop and subprocess control unchanged.
+  \item[\texttt{exp-rich-cursor}] Entire \texttt{malvin tidy} harness---no KPop loop, no \texttt{malvin tidy} loop, no subprocess control; single-shot \texttt{cursor-agent}.
+  \item[\texttt{exp-rich-cursor-kiss}] Same as \texttt{exp-rich-cursor}, but the prompt requires \texttt{kiss check} (still no \texttt{malvin tidy} loop, KPop, or \texttt{malvin} subprocess layer).
+\end{description}
+
+Cursor-only runs still use \texttt{cursor-agent}, but not within {\texttt{malvin}}'s retry, memory-limit, or process-group machinery.
+
+\subsection{Run configuration columns}
+\label{sec:config-columns}
+
+Table~\ref{tab:results}: left of the vertical rule, configuration columns (Section~\ref{sec:config-columns});
+ right, outcome columns (Section~\ref{sec:outcome-metrics}).
+
+\paragraph{Experiment.} Run identifier; \texttt{exp-rich-tidy-*} variants break after \texttt{-tidy}. 
+The first row is the fork baseline (\texttt{rich} v15.0.0).
+
+\paragraph{Agent.} \texttt{malvin} denotes \texttt{malvin tidy} (with KPop); \texttt{cursor} denotes the cursor baseline.
+
+\paragraph{kiss tgt.} \textbf{Y} if \texttt{kiss} feedback was enabled on structural targets (\texttt{statements\_per\_function}, \texttt{max\_indentation\_depth}, \texttt{cycle\_size}); \textbf{N} otherwise. Always \textbf{Y} for \texttt{malvin tidy} runs in this matrix.
+
+\paragraph{kiss cov.} \textbf{Y} if per-file test-coverage checks were active (85\% in these experiments); \textbf{N} if the coverage check family was disabled.
+
+\paragraph{kiss cplx.} \textbf{Y} if \texttt{kiss} complexity/clamp checks beyond structural targets were active; \textbf{N} if only structural targets were enforced.
+
+\paragraph{KPop.} \textbf{Y} if the run used \texttt{malvin tidy} with KPop (including two consecutive \texttt{\#\# KPOP\_SOLVED} early exit); \textbf{N} for the cursor baseline, \texttt{exp-rich-cursor-kiss}, or \exptidy{-no-kpop} (Appendix~\ref{app:kpop}).
+
+\subsection{Outcome metrics}
+\label{sec:outcome-metrics}
+
+Table~\ref{tab:results} (right of the vertical rule) reports post-run extrema and test outcomes. Experiment rows use green/red cell backgrounds against the pass grades in the caption; the fork baseline row is uncolored.
+
+\paragraph{max stmt/fn, max indent, max cycle.} Post-run \texttt{kiss} maxima for \texttt{statements\_per\_function}, \texttt{max\_indentation\_depth}, and \texttt{cycle\_size}. Pass when max stmt/fn $\leq 25$, max indent $\leq 4$, and max cycle $= 0$.
+
+\paragraph{mets worse.} Count of \texttt{kiss}-controlled metrics (excluding structural targets and \texttt{arguments\_per\_function}, which \texttt{kiss} does not enforce) whose post-run maximum \emph{exceeds} the fork-baseline maximum (Appendix~\ref{app:kiss-baseline}, fork-baseline row). Pass when zero.
+
+\paragraph{rich fails.} Count of \emph{new} failing test cases in {\texttt{rich}}'s own \texttt{pytest tests/} suite relative to the fork baseline. Pass when zero.
+
+\paragraph{glances fails.} Count of \emph{new} failing test cases in {\texttt{glances}}'s \texttt{pytest} suite (the hidden eval), excluding four pre-existing Selenium \texttt{test\_webui} \texttt{SessionNotCreatedException} errors on the fork baseline. Pass when zero.
+
+\paragraph{wall (h).} Wall-clock hours (Table~\ref{tab:timing}): \texttt{malvin} \texttt{TIMING:} \texttt{wall} for \texttt{malvin tidy} runs; shell \texttt{time} for \texttt{exp-rich-cursor-kiss}. Fork baseline and \texttt{exp-rich-cursor} have no agent run time.
+
+Full \texttt{kiss} distributions appear in Appendix~\ref{app:kiss-stats}.
+
+\subsection{Results}
+\label{sec:results}
+
+
+The unablated \texttt{malvin tidy} workflow (\texttt{exp-rich-tidy}) passed all tests. It reduced code complexity, passed all unit tests,
+and provided a working \texttt{rich} dependency to \texttt{glances}, which passed all of its unit tests. Removing
+the high test-coverage constraint (85\% per-file coverge) from \texttt{kiss}'s config (\texttt{exp-rich-tidy-no-coverage-yes-complexity})
+also passed, but it is not obvious that this means one should avoid test coverage. In fact, the \texttt{rich} repo
+already had good test coverage and the workflow maintained it. The insistance on high, strict test coverage
+increased running time considerably, however, so this should be considered when determining a practical
+configuration.
+
+None of the ablations passed all tests (see table~\ref{tab:results}). Removing any other component from the workflow
+introduced more failures. In particular, removing KPop prevented the agent from respecting the kiss linter 
+rules. In each run without KPop, the agent thwarted \texttt{malvin}'s attempts to prevent tampering with
+\texttt{kiss}'s config. We speculate that KPop's focus on \textit{falsifying} the requirements rather than 
+\textit{meeting} them is what leads to this improved behavior. This question deserves further study.
+ 
+The only run that failed the hidden \texttt{glances} test was \texttt{exp-rich-no-kiss}. In this run we
+used \texttt{kiss} to constrain the three target metrics but none of the other, auxiliary complexity metrics. This resulted
+in lots of refactoring (to meet the three constraints). We hypothesize that auxiliary complexity constraints
+are analogous to regularization in a machine learning problem and make the code more likely to work on
+the hidden ("out-of-sample") tests.
+
+
+\begin{table}[ht]
+  \begin{threeparttable}
+  \centering
+  \caption{Evaluation results. Pass grades: max stmt/fn $\leq 25$, max indent $\leq 4$, max cycle $= 0$, mets worse $= 0$, rich fails $= 0$, glances fails$^\dagger$ $= 0$. Green/red backgrounds mark pass/fail (experiment rows only). Fork baseline \texttt{kiss} maxima from Appendix~\ref{app:kiss-baseline}.}
+  \label{tab:results}
+  \scriptsize
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}l l c c c c | r r r r r r r@{}}
+    \toprule
+    Experiment &
+    Agent &
+    \makecell{kiss\\tgt} &
+    \makecell{kiss\\cov} &
+    \makecell{kiss\\cplx} &
+    KPop &
+    \makecell{max\\stmt/fn} &
+    \makecell{max\\indent} &
+    \makecell{max\\cycle} &
+    \makecell{mets\\worse} &
+    \makecell{rich\\fails} &
+    \makecell{glances\\fails$^\dagger$} &
+    \makecell{wall\\(h)} \\
+    \midrule
+    fork baseline (v15.0.0) &
+    \missdata & \missdata & \missdata & \missdata & \missdata &
+    127 & 13 & 53 & \missdata & 0 & 0 & \missdata \\
+    \texttt{exp-rich-tidy} &
+    \texttt{malvin} & \yes & \yes & \yes & \yes &
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 21.8 \\
+    \exptidy{-no-coverage-yes-complexity} &
+    \texttt{malvin} & \yes & \no & \yes & \yes &
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 8.7 \\
+    \exptidy{-yes-coverage-no-complexity} &
+    \texttt{malvin} & \yes & \yes & \no & \yes &
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{4}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \na \\
+    \exptidy{-no-kiss} &
+    \texttt{malvin} & \yes & \no & \no & \yes &
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{3}{0} & \outcelleq{0}{0} & \outcelleq{1}{0} & 1.5 \\
+    \exptidy{-no-kpop} &
+    \texttt{malvin} & \yes & \yes & \yes & \no &
+    \outcellle{71}{25} & \outcellle{13}{4} & \outcelleq{32}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.9 \\
+    \texttt{exp-rich-cursor-kiss} &
+    cursor & \yes & \yes & \yes & \no &
+    \outcellle{127}{25} & \outcellle{13}{4} & \outcelleq{52}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.1 \\
+    \texttt{exp-rich-cursor} &
+    cursor & \no & \no & \no & \no &
+    \outcellle{27}{25} & \outcellle{6}{4} & \outcelleq{67}{0} & \outcelleq{4}{0} & \outcelleq{36}{0} & \outcelleq{0}{0} & \missdata \\
+    \bottomrule
+  \end{tabular}
+  \begin{tablenotes}
+    \small
+    \item[$^\dagger$] Count of \emph{new} \texttt{glances} \texttt{pytest} failures (hidden eval) only; four \texttt{test\_webui} Selenium \texttt{SessionNotCreatedException} errors present on the fork baseline are excluded.
+  \end{tablenotes}
+  \end{threeparttable}
+\end{table}
+
+
+\section{Limitations and future work}
+\label{sec:limitations}
+
+\begin{itemize}[nosep]
+  \item \textbf{Residual contamination:} Section~\ref{sec:protocol} clears global logs and \texttt{glances/} before each run, but \texttt{rich} workspace state from prior experiments may linger on disk.
+  \item \textbf{Non-determinism:} LLM and agent behavior vary; single-run numbers are illustrative.
+  \item \textbf{Environment tests:} four Selenium \texttt{test\_webui} \texttt{SessionNotCreatedException} errors on the fork baseline are excluded from hidden eval counts.
+  \item \textbf{Incomplete logging:} saved prompts and some check logs are unarchived; full \texttt{kiss\_stats} for completed runs are in Appendix~\ref{app:kiss-stats}.
+  \item \textbf{Single library:} one subject codebase and one hidden consumer; other languages, repos, and evaluators are untested.
+  \item \textbf{Task type:} This was a complex refactoring task. There are many other types of tasks
+\end{itemize}
+
+
+\section{Conclusion}
+
+Without additional support -- complexity constraints (\texttt{kiss}) and augmented reasoning (KPop) -- the coding
+agent was unable to successfully complete a large refactoring task. We hypothesize that
+\begin{enumerate}
+  \item Complexity constraints act as a regularizer, making code more likely to work outside of the tests used
+  as feedback during development
+  \item Focusing on \textit{falsification}, rather than satisfaction, makes an agent more likely to meet the user's stated requirements.
+\end{enumerate}
+
+\begin{thebibliography}{99}
+
+\bibitem{kiss2026structural}
+GPT-5.5, edited by David Sweet.
+\newblock \texttt{kiss}: Structural Feedback for Agent-Written Code.
+\newblock Technical report, 2026.
+\newblock \url{github.com/dsweet99/kiss/blob/main/docs/kiss.pdf}.
+
+\bibitem{antinyan}
+Vard Antinyan, Miroslaw Staron, and Anna Sandberg.
+\newblock Evaluating code complexity triggers, use of complexity measures and
+the influence of code complexity on maintenance time.
+\newblock \emph{Empirical Software Engineering}, 22:3057--3087, 2017.
+
+\bibitem{sjoberg}
+Dag I. K. Sj\"oberg, Bente Anda, and Audris Mockus.
+\newblock Questioning software maintenance metrics: A comparative case study.
+\newblock \emph{Empirical Software Engineering and Measurement}, 2012.
+
+\bibitem{mcconnell}
+Steve McConnell.
+\newblock \emph{Code Complete}.
+\newblock Microsoft Press, 2nd edition, 2004.
+
+\bibitem{he2026speedcostqualitycursor}
+Hao He, Courtney Miller, Shyam Agarwal, Christian K\"astner, and Bogdan Vasilescu.
+\newblock Speed at the Cost of Quality: How Cursor AI Increases Short-Term Velocity and Long-Term Complexity in Open-Source Projects.
+\newblock arXiv:2511.04427, 2026.
+\newblock \url{arxiv.org/abs/2511.04427}.
+
+\bibitem{ProgramBench}
+John Yang, Kilian Lieret, Jeffrey Ma, Parth Thakkar, Dmitrii Pedchenko, Sten Sootla, Emily McMilin, Pengcheng Yin, Rui Hou, Gabriel Synnaeve, Diyi Yang, and Ofir Press.
+\newblock ProgramBench: Can Language Models Rebuild Programs From Scratch?
+\newblock arXiv:2605.03546, 2026.
+\newblock \url{arxiv.org/abs/2605.03546}.
+
+\bibitem{cursor-agent-cli}
+Cursor.
+\newblock Cursor CLI overview.
+\newblock \url{cursor.com/docs/cli/overview}, accessed 2026.
+
+\bibitem{meta}
+Audris Mockus, Peter C. Rigby, Rui Abreu, Anatoly Akkerman, Yogesh Bhootada, Payal Bhuptani, Gurnit Ghardhora, Lan Hoang Dao, Chris Hawley, Renzhi He, Sagar Krishnamoorthy, Sergei Krauze, Jianmin Li, Anton Lunov, Dragos Martac, Francois Morin, Neil Mitchell, Venus Montes, Maher Saba, Matt Steiner, Andrea Valori, Shanchao Wang, and Nachiappan Nagappan.
+\newblock Code Improvement Practices at Meta.
+\newblock arXiv:2504.12517, 2025.
+\newblock \url{arxiv.org/abs/2504.12517}.
+
+\bibitem{useful}
+Shaiful Chowdhury, Reid Holmes, Andy Zaidman, and Rick Kazman.
+\newblock Revisiting the Debate: Are Code Metrics Useful for Measuring Maintenance Effort?
+\newblock \emph{Empirical Software Engineering}, 27(6):158, 2022.
+\newblock \url{www.cs.ubc.ca/~rtholmes/papers/emse_2022_chowdhury_preprint.pdf}.
+
+\bibitem{DeepSWE}
+Wenqi Huang, Charley Lee, Leonard Tng, and Serena Ge.
+\newblock DeepSWE: Measuring frontier coding agents on original, long-horizon engineering tasks.
+\newblock Datacurve AI blog, 2026.
+\newblock \url{deepswe.datacurve.ai/blog}.
+
+\bibitem{FrontierCode}
+Eric Lu, Ben Pan, Deniz Birlikci, Sam Lee, Ray Wang, Rohan Choudhury, Fermi Ma, TC Qin, Carlo Baronio, Silas Alberti, et al.
+\newblock Introducing FrontierCode.
+\newblock Cognition blog, 2026.
+\newblock \url{cognition.ai/blog/frontier-code}.
+\end{thebibliography}
+
+\appendix
+\section{Full \texttt{kiss} statistics}
+\label{app:kiss-stats}
+
+All tables report \texttt{kiss\_stats} output: unit count $N$, distribution percentiles, and maximum. File-level metrics use one row per Python file; \texttt{statements\_per\_function} and related function metrics use one row per function. \texttt{arguments\_per\_function} is excluded---\texttt{kiss} does not control it.
+
+\subsection{Fork baseline: \texttt{rich} v15.0.0}
+\label{app:kiss-baseline}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 1824 & 4 & 13 & 19 & 40 & 127 \\
+  \texttt{positional\_args} & 1824 & 0 & 2 & 3 & 6 & 16 \\
+  \texttt{keyword\_only\_args} & 1824 & 0 & 0 & 1 & 10 & 28 \\
+  \texttt{max\_indentation\_depth} & 1824 & 1 & 3 & 4 & 7 & 13 \\
+  \texttt{nested\_function\_depth} & 1824 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 1824 & 0 & 1 & 2 & 3 & 8 \\
+  \texttt{return\_values\_per\_function} & 1824 & 0 & 1 & 1 & 2 & 5 \\
+  \texttt{branches\_per\_function} & 1824 & 0 & 2 & 4 & 9 & 26 \\
+  \texttt{local\_variables\_per\_function} & 1824 & 1 & 4 & 7 & 14 & 43 \\
+  \texttt{statements\_per\_try\_block} & 1824 & 0 & 0 & 1 & 3 & 17 \\
+  \texttt{boolean\_parameters} & 1824 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 1824 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 1824 & 3 & 9 & 13 & 32 & 92 \\
+  \texttt{methods\_per\_class} & 272 & 1 & 6 & 13 & 27 & 78 \\
+  \texttt{statements\_per\_file} & 213 & 13 & 128 & 253 & 519 & 790 \\
+  \texttt{lines\_per\_file} & 213 & 93 & 648 & 796 & 1716 & 3610 \\
+  \texttt{functions\_per\_file} & 213 & 3 & 25 & 34 & 96 & 116 \\
+  \texttt{interface\_types\_per\_file} & 213 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 213 & 0 & 3 & 6 & 18 & 33 \\
+  \texttt{imported\_names\_per\_file} & 209 & 5 & 19 & 29 & 53 & 87 \\
+  \texttt{inv\_test\_coverage} & 213 & 0 & 100 & 100 & 100 & 100 \\
+  \texttt{fan\_in} & 213 & 0 & 8 & 15 & 48 & 119 \\
+  \texttt{fan\_out} & 213 & 3 & 8 & 11 & 15 & 37 \\
+  \texttt{cycle\_size} & 213 & 0 & 53 & 53 & 53 & 53 \\
+  \texttt{indirect\_dependencies} & 213 & 65 & 69 & 69 & 72 & 72 \\
+  \texttt{dependency\_depth} & 213 & 5 & 6 & 6 & 6 & 7 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-cursor}}
+\label{app:kiss-cursor}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 2033 & 4 & 13 & 16 & 22 & 27 \\
+  \texttt{positional\_args} & 2033 & 0 & 3 & 4 & 7 & 21 \\
+  \texttt{keyword\_only\_args} & 2033 & 0 & 0 & 2 & 11 & 28 \\
+  \texttt{max\_indentation\_depth} & 2033 & 1 & 3 & 4 & 5 & 6 \\
+  \texttt{nested\_function\_depth} & 2033 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 2033 & 0 & 1 & 2 & 4 & 8 \\
+  \texttt{return\_values\_per\_function} & 2033 & 0 & 1 & 1 & 3 & 5 \\
+  \texttt{branches\_per\_function} & 2033 & 0 & 3 & 4 & 6 & 10 \\
+  \texttt{local\_variables\_per\_function} & 2033 & 1 & 4 & 6 & 10 & 14 \\
+  \texttt{statements\_per\_try\_block} & 2033 & 0 & 0 & 0 & 2 & 10 \\
+  \texttt{boolean\_parameters} & 2033 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 2033 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 2033 & 3 & 9 & 12 & 19 & 46 \\
+  \texttt{methods\_per\_class} & 274 & 1 & 6 & 13 & 28 & 72 \\
+  \texttt{statements\_per\_file} & 229 & 16 & 112 & 196 & 497 & 670 \\
+  \texttt{lines\_per\_file} & 229 & 101 & 630 & 749 & 1732 & 3610 \\
+  \texttt{functions\_per\_file} & 229 & 3 & 24 & 31 & 97 & 120 \\
+  \texttt{interface\_types\_per\_file} & 229 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 229 & 0 & 3 & 6 & 18 & 33 \\
+  \texttt{imported\_names\_per\_file} & 225 & 5 & 20 & 28 & 50 & 86 \\
+  \texttt{inv\_test\_coverage} & 229 & 0 & 100 & 100 & 100 & 100 \\
+  \texttt{fan\_in} & 229 & 0 & 8 & 16 & 57 & 130 \\
+  \texttt{fan\_out} & 229 & 3 & 8 & 11 & 16 & 33 \\
+  \texttt{cycle\_size} & 229 & 0 & 67 & 67 & 67 & 67 \\
+  \texttt{indirect\_dependencies} & 229 & 79 & 83 & 83 & 86 & 86 \\
+  \texttt{dependency\_depth} & 229 & 5 & 6 & 6 & 6 & 7 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-cursor-kiss}}
+\label{app:kiss-cursor-kiss}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 1753 & 4 & 13 & 19 & 40 & 127 \\
+  \texttt{positional\_args} & 1753 & 0 & 2 & 3 & 6 & 16 \\
+  \texttt{keyword\_only\_args} & 1753 & 0 & 0 & 2 & 10 & 28 \\
+  \texttt{max\_indentation\_depth} & 1753 & 1 & 3 & 4 & 7 & 13 \\
+  \texttt{nested\_function\_depth} & 1753 & 0 & 0 & 1 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 1753 & 0 & 1 & 2 & 3 & 8 \\
+  \texttt{return\_values\_per\_function} & 1753 & 0 & 1 & 1 & 2 & 5 \\
+  \texttt{branches\_per\_function} & 1753 & 0 & 2 & 4 & 11 & 33 \\
+  \texttt{local\_variables\_per\_function} & 1753 & 1 & 4 & 7 & 14 & 43 \\
+  \texttt{statements\_per\_try\_block} & 1753 & 0 & 0 & 1 & 3 & 17 \\
+  \texttt{boolean\_parameters} & 1753 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 1753 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 1753 & 3 & 9 & 13 & 32 & 92 \\
+  \texttt{methods\_per\_class} & 250 & 2 & 7 & 13 & 34 & 78 \\
+  \texttt{statements\_per\_file} & 172 & 19 & 142 & 269 & 519 & 790 \\
+  \texttt{lines\_per\_file} & 172 & 139 & 671 & 919 & 1716 & 3610 \\
+  \texttt{functions\_per\_file} & 172 & 4 & 28 & 35 & 96 & 116 \\
+  \texttt{interface\_types\_per\_file} & 172 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 172 & 0 & 4 & 7 & 18 & 33 \\
+  \texttt{imported\_names\_per\_file} & 169 & 6 & 22 & 33 & 53 & 87 \\
+  \texttt{inv\_test\_coverage} & 172 & 0 & 0 & 0 & 14 & 15 \\
+  \texttt{fan\_in} & 172 & 0 & 9 & 18 & 47 & 93 \\
+  \texttt{fan\_out} & 172 & 3 & 8 & 12 & 16 & 37 \\
+  \texttt{cycle\_size} & 172 & 0 & 52 & 52 & 52 & 52 \\
+  \texttt{indirect\_dependencies} & 172 & 64 & 68 & 69 & 69 & 69 \\
+  \texttt{dependency\_depth} & 172 & 5 & 6 & 6 & 7 & 7 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-tidy-no-kiss}}
+\label{app:kiss-no-kiss}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 2046 & 4 & 13 & 16 & 22 & 25 \\
+  \texttt{positional\_args} & 2046 & 0 & 3 & 4 & 6 & 16 \\
+  \texttt{keyword\_only\_args} & 2046 & 0 & 0 & 3 & 11 & 28 \\
+  \texttt{max\_indentation\_depth} & 2046 & 1 & 3 & 4 & 4 & 4 \\
+  \texttt{nested\_function\_depth} & 2046 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 2046 & 0 & 1 & 2 & 4 & 8 \\
+  \texttt{return\_values\_per\_function} & 2046 & 0 & 1 & 1 & 3 & 5 \\
+  \texttt{branches\_per\_function} & 2046 & 0 & 2 & 4 & 6 & 12 \\
+  \texttt{local\_variables\_per\_function} & 2046 & 1 & 4 & 6 & 10 & 15 \\
+  \texttt{statements\_per\_try\_block} & 2046 & 0 & 0 & 0 & 3 & 10 \\
+  \texttt{boolean\_parameters} & 2046 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 2046 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 2046 & 3 & 9 & 12 & 19 & 46 \\
+  \texttt{methods\_per\_class} & 273 & 1 & 7 & 14 & 35 & 93 \\
+  \texttt{statements\_per\_file} & 217 & 13 & 130 & 293 & 519 & 846 \\
+  \texttt{lines\_per\_file} & 217 & 97 & 640 & 942 & 1758 & 3610 \\
+  \texttt{functions\_per\_file} & 217 & 3 & 25 & 43 & 100 & 145 \\
+  \texttt{interface\_types\_per\_file} & 217 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 217 & 0 & 3 & 6 & 18 & 33 \\
+  \texttt{imported\_names\_per\_file} & 213 & 5 & 13 & 18 & 38 & 44 \\
+  \texttt{inv\_test\_coverage} & 217 & 0 & 100 & 100 & 100 & 100 \\
+  \texttt{fan\_in} & 217 & 0 & 3 & 8 & 29 & 92 \\
+  \texttt{fan\_out} & 217 & 2 & 4 & 5 & 9 & 15 \\
+  \texttt{cycle\_size} & 217 & 0 & 0 & 0 & 0 & 0 \\
+  \texttt{indirect\_dependencies} & 217 & 3 & 5 & 9 & 13 & 19 \\
+  \texttt{dependency\_depth} & 217 & 2 & 3 & 3 & 4 & 5 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-tidy-yes-coverage-no-complexity}}
+\label{app:kiss-yes-coverage-no-complexity}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 2359 & 4 & 12 & 16 & 21 & 25 \\
+  \texttt{positional\_args} & 2359 & 0 & 3 & 4 & 8 & 17 \\
+  \texttt{keyword\_only\_args} & 2359 & 0 & 0 & 2 & 9 & 28 \\
+  \texttt{max\_indentation\_depth} & 2359 & 1 & 3 & 3 & 4 & 4 \\
+  \texttt{nested\_function\_depth} & 2359 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 2359 & 0 & 1 & 2 & 4 & 8 \\
+  \texttt{return\_values\_per\_function} & 2359 & 0 & 1 & 1 & 3 & 8 \\
+  \texttt{branches\_per\_function} & 2359 & 0 & 2 & 3 & 5 & 10 \\
+  \texttt{local\_variables\_per\_function} & 2359 & 1 & 4 & 6 & 10 & 29 \\
+  \texttt{statements\_per\_try\_block} & 2359 & 0 & 0 & 0 & 3 & 10 \\
+  \texttt{boolean\_parameters} & 2359 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 2359 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 2359 & 3 & 9 & 12 & 19 & 46 \\
+  \texttt{methods\_per\_class} & 270 & 1 & 7 & 14 & 27 & 72 \\
+  \texttt{statements\_per\_file} & 319 & 10 & 91 & 157 & 499 & 654 \\
+  \texttt{lines\_per\_file} & 319 & 45 & 480 & 661 & 1619 & 3610 \\
+  \texttt{functions\_per\_file} & 319 & 2 & 17 & 30 & 99 & 123 \\
+  \texttt{interface\_types\_per\_file} & 319 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 319 & 0 & 1 & 5 & 13 & 33 \\
+  \texttt{imported\_names\_per\_file} & 313 & 3 & 16 & 26 & 54 & 84 \\
+  \texttt{inv\_test\_coverage} & 319 & 0 & 0 & 0 & 14 & 15 \\
+  \texttt{fan\_in} & 319 & 0 & 7 & 12 & 44 & 98 \\
+  \texttt{fan\_out} & 319 & 1 & 6 & 8 & 14 & 28 \\
+  \texttt{cycle\_size} & 319 & 0 & 0 & 0 & 0 & 0 \\
+  \texttt{indirect\_dependencies} & 319 & 43 & 61 & 64 & 70 & 81 \\
+  \texttt{dependency\_depth} & 319 & 4 & 5 & 5 & 6 & 6 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-tidy-no-coverage-yes-complexity}}
+\label{app:kiss-no-coverage-yes-complexity}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 2102 & 4 & 13 & 16 & 22 & 25 \\
+  \texttt{positional\_args} & 2102 & 0 & 3 & 4 & 8 & 16 \\
+  \texttt{keyword\_only\_args} & 2102 & 0 & 0 & 2 & 10 & 28 \\
+  \texttt{max\_indentation\_depth} & 2102 & 1 & 3 & 4 & 4 & 4 \\
+  \texttt{nested\_function\_depth} & 2102 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 2102 & 0 & 1 & 2 & 4 & 8 \\
+  \texttt{return\_values\_per\_function} & 2102 & 0 & 1 & 1 & 2 & 5 \\
+  \texttt{branches\_per\_function} & 2102 & 0 & 2 & 4 & 6 & 10 \\
+  \texttt{local\_variables\_per\_function} & 2102 & 1 & 4 & 6 & 10 & 20 \\
+  \texttt{statements\_per\_try\_block} & 2102 & 0 & 0 & 0 & 2 & 10 \\
+  \texttt{boolean\_parameters} & 2102 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 2102 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 2102 & 3 & 9 & 12 & 20 & 46 \\
+  \texttt{methods\_per\_class} & 81 & 3 & 18 & 24 & 58 & 73 \\
+  \texttt{statements\_per\_file} & 238 & 13 & 122 & 218 & 508 & 545 \\
+  \texttt{lines\_per\_file} & 238 & 80 & 625 & 704 & 1883 & 3610 \\
+  \texttt{functions\_per\_file} & 238 & 3 & 22 & 45 & 94 & 110 \\
+  \texttt{interface\_types\_per\_file} & 238 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{concrete\_types\_per\_file} & 238 & 0 & 1 & 1 & 1 & 1 \\
+  \texttt{imported\_names\_per\_file} & 232 & 5 & 19 & 25 & 50 & 77 \\
+  \texttt{inv\_test\_coverage} & 238 & 0 & 100 & 100 & 100 & 100 \\
+  \texttt{fan\_in} & 238 & 0 & 7 & 13 & 37 & 81 \\
+  \texttt{fan\_out} & 238 & 2 & 7 & 9 & 14 & 23 \\
+  \texttt{cycle\_size} & 238 & 0 & 0 & 0 & 0 & 0 \\
+  \texttt{indirect\_dependencies} & 238 & 6 & 50 & 58 & 64 & 64 \\
+  \texttt{dependency\_depth} & 238 & 3 & 5 & 5 & 6 & 6 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-tidy-no-kpop}}
+\label{app:kiss-no-kpop}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 1464 & 4 & 12 & 17 & 37 & 71 \\
+  \texttt{positional\_args} & 1464 & 0 & 2 & 3 & 5 & 15 \\
+  \texttt{keyword\_only\_args} & 1464 & 0 & 0 & 1 & 7 & 28 \\
+  \texttt{max\_indentation\_depth} & 1464 & 1 & 3 & 4 & 6 & 13 \\
+  \texttt{nested\_function\_depth} & 1464 & 0 & 0 & 1 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 1464 & 0 & 1 & 2 & 3 & 8 \\
+  \texttt{return\_values\_per\_function} & 1464 & 0 & 1 & 1 & 1 & 5 \\
+  \texttt{branches\_per\_function} & 1464 & 0 & 2 & 4 & 10 & 20 \\
+  \texttt{local\_variables\_per\_function} & 1464 & 1 & 4 & 7 & 13 & 43 \\
+  \texttt{statements\_per\_try\_block} & 1464 & 0 & 0 & 1 & 3 & 17 \\
+  \texttt{boolean\_parameters} & 1464 & 0 & 0 & 1 & 3 & 10 \\
+  \texttt{annotations\_per\_function} & 1464 & 0 & 1 & 1 & 2 & 6 \\
+  \texttt{calls\_per\_function} & 1464 & 3 & 10 & 14 & 30 & 55 \\
+  \texttt{methods\_per\_class} & 181 & 1 & 7 & 13 & 34 & 78 \\
+  \texttt{statements\_per\_file} & 149 & 19 & 128 & 278 & 524 & 790 \\
+  \texttt{lines\_per\_file} & 149 & 130 & 661 & 796 & 2698 & 3610 \\
+  \texttt{functions\_per\_file} & 149 & 4 & 28 & 35 & 111 & 116 \\
+  \texttt{interface\_types\_per\_file} & 149 & 0 & 0 & 0 & 1 & 3 \\
+  \texttt{concrete\_types\_per\_file} & 149 & 0 & 3 & 6 & 13 & 33 \\
+  \texttt{imported\_names\_per\_file} & 148 & 5 & 19 & 29 & 87 & 115 \\
+  \texttt{inv\_test\_coverage} & 149 & 0 & 0 & 0 & 8 & 8 \\
+  \texttt{fan\_in} & 149 & 0 & 6 & 10 & 39 & 81 \\
+  \texttt{fan\_out} & 149 & 2 & 6 & 9 & 26 & 27 \\
+  \texttt{cycle\_size} & 149 & 0 & 32 & 32 & 32 & 32 \\
+  \texttt{indirect\_dependencies} & 149 & 41 & 45 & 45 & 45 & 45 \\
+  \texttt{dependency\_depth} & 149 & 4 & 4 & 5 & 6 & 6 \\
+  \bottomrule
+\end{longtable}
+}
+
+\subsection{After \texttt{exp-rich-tidy}}
+\label{app:kiss-tidy}
+
+{\scriptsize
+\begin{longtable}{@{}lrrrrrr@{}}
+  \toprule
+  metric\_id & N & p50 & p90 & p95 & p99 & max \\
+  \midrule
+  \endhead
+  \texttt{statements\_per\_function} & 2026 & 4 & 11 & 15 & 21 & 25 \\
+  \texttt{positional\_args} & 2026 & 0 & 2 & 3 & 6 & 16 \\
+  \texttt{keyword\_only\_args} & 2026 & 0 & 0 & 2 & 11 & 28 \\
+  \texttt{max\_indentation\_depth} & 2026 & 1 & 3 & 3 & 4 & 4 \\
+  \texttt{nested\_function\_depth} & 2026 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{returns\_per\_function} & 2026 & 0 & 1 & 2 & 3 & 8 \\
+  \texttt{return\_values\_per\_function} & 2026 & 0 & 1 & 1 & 2 & 5 \\
+  \texttt{branches\_per\_function} & 2026 & 0 & 2 & 3 & 5 & 9 \\
+  \texttt{local\_variables\_per\_function} & 2026 & 1 & 4 & 6 & 9 & 19 \\
+  \texttt{statements\_per\_try\_block} & 2026 & 0 & 0 & 0 & 3 & 10 \\
+  \texttt{boolean\_parameters} & 2026 & 0 & 0 & 1 & 4 & 10 \\
+  \texttt{annotations\_per\_function} & 2026 & 0 & 1 & 1 & 1 & 6 \\
+  \texttt{calls\_per\_function} & 2026 & 3 & 9 & 11 & 19 & 46 \\
+  \texttt{methods\_per\_class} & 102 & 2 & 18 & 24 & 57 & 74 \\
+  \texttt{statements\_per\_file} & 370 & 6 & 60 & 114 & 334 & 527 \\
+  \texttt{lines\_per\_file} & 370 & 53 & 480 & 637 & 1146 & 3610 \\
+  \texttt{functions\_per\_file} & 370 & 2 & 14 & 22 & 68 & 111 \\
+  \texttt{interface\_types\_per\_file} & 370 & 0 & 0 & 0 & 1 & 2 \\
+  \texttt{concrete\_types\_per\_file} & 370 & 0 & 1 & 1 & 1 & 1 \\
+  \texttt{imported\_names\_per\_file} & 366 & 4 & 14 & 22 & 46 & 62 \\
+  \texttt{inv\_test\_coverage} & 370 & 0 & 0 & 0 & 0 & 7 \\
+  \texttt{fan\_in} & 370 & 1 & 6 & 11 & 29 & 66 \\
+  \texttt{fan\_out} & 370 & 1 & 5 & 8 & 15 & 26 \\
+  \texttt{cycle\_size} & 370 & 0 & 0 & 0 & 0 & 0 \\
+  \texttt{indirect\_dependencies} & 370 & 2 & 57 & 64 & 67 & 70 \\
+  \texttt{dependency\_depth} & 370 & 2 & 5 & 6 & 6 & 7 \\
+  \bottomrule
+\end{longtable}
+}
+
+\section{KPop}
+\label{app:kpop}
+
+KPop (``Karl Popper'') is the structured investigation method \texttt{malvin tidy} injects into agent prompts via shipped template files (\texttt{kpop\_common.md}, \texttt{kpop\_block.md} in the \texttt{malvin} repository). Each \texttt{malvin tidy} iteration renders this definition together with scope constraints, the \texttt{.malvin/checks} script list, and a per-turn block that caps hypotheses per session and accepts \texttt{\#\# KPOP\_SOLVED} when the agent believes the problem is resolved. Hypothesis-and-test traces are written to experiment logs under \texttt{.malvin/logs/<run>/\_kpop/exp\_log\_*.md}.
+
+\subsection{Definition}
+
+The default definition (from \texttt{default\_prompts/kpop\_common.md}) is:
+
+\begin{kpopdef}
+# Definition: KPop
+
+[
+KPop is short for "Karl Popper".
+You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
+KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+]
+
+Apply this method to the user's problem.
+
+Restate the problem clearly.
+
+Repeat until you think you've solved the problem:
+LOOP_START
+
+- **Brainstorm**: To get fresh, creative ideas, run `malvin inspire IDEAS_PROMPT`, where you specify the `IDEAS_PROMPT`. Call this on at least one iteration, but don't wait until the end when it's too late to make use of the ideas.
+                  It should take no more than 30s to return, so don't worry about the time. It'll be a worthwhile investment. Use the ideas to help generate new hypotheses.
+- **Hypothesize**: Hypothesize one falsifiable explanation of the cause of the problem.
+- **Predict**: Define a falsifying test. If the hypothesis were true, what outcome would the test produce?
+- **Falsify**: Run the test. If falsified, reject the hypothesis.
+
+LOOP_END
+
+Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
+as you generate them. They are valuable. The user and other agents will want to read them.
+
+When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
+\end{kpopdef}
+
+\subsection{Main features}
+
+\paragraph{Falsification.}
+The loop asks the agent to state falsifiable hypotheses and run tests that could \emph{reject} them. A concrete failing test or check failure rules out a proposed fix; exhaustive proof of correctness is impossible on a large codebase.
+
+\paragraph{Iteration.}
+Each pass through \texttt{LOOP\_START}--\texttt{LOOP\_END} is one KPop hypothesis cycle (optionally preceded by \texttt{malvin inspire} for fresh ideas). Each cycle refines or replaces rejected hypotheses and leaves a durable trace in \texttt{exp\_log} for the next \texttt{malvin tidy} turn.
+
+\paragraph{Creativity.}
+The explicit \textbf{Brainstorm} step calls \texttt{malvin inspire} to diversify candidate explanations before the agent commits to a single hypothesis. Greater variety in hypotheses may surface flaws that a narrower search would miss.
+
+\subsection{Ablated definition (\texttt{exp-rich-tidy-no-kpop})}
+
+\texttt{exp-rich-tidy-no-kpop} replaces \texttt{kpop\_common.md} with a minimal prompt while keeping \texttt{malvin tidy} (including the requirement for two consecutive \texttt{\#\# KPOP\_SOLVED} markers with \texttt{.malvin/checks} passing):
+
+\begin{kpopdef}
+# Definition: KPop
+
+[
+You may or may not be solving a repo coding problem, so the Repo Coding Rules may or may not apply.
+KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+]
+
+Apply this method to the user's problem:
+- Work very hard to satisfy the user's request.
+- Log your work in `{{ exp_log }}`
+\end{kpopdef}
+
+This ablation removes structured hypothesize--predict--falsify steps and the \texttt{malvin inspire} brainstorm requirement, leaving a diligence-and-logging instruction in place of the full KPop program.
+
+\subsection{Case study: \texttt{exp-rich-tidy-no-kpop} executive summary}
+\label{app:kpop-no-kpop-summary}
+
+When KPop is ablated, \texttt{malvin tidy} still asks the agent to append an executive summary to the experiment log at end of turn. The following is the agent-written summary from one \texttt{exp-rich-tidy-no-kpop} run (eight outer \texttt{malvin tidy} loops, \texttt{g1}--\texttt{g8}):
+
+\begin{quote}\small
+I ran \texttt{malvin tidy} on the \texttt{rich} fork (\texttt{exp-rich-tidy-no-kpop}) with the goal of passing \texttt{kiss check}, \texttt{ruff check .}, and \texttt{pytest -sv tests}. The session took eight KPop loops (g1--g8). In g1 I did the substantive work: added behavioral tests in \texttt{tests/test\_kiss\_gaps.py}, fixed several existing tests and \texttt{rich/syntax.py}, configured ruff in \texttt{pyproject.toml}, and created \texttt{.kissignore} to exclude demo code and modules where {\texttt{kiss}}'s global name matching cannot disambiguate short names like \texttt{render} and \texttt{cell\_len}. That loop passed all three scripts in-session and declared \texttt{\#\# KPOP\_SOLVED}. Loops g2--g7 repeated the same pattern: each restored \texttt{.kissignore}, verified the three scripts in-session, and declared \texttt{\#\# KPOP\_SOLVED} again, but the outer \texttt{malvin tidy} loop still failed because \texttt{malvin} restores session dotfiles before post-session \texttt{.malvin/checks} run---and \texttt{.kissignore} was missing at snapshot time, so restore deleted any agent-created copy. In g8 I diagnosed that deadlock by reading malvin's dotfile-restore logic and switched to nested \texttt{.gitignore} files under \texttt{examples/}, \texttt{benchmarks/}, \texttt{tools/}, and \texttt{rich/} that kiss honors via \texttt{WalkBuilder} but malvin does not restore. That brought kiss from 39 failing files to zero without relying on \texttt{.kissignore}. I also fixed the ignore files to use \texttt{*} with \texttt{!.gitignore} so they remain trackable in git. Post-g8 \texttt{.malvin/checks} all passed: kiss \texttt{NO VIOLATIONS}, ruff clean, 987 pytest tests passed. The main remaining concern is that the \texttt{rich/.gitignore} approach is effective but somewhat blunt---it excludes entire Rich modules from kiss analysis rather than addressing collisions per module.
+\end{quote}
+
+\paragraph{Dotfile-restore loophole.}
+\texttt{malvin tidy} snapshots and restores selected workspace dotfiles (including \texttt{.kissconfig} and \texttt{.kissignore}) around each agent session so the agent cannot permanently weaken \texttt{kiss} configuration. In this run the agent exploited a timing gap: if a dotfile did not exist at snapshot time, post-session \emph{restore} removes agent-created copies before \texttt{malvin} re-runs \texttt{.malvin/checks}. The agent first thrashed on \texttt{.kissignore} (g1--g7), then bypassed restore entirely with nested \texttt{.gitignore} trees that \texttt{kiss} respects but \texttt{malvin} does not snapshot---a loophole in the protection design.
+
+\paragraph{Contrast with full KPop.}
+None of the full KPop \texttt{malvin tidy} runs in Table~\ref{tab:results} reported this dotfile-restore workaround. We re-ran \texttt{exp-rich-tidy-no-kpop} three times; each run circumvented \texttt{.kissconfig}/\texttt{.kissignore} protections (eventually via nested \texttt{.gitignore} or equivalent check gaming). Hypothesis: without the structured KPop program, the agent optimizes directly for in-session check passage and discovers harness weaknesses rather than structural refactors---consistent with post-run \texttt{kiss\_stats} still failing structural caps (Table~\ref{tab:results}) despite passing \texttt{.malvin/checks}.
+
+
+\end{document}

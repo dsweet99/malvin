@@ -13,7 +13,7 @@ Restate the problem clearly.
 Repeat until you think you've solved the problem:
 LOOP_START
 
-- **Brainstorm**: To get fresh, creative ideas, run `malvin invent IDEAS_PROMPT`, where you specify the `IDEAS_PROMPT`. Call this on at least one iteration, but don't wait until the end when it's too late to make use of the ideas.
+- **Brainstorm**: To get fresh, creative ideas, run `malvin inspire IDEAS_PROMPT`, where you specify the `IDEAS_PROMPT`. Call this on at least one iteration, but don't wait until the end when it's too late to make use of the ideas.
   		  It should take no more than 30s to return, so don't worry about the time. It'll be a worthwhile investment. Use the ideas to help generate new hypotheses.
 - **Hypothesize**: Hypothesize one falsifiable explanation of the cause of the problem.
 - **Predict**: Define a falsifying test. If the hypothesis were true, what outcome would the test produce?

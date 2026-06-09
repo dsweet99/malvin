@@ -126,7 +126,7 @@ pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_kpop_bold_markdown_under_script(extra_args: &[&str]) -> std::process::Output {
-    let mut args_line = String::from("kpop --max-hypotheses 50 investigate");
+    let mut args_line = String::from("kpop --max-loops 1 --max-hypotheses 50 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);

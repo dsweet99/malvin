@@ -15,7 +15,7 @@ Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, 
 
 ## Intention
 
-Explore questions or codebase behavior scientifically: falsifiable hypotheses, tests, recorded outcomes. For MBC2 creative ideation without evaluation, use **`malvin invent`**.
+Explore questions or codebase behavior scientifically: falsifiable hypotheses, tests, recorded outcomes. For MBC2 creative ideation without evaluation, use **`malvin inspire`**.
 
 ## Usage
 
@@ -29,7 +29,7 @@ malvin kpop <KPOP_ID>                   # log lookup only
 
 ### `<REQUEST>` (investigation brief)
 
-Text or `@<path>`. Stored as `request.md` in the run dir (not `plan.md`).
+Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
 ### `<KPOP_ID>` (log lookup)
 
@@ -90,7 +90,7 @@ Stops when any of:
 
 | Command | When |
 |---------|------|
-| `malvin invent` | Creative MBC2 ideas, not hypothesis testing |
+| `malvin inspire` | Creative MBC2 ideas, not hypothesis testing |
 | `malvin code` | Implement a plan with gate loop + `code_constraints.md` |
 | `malvin do` | Single-turn task without KPop logging |
 
@@ -98,6 +98,6 @@ Stops when any of:
 
 ```text
 malvin "Why does cache invalidation fail under load?"
-malvin kpop @questions/regression.md --max-hypotheses 20
+malvin kpop questions/regression.md --max-hypotheses 20
 malvin kpop Ma3bx9
 ```

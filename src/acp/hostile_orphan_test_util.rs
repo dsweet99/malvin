@@ -192,7 +192,13 @@ pub fn assert_sibling_monitored_and_blocks_spawn(
         assert_dead_before_next_spawn, note_active_sandbox_session,
     };
 
-    note_active_sandbox_session(Some(agent_pgid), baseline.clone());
+    let work = std::env::temp_dir().join(format!(
+        "malvin_hostile_orphan_blocks_spawn_{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&work);
+    std::fs::create_dir_all(&work).expect("mkdir work");
+    note_active_sandbox_session(Some(agent_pgid), baseline.clone(), &work).expect("note");
     let monitor = sandbox_monitor_pids(Some(agent_pgid), baseline);
     assert!(
         monitor.contains(&sibling_pid),

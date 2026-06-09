@@ -11,8 +11,9 @@ use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
 
 /// Agent phase label shown in stdout heartbeats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum AgentPhase {
-    Orienting,
+    Orienting = 0,
     Researching,
     Reasoning,
     Implementing,
@@ -24,21 +25,23 @@ pub enum AgentPhase {
     Reporting,
 }
 
+const PHASE_LABELS: [&str; 10] = [
+    "Orienting",
+    "Researching",
+    "Reasoning",
+    "Implementing",
+    "Executing",
+    "Verifying",
+    "Debugging",
+    "KPop cycling",
+    "Waiting",
+    "Reporting",
+];
+
 impl AgentPhase {
     #[must_use]
     pub const fn label(self) -> &'static str {
-        match self {
-            Self::Orienting => "Orienting",
-            Self::Researching => "Researching",
-            Self::Reasoning => "Reasoning",
-            Self::Implementing => "Implementing",
-            Self::Executing => "Executing",
-            Self::Verifying => "Verifying",
-            Self::Debugging => "Debugging",
-            Self::KPopCycling => "KPop cycling",
-            Self::Waiting => "Waiting",
-            Self::Reporting => "Reporting",
-        }
+        PHASE_LABELS[self as usize]
     }
 }
 

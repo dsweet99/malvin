@@ -3,7 +3,7 @@ use std::process::Command;
 
 #[cfg(unix)]
 use super::{
-    MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
+    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
     acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
     write_fake_kiss, write_mock_executable,
 };
@@ -66,6 +66,7 @@ pub fn run_code_with_mock_js_trust_plan_in_workspace(
     let (root, home, workspace) = test_home_workspace();
     let (_bin_dir, mock, path) = prep_acp_mock_on_path(&root, "mock-agent-acp-code", mock_js);
     let mut args = vec!["code"];
+    args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     if opts.trust_plan {
         args.push("--trust-the-plan");
     }
@@ -164,22 +165,17 @@ pub fn run_code_default_max_loops_never_lgtm_with_mock() -> std::process::Output
         "mock-agent-acp-code-max-loops-default",
         &acp_mock_code_max_loops_never_lgtm_js(),
     );
-    let out = command_output_with_timeout(
-        Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .current_dir(&workspace)
-            .env("HOME", &home)
-            .env("CURSOR_AGENT_API_KEY", "test-key")
-            .env("MALVIN_AGENT_ACP_BIN", &mock)
-            .env("PATH", path)
-            .args([
-                "code",
-                "--trust-the-plan",
-                "--no-tee",
-                "ship it",
-            ]),
-        MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT,
-    )
-    .expect("spawn malvin code");
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(&workspace)
+        .env("HOME", &home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .env("PATH", path)
+        .args(["code", "--trust-the-plan"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(["--no-tee", "ship it"]);
+    let out = command_output_with_timeout(&mut cmd, MAX_LOOPS_EXHAUSTION_TEST_TIMEOUT)
+        .expect("spawn malvin code");
     let _ = (root, workspace);
     out
 }

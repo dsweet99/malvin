@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use super::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
+use super::{INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
 pub struct CodeSpawn<'a> {
     pub workspace: &'a Path,
@@ -20,6 +20,7 @@ pub fn spawn_code(c: &CodeSpawn<'_>) -> std::process::Output {
         .env("MALVIN_AGENT_ACP_BIN", c.mock)
         .env("PATH", c.path_var)
         .args(["code"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.args(c.extra_args);
     cmd.arg(c.request);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")

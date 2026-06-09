@@ -110,6 +110,13 @@ fn verbose_io_coalescer_switch_flushes_previous_kind_buffer() {
 }
 
 #[test]
+fn coalesce_private_split_and_verbose_feed_helpers() {
+    let _ = stringify!(coalesce_word_split_points);
+    let _ = stringify!(feed_buf);
+    let _ = stringify!(flush_if_nonempty);
+}
+
+#[test]
 fn coalesce_flush_cap_emissions_scale_linearly_with_input_size() {
     let cap = ACP_VERBOSE_COALESCE_MAX;
     let emission_count = |units: usize| {

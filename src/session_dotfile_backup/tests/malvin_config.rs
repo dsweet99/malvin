@@ -24,10 +24,10 @@ fn malvin_config_backup_round_trip_restores_home_file() {
     with_isolated_home(|work| {
         seed_malvin_config(work, "ORIGINAL\n");
         let backup = backup_workspace_malvin_config_if_present(work).unwrap();
-        let MalvinConfigBackup::Present(path) = &backup else {
+        let MalvinConfigBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
-        assert!(path.is_file());
+        assert!(payload.backup_path.is_file());
         seed_malvin_config(work, "MODIFIED\n");
         restore_workspace_malvin_config_backup(work, &backup).unwrap();
         assert_eq!(
@@ -81,15 +81,15 @@ fn malvin_config_backup_retries_on_existing_collision() {
         })
         .unwrap();
 
-        let MalvinConfigBackup::Present(path) = &backup else {
+        let MalvinConfigBackup::Present(payload) = &backup else {
             panic!("expected backup path");
         };
 
         assert_eq!(
-            path.as_path(),
+            payload.backup_path.as_path(),
             dir.join("bbbbb").join(MALVIN_CONFIG_REL).as_path()
         );
-        assert!(path.is_file());
+        assert!(payload.backup_path.is_file());
         assert!(!dir.join("aaaaa").join(MALVIN_CONFIG_REL).exists());
     });
 }

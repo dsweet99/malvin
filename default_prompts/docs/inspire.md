@@ -1,4 +1,4 @@
-# malvin invent
+# malvin inspire
 
 One **single-turn** MBC2 (boundary exploration) session: structurally distant ideas from your prompt, without evaluation or pruning.
 
@@ -6,7 +6,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 
 | | |
 |---|---|
-| Input | `<REQUEST>` text or `@file` |
+| Input | `<REQUEST>` text or existing `.md` path |
 | Prompt | `default_prompts/mbc2.md` with `user_prompt` |
 | Log | `ideas.log` |
 
@@ -17,14 +17,14 @@ Batch creative exploration separate from the `kpop` hypothesis loop. Use before 
 ## Usage
 
 ```text
-malvin invent [OPTIONS] <REQUEST>
+malvin inspire [OPTIONS] <REQUEST>
 ```
 
 ## Arguments
 
 ### `<REQUEST>` (required)
 
-Topic as literal text, or `@<path>` (same rules as `do` / `kpop`).
+Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
 
 ## Global options
 
@@ -36,7 +36,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ## Session behavior
 
-- Backs up `.kissconfig`, `.kissignore`, `.malvin/checks`; restores after.
+- Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands
@@ -49,6 +49,6 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 ## Examples
 
 ```text
-malvin invent "Alternative cache invalidation strategies for our API"
-malvin invent @notes/topic.md
+malvin inspire "Alternative cache invalidation strategies for our API"
+malvin inspire notes/topic.md
 ```

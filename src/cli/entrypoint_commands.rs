@@ -2,7 +2,7 @@ use super::{CodeArgs, SharedOpts, WorkflowCliOptions, run_ideas, run_code};
 
 use super::entrypoint::run_async_cli;
 
-pub(crate) fn run_invent_command(
+pub(crate) fn run_inspire_command(
     ideas: crate::ideas_flow::IdeasArgs,
     shared: &SharedOpts,
 ) -> Result<(), String> {
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_entrypoint_command_wrappers() {
-        let _ = stringify!(run_invent_command);
+        let _ = stringify!(run_inspire_command);
         let _ = stringify!(run_plan_command);
         let _ = stringify!(run_code_command);
     }

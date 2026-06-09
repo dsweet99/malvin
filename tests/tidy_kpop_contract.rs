@@ -5,9 +5,10 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    TidySpawn, acp_mock_tidy_kpop_steps_js, bin_path_with_failing_gates, bin_path_with_fake_kiss,
-    combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_tidy,
-    test_home_workspace, workspace_kiss_check_only, write_mock_executable,
+    TidySpawn, acp_mock_kpop_tampers_gitignore_writes_solved_js, acp_mock_tidy_kpop_steps_js,
+    bin_path_with_failing_gates, bin_path_with_fake_kiss, bin_path_with_kiss_fail_until_n_passes,
+    combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_tidy, test_home_workspace,
+    workspace_kiss_check_only, write_mock_executable,
 };
 
 #[cfg(unix)]
@@ -64,5 +65,34 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
     assert!(
         trace_log.contains("kiss"),
         "expected post-kpop quality gate run: {trace_log}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn tidy_gate_loop_restores_gitignore_before_early_exit_gates() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    std::fs::write(workspace.join(".gitignore"), "gi\n").expect("gitignore");
+    let trace = root.path().join("kiss-trace.log");
+    let path = bin_path_with_kiss_fail_until_n_passes(&root, &trace, 1);
+    let mock = root.path().join("mock-tidy-kpop-gitignore");
+    write_mock_executable(&mock, &acp_mock_kpop_tampers_gitignore_writes_solved_js());
+    let out = spawn_tidy(&TidySpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(
+        out.status.success(),
+        "expected tidy early-exit success with restored gitignore: {combined:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".gitignore")).expect("read"),
+        "gi\n"
     );
 }

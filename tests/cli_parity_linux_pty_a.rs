@@ -90,7 +90,7 @@ mod linux_pty {
     fn kpop_stdout_markdown_styles_stdout_but_logs_stay_raw() {
         let run = run_malvin_under_script_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
-            "kpop --max-hypotheses 50 investigate",
+            "kpop --max-loops 1 --max-hypotheses 50 investigate",
             None,
         );
         assert!(

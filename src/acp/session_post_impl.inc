@@ -189,11 +189,10 @@ impl AcpSession {
         crate::active_agent_heartbeat::unregister_active_agent_process_group(
             self.0.process_group_id,
         );
-        let _ = tokio::time::timeout(
-            crate::acp::unix_process_group_teardown::SHUTDOWN_CANCEL_TIMEOUT,
-            self.cancel(),
-        )
-        .await;
+        let cancel_timeout = crate::acp::unix_process_group_teardown_poll::shutdown_cancel_timeout();
+        if !cancel_timeout.is_zero() {
+            let _ = tokio::time::timeout(cancel_timeout, self.cancel()).await;
+        }
         crate::acp::unix_process_group_teardown::terminate_agent_process_group(
             self.0.process_group_id,
             &self.0.spawn_pid_baseline,

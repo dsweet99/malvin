@@ -67,8 +67,8 @@ fn run_malvin_code_in_workspace(
 ) -> std::process::Output {
     use common::{
         acp_mock_code_kpop_steps_js, bin_path_with_fake_kiss, command_output_with_timeout,
-        seed_git_kiss_cargo_gate_workspace, write_mock_executable, MALVIN_TEST_CMD_TIMEOUT,
-        workspace_kiss_check_only,
+        seed_git_kiss_cargo_gate_workspace, write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS,
+        MALVIN_TEST_CMD_TIMEOUT, workspace_kiss_check_only,
     };
     use std::process::Command;
 
@@ -77,23 +77,16 @@ fn run_malvin_code_in_workspace(
     let path = bin_path_with_fake_kiss(root);
     let mock = root.path().join("mock-agent-acp-code-gc");
     write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
-    command_output_with_timeout(
-        Command::new(env!("CARGO_BIN_EXE_malvin"))
-            .current_dir(workspace)
-            .env("HOME", home)
-            .env("CURSOR_AGENT_API_KEY", "test-key")
-            .env("MALVIN_AGENT_ACP_BIN", &mock)
-            .env("PATH", path)
-            .args([
-                "--no-tee",
-                "code",
-                "--max-loops",
-                "1",
-                "ship it",
-            ]),
-        MALVIN_TEST_CMD_TIMEOUT,
-    )
-    .expect("spawn malvin code")
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(workspace)
+        .env("HOME", home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .env("PATH", path)
+        .args(["--no-tee", "code"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(["--max-loops", "1", "ship it"]);
+    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")
 }
 
 #[cfg(unix)]

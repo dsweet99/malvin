@@ -41,6 +41,20 @@ pub(crate) fn agent_string_is_cannot_use_model(msg: &str) -> bool {
     msg.to_ascii_lowercase().contains("cannot use this model")
 }
 
+/// Max spawn attempts for `session/new` JSON-RPC Internal (`code=-32603`).
+/// Decoupled from tenacious [`crate::cli::loop_opts::TENACIOUS_MAX_ACP_RETRIES`].
+pub(crate) const SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS: u32 = 5;
+
+/// JSON-RPC Internal (`code=-32603`) on spawn handshake `session/new`.
+#[must_use]
+pub(crate) fn agent_string_is_session_new_internal_error(msg: &str) -> bool {
+    let text = msg.to_ascii_lowercase();
+    if !text.contains("session/new") {
+        return false;
+    }
+    text.contains("internal") || text.contains("code=-32603")
+}
+
 /// Child-health / transport failures where the open coder session must be torn down before retry.
 #[must_use]
 pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
@@ -50,6 +64,7 @@ pub(crate) fn agent_error_requires_coder_session_teardown(msg: &str) -> bool {
         || text.contains("acp child process is zombie")
         || text.contains("acp stdout closed")
         || text.contains("iterable is closed")
+        || text.contains("connection stalled")
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -119,6 +134,18 @@ pub(crate) fn plan_agent_retry(
 ) -> Result<AgentRetryOutcome, AgentError> {
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
+    }
+    if last_error.contains("workspace session restore failed")
+        || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
+    {
+        return Ok(AgentRetryOutcome::StopRetrying);
+    }
+    if agent_string_is_session_new_internal_error(last_error) {
+        if attempt >= SESSION_NEW_INTERNAL_MAX_SPAWN_ATTEMPTS {
+            return Ok(AgentRetryOutcome::StopRetrying);
+        }
+        let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
+        return Ok(AgentRetryOutcome::Sleep(std::time::Duration::from_secs(secs)));
     }
     if attempt >= max_attempts {
         return Ok(AgentRetryOutcome::StopRetrying);

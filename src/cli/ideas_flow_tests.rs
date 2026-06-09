@@ -35,9 +35,9 @@ mod ideas_tests {
 
     #[test]
     fn cli_accepts_ideas_and_passes_request() {
-        let cli = Cli::try_parse_from(["malvin", "invent", "explore edges"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "inspire", "explore edges"]).expect("parse");
         match cli.command {
-            Some(Commands::Invent(m)) => {
+            Some(Commands::Inspire(m)) => {
                 assert_eq!(m.request.as_deref(), Some("explore edges"));
             }
             _ => panic!("expected Ideas subcommand"),
@@ -46,17 +46,17 @@ mod ideas_tests {
 
     #[test]
     fn cli_rejects_removed_num_ideas_flag() {
-        let err = Cli::try_parse_from(["malvin", "invent", "--num-ideas", "9", "q"])
+        let err = Cli::try_parse_from(["malvin", "inspire", "--num-ideas", "9", "q"])
             .expect_err("removed flag should fail");
         assert!(err.to_string().contains("num-ideas"));
     }
 
     #[test]
     fn cli_ideas_doc_parses_without_request() {
-        let cli = Cli::try_parse_from(["malvin", "invent", "--doc"]).expect("parse");
+        let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
         match cli.command.as_ref() {
-            Some(Commands::Invent(m)) => assert!(m.request.is_none()),
+            Some(Commands::Inspire(m)) => assert!(m.request.is_none()),
             _ => panic!("expected Ideas"),
         }
     }
@@ -81,7 +81,7 @@ mod ideas_tests {
         );
         assert!(
             !client.io.raw_output,
-            "invent must use styled logging, not do-style raw_output"
+            "inspire must use styled logging, not do-style raw_output"
         );
         assert!(client.io.show_thoughts_on_stdout);
         assert!(client.io.emit_stdout_markdown);

@@ -80,6 +80,41 @@ fn expected_kpop_block_output(
 }
 
 #[test]
+fn render_turn_with_body_matches_gate_kpop_single_turn_without_header() {
+    let (_tmp, store) = kpop_turn_test_store();
+    let base = kpop_turn_test_context();
+    let request_text = "render-turn smoke";
+    let prompts = KpopTurnPrompts {
+        store: &store,
+        base: &base,
+        request_text,
+        prepend_rules_once: false,
+    };
+    let gate = prompts.gate_kpop_single_turn_prompt(5).expect("gate prompt");
+    let mut ctx = base.clone();
+    ctx.insert("want".to_string(), "5".to_string());
+    ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+    ctx.insert("user_request".to_string(), request_text.to_string());
+    let header = store
+        .render_prompt_only("header.md", &ctx)
+        .expect("header");
+    let common = store
+        .render_prompt_only("kpop_common.md", &ctx)
+        .expect("common");
+    let body = store
+        .render_prompt_only("kpop_block.md", &ctx)
+        .expect("block");
+    let expected = format!(
+        "{}\n\n{}\n\n{}",
+        header.trim_end(),
+        common.trim_end(),
+        body.trim_end()
+    );
+    assert_eq!(gate, expected);
+    let _ = stringify!(render_turn_with_body);
+}
+
+#[test]
 fn kpop_block_matches_independently_rendered_sections() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();

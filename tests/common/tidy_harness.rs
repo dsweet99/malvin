@@ -2,7 +2,8 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{
-    MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout, write_failing_gate_tools, write_fake_kiss,
+    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
+    write_failing_gate_tools, write_fake_kiss,
 };
 
 pub struct TidySpawn<'a> {
@@ -28,6 +29,7 @@ pub fn spawn_tidy_with_timeout(
         .env("MALVIN_AGENT_ACP_BIN", t.mock)
         .env("PATH", t.path_var);
     let mut args: Vec<&str> = vec!["tidy"];
+    args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
     command_output_with_timeout(&mut cmd, timeout).expect("spawn malvin")

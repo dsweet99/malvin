@@ -58,7 +58,7 @@ pub fn emit_run_startup_sequence(
     crate::agent_phase::reset_for_run();
     crate::agent_phase::note_orienting();
     emit_command_line(&artifacts.run_dir, opts.tee_stdout)?;
-    if opts.host_resources {
+    if opts.host_resources && !crate::acp::test_no_real_agent_enabled() {
         emit_host_resources_line(&artifacts.run_dir, opts.tee_stdout)?;
     }
     echo_primary_to_stdout(&artifacts.plan_path, opts.tee_stdout)?;

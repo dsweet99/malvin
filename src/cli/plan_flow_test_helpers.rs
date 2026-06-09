@@ -7,12 +7,14 @@ use crate::artifacts::RunArtifacts;
 use crate::session_dotfile_backup::DotfileBackupState;
 
 pub(super) fn empty_session_dotfile_backups() -> crate::artifacts::SessionDotfileBackups {
-    crate::artifacts::SessionDotfileBackups::from_parts(
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-    )
+    crate::artifacts::SessionDotfileBackups::from_parts(crate::artifacts::SessionDotfileParts {
+        kissconfig: DotfileBackupState::Missing,
+        malvin_checks: DotfileBackupState::Missing,
+        kissignore: DotfileBackupState::Missing,
+        malvin_config: DotfileBackupState::Missing,
+        gitignore: DotfileBackupState::Missing,
+        malvin_config_workspace: DotfileBackupState::Missing,
+    })
 }
 
 pub(super) fn plan_flow_test_prep(tmp: &tempfile::TempDir) -> (RunArtifacts, PathBuf) {
@@ -90,10 +92,9 @@ pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
     }
 }
 
-pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
-    use std::os::unix::fs::PermissionsExt;
-    #[allow(clippy::needless_raw_string_hashes)]
-    let handler = r#"
+#[allow(clippy::needless_raw_string_hashes)]
+pub(super) fn plan_pipeline_mock_handler_body() -> &'static str {
+    r#"
     const fs = require('fs');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
     const planPath = process.env.MALVIN_TEST_PLAN_PATH;
@@ -107,7 +108,12 @@ pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
     } else if (promptText.includes('**Prompt 1a**')) {
       fs.appendFileSync(planPath, 'restated\n');
     }
-"#;
+"#
+}
+
+pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    let handler = plan_pipeline_mock_handler_body();
     let script = format!("#!/usr/bin/env node\n{}", crate::acp_mock_js("", handler));
     std::fs::write(path, script).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();

@@ -11,9 +11,7 @@ pub(crate) mod plan_flow_prompt;
 mod plan_flow_pipeline;
 
 use crate::artifacts::{
-    RunArtifacts, SessionDotfileBackups, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissignore_if_present, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_config_if_present, create_run_artifacts_opts, detect_rerun_user_span_end,
+    RunArtifacts, SessionDotfileBackups, create_run_artifacts_opts, detect_rerun_user_span_end,
     is_existing_md_file_path, read_plan_file,
 };
 use crate::cli::adversarial_profile::resolve_work_dir_for_plan;
@@ -57,14 +55,6 @@ fn prepare_source_plan(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn snapshot_plan_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    Ok(SessionDotfileBackups::from_parts(
-        backup_workspace_kissconfig_if_present(work_dir)?,
-        backup_workspace_malvin_checks_if_present(work_dir)?,
-        backup_workspace_kissignore_if_present(work_dir)?,
-        backup_workspace_malvin_config_if_present(work_dir)?,
-    ))
-}
 
 fn create_plan_run_artifacts(source_plan_path: &Path) -> Result<(RunArtifacts, PathBuf), String> {
     let work_dir = resolve_work_dir_for_plan(source_plan_path);
@@ -94,7 +84,7 @@ async fn prepare_plan_run(
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let store = plan_flow_prompt::prepare_plan_prompt_store()?;
     let render_ctx = build_plan_render_context(&source_plan_path, &work_dir, &artifacts);
-    let session_dotfile_backups = snapshot_plan_session_dotfiles(&work_dir)?;
+    let session_dotfile_backups = SessionDotfileBackups::snapshot(&work_dir)?;
     Ok(PlanRunPrep {
         client,
         artifacts,
@@ -141,12 +131,12 @@ mod plan_flow_mock_tests;
 
 #[cfg(test)]
 mod plan_snapshot_tests {
-    use super::snapshot_plan_session_dotfiles;
+    use super::SessionDotfileBackups;
 
     #[test]
     fn snapshot_plan_session_dotfiles_on_empty_workdir() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        snapshot_plan_session_dotfiles(tmp.path()).expect("snapshot");
+        SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     }
 }
 

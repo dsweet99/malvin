@@ -31,7 +31,6 @@ mod tests {
         std::fs::write("sub/plan_1.md", "y").unwrap();
         assert_eq!(startup_request_tag_label("sub/plan_1.md"), "plan_1");
         assert_eq!(startup_request_tag_label("fix it"), "prompt");
-        assert_eq!(startup_request_tag_label("@plan.md"), "prompt");
         std::env::set_current_dir(old_cwd).unwrap();
     }
 }
