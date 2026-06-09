@@ -11,7 +11,7 @@
 \usepackage{fvextra}
 \usepackage[table]{xcolor}
 \usepackage{colortbl}
-
+ 
 \definecolor{passbg}{HTML}{DFF0D8}
 \definecolor{failbg}{HTML}{F2DEDE}
  
@@ -300,6 +300,8 @@ Table~\ref{tab:results} (right of the vertical rule) reports post-run extrema an
 
 \paragraph{wall (h).} Wall-clock hours (Table~\ref{tab:timing}): \texttt{malvin} \texttt{TIMING:} \texttt{wall} for \texttt{malvin tidy} runs; shell \texttt{time} for \texttt{exp-rich-cursor-kiss}. Fork baseline and \texttt{exp-rich-cursor} have no agent run time.
 
+\paragraph{$\Delta$.} Lines changed relative to \texttt{master}: \texttt{git diff master | wc -l}.
+
 Full \texttt{kiss} distributions appear in Appendix~\ref{app:kiss-stats}.
 
 \subsection{Results}
@@ -334,7 +336,7 @@ the hidden ("out-of-sample") tests.
   \label{tab:results}
   \scriptsize
   \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{@{}l l c c c c | r r r r r r r@{}}
+  \begin{tabular}{@{}l l c c c c | r r r r r r r r@{}}
     \toprule
     Experiment &
     Agent &
@@ -348,32 +350,33 @@ the hidden ("out-of-sample") tests.
     \makecell{mets\\worse} &
     \makecell{rich\\fails} &
     \makecell{glances\\fails$^\dagger$} &
-    \makecell{wall\\(h)} \\
+    \makecell{wall\\(h)} &
+    $\Delta$ \\
     \midrule
     fork baseline (v15.0.0) &
     \missdata & \missdata & \missdata & \missdata & \missdata &
-    127 & 13 & 53 & \missdata & 0 & 0 & \missdata \\
+    127 & 13 & 53 & \missdata & 0 & 0 & \missdata & 0 \\
     \texttt{exp-rich-tidy} &
     \texttt{malvin} & \yes & \yes & \yes & \yes &
-    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 21.8 \\
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 21.8 & 31978 \\
     \exptidy{-no-coverage-yes-complexity} &
     \texttt{malvin} & \yes & \no & \yes & \yes &
-    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 8.7 \\
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 8.7 & 24669 \\
     \exptidy{-yes-coverage-no-complexity} &
     \texttt{malvin} & \yes & \yes & \no & \yes &
-    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{4}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \na \\
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{4}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & \na & 26744 \\
     \exptidy{-no-kiss} &
     \texttt{malvin} & \yes & \no & \no & \yes &
-    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{3}{0} & \outcelleq{0}{0} & \outcelleq{1}{0} & 1.5 \\
+    \outcellle{25}{25} & \outcellle{4}{4} & \outcelleq{0}{0} & \outcelleq{3}{0} & \outcelleq{0}{0} & \outcelleq{1}{0} & 1.5 & 13818 \\
     \exptidy{-no-kpop} &
     \texttt{malvin} & \yes & \yes & \yes & \no &
-    \outcellle{71}{25} & \outcellle{13}{4} & \outcelleq{32}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.9 \\
+    \outcellle{71}{25} & \outcellle{13}{4} & \outcelleq{32}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.9 & 1038 \\
     \texttt{exp-rich-cursor-kiss} &
     cursor & \yes & \yes & \yes & \no &
-    \outcellle{127}{25} & \outcellle{13}{4} & \outcelleq{52}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.1 \\
+    \outcellle{127}{25} & \outcellle{13}{4} & \outcelleq{52}{0} & \outcelleq{1}{0} & \outcelleq{0}{0} & \outcelleq{0}{0} & 0.1 & 1622 \\
     \texttt{exp-rich-cursor} &
     cursor & \no & \no & \no & \no &
-    \outcellle{27}{25} & \outcellle{6}{4} & \outcelleq{67}{0} & \outcelleq{4}{0} & \outcelleq{36}{0} & \outcelleq{0}{0} & \missdata \\
+    \outcellle{27}{25} & \outcellle{6}{4} & \outcelleq{67}{0} & \outcelleq{4}{0} & \outcelleq{36}{0} & \outcelleq{0}{0} & \missdata & 45 \\
     \bottomrule
   \end{tabular}
   \begin{tablenotes}
