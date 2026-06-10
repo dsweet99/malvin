@@ -108,6 +108,16 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 }
 
 #[test]
+fn delight_requires_kiss_on_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["delight"]);
+}
+
+#[test]
+fn explain_requires_kiss_on_path() {
+    assert_malvin_subcommand_fails_without_kiss(&["explain", "topic"]);
+}
+
+#[test]
 fn malvin_tidy_kiss_missing_error_cites_tidy_subcommand() {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");

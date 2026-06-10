@@ -9,6 +9,7 @@ pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
 mod commands_help;
+mod commands_help_subcommand;
 mod config_defaults;
 mod config_loop;
 mod entrypoint;
@@ -23,6 +24,9 @@ mod models_cmd;
 pub(crate) mod run_emit;
 mod shared_opts;
 pub(crate) mod tidy_flow;
+mod delight_flow;
+mod explain_flow;
+mod revise_flow;
 
 mod code_flow;
 mod code_flow_a;
@@ -76,7 +80,7 @@ mod cli_smoke_cov_plan;
 mod gate_error_regression;
 
 pub use crate::do_flow::run_do;
-pub use crate::ideas_flow::run_ideas;
+pub use crate::inspire_flow::run_inspire;
 pub use crate::plan_flow::{prepare_plan_prompt_store, run_plan};
 pub use args::{Cli, Commands, InspireArgs, KpopArgs, PlanArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
@@ -85,4 +89,7 @@ pub use exit::Exit;
 pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
+pub use delight_flow::run_delight;
+pub use explain_flow::run_explain;
+pub use revise_flow::run_revise;
 pub use tidy_flow::run_tidy;

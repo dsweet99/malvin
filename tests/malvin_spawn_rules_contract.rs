@@ -1,10 +1,9 @@
 //! Contract: dead-before-next and sandbox-isolated malvin spawns.
 
+mod common;
+
 #[cfg(unix)]
-#[path = "common/spawn_contract.rs"]
-mod spawn_contract;
-#[cfg(unix)]
-use spawn_contract::{fresh_workdir, sleep_child};
+use common::{fresh_workdir, sleep_child};
 #[cfg(unix)]
 use malvin::acp::snapshot_pids;
 #[cfg(unix)]

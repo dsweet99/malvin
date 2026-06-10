@@ -25,7 +25,7 @@ malvin code [OPTIONS] <PLAN>...
 
 ### `<PLAN>...` (required, one or more)
 
-Plan text or a path to an existing `.md` file (no whitespace in the path; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin code "Add widget API per plan.md"`). Plan text or a path to an existing `.md` file (no whitespace in the path; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
 
 When multiple plans are given, malvin runs `malvin code` on each in sequence. Each plan gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations.
 

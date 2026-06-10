@@ -20,6 +20,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
         verbose: false,
         max_acp_retries: 1,
         doc: false,
+        name: None,
     };
     let workflow = WorkflowCliOptions { force: false };
     (kpop, shared, workflow)

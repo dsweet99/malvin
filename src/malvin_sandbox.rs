@@ -1,8 +1,10 @@
 //! Host sandbox: process-group isolation and RSS for all malvin-started processes.
 
+pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
+
 use std::collections::HashSet;
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 #[cfg(unix)]
@@ -15,6 +17,7 @@ static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 struct ActiveSandboxSession {
     pgid: Option<u32>,
     baseline: HashSet<u32>,
+    work_dir: PathBuf,
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
@@ -97,23 +100,27 @@ pub fn assert_dead_before_next_spawn() -> Result<(), String> {
 pub fn note_active_sandbox_session(
     pgid: Option<u32>,
     baseline: HashSet<u32>,
-    _work_dir: &Path,
+    work_dir: &Path,
 ) -> Result<(), String> {
     *ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(ActiveSandboxSession {
         pgid,
         baseline,
+        work_dir: work_dir.to_path_buf(),
     });
     Ok(())
 }
 
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
-    ACTIVE_SANDBOX_SESSION
+    let session = ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take();
+    if let Some(session) = session {
+        crate::acp_spawn_lock::release_acp_spawn_lock(&session.work_dir);
+    }
     #[cfg(unix)]
     crate::acp::clear_session_spawn_affiliation();
 }
@@ -168,6 +175,7 @@ mod tests {
         let _ = stringify!(malvin_tokio_command);
         let _ = stringify!(assert_dead_before_next_spawn);
         let _ = stringify!(note_active_sandbox_session);
+        let _ = stringify!(assert_no_peer_acp_spawn_lock);
         let _ = stringify!(clear_active_sandbox_session);
         let _ = stringify!(ActiveSandboxSession);
         let _ = super::clear_active_sandbox_session_for_test;

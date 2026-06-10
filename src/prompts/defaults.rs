@@ -25,6 +25,8 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "tidy_constraints.md",
     "code_constraints.md",
     "init_constraints.md",
+    "delight_constraints.md",
+    "revise_constraints.md",
     PLAN_1A_RESTATE_MD,
     PLAN_1B_CRITIQUE_MD,
     PLAN_2_DECISIONS_MD,

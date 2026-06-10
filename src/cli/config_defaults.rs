@@ -47,6 +47,98 @@ pub(crate) fn apply_bare_sequential_config_defaults(
     }
 }
 
+pub(crate) struct CodeWorkflowLoopMut<'a> {
+    pub subcommand: &'a str,
+    pub max_loops: &'a mut usize,
+    pub max_hypotheses: &'a mut usize,
+    pub agent: &'a AgentConfig,
+}
+
+fn apply_code_workflow_loop_defaults(
+    matches: &ArgMatches,
+    loops: CodeWorkflowLoopMut<'_>,
+) {
+    apply_loop_defaults(
+        matches,
+        loops.subcommand,
+        LoopDefaultMut {
+            max_loops: loops.max_loops,
+            max_hypotheses: loops.max_hypotheses,
+            config_max_loops: loops.agent.max_loops_code,
+            config_max_hypotheses: loops.agent.max_hypotheses,
+        },
+    );
+}
+
+fn apply_gate_loop_command_defaults(
+    matches: &ArgMatches,
+    command: &mut Commands,
+    agent: &AgentConfig,
+) {
+    match command {
+        Commands::Code(code) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "code",
+                max_loops: &mut code.max_loops,
+                max_hypotheses: &mut code.max_hypotheses,
+                agent,
+            },
+        ),
+        Commands::Kpop(kpop) => apply_loop_defaults(
+            matches,
+            "kpop",
+            LoopDefaultMut {
+                max_loops: &mut kpop.max_loops,
+                max_hypotheses: &mut kpop.max_hypotheses,
+                config_max_loops: agent.max_loops,
+                config_max_hypotheses: agent.max_hypotheses,
+            },
+        ),
+        Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "tidy",
+                max_loops: &mut tidy.max_loops,
+                max_hypotheses: &mut tidy.max_hypotheses,
+                agent,
+            },
+        ),
+        Commands::Delight(delight) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "delight",
+                max_loops: &mut delight.max_loops,
+                max_hypotheses: &mut delight.max_hypotheses,
+                agent,
+            },
+        ),
+        Commands::Explain(explain) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "explain",
+                max_loops: &mut explain.max_loops,
+                max_hypotheses: &mut explain.max_hypotheses,
+                agent,
+            },
+        ),
+        Commands::Revise(revise) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "revise",
+                max_loops: &mut revise.max_loops,
+                max_hypotheses: &mut revise.max_hypotheses,
+                agent,
+            },
+        ),
+        Commands::Do(_)
+        | Commands::Init(_)
+        | Commands::Inspire(_)
+        | Commands::Models(_)
+        | Commands::Plan(_) => {}
+    }
+}
+
 pub fn apply_workspace_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
@@ -64,49 +156,10 @@ pub fn apply_workspace_config_defaults(
     }
 
     let Some(command) = cli.command.as_mut() else {
-        if cli.bare_args.is_empty() {
-            return Ok(());
-        }
-        return Err("internal: bare kpop request not resolved".into());
+        return Ok(());
     };
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
-    match command {
-        Commands::Code(code) => apply_loop_defaults(
-            matches,
-            "code",
-            LoopDefaultMut {
-                max_loops: &mut code.max_loops,
-                max_hypotheses: &mut code.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
-            },
-        ),
-        Commands::Kpop(kpop) => apply_loop_defaults(
-            matches,
-            "kpop",
-            LoopDefaultMut {
-                max_loops: &mut kpop.max_loops,
-                max_hypotheses: &mut kpop.max_hypotheses,
-                config_max_loops: agent.max_loops,
-                config_max_hypotheses: agent.max_hypotheses,
-            },
-        ),
-        Commands::Tidy(tidy) => apply_loop_defaults(
-            matches,
-            "tidy",
-            LoopDefaultMut {
-                max_loops: &mut tidy.max_loops,
-                max_hypotheses: &mut tidy.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
-            },
-        ),
-        Commands::Do(_)
-        | Commands::Init(_)
-        | Commands::Inspire(_)
-        | Commands::Models(_)
-        | Commands::Plan(_) => {}
-    }
+    apply_gate_loop_command_defaults(matches, command, &agent);
     Ok(())
 }
 
@@ -127,7 +180,7 @@ pub fn parse_cli_with_config_defaults(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, ArgMatches), clap::Error> {
     let cmd = Cli::command();
-    let matches = cmd.get_matches_from(args);
+    let matches = cmd.try_get_matches_from(args)?;
     let mut cli = Cli::from_arg_matches(&matches)?;
     if let Err(e) = super::bare_invoke::resolve_bare_command(&mut cli, &matches) {
         return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));

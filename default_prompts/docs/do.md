@@ -24,7 +24,7 @@ malvin do [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Literal text, or an existing `.md` file path (same rules as `code`).
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as `code`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|

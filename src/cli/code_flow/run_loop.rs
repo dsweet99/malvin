@@ -139,6 +139,7 @@ mod tests {
             verbose: false,
             max_acp_retries: 1,
             doc: false,
+            name: None,
         };
         let workflow = WorkflowCliOptions { force: false };
         let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(

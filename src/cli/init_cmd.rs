@@ -152,11 +152,50 @@ pub fn parse_languages(args: &[String]) -> Result<Vec<Language>, String> {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod run_init_tests {
     use super::*;
+    use crate::cli::SharedOpts;
+    use crate::config::DEFAULT_CLI_MODEL;
+
+    fn test_shared_opts() -> SharedOpts {
+        SharedOpts {
+            model: DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tenacious: true,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            max_acp_retries: 1,
+            doc: false,
+            name: None,
+        }
+    }
+
     #[test]
-    fn kiss_cov_unit_names() {
-        let _ = run_init;
+    fn run_init_options_expose_force_and_tee_flags() {
+        let opts = RunInitOptions {
+            overwrite_templates: true,
+            tee_startup_stdout: false,
+        };
+        assert!(opts.overwrite_templates);
+        assert!(!opts.tee_startup_stdout);
+    }
+
+    #[tokio::test]
+    async fn run_init_rejects_empty_languages() {
+        let shared = test_shared_opts();
+        let languages: Vec<String> = vec![];
+        let err = run_init(RunInitRequest {
+            path: None,
+            languages: &languages,
+            shared: &shared,
+            opts: RunInitOptions {
+                overwrite_templates: false,
+                tee_startup_stdout: false,
+            },
+        })
+        .await
+        .unwrap_err();
+        assert!(err.contains("At least one language"));
     }
 }

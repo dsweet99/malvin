@@ -1,5 +1,5 @@
 use super::*;
-use crate::cli::{Cli, Commands};
+use crate::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::{CommandFactory, FromArgMatches};
 
 fn parse_and_resolve(argv: &[&str]) -> Cli {
@@ -21,6 +21,40 @@ fn parse_resolve_err(argv: &[&str]) -> String {
 fn bare_request_resolves_to_kpop() {
     let kpop = parse_and_resolve(&["malvin", "investigate cache"]);
     assert!(matches!(kpop.command, Some(Commands::Kpop(_))));
+}
+
+#[test]
+fn bare_single_argv_multi_word_resolves() {
+    let cli = parse_cli_with_config_defaults(["malvin", "hello world"])
+        .expect("parse")
+        .0;
+    match cli.command {
+        Some(Commands::Kpop(k)) => assert_eq!(k.request.as_deref(), Some("hello world")),
+        other => panic!("expected kpop, got {other:?}"),
+    }
+}
+
+#[test]
+fn bare_multiple_requests_stay_unresolved_for_sequential_kpop() {
+    let cmd = Cli::command();
+    let matches = cmd.get_matches_from(["malvin", "req_a.md", "req_b.md"]);
+    let mut cli = Cli::from_arg_matches(&matches).expect("cli");
+    resolve_bare_command(&mut cli, &matches).expect("resolve");
+    assert!(cli.command.is_none());
+    assert_eq!(cli.bare_args, vec!["req_a.md", "req_b.md"]);
+}
+
+#[test]
+fn code_accepts_multiple_plans() {
+    let cli = parse_cli_with_config_defaults(["malvin", "code", "plan_1.md", "plan_2.md"])
+        .expect("parse")
+        .0;
+    match cli.command {
+        Some(Commands::Code(c)) => {
+            assert_eq!(c.requests.as_slice(), &["plan_1.md", "plan_2.md"]);
+        }
+        other => panic!("expected code, got {other:?}"),
+    }
 }
 
 #[test]
@@ -77,8 +111,13 @@ fn resolve_bare_helper_functions_directly() {
 
 #[test]
 fn unit_helpers_join_request_bare_loop() {
-    assert_eq!(join_request_parts(&["a".into(), "b".into()]), "a b");
-    require_bare_request(&[], "usage").expect_err("empty");
+    require_bare_request(None, "usage").expect_err("empty");
+    require_bare_request(Some(&"   ".to_string()), "usage").expect_err("whitespace");
+    let cli = parse_cli_with_config_defaults(["malvin", "hello", "world"])
+        .expect("parse")
+        .0;
+    assert!(cli.command.is_none());
+    assert_eq!(cli.bare_args, vec!["hello", "world"]);
     let cmd = Cli::command();
     let matches = cmd.get_matches_from(["malvin", "hello"]);
     let cli = Cli::from_arg_matches(&matches).expect("cli");
@@ -98,8 +137,9 @@ fn unit_helpers_join_request_bare_loop() {
 fn kiss_cov_bare_invoke_symbols() {
     let _ = stringify!(resolve_bare_command);
     let _ = stringify!(resolve_bare_kpop);
-    let _ = stringify!(join_request_parts);
     let _ = stringify!(require_bare_request);
     let _ = stringify!(BareLoopOpts);
     let _ = stringify!(bare_loop_opts);
+    let _ = parse_and_resolve;
+    let _ = parse_resolve_err;
 }

@@ -29,7 +29,7 @@ malvin kpop <KPOP_ID>                   # log lookup only
 
 ### `<REQUEST>...` (investigation brief, one or more for bare invocation)
 
-Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin "Why does the cache miss?"`). Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
 Bare `malvin REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations. The hidden `kpop` subcommand accepts a single request only.
 

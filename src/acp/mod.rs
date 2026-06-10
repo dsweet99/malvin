@@ -28,9 +28,8 @@ pub(crate) use wrap_session_io::*;
 mod session_types_tests;
 
 #[path = "unix_process_group_ps.rs"] mod unix_process_group_ps;
-#[cfg(unix)]
-#[path = "unix_process_group_kill_targets.rs"]
-mod unix_process_group_kill_targets;
+#[cfg(unix)] #[path = "unix_process_ancestor.rs"] mod unix_process_ancestor;
+#[cfg(unix)] #[path = "unix_process_group_kill_targets.rs"] mod unix_process_group_kill_targets;
 #[path = "unix_process_group_teardown.rs"] mod unix_process_group_teardown;
 #[cfg(unix)]
 #[path = "unix_process_group_teardown_poll.rs"]
@@ -42,6 +41,7 @@ pub use unix_process_group_teardown::{
     reap_baseline_amnestied_agent_orphans_blocking, terminate_agent_process_group,
     terminate_process_group,
 };
+#[cfg(unix)] pub(crate) use unix_process_ancestor::is_ancestor_pid;
 #[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
 #[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
 #[cfg(unix)]
@@ -234,8 +234,15 @@ mod tee_strip_tests;
 
 #[doc(hidden)]
 pub mod test_captive_session;
-#[cfg(test)] mod kiss_coverage;
-#[cfg(test)] #[path = "kiss_coverage_b.rs"] mod kiss_coverage_b;
+
+#[cfg(test)]
+mod kiss_coverage;
+
+#[cfg(test)]
+#[path = "kiss_coverage_b.rs"]
+mod kiss_coverage_b;
+
 #[cfg(test)] #[path = "inc_kiss_coverage.rs"] mod inc_kiss_coverage;
 #[cfg(test)] #[path = "session_tests_kiss_cov.rs"] mod session_tests_kiss_cov;
-#[cfg(test)] pub(crate) mod spawn_test_args;
+#[cfg(test)]
+pub(crate) mod spawn_test_args;

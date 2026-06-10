@@ -186,6 +186,15 @@ pub fn test_env_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 #[cfg(test)]
+pub fn with_cwd<T>(cwd: &std::path::Path, f: impl FnOnce() -> T) -> T {
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(cwd).expect("chdir");
+    let out = f();
+    std::env::set_current_dir(old).expect("restore");
+    out
+}
+
+#[cfg(test)]
 #[path = "test_isolated_home.rs"]
 mod isolated_home;
 
