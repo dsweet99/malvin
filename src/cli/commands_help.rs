@@ -7,6 +7,8 @@ use clap::builder::Command;
 
 use super::Cli;
 
+pub use super::commands_help_subcommand::print_subcommand_short_help;
+
 fn visible_subcommands(cmd: &Command) -> Vec<&Command> {
     cmd.get_subcommands()
         .filter(|sub| !sub.is_hide_set())
@@ -72,7 +74,6 @@ mod tests {
 
     #[test]
     fn commands_only_help_lines_includes_request_usage_and_epilog() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
@@ -111,7 +112,6 @@ mod tests {
 
     #[test]
     fn visible_subcommands_omits_hidden_kpop() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
             .into_iter()
@@ -123,7 +123,6 @@ mod tests {
 
     #[test]
     fn format_command_lines_aligns_names() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
         assert!(lines.iter().any(|line| line.starts_with("  init")));

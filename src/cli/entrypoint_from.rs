@@ -27,6 +27,18 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
         let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
+    if let Some(Commands::Code(code)) = &cli.command {
+        if !cli.shared.doc && code.request.is_none() {
+            let _ = crate::cli::commands_help::print_subcommand_short_help("code");
+            return Some(Exit::Success);
+        }
+    }
+    if let Some(Commands::Inspire(inspire)) = &cli.command {
+        if !cli.shared.doc && inspire.request.is_none() {
+            let _ = crate::cli::commands_help::print_subcommand_short_help("inspire");
+            return Some(Exit::Success);
+        }
+    }
     if cli.shared.doc {
         return Some(match crate::cli::command_docs::print_doc(cli.command.as_ref()) {
             Ok(()) => Exit::Success,

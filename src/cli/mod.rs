@@ -8,6 +8,7 @@ pub(crate) mod command_docs;
 #[cfg(test)]
 mod command_log_tests;
 mod commands_help;
+mod commands_help_subcommand;
 mod config_defaults;
 mod config_loop;
 mod entrypoint;

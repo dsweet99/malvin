@@ -33,6 +33,16 @@ fn entrypoint_from_bare_malvin_exits_success() {
 }
 
 #[test]
+fn entrypoint_from_code_without_request_exits_success() {
+    assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Success);
+}
+
+#[test]
+fn entrypoint_from_inspire_without_request_exits_success() {
+    assert_eq!(entrypoint_from(["malvin", "inspire"]), Exit::Success);
+}
+
+#[test]
 fn entrypoint_from_no_color_disables_stdout_color() {
     assert_eq!(entrypoint_from(["malvin", "--no-color", "--doc"]), Exit::Success);
     assert!(!crate::output::stdout_use_color());
