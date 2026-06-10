@@ -1,4 +1,4 @@
-//! `plan` subcommand: four sequential prompts on one session; malvin splices at Prompt 3.
+//! `plan` subcommand: four sequential prompts on one session; malvin overwrites at Prompt 3.
 
 use std::path::{Path, PathBuf};
 

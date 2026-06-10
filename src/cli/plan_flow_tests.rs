@@ -139,7 +139,7 @@ fn commit_plan_prompt_2_writes_decisions_artifact() {
 }
 
 #[test]
-fn commit_plan_prompt_3_splices_fenced_response() {
+fn commit_plan_prompt_3_overwrites_fenced_response() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
     let user = "# User\n";
@@ -147,8 +147,9 @@ fn commit_plan_prompt_3_splices_fenced_response() {
     let prep = test_plan_run_prep_for_plan(&tmp, &artifacts, &plan);
     commit_plan_prompt_3(&prep, user.len(), "```markdown\n# Revised\n\nShip.\n```").expect("commit");
     let out = std::fs::read_to_string(&plan).expect("read");
-    assert!(out.contains("# Revised"));
-    assert!(out.contains("---\nBEGIN_MALVIN"));
+    assert_eq!(out, "# Revised\n\nShip.\n");
+    assert!(!out.contains("BEGIN_MALVIN"));
+    assert!(!out.contains("# User"));
 }
 
 #[test]

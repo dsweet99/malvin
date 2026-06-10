@@ -111,8 +111,8 @@ fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
             .expect("prepare");
             run_plan_acp(&mut prep).await.expect("plan acp");
             let out = std::fs::read_to_string(&plan).expect("read plan");
-            assert!(out.contains("# Revised"));
-            assert!(out.contains("---\nBEGIN_MALVIN"));
+            assert_eq!(out, "# Revised\n\nDone.\n");
+            assert!(!out.contains("BEGIN_MALVIN"));
             assert!(prep.artifacts.run_dir.join("plan.p1a.md").is_file());
             assert!(prep.artifacts.run_dir.join("plan.p2.decisions.md").is_file());
         });

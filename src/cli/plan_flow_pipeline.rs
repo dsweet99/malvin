@@ -2,8 +2,9 @@
 
 use crate::artifacts::{
     PlanRunMetadata, RunArtifacts, extract_decisions_section, extract_fenced_markdown_block,
-    prepare_plan_file_for_prompt_1a, read_plan_file, record_user_span_end_after_1a,
-    snapshot_plan_artifact, splice_plan_file, validate_post_1a, validate_post_1b, validate_post_2,
+    overwrite_plan_file, prepare_plan_file_for_prompt_1a, read_plan_file,
+    record_user_span_end_after_1a, snapshot_plan_artifact, validate_post_1a, validate_post_1b,
+    validate_post_2,
     write_plan_metadata,
 };
 use crate::prompts::PromptStore;
@@ -144,11 +145,11 @@ pub(super) fn commit_plan_prompt_2(prep: &PlanRunPrep, content: &str) -> Result<
 
 pub(super) fn commit_plan_prompt_3(
     prep: &PlanRunPrep,
-    user_span_end: usize,
+    _user_span_end: usize,
     response: &str,
 ) -> Result<(), String> {
     let fenced = extract_fenced_markdown_block(response).map_err(|e| e.to_string())?;
-    splice_plan_file(&prep.source_plan_path, user_span_end, &fenced).map_err(|e| e.to_string())
+    overwrite_plan_file(&prep.source_plan_path, &fenced).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -169,5 +170,6 @@ mod kiss_cov_gate_refs{
         let _ = stringify!(commit_plan_prompt_1b);
         let _ = stringify!(commit_plan_prompt_2);
         let _ = stringify!(commit_plan_prompt_3);
+        let _ = overwrite_plan_file;
     }
 }

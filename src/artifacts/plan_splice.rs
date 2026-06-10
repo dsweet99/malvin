@@ -1,4 +1,4 @@
-//! Plan-file boundary parsing and Prompt-3 splice for `malvin plan`.
+//! Plan-file boundary parsing and Prompt-3 overwrite for `malvin plan`.
 
 use std::path::{Path, PathBuf};
 
@@ -98,6 +98,14 @@ pub(crate) fn append_machine_block(spliced: &mut String, fenced_body: &str) {
     if !spliced.ends_with('\n') {
         spliced.push('\n');
     }
+}
+
+pub fn overwrite_plan_file(path: &Path, body: &str) -> Result<(), PlanFileError> {
+    let mut content = body.trim_end().to_string();
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    write_plan_file_atomic(path, &content)
 }
 
 pub fn splice_plan_file(

@@ -64,6 +64,7 @@ fn plan_3_prompt_requires_fenced_block_not_file_edit() {
     let text = render_plan_3(&store, &ctx).expect("render");
     assert!(text.contains("fenced markdown block"));
     assert!(text.contains("Do **not** edit"));
+    assert!(text.contains("overwrite"));
 }
 
 #[test]

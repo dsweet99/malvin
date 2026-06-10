@@ -41,8 +41,12 @@ fn delight_runs_kpop_when_gates_already_pass() {
     let plan = std::fs::read_to_string(workspace.join("plan.md")).expect("read plan");
     assert!(!plan.is_empty(), "output plan must be non-empty");
     assert!(
-        plan.contains("BEGIN_MALVIN"),
+        plan.contains("# Revised"),
         "delight must chain malvin plan on success: {plan:?}"
+    );
+    assert!(
+        !plan.contains("BEGIN_MALVIN"),
+        "post-plan output must be overwrite-only: {plan:?}"
     );
 }
 
@@ -114,8 +118,12 @@ fn delight_writes_custom_out_path() {
     let plan = std::fs::read_to_string(workspace.join("plans/new.md")).expect("read plan");
     assert!(!plan.is_empty());
     assert!(
-        plan.contains("BEGIN_MALVIN"),
+        plan.contains("# Revised"),
         "delight must chain malvin plan on custom out-path: {plan:?}"
+    );
+    assert!(
+        !plan.contains("BEGIN_MALVIN"),
+        "post-plan output must be overwrite-only: {plan:?}"
     );
 }
 

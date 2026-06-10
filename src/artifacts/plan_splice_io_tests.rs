@@ -12,6 +12,15 @@ fn read_and_write_plan_file_round_trip() {
 }
 
 #[test]
+fn overwrite_plan_file_replaces_entire_file() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("plan.md");
+    std::fs::write(&path, "# User\n\n---\nBEGIN_MALVIN\nold\n").expect("write");
+    overwrite_plan_file(&path, "# Revised\n\nDone.").expect("overwrite");
+    assert_eq!(std::fs::read_to_string(&path).expect("read"), "# Revised\n\nDone.\n");
+}
+
+#[test]
 fn truncate_plan_for_rerun_keeps_user_span_only() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("plan.md");
