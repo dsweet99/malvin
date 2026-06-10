@@ -31,6 +31,8 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kiss_coverage_common import register_kiss_static_symbols
+from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from modal_sandbox_lifecycle import release_modal_sandbox
 
 APP_NAME = "malvin-modal"
@@ -169,9 +171,7 @@ def print_empty_argv_help(ctx: click.Context) -> None:
 
 def sandbox_app() -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
-    if app.app_id is not None:
-        return app
-    return modal.App.lookup(APP_NAME, create_if_missing=True)
+    return lookup_sandbox_app(app, APP_NAME)
 
 
 def run_malvin_remote(malvin_argv: list[str]) -> int:
@@ -295,7 +295,7 @@ def run_unit_tests() -> None:
 
 def test_kiss_static_coverage() -> None:
     """Register production symbols for kiss static test coverage."""
-    symbols = (
+    symbols = register_kiss_static_symbols(
         build_ignore_patterns,
         parse_malvin_argv,
         relay_stream,
@@ -317,14 +317,7 @@ def test_kiss_static_coverage() -> None:
 
 
 def _test_sandbox_app() -> None:
-    lookup_app = SimpleNamespace(app_id="lookup-id")
-    module_app = SimpleNamespace(app_id="module-id")
-    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
-        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
-            assert sandbox_app() is lookup_app
-        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
-    with patch(f"{__name__}.app", module_app):
-        assert sandbox_app() is module_app
+    test_sandbox_app_lookup(__name__, app, APP_NAME, sandbox_app)
 
 
 def _test_render_empty_argv_help() -> None:

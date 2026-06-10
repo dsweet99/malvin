@@ -131,6 +131,9 @@ pub(crate) fn run_kpop_workspace_gates(
     } else {
         session_dotfile_backups.restore_excluding_malvin_checks(&artifacts.work_dir)?;
     }
+    crate::repo_gates::canonical_ignore::reconcile_workspace_ignore_files(
+        artifacts.work_dir.as_path(),
+    )?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     run_repo_workspace_gates(
         artifacts.work_dir.as_path(),

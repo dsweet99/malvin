@@ -10,6 +10,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kiss_coverage_common import register_kiss_static_symbols
 from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import agent_sandbox_network_kwargs, app, cidr_probe_image, stream_process_output
 
@@ -50,6 +51,11 @@ def main() -> None:
         if sandbox is not None:
             release_modal_sandbox(sandbox)
 
+
+
+def test_kiss_static_coverage() -> None:
+    """Register production symbols for kiss static test coverage."""
+    register_kiss_static_symbols(main)
 
 if __name__ == "__main__":
     main()

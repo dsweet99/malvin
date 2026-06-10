@@ -12,6 +12,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kiss_coverage_common import register_kiss_static_symbols
 from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     RESOLVE_CURSOR_CIDRS_IN_SANDBOX_SCRIPT,
@@ -65,6 +66,11 @@ def main() -> None:
     finally:
         release_modal_sandbox(allow)
 
+
+
+def test_kiss_static_coverage() -> None:
+    """Register production symbols for kiss static test coverage."""
+    register_kiss_static_symbols(run_https, main)
 
 if __name__ == "__main__":
     main()
