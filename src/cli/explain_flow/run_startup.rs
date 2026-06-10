@@ -77,4 +77,26 @@ mod tests {
             std::env::set_current_dir(cwd).expect("restore");
         });
     }
+
+    #[test]
+    fn explain_preflight_refuses_stale_outputs_before_run_dir_created() {
+        crate::test_utils::with_isolated_home(|work| {
+            let cwd = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(work).expect("chdir");
+            std::fs::write(work.join("explain.tex"), "STALE\n").expect("write");
+            std::fs::write(work.join("explain.pdf"), b"%PDF").expect("write");
+            let logs_root = crate::workspace_paths::malvin_logs_root(work);
+            let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
+            let Err(err) = prepare_explain_kpop_run(
+                Some(&"topic".to_string()),
+                crate::cli::WorkflowCliOptions { force: true },
+            ) else {
+                panic!("preflight must fail");
+            };
+            assert!(err.contains("refusing to overwrite"));
+            let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
+            assert_eq!(runs_before, runs_after, "preflight must not create run dirs");
+            std::env::set_current_dir(cwd).expect("restore");
+        });
+    }
 }

@@ -73,6 +73,43 @@ fn explain_fails_when_request_missing() {
 
 #[cfg(unix)]
 #[test]
+fn explain_fails_when_stale_outputs_exist() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    std::fs::write(workspace.join("explain.tex"), "STALE\n").expect("write");
+    std::fs::write(workspace.join("explain.pdf"), b"%PDF-1.4 stale").expect("write");
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = root.path().join("mock-explain-stale");
+    write_mock_executable(&mock, &acp_mock_explain_kpop_solved_without_output_js());
+    let out = spawn_explain(&ExplainSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        request: "topic",
+        extra_args: &["--max-loops", "1"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(
+        !out.status.success(),
+        "expected failure when stale outputs exist: status={:?} combined={combined:?}",
+        out.status,
+    );
+    assert!(
+        combined.contains("refusing to overwrite"),
+        "expected overwrite refusal: {combined:?}"
+    );
+    let tex = std::fs::read_to_string(workspace.join("explain.tex")).expect("read tex");
+    assert_eq!(tex, "STALE\n", "stale tex must be unchanged");
+    assert!(
+        !combined.contains("KPOP_LOG:"),
+        "agent must not run when preflight fails: {combined:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn explain_fails_when_agent_solves_but_output_missing() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);

@@ -46,11 +46,34 @@ pub(crate) fn explain_kpop_request(
     render_kpop_program_request(store, "explain_constraints.md", &ctx, artifacts)
 }
 
+fn resolve_explain_output_in_cwd(work_dir: &Path, basename: &str, cwd: &Path) -> PathBuf {
+    let rel = work_dir.join(basename);
+    if rel.is_absolute() {
+        rel
+    } else {
+        cwd.join(rel)
+    }
+}
+
 pub(crate) fn explain_preflight(request: &str) -> Result<(String, PathBuf), String> {
     let (text, work_dir) = resolve_user_md_request(request)?;
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    for basename in [EXPLAIN_TEX_BASENAME, EXPLAIN_PDF_BASENAME] {
+        let resolved = resolve_explain_output_in_cwd(&work_dir, basename, &cwd);
+        if resolved.exists() {
+            return Err(format!(
+                "malvin explain: `{}` already exists; refusing to overwrite",
+                resolved.display()
+            ));
+        }
+    }
     Ok((text, work_dir))
 }
 
 #[cfg(test)]
 #[path = "../explain_flow_prep_tests.rs"]
 mod explain_flow_prep_tests;
+
+#[cfg(test)]
+#[path = "../explain_flow_prep_preflight_tests.rs"]
+mod explain_flow_prep_preflight_tests;
