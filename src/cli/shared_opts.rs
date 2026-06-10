@@ -52,6 +52,9 @@ pub struct SharedOpts {
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
+    /// Session name for this malvin process (default: random five-character id).
+    #[arg(long, global = true)]
+    pub name: Option<String>,
 }
 
 impl SharedOpts {

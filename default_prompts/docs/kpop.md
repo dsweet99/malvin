@@ -29,7 +29,7 @@ malvin kpop <KPOP_ID>                   # log lookup only
 
 ### `<REQUEST>` (investigation brief)
 
-Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin "Why does the cache miss?"`). Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
 ### `<KPOP_ID>` (log lookup)
 

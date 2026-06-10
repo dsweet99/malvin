@@ -7,6 +7,8 @@ use clap::builder::Command;
 
 use super::Cli;
 
+pub use super::commands_help_subcommand::print_subcommand_short_help;
+
 fn visible_subcommands(cmd: &Command) -> Vec<&Command> {
     cmd.get_subcommands()
         .filter(|sub| !sub.is_hide_set())
@@ -43,7 +45,7 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
         String::new(),
-        "Pass REQUEST with no subcommand to KPop.".to_string(),
+        "Pass one REQUEST argument with no subcommand to run KPop.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);
@@ -72,12 +74,11 @@ mod tests {
 
     #[test]
     fn commands_only_help_lines_includes_request_usage_and_epilog() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
         assert!(text.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(text.contains("Pass REQUEST with no subcommand"));
+        assert!(text.contains("Pass one REQUEST argument with no subcommand"));
         assert!(text.contains("Commands:"));
         assert!(!text.contains("kpop"));
     }
@@ -88,7 +89,7 @@ mod tests {
         assert!(help.contains("Commands:"));
         assert!(help.contains("init"));
         assert!(help.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(help.contains("Pass REQUEST with no subcommand"));
+        assert!(help.contains("Pass one REQUEST argument with no subcommand"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
@@ -111,7 +112,6 @@ mod tests {
 
     #[test]
     fn visible_subcommands_omits_hidden_kpop() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
             .into_iter()
@@ -123,7 +123,6 @@ mod tests {
 
     #[test]
     fn format_command_lines_aligns_names() {
-        use clap::CommandFactory;
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
         assert!(lines.iter().any(|line| line.starts_with("  init")));

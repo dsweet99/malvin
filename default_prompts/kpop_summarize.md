@@ -11,6 +11,7 @@ Malvin finished a multi-loop KPop session (`--max-loops` > 1). Read the session 
 - KPop experiment logs (under `{{ kpop_log_dir }}`):
 {{ exp_log_paths }}
 
+
 ## Output format
 
 Respond in this order:
@@ -18,4 +19,4 @@ Respond in this order:
 1. **Executive summary**: 1–7 complete sentences covering goals, what was tried, outcomes, and remaining issues.
 2. **TLDR**: One complete sentence summarizing the session, then up to three bullet points (each at most seven words).
 
-Use clear, plain language. Do not modify repository files unless the user explicitly asked you to.
+Use clear, plain language. Be sure to capture all of the information in the KPop summaries from the KPop logs. Do not modify repository files.

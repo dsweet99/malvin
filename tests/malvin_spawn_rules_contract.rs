@@ -1,5 +1,9 @@
 //! Contract: dead-before-next and sandbox-isolated malvin spawns.
 
+mod common;
+
+#[cfg(unix)]
+use common::{fresh_workdir, sleep_child};
 #[cfg(unix)]
 use malvin::acp::snapshot_pids;
 #[cfg(unix)]
@@ -8,24 +12,7 @@ use malvin::malvin_sandbox::{
     malvin_std_command, malvin_tokio_command, note_active_sandbox_session,
 };
 #[cfg(unix)]
-use std::path::PathBuf;
-#[cfg(unix)]
 use std::process::Command;
-
-#[cfg(unix)]
-fn fresh_workdir(name: &str) -> PathBuf {
-    let work = std::env::temp_dir().join(name);
-    let _ = std::fs::remove_dir_all(&work);
-    std::fs::create_dir_all(&work).expect("mkdir work");
-    work
-}
-
-#[cfg(unix)]
-fn sleep_child(seconds: &str) -> std::process::Child {
-    let mut cmd = malvin_std_command("sleep");
-    cmd.arg(seconds);
-    cmd.spawn().expect("spawn sleep")
-}
 
 #[cfg(unix)]
 fn process_group_id(pid: u32) -> u32 {

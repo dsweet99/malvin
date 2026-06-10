@@ -46,6 +46,12 @@ pub use sandbox_oom::{
 };
 pub use current_state::format_current_state;
 mod acp_spawn_lock;
+mod session_name;
+pub use session_name::{
+    acquire_name, acquire_session_name, assert_no_peer_name_lock, generate_auto_name,
+    generate_auto_name_with, name_path, names_registry_root, parse_holder_pid, release_name,
+    validate_name, SessionNameGuard,
+};
 pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;
@@ -162,8 +168,8 @@ pub mod init_cmd;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
 
-#[path = "cli/ideas_flow.rs"]
-pub mod ideas_flow;
+#[path = "cli/inspire_flow.rs"]
+pub mod inspire_flow;
 
 #[path = "cli/plan_flow.rs"]
 pub mod plan_flow;

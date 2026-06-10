@@ -58,6 +58,15 @@ fn cli_help_lists_bare_invocation_hint() {
 }
 
 #[test]
+fn bare_two_tokens_fails_parse() {
+    let err = parse_cli_with_config_defaults(["malvin", "hello", "world"])
+        .expect_err("parse")
+        .to_string();
+    assert!(err.contains("unexpected argument"), "got: {err}");
+    assert!(err.contains("'world'"), "got: {err}");
+}
+
+#[test]
 fn kiss_cov_bare_resolve_helper_names() {
     const NAMES: &[&str] = &["resolve_bare_kpop", "resolve_bare_command"];
     assert_eq!(NAMES.len(), 2);

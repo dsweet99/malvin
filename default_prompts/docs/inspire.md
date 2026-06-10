@@ -8,7 +8,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Prompt | `default_prompts/mbc2.md` with `user_prompt` |
-| Log | `ideas.log` |
+| Log | `inspire.log` |
 
 ## Intention
 
@@ -24,7 +24,7 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
 
 ## Global options
 

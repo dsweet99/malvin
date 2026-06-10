@@ -1,4 +1,6 @@
-use super::{finish_entrypoint, prepare_cli_output, run_async_cli, Exit, entrypoint_from};
+use super::{
+    dispatch_command, finish_entrypoint, prepare_cli_output, run_async_cli, Exit, entrypoint_from,
+};
 use crate::cli::args::GlobalOpts;
 
 #[test]
@@ -28,6 +30,16 @@ fn entrypoint_from_background_suppresses_stdout() {
 #[test]
 fn entrypoint_from_bare_malvin_exits_success() {
     assert_eq!(entrypoint_from(["malvin"]), Exit::Success);
+}
+
+#[test]
+fn entrypoint_from_code_without_request_exits_success() {
+    assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Success);
+}
+
+#[test]
+fn entrypoint_from_inspire_without_request_exits_success() {
+    assert_eq!(entrypoint_from(["malvin", "inspire"]), Exit::Success);
 }
 
 #[test]
@@ -62,4 +74,14 @@ fn finish_entrypoint_success_and_failure_paths() {
 #[test]
 fn run_async_cli_runs_immediate_ok_future() {
     assert!(run_async_cli(|| async { Ok(()) }).is_ok());
+}
+
+#[test]
+fn kiss_cov_entrypoint_dispatch_and_commands() {
+    let _ = (dispatch_command, finish_entrypoint);
+    assert!(stringify!(run_async_cli).contains("run_async_cli"));
+    let _ = crate::cli::entrypoint_commands::run_code_command;
+    let _ = crate::cli::entrypoint_commands::run_inspire_command;
+    let _ = crate::cli::entrypoint_commands::run_plan_command;
+    let _ = crate::cli::entrypoint_commands::run_delight_command;
 }

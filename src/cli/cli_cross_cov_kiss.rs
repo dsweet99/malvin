@@ -70,6 +70,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = super::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = super::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = super::workflow_kpop_shared::finish_kpop_acp_session;
+    let _ = super::workflow_kpop_shared::gate_kpop_session_declared_solved;
     let _ = stringify!(super::gate_kpop_workflow::run_gate_kpop_loop);
     let _ = stringify!(super::gate_kpop_workflow::post_gate_kpop_gates);
     let _ = stringify!(super::gate_kpop_workflow::finish_gate_kpop_after_pass);
@@ -94,15 +95,45 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 }
 
 #[test]
+fn smoke_cov_cli_cli_delight_flow_units() {
+    let _: Option<super::delight_flow::DelightArgs> = None;
+    let _ = super::entrypoint_commands::run_delight_then_plan;
+    let _ = super::entrypoint_commands::plan_args_for_delight_output;
+    let _ = super::entrypoint_commands::run_explain_then_revise;
+    let _ = super::entrypoint_commands::revise_args_for_explain_output;
+    let _ = super::delight_flow::run_delight;
+    let _ = super::delight_flow::effective_delight_max_loops;
+    let _ = super::gate_kpop_workflow::GateLoopBehavior::DELIGHT;
+}
+
+#[test]
+fn smoke_cov_cli_cli_revise_flow_units() {
+    let _: Option<super::revise_flow::ReviseArgs> = None;
+    let _ = super::revise_flow::run_revise;
+    let _ = super::revise_flow::effective_revise_max_loops;
+    let _ = super::gate_kpop_workflow::GateLoopBehavior::REVISE;
+    let _ = super::entrypoint_commands::run_revise_command;
+}
+
+#[test]
+fn smoke_cov_cli_cli_explain_flow_units() {
+    let _: Option<super::explain_flow::ExplainArgs> = None;
+    let _ = super::explain_flow::run_explain;
+    let _ = super::explain_flow::effective_explain_max_loops;
+    let _ = super::gate_kpop_workflow::GateLoopBehavior::EXPLAIN;
+    let _ = super::entrypoint_commands::run_explain_command;
+}
+
+#[test]
 fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<super::SharedOpts> = None;
     let _: Option<super::Cli> = None;
     let _: Option<super::Commands> = None;
     let _: Option<crate::do_flow::DoArgs> = None;
-    let _: Option<crate::ideas_flow::IdeasArgs> = None;
-    let _ = crate::ideas_flow::render_ideas_prompt;
-    let _ = crate::ideas_flow::build_ideas_render_context;
-    let _ = crate::ideas_flow::run_ideas;
+    let _: Option<crate::inspire_flow::InspireArgs> = None;
+    let _ = crate::inspire_flow::render_inspire_prompt;
+    let _ = crate::inspire_flow::build_inspire_render_context;
+    let _ = crate::inspire_flow::run_inspire;
     let _: Option<crate::plan_flow::PlanArgs> = None;
     let _ = crate::plan_flow::run_plan;
     let _ = crate::plan_flow::prepare_plan_prompt_store;
@@ -138,13 +169,13 @@ fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(prepare_do_run);
     let _ = stringify!(run_do_coder_prompt);
     let _ = stringify!(run_do_acp);
-    let _ = stringify!(IdeasRunPrep);
-    let _ = stringify!(prepare_ideas_prompt_store);
-    let _ = stringify!(new_ideas_client);
-    let _ = stringify!(ideas_emit_startup);
-    let _ = stringify!(prepare_ideas_run);
-    let _ = stringify!(run_ideas_coder_prompt);
-    let _ = stringify!(run_ideas_acp);
+    let _ = stringify!(InspireRunPrep);
+    let _ = stringify!(prepare_inspire_prompt_store);
+    let _ = stringify!(new_inspire_client);
+    let _ = stringify!(inspire_emit_startup);
+    let _ = stringify!(prepare_inspire_run);
+    let _ = stringify!(run_inspire_coder_prompt);
+    let _ = stringify!(run_inspire_acp);
     let _ = stringify!(test_kpop_args);
     let _ = stringify!(install_mock_agent_env);
     let _ = stringify!(write_mock_agent);

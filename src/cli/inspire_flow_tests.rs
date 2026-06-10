@@ -1,16 +1,16 @@
 #[cfg(test)]
-mod ideas_tests {
+mod inspire_tests {
     use clap::Parser;
 
     use crate::cli::{Cli, Commands};
-    use crate::ideas_flow::{build_ideas_render_context, render_ideas_prompt};
+    use crate::inspire_flow::{build_inspire_render_context, render_inspire_prompt};
     use crate::prompts::{
         PromptStore, malformed_brace_placeholders, render_mbc2_for_scheduled_kpop_block,
     };
 
     #[test]
-    fn render_ideas_prompt_substitutes_user_prompt() {
-        let out = render_ideas_prompt("ALPHA_PROMPT").expect("render");
+    fn render_inspire_prompt_substitutes_user_prompt() {
+        let out = render_inspire_prompt("ALPHA_PROMPT").expect("render");
         assert!(out.contains("ALPHA_PROMPT"));
         assert!(!out.contains("{{"));
         assert!(malformed_brace_placeholders(&out).is_empty());
@@ -18,29 +18,29 @@ mod ideas_tests {
     }
 
     #[test]
-    fn render_mbc2_for_scheduled_kpop_block_matches_render_ideas_prompt() {
+    fn render_mbc2_for_scheduled_kpop_block_matches_render_inspire_prompt() {
         let store = PromptStore::default_store();
-        let ctx = build_ideas_render_context("BETA");
+        let ctx = build_inspire_render_context("BETA");
         let a = render_mbc2_for_scheduled_kpop_block(&store, &ctx).expect("block");
-        let b = render_ideas_prompt("BETA").expect("prompt");
+        let b = render_inspire_prompt("BETA").expect("prompt");
         assert_eq!(a, b);
     }
 
     #[test]
-    fn build_ideas_render_context_keys() {
-        let ctx = build_ideas_render_context("x");
+    fn build_inspire_render_context_keys() {
+        let ctx = build_inspire_render_context("x");
         assert_eq!(ctx.get("user_prompt").map(String::as_str), Some("x"));
         assert!(!ctx.contains_key("num_ideas"));
     }
 
     #[test]
-    fn cli_accepts_ideas_and_passes_request() {
+    fn cli_accepts_inspire_and_passes_request() {
         let cli = Cli::try_parse_from(["malvin", "inspire", "explore edges"]).expect("parse");
         match cli.command {
             Some(Commands::Inspire(m)) => {
                 assert_eq!(m.request.as_deref(), Some("explore edges"));
             }
-            _ => panic!("expected Ideas subcommand"),
+            _ => panic!("expected Inspire subcommand"),
         }
     }
 
@@ -52,17 +52,17 @@ mod ideas_tests {
     }
 
     #[test]
-    fn cli_ideas_doc_parses_without_request() {
+    fn cli_inspire_doc_parses_without_request() {
         let cli = Cli::try_parse_from(["malvin", "inspire", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
         match cli.command.as_ref() {
             Some(Commands::Inspire(m)) => assert!(m.request.is_none()),
-            _ => panic!("expected Ideas"),
+            _ => panic!("expected Inspire"),
         }
     }
 
     #[test]
-    fn ideas_client_uses_styled_agent_io_not_raw_do_style() {
+    fn inspire_client_uses_styled_agent_io_not_raw_do_style() {
         use crate::cli::{SharedOpts, WorkflowCliOptions};
         let shared = SharedOpts {
             model: crate::config::DEFAULT_CLI_MODEL.into(),
@@ -73,6 +73,7 @@ mod ideas_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            name: None,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -88,7 +89,7 @@ mod ideas_tests {
     }
 
     #[test]
-    fn ideas_emit_startup_logs_host_resources() {
+    fn inspire_emit_startup_logs_host_resources() {
         use crate::cli::SharedOpts;
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
@@ -103,6 +104,7 @@ mod ideas_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            name: None,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

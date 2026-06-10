@@ -3,11 +3,14 @@
 use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
+use super::delight_flow::DelightArgs;
+use super::explain_flow::ExplainArgs;
+use super::revise_flow::ReviseArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
-pub use crate::ideas_flow::IdeasArgs as InspireArgs;
+pub use crate::inspire_flow::InspireArgs;
 pub use crate::init_cmd::InitArgs;
 pub use crate::plan_flow::PlanArgs;
 
@@ -21,7 +24,7 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). Use subcommands for do, code, and tidy."
+    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). REQUEST must be one shell argument; quote for spaces. Use subcommands for do, code, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -39,7 +42,7 @@ pub struct Cli {
     pub bare_tenacious: bool,
     /// When no subcommand: kpop request text or path.
     #[arg(value_name = "REQUEST")]
-    pub bare_args: Vec<String>,
+    pub bare_request: Option<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -60,6 +63,12 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
+    /// Author a user-delighting feature plan
+    Delight(DelightArgs),
+    /// Explain code or concepts via LaTeX PDF
+    Explain(ExplainArgs),
+    /// Revise a document in place
+    Revise(ReviseArgs),
     /// List available models
     Models(ModelsArgs),
     /// Reflect on and revise a plan file

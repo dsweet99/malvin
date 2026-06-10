@@ -7,26 +7,17 @@ use super::args_bug_kpop::KpopArgs;
 use super::config_loop::subcommand_flag_from_command_line;
 use super::{Cli, Commands};
 
-pub(crate) fn join_request_parts(parts: &[String]) -> String {
-    parts.join(" ")
-}
-
 pub(crate) fn require_bare_request(
-    parts: &[String],
+    request: Option<&String>,
     usage: &str,
 ) -> Result<String, String> {
-    if parts.is_empty() {
-        return Err(format!(
-            "malvin {usage}: missing required REQUEST (text or path)"
-        ));
-    }
-    let joined = join_request_parts(parts);
-    if joined.trim().is_empty() {
-        return Err(format!(
-            "malvin {usage}: missing required REQUEST (text or path)"
-        ));
-    }
-    Ok(joined)
+    let trimmed = request
+        .map(String::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    trimmed
+        .map(std::string::ToString::to_string)
+        .ok_or_else(|| format!("malvin {usage}: missing required REQUEST (text or path)"))
 }
 
 pub(crate) struct BareLoopOpts {
@@ -59,7 +50,7 @@ pub(crate) fn bare_loop_opts(cli: &Cli, matches: &ArgMatches, defaults: BareLoop
 }
 
 pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Commands, String> {
-    let request = require_bare_request(&cli.bare_args, "REQUEST")?;
+    let request = require_bare_request(cli.bare_request.as_ref(), "REQUEST")?;
     let loops = bare_loop_opts(
         cli,
         matches,
@@ -77,12 +68,12 @@ pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Comma
     }))
 }
 
-/// When `command` is unset, interpret trailing `bare_args` as a kpop request.
+/// When `command` is unset, interpret trailing `bare_request` as a kpop request.
 pub(crate) fn resolve_bare_command(cli: &mut Cli, matches: &ArgMatches) -> Result<(), String> {
     if cli.command.is_some() || cli.shared.doc {
         return Ok(());
     }
-    if cli.bare_args.is_empty() {
+    if cli.bare_request.is_none() {
         return Ok(());
     }
     cli.command = Some(resolve_bare_kpop(cli, matches)?);
