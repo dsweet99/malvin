@@ -41,6 +41,10 @@ fn explain_runs_kpop_when_gates_already_pass() {
     );
     let tex = std::fs::read_to_string(workspace.join("explain.tex")).expect("read tex");
     assert!(!tex.is_empty(), "output tex must be non-empty");
+    assert!(
+        tex.contains("Revised"),
+        "explain must chain malvin revise on success: {tex:?}"
+    );
     let pdf = std::fs::read(workspace.join("explain.pdf")).expect("read pdf");
     assert!(!pdf.is_empty(), "output pdf must be non-empty");
 }

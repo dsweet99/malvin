@@ -29,6 +29,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Delight(_) => require_kiss_for_malvin("delight"),
         Commands::Explain(_) => require_kiss_for_malvin("explain"),
+        Commands::Revise(_) => require_kiss_for_malvin("revise"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
@@ -159,7 +160,7 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
+        cmd @ (Commands::Delight(_) | Commands::Explain(_) | Commands::Revise(_)) => {
             super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Do(do_cmd) => run_async_cli(|| {
@@ -171,7 +172,7 @@ pub(crate) fn dispatch_command(
                 },
             )
         }),
-        Commands::Inspire(ideas) => super::entrypoint_commands::run_inspire_command(ideas, &shared),
+        Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
         Commands::Plan(plan) => super::entrypoint_commands::run_plan_command(plan, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();

@@ -33,6 +33,29 @@ pub(crate) fn apply_loop_defaults(
     }
 }
 
+pub(crate) struct CodeWorkflowLoopMut<'a> {
+    pub subcommand: &'a str,
+    pub max_loops: &'a mut usize,
+    pub max_hypotheses: &'a mut usize,
+    pub agent: &'a AgentConfig,
+}
+
+fn apply_code_workflow_loop_defaults(
+    matches: &ArgMatches,
+    loops: CodeWorkflowLoopMut<'_>,
+) {
+    apply_loop_defaults(
+        matches,
+        loops.subcommand,
+        LoopDefaultMut {
+            max_loops: loops.max_loops,
+            max_hypotheses: loops.max_hypotheses,
+            config_max_loops: loops.agent.max_loops_code,
+            config_max_hypotheses: loops.agent.max_hypotheses,
+        },
+    );
+}
+
 pub fn apply_workspace_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
@@ -43,22 +66,20 @@ pub fn apply_workspace_config_defaults(
         }
         return Err("internal: bare kpop request not resolved".into());
     };
-    match command {
-        Commands::Do(_) | Commands::Models(_) => return Ok(()),
-        _ => {}
+    if matches!(command, Commands::Do(_) | Commands::Models(_)) {
+        return Ok(());
     }
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
     match command {
-        Commands::Code(code) => apply_loop_defaults(
+        Commands::Code(code) => apply_code_workflow_loop_defaults(
             matches,
-            "code",
-            LoopDefaultMut {
+            CodeWorkflowLoopMut {
+                subcommand: "code",
                 max_loops: &mut code.max_loops,
                 max_hypotheses: &mut code.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
+                agent: &agent,
             },
         ),
         Commands::Kpop(kpop) => apply_loop_defaults(
@@ -71,34 +92,40 @@ pub fn apply_workspace_config_defaults(
                 config_max_hypotheses: agent.max_hypotheses,
             },
         ),
-        Commands::Tidy(tidy) => apply_loop_defaults(
+        Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
             matches,
-            "tidy",
-            LoopDefaultMut {
+            CodeWorkflowLoopMut {
+                subcommand: "tidy",
                 max_loops: &mut tidy.max_loops,
                 max_hypotheses: &mut tidy.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
+                agent: &agent,
             },
         ),
-        Commands::Delight(delight) => apply_loop_defaults(
+        Commands::Delight(delight) => apply_code_workflow_loop_defaults(
             matches,
-            "delight",
-            LoopDefaultMut {
+            CodeWorkflowLoopMut {
+                subcommand: "delight",
                 max_loops: &mut delight.max_loops,
                 max_hypotheses: &mut delight.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
+                agent: &agent,
             },
         ),
-        Commands::Explain(explain) => apply_loop_defaults(
+        Commands::Explain(explain) => apply_code_workflow_loop_defaults(
             matches,
-            "explain",
-            LoopDefaultMut {
+            CodeWorkflowLoopMut {
+                subcommand: "explain",
                 max_loops: &mut explain.max_loops,
                 max_hypotheses: &mut explain.max_hypotheses,
-                config_max_loops: agent.max_loops_code,
-                config_max_hypotheses: agent.max_hypotheses,
+                agent: &agent,
+            },
+        ),
+        Commands::Revise(revise) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "revise",
+                max_loops: &mut revise.max_loops,
+                max_hypotheses: &mut revise.max_hypotheses,
+                agent: &agent,
             },
         ),
         Commands::Do(_)

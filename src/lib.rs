@@ -168,8 +168,8 @@ pub mod init_cmd;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
 
-#[path = "cli/ideas_flow.rs"]
-pub mod ideas_flow;
+#[path = "cli/inspire_flow.rs"]
+pub mod inspire_flow;
 
 #[path = "cli/plan_flow.rs"]
 pub mod plan_flow;

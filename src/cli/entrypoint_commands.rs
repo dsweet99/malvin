@@ -1,18 +1,20 @@
 use super::{
-    CodeArgs, Commands, SharedOpts, WorkflowCliOptions, run_ideas, run_code, run_delight, run_explain,
+    CodeArgs, Commands, SharedOpts, WorkflowCliOptions, run_inspire, run_code, run_delight, run_explain,
+    run_revise,
 };
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
+use super::revise_flow::ReviseArgs;
 
 use super::entrypoint::run_async_cli;
 
 pub(crate) fn run_inspire_command(
-    ideas: crate::ideas_flow::IdeasArgs,
+    inspire: crate::inspire_flow::InspireArgs,
     shared: &SharedOpts,
 ) -> Result<(), String> {
     run_async_cli(|| {
-        run_ideas(
-            ideas,
+        run_inspire(
+            inspire,
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,
@@ -58,6 +60,28 @@ pub(crate) fn plan_args_for_delight_output(out_path: &str) -> crate::plan_flow::
     }
 }
 
+pub(crate) fn revise_args_for_explain_output(doc_path: &str) -> ReviseArgs {
+    ReviseArgs {
+        doc_path: doc_path.to_string(),
+        max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
+        max_hypotheses: 5,
+        tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+    }
+}
+
+pub(crate) async fn run_explain_then_revise(
+    explain: ExplainArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
+    let out_path = explain.out_path.clone();
+    let request = explain.request.clone();
+    run_explain(explain, shared, workflow).await?;
+    let request_arg = crate::cli::cli_request::require_cli_request(request.as_ref(), "explain")?;
+    let doc_path = super::explain_flow::explain_revise_doc_path(&request_arg, &out_path)?;
+    run_revise(revise_args_for_explain_output(&doc_path), shared, workflow).await
+}
+
 pub(crate) async fn run_delight_then_plan(
     delight: DelightArgs,
     shared: &SharedOpts,
@@ -100,6 +124,7 @@ pub(crate) fn dispatch_plan_authoring_gate(
     match command {
         Commands::Delight(delight) => run_delight_command(delight, shared, matches),
         Commands::Explain(explain) => run_explain_command(explain, shared, matches),
+        Commands::Revise(revise) => run_revise_command(revise, shared, matches),
         other => Err(format!("internal: unexpected plan-authoring command {other:?}")),
     }
 }
@@ -118,7 +143,7 @@ pub(crate) fn run_explain_command(
         matches,
     });
     run_async_cli(|| {
-        run_explain(
+        run_explain_then_revise(
             explain,
             shared,
             WorkflowCliOptions {
@@ -128,53 +153,30 @@ pub(crate) fn run_explain_command(
     })
 }
 
-#[cfg(test)]
-#[allow(unused_imports)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_entrypoint_command_wrappers() {
-        let _ = stringify!(run_inspire_command);
-        let _ = stringify!(run_plan_command);
-        let _ = stringify!(run_code_command);
-        let _ = stringify!(run_delight_command);
-        let _ = stringify!(run_delight_then_plan);
-        let _ = stringify!(plan_args_for_delight_output);
-        let _ = stringify!(run_explain_command);
-        let _ = stringify!(dispatch_plan_authoring_gate);
-    }
-
-    #[test]
-    fn delight_plan_args_use_same_out_path() {
-        let args = plan_args_for_delight_output("plans/feature.md");
-        assert_eq!(args.plan_path, "plans/feature.md");
-    }
-
-    #[test]
-    fn kiss_cov_explain_entrypoint_branch() {
-        use crate::cli::args::Commands;
-        let cmd = Commands::Explain(crate::cli::explain_flow::ExplainArgs {
-            request: Some("topic".to_string()),
-            out_path: "explain.tex".to_string(),
-            max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: true,
-        });
-        let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
-        let _ = stringify!(Commands::Explain);
-    }
-
-    #[test]
-    fn kiss_cov_delight_entrypoint_branch() {
-        use crate::cli::args::Commands;
-        let cmd = Commands::Delight(crate::cli::delight_flow::DelightArgs {
-            out_path: "plan.md".to_string(),
-            max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: true,
-        });
-        let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
-        let _ = stringify!(Commands::Delight);
-    }
+pub(crate) fn run_revise_command(
+    mut revise: ReviseArgs,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
+    super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
+        subcommand: "revise",
+        max_loops: &mut revise.max_loops,
+        tenacious: revise.tenacious,
+        no_tenacious: shared.no_tenacious,
+        max_acp_retries: &mut shared.max_acp_retries,
+        matches,
+    });
+    run_async_cli(|| {
+        run_revise(
+            revise,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
 }
+
+#[cfg(test)]
+#[path = "entrypoint_commands_tests.rs"]
+mod entrypoint_commands_tests;

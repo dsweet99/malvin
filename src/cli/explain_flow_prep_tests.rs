@@ -1,7 +1,7 @@
 use super::{
     explain_kpop_request, explain_output_paths, explain_pdf_path_from_tex, explain_preflight,
-    explain_resolved_output_paths, prepare_explain_kpop_prompt_store, EXPLAIN_PDF_BASENAME,
-    EXPLAIN_TEX_BASENAME,
+    explain_resolved_output_paths, explain_revise_doc_path, prepare_explain_kpop_prompt_store,
+    EXPLAIN_PDF_BASENAME, EXPLAIN_TEX_BASENAME,
 };
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::WorkflowCliOptions;
@@ -91,4 +91,27 @@ fn explain_preflight_md_file_uses_parent_work_dir() {
     assert_eq!(text.trim(), "Explain this");
     assert_eq!(outputs.tex_path, root.join("notes/explain.tex"));
     assert_eq!(outputs.pdf_path, root.join("notes/explain.pdf"));
+}
+
+#[test]
+fn explain_revise_doc_path_uses_resolved_tex_in_request_work_dir() {
+    let _guard = crate::test_utils::test_env_lock();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    std::env::set_current_dir(root).unwrap();
+    let md_path = root.join("notes/topic.md");
+    std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
+    std::fs::write(&md_path, "Explain this\n").unwrap();
+    let doc_path = explain_revise_doc_path("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
+    assert_eq!(doc_path, "notes/explain.tex");
+}
+
+#[test]
+fn explain_revise_doc_path_uses_custom_out_path_in_cwd() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let doc_path = explain_revise_doc_path("topic", "docs/paper.tex").expect("resolve");
+    std::env::set_current_dir(old).expect("restore");
+    assert_eq!(doc_path, "docs/paper.tex");
 }

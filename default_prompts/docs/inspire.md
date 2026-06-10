@@ -8,7 +8,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Prompt | `default_prompts/mbc2.md` with `user_prompt` |
-| Log | `ideas.log` |
+| Log | `inspire.log` |
 
 ## Intention
 

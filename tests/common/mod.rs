@@ -39,9 +39,13 @@ mod acp_delight_kpop;
 #[cfg(unix)]
 mod acp_explain_kpop;
 #[cfg(unix)]
+mod acp_revise_kpop;
+#[cfg(unix)]
 mod delight_harness;
 #[cfg(unix)]
 mod explain_harness;
+#[cfg(unix)]
+mod revise_harness;
 mod contract;
 mod workspace;
 
@@ -64,9 +68,13 @@ pub use acp_delight_kpop::*;
 #[cfg(unix)]
 pub use acp_explain_kpop::*;
 #[cfg(unix)]
+pub use acp_revise_kpop::*;
+#[cfg(unix)]
 pub use delight_harness::*;
 #[cfg(unix)]
 pub use explain_harness::*;
+#[cfg(unix)]
+pub use revise_harness::*;
 pub use kpop_multiturn_support::*;
 pub use kpop_outer_loop_support::*;
 #[cfg(unix)]

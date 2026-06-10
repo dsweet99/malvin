@@ -89,6 +89,20 @@ pub(crate) fn explain_kpop_request(
     render_kpop_program_request(store, "explain_constraints.md", &ctx, artifacts)
 }
 
+pub(crate) fn explain_revise_doc_path(request: &str, out_path: &str) -> Result<String, String> {
+    let (_, request_work_dir) = resolve_user_md_request(request)?;
+    let outputs = explain_resolved_output_paths(&request_work_dir, out_path)?;
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    if let Ok(rel) = outputs.tex_path.strip_prefix(&cwd) {
+        let rel_str = rel.to_string_lossy();
+        if rel_str.is_empty() {
+            return Err("malvin explain: empty revise doc path".into());
+        }
+        return Ok(rel_str.into_owned());
+    }
+    Ok(outputs.tex_path.to_string_lossy().into_owned())
+}
+
 pub(crate) fn explain_preflight(
     request: &str,
     out_path: &str,

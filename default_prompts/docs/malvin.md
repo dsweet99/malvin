@@ -123,7 +123,7 @@ Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under t
 | File | Role |
 |------|------|
 | `plan.md` or `request.md` | Copy of user input for this run |
-| `kpop.log`, `do.log`, `ideas.log`, … | Per-prompt transcripts |
+| `kpop.log`, `do.log`, `inspire.log`, … | Per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout (unless `--no-tee`) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |

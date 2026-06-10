@@ -9,6 +9,10 @@ mod run_loop;
 
 pub use run_loop::run_explain;
 
+pub(crate) fn explain_revise_doc_path(request: &str, out_path: &str) -> Result<String, String> {
+    prep::explain_revise_doc_path(request, out_path)
+}
+
 #[must_use]
 pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
@@ -87,6 +91,7 @@ mod tests {
     #[test]
     fn kiss_cov_explain_gate_helpers() {
         let _ = stringify!(run_explain);
+        let _ = stringify!(explain_revise_doc_path);
         let _ = stringify!(run_startup::prepare_explain_kpop_run);
         let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::EXPLAIN);
     }

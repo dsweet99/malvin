@@ -5,11 +5,12 @@ use clap::{Parser, Subcommand};
 use super::shared_opts::SharedOpts;
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
+use super::revise_flow::ReviseArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
-pub use crate::ideas_flow::IdeasArgs as InspireArgs;
+pub use crate::inspire_flow::InspireArgs;
 pub use crate::init_cmd::InitArgs;
 pub use crate::plan_flow::PlanArgs;
 
@@ -66,6 +67,8 @@ pub enum Commands {
     Delight(DelightArgs),
     /// Explain code or concepts via LaTeX PDF
     Explain(ExplainArgs),
+    /// Revise a document in place
+    Revise(ReviseArgs),
     /// List available models
     Models(ModelsArgs),
     /// Reflect on and revise a plan file
