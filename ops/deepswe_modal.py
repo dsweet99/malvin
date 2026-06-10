@@ -65,8 +65,7 @@ from modal.stream_type import StreamType
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_run import (
-    DEFAULT_CHECKS_CODE,
-    DEFAULT_CHECKS_DO,
+    discover_deepswe_checks,
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
@@ -1537,7 +1536,7 @@ def run_modal_eval(
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     checks = checks_override
     if checks is None:
-        checks = DEFAULT_CHECKS_CODE if malvin_command == "code" else DEFAULT_CHECKS_DO
+        checks = discover_deepswe_checks(workspace)
     if grade_only:
         grade_img = mount_eval_context(
             harbor_image(spec, dockerfile=spec.dockerfile),

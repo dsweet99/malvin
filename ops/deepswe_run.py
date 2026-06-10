@@ -45,8 +45,13 @@ except ModuleNotFoundError:  # pragma: no cover - py310
     import tomli as tomllib  # type: ignore[no-redef]
 
 
-DEFAULT_CHECKS_CODE = "true\n"
-DEFAULT_CHECKS_DO = "true\n"
+KISS_CHECK_COMMAND = "kiss check"
+DEFAULT_PYTEST_CHECK = "pytest -sv tests"
+DEFAULT_RUST_CLIPPY = (
+    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo"
+)
+DEFAULT_RUST_TEST = "cargo test"
+DEFAULT_RUST_NEXTEST = "cargo nextest run"
 MALVIN_CMD = os.environ.get("MALVIN", "malvin")
 IN_SANDBOX_TESTS_DIR = Path("/tests")
 IN_SANDBOX_LOGS_DIR = Path("/logs")
@@ -110,16 +115,32 @@ def resolve_local_task_dir(task_name: str) -> Path:
     return task_dir
 
 
+def read_task_language(task_dir: Path) -> str:
+    """Return ``metadata.language`` from a task directory's ``task.toml``."""
+    toml_path = task_dir / "task.toml"
+    raw = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    language = raw.get("metadata", {}).get("language")
+    if isinstance(language, str) and language.strip():
+        return language.strip()
+    return "?"
+
+
 def list_deepswe_tasks() -> list[str]:
     """Return sorted DeepSWE task ids under ``default_deepswe_tasks_root()``."""
+    return [task_id for task_id, _language in list_deepswe_tasks_with_language()]
+
+
+def list_deepswe_tasks_with_language() -> list[tuple[str, str]]:
+    """Return sorted ``(task_id, language)`` pairs under ``default_deepswe_tasks_root()``."""
     tasks_root = default_deepswe_tasks_root()
     if not tasks_root.is_dir():
         return []
-    return sorted(
-        entry.name
-        for entry in tasks_root.iterdir()
-        if entry.is_dir() and (entry / "task.toml").is_file()
-    )
+    entries: list[tuple[str, str]] = []
+    for entry in tasks_root.iterdir():
+        if not entry.is_dir() or not (entry / "task.toml").is_file():
+            continue
+        entries.append((entry.name, read_task_language(entry)))
+    return sorted(entries, key=lambda pair: pair[0])
 
 
 @dataclass(frozen=True)
@@ -240,6 +261,231 @@ def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
     git_run(workspace, "clean", "-fdx", dry_run=dry_run)
 
 
+def canonical_tool(line: str) -> str:
+    """First whitespace-delimited token, lowercased (matches malvin init discovery)."""
+    parts = line.strip().split()
+    return parts[0].lower() if parts else ""
+
+
+def parse_yaml_scalar(raw: str) -> str:
+    s = raw.strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        return s[1:-1].strip()
+    return s
+
+
+def precommit_hook_entries(root: Path) -> list[str]:
+    path = root / ".pre-commit-config.yaml"
+    if not path.is_file():
+        return []
+    out: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        trimmed = line.strip()
+        if not trimmed.startswith("entry:"):
+            continue
+        cmd = parse_yaml_scalar(trimmed[len("entry:") :])
+        if cmd:
+            out.append(cmd)
+    return out
+
+
+def next_makefile_recipe(lines_iter: list[str], index: int) -> tuple[str | None, int]:
+    while index < len(lines_iter):
+        line = lines_iter[index]
+        if not line.strip():
+            index += 1
+            continue
+        if not line.startswith("\t"):
+            break
+        recipe = line.strip()
+        index += 1
+        if recipe and not recipe.startswith("#"):
+            return recipe, index
+        return None, index
+    return None, index
+
+
+def makefile_gate_targets(root: Path) -> list[str]:
+    for name in ("Makefile", "makefile", "GNUmakefile"):
+        path = root / name
+        if not path.is_file():
+            continue
+        raw_lines = path.read_text(encoding="utf-8").splitlines(keepends=False)
+        out: list[str] = []
+        index = 0
+        while index < len(raw_lines):
+            line = raw_lines[index]
+            trimmed = line.rstrip()
+            if not trimmed or trimmed.lstrip().startswith("#"):
+                index += 1
+                continue
+            target = trimmed[:-1] if trimmed.endswith(":") else trimmed
+            if target.strip() not in ("lint", "test"):
+                index += 1
+                continue
+            recipe, index = next_makefile_recipe(raw_lines, index + 1)
+            if recipe:
+                out.append(recipe)
+        return out
+    return []
+
+
+def gate_tool_signals(line: str) -> list[str]:
+    trimmed = line.strip()
+    out: list[str] = []
+    if "cargo clippy" in trimmed:
+        out.append("cargo-clippy")
+    tool = canonical_tool(trimmed)
+    if tool == "ruff":
+        out.append("ruff")
+    if tool == "pytest":
+        out.append("pytest")
+    if tool == "cargo":
+        if "nextest" in trimmed:
+            out.append("cargo-nextest")
+        elif " test" in trimmed:
+            out.append("cargo-test")
+    return out
+
+
+def dedupe_check_lines(lines: list[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        trimmed = line.strip()
+        if not trimmed:
+            continue
+        tool = canonical_tool(trimmed)
+        if tool in seen:
+            continue
+        seen.add(tool)
+        out.append(trimmed)
+    return out
+
+
+def supplement_makefile_signals(precommit: list[str], makefile: list[str]) -> list[str]:
+    merged = list(precommit)
+    for line in makefile:
+        signals = gate_tool_signals(line)
+        if not signals:
+            continue
+        if all(
+            any(sig in gate_tool_signals(existing) for existing in merged)
+            for sig in signals
+        ):
+            continue
+        merged.append(line)
+    return merged
+
+
+def visit_source_files(root: Path) -> list[Path]:
+    skip_dirs = {".git", "target", "__pycache__"}
+    found: list[Path] = []
+
+    def walk(directory: Path) -> None:
+        try:
+            entries = list(directory.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            if entry.is_symlink():
+                if entry.is_file():
+                    found.append(entry)
+                continue
+            if entry.is_file():
+                found.append(entry)
+            elif entry.is_dir():
+                if entry.name.startswith(".") or entry.name in skip_dirs:
+                    continue
+                walk(entry)
+
+    walk(root)
+    return found
+
+
+def python_ruff_and_pytest_flags(root: Path) -> tuple[bool, bool]:
+    has_py = False
+    has_pytest = False
+    for path in visit_source_files(root):
+        if path.suffix != ".py":
+            continue
+        has_py = True
+        stem = path.stem
+        if stem.startswith("test_") or stem.endswith("_test"):
+            has_pytest = True
+    return has_py, has_pytest
+
+
+def cargo_nextest_available() -> bool:
+    proc = subprocess.run(
+        ["cargo", "nextest", "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return proc.returncode == 0
+
+
+def default_rust_test_command() -> str:
+    if cargo_nextest_available():
+        return DEFAULT_RUST_NEXTEST
+    return DEFAULT_RUST_TEST
+
+
+def builtin_gate_command_lines(root: Path) -> list[str]:
+    out = [KISS_CHECK_COMMAND]
+    has_py, has_pytest = python_ruff_and_pytest_flags(root)
+    if has_py:
+        out.append("ruff check .")
+    if has_pytest:
+        out.append(DEFAULT_PYTEST_CHECK)
+    if (root / "Cargo.toml").is_file():
+        out.append(DEFAULT_RUST_CLIPPY)
+        out.append(default_rust_test_command())
+    return out
+
+
+def existing_malvin_checks_lines(root: Path) -> list[str]:
+    path = root / ".malvin" / "checks"
+    if not path.is_file():
+        return []
+    return [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and line.strip() != KISS_CHECK_COMMAND
+    ]
+
+
+def ensure_kiss_check_first(lines: list[str]) -> list[str]:
+    body = [line for line in lines if line.strip() != KISS_CHECK_COMMAND]
+    return [KISS_CHECK_COMMAND, *body]
+
+
+def discover_deepswe_check_lines(root: Path) -> list[str]:
+    """Mirror malvin init discovery: repo signals, then builtins, kiss first."""
+    precommit = precommit_hook_entries(root)
+    makefile = makefile_gate_targets(root)
+    if precommit:
+        signal_lines = supplement_makefile_signals(precommit, makefile)
+    else:
+        signal_lines = list(makefile)
+    signal_lines.extend(existing_malvin_checks_lines(root))
+    merged = dedupe_check_lines(signal_lines)
+    for fallback in builtin_gate_command_lines(root):
+        if any(canonical_tool(line) == canonical_tool(fallback) for line in merged):
+            continue
+        merged.append(fallback)
+    return ensure_kiss_check_first(merged)
+
+
+def discover_deepswe_checks(workspace: Path) -> str:
+    """Build default DeepSWE ``.malvin/checks`` from repo signals (not ``true``)."""
+    if not workspace.is_dir():
+        return f"{KISS_CHECK_COMMAND}\n"
+    lines = discover_deepswe_check_lines(workspace)
+    return "\n".join(lines) + "\n"
+
+
 def write_plan_and_checks(
     spec: TaskSpec,
     workspace: Path,
@@ -256,7 +502,7 @@ def write_plan_and_checks(
         malvin_dir.mkdir(parents=True, exist_ok=True)
     checks = checks_override
     if checks is None:
-        checks = DEFAULT_CHECKS_CODE if command == "code" else DEFAULT_CHECKS_DO
+        checks = discover_deepswe_checks(workspace)
     if not checks.endswith("\n"):
         checks += "\n"
     checks_path = malvin_dir / "checks"
@@ -943,7 +1189,7 @@ def _task_kernel_options(f: Any) -> Any:
         "--checks",
         "checks_override",
         default=None,
-        help="Override .malvin/checks content (default: pytest unit tests for code, true for do).",
+        help="Override .malvin/checks content (default: kiss check plus repo linters and unit tests).",
     )(f)
     f = click.option(
         "--runtime",
@@ -1003,7 +1249,7 @@ def _local_solve_options(f: Any) -> Any:
         "--checks",
         "checks_override",
         default=None,
-        help="Override .malvin/checks content (default: pytest unit tests).",
+        help="Override .malvin/checks content (default: kiss check plus repo linters and unit tests).",
     )(f)
     f = click.option(
         "--skip-grade",
@@ -1102,11 +1348,11 @@ def tasks_cmd() -> None:
             f"DeepSWE tasks directory not found: {tasks_root} "
             f"(set DEEPSWE_TASKS or clone deep-swe next to malvin)"
         )
-    task_ids = list_deepswe_tasks()
-    if not task_ids:
+    task_entries = list_deepswe_tasks_with_language()
+    if not task_entries:
         raise click.ClickException(f"No DeepSWE tasks found under {tasks_root}")
-    for task_id in task_ids:
-        click.echo(task_id)
+    for task_id, language in task_entries:
+        click.echo(f"{task_id}\t{language}")
 
 
 @cli.command("self-test")
@@ -1315,6 +1561,113 @@ def _test_list_deepswe_tasks() -> None:
         assert "bandit-interprocedural-taint-checks" in task_ids
 
 
+def _test_read_task_language() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "bandit-interprocedural-taint-checks"
+    if not task.is_dir():
+        return
+    assert read_task_language(task) == "python", task
+
+
+def _test_list_deepswe_tasks_with_language() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        return
+    entries = list_deepswe_tasks_with_language()
+    assert entries, tasks_root
+    assert entries == sorted(entries, key=lambda pair: pair[0])
+    task_ids = [task_id for task_id, _language in entries]
+    assert task_ids == list_deepswe_tasks()
+    sample = tasks_root / "bandit-interprocedural-taint-checks"
+    if sample.is_dir():
+        by_id = dict(entries)
+        assert by_id["bandit-interprocedural-taint-checks"] == "python"
+
+
+def _test_discover_deepswe_checks_minimal() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        lines = discover_deepswe_check_lines(root)
+        assert lines == [KISS_CHECK_COMMAND], lines
+
+
+def _test_discover_deepswe_checks_python_repo() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "pkg").mkdir()
+        (root / "pkg" / "mod.py").write_text("x = 1\n", encoding="utf-8")
+        (root / "tests").mkdir()
+        (root / "tests" / "test_mod.py").write_text(
+            "def test_x():\n    assert True\n", encoding="utf-8"
+        )
+        text = discover_deepswe_checks(root)
+        assert text.startswith(f"{KISS_CHECK_COMMAND}\n")
+        assert "ruff check ." in text
+        assert DEFAULT_PYTEST_CHECK in text
+
+
+def _test_discover_deepswe_checks_precommit() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".pre-commit-config.yaml").write_text(
+            "repos:\n  - repo: local\n    hooks:\n      - id: ruff\n"
+            "        entry: ruff check .\n",
+            encoding="utf-8",
+        )
+        lines = discover_deepswe_check_lines(root)
+        assert lines[0] == KISS_CHECK_COMMAND
+        assert any("ruff check" in line for line in lines)
+
+
+def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        malvin_dir = root / ".malvin"
+        malvin_dir.mkdir()
+        (malvin_dir / "checks").write_text(
+            "mypy .\nruff check .\n", encoding="utf-8"
+        )
+        lines = discover_deepswe_check_lines(root)
+        assert lines[0] == KISS_CHECK_COMMAND
+        assert "mypy ." in lines
+        assert "ruff check ." in lines
+
+
+def _test_write_plan_and_checks_discovers() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        instruction = workspace / "instruction.md"
+        instruction.write_text("fix it\n", encoding="utf-8")
+        (workspace / "mod.py").write_text("pass\n", encoding="utf-8")
+        (workspace / "tests").mkdir()
+        (workspace / "tests" / "test_mod.py").write_text(
+            "def test_mod():\n    assert True\n", encoding="utf-8"
+        )
+        spec = TaskSpec(
+            task_dir=workspace,
+            task_id="fake",
+            base_commit="HEAD",
+            docker_image="fake:local",
+            dockerfile=workspace / "Dockerfile",
+            instruction=instruction,
+            tests_dir=workspace / "tests",
+            test_sh=workspace / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+        )
+        write_plan_and_checks(
+            spec,
+            workspace,
+            command="code",
+            checks_override=None,
+            dry_run=False,
+        )
+        checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
+        assert checks.startswith(f"{KISS_CHECK_COMMAND}\n")
+        assert "pytest" in checks
+
+
 def _test_tasks_command() -> None:
     from click.testing import CliRunner
 
@@ -1325,8 +1678,13 @@ def _test_tasks_command() -> None:
     result = runner.invoke(cli, ["tasks"])
     assert result.exit_code == 0, result.output
     lines = [line for line in result.output.splitlines() if line.strip()]
-    assert lines == sorted(lines)
-    assert "bandit-interprocedural-taint-checks" in lines
+    task_ids = [line.split("\t", 1)[0] for line in lines]
+    assert task_ids == sorted(task_ids)
+    assert "bandit-interprocedural-taint-checks" in task_ids
+    bandit_line = next(
+        line for line in lines if line.startswith("bandit-interprocedural-taint-checks\t")
+    )
+    assert bandit_line.endswith("\tpython"), bandit_line
 
 
 def docker_daemon_available() -> bool:
@@ -1395,6 +1753,13 @@ def run_self_tests() -> None:
     _test_solve_command_in_help()
     _test_bare_invocation_shows_usage()
     _test_list_deepswe_tasks()
+    _test_read_task_language()
+    _test_list_deepswe_tasks_with_language()
+    _test_discover_deepswe_checks_minimal()
+    _test_discover_deepswe_checks_python_repo()
+    _test_discover_deepswe_checks_precommit()
+    _test_discover_deepswe_checks_existing_malvin_checks()
+    _test_write_plan_and_checks_discovers()
     _test_tasks_command()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_local_grade_only_apply_solution()
