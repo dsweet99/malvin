@@ -70,6 +70,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = super::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = super::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = super::workflow_kpop_shared::finish_kpop_acp_session;
+    let _ = super::workflow_kpop_shared::gate_kpop_session_declared_solved;
     let _ = stringify!(super::gate_kpop_workflow::run_gate_kpop_loop);
     let _ = stringify!(super::gate_kpop_workflow::post_gate_kpop_gates);
     let _ = stringify!(super::gate_kpop_workflow::finish_gate_kpop_after_pass);
@@ -99,6 +100,15 @@ fn smoke_cov_cli_cli_delight_flow_units() {
     let _ = super::delight_flow::run_delight;
     let _ = super::delight_flow::effective_delight_max_loops;
     let _ = super::gate_kpop_workflow::GateLoopBehavior::DELIGHT;
+}
+
+#[test]
+fn smoke_cov_cli_cli_explain_flow_units() {
+    let _: Option<super::explain_flow::ExplainArgs> = None;
+    let _ = super::explain_flow::run_explain;
+    let _ = super::explain_flow::effective_explain_max_loops;
+    let _ = super::gate_kpop_workflow::GateLoopBehavior::EXPLAIN;
+    let _ = super::entrypoint_commands::run_explain_command;
 }
 
 #[test]

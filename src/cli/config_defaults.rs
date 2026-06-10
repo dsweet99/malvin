@@ -91,6 +91,16 @@ pub fn apply_workspace_config_defaults(
                 config_max_hypotheses: agent.max_hypotheses,
             },
         ),
+        Commands::Explain(explain) => apply_loop_defaults(
+            matches,
+            "explain",
+            LoopDefaultMut {
+                max_loops: &mut explain.max_loops,
+                max_hypotheses: &mut explain.max_hypotheses,
+                config_max_loops: agent.max_loops_code,
+                config_max_hypotheses: agent.max_hypotheses,
+            },
+        ),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Inspire(_)

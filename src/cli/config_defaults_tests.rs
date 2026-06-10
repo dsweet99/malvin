@@ -164,6 +164,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
         Commands::Code(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         Commands::Tidy(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         Commands::Delight(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
+        Commands::Explain(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         other => panic!("unexpected command {other:?}"),
     }
 }
@@ -174,6 +175,7 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
         assert_workflow_defaults(&["malvin", "code", "hello"]);
         assert_workflow_defaults(&["malvin", "tidy"]);
         assert_workflow_defaults(&["malvin", "delight"]);
+        assert_workflow_defaults(&["malvin", "explain", "topic"]);
     });
 }
 

@@ -6,17 +6,28 @@ use super::Commands;
 
 const MALVIN_OVERVIEW_DOC: &str = include_str!("../../default_prompts/docs/malvin.md");
 
+const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
+    match cmd {
+        Commands::Code(_) => Some(include_str!("../../default_prompts/docs/code.md")),
+        Commands::Kpop(_) => Some(include_str!("../../default_prompts/docs/kpop.md")),
+        Commands::Tidy(_) => Some(include_str!("../../default_prompts/docs/tidy.md")),
+        Commands::Delight(_) => Some(include_str!("../../default_prompts/docs/delight.md")),
+        Commands::Explain(_) => Some(include_str!("../../default_prompts/docs/explain.md")),
+        _ => None,
+    }
+}
+
 const fn command_doc_markdown(cmd: &Commands) -> &'static str {
+    if let Some(doc) = gate_loop_command_doc(cmd) {
+        return doc;
+    }
     match cmd {
         Commands::Init(_) => include_str!("../../default_prompts/docs/init.md"),
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
         Commands::Inspire(_) => include_str!("../../default_prompts/docs/inspire.md"),
-        Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
-        Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
-        Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
-        Commands::Delight(_) => include_str!("../../default_prompts/docs/delight.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
         Commands::Plan(_) => include_str!("../../default_prompts/docs/plan.md"),
+        _ => panic!("uncovered command doc"),
     }
 }
 
@@ -44,6 +55,7 @@ mod tests {
     use crate::cli::Cli;
     use crate::cli::args::{Commands, InspireArgs, KpopArgs, PlanArgs};
     use crate::cli::delight_flow::DelightArgs;
+    use crate::cli::explain_flow::ExplainArgs;
     use crate::cli::models_cmd::ModelsArgs;
     use clap::Parser;
 
@@ -141,6 +153,28 @@ mod tests {
             Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
             _ => panic!("expected Delight"),
         }
+    }
+
+    #[test]
+    fn explain_doc_parses_with_request_when_doc_flag_set() {
+        let cli = Cli::try_parse_from(["malvin", "explain", "topic.md", "--doc"]).expect("parse");
+        assert!(cli.shared.doc);
+        match cli.command.as_ref() {
+            Some(Commands::Explain(e)) => assert_eq!(e.request.as_deref(), Some("topic.md")),
+            _ => panic!("expected Explain"),
+        }
+    }
+
+    #[test]
+    fn print_doc_explain_writes_subcommand_md() {
+        let cmd = Commands::Explain(ExplainArgs {
+            request: Some("topic".to_string()),
+            max_loops: 3,
+            max_hypotheses: 5,
+            tenacious: true,
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        assert!(out.starts_with(b"# malvin explain"));
     }
 
     #[test]

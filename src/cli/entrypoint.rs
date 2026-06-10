@@ -28,6 +28,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Delight(_) => require_kiss_for_malvin("delight"),
+        Commands::Explain(_) => require_kiss_for_malvin("explain"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
@@ -158,8 +159,8 @@ pub(crate) fn dispatch_command(
                 )
             })
         }
-        Commands::Delight(delight) => {
-            super::entrypoint_commands::run_delight_command(delight, &mut shared, matches)
+        cmd @ (Commands::Delight(_) | Commands::Explain(_)) => {
+            super::entrypoint_commands::dispatch_plan_authoring_gate(cmd, &mut shared, matches)
         }
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(

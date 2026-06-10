@@ -18,7 +18,7 @@ Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`). `<REQUEST>` is exactly **one shell argument**; quote it when the text contains spaces (e.g. `malvin "Why does the cache miss?"`). Bare `malvin` does **not** join multiple unquoted words into a single request.
 
-Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`.
+Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `delight`, `explain`, `models`.
 
 ## Commands
 
@@ -30,6 +30,8 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `t
 | `plan` | Four-prompt planning workflow on a persistent `plan.md` |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
+| `delight` | Author a user-delighting feature plan via the KPop gate loop |
+| `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
 | `models` | List models available from the Cursor agent CLI |
 
 Hidden (backward compatible): `kpop` — prefer bare `malvin REQUEST` for investigation.

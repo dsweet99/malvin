@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
 use super::delight_flow::DelightArgs;
+use super::explain_flow::ExplainArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
@@ -63,6 +64,8 @@ pub enum Commands {
     Tidy(TidyArgs),
     /// Author a user-delighting feature plan
     Delight(DelightArgs),
+    /// Explain code or concepts via LaTeX PDF
+    Explain(ExplainArgs),
     /// List available models
     Models(ModelsArgs),
     /// Reflect on and revise a plan file

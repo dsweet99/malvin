@@ -22,31 +22,49 @@ fn parse_cli_args_or_exit(
     }
 }
 
+fn entrypoint_short_help_when_request_missing(
+    doc: bool,
+    request: Option<&String>,
+    subcommand: &str,
+) -> Option<Exit> {
+    if doc || request.is_some() {
+        return None;
+    }
+    let _ = crate::cli::commands_help::print_subcommand_short_help(subcommand);
+    Some(Exit::Success)
+}
+
+fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
+    let command = cli.command.as_ref()?;
+    let (request, subcommand) = match command {
+        Commands::Code(code) => (code.request.as_ref(), "code"),
+        Commands::Inspire(inspire) => (inspire.request.as_ref(), "inspire"),
+        Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
+        _ => return None,
+    };
+    entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)
+}
+
+fn entrypoint_doc_exit(cli: &Cli) -> Exit {
+    match crate::cli::command_docs::print_doc(cli.command.as_ref()) {
+        Ok(()) => Exit::Success,
+        Err(e) => {
+            print_command_error(&e);
+            Exit::Failure
+        }
+    }
+}
+
 fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
     if cli.command.is_none() && !cli.shared.doc {
         let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
-    if let Some(Commands::Code(code)) = &cli.command {
-        if !cli.shared.doc && code.request.is_none() {
-            let _ = crate::cli::commands_help::print_subcommand_short_help("code");
-            return Some(Exit::Success);
-        }
-    }
-    if let Some(Commands::Inspire(inspire)) = &cli.command {
-        if !cli.shared.doc && inspire.request.is_none() {
-            let _ = crate::cli::commands_help::print_subcommand_short_help("inspire");
-            return Some(Exit::Success);
-        }
+    if let Some(exit) = entrypoint_request_missing_short_help(cli) {
+        return Some(exit);
     }
     if cli.shared.doc {
-        return Some(match crate::cli::command_docs::print_doc(cli.command.as_ref()) {
-            Ok(()) => Exit::Success,
-            Err(e) => {
-                print_command_error(&e);
-                Exit::Failure
-            }
-        });
+        return Some(entrypoint_doc_exit(cli));
     }
     None
 }

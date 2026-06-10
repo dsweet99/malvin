@@ -1,5 +1,8 @@
-use super::{CodeArgs, SharedOpts, WorkflowCliOptions, run_ideas, run_code, run_delight};
+use super::{
+    CodeArgs, Commands, SharedOpts, WorkflowCliOptions, run_ideas, run_code, run_delight, run_explain,
+};
 use super::delight_flow::DelightArgs;
+use super::explain_flow::ExplainArgs;
 
 use super::entrypoint::run_async_cli;
 
@@ -73,6 +76,42 @@ pub(crate) fn run_delight_command(
     })
 }
 
+pub(crate) fn dispatch_plan_authoring_gate(
+    command: Commands,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
+    match command {
+        Commands::Delight(delight) => run_delight_command(delight, shared, matches),
+        Commands::Explain(explain) => run_explain_command(explain, shared, matches),
+        other => Err(format!("internal: unexpected plan-authoring command {other:?}")),
+    }
+}
+
+pub(crate) fn run_explain_command(
+    mut explain: ExplainArgs,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
+    super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
+        subcommand: "explain",
+        max_loops: &mut explain.max_loops,
+        tenacious: explain.tenacious,
+        no_tenacious: shared.no_tenacious,
+        max_acp_retries: &mut shared.max_acp_retries,
+        matches,
+    });
+    run_async_cli(|| {
+        run_explain(
+            explain,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
+}
+
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
@@ -84,6 +123,21 @@ mod tests {
         let _ = stringify!(run_plan_command);
         let _ = stringify!(run_code_command);
         let _ = stringify!(run_delight_command);
+        let _ = stringify!(run_explain_command);
+        let _ = stringify!(dispatch_plan_authoring_gate);
+    }
+
+    #[test]
+    fn kiss_cov_explain_entrypoint_branch() {
+        use crate::cli::args::Commands;
+        let cmd = Commands::Explain(crate::cli::explain_flow::ExplainArgs {
+            request: Some("topic".to_string()),
+            max_loops: 1,
+            max_hypotheses: 5,
+            tenacious: true,
+        });
+        let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
+        let _ = stringify!(Commands::Explain);
     }
 
     #[test]

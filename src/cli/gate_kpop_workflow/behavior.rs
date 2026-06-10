@@ -34,6 +34,11 @@ impl GateLoopBehavior {
         recheck_gates_after_exhausted: false,
         exit: GateKpopExitPolicy::InitDiscovery,
     };
+    pub const EXPLAIN: Self = Self {
+        skip_kpop_on_initial_pass: false,
+        recheck_gates_after_exhausted: false,
+        exit: GateKpopExitPolicy::InitDiscovery,
+    };
 
     #[must_use]
     pub const fn consecutive_kpop_solved_to_exit(self) -> usize {
@@ -90,6 +95,16 @@ mod tests {
     fn init_discovery_exit_policy_requires_one_solved_without_gate_pass() {
         assert_eq!(GateLoopBehavior::INIT.consecutive_kpop_solved_to_exit(), 1);
         assert!(!GateLoopBehavior::INIT.require_passing_gates_for_exit());
+    }
+
+    #[test]
+    fn explain_behavior_matches_delight_exit_policy() {
+        assert_eq!(GateLoopBehavior::EXPLAIN.exit, GateKpopExitPolicy::InitDiscovery);
+        assert_eq!(
+            GateLoopBehavior::EXPLAIN.consecutive_kpop_solved_to_exit(),
+            GateLoopBehavior::DELIGHT.consecutive_kpop_solved_to_exit(),
+        );
+        assert!(!GateLoopBehavior::EXPLAIN.require_passing_gates_for_exit());
     }
 
     #[test]
