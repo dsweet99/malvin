@@ -918,6 +918,100 @@ def allowlist_near_modal_cap(cidrs: list[str], *, headroom: int = 2) -> bool:
         return True
 
 
+def host_cidrs_not_covered_by_allowlist(
+    host_cidrs: list[str], allowlist: list[str]
+) -> list[str]:
+    """Return host /32 CIDRs whose addresses fall outside all allowlist networks."""
+    import ipaddress
+
+    nets = [ipaddress.ip_network(c, strict=False) for c in allowlist]
+    uncovered: list[str] = []
+    for cidr in host_cidrs:
+        addr = ipaddress.ip_network(cidr, strict=False).network_address
+        if not any(addr in net for net in nets):
+            uncovered.append(cidr)
+    return uncovered
+
+
+def refresh_cached_allowlist(
+    cached: list[str],
+    *,
+    timeout: int,
+) -> list[str]:
+    """Merge fresh host DNS and one allowlist agent-peer round into a cached allowlist."""
+    host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
+    uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
+    if uncovered:
+        click.echo(
+            f"Host DNS has {len(uncovered)} IP(s) outside cached allowlist; merging",
+            err=True,
+        )
+    cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
+    cidrs, added = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=1, label="Cached allowlist agent peer"
+    )
+    refreshed = compress_ipv4_cidrs(cidrs)
+    if refreshed != cached or added:
+        write_cursor_api_allowlist_cache(refreshed)
+    return refreshed
+
+
+CURSOR_API_HOSTS_PIN_SCRIPT = """
+import ipaddress
+import json
+import socket
+import sys
+
+payload = json.loads(sys.argv[1])
+hosts = payload["hosts"]
+nets = [ipaddress.ip_network(c, strict=False) for c in payload["cidrs"]]
+lines: list[str] = []
+for host in hosts:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        continue
+    for info in infos:
+        ip = info[4][0]
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if any(addr in net for net in nets):
+            lines.append(f"{ip} {host}")
+            break
+if lines:
+    with open("/etc/hosts", "a", encoding="utf-8") as handle:
+        handle.write("\\n# malvin cursor-api pin\\n")
+        handle.write("\\n".join(lines))
+        handle.write("\\n")
+"""
+
+
+def pin_cursor_api_hosts_in_sandbox(
+    sandbox: modal.Sandbox, cidrs: list[str]
+) -> None:
+    """Append ``/etc/hosts`` entries so Cursor API hostnames resolve to allowed IPv4 only."""
+    payload = json.dumps({"cidrs": cidrs, "hosts": list(CURSOR_API_HOSTS)})
+    proc = sandbox.exec(
+        "python3",
+        "-c",
+        CURSOR_API_HOSTS_PIN_SCRIPT,
+        payload,
+        stdout=StreamType.PIPE,
+        stderr=StreamType.PIPE,
+        text=True,
+    )
+    stderr = proc.stderr.read()
+    proc.wait()
+    if proc.returncode != 0:
+        detail = stderr.strip()
+        click.echo(
+            "Cursor API /etc/hosts pin skipped"
+            + (f": {detail}" if detail else ""),
+            err=True,
+        )
+
+
 def _merge_allowlist_agent_peers(
     cidrs: list[str],
     *,
@@ -960,11 +1054,18 @@ def resolve_agent_sandbox_cidrs(
     if os.environ.get("DEEPSWE_REFRESH_ALLOWLIST_CACHE") != "1":
         cached = read_cursor_api_allowlist_cache()
         if cached is not None:
+            refreshed = refresh_cached_allowlist(cached, timeout=timeout)
             click.echo(
-                f"Using cached Cursor API allowlist ({len(cached)} CIDRs from "
-                f"{cursor_api_allowlist_cache_path()})"
+                f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
+                f"{cursor_api_allowlist_cache_path()}"
+                + (
+                    f", refreshed from {len(cached)}"
+                    if len(refreshed) != len(cached)
+                    else ""
+                )
+                + ")"
             )
-            return cached
+            return refreshed
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
@@ -1237,7 +1338,7 @@ def read_remote_file(sandbox: modal.Sandbox, path: str) -> str | None:
     try:
         with sandbox.open(path, "r") as handle:
             return handle.read()
-    except OSError:
+    except (OSError, modal.exception.Error):
         return None
 
 
@@ -1245,7 +1346,7 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
     try:
         with sandbox.open(path, "rb") as handle:
             return handle.read()
-    except OSError:
+    except (OSError, modal.exception.Error):
         return None
 
 
@@ -1381,6 +1482,9 @@ def run_deepswe_run_in_sandbox(
             **resources,
             **network,
         )
+        allowlist = network.get("outbound_cidr_allowlist")
+        if allowlist:
+            pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
         argv = [
             "python3",
             DEEPSWE_RUN_REMOTE,
@@ -1445,6 +1549,34 @@ def run_deepswe_run_in_sandbox(
         release_modal_sandbox(sandbox)
 
 
+def offline_check_tool_install_commands(checks: str) -> list[str]:
+    """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
+    pkgs: list[str] = []
+    if "mypy" in checks:
+        pkgs.extend(["mypy", "uv"])
+    if "ruff" in checks:
+        pkgs.append("ruff")
+    if "pytest" in checks:
+        pkgs.append("aggdraw")
+    if not pkgs:
+        return []
+    ordered = list(dict.fromkeys(pkgs))
+    return [f"python3 -m pip install --break-system-packages {' '.join(ordered)}"]
+
+
+def offline_agent_checks(checks: str) -> str:
+    """Rewrite network-dependent quality-gate lines for network-blocked agent sandboxes."""
+    rewritten: list[str] = []
+    for line in checks.splitlines():
+        stripped = line.strip()
+        if stripped == "uv run mypy":
+            rewritten.append("mypy")
+        else:
+            rewritten.append(line)
+    body = "\n".join(rewritten)
+    return body + ("\n" if body and not body.endswith("\n") else "")
+
+
 def harbor_agent_image(
     spec: Any,
     workspace: Path,
@@ -1454,6 +1586,7 @@ def harbor_agent_image(
     malvin_repo: Path,
     kiss_repo: Path,
     deepswe_run_py: Path,
+    checks: str = "",
 ) -> modal.Image:
     """Harbor task image plus locally built malvin/kiss, cursor-agent, and deepswe_run."""
     base = harbor_image(spec, dockerfile=dockerfile)
@@ -1466,6 +1599,9 @@ def harbor_agent_image(
         malvin_repo=malvin_repo,
         kiss_repo=kiss_repo,
     )
+    preinstall = offline_check_tool_install_commands(checks)
+    if preinstall:
+        augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
     return mount_eval_context(
         augmented,
         task_dir=spec.task_dir,
@@ -1555,11 +1691,12 @@ def run_modal_eval(
             artifacts_dir=run_root,
         )
     else:
+        agent_checks = offline_agent_checks(checks or "")
         write_plan_and_checks(
             spec,
             workspace,
             command=malvin_command,
-            checks_override=checks,
+            checks_override=agent_checks,
             dry_run=False,
         )
         malvin_repo, kiss_repo = validate_toolchain_repos()
@@ -1571,6 +1708,7 @@ def run_modal_eval(
             malvin_repo=malvin_repo,
             kiss_repo=kiss_repo,
             deepswe_run_py=deepswe_run_py,
+            checks=agent_checks,
         )
         agent_artifacts = run_root / "agent_sandbox"
         click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
@@ -1877,10 +2015,55 @@ def _test_cursor_api_allowlist_cache() -> None:
 
 def _test_resolve_agent_sandbox_cidrs_uses_cache() -> None:
     with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["9.9.9.9/32"]):
-        with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
-            result = resolve_agent_sandbox_cidrs()
+        with patch(
+            f"{__name__}.refresh_cached_allowlist", return_value=["9.9.9.0/24"]
+        ) as mock_refresh:
+            with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
+                result = resolve_agent_sandbox_cidrs()
+    mock_refresh.assert_called_once_with(["9.9.9.9/32"], timeout=300)
     mock_dns.assert_not_called()
-    assert result == ["9.9.9.9/32"]
+    assert result == ["9.9.9.0/24"]
+
+
+def _test_host_cidrs_not_covered_by_allowlist() -> None:
+    assert host_cidrs_not_covered_by_allowlist(
+        ["1.2.3.4/32"], ["1.2.3.0/24"]
+    ) == []
+    assert host_cidrs_not_covered_by_allowlist(
+        ["5.6.7.8/32"], ["1.2.3.0/24"]
+    ) == ["5.6.7.8/32"]
+
+
+def _test_refresh_cached_allowlist_merges_host_dns() -> None:
+    cached = ["1.1.1.0/24"]
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs", return_value=["2.2.2.2/32"]
+    ):
+        with patch(
+            f"{__name__}._merge_allowlist_agent_peers",
+            return_value=(["1.1.1.0/24", "2.2.2.2/32"], 0),
+        ):
+            with patch(f"{__name__}.write_cursor_api_allowlist_cache") as mock_write:
+                refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert "2.2.2.0/24" in refreshed
+    mock_write.assert_called_once()
+
+
+def _test_pin_cursor_api_hosts_in_sandbox() -> None:
+    fake_proc = MagicMock()
+    fake_proc.stdout.read.return_value = ""
+    fake_proc.stderr.read.return_value = ""
+    fake_proc.returncode = 0
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    pin_cursor_api_hosts_in_sandbox(fake_sandbox, ["1.2.3.0/24"])
+    fake_sandbox.exec.assert_called_once()
+    exec_argv = fake_sandbox.exec.call_args.args
+    assert exec_argv[0] == "python3"
+    payload = json.loads(exec_argv[3])
+    assert payload["cidrs"] == ["1.2.3.0/24"]
+    assert payload["hosts"] == list(CURSOR_API_HOSTS)
 
 
 def _test_post_https_agent_peer_merge_always_runs() -> None:
@@ -2005,13 +2188,15 @@ def _test_agent_sandbox_network() -> None:
             f"{__name__}.resolve_agent_sandbox_cidrs",
             return_value=["9.9.9.9/32"],
         ):
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                image,
-                command="code",
-                malvin_argv=[],
-                grade_only=False,
-                cursor_secrets=[],
-            )
+            with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    image,
+                    command="code",
+                    malvin_argv=[],
+                    grade_only=False,
+                    cursor_secrets=[],
+                )
+    mock_pin.assert_called_once_with(fake_sandbox, ["9.9.9.9/32"])
     assert mock_create.call_args.kwargs["outbound_cidr_allowlist"] == ["9.9.9.9/32"]
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
@@ -2125,12 +2310,32 @@ def _test_validate_toolchain_repos() -> None:
                 raise AssertionError("expected ClickException for missing kiss repo")
 
 
+def _test_offline_check_tool_install_commands() -> None:
+    cmds = offline_check_tool_install_commands("kiss check\nuv run mypy\npytest -sv tests\nruff check .")
+    assert len(cmds) == 1
+    assert "mypy" in cmds[0]
+    assert "ruff" in cmds[0]
+    assert "aggdraw" in cmds[0]
+    assert "uv" in cmds[0]
+    assert offline_check_tool_install_commands("cargo nextest run") == []
+
+
+def _test_offline_agent_checks() -> None:
+    raw = "kiss check\nuv run mypy\npytest -sv tests\nruff check .\n"
+    out = offline_agent_checks(raw)
+    assert "uv run mypy" not in out
+    assert "mypy\n" in out
+    assert "pytest -sv tests" in out
+
+
 def _test_read_remote_file() -> None:
     sandbox = MagicMock()
     sandbox.open.return_value.__enter__.return_value.read.return_value = "payload"
     assert read_remote_file(sandbox, "/tmp/x") == "payload"
     sandbox.open.side_effect = OSError("missing")
     assert read_remote_file(sandbox, "/tmp/missing") is None
+    sandbox.open.side_effect = modal.exception.FilesystemExecutionError("finished")
+    assert read_remote_file(sandbox, "/tmp/dead") is None
 
 
 def _test_write_metadata() -> None:
@@ -2338,11 +2543,16 @@ def run_unit_tests() -> None:
     _test_critical_cursor_hosts_failed()
     _test_cursor_api_allowlist_cache()
     _test_resolve_agent_sandbox_cidrs_uses_cache()
+    _test_host_cidrs_not_covered_by_allowlist()
+    _test_refresh_cached_allowlist_merges_host_dns()
+    _test_pin_cursor_api_hosts_in_sandbox()
     _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
     _test_cursor_secrets()
     _test_validate_toolchain_repos()
+    _test_offline_check_tool_install_commands()
+    _test_offline_agent_checks()
     _test_read_remote_file()
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
