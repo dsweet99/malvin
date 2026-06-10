@@ -160,7 +160,10 @@ mod tests {
         let cli = Cli::try_parse_from(["malvin", "explain", "topic.md", "--doc"]).expect("parse");
         assert!(cli.shared.doc);
         match cli.command.as_ref() {
-            Some(Commands::Explain(e)) => assert_eq!(e.request.as_deref(), Some("topic.md")),
+            Some(Commands::Explain(e)) => {
+                assert_eq!(e.request.as_deref(), Some("topic.md"));
+                assert_eq!(e.out_path, "explain.tex");
+            }
             _ => panic!("expected Explain"),
         }
     }
@@ -169,6 +172,7 @@ mod tests {
     fn print_doc_explain_writes_subcommand_md() {
         let cmd = Commands::Explain(ExplainArgs {
             request: Some("topic".to_string()),
+            out_path: "explain.tex".to_string(),
             max_loops: 3,
             max_hypotheses: 5,
             tenacious: true,

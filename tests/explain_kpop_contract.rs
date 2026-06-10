@@ -47,6 +47,39 @@ fn explain_runs_kpop_when_gates_already_pass() {
 
 #[cfg(unix)]
 #[test]
+fn explain_writes_custom_out_path() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = root.path().join("mock-explain-custom-out");
+    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
+    let out = spawn_explain(&ExplainSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        request: "gate loop exit",
+        extra_args: &["--max-loops", "1", "--out-path", "docs/paper.tex"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(
+        out.status.success(),
+        "expected explain success with custom out-path: status={:?} combined={combined:?}",
+        out.status,
+    );
+    let tex = std::fs::read_to_string(workspace.join("docs/paper.tex")).expect("read tex");
+    assert!(!tex.is_empty(), "custom tex must be non-empty");
+    let pdf = std::fs::read(workspace.join("docs/paper.pdf")).expect("read pdf");
+    assert!(!pdf.is_empty(), "custom pdf must be non-empty");
+    assert!(
+        !workspace.join("explain.tex").exists(),
+        "default explain.tex must not be written when out-path is custom"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn explain_fails_when_request_missing() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);

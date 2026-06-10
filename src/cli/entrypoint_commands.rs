@@ -156,6 +156,7 @@ mod tests {
         use crate::cli::args::Commands;
         let cmd = Commands::Explain(crate::cli::explain_flow::ExplainArgs {
             request: Some("topic".to_string()),
+            out_path: "explain.tex".to_string(),
             max_loops: 1,
             max_hypotheses: 5,
             tenacious: true,

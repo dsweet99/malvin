@@ -18,6 +18,9 @@ pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
 pub struct ExplainArgs {
     /// Existing `.md` path or literal text describing what to explain.
     pub request: Option<String>,
+    /// Workspace path for the LaTeX output (PDF is the same path with `.pdf`; default basename stays in the request work directory).
+    #[arg(long, default_value = "explain.tex")]
+    pub out_path: String,
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
@@ -34,6 +37,33 @@ mod tests {
     use super::*;
     use crate::cli::args::{Cli, Commands};
     use clap::{CommandFactory, FromArgMatches, Parser};
+
+    #[test]
+    fn explain_args_default_out_path_is_explain_tex() {
+        let cli = Cli::try_parse_from(["malvin", "explain", "topic"]).expect("parse");
+        match cli.command {
+            Some(Commands::Explain(e)) => assert_eq!(e.out_path, "explain.tex"),
+            other => panic!("expected Explain, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn explain_out_path_flag_overrides_default() {
+        let cli = Cli::try_parse_from(["malvin", "explain", "topic", "--out-path", "docs/paper.tex"]).expect("parse");
+        match cli.command {
+            Some(Commands::Explain(e)) => assert_eq!(e.out_path, "docs/paper.tex"),
+            other => panic!("expected Explain, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn explain_out_path_accepts_equals_form() {
+        let cli = Cli::try_parse_from(["malvin", "explain", "topic", "--out-path=docs/paper.tex"]).expect("parse");
+        match cli.command {
+            Some(Commands::Explain(e)) => assert_eq!(e.out_path, "docs/paper.tex"),
+            other => panic!("expected Explain, got {other:?}"),
+        }
+    }
 
     #[test]
     fn explain_parses_request_positional() {

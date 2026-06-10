@@ -74,7 +74,7 @@ pub async fn run_explain(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let prepared = prepare_explain_kpop_run(explain.request.as_ref(), workflow)?;
+    let prepared = prepare_explain_kpop_run(explain.request.as_ref(), &explain.out_path, workflow)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
 
     emit_run_startup_sequence(

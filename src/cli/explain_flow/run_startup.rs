@@ -20,19 +20,20 @@ fn explain_kpop_workflow_context(
 
 pub fn prepare_explain_kpop_run(
     request: Option<&String>,
+    out_path: &str,
     workflow: crate::cli::WorkflowCliOptions,
 ) -> Result<ExplainKpopPrepared, String> {
     let request_arg = require_cli_request(request, "explain")?;
-    let (request_text, work_dir) = explain_preflight(&request_arg)?;
+    let (request_text, outputs) = explain_preflight(&request_arg, out_path)?;
+    let artifact_work_dir = crate::artifacts::work_dir_for_path(&outputs.tex_path);
     let store = prepare_explain_kpop_prompt_store(workflow)?;
-    let artifacts =
-        create_kpop_run_artifacts("explain", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let request_body = explain_kpop_request(&store, &artifacts, &request_text, &work_dir)?;
+    let artifacts = create_kpop_run_artifacts("explain", Some(artifact_work_dir.as_path()))
+        .map_err(|e| e.to_string())?;
+    let request_body = explain_kpop_request(&store, &artifacts, &request_text, &outputs)?;
     std::fs::write(&artifacts.plan_path, &request_body).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = explain_kpop_workflow_context(&artifacts)?;
-    let (tex_path, pdf_path) = super::prep::explain_output_paths(&work_dir);
     let inner = GateKpopPrepared {
         artifacts,
         context,
@@ -43,8 +44,8 @@ pub fn prepare_explain_kpop_run(
     };
     Ok(ExplainKpopPrepared {
         inner,
-        tex_path,
-        pdf_path,
+        tex_path: outputs.tex_path,
+        pdf_path: outputs.pdf_path,
     })
 }
 
@@ -67,6 +68,7 @@ mod tests {
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
             let Err(err) = prepare_explain_kpop_run(
                 None,
+                "explain.tex",
                 crate::cli::WorkflowCliOptions { force: true },
             ) else {
                 panic!("missing request must fail");
@@ -89,6 +91,7 @@ mod tests {
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
             let Err(err) = prepare_explain_kpop_run(
                 Some(&"topic".to_string()),
+                "explain.tex",
                 crate::cli::WorkflowCliOptions { force: true },
             ) else {
                 panic!("preflight must fail");
