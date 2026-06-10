@@ -73,6 +73,7 @@ mod ideas_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            name: None,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -103,6 +104,7 @@ mod ideas_tests {
             verbose: false,
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
+            name: None,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

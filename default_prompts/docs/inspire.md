@@ -24,7 +24,7 @@ malvin inspire [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `do` / `kpop`).
 
 ## Global options
 

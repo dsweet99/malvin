@@ -46,6 +46,12 @@ pub use sandbox_oom::{
 };
 pub use current_state::format_current_state;
 mod acp_spawn_lock;
+mod session_name;
+pub use session_name::{
+    acquire_name, acquire_session_name, assert_no_peer_name_lock, generate_auto_name,
+    generate_auto_name_with, name_path, names_registry_root, parse_holder_pid, release_name,
+    validate_name, SessionNameGuard,
+};
 pub mod malvin_sandbox;
 pub mod process_group_rss;
 mod alnum_id;

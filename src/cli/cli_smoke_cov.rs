@@ -78,6 +78,7 @@ fn smoke_agent_io_options_maps_flags() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        name: None,
     };
     let io = agent_io_options(
         &shared,
@@ -108,6 +109,7 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         verbose: false,
         max_acp_retries: 7,
         doc: false,
+        name: None,
     };
     let client = new_agent_client(
         &shared,
@@ -229,6 +231,7 @@ fn smoke_shared_opts_tee_startup_stdout() {
         verbose: false,
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
+        name: None,
     };
     assert!(shared.tee_startup_stdout());
 }

@@ -34,9 +34,16 @@ mod process;
 mod code_harness;
 #[cfg(unix)]
 mod tidy_harness;
+#[cfg(unix)]
+mod acp_delight_kpop;
+#[cfg(unix)]
+mod delight_harness;
+mod contract;
 mod workspace;
 
 pub use cli_parity_harness_run::*;
+#[cfg(unix)]
+pub use contract::{fresh_workdir, sleep_child};
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]
@@ -48,6 +55,10 @@ pub use acp_core::{acp_mock_js, chunk_line, *};
 pub use acp_do::*;
 pub use acp_do_dotfiles::*;
 pub use acp_tidy_kpop::*;
+#[cfg(unix)]
+pub use acp_delight_kpop::*;
+#[cfg(unix)]
+pub use delight_harness::*;
 pub use kpop_multiturn_support::*;
 pub use kpop_outer_loop_support::*;
 #[cfg(unix)]

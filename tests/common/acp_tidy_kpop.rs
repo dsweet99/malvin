@@ -1,12 +1,12 @@
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
-const fn acp_mock_kpop_prompt_preamble() -> &'static str {
+pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';"
 }
 
-const fn acp_mock_kpop_iteration_body() -> &'static str {
+pub const fn acp_mock_kpop_iteration_body() -> &'static str {
     r"      const wantMatch = promptText.match(/Complete up to [`]?(\d+)[`]? KPOP iterations/);
       const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
       const pathMatch = promptText.match(/([^\s`]+\/_kpop\/exp_log_[^\s`]+\.md)/);

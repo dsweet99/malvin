@@ -14,6 +14,7 @@ const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         Commands::Code(_) => include_str!("../../default_prompts/docs/code.md"),
         Commands::Kpop(_) => include_str!("../../default_prompts/docs/kpop.md"),
         Commands::Tidy(_) => include_str!("../../default_prompts/docs/tidy.md"),
+        Commands::Delight(_) => include_str!("../../default_prompts/docs/delight.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
         Commands::Plan(_) => include_str!("../../default_prompts/docs/plan.md"),
     }
@@ -42,6 +43,7 @@ mod tests {
     use super::*;
     use crate::cli::Cli;
     use crate::cli::args::{Commands, InspireArgs, KpopArgs, PlanArgs};
+    use crate::cli::delight_flow::DelightArgs;
     use crate::cli::models_cmd::ModelsArgs;
     use clap::Parser;
 
@@ -129,6 +131,39 @@ mod tests {
         });
         let out = capture_doc(Some(&cmd)).expect("capture");
         assert!(out.starts_with(b"# malvin plan"));
+    }
+
+    #[test]
+    fn delight_doc_parses_without_out_path() {
+        let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
+        assert!(cli.shared.doc);
+        match cli.command.as_ref() {
+            Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
+            _ => panic!("expected Delight"),
+        }
+    }
+
+    #[test]
+    fn print_doc_delight_writes_subcommand_md() {
+        let cmd = Commands::Delight(DelightArgs {
+            out_path: "plan.md".to_string(),
+            max_loops: 3,
+            max_hypotheses: 5,
+            tenacious: true,
+        });
+        let out = capture_doc(Some(&cmd)).expect("capture");
+        assert!(out.starts_with(b"# malvin delight"));
+    }
+
+    #[test]
+    fn malvin_doc_embeds_name_section() {
+        let out = capture_doc(None).expect("capture");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(text.contains("--name"), "doc must mention --name");
+        assert!(
+            text.contains(".malvin/names") || text.contains("already holds"),
+            "doc must describe registry or duplicate-name behavior"
+        );
     }
 
     #[test]

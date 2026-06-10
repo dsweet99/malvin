@@ -3,6 +3,7 @@
 use clap::{Parser, Subcommand};
 
 use super::shared_opts::SharedOpts;
+use super::delight_flow::DelightArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::models_cmd::ModelsArgs;
@@ -21,7 +22,7 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). Use subcommands for do, code, and tidy."
+    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). REQUEST must be one shell argument; quote for spaces. Use subcommands for do, code, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -39,7 +40,7 @@ pub struct Cli {
     pub bare_tenacious: bool,
     /// When no subcommand: kpop request text or path.
     #[arg(value_name = "REQUEST")]
-    pub bare_args: Vec<String>,
+    pub bare_request: Option<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -60,6 +61,8 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
+    /// Author a user-delighting feature plan
+    Delight(DelightArgs),
     /// List available models
     Models(ModelsArgs),
     /// Reflect on and revise a plan file

@@ -16,7 +16,7 @@ malvin [OPTIONS] [<COMMAND> | REQUEST]
 
 Bare invocation (no subcommand):
 
-- `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
+- `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`). `<REQUEST>` is exactly **one shell argument**; quote it when the text contains spaces (e.g. `malvin "Why does the cache miss?"`). Bare `malvin` does **not** join multiple unquoted words into a single request.
 
 Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`.
 
@@ -76,6 +76,16 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
 
+### `--name <NAME>`
+
+Optional session name for workflow invocations (`init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`, and bare `malvin REQUEST`). When omitted, malvin assigns a unique five-character id (`[a-z0-9]`).
+
+Malvin registers the top-level process under this name in a per-user registry at `~/.malvin/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin/names/`.
+
+Session names are independent of the workspace-scoped `.malvin/acp_spawn.lock` (one live ACP session per workspace). Two malvin processes with different `--name` values may both register names in the same workspace; only one may hold a live ACP session there at a time.
+
+`--doc`, `--help`, `--version`, and bare `malvin` with no `REQUEST` parse `--name` but do not acquire or release a name lock.
+
 ### `--doc`
 
 Print built-in documentation and exit. Does not spawn an agent or create a `./.malvin/logs` run directory.
@@ -134,7 +144,7 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## Request syntax
 
-Several commands accept a positional request.
+Several commands accept a positional request. `<REQUEST>` is always exactly **one shell argument**; quote it when the text contains spaces. Malvin does not join multiple unquoted shell words into a single request.
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|

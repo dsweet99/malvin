@@ -22,6 +22,7 @@ mod models_cmd;
 pub(crate) mod run_emit;
 mod shared_opts;
 pub(crate) mod tidy_flow;
+mod delight_flow;
 
 mod code_flow;
 mod code_flow_a;
@@ -84,4 +85,5 @@ pub use exit::Exit;
 pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
+pub use delight_flow::run_delight;
 pub use tidy_flow::run_tidy;

@@ -8,6 +8,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
+        Commands::Delight(_) => require_kiss_for_malvin("delight"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
@@ -17,7 +18,9 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     }
 }
 
-use super::entrypoint_checks::ensure_malvin_checks_for_command;
+#[path = "entrypoint_from.rs"]
+mod entrypoint_from;
+pub use entrypoint_from::entrypoint_from;
 
 pub fn print_command_error(message: &str) {
     use crate::output::{MALVIN_WHO, print_log_error, print_stderr_line};
@@ -56,17 +59,7 @@ pub fn entrypoint() -> Exit {
     entrypoint_from(std::env::args_os())
 }
 
-fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
-    let theme = std::env::current_dir()
-        .ok()
-        .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
-        .unwrap_or_default();
-    crate::terminal_palette::init_terminal_theme(theme);
-    crate::output::init_stdout_style(global.no_color);
-    crate::output::set_stdout_suppressed(global.background);
-}
-
-fn finish_entrypoint(res: Result<(), String>) -> Exit {
+pub(crate) fn finish_entrypoint(res: Result<(), String>) -> Exit {
     match res {
         Ok(()) => {
             super::error_run_log::clear_command_error_run_dir();
@@ -80,48 +73,17 @@ fn finish_entrypoint(res: Result<(), String>) -> Exit {
     }
 }
 
-pub fn entrypoint_from(
-    args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
-) -> Exit {
-    crate::init_from_env();
-    let (cli, matches) = match super::config_defaults::parse_cli_with_config_defaults(args) {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            use clap::error::ErrorKind;
-            let exit = match e.kind() {
-                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => Exit::Success,
-                _ => Exit::Failure,
-            };
-            let _ = stringify!(e.print());
-            return exit;
-        }
-    };
-    prepare_cli_output(&cli.global);
-    if cli.command.is_none() && !cli.shared.doc {
-        let _ = super::commands_help::print_commands_only_help();
-        return Exit::Success;
-    }
-    if cli.shared.doc {
-        return match super::command_docs::print_doc(cli.command.as_ref()) {
-            Ok(()) => Exit::Success,
-            Err(e) => {
-                print_command_error(&e);
-                Exit::Failure
-            }
-        };
-    }
-    let command = cli.command.expect("subcommand when not --doc-only");
-    let preflight_err = require_kiss_for_cli_command(&command)
-        .err()
-        .or_else(|| ensure_malvin_checks_for_command(&command).err());
-    if let Some(e) = preflight_err {
-        print_command_error(&e);
-        return Exit::Failure;
-    }
-    finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
+pub(crate) fn prepare_cli_output(global: &crate::cli::args::GlobalOpts) {
+    let theme = std::env::current_dir()
+        .ok()
+        .map(|cwd| crate::malvin_config_file::load_malvin_config(&cwd).theme)
+        .unwrap_or_default();
+    crate::terminal_palette::init_terminal_theme(theme);
+    crate::output::init_stdout_style(global.no_color);
+    crate::output::set_stdout_suppressed(global.background);
 }
 
-fn dispatch_command(
+pub(crate) fn dispatch_command(
     command: Commands,
     shared: &SharedOpts,
     matches: &clap::ArgMatches,
@@ -176,7 +138,10 @@ fn dispatch_command(
                     },
                 )
             })
-        },
+        }
+        Commands::Delight(delight) => {
+            super::entrypoint_commands::run_delight_command(delight, &mut shared, matches)
+        }
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
@@ -215,18 +180,3 @@ mod entrypoint_tenacious_tests;
 #[cfg(test)]
 #[path = "entrypoint_doc_tests.rs"]
 mod entrypoint_doc_tests;
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use crate::cli::entrypoint_commands;
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = (dispatch_command, finish_entrypoint);
-        assert!(stringify!(run_async_cli).contains("run_async_cli"));
-        let _ = entrypoint_commands::run_code_command;
-        let _ = entrypoint_commands::run_inspire_command;
-        let _ = entrypoint_commands::run_plan_command;
-    }
-}

@@ -38,7 +38,7 @@ pub fn apply_workspace_config_defaults(
     cli: &mut Cli,
 ) -> Result<(), String> {
     let Some(command) = cli.command.as_mut() else {
-        if cli.bare_args.is_empty() {
+        if cli.bare_request.is_none() {
             return Ok(());
         }
         return Err("internal: bare kpop request not resolved".into());
@@ -81,6 +81,16 @@ pub fn apply_workspace_config_defaults(
                 config_max_hypotheses: agent.max_hypotheses,
             },
         ),
+        Commands::Delight(delight) => apply_loop_defaults(
+            matches,
+            "delight",
+            LoopDefaultMut {
+                max_loops: &mut delight.max_loops,
+                max_hypotheses: &mut delight.max_hypotheses,
+                config_max_loops: agent.max_loops_code,
+                config_max_hypotheses: agent.max_hypotheses,
+            },
+        ),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Inspire(_)
@@ -107,7 +117,7 @@ pub fn parse_cli_with_config_defaults(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Result<(Cli, ArgMatches), clap::Error> {
     let cmd = Cli::command();
-    let matches = cmd.get_matches_from(args);
+    let matches = cmd.try_get_matches_from(args)?;
     let mut cli = Cli::from_arg_matches(&matches)?;
     if let Err(e) = super::bare_invoke::resolve_bare_command(&mut cli, &matches) {
         return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));

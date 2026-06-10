@@ -43,7 +43,7 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
         String::new(),
-        "Pass REQUEST with no subcommand to KPop.".to_string(),
+        "Pass one REQUEST argument with no subcommand to run KPop.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);
@@ -77,7 +77,7 @@ mod tests {
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
         assert!(text.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(text.contains("Pass REQUEST with no subcommand"));
+        assert!(text.contains("Pass one REQUEST argument with no subcommand"));
         assert!(text.contains("Commands:"));
         assert!(!text.contains("kpop"));
     }
@@ -88,7 +88,7 @@ mod tests {
         assert!(help.contains("Commands:"));
         assert!(help.contains("init"));
         assert!(help.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(help.contains("Pass REQUEST with no subcommand"));
+        assert!(help.contains("Pass one REQUEST argument with no subcommand"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));

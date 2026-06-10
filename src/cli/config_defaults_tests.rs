@@ -102,6 +102,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         verbose: false,
         max_acp_retries: 1,
         doc: false,
+        name: None,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model, "cfg");
@@ -162,6 +163,7 @@ fn assert_workflow_defaults(argv: &[&str]) {
     match cli.command.expect("command") {
         Commands::Code(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         Commands::Tidy(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
+        Commands::Delight(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
         other => panic!("unexpected command {other:?}"),
     }
 }
@@ -171,6 +173,14 @@ fn apply_workspace_config_defaults_for_workflow_commands() {
     with_seeded_agent_config(|| {
         assert_workflow_defaults(&["malvin", "code", "hello"]);
         assert_workflow_defaults(&["malvin", "tidy"]);
+        assert_workflow_defaults(&["malvin", "delight"]);
+    });
+}
+
+#[test]
+fn config_defaults_apply_to_delight() {
+    with_seeded_agent_config(|| {
+        assert_workflow_defaults(&["malvin", "delight"]);
     });
 }
 
