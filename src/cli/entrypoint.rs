@@ -4,10 +4,14 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, and `plan` accept `--name`.
+/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, `plan`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands, bare_invoke: bool) -> bool {
     match command {
-        Commands::Do(_) | Commands::Code(_) | Commands::Tidy(_) | Commands::Plan(_) => true,
+        Commands::Do(_)
+        | Commands::Code(_)
+        | Commands::Tidy(_)
+        | Commands::Plan(_)
+        | Commands::Delight(_) => true,
         Commands::Kpop(_) => bare_invoke,
         _ => false,
     }
@@ -18,7 +22,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands, bare_invoke: bool
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, and `plan`",
+        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, `plan`, and `delight`",
     )
 }
 
@@ -205,3 +209,7 @@ mod entrypoint_doc_tests;
 #[cfg(test)]
 #[path = "entrypoint_name_tests.rs"]
 mod entrypoint_name_tests;
+
+#[cfg(test)]
+#[path = "entrypoint_name_unix_tests.rs"]
+mod entrypoint_name_unix_tests;

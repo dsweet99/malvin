@@ -101,15 +101,15 @@ pub fn entrypoint_from(
         return exit;
     }
     let command = cli.command.expect("subcommand when not --doc-only");
-    if let Some(exit) = entrypoint_preflight(&command) {
-        return exit;
-    }
     let bare_invoke = cli.bare_request.is_some();
     if cli.shared.name.is_some() {
         if let Some(message) = unsupported_name_error(&command, bare_invoke) {
             print_command_error(message);
             return Exit::Failure;
         }
+    }
+    if let Some(exit) = entrypoint_preflight(&command) {
+        return exit;
     }
     if command_accepts_session_name(&command, bare_invoke) {
         let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {

@@ -23,8 +23,18 @@ fn delight_plan_args_use_same_out_path() {
 
 #[test]
 fn revise_args_for_explain_output_use_tex_path() {
-    let args = revise_args_for_explain_output("docs/paper.tex");
+    let explain = crate::cli::explain_flow::ExplainArgs {
+        request: Some("topic".to_string()),
+        out_path: "explain.tex".to_string(),
+        max_loops: 7,
+        max_hypotheses: 11,
+        tenacious: false,
+    };
+    let args = revise_args_for_explain_output(&explain, "docs/paper.tex");
     assert_eq!(args.doc_path, "docs/paper.tex");
+    assert_eq!(args.max_loops, 7);
+    assert_eq!(args.max_hypotheses, 11);
+    assert!(!args.tenacious);
 }
 
 #[test]

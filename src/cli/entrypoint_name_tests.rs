@@ -90,6 +90,35 @@ fn models_command_rejects_session_name() {
 }
 
 #[test]
+fn delight_command_accepts_session_name() {
+    use crate::cli::delight_flow::DelightArgs;
+    assert!(command_accepts_session_name(
+        &Commands::Delight(DelightArgs {
+            out_path: "plan.md".to_string(),
+            max_loops: 1,
+            max_hypotheses: 5,
+            tenacious: false,
+        }),
+        false
+    ));
+}
+
+#[test]
+fn explain_command_rejects_session_name() {
+    use crate::cli::explain_flow::ExplainArgs;
+    assert!(!command_accepts_session_name(
+        &Commands::Explain(ExplainArgs {
+            request: Some("topic".to_string()),
+            out_path: "explain.tex".to_string(),
+            max_loops: 1,
+            max_hypotheses: 5,
+            tenacious: false,
+        }),
+        false
+    ));
+}
+
+#[test]
 fn bare_request_resolves_to_kpop_that_accepts_session_name() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
@@ -133,77 +162,50 @@ fn init_rejects_name_flag() {
     );
 }
 
-#[cfg(unix)]
 #[test]
-fn bare_kpop_duplicate_name_exits_failure() {
-    crate::test_utils::with_isolated_home(|work| {
-        let _ = work;
-        let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
-            .arg("120")
-            .spawn()
-            .expect("spawn sleep");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
-        std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
-        assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "investigate cache"]),
-            Exit::Failure
-        );
-        let _ = child.kill();
-        let _ = child.wait();
-    });
-}
-
-#[cfg(unix)]
-#[test]
-fn duplicate_name_exits_failure() {
-    crate::test_utils::with_isolated_home(|work| {
-        let _ = work;
-        let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
-            .arg("120")
-            .spawn()
-            .expect("spawn sleep");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
-        std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
-        assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "plan", "plan.md"]),
-            Exit::Failure
-        );
-        let _ = child.kill();
-        let _ = child.wait();
-    });
-}
-
-#[cfg(unix)]
-#[test]
-fn duplicate_name_error_on_stderr_with_background() {
+fn explain_rejects_name_before_preflight() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     crate::test_utils::with_isolated_home(|work| {
-        let _ = work;
-        let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
-            .arg("120")
-            .spawn()
-            .expect("spawn sleep");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
-        std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
+        std::env::set_current_dir(work).expect("chdir");
+        let checks = work.join(".malvin/checks");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--background", "--name", "probe", "plan", "plan.md"]),
+                entrypoint_from(["malvin", "--name", "probe", "explain", "topic"]),
                 Exit::Failure
             );
         });
         assert!(
-            stderr.contains(&holder_pid.to_string()),
-            "stderr must name holder pid; got: {stderr:?}"
+            stderr.contains("only supported for bare"),
+            "stderr must reject --name on explain; got: {stderr:?}"
         );
         assert!(
-            stderr.contains(&crate::name_path("probe").display().to_string()),
-            "stderr must name lock path; got: {stderr:?}"
+            !checks.exists(),
+            "explain --name must reject before writing .malvin/checks"
         );
-        let _ = child.kill();
-        let _ = child.wait();
+    });
+}
+
+#[test]
+fn revise_rejects_name_before_preflight() {
+    use crate::test_stderr_capture::capture_stderr_output;
+
+    crate::test_utils::with_isolated_home(|work| {
+        std::env::set_current_dir(work).expect("chdir");
+        let checks = work.join(".malvin/checks");
+        let stderr = capture_stderr_output(|| {
+            assert_eq!(
+                entrypoint_from(["malvin", "--name", "probe", "revise", "doc.md"]),
+                Exit::Failure
+            );
+        });
+        assert!(
+            stderr.contains("only supported for bare"),
+            "stderr must reject --name on revise; got: {stderr:?}"
+        );
+        assert!(
+            !checks.exists(),
+            "revise --name must reject before writing .malvin/checks"
+        );
     });
 }

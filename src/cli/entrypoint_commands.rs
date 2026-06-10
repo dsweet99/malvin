@@ -60,12 +60,12 @@ pub(crate) fn plan_args_for_delight_output(out_path: &str) -> crate::plan_flow::
     }
 }
 
-pub(crate) fn revise_args_for_explain_output(doc_path: &str) -> ReviseArgs {
+pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &str) -> ReviseArgs {
     ReviseArgs {
         doc_path: doc_path.to_string(),
-        max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
-        max_hypotheses: 5,
-        tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+        max_loops: explain.max_loops,
+        max_hypotheses: explain.max_hypotheses,
+        tenacious: explain.tenacious,
     }
 }
 
@@ -76,10 +76,19 @@ pub(crate) async fn run_explain_then_revise(
 ) -> Result<(), String> {
     let out_path = explain.out_path.clone();
     let request = explain.request.clone();
+    let revise_template = revise_args_for_explain_output(&explain, "");
     run_explain(explain, shared, workflow).await?;
     let request_arg = crate::cli::cli_request::require_cli_request(request.as_ref(), "explain")?;
     let doc_path = super::explain_flow::explain_revise_doc_path(&request_arg, &out_path)?;
-    run_revise(revise_args_for_explain_output(&doc_path), shared, workflow).await
+    run_revise(
+        ReviseArgs {
+            doc_path,
+            ..revise_template
+        },
+        shared,
+        workflow,
+    )
+    .await
 }
 
 pub(crate) async fn run_delight_then_plan(
