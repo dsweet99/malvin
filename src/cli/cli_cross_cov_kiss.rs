@@ -97,6 +97,8 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 #[test]
 fn smoke_cov_cli_cli_delight_flow_units() {
     let _: Option<super::delight_flow::DelightArgs> = None;
+    let _ = super::entrypoint_commands::run_delight_then_plan;
+    let _ = super::entrypoint_commands::plan_args_for_delight_output;
     let _ = super::delight_flow::run_delight;
     let _ = super::delight_flow::effective_delight_max_loops;
     let _ = super::gate_kpop_workflow::GateLoopBehavior::DELIGHT;

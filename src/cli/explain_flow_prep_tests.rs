@@ -29,7 +29,12 @@ fn explain_kpop_request_renders_request_and_output_paths() {
 
 #[test]
 fn explain_preflight_literal_request_uses_dot_work_dir() {
-    let (text, work_dir) = explain_preflight("  topic  ").expect("ok");
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let result = explain_preflight("  topic  ");
+    std::env::set_current_dir(old).expect("restore");
+    let (text, work_dir) = result.expect("ok");
     assert_eq!(text, "topic");
     assert_eq!(work_dir, std::path::PathBuf::from("."));
 }

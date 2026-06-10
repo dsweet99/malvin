@@ -40,6 +40,10 @@ fn delight_runs_kpop_when_gates_already_pass() {
     );
     let plan = std::fs::read_to_string(workspace.join("plan.md")).expect("read plan");
     assert!(!plan.is_empty(), "output plan must be non-empty");
+    assert!(
+        plan.contains("BEGIN_MALVIN"),
+        "delight must chain malvin plan on success: {plan:?}"
+    );
 }
 
 #[cfg(unix)]
@@ -109,6 +113,10 @@ fn delight_writes_custom_out_path() {
     assert!(out.status.success(), "expected success: {out:?}");
     let plan = std::fs::read_to_string(workspace.join("plans/new.md")).expect("read plan");
     assert!(!plan.is_empty());
+    assert!(
+        plan.contains("BEGIN_MALVIN"),
+        "delight must chain malvin plan on custom out-path: {plan:?}"
+    );
 }
 
 #[cfg(unix)]

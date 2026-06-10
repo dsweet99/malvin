@@ -52,6 +52,22 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
     })
 }
 
+pub(crate) fn plan_args_for_delight_output(out_path: &str) -> crate::plan_flow::PlanArgs {
+    crate::plan_flow::PlanArgs {
+        plan_path: out_path.to_string(),
+    }
+}
+
+pub(crate) async fn run_delight_then_plan(
+    delight: DelightArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(), String> {
+    let out_path = delight.out_path.clone();
+    run_delight(delight, shared, workflow).await?;
+    crate::plan_flow::run_plan(plan_args_for_delight_output(&out_path), shared, workflow).await
+}
+
 pub(crate) fn run_delight_command(
     mut delight: DelightArgs,
     shared: &mut SharedOpts,
@@ -66,7 +82,7 @@ pub(crate) fn run_delight_command(
         matches,
     });
     run_async_cli(|| {
-        run_delight(
+        run_delight_then_plan(
             delight,
             shared,
             WorkflowCliOptions {
@@ -123,8 +139,16 @@ mod tests {
         let _ = stringify!(run_plan_command);
         let _ = stringify!(run_code_command);
         let _ = stringify!(run_delight_command);
+        let _ = stringify!(run_delight_then_plan);
+        let _ = stringify!(plan_args_for_delight_output);
         let _ = stringify!(run_explain_command);
         let _ = stringify!(dispatch_plan_authoring_gate);
+    }
+
+    #[test]
+    fn delight_plan_args_use_same_out_path() {
+        let args = plan_args_for_delight_output("plans/feature.md");
+        assert_eq!(args.plan_path, "plans/feature.md");
     }
 
     #[test]
