@@ -1,6 +1,6 @@
 use super::{
-    dispatch_command, finish_entrypoint, prepare_cli_output, print_command_error,
-    require_kiss_for_cli_command, Commands, Exit,
+    command_accepts_session_name, dispatch_command, finish_entrypoint, prepare_cli_output,
+    print_command_error, require_kiss_for_cli_command, unsupported_name_error, Commands, Exit,
 };
 use crate::cli::args::Cli;
 use crate::cli::entrypoint_checks::ensure_malvin_checks_for_command;
@@ -74,9 +74,18 @@ pub fn entrypoint_from(
     if let Some(exit) = entrypoint_preflight(&command) {
         return exit;
     }
-    let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
-        Ok(guard) => guard,
-        Err(exit) => return exit,
-    };
+    let bare_invoke = cli.bare_request.is_some();
+    if cli.shared.name.is_some() {
+        if let Some(message) = unsupported_name_error(&command, bare_invoke) {
+            print_command_error(message);
+            return Exit::Failure;
+        }
+    }
+    if command_accepts_session_name(&command, bare_invoke) {
+        let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
+            Ok(guard) => guard,
+            Err(exit) => return exit,
+        };
+    }
     finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
 }

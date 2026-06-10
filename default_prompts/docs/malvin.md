@@ -78,7 +78,7 @@ Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff
 
 ### `--name <NAME>`
 
-Optional session name for workflow invocations (`init`, `do`, `inspire`, `plan`, `code`, `tidy`, `models`, and bare `malvin REQUEST`). When omitted, malvin assigns a unique five-character id (`[a-z0-9]`).
+Optional session name for `do`, `plan`, `code`, `tidy`, and bare `malvin REQUEST` (not the hidden `kpop` subcommand). When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin/names/`.
 
