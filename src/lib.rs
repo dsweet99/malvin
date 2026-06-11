@@ -53,6 +53,9 @@ pub use session_name::{
     validate_name, SessionNameGuard,
 };
 pub mod malvin_sandbox;
+#[cfg(test)]
+#[path = "malvin_sandbox_tests.rs"]
+mod malvin_sandbox_tests;
 pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
@@ -85,6 +88,7 @@ mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
 mod acp_test_mock_js;
 pub use acp_test_mock_js::acp_mock_js;
+pub mod agent_backend;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{

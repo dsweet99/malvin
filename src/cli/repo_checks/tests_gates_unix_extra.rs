@@ -71,10 +71,7 @@ fn run_repo_workspace_gates_runs_tree_builtins_without_git_or_malvin_checks() {
     let log = fs::read_to_string(&trace).unwrap();
     assert!(log_contains_command(&log, "kiss check"));
     assert!(log_contains_command(&log, "cargo clippy"));
-    assert!(log_contains_command(
-        &log,
-        repo_gates::default_rust_test_command(work)
-    ));
+    assert!(log_contains_command(&log, repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1));
 }
 
 #[test]
@@ -115,7 +112,11 @@ fn quality_gates_log_records_gate_lines_when_run_log_dir_set() {
     assert!(qlog.contains("Running `kiss check`"));
     assert!(qlog.contains(&format!(
         "Running `{}`",
-        repo_gates::default_rust_test_command(work)
+        repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1
+    )));
+    assert!(qlog.contains(&format!(
+        "Running `{}`",
+        repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_2
     )));
     assert!(qlog.contains("[stdout]"));
     assert!(qlog.contains("[stderr]"));

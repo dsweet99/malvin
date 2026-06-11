@@ -22,6 +22,8 @@ pub(crate) mod reader_tests_retry_policy;
 pub(crate) mod reader_tests_retry_policy_session_new;
 #[path = "backoff_helpers_tests.rs"]
 mod backoff_helpers_tests;
+#[path = "client_impl_prompt_retry_tests.rs"]
+mod client_impl_prompt_retry_tests;
 #[path = "../acp/reader_tests_tool_summary.rs"]
 pub(crate) mod reader_tests_tool_summary;
 #[path = "../acp/reader_tests_tool_summary_human.rs"]

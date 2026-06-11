@@ -148,6 +148,7 @@ async fn run_do_coder_prompt(
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: Some((header.as_str(), user.as_str())),
                 stdout_bracket_label: None,
+                ..Default::default()
             },
         )
         .await

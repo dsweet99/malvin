@@ -62,11 +62,28 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
+/// Cap parallel rustc, nextest, and libtest invocations for sandbox children.
+fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
+    cmd.env("CARGO_BUILD_JOBS", "1");
+    cmd.env("NEXTEST_TEST_THREADS", "1");
+    cmd.env("RUST_TEST_THREADS", "1");
+    cmd.env("MALLOC_ARENA_MAX", "2");
+}
+
+/// Cap parallel rustc, nextest, and libtest invocations for sandbox children.
+fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
+    cmd.env("CARGO_BUILD_JOBS", "1");
+    cmd.env("NEXTEST_TEST_THREADS", "1");
+    cmd.env("RUST_TEST_THREADS", "1");
+    cmd.env("MALLOC_ARENA_MAX", "2");
+}
+
 /// Build a std [`std::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
+    apply_sandbox_resource_limits(&mut cmd);
     cmd
 }
 
@@ -75,6 +92,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
+    apply_sandbox_resource_limits_tokio(&mut cmd);
     cmd
 }
 
@@ -112,6 +130,16 @@ pub fn note_active_sandbox_session(
         work_dir: work_dir.to_path_buf(),
     });
     Ok(())
+}
+
+/// Records an active mini (`--mini`) session for dead-before-next enforcement.
+pub fn note_active_mini_session(work_dir: &Path) -> Result<(), String> {
+    note_active_sandbox_session(None, malvin_spawn_baseline(), work_dir)
+}
+
+/// Clears the recorded mini session after teardown completes.
+pub fn clear_active_mini_session() {
+    clear_active_sandbox_session();
 }
 
 /// Clears the recorded sandbox session after teardown completes.
@@ -158,31 +186,4 @@ pub(crate) fn sandbox_still_alive(agent_pgid: Option<u32>, session_baseline: &Ha
 #[cfg(not(unix))]
 pub(crate) fn sandbox_still_alive(_: Option<u32>, _: &HashSet<u32>) -> bool {
     false
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn kiss_cov_malvin_sandbox_symbols() {
-        let _ = stringify!(init_malvin_spawn_baseline);
-        let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
-        let _ = stringify!(malvin_spawn_baseline);
-        let _ = stringify!(isolate_child_process_group);
-        let _ = stringify!(isolate_tokio_child_process_group);
-        let _ = stringify!(malvin_session_rss_bytes);
-        let _ = stringify!(sandbox_still_alive);
-        let _ = stringify!(malvin_std_command);
-        let _ = stringify!(malvin_tokio_command);
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(note_active_sandbox_session);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(ActiveSandboxSession);
-        let _ = super::clear_active_sandbox_session_for_test;
-        let _ = super::init_malvin_spawn_baseline;
-        let _ = super::malvin_spawn_baseline;
-        let _ = super::isolate_child_process_group;
-        let _ = super::isolate_tokio_child_process_group;
-        let _ = stringify!(super::malvin_tokio_command("true"));
-        let _ = super::sandbox_still_alive;
-    }
 }

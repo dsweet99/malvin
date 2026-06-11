@@ -1,7 +1,10 @@
 //! Wall-clock and phase-bucketed LLM wait timing for agent runs.
 //! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop` also print [`RUN_TIMING_SUMMARY_PREFIX`].
 
+mod cost;
 mod report;
+#[path = "report_cost_line.rs"]
+mod report_cost_line;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -25,6 +28,8 @@ pub struct RunTiming {
     implement: Duration,
     implement_display_name: &'static str,
     tool_calls: Duration,
+    pub(crate) tx_costs: Vec<f64>,
+    pub(crate) unknown_tx_count: u32,
 }
 
 impl Default for RunTiming {
@@ -37,6 +42,8 @@ impl Default for RunTiming {
             implement: Duration::ZERO,
             implement_display_name: "implement",
             tool_calls: Duration::ZERO,
+            tx_costs: Vec::new(),
+            unknown_tx_count: 0,
         }
     }
 }
@@ -193,6 +200,7 @@ pub fn persist_open_run_timing_json(
     report::write_json_only(&g, run_dir)
 }
 
+pub use cost::record_mini_http_cost;
 pub use report::print_summary_from_run_dir;
 
 #[cfg(test)]

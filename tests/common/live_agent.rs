@@ -36,6 +36,20 @@ fn live_agent_auth_available() -> bool {
     })
 }
 
+/// Run malvin with real `OpenRouter` mini backend (no mock, no test-agent env).
+#[cfg(unix)]
+pub fn command_output_mini_live(cmd: &mut Command) -> std::io::Result<std::process::Output> {
+    cmd.env_remove("MALVIN_TEST_NO_REAL_AGENT");
+    cmd.env_remove("MALVIN_AGENT_ACP_BIN");
+    let (child, stdout_jh, stderr_jh) = spawn_piped_process_group(cmd)?;
+    wait_child_with_timeout(
+        child,
+        stdout_jh,
+        stderr_jh,
+        Instant::now() + LIVE_AGENT_CMD_TIMEOUT,
+    )
+}
+
 /// Run malvin against the real cursor-agent (no mock, no test-agent env).
 #[cfg(unix)]
 pub fn command_output_live_agent(cmd: &mut Command) -> std::io::Result<std::process::Output> {

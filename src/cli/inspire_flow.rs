@@ -130,6 +130,7 @@ async fn run_inspire_coder_prompt(
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: None,
+                ..Default::default()
             },
         )
         .await

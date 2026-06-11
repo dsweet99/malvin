@@ -181,6 +181,7 @@ pub(crate) async fn run_summarize_coder_prompt(
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: Some(SUMMARIZE_PROMPT),
+                ..Default::default()
             },
         )
         .await

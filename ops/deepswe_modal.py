@@ -16,6 +16,9 @@ Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY
 ``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; kiss at
 ``../kiss`` or ``KISS_REPO``; DeepSWE task at ``../deep-swe/tasks/...``.
 
+For headless eval without Cursor credentials, pass ``--mini`` to malvin and set
+``OPENROUTER_API_KEY`` in the sandbox environment (OpenRouter HTTP egress required).
+
 Artifacts land under ``~/.malvin/deepswe-results/<task_id>/modal_<timestamp>/``
 (``metadata.json``, ``reward.txt``). Workspace: ``.../workspace``.
 

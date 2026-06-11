@@ -214,6 +214,8 @@ mod client_impl_helpers;
 mod client_impl_session;
 #[path = "client_impl_prompt_dispatch.rs"]
 mod client_impl_prompt_dispatch;
+#[path = "client_impl_prompt_retry.rs"]
+pub(crate) mod client_impl_prompt_retry;
 #[path = "client_impl_prompt.rs"]
 mod client_impl_prompt;
 #[path = "client_impl_flow.rs"]

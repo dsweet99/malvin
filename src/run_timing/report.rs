@@ -4,6 +4,8 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
+use super::cost::cost_stats;
+use super::report_cost_line::format_cost_stdout_line_from_json;
 use super::{RUN_TIMING_JSON_FILE, RunTiming};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
@@ -27,7 +29,7 @@ pub(super) fn wall_clock_ms_for_json(r: &RunTiming) -> Option<u64> {
 pub(super) fn to_json_value(r: &RunTiming) -> Value {
     let wall_ms = wall_clock_ms_for_json(r);
     let ms = duration_ms_u64;
-    json!({
+    let mut obj = json!({
         "wall_clock_ms": wall_ms,
         "llm_wait_ms": ms(r.llm_wait),
         "agent_retry_backoff_ms": ms(r.agent_retry_backoff),
@@ -38,7 +40,13 @@ pub(super) fn to_json_value(r: &RunTiming) -> Value {
         "phases_ms": {
             "implement": ms(r.implement),
         }
-    })
+    });
+    if let Some(cost) = cost_stats(&r.tx_costs, r.unknown_tx_count) {
+        if let Some(map) = obj.as_object_mut() {
+            map.insert("cost".into(), cost);
+        }
+    }
+    obj
 }
 
 pub(super) fn write_json_only(r: &RunTiming, run_dir: &Path) -> io::Result<()> {
@@ -57,6 +65,9 @@ pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io:
     serde_json::to_writer_pretty(file, &json)?;
 
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(&json));
+    if let Some(cost_line) = format_cost_stdout_line_from_json(&json) {
+        print_stdout_line(MALVIN_WHO, &cost_line);
+    }
     Ok(())
 }
 
@@ -73,6 +84,9 @@ pub fn print_summary_from_run_dir(run_dir: &Path) -> io::Result<()> {
     let file = std::fs::File::open(path)?;
     let json: Value = serde_json::from_reader(file)?;
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(&json));
+    if let Some(cost_line) = format_cost_stdout_line_from_json(&json) {
+        print_stdout_line(MALVIN_WHO, &cost_line);
+    }
     Ok(())
 }
 
@@ -180,4 +194,30 @@ fn write_json_and_print_summary_creates_file() {
     r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(100));
     r.write_json_and_print_summary(tmp.path()).unwrap();
     assert!(tmp.path().join(RUN_TIMING_JSON_FILE).exists());
+}
+
+#[test]
+fn run_timing_json_includes_cost_block_under_mini() {
+    use crate::run_timing::{RunTiming, TimingPhase};
+    use malvin_mini::ResponseUsage;
+
+    let mut r = RunTiming::default();
+    r.record_mini_http_cost(&ResponseUsage {
+        prompt_tokens: None,
+        completion_tokens: None,
+        total_tokens: Some(1),
+        cost: Some(0.01),
+    });
+    r.add_llm_phase(TimingPhase::Implement, Duration::from_millis(1));
+    let json = to_json_value(&r);
+    assert!(json.get("cost").is_some());
+}
+
+#[test]
+fn no_cost_line_when_no_cost_data() {
+    use crate::run_timing::RunTiming;
+
+    let r = RunTiming::default();
+    let json = to_json_value(&r);
+    assert!(format_cost_stdout_line_from_json(&json).is_none());
 }

@@ -88,6 +88,7 @@ pub(crate) async fn run_init_discovery_kpop(
     let max_hypotheses = agent_cfg.max_hypotheses;
     let iterations = gate_kpop_loop_iterations(max_loops);
     let (gates_ok, agent_ran, _timing, _last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+        command: "init",
         shared,
         workflow,
         prepared: &prepared,

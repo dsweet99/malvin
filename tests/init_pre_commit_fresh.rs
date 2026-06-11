@@ -11,7 +11,8 @@ use common::{
 };
 
 use malvin::repo_gates::{
-    DEFAULT_PYTEST_CHECK, DEFAULT_RUST_CLIPPY, DEFAULT_RUST_NEXTEST, DEFAULT_RUST_TEST,
+    DEFAULT_PYTEST_CHECK, DEFAULT_RUST_CLIPPY, DEFAULT_RUST_NEXTEST, DEFAULT_RUST_NEXTEST_PARTITION_1,
+    DEFAULT_RUST_NEXTEST_PARTITION_2, DEFAULT_RUST_TEST,
 };
 
 fn init_combined_output(out: &std::process::Output) -> String {
@@ -46,7 +47,10 @@ fn malvin_init_rust_empty_directory_seeds_rust_quality_gates() {
         "expected clippy in checks; got: {checks:?}"
     );
     let has_test_runner = lines.iter().any(|l| {
-        *l == DEFAULT_RUST_NEXTEST || *l == DEFAULT_RUST_TEST
+        *l == DEFAULT_RUST_NEXTEST
+            || *l == DEFAULT_RUST_TEST
+            || *l == DEFAULT_RUST_NEXTEST_PARTITION_1
+            || *l == DEFAULT_RUST_NEXTEST_PARTITION_2
     });
     assert!(
         has_test_runner,

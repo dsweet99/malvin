@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
 
-use crate::cli::build_agent;
+use crate::agent_backend::{agent_backend_set_run_timing, build_agent_backend};
 use crate::cli::workflow_kpop_shared::{
     gate_kpop_loop_iterations, run_kpop_workspace_gates,
 };
@@ -82,11 +82,13 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
     )
     .map_err(|e| e.to_string())?;
 
-    let mut client = build_agent(
+    let mut client = build_agent_backend(
         params.shared,
         params.workflow,
         params.shared.acp_stdout_markdown_enabled(),
-    );
+        params.command,
+    )
+    .map_err(|e| e.to_string())?;
     wire_gate_kpop_client(&mut client, params, run_timing);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let session_dotfile_backups =
@@ -110,12 +112,12 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
 }
 
 pub(crate) fn wire_gate_kpop_client(
-    client: &mut crate::acp::AgentClient,
+    client: &mut crate::agent_backend::AgentBackend,
     params: &GateKpopLoopParams<'_>,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
 ) {
-    client.set_run_timing(Some(Arc::clone(run_timing)));
-    client.prompts_log_run_dir = Some(params.prepared.artifacts().run_dir.clone());
+    agent_backend_set_run_timing(client, Some(Arc::clone(run_timing)));
+    client.set_prompts_log_run_dir(Some(params.prepared.artifacts().run_dir.clone()));
 }
 
 use crate::artifacts::SessionDotfileBackups;

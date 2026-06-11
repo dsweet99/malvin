@@ -17,6 +17,8 @@ pub struct CoderPromptOptions<'a> {
     pub do_trace_split: Option<(&'a str, &'a str)>,
     /// Override for the stdout `[label...]` bracket line (defaults to `who` if None).
     pub stdout_bracket_label: Option<&'a str>,
+    /// When true, skip client-level prompt retries (gate kpop outer loop owns retries).
+    pub single_attempt: bool,
 }
 
 /// How outgoing `session/prompt` text is mirrored to the trace file and (when tee is on) stdout.

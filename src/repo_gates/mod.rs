@@ -8,6 +8,7 @@ pub(crate) mod discover_init_checks_signals;
 mod discover_init_checks_fixtures;
 pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
+pub(crate) mod sandbox_safe;
 
 #[cfg(test)]
 #[path = "discover_init_checks_tests.rs"]
@@ -33,11 +34,16 @@ pub const KISS_CHECK_COMMAND: &str = "kiss check";
 
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
-pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
+pub const DEFAULT_RUST_CLIPPY: &str =
+    "cargo clippy -j 1 --all-targets --all-features -- -D warnings -W clippy::cargo";
 
 pub const DEFAULT_RUST_TEST: &str = "cargo test";
 
 pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
+
+pub const DEFAULT_RUST_NEXTEST_PARTITION_1: &str = "cargo nextest run --partition hash:1/2";
+
+pub const DEFAULT_RUST_NEXTEST_PARTITION_2: &str = "cargo nextest run --partition hash:2/2";
 
 static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
@@ -64,6 +70,20 @@ pub fn default_rust_test_command(work_dir: &Path) -> &'static str {
 }
 
 #[must_use]
+pub fn rust_test_gate_command_lines(work_dir: &Path) -> Vec<String> {
+    if cargo_nextest_available(work_dir) {
+        vec![
+            DEFAULT_RUST_NEXTEST_PARTITION_1.to_string(),
+            DEFAULT_RUST_NEXTEST_PARTITION_2.to_string(),
+        ]
+    } else {
+        vec![DEFAULT_RUST_TEST.to_string()]
+    }
+}
+
+pub use sandbox_safe::sandbox_safe_gate_commands;
+
+#[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
     work_dir.join(".git").is_dir()
         || crate::malvin_checks_path(work_dir).is_file()
@@ -81,7 +101,7 @@ pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
     }
     if work_dir.join("Cargo.toml").is_file() {
         out.push(DEFAULT_RUST_CLIPPY.to_string());
-        out.push(default_rust_test_command(work_dir).to_string());
+        out.extend(rust_test_gate_command_lines(work_dir));
     }
     out
 }
@@ -128,7 +148,8 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
     ensure_default_malvin_checks_file(work_dir)?;
-    load_malvin_checks(&crate::malvin_checks_path(work_dir))
+    let lines = load_malvin_checks(&crate::malvin_checks_path(work_dir))?;
+    Ok(sandbox_safe_gate_commands(&lines))
 }
 
 /// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
@@ -144,7 +165,7 @@ pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> 
         ));
     }
     let lines = load_malvin_checks(&checks_path)?;
-    Ok(format_quality_gates_markdown(&lines))
+    Ok(format_quality_gates_markdown(&sandbox_safe_gate_commands(&lines)))
 }
 
 /// Materializes default `.malvin/checks` only while building prompt markdown, then restores prior state.

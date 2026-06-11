@@ -30,6 +30,7 @@ pub async fn run_code(
     let max_loops = effective_code_max_loops(code.max_loops);
     let max_hypotheses = code.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+        command: "code",
         shared,
         workflow,
         prepared: &prepared,
@@ -102,6 +103,8 @@ mod tests {
             max_acp_retries: 1,
             doc: false,
             name: None,
+            mini: false,
+            mini_max_bash_turns: 32,
         };
         let workflow = WorkflowCliOptions { force: false };
         let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(

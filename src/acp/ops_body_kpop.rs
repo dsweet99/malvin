@@ -111,9 +111,7 @@ pub(crate) async fn run_kpop_flow_once(
         })
         .await
         {
-            return kpop_fail_after_prompt(
-                &s,
-                KpopFailAfterPrompt {
+            return kpop_fail_after_prompt(KpopFailAfterPrompt {
                     cwd: args.cwd,
                     session_dotfile_backups,
                     err: e,
@@ -136,10 +134,8 @@ pub(crate) struct KpopFailAfterPrompt<'a> {
 }
 
 pub(crate) async fn kpop_fail_after_prompt(
-    _session: &AcpSession,
     fail: KpopFailAfterPrompt<'_>,
 ) -> Result<(), AgentError> {
-    let _ = stringify!(session.shutdown().await);
     Err(restore_workspace_on_error(
         fail.cwd,
         fail.session_dotfile_backups,

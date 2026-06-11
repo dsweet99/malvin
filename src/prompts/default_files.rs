@@ -8,6 +8,7 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
         "delight_constraints.md" => Some(include_str!("../../default_prompts/delight_constraints.md")),
         "explain_constraints.md" => Some(include_str!("../../default_prompts/explain_constraints.md")),
         "revise_constraints.md" => Some(include_str!("../../default_prompts/revise_constraints.md")),
+        "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
     }
 }

@@ -88,6 +88,7 @@ pub async fn run_revise(
     let max_hypotheses = revise.max_hypotheses.max(1);
     let iterations = gate_kpop_loop_iterations(max_loops);
     let (_gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+        command: "revise",
         shared,
         workflow,
         prepared: &prepared.inner,

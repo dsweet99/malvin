@@ -78,6 +78,32 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 
 Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
 
+### `--mini`
+
+Use the in-process mini agent backend (OpenRouter HTTP + bash fence loop) instead of Cursor ACP. Requires `OPENROUTER_API_KEY` and `bash` on `PATH`. Does not spawn `cursor-agent`; suitable for headless eval without Cursor credentials.
+
+When `--mini` is set:
+
+- `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4`.
+- `--no-force` is a no-op (nothing to approve).
+- `--max-acp-retries` applies independently to gate iteration retries, HTTP completion retries, and is documented as agent retries.
+- Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and as a `COST:` line immediately after `TIMING:` on finalize.
+
+Environment variables (mini only):
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `OPENROUTER_API_KEY` | yes | Bearer token |
+| `OPENROUTER_HTTP_REFERER` | no | OpenRouter attribution header |
+| `OPENROUTER_BASE_URL` | no | Override API base (testing) |
+| `OPENROUTER_REQUEST_TIMEOUT` | no | HTTP timeout in seconds (default 120) |
+
+`malvin models` ignores `--mini` and still uses the Cursor CLI.
+
+### `--mini-max-bash-turns <N>` (default: 32)
+
+Maximum HTTP completion rounds inside one `run_coder_prompt` when `--mini`. Each round may execute multiple ` ```bash ` blocks before the next OpenRouter call.
+
 ### `--name <NAME>`
 
 Optional session name for `do`, `plan`, `code`, `tidy`, and bare `malvin REQUEST` (not the hidden `kpop` subcommand). When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
@@ -140,7 +166,9 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for agent subcommands and `models`).
+- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for agent subcommands and `models` when not using `--mini`).
+- **OpenRouter** (when `--mini`): `OPENROUTER_API_KEY` and network access; model slugs from OpenRouter (see `--model` above).
+- **`bash` on `PATH`** (when `--mini`): required on Linux and macOS; Windows native is not supported in v1 (use WSL).
 - **kiss**: required before `code` and `tidy` start; installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.
 

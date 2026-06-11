@@ -90,6 +90,8 @@ pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
         max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
     }
 }
 

@@ -1,11 +1,10 @@
 use std::path::Path;
-use std::time::Instant;
 
 use crate::acp::{
-    backoff_after_agent_failure, outgoing_prompt_trace, teardown_coder_session_after_transport_error,
-    AgentClient, AgentError, CoderSessionPromptDispatch, coder_prompt_exhausted_error,
-    dispatch_coder_session_prompt, record_coder_prompt_llm_timing,
+    outgoing_prompt_trace, AgentClient, AgentError, CoderSessionPromptDispatch,
 };
+
+use super::client_impl_prompt_retry::run_coder_prompt_with_retries;
 
 impl AgentClient {
     /// Run one prompt on the open coder session (bug fix, summary, or learn).
@@ -31,6 +30,7 @@ impl AgentClient {
             llm_phase,
             do_trace_split,
             stdout_bracket_label,
+            single_attempt,
         } = opts;
         let session = self
             .coder_session
@@ -49,7 +49,7 @@ impl AgentClient {
             do_trace_split,
             stdout_bracket_label,
         };
-        run_coder_prompt_with_retries(self, dispatch, llm_phase).await
+        run_coder_prompt_with_retries(self, dispatch, llm_phase, single_attempt).await
     }
 
     /// Shut down the **coder** session. Safe to call when no session is open.
@@ -80,83 +80,15 @@ impl AgentClient {
     }
 }
 
-async fn run_coder_prompt_with_retries(
-    client: &mut AgentClient,
-    dispatch: CoderSessionPromptDispatch<'_>,
-    llm_phase: Option<crate::run_timing::TimingPhase>,
-) -> Result<(), AgentError> {
-    let cwd = client
-        .coder_session_cwd
-        .clone()
-        .ok_or_else(|| AgentError("begin_coder_session was not called".to_string()))?;
-    let mut last_error = String::new();
-    let mut attempts_used = 0_u32;
-    let max_attempts = client.max_acp_retries;
-    for attempt in 1..=max_attempts {
-        attempts_used = attempt;
-        match run_one_coder_prompt_attempt(client, &cwd, &dispatch, llm_phase).await {
-            Ok(()) => return Ok(()),
-            Err(e) => {
-                last_error = e;
-                if backoff_after_agent_failure(
-                    client.timing.as_ref(),
-                    &last_error,
-                    attempt,
-                    max_attempts,
-                )
-                .await?
-                {
-                    break;
-                }
-            }
-        }
-    }
-    Err(coder_prompt_exhausted_error(attempts_used, last_error))
-}
-
-async fn run_one_coder_prompt_attempt(
-    client: &mut AgentClient,
-    cwd: &Path,
-    dispatch: &CoderSessionPromptDispatch<'_>,
-    llm_phase: Option<crate::run_timing::TimingPhase>,
-) -> Result<(), String> {
-    if !client.has_open_coder_session() {
-        client.begin_coder_session(cwd).await.map_err(|e| e.0)?;
-    }
-    let session = client
-        .coder_session
-        .as_ref()
-        .ok_or_else(|| "begin_coder_session was not called".to_string())?
-        .clone();
-    let attempt_dispatch = CoderSessionPromptDispatch {
-        session: &session,
-        full_prompt: dispatch.full_prompt,
-        log_path: dispatch.log_path,
-        who: dispatch.who,
-        do_trace_split: dispatch.do_trace_split,
-        stdout_bracket_label: dispatch.stdout_bracket_label,
-    };
-    let t0 = Instant::now();
-    let prompt_res = dispatch_coder_session_prompt(&attempt_dispatch).await;
-    record_coder_prompt_llm_timing(client.timing.as_ref(), llm_phase, t0.elapsed());
-    match prompt_res {
-        Ok(()) => Ok(()),
-        Err(e) => {
-            teardown_coder_session_after_transport_error(client, &e).await;
-            Err(e)
-        }
-    }
-}
-
 #[cfg(test)]
-mod retry_tests {
-    use super::run_one_coder_prompt_attempt;
+mod tests {
+    use super::AgentClient;
     use crate::acp::test_captive_session::captive_cat_acp_session_for_tests;
-    use crate::acp::{AgentClient, AgentIoOptions, CoderSessionPromptDispatch};
+    use crate::acp::{AgentIoOptions, outgoing_prompt_trace::CoderPromptOptions};
     use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 
     #[tokio::test]
-    async fn run_one_coder_prompt_attempt_invokes_prompt_on_open_session() {
+    async fn run_coder_prompt_rejects_unresolved_braces_before_retry() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
         let mut client = AgentClient::with_max_acp_retries(
@@ -173,44 +105,56 @@ mod retry_tests {
         );
         client.coder_session = Some(captive_cat_acp_session_for_tests(cwd));
         client.coder_session_cwd = Some(cwd.to_path_buf());
-        let session = client.coder_session.as_ref().expect("session").clone();
         let log = tmp.path().join("coder.log");
-        let dispatch = CoderSessionPromptDispatch {
-            session: &session,
-            full_prompt: "ping",
-            log_path: &log,
-            who: "test",
-            do_trace_split: None,
-            stdout_bracket_label: None,
-        };
-        let err = run_one_coder_prompt_attempt(&mut client, cwd, &dispatch, None)
+        let err = client
+            .run_coder_prompt(
+                "hello {{ unresolved",
+                &log,
+                "test",
+                CoderPromptOptions {
+                    llm_phase: None,
+                    do_trace_split: None,
+                    stdout_bracket_label: None,
+                    single_attempt: true,
+                },
+            )
             .await
-            .expect_err("cat harness cannot satisfy ACP prompt RPC");
-        assert!(!err.is_empty());
-    }
-}
-
-#[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_run_coder_prompt_with_retries() {
-        let _ = run_coder_prompt_with_retries;
+            .expect_err("unresolved braces");
+        assert!(err.0.contains("{{"));
     }
 
-    #[test]
-    fn kiss_cov_run_one_coder_prompt_attempt() {
-        let _ = run_one_coder_prompt_attempt;
+    #[tokio::test]
+    async fn end_coder_session_is_noop_without_open_session() {
+        let mut client = AgentClient::with_max_acp_retries(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            DEFAULT_MAX_ACP_RETRIES,
+        );
+        client.end_coder_session().await.expect("noop shutdown");
+        assert!(client.coder_session.is_none());
     }
-}
 
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
     #[test]
-    fn kiss_cov_unit_names() {
-        let _ = run_coder_prompt_with_retries;
+    fn last_coder_prompt_agent_response_without_session_is_none() {
+        let client = AgentClient::with_max_acp_retries(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            DEFAULT_MAX_ACP_RETRIES,
+        );
+        assert!(client.last_coder_prompt_agent_response().is_none());
     }
 }

@@ -91,7 +91,7 @@ fn ensure_default_malvin_checks_file_writes_builtin_lines() {
 }
 
 #[test]
-fn gate_command_lines_for_workspace_run_matches_file_after_ensure() {
+fn builtin_gate_command_lines_uses_partitioned_nextest_when_available() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     fs::create_dir(w.join(".git")).unwrap();
@@ -100,9 +100,14 @@ fn gate_command_lines_for_workspace_run_matches_file_after_ensure() {
         "[package]\nname = 'm'\nversion = '0.1.0'\n",
     )
     .unwrap();
-    let a = gate_command_lines_for_workspace_run(w).unwrap();
-    let b = gate_command_lines(w).unwrap();
-    assert_eq!(a, b);
+    let lines = builtin_gate_command_lines(w);
+    if cargo_nextest_available(w) {
+        assert!(lines.contains(&DEFAULT_RUST_NEXTEST_PARTITION_1.to_string()));
+        assert!(lines.contains(&DEFAULT_RUST_NEXTEST_PARTITION_2.to_string()));
+        assert!(!lines.contains(&DEFAULT_RUST_NEXTEST.to_string()));
+    } else {
+        assert!(lines.contains(&DEFAULT_RUST_TEST.to_string()));
+    }
 }
 
 #[test]
@@ -168,11 +173,6 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
         err.contains("is missing"),
         "unexpected error message: {err}"
     );
-}
-
-#[test]
-fn smoke_cov_repo_gates_units() {
-    let _ = builtin_gate_command_lines;
 }
 
 #[test]

@@ -49,6 +49,7 @@ mod kpop_summarize_kiss_cov_tests;
 #[path = "kpop_flow_run_loop_kiss_cov_tests.rs"]
 mod kpop_flow_run_loop_kiss_cov_tests;
 
+pub use crate::agent_backend::build_agent_backend;
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
     format_workspace_gate_failure, new_agent_client, prepare_kpop_prompt_store,

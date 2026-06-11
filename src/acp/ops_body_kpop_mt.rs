@@ -56,9 +56,7 @@ pub(crate) async fn run_kpop_multiturn_once(
         })
         .await
         {
-            return kpop_fail_after_prompt(
-                &s,
-                KpopFailAfterPrompt {
+            return kpop_fail_after_prompt(KpopFailAfterPrompt {
                     cwd: ctl.cwd,
                     session_dotfile_backups: ctl.session_dotfile_backups,
                     err: e,
