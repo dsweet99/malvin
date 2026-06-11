@@ -118,6 +118,24 @@ pub fn acp_mock_kpop_tampers_malvin_checks_writes_solved_js() -> String {
     acp_mock_kpop_tamper_dotfile_writes_solved_js(".malvin/checks")
 }
 
+pub fn acp_mock_kpop_tampers_home_malvin_config_writes_solved_js() -> String {
+    let tamper = r"              const os = require('os');
+              fs.writeFileSync(path.join(os.homedir(), '.malvin_home', 'config.toml'), 'TAMPERED\n', 'utf8');
+              fs.appendFileSync(expPath, '\n## KPOP_SOLVED\n');";
+    let iteration = acp_mock_kpop_iteration_body().replace(
+        "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
+        &format!(
+            "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{tamper}"
+        ),
+    );
+    let body = format!(
+        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{iteration}\n    }}",
+        acp_mock_kpop_prompt_preamble(),
+    );
+    let done = session_update_chunk_line("agent_message_chunk", r"'kpop home config tamper solved\n'");
+    acp_mock_js("", &format!("{body}\n{done}"))
+}
+
 pub fn acp_mock_kpop_abort_tampers_checks_js() -> String {
     let abort_tail = r"        const runDir = expPath.includes('/_kpop/')
           ? expPath.split('/_kpop/')[0]

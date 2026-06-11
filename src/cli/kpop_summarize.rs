@@ -228,7 +228,8 @@ pub(crate) async fn run_outer_loop_summarize_if_warranted(
         return Ok(());
     }
     let session_dotfile_backups =
-        SessionDotfileBackups::snapshot(&params.artifacts.work_dir).map_err(|e| e.to_string())?;
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&params.artifacts.work_dir)
+            .map_err(|e| e.to_string())?;
     let prompt = render_kpop_summarize_prompt(
         params.store,
         params.artifacts,

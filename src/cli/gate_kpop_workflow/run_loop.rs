@@ -92,7 +92,9 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
     wire_gate_kpop_client(&mut client, params, run_timing);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let session_dotfile_backups =
-        SessionDotfileBackups::snapshot(&params.prepared.artifacts().work_dir)?;
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(
+            &params.prepared.artifacts().work_dir,
+        )?;
     print_gate_kpop_log_line(params.prepared, &exp_log_path);
 
     crate::gate_loop_session::set_active_gate_iteration(Some(iteration));
@@ -158,7 +160,7 @@ pub(crate) async fn run_gate_kpop_loop(
     params: GateKpopLoopParams<'_>,
 ) -> Result<GateKpopLoopOutcome, String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
-    let mut last_backups = SessionDotfileBackups::snapshot(work_dir)?;
+    let mut last_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     if params.behavior.skip_kpop_on_initial_pass
         && !params.behavior.skip_workspace_quality_gates
         && run_kpop_workspace_gates(

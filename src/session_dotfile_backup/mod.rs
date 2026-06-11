@@ -77,6 +77,17 @@ impl SessionDotfileBackups {
         Self::snapshot_with_id(work_dir, alloc::random_backup_id)
     }
 
+    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first.
+    ///
+    /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry; without this,
+    /// a prior restore with [`DotfileBackupState::Missing`] can delete the file and the next
+    /// snapshot records `Missing` again, so every later restore keeps removing it.
+    #[allow(clippy::missing_errors_doc)]
+    pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
+        crate::repo_gates::ensure_default_malvin_config_file(work_dir)?;
+        Self::snapshot(work_dir)
+    }
+
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_with_id(
         work_dir: &Path,

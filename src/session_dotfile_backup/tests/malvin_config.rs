@@ -5,9 +5,21 @@ use std::path::Path;
 use crate::artifacts::{
     MalvinConfigBackup, backup_workspace_malvin_config_if_present,
     backup_workspace_malvin_config_if_present_with_id, restore_workspace_malvin_config_backup,
+    SessionDotfileBackups,
 };
 use crate::test_utils::with_isolated_home;
 use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
+
+#[test]
+fn snapshot_after_ensuring_home_config_records_present_when_file_was_absent() {
+    with_isolated_home(|work| {
+        let cfg = malvin_config_path(work);
+        assert!(!cfg.exists());
+        let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(cfg.is_file());
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Present(_)));
+    });
+}
 
 #[test]
 fn malvin_config_backup_skips_when_home_file_missing() {
