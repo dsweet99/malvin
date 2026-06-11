@@ -24,13 +24,10 @@ pub(crate) mod shutdown_kills_descendants {
         session.shutdown().await.expect("shutdown should complete");
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
-        if process_exists(pid) {
-            let _ = stringify!(std::process::Command::new("kill")
-                .arg("-KILL")
-                .arg(pid.to_string())
-                .status());
-            panic!("shutdown left agent-spawned descendant process {pid} alive");
-        }
+        assert!(
+            !process_exists(pid),
+            "shutdown left agent-spawned descendant process {pid} alive"
+        );
     }
 
     #[tokio::test]

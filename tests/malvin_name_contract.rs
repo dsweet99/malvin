@@ -166,16 +166,7 @@ fn entrypoint_duplicate_name_via_binary() {
 
 #[test]
 fn kiss_cov_malvin_name_contract_symbols() {
-    let _ = stringify!(peer_name_lock_rejects_while_holder_alive);
-    let _ = stringify!(name_lock_released_after_process_exit);
-    let _ = stringify!(dead_holder_name_can_be_reused);
-    let _ = stringify!(abandoned_name_file_reclaimed_without_manual_cleanup);
-    let _ = stringify!(different_names_same_workspace_both_register);
-    let _ = stringify!(same_workspace_still_blocks_second_acp);
-    let _ = stringify!(entrypoint_duplicate_name_via_binary);
     #[cfg(unix)]
     {
-        let _ = stringify!(assert_no_peer_name_lock);
-        let _ = stringify!(acquire_name);
     }
 }

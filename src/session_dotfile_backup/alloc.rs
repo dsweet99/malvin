@@ -86,7 +86,10 @@ mod kiss_cov_auto {
 
     #[test]
     fn kiss_cov_allocate_backup_dir() {
-        assert!(stringify!(allocate_backup_dir).contains("allocate_backup_dir"));
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let labels = DotfileBackupLabels { mkdir: "m", collision: "c", restore: "r" };
+        let mut id = random_backup_id;
+        let _ = allocate_backup_dir(tmp.path(), &mut id, &labels).expect("alloc");
     }
 
     #[test]
@@ -109,7 +112,6 @@ mod kiss_cov_gate_refs{
             restore: "restore",
         };
         let _tmp = tempfile::tempdir().expect("tempdir");
-        let _ = stringify!(allocate_backup_dir);
         let _ = user_home_dir;
         let _ = random_backup_id;
         let _ = remove_if_exists;

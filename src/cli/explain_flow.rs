@@ -88,9 +88,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_explain_gate_helpers() {
-        let _ = stringify!(run_explain);
-        let _ = stringify!(run_startup::prepare_explain_kpop_run);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::EXPLAIN);
     }
 
     #[test]

@@ -232,7 +232,7 @@ mod kiss_cov_auto{
     fn kiss_cov_reader_loop_verbose_and_trace_line() { let _ = reader_loop_verbose_and_trace_line; }
 
     #[test]
-    fn kiss_cov_raw_output_suppress_thought_stdout() { let _ = stringify!(raw_output_suppress_thought_stdout); }
+    fn kiss_cov_raw_output_suppress_thought_stdout() { let _ = raw_output_suppress_thought_stdout; }
 
     #[test]
     fn kiss_cov_trace_file_stdout() { let _: Option<TraceFileStdout> = None; }

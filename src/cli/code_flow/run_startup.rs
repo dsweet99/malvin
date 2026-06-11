@@ -42,7 +42,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_code_kpop_workflow_context() {
-        let _ = stringify!(code_kpop_workflow_context);
     }
 
     #[test]

@@ -79,7 +79,7 @@ fn run_async_cli_runs_immediate_ok_future() {
 #[test]
 fn kiss_cov_entrypoint_dispatch_and_commands() {
     let _ = (dispatch_command, finish_entrypoint);
-    assert!(stringify!(run_async_cli).contains("run_async_cli"));
+
     let _ = crate::cli::entrypoint_commands::run_code_command;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _ = crate::cli::entrypoint_commands::run_plan_command;

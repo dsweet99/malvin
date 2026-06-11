@@ -15,6 +15,4 @@ fn kiss_cov_kpop_flow_run_loop_test_helpers() {
     let _ = super::kpop_flow::kpop_flow_run_loop_tests::test_kpop_args;
     let _ = super::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
     let _ = super::kpop_flow::kpop_flow_run_loop_tests::write_mock_agent;
-    let _ = stringify!(run_kpop_agent_loops_propagates_exp_log_setup_error);
-    let _ = stringify!(run_kpop_agent_loops_executes_mock_agent);
 }

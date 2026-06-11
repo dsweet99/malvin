@@ -107,5 +107,4 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
 
 #[test]
 fn kiss_cov_wires_tests_gates_unix_scan() {
-    let _ = stringify!(test_scan_for_extension_handles_symlink_cycles);
 }

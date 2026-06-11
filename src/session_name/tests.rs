@@ -240,8 +240,4 @@ fn auto_name_fails_after_sixteen_live_collisions() {
 
 #[test]
 fn kiss_cov_session_name_symbols() {
-    let _ = stringify!(acquire_name);
-    let _ = stringify!(assert_no_peer_name_lock);
-    let _ = stringify!(generate_auto_name);
-    let _ = stringify!(release_name);
 }

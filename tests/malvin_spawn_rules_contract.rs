@@ -131,18 +131,7 @@ fn malvin_std_command_spawns_in_isolated_process_group() {
 
 #[test]
 fn kiss_cov_malvin_spawn_rules_contract_symbols() {
-    let _ = stringify!(dead_before_next_rejects_live_prior_sandbox);
-    let _ = stringify!(dead_before_next_allows_after_prior_sandbox_cleared);
-    let _ = stringify!(concurrent_sessions_allowed_with_live_peer_in_workspace);
-    let _ = stringify!(session_lifecycle_does_not_touch_acp_spawn_lock);
-    let _ = stringify!(malvin_tokio_command_spawns_in_isolated_process_group);
-    let _ = stringify!(malvin_std_command_spawns_in_isolated_process_group);
     #[cfg(unix)]
     {
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(note_active_sandbox_session);
-        let _ = stringify!(malvin_std_command);
-        let _ = stringify!(malvin_tokio_command);
     }
 }

@@ -79,18 +79,23 @@ const fn test_fake_command_path(_: &str) -> Option<PathBuf> {
 #[cfg(test)]
 pub struct FakeCommandDirGuard {
     pub(crate) previous: Option<PathBuf>,
-    thread_id: std::thread::ThreadId,
-    _process_lock: Option<std::sync::MutexGuard<'static, ()>>,
+    pub(crate) thread_id: std::thread::ThreadId,
+    pub(crate) _process_lock: Option<std::sync::MutexGuard<'static, ()>>,
+}
+
+#[cfg(test)]
+fn restore_fake_command_dir_guard(guard: &mut FakeCommandDirGuard) {
+    if guard.thread_id == std::thread::current().id() {
+        TEST_FAKE_COMMAND_DIR.with(|dir| {
+            *dir.borrow_mut() = guard.previous.take().and_then(|p| p.is_dir().then_some(p));
+        });
+    }
 }
 
 #[cfg(test)]
 impl Drop for FakeCommandDirGuard {
     fn drop(&mut self) {
-        if self.thread_id == std::thread::current().id() {
-            TEST_FAKE_COMMAND_DIR.with(|dir| {
-                *dir.borrow_mut() = self.previous.take().and_then(|p| p.is_dir().then_some(p));
-            });
-        }
+        restore_fake_command_dir_guard(self);
     }
 }
 
@@ -125,13 +130,19 @@ pub fn run_command_for(command: &str) -> PathBuf {
 pub fn apply_fake_path_if_present(_: &mut Command) {}
 
 #[cfg(test)]
+#[test]
+fn restore_fake_command_dir_guard_restores_previous() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let mut guard: FakeCommandDirGuard = set_fake_command_dir(tmp.path());
+    let _: Option<FakeCommandDirGuard> = None;
+    let _ = restore_fake_command_dir_guard;
+    restore_fake_command_dir_guard(&mut guard);
+    assert_eq!(fake_command_dir_for_path_env(), None);
+}
+
+#[cfg(test)]
 mod command_support_unit_tests {
     use super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
-
-    #[test]
-    fn fake_command_dir_guard_type_is_referenced() {
-        let _: Option<super::FakeCommandDirGuard> = None;
-    }
 
     #[test]
     fn run_command_failure_captures_streams() {

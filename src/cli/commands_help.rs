@@ -130,11 +130,5 @@ mod tests {
 
     #[test]
     fn kiss_cov_commands_help_symbols() {
-        let _ = stringify!(visible_subcommands);
-        let _ = stringify!(format_command_lines);
-        let _ = stringify!(commands_only_help_lines);
-        let _ = stringify!(render_commands_only_help);
-        let _ = stringify!(write_commands_only_help);
-        let _ = stringify!(print_commands_only_help);
     }
 }

@@ -139,7 +139,6 @@ mod kiss_cov_gate_refs{
     #[test]
     fn kiss_cov_unit_names() {
         let _ = malvin_sibling_outside_agent_pg_killed_on_teardown;
-        let _ = stringify!(crate::acp::unix_process_group_teardown::unix_process_group_teardown_escalation_tests::teardown_cooperative_sigterm_exits_before_sigkill);
         #[cfg(target_os = "linux")]
         let _ = baseline_amnestied_agent_acp_orphan_killed_on_teardown;
         let _ = crate::acp::hostile_orphan_test_util::spawn_agent_pg_and_malvin_sibling;

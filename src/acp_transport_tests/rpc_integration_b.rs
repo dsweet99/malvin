@@ -35,7 +35,6 @@ async fn test_rpc_request_does_not_leak_pending_after_write_failure() {
         io.pending.lock().await.keys().copied().collect::<Vec<_>>()
     );
 
-    let _ = stringify!(drain.await);
 }
 
 #[tokio::test]

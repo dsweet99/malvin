@@ -57,17 +57,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_tidy_kpop_helpers() {
-        let _ = stringify!(run_loop::run_tidy);
-        let _ = stringify!(run_startup::tidy_kpop_workflow_context);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
-        let _ = stringify!(post_gate_kpop_gates);
-        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
         let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY);
     }
 
     #[test]

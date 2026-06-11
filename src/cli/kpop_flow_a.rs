@@ -176,7 +176,6 @@ mod kiss_cov_auto{
 
     #[test]
     fn kiss_cov_ensure_kpop_exp_log_file() {
-        let _ = stringify!(crate::artifacts::create::ensure_kpop_exp_log_file);
     }
 
     #[test]
@@ -224,6 +223,5 @@ mod kiss_cov_gate_refs{
     #[test]
     fn kiss_cov_unit_names() {
         let _ = kpop_boot_store_client_prepared;
-        let _ = stringify!(kpop_prompt_store);
     }
 }

@@ -151,7 +151,6 @@ pub(crate) fn requires_cursor_login_auth(
 fn acp_rpc_timeout_and_login_auth_smoke() {
     assert!(acp_rpc_timeout().as_secs() > 0);
     assert!(!requires_cursor_login_auth(Some("key"), Some("token")));
-    let _ = stringify!(requires_cursor_login_auth(None, None));
 }
 
 #[path = "wrap_reader_a.rs"]

@@ -140,6 +140,44 @@ mod begin_coder_session_guard_tests {
             .expect("shutdown inert test session");
     }
 
+    #[tokio::test]
+    async fn run_kpop_flow_fails_when_begin_session_errors() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log = tmp.path().join("kpop.log");
+        let prompts = ["probe"];
+        let flow = crate::acp::KpopFlowOnceArgs {
+            cwd: tmp.path(),
+            kpop_prompts: &prompts,
+            kpop_log: &log,
+        };
+        let backups = crate::artifacts::SessionDotfileBackups::from_parts(
+            crate::artifacts::SessionDotfileParts {
+                kissconfig: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+                malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
+            },
+        );
+        let mut client = AgentClient::new(
+            "/nonexistent/agent/bin".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+        );
+        client.max_acp_retries = 1;
+        let err = AgentClient::run_kpop_flow(&mut client, &flow, &backups)
+            .await
+            .expect_err("missing agent should fail");
+        assert!(err.0.contains("kpop flow"));
+    }
+
     #[test]
     fn has_open_coder_session_false_until_begin() {
         let client = AgentClient::new(

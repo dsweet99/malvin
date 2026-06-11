@@ -211,9 +211,4 @@ fn prepare_plan_file_for_run_truncates_crlf_machine_block() {
 
 #[test]
 fn kiss_cov_plan_splice_symbols() {
-    let _ = stringify!(find_machine_block_start);
-    let _ = stringify!(splice_plan_file);
-    let _ = stringify!(extract_fenced_markdown_block);
-    let _ = stringify!(detect_rerun_user_span_end);
-    let _ = stringify!(prepare_plan_file_for_prompt_1a);
 }

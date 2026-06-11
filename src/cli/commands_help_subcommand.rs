@@ -138,17 +138,5 @@ mod tests {
 
     #[test]
     fn kiss_cov_commands_help_subcommand_symbols() {
-        let _ = stringify!(subcommand_by_name);
-        let _ = stringify!(positional_value_name);
-        let _ = stringify!(positional_token);
-        let _ = stringify!(format_positional_usage_tokens);
-        let _ = stringify!(push_about_block);
-        let _ = stringify!(subcommand_usage_line);
-        let _ = stringify!(argument_help_line);
-        let _ = stringify!(append_arguments_block);
-        let _ = stringify!(append_short_help_epilog);
-        let _ = stringify!(subcommand_short_help_lines);
-        let _ = stringify!(render_subcommand_short_help);
-        let _ = stringify!(print_subcommand_short_help);
     }
 }

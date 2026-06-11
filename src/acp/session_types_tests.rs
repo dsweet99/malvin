@@ -2,7 +2,6 @@
 async fn response_tx_oneshot_channel_constructible() {
     let (tx, _rx): (crate::acp::ResponseTx, _) = tokio::sync::oneshot::channel();
     tx.send(Ok(serde_json::json!({}))).expect("send");
-    let _ = stringify!(rx.await.expect("recv"));
 }
 
 

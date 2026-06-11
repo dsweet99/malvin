@@ -31,7 +31,6 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from kiss_coverage_common import register_kiss_static_symbols
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from modal_sandbox_lifecycle import release_modal_sandbox
 
@@ -292,28 +291,6 @@ def run_unit_tests() -> None:
     _test_empty_argv_help()
     _test_click_cli()
 
-
-def test_kiss_static_coverage() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        build_ignore_patterns,
-        parse_malvin_argv,
-        relay_stream,
-        workspace_image,
-        present_cursor_keys,
-        cursor_secrets,
-        finish_process,
-        stream_process_output,
-        run_local_malvin_usage,
-        render_empty_argv_help,
-        print_empty_argv_help,
-        sandbox_app,
-        run_malvin_remote,
-        cli,
-        main,
-        run_unit_tests,
-    )
-    assert len(symbols) == 16
 
 
 def _test_sandbox_app() -> None:

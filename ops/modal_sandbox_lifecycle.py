@@ -50,9 +50,3 @@ def _test_release_modal_sandbox() -> None:
     release_modal_sandbox(None)
 
 
-def test_kiss_static_coverage() -> None:
-    """Register production symbols for kiss static test coverage."""
-    from kiss_coverage_common import register_kiss_static_symbols
-
-    register_kiss_static_symbols(release_modal_sandbox)
-

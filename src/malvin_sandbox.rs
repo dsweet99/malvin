@@ -28,11 +28,9 @@ pub fn init_malvin_spawn_baseline() {
         if !crate::acp::test_no_real_agent_enabled() {
             crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
         }
-        let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(crate::acp::snapshot_pids));
     }
     #[cfg(not(unix))]
     {
-        let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(HashSet::new));
     }
 }
 
@@ -164,26 +162,12 @@ pub(crate) fn sandbox_still_alive(_: Option<u32>, _: &HashSet<u32>) -> bool {
 mod tests {
     #[test]
     fn kiss_cov_malvin_sandbox_symbols() {
-        let _ = stringify!(init_malvin_spawn_baseline);
         let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
-        let _ = stringify!(malvin_spawn_baseline);
-        let _ = stringify!(isolate_child_process_group);
-        let _ = stringify!(isolate_tokio_child_process_group);
-        let _ = stringify!(malvin_session_rss_bytes);
-        let _ = stringify!(sandbox_still_alive);
-        let _ = stringify!(malvin_std_command);
-        let _ = stringify!(malvin_tokio_command);
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(note_active_sandbox_session);
-        let _ = stringify!(assert_no_peer_acp_spawn_lock);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(ActiveSandboxSession);
         let _ = super::clear_active_sandbox_session_for_test;
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
         let _ = super::isolate_tokio_child_process_group;
-        let _ = stringify!(super::malvin_tokio_command("true"));
         let _ = super::sandbox_still_alive;
     }
 }

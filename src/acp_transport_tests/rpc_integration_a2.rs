@@ -78,7 +78,6 @@ async fn test_rpc_cancel_when_pending_sender_dropped() {
     pending.lock().await.clear();
 
     h.shutdown().await;
-    let _ = stringify!(send.await);
 }
 
 

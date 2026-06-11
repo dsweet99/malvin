@@ -34,8 +34,6 @@ fn append_agent_text_drain_respects_utf8_char_boundary() {
 
 #[test]
 fn kiss_cov_prompt_round_health_internal_chunk_paths() {
-    let _ = stringify!(record_agent_chunk);
-    let _ = stringify!(append_agent_text_for_upgrade_plan);
 }
 
 #[test]

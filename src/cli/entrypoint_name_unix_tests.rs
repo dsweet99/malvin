@@ -77,11 +77,7 @@ fn duplicate_name_error_on_stderr_with_background() {
 
 #[test]
 fn kiss_cov_entrypoint_name_unix_symbols() {
-    let _ = stringify!(Commands);
     #[cfg(unix)]
     {
-        let _ = stringify!(bare_kpop_duplicate_name_exits_failure);
-        let _ = stringify!(duplicate_name_exits_failure);
-        let _ = stringify!(duplicate_name_error_on_stderr_with_background);
     }
 }

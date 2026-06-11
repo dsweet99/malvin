@@ -214,7 +214,6 @@ async fn h22_styled_tool_summary_trace_tee_dims_payload() {
 
 #[test]
 fn h22_tee_writer_opens() {
-    let _ = stringify!(h22_tee_writer(std::path::PathBuf::new()));
 }
 
 #[test]

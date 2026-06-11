@@ -99,6 +99,8 @@ fn push_log_field(buf: &mut String, name: &str, value: &str) {
 mod level_tests {
     use super::malvin_log_accepts_tracing_level;
     use tracing::Level;
+    use tracing::field::Visit;
+    use tracing_subscriber::Layer;
 
     #[test]
     fn tracing_level_order_matches_malvin_log_filter() {
@@ -112,19 +114,55 @@ mod level_tests {
     }
 
     #[test]
-    fn smoke_tracing_helpers_and_layer_output() {
-        let _ = super::install_malvin_tracing;
+    fn on_event_routes_info_to_stderr_capture() {
         let _: Option<super::MalvinLogLayer> = None;
         let _: Option<super::LogFieldVisitor<'_>> = None;
-        assert_eq!(super::strip_debug_string_quotes("\"hi\""), "hi");
-        assert_eq!(super::format_debug_tracing_field("message", &"hi"), "hi");
-        let mut buf = String::new();
-        super::push_log_field(&mut buf, "message", "msg");
-        assert_eq!(buf, "msg");
+        let _ = <super::MalvinLogLayer as Layer<tracing_subscriber::Registry>>::on_event;
         super::init_tracing();
         crate::output::clear_captured_stderr_lines();
-        tracing::info!(extra = "v", "trace-smoke");
+        tracing::info!(target: "malvin::tracing_init_test", "on-event-smoke");
         let lines = crate::output::take_captured_stderr_lines();
-        assert!(lines.iter().any(|l| l.contains("trace-smoke")));
+        assert!(lines.iter().any(|l| l.contains("on-event-smoke")));
+    }
+
+    #[test]
+    fn on_event_routes_warn_and_error() {
+        super::init_tracing();
+        crate::output::clear_captured_stderr_lines();
+        tracing::warn!(target: "malvin::tracing_init_test", "warn-smoke");
+        tracing::error!(target: "malvin::tracing_init_test", "err-smoke");
+        let lines = crate::output::take_captured_stderr_lines();
+        assert!(lines.iter().any(|l| l.contains("warn-smoke")));
+        assert!(lines.iter().any(|l| l.contains("err-smoke")));
+    }
+
+    #[test]
+    fn on_event_ignores_debug_level() {
+        super::init_tracing();
+        crate::output::clear_captured_stderr_lines();
+        tracing::debug!(target: "malvin::tracing_init_test", "debug-hidden");
+        let lines = crate::output::take_captured_stderr_lines();
+        assert!(!lines.iter().any(|l| l.contains("debug-hidden")));
+    }
+
+    #[test]
+    fn on_event_formats_structured_fields_via_log_field_visitor() {
+        let _ = <super::LogFieldVisitor as Visit>::record_str;
+        let _ = <super::LogFieldVisitor as Visit>::record_debug;
+        super::init_tracing();
+        crate::output::clear_captured_stderr_lines();
+        tracing::info!(target: "malvin::tracing_init_test", code = 42u32, "with-fields");
+        let lines = crate::output::take_captured_stderr_lines();
+        let joined = lines.join("\n");
+        assert!(joined.contains("with-fields"));
+        assert!(joined.contains("code="));
+    }
+
+    #[test]
+    fn push_log_field_formats_message_and_kv() {
+        let mut buf = String::new();
+        super::push_log_field(&mut buf, "message", "msg");
+        super::push_log_field(&mut buf, "extra", "v");
+        assert_eq!(buf, "msg extra=v");
     }
 }

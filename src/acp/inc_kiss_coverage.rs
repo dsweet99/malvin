@@ -6,7 +6,6 @@ fn kiss_cov_reader_stdout_body_a_inc() {
     let _: Option<IncomingLineDispatch<'_>> = None;
     let _: Option<ReaderLoopInput> = None;
     let _ = handle_incoming_line;
-    let _ = stringify!(reply_session_request_permission);
 }
 
 #[test]
@@ -31,8 +30,6 @@ fn kiss_cov_session_channels_inc() {
     let _ = random_agent_name;
     let _ = session_channel_sync;
     let _ = trace_jsonl_for_args;
-    let _ = stringify!(stdin_from_sleep_holder);
-    let _ = stringify!(session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set);
 }
 
 #[test]

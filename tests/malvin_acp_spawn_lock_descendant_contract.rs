@@ -58,5 +58,4 @@ fn peer_acp_spawn_lock_allows_descendant_process() {
 
 #[test]
 fn kiss_cov_malvin_acp_spawn_lock_descendant_contract_symbols() {
-    let _ = stringify!(peer_acp_spawn_lock_allows_descendant_process);
 }

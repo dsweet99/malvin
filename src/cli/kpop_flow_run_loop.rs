@@ -161,8 +161,6 @@ mod unit_tests {
         let _ = std::any::type_name::<RunKpopAgentLoopsParams>();
         let _ = run_kpop_agent_loops;
         let _ = clear_legacy_gate_exp_log;
-        let _ = stringify!(snapshot_kpop_loop_dotfiles_and_exp_log);
-        let _ = stringify!(kpop_iteration_declares_solved);
     }
 
     #[test]

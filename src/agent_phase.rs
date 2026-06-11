@@ -221,7 +221,6 @@ mod tests {
         let _ = super::heartbeat_label;
         let _ = super::active_tool_phase;
         let _ = super::phase_if;
-        let _ = stringify!(super::with_state);
         let _ = super::PhaseState::fresh;
     }
 

@@ -238,11 +238,9 @@ mod kiss_cov_auto{
 
     #[test]
     fn kiss_cov_emit_operational_upgrade_plan_stop() {
-        let _ = stringify!(emit_operational_upgrade_plan_stop);
     }
 
     #[test]
     fn kiss_cov_iterable_closed_stream_message() {
-        let _ = stringify!(iterable_closed_stream_message);
     }
 }

@@ -39,7 +39,6 @@ from unittest.mock import patch
 
 import click
 
-from kiss_coverage_common import register_kiss_static_symbols
 from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
 try:
@@ -1744,91 +1743,8 @@ def run_self_tests() -> None:
 
 
 
-def test_kiss_static_coverage_1() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        malvin_repo_root,
-        kiss_repo_root,
-        validate_toolchain_repos,
-        default_deepswe_tasks_root,
-        default_deepswe_results_dir,
-        resolve_local_task_dir,
-        read_task_language,
-        list_deepswe_tasks,
-        list_deepswe_tasks_with_language,
-        TaskSpec,
-        parse_task_dir,
-        timestamp_dir,
-        run_cmd,
-        git_run,
-        materialize_workspace,
-        reset_workspace,
-        canonical_tool,
-        parse_yaml_scalar,
-    )
-    assert len(symbols) == 18
 
 
-def test_kiss_static_coverage_2() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        precommit_hook_entries,
-        next_makefile_recipe,
-        makefile_gate_targets,
-        gate_tool_signals,
-        dedupe_check_lines,
-        supplement_makefile_signals,
-        visit_source_files,
-        python_ruff_and_pytest_flags,
-        cargo_nextest_available,
-        default_rust_test_command,
-        builtin_gate_command_lines,
-        existing_malvin_checks_lines,
-        ensure_kiss_check_first,
-        discover_deepswe_check_lines,
-        discover_deepswe_checks,
-        write_plan_and_checks,
-        apply_patch,
-        resolve_docker_image,
-    )
-    assert len(symbols) == 18
-
-
-def test_kiss_static_coverage_3() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        local_agent_image_tag,
-        _toolchain_copy_ignore,
-        _copy_toolchain_tree,
-        build_local_agent_image,
-        cursor_env_docker_args,
-        docker_local_eval_cmd,
-        run_local_eval_in_docker,
-        grade_workspace_native,
-        grade_workspace,
-        run_malvin,
-        find_latest_malvin_log,
-        write_metadata,
-        run_modal_solve,
-        run_task,
-        _task_kernel_options,
-        _local_solve_options,
-        cli,
-        run_task_cli,
-    )
-    assert len(symbols) == 18
-
-
-def test_kiss_static_coverage_4() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        tasks_cmd,
-        self_test_cmd,
-        solve,
-        docker_daemon_available,
-        run_self_tests,
-    )
-    assert len(symbols) == 5
 
 if __name__ == "__main__":
     cli()

@@ -135,11 +135,6 @@ fn unit_helpers_join_request_bare_loop() {
 
 #[test]
 fn kiss_cov_bare_invoke_symbols() {
-    let _ = stringify!(resolve_bare_command);
-    let _ = stringify!(resolve_bare_kpop);
-    let _ = stringify!(require_bare_request);
-    let _ = stringify!(BareLoopOpts);
-    let _ = stringify!(bare_loop_opts);
     let _ = parse_and_resolve;
     let _ = parse_resolve_err;
 }

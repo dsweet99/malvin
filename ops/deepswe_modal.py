@@ -75,7 +75,6 @@ from deepswe_run import (
     timestamp_dir,
     write_plan_and_checks,
 )
-from kiss_coverage_common import register_kiss_static_symbols
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
@@ -2544,97 +2543,8 @@ def run_unit_tests() -> None:
 
 
 
-def test_kiss_static_coverage_1() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        cursor_api_allowlist_cache_path,
-        read_cursor_api_allowlist_cache,
-        write_cursor_api_allowlist_cache,
-        critical_cursor_hosts_failed,
-        sandbox_app,
-        malvin_repo_root,
-        kiss_repo_root,
-        validate_toolchain_repos,
-        malvin_upload_ignore,
-        kiss_upload_ignore,
-        resolve_cursor_api_cidrs_from_hosts,
-        resolve_cursor_api_cidrs,
-        cidr_probe_image,
-        agent_peer_probe_image,
-        _probe_sandbox_timeout,
-        _is_transient_modal_probe_error,
-        _run_modal_cidr_probe_script_once,
-        _run_modal_cidr_probe_script,
-    )
-    assert len(symbols) == 18
 
 
-def test_kiss_static_coverage_2() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        resolve_cursor_api_cidrs_in_modal_sandbox,
-        resolve_cursor_api_cidrs_under_allowlist,
-        resolve_cursor_api_cidrs_under_allowlist_peers,
-        validate_cursor_https_under_allowlist,
-        resolve_cursor_api_cidrs_from_agent_peers,
-        resolve_agent_session_peers_under_allowlist,
-        union_ipv4_cidrs,
-        compress_ipv4_cidrs,
-        allowlist_near_modal_cap,
-        host_cidrs_not_covered_by_allowlist,
-        refresh_cached_allowlist,
-        pin_cursor_api_hosts_in_sandbox,
-        _merge_allowlist_agent_peers,
-        resolve_agent_sandbox_cidrs,
-        agent_sandbox_network_kwargs,
-        modal_cidr_allowlist,
-        sandbox_network_kwargs,
-        agent_sandbox_resource_kwargs,
-    )
-    assert len(symbols) == 18
-
-
-def test_kiss_static_coverage_3() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        grade_sandbox_resource_kwargs,
-        relay_stream,
-        stream_process_output,
-        harbor_image,
-        mount_task_tree,
-        mount_eval_context,
-        mount_local_toolchain,
-        read_remote_file,
-        read_remote_bytes,
-        _extract_tar_over_workspace,
-        harvest_sandbox_workspace,
-        harvest_sandbox_logs,
-        parse_deepswe_run_result,
-        run_deepswe_run_in_sandbox,
-        offline_check_tool_install_commands,
-        offline_agent_checks,
-        harbor_agent_image,
-        cursor_secrets,
-    )
-    assert len(symbols) == 18
-
-
-def test_kiss_static_coverage_4() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = register_kiss_static_symbols(
-        write_metadata,
-        run_modal_eval,
-        main,
-        entrypoint,
-        _RecordingImage,
-        _RecordingImage.__init__,
-        _RecordingImage.add_local_dir,
-        _RecordingImage.add_local_file,
-        _RecordingImage.run_commands,
-        _RecordingImage.env,
-        run_unit_tests,
-    )
-    assert len(symbols) == 11
 
 
 if __name__ == "__main__":

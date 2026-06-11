@@ -42,7 +42,6 @@ pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir:
     }
     #[cfg(not(unix))]
     {
-        let _ = stringify!((session, work_dir));
     }
 }
 
@@ -234,7 +233,6 @@ mod policy_tests {
         assert!(gate_iteration_oom_killed(&artifacts, 1));
         let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
         assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
-        let _ = stringify!(SandboxOomKillRecord::from_facts);
     }
 }
 

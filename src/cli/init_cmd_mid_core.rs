@@ -179,9 +179,7 @@ mod kiss_cov_gate_refs{
     #[test]
     fn kiss_cov_unit_names() {
         let _ = bootstrap_repo_tooling;
-        let _ = stringify!(create_initial_commit);
         let _ = repo_already_has_commits;
         let _ = create_initial_commit;
-        let _ = stringify!(write_init_templates);
     }
 }

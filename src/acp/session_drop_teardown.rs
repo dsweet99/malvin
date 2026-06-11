@@ -27,11 +27,6 @@ fn take_child_without_tokio_drop(inner: &AcpSessionInner) {
     {
         let mut slot = inner.child.blocking_lock();
         if let Some(ch) = slot.take() {
-            if let Some(_pid) = ch.id() {
-                let _ = stringify!(std::process::Command::new("kill")
-                    .args(["-KILL", &pid.to_string()])
-                    .status());
-            }
             std::mem::forget(ch);
         }
     }
@@ -126,15 +121,8 @@ mod unix_regression {
 mod tests {
     #[test]
     fn kiss_cov_session_drop_teardown_symbols() {
-        let _ = stringify!(acp_session_drop_if_last);
         #[cfg(unix)]
         {
-            let _ = stringify!(acp_session_drop_teardown);
-            let _ = stringify!(take_child_without_tokio_drop);
-            let _ = stringify!(terminate_agent_process_group_blocking);
-            let _ = stringify!(unix_regression::drop_without_shutdown_kills_sandbox_child);
-            let _ = stringify!(unix_regression::take_child_without_runtime_empties_child_slot);
-            let _ = stringify!(unix_regression::terminate_agent_process_group_blocking_kills_sleep_child);
         }
     }
 }

@@ -25,7 +25,6 @@ pub(crate) struct GateKpopIterationParams<'a> {
 mod tests {
     #[test]
     fn gate_kpop_iteration_params_is_covered() {
-        let _ = stringify!(GateKpopIterationParams);
     }
 }
 

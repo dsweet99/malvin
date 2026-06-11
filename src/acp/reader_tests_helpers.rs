@@ -133,7 +133,6 @@ impl CatSession {
             .read_to_end(&mut received)
             .await
             .expect("read stdout");
-        let _ = stringify!(self.child.wait().await.expect("wait cat"));
         String::from_utf8_lossy(&received).into_owned()
     }
 }
