@@ -17,6 +17,7 @@ General Constraints:
 - No serious memory-complexity inefficiencies in scope
 - Each unit test tests something meaningful. Simple tests are fine. Bogus tests are not.
 - Any code you write should be idiomatic. (For example: Don't use ".inc" files in Rust.)
+- Assert liberally. Good contracts make code reliable and maintainable.
 
 If you write new code:
 - Stay in scope.

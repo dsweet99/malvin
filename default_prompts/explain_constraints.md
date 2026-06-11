@@ -2,6 +2,8 @@
 - Write LaTeX source to `{{ explain_tex_path }}` and compile it to `{{ explain_pdf_path }}`.
 - Use complete sentences.
 - Keep it short: 1–2 pages.
+- Include a tl;dr at the top with 2-4 bullets, each a short phrase or sentence of up to 7 words.
+- After the tl;dr, write a brief summary.
 - Assume the reader has not and will not read the underlying code.
 - Speculate internally about the reader's potential state of mind while reading, but do not write about it. Do not tell the reader they will "often confuse this or that" or that something is "obvious". Assume the reader is intelligent and interested in what you have to tell them.
 - You may use brief algobox/pseudocode.

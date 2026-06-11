@@ -24,13 +24,13 @@ fn with_env_set(key: &str, value: &str, f: impl FnOnce()) {
 }
 
 #[test]
-fn sandbox_commands_force_cargo_build_jobs_to_one() {
+fn sandbox_commands_do_not_force_cargo_build_jobs() {
     with_env_set("CARGO_BUILD_JOBS", "8", || {
         let std_cmd = crate::malvin_sandbox::malvin_std_command("true");
         let jobs = std_cmd
             .get_envs()
             .find_map(|(k, v)| (k == "CARGO_BUILD_JOBS").then_some(v));
-        assert_eq!(jobs, Some(Some(OsStr::new("1"))));
+        assert!(jobs.is_none());
     });
 }
 
@@ -46,13 +46,13 @@ fn sandbox_commands_force_nextest_test_threads_to_one() {
 }
 
 #[test]
-fn sandbox_commands_force_rust_test_threads_to_one() {
+fn sandbox_commands_do_not_force_rust_test_threads() {
     with_env_set("RUST_TEST_THREADS", "8", || {
         let std_cmd = crate::malvin_sandbox::malvin_std_command("true");
         let threads = std_cmd
             .get_envs()
             .find_map(|(k, v)| (k == "RUST_TEST_THREADS").then_some(v));
-        assert_eq!(threads, Some(Some(OsStr::new("1"))));
+        assert!(threads.is_none());
     });
 }
 

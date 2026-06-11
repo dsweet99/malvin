@@ -5,7 +5,7 @@ const UNPARTITIONED_NEXTEST_RUN: &str = "cargo nextest run";
 /// Applied at gate-run time so stale `.malvin/checks` content (e.g. monolithic
 /// `cargo nextest run`) cannot OOM the sandbox even when session restore reverts
 /// agent edits to that file. Clippy parallelism is not rewritten here; the sandbox
-/// sets `CARGO_BUILD_JOBS` on child processes instead.
+/// nextest partitioning and the sandbox RSS limit instead.
 #[must_use]
 pub fn sandbox_safe_gate_commands(lines: &[String]) -> Vec<String> {
     let mut out = Vec::new();

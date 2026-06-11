@@ -169,6 +169,7 @@ impl MiniAgentClient {
         for attempt in 1..=max_attempts {
             attempts_used = attempt;
             let session = self.session.as_mut().expect("session checked above");
+            let message_checkpoint = session.messages.len();
             match run_inner_loop(LoopDriverRun {
                 llm: &self.llm,
                 session,
@@ -187,6 +188,7 @@ impl MiniAgentClient {
                 }
                 Err(e) => {
                     last_error = e.0;
+                    session.messages.truncate(message_checkpoint);
                     if opts.single_attempt {
                         return Err(AgentError(last_error));
                     }
