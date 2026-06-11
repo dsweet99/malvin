@@ -13,7 +13,7 @@ use crate::run_timing::TimingPhase;
 use super::plan_flow_prompt::{render_plan_1a, render_plan_1b, render_plan_2, render_plan_3};
 
 pub(super) struct PlanRunPrep {
-    pub(super) client: crate::acp::AgentClient,
+    pub(super) client: crate::agent_backend::AgentBackend,
     pub(super) artifacts: RunArtifacts,
     pub(super) source_plan_path: std::path::PathBuf,
     pub(super) store: PromptStore,
@@ -22,24 +22,26 @@ pub(super) struct PlanRunPrep {
 }
 
 pub(super) async fn run_plan_acp(prep: &mut PlanRunPrep) -> Result<(), String> {
-    let timing = prep.client.attach_run_timing_for_session();
+    use crate::agent_backend::{
+        agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
+        agent_backend_set_run_timing,
+    };
+
+    let timing = agent_backend_attach_run_timing_for_session(&mut prep.client);
     if let Err(e) = prep
         .client
         .begin_coder_session(&prep.artifacts.work_dir)
         .await
     {
-        prep.client.set_run_timing(None);
+        agent_backend_set_run_timing(&mut prep.client, None);
         return Err(e.to_string());
     }
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .set_implement_display_name("plan");
+    agent_backend_set_implement_display_name(&prep.client, "plan");
     let run_res = run_plan_four_prompts(prep).await;
     let end_res = prep.client.end_coder_session().await.map_err(|e| e.to_string());
     let merged =
         crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+    crate::acp_post_run::emit_run_timing_json_only_after_backend(
         &mut prep.client,
         &prep.artifacts.run_dir,
         &timing,
@@ -88,7 +90,7 @@ async fn run_plan_prompt_3(prep: &mut PlanRunPrep, user_span_end: usize) -> Resu
 }
 
 async fn run_plan_coder_prompt(
-    client: &mut crate::acp::AgentClient,
+    client: &mut crate::agent_backend::AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
     log_stem: &str,

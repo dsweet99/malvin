@@ -119,7 +119,7 @@ pub async fn run_delight(
         iterations,
     };
     let gate_r = resolve_delight_gate_outcome(&finish_input, &last_backups);
-    let r = crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
+    let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
 
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();

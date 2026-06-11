@@ -15,7 +15,8 @@ use crate::artifacts::{
     is_existing_md_file_path, read_plan_file,
 };
 use crate::cli::adversarial_profile::resolve_work_dir_for_plan;
-use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent};
+use crate::agent_backend::build_agent_backend;
+use crate::cli::{SharedOpts, WorkflowCliOptions};
 
 use plan_flow_pipeline::PlanRunPrep;
 use plan_flow_prompt::build_plan_render_context;
@@ -76,11 +77,12 @@ async fn prepare_plan_run(
     prepare_source_plan(&source_plan_path)?;
     let (artifacts, work_dir) = create_plan_run_artifacts(&source_plan_path)?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    let client = build_agent(
+    let client = build_agent_backend(
         shared,
         workflow,
         shared.acp_stdout_markdown_enabled(),
-    );
+        "plan",
+    )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let store = plan_flow_prompt::prepare_plan_prompt_store()?;
     let render_ctx = build_plan_render_context(&source_plan_path, &work_dir, &artifacts);
@@ -102,7 +104,8 @@ pub async fn run_plan(
 ) -> Result<(), String> {
     let mut prep = prepare_plan_run(&plan, shared, workflow).await?;
     crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
-    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    prep.client
+        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     let acp_res = plan_flow_pipeline::run_plan_acp(&mut prep).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,

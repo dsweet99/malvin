@@ -1,45 +1,22 @@
 //! Build [`super::backend::AgentBackend`] from CLI options.
 
-use crate::cli::{agent_io_options, build_agent, AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
+use crate::cli::{
+    agent_io_options, new_agent_client, AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions,
+};
 
 use super::backend::AgentBackend;
 use super::mini::{MiniAgentClient, MiniLoopConfig};
 
-const ALL_AGENT_COMMANDS: &[&str] = &[
-    "do", "inspire", "plan", "code", "tidy", "delight", "explain", "revise", "init", "kpop",
-];
-
 /// # Errors
 ///
-/// Returns an error when `--mini` is set but the command is not wired, or mini client init fails.
+/// Returns an error when mini client init fails (for example missing `OPENROUTER_API_KEY` or `bash`).
 pub fn build_agent_backend(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     emit_stdout_markdown: bool,
-    command: &str,
+    _command: &str,
 ) -> Result<AgentBackend, String> {
-    if shared.mini {
-        mini_rollout_guard(command)?;
-        Ok(AgentBackend::Mini(new_mini_client(
-            shared,
-            workflow,
-            emit_stdout_markdown,
-        )?))
-    } else {
-        Ok(AgentBackend::Acp(build_agent(
-            shared,
-            workflow,
-            emit_stdout_markdown,
-        )))
-    }
-}
-
-fn new_mini_client(
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-    emit_stdout_markdown: bool,
-) -> Result<MiniAgentClient, String> {
-    let io = agent_io_options(
+    build_agent_backend_with_tee(
         shared,
         workflow,
         AgentStdoutTeeFlags {
@@ -47,7 +24,35 @@ fn new_mini_client(
             raw_output: false,
             show_thoughts_on_stdout: true,
         },
-    );
+    )
+}
+
+/// Like [`build_agent_backend`] but accepts explicit stdout tee flags (for example `do` raw mode).
+///
+/// # Errors
+///
+/// Returns an error when mini client init fails.
+pub fn build_agent_backend_with_tee(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    tee: AgentStdoutTeeFlags,
+) -> Result<AgentBackend, String> {
+    if shared.mini {
+        Ok(AgentBackend::Mini(new_mini_client(shared, workflow, tee)?))
+    } else {
+        Ok(AgentBackend::Acp(new_agent_client(
+            shared,
+            agent_io_options(shared, workflow, tee),
+        )))
+    }
+}
+
+fn new_mini_client(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    tee: AgentStdoutTeeFlags,
+) -> Result<MiniAgentClient, String> {
+    let io = agent_io_options(shared, workflow, tee);
     MiniAgentClient::new(
         MiniLoopConfig {
             model: shared.model.clone(),
@@ -58,21 +63,11 @@ fn new_mini_client(
     )
 }
 
-fn mini_rollout_guard(command: &str) -> Result<(), String> {
-    if ALL_AGENT_COMMANDS.contains(&command) {
-        Ok(())
-    } else {
-        Err(format!(
-            "error: --mini is not yet supported for `malvin {command}` (implementation phase 4/4)"
-        ))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_backend::test_support::{install_openrouter_test_key, shared_opts};
     use crate::cli::WorkflowCliOptions;
-    use crate::agent_backend::test_support::shared_opts;
 
     #[test]
     fn build_agent_backend_selects_acp_when_mini_false() {
@@ -87,16 +82,19 @@ mod tests {
     }
 
     #[test]
-    fn mini_rollout_guard_rejects_unwired_command() {
-        let err = mini_rollout_guard("models").expect_err("models");
-        assert!(err.contains("not yet supported"));
-    }
-
-    #[test]
-    fn mini_rollout_guard_allows_wired_command_per_phase() {
-        for cmd in ALL_AGENT_COMMANDS {
-            mini_rollout_guard(cmd).expect(cmd);
-        }
+    fn build_agent_backend_with_tee_selects_mini_when_flag_set() {
+        install_openrouter_test_key();
+        let backend = build_agent_backend_with_tee(
+            &shared_opts(true),
+            WorkflowCliOptions { force: false },
+            AgentStdoutTeeFlags {
+                emit_stdout_markdown: false,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+            },
+        )
+        .expect("mini");
+        assert!(matches!(backend, AgentBackend::Mini(_)));
     }
 
     #[test]

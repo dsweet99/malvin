@@ -23,10 +23,29 @@ pub fn agent_backend_attach_run_timing_for_session(
 ) -> Arc<Mutex<crate::run_timing::RunTiming>> {
     match backend {
         AgentBackend::Acp(c) => c.attach_run_timing_for_session(),
-        AgentBackend::Mini(c) => {
-            crate::run_timing::attach_new_run_timing(&mut c.timing)
-        }
+        AgentBackend::Mini(c) => crate::run_timing::attach_new_run_timing(&mut c.timing),
     }
+}
+
+/// Returns existing run timing or installs a new wall clock when none is active.
+#[must_use]
+pub fn agent_backend_ensure_run_timing_for_session(
+    backend: &mut AgentBackend,
+) -> Arc<Mutex<crate::run_timing::RunTiming>> {
+    if let Some(t) = agent_backend_timing(backend).cloned() {
+        return t;
+    }
+    agent_backend_attach_run_timing_for_session(backend)
+}
+
+pub fn agent_backend_set_implement_display_name(backend: &AgentBackend, label: &'static str) {
+    let Some(timing) = agent_backend_timing(backend) else {
+        return;
+    };
+    timing
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .set_implement_display_name(label);
 }
 
 #[allow(clippy::missing_const_for_fn)]

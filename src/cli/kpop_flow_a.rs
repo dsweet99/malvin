@@ -5,7 +5,11 @@ use crate::artifacts::{
 use crate::kpop_progression::KpopMultiturnState;
 use crate::prompts::PromptStore;
 
-use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_kpop_prompt_store};
+use crate::agent_backend::{
+    agent_backend_ensure_run_timing_for_session, agent_backend_run_kpop_multiturn,
+    build_agent_backend, AgentBackend,
+};
+use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, prepare_kpop_prompt_store};
 
 use super::kpop_flow_b::kpop_emit_startup;
 
@@ -49,19 +53,19 @@ pub(crate) fn kpop_boot_store_client_prepared(
     kpop: &KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-) -> Result<(PromptStore, crate::acp::AgentClient, KpopPrepared), String> {
+) -> Result<(PromptStore, AgentBackend, KpopPrepared), String> {
     let store = kpop_prompt_store(kpop, workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
-    let mut client = build_agent(shared, workflow, emit_stdout_markdown);
+    let mut client = build_agent_backend(shared, workflow, emit_stdout_markdown, "kpop")?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prepared = prepare_kpop_run(kpop)?;
-    client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
+    client.set_prompts_log_run_dir(Some(prepared.artifacts.run_dir.clone()));
     crate::cli::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
     Ok((store, client, prepared))
 }
 
 pub struct KpopAcpMultiturnCtx<'a> {
-    pub client: &'a mut crate::acp::AgentClient,
+    pub client: &'a mut AgentBackend,
     pub prepared: &'a KpopPrepared,
     pub state: &'a mut KpopMultiturnState<'a>,
 }
@@ -73,27 +77,28 @@ pub(in crate) async fn kpop_run_acp_multiturn(
 ) -> Result<(), String> {
     let timing = match session_end {
         crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun => {
-            ctx.client.ensure_run_timing_for_session()
+            agent_backend_ensure_run_timing_for_session(ctx.client)
         }
         crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize => {
-            ctx.client.attach_run_timing_for_session()
+            crate::agent_backend::agent_backend_attach_run_timing_for_session(ctx.client)
         }
     };
-    let acp_result = ctx
-        .client
-        .run_kpop_multiturn(crate::acp::AgentKpopMultiturnCtl {
+    let acp_result = agent_backend_run_kpop_multiturn(
+        ctx.client,
+        crate::acp::AgentKpopMultiturnCtl {
             cwd: &ctx.prepared.artifacts.work_dir,
             kpop_log: ctx.prepared.artifacts.log_path("kpop"),
             state: ctx.state,
             session_dotfile_backups,
-        })
-        .await
-        .map_err(|e| e.0);
-    crate::acp_post_run::emit_run_timing_after_acp(crate::acp_post_run::RunTimingAfterAcp {
-        client: ctx.client,
+        },
+    )
+    .await
+    .map_err(|e| e.0);
+    crate::acp_post_run::emit_run_timing_after_backend(crate::acp_post_run::RunTimingAfterBackend {
+        backend: ctx.client,
         run_dir: &ctx.prepared.artifacts.run_dir,
         timing: &timing,
-        acp_result,
+        agent_result: acp_result,
         session_end,
     })
 }

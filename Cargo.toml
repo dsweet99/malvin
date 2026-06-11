@@ -2,6 +2,7 @@
 members = [".", "malvin-mini"]
 resolver = "2"
 
+
 [package]
 name = "malvin"
 version = "0.1.9"
@@ -16,7 +17,10 @@ categories = ["development-tools"]
 
 [profile.dev]
 incremental = true
-test-threads = 4
+codegen-units = 4
+
+[env]
+RUST_TEST_THREADS = "4"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

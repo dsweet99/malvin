@@ -4,7 +4,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::cli::{build_agent, SharedOpts, WorkflowCliOptions};
+use crate::agent_backend::{
+    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
+    build_agent_backend, AgentBackend,
+};
+use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::cli::workflow_kpop_shared::{effective_max_loops, kpop_workflow_context};
 use crate::prompts::{render_header, PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
@@ -74,20 +78,6 @@ pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
 #[must_use]
 pub(crate) fn outer_loop_summarize_warranted(max_loops: usize) -> bool {
     effective_max_loops(max_loops) > 1
-}
-
-/// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
-///
-/// Summarize runs before this merge; when the primary workflow failed, that error must
-/// not be replaced by a summarize failure.
-pub(crate) fn prefer_gate_outcome_over_summarize<T>(
-    gate: Result<T, String>,
-    summarize: Result<(), String>,
-) -> Result<T, String> {
-    match gate {
-        Err(e) => Err(e),
-        Ok(v) => summarize.map(|()| v),
-    }
 }
 
 pub(crate) fn is_written_exp_log_path(path: &Path) -> bool {
@@ -168,7 +158,7 @@ pub(crate) fn render_kpop_summarize_prompt(
 }
 
 pub(crate) async fn run_summarize_coder_prompt(
-    client: &mut crate::acp::AgentClient,
+    client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
 ) -> Result<(), String> {
@@ -192,22 +182,21 @@ pub(crate) async fn run_summarize_agent_session(
     params: &OuterLoopSummarizeParams<'_>,
     prompt: &str,
 ) -> Result<(), String> {
-    let mut client = build_agent(
+    let mut client = build_agent_backend(
         params.shared,
         params.workflow,
         params.shared.acp_stdout_markdown_enabled(),
-    );
+        "kpop",
+    )?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    client.prompts_log_run_dir = Some(params.artifacts.run_dir.clone());
-    let timing = client.attach_run_timing_for_session();
+    client
+        .set_prompts_log_run_dir(Some(params.artifacts.run_dir.clone()));
+    let timing = agent_backend_attach_run_timing_for_session(&mut client);
     client
         .begin_coder_session(&params.artifacts.work_dir)
         .await
         .map_err(|e| e.to_string())?;
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .set_implement_display_name("summary");
+    agent_backend_set_implement_display_name(&client, "summary");
     let run_res = run_summarize_coder_prompt(&mut client, params.artifacts, prompt).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
     let merged = crate::acp_post_run::prefer_primary_over_secondary(
@@ -215,7 +204,7 @@ pub(crate) async fn run_summarize_agent_session(
         end_res,
         "end coder session",
     );
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+    crate::acp_post_run::emit_run_timing_json_only_after_backend(
         &mut client,
         &params.artifacts.run_dir,
         &timing,

@@ -16,7 +16,7 @@ fn kiss_cov_kpop_summarize_privates() {
     let _ = stringify!(list_written_exp_logs);
     let _ = stringify!(is_written_exp_log_path);
     let _ = stringify!(insert_summarize_log_context);
-    let _ = stringify!(prefer_gate_outcome_over_summarize);
+    let _ = stringify!(super::workflow_kpop_shared::prefer_gate_outcome_over_summarize);
 }
 
 #[cfg(unix)]

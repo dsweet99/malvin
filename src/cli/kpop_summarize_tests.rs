@@ -7,9 +7,10 @@ use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
     exp_log_paths_markdown, insert_summarize_log_context, is_written_exp_log_path,
     kpop_outer_loop_summarize_params, list_written_exp_logs, outer_loop_summarize_warranted,
-    prefer_gate_outcome_over_summarize, render_kpop_summarize_prompt,
-    run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt, KpopOuterLoopSummarizeInputs,
+    render_kpop_summarize_prompt, run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt,
+    KpopOuterLoopSummarizeInputs,
 };
+use crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize;
 use crate::cli::SharedOpts;
 use crate::config::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::prompts::PromptStore;
@@ -141,17 +142,19 @@ fn run_summarize_coder_prompt_errors_without_open_session() {
     let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
-        let mut client = crate::acp::AgentClient::with_max_acp_retries(
-            "m".into(),
-            crate::acp::AgentIoOptions {
-                force: false,
-                no_tee: true,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-                emit_stdout_markdown: false,
-                log_full_outgoing_prompts: false,
-            },
-            DEFAULT_MAX_ACP_RETRIES,
+        let mut client = crate::agent_backend::AgentBackend::Acp(
+            crate::acp::AgentClient::with_max_acp_retries(
+                "m".into(),
+                crate::acp::AgentIoOptions {
+                    force: false,
+                    no_tee: true,
+                    raw_output: true,
+                    show_thoughts_on_stdout: false,
+                    emit_stdout_markdown: false,
+                    log_full_outgoing_prompts: false,
+                },
+                DEFAULT_MAX_ACP_RETRIES,
+            ),
         );
         let err = run_summarize_coder_prompt(&mut client, &artifacts, "Summarize the activity")
             .await

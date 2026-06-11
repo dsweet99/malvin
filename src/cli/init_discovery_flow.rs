@@ -110,7 +110,7 @@ pub(crate) async fn run_init_discovery_kpop(
     )
     .await;
     let discovery_r = finish_init_discovery_kpop(&prepared, &artifacts.work_dir, iterations, gates_ok);
-    crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(discovery_r, summarize_res)
+    crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(discovery_r, summarize_res)
 }
 
 fn finish_init_discovery_kpop(

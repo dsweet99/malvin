@@ -32,17 +32,19 @@ pub(super) fn test_plan_run_prep(
     render_ctx: HashMap<String, String>,
 ) -> PlanRunPrep {
     PlanRunPrep {
-        client: crate::acp::AgentClient::with_max_acp_retries(
-            "m".into(),
-            crate::acp::AgentIoOptions {
-                force: false,
-                no_tee: true,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-                emit_stdout_markdown: false,
-                log_full_outgoing_prompts: false,
-            },
-            crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        client: crate::agent_backend::AgentBackend::Acp(
+            crate::acp::AgentClient::with_max_acp_retries(
+                "m".into(),
+                crate::acp::AgentIoOptions {
+                    force: false,
+                    no_tee: true,
+                    raw_output: true,
+                    show_thoughts_on_stdout: false,
+                    emit_stdout_markdown: false,
+                    log_full_outgoing_prompts: false,
+                },
+                crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+            ),
         ),
         artifacts: artifacts.clone(),
         source_plan_path: plan.to_path_buf(),

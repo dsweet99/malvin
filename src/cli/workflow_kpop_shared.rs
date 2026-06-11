@@ -13,6 +13,17 @@ pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
     max_loops.max(1)
 }
 
+/// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
+pub(crate) fn prefer_gate_outcome_over_summarize<T>(
+    gate: Result<T, String>,
+    summarize: Result<(), String>,
+) -> Result<T, String> {
+    match gate {
+        Err(e) => Err(e),
+        Ok(v) => summarize.map(|()| v),
+    }
+}
+
 pub(crate) fn gate_kpop_session_declared_solved(
     artifacts: &RunArtifacts,
     iterations: usize,
