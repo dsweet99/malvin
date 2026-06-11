@@ -61,6 +61,13 @@ mod tests {
     }
 
     #[test]
+    fn default_file_mini_constraints_embedded() {
+        let text = default_file("mini_constraints.md").expect("mini_constraints");
+        assert!(text.contains("```bash"));
+        assert!(text.contains("--mini"));
+    }
+
+    #[test]
     fn default_constraints_prompt_embeds_code_and_tidy() {
         assert!(default_constraints_prompt("tidy_constraints.md").is_some());
         assert!(default_constraints_prompt("code_constraints.md").is_some());

@@ -5,6 +5,9 @@ mod fence_parser;
 mod loop_driver;
 mod model_resolve;
 mod trace;
+
+#[cfg(test)]
+mod plan_chain_tests;
 pub use trace::MiniTraceSink;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};

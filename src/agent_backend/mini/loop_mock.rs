@@ -7,11 +7,14 @@ pub enum MockStep {
     RateLimited,
 }
 
+#[cfg(test)]
+pub type MockResponseHook = Box<dyn FnMut(usize, &[ChatMessage]) + Send>;
+
 pub struct MockScript {
     pub responses: Vec<MockStep>,
     pub call_count: usize,
     #[cfg(test)]
-    pub on_response: Option<Box<dyn FnMut(usize) + Send>>,
+    pub on_response: Option<MockResponseHook>,
 }
 
 pub enum LlmBackend {
@@ -29,7 +32,7 @@ impl LlmBackend {
                 g.call_count += 1;
                 #[cfg(test)]
                 if let Some(ref mut hook) = g.on_response {
-                    hook(idx);
+                    hook(idx, messages);
                 }
                 match g.responses.get(idx) {
                     Some(MockStep::Ok(r)) => Ok(r.clone()),

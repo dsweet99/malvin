@@ -178,7 +178,7 @@ mod tests {
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses: vec![MockStep::Ok(mini_done_response())],
                 call_count: 0,
-                on_response: Some(Box::new(move |_| {
+                on_response: Some(Box::new(move |_, _| {
                     std::fs::write(
                         &exp_log_for_hook,
                         "# exp\n## Step 1 — KPOP\n## Step 2 — KPOP\n## Step 3 — KPOP\n",
