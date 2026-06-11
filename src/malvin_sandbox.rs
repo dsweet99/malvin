@@ -19,6 +19,7 @@ struct ActiveSandboxSession {
     pgid: Option<u32>,
     baseline: HashSet<u32>,
     work_dir: std::path::PathBuf,
+    acp_lock_slot: String,
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
@@ -121,6 +122,7 @@ pub fn note_active_sandbox_session(
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
+    let acp_lock_slot = crate::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
         .lock()
@@ -128,6 +130,7 @@ pub fn note_active_sandbox_session(
         pgid,
         baseline,
         work_dir: work_dir.to_path_buf(),
+        acp_lock_slot,
     });
     Ok(())
 }
@@ -144,13 +147,12 @@ pub fn clear_active_mini_session() {
 
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
-    let work_dir = ACTIVE_SANDBOX_SESSION
+    let session = ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .take()
-        .map(|session| session.work_dir);
-    if let Some(work_dir) = work_dir {
-        release_acp_spawn_lock(&work_dir);
+        .take();
+    if let Some(session) = session {
+        release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
     }
 }
 

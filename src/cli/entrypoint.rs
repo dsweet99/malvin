@@ -31,15 +31,15 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
-        Commands::Delight(_) => require_kiss_for_malvin("delight"),
-        Commands::Explain(_) => require_kiss_for_malvin("explain"),
         Commands::Revise(_) => require_kiss_for_malvin("revise"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
         | Commands::Inspire(_)
         | Commands::Models(_)
-        | Commands::Plan(_) => Ok(()),
+        | Commands::Plan(_)
+        | Commands::Delight(_)
+        | Commands::Explain(_) => Ok(()),
     }
 }
 

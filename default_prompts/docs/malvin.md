@@ -110,7 +110,7 @@ Optional session name for `do`, `plan`, `code`, `tidy`, and bare `malvin REQUEST
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
-Session names are independent of the workspace-scoped `.malvin/acp_spawn.lock` (one live ACP session per workspace). Two malvin processes with different `--name` values may both register names in the same workspace; only one may hold a live ACP session there at a time.
+Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live ACP session per lock slot in a workspace). Two malvin processes with different `--name` values may both register names and hold live ACP sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
 
 `--doc`, `--help`, `--version`, and bare `malvin` with no `REQUEST` parse `--name` but do not acquire or release a name lock.
 

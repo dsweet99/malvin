@@ -79,15 +79,6 @@ fn entrypoint_preflight(command: &Commands) -> Option<Exit> {
         })
 }
 
-fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<crate::SessionNameGuard, Exit> {
-    crate::acquire_session_name(opt_name)
-        .map(|(_name, guard)| guard)
-        .map_err(|e| {
-            print_command_error(&e);
-            Exit::Failure
-        })
-}
-
 pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
@@ -111,11 +102,19 @@ pub fn entrypoint_from(
     if let Some(exit) = entrypoint_preflight(&command) {
         return exit;
     }
-    if command_accepts_session_name(&command, bare_invoke) {
-        let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
-            Ok(guard) => guard,
-            Err(exit) => return exit,
-        };
-    }
+    let _session_name_guard = if command_accepts_session_name(&command, bare_invoke) {
+        match crate::acquire_session_name(cli.shared.name.as_deref()) {
+            Ok((session_name, guard)) => {
+                crate::set_active_acp_lock_slot(session_name);
+                Some(guard)
+            }
+            Err(e) => {
+                print_command_error(&e);
+                return Exit::Failure;
+            }
+        }
+    } else {
+        None
+    };
     finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
 }

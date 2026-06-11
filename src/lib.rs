@@ -52,6 +52,10 @@ pub use session_name::{
     generate_auto_name_with, name_path, names_registry_root, parse_holder_pid, release_name,
     validate_name, SessionNameGuard,
 };
+pub use acp_spawn_lock::{
+    acquire_acp_spawn_lock_for_slot, active_acp_lock_slot,
+    assert_no_peer_acp_spawn_lock_for_slot, release_acp_spawn_lock, set_active_acp_lock_slot,
+};
 pub mod malvin_sandbox;
 #[cfg(test)]
 #[path = "malvin_sandbox_tests.rs"]

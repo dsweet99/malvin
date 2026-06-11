@@ -61,7 +61,7 @@ fn resolve_delight_gate_outcome(
                 "malvin delight",
                 &input.prepared.inner,
                 last_backups,
-                GateLoopBehavior::DELIGHT.restore_malvin_checks_after_session(),
+                GateLoopBehavior::DELIGHT,
             )
         }
     })

@@ -32,7 +32,7 @@ pub(crate) fn kpop_solved_early_exit(
     if consecutive_solved < behavior.consecutive_kpop_solved_to_exit() {
         return false;
     }
-    if behavior.require_passing_gates_for_exit() {
+    if behavior.require_passing_gates_for_exit() && !behavior.skip_workspace_quality_gates {
         run_kpop_workspace_gates(
             artifacts,
             session_dotfile_backups,
@@ -160,6 +160,7 @@ pub(crate) async fn run_gate_kpop_loop(
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     let mut last_backups = SessionDotfileBackups::snapshot(work_dir)?;
     if params.behavior.skip_kpop_on_initial_pass
+        && !params.behavior.skip_workspace_quality_gates
         && run_kpop_workspace_gates(
             params.prepared.artifacts(),
             &last_backups,
@@ -183,6 +184,7 @@ pub(crate) async fn run_gate_kpop_loop(
         }
     }
     let gates_ok = params.behavior.recheck_gates_after_exhausted
+        && !params.behavior.skip_workspace_quality_gates
         && run_kpop_workspace_gates(
             params.prepared.artifacts(),
             &last_backups,

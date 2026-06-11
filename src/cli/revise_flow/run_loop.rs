@@ -61,7 +61,7 @@ fn resolve_revise_gate_outcome(
                 "malvin revise",
                 &input.prepared.inner,
                 last_backups,
-                GateLoopBehavior::REVISE.restore_malvin_checks_after_session(),
+                GateLoopBehavior::REVISE,
             )
         }
     })

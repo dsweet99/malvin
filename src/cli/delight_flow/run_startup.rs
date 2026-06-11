@@ -13,7 +13,7 @@ pub struct DelightKpopPrepared {
 fn delight_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "delight")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "delight")
 }
 
 pub fn prepare_delight_kpop_run(

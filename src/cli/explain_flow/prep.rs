@@ -6,7 +6,7 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::insert_formatted;
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 pub(crate) const EXPLAIN_TEX_BASENAME: &str = "explain.tex";
 pub(crate) const EXPLAIN_PDF_BASENAME: &str = "explain.pdf";
@@ -67,7 +67,7 @@ pub(crate) fn prepare_explain_kpop_prompt_store(
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
     store
-        .validate_exists("kpop_program.md")
+        .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("explain_constraints.md")
@@ -86,7 +86,7 @@ pub(crate) fn explain_kpop_request(
     ctx.insert("explain_request".to_string(), request_text.to_string());
     insert_formatted(&mut ctx, "explain_tex_path", &outputs.tex_path, workspace_root);
     insert_formatted(&mut ctx, "explain_pdf_path", &outputs.pdf_path, workspace_root);
-    render_kpop_program_request(store, "explain_constraints.md", &ctx, artifacts)
+    render_kpop_program_request_creative(store, "explain_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn explain_revise_doc_path(request: &str, out_path: &str) -> Result<String, String> {
@@ -115,6 +115,11 @@ pub(crate) fn explain_preflight(
                 "malvin explain: `{}` already exists; refusing to overwrite",
                 path.display()
             ));
+        }
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
         }
     }
     Ok((text, outputs))

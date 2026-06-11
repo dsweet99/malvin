@@ -59,7 +59,7 @@ pub async fn run_code(
             "malvin code",
             &prepared,
             &last_backups,
-            GateLoopBehavior::CODE.restore_malvin_checks_after_session(),
+            GateLoopBehavior::CODE,
         )
     };
     let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);

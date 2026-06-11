@@ -63,7 +63,7 @@ fn resolve_explain_gate_outcome(
                 "malvin explain",
                 &input.prepared.inner,
                 last_backups,
-                GateLoopBehavior::EXPLAIN.restore_malvin_checks_after_session(),
+                GateLoopBehavior::EXPLAIN,
             )
         }
     })

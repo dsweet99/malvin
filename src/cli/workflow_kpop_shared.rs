@@ -5,7 +5,13 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
 use crate::cli::format_workspace_gate_failure;
 use crate::output::{MALVIN_WHO, print_stdout_line};
-use crate::prompts::{PromptError, PromptStore};
+
+#[path = "workflow_kpop_render.rs"]
+mod workflow_kpop_render;
+
+pub(crate) use workflow_kpop_render::{
+    render_kpop_program_request, render_kpop_program_request_creative,
+};
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
@@ -72,35 +78,32 @@ pub(crate) fn kpop_program_context(
     Ok(context)
 }
 
-pub(crate) fn render_kpop_program_request(
-    store: &PromptStore,
-    constraints_prompt: &str,
-    constraints_context: &HashMap<String, String>,
-    artifacts: &RunArtifacts,
-) -> Result<String, String> {
-    let scope_constraints = store
-        .render_prompt_only(constraints_prompt, constraints_context)
-        .map_err(|e: PromptError| e.0)?;
-    let context = kpop_program_context(
-        artifacts.work_dir.as_path(),
-        &scope_constraints,
-        artifacts,
-    )?;
-    store
-        .render_prompt_only("kpop_program.md", &context)
-        .map(|s| s.trim().to_string())
-        .map_err(|e: PromptError| e.0)
-}
-
 pub(crate) fn kpop_workflow_context(
     artifacts: &RunArtifacts,
     workflow: &str,
 ) -> Result<HashMap<String, String>, String> {
+    kpop_workflow_context_with_gates(artifacts, workflow, true)
+}
+
+pub(crate) fn kpop_workflow_context_without_gates(
+    artifacts: &RunArtifacts,
+    workflow: &str,
+) -> Result<HashMap<String, String>, String> {
+    kpop_workflow_context_with_gates(artifacts, workflow, false)
+}
+
+fn kpop_workflow_context_with_gates(
+    artifacts: &RunArtifacts,
+    workflow: &str,
+    include_quality_gates: bool,
+) -> Result<HashMap<String, String>, String> {
     let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, workflow);
-    context.insert(
-        "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
-    );
+    if include_quality_gates {
+        context.insert(
+            "quality_gates".to_string(),
+            crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
+        );
+    }
     Ok(context)
 }
 
@@ -149,6 +152,7 @@ pub(crate) fn gate_iteration_context(
     ctx
 }
 
+#[allow(dead_code)] // unit tests and kiss coverage stringify references
 pub(crate) fn run_kpop_workspace_gates(
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
@@ -173,8 +177,7 @@ pub(crate) fn post_kpop_session_gates(
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    if run_kpop_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok()
-    {
+    if run_kpop_workspace_gates(artifacts, session_dotfile_backups, restore_malvin_checks).is_ok() {
         return Ok(());
     }
     write_checks_do_not_pass_for_artifacts(artifacts)?;

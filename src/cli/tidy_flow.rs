@@ -109,8 +109,7 @@ mod tests {
             "malvin tidy",
             &prepared,
             &backups,
-            crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY
-                .restore_malvin_checks_after_session(),
+            crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY,
         )
         .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

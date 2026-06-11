@@ -10,6 +10,7 @@ pub(crate) enum GateKpopExitPolicy {
 pub(crate) struct GateLoopBehavior {
     pub skip_kpop_on_initial_pass: bool,
     pub recheck_gates_after_exhausted: bool,
+    pub skip_workspace_quality_gates: bool,
     pub exit: GateKpopExitPolicy,
 }
 
@@ -17,31 +18,37 @@ impl GateLoopBehavior {
     pub const CODE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: true,
+        skip_workspace_quality_gates: false,
         exit: GateKpopExitPolicy::CodeTidy,
     };
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: false,
         exit: GateKpopExitPolicy::CodeTidy,
     };
     pub const INIT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: false,
         exit: GateKpopExitPolicy::InitDiscovery,
     };
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: true,
         exit: GateKpopExitPolicy::InitDiscovery,
     };
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: true,
         exit: GateKpopExitPolicy::InitDiscovery,
     };
     pub const REVISE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: false,
         exit: GateKpopExitPolicy::InitDiscovery,
     };
 
@@ -94,6 +101,8 @@ mod tests {
         assert_eq!(GateLoopBehavior::TIDY.consecutive_kpop_solved_to_exit(), 2);
         assert!(GateLoopBehavior::CODE.require_passing_gates_for_exit());
         assert!(GateLoopBehavior::TIDY.require_passing_gates_for_exit());
+        const { assert!(!GateLoopBehavior::CODE.skip_workspace_quality_gates); }
+        const { assert!(!GateLoopBehavior::TIDY.skip_workspace_quality_gates); }
     }
 
     #[test]
@@ -110,6 +119,8 @@ mod tests {
             GateLoopBehavior::DELIGHT.consecutive_kpop_solved_to_exit(),
         );
         assert!(!GateLoopBehavior::EXPLAIN.require_passing_gates_for_exit());
+        const { assert!(GateLoopBehavior::EXPLAIN.skip_workspace_quality_gates); }
+        const { assert!(GateLoopBehavior::DELIGHT.skip_workspace_quality_gates); }
     }
 
     #[test]

@@ -23,13 +23,16 @@ pub(crate) fn post_gate_kpop_gates(
     command: &str,
     prepared: &GateKpopPrepared,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-    restore_malvin_checks: bool,
+    behavior: super::behavior::GateLoopBehavior,
 ) -> Result<(), String> {
+    if behavior.skip_workspace_quality_gates {
+        return Ok(());
+    }
     post_kpop_session_gates(
         command,
         prepared.artifacts(),
         session_dotfile_backups,
-        restore_malvin_checks,
+        behavior.restore_malvin_checks_after_session(),
     )
 }
 
@@ -184,14 +187,9 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
     command: &str,
     prepared: &GateKpopPrepared,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-    restore_malvin_checks: bool,
+    behavior: super::behavior::GateLoopBehavior,
 ) -> Result<(), String> {
-    post_gate_kpop_gates(
-        command,
-        prepared,
-        session_dotfile_backups,
-        restore_malvin_checks,
-    )
+    post_gate_kpop_gates(command, prepared, session_dotfile_backups, behavior)
 }
 
 #[cfg(test)]

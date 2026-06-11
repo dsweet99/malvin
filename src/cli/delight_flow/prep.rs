@@ -6,7 +6,7 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::{format_prompt_path, insert_formatted};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 const DELIGHT_COMMAND_MARKER: &str = "Command: malvin delight";
 const MAX_RECENT_DELIGHT_PLANS: usize = 5;
@@ -16,7 +16,7 @@ pub(crate) fn prepare_delight_kpop_prompt_store(
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
     store
-        .validate_exists("kpop_program.md")
+        .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("delight_constraints.md")
@@ -122,7 +122,7 @@ pub(crate) fn delight_kpop_request(
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "out_plan_path", resolved_out_path, workspace_root);
     ctx.insert("recent_delight_plans".to_string(), recent_delight_plans);
-    render_kpop_program_request(store, "delight_constraints.md", &ctx, artifacts)
+    render_kpop_program_request_creative(store, "delight_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), String> {
@@ -133,6 +133,11 @@ pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), St
             "malvin delight: `{}` already exists; refusing to overwrite",
             resolved_out_path.display()
         ));
+    }
+    if let Some(parent) = resolved_out_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
     }
     let work_dir = crate::artifacts::work_dir_for_path(Path::new(out_path));
     Ok((resolved_out_path, work_dir))

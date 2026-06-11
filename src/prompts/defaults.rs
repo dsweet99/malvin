@@ -21,6 +21,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_block.md",
     "mbc2.md",
     "kpop_program.md",
+    "kpop_program_creative.md",
     "kpop_summarize.md",
     "tidy_constraints.md",
     "code_constraints.md",
