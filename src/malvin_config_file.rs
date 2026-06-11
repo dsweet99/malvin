@@ -1,4 +1,4 @@
-//! Unified `~/.malvin/config.toml` schema, default merge-on-open, and typed accessors.
+//! Unified `~/.malvin_home/config.toml` schema, default merge-on-open, and typed accessors.
 
 use std::path::Path;
 
@@ -49,7 +49,7 @@ pub struct MalvinConfig {
     pub agent: AgentConfig,
 }
 
-/// Ensure `~/.malvin/config.toml` exists and contains every known key (writes missing defaults).
+/// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).
 pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
     let _ = open_malvin_config(work_dir)?;
     Ok(())

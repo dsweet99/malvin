@@ -94,7 +94,7 @@ fn insert_artifact_paths_sets_logs_dir_to_home_bucket() {
     let expected = format_prompt_path(&crate::malvin_logs_root(tmp.path()), tmp.path());
     assert_eq!(logs_dir, &expected);
     assert!(
-        logs_dir.contains(".malvin/logs"),
+        logs_dir.contains(".malvin_home/logs"),
         "logs_dir should point at home logs bucket, got {logs_dir:?}"
     );
 }

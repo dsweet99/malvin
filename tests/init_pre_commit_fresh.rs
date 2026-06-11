@@ -132,8 +132,8 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
         "init must write {MALVIN_ADVICE_REL}"
     );
     assert!(
-        w.home_path().join(".malvin/config.toml").is_file(),
-        "init must write ~/.malvin/config.toml"
+        w.home_path().join(".malvin_home/config.toml").is_file(),
+        "init must write ~/.malvin_home/config.toml"
     );
     assert!(
         !w.path().join(MALVIN_CONFIG_REL).exists(),

@@ -54,11 +54,11 @@ mod tests {
     use crate::output::{format_who_tag_prefix, MALVIN_WHO};
 
     fn seed_home_run(
-        home: &Path,
+        _home: &Path,
         cwd: &Path,
         run_name: &str,
     ) -> (PathBuf, PathBuf) {
-        let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+        let bucket = crate::malvin_logs_root(cwd);
         let run_dir = bucket.join(run_name);
         std::fs::create_dir_all(&run_dir).expect("mkdir run");
         crate::write_work_dir_manifest(&run_dir, cwd).expect("work_dir manifest");
@@ -124,8 +124,8 @@ mod tests {
 
     #[test]
     fn kpop_lookup_not_found() {
-        with_test_home(|home, cwd| {
-            let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+        with_test_home(|_home, cwd| {
+            let bucket = crate::malvin_logs_root(cwd);
             std::fs::create_dir_all(bucket).expect("mkdir");
             let err = lookup_kpop_id(cwd, "Mnope1").unwrap_err();
             assert!(err.contains("no KPOP id"), "got: {err}");

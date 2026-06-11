@@ -1,5 +1,41 @@
 use std::path::Path;
 
+/// Avoid recursively scanning arbitrary cwd trees (e.g. `$HOME`) when inferring Python gates.
+fn should_walk_for_python_sources(root: &Path) -> bool {
+    if root.join(".git").is_dir() || crate::malvin_checks_path(root).is_file() {
+        return true;
+    }
+    if root.join("Cargo.toml").is_file() {
+        return true;
+    }
+    for marker in [
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "requirements.txt",
+        "Pipfile",
+        "poetry.lock",
+    ] {
+        if root.join(marker).is_file() {
+            return true;
+        }
+    }
+    root.join("tests").is_dir() || root_level_has_py_file(root)
+}
+
+fn root_level_has_py_file(root: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        entry
+            .path()
+            .extension()
+            .and_then(|ext| ext.to_str())
+            == Some("py")
+    })
+}
+
 pub(super) fn visit_source_files(root: &Path, f: &mut impl FnMut(&Path)) {
     fn walk(dir: &Path, f: &mut impl FnMut(&Path)) {
         let Ok(entries) = std::fs::read_dir(dir) else {
@@ -34,6 +70,9 @@ pub(super) fn visit_source_files(root: &Path, f: &mut impl FnMut(&Path)) {
 }
 
 pub(super) fn python_ruff_and_pytest_flags(root: &Path) -> (bool, bool) {
+    if !should_walk_for_python_sources(root) {
+        return (false, false);
+    }
     let mut has_py = false;
     let mut has_pytest = false;
     visit_source_files(root, &mut |path: &Path| {
@@ -61,6 +100,29 @@ mod tests {
         let mut count = 0usize;
         super::visit_source_files(tmp.path(), &mut |_p| count += 1);
         assert_eq!(count, 0);
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
+        assert!(!has_py);
+        assert!(!has_pytest);
+    }
+
+    #[test]
+    fn python_ruff_and_pytest_flags_skips_nested_py_without_workspace_markers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("pkg");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
+        assert!(!has_py);
+        assert!(!has_pytest);
+    }
+
+    #[test]
+    fn python_ruff_and_pytest_flags_skips_malvin_dir_only_with_nested_py() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("pkg");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("main.py"), "x = 1\n").unwrap();
+        std::fs::create_dir_all(tmp.path().join(".malvin")).unwrap();
         let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
         assert!(!has_py);
         assert!(!has_pytest);

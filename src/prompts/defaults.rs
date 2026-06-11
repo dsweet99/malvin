@@ -74,7 +74,7 @@ mod advice_path_embed_tests {
         let header = render_header(&store, &ctx).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
-            header.contains(".malvin/logs"),
+            header.contains(".malvin_home/logs"),
             "header must render logs_dir to home logs bucket"
         );
         assert!(

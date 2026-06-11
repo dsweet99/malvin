@@ -96,7 +96,7 @@ def default_deepswe_tasks_root() -> Path:
 
 def default_deepswe_results_dir() -> Path:
     """Eval artifact root outside the malvin repo so quality gates are not polluted."""
-    return Path.home() / ".malvin" / "deepswe-results"
+    return Path.home() / ".malvin_home" / "deepswe-results"
 
 
 def resolve_local_task_dir(task_name: str) -> Path:
@@ -928,7 +928,7 @@ def _task_kernel_options(f: Any) -> Any:
         "--results-dir",
         type=click.Path(file_okay=False, path_type=Path),
         default=None,
-        show_default="~/.malvin/deepswe-results",
+        show_default="~/.malvin_home/deepswe-results",
         help="Root directory for run artifacts (outside the malvin repo by default).",
     )(f)
     f = click.option(

@@ -86,7 +86,7 @@ fn render_kpop_summarize_prompt_includes_activity_heading() {
     assert!(prompt.contains("Executive summary"));
     assert!(!prompt.contains("{{"));
     assert!(
-        prompt.contains(".malvin/logs"),
+        prompt.contains(".malvin_home/logs"),
         "summarize header must render logs_dir to home logs bucket"
     );
 }

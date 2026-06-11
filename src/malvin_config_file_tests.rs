@@ -244,7 +244,7 @@ fn ensure_malvin_config_file_and_home_path() {
             std::fs::read_to_string(malvin_config_path(work)).expect("read")
         );
         let path = malvin_home_config_path();
-        assert!(path.ends_with(".malvin/config.toml"));
+        assert!(path.ends_with(".malvin_home/config.toml"));
         assert!(path.starts_with(crate::user_home_dir()));
     });
 }

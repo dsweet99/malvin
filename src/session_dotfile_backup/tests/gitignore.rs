@@ -49,7 +49,7 @@ fn gitignore_backup_retries_on_existing_collision() {
     with_isolated_home(|work| {
         let home = std::env::var_os("HOME").unwrap();
         let dir = std::path::Path::new(&home)
-            .join(".malvin")
+            .join(crate::MALVIN_USER_HOME_DIR)
             .join("gitignore_snapshots");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();

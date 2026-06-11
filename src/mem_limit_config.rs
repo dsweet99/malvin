@@ -1,4 +1,4 @@
-//! Agent process-group memory cap from `~/.malvin/config.toml`.
+//! Agent process-group memory cap from `~/.malvin_home/config.toml`.
 
 use std::path::Path;
 

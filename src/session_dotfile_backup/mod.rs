@@ -19,7 +19,7 @@ pub use wrappers::{
 
 use slots::{backup_slot, restore_slot};
 
-/// Captured dotfile bytes at snapshot time plus the historical disk location under `~/.malvin`.
+/// Captured dotfile bytes at snapshot time plus the historical disk location under `~/.malvin_home`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DotfileBackupPayload {
     pub backup_path: std::path::PathBuf,

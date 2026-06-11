@@ -26,7 +26,7 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
     const path = require('path');
     const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
     const os = require('os');
-    const runRoot = path.join(os.homedir(), '.malvin', 'logs');
+    const runRoot = path.join(os.homedir(), '.malvin_home', 'logs');
     let runDir = null;
     outer: for (const hash of fs.readdirSync(runRoot, {{ withFileTypes: true }}).filter((e) => e.isDirectory())) {{
       const bucket = path.join(runRoot, hash.name);
@@ -142,7 +142,7 @@ pub fn acp_mock_bug_kpop_solved_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
     const os = require('os');
-    const root = path.join(os.homedir(), '.malvin', 'logs');
+    const root = path.join(os.homedir(), '.malvin_home', 'logs');
     if (fs.existsSync(root)) {
       outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
         const bucket = path.join(root, hash.name);

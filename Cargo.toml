@@ -17,10 +17,10 @@ categories = ["development-tools"]
 
 [profile.dev]
 incremental = true
-codegen-units = 4
+codegen-units = 8
 
 [env]
-RUST_TEST_THREADS = "4"
+RUST_TEST_THREADS = "8"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

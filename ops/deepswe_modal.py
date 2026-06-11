@@ -19,7 +19,7 @@ Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY
 For headless eval without Cursor credentials, pass ``--mini`` to malvin and set
 ``OPENROUTER_API_KEY`` in the sandbox environment (OpenRouter HTTP egress required).
 
-Artifacts land under ``~/.malvin/deepswe-results/<task_id>/modal_<timestamp>/``
+Artifacts land under ``~/.malvin_home/deepswe-results/<task_id>/modal_<timestamp>/``
 (``metadata.json``, ``reward.txt``). Workspace: ``.../workspace``.
 
 Examples::
@@ -1187,7 +1187,7 @@ def harvest_sandbox_logs(sandbox: modal.Sandbox, out_dir: Path) -> dict[str, Any
         "bash",
         "-lc",
         f"mkdir -p {LOGS_REMOTE}/malvin && "
-        f"(cp -a /root/.malvin/logs/. {LOGS_REMOTE}/malvin/ 2>/dev/null || true) && "
+        f"(cp -a /root/.malvin_home/logs/. {LOGS_REMOTE}/malvin/ 2>/dev/null || true) && "
         f"tar -czf /tmp/deepswe_harvest.tgz -C / logs",
         workdir=APP_REMOTE,
     )
@@ -1554,7 +1554,7 @@ def run_modal_eval(
     "--results-dir",
     type=click.Path(file_okay=False, path_type=Path),
     default=None,
-    show_default="~/.malvin/deepswe-results",
+        show_default="~/.malvin_home/deepswe-results",
 )
 @click.option(
     "--command",

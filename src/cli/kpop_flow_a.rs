@@ -190,9 +190,8 @@ mod kiss_cov_auto{
     #[test]
     fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
         crate::test_utils::with_isolated_home(|cwd| {
-            let home = crate::user_home_dir();
             let run_name = "20260101_000000_abcabcab";
-            let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
+            let bucket = crate::malvin_logs_root(cwd);
             let run_dir = bucket.join(run_name);
             std::fs::create_dir_all(&run_dir).expect("mkdir");
             crate::write_work_dir_manifest(&run_dir, cwd).expect("manifest");

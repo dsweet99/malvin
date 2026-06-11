@@ -171,7 +171,7 @@ fn malvin_doc_embeds_name_section() {
     let text = String::from_utf8(out).expect("utf8");
     assert!(text.contains("--name"), "doc must mention --name");
     assert!(
-        text.contains(".malvin/names") || text.contains("already holds"),
+        text.contains(".malvin_home/names") || text.contains("already holds"),
         "doc must describe registry or duplicate-name behavior"
     );
 }

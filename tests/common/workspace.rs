@@ -11,9 +11,9 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
     let path = malvin::malvin_config_path(workspace);
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin");
+        std::fs::create_dir_all(parent).expect("mkdir ~/.malvin_home");
     }
-    std::fs::write(path, content).expect("write ~/.malvin/config.toml");
+    std::fs::write(path, content).expect("write ~/.malvin_home/config.toml");
 }
 
 /// Run `f` with `HOME` pointed at a fresh temp directory and restore afterward.
@@ -86,7 +86,7 @@ pub fn write_mock_executable(path: &std::path::Path, js: &str) {
 /// Home-directory run logs bucket for `workspace` when `HOME` is set to `home`.
 #[must_use]
 pub fn malvin_run_logs_bucket(workspace: &Path, home: &Path) -> PathBuf {
-    home.join(".malvin")
+    home.join(malvin::MALVIN_USER_HOME_DIR)
         .join("logs")
         .join(malvin::workspace_logs_hash(workspace))
 }

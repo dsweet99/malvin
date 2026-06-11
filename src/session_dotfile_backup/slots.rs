@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use super::alloc::{allocate_backup_dir, malvin_home_dir, remove_if_exists, DotfileBackupLabels};
+use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
+use crate::workspace_paths::{malvin_user_home_root, MALVIN_HOME_CONFIG_FILE};
 use super::DotfileBackupState;
 
 pub(super) struct DotfileSpecRow {
@@ -62,12 +63,12 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
         restore_copy_err: "kissignore restore",
     },
     DotfileSpecRow {
-        rel: crate::MALVIN_CONFIG_REL,
+        rel: MALVIN_HOME_CONFIG_FILE,
         home_subdir: "malvin_config_snapshots",
         mkdir_lbl: "malvin_config backup mkdir",
         collision_lbl: "malvin_config backup mkdir",
         restore_lbl: "malvin_config restore",
-        copy_err: ".malvin/config.toml backup copy",
+        copy_err: "~/.malvin_home/config.toml backup copy",
         restore_copy_err: "malvin_config restore",
     },
     DotfileSpecRow {
@@ -100,7 +101,7 @@ pub(super) fn backup_slot(
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
     }
-    let root = malvin_home_dir().join(".malvin").join(spec.home_subdir);
+    let root = malvin_user_home_root().join(spec.home_subdir);
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);

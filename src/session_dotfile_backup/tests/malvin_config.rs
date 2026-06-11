@@ -7,7 +7,7 @@ use crate::artifacts::{
     backup_workspace_malvin_config_if_present_with_id, restore_workspace_malvin_config_backup,
 };
 use crate::test_utils::with_isolated_home;
-use crate::{malvin_config_path, MALVIN_CONFIG_REL, seed_malvin_config};
+use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
 
 #[test]
 fn malvin_config_backup_skips_when_home_file_missing() {
@@ -66,7 +66,7 @@ fn malvin_config_backup_retries_on_existing_collision() {
     with_isolated_home(|work| {
         let home = std::env::var_os("HOME").unwrap();
         let dir = Path::new(&home)
-            .join(".malvin")
+            .join(crate::MALVIN_USER_HOME_DIR)
             .join("malvin_config_snapshots");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
@@ -87,9 +87,9 @@ fn malvin_config_backup_retries_on_existing_collision() {
 
         assert_eq!(
             payload.backup_path.as_path(),
-            dir.join("bbbbb").join(MALVIN_CONFIG_REL).as_path()
+            dir.join("bbbbb").join(MALVIN_HOME_CONFIG_FILE).as_path()
         );
         assert!(payload.backup_path.is_file());
-        assert!(!dir.join("aaaaa").join(MALVIN_CONFIG_REL).exists());
+        assert!(!dir.join("aaaaa").join(MALVIN_HOME_CONFIG_FILE).exists());
     });
 }

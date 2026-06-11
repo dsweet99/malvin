@@ -1,6 +1,6 @@
 # malvin (top-level CLI)
 
-malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent` or `agent`) against a workspace. Each agent-backed invocation creates an isolated run directory under `./.malvin/logs/` in the workspace (or target path) and records prompts, stdout, and artifacts there.
+malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent` or `agent`) against a workspace. Each agent-backed invocation creates an isolated run directory under `~/.malvin_home/logs/<hash>/` and records prompts, stdout, and artifacts there.
 
 ## How to read this documentation
 
@@ -48,7 +48,7 @@ Disable ANSI color on malvin’s own status and error lines. Does not change the
 
 ### `-b` / `--background`
 
-Suppress all stdout from malvin and the agent. Run logs under `./.malvin/logs/` are unchanged.
+Suppress all stdout from malvin and the agent. Run logs under `~/.malvin_home/logs/` are unchanged.
 
 ### `--model <MODEL>`
 
@@ -64,7 +64,7 @@ By default gate-loop commands (`code`, `kpop`, `tidy`, bare `malvin REQUEST`) ex
 
 ### `--no-tee`
 
-By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `./.malvin/logs/`.
+By default malvin tees agent stdout to the terminal (and `stdout.log` in the run dir). `--no-tee` suppresses live streaming; logs are still written under `~/.malvin_home/logs/`.
 
 ### `--no-markdown`
 
@@ -108,7 +108,7 @@ Maximum HTTP completion rounds inside one `run_coder_prompt` when `--mini`. Each
 
 Optional session name for `do`, `plan`, `code`, `tidy`, and bare `malvin REQUEST` (not the hidden `kpop` subcommand). When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
-Malvin registers the top-level process under this name in a per-user registry at `~/.malvin/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin/names/`.
+Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
 Session names are independent of the workspace-scoped `.malvin/acp_spawn.lock` (one live ACP session per workspace). Two malvin processes with different `--name` values may both register names in the same workspace; only one may hold a live ACP session there at a time.
 
@@ -116,7 +116,7 @@ Session names are independent of the workspace-scoped `.malvin/acp_spawn.lock` (
 
 ### `--doc`
 
-Print built-in documentation and exit. Does not spawn an agent or create a `./.malvin/logs` run directory.
+Print built-in documentation and exit. Does not spawn an agent or create a run directory under `~/.malvin_home/logs/`.
 
 - `malvin --doc` — this overview.
 - `malvin <COMMAND> --doc` — documentation for that subcommand.
@@ -144,7 +144,7 @@ When no subcommand is given, these global flags apply to the kpop workflow (same
 
 ## Run directories and logs
 
-Every agent-backed command creates `./.malvin/logs/<timestamp>_<token>/` under the session work directory. Typical files:
+Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<token>/`. Typical files:
 
 | File | Role |
 |------|------|
@@ -162,7 +162,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin/logs/<hash>/` according to `~/.malvin/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.
 
 ## External dependencies
 
@@ -194,7 +194,7 @@ malvin kpop notes/question.md
 `code` and `tidy` share an outer **gate loop** implemented in `gate_kpop_workflow`:
 
 1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md` or `tidy_constraints.md`) rendered through `kpop_program.md`.
-2. The agent records hypotheses in `./.malvin/logs/<run>/_kpop/exp_log_<n>.md`.
+2. The agent records hypotheses in `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
 3. Malvin exits early when **two consecutive** sessions write `## KPOP_SOLVED` and workspace quality gates pass.
 4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 

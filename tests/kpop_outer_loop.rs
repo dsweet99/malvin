@@ -19,7 +19,7 @@ mod linux {
     const m = promptText.match(/exp_log_[^\s`]+\.md/);
     const target = m ? m[0] : null;
     const os = require('os');
-    const root = path.join(os.homedir(), '.malvin', 'logs');
+    const root = path.join(os.homedir(), '.malvin_home', 'logs');
     if (target && fs.existsSync(root)) {
       outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
         const bucket = path.join(root, hash.name);

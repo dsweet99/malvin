@@ -1,4 +1,4 @@
-//! Apply workspace `~/.malvin/config.toml` defaults to parsed CLI values when flags were not set.
+//! Apply `~/.malvin_home/config.toml` defaults to parsed CLI values when flags were not set.
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};

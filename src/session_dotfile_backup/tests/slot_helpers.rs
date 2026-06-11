@@ -1,4 +1,4 @@
-use super::alloc::malvin_home_dir;
+use crate::malvin_user_home_root;
 use super::{
     restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
 };
@@ -58,7 +58,7 @@ fn dotfile_source_path_slot_three_uses_home_config() {
         };
         assert_eq!(String::from_utf8(payload.bytes).unwrap(), "home-config\n");
         assert!(payload.backup_path.starts_with(
-            malvin_home_dir().join(".malvin").join("malvin_config_snapshots")
+            malvin_user_home_root().join("malvin_config_snapshots")
         ));
         assert_eq!(
             dotfile_source_path(3, work),

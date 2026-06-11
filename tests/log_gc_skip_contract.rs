@@ -19,9 +19,9 @@ fn seed_log_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
 }
 
 fn write_gc_config_age_only(home: &Path) {
-    std::fs::create_dir_all(home.join(".malvin")).expect("mkdir .malvin");
+    std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
     std::fs::write(
-        home.join(".malvin/config.toml"),
+        home.join(malvin::MALVIN_USER_HOME_DIR).join("config.toml"),
         "[logs]\nmax_age_days = 30\nmax_bytes = \"\"\n",
     )
     .expect("write config");

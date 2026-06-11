@@ -11,8 +11,14 @@ pub const MALVIN_ADVICE_REL: &str = ".malvin/advice.md";
 /// Legacy repo-relative logs path (pre-relocation); retained for docs and migration tests.
 pub const MALVIN_LOGS_REL: &str = ".malvin/logs";
 
-/// Relative path under `$HOME` (not the workspace).
+/// Workspace-local config (distinct from [`malvin_home_config_path`]).
 pub const MALVIN_CONFIG_REL: &str = ".malvin/config.toml";
+
+/// Per-user malvin data root under `$HOME` (logs, config, names, dotfile snapshots).
+pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
+
+/// Global user config filename under [`malvin_user_home_root`].
+pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
 /// Run-directory file recording the canonical workspace cwd for this run.
 pub const WORK_DIR_MANIFEST: &str = "work_dir";
@@ -32,18 +38,24 @@ pub fn malvin_advice_path(work_dir: &Path) -> PathBuf {
     work_dir.join(MALVIN_ADVICE_REL)
 }
 
-/// `~/.malvin/logs/<hash>/` for the canonical absolute path of `work_dir`.
+/// `~/.malvin_home/logs/<hash>/` for the canonical absolute path of `work_dir`.
 #[must_use]
 pub fn malvin_logs_root(work_dir: &Path) -> PathBuf {
     malvin_home_logs_root().join(workspace_logs_hash(work_dir))
 }
 
+/// `~/.malvin_home/`.
 #[must_use]
-pub fn malvin_home_logs_root() -> PathBuf {
-    crate::user_home_dir().join(".malvin").join("logs")
+pub fn malvin_user_home_root() -> PathBuf {
+    crate::user_home_dir().join(MALVIN_USER_HOME_DIR)
 }
 
-/// `~/.malvin/config.toml` (global user config; `work_dir` is ignored).
+#[must_use]
+pub fn malvin_home_logs_root() -> PathBuf {
+    malvin_user_home_root().join("logs")
+}
+
+/// `~/.malvin_home/config.toml` (global user config; `work_dir` is ignored).
 #[must_use]
 pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
     malvin_home_config_path()
@@ -51,7 +63,7 @@ pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
 
 #[must_use]
 pub fn malvin_home_config_path() -> PathBuf {
-    crate::user_home_dir().join(MALVIN_CONFIG_REL)
+    malvin_user_home_root().join(MALVIN_HOME_CONFIG_FILE)
 }
 
 /// Alphanumeric (hex) digest of the canonical absolute path of `work_dir`.
@@ -165,6 +177,13 @@ mod tests {
         std::fs::create_dir_all(&a).unwrap();
         std::fs::create_dir_all(&b).unwrap();
         assert_ne!(workspace_logs_hash(&a), workspace_logs_hash(&b));
+    }
+
+    #[test]
+    fn malvin_user_home_root_uses_malvin_home_dir() {
+        let root = malvin_user_home_root();
+        assert!(root.ends_with(MALVIN_USER_HOME_DIR));
+        assert!(root.starts_with(crate::user_home_dir()));
     }
 
     #[test]

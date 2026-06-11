@@ -35,7 +35,7 @@ pub const KISS_CHECK_COMMAND: &str = "kiss check";
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
 pub const DEFAULT_RUST_CLIPPY: &str =
-    "cargo clippy -j 1 --all-targets --all-features -- -D warnings -W clippy::cargo";
+    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
 
 pub const DEFAULT_RUST_TEST: &str = "cargo test";
 

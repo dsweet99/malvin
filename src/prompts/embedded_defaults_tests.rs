@@ -47,7 +47,7 @@ fn default_embedded_placeholder_context() -> HashMap<String, String> {
         ("advice_path".to_string(), "./.malvin/advice.md".to_string()),
         (
             "logs_dir".to_string(),
-            "/home/.malvin/logs/abc123".to_string(),
+            "/home/.malvin_home/logs/abc123".to_string(),
         ),
         (
             "current_state".to_string(),
