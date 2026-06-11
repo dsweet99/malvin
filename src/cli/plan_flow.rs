@@ -12,7 +12,7 @@ mod plan_flow_pipeline;
 
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_opts, detect_rerun_user_span_end,
-    is_existing_md_file_path, read_plan_file,
+    is_existing_md_file_path, read_plan_file, restore_interrupted_plan,
 };
 use crate::cli::adversarial_profile::resolve_work_dir_for_plan;
 use crate::agent_backend::build_agent_backend;
@@ -45,14 +45,7 @@ fn validate_plan_markers_before_run(path: &Path) -> Result<(), String> {
 
 fn prepare_source_plan(path: &Path) -> Result<(), String> {
     validate_plan_markers_before_run(path)?;
-    let content = read_plan_file(path).map_err(|e| e.to_string())?;
-    if let Some(user_span_end) = detect_rerun_user_span_end(&content).map_err(|e| e.to_string())? {
-        let truncated = content
-            .get(..user_span_end)
-            .ok_or_else(|| "user_span_end out of range".to_string())?;
-        crate::artifacts::write_plan_file_atomic(path, truncated)
-            .map_err(|e| e.to_string())?;
-    }
+    restore_interrupted_plan(path).map_err(|e| e.to_string())?;
     Ok(())
 }
 

@@ -63,22 +63,16 @@ pub(super) fn test_plan_run_prep_for_plan(
     test_plan_run_prep(tmp, artifacts, plan, render_ctx)
 }
 
-pub(super) fn post_1a_content(user: &str) -> String {
-    format!("{user}\n\n---\nBEGIN_MALVIN\n## Restatement\nrestated\n")
+pub(super) fn post_1a_content() -> String {
+    "## Restatement\nrestated\n".to_string()
 }
 
-pub(super) fn post_1b_content(user: &str) -> String {
-    format!(
-        "{}\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n",
-        post_1a_content(user).trim_end()
-    )
+pub(super) fn post_1b_content() -> String {
+    "## Restatement\nrestated\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n".to_string()
 }
 
-pub(super) fn post_2_content(user: &str) -> String {
-    format!(
-        "{}\n\n## DECISIONS\n1. **Verdict:** ok **Evidence:** test\n",
-        post_1b_content(user).trim_end()
-    )
+pub(super) fn post_2_content() -> String {
+    "## Restatement\nrestated\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n\n## DECISIONS\n1. **Verdict:** ok **Evidence:** test\n".to_string()
 }
 
 pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {

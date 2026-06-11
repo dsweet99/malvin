@@ -34,6 +34,7 @@ pub(crate) fn build_plan_render_context(
 ) -> HashMap<String, String> {
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "plan_path", source_plan_path, work_dir);
+    insert_formatted(&mut ctx, "user_plan_path", &artifacts.plan_path, work_dir);
     let overlay = adversarial_overlay_hint(source_plan_path, work_dir)
         .map(|reason| format!("{ADVERSARIAL_OVERLAY_BODY}\n\nActivation: {reason}"))
         .unwrap_or_default();

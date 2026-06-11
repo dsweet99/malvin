@@ -10,7 +10,12 @@ fn prepare_plan_run_truncates_and_loads_prompt_store() {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {
             let plan = work.join("plan.md");
-            std::fs::write(&plan, "# User\n\n---\nBEGIN_MALVIN\nold\n").expect("write");
+            std::fs::write(&plan, "## Restatement\nold\n").expect("write");
+            std::fs::write(
+                crate::artifacts::plan_user_sidecar_path(&plan),
+                "# User\n",
+            )
+            .expect("sidecar");
             let mock = work.join("mock-agent");
             write_plan_pipeline_mock_agent(&mock);
             install_plan_mock_env(&mock, &plan);
@@ -25,7 +30,7 @@ fn prepare_plan_run_truncates_and_loads_prompt_store() {
             .expect("prepare");
             assert_eq!(
                 std::fs::read_to_string(&plan).expect("read"),
-                "# User\n\n"
+                "# User\n"
             );
             assert!(prep.store.validate_exists(crate::prompts::PLAN_1A_RESTATE_MD).is_ok());
         });

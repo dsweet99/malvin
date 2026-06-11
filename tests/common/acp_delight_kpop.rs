@@ -31,11 +31,11 @@ fn acp_mock_delight_kpop_body(plan_write: &str) -> String {
 
 const PLAN_PIPELINE_HANDLER: &str = r"    function resolvePlanPath() {
       const patterns = [
-        /plan in [`']([^`']+)[`']/,
-        /The file [`']([^`']+)[`']/,
-        /Read [`']([^`']+\.md)[`']/,
         /Edit [`']([^`']+)[`']/,
         /append to [`']([^`']+)[`']/i,
+        /The file [`']([^`']+)[`']/,
+        /Read [`']([^`']+\.md)[`']/,
+        /plan in [`']([^`']+)[`']/,
       ];
       for (const re of patterns) {
         const m = promptText.match(re);

@@ -115,7 +115,9 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 
 #[test]
 fn delight_does_not_require_kiss_on_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["delight"], None);
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["delight"], Some(work.path()));
 }
 
 #[test]
