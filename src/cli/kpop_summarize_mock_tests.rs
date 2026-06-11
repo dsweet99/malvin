@@ -47,12 +47,15 @@ where
 #[test]
 fn run_outer_loop_summarize_if_warranted_runs_mock_summary_agent() {
     with_summarize_mock_agent(|workspace, store, artifacts| {
+        let kpop_dir = artifacts.run_dir.join("_kpop");
+        std::fs::create_dir_all(&kpop_dir).expect("mkdir");
+        std::fs::write(kpop_dir.join("exp_log_test_g1.md"), "a\n").expect("write");
+        std::fs::write(kpop_dir.join("exp_log_test_g2.md"), "b\n").expect("write");
         let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {
             run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
                 KpopOuterLoopSummarizeInputs {
-                    max_loops: 2,
                     agent_ran: true,
                     shared: &shared,
                 },

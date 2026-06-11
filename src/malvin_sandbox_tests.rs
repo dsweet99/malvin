@@ -35,13 +35,13 @@ fn sandbox_commands_do_not_force_cargo_build_jobs() {
 }
 
 #[test]
-fn sandbox_commands_force_nextest_test_threads_to_one() {
+fn sandbox_commands_do_not_force_nextest_test_threads() {
     with_env_set("NEXTEST_TEST_THREADS", "8", || {
         let std_cmd = crate::malvin_sandbox::malvin_std_command("true");
         let threads = std_cmd
             .get_envs()
             .find_map(|(k, v)| (k == "NEXTEST_TEST_THREADS").then_some(v));
-        assert_eq!(threads, Some(Some(OsStr::new("1"))));
+        assert!(threads.is_none());
     });
 }
 

@@ -14,6 +14,21 @@ pub struct ExplainSpawn<'a> {
     pub extra_args: &'a [&'a str],
 }
 
+pub fn seed_stale_default_explain_outputs(workspace: &Path) {
+    std::fs::write(workspace.join("explain.tex"), "STALE\n").expect("write stale tex");
+    std::fs::write(workspace.join("explain.pdf"), b"%PDF-1.4 stale").expect("write stale pdf");
+}
+
+pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
+    let stale = std::fs::read_to_string(workspace.join("explain.tex")).expect("read stale tex");
+    assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
+    let tex = std::fs::read_to_string(workspace.join("explain_1.tex")).expect("read allocated tex");
+    assert!(
+        tex.contains("Revised"),
+        "explain must chain malvin revise on allocated path: {tex:?}"
+    );
+}
+
 pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(t.workspace)

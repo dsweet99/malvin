@@ -34,23 +34,37 @@ fn delight_work_dir_is_dot_for_root_filename() {
 }
 
 #[test]
-fn delight_fails_when_out_path_is_regular_file() {
+fn delight_allocates_plan_1_when_default_plan_md_exists() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::write(tmp.path().join("plan.md"), "existing\n").expect("write");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let err = delight_preflight("plan.md").expect_err("exists");
+    let (resolved, work_dir) = delight_preflight("plan.md").expect("alloc");
     std::env::set_current_dir(old).expect("restore");
-    assert!(err.contains("refusing to overwrite"));
+    assert_eq!(resolved.file_name().unwrap(), "plan_1.md");
+    assert_eq!(work_dir, PathBuf::from("."));
 }
 
 #[test]
-fn delight_fails_when_out_path_is_zero_byte_file() {
+fn delight_allocates_plan_2_when_plan_md_and_plan_1_exist() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "").expect("write");
+    std::fs::write(tmp.path().join("plan.md"), "a\n").expect("write");
+    std::fs::write(tmp.path().join("plan_1.md"), "b\n").expect("write");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let err = delight_preflight("plan.md").expect_err("exists");
+    let (resolved, _) = delight_preflight("plan.md").expect("alloc");
+    std::env::set_current_dir(old).expect("restore");
+    assert_eq!(resolved.file_name().unwrap(), "plan_2.md");
+}
+
+#[test]
+fn delight_fails_when_custom_out_path_exists() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join("plans")).expect("mkdir");
+    std::fs::write(tmp.path().join("plans/existing.md"), "existing\n").expect("write");
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let err = delight_preflight("plans/existing.md").expect_err("exists");
     std::env::set_current_dir(old).expect("restore");
     assert!(err.contains("refusing to overwrite"));
 }

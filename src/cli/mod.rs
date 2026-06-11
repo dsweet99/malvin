@@ -33,6 +33,7 @@ mod gate_kpop_workflow;
 pub(crate) mod adversarial_profile;
 pub(crate) mod init_discovery_flow;
 mod loop_opts;
+mod default_output_path;
 mod workflow_kpop_shared;
 mod kpop_summarize;
 

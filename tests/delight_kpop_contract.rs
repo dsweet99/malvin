@@ -52,13 +52,13 @@ fn delight_runs_kpop_when_gates_already_pass() {
 
 #[cfg(unix)]
 #[test]
-fn delight_fails_when_out_path_preexists() {
+fn delight_allocates_sibling_when_default_plan_preexists() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     std::fs::write(workspace.join("plan.md"), "existing\n").expect("seed plan");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-should-not-run");
+    let mock = root.path().join("mock-delight-sibling");
     write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
@@ -68,7 +68,41 @@ fn delight_fails_when_out_path_preexists() {
         extra_args: &["--max-loops", "1"],
     });
     let combined = combined_cli_output(&out);
-    assert!(!out.status.success(), "expected failure when plan exists: {combined:?}");
+    assert!(
+        out.status.success(),
+        "expected success when default plan exists: status={:?} combined={combined:?}",
+        out.status,
+    );
+    assert!(combined.contains("DONE"), "expected DONE: {combined:?}");
+    let stale = std::fs::read_to_string(workspace.join("plan.md")).expect("read stale plan");
+    assert_eq!(stale, "existing\n", "original plan.md must be untouched");
+    let plan = std::fs::read_to_string(workspace.join("plan_1.md")).expect("read allocated plan");
+    assert!(
+        plan.contains("# Revised"),
+        "delight must chain malvin plan on allocated path: {plan:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn delight_fails_when_custom_out_path_preexists() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    std::fs::create_dir_all(workspace.join("plans")).expect("mkdir");
+    std::fs::write(workspace.join("plans/existing.md"), "existing\n").expect("seed plan");
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = root.path().join("mock-delight-custom-exists");
+    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let out = spawn_delight(&DelightSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        extra_args: &["--max-loops", "1", "--out-path", "plans/existing.md"],
+    });
+    let combined = combined_cli_output(&out);
+    assert!(!out.status.success(), "expected failure when custom path exists: {combined:?}");
     assert!(
         combined.contains("refusing to overwrite"),
         "expected overwrite refusal: {combined:?}"

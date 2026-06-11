@@ -7,8 +7,8 @@ mod common;
 use common::{
     ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_kpop_solved_without_output_js,
     acp_mock_explain_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
-    seed_git_kiss_cargo_gate_workspace, spawn_explain, test_home_workspace, workspace_kiss_check_only,
-    write_mock_executable,
+    assert_default_explain_sibling_outputs, seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
+    spawn_explain, test_home_workspace, workspace_kiss_check_only, write_mock_executable,
 };
 
 #[cfg(unix)]
@@ -110,15 +110,14 @@ fn explain_fails_when_request_missing() {
 
 #[cfg(unix)]
 #[test]
-fn explain_fails_when_stale_outputs_exist() {
+fn explain_allocates_sibling_when_default_outputs_exist() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
-    std::fs::write(workspace.join("explain.tex"), "STALE\n").expect("write");
-    std::fs::write(workspace.join("explain.pdf"), b"%PDF-1.4 stale").expect("write");
+    seed_stale_default_explain_outputs(&workspace);
     let path = bin_path_with_fake_kiss(&root);
     let mock = root.path().join("mock-explain-stale");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_solved_without_output_js());
+    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -129,20 +128,12 @@ fn explain_fails_when_stale_outputs_exist() {
     });
     let combined = combined_cli_output(&out);
     assert!(
-        !out.status.success(),
-        "expected failure when stale outputs exist: status={:?} combined={combined:?}",
+        out.status.success(),
+        "expected success when default outputs exist: status={:?} combined={combined:?}",
         out.status,
     );
-    assert!(
-        combined.contains("refusing to overwrite"),
-        "expected overwrite refusal: {combined:?}"
-    );
-    let tex = std::fs::read_to_string(workspace.join("explain.tex")).expect("read tex");
-    assert_eq!(tex, "STALE\n", "stale tex must be unchanged");
-    assert!(
-        !combined.contains("KPOP_LOG:"),
-        "agent must not run when preflight fails: {combined:?}"
-    );
+    assert!(combined.contains("DONE"), "expected DONE: {combined:?}");
+    assert_default_explain_sibling_outputs(&workspace);
 }
 
 #[cfg(unix)]

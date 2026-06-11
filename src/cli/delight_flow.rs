@@ -16,7 +16,7 @@ pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct DelightArgs {
-    /// Workspace path for the generated plan (must not already exist).
+    /// Workspace path for the generated plan (default `plan.md` auto-allocates siblings when occupied).
     #[arg(long, default_value = "plan.md")]
     pub out_path: String,
     /// Maximum gate-loop iterations before stopping.

@@ -68,11 +68,13 @@ fn resolve_delight_gate_outcome(
 }
 
 pub async fn run_delight(
-    delight: DelightArgs,
+    delight: &mut DelightArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let prepared = prepare_delight_kpop_run(&delight.out_path, workflow)?;
+    delight.out_path =
+        crate::cli::default_output_path::path_relative_to_cwd(&prepared.resolved_out_path)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
 
     emit_run_startup_sequence(
@@ -100,7 +102,6 @@ pub async fn run_delight(
 
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
             agent_ran,
             shared,
             workflow,

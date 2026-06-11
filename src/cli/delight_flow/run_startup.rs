@@ -54,22 +54,29 @@ mod tests {
     }
 
     #[test]
-    fn delight_preflight_runs_before_run_dir_created() {
+    fn delight_preflight_allocates_sibling_before_run_dir_created() {
         crate::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
             std::fs::write(work.join("plan.md"), "existing\n").expect("write");
             let logs_root = crate::workspace_paths::malvin_logs_root(work);
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let Err(err) = prepare_delight_kpop_run(
+            let prepared = prepare_delight_kpop_run(
                 "plan.md",
                 crate::cli::WorkflowCliOptions { force: true },
-            ) else {
-                panic!("preflight must fail");
-            };
-            assert!(err.contains("refusing to overwrite"));
+            )
+            .expect("default collision must allocate sibling");
+            assert!(
+                prepared.resolved_out_path.ends_with("plan_1.md"),
+                "expected plan_1.md, got {}",
+                prepared.resolved_out_path.display()
+            );
             let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
-            assert_eq!(runs_before, runs_after, "preflight must not create run dirs");
+            assert_eq!(
+                runs_before + 1,
+                runs_after,
+                "prepare creates run dir after successful preflight"
+            );
             std::env::set_current_dir(cwd).expect("restore");
         });
     }

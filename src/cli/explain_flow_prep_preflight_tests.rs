@@ -25,30 +25,38 @@ fn explain_proceeds_when_outputs_missing() {
 }
 
 #[test]
-fn explain_fails_when_tex_exists() {
+fn explain_allocates_explain_1_when_default_outputs_exist() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::write(tmp.path().join("explain.tex"), "STALE\n").expect("write");
-    let err = explain_preflight_in_cwd(tmp.path(), "topic", EXPLAIN_TEX_BASENAME).expect_err("exists");
-    assert!(err.contains("refusing to overwrite"));
+    std::fs::write(tmp.path().join("explain.pdf"), b"%PDF").expect("write");
+    let (_, outputs) =
+        explain_preflight_in_cwd(tmp.path(), "topic", EXPLAIN_TEX_BASENAME).expect("alloc");
+    assert_eq!(outputs.tex_path, tmp.path().join("explain_1.tex"));
+    assert_eq!(outputs.pdf_path, tmp.path().join("explain_1.pdf"));
 }
 
 #[test]
-fn explain_fails_when_pdf_exists() {
+fn explain_fails_when_only_default_pdf_exists_without_tex() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::write(tmp.path().join("explain.pdf"), b"%PDF").expect("write");
-    let err = explain_preflight_in_cwd(tmp.path(), "topic", EXPLAIN_TEX_BASENAME).expect_err("exists");
-    assert!(err.contains("refusing to overwrite"));
+    let (_, outputs) =
+        explain_preflight_in_cwd(tmp.path(), "topic", EXPLAIN_TEX_BASENAME).expect("alloc");
+    assert_eq!(outputs.tex_path, tmp.path().join("explain_1.tex"));
+    assert_eq!(outputs.pdf_path, tmp.path().join("explain_1.pdf"));
 }
 
 #[test]
-fn explain_fails_when_nested_work_dir_output_exists() {
+fn explain_allocates_sibling_when_nested_work_dir_default_output_exists() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let notes = tmp.path().join("notes");
     std::fs::create_dir_all(&notes).expect("mkdir");
     std::fs::write(notes.join("topic.md"), "Explain this\n").expect("write");
     std::fs::write(notes.join("explain.tex"), "STALE\n").expect("write");
-    let err = explain_preflight_in_cwd(tmp.path(), "notes/topic.md", EXPLAIN_TEX_BASENAME).expect_err("exists");
-    assert!(err.contains("refusing to overwrite"));
+    std::fs::write(notes.join("explain.pdf"), b"%PDF").expect("write");
+    let (_, outputs) =
+        explain_preflight_in_cwd(tmp.path(), "notes/topic.md", EXPLAIN_TEX_BASENAME).expect("alloc");
+    assert_eq!(outputs.tex_path, notes.join("explain_1.tex"));
+    assert_eq!(outputs.pdf_path, notes.join("explain_1.pdf"));
 }
 
 #[test]

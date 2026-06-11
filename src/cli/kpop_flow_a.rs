@@ -137,7 +137,6 @@ pub async fn run_kpop(
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::kpop_outer_loop_summarize_params(
             crate::cli::kpop_summarize::KpopOuterLoopSummarizeInputs {
-                max_loops: kpop.max_loops,
                 agent_ran: loops.agent_ran,
                 shared,
             },

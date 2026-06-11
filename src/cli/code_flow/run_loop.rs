@@ -43,7 +43,6 @@ pub async fn run_code(
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::code_outer_loop_summarize_params(
             crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
-                max_loops,
                 agent_ran,
                 shared,
                 workflow,
@@ -109,7 +108,6 @@ mod tests {
         let workflow = WorkflowCliOptions { force: false };
         let params = crate::cli::kpop_summarize::code_outer_loop_summarize_params(
             crate::cli::kpop_summarize::CodeOuterLoopSummarizeInputs {
-                max_loops: 2,
                 agent_ran: true,
                 shared: &shared,
                 workflow,
@@ -117,7 +115,6 @@ mod tests {
             &prepared,
         );
         std::env::set_current_dir(old).expect("restore cwd");
-        assert_eq!(params.max_loops, 2);
         assert!(params.agent_ran);
         assert_eq!(params.malvin_command, "malvin code");
         assert!(std::ptr::eq(params.store, &raw const *prepared.store()));

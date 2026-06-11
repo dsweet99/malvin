@@ -181,6 +181,22 @@ fn collect_recent_delight_plans_caps_at_five() {
 }
 
 #[test]
+fn collect_recent_delight_plans_dedupes_repeated_paths() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
+    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
+    for run in ["20260101_120000_abc12345", "20260102_120000_abc12346"] {
+        let run_dir = logs_root.join(run);
+        std::fs::create_dir_all(&run_dir).expect("mkdir");
+        std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
+    }
+    let out = tmp.path().join("plan_1.md");
+    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
+    assert_eq!(paths.len(), 1);
+    assert!(paths[0].ends_with("plan.md"));
+}
+
+#[test]
 fn collect_recent_delight_plans_excludes_current_out_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::write(tmp.path().join("plan.md"), "x\n").expect("write");

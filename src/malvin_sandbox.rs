@@ -63,15 +63,13 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
-/// Cap parallel nextest scheduling and glibc arena count for sandbox children.
+/// Cap glibc arena count for sandbox children.
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
-    cmd.env("NEXTEST_TEST_THREADS", "1");
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
-/// Cap parallel nextest scheduling and glibc arena count for sandbox children.
+/// Cap glibc arena count for sandbox children.
 fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
-    cmd.env("NEXTEST_TEST_THREADS", "1");
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 

@@ -81,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn explain_preflight_refuses_stale_outputs_before_run_dir_created() {
+    fn explain_preflight_allocates_sibling_before_run_dir_created() {
         crate::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
@@ -89,16 +89,28 @@ mod tests {
             std::fs::write(work.join("explain.pdf"), b"%PDF").expect("write");
             let logs_root = crate::workspace_paths::malvin_logs_root(work);
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let Err(err) = prepare_explain_kpop_run(
+            let prepared = prepare_explain_kpop_run(
                 Some(&"topic".to_string()),
                 "explain.tex",
                 crate::cli::WorkflowCliOptions { force: true },
-            ) else {
-                panic!("preflight must fail");
-            };
-            assert!(err.contains("refusing to overwrite"));
+            )
+            .expect("default collision must allocate sibling");
+            assert!(
+                prepared.tex_path.ends_with("explain_1.tex"),
+                "expected explain_1.tex, got {}",
+                prepared.tex_path.display()
+            );
+            assert!(
+                prepared.pdf_path.ends_with("explain_1.pdf"),
+                "expected explain_1.pdf, got {}",
+                prepared.pdf_path.display()
+            );
             let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
-            assert_eq!(runs_before, runs_after, "preflight must not create run dirs");
+            assert_eq!(
+                runs_before + 1,
+                runs_after,
+                "prepare creates run dir after successful preflight"
+            );
             std::env::set_current_dir(cwd).expect("restore");
         });
     }

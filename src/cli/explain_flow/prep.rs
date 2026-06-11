@@ -6,6 +6,7 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::insert_formatted;
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
+use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
 use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 pub(crate) const EXPLAIN_TEX_BASENAME: &str = "explain.tex";
@@ -108,14 +109,26 @@ pub(crate) fn explain_preflight(
     out_path: &str,
 ) -> Result<(String, ExplainResolvedOutputs), String> {
     let (text, request_work_dir) = resolve_user_md_request(request)?;
-    let outputs = explain_resolved_output_paths(&request_work_dir, out_path)?;
-    for path in [&outputs.tex_path, &outputs.pdf_path] {
-        if path.exists() {
-            return Err(format!(
-                "malvin explain: `{}` already exists; refusing to overwrite",
-                path.display()
-            ));
+    let mut outputs = explain_resolved_output_paths(&request_work_dir, out_path)?;
+    if out_path == EXPLAIN_TEX_BASENAME {
+        let (tex, pdf) = allocate_default_tex_pdf_pair(
+            &outputs.tex_path,
+            &outputs.pdf_path,
+            "explain",
+        )?;
+        outputs.tex_path = tex;
+        outputs.pdf_path = pdf;
+    } else {
+        for path in [&outputs.tex_path, &outputs.pdf_path] {
+            if path.exists() {
+                return Err(format!(
+                    "malvin explain: `{}` already exists; refusing to overwrite",
+                    path.display()
+                ));
+            }
         }
+    }
+    for path in [&outputs.tex_path, &outputs.pdf_path] {
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
                 std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;

@@ -35,7 +35,7 @@ When `REQUEST` names an existing `.md` file, the work directory is that file's p
 
 ### `--out-path <PATH>` (default: `explain.tex`)
 
-LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. Preflight refuses to run when either path already exists.
+LaTeX output path. malvin derives the PDF path by replacing the `.tex` extension with `.pdf`. With the default `explain.tex`, if either default output already exists in the request work directory, malvin allocates the first free sibling pair (`explain_1.tex` / `explain_1.pdf`, …). For any other `--out-path`, preflight refuses to run when either resolved path already exists.
 
 With the default basename `explain.tex`, outputs stay in the request work directory (for example `notes/explain.tex` when `REQUEST` is `notes/topic.md`). Any other value resolves against the process cwd, like `malvin delight --out-path`.
 

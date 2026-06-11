@@ -70,16 +70,15 @@ pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &s
 }
 
 pub(crate) async fn run_explain_then_revise(
-    explain: ExplainArgs,
+    mut explain: ExplainArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let out_path = explain.out_path.clone();
     let request = explain.request.clone();
     let revise_template = revise_args_for_explain_output(&explain, "");
-    run_explain(explain, shared, workflow).await?;
+    run_explain(&mut explain, shared, workflow).await?;
     let request_arg = crate::cli::cli_request::require_cli_request(request.as_ref(), "explain")?;
-    let doc_path = super::explain_flow::explain_revise_doc_path(&request_arg, &out_path)?;
+    let doc_path = super::explain_flow::explain_revise_doc_path(&request_arg, &explain.out_path)?;
     run_revise(
         ReviseArgs {
             doc_path,
@@ -92,13 +91,17 @@ pub(crate) async fn run_explain_then_revise(
 }
 
 pub(crate) async fn run_delight_then_plan(
-    delight: DelightArgs,
+    mut delight: DelightArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let out_path = delight.out_path.clone();
-    run_delight(delight, shared, workflow).await?;
-    crate::plan_flow::run_plan(plan_args_for_delight_output(&out_path), shared, workflow).await
+    run_delight(&mut delight, shared, workflow).await?;
+    crate::plan_flow::run_plan(
+        plan_args_for_delight_output(&delight.out_path),
+        shared,
+        workflow,
+    )
+    .await
 }
 
 pub(crate) fn run_delight_command(

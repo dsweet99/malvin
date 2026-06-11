@@ -70,11 +70,13 @@ fn resolve_explain_gate_outcome(
 }
 
 pub async fn run_explain(
-    explain: ExplainArgs,
+    explain: &mut ExplainArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let prepared = prepare_explain_kpop_run(explain.request.as_ref(), &explain.out_path, workflow)?;
+    explain.out_path =
+        crate::cli::default_output_path::path_relative_to_cwd(&prepared.tex_path)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
 
     emit_run_startup_sequence(
@@ -102,7 +104,6 @@ pub async fn run_explain(
 
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
             agent_ran,
             shared,
             workflow,

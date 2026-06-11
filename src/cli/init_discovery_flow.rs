@@ -99,7 +99,6 @@ pub(crate) async fn run_init_discovery_kpop(
     .await?;
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
             agent_ran,
             shared,
             workflow,

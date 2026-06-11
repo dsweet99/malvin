@@ -29,13 +29,13 @@ No positional arguments.
 
 ### `--out-path <PATH>` (default: `plan.md`)
 
-Workspace path for the generated plan. **Fail-if-exists:** if this path already exists (regular file, empty file, directory, or symlink to an existing target), the command exits immediately with:
+Workspace path for the generated plan. With the default `plan.md`, if that file already exists, malvin allocates the first free sibling (`plan_1.md`, `plan_2.md`, …) before the agent runs. For any other `--out-path`, if the path already exists (regular file, empty file, directory, or symlink to an existing target), the command exits immediately with:
 
 ```text
 malvin delight: `<path>` already exists; refusing to overwrite
 ```
 
-No run artifacts or agent work starts when the path pre-exists.
+No run artifacts or agent work starts when a non-default path pre-exists.
 
 ### `--max-loops <N>` (default: 3)
 
@@ -61,7 +61,7 @@ See `malvin --doc`.
 
 All of the following must hold:
 
-1. Preflight passed (`--out-path` did not exist at start).
+1. Preflight passed (default `plan.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
 2. The agent declared `## KPOP_SOLVED` in a session exp log.
 3. After the session, `--out-path` is a regular file with size &gt; 0.
 4. The decoupled `malvin plan` workflow runs automatically on the same `--out-path` (overwrites it with the revised implementation plan from Prompt 3).

@@ -59,9 +59,7 @@ pub(crate) fn apply_api_and_auth(cmd: &mut Command, api_key: Option<&str>, auth_
 pub(crate) fn apply_acp_tail(cmd: &mut Command, cwd: &Path, george_acp_lane: Option<&str>) {
     cmd.arg("acp");
     cmd.env("MALVIN_WORKSPACE", cwd);
-    for (key, value) in [("NEXTEST_TEST_THREADS", "1"), ("MALLOC_ARENA_MAX", "2")] {
-        cmd.env(key, value);
-    }
+    cmd.env("MALLOC_ARENA_MAX", "2");
     if let Some(lane) = george_acp_lane.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.env("GEORGE_ACP_LANE", lane);
     }

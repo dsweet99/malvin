@@ -1,4 +1,4 @@
-//! Post-session summarize agent when `--max-loops` > 1.
+//! Post-session summarize agent when more than one `KPop` flow ran.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -9,7 +9,7 @@ use crate::agent_backend::{
     build_agent_backend, AgentBackend,
 };
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::cli::workflow_kpop_shared::{effective_max_loops, kpop_workflow_context};
+use crate::cli::workflow_kpop_shared::kpop_workflow_context;
 use crate::prompts::{render_header, PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
@@ -17,7 +17,6 @@ const SUMMARIZE_PROMPT: &str = "kpop_summarize.md";
 
 /// Inputs for [`run_outer_loop_summarize_if_warranted`].
 pub(crate) struct OuterLoopSummarizeParams<'a> {
-    pub max_loops: usize,
     pub agent_ran: bool,
     pub shared: &'a SharedOpts,
     pub workflow: WorkflowCliOptions,
@@ -28,7 +27,6 @@ pub(crate) struct OuterLoopSummarizeParams<'a> {
 
 /// Inputs for [`code_outer_loop_summarize_params`].
 pub(crate) struct CodeOuterLoopSummarizeInputs<'a> {
-    pub max_loops: usize,
     pub agent_ran: bool,
     pub shared: &'a SharedOpts,
     pub workflow: WorkflowCliOptions,
@@ -40,7 +38,6 @@ pub(crate) const fn code_outer_loop_summarize_params<'a>(
     prepared: &'a crate::cli::code_flow::CodeKpopPrepared,
 ) -> OuterLoopSummarizeParams<'a> {
     OuterLoopSummarizeParams {
-        max_loops: inputs.max_loops,
         agent_ran: inputs.agent_ran,
         shared: inputs.shared,
         workflow: inputs.workflow,
@@ -52,7 +49,6 @@ pub(crate) const fn code_outer_loop_summarize_params<'a>(
 
 /// Inputs for [`kpop_outer_loop_summarize_params`].
 pub(crate) struct KpopOuterLoopSummarizeInputs<'a> {
-    pub max_loops: usize,
     pub agent_ran: bool,
     pub shared: &'a SharedOpts,
 }
@@ -64,7 +60,6 @@ pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
     artifacts: &'a RunArtifacts,
 ) -> OuterLoopSummarizeParams<'a> {
     OuterLoopSummarizeParams {
-        max_loops: inputs.max_loops,
         agent_ran: inputs.agent_ran,
         shared: inputs.shared,
         workflow: WorkflowCliOptions { force: false },
@@ -74,10 +69,23 @@ pub(crate) const fn kpop_outer_loop_summarize_params<'a>(
     }
 }
 
+/// True when an exp log file exists and has content from an outer-loop agent session.
+pub(crate) fn exp_log_has_flow_content(path: &Path) -> bool {
+    std::fs::read(path)
+        .ok()
+        .is_some_and(|bytes| !bytes.is_empty())
+}
+
+/// Count `KPop` flows that ran in this session (one non-empty exp log per outer-loop iteration).
+#[must_use]
+pub(crate) fn kpop_flows_ran(artifacts: &RunArtifacts) -> usize {
+    list_written_exp_logs(&artifacts.run_dir).len()
+}
+
 /// Whether an outer-loop summarize agent should run after `KPop` sessions complete.
 #[must_use]
-pub(crate) fn outer_loop_summarize_warranted(max_loops: usize) -> bool {
-    effective_max_loops(max_loops) > 1
+pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> bool {
+    kpop_flows_ran > 1
 }
 
 pub(crate) fn is_written_exp_log_path(path: &Path) -> bool {
@@ -99,7 +107,7 @@ pub(crate) fn list_written_exp_logs(run_dir: &Path) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = entries
         .filter_map(Result::ok)
         .map(|e| e.path())
-        .filter(|p| is_written_exp_log_path(p))
+        .filter(|p| is_written_exp_log_path(p) && exp_log_has_flow_content(p))
         .collect();
     paths.sort();
     paths
@@ -121,7 +129,7 @@ pub(crate) fn exp_log_paths_markdown(artifacts: &RunArtifacts) -> String {
 pub(crate) fn insert_summarize_log_context(
     ctx: &mut HashMap<String, String>,
     artifacts: &RunArtifacts,
-    max_loops: usize,
+    kpop_flows_ran: usize,
 ) {
     ctx.insert(
         "kpop_log".to_string(),
@@ -138,7 +146,7 @@ pub(crate) fn insert_summarize_log_context(
     ctx.insert("exp_log_paths".to_string(), exp_log_paths_markdown(artifacts));
     ctx.insert(
         "outer_loop_count".to_string(),
-        effective_max_loops(max_loops).to_string(),
+        kpop_flows_ran.to_string(),
     );
 }
 
@@ -146,10 +154,9 @@ pub(crate) fn render_kpop_summarize_prompt(
     store: &PromptStore,
     artifacts: &RunArtifacts,
     malvin_command: &str,
-    max_loops: usize,
 ) -> Result<String, String> {
     let mut ctx = kpop_workflow_context(artifacts, malvin_command)?;
-    insert_summarize_log_context(&mut ctx, artifacts, max_loops);
+    insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
     let header = render_header(store, &ctx).map_err(|e: PromptError| e.0)?;
     let body = store
         .render_prompt_only(SUMMARIZE_PROMPT, &ctx)
@@ -216,7 +223,8 @@ pub(crate) async fn run_summarize_agent_session(
 pub(crate) async fn run_outer_loop_summarize_if_warranted(
     params: &OuterLoopSummarizeParams<'_>,
 ) -> Result<(), String> {
-    if !params.agent_ran || !outer_loop_summarize_warranted(params.max_loops) {
+    let flows_ran = kpop_flows_ran(params.artifacts);
+    if !params.agent_ran || !outer_loop_summarize_warranted(flows_ran) {
         return Ok(());
     }
     let session_dotfile_backups =
@@ -225,7 +233,6 @@ pub(crate) async fn run_outer_loop_summarize_if_warranted(
         params.store,
         params.artifacts,
         params.malvin_command,
-        params.max_loops,
     )?;
     let acp_res = run_summarize_agent_session(params, &prompt).await;
     crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(

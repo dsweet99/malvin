@@ -6,6 +6,9 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::{format_prompt_path, insert_formatted};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
+use crate::cli::default_output_path::{
+    allocate_default_sibling_file, path_relative_to_cwd, DELIGHT_DEFAULT_OUT_PATH,
+};
 use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 const DELIGHT_COMMAND_MARKER: &str = "Command: malvin delight";
@@ -94,7 +97,9 @@ pub(crate) fn collect_recent_delight_plan_paths(
         if let Some(candidate) =
             delight_plan_candidate_from_run(&run_dir, work_dir, resolved_out_path)
         {
-            collected.push(candidate);
+            if !collected.iter().any(|existing| existing == &candidate) {
+                collected.push(candidate);
+            }
         }
     }
     collected
@@ -127,19 +132,26 @@ pub(crate) fn delight_kpop_request(
 
 pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let resolved_out_path = cwd.join(out_path);
-    if resolved_out_path.exists() {
-        return Err(format!(
-            "malvin delight: `{}` already exists; refusing to overwrite",
-            resolved_out_path.display()
-        ));
-    }
+    let resolved_out_path = if out_path == DELIGHT_DEFAULT_OUT_PATH {
+        let default = cwd.join(DELIGHT_DEFAULT_OUT_PATH);
+        allocate_default_sibling_file(&default, "plan", ".md")?
+    } else {
+        let resolved = cwd.join(out_path);
+        if resolved.exists() {
+            return Err(format!(
+                "malvin delight: `{}` already exists; refusing to overwrite",
+                resolved.display()
+            ));
+        }
+        resolved
+    };
     if let Some(parent) = resolved_out_path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
     }
-    let work_dir = crate::artifacts::work_dir_for_path(Path::new(out_path));
+    let rel_out = path_relative_to_cwd(&resolved_out_path)?;
+    let work_dir = crate::artifacts::work_dir_for_path(Path::new(&rel_out));
     Ok((resolved_out_path, work_dir))
 }
 
