@@ -8,6 +8,7 @@ pub(crate) mod discover_init_checks_signals;
 mod discover_init_checks_fixtures;
 pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
+pub(crate) mod gate_command_match;
 pub(crate) mod sandbox_safe;
 
 #[cfg(test)]
@@ -108,11 +109,16 @@ pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
     let checks_path = crate::malvin_checks_path(work_dir);
-    if checks_path.is_file() {
-        return load_malvin_checks(&checks_path);
+    if !checks_path.is_file() {
+        return Err(format!(
+            "{} is missing (quality gates must be listed in .malvin/checks)",
+            checks_path.display()
+        ));
     }
-    Ok(builtin_gate_command_lines(work_dir))
+    load_malvin_checks(&checks_path)
 }
+
+pub use gate_command_match::command_matches_malvin_checks_gate;
 
 /// Overwrite `.malvin/checks` with language/tooling builtins (for init `--force` rediscovery).
 pub fn refresh_provisional_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
@@ -165,7 +171,7 @@ pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> 
         ));
     }
     let lines = load_malvin_checks(&checks_path)?;
-    Ok(format_quality_gates_markdown(&sandbox_safe_gate_commands(&lines)))
+    Ok(format_quality_gates_markdown(&lines))
 }
 
 /// Materializes default `.malvin/checks` only while building prompt markdown, then restores prior state.
@@ -209,3 +215,7 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests_command_match.rs"]
+mod tests_command_match;

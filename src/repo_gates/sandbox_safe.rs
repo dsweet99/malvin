@@ -1,4 +1,4 @@
-use super::DEFAULT_RUST_NEXTEST;
+const UNPARTITIONED_NEXTEST_RUN: &str = "cargo nextest run";
 
 /// Rewrite gate lines so heavy Rust commands stay under the sandbox memory limit.
 ///
@@ -30,7 +30,7 @@ fn is_unpartitioned_nextest_run(line: &str) -> bool {
 
 fn partition_nextest_line(line: &str, index: u32, total: u32) -> String {
     let partition = format!("--partition hash:{index}/{total}");
-    if line == DEFAULT_RUST_NEXTEST {
+    if line == UNPARTITIONED_NEXTEST_RUN {
         return format!("cargo nextest run {partition}");
     }
     let rest = line
@@ -109,19 +109,19 @@ mod tests {
     }
 
     #[test]
-    fn prompt_quality_gates_markdown_applies_sandbox_safe_transform() {
+    fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(
             w.join(".malvin/checks"),
-            "kiss check\ncargo clippy -j 2 --all-targets\ncargo nextest run\n",
+            "custom-a\ncargo nextest run\n",
         )
         .unwrap();
         let md = crate::repo_gates::prompt_quality_gates_markdown(w).unwrap();
-        assert!(md.contains("cargo clippy -j 2 --all-targets"));
-        assert!(md.contains(crate::repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1));
-        assert!(md.contains(crate::repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_2));
+        assert!(md.contains("`custom-a`"));
+        assert!(md.contains("`cargo nextest run`"));
+        assert!(!md.contains("--partition"));
     }
 
     #[test]

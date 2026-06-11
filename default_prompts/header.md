@@ -42,11 +42,10 @@ Predicted running time: <prediction>
 
 Malvin enforces a sandbox memory limit (see `Sandbox memory:` in Current state). When RSS exceeds that limit, malvin kills the agent process group and the session fails.
 
-- Do not run overlapping heavy build commands. Never chain `cargo clippy` and `cargo nextest` (or `cargo test`) in one shell invocation with `&&`, `;`, or `&`.
-- Run at most one of `cargo clippy`, `cargo nextest run`, or `cargo test` at a time. Wait for each to exit before starting the next.
-- When you run clippy manually, use `-j 1` (not `-j 2` or higher).
-- Sandbox child processes always receive `CARGO_BUILD_JOBS=1`, `NEXTEST_TEST_THREADS=1`, `RUST_TEST_THREADS=1`, and `MALLOC_ARENA_MAX=2` (malvin overwrites any values you set in the environment).
-- Prefer targeted checks (`cargo check -p crate`, single-test filters) while iterating; reserve full quality gates for a final sequential pass.
+- Do not run overlapping heavy commands from `.malvin/checks` in one shell invocation with `&&`, `;`, or `&`.
+- Run at most one `.malvin/checks` line at a time when executing gates manually. Wait for each to exit before starting the next.
+- Sandbox child processes receive conservative parallelism limits (malvin overwrites job/thread env vars you set).
+- Prefer targeted checks while iterating; reserve full quality gates for a final sequential pass.
 - Malvin's built-in quality gate runner already executes `.malvin/checks` lines one at a time. Do not duplicate gate commands in parallel during the same turn.
 
 ---

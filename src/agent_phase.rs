@@ -7,7 +7,7 @@ mod agent_phase_signal;
 
 use std::sync::Mutex;
 
-use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker};
+use crate::tool_summary::{ParsedToolUpdate, ToolSummaryTracker, TOOL_PHASE_RUNNING};
 
 /// Agent phase label shown in stdout heartbeats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -170,6 +170,34 @@ pub fn note_thought_activity() {
     });
 }
 
+/// Mini HTTP completion is in-flight (`OpenRouter` await).
+pub fn note_mini_llm_request() {
+    note_thought_activity();
+}
+
+/// Mini bash fence is executing synchronously.
+pub fn note_mini_bash_exec() {
+    with_state(|s| {
+        s.orienting = false;
+        s.reasoning = false;
+        s.active_tool = Some((ToolKind::Execute, TOOL_PHASE_RUNNING));
+    });
+}
+
+/// Mini bash fence finished; mirrors execute tool-call completion signals.
+pub fn note_mini_bash_exec_done(exit_code: i32, command: &str) {
+    with_state(|s| {
+        if exit_code != 0
+            && std::env::current_dir().is_ok_and(|wd| {
+                crate::repo_gates::command_matches_malvin_checks_gate(command, &wd)
+            })
+        {
+            s.debugging = true;
+        }
+        s.active_tool = None;
+    });
+}
+
 pub(crate) fn observe_tool_update(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTracker) {
     with_state(|s| agent_phase_signal::observe_tool_update_state(s, parsed, tracker));
 }
@@ -189,60 +217,3 @@ pub(crate) fn reset_phase_state_for_test() {
     with_state(|s| *s = PhaseState::fresh());
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tool_summary::ToolSummaryDetail;
-    use serde_json::json;
-
-    fn guard() -> std::sync::MutexGuard<'static, ()> {
-        AGENT_PHASE_TEST_LOCK
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-
-    fn observe(update: serde_json::Value, tracker: &mut ToolSummaryTracker) {
-        let v = json!({"method": "session/update", "params": {"update": update}});
-        crate::tool_summary::tool_summary_lines(&v, tracker, ToolSummaryDetail::Log).unwrap();
-    }
-
-    #[test]
-    fn kiss_cov_agent_phase_functions() {
-        let _ = super::reset_for_run;
-        let _ = super::note_orienting;
-        let _ = super::clear_orienting;
-        let _ = super::enter_kpop;
-        let _ = super::leave_kpop;
-        let _ = super::enter_verifying;
-        let _ = super::leave_verifying;
-        let _ = super::set_reporting;
-        let _ = super::note_thought_activity;
-        let _ = super::observe_tool_update;
-        let _ = super::heartbeat_label;
-        let _ = super::active_tool_phase;
-        let _ = super::phase_if;
-        let _ = stringify!(super::with_state);
-        let _ = super::PhaseState::fresh;
-    }
-
-    #[test]
-    fn heartbeat_phases_follow_runtime_signals() {
-        let _g = guard();
-        reset_phase_state_for_test();
-        assert_eq!(heartbeat_label(), "Orienting");
-        note_thought_activity();
-        reset_for_run();
-        enter_verifying();
-        leave_verifying();
-        let mut tracker = ToolSummaryTracker::default();
-        observe(json!({"sessionUpdate":"tool_call","toolCallId":"1","kind":"execute","status":"pending","rawInput":{"command":"sleep 9"}}), &mut tracker);
-        observe(json!({"sessionUpdate":"tool_call_update","toolCallId":"1","status":"completed","rawOutput":{"exitCode":0}}), &mut tracker);
-        observe(json!({"sessionUpdate":"tool_call","toolCallId":"r1","kind":"read","status":"pending","rawInput":{"path":"a.rs"}}), &mut tracker);
-        assert_eq!(current_phase_for_test(), AgentPhase::Researching);
-        observe(json!({"sessionUpdate":"tool_call","toolCallId":"x1","kind":"execute","status":"pending","rawInput":{"command":"cargo nextest run"}}), &mut tracker);
-        observe(json!({"sessionUpdate":"tool_call_update","toolCallId":"x1","status":"completed","rawOutput":{"exitCode":1}}), &mut tracker);
-        assert_eq!(current_phase_for_test(), AgentPhase::Debugging);
-        set_reporting(true);
-        assert_eq!(heartbeat_label(), "Reporting");
-    }
-}

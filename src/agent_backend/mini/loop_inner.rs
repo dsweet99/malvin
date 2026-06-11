@@ -122,6 +122,7 @@ async fn complete_turn(req: CompleteTurnRequest<'_>) -> Result<CompletionRespons
         llm_phase,
         single_attempt,
     } = req;
+    crate::agent_phase::note_mini_llm_request();
     let t0 = Instant::now();
     let response = complete_with_http_retries(HttpRetryRequest {
         llm,
@@ -163,8 +164,12 @@ fn append_bash_observation(
 ) -> Result<(), AgentError> {
     let mut results: Vec<BashExecResult> = Vec::new();
     for fence in fences {
+        crate::agent_phase::note_mini_bash_exec();
+        let t0 = Instant::now();
         let result = run_bash_command(session.cwd.as_path(), &fence.command).map_err(AgentError)?;
-        trace.mini_bash_exec(&fence.command, result.exit_code);
+        let elapsed = t0.elapsed();
+        trace.mini_bash_exec(&fence.command, result.exit_code, elapsed);
+        crate::agent_phase::note_mini_bash_exec_done(result.exit_code, &fence.command);
         results.push(result);
     }
     let observation = format_observation(&results);
