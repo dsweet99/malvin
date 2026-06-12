@@ -2,26 +2,39 @@ use super::client::{build_request_headers, OpenRouterClient};
 use super::serde_types::{ChatCompletionRequest, ChatCompletionResponse, ChatChoiceMessage};
 use super::types::{ChatMessage, CompletionResponse};
 use crate::error::OpenRouterError;
+use crate::prompt_shrink::{is_prompt_too_long_error, shrink_messages};
 
 impl OpenRouterClient {
     /// # Errors
     ///
     /// Returns [`OpenRouterError`] on HTTP or API failures.
     pub async fn complete(&self, messages: &[ChatMessage]) -> Result<CompletionResponse, OpenRouterError> {
-        let url = format!(
-            "{}/chat/completions",
-            self.config().base_url.trim_end_matches('/')
-        );
-        let body = ChatCompletionRequest {
-            model: &self.config().model,
-            messages,
-        };
-        let headers = build_request_headers(self.config())?;
-        let resp = self.http().post(url).headers(headers).json(&body).send().await?;
-        let status = resp.status().as_u16();
-        let text = resp.text().await?;
-        map_http_status(status, &text)?;
-        parse_completion_body(&text)
+        let mut current = messages.to_vec();
+        loop {
+            let url = format!(
+                "{}/chat/completions",
+                self.config().base_url.trim_end_matches('/')
+            );
+            let body = ChatCompletionRequest {
+                model: &self.config().model,
+                messages: &current,
+            };
+            let headers = build_request_headers(self.config())?;
+            let resp = self.http().post(url).headers(headers).json(&body).send().await?;
+            let status = resp.status().as_u16();
+            let text = resp.text().await?;
+            match map_http_status(status, &text) {
+                Ok(()) => return parse_completion_body(&text),
+                Err(err) if is_prompt_too_long_error(&err) => {
+                    let shrunk = shrink_messages(&current);
+                    if shrunk == current {
+                        return Err(err);
+                    }
+                    current = shrunk;
+                }
+                Err(err) => return Err(err),
+            }
+        }
     }
 }
 

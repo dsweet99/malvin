@@ -1,24 +1,12 @@
-use std::time::Duration;
-
 use super::client::OpenRouterClient;
 use super::serde_types::{
     ChatChoice, ChatChoiceMessage, ChatCompletionRequest, ChatCompletionResponse,
 };
 use super::types::{ChatMessage, ChatRole, ResponseUsage};
-use crate::config::OpenRouterConfig;
+use crate::test_support::openrouter_test_config as test_config;
 use crate::error::OpenRouterError;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
-
-fn test_config(base_url: &str) -> OpenRouterConfig {
-    OpenRouterConfig {
-        model: "anthropic/claude-sonnet-4".into(),
-        api_key: "sk-test".into(),
-        http_referer: Some("https://malvin.test".into()),
-        request_timeout: Duration::from_secs(30),
-        base_url: base_url.into(),
-    }
-}
 
 #[tokio::test]
 async fn openrouter_serializes_model_messages_and_headers() {
