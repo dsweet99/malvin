@@ -21,6 +21,44 @@ fn snapshot_after_ensuring_home_config_records_present_when_file_was_absent() {
     });
 }
 
+/// Gate loops call `ensure_default_malvin_config_file` during a session. A plain `snapshot` that
+/// records `Missing` makes the post-session restore delete that ensured file, so the next
+/// iteration snapshots `Missing` again and every restore keeps wiping the config.
+#[test]
+fn plain_snapshot_missing_restore_wipes_ensure_created_home_config() {
+    with_isolated_home(|work| {
+        let cfg = malvin_config_path(work);
+        assert!(!cfg.exists());
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Missing));
+        crate::repo_gates::ensure_default_malvin_config_file(work).unwrap();
+        assert!(cfg.is_file(), "ensure must materialize home config mid-session");
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        assert!(
+            !cfg.exists(),
+            "Missing restore must delete ensured config — this is the reset bug"
+        );
+    });
+}
+
+#[test]
+fn snapshot_after_ensure_breaks_missing_restore_cycle() {
+    with_isolated_home(|work| {
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        let cfg = malvin_config_path(work);
+        let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Present(_)));
+        seed_malvin_config(work, "TAMPERED\n");
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        let restored = std::fs::read_to_string(&cfg).unwrap();
+        assert!(
+            restored.contains("mem_limit_gb = 7"),
+            "restore must put back snapshotted bytes, got: {restored:?}"
+        );
+        assert!(!restored.contains("TAMPERED"));
+    });
+}
+
 #[test]
 fn malvin_config_backup_skips_when_home_file_missing() {
     with_isolated_home(|work| {
