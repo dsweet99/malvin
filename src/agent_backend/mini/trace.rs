@@ -5,7 +5,7 @@ use std::time::Duration;
 use malvin_mini::ResponseUsage;
 
 use crate::acp::AgentIoOptions;
-use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_T};
+use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_M, WHO_T};
 use crate::tool_summary::{
     escape_tool_subject_fragment, humanize_duration, shorten_middle, tool_summary_stdout_display,
     TOOL_DISPLAY_MAX_WIDTH,
@@ -75,9 +75,10 @@ impl MiniTraceSink {
             "mini_assistant",
             serde_json::json!({ "text_len": text.len() }),
         );
-        if self.io.show_thoughts_on_stdout && !crate::output::stdout_suppressed() {
-            crate::output::print_stdout_line(crate::output::WHO_B, text);
+        if self.io.no_tee || crate::output::stdout_suppressed() {
+            return;
         }
+        crate::output::print_stdout_line(WHO_M, text);
     }
 }
 

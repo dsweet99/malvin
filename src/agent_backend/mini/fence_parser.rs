@@ -40,6 +40,29 @@ fn is_bash_fence_open(trimmed: &str) -> bool {
     tag.eq_ignore_ascii_case("bash") || tag.eq_ignore_ascii_case("sh")
 }
 
+/// True when a trimmed line equal to `MINI_DONE` appears outside bash/sh fence blocks.
+#[must_use]
+pub fn has_mini_done_outside_bash_fences(text: &str) -> bool {
+    let mut inside_bash_fence = false;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if inside_bash_fence {
+            if trimmed == "```" {
+                inside_bash_fence = false;
+            }
+            continue;
+        }
+        if is_bash_fence_open(trimmed) {
+            inside_bash_fence = true;
+            continue;
+        }
+        if trimmed == "MINI_DONE" {
+            return true;
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,5 +103,17 @@ mod tests {
         let blocks = parse_bash_fences(text);
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].command, "true");
+    }
+
+    #[test]
+    fn mini_done_inside_bash_fence_is_not_outside() {
+        let text = "```bash\nMINI_DONE\necho hi\n```";
+        assert!(!has_mini_done_outside_bash_fences(text));
+    }
+
+    #[test]
+    fn mini_done_in_prose_is_outside() {
+        let text = "summary\nMINI_DONE\n";
+        assert!(has_mini_done_outside_bash_fences(text));
     }
 }

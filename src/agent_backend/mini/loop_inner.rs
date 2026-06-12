@@ -5,7 +5,9 @@ use std::time::Instant;
 use malvin_mini::{ChatMessage, ChatRole, CompletionResponse};
 
 use crate::agent_backend::mini::bash_adapter::{format_observation, run_bash_command, BashExecResult};
-use crate::agent_backend::mini::fence_parser::{parse_bash_fences, BashFence};
+use crate::agent_backend::mini::fence_parser::{
+    has_mini_done_outside_bash_fences, parse_bash_fences, BashFence,
+};
 use super::loop_http::{complete_with_http_retries, HttpRetryRequest};
 use super::loop_mock::LlmBackend;
 use super::loop_types::{
@@ -141,7 +143,7 @@ async fn complete_turn(req: CompleteTurnRequest<'_>) -> Result<CompletionRespons
 }
 
 pub(crate) fn classify_turn(assistant_text: &str, no_fence_nudge_used: bool) -> TurnAction {
-    if assistant_text.lines().any(|l| l.trim() == "MINI_DONE") {
+    if has_mini_done_outside_bash_fences(assistant_text) {
         return TurnAction::Done(assistant_text.to_string());
     }
     let fences = parse_bash_fences(assistant_text);

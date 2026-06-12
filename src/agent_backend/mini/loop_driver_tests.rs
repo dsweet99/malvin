@@ -120,6 +120,43 @@ async fn loop_driver_mini_done_line_terminates() {
 }
 
 #[tokio::test]
+async fn loop_driver_mini_done_inside_fence_still_runs_bash() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let llm = mock_llm(vec![
+        MockStep::Ok(CompletionResponse {
+            content: "```bash\nMINI_DONE\necho fenced > fenced_out.txt\n```".into(),
+            usage: None,
+        }),
+        MockStep::Ok(CompletionResponse {
+            content: "done after bash".into(),
+            usage: None,
+        }),
+        MockStep::Ok(CompletionResponse {
+            content: "done after bash".into(),
+            usage: None,
+        }),
+    ]);
+    let mut session = LoopDriverSession {
+        messages: vec![],
+        cwd: tmp.path().to_path_buf(),
+    };
+    let out = run_inner_loop(LoopDriverRun {
+        llm: &llm,
+        session: &mut session,
+        user_prompt: "go",
+        config: &test_config(),
+        trace: &mini_test_trace(),
+        timing: None,
+        llm_phase: None,
+        single_attempt: true,
+    })
+    .await
+    .expect("loop");
+    assert!(tmp.path().join("fenced_out.txt").is_file());
+    assert_eq!(out.final_assistant_text, "done after bash");
+}
+
+#[tokio::test]
 async fn loop_driver_prepends_mini_constraints() {
     let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
         content: "MINI_DONE".into(),
@@ -204,6 +241,7 @@ mod kiss_cov_gate_refs {
             loop_driver_single_fence_runs_bash_and_appends_observation,
             loop_driver_no_fence_triggers_nudge_before_final,
             loop_driver_mini_done_line_terminates,
+            loop_driver_mini_done_inside_fence_still_runs_bash,
             loop_driver_prepends_mini_constraints,
             loop_driver_mock_http_retry_on_429,
         );

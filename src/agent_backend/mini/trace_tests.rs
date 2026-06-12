@@ -4,7 +4,7 @@ use malvin_mini::ResponseUsage;
 
 use super::trace::format_mini_bash_tool_line;
 use super::MiniTraceSink;
-use crate::output::is_log_timestamp_token;
+use crate::output::{is_log_timestamp_token, WHO_B, WHO_M};
 
 fn stdout_log_tool_t_lines(text: &str) -> Vec<&str> {
     text.lines()
@@ -128,6 +128,43 @@ fn mini_stdout_multiline_bash_emits_single_t_tagged_line() {
     );
     assert!(payload.contains("\\n"));
     assert!(payload.ends_with("· 3ms · ✓"));
+    crate::output::set_stdout_log_path(None);
+}
+
+#[test]
+fn mini_stdout_emits_assistant_with_m_tag_not_b_tag() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(log_path.clone()));
+    let sink = MiniTraceSink {
+        run_dir: Some(tmp.path().to_path_buf()),
+        io: test_io(false),
+    };
+    sink.mini_assistant("hello from mini");
+    let text = std::fs::read_to_string(log_path).expect("stdout log");
+    assert!(
+        text.contains(&format!("{WHO_M}|")),
+        "assistant text must use m| tag, got {text:?}"
+    );
+    assert!(
+        !text.contains(&format!("{WHO_B}|")),
+        "assistant text must not use b| tag, got {text:?}"
+    );
+    crate::output::set_stdout_log_path(None);
+}
+
+#[test]
+fn mini_stdout_skips_assistant_when_no_tee() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    crate::output::set_stdout_log_path(Some(log_path.clone()));
+    let sink = MiniTraceSink {
+        run_dir: Some(tmp.path().to_path_buf()),
+        io: test_io(true),
+    };
+    sink.mini_assistant("hidden");
+    let text = std::fs::read_to_string(log_path).unwrap_or_default();
+    assert!(text.is_empty(), "no_tee must suppress assistant stdout; got {text:?}");
     crate::output::set_stdout_log_path(None);
 }
 

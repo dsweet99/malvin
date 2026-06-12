@@ -21,6 +21,10 @@ fn classify_turn_detects_mini_done_and_no_fence_nudge() {
         classify_turn("```bash\necho hi\n```", false),
         TurnAction::RunBash(_)
     ));
+    assert!(matches!(
+        classify_turn("```bash\nMINI_DONE\necho hi\n```", false),
+        TurnAction::RunBash(_)
+    ));
 }
 
 #[test]
