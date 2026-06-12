@@ -29,7 +29,7 @@ write it as a .png so that you can look at it
 and evaluate it.
 
 Figure constraints:
-  - No text overlaps other text or a node, arrow, legend, axis, or caption
+  - No text overlaps another text label or a node, arrow, legend, axis, or caption
   - No node, arrowhead, etc. is clipped by the figure,
      crop, page, or column boundary
   - No wasted space.
