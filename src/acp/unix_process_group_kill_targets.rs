@@ -13,7 +13,7 @@ pub(crate) use session_spawn_affiliation::{
 };
 use super::unix_process_group_ps::{
     INIT_PID, ProcRow, host_protected_pids, is_safe_kill_target, list_proc_rows,
-    looks_like_malvin_agent_acp, process_group_member_pids,
+    process_group_member_pids,
 };
 
 pub(crate) fn descendant_pids(roots: &HashSet<u32>, rows: &[ProcRow]) -> HashSet<u32> {
@@ -58,7 +58,7 @@ pub(crate) fn baseline_amnestied_agent_orphans(
             baseline.contains(&row.pid)
                 && row.ppid == INIT_PID
                 && is_safe_kill_target(row.pid, &protected)
-                && looks_like_malvin_agent_acp(row.pid)
+                && is_session_affiliated_pid(row.pid)
         })
         .map(|row| row.pid)
         .collect()

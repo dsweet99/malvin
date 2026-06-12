@@ -91,13 +91,16 @@ fn read_proc_cmdline_and_environ_reads_current_process() {
 
 #[cfg(target_os = "linux")]
 #[test]
-fn looks_like_malvin_agent_acp_matches_environ_marker() {
+fn looks_like_malvin_agent_acp_ignores_inherited_malvin_workspace_on_sleep() {
     let mut child = std::process::Command::new("sh");
     child.arg("-c").arg("MALVIN_WORKSPACE=/tmp/cov-test exec sleep 30");
     let mut child = child.spawn().expect("spawn");
     let pid = child.id();
     std::thread::sleep(std::time::Duration::from_millis(100));
-    assert!(super::looks_like_malvin_agent_acp(pid));
+    assert!(
+        !super::looks_like_malvin_agent_acp(pid),
+        "inherited MALVIN_WORKSPACE on sleep must not identify agent acp"
+    );
     let _ = child.kill();
     let _ = child.wait();
 }
