@@ -18,13 +18,20 @@ fn delight_kpop_workflow_context(
 
 pub fn prepare_delight_kpop_run(
     out_path: &str,
+    guidance: Option<&String>,
     workflow: crate::cli::WorkflowCliOptions,
 ) -> Result<DelightKpopPrepared, String> {
     let (resolved_out_path, work_dir) = delight_preflight(out_path)?;
     let store = prepare_delight_kpop_prompt_store(workflow)?;
     let artifacts =
         create_kpop_run_artifacts("delight", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let request_text = delight_kpop_request(&store, &artifacts, &resolved_out_path)?;
+    let resolved_guidance = super::prep::resolve_delight_guidance(guidance)?;
+    let request_text = delight_kpop_request(
+        &store,
+        &artifacts,
+        &resolved_out_path,
+        resolved_guidance.as_deref(),
+    )?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
@@ -63,6 +70,7 @@ mod tests {
             let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
             let prepared = prepare_delight_kpop_run(
                 "plan.md",
+                None,
                 crate::cli::WorkflowCliOptions { force: true },
             )
             .expect("default collision must allocate sibling");

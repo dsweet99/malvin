@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::artifacts::resolve_user_md_request;
 use crate::log_gc::list_run_dirs;
 use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::{format_prompt_path, insert_formatted};
@@ -116,10 +117,30 @@ fn format_recent_delight_plans(work_dir: &Path, paths: &[PathBuf]) -> String {
     })
 }
 
+pub(crate) fn resolve_delight_guidance(guidance: Option<&String>) -> Result<Option<String>, String> {
+    let Some(raw) = guidance else {
+        return Ok(None);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let (text, _) = resolve_user_md_request(trimmed)?;
+    Ok(Some(text))
+}
+
+pub(crate) fn format_delight_guidance_block(guidance: Option<&str>) -> String {
+    let Some(g) = guidance.map(str::trim).filter(|s| !s.is_empty()) else {
+        return String::new();
+    };
+    format!("- Follow this user guidance for the plan:\n\n{g}\n")
+}
+
 pub(crate) fn delight_kpop_request(
     store: &PromptStore,
     artifacts: &crate::artifacts::RunArtifacts,
     resolved_out_path: &Path,
+    guidance: Option<&str>,
 ) -> Result<String, String> {
     let workspace_root = artifacts.work_dir.as_path();
     let recent_paths = collect_recent_delight_plan_paths(workspace_root, resolved_out_path);
@@ -127,6 +148,10 @@ pub(crate) fn delight_kpop_request(
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "out_plan_path", resolved_out_path, workspace_root);
     ctx.insert("recent_delight_plans".to_string(), recent_delight_plans);
+    ctx.insert(
+        "delight_guidance".to_string(),
+        format_delight_guidance_block(guidance),
+    );
     render_kpop_program_request_creative(store, "delight_constraints.md", &ctx, artifacts)
 }
 
@@ -162,3 +187,7 @@ mod delight_flow_prep_tests;
 #[cfg(test)]
 #[path = "../delight_flow_prep_preflight_tests.rs"]
 mod delight_flow_prep_preflight_tests;
+
+#[cfg(test)]
+#[path = "../delight_flow_prep_recent_plans_tests.rs"]
+mod delight_flow_prep_recent_plans_tests;

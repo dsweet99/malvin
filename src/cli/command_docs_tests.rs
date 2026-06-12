@@ -135,6 +135,7 @@ fn print_doc_explain_writes_subcommand_md() {
 #[test]
 fn print_doc_delight_writes_subcommand_md() {
     let cmd = Commands::Delight(DelightArgs {
+        guidance: None,
         out_path: "plan.md".to_string(),
         max_loops: 3,
         max_hypotheses: 5,

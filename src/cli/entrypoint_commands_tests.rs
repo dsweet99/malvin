@@ -55,6 +55,7 @@ fn kiss_cov_explain_entrypoint_branch() {
 fn kiss_cov_delight_entrypoint_branch() {
     use crate::cli::args::Commands;
     let cmd = Commands::Delight(crate::cli::delight_flow::DelightArgs {
+        guidance: None,
         out_path: "plan.md".to_string(),
         max_loops: 1,
         max_hypotheses: 5,

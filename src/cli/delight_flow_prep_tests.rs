@@ -18,12 +18,13 @@ fn seed_prior_delight_plan(tmp: &std::path::Path, out_rel: &str) {
 fn delight_kpop_request_in_workspace(
     tmp: &std::path::Path,
     out: &std::path::Path,
+    guidance: Option<&str>,
 ) -> String {
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("delight", Some(tmp)).expect("artifacts");
     let store = PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    delight_kpop_request(&store, &artifacts, out).expect("request")
+    delight_kpop_request(&store, &artifacts, out, guidance).expect("request")
 }
 
 #[test]
@@ -48,7 +49,7 @@ fn prepare_delight_kpop_prompt_store_loads_program_and_constraints() {
 fn delight_kpop_request_has_no_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plan.md");
-    let text = delight_kpop_request_in_workspace(tmp.path(), &out);
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         !text.contains("{{"),
         "delight kpop request must expand all placeholders: {text:?}"
@@ -59,7 +60,7 @@ fn delight_kpop_request_has_no_unresolved_braces() {
 fn delight_kpop_request_includes_out_plan_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plans/delight.md");
-    let text = delight_kpop_request_in_workspace(tmp.path(), &out);
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         text.contains("plans/delight.md") || text.contains("./plans/delight.md"),
         "expected out_plan_path in request: {text:?}"
@@ -70,7 +71,7 @@ fn delight_kpop_request_includes_out_plan_path() {
 fn delight_kpop_request_includes_kpop_program_wrapper() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plan.md");
-    let text = delight_kpop_request_in_workspace(tmp.path(), &out);
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         text.contains("Satisfy all constraints"),
         "expected kpop_program wrapper: {text:?}"
@@ -90,7 +91,7 @@ fn delight_kpop_request_includes_recent_delight_plans_when_present() {
     .expect("artifacts");
     let store = PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let text = delight_kpop_request(&store, &artifacts, &out).expect("request");
+    let text = delight_kpop_request(&store, &artifacts, &out, None).expect("request");
     assert!(
         text.contains("old.md"),
         "expected recent delight plan path in request: {text:?}"
@@ -101,7 +102,7 @@ fn delight_kpop_request_includes_recent_delight_plans_when_present() {
 fn delight_kpop_request_empty_recent_delight_plans_when_none() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plan.md");
-    let text = delight_kpop_request_in_workspace(tmp.path(), &out);
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         !text.contains("{{ recent_delight_plans }}"),
         "placeholder must be expanded: {text:?}"
@@ -109,103 +110,52 @@ fn delight_kpop_request_empty_recent_delight_plans_when_none() {
 }
 
 #[test]
-fn collect_recent_delight_plans_empty_when_no_logs() {
+fn delight_kpop_request_includes_guidance_when_provided() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plan.md");
-    assert!(collect_recent_delight_plan_paths(tmp.path(), &out).is_empty());
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, Some("focus on CLI UX"));
+    assert!(
+        text.contains("focus on CLI UX"),
+        "expected guidance in request: {text:?}"
+    );
+    assert!(
+        text.contains("Follow this user guidance"),
+        "expected guidance header: {text:?}"
+    );
 }
 
 #[test]
-fn collect_recent_delight_plans_finds_prior_out_path() {
+fn delight_kpop_request_omits_guidance_block_when_none() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("old.md"), "x\n").expect("write");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    let run_dir = logs_root.join("20260101_120000_abc12345");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    std::fs::write(
-        run_dir.join("command.log"),
-        "Command: malvin delight --out-path old.md\n",
-    )
-    .expect("log");
     let out = tmp.path().join("plan.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
-    assert_eq!(paths.len(), 1);
-    assert!(paths[0].ends_with("old.md"));
+    let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
+    assert!(
+        !text.contains("Follow this user guidance"),
+        "guidance block must be absent when unset: {text:?}"
+    );
 }
 
 #[test]
-fn collect_recent_delight_plans_defaults_to_plan_md() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    let run_dir = logs_root.join("20260102_120000_abc12345");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
-    let out = tmp.path().join("new.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
-    assert_eq!(paths.len(), 1);
-    assert!(paths[0].ends_with("plan.md"));
+fn resolve_delight_guidance_reads_md_file() {
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::write(work.join("hint.md"), "from file\n").expect("write");
+        std::env::set_current_dir(work).expect("chdir");
+        let got = resolve_delight_guidance(Some(&"hint.md".to_string())).expect("resolve");
+        assert_eq!(got.as_deref(), Some("from file\n"));
+    });
 }
 
 #[test]
-fn collect_recent_delight_plans_skips_missing_files() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    let run_dir = logs_root.join("20260101_120000_abc12345");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    std::fs::write(
-        run_dir.join("command.log"),
-        "Command: malvin delight --out-path gone.md\n",
-    )
-    .expect("log");
-    let out = tmp.path().join("plan.md");
-    assert!(collect_recent_delight_plan_paths(tmp.path(), &out).is_empty());
+fn resolve_delight_guidance_none_for_empty_string() {
+    assert!(resolve_delight_guidance(Some(&String::new()))
+        .expect("resolve")
+        .is_none());
 }
 
 #[test]
-fn collect_recent_delight_plans_caps_at_five() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    for i in 0..6 {
-        std::fs::write(tmp.path().join(format!("p{i}.md")), "x\n").expect("write");
-        let run_dir = logs_root.join(format!("2026010{i}_120000_abc1234{i}"));
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        std::fs::write(
-            run_dir.join("command.log"),
-            format!("Command: malvin delight --out-path p{i}.md\n"),
-        )
-        .expect("log");
-    }
-    let out = tmp.path().join("new.md");
-    assert_eq!(collect_recent_delight_plan_paths(tmp.path(), &out).len(), 5);
-}
-
-#[test]
-fn collect_recent_delight_plans_dedupes_repeated_paths() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    for run in ["20260101_120000_abc12345", "20260102_120000_abc12346"] {
-        let run_dir = logs_root.join(run);
-        std::fs::create_dir_all(&run_dir).expect("mkdir");
-        std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
-    }
-    let out = tmp.path().join("plan_1.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
-    assert_eq!(paths.len(), 1);
-    assert!(paths[0].ends_with("plan.md"));
-}
-
-#[test]
-fn collect_recent_delight_plans_excludes_current_out_path() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "x\n").expect("write");
-    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
-    let run_dir = logs_root.join("20260101_120000_abc12345");
-    std::fs::create_dir_all(&run_dir).expect("mkdir");
-    std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &tmp.path().join("plan.md"));
-    assert!(paths.is_empty());
+fn format_delight_guidance_block_empty_when_blank() {
+    assert!(format_delight_guidance_block(None).is_empty());
+    assert!(format_delight_guidance_block(Some("   ")).is_empty());
 }
 
 #[test]

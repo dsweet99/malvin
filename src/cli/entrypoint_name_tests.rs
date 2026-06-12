@@ -94,6 +94,7 @@ fn delight_command_accepts_session_name() {
     use crate::cli::delight_flow::DelightArgs;
     assert!(command_accepts_session_name(
         &Commands::Delight(DelightArgs {
+            guidance: None,
             out_path: "plan.md".to_string(),
             max_loops: 1,
             max_hypotheses: 5,

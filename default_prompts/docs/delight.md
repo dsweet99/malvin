@@ -6,7 +6,7 @@ Author a **user-delighting feature plan** via the KPop gate loop scoped by `deli
 
 | | |
 |---|---|
-| Input | None |
+| Input | Optional guidance text or `.md` path |
 | Output | Workspace file at `--out-path` (default: `plan.md`) |
 | Loop | Full gate-kpop loop (`GateLoopBehavior::DELIGHT`) |
 | Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
@@ -20,10 +20,12 @@ Generate a fresh, repo-grounded plan for a feature or improvement that would del
 ## Usage
 
 ```text
-malvin delight [OPTIONS]
+malvin delight [GUIDANCE] [OPTIONS]
 ```
 
-No positional arguments.
+### `[GUIDANCE]` (optional)
+
+Literal text or path to an existing `.md` file. When provided, malvin injects the resolved text into `delight_constraints.md` so the agent steers the plan toward your guidance. Omitted guidance preserves the current behavior.
 
 ## Options
 
@@ -82,6 +84,8 @@ On success, malvin prints `DONE` to stdout.
 
 ```text
 malvin delight
+malvin delight "Improve error messages for gate failures"
+malvin delight guidance.md
 malvin delight --out-path plans/feature.md
 malvin code plans/feature.md
 ```
