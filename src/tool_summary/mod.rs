@@ -26,6 +26,7 @@ pub(crate) use ansi::apply_tool_summary_ansi;
 #[allow(unused_imports)]
 pub(crate) use human_b::relativize_tool_path;
 pub(crate) use human_b::humanize_duration;
+pub(crate) use human_b::escape_tool_subject_fragment;
 #[allow(unused_imports)]
 pub(crate) use parse::{json_number, parse_tool_update, tool_phase_label, LineRange, ParsedToolUpdate};
 #[allow(unused_imports)]
