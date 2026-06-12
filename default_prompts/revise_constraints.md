@@ -21,6 +21,7 @@ c- Revise `{{ doc_path }}` in place. Edit that file directly; do not write to a 
 - Don't use or discuss terms before introducing them.
 - Claims should come with stated evidence or citation. Hypotheses should be labeled as such.
 - Attempt to falsify every claim and hypothesis.
+- Make sure sentences flow naturally from one to the next. Use good transitions.
 
 ## Figure constraints
 If the document has an editable figure, then
