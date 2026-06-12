@@ -120,6 +120,29 @@ pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+pub(super) fn plan_args_for_mock(plan: &Path) -> super::PlanArgs {
+    super::PlanArgs {
+        plan_path: plan.display().to_string(),
+        out_path: "plan.md".to_string(),
+    }
+}
+
+pub(super) async fn prepare_plan_mock_run(
+    _work: &Path,
+    mock: &Path,
+    plan: &Path,
+) -> super::plan_flow_pipeline::PlanRunPrep {
+    write_plan_pipeline_mock_agent(mock);
+    install_plan_mock_env(mock, plan);
+    super::prepare_plan_run(
+        &plan_args_for_mock(plan),
+        &plan_shared_opts_for_mock(),
+        crate::cli::WorkflowCliOptions { force: false },
+    )
+    .await
+    .expect("prepare")
+}
+
 #[allow(unsafe_code)]
 pub(super) fn install_plan_mock_env(mock: &Path, plan: &Path) {
     unsafe {

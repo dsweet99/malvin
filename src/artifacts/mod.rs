@@ -41,7 +41,9 @@ pub use crate::session_dotfile_backup::{
     sanitize_clamp_damaged_dotfiles_in_bundle,
 };
 
-pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
+pub use md_request::{
+    is_existing_md_file_path, looks_like_md_file_path_arg, resolve_user_md_request,
+};
 pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};

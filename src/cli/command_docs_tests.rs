@@ -90,6 +90,7 @@ fn plan_doc_parses_with_plan_path_when_doc_flag_set() {
 fn print_doc_plan_writes_subcommand_md() {
     let cmd = Commands::Plan(PlanArgs {
         plan_path: "plan.md".to_string(),
+        out_path: "plan.md".to_string(),
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin plan"));

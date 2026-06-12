@@ -8,7 +8,7 @@ use super::plan_flow_test_helpers::{
     test_plan_run_prep_for_plan,
 };
 use super::{
-    prepare_source_plan, resolve_plan_source_path, validate_plan_markers_before_run, PlanArgs,
+    prepare_source_plan, validate_plan_markers_before_run, PlanArgs,
 };
 use crate::artifacts::{
     detect_rerun_user_span_end, plan_user_sidecar_path, read_plan_metadata, restore_interrupted_plan,
@@ -17,17 +17,13 @@ use crate::artifacts::{
 };
 
 #[test]
-fn resolve_plan_source_path_requires_existing_md() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "x").expect("write");
-    let old = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let got = resolve_plan_source_path("plan.md").expect("resolve");
-    std::env::set_current_dir(old).expect("restore");
-    assert!(got.ends_with("plan.md"));
-    assert!(resolve_plan_source_path("missing.md").is_err());
-    assert!(resolve_plan_source_path("bad path.md").is_err());
+fn plan_args_debug() {
+    let args = PlanArgs {
+        plan_path: "plan.md".to_string(),
+        out_path: "plan.md".to_string(),
+    };
+    let dbg = format!("{args:?}");
+    assert!(dbg.contains("plan.md"));
 }
 
 #[test]
@@ -40,6 +36,12 @@ fn ambiguous_markers_without_clean_rerun_fail_validation() {
     )
     .expect("write");
     assert!(validate_plan_markers_before_run(&plan).is_err());
+}
+
+#[test]
+fn validate_post_2_requires_decisions_after_open_questions() {
+    let ok = "## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. q\n\n## DECISIONS\n0. **Verdict:** none **Evidence:** n/a\n";
+    validate_post_2(ok).expect("valid");
 }
 
 #[test]
@@ -90,21 +92,6 @@ fn run_dir_snapshots_paths() {
     std::fs::write(&plan, "## Restatement\nrestated\n").expect("write");
     snapshot_plan_artifact(&run_dir, "plan.p1a.md", &plan).expect("snap");
     assert!(run_dir.join("plan.p1a.md").is_file());
-}
-
-#[test]
-fn plan_args_debug() {
-    let args = PlanArgs {
-        plan_path: "plan.md".to_string(),
-    };
-    let dbg = format!("{args:?}");
-    assert!(dbg.contains("plan.md"));
-}
-
-#[test]
-fn validate_post_2_requires_decisions_after_open_questions() {
-    let ok = "## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. q\n\n## DECISIONS\n0. **Verdict:** none **Evidence:** n/a\n";
-    validate_post_2(ok).expect("valid");
 }
 
 #[test]

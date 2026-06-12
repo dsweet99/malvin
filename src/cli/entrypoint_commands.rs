@@ -57,6 +57,7 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
 pub(crate) fn plan_args_for_delight_output(out_path: &str) -> crate::plan_flow::PlanArgs {
     crate::plan_flow::PlanArgs {
         plan_path: out_path.to_string(),
+        out_path: out_path.to_string(),
     }
 }
 

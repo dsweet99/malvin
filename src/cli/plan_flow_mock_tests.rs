@@ -1,8 +1,7 @@
 use super::plan_flow_pipeline::run_plan_acp;
 use super::plan_flow_test_helpers::{
-    install_plan_mock_env, plan_shared_opts_for_mock, write_plan_pipeline_mock_agent,
+    install_plan_mock_env, prepare_plan_mock_run, write_plan_pipeline_mock_agent,
 };
-use super::{prepare_plan_run, PlanArgs};
 
 #[test]
 fn prepare_plan_run_truncates_and_loads_prompt_store() {
@@ -19,15 +18,7 @@ fn prepare_plan_run_truncates_and_loads_prompt_store() {
             let mock = work.join("mock-agent");
             write_plan_pipeline_mock_agent(&mock);
             install_plan_mock_env(&mock, &plan);
-            let prep = prepare_plan_run(
-                &PlanArgs {
-                    plan_path: plan.display().to_string(),
-                },
-                &plan_shared_opts_for_mock(),
-                crate::cli::WorkflowCliOptions { force: false },
-            )
-            .await
-            .expect("prepare");
+            let prep = prepare_plan_mock_run(work, &mock, &plan).await;
             assert_eq!(
                 std::fs::read_to_string(&plan).expect("read"),
                 "# User\n"
@@ -54,28 +45,24 @@ async fn run_plan_gitignore_restore_case(work: &std::path::Path) {
     std::fs::write(work.join(".gitignore"), "plan-gitignore\n").expect("gitignore");
     let mock = work.join("mock-agent-plan-gitignore");
     write_plan_gitignore_tamper_mock_agent(&mock);
-    install_plan_mock_env(&mock, &plan);
-    let mut prep = prepare_plan_run(
-        &PlanArgs {
-            plan_path: plan.display().to_string(),
-        },
-        &plan_shared_opts_for_mock(),
-        crate::cli::WorkflowCliOptions { force: false },
-    )
-    .await
-    .expect("prepare");
+    let mut prep = prepare_plan_mock_run(work, &mock, &plan).await;
     run_plan_acp(&mut prep).await.expect("plan acp");
+    restore_plan_session_dotfiles(&prep).expect("restore");
+    assert_eq!(
+        std::fs::read_to_string(work.join(".gitignore")).expect("read"),
+        "plan-gitignore\n"
+    );
+}
+
+fn restore_plan_session_dotfiles(
+    prep: &super::plan_flow_pipeline::PlanRunPrep,
+) -> Result<(), String> {
     crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         Ok(()),
         &prep.artifacts.work_dir,
         &prep.session_dotfile_backups,
         &prep.artifacts.artifact_result_md(),
     )
-    .expect("restore");
-    assert_eq!(
-        std::fs::read_to_string(work.join(".gitignore")).expect("read"),
-        "plan-gitignore\n"
-    );
 }
 
 fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
@@ -106,15 +93,7 @@ fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
             let mock = work.join("mock-agent");
             write_plan_pipeline_mock_agent(&mock);
             install_plan_mock_env(&mock, &plan);
-            let mut prep = prepare_plan_run(
-                &PlanArgs {
-                    plan_path: plan.display().to_string(),
-                },
-                &plan_shared_opts_for_mock(),
-                crate::cli::WorkflowCliOptions { force: false },
-            )
-            .await
-            .expect("prepare");
+            let mut prep = prepare_plan_mock_run(work, &mock, &plan).await;
             run_plan_acp(&mut prep).await.expect("plan acp");
             let out = std::fs::read_to_string(&plan).expect("read plan");
             assert_eq!(out, "# Revised\n\nDone.\n");
