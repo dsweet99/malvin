@@ -12,8 +12,6 @@
 - References to papers and urls are welcome.
   - Ensure that a cited reference supports the claim to which the citation is attached.
 - You might want to use tikz (if available) to create a diagram for a figure.
-  - Write a .png of the figure so you can look at it an evaluate it.
-  - Figure constraints: No overlaps. No wasted space. Classic ratios and margins.
 - Get figures, equations, etc to fit inside their hboxes.
 - Get rid of all TeX warnings
 - Make the document visually pleasing.

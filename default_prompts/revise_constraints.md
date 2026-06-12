@@ -19,3 +19,20 @@
 - No unsubstantiated throw-aways
 - No vague, underprecise, wishy-washy, or hedgy language. Replace them with clear, precise, supported claims (whatever they may be) or just remove them.
 - Don't use or discuss terms before introducing them.
+- Claims should come with stated evidence or citation. Hypotheses should be labeled as such.
+- Attempt to falsify every claim and hypothesis.
+
+## Figure constraints
+If the document has an editable figure, then
+write it as a .png so that you can look at it
+and evaluate it.
+
+Figure constraints:
+  - No text overlaps other text or a node, arrow, legend, axis, or caption
+  - No node, arrowhead, etc. is clipped by the figure,
+     crop, page, or column boundary
+  - No wasted space.
+  - Text remain readable at the PDF scale
+  - Long labels wrap or shorten inside fixed-width nodes
+  - Arrow route around primary content.
+  - Classic ratios and margins.
