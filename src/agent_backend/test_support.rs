@@ -2,7 +2,7 @@
 
 use crate::acp::AgentIoOptions;
 use crate::cli::SharedOpts;
-use crate::agent_backend::mini::MiniTraceSink;
+use crate::agent_backend::mini::{LlmBackend, MiniTraceSink, MockScript, MockStep};
 use malvin_mini::CompletionResponse;
 
 #[must_use]
@@ -19,6 +19,15 @@ pub fn mini_test_trace() -> MiniTraceSink {
         run_dir: None,
         io: test_io(),
     }
+}
+
+#[must_use]
+pub fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
+    LlmBackend::Mock(std::sync::Mutex::new(MockScript {
+        responses,
+        call_count: 0,
+        on_response: None,
+    }))
 }
 
 #[must_use]

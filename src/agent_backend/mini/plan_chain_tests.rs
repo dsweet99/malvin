@@ -21,7 +21,7 @@ fn bash_then_final_responses() -> Vec<MockStep> {
             content: "summary for prompt 1a".into(),
             usage: None,
         }),
-        // Fence-less reply after the one no-fence nudge (see `classify_turn`).
+        // Fence-less reply after bash + no-fence nudge (see `classify_turn`).
         MockStep::Ok(CompletionResponse {
             content: "final summary for prompt 1a after nudge".into(),
             usage: None,
@@ -37,7 +37,7 @@ fn plan_chain_all_responses() -> Vec<MockStep> {
         usage: None,
     }));
     responses.push(MockStep::Ok(CompletionResponse {
-        content: "final summary for prompt 3 after nudge".into(),
+        content: "MINI_DONE\nfinal summary for prompt 3 after nudge".into(),
         usage: None,
     }));
     responses

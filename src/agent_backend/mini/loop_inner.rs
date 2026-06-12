@@ -34,6 +34,11 @@ pub(crate) enum TurnAction {
     RunBash(Vec<BashFence>),
 }
 
+pub(crate) struct TurnContext {
+    pub no_fence_nudge_used: bool,
+    pub bash_executed: bool,
+}
+
 /// Run the inner loop for one user prompt (already includes mini constraints when caller prepends).
 ///
 /// # Errors
@@ -54,6 +59,7 @@ pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome,
 
     let mut transcript = String::new();
     let mut no_fence_nudge_used = false;
+    let mut bash_executed = false;
     let mut final_text = String::new();
 
     for turn in 0..config.max_bash_turns {
@@ -75,21 +81,27 @@ pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome,
             content: assistant_text.clone(),
         });
 
-        match classify_turn(&assistant_text, no_fence_nudge_used) {
+        match classify_turn(&assistant_text, &TurnContext {
+            no_fence_nudge_used,
+            bash_executed,
+        }) {
             TurnAction::Done(text) => {
                 final_text = text;
                 trace.mini_assistant(&final_text);
                 break;
             }
             TurnAction::Continue => {
-                no_fence_nudge_used = true;
-                session.messages.push(ChatMessage {
-                    role: ChatRole::User,
-                    content: NO_FENCE_NUDGE.into(),
-                });
+                if !no_fence_nudge_used {
+                    no_fence_nudge_used = true;
+                    session.messages.push(ChatMessage {
+                        role: ChatRole::User,
+                        content: NO_FENCE_NUDGE.into(),
+                    });
+                }
             }
             TurnAction::RunBash(fences) => {
                 append_bash_observation(session, &fences, trace, &mut transcript)?;
+                bash_executed = true;
                 if turn + 1 >= config.max_bash_turns {
                     return Err(exhausted_error(config.max_bash_turns, &transcript));
                 }
@@ -142,13 +154,13 @@ async fn complete_turn(req: CompleteTurnRequest<'_>) -> Result<CompletionRespons
     Ok(response)
 }
 
-pub(crate) fn classify_turn(assistant_text: &str, no_fence_nudge_used: bool) -> TurnAction {
+pub(crate) fn classify_turn(assistant_text: &str, ctx: &TurnContext) -> TurnAction {
     if has_mini_done_outside_bash_fences(assistant_text) {
         return TurnAction::Done(assistant_text.to_string());
     }
     let fences = parse_bash_fences(assistant_text);
     if fences.is_empty() {
-        if no_fence_nudge_used {
+        if ctx.no_fence_nudge_used && ctx.bash_executed {
             TurnAction::Done(assistant_text.to_string())
         } else {
             TurnAction::Continue

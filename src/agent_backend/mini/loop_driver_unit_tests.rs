@@ -1,28 +1,50 @@
 use super::{
-    classify_turn, exhausted_error, push_user_prompt, TurnAction, LoopDriverSession,
+    classify_turn, exhausted_error, push_user_prompt, TurnAction, TurnContext, LoopDriverSession,
 };
 use malvin_mini::ChatRole;
 
 #[test]
 fn classify_turn_detects_mini_done_and_no_fence_nudge() {
     assert!(matches!(
-        classify_turn("line\nMINI_DONE\n", false),
+        classify_turn("line\nMINI_DONE\n", &TurnContext {
+            no_fence_nudge_used: false,
+            bash_executed: false,
+        }),
         TurnAction::Done(_)
     ));
     assert!(matches!(
-        classify_turn("no fence", false),
+        classify_turn("no fence", &TurnContext {
+            no_fence_nudge_used: false,
+            bash_executed: false,
+        }),
         TurnAction::Continue
     ));
     assert!(matches!(
-        classify_turn("no fence", true),
+        classify_turn("summary", &TurnContext {
+            no_fence_nudge_used: true,
+            bash_executed: true,
+        }),
         TurnAction::Done(_)
     ));
     assert!(matches!(
-        classify_turn("```bash\necho hi\n```", false),
+        classify_turn("still no", &TurnContext {
+            no_fence_nudge_used: true,
+            bash_executed: false,
+        }),
+        TurnAction::Continue
+    ));
+    assert!(matches!(
+        classify_turn("```bash\necho hi\n```", &TurnContext {
+            no_fence_nudge_used: false,
+            bash_executed: false,
+        }),
         TurnAction::RunBash(_)
     ));
     assert!(matches!(
-        classify_turn("```bash\nMINI_DONE\necho hi\n```", false),
+        classify_turn("```bash\nMINI_DONE\necho hi\n```", &TurnContext {
+            no_fence_nudge_used: false,
+            bash_executed: false,
+        }),
         TurnAction::RunBash(_)
     ));
 }

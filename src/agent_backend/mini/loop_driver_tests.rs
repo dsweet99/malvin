@@ -1,17 +1,8 @@
 use super::{
-    run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, LlmBackend, MockScript,
-    MockStep,
+    run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, MockStep,
 };
-use crate::agent_backend::test_support::mini_test_trace;
+use crate::agent_backend::test_support::{mini_test_trace, mock_llm};
 use malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
-
-fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
-    LlmBackend::Mock(std::sync::Mutex::new(MockScript {
-        responses,
-        call_count: 0,
-        on_response: None,
-    }))
-}
 
 fn test_config() -> LoopDriverConfig {
     LoopDriverConfig {
@@ -57,41 +48,6 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
     assert_eq!(out.final_assistant_text, "summary");
     assert!(tmp.path().join("out.txt").is_file());
     assert!(session.messages.iter().any(|m| m.content.contains("Exit code")));
-}
-
-#[tokio::test]
-async fn loop_driver_no_fence_triggers_nudge_before_final() {
-    let llm = mock_llm(vec![
-        MockStep::Ok(CompletionResponse {
-            content: "no fence".into(),
-            usage: None,
-        }),
-        MockStep::Ok(CompletionResponse {
-            content: "still no".into(),
-            usage: None,
-        }),
-    ]);
-    let mut session = LoopDriverSession {
-        messages: vec![],
-        cwd: std::env::temp_dir(),
-    };
-    let out = run_inner_loop(LoopDriverRun {
-        llm: &llm,
-        session: &mut session,
-        user_prompt: "go",
-        config: &test_config(),
-        trace: &mini_test_trace(),
-        timing: None,
-        llm_phase: None,
-        single_attempt: true,
-    })
-    .await
-    .expect("loop");
-    assert_eq!(out.final_assistant_text, "still no");
-    assert!(session
-        .messages
-        .iter()
-        .any(|m| m.content == "your last response had no ```bash``` block"));
 }
 
 #[tokio::test]
@@ -192,17 +148,13 @@ async fn loop_driver_mock_http_retry_on_429() {
     let llm = mock_llm(vec![
         MockStep::RateLimited,
         MockStep::Ok(CompletionResponse {
-            content: "ok".into(),
+            content: "MINI_DONE\nok".into(),
             usage: Some(ResponseUsage {
                 prompt_tokens: None,
                 completion_tokens: None,
                 total_tokens: None,
                 cost: Some(0.01),
             }),
-        }),
-        MockStep::Ok(CompletionResponse {
-            content: "ok".into(),
-            usage: None,
         }),
     ]);
     let mut session = LoopDriverSession {
@@ -225,7 +177,7 @@ async fn loop_driver_mock_http_retry_on_429() {
     })
     .await
     .expect("retry ok");
-    assert_eq!(out.final_assistant_text, "ok");
+    assert!(out.final_assistant_text.contains("MINI_DONE"));
 }
 
 #[cfg(test)]
@@ -239,7 +191,6 @@ mod kiss_cov_gate_refs {
             mock_llm,
             test_config,
             loop_driver_single_fence_runs_bash_and_appends_observation,
-            loop_driver_no_fence_triggers_nudge_before_final,
             loop_driver_mini_done_line_terminates,
             loop_driver_mini_done_inside_fence_still_runs_bash,
             loop_driver_prepends_mini_constraints,
