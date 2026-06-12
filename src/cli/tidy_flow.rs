@@ -72,8 +72,9 @@ mod tests {
 
     #[test]
     fn tidy_startup_logs_host_resources_in_command_log() {
+        crate::test_utils::clear_test_no_real_agent_env();
         let tmp = tempfile::tempdir().expect("tempdir");
-        let old = std::env::current_dir().expect("cwd");
+        let old = crate::test_utils::save_cwd();
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
         .expect("prepared");
@@ -88,7 +89,7 @@ mod tests {
         .expect("startup");
         let command_log = prepared.artifacts.run_dir.join("command.log");
         let log = std::fs::read_to_string(&command_log).expect("log");
-        std::env::set_current_dir(old).expect("restore cwd");
+        crate::test_utils::restore_cwd(&old);
         assert!(log.contains("Memory:"));
         assert!(log.contains("CPUs:"));
     }

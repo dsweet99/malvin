@@ -1,9 +1,11 @@
 use super::run_loop::{
     gate_kpop_solved_early_exit, kpop_solved_early_exit, refresh_consecutive_solved_streak,
-    run_gate_kpop_loop, run_gate_kpop_on_loop_iteration, session_wrote_kpop_solved,
+    restore_carry_forward_before_iteration_snapshot, run_gate_kpop_loop,
+    run_gate_kpop_on_loop_iteration, session_wrote_kpop_solved,
     gate_kpop_loop_one_iteration, wire_gate_kpop_client, GateKpopEarlyExitCtx,
 };
 use crate::artifacts::SessionDotfileBackups;
+use crate::session_dotfile_backup::DotfileBackupState;
 
 #[test]
 fn refresh_consecutive_solved_streak_increments_or_resets() {
@@ -94,4 +96,66 @@ fn gate_kpop_loop_session_helpers_are_covered() {
     let _ = wire_gate_kpop_client;
     let _ = gate_kpop_loop_one_iteration;
     let _ = run_gate_kpop_loop;
+}
+
+fn fail_gate_prepared_fixture(
+    work: &std::path::Path,
+) -> (SessionDotfileBackups, super::prepared::GateKpopPrepared) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+    let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
+    let store = crate::prompts::PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let prepared = super::prepared::GateKpopPrepared {
+        artifacts,
+        context: std::collections::HashMap::new(),
+        request_text: "req".into(),
+        startup_emit_request: "req".into(),
+        store,
+        malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+    };
+    (backups, prepared)
+}
+
+#[test]
+fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
+    const BASELINE: &str = "baseline\n";
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    let gitignore = work.join(".gitignore");
+    std::fs::write(&gitignore, BASELINE).expect("write");
+    let carry = SessionDotfileBackups::snapshot(work).expect("snapshot");
+    std::fs::write(&gitignore, "tampered\n").expect("tamper");
+    restore_carry_forward_before_iteration_snapshot(work, Some(&carry)).expect("restore");
+    assert_eq!(std::fs::read_to_string(&gitignore).expect("read"), BASELINE);
+    let resnapshot = SessionDotfileBackups::snapshot(work).expect("resnapshot");
+    let DotfileBackupState::Present(payload) = resnapshot.gitignore else {
+        panic!("expected gitignore present");
+    };
+    assert_eq!(payload.bytes, BASELINE.as_bytes());
+}
+
+#[test]
+fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
+    use super::behavior::GateLoopBehavior;
+    use super::kpop_session::fail_gate_kpop_after_exhausted;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (backups, prepared) = fail_gate_prepared_fixture(tmp.path());
+    std::fs::write(tmp.path().join(".malvin/checks"), "tampered\n").expect("tamper");
+    let err = fail_gate_kpop_after_exhausted(
+        "malvin code",
+        &prepared,
+        &backups,
+        GateLoopBehavior::CODE,
+    )
+    .expect_err("gates failed");
+    assert!(err.contains("quality gates did not pass"));
+    assert_eq!(
+        std::fs::read_to_string(tmp.path().join(".malvin/checks")).expect("read"),
+        "kiss check\n",
+        "exhausted fail path must rewind dotfiles without invoking gates again"
+    );
 }

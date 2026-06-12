@@ -79,6 +79,9 @@ fn prepare_repo_workspace_with_details(
     run_log_dir: Option<&Path>,
     kiss_clamp_prep: bool,
 ) -> Result<(), RepoGateFailure> {
+    // Choke point: every gate run repairs kiss-clamp damage before prep or checks execute.
+    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)
+        .map_err(RepoGateFailure::Message)?;
     if kiss_clamp_prep {
         ensure_kiss_clamp_if_needed_with_details(work_dir, output, run_log_dir)?;
     }

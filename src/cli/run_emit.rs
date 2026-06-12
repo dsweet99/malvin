@@ -103,6 +103,7 @@ mod tests {
 
     #[test]
     fn emit_run_startup_sequence_includes_host_resources_when_requested() {
+        crate::test_utils::clear_test_no_real_agent_env();
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
             crate::artifacts::create_run_artifacts_from_text("hi", Some(tmp.path())).expect("art");

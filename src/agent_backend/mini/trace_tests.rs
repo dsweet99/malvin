@@ -79,93 +79,108 @@ fn mini_trace_writes_mini_bash_exec() {
     assert!(text.contains("mini_bash_exec"));
 }
 
+fn with_stdout_log_test_lock<F: FnOnce()>(f: F) {
+    let _guard = crate::output::STDOUT_LOG_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    f();
+}
+
 #[test]
 fn mini_stdout_emits_bash_tool_summary_with_t_tag() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let log_path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(Some(log_path.clone()));
-    let sink = MiniTraceSink {
-        run_dir: Some(tmp.path().to_path_buf()),
-        io: test_io(false),
-    };
-    sink.mini_bash_exec("echo hi", 0, Duration::from_millis(3));
-    let text = std::fs::read_to_string(log_path).expect("stdout log");
-    assert!(text.contains("t|"));
-    assert!(text.contains("Run echo hi"));
-    assert!(text.contains("✓"));
-    crate::output::set_stdout_log_path(None);
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        let sink = MiniTraceSink {
+            run_dir: Some(tmp.path().to_path_buf()),
+            io: test_io(false),
+        };
+        sink.mini_bash_exec("echo hi", 0, Duration::from_millis(3));
+        let text = std::fs::read_to_string(log_path).expect("stdout log");
+        assert!(text.contains("t|"));
+        assert!(text.contains("Run echo hi"));
+        assert!(text.contains("✓"));
+        crate::output::set_stdout_log_path(None);
+    });
 }
 
 #[test]
 fn mini_stdout_multiline_bash_emits_single_t_tagged_line() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let log_path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(Some(log_path.clone()));
-    let sink = MiniTraceSink {
-        run_dir: Some(tmp.path().to_path_buf()),
-        io: test_io(false),
-    };
-    let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
-    sink.mini_bash_exec(command, 0, Duration::from_millis(3));
-    let text = std::fs::read_to_string(log_path).expect("stdout log");
-    assert_eq!(
-        text.lines().count(),
-        1,
-        "multiline command must log exactly one physical line; got {text:?}"
-    );
-    let t_lines = stdout_log_tool_t_lines(&text);
-    assert_eq!(
-        t_lines.len(),
-        1,
-        "multiline command must produce exactly one timestamped t| line; got {text:?}"
-    );
-    let payload = t_lines[0]
-        .split_once(' ')
-        .map_or(t_lines[0], |(_, rest)| rest);
-    assert!(
-        !payload.contains('\n'),
-        "t| payload must not contain embedded newlines"
-    );
-    assert!(payload.contains("\\n"));
-    assert!(payload.ends_with("· 3ms · ✓"));
-    crate::output::set_stdout_log_path(None);
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        let sink = MiniTraceSink {
+            run_dir: Some(tmp.path().to_path_buf()),
+            io: test_io(false),
+        };
+        let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
+        sink.mini_bash_exec(command, 0, Duration::from_millis(3));
+        let text = std::fs::read_to_string(log_path).expect("stdout log");
+        assert_eq!(
+            text.lines().count(),
+            1,
+            "multiline command must log exactly one physical line; got {text:?}"
+        );
+        let t_lines = stdout_log_tool_t_lines(&text);
+        assert_eq!(
+            t_lines.len(),
+            1,
+            "multiline command must produce exactly one timestamped t| line; got {text:?}"
+        );
+        let payload = t_lines[0]
+            .split_once(' ')
+            .map_or(t_lines[0], |(_, rest)| rest);
+        assert!(
+            !payload.contains('\n'),
+            "t| payload must not contain embedded newlines"
+        );
+        assert!(payload.contains("\\n"));
+        assert!(payload.ends_with("· 3ms · ✓"));
+        crate::output::set_stdout_log_path(None);
+    });
 }
 
 #[test]
 fn mini_stdout_emits_assistant_with_m_tag_not_b_tag() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let log_path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(Some(log_path.clone()));
-    let sink = MiniTraceSink {
-        run_dir: Some(tmp.path().to_path_buf()),
-        io: test_io(false),
-    };
-    sink.mini_assistant("hello from mini");
-    let text = std::fs::read_to_string(log_path).expect("stdout log");
-    assert!(
-        text.contains(&format!("{WHO_M}|")),
-        "assistant text must use m| tag, got {text:?}"
-    );
-    assert!(
-        !text.contains(&format!("{WHO_B}|")),
-        "assistant text must not use b| tag, got {text:?}"
-    );
-    crate::output::set_stdout_log_path(None);
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        let sink = MiniTraceSink {
+            run_dir: Some(tmp.path().to_path_buf()),
+            io: test_io(false),
+        };
+        sink.mini_assistant("hello from mini");
+        let text = std::fs::read_to_string(log_path).expect("stdout log");
+        assert!(
+            text.contains(&format!("{WHO_M}|")),
+            "assistant text must use m| tag, got {text:?}"
+        );
+        assert!(
+            !text.contains(&format!("{WHO_B}|")),
+            "assistant text must not use b| tag, got {text:?}"
+        );
+        crate::output::set_stdout_log_path(None);
+    });
 }
 
 #[test]
 fn mini_stdout_skips_assistant_when_no_tee() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let log_path = tmp.path().join("stdout.log");
-    crate::output::set_stdout_log_path(Some(log_path.clone()));
-    let sink = MiniTraceSink {
-        run_dir: Some(tmp.path().to_path_buf()),
-        io: test_io(true),
-    };
-    sink.mini_assistant("hidden");
-    let text = std::fs::read_to_string(log_path).unwrap_or_default();
-    assert!(text.is_empty(), "no_tee must suppress assistant stdout; got {text:?}");
-    crate::output::set_stdout_log_path(None);
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        let sink = MiniTraceSink {
+            run_dir: Some(tmp.path().to_path_buf()),
+            io: test_io(true),
+        };
+        sink.mini_assistant("hidden");
+        let text = std::fs::read_to_string(log_path).unwrap_or_default();
+        assert!(text.is_empty(), "no_tee must suppress assistant stdout; got {text:?}");
+        crate::output::set_stdout_log_path(None);
+    });
 }
 
 #[test]

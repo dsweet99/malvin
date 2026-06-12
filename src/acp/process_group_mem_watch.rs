@@ -7,8 +7,12 @@ use tracing::warn;
 
 use super::session_types::AcpSession;
 
-const POLL_INTERVAL: Duration = Duration::from_millis(500);
-/// Consecutive `None` RSS samples before fail-closed teardown (~1.5s at 500ms poll).
+const POLL_INTERVAL: Duration = if cfg!(test) {
+    Duration::from_millis(10)
+} else {
+    Duration::from_millis(500)
+};
+/// Consecutive `None` RSS samples before fail-closed teardown (~1.5s at 500ms poll in production).
 const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {

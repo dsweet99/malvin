@@ -35,7 +35,10 @@ pub use crate::session_dotfile_backup::{
     backup_workspace_malvin_config_workspace_if_present_with_id,
     restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
     restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
-    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup, restore_workspace_session_dotfiles,
+    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore,
+    merge_for_gate_restore, repair_clamp_damaged_dotfiles_on_disk,
+    sanitize_clamp_damaged_dotfiles_in_bundle,
 };
 
 pub use md_request::{is_existing_md_file_path, resolve_user_md_request};

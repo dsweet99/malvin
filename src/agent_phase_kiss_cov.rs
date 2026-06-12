@@ -11,7 +11,7 @@ fn mini_phase_hooks_drive_heartbeat() {
     assert_eq!(crate::agent_phase::heartbeat_label(), "Executing");
     crate::agent_phase::note_mini_bash_exec_done(0, "echo hi");
     assert_eq!(crate::agent_phase::heartbeat_label(), "Reasoning");
-    crate::agent_phase::note_mini_bash_exec_done(1, "cargo nextest run");
+    crate::agent_phase::note_mini_bash_exec_done(1, "kiss check");
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),
         crate::agent_phase::AgentPhase::Debugging
@@ -44,7 +44,7 @@ fn heartbeat_phases_follow_runtime_signals() {
         crate::agent_phase::current_phase_for_test(),
         crate::agent_phase::AgentPhase::Researching
     );
-    observe(json!({"sessionUpdate":"tool_call","toolCallId":"x1","kind":"execute","status":"pending","rawInput":{"command":"cargo nextest run"}}), &mut tracker);
+    observe(json!({"sessionUpdate":"tool_call","toolCallId":"x1","kind":"execute","status":"pending","rawInput":{"command":"kiss check"}}), &mut tracker);
     observe(json!({"sessionUpdate":"tool_call_update","toolCallId":"x1","status":"completed","rawOutput":{"exitCode":1}}), &mut tracker);
     assert_eq!(
         crate::agent_phase::current_phase_for_test(),

@@ -17,7 +17,7 @@ fn explain_output_paths_use_fixed_basenames() {
 #[test]
 fn explain_resolved_output_paths_keep_default_in_request_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = std::env::current_dir().expect("cwd");
+    let old = crate::test_utils::save_cwd();
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let notes = tmp.path().join("notes");
     std::fs::create_dir_all(&notes).expect("mkdir");
@@ -26,19 +26,19 @@ fn explain_resolved_output_paths_keep_default_in_request_work_dir() {
             .expect("resolve");
     assert_eq!(outputs.tex_path, notes.join(EXPLAIN_TEX_BASENAME));
     assert_eq!(outputs.pdf_path, notes.join(EXPLAIN_PDF_BASENAME));
-    std::env::set_current_dir(old).expect("restore");
+    crate::test_utils::restore_cwd(&old);
 }
 
 #[test]
 fn explain_resolved_output_paths_use_custom_out_path_in_cwd() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = std::env::current_dir().expect("cwd");
+    let old = crate::test_utils::save_cwd();
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let outputs =
         explain_resolved_output_paths(std::path::Path::new("."), "docs/paper.tex").expect("resolve");
     assert_eq!(outputs.tex_path, tmp.path().join("docs/paper.tex"));
     assert_eq!(outputs.pdf_path, tmp.path().join("docs/paper.pdf"));
-    std::env::set_current_dir(old).expect("restore");
+    crate::test_utils::restore_cwd(&old);
 }
 
 #[test]
@@ -109,9 +109,9 @@ fn explain_revise_doc_path_uses_resolved_tex_in_request_work_dir() {
 #[test]
 fn explain_revise_doc_path_uses_custom_out_path_in_cwd() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = std::env::current_dir().expect("cwd");
+    let old = crate::test_utils::save_cwd();
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let doc_path = explain_revise_doc_path("topic", "docs/paper.tex").expect("resolve");
-    std::env::set_current_dir(old).expect("restore");
+    crate::test_utils::restore_cwd(&old);
     assert_eq!(doc_path, "docs/paper.tex");
 }

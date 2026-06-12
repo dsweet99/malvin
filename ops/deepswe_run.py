@@ -214,7 +214,12 @@ def run_cmd(
 
 
 def git_run(workspace: Path, *args: str, dry_run: bool = False) -> None:
-    run_cmd(["git", *args], cwd=workspace, dry_run=dry_run)
+    ws = str(workspace.resolve())
+    run_cmd(
+        ["git", "-c", f"safe.directory={ws}", *args],
+        cwd=workspace,
+        dry_run=dry_run,
+    )
 
 
 def materialize_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
@@ -712,6 +717,145 @@ def run_modal_solve(
     )
 
 
+def _build_run_metadata(
+    spec: TaskSpec,
+    workspace: Path,
+    runtime: str,
+    malvin_command: str,
+    malvin_args: tuple[str, ...],
+    agent_result: dict[str, Any] | None,
+    grade_result: dict[str, Any],
+    malvin_log: Path | None,
+    *,
+    grade_only: bool,
+    docker_image: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "task_id": spec.task_id,
+        "task_dir": str(spec.task_dir),
+        "workspace": str(workspace.resolve()),
+        "runtime": runtime,
+        "malvin_command": malvin_command if not grade_only else None,
+        "malvin_args": list(malvin_args),
+        "base_commit": spec.base_commit,
+        "docker_image": docker_image if docker_image is not None else spec.docker_image,
+        "agent": agent_result,
+        "grade": grade_result,
+        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
+        "timestamp_utc": timestamp_dir(),
+    }
+
+
+def _write_host_run_artifacts(
+    run_root: Path,
+    metadata: dict[str, Any],
+    grade_result: dict[str, Any],
+    logs_dir: Path,
+    *,
+    dry_run: bool,
+    skip_metadata_if_exists: bool = False,
+    overwrite_artifacts: bool = False,
+) -> None:
+    if dry_run:
+        return
+    host_metadata = run_root / "metadata.json"
+    if not (skip_metadata_if_exists and host_metadata.is_file()):
+        write_metadata(run_root, metadata)
+    reward = grade_result.get("reward")
+    reward_dst = run_root / "reward.txt"
+    reward_src = logs_dir / "verifier" / "reward.txt"
+    if reward is not None and reward_src.is_file():
+        if overwrite_artifacts or not reward_dst.is_file():
+            shutil.copyfile(reward_src, reward_dst)
+    mp = grade_result.get("model_patch")
+    mp_host = run_root / "model.patch"
+    if mp and Path(mp).is_file():
+        if overwrite_artifacts or not mp_host.is_file():
+            shutil.copyfile(mp, mp_host)
+
+
+def _print_evaluation_summary(
+    grade_result: dict[str, Any],
+    agent_result: dict[str, Any] | None,
+    run_root: Path,
+) -> None:
+    click.echo("\n=== Evaluation ===")
+    click.echo(f"reward: {grade_result.get('reward')}")
+    click.echo(f"pass: {grade_result.get('pass')}")
+    if agent_result:
+        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
+    click.echo(f"artifacts: {run_root.resolve()}")
+
+
+def _exit_from_evaluation(
+    grade_result: dict[str, Any],
+    agent_result: dict[str, Any] | None,
+) -> None:
+    if grade_result.get("pass") is False:
+        raise SystemExit(1)
+    if agent_result and agent_result.get("exit_code") not in (0, None):
+        raise SystemExit(agent_result["exit_code"])
+
+
+def _run_local_docker_task(
+    spec: TaskSpec,
+    task_dir: Path,
+    workspace: Path,
+    run_root: Path,
+    *,
+    malvin_command: str,
+    malvin_args: tuple[str, ...],
+    grade_only: bool,
+    skip_grade: bool,
+    apply_solution: bool,
+    reset_workspace_flag: bool,
+    checks_override: str | None,
+    docker_image: str | None,
+    dry_run: bool,
+) -> None:
+    local_result = run_local_eval_in_docker(
+        spec,
+        task_dir,
+        workspace,
+        run_root,
+        malvin_command=malvin_command,
+        malvin_args=malvin_args,
+        grade_only=grade_only,
+        skip_grade=skip_grade,
+        apply_solution=apply_solution,
+        reset_workspace_flag=reset_workspace_flag or apply_solution,
+        checks_override=checks_override,
+        docker_image=docker_image,
+        dry_run=dry_run,
+    )
+    agent_result = local_result.get("agent")
+    grade_result = local_result.get("grade") or {}
+    malvin_log = find_latest_malvin_log(workspace)
+    metadata = _build_run_metadata(
+        spec,
+        workspace,
+        "local-docker",
+        malvin_command,
+        malvin_args,
+        agent_result,
+        grade_result,
+        malvin_log,
+        grade_only=grade_only,
+    )
+    logs_dir = run_root / "verifier_logs"
+    _write_host_run_artifacts(
+        run_root,
+        metadata,
+        grade_result,
+        logs_dir,
+        dry_run=dry_run,
+        skip_metadata_if_exists=True,
+    )
+    _print_evaluation_summary(grade_result, agent_result, run_root)
+    _exit_from_evaluation(grade_result, agent_result)
+
+
 def run_task(
     *,
     local_task_name: str | None,
@@ -775,7 +919,7 @@ def run_task(
         raise click.ClickException(f"No solution patch at {spec.task_dir / 'solution'}")
 
     if local_docker:
-        local_result = run_local_eval_in_docker(
+        _run_local_docker_task(
             spec,
             task_dir,
             workspace,
@@ -785,50 +929,11 @@ def run_task(
             grade_only=grade_only,
             skip_grade=skip_grade,
             apply_solution=apply_solution,
-            reset_workspace_flag=reset_workspace_flag or apply_solution,
+            reset_workspace_flag=reset_workspace_flag,
             checks_override=checks_override,
             docker_image=docker_image,
             dry_run=dry_run,
         )
-        agent_result = local_result.get("agent")
-        grade_result = local_result.get("grade") or {}
-        malvin_log = find_latest_malvin_log(workspace)
-        metadata = {
-            "task_id": spec.task_id,
-            "task_dir": str(spec.task_dir),
-            "workspace": str(workspace.resolve()),
-            "runtime": "local-docker",
-            "malvin_command": malvin_command if not grade_only else None,
-            "malvin_args": list(malvin_args),
-            "base_commit": spec.base_commit,
-            "docker_image": spec.docker_image,
-            "agent": agent_result,
-            "grade": grade_result,
-            "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
-            "timestamp_utc": timestamp_dir(),
-        }
-        if not dry_run:
-            write_metadata(run_root, metadata)
-            reward = grade_result.get("reward")
-            if reward is not None:
-                shutil.copyfile(
-                    run_root / "verifier_logs" / "verifier" / "reward.txt",
-                    run_root / "reward.txt",
-                )
-            mp = grade_result.get("model_patch")
-            if mp and Path(mp).is_file():
-                shutil.copyfile(mp, run_root / "model.patch")
-        click.echo("\n=== Evaluation ===")
-        click.echo(f"reward: {grade_result.get('reward')}")
-        click.echo(f"pass: {grade_result.get('pass')}")
-        if agent_result:
-            click.echo(f"malvin exit: {agent_result.get('exit_code')}")
-            click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
-        click.echo(f"artifacts: {run_root.resolve()}")
-        if grade_result.get("pass") is False:
-            raise SystemExit(1)
-        if agent_result and agent_result.get("exit_code") not in (0, None):
-            raise SystemExit(agent_result["exit_code"])
         return
 
     if reset_workspace_flag or apply_solution:
@@ -870,43 +975,21 @@ def run_task(
         grade_result = grade_workspace(spec, workspace, logs_dir, image=image, dry_run=dry_run)
 
     malvin_log = find_latest_malvin_log(workspace)
-    metadata = {
-        "task_id": spec.task_id,
-        "task_dir": str(spec.task_dir),
-        "workspace": str(workspace.resolve()),
-        "runtime": runtime,
-        "malvin_command": malvin_command if not grade_only else None,
-        "malvin_args": list(malvin_args),
-        "base_commit": spec.base_commit,
-        "docker_image": spec.docker_image if not in_sandbox else None,
-        "agent": agent_result,
-        "grade": grade_result,
-        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
-        "timestamp_utc": timestamp_dir(),
-    }
-    if not dry_run:
-        write_metadata(run_root, metadata)
-        if grade_result.get("reward") is not None:
-            shutil.copyfile(
-                logs_dir / "verifier" / "reward.txt",
-                run_root / "reward.txt",
-            )
-        mp = grade_result.get("model_patch")
-        if mp and Path(mp).is_file():
-            shutil.copyfile(mp, run_root / "model.patch")
-
-    click.echo("\n=== Evaluation ===")
-    click.echo(f"reward: {grade_result.get('reward')}")
-    click.echo(f"pass: {grade_result.get('pass')}")
-    if agent_result:
-        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
-        click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
-    click.echo(f"artifacts: {run_root.resolve()}")
-
-    if grade_result.get("pass") is False:
-        raise SystemExit(1)
-    if agent_result and agent_result.get("exit_code") not in (0, None):
-        raise SystemExit(agent_result["exit_code"])
+    metadata = _build_run_metadata(
+        spec,
+        workspace,
+        runtime,
+        malvin_command,
+        malvin_args,
+        agent_result,
+        grade_result,
+        malvin_log,
+        grade_only=grade_only,
+        docker_image=spec.docker_image if not in_sandbox else None,
+    )
+    _write_host_run_artifacts(run_root, metadata, grade_result, logs_dir, dry_run=dry_run, overwrite_artifacts=True)
+    _print_evaluation_summary(grade_result, agent_result, run_root)
+    _exit_from_evaluation(grade_result, agent_result)
 
 
 def _task_kernel_options(f: Any) -> Any:
@@ -1265,7 +1348,7 @@ def _test_solve_modal_dry_run() -> None:
 
 
 def _test_solve_modal_full_dry_run() -> None:
-    """Default solve uses two Modal sandboxes (Cursor-allowlist agent, block_network grade)."""
+    """Default solve runs malvin and Harbor grade in one Modal sandbox."""
     from click.testing import CliRunner
 
     tasks_root = default_deepswe_tasks_root()
@@ -1279,7 +1362,7 @@ def _test_solve_modal_full_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
-    assert "Dry run: Harbor grade in separate Modal sandbox (block_network)" in result.output
+    assert "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)" in result.output
     assert "Running agent on host" not in result.output
 
 

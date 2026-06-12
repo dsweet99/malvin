@@ -8,6 +8,7 @@ use crate::artifacts::{
     SessionDotfileBackups,
 };
 use crate::test_utils::with_isolated_home;
+use crate::malvin_config_file::open_malvin_config;
 use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
 
 #[test]
@@ -38,6 +39,27 @@ fn plain_snapshot_missing_restore_wipes_ensure_created_home_config() {
             !cfg.exists(),
             "Missing restore must delete ensured config — this is the reset bug"
         );
+    });
+}
+
+#[test]
+fn snapshot_after_ensure_tolerates_invalid_on_disk_config() {
+    with_isolated_home(|work| {
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        let cfg = malvin_config_path(work);
+        let iteration_start =
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        seed_malvin_config(work, "TAMPERED\n");
+        let post_agent =
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(matches!(
+            post_agent.malvin_config,
+            MalvinConfigBackup::Present(_)
+        ));
+        iteration_start.restore_excluding_malvin_checks(work).unwrap();
+        let restored = std::fs::read_to_string(&cfg).unwrap();
+        assert!(restored.contains("mem_limit_gb = 7"));
+        assert!(!restored.contains("TAMPERED"));
     });
 }
 
@@ -91,9 +113,23 @@ fn malvin_config_backup_round_trip_restores_home_file() {
 fn malvin_config_backup_missing_restores_by_removing_created_home_file() {
     with_isolated_home(|work| {
         let backup = backup_workspace_malvin_config_if_present(work).unwrap();
-        seed_malvin_config(work, "CREATED\n");
+        open_malvin_config(work).expect("create ensured default");
         restore_workspace_malvin_config_backup(work, &backup).unwrap();
         assert!(!malvin_config_path(work).exists());
+    });
+}
+
+#[test]
+fn malvin_config_missing_restore_preserves_user_edited_home_config() {
+    with_isolated_home(|work| {
+        let backup = backup_workspace_malvin_config_if_present(work).unwrap();
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        restore_workspace_malvin_config_backup(work, &backup).unwrap();
+        let restored = std::fs::read_to_string(malvin_config_path(work)).unwrap();
+        assert!(
+            restored.contains("mem_limit_gb = 7"),
+            "user-edited home config must survive Missing restore, got: {restored:?}"
+        );
     });
 }
 

@@ -8,6 +8,10 @@ struct IsolatedTestEnv {
     old_cwd: PathBuf,
 }
 
+fn stable_fallback_cwd() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
 impl IsolatedTestEnv {
     fn new() -> (Self, PathBuf) {
         let tmp = tempfile::tempdir().unwrap();
@@ -22,7 +26,11 @@ impl IsolatedTestEnv {
         }
         let work = tmp.path().join("repo");
         std::fs::create_dir_all(&work).unwrap();
-        let old_cwd = std::env::current_dir().expect("cwd");
+        let old_cwd = std::env::current_dir().unwrap_or_else(|_| {
+            let stable = stable_fallback_cwd();
+            std::env::set_current_dir(&stable).expect("chdir stable fallback");
+            stable
+        });
         std::env::set_current_dir(&work).expect("chdir isolated workspace");
         (
             Self {
@@ -37,7 +45,9 @@ impl IsolatedTestEnv {
 
 impl Drop for IsolatedTestEnv {
     fn drop(&mut self) {
-        let _ = std::env::set_current_dir(&self.old_cwd);
+        if std::env::set_current_dir(&self.old_cwd).is_err() {
+            let _ = std::env::set_current_dir(stable_fallback_cwd());
+        }
         #[allow(unsafe_code)]
         unsafe {
             match self.old_home.take() {

@@ -101,7 +101,9 @@ async fn finalize_gate_kpop_turn(
     Ok(())
 }
 
-async fn run_gate_kpop_single_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+async fn run_gate_kpop_single_turn(
+    ctx: &mut GateKpopMultiturnCtx<'_>,
+) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
     let prepared = ctx.iteration.loop_params.prepared;
     let prompt = build_gate_kpop_prompt(ctx)?;
     let work_dir = prepared.artifacts().work_dir.as_path();
@@ -125,18 +127,31 @@ async fn run_gate_kpop_single_turn(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result
             },
         )
         .await;
-    finalize_gate_kpop_turn(ctx, work_dir, prompt_result).await
+    let post_agent_backups = if prompt_result.is_ok() {
+        Some(
+            crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(
+                work_dir,
+            )?,
+        )
+    } else {
+        None
+    };
+    finalize_gate_kpop_turn(ctx, work_dir, prompt_result).await?;
+    Ok(post_agent_backups)
 }
 
-pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+pub(crate) async fn run_gate_kpop_session(
+    ctx: &mut GateKpopMultiturnCtx<'_>,
+) -> Result<crate::artifacts::SessionDotfileBackups, String> {
+    let iteration_start = ctx.iteration.session_dotfile_backups.clone();
     let max_attempts = ctx.iteration.client.max_acp_retries();
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {
         attempts_used = attempt;
         match run_gate_kpop_single_turn(ctx).await {
-            Ok(()) => {
-                return finish_kpop_acp_session(
+            Ok(post_agent_backups) => {
+                finish_kpop_acp_session(
                     ctx.iteration.loop_params.prepared.artifacts(),
                     ctx.iteration.session_dotfile_backups,
                     ctx.iteration
@@ -144,7 +159,20 @@ pub(crate) async fn run_gate_kpop_session(ctx: &mut GateKpopMultiturnCtx<'_>) ->
                         .behavior
                         .restore_malvin_checks_after_session(),
                 )
-                .await;
+                .await?;
+                let progress = post_agent_backups.unwrap_or_else(|| iteration_start.clone());
+                let work_dir = ctx
+                    .iteration
+                    .loop_params
+                    .prepared
+                    .artifacts()
+                    .work_dir
+                    .as_path();
+                return Ok(crate::artifacts::merge_and_sanitize_for_gate_restore(
+                    &iteration_start,
+                    &progress,
+                    work_dir,
+                ));
             }
             Err(e) => {
                 last_error = e;
@@ -189,6 +217,23 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
     behavior: super::behavior::GateLoopBehavior,
 ) -> Result<(), String> {
+    // Code/tidy exhaustion already ran gates in `run_gate_kpop_loop`. Rewind disk so gate-prep
+    // side effects cannot poison the next outer retry; do not run gates a second time.
+    if behavior.recheck_gates_after_exhausted && !behavior.skip_workspace_quality_gates {
+        let work_dir = prepared.artifacts().work_dir.as_path();
+        if behavior.restore_malvin_checks_after_session() {
+            session_dotfile_backups.restore(work_dir)?;
+        } else {
+            session_dotfile_backups.restore_excluding_malvin_checks(work_dir)?;
+        }
+        crate::cli::workflow_kpop_shared::write_checks_do_not_pass_for_artifacts(
+            prepared.artifacts(),
+        )?;
+        return Err(crate::cli::format_workspace_gate_failure(
+            command,
+            "workspace quality gates did not pass after the kpop session",
+        ));
+    }
     post_gate_kpop_gates(command, prepared, session_dotfile_backups, behavior)
 }
 

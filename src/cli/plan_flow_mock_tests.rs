@@ -97,6 +97,7 @@ fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
 
 #[test]
 fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
+    crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|work| {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {

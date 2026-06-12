@@ -5,6 +5,13 @@
 use std::path::Path;
 use std::sync::Mutex;
 
+#[path = "test_utils_env.rs"]
+mod env;
+pub use env::{
+    clear_test_no_real_agent_env, enable_test_fast_teardown, restore_cwd, save_cwd,
+    SavedEnvVars,
+};
+
 /// Script body for minimal stdio `agent acp` test doubles (JSON-RPC handlers only).
 pub const ACP_MOCK_JSONRPC_LOOP_JS: &str = r#"const readline = require('readline');
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });

@@ -123,7 +123,7 @@ fn agent_backend_run_kpop_flow_mini_stops_on_non_retryable_error() {
                 content: "not a valid response without done".into(),
                 usage: None,
             })],
-            3,
+            1,
         );
         let args = KpopFlowOnceArgs {
             cwd: tmp.path(),
@@ -197,7 +197,7 @@ fn agent_backend_run_kpop_multiturn_mini_stops_on_non_retryable_error() {
                 content: "not a valid response without done".into(),
                 usage: None,
             })],
-            3,
+            1,
         );
         let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
         let mut state =

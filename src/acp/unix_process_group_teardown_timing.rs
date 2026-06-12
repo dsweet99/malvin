@@ -8,11 +8,11 @@ pub(crate) fn test_fast_acp_teardown_enabled() -> bool {
 #[must_use]
 pub(crate) fn teardown_poll_interval() -> std::time::Duration {
     if test_fast_acp_teardown_enabled() {
-        return std::time::Duration::from_millis(5);
+        return std::time::Duration::from_millis(1);
     }
     #[cfg(debug_assertions)]
     {
-        std::time::Duration::from_millis(100)
+        std::time::Duration::from_millis(50)
     }
     #[cfg(not(debug_assertions))]
     {
@@ -23,11 +23,11 @@ pub(crate) fn teardown_poll_interval() -> std::time::Duration {
 #[must_use]
 pub(crate) fn teardown_total_cap() -> std::time::Duration {
     if test_fast_acp_teardown_enabled() {
-        return std::time::Duration::from_millis(50);
+        return std::time::Duration::from_millis(10);
     }
     #[cfg(debug_assertions)]
     {
-        std::time::Duration::from_millis(500)
+        std::time::Duration::from_millis(300)
     }
     #[cfg(not(debug_assertions))]
     {
@@ -42,7 +42,7 @@ pub(crate) fn shutdown_cancel_timeout() -> std::time::Duration {
     }
     #[cfg(debug_assertions)]
     {
-        std::time::Duration::from_millis(200)
+        std::time::Duration::from_millis(100)
     }
     #[cfg(not(debug_assertions))]
     {

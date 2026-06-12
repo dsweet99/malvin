@@ -1,4 +1,4 @@
-use crate::acp::{AgentError, AgentRetryOutcome, plan_agent_retry, tokio_sleep};
+use crate::acp::{agent_backoff_sleep, AgentError, AgentRetryOutcome, plan_agent_retry};
 
 /// Kill the coder session when a transport/child-health error leaves it unusable.
 pub(crate) async fn teardown_coder_session_after_transport_error(
@@ -26,7 +26,7 @@ pub(crate) async fn backoff_after_agent_failure(
                 "agent acp attempt {attempt} failed: {last_error}"
             ));
             crate::run_timing::record_backoff(timing, d);
-            tokio_sleep(d).await;
+            agent_backoff_sleep(d).await;
             Ok(false)
         }
     }

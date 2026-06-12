@@ -1,12 +1,12 @@
 use super::{
     AgentConfig, DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
     ensure_config_parent_dir,
-    ensure_malvin_config_file, load_malvin_config, merge_missing_keys, open_malvin_config,
+    load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
 };
 use crate::support_paths::DEFAULT_CLI_MODEL;
 use crate::test_utils::with_isolated_home;
-use crate::workspace_paths::{malvin_config_path, malvin_home_config_path};
+use crate::workspace_paths::malvin_config_path;
 
 #[test]
 fn merge_missing_keys_adds_top_level_and_nested_tables() {
@@ -46,7 +46,7 @@ fn open_malvin_config_creates_file_with_all_sections() {
 }
 
 #[test]
-fn open_malvin_config_merges_missing_agent_into_existing_file() {
+fn open_malvin_config_merges_missing_agent_in_memory_only() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
@@ -55,9 +55,11 @@ fn open_malvin_config_merges_missing_agent_into_existing_file() {
             "mem_limit_gb = 6\n\n[logs]\nmax_age_days = 90\nmax_bytes = \"2GiB\"\n",
         )
         .expect("write");
+        let before = std::fs::read_to_string(&path).expect("read before");
         let cfg = open_malvin_config(work).expect("open");
-        let text = std::fs::read_to_string(&path).expect("read");
-        assert!(text.contains("[agent]"));
+        let after = std::fs::read_to_string(&path).expect("read after");
+        assert_eq!(before, after, "existing config.toml must never be rewritten");
+        assert_eq!(cfg.mem_limit_gb, 6);
         assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
     });
 }
@@ -111,14 +113,15 @@ fn parse_theme_accepts_dark_and_light() {
 }
 
 #[test]
-fn open_malvin_config_merges_theme_into_existing_file() {
+fn open_malvin_config_merges_theme_in_memory_only() {
     with_isolated_home(|work| {
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&path, "mem_limit_gb = 6\n").expect("write");
+        let before = std::fs::read_to_string(&path).expect("read before");
         let cfg = open_malvin_config(work).expect("open");
-        let text = std::fs::read_to_string(&path).expect("read");
-        assert!(text.contains("theme"));
+        let after = std::fs::read_to_string(&path).expect("read after");
+        assert_eq!(before, after);
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
     });
 }
@@ -204,17 +207,6 @@ fn read_on_disk_config_value_rejects_invalid_toml() {
 }
 
 #[test]
-fn load_malvin_config_does_not_create_missing_file() {
-    with_isolated_home(|work| {
-        let path = malvin_config_path(work);
-        assert!(!path.exists());
-        let cfg = load_malvin_config(work);
-        assert!(!path.exists());
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
-    });
-}
-
-#[test]
 fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     use super::{parse_malvin_config, read_string, read_u32, read_usize, MalvinConfig};
     let cfg = parse_malvin_config("mem_limit_gb = 0\n");
@@ -231,20 +223,4 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     assert_eq!(read_string(None), None);
     assert_eq!(read_usize(None), None);
     assert_eq!(read_u32(None), None);
-}
-
-#[test]
-fn ensure_malvin_config_file_and_home_path() {
-    with_isolated_home(|work| {
-        open_malvin_config(work).expect("seed");
-        let before = std::fs::read_to_string(malvin_config_path(work)).expect("read");
-        ensure_malvin_config_file(work).expect("ensure");
-        assert_eq!(
-            before,
-            std::fs::read_to_string(malvin_config_path(work)).expect("read")
-        );
-        let path = malvin_home_config_path();
-        assert!(path.ends_with(".malvin_home/config.toml"));
-        assert!(path.starts_with(crate::user_home_dir()));
-    });
 }

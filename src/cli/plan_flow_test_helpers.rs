@@ -123,6 +123,7 @@ pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
 #[allow(unsafe_code)]
 pub(super) fn install_plan_mock_env(mock: &Path, plan: &Path) {
     unsafe {
+        std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
         std::env::set_var("MALVIN_AGENT_ACP_BIN", mock);
         std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
         std::env::set_var("MALVIN_TEST_PLAN_PATH", plan);

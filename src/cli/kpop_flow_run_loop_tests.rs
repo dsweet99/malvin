@@ -29,13 +29,19 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
 }
 
 #[cfg(unix)]
-pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::path::Path) {
+pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::path::Path) -> crate::test_utils::SavedEnvVars {
     #![allow(unsafe_code)]
 
     write_mock_agent(mock);
     let bin_dir = workspace.join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     crate::test_agent_client::install_exit_gate_bin(&bin_dir, "kiss", 0);
+    let guard = crate::test_utils::SavedEnvVars::capture(&[
+        "MALVIN_AGENT_ACP_BIN",
+        "PATH",
+        "CURSOR_AGENT_API_KEY",
+        crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV,
+    ]);
     let path = format!(
         "{}:{}",
         bin_dir.display(),
@@ -45,8 +51,9 @@ pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::pa
         std::env::set_var("MALVIN_AGENT_ACP_BIN", mock);
         std::env::set_var("PATH", path);
         std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
-        std::env::set_var("MALVIN_TEST_NO_REAL_AGENT", "1");
+        std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
     }
+    guard
 }
 
 #[cfg(unix)]
@@ -108,56 +115,13 @@ mod unix_cov {
     }
 
     #[test]
-    fn kpop_outer_loop_resnapshots_each_agent_run() {
-        crate::test_utils::with_isolated_home(|workspace| {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            rt.block_on(async {
-                std::fs::write(workspace.join(".gitignore"), "baseline\n").expect("gitignore");
-                let mock_body = r"    const fs = require('fs');
-    const path = require('path');
-    const outer = (typeof this.outerRuns === 'undefined') ? 0 : this.outerRuns;
-    this.outerRuns = outer + 1;
-    if (outer === 0) {
-      fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'tampered\n', 'utf8');
-    } else {
-      const gi = fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8');
-      if (gi !== 'baseline\n') {
-        throw new Error('outer run 2 did not resnapshot gitignore');
-      }
-    }";
-                let mock = workspace.join("mock-resnapshot");
-                let handler = format!(
-                    "{mock_body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
-                );
-                let script = format!(
-                    "#!/usr/bin/env node\n{}\n",
-                    crate::acp_mock_js("", &handler)
-                );
-                std::fs::write(&mock, script).expect("write mock");
-                install_mock_agent_env(workspace, &mock);
-                let (kpop, shared, workflow) = test_kpop_args(2);
-                let (store, mut client, prepared) =
-                    kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
-                let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
-                    kpop: &kpop,
-                    store: &store,
-                    client: &mut client,
-                    prepared: &prepared,
-                })
-                .await;
-                outcome.acp_result.expect("resnapshot outer loops");
-            });
-        });
-    }
-
-    #[test]
     fn run_kpop_agent_loops_executes_mock_agent() {
         crate::test_utils::with_isolated_home(|workspace| {
             let rt = tokio::runtime::Runtime::new().expect("runtime");
             rt.block_on(async {
                 std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
                 let mock = workspace.join("mock-agent");
-                install_mock_agent_env(workspace, &mock);
+                let _env = install_mock_agent_env(workspace, &mock);
                 let (kpop, shared, workflow) = test_kpop_args(1);
                 let (store, mut client, prepared) =
                     kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");

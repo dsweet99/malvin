@@ -6,8 +6,14 @@
 - After the tl;dr, write a brief summary.
 - Assume the reader has not and will not read the underlying code.
 - Speculate internally about the reader's potential state of mind while reading, but do not write about it. Do not tell the reader they will "often confuse this or that" or that something is "obvious". Assume the reader is intelligent and interested in what you have to tell them.
+- Use equations where appropriate, where they make it easier to convey a point precisely.
 - You may use brief algobox/pseudocode.
-- Highlight areas of concern or confusion that the user might need to address, even if only to clarify the intention behind the code. Put the highlights/callouts throughout the document near where they are
-   naturally discussed.
+- Highlight areas of concern or confusion that the user might need to address, even if only to clarify the intention behind the code. Put the highlights/callouts throughout the document near where they are naturally discussed.
+- References to papers and urls are welcome.
+  - Ensure that a cited reference supports the claim to which the citation is attached.
 - You might want to use tikz (if available) to create a diagram for a figure.
+  - Write a .png of the figure so you can look at it an evaluate it.
+  - Figure constraints: No overlaps. No wasted space. Classic ratios and margins.
+- Get figures, equations, etc to fit inside their hboxes.
+- Get rid of all TeX warnings
 - Make the document visually pleasing.

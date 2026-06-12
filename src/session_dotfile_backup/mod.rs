@@ -1,6 +1,14 @@
 mod alloc;
+pub(crate) mod gate_restore_checks;
+pub(crate) mod gate_restore_merge;
+pub(crate) mod gate_restore_repair;
 mod slots;
 mod wrappers;
+
+pub use gate_restore_merge::{merge_and_sanitize_for_gate_restore, merge_for_gate_restore};
+pub use gate_restore_repair::{
+    repair_clamp_damaged_dotfiles_on_disk, sanitize_clamp_damaged_dotfiles_in_bundle,
+};
 
 use std::path::Path;
 
@@ -84,7 +92,7 @@ impl SessionDotfileBackups {
     /// snapshot records `Missing` again, so every later restore keeps removing it.
     #[allow(clippy::missing_errors_doc)]
     pub fn snapshot_after_ensuring_home_config(work_dir: &Path) -> Result<Self, String> {
-        crate::repo_gates::ensure_default_malvin_config_file(work_dir)?;
+        crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)?;
         Self::snapshot(work_dir)
     }
 

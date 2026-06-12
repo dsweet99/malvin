@@ -153,22 +153,37 @@ pub(crate) fn gate_iteration_context(
 }
 
 #[allow(dead_code)] // unit tests and kiss coverage stringify references
+fn restore_session_dotfiles_for_gates(
+    work_dir: &Path,
+    session_dotfile_backups: &SessionDotfileBackups,
+    restore_malvin_checks: bool,
+) -> Result<(), String> {
+    if restore_malvin_checks {
+        session_dotfile_backups.restore(work_dir)
+    } else {
+        session_dotfile_backups.restore_excluding_malvin_checks(work_dir)
+    }
+}
+
 pub(crate) fn run_kpop_workspace_gates(
     artifacts: &RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
     restore_malvin_checks: bool,
 ) -> Result<(), String> {
-    if restore_malvin_checks {
-        session_dotfile_backups.restore(&artifacts.work_dir)?;
-    } else {
-        session_dotfile_backups.restore_excluding_malvin_checks(&artifacts.work_dir)?;
-    }
+    let work_dir = artifacts.work_dir.as_path();
+    restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
+    // Carry-forward backups may still hold kiss-clamp damage; repair on disk before executing gates.
+    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
-    run_repo_workspace_gates(
-        artifacts.work_dir.as_path(),
+    let result = run_repo_workspace_gates(
+        work_dir,
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
-    )
+    );
+    // Gate prep (e.g. `kiss clamp`) may mutate dotfiles during the run; rewind disk so
+    // outer retries and the next iteration snapshot cannot anchor off re-damaged files.
+    restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
+    result
 }
 
 pub(crate) fn post_kpop_session_gates(

@@ -1,6 +1,6 @@
 use crate::acp::client_impl_prompt_retry::{
     run_coder_prompt_with_retries, run_one_coder_prompt_attempt,
-    TEST_PROMPT_OK_WITHOUT_DISPATCH,
+    TEST_PROMPT_FAIL_WITHOUT_DISPATCH, TEST_PROMPT_OK_WITHOUT_DISPATCH,
 };
 use crate::acp::test_captive_session::captive_cat_acp_session_for_tests;
 use crate::acp::{AgentClient, AgentIoOptions, CoderSessionPromptDispatch};
@@ -82,7 +82,7 @@ fn run_coder_prompt_with_retries_errors_without_open_session() {
 }
 
 #[test]
-fn run_coder_prompt_with_retries_sleeps_between_attempts_when_not_single() {
+fn run_coder_prompt_with_retries_retries_on_test_injected_failure() {
     run_async_test(async {
         let tmp = tempfile::tempdir().expect("tempdir");
         let cwd = tmp.path();
@@ -104,18 +104,16 @@ fn run_coder_prompt_with_retries_sleeps_between_attempts_when_not_single() {
         let log = tmp.path().join("coder.log");
         let dispatch = CoderSessionPromptDispatch {
             session: &session,
-            full_prompt: "ping",
+            full_prompt: TEST_PROMPT_FAIL_WITHOUT_DISPATCH,
             log_path: &log,
             who: "test",
             do_trace_split: None,
             stdout_bracket_label: None,
         };
-        let t0 = std::time::Instant::now();
         let err = run_coder_prompt_with_retries(&mut client, dispatch, None, false)
             .await
-            .expect_err("cat harness cannot satisfy ACP prompt RPC");
+            .expect_err("injected failure should exhaust retries");
         assert!(err.0.contains("failed after 1 retry"));
-        assert!(t0.elapsed() >= std::time::Duration::from_secs(1));
     });
 }
 

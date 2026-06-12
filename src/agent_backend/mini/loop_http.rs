@@ -39,7 +39,7 @@ pub async fn complete_with_http_retries(req: HttpRetryRequest<'_>) -> Result<Com
                     std::time::Duration::from_secs(3)
                 };
                 crate::run_timing::record_backoff(timing, sleep);
-                tokio::time::sleep(sleep).await;
+                crate::acp::agent_backoff_sleep(sleep).await;
             }
         }
     }

@@ -5,9 +5,9 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
-``cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
-in a separate Modal sandbox with ``block_network=True``. Open egress remains
+The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox with a
+Cursor API ``cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
+runs use a separate ``block_network`` sandbox. Open egress remains
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
 malvin and kiss are built from local source
 trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
@@ -1410,7 +1410,9 @@ def run_modal_eval(
         else:
             click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
             if not skip_grade:
-                click.echo("Dry run: Harbor grade in separate Modal sandbox (block_network)")
+                click.echo(
+                    "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)"
+                )
         return
 
     materialize_workspace(spec, workspace, dry_run=False)
@@ -1463,41 +1465,40 @@ def run_modal_eval(
             deepswe_run_py=deepswe_run_py,
         )
         agent_artifacts = run_root / "agent_sandbox"
-        click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
-        agent_result, _ = run_deepswe_run_in_sandbox(
-            agent_img,
-            command=malvin_command,
-            malvin_argv=list(malvin_args),
-            grade_only=False,
-            skip_grade=True,
-            cursor_secrets=cursor_secrets(),
-            artifacts_dir=agent_artifacts,
-            harvest_workspace=workspace,
-        )
+        if skip_grade:
+            click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
+            agent_result, grade_result = run_deepswe_run_in_sandbox(
+                agent_img,
+                command=malvin_command,
+                malvin_argv=list(malvin_args),
+                grade_only=False,
+                skip_grade=True,
+                cursor_secrets=cursor_secrets(),
+                artifacts_dir=agent_artifacts,
+                harvest_workspace=workspace,
+            )
+        else:
+            click.echo(
+                "Running malvin agent and Harbor grade in Modal sandbox "
+                "(Cursor API allowlist, in-sandbox runtime)..."
+            )
+            agent_result, grade_result = run_deepswe_run_in_sandbox(
+                agent_img,
+                command=malvin_command,
+                malvin_argv=list(malvin_args),
+                grade_only=False,
+                skip_grade=False,
+                cursor_secrets=cursor_secrets(),
+                artifacts_dir=agent_artifacts,
+                harvest_workspace=workspace,
+            )
         if agent_result is None:
             agent_result = {"exit_code": 1}
-        agent_result["runtime"] = "modal-agent-sandbox"
+        agent_result["runtime"] = "modal-sandbox"
         if skip_grade:
             grade_result = {"pass": None, "reward": None, "skipped": True}
         else:
-            grade_img = mount_eval_context(
-                harbor_image(spec, dockerfile=spec.dockerfile),
-                task_dir=spec.task_dir,
-                workspace=workspace,
-                tests_dir=spec.tests_dir,
-                deepswe_run_py=deepswe_run_py,
-            )
-            click.echo("Running Harbor verifier in Modal sandbox (block_network)...")
-            _, grade_result = run_deepswe_run_in_sandbox(
-                grade_img,
-                command=malvin_command,
-                malvin_argv=list(malvin_args),
-                grade_only=True,
-                skip_grade=False,
-                cursor_secrets=[],
-                artifacts_dir=run_root,
-            )
-            grade_result["runtime"] = "modal-grade-sandbox"
+            grade_result["runtime"] = "modal-sandbox"
 
     malvin_log = find_latest_malvin_log(workspace)
     metadata = {
@@ -2068,7 +2069,7 @@ def _test_self_test_flag() -> None:
 
 
 def _test_run_modal_eval_modal_agent_modal_grade() -> None:
-    """solve path: malvin in Cursor-allowlist Modal sandbox, Harbor grade in block_network sandbox."""
+    """solve path: malvin and Harbor grade in one Cursor-allowlist Modal sandbox."""
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"
     if not task.is_dir():
@@ -2089,7 +2090,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
             patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
             patch(
                 f"{__name__}.run_deepswe_run_in_sandbox",
-                side_effect=[(fake_agent, {"skipped": True}), (None, fake_grade)],
+                return_value=(fake_agent, fake_grade),
             ) as mock_sandbox,
             patch(f"{__name__}.cursor_secrets", return_value=[MagicMock()]),
             patch(f"{__name__}.find_latest_malvin_log", return_value=None),
@@ -2103,14 +2104,12 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
                 skip_grade=False,
                 dry_run=False,
             )
-        assert mock_sandbox.call_count == 2
-        agent_call, grade_call = mock_sandbox.call_args_list
+        assert mock_sandbox.call_count == 1
+        agent_call = mock_sandbox.call_args
         assert agent_call.kwargs["grade_only"] is False
-        assert agent_call.kwargs["skip_grade"] is True
+        assert agent_call.kwargs["skip_grade"] is False
         assert agent_call.kwargs.get("open_network") is not True
         assert agent_call.kwargs["harvest_workspace"] == workspace
-        assert grade_call.kwargs["grade_only"] is True
-        assert grade_call.kwargs["cursor_secrets"] == []
         reward_files = list(results.rglob("reward.txt"))
         assert reward_files, results
         assert reward_files[0].read_text(encoding="utf-8").strip() == "1"

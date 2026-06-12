@@ -33,6 +33,7 @@ pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
 const KISSCONFIG_FILE: &str = ".kissconfig";
 const KISSIGNORE_FILE: &str = ".kissignore";
 const GITIGNORE_FILE: &str = ".gitignore";
+const MALVIN_CONFIG_SLOT: usize = 3;
 
 pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     DotfileSpecRow {
@@ -119,12 +120,55 @@ pub(super) fn backup_slot(
     }))
 }
 
+fn is_ensured_default_malvin_config(bytes: &[u8]) -> bool {
+    let Ok(template) = crate::malvin_config_file::parse_template_value() else {
+        return false;
+    };
+    let mut ensured = toml::Value::Table(toml::map::Map::new());
+    crate::malvin_config_file::merge_missing_keys(&mut ensured, &template);
+    let Ok(mut ensured_text) = toml::to_string_pretty(&ensured) else {
+        return false;
+    };
+    if !ensured_text.ends_with('\n') {
+        ensured_text.push('\n');
+    }
+    std::str::from_utf8(bytes).is_ok_and(|on_disk| on_disk == ensured_text)
+}
+
+fn restore_malvin_config_missing(dst: &Path, lbls: &DotfileBackupLabels) -> Result<(), String> {
+    if !dst.exists() {
+        return Ok(());
+    }
+    if !dst.is_file() {
+        return remove_if_exists(dst, lbls.restore);
+    }
+    let bytes = std::fs::read(dst).map_err(|e| format!("{}: {e}", lbls.restore))?;
+    if is_ensured_default_malvin_config(&bytes) {
+        return remove_if_exists(dst, lbls.restore);
+    }
+    let keep = std::str::from_utf8(&bytes)
+        .ok()
+        .and_then(|text| text.parse::<toml::Value>().ok())
+        .is_some();
+    if keep {
+        Ok(())
+    } else {
+        remove_if_exists(dst, lbls.restore)
+    }
+}
+
 pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
     let dst = dotfile_source_path(slot, work_dir);
     let lbls = labels(spec);
     match backup {
-        DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
+        DotfileBackupState::Missing => {
+            if slot == MALVIN_CONFIG_SLOT {
+                restore_malvin_config_missing(&dst, &lbls)
+            } else {
+                remove_if_exists(&dst, lbls.restore)
+            }
+        }
         DotfileBackupState::Present(payload) => {
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)

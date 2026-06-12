@@ -19,6 +19,7 @@ fn effective_max_loops_is_at_least_one() {
 
 #[test]
 fn gate_kpop_loop_iterations_is_one_plus_max_loops() {
+    crate::test_utils::clear_test_no_real_agent_env();
     assert_eq!(gate_kpop_loop_iterations(0), 2);
     assert_eq!(gate_kpop_loop_iterations(5), 6);
 }
@@ -66,7 +67,10 @@ fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
     assert!(err.contains("kiss"));
     let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
-    assert!(log.contains("Running `kiss`"));
+    assert!(
+        log.contains("Running `kiss check`"),
+        "bare kiss in backups is repaired before gates run: {log}"
+    );
     assert!(log.contains("[stdout]"));
     assert!(!log.contains("stale output"));
 }
@@ -81,6 +85,41 @@ fn gate_iteration_context_overrides_exp_log() {
     let ctx = gate_iteration_context(&base, &artifacts, &iter_log, 2);
     let exp = ctx.get("exp_log").expect("exp_log");
     assert!(exp.contains("_g2.md"));
+}
+
+fn bare_kiss_repair_fixture(
+    work: &std::path::Path,
+) -> (
+    crate::artifacts::RunArtifacts,
+    (
+        tempfile::TempDir,
+        crate::repo_checks::FakeCommandDirGuard,
+    ),
+) {
+    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    std::fs::write(
+        work.join(".kissconfig"),
+        "[gate]\ntest_coverage_threshold = 0\n",
+    )
+    .expect("kissconfig");
+    let guard = crate::test_agent_client::write_fake_gate(work, "kiss", 0);
+    std::fs::write(work.join(".malvin/checks"), "kiss\n").expect("re-poison");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+    (artifacts, guard)
+}
+
+#[test]
+fn run_kpop_workspace_gates_repairs_bare_kiss_after_poisoned_restore() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (artifacts, (_bin, _guard)) = bare_kiss_repair_fixture(tmp.path());
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+    run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after repair");
+    let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read log");
+    assert!(
+        log.contains("Running `kiss check`"),
+        "repair must normalize bare kiss before gates: {log}"
+    );
 }
 
 #[test]

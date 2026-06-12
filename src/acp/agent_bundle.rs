@@ -1,5 +1,13 @@
 use crate::acp::import_prelude::*;
-pub(crate) use tokio::time::sleep as tokio_sleep;
+
+/// Backoff sleep between agent retry attempts. In unit/integration tests, sleeps are skipped so
+/// retry policy tests stay fast while production keeps 1s / 3s wall-clock backoff.
+pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
+    if cfg!(test) {
+        return;
+    }
+    tokio::time::sleep(d).await;
+}
 
 #[derive(Debug, Clone)]
 pub struct AgentError(pub String);

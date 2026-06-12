@@ -35,6 +35,7 @@ pub(crate) mod shutdown_kills_descendants {
 
     #[tokio::test]
     pub(crate) async fn shutdown_sends_cancel_before_teardown() {
+        crate::test_utils::enable_test_fast_teardown();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("rpc-trace-agent");
         crate::test_utils::write_acp_jsonrpc_mock_rpc_trace(&bin).await;
@@ -59,6 +60,7 @@ pub(crate) mod shutdown_kills_descendants {
 
     #[tokio::test]
     pub(crate) async fn shutdown_kills_agent_spawned_descendants() {
+        crate::test_utils::enable_test_fast_teardown();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("descendant-spawning-agent");
         write_descendant_spawning_acp_mock(&bin).await;

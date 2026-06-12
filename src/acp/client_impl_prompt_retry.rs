@@ -8,6 +8,7 @@ use crate::acp::{
 };
 
 pub(crate) const TEST_PROMPT_OK_WITHOUT_DISPATCH: &str = "__malvin_test_coder_prompt_ok__";
+pub(crate) const TEST_PROMPT_FAIL_WITHOUT_DISPATCH: &str = "__malvin_test_coder_prompt_fail__";
 
 pub(crate) const fn coder_prompt_max_attempts(single_attempt: bool, max_acp_retries: u32) -> u32 {
     if single_attempt {
@@ -19,6 +20,10 @@ pub(crate) const fn coder_prompt_max_attempts(single_attempt: bool, max_acp_retr
 
 pub(crate) fn coder_prompt_skip_dispatch(full_prompt: &str) -> bool {
     cfg!(test) && full_prompt == TEST_PROMPT_OK_WITHOUT_DISPATCH
+}
+
+pub(crate) fn coder_prompt_fail_without_dispatch(full_prompt: &str) -> bool {
+    cfg!(test) && full_prompt == TEST_PROMPT_FAIL_WITHOUT_DISPATCH
 }
 
 pub(crate) fn coder_prompt_cwd_or_error(
@@ -107,6 +112,8 @@ pub(crate) async fn run_one_coder_prompt_attempt(
     let t0 = Instant::now();
     let prompt_res = if coder_prompt_skip_dispatch(dispatch.full_prompt) {
         Ok(())
+    } else if coder_prompt_fail_without_dispatch(dispatch.full_prompt) {
+        Err("test-injected coder prompt failure".into())
     } else {
         dispatch_coder_session_prompt(&attempt_dispatch).await
     };
@@ -124,8 +131,9 @@ pub(crate) async fn run_one_coder_prompt_attempt(
 mod unit_tests {
     use super::{
         coder_prompt_attempt_ok, coder_prompt_cwd_or_error, coder_prompt_init_last_error,
-        coder_prompt_max_attempts, coder_prompt_retry_failure, coder_prompt_skip_dispatch,
-        coder_prompt_stop_retry_loop, record_coder_prompt_last_error, run_coder_prompt_with_retries, run_one_coder_prompt_attempt,
+        coder_prompt_fail_without_dispatch, coder_prompt_max_attempts, coder_prompt_retry_failure,
+        coder_prompt_skip_dispatch, coder_prompt_stop_retry_loop, record_coder_prompt_last_error,
+        run_coder_prompt_with_retries, run_one_coder_prompt_attempt, TEST_PROMPT_FAIL_WITHOUT_DISPATCH,
         TEST_PROMPT_OK_WITHOUT_DISPATCH,
     };
 
@@ -176,6 +184,12 @@ mod unit_tests {
     fn coder_prompt_skip_dispatch_matches_test_prompt() {
         assert!(coder_prompt_skip_dispatch(TEST_PROMPT_OK_WITHOUT_DISPATCH));
         assert!(!coder_prompt_skip_dispatch("real prompt"));
+    }
+
+    #[test]
+    fn coder_prompt_fail_without_dispatch_matches_test_prompt() {
+        assert!(coder_prompt_fail_without_dispatch(TEST_PROMPT_FAIL_WITHOUT_DISPATCH));
+        assert!(!coder_prompt_fail_without_dispatch("real prompt"));
     }
 
     #[test]

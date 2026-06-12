@@ -93,6 +93,7 @@ pub(crate) fn acp_session_from_sleep_child(
 }
 
 pub(crate) fn session_with_sleep_child_for_mem_watch(cwd: &Path) -> (AcpSession, u32) {
+    crate::test_utils::enable_test_fast_teardown();
     let (child, stdin, pgid) = spawn_sleep_child_in_new_process_group(cwd);
     let session = acp_session_from_sleep_child(cwd, child, stdin, pgid);
     (session, pgid)
@@ -177,6 +178,7 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
         process_alive, read_orphan_pid, spawn_hostile_agent_exits_after_orphan_fork,
     };
 
+    crate::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();
@@ -218,6 +220,7 @@ async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
 
     use super::hostile_orphan_test_util::{process_alive, read_orphan_pid, spawn_hostile_agent};
 
+    crate::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();

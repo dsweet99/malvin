@@ -29,6 +29,7 @@ fn with_summarize_mock_agent<F>(f: F)
 where
     F: FnOnce(&std::path::Path, &PromptStore, &crate::artifacts::RunArtifacts),
 {
+    crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|workspace| {
         std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir");
         let artifacts = create_kpop_run_artifacts("kpop", Some(workspace)).expect("artifacts");
@@ -37,6 +38,7 @@ where
         let mock = workspace.join("mock-summarize-agent");
         write_mock_summarize_agent(&mock);
         unsafe {
+            std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
             std::env::set_var("MALVIN_AGENT_ACP_BIN", &mock);
             std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
         }
