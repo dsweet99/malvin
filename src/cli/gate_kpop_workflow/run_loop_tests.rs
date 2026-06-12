@@ -1,9 +1,18 @@
 use super::run_loop::{
-    gate_kpop_solved_early_exit, kpop_solved_early_exit, refresh_consecutive_solved_streak,
-    restore_carry_forward_before_iteration_snapshot, run_gate_kpop_loop,
-    run_gate_kpop_on_loop_iteration, session_wrote_kpop_solved,
-    gate_kpop_loop_one_iteration, wire_gate_kpop_client, GateKpopEarlyExitCtx,
+    gate_kpop_loop_one_iteration, gate_kpop_solved_early_exit, kpop_solved_early_exit,
+    refresh_consecutive_solved_streak, restore_carry_forward_before_iteration_snapshot,
+    run_gate_kpop_loop, run_gate_kpop_on_loop_iteration, session_wrote_kpop_solved,
+    wire_gate_kpop_client, GateKpopEarlyExitCtx,
 };
+
+#[test]
+fn kiss_cov_gate_run_loop_privates() {
+    let _ = (
+        gate_kpop_loop_one_iteration,
+        run_gate_kpop_on_loop_iteration,
+        wire_gate_kpop_client,
+    );
+}
 use crate::artifacts::SessionDotfileBackups;
 use crate::session_dotfile_backup::DotfileBackupState;
 
@@ -140,7 +149,7 @@ fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
 #[test]
 fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
     use super::behavior::GateLoopBehavior;
-    use super::kpop_session::fail_gate_kpop_after_exhausted;
+    use super::fail_gate_kpop_after_exhausted;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let (backups, prepared) = fail_gate_prepared_fixture(tmp.path());

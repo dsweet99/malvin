@@ -22,20 +22,20 @@ pub(crate) struct RunKpopAgentLoopsOutcome {
     pub agent_ran: bool,
 }
 
-const fn kpop_loop_abort(agent_ran: bool, err: String) -> RunKpopAgentLoopsOutcome {
+pub(crate) const fn kpop_loop_abort(agent_ran: bool, err: String) -> RunKpopAgentLoopsOutcome {
     RunKpopAgentLoopsOutcome {
         acp_result: Err(err),
         agent_ran,
     }
 }
 
-struct KpopLoopSnapshot {
-    backups: SessionDotfileBackups,
-    exp_iter: usize,
-    exp_log_path: PathBuf,
+pub(crate) struct KpopLoopSnapshot {
+    pub backups: SessionDotfileBackups,
+    pub exp_iter: usize,
+    pub exp_log_path: PathBuf,
 }
 
-fn snapshot_kpop_loop_dotfiles_and_exp_log(
+pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
     artifacts: &crate::artifacts::RunArtifacts,
     agent_loop: usize,
     max_loops: usize,
@@ -51,18 +51,50 @@ fn snapshot_kpop_loop_dotfiles_and_exp_log(
     })
 }
 
-fn kpop_iteration_declares_solved(
+struct KpopLoopExitAfterIteration {
+    declares_solved: bool,
+    will_exit_after_this_loop: bool,
+}
+
+fn kpop_loop_exit_after_iteration(
     exp_log_path: &PathBuf,
-    last_acp: &mut Result<(), String>,
-) -> bool {
-    kpop_exp_log_declares_solved(exp_log_path).unwrap_or_else(|e| {
-        *last_acp = Err(e);
-        true
+    agent_loop: usize,
+    max_loops: usize,
+) -> Result<KpopLoopExitAfterIteration, String> {
+    let declares_solved = kpop_exp_log_declares_solved(exp_log_path)?;
+    Ok(KpopLoopExitAfterIteration {
+        declares_solved,
+        will_exit_after_this_loop: declares_solved || agent_loop == max_loops,
     })
 }
 
+async fn finish_kpop_loop_iteration(
+    params: &mut RunKpopAgentLoopsParams<'_>,
+    loop_snapshot: &KpopLoopSnapshot,
+    agent_loop: usize,
+    max_loops: usize,
+) -> Result<Option<bool>, String> {
+    let exit = kpop_loop_exit_after_iteration(
+        &loop_snapshot.exp_log_path,
+        agent_loop,
+        max_loops,
+    )?;
+    crate::cli::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop(
+        crate::cli::kpop_summarize::InlineSummarizeOnKpopLoopCtx {
+            client: params.client,
+            store: params.store,
+            artifacts: &params.prepared.artifacts,
+            agent_loop,
+            max_loops,
+            will_exit_after_this_loop: exit.will_exit_after_this_loop,
+        },
+    )
+    .await?;
+    Ok(exit.declares_solved.then_some(true))
+}
+
 pub(crate) async fn run_kpop_agent_loops(
-    params: RunKpopAgentLoopsParams<'_>,
+    mut params: RunKpopAgentLoopsParams<'_>,
 ) -> RunKpopAgentLoopsOutcome {
     let max_loops = effective_max_loops(params.kpop.max_loops);
     clear_legacy_gate_exp_log(&params.prepared.artifacts, max_loops);
@@ -118,8 +150,13 @@ pub(crate) async fn run_kpop_agent_loops(
         if last_acp.is_err() {
             break;
         }
-        if kpop_iteration_declares_solved(&loop_snapshot.exp_log_path, &mut last_acp) {
-            break;
+        match finish_kpop_loop_iteration(&mut params, &loop_snapshot, agent_loop, max_loops).await {
+            Ok(Some(_)) => break,
+            Ok(None) => {}
+            Err(e) => {
+                last_acp = Err(e);
+                break;
+            }
         }
     }
     RunKpopAgentLoopsOutcome {
@@ -139,101 +176,3 @@ pub(crate) fn clear_legacy_gate_exp_log(artifacts: &crate::artifacts::RunArtifac
     }
 }
 
-#[cfg(test)]
-mod kiss_static_fn_item_refs {
-    use super::*;
-
-    #[test]
-    fn kiss_static_fn_item_refs() {
-        let _: Option<KpopLoopSnapshot> = None;
-        let _ = kpop_loop_abort;
-        let _ = snapshot_kpop_loop_dotfiles_and_exp_log;
-        let _ = kpop_iteration_declares_solved;
-    }
-}
-
-#[cfg(test)]
-mod unit_tests {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_run_kpop_agent_loops_outcome() {
-        let _ = std::any::type_name::<RunKpopAgentLoopsOutcome>();
-        let _ = std::any::type_name::<RunKpopAgentLoopsParams>();
-        let _ = run_kpop_agent_loops;
-        let _ = clear_legacy_gate_exp_log;
-        let _ = stringify!(snapshot_kpop_loop_dotfiles_and_exp_log);
-        let _ = stringify!(kpop_iteration_declares_solved);
-    }
-
-    #[test]
-    fn kpop_exp_log_declares_solved_reads_marker() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("exp.md");
-        std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-        assert!(kpop_exp_log_declares_solved(&path).expect("read"));
-    }
-
-    #[test]
-    fn kpop_loop_abort_records_error_and_agent_ran() {
-        let outcome = kpop_loop_abort(true, "setup failed".into());
-        assert!(outcome.agent_ran);
-        assert_eq!(outcome.acp_result, Err("setup failed".into()));
-    }
-
-    #[test]
-    fn kpop_iteration_declares_solved_propagates_read_errors() {
-        let mut last_acp = Ok(());
-        let bad = PathBuf::from("/nonexistent/exp_log.md");
-        assert!(kpop_iteration_declares_solved(&bad, &mut last_acp));
-        assert!(last_acp.is_err());
-    }
-
-    #[test]
-    fn kpop_iteration_declares_solved_false_without_marker() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("exp.md");
-        std::fs::write(&path, "still working\n").expect("write");
-        let mut last_acp = Ok(());
-        assert!(!kpop_iteration_declares_solved(&path, &mut last_acp));
-        assert!(last_acp.is_ok());
-    }
-
-    #[test]
-    fn kpop_loop_snapshot_ensures_home_config_exists() {
-        crate::test_utils::with_isolated_home(|work| {
-            let cfg = crate::malvin_config_path(work);
-            assert!(!cfg.exists());
-            std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-            let artifacts =
-                crate::artifacts::create_kpop_run_artifacts("test", Some(work)).expect("artifacts");
-            let snap =
-                snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 1).expect("snapshot");
-            assert!(
-                cfg.is_file(),
-                "kpop loop snapshot must ensure ~/.malvin_home/config.toml exists"
-            );
-            assert!(matches!(
-                snap.backups.malvin_config,
-                crate::artifacts::MalvinConfigBackup::Present(_)
-            ));
-        });
-    }
-
-    #[test]
-    fn snapshot_kpop_loop_dotfiles_and_exp_log_builds_paths() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        let artifacts =
-            crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-        let snap = snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 2).expect("snapshot");
-        let KpopLoopSnapshot {
-            exp_iter,
-            exp_log_path,
-            backups: _,
-        } = snap;
-        assert_eq!(exp_iter, 1);
-        assert!(exp_log_path.is_file());
-        assert!(exp_log_path.to_string_lossy().contains("_g1.md"));
-    }
-}

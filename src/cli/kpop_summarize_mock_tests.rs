@@ -1,10 +1,7 @@
 #![allow(unsafe_code)]
 
 use crate::artifacts::create_kpop_run_artifacts;
-use crate::cli::kpop_summarize::{
-    kpop_outer_loop_summarize_params, run_outer_loop_summarize_if_warranted,
-    KpopOuterLoopSummarizeInputs,
-};
+use crate::cli::kpop_summarize::run_inline_summarize_coder_prompt;
 use crate::config::DEFAULT_MAX_ACP_RETRIES;
 use crate::prompts::PromptStore;
 
@@ -46,29 +43,48 @@ where
     });
 }
 
+fn write_summarize_fixture_exp_logs(artifacts: &crate::artifacts::RunArtifacts) {
+    let kpop_dir = artifacts.run_dir.join("_kpop");
+    std::fs::create_dir_all(&kpop_dir).expect("mkdir");
+    std::fs::write(kpop_dir.join("exp_log_test_g1.md"), "a\n").expect("write");
+    std::fs::write(kpop_dir.join("exp_log_test_g2.md"), "b\n").expect("write");
+}
+
+async fn run_inline_summarize_on_open_mock_session(
+    shared: &crate::cli::SharedOpts,
+    store: &PromptStore,
+    artifacts: &crate::artifacts::RunArtifacts,
+) -> Result<(), String> {
+    let mut client = crate::agent_backend::build_agent_backend(
+        shared,
+        crate::cli::WorkflowCliOptions { force: false },
+        false,
+        "kpop",
+    )
+    .map_err(|e| e.to_string())?;
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
+    client
+        .begin_coder_session(&artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    run_inline_summarize_coder_prompt(&mut client, store, artifacts, "malvin kpop").await?;
+    client.end_coder_session().await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[test]
-fn run_outer_loop_summarize_if_warranted_runs_mock_summary_agent() {
+fn run_inline_summarize_coder_prompt_runs_on_open_session() {
     with_summarize_mock_agent(|workspace, store, artifacts| {
-        let kpop_dir = artifacts.run_dir.join("_kpop");
-        std::fs::create_dir_all(&kpop_dir).expect("mkdir");
-        std::fs::write(kpop_dir.join("exp_log_test_g1.md"), "a\n").expect("write");
-        std::fs::write(kpop_dir.join("exp_log_test_g2.md"), "b\n").expect("write");
+        write_summarize_fixture_exp_logs(artifacts);
         let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {
-            run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
-                KpopOuterLoopSummarizeInputs {
-                    agent_ran: true,
-                    shared: &shared,
-                },
-                store,
-                artifacts,
-            ))
-            .await
-            .expect("summarize");
+            run_inline_summarize_on_open_mock_session(&shared, store, artifacts)
+                .await
+                .expect("inline summarize");
         });
         let probe = workspace.join("summary_probe.log");
-        assert!(probe.is_file(), "mock summarize agent should run");
+        assert!(probe.is_file(), "inline summarize should run on open session");
         let text = std::fs::read_to_string(probe).expect("read probe");
         assert!(text.contains("Summarize the activity"));
         assert!(text.contains("Executive summary"));

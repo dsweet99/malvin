@@ -118,6 +118,7 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
     params: &GateKpopLoopParams<'_>,
     iteration: usize,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
+    consecutive_solved_entering: usize,
 ) -> Result<SessionDotfileBackups, String> {
     let work_dir = &params.prepared.artifacts().work_dir;
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
@@ -132,12 +133,15 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     print_gate_kpop_log_line(params.prepared, &exp_log_path);
 
+    let total_iterations = gate_kpop_loop_iterations(params.max_loops);
     crate::gate_loop_session::set_active_gate_iteration(Some(iteration));
     let mut iteration_params = GateKpopIterationParams {
         loop_params: params,
         session_dotfile_backups: &session_dotfile_backups,
         client: &mut client,
         iteration,
+        total_iterations,
+        consecutive_solved_entering,
         exp_log_path,
     };
     let mut ctx = GateKpopMultiturnCtx {
@@ -177,7 +181,7 @@ pub(crate) async fn gate_kpop_loop_one_iteration(
     consecutive_solved: usize,
 ) -> Result<(usize, SessionDotfileBackups, Option<GateKpopLoopOutcome>), String> {
     let session_dotfile_backups =
-        run_gate_kpop_on_loop_iteration(params, iteration, run_timing).await?;
+        run_gate_kpop_on_loop_iteration(params, iteration, run_timing, consecutive_solved).await?;
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
     let streak = refresh_consecutive_solved_streak(consecutive_solved, &exp_log_path)?;
     let early = gate_kpop_solved_early_exit(GateKpopEarlyExitCtx {
@@ -237,14 +241,4 @@ pub(crate) async fn run_gate_kpop_loop(
             params.behavior,
         );
     Ok((gates_ok, true, Some(run_timing), last_backups))
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs {
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = (gate_kpop_loop_one_iteration, run_gate_kpop_on_loop_iteration, wire_gate_kpop_client);
-    }
 }

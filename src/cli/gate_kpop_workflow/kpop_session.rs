@@ -9,7 +9,6 @@ use crate::acp::{
 use crate::cli::workflow_kpop_shared::{
     finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
 };
-use crate::cli::SharedOpts;
 use crate::run_timing::TimingPhase;
 
 use super::params::GateKpopIterationParams;
@@ -101,24 +100,24 @@ async fn finalize_gate_kpop_turn(
     Ok(())
 }
 
-async fn run_gate_kpop_single_turn(
+async fn run_gate_kpop_coder_turn(
     ctx: &mut GateKpopMultiturnCtx<'_>,
-) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
-    let prepared = ctx.iteration.loop_params.prepared;
-    let prompt = build_gate_kpop_prompt(ctx)?;
-    let work_dir = prepared.artifacts().work_dir.as_path();
-    let log_path = prepared.artifacts().log_path("kpop");
+    prompt: &str,
+    work_dir: &std::path::Path,
+    log_path: &std::path::Path,
+) -> Result<(), AgentError> {
+    let params = ctx.iteration.loop_params;
+    let prepared = params.prepared;
     ctx.iteration
         .client
         .begin_coder_session(work_dir)
-        .await
-        .map_err(|e| e.to_string())?;
-    let prompt_result = ctx
+        .await?;
+    let mut prompt_result = ctx
         .iteration
         .client
         .run_coder_prompt(
-            &prompt,
-            log_path.as_path(),
+            prompt,
+            log_path,
             "kpop",
             CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
@@ -127,6 +126,35 @@ async fn run_gate_kpop_single_turn(
             },
         )
         .await;
+    if prompt_result.is_ok() {
+        let malvin_command = format!("malvin {}", params.command);
+        prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
+            crate::cli::kpop_summarize::GateInlineSummarizeCtx {
+                client: ctx.iteration.client,
+                store: prepared.store(),
+                artifacts: prepared.artifacts(),
+                malvin_command: &malvin_command,
+                iteration: ctx.iteration.iteration,
+                total_iterations: ctx.iteration.total_iterations,
+                consecutive_solved_entering: ctx.iteration.consecutive_solved_entering,
+                behavior: params.behavior,
+            },
+        )
+        .await
+        .map_err(AgentError);
+    }
+    prompt_result
+}
+
+async fn run_gate_kpop_single_turn(
+    ctx: &mut GateKpopMultiturnCtx<'_>,
+) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
+    let prepared = ctx.iteration.loop_params.prepared;
+    let prompt = build_gate_kpop_prompt(ctx)?;
+    let work_dir = prepared.artifacts().work_dir.as_path();
+    let log_path = prepared.artifacts().log_path("kpop");
+    let prompt_result =
+        run_gate_kpop_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
     let post_agent_backups = if prompt_result.is_ok() {
         Some(
             crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(
@@ -194,56 +222,3 @@ pub(crate) async fn run_gate_kpop_session(
     ))
 }
 
-pub(crate) fn finish_gate_kpop_after_pass(
-    _shared: &SharedOpts,
-    prepared: &GateKpopPrepared,
-    _agent_ran: bool,
-    run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-) -> Result<(), String> {
-    if let Some(timing) = run_timing {
-        crate::run_timing::finalize_and_emit_run_timing(&prepared.artifacts().run_dir, timing)
-            .map_err(|e| e.to_string())?;
-    } else {
-        crate::run_timing::print_summary_from_run_dir(&prepared.artifacts().run_dir)
-            .map_err(|e| e.to_string())?;
-    }
-    crate::agent_phase::print_done_with_reporting_phase();
-    Ok(())
-}
-
-pub(crate) fn fail_gate_kpop_after_exhausted(
-    command: &str,
-    prepared: &GateKpopPrepared,
-    session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-    behavior: super::behavior::GateLoopBehavior,
-) -> Result<(), String> {
-    // Code/tidy exhaustion already ran gates in `run_gate_kpop_loop`. Rewind disk so gate-prep
-    // side effects cannot poison the next outer retry; do not run gates a second time.
-    if behavior.recheck_gates_after_exhausted && !behavior.skip_workspace_quality_gates {
-        let work_dir = prepared.artifacts().work_dir.as_path();
-        if behavior.restore_malvin_checks_after_session() {
-            session_dotfile_backups.restore(work_dir)?;
-        } else {
-            session_dotfile_backups.restore_excluding_malvin_checks(work_dir)?;
-        }
-        crate::cli::workflow_kpop_shared::write_checks_do_not_pass_for_artifacts(
-            prepared.artifacts(),
-        )?;
-        return Err(crate::cli::format_workspace_gate_failure(
-            command,
-            "workspace quality gates did not pass after the kpop session",
-        ));
-    }
-    post_gate_kpop_gates(command, prepared, session_dotfile_backups, behavior)
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn gate_kpop_session_declared_solved_detects_kpop_solved_marker() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let path = tmp.path().join("exp.md");
-        std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-        assert!(super::super::run_loop::session_wrote_kpop_solved(&path).expect("read"));
-    }
-}

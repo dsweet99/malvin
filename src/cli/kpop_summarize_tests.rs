@@ -1,15 +1,11 @@
 #![allow(unsafe_code)]
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::{
-    exp_log_paths_markdown, insert_summarize_log_context, is_written_exp_log_path,
-    kpop_flows_ran, kpop_outer_loop_summarize_params, list_written_exp_logs,
-    outer_loop_summarize_warranted, render_kpop_summarize_prompt,
-    run_outer_loop_summarize_if_warranted, run_summarize_coder_prompt,
-    KpopOuterLoopSummarizeInputs,
+    exp_log_paths_markdown, is_written_exp_log_path, kpop_outer_loop_summarize_params,
+    render_kpop_summarize_prompt, run_summarize_coder_prompt, KpopOuterLoopSummarizeInputs,
 };
 use crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize;
 use crate::cli::SharedOpts;
@@ -32,14 +28,14 @@ pub(crate) fn summarize_shared_opts(max_acp_retries: u32) -> SharedOpts {
     }
 }
 
-fn kpop_inputs<'a>(shared: &'a SharedOpts) -> KpopOuterLoopSummarizeInputs<'a> {
+pub(crate) fn kpop_inputs<'a>(shared: &'a SharedOpts) -> KpopOuterLoopSummarizeInputs<'a> {
     KpopOuterLoopSummarizeInputs {
         agent_ran: true,
         shared,
     }
 }
 
-fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
+pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
 {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
@@ -64,13 +60,6 @@ fn kpop_outer_loop_summarize_params_builds_kpop_context() {
     assert!(!params.workflow.force);
     assert!(std::ptr::eq(params.store, &raw const store));
     assert!(std::ptr::eq(params.artifacts, &raw const artifacts));
-}
-
-#[test]
-fn outer_loop_summarize_warranted_only_when_kpop_flows_gt_one() {
-    assert!(!outer_loop_summarize_warranted(0));
-    assert!(!outer_loop_summarize_warranted(1));
-    assert!(outer_loop_summarize_warranted(2));
 }
 
 #[test]
@@ -106,27 +95,12 @@ fn prefer_gate_outcome_over_summarize_surfaces_summarize_when_gate_ok() {
     assert_eq!(merged, "summarize failed");
 }
 
-fn write_exp_logs(artifacts: &crate::artifacts::RunArtifacts, count: usize) {
+pub(crate) fn write_exp_logs(artifacts: &crate::artifacts::RunArtifacts, count: usize) {
     let kpop_dir = artifacts.run_dir.join("_kpop");
     std::fs::create_dir_all(&kpop_dir).expect("mkdir");
     for i in 1..=count {
         std::fs::write(kpop_dir.join(format!("exp_log_test_g{i}.md")), "step\n").expect("write");
     }
-}
-
-#[test]
-fn run_outer_loop_summarize_if_warranted_skips_when_agent_did_not_run() {
-    let (_tmp, artifacts, store, shared) = summarize_test_workspace();
-    write_exp_logs(&artifacts, 2);
-    let mut params = kpop_outer_loop_summarize_params(kpop_inputs(&shared), &store, &artifacts);
-    params.agent_ran = false;
-    let rt = tokio::runtime::Runtime::new().expect("runtime");
-    rt.block_on(async {
-        run_outer_loop_summarize_if_warranted(&params)
-            .await
-            .expect("skip");
-    });
-    assert!(!artifacts.log_path("summary").exists());
 }
 
 #[test]
@@ -172,60 +146,8 @@ fn run_summarize_coder_prompt_errors_without_open_session() {
 }
 
 #[test]
-fn insert_summarize_log_context_populates_expected_keys() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let mut ctx = HashMap::new();
-    insert_summarize_log_context(&mut ctx, &artifacts, 2);
-    assert!(ctx.contains_key("kpop_log"));
-    assert!(ctx.contains_key("stdout_log"));
-    assert!(ctx.contains_key("command_log"));
-    assert!(ctx.contains_key("exp_log_paths"));
-    assert_eq!(ctx.get("outer_loop_count").map(String::as_str), Some("2"));
-}
-
-#[test]
 fn is_written_exp_log_path_filters_non_matching_names() {
     assert!(is_written_exp_log_path(Path::new("exp_log_run_g1.md")));
     assert!(!is_written_exp_log_path(Path::new("exp_log_run_g1.txt")));
 }
 
-#[test]
-fn kpop_flows_ran_counts_written_exp_logs() {
-    let (_tmp, artifacts, _store, _shared) = summarize_test_workspace();
-    assert_eq!(kpop_flows_ran(&artifacts), 0);
-    write_exp_logs(&artifacts, 1);
-    assert_eq!(kpop_flows_ran(&artifacts), 1);
-    write_exp_logs(&artifacts, 2);
-    assert_eq!(kpop_flows_ran(&artifacts), 2);
-}
-
-#[test]
-fn run_outer_loop_summarize_if_warranted_skips_single_flow() {
-    let (_tmp, artifacts, store, shared) = summarize_test_workspace();
-    write_exp_logs(&artifacts, 1);
-    let rt = tokio::runtime::Runtime::new().expect("runtime");
-    rt.block_on(async {
-        run_outer_loop_summarize_if_warranted(&kpop_outer_loop_summarize_params(
-            kpop_inputs(&shared),
-            &store,
-            &artifacts,
-        ))
-        .await
-        .expect("skip");
-    });
-    assert!(!artifacts.log_path("summary").exists());
-}
-
-#[test]
-fn list_written_exp_logs_collects_kpop_dir_md_files() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let kpop_dir = tmp.path().join("_kpop");
-    std::fs::create_dir_all(&kpop_dir).expect("mkdir");
-    std::fs::write(kpop_dir.join("exp_log_a.md"), "step\n").expect("write");
-    std::fs::write(kpop_dir.join("notes.txt"), "").expect("write");
-    let paths = list_written_exp_logs(tmp.path());
-    assert_eq!(paths.len(), 1);
-    assert!(paths[0].ends_with("exp_log_a.md"));
-}

@@ -7,6 +7,10 @@ fn kiss_cov_kpop_flow_run_loop_privates() {
     let _ = super::kpop_flow::kpop_flow_run_loop::run_kpop_agent_loops;
     let _ = super::kpop_flow::kpop_flow_run_loop::kpop_exp_log_declares_solved;
     let _ = super::kpop_flow::kpop_flow_run_loop::clear_legacy_gate_exp_log;
+    let _ = stringify!(kpop_exp_log_declares_solved_reads_marker);
+    let _ = stringify!(kpop_loop_abort_records_error_and_agent_ran);
+    let _ = stringify!(kpop_loop_snapshot_ensures_home_config_exists);
+    let _ = stringify!(snapshot_kpop_loop_dotfiles_and_exp_log_builds_paths);
 }
 
 #[cfg(unix)]

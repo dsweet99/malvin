@@ -3,7 +3,11 @@
 #[test]
 fn kiss_cov_kpop_summarize_privates() {
     let _: Option<super::kpop_summarize::OuterLoopSummarizeParams<'_>> = None;
-    let _ = super::kpop_summarize::run_summarize_agent_session;
+    let _ = super::kpop_summarize::run_inline_summarize_coder_prompt;
+    let _ = super::kpop_summarize::maybe_run_gate_inline_summarize;
+    let _ = super::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop;
+    let _ = super::kpop_summarize::should_inline_outer_loop_summarize_on_gate_iteration;
+    let _ = super::kpop_summarize::should_inline_outer_loop_summarize_on_kpop_loop;
     let _ = super::kpop_summarize::run_outer_loop_summarize_if_warranted;
     let _ = super::kpop_summarize::render_kpop_summarize_prompt;
     let _ = super::kpop_summarize::exp_log_paths_markdown;
@@ -28,5 +32,5 @@ fn kiss_cov_kpop_summarize_test_helpers() {
     let _ = stringify!(super::kpop_summarize_mock_tests::with_summarize_mock_agent);
     let _ = stringify!(super::kpop_summarize_tests::kpop_inputs);
     let _ = stringify!(super::kpop_summarize_tests::summarize_test_workspace);
-    let _ = stringify!(run_outer_loop_summarize_if_warranted_runs_mock_summary_agent);
+    let _ = stringify!(run_inline_summarize_coder_prompt_runs_on_open_session);
 }
