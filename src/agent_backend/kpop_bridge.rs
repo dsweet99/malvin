@@ -1,18 +1,16 @@
 //! `KPop` flows on [`super::mini::MiniAgentClient`] (mini agent backend).
 
+#[path = "kpop_bridge_prompt.rs"]
+mod kpop_bridge_prompt;
+
 use crate::acp::{
-    kpop_fail_after_prompt, restore_session_dotfiles_after_success,
-    AgentError, AgentKpopMultiturnCtl, CoderPromptOptions, KpopFailAfterPrompt, KpopFlowOnceArgs,
+    kpop_fail_after_prompt, AgentError, AgentKpopMultiturnCtl, KpopFailAfterPrompt,
+    KpopFlowOnceArgs,
 };
 
 use super::mini::MiniAgentClient;
 
-fn kpop_coder_opts() -> CoderPromptOptions<'static> {
-    CoderPromptOptions {
-        llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-        ..Default::default()
-    }
-}
+use kpop_bridge_prompt::{check_hypothesis_budget, restore_dotfiles_or_close, run_kpop_prompt};
 
 pub(crate) async fn run_kpop_flow_once_mini(
     client: &mut MiniAgentClient,
@@ -31,7 +29,7 @@ pub(crate) async fn run_kpop_flow_once_mini(
             })
             .await;
         }
-        restore_session_dotfiles_after_success(args.cwd, session_dotfile_backups)?;
+        restore_dotfiles_or_close(client, args.cwd, session_dotfile_backups).await?;
     }
     client.end_coder_session().await
 }
@@ -61,39 +59,12 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
             })
             .await;
         }
-        restore_session_dotfiles_after_success(ctl.cwd, ctl.session_dotfile_backups)?;
+        restore_dotfiles_or_close(client, ctl.cwd, ctl.session_dotfile_backups).await?;
         check_hypothesis_budget(client, ctl).await?;
         ctl.state.record_kpop_block_prompt_completed();
     }
 
     client.end_coder_session().await
-}
-
-async fn run_kpop_prompt(
-    client: &mut MiniAgentClient,
-    prompt: &str,
-    log_path: &std::path::Path,
-) -> Result<(), AgentError> {
-    client
-        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts())
-        .await
-}
-
-async fn check_hypothesis_budget(
-    client: &mut MiniAgentClient,
-    ctl: &AgentKpopMultiturnCtl<'_, '_>,
-) -> Result<(), AgentError> {
-    let exp_text = crate::kpop_progression::read_exp_log_text(ctl.state.exp_log_path())
-        .map_err(AgentError)?;
-    let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);
-    if hypotheses_after > ctl.state.max_hypotheses {
-        client.end_coder_session().await.ok();
-        return Err(AgentError(format!(
-            "experiment log counts {hypotheses_after} hypothesis steps, exceeding --max-hypotheses ({})",
-            ctl.state.max_hypotheses
-        )));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -199,6 +170,56 @@ mod tests {
             .await
             .expect_err("hypothesis budget");
         assert!(err.0.contains("hypothesis steps"));
+    }
+
+    fn kissconfig_dir_blocks_restore(work: &std::path::Path) {
+        let kiss = work.join(".kissconfig");
+        let _ = std::fs::remove_file(&kiss);
+        std::fs::create_dir(&kiss).expect("kissconfig dir");
+    }
+
+    #[tokio::test]
+    async fn run_kpop_flow_once_mini_closes_session_when_restore_fails() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        std::fs::write(tmp.path().join(".kissconfig"), b"k\n").expect("kissconfig");
+        let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path())
+            .expect("snapshot");
+        let work = tmp.path().to_path_buf();
+        let mut client = MiniAgentClient::new_mock(
+            MiniLoopConfig {
+                model: "m".into(),
+                max_bash_turns: 4,
+                max_http_retries: 1,
+            },
+            test_io(),
+            LlmBackend::Mock(Mutex::new(MockScript {
+                responses: vec![MockStep::Ok(mini_done_response())],
+                call_count: 0,
+                on_response: Some(Box::new(move |_, _| {
+                    kissconfig_dir_blocks_restore(&work);
+                })),
+            })),
+        );
+        let log = tmp.path().join("kpop.log");
+        let prompts = ["test prompt"];
+        let args = KpopFlowOnceArgs {
+            cwd: tmp.path(),
+            kpop_prompts: &prompts,
+            kpop_log: &log,
+        };
+        let err = run_kpop_flow_once_mini(&mut client, &args, &backups)
+            .await
+            .expect_err("restore should fail");
+        assert!(
+            err.0.contains("restore"),
+            "expected restore error, got: {}",
+            err.0
+        );
+        assert!(
+            !client.has_open_coder_session(),
+            "mini session must be closed on restore failure"
+        );
     }
 
     #[tokio::test]

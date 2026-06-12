@@ -40,7 +40,8 @@ fn snapshot_kpop_loop_dotfiles_and_exp_log(
     agent_loop: usize,
     max_loops: usize,
 ) -> Result<KpopLoopSnapshot, String> {
-    let backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+    let backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     let exp_iter = kpop_agent_loop_exp_iteration(agent_loop, max_loops);
     let exp_log_path = ensure_gate_exp_log_file(artifacts, exp_iter).map_err(|e| e.to_string())?;
     Ok(KpopLoopSnapshot {
@@ -196,6 +197,27 @@ mod unit_tests {
         let mut last_acp = Ok(());
         assert!(!kpop_iteration_declares_solved(&path, &mut last_acp));
         assert!(last_acp.is_ok());
+    }
+
+    #[test]
+    fn kpop_loop_snapshot_ensures_home_config_exists() {
+        crate::test_utils::with_isolated_home(|work| {
+            let cfg = crate::malvin_config_path(work);
+            assert!(!cfg.exists());
+            std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+            let artifacts =
+                crate::artifacts::create_kpop_run_artifacts("test", Some(work)).expect("artifacts");
+            let snap =
+                snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 1).expect("snapshot");
+            assert!(
+                cfg.is_file(),
+                "kpop loop snapshot must ensure ~/.malvin_home/config.toml exists"
+            );
+            assert!(matches!(
+                snap.backups.malvin_config,
+                crate::artifacts::MalvinConfigBackup::Present(_)
+            ));
+        });
     }
 
     #[test]
