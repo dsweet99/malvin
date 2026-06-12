@@ -1,4 +1,4 @@
-- Revise `{{ doc_path }}` in place. Edit that file directly; do not write to a separate output path.
+c- Revise `{{ doc_path }}` in place. Edit that file directly; do not write to a separate output path.
 - Apply the definitions and constraints below to the document at `{{ doc_path }}`.
 
 ## Definitions
@@ -34,5 +34,6 @@ Figure constraints:
   - No wasted space.
   - Text remain readable at the PDF scale
   - Long labels wrap or shorten inside fixed-width nodes
-  - Arrow route around primary content.
+  - Arrow route around primary content. Optional or dashed paths must not pass through labels or important boxes.
+  - Long labels wrap or shorten inside fixed-width nodes instead kf forcing the entire figure wider.
   - Classic ratios and margins.
