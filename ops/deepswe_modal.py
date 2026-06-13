@@ -5,15 +5,9 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-<<<<<<< HEAD
 The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox with a
-Cursor API ``cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
+Cursor API ``outbound_cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
 runs use a separate ``block_network`` sandbox. Open egress remains
-=======
-The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
-``outbound_cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
-in a separate Modal sandbox with ``block_network=True``. Open egress remains
->>>>>>> dsweet/more_modal
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
 malvin and kiss are built from local source
 trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
@@ -87,7 +81,9 @@ from deepswe_run import (
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
-DEEPSWE_RUN_REMOTE = "/opt/malvin/ops/deepswe_run.py"
+DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
+DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
+TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 TASK_REMOTE = "/task"
 
 APP_NAME = "deepswe-modal"
@@ -920,7 +916,7 @@ def refresh_cached_allowlist(
     *,
     timeout: int,
 ) -> list[str]:
-    """Merge fresh host DNS and one allowlist agent-peer round into a cached allowlist."""
+    """Merge fresh host DNS and agent-peer rounds into a cached allowlist."""
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
     if uncovered:
@@ -930,8 +926,14 @@ def refresh_cached_allowlist(
         )
     cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
     cidrs, added = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=1, label="Cached allowlist agent peer"
+        cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
     )
+    # Match cold-build finalize: streaming peers differ from TLS and are not always
+    # observed in the first cached refresh round.
+    cidrs, post_added = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
+    )
+    added += post_added
     refreshed = compress_ipv4_cidrs(cidrs)
     if refreshed != cached or added:
         write_cursor_api_allowlist_cache(refreshed)
@@ -1283,6 +1285,10 @@ def mount_eval_context(
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
         .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
+            remote_path=TOOLCHAIN_REPOS_REMOTE,
+        )
     )
 
 
@@ -2024,12 +2030,35 @@ def _test_refresh_cached_allowlist_merges_host_dns() -> None:
     ):
         with patch(
             f"{__name__}._merge_allowlist_agent_peers",
-            return_value=(["1.1.1.0/24", "2.2.2.2/32"], 0),
-        ):
+            side_effect=[
+                (["1.1.1.0/24", "2.2.2.2/32"], 0),
+                (["1.1.1.0/24", "2.2.2.2/32", "8.8.8.8/32"], 1),
+            ],
+        ) as mock_merge:
             with patch(f"{__name__}.write_cursor_api_allowlist_cache") as mock_write:
                 refreshed = refresh_cached_allowlist(cached, timeout=60)
     assert "2.2.2.0/24" in refreshed
+    assert "8.8.8.0/24" in refreshed
+    assert mock_merge.call_count == 2
+    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
     mock_write.assert_called_once()
+
+
+def _test_refresh_cached_allowlist_runs_post_https_agent_peer() -> None:
+    """Cached refresh must run the same post-HTTPS agent peer merge as cold build."""
+    with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+        with patch(
+            f"{__name__}._merge_allowlist_agent_peers",
+            side_effect=[
+                (["1.1.1.0/24"], 0),
+                (["1.1.1.0/24", "9.9.9.9/32"], 1),
+            ],
+        ) as mock_merge:
+            with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+    assert mock_merge.call_count == 2
+    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "9.9.9.9/32" in refreshed
 
 
 def _test_pin_cursor_api_hosts_in_sandbox() -> None:
@@ -2272,8 +2301,9 @@ def _test_mount_eval_context_recipe() -> None:
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
     assert len(uploads) == 3
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 1
-    assert file_uploads[0][2]["remote_path"] == DEEPSWE_RUN_REMOTE
+    assert len(file_uploads) == 2
+    remote_paths = {call[2]["remote_path"] for call in file_uploads}
+    assert remote_paths == {DEEPSWE_RUN_REMOTE, TOOLCHAIN_REPOS_REMOTE}
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
     assert "click" in pip_cmds[0][1][0]
@@ -2519,6 +2549,7 @@ def run_unit_tests() -> None:
     _test_resolve_agent_sandbox_cidrs_uses_cache()
     _test_host_cidrs_not_covered_by_allowlist()
     _test_refresh_cached_allowlist_merges_host_dns()
+    _test_refresh_cached_allowlist_runs_post_https_agent_peer()
     _test_pin_cursor_api_hosts_in_sandbox()
     _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()

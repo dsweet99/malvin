@@ -57,7 +57,9 @@ DEFAULT_RUST_NEXTEST = "cargo nextest run"
 MALVIN_CMD = os.environ.get("MALVIN", "malvin")
 IN_SANDBOX_TESTS_DIR = Path("/tests")
 IN_SANDBOX_LOGS_DIR = Path("/logs")
-DEEPSWE_RUN_REMOTE = "/opt/malvin/ops/deepswe_run.py"
+DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
+DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
+TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
 KISS_TOOLCHAIN_REMOTE = "/opt/toolchain/kiss"
 TOOLCHAIN_PATH = (
@@ -681,6 +683,8 @@ def docker_local_eval_cmd(
         f"{task_dir.resolve()}:/task:ro",
         "-v",
         f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
+        "-v",
+        f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
         "-v",
         f"{logs_mount.resolve()}:/logs",
         "-v",

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 - Explain the topic in `{{ explain_request }}`.
 - Write LaTeX source to `{{ explain_tex_path }}` and compile it to `{{ explain_pdf_path }}`.
 - Use complete sentences.
@@ -16,11 +15,3 @@
 - Get figures, equations, etc to fit inside their hboxes.
 - Get rid of all TeX warnings
 - Make the document visually pleasing.
-=======
-- Write LaTeX source to `{{ explain_tex_path }}`.
-- Compile PDF output to `{{ explain_pdf_path }}`.
-
-## Scope Constraints
-
-- Explain: {{ explain_request }}
->>>>>>> dsweet/more_modal
