@@ -8,4 +8,6 @@ ops/
 /log
 /log_2
 results/
-*.md~
+*~
+*.lock
+*.profraw
