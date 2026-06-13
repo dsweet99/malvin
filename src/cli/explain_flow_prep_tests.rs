@@ -5,6 +5,18 @@ use super::{
 };
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::WorkflowCliOptions;
+use crate::test_utils::with_cwd;
+
+#[test]
+fn explain_output_paths_resolve_dot_work_dir_in_cwd() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let outputs = explain_output_paths(std::path::Path::new("."));
+        assert_eq!(outputs.tex_path, cwd.join(EXPLAIN_TEX_BASENAME));
+        assert_eq!(outputs.pdf_path, cwd.join(EXPLAIN_PDF_BASENAME));
+    });
+}
 
 #[test]
 fn explain_output_paths_use_fixed_basenames() {
@@ -17,28 +29,28 @@ fn explain_output_paths_use_fixed_basenames() {
 #[test]
 fn explain_resolved_output_paths_keep_default_in_request_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = crate::test_utils::save_cwd();
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let notes = tmp.path().join("notes");
-    std::fs::create_dir_all(&notes).expect("mkdir");
-    let outputs =
-        explain_resolved_output_paths(std::path::Path::new("notes"), EXPLAIN_TEX_BASENAME)
-            .expect("resolve");
-    assert_eq!(outputs.tex_path, notes.join(EXPLAIN_TEX_BASENAME));
-    assert_eq!(outputs.pdf_path, notes.join(EXPLAIN_PDF_BASENAME));
-    crate::test_utils::restore_cwd(&old);
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let notes = cwd.join("notes");
+        std::fs::create_dir_all(&notes).expect("mkdir");
+        let outputs =
+            explain_resolved_output_paths(std::path::Path::new("notes"), EXPLAIN_TEX_BASENAME)
+                .expect("resolve");
+        assert_eq!(outputs.tex_path, notes.join(EXPLAIN_TEX_BASENAME));
+        assert_eq!(outputs.pdf_path, notes.join(EXPLAIN_PDF_BASENAME));
+    });
 }
 
 #[test]
 fn explain_resolved_output_paths_use_custom_out_path_in_cwd() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = crate::test_utils::save_cwd();
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let outputs =
-        explain_resolved_output_paths(std::path::Path::new("."), "docs/paper.tex").expect("resolve");
-    assert_eq!(outputs.tex_path, tmp.path().join("docs/paper.tex"));
-    assert_eq!(outputs.pdf_path, tmp.path().join("docs/paper.pdf"));
-    crate::test_utils::restore_cwd(&old);
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let outputs =
+            explain_resolved_output_paths(std::path::Path::new("."), "docs/paper.tex").expect("resolve");
+        assert_eq!(outputs.tex_path, cwd.join("docs/paper.tex"));
+        assert_eq!(outputs.pdf_path, cwd.join("docs/paper.pdf"));
+    });
 }
 
 #[test]
@@ -68,50 +80,50 @@ fn explain_kpop_request_renders_request_and_output_paths() {
 #[test]
 fn explain_preflight_literal_request_uses_dot_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let result = explain_preflight("  topic  ", EXPLAIN_TEX_BASENAME);
-    std::env::set_current_dir(old).expect("restore");
-    let (text, outputs) = result.expect("ok");
-    assert_eq!(text, "topic");
-    assert_eq!(outputs.tex_path, tmp.path().join(EXPLAIN_TEX_BASENAME));
-    assert_eq!(outputs.pdf_path, tmp.path().join(EXPLAIN_PDF_BASENAME));
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let (text, outputs) = explain_preflight("  topic  ", EXPLAIN_TEX_BASENAME).expect("ok");
+        assert_eq!(text, "topic");
+        assert_eq!(outputs.tex_path, cwd.join(EXPLAIN_TEX_BASENAME));
+        assert_eq!(outputs.pdf_path, cwd.join(EXPLAIN_PDF_BASENAME));
+    });
 }
 
 #[test]
 fn explain_preflight_md_file_uses_parent_work_dir() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::env::set_current_dir(root).unwrap();
-    let md_path = root.join("notes/topic.md");
-    std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
-    std::fs::write(&md_path, "Explain this\n").unwrap();
-    let (text, outputs) = explain_preflight("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
-    assert_eq!(text.trim(), "Explain this");
-    assert_eq!(outputs.tex_path, root.join("notes/explain.tex"));
-    assert_eq!(outputs.pdf_path, root.join("notes/explain.pdf"));
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let md_path = cwd.join("notes/topic.md");
+        std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
+        std::fs::write(&md_path, "Explain this\n").unwrap();
+        let (text, outputs) = explain_preflight("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
+        assert_eq!(text.trim(), "Explain this");
+        assert_eq!(outputs.tex_path, cwd.join("notes/explain.tex"));
+        assert_eq!(outputs.pdf_path, cwd.join("notes/explain.pdf"));
+    });
 }
 
 #[test]
 fn explain_revise_doc_path_uses_resolved_tex_in_request_work_dir() {
     let _guard = crate::test_utils::test_env_lock();
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path();
-    std::env::set_current_dir(root).unwrap();
-    let md_path = root.join("notes/topic.md");
-    std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
-    std::fs::write(&md_path, "Explain this\n").unwrap();
-    let doc_path = explain_revise_doc_path("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
-    assert_eq!(doc_path, "notes/explain.tex");
+    with_cwd(tmp.path(), || {
+        let cwd = std::env::current_dir().expect("cwd");
+        let md_path = cwd.join("notes/topic.md");
+        std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
+        std::fs::write(&md_path, "Explain this\n").unwrap();
+        let doc_path = explain_revise_doc_path("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
+        assert_eq!(doc_path, "notes/explain.tex");
+    });
 }
 
 #[test]
 fn explain_revise_doc_path_uses_custom_out_path_in_cwd() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let old = crate::test_utils::save_cwd();
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let doc_path = explain_revise_doc_path("topic", "docs/paper.tex").expect("resolve");
-    crate::test_utils::restore_cwd(&old);
-    assert_eq!(doc_path, "docs/paper.tex");
+    with_cwd(tmp.path(), || {
+        let doc_path = explain_revise_doc_path("topic", "docs/paper.tex").expect("resolve");
+        assert_eq!(doc_path, "docs/paper.tex");
+    });
 }

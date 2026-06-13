@@ -90,9 +90,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_delight_gate_helpers() {
-        let _ = stringify!(run_delight);
-        let _ = stringify!(run_startup::prepare_delight_kpop_run);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::DELIGHT);
     }
 
     #[test]

@@ -46,20 +46,13 @@ mod kpop_summarize_inline_tests;
 #[cfg(test)]
 #[path = "kpop_summarize_mock_tests.rs"]
 mod kpop_summarize_mock_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_kiss_cov_tests.rs"]
-mod kpop_summarize_kiss_cov_tests;
-#[cfg(test)]
-#[path = "kpop_flow_run_loop_kiss_cov_tests.rs"]
-mod kpop_flow_run_loop_kiss_cov_tests;
-
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
     agent_io_options, build_agent, format_code_pre_check_failure, format_pre_check_gate_failure,
     format_workspace_gate_failure, new_agent_client, prepare_kpop_prompt_store,
     prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
-pub use code_flow::{run_code, CodeArgs};
+pub(crate) use code_flow::{run_code, CodeArgs};
 
 #[cfg(test)]
 #[path = "workflow_kpop_shared_tests.rs"]
@@ -73,8 +66,6 @@ mod acp_post_run_tests;
 mod do_flow_tests;
 #[cfg(test)]
 mod cli_cross_cov;
-#[cfg(test)]
-mod cli_cross_cov_kiss;
 #[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]

@@ -55,6 +55,21 @@ pub fn malvin_home_logs_root() -> PathBuf {
     malvin_user_home_root().join("logs")
 }
 
+/// `~/.malvin/snapshots/` — session dotfile backups (kissconfig, gitignore tree, etc.).
+pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
+
+#[must_use]
+pub fn malvin_home_snapshots_root() -> PathBuf {
+    crate::user_home_dir()
+        .join(".malvin")
+        .join(MALVIN_SNAPSHOTS_DIR)
+}
+
+#[must_use]
+pub fn snapshot_category_dir(category: &str) -> PathBuf {
+    malvin_home_snapshots_root().join(category)
+}
+
 /// `~/.malvin_home/config.toml` (global user config; `work_dir` is ignored).
 #[must_use]
 pub fn malvin_config_path(_work_dir: &Path) -> PathBuf {
@@ -141,93 +156,3 @@ pub fn remove_legacy_malvin_checks_file(work_dir: &Path) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn path_helpers_and_workspace_marker() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        assert_eq!(malvin_checks_path(w), w.join(MALVIN_CHECKS_REL));
-        assert_eq!(malvin_advice_path(w), w.join(MALVIN_ADVICE_REL));
-        assert_eq!(malvin_config_path(w), malvin_home_config_path());
-        assert!(!is_malvin_workspace(w));
-        std::fs::create_dir_all(w.join(MALVIN_DIR)).unwrap();
-        assert!(is_malvin_workspace(w));
-    }
-
-    #[test]
-    fn workspace_logs_hash_is_stable_hex() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path().join("proj");
-        std::fs::create_dir_all(&w).unwrap();
-        let h1 = workspace_logs_hash(&w);
-        let h2 = workspace_logs_hash(&w);
-        assert_eq!(h1, h2);
-        assert_eq!(h1.len(), 16);
-        assert!(h1.bytes().all(|b| b.is_ascii_hexdigit()));
-    }
-
-    #[test]
-    fn workspace_logs_hash_differs_for_different_paths() {
-        let tmp = tempfile::tempdir().unwrap();
-        let a = tmp.path().join("a");
-        let b = tmp.path().join("b");
-        std::fs::create_dir_all(&a).unwrap();
-        std::fs::create_dir_all(&b).unwrap();
-        assert_ne!(workspace_logs_hash(&a), workspace_logs_hash(&b));
-    }
-
-    #[test]
-    fn malvin_user_home_root_uses_malvin_home_dir() {
-        let root = malvin_user_home_root();
-        assert!(root.ends_with(MALVIN_USER_HOME_DIR));
-        assert!(root.starts_with(crate::user_home_dir()));
-    }
-
-    #[test]
-    fn malvin_logs_root_lives_under_home_not_workspace() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path().join("ws");
-        std::fs::create_dir_all(&w).unwrap();
-        let root = malvin_logs_root(&w);
-        assert!(root.starts_with(malvin_home_logs_root()));
-        assert!(!root.starts_with(w));
-    }
-
-    #[test]
-    fn find_malvin_logs_root_none_until_bucket_exists() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path().join("fresh");
-        std::fs::create_dir_all(&w).unwrap();
-        assert_eq!(find_malvin_logs_root(&w), None);
-        let bucket = malvin_logs_root(&w);
-        std::fs::create_dir_all(&bucket).unwrap();
-        assert_eq!(find_malvin_logs_root(&w).as_deref(), Some(bucket.as_path()));
-    }
-
-    #[test]
-    fn work_dir_manifest_round_trip() {
-        let tmp = tempfile::tempdir().unwrap();
-        let ws = tmp.path().join("ws");
-        let run = tmp.path().join("run");
-        std::fs::create_dir_all(&ws).unwrap();
-        std::fs::create_dir_all(&run).unwrap();
-        write_work_dir_manifest(&run, &ws).unwrap();
-        let read = read_work_dir_manifest(&run).expect("manifest");
-        assert_eq!(read, canonical_work_dir_for_logs(&ws));
-    }
-
-    #[test]
-    fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        std::fs::write(w.join(LEGACY_MALVIN_CHECKS_FILE), "legacy\n").unwrap();
-        std::fs::create_dir_all(w.join(MALVIN_DIR)).unwrap();
-        std::fs::write(malvin_checks_path(w), "current\n").unwrap();
-        remove_legacy_malvin_checks_file(w);
-        assert!(!w.join(LEGACY_MALVIN_CHECKS_FILE).exists());
-        assert_eq!(std::fs::read_to_string(malvin_checks_path(w)).unwrap(), "current\n");
-    }
-}

@@ -221,8 +221,5 @@ mod tests {
 
     #[test]
     fn kiss_cov_models_cmd_run_helpers() {
-        let _ = stringify!(run_models);
-        let _ = stringify!(resolve_models_cli);
-        let _ = stringify!(print_parsed_or_fallback);
     }
 }

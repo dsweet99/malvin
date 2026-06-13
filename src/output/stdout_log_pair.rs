@@ -232,13 +232,5 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
 mod inline_cov {
     #[test]
     fn kiss_cov_stdout_log_pair_privates() {
-        let _ = stringify!(resolve_log_timestamp);
-        let _ = stringify!(tagged_display_and_log_line);
-        let _ = stringify!(heartbeat_display_and_log_line);
-        let _ = stringify!(tagged_stdout_display);
-        let _ = stringify!(TaggedDisplayStyle);
-        let _ = stringify!(acp_bracket_color);
-        let _ = stringify!(acp_bracket_payload);
-        let _ = stringify!(acp_from_agent_payload);
     }
 }

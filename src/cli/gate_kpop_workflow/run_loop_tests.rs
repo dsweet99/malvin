@@ -14,7 +14,7 @@ fn kiss_cov_gate_run_loop_privates() {
     );
 }
 use crate::artifacts::SessionDotfileBackups;
-use crate::session_dotfile_backup::DotfileBackupState;
+use crate::session_dotfile_backup::GitignoreBackup;
 
 #[test]
 fn refresh_consecutive_solved_streak_increments_or_resets() {
@@ -140,10 +140,10 @@ fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
     restore_carry_forward_before_iteration_snapshot(work, Some(&carry)).expect("restore");
     assert_eq!(std::fs::read_to_string(&gitignore).expect("read"), BASELINE);
     let resnapshot = SessionDotfileBackups::snapshot(work).expect("resnapshot");
-    let DotfileBackupState::Present(payload) = resnapshot.gitignore else {
+    let GitignoreBackup::Present { files, .. } = resnapshot.gitignore else {
         panic!("expected gitignore present");
     };
-    assert_eq!(payload.bytes, BASELINE.as_bytes());
+    assert_eq!(files[0].bytes, BASELINE.as_bytes());
 }
 
 #[test]

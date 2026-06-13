@@ -122,6 +122,8 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_unit_names() {
         let _ = linux_pids_rss_bytes;
         let _ = linux_process_group_rss_bytes;
-        assert!(stringify!(linux_pids_rss_bytes).contains("linux_pids_rss_bytes"));
+        let pids = std::iter::once(std::process::id()).collect::<std::collections::HashSet<_>>();
+        let rss = linux_pids_rss_bytes(&pids).expect("rss");
+        assert!(rss > 0);
     }
 }

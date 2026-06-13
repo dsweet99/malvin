@@ -44,6 +44,10 @@ pub use unix_process_group_teardown::{
 #[cfg(unix)] pub(crate) use unix_process_ancestor::is_ancestor_pid;
 #[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
 #[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
+#[cfg(unix)]
+pub(crate) use unix_process_group_kill_targets::{
+    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
+};
 mod process_group_mem_watch;
 #[cfg(unix)] pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
@@ -147,7 +151,6 @@ pub(crate) fn requires_cursor_login_auth(
 fn acp_rpc_timeout_and_login_auth_smoke() {
     assert!(acp_rpc_timeout().as_secs() > 0);
     assert!(!requires_cursor_login_auth(Some("key"), Some("token")));
-    let _ = stringify!(requires_cursor_login_auth(None, None));
 }
 
 #[path = "wrap_reader_a.rs"]
@@ -226,7 +229,6 @@ pub(crate) use client_impl_prompt_dispatch::*;
 #[cfg(test)]
 #[path = "ops_inline_tests.rs"]
 mod ops_inline_tests;
-
 #[cfg(test)]
 #[path = "tee_strip_tests.rs"]
 mod tee_strip_tests;

@@ -1,4 +1,4 @@
-//! Bare CLI invocation (`malvin REQUEST` → kpop) contract tests.
+//! Bare CLI invocation (`malvin REQUEST...` → kpop) contract tests.
 
 use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
@@ -31,7 +31,7 @@ fn do_subcommand_parses() {
 fn code_subcommand_still_parses() {
     let cli = parse(&["malvin", "code", "plan.md"]);
     match cli.command {
-        Some(Commands::Code(c)) => assert_eq!(c.request.as_deref(), Some("plan.md")),
+        Some(Commands::Code(c)) => assert_eq!(c.requests.as_slice(), &["plan.md"]),
         other => panic!("expected code, got {other:?}"),
     }
 }
@@ -58,12 +58,21 @@ fn cli_help_lists_bare_invocation_hint() {
 }
 
 #[test]
-fn bare_two_tokens_fails_parse() {
-    let err = parse_cli_with_config_defaults(["malvin", "hello", "world"])
-        .expect_err("parse")
-        .to_string();
-    assert!(err.contains("unexpected argument"), "got: {err}");
-    assert!(err.contains("'world'"), "got: {err}");
+fn multiple_bare_requests_do_not_join_into_single_kpop() {
+    let cli = parse(&["malvin", "req_a.md", "req_b.md"]);
+    assert!(cli.command.is_none());
+    assert_eq!(cli.bare_args, vec!["req_a.md", "req_b.md"]);
+}
+
+#[test]
+fn code_subcommand_accepts_multiple_plans() {
+    let cli = parse(&["malvin", "code", "plan_1.md", "plan_2.md"]);
+    match cli.command {
+        Some(Commands::Code(c)) => {
+            assert_eq!(c.requests.as_slice(), &["plan_1.md", "plan_2.md"]);
+        }
+        other => panic!("expected code, got {other:?}"),
+    }
 }
 
 #[test]

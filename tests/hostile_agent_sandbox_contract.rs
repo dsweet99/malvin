@@ -5,7 +5,8 @@ use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 
 #[cfg(unix)]
 use malvin::acp::hostile_orphan_test_util::{
-    process_alive, read_orphan_pid, spawn_hostile_agent, spawn_hostile_double_fork_daemon,
+    process_alive, read_orphan_pid, spawn_hostile_agent, spawn_hostile_agent_exits_after_orphan_fork,
+    spawn_hostile_double_fork_daemon,
 };
 #[cfg(target_os = "linux")]
 use malvin::acp::hostile_orphan_test_util::{
@@ -21,7 +22,7 @@ async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_agent(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: orphan should be running before teardown"
@@ -44,7 +45,7 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_double_fork_daemon(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: double-fork orphan should be running before teardown"
@@ -69,7 +70,7 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     wait_for_init_reparent(orphan_pid).await;
     let mut baseline = spawn_baseline;
     baseline.insert(orphan_pid);
@@ -88,19 +89,21 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
 
 #[test]
 fn kiss_cov_hostile_agent_sandbox_contract_symbols() {
-    let _ = stringify!(spawn_hostile_agent);
-    let _ = stringify!(spawn_hostile_agent_exits_after_orphan_fork);
-    let _ = stringify!(watch_process_group_memory_kills_orphan_after_agent_pg_exits);
-    let _ = stringify!(spawn_hostile_double_fork_daemon);
-    let _ = stringify!(read_orphan_pid);
-    let _ = stringify!(hostile_agent_detached_orphan_dies_on_process_group_teardown);
-    let _ = stringify!(hostile_agent_double_fork_daemon_dies_on_process_group_teardown);
-    let _ = stringify!(baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown);
-    let _ = stringify!(spawn_hostile_agent_acp_orphan);
     #[cfg(unix)]
     {
-        let _ = stringify!(snapshot_pids);
-        let _ = stringify!(terminate_agent_process_group);
-        let _ = stringify!(process_alive);
+        let _ = spawn_hostile_agent;
+        let _ = spawn_hostile_agent_exits_after_orphan_fork;
+        let _ = spawn_hostile_double_fork_daemon;
+        let _ = read_orphan_pid;
+        let _ = hostile_agent_detached_orphan_dies_on_process_group_teardown;
+        let _ = hostile_agent_double_fork_daemon_dies_on_process_group_teardown;
+        let _ = snapshot_pids;
+        let _ = terminate_agent_process_group;
+        let _ = process_alive;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown;
+        let _ = spawn_hostile_agent_acp_orphan;
     }
 }

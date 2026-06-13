@@ -127,7 +127,7 @@ fn bare_request_resolves_to_kpop_that_accepts_session_name() {
         parse_cli_with_config_defaults(["malvin", "--name", "probe", "investigate cache"])
             .expect("parse bare kpop");
     let command = cli.command.expect("bare request resolves to subcommand");
-    assert!(cli.bare_request.is_some());
+    assert!(cli.bare_args.len() == 1);
     assert!(command_accepts_session_name(&command, true));
 }
 

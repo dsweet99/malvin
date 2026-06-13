@@ -2,9 +2,6 @@
 
 #[test]
 fn kiss_cov_coalesce_private_helpers() {
-    let _ = stringify!(coalesce_word_split_points);
-    let _ = stringify!(feed_buf);
-    let _ = stringify!(flush_if_nonempty);
     let mut coalescer = crate::acp::VerboseIoCoalescer::default();
     coalescer.feed(crate::acp::SessionUpdateChunkKind::Message, "hello ");
     coalescer.flush_all();
@@ -12,8 +9,6 @@ fn kiss_cov_coalesce_private_helpers() {
 
 #[test]
 fn kiss_cov_coalesce_trace_flush_helpers() {
-    let _ = stringify!(flush_other_stream);
-    let _ = stringify!(flush_stream);
     let mut coalescer = crate::acp::TraceChunkCoalescer::default();
     let _ = coalescer.feed(crate::acp::SessionUpdateChunkKind::Message, "chunk");
     let _ = coalescer.flush_all();
@@ -21,8 +16,6 @@ fn kiss_cov_coalesce_trace_flush_helpers() {
 
 #[test]
 fn kiss_cov_prompt_round_health_private_helpers() {
-    let _ = stringify!(record_agent_chunk);
-    let _ = stringify!(append_agent_text_for_upgrade_plan);
     let mut health = crate::acp::PromptRoundHealth::default();
     let update = serde_json::json!({
         "sessionUpdate": "agent_message_chunk",
@@ -34,13 +27,6 @@ fn kiss_cov_prompt_round_health_private_helpers() {
 
 #[test]
 fn kiss_cov_reader_tests_helpers_symbols() {
-    let _ = stringify!(acp_activity_state);
-    let _ = stringify!(IncomingDispatchParts);
-    let _ = stringify!(dispatch_lines);
-    let _ = stringify!(CatSession);
-    let _ = stringify!(new);
-    let _ = stringify!(dispatch_parts);
-    let _ = stringify!(finish_stdout);
     let (seq, _notify) = crate::acp_tests::reader_tests_helpers::acp_activity_state();
     assert_eq!(seq.load(std::sync::atomic::Ordering::Relaxed), 0);
 }
@@ -67,8 +53,20 @@ fn smoke_reader_tests_helpers_cat_session_roundtrip() {
 
 #[test]
 fn kiss_cov_fake_command_dir_guard_type() {
-    let _ = stringify!(FakeCommandDirGuard);
-    let _: Option<crate::repo_checks::FakeCommandDirGuard> = None;
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let guard: crate::repo_checks::FakeCommandDirGuard =
+        crate::repo_checks::set_fake_command_dir(tmp.path());
+    assert_eq!(guard.thread_id, std::thread::current().id());
+    drop(guard);
+}
+
+#[test]
+fn agent_bundle_agent_error_auth_error_fmt() {
+    use crate::acp::{AgentError, AuthError};
+    let _ = <AgentError as std::fmt::Display>::fmt;
+    let _ = <AuthError as std::fmt::Display>::fmt;
+    assert_eq!(format!("{}", AgentError("ae".into())), "ae");
+    assert_eq!(format!("{}", AuthError("au".into())), "au");
 }
 
 #[test]
@@ -77,7 +75,6 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     use crate::prompts::PromptStore;
     use std::collections::HashMap;
 
-    let _ = stringify!(render_turn_with_body);
     let tmp = tempfile::tempdir().expect("tempdir");
     let root = tmp.path().join("prompts");
     std::fs::create_dir_all(&root).expect("mkdir");
@@ -103,10 +100,6 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
 
 #[test]
 fn kiss_cov_tracing_init_layer_symbols() {
-    let _ = stringify!(on_event);
-    let _ = stringify!(LogFieldVisitor);
-    let _ = stringify!(record_str);
-    let _ = stringify!(record_debug);
     crate::tracing_init::init_tracing();
     crate::output::clear_captured_stderr_lines();
     tracing::info!(probe = "kiss", "tracing-init-smoke");

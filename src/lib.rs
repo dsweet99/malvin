@@ -5,6 +5,7 @@
         clippy::mutex_integer,
         clippy::await_holding_lock,
         clippy::unnecessary_struct_initialization,
+        clippy::large_stack_arrays,
         dead_code,
         clippy::use_self
     )
@@ -37,6 +38,7 @@ mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
 mod gate_loop_session;
+mod sequential_requests;
 mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
@@ -222,12 +224,8 @@ mod acp_rpc_part1_kiss_test;
 mod agent_phase_kiss_cov;
 
 #[cfg(test)]
-#[path = "output/output_kiss_cov.rs"]
-mod output_kiss_cov;
-
-#[cfg(test)]
-#[path = "cli/source_detect_kiss_cov.rs"]
-mod source_detect_kiss_cov;
+#[path = "workspace_paths_tests.rs"]
+mod workspace_paths_tests;
 
 #[cfg(all(test, unix))]
 mod test_stderr_capture;

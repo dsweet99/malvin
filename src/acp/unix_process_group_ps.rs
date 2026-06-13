@@ -102,7 +102,7 @@ pub(crate) fn read_proc_cmdline(pid: u32) -> Option<Vec<u8>> {
     std::fs::read(format!("/proc/{pid}/cmdline")).ok()
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, test))]
 pub(crate) fn read_proc_environ(pid: u32) -> Option<Vec<u8>> {
     std::fs::read(format!("/proc/{pid}/environ")).ok()
 }
@@ -125,14 +125,7 @@ pub(crate) fn looks_like_agent_acp_cmdline(cmdline: &[u8]) -> bool {
 
 #[cfg(unix)]
 pub(crate) fn looks_like_malvin_agent_acp(pid: u32) -> bool {
-    if read_proc_cmdline(pid).is_some_and(|cmdline| looks_like_agent_acp_cmdline(&cmdline)) {
-        return true;
-    }
-    read_proc_environ(pid).is_some_and(|environ| {
-        environ
-            .split(|&b| b == 0)
-            .any(|entry| entry.starts_with(b"MALVIN_WORKSPACE="))
-    })
+    read_proc_cmdline(pid).is_some_and(|cmdline| looks_like_agent_acp_cmdline(&cmdline))
 }
 
 #[cfg(unix)]

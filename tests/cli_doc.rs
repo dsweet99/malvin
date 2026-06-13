@@ -41,8 +41,8 @@ fn malvin_code_without_request_shows_short_usage_and_exits_zero() {
     );
     assert!(bare_s.contains("Write code"), "code stdout: {bare_s}");
     assert!(
-        bare_s.contains("Usage: malvin code [REQUEST]"),
-        "code stdout must show REQUEST usage: {bare_s}"
+        bare_s.contains("Usage: malvin code") && bare_s.contains("PLAN"),
+        "code stdout must show PLAN usage: {bare_s}"
     );
     assert!(
         bare_s.contains("malvin code --help"),
@@ -132,8 +132,12 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     );
     assert!(bare_s.contains("Commands:"), "bare stdout: {bare_s}");
     assert!(
-        bare_s.contains("[COMMAND|REQUEST]"),
-        "bare stdout must show [COMMAND|REQUEST] usage: {bare_s}"
+        bare_s.contains("[COMMAND|REQUEST]..."),
+        "bare stdout must show [COMMAND|REQUEST]... usage: {bare_s}"
+    );
+    assert!(
+        bare_s.contains("one or more REQUESTs"),
+        "bare stdout must mention sequential requests: {bare_s}"
     );
     assert!(
         bare_s.contains("malvin --help"),

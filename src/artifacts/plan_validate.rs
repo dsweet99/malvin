@@ -65,4 +65,17 @@ mod private_fn_coverage {
         );
         assert!(!section_present(&content, SECTION_CRITIQUE));
     }
+
+    #[test]
+    fn extract_decisions_section_none_without_heading() {
+        assert!(extract_decisions_section("## Restatement\nonly").is_none());
+    }
+
+    #[test]
+    fn extract_decisions_section_returns_tail_from_heading() {
+        let tail = extract_decisions_section("## Restatement\n\n## DECISIONS\n1. ok\n")
+            .expect("some");
+        assert!(tail.starts_with(SECTION_DECISIONS));
+        assert!(tail.contains("1. ok"));
+    }
 }

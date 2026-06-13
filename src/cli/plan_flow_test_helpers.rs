@@ -12,7 +12,7 @@ pub(super) fn empty_session_dotfile_backups() -> crate::artifacts::SessionDotfil
         malvin_checks: DotfileBackupState::Missing,
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
-        gitignore: DotfileBackupState::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     })
 }

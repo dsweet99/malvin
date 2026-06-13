@@ -36,7 +36,7 @@ mod tests {
                 dry_run: false,
                 skip_pre_checks: false,
                 fast: false,
-                request: None,
+                requests: vec![],
             }))
             .expect("code should materialize checks");
             assert!(checks.is_file());

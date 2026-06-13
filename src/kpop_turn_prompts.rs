@@ -96,5 +96,38 @@ impl KpopTurnPrompts<'_> {
 }
 
 #[cfg(test)]
+mod inline_render_turn_with_body {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn render_turn_with_body_renders_common_and_block() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let root = tmp.path().join("prompts");
+        std::fs::create_dir_all(&root).expect("mkdir");
+        std::fs::write(root.join("kpop_common.md"), "common {{ want }}\n").expect("write");
+        std::fs::write(root.join("kpop_block.md"), "block {{ user_request }}\n").expect("write");
+        let store = crate::prompts::PromptStore::with_root(root);
+        store.ensure_defaults().expect("defaults");
+        let base = HashMap::from([("plan_path".to_string(), "p".to_string())]);
+        let ctx = HashMap::from([
+            ("want".to_string(), "1".to_string()),
+            ("remaining_hypotheses".to_string(), "0".to_string()),
+            ("user_request".to_string(), "inline".to_string()),
+        ]);
+        let prompts = KpopTurnPrompts {
+            store: &store,
+            base: &base,
+            request_text: "inline",
+            prepend_rules_once: false,
+        };
+        let out = prompts
+            .render_turn_with_body("kpop_block.md", &ctx, false)
+            .expect("render");
+        assert!(out.contains("inline"));
+    }
+}
+
+#[cfg(test)]
 #[path = "kpop_turn_prompts_tests.rs"]
 mod kpop_turn_prompts_tests;

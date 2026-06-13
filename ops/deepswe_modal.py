@@ -5,9 +5,15 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
+<<<<<<< HEAD
 The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox with a
 Cursor API ``cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
 runs use a separate ``block_network`` sandbox. Open egress remains
+=======
+The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
+``outbound_cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
+in a separate Modal sandbox with ``block_network=True``. Open egress remains
+>>>>>>> dsweet/more_modal
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
 malvin and kiss are built from local source
 trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
@@ -36,10 +42,14 @@ Examples::
 Local unit tests (no Modal credentials)::
 
     python ops/deepswe_modal.py --self-test
+
+Runtime dependency: Modal >= 1.4 recommended (``Sandbox.detach`` releases gRPC
+connections after ``terminate()``; older releases use a command-router close fallback).
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import os
@@ -49,9 +59,9 @@ import sys
 import tarfile
 import tempfile
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, TextIO
 from unittest.mock import MagicMock, patch
 
@@ -61,9 +71,9 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_run import (
-    DEFAULT_CHECKS_CODE,
-    DEFAULT_CHECKS_DO,
+    discover_deepswe_checks,
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
@@ -74,6 +84,8 @@ from deepswe_run import (
     timestamp_dir,
     write_plan_and_checks,
 )
+from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
+from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
 DEEPSWE_RUN_REMOTE = "/opt/malvin/ops/deepswe_run.py"
 TASK_REMOTE = "/task"
@@ -109,41 +121,60 @@ AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
 GRADE_SANDBOX_MEMORY_MIB = 2048
 MODAL_MAX_CIDR_ALLOWLIST = 100
+ALLOWLIST_CACHE_TTL_SEC = 86400
 
 app = modal.App(APP_NAME)
 
 
+def cursor_api_allowlist_cache_path() -> Path:
+    """Path for persisted Modal Cursor API CIDR allowlist."""
+    return Path.home() / ".malvin" / "cursor_api_allowlist.json"
+
+
+def read_cursor_api_allowlist_cache() -> list[str] | None:
+    """Return cached allowlist when fresh; ``None`` when missing or stale."""
+    path = cursor_api_allowlist_cache_path()
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        cidrs = payload.get("cidrs")
+        if not isinstance(cidrs, list) or not cidrs:
+            return None
+        ts = payload.get("timestamp_utc")
+        if isinstance(ts, str):
+            cached_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            if age > ALLOWLIST_CACHE_TTL_SEC:
+                return None
+        return [str(cidr) for cidr in cidrs]
+    except (json.JSONDecodeError, OSError, TypeError, ValueError):
+        return None
+
+
+def write_cursor_api_allowlist_cache(cidrs: list[str]) -> None:
+    """Persist a compressed allowlist for subsequent solves."""
+    path = cursor_api_allowlist_cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cidrs": cidrs,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def critical_cursor_hosts_failed(failed_hosts: list[Any]) -> list[str]:
+    """Return critical Cursor API hostnames that failed HTTPS validation."""
+    return [
+        str(host)
+        for host in failed_hosts
+        if str(host) in CRITICAL_CURSOR_API_HOSTS
+    ]
+
+
 def sandbox_app() -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
-    if app.app_id is not None:
-        return app
-    return modal.App.lookup(APP_NAME, create_if_missing=True)
-
-
-def malvin_repo_root() -> Path:
-    """Return the malvin repository root (parent of ``ops/``)."""
-    return Path(__file__).resolve().parent.parent
-
-
-def kiss_repo_root() -> Path:
-    """Return the kiss-ai source tree (``KISS_REPO`` or sibling ``kiss`` repo)."""
-    override = os.environ.get("KISS_REPO")
-    if override:
-        return Path(override).resolve()
-    return malvin_repo_root().parent / "kiss"
-
-
-def validate_toolchain_repos() -> tuple[Path, Path]:
-    """Ensure local malvin and kiss trees exist before building the agent image."""
-    malvin_repo = malvin_repo_root()
-    kiss_repo = kiss_repo_root()
-    if not (malvin_repo / "Cargo.toml").is_file():
-        raise click.ClickException(f"malvin repo not found: {malvin_repo}")
-    if not (kiss_repo / "Cargo.toml").is_file():
-        raise click.ClickException(
-            f"kiss repo not found: {kiss_repo} (set KISS_REPO to override)"
-        )
-    return malvin_repo, kiss_repo
+    return lookup_sandbox_app(app, APP_NAME)
 
 
 def malvin_upload_ignore() -> list[str]:
@@ -372,6 +403,8 @@ print(json.dumps({{"failed_hosts": failed, "extra_ips": sorted(extra_ips)}}))
 )
 
 ALLOWLIST_CIDR_PROBE_TIMEOUT = 600
+PROBE_CONNECT_RETRIES = 3
+PROBE_CONNECT_RETRY_DELAY_SEC = 10
 
 OBSERVE_AGENT_PEERS_SCRIPT = r"""
 import json
@@ -447,7 +480,17 @@ def _probe_sandbox_timeout(requested: int) -> int:
     return max(requested, ALLOWLIST_CIDR_PROBE_TIMEOUT)
 
 
-def _run_modal_cidr_probe_script(
+def _is_transient_modal_probe_error(exc: BaseException) -> bool:
+    """True when Modal sandbox command-router connection may succeed on retry."""
+    if isinstance(exc, TimeoutError):
+        return True
+    if isinstance(exc, asyncio.CancelledError):
+        return True
+    message = str(exc).lower()
+    return "connection" in message and ("stalled" in message or "reset" in message)
+
+
+def _run_modal_cidr_probe_script_once(
     script: str,
     *,
     cidr_allowlist: list[str] | None = None,
@@ -456,7 +499,7 @@ def _run_modal_cidr_probe_script(
     probe_image: modal.Image | None = None,
     secrets: list[modal.Secret] | None = None,
 ) -> list[str]:
-    """Exec a probe script in a Modal sandbox and parse a JSON CIDR list from stdout."""
+    """Exec one probe attempt in a Modal sandbox and parse a JSON CIDR list from stdout."""
     image = probe_image or cidr_probe_image()
     sandbox: modal.Sandbox | None = None
     sandbox_timeout = _probe_sandbox_timeout(timeout)
@@ -466,7 +509,7 @@ def _run_modal_cidr_probe_script(
         "timeout": sandbox_timeout,
     }
     if cidr_allowlist is not None:
-        create_kwargs["cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
+        create_kwargs["outbound_cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
     if secrets:
         create_kwargs["secrets"] = secrets
     try:
@@ -501,8 +544,42 @@ def _run_modal_cidr_probe_script(
             raise click.ClickException(f"{error_label}: empty CIDR list")
         return sorted(cidrs)
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
+
+
+def _run_modal_cidr_probe_script(
+    script: str,
+    *,
+    cidr_allowlist: list[str] | None = None,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+    error_label: str,
+    probe_image: modal.Image | None = None,
+    secrets: list[modal.Secret] | None = None,
+) -> list[str]:
+    """Exec a probe script in a Modal sandbox with retries on transient router timeouts."""
+    last_exc: BaseException | None = None
+    for attempt in range(1, PROBE_CONNECT_RETRIES + 1):
+        try:
+            return _run_modal_cidr_probe_script_once(
+                script,
+                cidr_allowlist=cidr_allowlist,
+                timeout=timeout,
+                error_label=error_label,
+                probe_image=probe_image,
+                secrets=secrets,
+            )
+        except BaseException as exc:
+            if not _is_transient_modal_probe_error(exc) or attempt >= PROBE_CONNECT_RETRIES:
+                raise
+            last_exc = exc
+            click.echo(
+                f"{error_label}: transient Modal connection error "
+                f"(attempt {attempt}/{PROBE_CONNECT_RETRIES}), retrying in "
+                f"{PROBE_CONNECT_RETRY_DELAY_SEC}s: {exc}",
+                err=True,
+            )
+            time.sleep(PROBE_CONNECT_RETRY_DELAY_SEC)
+    raise last_exc  # pragma: no cover - loop always returns or re-raises
 
 
 def resolve_cursor_api_cidrs_in_modal_sandbox(
@@ -559,7 +636,7 @@ def validate_cursor_https_under_allowlist(
             app=sandbox_app(),
             image=cidr_probe_image(),
             timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
         proc = sandbox.exec(
             "python3",
@@ -598,8 +675,7 @@ def validate_cursor_https_under_allowlist(
             )
         return {"failed_hosts": failed, "extra_ips": extra}
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_cursor_api_cidrs_from_agent_peers(
@@ -661,8 +737,7 @@ def resolve_cursor_api_cidrs_from_agent_peers(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_agent_session_peers_under_allowlist(
@@ -680,7 +755,7 @@ def resolve_agent_session_peers_under_allowlist(
             image=agent_peer_probe_image(),
             secrets=cursor_secrets(),
             timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
         proc = sandbox.exec(
             "python3",
@@ -728,8 +803,7 @@ def resolve_agent_session_peers_under_allowlist(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
@@ -826,6 +900,100 @@ def allowlist_near_modal_cap(cidrs: list[str], *, headroom: int = 2) -> bool:
         return True
 
 
+def host_cidrs_not_covered_by_allowlist(
+    host_cidrs: list[str], allowlist: list[str]
+) -> list[str]:
+    """Return host /32 CIDRs whose addresses fall outside all allowlist networks."""
+    import ipaddress
+
+    nets = [ipaddress.ip_network(c, strict=False) for c in allowlist]
+    uncovered: list[str] = []
+    for cidr in host_cidrs:
+        addr = ipaddress.ip_network(cidr, strict=False).network_address
+        if not any(addr in net for net in nets):
+            uncovered.append(cidr)
+    return uncovered
+
+
+def refresh_cached_allowlist(
+    cached: list[str],
+    *,
+    timeout: int,
+) -> list[str]:
+    """Merge fresh host DNS and one allowlist agent-peer round into a cached allowlist."""
+    host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
+    uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
+    if uncovered:
+        click.echo(
+            f"Host DNS has {len(uncovered)} IP(s) outside cached allowlist; merging",
+            err=True,
+        )
+    cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
+    cidrs, added = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=1, label="Cached allowlist agent peer"
+    )
+    refreshed = compress_ipv4_cidrs(cidrs)
+    if refreshed != cached or added:
+        write_cursor_api_allowlist_cache(refreshed)
+    return refreshed
+
+
+CURSOR_API_HOSTS_PIN_SCRIPT = """
+import ipaddress
+import json
+import socket
+import sys
+
+payload = json.loads(sys.argv[1])
+hosts = payload["hosts"]
+nets = [ipaddress.ip_network(c, strict=False) for c in payload["cidrs"]]
+lines: list[str] = []
+for host in hosts:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        continue
+    for info in infos:
+        ip = info[4][0]
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if any(addr in net for net in nets):
+            lines.append(f"{ip} {host}")
+            break
+if lines:
+    with open("/etc/hosts", "a", encoding="utf-8") as handle:
+        handle.write("\\n# malvin cursor-api pin\\n")
+        handle.write("\\n".join(lines))
+        handle.write("\\n")
+"""
+
+
+def pin_cursor_api_hosts_in_sandbox(
+    sandbox: modal.Sandbox, cidrs: list[str]
+) -> None:
+    """Append ``/etc/hosts`` entries so Cursor API hostnames resolve to allowed IPv4 only."""
+    payload = json.dumps({"cidrs": cidrs, "hosts": list(CURSOR_API_HOSTS)})
+    proc = sandbox.exec(
+        "python3",
+        "-c",
+        CURSOR_API_HOSTS_PIN_SCRIPT,
+        payload,
+        stdout=StreamType.PIPE,
+        stderr=StreamType.PIPE,
+        text=True,
+    )
+    stderr = proc.stderr.read()
+    proc.wait()
+    if proc.returncode != 0:
+        detail = stderr.strip()
+        click.echo(
+            "Cursor API /etc/hosts pin skipped"
+            + (f": {detail}" if detail else ""),
+            err=True,
+        )
+
+
 def _merge_allowlist_agent_peers(
     cidrs: list[str],
     *,
@@ -865,6 +1033,21 @@ def resolve_agent_sandbox_cidrs(
 ) -> list[str]:
     """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
+    if os.environ.get("DEEPSWE_REFRESH_ALLOWLIST_CACHE") != "1":
+        cached = read_cursor_api_allowlist_cache()
+        if cached is not None:
+            refreshed = refresh_cached_allowlist(cached, timeout=timeout)
+            click.echo(
+                f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
+                f"{cursor_api_allowlist_cache_path()}"
+                + (
+                    f", refreshed from {len(cached)}"
+                    if len(refreshed) != len(cached)
+                    else ""
+                )
+                + ")"
+            )
+            return refreshed
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
@@ -907,7 +1090,15 @@ def resolve_agent_sandbox_cidrs(
         seed = compress_ipv4_cidrs(cidrs)
         validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
         failed_hosts = validation.get("failed_hosts", [])
-        if not failed_hosts:
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if not critical_failed:
+            if failed_hosts:
+                click.echo(
+                    "Allowlist HTTPS validation: non-critical host(s) unreachable "
+                    f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                    f"{'...' if len(failed_hosts) > 5 else ''}); continuing",
+                    err=True,
+                )
             break
         before = len(cidrs)
         extra_ips = validation.get("extra_ips", [])
@@ -963,23 +1154,26 @@ def resolve_agent_sandbox_cidrs(
                 f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
                 err=True,
             )
+    seed = compress_ipv4_cidrs(cidrs)
+    # Always observe cursor-agent peers under the converged allowlist. Skipping
+    # this when critical HTTPS hosts pass caused allowlist_agent_peers=+0 and
+    # Connection stalled in the agent sandbox (streaming peers differ from TLS).
     cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=3, label="Post-HTTPS agent peer"
+        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
     )
     allowlist_agent_peer_added += post_https_agent_peers
     seed = compress_ipv4_cidrs(cidrs)
     final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-    critical_failed = [
-        host
-        for host in final_validation.get("failed_hosts", [])
-        if host in CRITICAL_CURSOR_API_HOSTS
-    ]
+    critical_failed = critical_cursor_hosts_failed(
+        final_validation.get("failed_hosts", [])
+    )
     if critical_failed:
         raise click.ClickException(
             "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
             f"post-HTTPS agent peer merge: {', '.join(str(h) for h in critical_failed)}"
         )
     compressed = compress_ipv4_cidrs(cidrs)
+    write_cursor_api_allowlist_cache(compressed)
     click.echo(
         f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
         f"(raw={len(cidrs)}, host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
@@ -1025,7 +1219,7 @@ def sandbox_network_kwargs(
         return {"block_network": True}
     if cursor_api_only:
         cidrs = cidr_allowlist if cidr_allowlist is not None else resolve_cursor_api_cidrs()
-        return {"cidr_allowlist": modal_cidr_allowlist(cidrs)}
+        return {"outbound_cidr_allowlist": modal_cidr_allowlist(cidrs)}
     return {}
 
 
@@ -1126,7 +1320,7 @@ def read_remote_file(sandbox: modal.Sandbox, path: str) -> str | None:
     try:
         with sandbox.open(path, "r") as handle:
             return handle.read()
-    except OSError:
+    except (OSError, modal.exception.Error):
         return None
 
 
@@ -1134,7 +1328,7 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
     try:
         with sandbox.open(path, "rb") as handle:
             return handle.read()
-    except OSError:
+    except (OSError, modal.exception.Error):
         return None
 
 
@@ -1270,6 +1464,9 @@ def run_deepswe_run_in_sandbox(
             **resources,
             **network,
         )
+        allowlist = network.get("outbound_cidr_allowlist")
+        if allowlist:
+            pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
         argv = [
             "python3",
             DEEPSWE_RUN_REMOTE,
@@ -1331,8 +1528,35 @@ def run_deepswe_run_in_sandbox(
                 agent_result["harvest"] = harvest
         return agent_result, grade_result
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
+
+
+def offline_check_tool_install_commands(checks: str) -> list[str]:
+    """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
+    pkgs: list[str] = []
+    if "mypy" in checks:
+        pkgs.extend(["mypy", "uv"])
+    if "ruff" in checks:
+        pkgs.append("ruff")
+    if "pytest" in checks:
+        pkgs.append("aggdraw")
+    if not pkgs:
+        return []
+    ordered = list(dict.fromkeys(pkgs))
+    return [f"python3 -m pip install --break-system-packages {' '.join(ordered)}"]
+
+
+def offline_agent_checks(checks: str) -> str:
+    """Rewrite network-dependent quality-gate lines for network-blocked agent sandboxes."""
+    rewritten: list[str] = []
+    for line in checks.splitlines():
+        stripped = line.strip()
+        if stripped == "uv run mypy":
+            rewritten.append("mypy")
+        else:
+            rewritten.append(line)
+    body = "\n".join(rewritten)
+    return body + ("\n" if body and not body.endswith("\n") else "")
 
 
 def harbor_agent_image(
@@ -1344,6 +1568,7 @@ def harbor_agent_image(
     malvin_repo: Path,
     kiss_repo: Path,
     deepswe_run_py: Path,
+    checks: str = "",
 ) -> modal.Image:
     """Harbor task image plus locally built malvin/kiss, cursor-agent, and deepswe_run."""
     base = harbor_image(spec, dockerfile=dockerfile)
@@ -1356,6 +1581,9 @@ def harbor_agent_image(
         malvin_repo=malvin_repo,
         kiss_repo=kiss_repo,
     )
+    preinstall = offline_check_tool_install_commands(checks)
+    if preinstall:
+        augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
     return mount_eval_context(
         augmented,
         task_dir=spec.task_dir,
@@ -1428,7 +1656,7 @@ def run_modal_eval(
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     checks = checks_override
     if checks is None:
-        checks = DEFAULT_CHECKS_CODE if malvin_command == "code" else DEFAULT_CHECKS_DO
+        checks = discover_deepswe_checks(workspace)
     if grade_only:
         grade_img = mount_eval_context(
             harbor_image(spec, dockerfile=spec.dockerfile),
@@ -1447,11 +1675,12 @@ def run_modal_eval(
             artifacts_dir=run_root,
         )
     else:
+        agent_checks = offline_agent_checks(checks or "")
         write_plan_and_checks(
             spec,
             workspace,
             command=malvin_command,
-            checks_override=checks,
+            checks_override=agent_checks,
             dry_run=False,
         )
         malvin_repo, kiss_repo = validate_toolchain_repos()
@@ -1463,6 +1692,7 @@ def run_modal_eval(
             malvin_repo=malvin_repo,
             kiss_repo=kiss_repo,
             deepswe_run_py=deepswe_run_py,
+            checks=agent_checks,
         )
         agent_artifacts = run_root / "agent_sandbox"
         if skip_grade:
@@ -1661,12 +1891,12 @@ def _test_network_kwargs() -> None:
     assert blocked == {"block_network": True}
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.2.3.4/32"]):
         allowed = sandbox_network_kwargs(cursor_api_only=True, block_all=False)
-    assert allowed == {"cidr_allowlist": ["1.2.3.4/32"]}
+    assert allowed == {"outbound_cidr_allowlist": ["1.2.3.4/32"]}
     assert sandbox_network_kwargs(
         cursor_api_only=True,
         block_all=False,
         cidr_allowlist=["9.9.9.9/32"],
-    ) == {"cidr_allowlist": ["9.9.9.9/32"]}
+    ) == {"outbound_cidr_allowlist": ["9.9.9.9/32"]}
     assert sandbox_network_kwargs(cursor_api_only=False, block_all=False) == {}
 
 
@@ -1697,6 +1927,11 @@ def _test_allowlist_near_modal_cap() -> None:
 
 
 def _test_agent_sandbox_cidrs_union() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        _test_agent_sandbox_cidrs_union_body()
+
+
+def _test_agent_sandbox_cidrs_union_body() -> None:
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
             f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
@@ -1726,7 +1961,8 @@ def _test_agent_sandbox_cidrs_union() -> None:
                                 f"{__name__}.validate_cursor_https_under_allowlist",
                                 return_value={"failed_hosts": [], "extra_ips": []},
                             ):
-                                cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
+                                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                                    cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
     assert cidrs == [
         "1.1.1.0/24",
         "2.2.2.0/24",
@@ -1738,6 +1974,120 @@ def _test_agent_sandbox_cidrs_union() -> None:
     ]
 
 
+def _test_critical_cursor_hosts_failed() -> None:
+    failed = ["api2geo.cursor.sh", "api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(failed) == ["api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(["api2geo.cursor.sh"]) == []
+
+
+def _test_cursor_api_allowlist_cache() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = Path(tmp) / "cursor_api_allowlist.json"
+        with patch(f"{__name__}.cursor_api_allowlist_cache_path", return_value=cache):
+            assert read_cursor_api_allowlist_cache() is None
+            write_cursor_api_allowlist_cache(["10.0.0.1/32", "10.0.0.2/32"])
+            loaded = read_cursor_api_allowlist_cache()
+            assert loaded == ["10.0.0.1/32", "10.0.0.2/32"]
+            stale = {
+                "cidrs": ["1.1.1.1/32"],
+                "timestamp_utc": "2020-01-01T00:00:00+00:00",
+            }
+            cache.write_text(json.dumps(stale) + "\n", encoding="utf-8")
+            assert read_cursor_api_allowlist_cache() is None
+
+
+def _test_resolve_agent_sandbox_cidrs_uses_cache() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["9.9.9.9/32"]):
+        with patch(
+            f"{__name__}.refresh_cached_allowlist", return_value=["9.9.9.0/24"]
+        ) as mock_refresh:
+            with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
+                result = resolve_agent_sandbox_cidrs()
+    mock_refresh.assert_called_once_with(["9.9.9.9/32"], timeout=300)
+    mock_dns.assert_not_called()
+    assert result == ["9.9.9.0/24"]
+
+
+def _test_host_cidrs_not_covered_by_allowlist() -> None:
+    assert host_cidrs_not_covered_by_allowlist(
+        ["1.2.3.4/32"], ["1.2.3.0/24"]
+    ) == []
+    assert host_cidrs_not_covered_by_allowlist(
+        ["5.6.7.8/32"], ["1.2.3.0/24"]
+    ) == ["5.6.7.8/32"]
+
+
+def _test_refresh_cached_allowlist_merges_host_dns() -> None:
+    cached = ["1.1.1.0/24"]
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs", return_value=["2.2.2.2/32"]
+    ):
+        with patch(
+            f"{__name__}._merge_allowlist_agent_peers",
+            return_value=(["1.1.1.0/24", "2.2.2.2/32"], 0),
+        ):
+            with patch(f"{__name__}.write_cursor_api_allowlist_cache") as mock_write:
+                refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert "2.2.2.0/24" in refreshed
+    mock_write.assert_called_once()
+
+
+def _test_pin_cursor_api_hosts_in_sandbox() -> None:
+    fake_proc = MagicMock()
+    fake_proc.stdout.read.return_value = ""
+    fake_proc.stderr.read.return_value = ""
+    fake_proc.returncode = 0
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    pin_cursor_api_hosts_in_sandbox(fake_sandbox, ["1.2.3.0/24"])
+    fake_sandbox.exec.assert_called_once()
+    exec_argv = fake_sandbox.exec.call_args.args
+    assert exec_argv[0] == "python3"
+    payload = json.loads(exec_argv[3])
+    assert payload["cidrs"] == ["1.2.3.0/24"]
+    assert payload["hosts"] == list(CURSOR_API_HOSTS)
+
+
+def _test_post_https_agent_peer_merge_always_runs() -> None:
+    """Post-HTTPS peer merge must run even when critical HTTPS hosts already pass."""
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+            with patch(
+                f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
+                return_value=["2.2.2.2/32"],
+            ):
+                with patch(
+                    f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+                    return_value=["4.4.4.4/32"],
+                ):
+                    with patch(
+                        f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+                        return_value=[],
+                    ):
+                        with patch(
+                            f"{__name__}.resolve_cursor_api_cidrs_from_agent_peers",
+                            return_value=["3.3.3.3/32"],
+                        ):
+                            with patch(
+                                f"{__name__}.validate_cursor_https_under_allowlist",
+                                return_value={"failed_hosts": [], "extra_ips": []},
+                            ):
+                                with patch(
+                                    f"{__name__}._merge_allowlist_agent_peers",
+                                    return_value=(["1.1.1.1/32", "8.8.8.8/32"], 1),
+                                ) as mock_merge:
+                                    with patch(
+                                        f"{__name__}.write_cursor_api_allowlist_cache"
+                                    ):
+                                        cidrs = resolve_agent_sandbox_cidrs(
+                                            fixpoint_rounds=1
+                                        )
+    mock_merge.assert_called_once()
+    assert mock_merge.call_args.kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "8.8.8.0/24" in cidrs
+
+
 def _test_agent_sandbox_network_kwargs() -> None:
     image = MagicMock()
     with patch(
@@ -1746,7 +2096,7 @@ def _test_agent_sandbox_network_kwargs() -> None:
     ) as mock_resolve:
         kwargs = agent_sandbox_network_kwargs(image)
     mock_resolve.assert_called_once_with(image, timeout=300)
-    assert kwargs == {"cidr_allowlist": ["10.0.0.1/32"]}
+    assert kwargs == {"outbound_cidr_allowlist": ["10.0.0.1/32"]}
 
 
 def _test_stream_helpers() -> None:
@@ -1803,7 +2153,7 @@ def _test_grade_in_sandbox_network() -> None:
     assert exec_argv[2] == "run"
     assert "--grade-only" in exec_argv
     assert grade_result["reward"] == 1
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_network() -> None:
@@ -1821,14 +2171,16 @@ def _test_agent_sandbox_network() -> None:
             f"{__name__}.resolve_agent_sandbox_cidrs",
             return_value=["9.9.9.9/32"],
         ):
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                image,
-                command="code",
-                malvin_argv=[],
-                grade_only=False,
-                cursor_secrets=[],
-            )
-    assert mock_create.call_args.kwargs["cidr_allowlist"] == ["9.9.9.9/32"]
+            with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    image,
+                    command="code",
+                    malvin_argv=[],
+                    grade_only=False,
+                    cursor_secrets=[],
+                )
+    mock_pin.assert_called_once_with(fake_sandbox, ["9.9.9.9/32"])
+    assert mock_create.call_args.kwargs["outbound_cidr_allowlist"] == ["9.9.9.9/32"]
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
@@ -1839,7 +2191,7 @@ def _test_agent_sandbox_network() -> None:
     assert "in-sandbox" in exec_argv
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_open_network() -> None:
@@ -1860,7 +2212,7 @@ def _test_agent_sandbox_open_network() -> None:
             open_network=True,
             cursor_secrets=[],
         )
-    assert "cidr_allowlist" not in mock_create.call_args.kwargs
+    assert "outbound_cidr_allowlist" not in mock_create.call_args.kwargs
     assert "block_network" not in mock_create.call_args.kwargs
     assert agent_result["exit_code"] == 0
 
@@ -1941,12 +2293,32 @@ def _test_validate_toolchain_repos() -> None:
                 raise AssertionError("expected ClickException for missing kiss repo")
 
 
+def _test_offline_check_tool_install_commands() -> None:
+    cmds = offline_check_tool_install_commands("kiss check\nuv run mypy\npytest -sv tests\nruff check .")
+    assert len(cmds) == 1
+    assert "mypy" in cmds[0]
+    assert "ruff" in cmds[0]
+    assert "aggdraw" in cmds[0]
+    assert "uv" in cmds[0]
+    assert offline_check_tool_install_commands("cargo nextest run") == []
+
+
+def _test_offline_agent_checks() -> None:
+    raw = "kiss check\nuv run mypy\npytest -sv tests\nruff check .\n"
+    out = offline_agent_checks(raw)
+    assert "uv run mypy" not in out
+    assert "mypy\n" in out
+    assert "pytest -sv tests" in out
+
+
 def _test_read_remote_file() -> None:
     sandbox = MagicMock()
     sandbox.open.return_value.__enter__.return_value.read.return_value = "payload"
     assert read_remote_file(sandbox, "/tmp/x") == "payload"
     sandbox.open.side_effect = OSError("missing")
     assert read_remote_file(sandbox, "/tmp/missing") is None
+    sandbox.open.side_effect = modal.exception.FilesystemExecutionError("finished")
+    assert read_remote_file(sandbox, "/tmp/dead") is None
 
 
 def _test_write_metadata() -> None:
@@ -2049,15 +2421,31 @@ def _test_probe_sandbox_timeout() -> None:
     assert _probe_sandbox_timeout(900) == 900
 
 
+def _test_is_transient_modal_probe_error() -> None:
+    assert _is_transient_modal_probe_error(TimeoutError())
+    assert _is_transient_modal_probe_error(asyncio.CancelledError())
+    assert not _is_transient_modal_probe_error(click.ClickException("probe failed"))
+
+
+def _test_run_modal_cidr_probe_script_retries_transient_timeout() -> None:
+    calls = {"n": 0}
+
+    def flaky_once(*args: Any, **kwargs: Any) -> list[str]:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise TimeoutError("command router connect")
+        return ["1.2.3.4/32"]
+
+    with patch(f"{__name__}._run_modal_cidr_probe_script_once", side_effect=flaky_once):
+        with patch(f"{__name__}.time.sleep") as mock_sleep:
+            cidrs = _run_modal_cidr_probe_script("script", error_label="probe")
+    assert cidrs == ["1.2.3.4/32"]
+    assert calls["n"] == 2
+    mock_sleep.assert_called_once_with(PROBE_CONNECT_RETRY_DELAY_SEC)
+
+
 def _test_sandbox_app() -> None:
-    lookup_app = SimpleNamespace(app_id="lookup-id")
-    module_app = SimpleNamespace(app_id="module-id")
-    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
-        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
-            assert sandbox_app() is lookup_app
-        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
-    with patch(f"{__name__}.app", module_app):
-        assert sandbox_app() is module_app
+    test_sandbox_app_lookup(__name__, app, APP_NAME, sandbox_app)
 
 
 def _test_self_test_flag() -> None:
@@ -2126,10 +2514,19 @@ def run_unit_tests() -> None:
     _test_compress_ipv4_cidrs()
     _test_allowlist_near_modal_cap()
     _test_agent_sandbox_cidrs_union()
+    _test_critical_cursor_hosts_failed()
+    _test_cursor_api_allowlist_cache()
+    _test_resolve_agent_sandbox_cidrs_uses_cache()
+    _test_host_cidrs_not_covered_by_allowlist()
+    _test_refresh_cached_allowlist_merges_host_dns()
+    _test_pin_cursor_api_hosts_in_sandbox()
+    _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
     _test_cursor_secrets()
     _test_validate_toolchain_repos()
+    _test_offline_check_tool_install_commands()
+    _test_offline_agent_checks()
     _test_read_remote_file()
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
@@ -2143,9 +2540,19 @@ def run_unit_tests() -> None:
     _test_extract_tar_over_workspace_readonly_target()
     _test_mount_eval_context_recipe()
     _test_probe_sandbox_timeout()
+    _test_is_transient_modal_probe_error()
+    _test_run_modal_cidr_probe_script_retries_transient_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
+    from modal_sandbox_lifecycle import _test_release_modal_sandbox
+
+    _test_release_modal_sandbox()
     _test_run_modal_eval_modal_agent_modal_grade()
+
+
+
+
+
 
 
 if __name__ == "__main__":

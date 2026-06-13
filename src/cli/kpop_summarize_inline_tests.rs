@@ -3,10 +3,12 @@
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::gate_kpop_workflow::GateLoopBehavior;
 use crate::cli::kpop_summarize::{
-    insert_summarize_log_context, kpop_flows_ran, kpop_outer_loop_summarize_params,
-    list_written_exp_logs, outer_loop_summarize_warranted, run_outer_loop_summarize_if_warranted,
-    should_inline_outer_loop_summarize_on_gate_iteration,
-    should_inline_outer_loop_summarize_on_kpop_loop,
+    code_outer_loop_summarize_params, insert_summarize_log_context, kpop_flows_ran,
+    kpop_outer_loop_summarize_params, list_written_exp_logs, maybe_run_gate_inline_summarize,
+    maybe_run_inline_summarize_on_kpop_loop, outer_loop_summarize_warranted,
+    run_outer_loop_summarize_if_warranted, should_inline_outer_loop_summarize_on_gate_iteration,
+    should_inline_outer_loop_summarize_on_kpop_loop, CodeOuterLoopSummarizeInputs,
+    GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
 };
 use super::kpop_summarize_tests::{kpop_inputs, summarize_test_workspace, write_exp_logs};
 
@@ -136,4 +138,113 @@ fn list_written_exp_logs_collects_kpop_dir_md_files() {
     let paths = list_written_exp_logs(tmp.path());
     assert_eq!(paths.len(), 1);
     assert!(paths[0].ends_with("exp_log_a.md"));
+}
+
+#[test]
+fn code_outer_loop_summarize_params_wires_code_command() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    let old = std::env::current_dir().expect("cwd");
+    std::env::set_current_dir(tmp.path()).expect("chdir");
+    let prepared = super::code_flow::prepare_code_kpop_run(
+        crate::cli::WorkflowCliOptions { force: false },
+        "ship it",
+    )
+    .expect("prepared");
+    let shared = super::kpop_summarize_tests::summarize_shared_opts(1);
+    let params = code_outer_loop_summarize_params(
+        CodeOuterLoopSummarizeInputs {
+            agent_ran: true,
+            shared: &shared,
+            workflow: crate::cli::WorkflowCliOptions { force: false },
+        },
+        &prepared,
+    );
+    std::env::set_current_dir(old).expect("restore cwd");
+    assert_eq!(params.malvin_command, "malvin code");
+    assert!(params.agent_ran);
+}
+
+#[cfg(unix)]
+#[test]
+fn maybe_run_inline_summarize_on_kpop_loop_runs_on_last_iteration() {
+    use crate::config::DEFAULT_MAX_ACP_RETRIES;
+
+    super::kpop_summarize_mock_tests::with_summarize_mock_agent(|workspace, store, artifacts| {
+        write_exp_logs(artifacts, 2);
+        let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut client = crate::agent_backend::build_agent_backend(
+                &shared,
+                crate::cli::WorkflowCliOptions { force: false },
+                false,
+                "kpop",
+            )
+            .map_err(|e| e.to_string())
+            .expect("backend");
+            client.ensure_authenticated().map_err(|e| e.to_string()).expect("auth");
+            maybe_run_inline_summarize_on_kpop_loop(InlineSummarizeOnKpopLoopCtx {
+                client: &mut client,
+                store,
+                artifacts,
+                agent_loop: 2,
+                max_loops: 2,
+                will_exit_after_this_loop: true,
+            })
+            .await
+            .expect("inline summarize");
+        });
+        assert!(workspace.join("summary_probe.log").is_file());
+        assert!(artifacts.log_path("summary").is_file());
+    });
+}
+
+#[cfg(unix)]
+async fn run_gate_inline_summarize_first_iteration(
+    store: &crate::prompts::PromptStore,
+    artifacts: &crate::artifacts::RunArtifacts,
+) -> Result<(), String> {
+    use crate::config::DEFAULT_MAX_ACP_RETRIES;
+
+    let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
+    let mut client = crate::agent_backend::build_agent_backend(
+        &shared,
+        crate::cli::WorkflowCliOptions { force: false },
+        false,
+        "kpop",
+    )
+    .map_err(|e| e.to_string())?;
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
+    client
+        .begin_coder_session(&artifacts.work_dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    maybe_run_gate_inline_summarize(GateInlineSummarizeCtx {
+        client: &mut client,
+        store,
+        artifacts,
+        malvin_command: "malvin code",
+        iteration: 1,
+        total_iterations: 3,
+        consecutive_solved_entering: 0,
+        behavior: GateLoopBehavior::CODE,
+    })
+    .await?;
+    client.end_coder_session().await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn maybe_run_gate_inline_summarize_skips_when_not_last_iteration() {
+    super::kpop_summarize_mock_tests::with_summarize_mock_agent(|_workspace, store, artifacts| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            run_gate_inline_summarize_first_iteration(store, artifacts)
+                .await
+                .expect("skip");
+        });
+        assert!(!artifacts.log_path("summary").exists());
+    });
 }

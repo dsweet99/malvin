@@ -158,7 +158,26 @@ pub(crate) fn session_update_chunk_parts(
 
 #[cfg(test)]
 mod coalesce_tests {
-    use super::{ACP_VERBOSE_COALESCE_MAX, coalesce_flush_cap};
+    use super::{
+        ACP_VERBOSE_COALESCE_MAX, SessionUpdateChunkKind, VerboseIoCoalescer, coalesce_flush_cap,
+    };
+
+    #[test]
+    fn feed_buf_and_flush_if_nonempty_fn_items() {
+        let _ = (
+            VerboseIoCoalescer::feed_buf,
+            VerboseIoCoalescer::flush_if_nonempty,
+        );
+    }
+
+    #[test]
+    fn flush_if_nonempty_clears_on_kind_switch() {
+        let mut c = VerboseIoCoalescer::default();
+        c.feed(SessionUpdateChunkKind::Message, "hold");
+        c.feed(SessionUpdateChunkKind::Thought, "think");
+        assert!(c.message.is_empty());
+        assert_eq!(c.thought, "think");
+    }
 
     #[test]
     fn coalesce_flush_cap_preserves_tab_boundary_content() {

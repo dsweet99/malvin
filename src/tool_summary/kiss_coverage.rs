@@ -22,9 +22,7 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::parse::tool_phase_label;
     let _ = super::parse_acp::acp_path_value;
     let _ = super::parse_acp::acp_normalize_path;
-    let _ = stringify!(std::any::type_name::<super::parse::LineRange>());
     let _: Option<super::parse::ParsedToolUpdate> = None;
-    let _ = stringify!(std::any::type_name::<super::types::ToolCallRecord>());
 }
 
 #[test]

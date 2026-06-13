@@ -4,11 +4,13 @@
 use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 #[cfg(unix)]
 use malvin::acp::hostile_orphan_test_util::{
-    assert_sibling_monitored_and_blocks_spawn, spawn_agent_pg_and_malvin_sibling,
+    assert_sibling_monitored_and_blocks_spawn, cleanup_user_coincidental_test,
+    process_alive, setup_user_init_reparented_daemon, spawn_agent_pg_and_malvin_sibling,
+    spawn_isolated_agent_sleep, spawn_user_shell_cooperator,
 };
 #[cfg(target_os = "linux")]
 use malvin::acp::hostile_orphan_test_util::{
-    process_alive, read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
+    read_orphan_pid, spawn_hostile_agent_acp_orphan, wait_for_init_reparent,
 };
 #[cfg(unix)]
 use malvin::malvin_sandbox::{
@@ -125,7 +127,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let (mut agent, agent_pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(agent_pgid)).await;
     wait_for_init_reparent(orphan_pid).await;
     let mut baseline = snapshot_pids();
     baseline.insert(orphan_pid);
@@ -138,6 +140,28 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
         "teardown must kill baseline-amnestied agent acp orphan (pid={orphan_pid})"
     );
     let _ = agent.wait();
+}
+
+/// Regression: init-reparented user daemons started mid-session must survive agent teardown.
+#[cfg(unix)]
+#[tokio::test]
+async fn user_coincidental_init_orphan_survives_agent_teardown() {
+    clear_active_sandbox_session();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let user_daemon_pid_file = tmp.path().join("user_daemon.pid");
+    let (user_shell, mut user_shell_stdin) = spawn_user_shell_cooperator();
+    let baseline = snapshot_pids();
+    let (agent_child, agent_pgid) = spawn_isolated_agent_sleep();
+    let user_daemon_pid =
+        setup_user_init_reparented_daemon(&mut user_shell_stdin, &user_daemon_pid_file).await;
+    terminate_agent_process_group(Some(agent_pgid), &baseline).await;
+    clear_active_sandbox_session();
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    assert!(
+        process_alive(user_daemon_pid),
+        "teardown must not kill unrelated user daemon (pid={user_daemon_pid})"
+    );
+    cleanup_user_coincidental_test(user_daemon_pid, user_shell, agent_child);
 }
 
 /// Regression: malvin-spawned siblings outside the agent PG must die on session teardown.
@@ -165,27 +189,35 @@ async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
 
 #[test]
 fn kiss_cov_malvin_sandbox_contract_symbols() {
-    let _ = stringify!(watch_process_group_memory_enforces_after_reader_dead);
-    let _ = stringify!(malvin_oom_watcher_kills_agent_sleep_at_low_limit);
-    let _ = stringify!(malvin_process_group_teardown_kills_agent_sleep);
-    let _ = stringify!(malvin_sandbox_monitor_includes_malvin_spawned_sibling);
-    let _ = stringify!(malvin_sibling_outside_agent_pg_killed_on_teardown);
+    let _ = watch_process_group_memory_enforces_after_reader_dead;
+    let _ = malvin_oom_watcher_kills_agent_sleep_at_low_limit;
+    let _ = malvin_process_group_teardown_kills_agent_sleep;
+    let _ = malvin_sandbox_monitor_includes_malvin_spawned_sibling;
+    let _ = malvin_sibling_outside_agent_pg_killed_on_teardown;
+    let _ = user_coincidental_init_orphan_survives_agent_teardown;
     #[cfg(target_os = "linux")]
-    let _ = stringify!(baseline_amnestied_agent_acp_orphan_killed_on_teardown);
+    {
+        let _ = baseline_amnestied_agent_acp_orphan_killed_on_teardown;
+        let _ = spawn_hostile_agent_acp_orphan;
+        let _ = read_orphan_pid;
+        let _ = wait_for_init_reparent;
+    }
     #[cfg(unix)]
     {
-        let _ = stringify!(snapshot_pids);
-        let _ = stringify!(terminate_agent_process_group);
-        let _ = stringify!(malvin_session_rss_bytes);
-        let _ = stringify!(sandbox_monitor_pids);
-        let _ = stringify!(watch_process_group_memory);
-        let _ = stringify!(MemWatchHandles);
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(malvin::acp::hostile_orphan_test_util::spawn_agent_pg_and_malvin_sibling);
-        let _ = stringify!(malvin::acp::hostile_orphan_test_util::assert_sibling_monitored_and_blocks_spawn);
-        let _ = stringify!(malvin::acp::hostile_orphan_test_util::spawn_hostile_agent_acp_orphan);
-        let _ = stringify!(malvin::acp::hostile_orphan_test_util::process_alive);
-        let _ = stringify!(malvin::acp::hostile_orphan_test_util::read_orphan_pid);
+        let _ = snapshot_pids;
+        let _ = terminate_agent_process_group;
+        let _ = malvin_session_rss_bytes;
+        let _ = sandbox_monitor_pids;
+        let _ = watch_process_group_memory;
+        let _ = std::any::type_name::<MemWatchHandles>;
+        let _ = assert_dead_before_next_spawn;
+        let _ = clear_active_sandbox_session;
+        let _ = spawn_agent_pg_and_malvin_sibling;
+        let _ = assert_sibling_monitored_and_blocks_spawn;
+        let _ = spawn_user_shell_cooperator;
+        let _ = spawn_isolated_agent_sleep;
+        let _ = setup_user_init_reparented_daemon;
+        let _ = cleanup_user_coincidental_test;
+        let _ = process_alive;
     }
 }

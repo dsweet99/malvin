@@ -54,3 +54,30 @@ fn load_malvin_config_does_not_create_missing_file() {
         assert_eq!(cfg.agent.max_hypotheses, super::DEFAULT_MAX_HYPOTHESES);
     });
 }
+
+#[test]
+fn ensure_malvin_config_file_if_missing_creates_when_absent() {
+    use super::ensure_malvin_config_file_if_missing;
+
+    with_isolated_home(|work| {
+        let path = malvin_config_path(work);
+        assert!(!path.exists());
+        ensure_malvin_config_file_if_missing(work).expect("create");
+        assert!(path.is_file());
+        let text = std::fs::read_to_string(&path).expect("read");
+        assert!(text.contains("mem_limit_gb"));
+    });
+}
+
+#[test]
+fn ensure_malvin_config_file_if_missing_is_noop_when_present() {
+    use super::ensure_malvin_config_file_if_missing;
+
+    with_isolated_home(|work| {
+        open_malvin_config(work).expect("seed");
+        let path = malvin_config_path(work);
+        let before = std::fs::read_to_string(&path).expect("read");
+        ensure_malvin_config_file_if_missing(work).expect("noop");
+        assert_eq!(before, std::fs::read_to_string(&path).expect("read again"));
+    });
+}

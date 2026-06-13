@@ -22,7 +22,7 @@ pub(crate) fn write_mock_summarize_agent(path: &std::path::Path) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
-fn with_summarize_mock_agent<F>(f: F)
+pub(crate) fn with_summarize_mock_agent<F>(f: F)
 where
     F: FnOnce(&std::path::Path, &PromptStore, &crate::artifacts::RunArtifacts),
 {

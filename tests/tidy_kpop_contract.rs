@@ -70,7 +70,7 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
 
 #[cfg(unix)]
 #[test]
-fn tidy_gate_loop_restores_gitignore_before_early_exit_gates() {
+fn tidy_gate_loop_reconciles_gitignore_before_early_exit_gates() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
@@ -89,10 +89,11 @@ fn tidy_gate_loop_restores_gitignore_before_early_exit_gates() {
     let combined = combined_cli_output(&out);
     assert!(
         out.status.success(),
-        "expected tidy early-exit success with restored gitignore: {combined:?}"
+        "expected tidy early-exit success with reconciled gitignore: {combined:?}"
     );
-    assert_eq!(
-        std::fs::read_to_string(workspace.join(".gitignore")).expect("read"),
-        "gi\n"
+    let gitignore = std::fs::read_to_string(workspace.join(".gitignore")).expect("read");
+    assert!(
+        gitignore.lines().any(|line| line.trim() == "ops/"),
+        "expected canonical ops/ exclusion after restore+reconcile, got: {gitignore:?}"
     );
 }

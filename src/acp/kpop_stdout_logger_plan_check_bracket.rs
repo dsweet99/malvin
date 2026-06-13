@@ -149,7 +149,6 @@ mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _ = stringify!(read_tool_bracket_pair_updates);
         let _ = tee_tool_summary_updates;
     }
 }

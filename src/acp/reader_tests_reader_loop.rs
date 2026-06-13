@@ -73,8 +73,6 @@ pub(crate) async fn reader_loop_eof_pending_error() -> String {
 #[cfg(all(unix, test))]
 #[test]
 fn kiss_cov_eof_reader_spawn_args() {
-    let _ = stringify!(EofReaderSpawnInputs);
-    let _ = stringify!(eof_reader_spawn_args);
 }
 
 #[cfg(all(unix, test))]

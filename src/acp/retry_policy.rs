@@ -124,6 +124,11 @@ pub(crate) enum AgentRetryOutcome {
     Sleep(std::time::Duration),
 }
 
+fn agent_retry_should_stop(last_error: &str) -> bool {
+    last_error.contains("workspace session restore failed")
+        || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
+}
+
 /// Blacklist-default retry policy for bounded ACP attempts: upgrade-plan and cannot-use-model
 /// errors fail fast with [`Err`]; all other errors retry with 1s then 3s sleeps until
 /// `max_attempts`. Unknown permanent failures may spend ~4s extra before stopping.
@@ -135,9 +140,7 @@ pub(crate) fn plan_agent_retry(
     if agent_string_is_upgrade_plan(last_error) || agent_string_is_cannot_use_model(last_error) {
         return Err(AgentError(last_error.to_string()));
     }
-    if last_error.contains("workspace session restore failed")
-        || crate::run_timing::acp_post_run::merge_error_mentions_restore(last_error)
-    {
+    if agent_retry_should_stop(last_error) {
         return Ok(AgentRetryOutcome::StopRetrying);
     }
     if agent_string_is_session_new_internal_error(last_error) {

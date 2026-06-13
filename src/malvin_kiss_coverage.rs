@@ -116,10 +116,6 @@ fn smoke_artifacts_resolve_user_md_request() {
 
 #[test]
 fn smoke_output_and_tracing() {
-    let _ = stringify!(on_event);
-    let _ = stringify!(LogFieldVisitor);
-    let _ = stringify!(record_str);
-    let _ = stringify!(record_debug);
     crate::tracing_init::init_tracing();
     assert!(crate::tracing_init::malvin_log_accepts_tracing_level(
         tracing::Level::INFO
@@ -153,8 +149,6 @@ fn smoke_kpop_multiturn_builder_type() {
 #[test]
 fn smoke_child_health_sample() {
     let _health = crate::child_health::sample_child_health(std::process::id());
-    let _ = stringify!(health.exists);
-    let _ = stringify!(health.zombie);
 }
 
 #[test]
@@ -180,56 +174,22 @@ fn smoke_output_helpers_for_kiss() {
 
 #[test]
 fn kiss_cov_cross_file_symbols_a() {
-    let _ = stringify!(consume_csi_sequence);
-    let _ = stringify!(consume_osc_sequence);
-    let _ = stringify!(entry_name_has_extension);
-    let _ = stringify!(entry_name_is_workspace_marker);
-    let _ = stringify!(resolved_symlink_target);
-    let _ = stringify!(symlink_resolves_to_existing_file);
-    let _ = stringify!(entry_or_symlink_file_target_matches);
-    let _ = stringify!(evaluate_after_acp_silence);
-    let _ = stringify!(child_health_from_sampled_task);
-    let _ = stringify!(status_char_hint);
 }
 
 #[test]
 fn kiss_cov_cross_file_symbols_b() {
-    let _ = stringify!(who_tag_ansi);
-    let _ = stringify!(emit_stderr_log_line);
-    let _ = stringify!(emit_stderr_log_lines);
-    let _ = stringify!(read_artifact_review_for_fanout_attempt);
-    let _ = stringify!(sync_review_file_for_attempt);
 }
 
 #[test]
 fn kiss_cov_acp_session_unit_tests() {
-    let _ = stringify!(busy_session_with_dead_transport);
-    let _ = stringify!(acp_session_cancel_clears_busy_state_after_rpc_error);
-    let _ = stringify!(acp_session_spawn_aborts_when_linux_cgroup_verify_fails);
-    let _ = stringify!(wait_for_pid_file);
-    let _ = stringify!(write_descendant_spawning_acp_mock);
-    let _ = stringify!(skip_without_writable_cgroups);
-    let _ = stringify!(spawn_descendant_mock_session);
-    let _ = stringify!(assert_descendant_killed_after_shutdown);
-    let _ = stringify!(shutdown_kills_agent_spawned_descendants);
 }
 
 #[test]
 fn kiss_cov_cli_helper_symbols() {
-    let _ = stringify!(abort_result_path);
-    let _ = stringify!(smoke_agent_client);
 }
 
 #[test]
 fn kiss_cov_coverage_kiss_gate_refs() {
-    let _ = stringify!(kiss_cov_coalesce_private_helpers);
-    let _ = stringify!(kiss_cov_coalesce_trace_flush_helpers);
-    let _ = stringify!(kiss_cov_prompt_round_health_private_helpers);
-    let _ = stringify!(kiss_cov_reader_tests_helpers_symbols);
-    let _ = stringify!(smoke_reader_tests_helpers_cat_session_roundtrip);
-    let _ = stringify!(kiss_cov_fake_command_dir_guard_type);
-    let _ = stringify!(kiss_cov_kpop_turn_render_turn_with_body);
-    let _ = stringify!(kiss_cov_tracing_init_layer_symbols);
 }
 
 #[test]

@@ -19,10 +19,6 @@ fn smoke_acp_reader_helper_production_symbols() {
     let _ = crate::acp_tests::reader_tests_helpers::acp_activity_state;
     let _: Option<crate::acp_tests::reader_tests_helpers::IncomingDispatchParts> = None;
     let _: Option<crate::acp_tests::reader_tests_helpers::CatSession> = None;
-    let _ = stringify!(dispatch_lines);
-    let _ = stringify!(dispatch_parts);
-    let _ = stringify!(finish_stdout);
-    let _ = stringify!(new);
 }
 
 #[cfg(unix)]
@@ -34,10 +30,6 @@ fn smoke_acp_reader_helpers_unix_symbols() {
     let _ = acp_activity_state;
     let _: Option<IncomingDispatchParts<'_>> = None;
     let _: Option<CatSession> = None;
-    let _ = stringify!(dispatch_lines);
-    let _ = stringify!(dispatch_parts);
-    let _ = stringify!(finish_stdout);
-    let _ = stringify!(new);
     block_on_test(async {
         let cat = CatSession::new().await;
         cat.dispatch_parts().dispatch_lines(&[]).await;
@@ -50,32 +42,12 @@ fn smoke_spawn_and_agent_env_helpers() {
     let _ = super::resolve_agent_bin();
     let _ = super::test_no_real_agent_enabled();
     let _ = super::auth_probe(&["/bin/true"]);
-    let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
 }
 
 #[test]
 fn smoke_acp_inc_symbols_for_kiss() {
-    let _ = stringify!(AcpChildStdout);
-    let _ = stringify!(AcpHandshakeIo);
-    let _ = stringify!(PromptRpcCleanup);
-    let _ = stringify!(clear_if_prompt_response);
-    let _ = stringify!(ReaderLoopInput);
-    let _ = stringify!(IncomingLineDispatch);
-    let _ = stringify!(ReaderLoopFinishCtx);
-    let _ = stringify!(ReaderLoopLineIo);
-    let _ = stringify!(ReaderLoopDrainCtx);
     let _ = super::resolve_agent_bin;
     let _ = super::spawn_agent_acp_session;
-    let _ = stringify!(PromptTraceDispatchMeta);
-    let _ = stringify!(DoOutgoingTraceParts);
-    let _ = stringify!(SessionAfterStdioIn);
-    let _ = stringify!(take_stdio_pipes);
-    let _ = stringify!(take_stdio_pipes_from_piped_spawn);
-    let _ = stringify!(acp_stdio);
-    let _ = stringify!(spawn_acp_session);
-    let _ = stringify!(session_after_stdio);
-    let _ = stringify!(kill_child_and_finalize_containment);
-    let _ = stringify!(acp_session_set_run_timing);
 }
 
 

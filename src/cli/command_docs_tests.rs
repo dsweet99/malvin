@@ -207,6 +207,5 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = doc_text;
         let _ = print_doc;
-        let _ = stringify!(print_doc_to_writer);
     }
 }

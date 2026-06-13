@@ -9,15 +9,10 @@ use crate::cli::{SharedOpts, WorkflowCliOptions};
 use super::run_startup::prepare_code_kpop_run;
 use super::{effective_code_max_loops, CodeArgs};
 
-pub async fn run_code(
-    code: CodeArgs,
+fn emit_code_run_startup(
     shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
+    prepared: &super::run_startup::CodeKpopPrepared,
 ) -> Result<(), String> {
-    let cli_request = crate::cli::cli_request::require_cli_request(code.request.as_ref(), "code")?;
-    let prepared = prepare_code_kpop_run(workflow, &cli_request)?;
-    error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
-
     emit_run_startup_sequence(
         &prepared.artifacts,
         RunStartupEmitOpts {
@@ -25,7 +20,52 @@ pub async fn run_code(
             host_resources: true,
         },
         &prepared.startup_emit_request,
-    )?;
+    )
+}
+
+struct CodeGateFinish<'a> {
+    shared: &'a SharedOpts,
+    prepared: &'a super::run_startup::CodeKpopPrepared,
+    agent_ran: bool,
+    gates_ok: bool,
+    run_timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    last_backups: &'a crate::artifacts::SessionDotfileBackups,
+    summarize_res: Result<(), String>,
+}
+
+fn code_gate_outcome(finish: CodeGateFinish<'_>) -> Result<(), String> {
+    let gate_r = if finish.gates_ok {
+        finish_gate_kpop_after_pass(
+            finish.shared,
+            finish.prepared,
+            finish.agent_ran,
+            finish.run_timing,
+        )
+    } else {
+        fail_gate_kpop_after_exhausted(
+            "malvin code",
+            finish.prepared,
+            finish.last_backups,
+            GateLoopBehavior::CODE,
+        )
+    };
+    crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
+}
+
+pub async fn run_code(
+    code: CodeArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+    request: &str,
+) -> Result<(), String> {
+    let cli_request = request.trim();
+    if cli_request.is_empty() {
+        return Err("malvin code: missing required REQUEST (text or path)".into());
+    }
+    let prepared = prepare_code_kpop_run(workflow, cli_request)?;
+    error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
+
+    emit_code_run_startup(shared, &prepared)?;
 
     let max_loops = effective_code_max_loops(code.max_loops);
     let max_hypotheses = code.max_hypotheses.max(1);
@@ -51,17 +91,15 @@ pub async fn run_code(
         ),
     )
     .await;
-    let gate_r = if gates_ok {
-        finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
-    } else {
-        fail_gate_kpop_after_exhausted(
-            "malvin code",
-            &prepared,
-            &last_backups,
-            GateLoopBehavior::CODE,
-        )
-    };
-    let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
+    let r = code_gate_outcome(CodeGateFinish {
+        shared,
+        prepared: &prepared,
+        agent_ran,
+        gates_ok,
+        run_timing: run_timing.as_ref(),
+        last_backups: &last_backups,
+        summarize_res,
+    });
 
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();

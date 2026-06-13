@@ -70,7 +70,6 @@ pub fn pids_sandbox_bytes(pids: &HashSet<u32>) -> Option<u64> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = stringify!(pids);
         None
     }
 }
@@ -91,7 +90,6 @@ pub fn pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
-        let _ = stringify!(pids);
         None
     }
 }

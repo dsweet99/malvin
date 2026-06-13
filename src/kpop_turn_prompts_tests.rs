@@ -111,7 +111,6 @@ fn render_turn_with_body_matches_gate_kpop_single_turn_without_header() {
         body.trim_end()
     );
     assert_eq!(gate, expected);
-    let _ = stringify!(render_turn_with_body);
 }
 
 #[test]

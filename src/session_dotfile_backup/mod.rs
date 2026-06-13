@@ -2,6 +2,7 @@ mod alloc;
 pub(crate) mod gate_restore_checks;
 pub(crate) mod gate_restore_merge;
 pub(crate) mod gate_restore_repair;
+mod gitignore_tree;
 mod slots;
 mod wrappers;
 
@@ -12,17 +13,20 @@ pub use gate_restore_repair::{
 
 use std::path::Path;
 
-pub use wrappers::{
+pub use gitignore_tree::{
     backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
+    restore_workspace_gitignore_backup, GitignoreBackup, GitignoreFileBackup,
+};
+pub use wrappers::{
     backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
     backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
-    restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
-    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
+    restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
+    restore_workspace_malvin_config_workspace_backup,
 };
 
 use slots::{backup_slot, restore_slot};
@@ -45,7 +49,6 @@ pub type MalvinChecksBackup = DotfileBackupState;
 pub type KissignoreBackup = DotfileBackupState;
 pub type MalvinConfigBackup = DotfileBackupState;
 pub type MalvinConfigWorkspaceBackup = DotfileBackupState;
-pub type GitignoreBackup = DotfileBackupState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileParts {
@@ -106,7 +109,7 @@ impl SessionDotfileBackups {
             malvin_checks: backup_slot(1, work_dir, &mut generate_id)?,
             kissignore: backup_slot(2, work_dir, &mut generate_id)?,
             malvin_config: backup_slot(3, work_dir, &mut generate_id)?,
-            gitignore: backup_slot(4, work_dir, &mut generate_id)?,
+            gitignore: gitignore_tree::backup_gitignore_tree(work_dir, &mut generate_id)?,
             malvin_config_workspace: backup_slot(5, work_dir, &mut generate_id)?,
         })
     }
@@ -141,7 +144,7 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     restore_slot(work_dir, &bundle.kissconfig, 0)?;
     restore_slot(work_dir, &bundle.kissignore, 2)?;
     restore_slot(work_dir, &bundle.malvin_config, 3)?;
-    restore_slot(work_dir, &bundle.gitignore, 4)?;
+    gitignore_tree::restore_workspace_gitignore_backup(work_dir, &bundle.gitignore)?;
     restore_slot(work_dir, &bundle.malvin_config_workspace, 5)
 }
 

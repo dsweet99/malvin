@@ -95,7 +95,7 @@ fn sanitize_bundle_fixes_both_poisoned_merge_slots() {
         merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
     };
     use crate::session_dotfile_backup::{
-        DotfileBackupPayload, DotfileBackupState, SessionDotfileBackups,
+        DotfileBackupPayload, DotfileBackupState, GitignoreBackup, SessionDotfileBackups,
     };
 
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -114,7 +114,7 @@ fn sanitize_bundle_fixes_both_poisoned_merge_slots() {
         malvin_checks: poisoned(b"kiss\n"),
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
-        gitignore: DotfileBackupState::Missing,
+        gitignore: GitignoreBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let progress = anchor.clone();

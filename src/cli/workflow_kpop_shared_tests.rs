@@ -131,6 +131,20 @@ fn run_kpop_workspace_gates_restores_before_executing_checks() {
     run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
 }
 
+#[test]
+fn run_kpop_workspace_gates_reconciles_gitignore_after_post_gate_restore() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
+    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
+    std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
+    run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass");
+    let gitignore = std::fs::read_to_string(tmp.path().join(".gitignore")).expect("read");
+    assert!(
+        gitignore.lines().any(|line| line.trim() == "ops/"),
+        "post-gate restore must not leave drifted gitignore: {gitignore:?}"
+    );
+}
+
 fn kpop_gates_restore_fixture(
     work: &std::path::Path,
 ) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {

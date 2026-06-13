@@ -127,6 +127,19 @@ mod tests {
     }
 
     #[test]
+    fn set_active_acp_lock_slot_used_by_assert_no_peer() {
+        set_active_acp_lock_slot("unitslot".into());
+        assert_eq!(active_acp_lock_slot(), "unitslot");
+        let work = std::env::temp_dir().join("malvin_acp_spawn_lock_active_slot");
+        let _ = std::fs::remove_dir_all(&work);
+        std::fs::create_dir_all(&work).expect("mkdir work");
+        assert_no_peer_acp_spawn_lock(&work).expect("no lock file yet");
+        acquire_acp_spawn_lock(&work).expect("acquire via active slot");
+        assert_no_peer_acp_spawn_lock(&work).expect("self holder");
+        release_acp_spawn_lock(&work, "unitslot");
+    }
+
+    #[test]
     fn different_acp_lock_slots_do_not_block_each_other() {
         let work = std::env::temp_dir().join("malvin_acp_spawn_lock_slots");
         let _ = std::fs::remove_dir_all(&work);

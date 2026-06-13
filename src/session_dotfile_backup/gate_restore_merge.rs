@@ -8,7 +8,7 @@ use std::path::Path;
 
 use super::gate_restore_checks::{is_bare_kiss_checks, is_invalid_bare_kiss_checks, substantive_check_lines};
 use super::gate_restore_repair::sanitize_clamp_damaged_dotfiles_in_bundle;
-use super::{DotfileBackupState, SessionDotfileBackups};
+use super::{DotfileBackupState, GitignoreBackup, SessionDotfileBackups};
 
 pub(super) fn kissconfig_low_coverage_threshold(bytes: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(bytes) else {
@@ -130,6 +130,32 @@ fn pick_slot(
     progress.clone()
 }
 
+fn gitignore_root_bytes(backup: &GitignoreBackup) -> Option<&[u8]> {
+    match backup {
+        GitignoreBackup::Missing => None,
+        GitignoreBackup::Present { files, .. } => files
+            .iter()
+            .find(|file| file.rel.as_os_str() == ".gitignore")
+            .map(|file| file.bytes.as_slice()),
+    }
+}
+
+fn gitignore_regressed(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> bool {
+    match (gitignore_root_bytes(anchor), gitignore_root_bytes(progress)) {
+        (Some(_anchor_bytes), None) => true,
+        (Some(anchor_bytes), Some(progress_bytes)) => anchor_bytes != progress_bytes,
+        _ => false,
+    }
+}
+
+fn pick_gitignore(anchor: &GitignoreBackup, progress: &GitignoreBackup) -> GitignoreBackup {
+    if gitignore_regressed(anchor, progress) {
+        anchor.clone()
+    } else {
+        progress.clone()
+    }
+}
+
 /// Merge anchor (iteration start) with progress (post-agent, pre-restore) for gate restore.
 #[must_use]
 pub fn merge_for_gate_restore(
@@ -161,12 +187,7 @@ pub fn merge_for_gate_restore(
             slot_regressed,
             |_, _| false,
         ),
-        gitignore: pick_slot(
-            &anchor.gitignore,
-            &progress.gitignore,
-            slot_regressed,
-            |_, _| false,
-        ),
+        gitignore: pick_gitignore(&anchor.gitignore, &progress.gitignore),
         malvin_config_workspace: pick_slot(
             &anchor.malvin_config_workspace,
             &progress.malvin_config_workspace,

@@ -1,5 +1,6 @@
 #![allow(clippy::missing_errors_doc)]
 
+pub(crate) mod canonical_ignore;
 pub(crate) mod discover_py;
 pub mod discover_init_checks;
 pub(crate) mod discover_init_checks_signals;

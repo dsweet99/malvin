@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
-use crate::workspace_paths::{malvin_user_home_root, MALVIN_HOME_CONFIG_FILE};
+use crate::workspace_paths::{snapshot_category_dir, MALVIN_HOME_CONFIG_FILE};
 use super::DotfileBackupState;
 
 pub(super) struct DotfileSpecRow {
@@ -38,7 +38,7 @@ const MALVIN_CONFIG_SLOT: usize = 3;
 pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     DotfileSpecRow {
         rel: KISSCONFIG_FILE,
-        home_subdir: "kissconfigs",
+        home_subdir: "kissconfig",
         mkdir_lbl: "kissconfig backup mkdir",
         collision_lbl: "kissconfig backup mkdir",
         restore_lbl: "kissconfig restore",
@@ -47,7 +47,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: crate::MALVIN_CHECKS_REL,
-        home_subdir: "malvin_checks_snapshots",
+        home_subdir: "malvin_checks",
         mkdir_lbl: "malvin_checks backup mkdir",
         collision_lbl: "malvin_checks backup mkdir",
         restore_lbl: "malvin_checks restore",
@@ -56,7 +56,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: KISSIGNORE_FILE,
-        home_subdir: "kissignore_snapshots",
+        home_subdir: "kissignore",
         mkdir_lbl: "kissignore backup mkdir",
         collision_lbl: "kissignore backup mkdir",
         restore_lbl: "kissignore restore",
@@ -65,7 +65,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: MALVIN_HOME_CONFIG_FILE,
-        home_subdir: "malvin_config_snapshots",
+        home_subdir: "malvin_config",
         mkdir_lbl: "malvin_config backup mkdir",
         collision_lbl: "malvin_config backup mkdir",
         restore_lbl: "malvin_config restore",
@@ -74,7 +74,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: GITIGNORE_FILE,
-        home_subdir: "gitignore_snapshots",
+        home_subdir: "gitignore",
         mkdir_lbl: "gitignore backup mkdir",
         collision_lbl: "gitignore backup mkdir",
         restore_lbl: "gitignore restore",
@@ -83,7 +83,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: crate::MALVIN_CONFIG_REL,
-        home_subdir: "malvin_config_workspace_snapshots",
+        home_subdir: "malvin_config_workspace",
         mkdir_lbl: "malvin_config_workspace backup mkdir",
         collision_lbl: "malvin_config_workspace backup mkdir",
         restore_lbl: "malvin_config_workspace restore",
@@ -102,7 +102,7 @@ pub(super) fn backup_slot(
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
     }
-    let root = malvin_user_home_root().join(spec.home_subdir);
+    let root = snapshot_category_dir(spec.home_subdir);
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);

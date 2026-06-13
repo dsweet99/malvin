@@ -19,6 +19,9 @@ pub(crate) struct ExplainResolvedOutputs {
 }
 
 fn resolve_explain_output_in_cwd(work_dir: &Path, basename: &str, cwd: &Path) -> PathBuf {
+    if work_dir.as_os_str() == "." {
+        return cwd.join(basename);
+    }
     let rel = work_dir.join(basename);
     if rel.is_absolute() {
         rel

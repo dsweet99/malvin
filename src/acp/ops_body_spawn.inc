@@ -105,9 +105,6 @@ mod ops_body_spawn_kiss {
         let _ = has_api_key();
         let _ = auth_probe(&["/bin/true"]);
         let _ = cursor_cli_auth_established();
-        let _ = stringify!(MALVIN_TEST_NO_REAL_AGENT_ENV);
-        let _ = stringify!(resolve_acp_session_cwd);
-        let _ = stringify!(spawn_agent_acp_session);
     }
 
     #[test]

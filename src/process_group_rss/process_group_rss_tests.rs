@@ -11,21 +11,6 @@ use super::linux::{
 
 #[test]
 fn kiss_cov_linux_process_group_rss_symbol_names() {
-    let _ = stringify!(parse_stat_pgrp);
-    let _ = stringify!(parse_status_vm_rss_bytes);
-    let _ = stringify!(parse_proc_pid_dir_name);
-    let _ = stringify!(process_group_rss_bytes);
-    let _ = stringify!(pids_rss_bytes);
-    let _ = stringify!(linux_process_group_rss_bytes);
-    let _ = stringify!(macos_process_group_rss_bytes);
-    let _ = stringify!(linux_pids_rss_bytes);
-    let _ = stringify!(linux_pids_pss_bytes);
-    let _ = stringify!(linux_pids_sandbox_bytes);
-    let _ = stringify!(parse_smaps_rollup_pss_bytes);
-    let _ = stringify!(parse_proc_kib_field);
-    let _ = stringify!(macos_pids_rss_bytes);
-    let _ = stringify!(pids_rss_bytes);
-    let _ = stringify!(pids_sandbox_bytes);
 }
 
 #[test]

@@ -176,7 +176,5 @@ fn kiss_cov_malvin_name_contract_symbols() {
     let _ = stringify!(entrypoint_duplicate_name_via_binary);
     #[cfg(unix)]
     {
-        let _ = stringify!(assert_no_peer_name_lock);
-        let _ = stringify!(acquire_name);
     }
 }
