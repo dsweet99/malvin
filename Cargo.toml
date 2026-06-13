@@ -19,9 +19,6 @@ categories = ["development-tools"]
 incremental = true
 codegen-units = 8
 
-[env]
-RUST_TEST_THREADS = "8"
-
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }

@@ -2,10 +2,13 @@
   - The user request may override none or some of the constraints below.
 - Write LaTeX source to `{{ explain_tex_path }}` and compile it to `{{ explain_pdf_path }}`.
 - Use complete sentences.
-- Keep it short: 1–2 pages.
-- Include a tl;dr at the top with 2-4 bullets, each a short phrase or sentence of up to 7 words.
+- Make it 1–2 pages long.
+- Include a tl;dr at the top with 2-4 bullets, each a short phrase containing one complete thought
 - After the tl;dr, write a brief summary.
-- Assume the reader has not and will not read the underlying code.
+- Write connected exposition, not a fact sheet. Each section should read like a short technical blog post: one main idea per paragraph, with transitions that explain why you’re moving on. Prefer a few linked paragraphs over lists of standalone sentences, semicolon-separated fact dumps, or stacks of parenthetical abbreviations. If you must cut for length, drop facts rather than compressing many into telegraphic fragments.
+- Follow one narrative thread per section. Open with what the reader should understand next (the problem, the invariant, or the design choice), then explain mechanism, then tradeoffs or deviations. End paragraphs with a bridge to what follows when the connection isn’t obvious. Avoid cataloging features in arbitrary order.
+- Assume the reader has not and will not read the underlying code. The reader is likely not interested in names of variables, functions, etc. but
+   rather in how things work algorithmically, mathematically, etc.
 - Speculate internally about the reader's potential state of mind while reading, but do not write about it. Do not tell the reader they will "often confuse this or that" or that something is "obvious". Assume the reader is intelligent and interested in what you have to tell them.
 - Use equations where appropriate, where they make it easier to convey a point precisely.
 - You may use brief algobox/pseudocode.
@@ -16,3 +19,9 @@
 - Get figures, equations, etc to fit inside their hboxes.
 - Get rid of all TeX warnings
 - Make the document visually pleasing.
+- Good title:
+  - A good academic or technical title must be informative and concise.
+  - 3 Core Rules
+   - Be Specific: Keep it to 10–12 words. Cut filler like "A study of."
+   - Avoid heavy jargon.
+   - Match Guidelines: Follow journal rules. Avoid puns, jokes, and over-promising conclusions.

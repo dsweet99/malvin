@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::log_gc_config::read_u64;
+use crate::malvin_config_file::read_u64;
 
 const GIB: u64 = 1024 * 1024 * 1024;
 const DEFAULT_CAP_GB: u64 = 4;

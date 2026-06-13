@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::malvin_config_file::read_u64;
+
 const DEFAULT_MAX_AGE_DAYS: u64 = 90;
 const DEFAULT_MAX_BYTES: &str = "2GiB";
 
@@ -37,10 +39,6 @@ pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
         max_age_days,
         max_bytes,
     })
-}
-
-pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
-    crate::malvin_config_file::read_u64(value)
 }
 
 pub(crate) fn parse_max_bytes_value(value: &toml::Value) -> Result<Option<u64>, String> {
@@ -82,3 +80,7 @@ pub(crate) fn split_byte_size(raw: &str) -> Option<(&str, u64)> {
     }
     None
 }
+
+#[cfg(test)]
+#[path = "log_gc_config_tests.rs"]
+mod log_gc_config_tests;

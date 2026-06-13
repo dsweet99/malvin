@@ -115,47 +115,5 @@ fn push_log_field(buf: &mut String, name: &str, value: &str) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use tracing::Level;
-
-    #[test]
-    fn init_tracing_installs_layer() {
-        init_tracing();
-        crate::output::clear_captured_stderr_lines();
-        tracing::info!(target: "malvin::tracing_init_test", "init-smoke");
-        let lines = crate::output::take_captured_stderr_lines();
-        assert!(lines.iter().any(|l| l.contains("init-smoke")));
-    }
-
-    #[test]
-    fn install_malvin_tracing_direct_call_for_kiss() {
-        install_malvin_tracing();
-    }
-
-    #[test]
-    fn malvin_log_accepts_tracing_level_filters_debug() {
-        assert!(malvin_log_accepts_tracing_level(Level::INFO));
-        assert!(!malvin_log_accepts_tracing_level(Level::DEBUG));
-    }
-
-    #[test]
-    fn kiss_cov_tracing_subscriber_and_visitor() {
-        use tracing::field::Visit;
-        use tracing::Subscriber;
-        let _ = emit_malvin_tracing_log;
-        let _ = process_malvin_tracing_event;
-        assert_eq!(format_debug_tracing_field("message", &"x"), "x");
-        assert_eq!(format_debug_tracing_field("k", &"val"), "\"val\"");
-        assert_eq!(strip_debug_string_quotes("\"q\""), "q");
-        let mut buf = String::new();
-        push_log_field(&mut buf, "k", "v");
-        assert!(buf.contains('v'));
-        let _ = <MalvinTracingSubscriber as Subscriber>::event;
-        let _ = <MalvinTracingSubscriber as Subscriber>::enabled;
-        let _ = <LogFieldVisitor as Visit>::record_str;
-        let _ = <LogFieldVisitor as Visit>::record_debug;
-        let visitor = LogFieldVisitor(&mut buf);
-        let _: Option<LogFieldVisitor<'_>> = Some(visitor);
-    }
-}
+#[path = "tracing_init_tests.rs"]
+mod tracing_init_tests;
