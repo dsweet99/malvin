@@ -1,4 +1,5 @@
-- Explain the topic in `{{ explain_request }}`.
+- Explain the topic in the user request: `{{ explain_request }}`.
+  - The user request may override none or some of the constraints below.
 - Write LaTeX source to `{{ explain_tex_path }}` and compile it to `{{ explain_pdf_path }}`.
 - Use complete sentences.
 - Keep it short: 1–2 pages.
