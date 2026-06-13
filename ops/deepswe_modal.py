@@ -807,6 +807,13 @@ def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
     return modal_cidr_allowlist(sorted({cidr for group in cidr_lists for cidr in group}))
 
 
+def union_optional_probe_cidrs(cidrs: list[str], probe: list[str]) -> list[str]:
+    """Union probe CIDRs when the probe returned at least one IPv4 entry."""
+    if not probe:
+        return cidrs
+    return union_ipv4_cidrs(cidrs, modal_cidr_allowlist(probe))
+
+
 def compress_ipv4_cidrs(
     cidrs: list[str],
     *,
@@ -911,12 +918,115 @@ def host_cidrs_not_covered_by_allowlist(
     return uncovered
 
 
+def _run_allowlist_dns_fixpoint(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    max_rounds: int,
+) -> list[str]:
+    """Resolve Cursor API hostnames from inside an allowlist-seeded Modal sandbox."""
+    for _ in range(max_rounds):
+        before = len(cidrs)
+        cidrs = union_optional_probe_cidrs(
+            cidrs,
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            ),
+        )
+        if len(cidrs) == before:
+            break
+        if allowlist_near_modal_cap(cidrs):
+            break
+    return cidrs
+
+
+def _expand_allowlist_for_https(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    max_rounds: int = 5,
+    fail_on_critical: bool = True,
+) -> tuple[list[str], int, int]:
+    """Expand CIDRs until critical Cursor API hosts pass HTTPS under the allowlist."""
+    https_validation_added = 0
+    allowlist_agent_peer_added = 0
+    for _ in range(max_rounds):
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if not critical_failed:
+            if failed_hosts:
+                click.echo(
+                    "Allowlist HTTPS validation: non-critical host(s) unreachable "
+                    f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                    f"{'...' if len(failed_hosts) > 5 else ''}); continuing",
+                    err=True,
+                )
+            break
+        before = len(cidrs)
+        extra_ips = validation.get("extra_ips", [])
+        cidrs = union_ipv4_cidrs(
+            cidrs, [f"{ip}/32" for ip in extra_ips if isinstance(ip, str)]
+        )
+        try:
+            cidrs = union_optional_probe_cidrs(
+                cidrs,
+                resolve_cursor_api_cidrs_under_allowlist_peers(
+                    compress_ipv4_cidrs(cidrs), timeout=timeout
+                ),
+            )
+        except click.ClickException as exc:
+            click.echo(f"HTTPS validation peer probe skipped: {exc}", err=True)
+        cidrs = union_optional_probe_cidrs(
+            cidrs,
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            ),
+        )
+        https_validation_added += len(cidrs) - before
+        click.echo(
+            f"Allowlist HTTPS validation: {len(failed_hosts)} host(s) failed "
+            f"({', '.join(str(h) for h in failed_hosts[:3])}"
+            f"{'...' if len(failed_hosts) > 3 else ''}); "
+            f"added {len(cidrs) - before} CIDR(s)",
+            err=True,
+        )
+        if len(cidrs) == before:
+            break
+        if allowlist_near_modal_cap(cidrs):
+            break
+        post_round, added = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=1, label="HTTPS-round agent peer"
+        )
+        cidrs = post_round
+        allowlist_agent_peer_added += added
+    else:
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if critical_failed and fail_on_critical:
+            raise click.ClickException(
+                "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+                f"validation rounds: {', '.join(str(critical_failed))}"
+            )
+        if failed_hosts:
+            click.echo(
+                "Allowlist HTTPS validation: non-critical host(s) still unreachable "
+                f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
+                err=True,
+            )
+    return cidrs, https_validation_added, allowlist_agent_peer_added
+
+
 def refresh_cached_allowlist(
     cached: list[str],
     *,
     timeout: int,
 ) -> list[str]:
-    """Merge fresh host DNS and agent-peer rounds into a cached allowlist."""
+    """Merge fresh host DNS, allowlist fixpoint, HTTPS validation, and agent peers."""
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
     if uncovered:
@@ -925,8 +1035,13 @@ def refresh_cached_allowlist(
             err=True,
         )
     cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
+    if uncovered:
+        cidrs = _run_allowlist_dns_fixpoint(cidrs, timeout=timeout, max_rounds=3)
     cidrs, added = _merge_allowlist_agent_peers(
         cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
+    )
+    cidrs, _, _ = _expand_allowlist_for_https(
+        cidrs, timeout=timeout, max_rounds=3, fail_on_critical=True
     )
     # Match cold-build finalize: streaming peers differ from TLS and are not always
     # observed in the first cached refresh round.
@@ -934,6 +1049,16 @@ def refresh_cached_allowlist(
         cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
     )
     added += post_added
+    seed = compress_ipv4_cidrs(cidrs)
+    final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+    critical_failed = critical_cursor_hosts_failed(
+        final_validation.get("failed_hosts", [])
+    )
+    if critical_failed:
+        raise click.ClickException(
+            "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+            f"cached refresh: {', '.join(str(h) for h in critical_failed)}"
+        )
     refreshed = compress_ipv4_cidrs(cidrs)
     if refreshed != cached or added:
         write_cursor_api_allowlist_cache(refreshed)
@@ -955,14 +1080,16 @@ for host in hosts:
         infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
     except socket.gaierror:
         continue
+    pinned: list[str] = []
     for info in infos:
         ip = info[4][0]
         if ":" in ip:
             continue
         addr = ipaddress.ip_address(ip)
-        if any(addr in net for net in nets):
-            lines.append(f"{ip} {host}")
-            break
+        if any(addr in net for net in nets) and ip not in pinned:
+            pinned.append(ip)
+    for ip in pinned:
+        lines.append(f"{ip} {host}")
 if lines:
     with open("/etc/hosts", "a", encoding="utf-8") as handle:
         handle.write("\\n# malvin cursor-api pin\\n")
@@ -1087,75 +1214,10 @@ def resolve_agent_sandbox_cidrs(
     except click.ClickException as exc:
         click.echo(f"Allowlist TLS peer probe skipped: {exc}", err=True)
     allowlist_agent_peer_added = 0
-    https_validation_added = 0
-    for _ in range(5):
-        seed = compress_ipv4_cidrs(cidrs)
-        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-        failed_hosts = validation.get("failed_hosts", [])
-        critical_failed = critical_cursor_hosts_failed(failed_hosts)
-        if not critical_failed:
-            if failed_hosts:
-                click.echo(
-                    "Allowlist HTTPS validation: non-critical host(s) unreachable "
-                    f"({', '.join(str(h) for h in failed_hosts[:5])}"
-                    f"{'...' if len(failed_hosts) > 5 else ''}); continuing",
-                    err=True,
-                )
-            break
-        before = len(cidrs)
-        extra_ips = validation.get("extra_ips", [])
-        cidrs = union_ipv4_cidrs(cidrs, [f"{ip}/32" for ip in extra_ips if isinstance(ip, str)])
-        try:
-            peer_cidrs = modal_cidr_allowlist(
-                resolve_cursor_api_cidrs_under_allowlist_peers(
-                    compress_ipv4_cidrs(cidrs), timeout=timeout
-                )
-            )
-            cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
-        except click.ClickException as exc:
-            click.echo(f"HTTPS validation peer probe skipped: {exc}", err=True)
-        allowlist_dns = modal_cidr_allowlist(
-            resolve_cursor_api_cidrs_under_allowlist(
-                compress_ipv4_cidrs(cidrs), timeout=timeout
-            )
-        )
-        cidrs = union_ipv4_cidrs(cidrs, allowlist_dns)
-        https_validation_added += len(cidrs) - before
-        click.echo(
-            f"Allowlist HTTPS validation: {len(failed_hosts)} host(s) failed "
-            f"({', '.join(str(h) for h in failed_hosts[:3])}"
-            f"{'...' if len(failed_hosts) > 3 else ''}); "
-            f"added {len(cidrs) - before} CIDR(s)",
-            err=True,
-        )
-        if len(cidrs) == before:
-            break
-        if allowlist_near_modal_cap(cidrs):
-            break
-        post_round, added = _merge_allowlist_agent_peers(
-            cidrs, timeout=timeout, max_rounds=1, label="HTTPS-round agent peer"
-        )
-        cidrs = post_round
-        allowlist_agent_peer_added += added
-    else:
-        seed = compress_ipv4_cidrs(cidrs)
-        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-        failed_hosts = validation.get("failed_hosts", [])
-        critical_failed = [
-            host for host in failed_hosts if host in CRITICAL_CURSOR_API_HOSTS
-        ]
-        if critical_failed:
-            raise click.ClickException(
-                "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
-                f"validation rounds: {', '.join(str(h) for h in critical_failed)}"
-            )
-        if failed_hosts:
-            click.echo(
-                "Allowlist HTTPS validation: non-critical host(s) still unreachable "
-                f"({', '.join(str(h) for h in failed_hosts[:5])}"
-                f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
-                err=True,
-            )
+    cidrs, https_validation_added, https_agent_peers = _expand_allowlist_for_https(
+        cidrs, timeout=timeout, max_rounds=5, fail_on_critical=True
+    )
+    allowlist_agent_peer_added += https_agent_peers
     seed = compress_ipv4_cidrs(cidrs)
     # Always observe cursor-agent peers under the converged allowlist. Skipping
     # this when critical HTTPS hosts pass caused allowlist_agent_peers=+0 and
@@ -2029,16 +2091,27 @@ def _test_refresh_cached_allowlist_merges_host_dns() -> None:
         f"{__name__}.resolve_cursor_api_cidrs", return_value=["2.2.2.2/32"]
     ):
         with patch(
-            f"{__name__}._merge_allowlist_agent_peers",
-            side_effect=[
-                (["1.1.1.0/24", "2.2.2.2/32"], 0),
-                (["1.1.1.0/24", "2.2.2.2/32", "8.8.8.8/32"], 1),
-            ],
-        ) as mock_merge:
-            with patch(f"{__name__}.write_cursor_api_allowlist_cache") as mock_write:
-                refreshed = refresh_cached_allowlist(cached, timeout=60)
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._run_allowlist_dns_fixpoint",
+                side_effect=lambda cidrs, **_: cidrs,
+            ) as mock_fixpoint:
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=[
+                        (["1.1.1.0/24", "2.2.2.2/32"], 0),
+                        (["1.1.1.0/24", "2.2.2.2/32", "8.8.8.8/32"], 1),
+                    ],
+                ) as mock_merge:
+                    with patch(
+                        f"{__name__}.write_cursor_api_allowlist_cache"
+                    ) as mock_write:
+                        refreshed = refresh_cached_allowlist(cached, timeout=60)
     assert "2.2.2.0/24" in refreshed
     assert "8.8.8.0/24" in refreshed
+    mock_fixpoint.assert_called_once()
     assert mock_merge.call_count == 2
     assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
     mock_write.assert_called_once()
@@ -2048,17 +2121,149 @@ def _test_refresh_cached_allowlist_runs_post_https_agent_peer() -> None:
     """Cached refresh must run the same post-HTTPS agent peer merge as cold build."""
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._merge_allowlist_agent_peers",
+                side_effect=[
+                    (["1.1.1.0/24"], 0),
+                    (["1.1.1.0/24", "9.9.9.9/32"], 1),
+                ],
+            ) as mock_merge:
+                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                    refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+    assert mock_merge.call_count == 2
+    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "9.9.9.0/24" in refreshed
+
+
+def _test_refresh_cached_allowlist_expands_for_https() -> None:
+    """Cached refresh must run HTTPS validation like the cold-build path."""
+    with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+        with patch(
             f"{__name__}._merge_allowlist_agent_peers",
             side_effect=[
                 (["1.1.1.0/24"], 0),
-                (["1.1.1.0/24", "9.9.9.9/32"], 1),
+                (["1.1.1.0/24", "5.5.5.5/32"], 0),
             ],
-        ) as mock_merge:
-            with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
-                refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
-    assert mock_merge.call_count == 2
-    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
-    assert "9.9.9.9/32" in refreshed
+        ):
+            with patch(
+                f"{__name__}._expand_allowlist_for_https",
+                return_value=(["1.1.1.0/24", "5.5.5.5/32"], 1, 0),
+            ) as mock_expand:
+                with patch(
+                    f"{__name__}.validate_cursor_https_under_allowlist",
+                    return_value={"failed_hosts": [], "extra_ips": []},
+                ):
+                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                        refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+    mock_expand.assert_called_once()
+    assert "5.5.5.0/24" in refreshed
+
+
+def _test_expand_allowlist_for_https_merges_extra_ips() -> None:
+    validation_calls = {"count": 0}
+
+    def fake_validate(_seed: list[str], *, timeout: int) -> dict[str, list[str]]:
+        validation_calls["count"] += 1
+        if validation_calls["count"] == 1:
+            return {
+                "failed_hosts": ["api2.cursor.sh"],
+                "extra_ips": ["5.5.5.5"],
+            }
+        return {"failed_hosts": [], "extra_ips": []}
+
+    with patch(
+        f"{__name__}.validate_cursor_https_under_allowlist",
+        side_effect=fake_validate,
+    ):
+        with patch(
+            f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+            return_value=[],
+        ):
+            with patch(
+                f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+                return_value=[],
+            ):
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=lambda cidrs, **_: (cidrs, 0),
+                ):
+                    cidrs, added, _ = _expand_allowlist_for_https(
+                        ["1.1.1.1/32"], timeout=60, max_rounds=2
+                    )
+    assert added == 1
+    assert "5.5.5.5/32" in cidrs
+
+
+def _test_run_allowlist_dns_fixpoint_stops_at_fixpoint() -> None:
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+        side_effect=[["2.2.2.2/32"], ["2.2.2.2/32"]],
+    ) as mock_probe:
+        cidrs = _run_allowlist_dns_fixpoint(["1.1.1.1/32"], timeout=60, max_rounds=3)
+    assert mock_probe.call_count == 2
+    assert "2.2.2.2/32" in cidrs
+
+
+def _test_pin_cursor_api_hosts_script_pins_all_allowed_ips() -> None:
+    import subprocess
+
+    with tempfile.TemporaryDirectory() as tmp:
+        hosts_path = Path(tmp) / "hosts"
+        hosts_path.write_text("", encoding="utf-8")
+        payload = json.dumps({"cidrs": ["1.2.3.0/24"], "hosts": ["example.test"]})
+        runner = f"""
+import json
+import ipaddress
+import socket
+import sys
+
+payload = json.loads(sys.argv[1])
+hosts = payload["hosts"]
+nets = [ipaddress.ip_network(c, strict=False) for c in payload["cidrs"]]
+
+def fake_getaddrinfo(host, port, *args, **kwargs):
+    return [
+        (None, None, None, None, ("1.2.3.4", port)),
+        (None, None, None, None, ("1.2.3.5", port)),
+        (None, None, None, None, ("9.9.9.9", port)),
+    ]
+
+socket.getaddrinfo = fake_getaddrinfo
+lines = []
+for host in hosts:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        continue
+    pinned = []
+    for info in infos:
+        ip = info[4][0]
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if any(addr in net for net in nets) and ip not in pinned:
+            pinned.append(ip)
+    for ip in pinned:
+        lines.append(f"{{ip}} {{host}}")
+if lines:
+    with open({str(hosts_path)!r}, "a", encoding="utf-8") as handle:
+        handle.write("\\n# malvin cursor-api pin\\n")
+        handle.write("\\n".join(lines))
+        handle.write("\\n")
+"""
+        subprocess.run(
+            [sys.executable, "-c", runner, payload],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        pinned = hosts_path.read_text(encoding="utf-8")
+    assert "1.2.3.4 example.test" in pinned
+    assert "1.2.3.5 example.test" in pinned
+    assert "9.9.9.9 example.test" not in pinned
 
 
 def _test_pin_cursor_api_hosts_in_sandbox() -> None:
@@ -2550,6 +2755,10 @@ def run_unit_tests() -> None:
     _test_host_cidrs_not_covered_by_allowlist()
     _test_refresh_cached_allowlist_merges_host_dns()
     _test_refresh_cached_allowlist_runs_post_https_agent_peer()
+    _test_refresh_cached_allowlist_expands_for_https()
+    _test_expand_allowlist_for_https_merges_extra_ips()
+    _test_run_allowlist_dns_fixpoint_stops_at_fixpoint()
+    _test_pin_cursor_api_hosts_script_pins_all_allowed_ips()
     _test_pin_cursor_api_hosts_in_sandbox()
     _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()
