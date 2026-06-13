@@ -46,13 +46,15 @@ fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
 }
 
 #[cfg(unix)]
-fn seed_kpop_multiturn_mock_workspace(workspace: &std::path::Path) -> std::path::PathBuf {
+fn seed_kpop_multiturn_mock_workspace(
+    workspace: &std::path::Path,
+) -> (std::path::PathBuf, crate::test_utils::SavedEnvVars) {
     use crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
 
     std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
     let mock = workspace.join("mock-agent");
-    let _env = install_mock_agent_env(workspace, &mock);
-    mock
+    let env = install_mock_agent_env(workspace, &mock);
+    (mock, env)
 }
 
 #[cfg(unix)]
@@ -66,7 +68,7 @@ async fn run_kpop_multiturn_mock_once(
     use crate::kpop_progression::KpopMultiturnState;
     use crate::KpopTurnPrompts;
 
-    let _mock = seed_kpop_multiturn_mock_workspace(workspace);
+    let (_mock, _env) = seed_kpop_multiturn_mock_workspace(workspace);
     let (kpop, shared, workflow) = test_kpop_args(1);
     let (store, mut client, prepared) =
         kpop_boot_store_client_prepared(&kpop, &shared, workflow).map_err(|e| e.to_string())?;
