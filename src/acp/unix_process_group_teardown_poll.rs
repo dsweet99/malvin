@@ -111,21 +111,17 @@ async fn teardown_agent_sandbox_slow_async(
     baseline_opt: Option<&HashSet<u32>>,
     baseline_for_alive: &HashSet<u32>,
 ) {
-    let mut state = TeardownPollState::default();
-    let start = std::time::Instant::now();
-    while crate::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive)
-        && start.elapsed() < teardown_total_cap()
-    {
-        teardown_poll_tick(process_group_id, baseline_opt, &mut state, false);
-        if !crate::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
-            break;
-        }
-        tokio::time::sleep(teardown_poll_interval()).await;
-        state.polls = state.polls.saturating_add(1);
-    }
-    if crate::malvin_sandbox::sandbox_still_alive(process_group_id, baseline_for_alive) {
-        teardown_poll_tick(process_group_id, baseline_opt, &mut state, true);
-    }
+    let baseline_for_alive = baseline_for_alive.clone();
+    let baseline_owned = baseline_opt.cloned();
+    tokio::task::spawn_blocking(move || {
+        teardown_agent_sandbox_slow_blocking(
+            process_group_id,
+            baseline_owned.as_ref(),
+            &baseline_for_alive,
+        );
+    })
+    .await
+    .ok();
 }
 
 pub(crate) async fn teardown_agent_sandbox_async(

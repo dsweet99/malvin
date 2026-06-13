@@ -21,8 +21,9 @@ fn explain_allocates_explain_1_when_default_outputs_exist() {
     with_cwd(tmp.path(), || {
         let (_text, outputs) =
             explain_preflight("topic", EXPLAIN_TEX_BASENAME).expect("allocates sibling");
-        assert_eq!(outputs.tex_path, tmp.path().join("explain_1.tex"));
-        assert_eq!(outputs.pdf_path, tmp.path().join("explain_1.pdf"));
+        let cwd = std::env::current_dir().expect("cwd");
+        assert_eq!(outputs.tex_path, cwd.join("explain_1.tex"));
+        assert_eq!(outputs.pdf_path, cwd.join("explain_1.pdf"));
     });
 }
 
@@ -33,8 +34,9 @@ fn explain_allocates_explain_1_when_only_default_pdf_exists_without_tex() {
     with_cwd(tmp.path(), || {
         let (_text, outputs) =
             explain_preflight("topic", EXPLAIN_TEX_BASENAME).expect("allocates sibling");
-        assert_eq!(outputs.tex_path, tmp.path().join("explain_1.tex"));
-        assert_eq!(outputs.pdf_path, tmp.path().join("explain_1.pdf"));
+        let cwd = std::env::current_dir().expect("cwd");
+        assert_eq!(outputs.tex_path, cwd.join("explain_1.tex"));
+        assert_eq!(outputs.pdf_path, cwd.join("explain_1.pdf"));
     });
 }
 
@@ -48,8 +50,9 @@ fn explain_allocates_sibling_when_nested_work_dir_default_output_exists() {
     with_cwd(tmp.path(), || {
         let (_text, outputs) =
             explain_preflight("notes/topic.md", EXPLAIN_TEX_BASENAME).expect("allocates sibling");
-        assert_eq!(outputs.tex_path, notes.join("explain_1.tex"));
-        assert_eq!(outputs.pdf_path, notes.join("explain_1.pdf"));
+        let cwd = std::env::current_dir().expect("cwd");
+        assert_eq!(outputs.tex_path, cwd.join("notes/explain_1.tex"));
+        assert_eq!(outputs.pdf_path, cwd.join("notes/explain_1.pdf"));
     });
 }
 

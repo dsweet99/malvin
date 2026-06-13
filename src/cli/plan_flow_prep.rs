@@ -85,8 +85,9 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
+        let cwd = std::env::current_dir().expect("cwd");
         let got = resolve_plan_source_path(&plan_args("Add caching layer", "plan.md")).expect("resolve");
-        assert_eq!(got, tmp.path().join("plan.md"));
+        assert_eq!(got, cwd.join("plan.md"));
         assert_eq!(
             std::fs::read_to_string(&got).expect("read"),
             "Add caching layer"
@@ -100,9 +101,10 @@ mod tests {
         std::fs::write(tmp.path().join("plan.md"), "occupied\n").expect("write");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
+        let cwd = std::env::current_dir().expect("cwd");
         let got =
             resolve_plan_source_path(&plan_args("Ship widgets", "plan.md")).expect("resolve");
-        assert_eq!(got, tmp.path().join("plan_1.md"));
+        assert_eq!(got, cwd.join("plan_1.md"));
         assert_eq!(
             std::fs::read_to_string(&got).expect("read"),
             "Ship widgets"
@@ -115,12 +117,13 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
+        let cwd = std::env::current_dir().expect("cwd");
         let got = resolve_plan_source_path(&plan_args(
             "Custom plan body",
             "plans/feature.md",
         ))
         .expect("resolve");
-        assert_eq!(got, tmp.path().join("plans/feature.md"));
+        assert_eq!(got, cwd.join("plans/feature.md"));
         assert_eq!(
             std::fs::read_to_string(&got).expect("read"),
             "Custom plan body"

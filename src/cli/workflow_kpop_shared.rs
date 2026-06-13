@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
-use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
 use crate::cli::format_workspace_gate_failure;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
@@ -28,22 +27,6 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
         Err(e) => Err(e),
         Ok(v) => summarize.map(|()| v),
     }
-}
-
-pub(crate) fn gate_kpop_session_declared_solved(
-    artifacts: &RunArtifacts,
-    iterations: usize,
-) -> Result<bool, String> {
-    for i in 1..=iterations {
-        let exp = artifacts.gate_exp_log_path(i);
-        if exp.is_file() {
-            let text = read_exp_log_text(&exp)?;
-            if agent_declared_success(&text) {
-                return Ok(true);
-            }
-        }
-    }
-    Ok(false)
 }
 
 #[must_use]

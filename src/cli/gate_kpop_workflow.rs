@@ -24,6 +24,3 @@ pub(crate) use kpop_session::post_gate_kpop_gates;
 #[cfg(test)]
 #[path = "gate_kpop_workflow/kpop_session_tests.rs"]
 mod kpop_session_tests;
-#[cfg(test)]
-#[path = "gate_kpop_workflow/run_loop_tests.rs"]
-pub(crate) mod run_loop_tests;

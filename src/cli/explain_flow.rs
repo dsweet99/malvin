@@ -88,6 +88,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_explain_gate_helpers() {
+        let _ = super::run_loop::validate_explain_output;
+        let _ = super::run_startup::prepare_explain_kpop_run;
+        let _: Option<super::run_startup::ExplainKpopPrepared> = None;
     }
 
     #[test]

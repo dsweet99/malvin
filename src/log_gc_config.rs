@@ -40,11 +40,7 @@ pub(crate) fn parse_logs_gc_config(text: &str) -> Result<LogsGcConfig, String> {
 }
 
 pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
-    let v = value?;
-    if let Some(i) = v.as_integer() {
-        return u64::try_from(i).ok();
-    }
-    v.as_str()?.parse().ok()
+    crate::malvin_config_file::read_u64(value)
 }
 
 pub(crate) fn parse_max_bytes_value(value: &toml::Value) -> Result<Option<u64>, String> {

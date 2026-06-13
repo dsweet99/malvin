@@ -242,3 +242,7 @@ pub(crate) async fn run_gate_kpop_loop(
         );
     Ok((gates_ok, true, Some(run_timing), last_backups))
 }
+
+#[cfg(test)]
+#[path = "run_loop_tests.rs"]
+pub(crate) mod run_loop_tests;

@@ -26,7 +26,7 @@ fn explain_runs_kpop_when_gates_already_pass() {
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -64,7 +64,7 @@ fn explain_writes_custom_out_path() {
         mock: &mock,
         path_var: &path,
         request: "gate loop exit",
-        extra_args: &["--max-loops", "1", "--out-path", "docs/paper.tex"],
+        extra_args: &["--max-loops", "2", "--out-path", "docs/paper.tex"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -124,7 +124,7 @@ fn explain_allocates_sibling_when_default_outputs_exist() {
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -151,7 +151,7 @@ fn explain_fails_when_agent_solves_but_output_missing() {
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(!out.status.success(), "expected failure when output missing: {out:?}");
 }
@@ -171,7 +171,7 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
         mock: &mock,
         path_var: &path,
         request: "topic",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(!out.status.success(), "expected failure for empty pdf: {out:?}");
 }

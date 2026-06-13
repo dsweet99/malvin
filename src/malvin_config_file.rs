@@ -213,20 +213,24 @@ pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {
     value?.as_str().map(str::to_string)
 }
 
-pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
+fn parse_toml_integer(value: Option<&toml::Value>) -> Option<i64> {
     let v = value?;
     if let Some(i) = v.as_integer() {
-        return usize::try_from(i).ok();
+        return Some(i);
     }
     v.as_str()?.parse().ok()
 }
 
+pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
+    parse_toml_integer(value).and_then(|i| usize::try_from(i).ok())
+}
+
 pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {
-    let v = value?;
-    if let Some(i) = v.as_integer() {
-        return u32::try_from(i).ok();
-    }
-    v.as_str()?.parse().ok()
+    parse_toml_integer(value).and_then(|i| u32::try_from(i).ok())
+}
+
+pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
+    parse_toml_integer(value).and_then(|i| u64::try_from(i).ok())
 }
 
 #[cfg(test)]

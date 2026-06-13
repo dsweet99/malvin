@@ -2,6 +2,10 @@ use super::*;
 
 #[test]
 fn kiss_cov_entrypoint_command_wrappers() {
+    let _ = run_explain_command;
+    let _ = run_revise_command;
+    let _ = run_delight_then_plan;
+    let _ = run_explain_then_revise;
 }
 
 #[test]

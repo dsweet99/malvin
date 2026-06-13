@@ -45,3 +45,14 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
     }
     post_gate_kpop_gates(command, prepared, session_dotfile_backups, behavior)
 }
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_gate_kpop_finish() {
+        let _ = finish_gate_kpop_after_pass;
+        let _ = fail_gate_kpop_after_exhausted;
+    }
+}

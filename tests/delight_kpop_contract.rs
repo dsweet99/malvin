@@ -25,7 +25,7 @@ fn delight_runs_kpop_when_gates_already_pass() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -65,7 +65,7 @@ fn delight_allocates_sibling_when_default_plan_preexists() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -127,7 +127,7 @@ fn delight_fails_when_agent_solves_but_output_missing() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(!out.status.success(), "expected failure when output missing: {out:?}");
 }
@@ -146,7 +146,7 @@ fn delight_writes_custom_out_path() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1", "--out-path", "plans/new.md"],
+        extra_args: &["--max-loops", "2", "--out-path", "plans/new.md"],
     });
     assert!(out.status.success(), "expected success: {out:?}");
     let plan = std::fs::read_to_string(workspace.join("plans/new.md")).expect("read plan");
@@ -175,7 +175,7 @@ fn delight_kpop_fails_when_post_session_output_empty() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     assert!(!out.status.success(), "expected failure for empty output: {out:?}");
 }

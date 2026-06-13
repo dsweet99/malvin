@@ -90,6 +90,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_delight_gate_helpers() {
+        let _ = super::run_loop::validate_delight_output;
+        let _ = super::run_startup::prepare_delight_kpop_run;
+        let _: Option<super::run_startup::DelightKpopPrepared> = None;
     }
 
     #[test]

@@ -27,7 +27,7 @@ fn revise_runs_kpop_when_gates_already_pass() {
         mock: &mock,
         path_var: &path,
         doc_path: "doc.md",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "2"],
     });
     let combined = combined_cli_output(&out);
     assert!(

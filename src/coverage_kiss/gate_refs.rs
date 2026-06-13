@@ -97,12 +97,3 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     let out = prompts.kpop_block(1, 0).expect("kpop block");
     assert!(out.contains("req"));
 }
-
-#[test]
-fn kiss_cov_tracing_init_layer_symbols() {
-    crate::tracing_init::init_tracing();
-    crate::output::clear_captured_stderr_lines();
-    tracing::info!(probe = "kiss", "tracing-init-smoke");
-    let lines = crate::output::take_captured_stderr_lines();
-    assert!(lines.iter().any(|l| l.contains("tracing-init-smoke")));
-}

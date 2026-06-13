@@ -4,19 +4,10 @@ use crate::cli::gate_kpop_workflow::{
     GateKpopLoopParams, GateLoopBehavior,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
-use crate::cli::workflow_kpop_shared::{gate_kpop_loop_iterations, gate_kpop_session_declared_solved};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 
 use super::run_startup::{prepare_revise_kpop_run, ReviseKpopPrepared};
 use super::{effective_revise_max_loops, ReviseArgs};
-
-struct ReviseFinishInput<'a> {
-    shared: &'a SharedOpts,
-    prepared: &'a ReviseKpopPrepared,
-    agent_ran: bool,
-    run_timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
-    iterations: usize,
-}
 
 pub(crate) fn validate_revise_output(resolved_doc_path: &std::path::Path) -> Result<(), String> {
     let meta = std::fs::metadata(resolved_doc_path).map_err(|_| {
@@ -34,37 +25,43 @@ pub(crate) fn validate_revise_output(resolved_doc_path: &std::path::Path) -> Res
     Ok(())
 }
 
-fn finish_revise_after_session(input: &ReviseFinishInput<'_>) -> Result<(), String> {
-    if !gate_kpop_session_declared_solved(&input.prepared.inner.artifacts, input.iterations)? {
-        return Err(
-            "malvin revise: agent did not declare KPOP_SOLVED in the session exp log".to_string(),
-        );
-    }
-    validate_revise_output(&input.prepared.resolved_doc_path)?;
-    finish_gate_kpop_after_pass(
-        input.shared,
-        &input.prepared.inner,
-        input.agent_ran,
-        input.run_timing,
-    )
+struct ReviseGateFinish<'a> {
+    shared: &'a SharedOpts,
+    prepared: &'a ReviseKpopPrepared,
+    agent_ran: bool,
+    gates_ok: bool,
+    run_timing: Option<&'a std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
+    last_backups: &'a crate::artifacts::SessionDotfileBackups,
+    summarize_res: Result<(), String>,
 }
 
-fn resolve_revise_gate_outcome(
-    input: &ReviseFinishInput<'_>,
-    last_backups: &crate::artifacts::SessionDotfileBackups,
-) -> Result<(), String> {
-    finish_revise_after_session(input).or_else(|e| {
-        if input.agent_ran {
+fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
+    let gate_r = if finish.gates_ok {
+        validate_revise_output(&finish.prepared.resolved_doc_path)?;
+        finish_gate_kpop_after_pass(
+            finish.shared,
+            &finish.prepared.inner,
+            finish.agent_ran,
+            finish.run_timing,
+        )
+    } else if finish.agent_ran {
+        if let Err(e) = validate_revise_output(&finish.prepared.resolved_doc_path) {
             Err(e)
         } else {
-            fail_gate_kpop_after_exhausted(
-                "malvin revise",
-                &input.prepared.inner,
-                last_backups,
-                GateLoopBehavior::REVISE,
+            Err(
+                "malvin revise: gate loop did not exit on two consecutive ## KPOP_SOLVED markers"
+                    .to_string(),
             )
         }
-    })
+    } else {
+        fail_gate_kpop_after_exhausted(
+            "malvin revise",
+            &finish.prepared.inner,
+            finish.last_backups,
+            GateLoopBehavior::REVISE,
+        )
+    };
+    crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
 }
 
 pub async fn run_revise(
@@ -86,8 +83,7 @@ pub async fn run_revise(
 
     let max_loops = effective_revise_max_loops(revise.max_loops);
     let max_hypotheses = revise.max_hypotheses.max(1);
-    let iterations = gate_kpop_loop_iterations(max_loops);
-    let (_gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
         command: "revise",
         shared,
         workflow,
@@ -110,15 +106,15 @@ pub async fn run_revise(
     )
     .await;
 
-    let finish_input = ReviseFinishInput {
+    let r = revise_gate_outcome(ReviseGateFinish {
         shared,
         prepared: &prepared,
         agent_ran,
+        gates_ok,
         run_timing: run_timing.as_ref(),
-        iterations,
-    };
-    let gate_r = resolve_revise_gate_outcome(&finish_input, &last_backups);
-    let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
+        last_backups: &last_backups,
+        summarize_res,
+    });
 
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();
@@ -158,17 +154,53 @@ mod tests {
     }
 
     #[test]
-    fn revise_session_succeeded_reads_marker() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
-        let exp = artifacts.gate_exp_log_path(1);
-        std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir");
-        std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write");
-        assert!(gate_kpop_session_declared_solved(&artifacts, 1).expect("read"));
+    fn revise_run_loop_entry_is_covered() {
+        let _ = run_revise;
     }
 
     #[test]
-    fn revise_run_loop_entry_is_covered() {
-        let _ = run_revise;
+    fn revise_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let doc = tmp.path().join("doc.md");
+        std::fs::write(&doc, "# Revised\n").expect("write");
+        let store = crate::prompts::PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
+        let prepared = ReviseKpopPrepared {
+            inner: crate::cli::gate_kpop_workflow::GateKpopPrepared {
+                artifacts,
+                context: std::collections::HashMap::new(),
+                request_text: "req".into(),
+                startup_emit_request: "req".into(),
+                store,
+                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            },
+            resolved_doc_path: doc,
+        };
+        let shared = crate::cli::SharedOpts {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tenacious: false,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            max_acp_retries: 1,
+            doc: false,
+            name: None,
+            mini: false,
+            mini_max_bash_turns: 32,
+        };
+        let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
+        let err = revise_gate_outcome(ReviseGateFinish {
+            shared: &shared,
+            prepared: &prepared,
+            agent_ran: true,
+            gates_ok: false,
+            run_timing: None,
+            last_backups: &backups,
+            summarize_res: Ok(()),
+        })
+        .expect_err("needs two consecutive solved markers");
+        assert!(err.contains("two consecutive"));
     }
 }

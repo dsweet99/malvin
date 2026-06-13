@@ -10,7 +10,7 @@ Author a **user-delighting feature plan** via the KPop gate loop scoped by `deli
 | Output | Workspace file at `--out-path` (default: `plan.md`) |
 | Loop | Full gate-kpop loop (`GateLoopBehavior::DELIGHT`) |
 | Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
-| Exit policy | One `## KPOP_SOLVED` in the session exp log; workspace gates need not pass |
+| Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
 | Requires | `kiss` on PATH (same preflight as `code` / `tidy`) |
 
 ## Intention
@@ -64,7 +64,7 @@ See `malvin --doc`.
 All of the following must hold:
 
 1. Preflight passed (default `plan.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
-2. The agent declared `## KPOP_SOLVED` in a session exp log.
+2. Two consecutive outer gate-loop iterations each declared `## KPOP_SOLVED` in their own exp log.
 3. After the session, `--out-path` is a regular file with size &gt; 0.
 4. The decoupled `malvin plan` workflow runs automatically on the same `--out-path` (overwrites it with the revised implementation plan from Prompt 3).
 

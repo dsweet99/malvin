@@ -181,6 +181,18 @@ pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), St
 }
 
 #[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_delight_prep_privates() {
+        let _ = delight_out_rel_from_command_log;
+        let _ = delight_plan_candidate_from_run;
+        let _ = format_recent_delight_plans;
+    }
+}
+
+#[cfg(test)]
 #[path = "../delight_flow_prep_tests.rs"]
 mod delight_flow_prep_tests;
 

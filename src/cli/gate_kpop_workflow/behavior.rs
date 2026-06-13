@@ -37,19 +37,19 @@ impl GateLoopBehavior {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
-        exit: GateKpopExitPolicy::InitDiscovery,
+        exit: GateKpopExitPolicy::CodeTidy,
     };
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
-        exit: GateKpopExitPolicy::InitDiscovery,
+        exit: GateKpopExitPolicy::CodeTidy,
     };
     pub const REVISE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
-        exit: GateKpopExitPolicy::InitDiscovery,
+        exit: GateKpopExitPolicy::CodeTidy,
     };
 
     #[must_use]
@@ -113,28 +113,28 @@ mod tests {
 
     #[test]
     fn explain_behavior_matches_delight_exit_policy() {
-        assert_eq!(GateLoopBehavior::EXPLAIN.exit, GateKpopExitPolicy::InitDiscovery);
+        assert_eq!(GateLoopBehavior::EXPLAIN.exit, GateKpopExitPolicy::CodeTidy);
         assert_eq!(
             GateLoopBehavior::EXPLAIN.consecutive_kpop_solved_to_exit(),
             GateLoopBehavior::DELIGHT.consecutive_kpop_solved_to_exit(),
         );
-        assert!(!GateLoopBehavior::EXPLAIN.require_passing_gates_for_exit());
+        assert!(GateLoopBehavior::EXPLAIN.require_passing_gates_for_exit());
         const { assert!(GateLoopBehavior::EXPLAIN.skip_workspace_quality_gates); }
         const { assert!(GateLoopBehavior::DELIGHT.skip_workspace_quality_gates); }
     }
 
     #[test]
     fn revise_behavior_matches_explain_exit_policy() {
-        assert_eq!(GateLoopBehavior::REVISE.exit, GateKpopExitPolicy::InitDiscovery);
+        assert_eq!(GateLoopBehavior::REVISE.exit, GateKpopExitPolicy::CodeTidy);
         assert_eq!(
             GateLoopBehavior::REVISE.consecutive_kpop_solved_to_exit(),
             GateLoopBehavior::EXPLAIN.consecutive_kpop_solved_to_exit(),
         );
-        assert!(!GateLoopBehavior::REVISE.require_passing_gates_for_exit());
+        assert!(GateLoopBehavior::REVISE.require_passing_gates_for_exit());
     }
 
     #[test]
-    fn delight_behavior_always_runs_kpop_and_exits_on_one_solved() {
+    fn delight_behavior_always_runs_kpop_and_exits_on_two_consecutive_solved() {
         assert_eq!(
             GateLoopBehavior::DELIGHT.skip_kpop_on_initial_pass,
             GateLoopBehavior::CODE.skip_kpop_on_initial_pass,
@@ -143,8 +143,9 @@ mod tests {
             GateLoopBehavior::DELIGHT.skip_kpop_on_initial_pass,
             GateLoopBehavior::TIDY.skip_kpop_on_initial_pass,
         );
-        assert_eq!(GateLoopBehavior::DELIGHT.exit, GateKpopExitPolicy::InitDiscovery);
-        assert_eq!(
+        assert_eq!(GateLoopBehavior::DELIGHT.exit, GateKpopExitPolicy::CodeTidy);
+        assert_eq!(GateLoopBehavior::DELIGHT.consecutive_kpop_solved_to_exit(), 2);
+        assert_ne!(
             GateLoopBehavior::DELIGHT.consecutive_kpop_solved_to_exit(),
             GateLoopBehavior::INIT.consecutive_kpop_solved_to_exit(),
         );

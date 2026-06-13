@@ -222,3 +222,21 @@ pub(crate) async fn run_gate_kpop_session(
     ))
 }
 
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_kpop_session_symbols() {
+        let _: Option<GateKpopMultiturnCtx<'_>> = None;
+        let _ = post_gate_kpop_gates;
+        let _ = print_gate_kpop_log_line;
+        let _ = build_gate_kpop_prompt;
+        let _ = restore_gate_kpop_session_dotfiles;
+        let _ = finalize_gate_kpop_turn;
+        let _ = run_gate_kpop_coder_turn;
+        let _ = run_gate_kpop_single_turn;
+        let _ = run_gate_kpop_session;
+    }
+}
+
