@@ -21,10 +21,11 @@ pub fn run_repo_workspace_gates(
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
+    let gate_result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
         .map_err(repo_gate_failure_to_string);
-    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
-    result
+    let restore_result =
+        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
+    prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
 }
 
 /// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
@@ -39,10 +40,19 @@ pub fn run_repo_workspace_gates_no_kiss_clamp(
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
+    let gate_result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
         .map_err(repo_gate_failure_to_string);
-    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
-    result
+    let restore_result =
+        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
+    prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
+}
+
+fn prefer_gate_outcome_over_checks_restore(
+    gate_result: Result<(), String>,
+    restore_result: Result<(), String>,
+) -> Result<(), String> {
+    gate_result?;
+    restore_result
 }
 
 pub fn run_repo_workspace_gates_with_details(

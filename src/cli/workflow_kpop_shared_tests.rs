@@ -65,7 +65,11 @@ fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
     std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
-    assert!(err.contains("kiss"));
+    assert!(
+        crate::repo_checks::is_gate_failure_error(&err),
+        "gate failure must survive post-gate restore: {err}"
+    );
+    assert!(err.contains("kiss"), "expected kiss gate failure: {err}");
     let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
     assert!(
         log.contains("Running `kiss check`"),
@@ -185,4 +189,25 @@ fn render_kpop_program_request_includes_scope() {
     ctx.insert("plan_path".to_string(), "./plan.md".into());
     let text = render_kpop_program_request(&store, "code_constraints.md", &ctx, &artifacts).expect("render");
     assert!(text.contains("quality_gates"));
+}
+
+#[test]
+fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
+    let gate = Err("__MALVIN_GATE_FAILURE__:`kiss check` failed (exit 1)".into());
+    let restore = Err("gitignore restore: Is a directory".into());
+    let reconcile = Ok(());
+    let err = prefer_gate_outcome_over_post_gate_cleanup(gate, restore, reconcile).unwrap_err();
+    assert!(err.contains("kiss check"));
+    assert!(!err.contains("gitignore restore"));
+}
+
+#[test]
+fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
+    let err = prefer_gate_outcome_over_post_gate_cleanup(
+        Ok(()),
+        Err("malvin_checks restore: boom".into()),
+        Ok(()),
+    )
+    .unwrap_err();
+    assert!(err.contains("malvin_checks restore"));
 }

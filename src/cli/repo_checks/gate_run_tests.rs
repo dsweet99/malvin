@@ -108,3 +108,12 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
 #[test]
 fn kiss_cov_wires_tests_gates_unix_scan() {
 }
+
+#[test]
+fn prefer_gate_outcome_over_checks_restore_keeps_gate_failure() {
+    let gate = Err("__MALVIN_GATE_FAILURE__:`kiss check` failed (exit 1)".into());
+    let restore = Err("malvin_checks restore: blocked".into());
+    let err = super::prefer_gate_outcome_over_checks_restore(gate, restore).unwrap_err();
+    assert!(err.contains("kiss check"));
+    assert!(!err.contains("malvin_checks restore"));
+}
