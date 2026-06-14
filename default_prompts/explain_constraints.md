@@ -24,6 +24,7 @@
   - Ensure that a cited reference supports the claim to which the citation is attached.
 - You might want to use tikz (if available) to create a diagram for a figure.
 - Get figures, equations, etc to fit inside their hboxes.
+- Make figures vector art (.pdf or .eps) not rasterized bitmaps.
 - Get rid of all TeX warnings
 - Make the document visually pleasing.
 - Good title:
