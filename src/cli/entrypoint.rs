@@ -31,7 +31,6 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
-        Commands::Revise(_) => require_kiss_for_malvin("revise"),
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Kpop(_)
@@ -39,7 +38,8 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Models(_)
         | Commands::Plan(_)
         | Commands::Delight(_)
-        | Commands::Explain(_) => Ok(()),
+        | Commands::Explain(_)
+        | Commands::Revise(_) => Ok(()),
     }
 }
 

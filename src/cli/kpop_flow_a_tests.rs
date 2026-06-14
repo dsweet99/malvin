@@ -1,8 +1,8 @@
 #![allow(unused_imports)]
 
 use super::{
-    kpop_boot_store_client_prepared, kpop_run_acp_multiturn, run_kpop_short_id_lookup,
-    KpopAcpMultiturnCtx, KpopPrepared,
+    finish_kpop_prepared, kpop_boot_store_client_prepared, kpop_run_acp_multiturn,
+    prepare_kpop_artifacts, run_kpop_short_id_lookup, KpopAcpMultiturnCtx, KpopPrepared,
 };
 use crate::cli::KpopArgs;
 use crate::output::{format_who_tag_prefix, MALVIN_WHO};
@@ -26,6 +26,35 @@ fn seed_short_id_lookup_fixture(cwd: &std::path::Path) -> String {
     )
     .expect("stdout");
     rel
+}
+
+#[test]
+fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace() {
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join("deep/nested")).expect("mkdir");
+        std::fs::write(work.join("deep/.gitignore"), "nested\n").expect("nested gitignore");
+        std::fs::create_dir_all(work.join(".malvin")).expect("malvin dir");
+        std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+        let kpop = KpopArgs {
+            max_loops: 1,
+            max_hypotheses: 1,
+            tenacious: false,
+            request: Some("fast startup".into()),
+        };
+        let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
+        assert_eq!(early.text, "fast startup");
+        assert_eq!(
+            early.artifacts.work_dir.canonicalize().expect("work_dir"),
+            work.canonicalize().expect("work")
+        );
+        let prepared = finish_kpop_prepared(early).expect("prepared");
+        assert_eq!(prepared.text, "fast startup");
+        assert!(prepared.context.contains_key("quality_gates"));
+        assert!(matches!(
+            prepared.session_dotfile_backups.gitignore,
+            crate::session_dotfile_backup::GitignoreBackup::Missing
+        ));
+    });
 }
 
 #[test]

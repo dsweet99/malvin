@@ -5,14 +5,14 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::insert_formatted;
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 pub(crate) fn prepare_revise_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
     store
-        .validate_exists("kpop_program.md")
+        .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("revise_constraints.md")
@@ -49,7 +49,7 @@ pub(crate) fn revise_kpop_request(
     let workspace_root = artifacts.work_dir.as_path();
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "doc_path", resolved_doc_path, workspace_root);
-    render_kpop_program_request(store, "revise_constraints.md", &ctx, artifacts)
+    render_kpop_program_request_creative(store, "revise_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn revise_preflight(doc_path: &str) -> Result<(PathBuf, PathBuf), String> {
@@ -88,13 +88,17 @@ mod tests {
             text.contains("mystifying synonymy"),
             "expected revise_constraints in request: {text:?}"
         );
+        assert!(
+            !text.contains("Quality Gates:"),
+            "revise request must omit workspace quality gates: {text:?}"
+        );
     }
 
     #[test]
     fn prepare_revise_kpop_prompt_store_loads_program_and_constraints() {
         let workflow = crate::cli::WorkflowCliOptions { force: false };
         let store = prepare_revise_kpop_prompt_store(workflow).expect("store");
-        assert!(store.validate_exists("kpop_program.md").is_ok());
+        assert!(store.validate_exists("kpop_program_creative.md").is_ok());
         assert!(store.validate_exists("revise_constraints.md").is_ok());
     }
 

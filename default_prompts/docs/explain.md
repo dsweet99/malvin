@@ -11,7 +11,7 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 | Loop | Full gate-kpop loop (`GateLoopBehavior::EXPLAIN`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
 | Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
-| Requires | `kiss` on PATH (same preflight as `code` / `tidy` / `delight`) |
+| Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
 
 ## Intention
 

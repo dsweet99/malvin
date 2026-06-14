@@ -48,7 +48,7 @@ impl GateLoopBehavior {
     pub const REVISE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
-        skip_workspace_quality_gates: false,
+        skip_workspace_quality_gates: true,
         exit: GateKpopExitPolicy::CodeTidy,
     };
 
@@ -131,6 +131,7 @@ mod tests {
             GateLoopBehavior::EXPLAIN.consecutive_kpop_solved_to_exit(),
         );
         assert!(GateLoopBehavior::REVISE.require_passing_gates_for_exit());
+        const { assert!(GateLoopBehavior::REVISE.skip_workspace_quality_gates); }
     }
 
     #[test]

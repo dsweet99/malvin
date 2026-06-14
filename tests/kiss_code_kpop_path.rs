@@ -121,6 +121,14 @@ fn delight_does_not_require_kiss_on_path() {
 }
 
 #[test]
+fn revise_does_not_require_kiss_on_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    std::fs::write(work.path().join("doc.md"), "# Doc\n").unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["revise", "doc.md"], Some(work.path()));
+}
+
+#[test]
 fn explain_does_not_require_kiss_on_path() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();

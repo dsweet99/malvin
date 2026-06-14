@@ -20,8 +20,8 @@ mod discover_init_checks_tests;
 #[path = "discover_init_checks_merge_tests.rs"]
 mod discover_init_checks_merge_tests;
 
-use std::path::Path;
-use std::process::Stdio;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
@@ -84,6 +84,24 @@ pub fn rust_test_gate_command_lines(work_dir: &Path) -> Vec<String> {
 }
 
 pub use sandbox_safe::sandbox_safe_gate_commands;
+
+/// Git repository root for `work_dir`, when `git rev-parse --show-toplevel` succeeds.
+#[must_use]
+pub fn git_worktree_toplevel(work_dir: &Path) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(work_dir)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if root.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(root))
+}
 
 #[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
@@ -216,6 +234,10 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "git_worktree_tests.rs"]
+mod git_worktree_tests;
 
 #[cfg(test)]
 #[path = "tests_command_match.rs"]

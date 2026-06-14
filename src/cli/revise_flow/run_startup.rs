@@ -13,7 +13,7 @@ pub struct ReviseKpopPrepared {
 fn revise_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "revise")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "revise")
 }
 
 pub fn prepare_revise_kpop_run(

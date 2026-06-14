@@ -1,10 +1,6 @@
 use std::path::Path;
 
-/// Avoid recursively scanning arbitrary cwd trees (e.g. `$HOME`) when inferring Python gates.
-fn should_walk_for_python_sources(root: &Path) -> bool {
-    if root.join(".git").is_dir() || crate::malvin_checks_path(root).is_file() {
-        return true;
-    }
+fn root_has_python_project_markers(root: &Path) -> bool {
     if root.join("Cargo.toml").is_file() {
         return true;
     }
@@ -21,6 +17,11 @@ fn should_walk_for_python_sources(root: &Path) -> bool {
         }
     }
     root.join("tests").is_dir() || root_level_has_py_file(root)
+}
+
+/// Avoid recursively scanning arbitrary cwd trees (e.g. `$HOME`) when inferring Python gates.
+fn should_walk_for_python_sources(root: &Path) -> bool {
+    crate::repo_gates::git_worktree_toplevel(root).is_some()
 }
 
 fn root_level_has_py_file(root: &Path) -> bool {
@@ -69,25 +70,62 @@ pub(super) fn visit_source_files(root: &Path, f: &mut impl FnMut(&Path)) {
     walk(root, f);
 }
 
-pub(super) fn python_ruff_and_pytest_flags(root: &Path) -> (bool, bool) {
-    if !should_walk_for_python_sources(root) {
+fn root_level_python_flags(root: &Path) -> (bool, bool) {
+    if !root_has_python_project_markers(root) {
         return (false, false);
     }
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return (false, false);
+    };
     let mut has_py = false;
     let mut has_pytest = false;
-    visit_source_files(root, &mut |path: &Path| {
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        let path = entry.path();
+        let is_py_file = if file_type.is_symlink() {
+            std::fs::metadata(&path).ok().is_some_and(|md| md.is_file())
+        } else {
+            file_type.is_file()
+        };
+        if !is_py_file {
+            continue;
+        }
         if path.extension().and_then(|e| e.to_str()) != Some("py") {
-            return;
+            continue;
         }
         has_py = true;
         let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-            return;
+            continue;
         };
         if stem.starts_with("test_") || stem.ends_with("_test") {
             has_pytest = true;
         }
-    });
+    }
     (has_py, has_pytest)
+}
+
+pub(super) fn python_ruff_and_pytest_flags(root: &Path) -> (bool, bool) {
+    if should_walk_for_python_sources(root) {
+        let mut has_py = false;
+        let mut has_pytest = false;
+        visit_source_files(root, &mut |path: &Path| {
+            if path.extension().and_then(|e| e.to_str()) != Some("py") {
+                return;
+            }
+            has_py = true;
+            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+                return;
+            };
+            if stem.starts_with("test_") || stem.ends_with("_test") {
+                has_pytest = true;
+            }
+        });
+        (has_py, has_pytest)
+    } else {
+        root_level_python_flags(root)
+    }
 }
 
 #[cfg(test)]
@@ -126,6 +164,35 @@ mod tests {
         let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
         assert!(!has_py);
         assert!(!has_pytest);
+    }
+
+    #[test]
+    fn python_ruff_and_pytest_flags_skips_nested_py_when_only_malvin_checks_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("pkg");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
+        std::fs::create_dir_all(tmp.path().join(".malvin")).unwrap();
+        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").unwrap();
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(tmp.path());
+        assert!(!has_py);
+        assert!(!has_pytest);
+    }
+
+    #[test]
+    fn python_ruff_and_pytest_flags_finds_nested_py_in_git_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        let w = tmp.path();
+        std::fs::create_dir_all(w.join("pkg")).unwrap();
+        std::fs::write(w.join("pkg/test_foo.py"), "def test_x():\n    assert True\n").unwrap();
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(w)
+            .status()
+            .expect("git init");
+        let (has_py, has_pytest) = python_ruff_and_pytest_flags(w);
+        assert!(has_py);
+        assert!(has_pytest);
     }
 
     #[cfg(unix)]

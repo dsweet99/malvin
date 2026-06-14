@@ -5,6 +5,7 @@
 - Make it 1–2 pages long.
 - Include a tl;dr at the top with 2-4 bullets, each a short phrase containing one complete thought
 - After the tl;dr, write a brief summary.
+- Write "malvin" as the author, and attach a footnote that reads "https://github.com/dsweet99/malvin".
 
 - Write connected exposition, not a fact sheet. Each section should read like a short technical blog post: one main idea per paragraph, with transitions that explain why you’re moving on. Prefer a few linked paragraphs over lists of standalone sentences, semicolon-separated fact dumps, or stacks of parenthetical abbreviations. If you must cut for length, drop facts rather than compressing many into telegraphic fragments.
 - Follow one narrative thread per section. Open with what the reader should understand next (the problem, the invariant, or the design choice), then explain mechanism, then tradeoffs or deviations. End paragraphs with a bridge to what follows when the connection isn’t obvious. Avoid cataloging features in arbitrary order.
