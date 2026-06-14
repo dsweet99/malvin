@@ -1386,16 +1386,14 @@ def mount_local_toolchain(
 
 def read_remote_file(sandbox: modal.Sandbox, path: str) -> str | None:
     try:
-        with sandbox.open(path, "r") as handle:
-            return handle.read()
+        return sandbox.filesystem.read_text(path)
     except (OSError, modal.exception.Error):
         return None
 
 
 def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
     try:
-        with sandbox.open(path, "rb") as handle:
-            return handle.read()
+        return sandbox.filesystem.read_bytes(path)
     except (OSError, modal.exception.Error):
         return None
 
@@ -2366,7 +2364,7 @@ def _test_grade_in_sandbox_network() -> None:
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         _agent, grade_result = run_deepswe_run_in_sandbox(
@@ -2398,7 +2396,7 @@ def _test_agent_sandbox_network() -> None:
     metadata = json.dumps(
         {"agent": {"exit_code": 0}, "grade": {"reward": 0, "pass": False}}
     )
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         with patch(
@@ -2434,7 +2432,7 @@ def _test_agent_sandbox_open_network() -> None:
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     metadata = json.dumps({"agent": {"exit_code": 0}, "grade": {"skipped": True}})
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         agent_result, _grade = run_deepswe_run_in_sandbox(
@@ -2457,7 +2455,6 @@ def _test_harvest_sandbox_workspace() -> None:
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     payload = b"fake tarball"
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = payload
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp) / "workspace"
         with patch(f"{__name__}.read_remote_bytes", return_value=payload):
@@ -2548,12 +2545,22 @@ def _test_offline_agent_checks() -> None:
 
 def _test_read_remote_file() -> None:
     sandbox = MagicMock()
-    sandbox.open.return_value.__enter__.return_value.read.return_value = "payload"
+    sandbox.filesystem.read_text.return_value = "payload"
     assert read_remote_file(sandbox, "/tmp/x") == "payload"
-    sandbox.open.side_effect = OSError("missing")
+    sandbox.filesystem.read_text.side_effect = OSError("missing")
     assert read_remote_file(sandbox, "/tmp/missing") is None
-    sandbox.open.side_effect = modal.exception.FilesystemExecutionError("finished")
+    sandbox.filesystem.read_text.side_effect = modal.exception.FilesystemExecutionError("finished")
     assert read_remote_file(sandbox, "/tmp/dead") is None
+
+
+def _test_read_remote_bytes() -> None:
+    sandbox = MagicMock()
+    sandbox.filesystem.read_bytes.return_value = b"payload"
+    assert read_remote_bytes(sandbox, "/tmp/x") == b"payload"
+    sandbox.filesystem.read_bytes.side_effect = OSError("missing")
+    assert read_remote_bytes(sandbox, "/tmp/missing") is None
+    sandbox.filesystem.read_bytes.side_effect = modal.exception.FilesystemExecutionError("finished")
+    assert read_remote_bytes(sandbox, "/tmp/dead") is None
 
 
 def _test_write_metadata() -> None:
@@ -2768,6 +2775,7 @@ def run_unit_tests() -> None:
     _test_offline_check_tool_install_commands()
     _test_offline_agent_checks()
     _test_read_remote_file()
+    _test_read_remote_bytes()
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
