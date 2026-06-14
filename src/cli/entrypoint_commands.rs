@@ -195,6 +195,8 @@ pub(crate) fn run_explain_command(
     shared: &mut SharedOpts,
     matches: &clap::ArgMatches,
 ) -> Result<(), String> {
+    explain.out_path_explicit =
+        crate::cli::config_loop::subcommand_flag_from_command_line(matches, "explain", "out_path");
     super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
         subcommand: "explain",
         max_loops: &mut explain.max_loops,

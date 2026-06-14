@@ -32,6 +32,9 @@ pub struct ExplainArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
+    /// Set when the user passes `--out-path` on the command line (not a clap flag).
+    #[arg(skip)]
+    pub out_path_explicit: bool,
 }
 
 #[cfg(test)]

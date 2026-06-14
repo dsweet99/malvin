@@ -93,7 +93,7 @@ fn explain_fails_when_request_missing() {
 
 #[cfg(unix)]
 #[test]
-fn explain_allocates_sibling_when_default_outputs_exist() {
+fn explain_auto_mode_leaves_stale_default_outputs_untouched() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
@@ -112,14 +112,14 @@ fn explain_allocates_sibling_when_default_outputs_exist() {
     let combined = combined_cli_output(&out);
     assert!(
         combined.contains("KPOP_LOG:"),
-        "explain must run kpop after sibling allocation: status={:?} combined={combined:?}",
+        "explain must run kpop in auto out-path mode: status={:?} combined={combined:?}",
         out.status,
     );
     let stale = std::fs::read_to_string(workspace.join("explain.tex")).expect("read stale tex");
     assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
     assert!(
-        workspace.join("explain_1.tex").exists(),
-        "preflight must allocate explain_1.tex before kpop starts"
+        workspace.join("gate_loop_exit.tex").exists(),
+        "auto mode must discover agent-written title-based output"
     );
 }
 

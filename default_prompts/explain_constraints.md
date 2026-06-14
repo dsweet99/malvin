@@ -1,6 +1,6 @@
 - Explain the topic in the user request: `{{ explain_request }}`.
   - The user request may override none or some of the constraints below.
-- Write LaTeX source to `{{ explain_tex_path }}` and compile it to `{{ explain_pdf_path }}`.
+{{ explain_output_instruction }}
 - Use complete sentences.
 - Make it 1–2 pages long.
 - Include a tl;dr at the top with 2-4 bullets, each a short phrase containing one complete thought
@@ -33,4 +33,3 @@
    - Be Specific: Keep it to 10–12 words. Cut filler like "A study of."
    - Avoid heavy jargon.
    - Match Guidelines: Follow journal rules. Avoid puns, jokes, and over-promising conclusions.
-- Give the output file a name that is a shortened version of the report's title. Use all lowercase and snake case.

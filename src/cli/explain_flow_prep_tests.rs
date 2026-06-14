@@ -1,7 +1,7 @@
 use super::{
     explain_kpop_request, explain_output_paths, explain_pdf_path_from_tex, explain_preflight,
     explain_resolved_output_paths, explain_revise_doc_path, prepare_explain_kpop_prompt_store,
-    EXPLAIN_PDF_BASENAME, EXPLAIN_TEX_BASENAME,
+    ExplainKpopRequestInput, EXPLAIN_PDF_BASENAME, EXPLAIN_TEX_BASENAME,
 };
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::WorkflowCliOptions;
@@ -68,8 +68,17 @@ fn explain_kpop_request_renders_request_and_output_paths() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts = create_kpop_run_artifacts("explain", Some(tmp.path())).expect("artifacts");
     let outputs = explain_resolved_output_paths(tmp.path(), "docs/paper.tex").expect("resolve");
-    let rendered =
-        explain_kpop_request(&store, &artifacts, "gate loop exit", &outputs).expect("render");
+    let rendered = explain_kpop_request(
+        &store,
+        &artifacts,
+        ExplainKpopRequestInput {
+            request_text: "gate loop exit",
+            request_work_dir: tmp.path(),
+            outputs: &outputs,
+            out_path_explicit: true,
+        },
+    )
+    .expect("render");
     assert!(rendered.contains("gate loop exit"));
     assert!(rendered.contains("docs/paper.tex"));
     assert!(rendered.contains("docs/paper.pdf"));
@@ -78,14 +87,36 @@ fn explain_kpop_request_renders_request_and_output_paths() {
 }
 
 #[test]
+fn explain_kpop_request_auto_mode_instructs_snake_case_title_naming() {
+    let store = prepare_explain_kpop_prompt_store(WorkflowCliOptions { force: true }).expect("store");
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = create_kpop_run_artifacts("explain", Some(tmp.path())).expect("artifacts");
+    let outputs = explain_resolved_output_paths(tmp.path(), EXPLAIN_TEX_BASENAME).expect("resolve");
+    let rendered = explain_kpop_request(
+        &store,
+        &artifacts,
+        ExplainKpopRequestInput {
+            request_text: "gate loop exit",
+            request_work_dir: std::path::Path::new("."),
+            outputs: &outputs,
+            out_path_explicit: false,
+        },
+    )
+    .expect("render");
+    assert!(rendered.contains("snake case"));
+    assert!(!rendered.contains("docs/paper.tex"));
+}
+
+#[test]
 fn explain_preflight_literal_request_uses_dot_work_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     with_cwd(tmp.path(), || {
-        let cwd = std::env::current_dir().expect("cwd");
-        let (text, outputs) = explain_preflight("  topic  ", EXPLAIN_TEX_BASENAME).expect("ok");
+        let (text, work_dir, outputs, _snapshot) =
+            explain_preflight("  topic  ", EXPLAIN_TEX_BASENAME, false).expect("ok");
         assert_eq!(text, "topic");
-        assert_eq!(outputs.tex_path, cwd.join(EXPLAIN_TEX_BASENAME));
-        assert_eq!(outputs.pdf_path, cwd.join(EXPLAIN_PDF_BASENAME));
+        assert_eq!(work_dir, std::path::PathBuf::from("."));
+        assert_eq!(outputs.tex_path.file_name().unwrap(), EXPLAIN_TEX_BASENAME);
+        assert_eq!(outputs.pdf_path.file_name().unwrap(), EXPLAIN_PDF_BASENAME);
     });
 }
 
@@ -98,10 +129,13 @@ fn explain_preflight_md_file_uses_parent_work_dir() {
         let md_path = cwd.join("notes/topic.md");
         std::fs::create_dir_all(md_path.parent().unwrap()).unwrap();
         std::fs::write(&md_path, "Explain this\n").unwrap();
-        let (text, outputs) = explain_preflight("notes/topic.md", EXPLAIN_TEX_BASENAME).unwrap();
+        let (text, work_dir, outputs, _snapshot) =
+            explain_preflight("notes/topic.md", EXPLAIN_TEX_BASENAME, false).unwrap();
         assert_eq!(text.trim(), "Explain this");
-        assert_eq!(outputs.tex_path, cwd.join("notes/explain.tex"));
-        assert_eq!(outputs.pdf_path, cwd.join("notes/explain.pdf"));
+        assert!(work_dir.ends_with("notes"));
+        assert_eq!(outputs.tex_path.file_name().unwrap(), EXPLAIN_TEX_BASENAME);
+        assert_eq!(outputs.pdf_path.file_name().unwrap(), EXPLAIN_PDF_BASENAME);
+        assert!(outputs.tex_path.ends_with("notes/explain.tex"));
     });
 }
 

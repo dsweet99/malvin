@@ -127,6 +127,7 @@ fn print_doc_explain_writes_subcommand_md() {
         max_loops: 3,
         max_hypotheses: 5,
         tenacious: true,
+        out_path_explicit: false,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin explain"));

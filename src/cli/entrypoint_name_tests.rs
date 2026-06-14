@@ -114,6 +114,7 @@ fn explain_command_rejects_session_name() {
             max_loops: 1,
             max_hypotheses: 5,
             tenacious: false,
+            out_path_explicit: false,
         }),
         false
     ));

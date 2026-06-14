@@ -22,6 +22,7 @@ fn revise_args_for_explain_output_use_tex_path() {
         max_loops: 7,
         max_hypotheses: 11,
         tenacious: false,
+        out_path_explicit: false,
     };
     let args = revise_args_for_explain_output(&explain, "docs/paper.tex");
     assert_eq!(args.doc_path, "docs/paper.tex");
@@ -39,6 +40,7 @@ fn kiss_cov_explain_entrypoint_branch() {
         max_loops: 1,
         max_hypotheses: 5,
         tenacious: true,
+        out_path_explicit: false,
     });
     let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
 }
