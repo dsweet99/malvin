@@ -45,9 +45,8 @@ Less is More: Limit visual clutter and extraneous decorative elements. If an ele
 
 
 ## Figure constraints
-If the document has an editable figure, then
-write it as a .png so that you can look at it
-and evaluate it.
+If the document has an editable figure, then write it as a .png so that you can look at it and evaluate it. Don't use
+ .png in the document, though, if vector graphcis (.pdf or .eps) are an option.
 
 Figure constraints:
   - No text overlaps another text label or a node, arrow, legend, axis, or caption
