@@ -33,3 +33,4 @@
    - Be Specific: Keep it to 10–12 words. Cut filler like "A study of."
    - Avoid heavy jargon.
    - Match Guidelines: Follow journal rules. Avoid puns, jokes, and over-promising conclusions.
+- Give the output file a name that is a shortened version of the report's title. Use all lowercase and snake case.
