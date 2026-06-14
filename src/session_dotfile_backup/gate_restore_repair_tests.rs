@@ -74,7 +74,7 @@ fn repair_leaves_valid_checks_and_kissconfig_unchanged() {
 }
 
 #[test]
-fn repair_clamp_damaged_dotfiles_on_disk_fixes_bare_kiss_and_low_threshold() {
+fn repair_clamp_damaged_dotfiles_on_disk_fixes_bare_kiss_leaves_threshold_unchanged() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     seed_clamp_damaged_workspace(work);
@@ -85,12 +85,12 @@ fn repair_clamp_damaged_dotfiles_on_disk_fixes_bare_kiss_and_low_threshold() {
     assert!(checks.contains("kiss check"));
     assert_ne!(checks.trim(), "kiss");
     let kissconfig = std::fs::read_to_string(work.join(".kissconfig")).expect("kissconfig");
-    assert!(kissconfig.contains("test_coverage_threshold = 90"));
-    assert!(!kissconfig_low_coverage_threshold(kissconfig.as_bytes()));
+    assert!(kissconfig.contains("test_coverage_threshold = 0"));
+    assert!(kissconfig_low_coverage_threshold(kissconfig.as_bytes()));
 }
 
 #[test]
-fn sanitize_bundle_fixes_both_poisoned_merge_slots() {
+fn sanitize_bundle_fixes_poisoned_checks_slot_leaves_kissconfig_unchanged() {
     use crate::session_dotfile_backup::gate_restore_merge::{
         merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
     };
@@ -132,7 +132,7 @@ fn sanitize_bundle_fixes_both_poisoned_merge_slots() {
     let DotfileBackupState::Present(ref kissconfig) = sanitized.kissconfig else {
         panic!("expected kissconfig present");
     };
-    assert!(String::from_utf8_lossy(&kissconfig.bytes).contains("test_coverage_threshold = 90"));
+    assert!(String::from_utf8_lossy(&kissconfig.bytes).contains("test_coverage_threshold = 0"));
 }
 
 #[test]
