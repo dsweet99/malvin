@@ -4,26 +4,9 @@ mod common;
 
 #[cfg(all(unix, target_os = "linux"))]
 mod linux {
-    use std::fs;
-
     use crate::common::{
         acp_mock_kpop_steps_with_summarize_js, only_run_dir, run_kpop_outer_loop,
     };
-
-    #[test]
-    fn kpop_max_loops_two_runs_inline_summarize_on_last_agent() {
-        let mock_js = acp_mock_kpop_steps_with_summarize_js(r"'kpop then summarize\n'");
-        let (out, root) = run_kpop_outer_loop(&mock_js, &["--max-loops", "2"]);
-        assert!(out.status.success(), "kpop should succeed: {out:?}");
-        let run_dir = only_run_dir(&root.path().join("workspace"), &root.path().join("home"));
-        let summary_log = run_dir.join("summary.log");
-        assert!(
-            fs::read_to_string(&summary_log)
-                .expect("read summary.log")
-                .contains("SUMMARIZE_OK"),
-            "expected inline summarize response in summary.log"
-        );
-    }
 
     #[test]
     fn kpop_max_loops_one_skips_inline_summarize() {

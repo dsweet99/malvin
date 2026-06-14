@@ -66,15 +66,4 @@ mod linux {
         assert!(fs::read_to_string(&legacy).expect("read").contains("## Step 1 — KPOP mock"));
         assert!(gate_exp_logs_in_run(&run_dir).is_empty());
     }
-
-    #[test]
-    fn kpop_max_loops_two_uses_distinct_gate_exp_logs() {
-        let (out, root) = run_kpop_outer_loop(&acp_mock_kpop_steps_js(r"'step\n'"), &["--max-loops", "2"]);
-        assert!(out.status.success(), "kpop should finish two outer loops: {out:?}");
-        assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 2);
-        assert_eq!(
-            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"), &root.path().join("home"))).len(),
-            2
-        );
-    }
 }

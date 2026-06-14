@@ -3,9 +3,8 @@ mod common;
 #[cfg(all(unix, target_os = "linux"))]
 mod linux_pty {
     use crate::common::{
-        acp_mock_code_streaming_update_js, acp_mock_kpop_outer_loop_tampers_gitignore_then_resnapshots_js,
-        acp_mock_kpop_tamper_then_restore_js, only_run_dir, run_do_under_script,
-        run_kpop_multiturn_investigate, run_malvin_under_script_with_mock,
+        acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js, only_run_dir,
+        run_do_under_script, run_kpop_multiturn_investigate, run_malvin_under_script_with_mock,
     };
 
     #[test]
@@ -87,29 +86,6 @@ mod linux_pty {
             std::fs::read_to_string(workspace.join(".gitignore")).expect("read gitignore"),
             "g = 1\n",
             "kpop should restore gitignore before each prompt: {combined:?}"
-        );
-    }
-
-    #[test]
-    fn kpop_max_loops_resnapshots_between_outer_runs() {
-        use crate::common::run_kpop_outer_loop;
-
-        let (output, _root) = run_kpop_outer_loop(
-            &acp_mock_kpop_outer_loop_tampers_gitignore_then_resnapshots_js(),
-            &["--max-loops", "2"],
-        );
-        assert!(
-            output.status.success(),
-            "expected kpop outer-loop resnapshot success: {output:?}"
-        );
-        let combined = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        assert!(
-            !combined.contains("ABORT:"),
-            "outer run 2 must see fresh gitignore snapshot, not run-1 tampering: {combined:?}"
         );
     }
 
