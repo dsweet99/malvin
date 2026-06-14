@@ -22,7 +22,10 @@ cargo install malvin
 
 ### sccache (Rust builds)
 
-Install once (macOS): `brew install sccache`
+Install once:
+
+- macOS: `brew install sccache`
+- Linux / other: `./admin/sccache_install.sh` (or `cargo install sccache --locked`)
 
 This repo enables sccache via `.cargo/config.toml` (`rustc-wrapper = "sccache"`). Any `cargo build`, `cargo clippy`, or `cargo nextest` in this tree uses it automatically.
 
