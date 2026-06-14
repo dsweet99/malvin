@@ -8,8 +8,8 @@ use std::sync::Mutex;
 #[path = "test_utils_env.rs"]
 mod env;
 pub use env::{
-    clear_test_no_real_agent_env, enable_test_fast_teardown, restore_cwd, save_cwd,
-    SavedEnvVars,
+    block_on_test_async, clear_test_no_real_agent_env, enable_test_fast_teardown, restore_cwd,
+    save_cwd, SavedEnvVars,
 };
 
 /// Script body for minimal stdio `agent acp` test doubles (JSON-RPC handlers only).

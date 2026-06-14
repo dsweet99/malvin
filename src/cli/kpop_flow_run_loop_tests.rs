@@ -127,7 +127,9 @@ pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::pa
 #[cfg(unix)]
 pub(crate) fn write_mock_agent(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
+    use std::sync::OnceLock;
 
+    static SCRIPT: OnceLock<String> = OnceLock::new();
     let body = r"    const fs = require('fs');
     const path = require('path');
     const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
@@ -142,8 +144,8 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
     let handler = format!(
         "{body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
     );
-    let script = format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler));
-    std::fs::write(path, script).expect("write mock");
+    let script = SCRIPT.get_or_init(|| format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler)));
+    std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(path, perms).expect("chmod");
@@ -160,8 +162,7 @@ mod unix_cov {
     #[test]
     fn run_kpop_agent_loops_propagates_exp_log_setup_error() {
         crate::test_utils::with_isolated_home(|workspace| {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            rt.block_on(async {
+            crate::test_utils::block_on_test_async(async {
                 std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
                 let (kpop, shared, workflow) = test_kpop_args(2);
                 let (store, mut client, prepared) =
@@ -185,8 +186,7 @@ mod unix_cov {
     #[test]
     fn run_kpop_agent_loops_executes_mock_agent() {
         crate::test_utils::with_isolated_home(|workspace| {
-            let rt = tokio::runtime::Runtime::new().expect("runtime");
-            rt.block_on(async {
+            crate::test_utils::block_on_test_async(async {
                 std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
                 let mock = workspace.join("mock-agent");
                 let _env = install_mock_agent_env(workspace, &mock);

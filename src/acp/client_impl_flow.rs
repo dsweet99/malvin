@@ -160,8 +160,17 @@ mod begin_coder_session_guard_tests {
                 malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
             },
         );
-        let mut client = AgentClient::new(
-            "/nonexistent/agent/bin".into(),
+        let env_guard = crate::test_utils::SavedEnvVars::capture(&[
+            crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV,
+            "MALVIN_AGENT_ACP_BIN",
+        ]);
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
+            std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+        }
+        let mut client = AgentClient::with_max_acp_retries(
+            "m".into(),
             AgentIoOptions {
                 force: false,
                 no_tee: true,
@@ -170,12 +179,13 @@ mod begin_coder_session_guard_tests {
                 emit_stdout_markdown: false,
                 log_full_outgoing_prompts: false,
             },
+            1,
         );
-        client.max_acp_retries = 1;
         let err = AgentClient::run_kpop_flow(&mut client, &flow, &backups)
             .await
-            .expect_err("missing agent should fail");
+            .expect_err("spawn without mock should fail");
         assert!(err.0.contains("kpop flow"));
+        drop(env_guard);
     }
 
     #[test]

@@ -23,6 +23,18 @@ pub fn restore_cwd(path: &Path) {
     }
 }
 
+/// Run an async test body on a lightweight current-thread Tokio runtime.
+pub fn block_on_test_async<F, T>(future: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("test runtime")
+        .block_on(future)
+}
+
 /// Enable fast ACP teardown for tests that spawn sandbox children but do not exercise SIGTERM escalation.
 pub fn enable_test_fast_teardown() {
     #[allow(unsafe_code)]

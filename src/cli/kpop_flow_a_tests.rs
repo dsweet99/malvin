@@ -134,10 +134,10 @@ async fn run_kpop_multiturn_mock_once(
 #[test]
 fn kpop_run_acp_multiturn_executes_mock_agent() {
     crate::test_utils::with_isolated_home(|workspace| {
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        let exp_log_path = rt
-            .block_on(run_kpop_multiturn_mock_once(workspace))
-            .expect("multiturn");
+        let exp_log_path = crate::test_utils::block_on_test_async(async {
+            run_kpop_multiturn_mock_once(workspace).await
+        })
+        .expect("multiturn");
         let text = std::fs::read_to_string(exp_log_path).expect("read");
         assert!(text.contains("## Step 1 — KPOP mock"));
     });

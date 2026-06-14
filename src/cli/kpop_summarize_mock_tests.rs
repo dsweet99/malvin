@@ -1,11 +1,23 @@
 #![allow(unsafe_code)]
 
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::run_inline_summarize_coder_prompt;
-use crate::config::DEFAULT_MAX_ACP_RETRIES;
 use crate::prompts::PromptStore;
 
-pub(crate) fn write_mock_summarize_agent(path: &std::path::Path) {
+fn cached_summarize_mock_agent() -> PathBuf {
+    static MOCK: OnceLock<PathBuf> = OnceLock::new();
+    MOCK.get_or_init(|| {
+        let path = std::env::temp_dir().join("malvin-mock-summarize-agent");
+        write_mock_summarize_agent(&path);
+        path
+    })
+    .clone()
+}
+
+pub(crate) fn write_mock_summarize_agent(path: &Path) {
     use std::os::unix::fs::PermissionsExt;
 
     let handler = r"    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
@@ -32,8 +44,7 @@ where
         let artifacts = create_kpop_run_artifacts("kpop", Some(workspace)).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let mock = workspace.join("mock-summarize-agent");
-        write_mock_summarize_agent(&mock);
+        let mock = cached_summarize_mock_agent();
         unsafe {
             std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
             std::env::set_var("MALVIN_AGENT_ACP_BIN", &mock);
@@ -76,9 +87,8 @@ async fn run_inline_summarize_on_open_mock_session(
 fn run_inline_summarize_coder_prompt_runs_on_open_session() {
     with_summarize_mock_agent(|workspace, store, artifacts| {
         write_summarize_fixture_exp_logs(artifacts);
-        let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        rt.block_on(async {
+        let shared = super::kpop_summarize_tests::summarize_shared_opts(1);
+        crate::test_utils::block_on_test_async(async {
             run_inline_summarize_on_open_mock_session(&shared, store, artifacts)
                 .await
                 .expect("inline summarize");

@@ -168,13 +168,10 @@ fn code_outer_loop_summarize_params_wires_code_command() {
 #[cfg(unix)]
 #[test]
 fn maybe_run_inline_summarize_on_kpop_loop_runs_on_last_iteration() {
-    use crate::config::DEFAULT_MAX_ACP_RETRIES;
-
     super::kpop_summarize_mock_tests::with_summarize_mock_agent(|workspace, store, artifacts| {
         write_exp_logs(artifacts, 2);
-        let shared = super::kpop_summarize_tests::summarize_shared_opts(DEFAULT_MAX_ACP_RETRIES);
-        let rt = tokio::runtime::Runtime::new().expect("runtime");
-        rt.block_on(async {
+        let shared = super::kpop_summarize_tests::summarize_shared_opts(1);
+        crate::test_utils::block_on_test_async(async {
             let mut client = crate::agent_backend::build_agent_backend(
                 &shared,
                 crate::cli::WorkflowCliOptions { force: false },

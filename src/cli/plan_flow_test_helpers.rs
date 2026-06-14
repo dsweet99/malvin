@@ -83,7 +83,7 @@ pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
         no_tee: true,
         no_markdown: true,
         verbose: false,
-        max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        max_acp_retries: 1,
         doc: false,
         name: None,
         mini: false,
@@ -134,6 +134,10 @@ pub(super) async fn prepare_plan_mock_run(
 ) -> super::plan_flow_pipeline::PlanRunPrep {
     write_plan_pipeline_mock_agent(mock);
     install_plan_mock_env(mock, plan);
+    prepare_plan_mock_run_with_env(plan).await
+}
+
+pub(super) async fn prepare_plan_mock_run_with_env(plan: &Path) -> super::plan_flow_pipeline::PlanRunPrep {
     super::prepare_plan_run(
         &plan_args_for_mock(plan),
         &plan_shared_opts_for_mock(),
