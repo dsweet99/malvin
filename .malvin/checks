@@ -1,4 +1,4 @@
 ruff check
 kiss check
-cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo
+cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
 ./admin/malvin_rust_test_gate.sh

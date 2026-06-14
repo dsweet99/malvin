@@ -18,6 +18,8 @@ categories = ["development-tools"]
 [profile.dev]
 incremental = true
 codegen-units = 8
+debug = 0
+lto = false
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
