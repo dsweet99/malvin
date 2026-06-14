@@ -134,3 +134,50 @@ fn sanitize_bundle_fixes_both_poisoned_merge_slots() {
     };
     assert!(String::from_utf8_lossy(&kissconfig.bytes).contains("test_coverage_threshold = 90"));
 }
+
+#[test]
+fn repair_recreates_empty_home_malvin_config_from_template() {
+    crate::test_utils::with_isolated_home(|work| {
+        let cfg = crate::malvin_config_path(work);
+        if let Some(parent) = cfg.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir");
+        }
+        std::fs::write(&cfg, b"").expect("empty home config");
+        repair_clamp_damaged_dotfiles_on_disk(work).expect("repair");
+        let text = std::fs::read_to_string(&cfg).expect("read home config");
+        assert!(text.contains("mem_limit_gb"));
+        assert!(text.contains("[agent]"));
+    });
+}
+
+#[test]
+fn sanitize_bundle_replaces_empty_home_malvin_config_with_template() {
+    use crate::session_dotfile_backup::sanitize_clamp_damaged_dotfiles_in_bundle;
+    use crate::session_dotfile_backup::{
+        DotfileBackupPayload, DotfileBackupState, GitignoreBackup, SessionDotfileBackups,
+    };
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    let poisoned = |bytes: &[u8]| {
+        DotfileBackupState::Present(DotfileBackupPayload {
+            backup_path: work.join("slot"),
+            bytes: bytes.to_vec(),
+        })
+    };
+    let mut bundle = SessionDotfileBackups {
+        kissconfig: DotfileBackupState::Missing,
+        malvin_checks: DotfileBackupState::Missing,
+        kissignore: DotfileBackupState::Missing,
+        malvin_config: poisoned(b""),
+        gitignore: GitignoreBackup::Missing,
+        malvin_config_workspace: DotfileBackupState::Missing,
+    };
+    sanitize_clamp_damaged_dotfiles_in_bundle(&mut bundle, work);
+    let DotfileBackupState::Present(ref cfg) = bundle.malvin_config else {
+        panic!("expected home config present");
+    };
+    let text = String::from_utf8_lossy(&cfg.bytes);
+    assert!(text.contains("mem_limit_gb"));
+    assert!(text.contains("[agent]"));
+}

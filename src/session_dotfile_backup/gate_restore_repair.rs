@@ -64,6 +64,41 @@ fn repair_low_coverage_kissconfig_on_disk(work_dir: &Path) -> Result<(), String>
     write_toml_pretty(&path, &value)
 }
 
+fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {
+    let template = crate::malvin_config_file::parse_template_value()?;
+    let mut value = toml::Value::Table(toml::map::Map::new());
+    crate::malvin_config_file::merge_missing_keys(&mut value, &template);
+    let mut text = toml::to_string_pretty(&value)
+        .map_err(|e| format!("serialize default home config: {e}"))?;
+    if !text.ends_with('\n') {
+        text.push('\n');
+    }
+    Ok(text.into_bytes())
+}
+
+fn malvin_home_config_bytes_need_repair(bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return true;
+    }
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return true;
+    };
+    text.parse::<toml::Value>().is_err()
+}
+
+fn repair_invalid_malvin_home_config_on_disk(work_dir: &Path) -> Result<(), String> {
+    let path = crate::malvin_config_path(work_dir);
+    if !path.is_file() {
+        return Ok(());
+    }
+    let bytes = std::fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    if !malvin_home_config_bytes_need_repair(&bytes) {
+        return Ok(());
+    }
+    std::fs::remove_file(&path).map_err(|e| format!("remove {}: {e}", path.display()))?;
+    crate::malvin_config_file::ensure_malvin_config_file_if_missing(work_dir)
+}
+
 fn default_malvin_checks_bytes(work_dir: &Path) -> Vec<u8> {
     let lines = crate::repo_gates::builtin_gate_command_lines(work_dir);
     let mut content = lines.join("\n");
@@ -117,6 +152,18 @@ fn sanitize_kissconfig_slot(slot: &mut DotfileBackupState) {
     }
 }
 
+fn sanitize_malvin_config_slot(slot: &mut DotfileBackupState) {
+    let DotfileBackupState::Present(payload) = slot else {
+        return;
+    };
+    if !malvin_home_config_bytes_need_repair(&payload.bytes) {
+        return;
+    }
+    if let Ok(fixed) = default_malvin_home_config_bytes() {
+        payload.bytes = fixed;
+    }
+}
+
 /// Sanitize known `kiss clamp` damage inside a carry-forward backup bundle.
 ///
 /// Disk repair alone cannot fix poisoned bytes held in the parent gate loop's
@@ -127,6 +174,7 @@ pub fn sanitize_clamp_damaged_dotfiles_in_bundle(
 ) {
     sanitize_malvin_checks_slot(work_dir, &mut bundle.malvin_checks);
     sanitize_kissconfig_slot(&mut bundle.kissconfig);
+    sanitize_malvin_config_slot(&mut bundle.malvin_config);
 }
 
 /// Repair known `kiss clamp` damage on disk before gate-loop snapshots.
@@ -134,6 +182,7 @@ pub fn sanitize_clamp_damaged_dotfiles_in_bundle(
 /// Removes bare `kiss` checks (replacing with repo defaults) and raises
 /// `gate.test_coverage_threshold` when it is below 90.
 pub fn repair_clamp_damaged_dotfiles_on_disk(work_dir: &Path) -> Result<(), String> {
+    repair_invalid_malvin_home_config_on_disk(work_dir)?;
     repair_invalid_malvin_checks_on_disk(work_dir)?;
     repair_low_coverage_kissconfig_on_disk(work_dir)
 }
