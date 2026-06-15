@@ -1401,10 +1401,42 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
 
 
 # Root-owned ``.git`` objects from the Modal sandbox cannot overwrite host checkout files.
+# Ephemeral bytecode is excluded so reused workspaces are not blocked by root-owned ``__pycache__``.
 HARVEST_WORKSPACE_TAR_EXCLUDES = (
     "--exclude=./.git",
     "--exclude=./.malvin/logs",
+    "--exclude=__pycache__",
+    "--exclude=*.pyc",
+    "--exclude=*.pyo",
 )
+
+
+def _can_overlay_existing_file(target: Path) -> bool:
+    """Return whether an existing local file can be replaced by a harvested member."""
+    if not target.is_file():
+        return True
+    if os.access(target, os.W_OK):
+        return True
+    try:
+        target.chmod(target.stat().st_mode | stat.S_IWUSR)
+        return True
+    except OSError:
+        pass
+    try:
+        target.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def _tar_extract_member(
+    archive: tarfile.TarFile, member: tarfile.TarInfo, workspace: Path
+) -> None:
+    """Extract one archive member without applying remote ownership metadata."""
+    try:
+        archive.extract(member, workspace, set_attrs=False, filter="data")
+    except TypeError:  # pragma: no cover - py<3.12
+        archive.extract(member, workspace, set_attrs=False)
 
 
 def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> None:
@@ -1413,15 +1445,12 @@ def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> No
         if member.isdir():
             continue
         target = workspace / member.name
-        if not target.is_file():
-            continue
-        if os.access(target, os.W_OK):
+        if not _can_overlay_existing_file(target):
             continue
         try:
-            target.chmod(target.stat().st_mode | stat.S_IWUSR)
+            _tar_extract_member(archive, member, workspace)
         except OSError:
-            target.unlink(missing_ok=True)
-    archive.extractall(workspace)
+            continue
 
 
 def harvest_sandbox_workspace(sandbox: modal.Sandbox, workspace: Path) -> dict[str, Any]:
@@ -2538,9 +2567,10 @@ def _test_harvest_sandbox_workspace() -> None:
                 mock_tar.return_value.__enter__.return_value = mock_archive
                 result = harvest_sandbox_workspace(fake_sandbox, workspace)
     assert result["harvested"] is True
-    mock_archive.extractall.assert_called_once_with(workspace)
+    mock_archive.getmembers.assert_called_once()
     exec_cmd = fake_sandbox.exec.call_args.args[2]
     assert "--exclude=./.git" in exec_cmd
+    assert "--exclude=__pycache__" in exec_cmd
 
 
 def _test_extract_tar_over_workspace_readonly_target() -> None:
@@ -2562,6 +2592,42 @@ def _test_extract_tar_over_workspace_readonly_target() -> None:
         with tarfile.open(fileobj=buf, mode="r:gz") as archive:
             _extract_tar_over_workspace(archive, workspace)
         assert readonly.read_text(encoding="utf-8") == "new\n"
+
+
+def _test_can_overlay_existing_file_denies_unremovable() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "blocked.pyc"
+        target.write_bytes(b"old")
+        with patch(f"{__name__}.os.access", return_value=False):
+            with patch.object(Path, "chmod", side_effect=PermissionError):
+                with patch.object(Path, "unlink", side_effect=PermissionError):
+                    assert _can_overlay_existing_file(target) is False
+
+
+def _test_extract_tar_over_workspace_skips_unremovable() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        blocked = workspace / "tests/__pycache__/init.cpython-312.pyc"
+        blocked.parent.mkdir(parents=True)
+        blocked.write_bytes(b"old")
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as archive:
+            blocked_data = b"new"
+            blocked_info = tarfile.TarInfo(name="tests/__pycache__/init.cpython-312.pyc")
+            blocked_info.size = len(blocked_data)
+            archive.addfile(blocked_info, io.BytesIO(blocked_data))
+            new_data = b"hello\n"
+            new_info = tarfile.TarInfo(name="new_file.py")
+            new_info.size = len(new_data)
+            archive.addfile(new_info, io.BytesIO(new_data))
+        buf.seek(0)
+        with patch(f"{__name__}.os.access", return_value=False):
+            with patch.object(Path, "chmod", side_effect=PermissionError):
+                with patch.object(Path, "unlink", side_effect=PermissionError):
+                    with tarfile.open(fileobj=buf, mode="r:gz") as archive:
+                        _extract_tar_over_workspace(archive, workspace)
+        assert blocked.read_bytes() == b"old"
+        assert (workspace / "new_file.py").read_text(encoding="utf-8") == "hello\n"
 
 
 def _test_mount_eval_context_recipe() -> None:
@@ -2864,6 +2930,8 @@ def run_unit_tests() -> None:
     _test_agent_sandbox_open_network()
     _test_harvest_sandbox_workspace()
     _test_extract_tar_over_workspace_readonly_target()
+    _test_can_overlay_existing_file_denies_unremovable()
+    _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
     _test_probe_sandbox_timeout()
     _test_is_transient_modal_probe_error()
