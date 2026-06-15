@@ -1486,11 +1486,11 @@ def parse_deepswe_run_result(
         stripped = reward_text.strip()
         if stripped in {"0", "1"}:
             reward = int(stripped)
-    model_patch = read_remote_file(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+    model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
     grade_result = {
         "pass": reward == 1,
         "reward": reward,
-        "model_patch_chars": len(model_patch) if model_patch else 0,
+        "model_patch_bytes": len(model_patch) if model_patch else 0,
     }
     return None, grade_result
 
@@ -1561,7 +1561,7 @@ def run_deepswe_run_in_sandbox(
             stderr=StreamType.PIPE,
             workdir=APP_REMOTE,
             text=False,
-            bufsize=1,
+            bufsize=0,
         )
         click.echo("Running deepswe_run.py on Modal (single exec)...")
         stream_process_output(proc, sys.stdout, sys.stderr)
@@ -1583,9 +1583,9 @@ def run_deepswe_run_in_sandbox(
                 agent_result = {"workspace_harvest": harvest_info}
         if artifacts_dir is not None:
             artifacts_dir.mkdir(parents=True, exist_ok=True)
-            model_patch = read_remote_file(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+            model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
             if model_patch:
-                (artifacts_dir / "model.patch").write_text(model_patch, encoding="utf-8")
+                (artifacts_dir / "model.patch").write_bytes(model_patch)
             metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
             if metadata_text:
                 (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
@@ -2365,6 +2365,71 @@ def _test_cursor_secrets() -> None:
                 os.environ[key] = value
 
 
+def _test_deepswe_exec_binary_stream_kwargs() -> None:
+    """Modal rejects line-buffering (bufsize=1) unless text=True."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    image = MagicMock()
+    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+        run_deepswe_run_in_sandbox(
+            image,
+            command="code",
+            malvin_argv=[],
+            grade_only=True,
+            cursor_secrets=[],
+        )
+    exec_kwargs = fake_sandbox.exec.call_args.kwargs
+    assert exec_kwargs["text"] is False
+    assert exec_kwargs["bufsize"] != 1
+
+
+def _test_harvest_binary_model_patch() -> None:
+    """model.patch may contain non-UTF-8 bytes; harvest must use read_bytes."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    binary_patch = b"diff --git a/foo.py b/foo.py\n\xff\xe0binary\n"
+    fake_sandbox.filesystem.read_bytes.return_value = binary_patch
+    image = MagicMock()
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "run"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            with patch(f"{__name__}.harvest_sandbox_logs", return_value={"harvested": False}):
+                run_deepswe_run_in_sandbox(
+                    image,
+                    command="code",
+                    malvin_argv=[],
+                    grade_only=True,
+                    cursor_secrets=[],
+                    artifacts_dir=artifacts_dir,
+                )
+        saved = artifacts_dir / "model.patch"
+        assert saved.is_file()
+        assert saved.read_bytes() == binary_patch
+    fake_sandbox.filesystem.read_bytes.assert_called_with(
+        f"{LOGS_REMOTE}/artifacts/model.patch"
+    )
+
+
+def _test_parse_deepswe_run_result_binary_patch() -> None:
+    sandbox = MagicMock()
+    sandbox.filesystem.read_text.return_value = None
+    sandbox.filesystem.read_bytes.return_value = b"\xff\xe0"
+    _agent, grade_result = parse_deepswe_run_result(
+        sandbox,
+        run_logs_remote="/run",
+        grade_only=True,
+    )
+    assert grade_result["model_patch_bytes"] == 2
+
+
 def _test_grade_in_sandbox_network() -> None:
     fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
     fake_proc.wait.return_value = None
@@ -2391,6 +2456,9 @@ def _test_grade_in_sandbox_network() -> None:
     assert exec_argv[1] == DEEPSWE_RUN_REMOTE
     assert exec_argv[2] == "run"
     assert "--grade-only" in exec_argv
+    exec_kwargs = fake_sandbox.exec.call_args.kwargs
+    assert exec_kwargs["text"] is False
+    assert exec_kwargs["bufsize"] == 0
     assert grade_result["reward"] == 1
     fake_sandbox.detach.assert_called_once()
 
@@ -2789,6 +2857,9 @@ def run_unit_tests() -> None:
     _test_mount_local_toolchain_recipe()
     _test_docstring_normative_command()
     _test_grade_in_sandbox_network()
+    _test_deepswe_exec_binary_stream_kwargs()
+    _test_harvest_binary_model_patch()
+    _test_parse_deepswe_run_result_binary_patch()
     _test_agent_sandbox_network()
     _test_agent_sandbox_open_network()
     _test_harvest_sandbox_workspace()
