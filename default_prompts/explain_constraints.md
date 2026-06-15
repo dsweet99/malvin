@@ -1,11 +1,15 @@
 - Explain the topic in the user request: `{{ explain_request }}`.
-  - The user request may override none or some of the constraints below.
-{{ explain_output_instruction }}
+
+- NB: **The user request takes precedence over the constraints below.**
+
 - Use complete sentences.
 - Make it 1–2 pages long.
 - Include a tl;dr at the top with 2-4 bullets, each a short phrase containing one complete thought
 - After the tl;dr, write a brief summary.
 - Write "malvin" as the author, and attach a footnote that reads "https://github.com/dsweet99/malvin".
+
+{{ explain_output_instruction }}
+
 
 - Write connected exposition, not a fact sheet. Each section should read like a short technical blog post: one main idea per paragraph, with transitions that explain why you’re moving on. Prefer a few linked paragraphs over lists of standalone sentences, semicolon-separated fact dumps, or stacks of parenthetical abbreviations. If you must cut for length, drop facts rather than compressing many into telegraphic fragments.
 - Start with something concrete, then grow more abstract.
