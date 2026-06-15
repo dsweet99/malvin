@@ -1299,6 +1299,8 @@ def grade_sandbox_resource_kwargs() -> dict[str, Any]:
 
 def relay_stream(reader: Any, sink: TextIO) -> None:
     for chunk in reader:
+        if isinstance(chunk, bytes):
+            chunk = chunk.decode("utf-8", errors="replace")
         sink.write(chunk)
         sink.flush()
 
@@ -1558,7 +1560,7 @@ def run_deepswe_run_in_sandbox(
             stdout=StreamType.PIPE,
             stderr=StreamType.PIPE,
             workdir=APP_REMOTE,
-            text=True,
+            text=False,
             bufsize=1,
         )
         click.echo("Running deepswe_run.py on Modal (single exec)...")
@@ -2335,9 +2337,14 @@ def _test_stream_helpers() -> None:
     sink = io.StringIO()
     relay_stream(iter(["alpha", "beta"]), sink)
     assert sink.getvalue() == "alphabeta"
+    latin1 = b"passed\n# latin-1 comment: \xe0\xe7\xe9\n"
+    sink = io.StringIO()
+    relay_stream(iter([latin1]), sink)
+    assert "passed" in sink.getvalue()
+    assert "\ufffd" in sink.getvalue()
     out = io.StringIO()
     err = io.StringIO()
-    proc = MagicMock(stdout=iter(["out"]), stderr=iter(["err"]))
+    proc = MagicMock(stdout=iter([b"out"]), stderr=iter([b"err"]))
     stream_process_output(proc, out, err)
     assert out.getvalue() == "out"
     assert err.getvalue() == "err"
