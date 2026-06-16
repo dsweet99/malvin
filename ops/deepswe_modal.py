@@ -1540,6 +1540,29 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
         return None
 
 
+def persist_grading_artifacts(
+    sandbox: modal.Sandbox,
+    artifacts_dir: Path,
+    *,
+    run_logs_remote: str,
+    grade_result: dict[str, Any],
+) -> None:
+    """Write reward-critical artifacts before heavyweight workspace/log harvest.
+
+    If workspace tar or log archival fails afterward, the run remains gradable.
+    """
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
+    if metadata_text:
+        (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
+    model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+    if model_patch:
+        (artifacts_dir / "model.patch").write_bytes(model_patch)
+    reward = grade_result.get("reward")
+    if reward is not None:
+        (artifacts_dir / "reward.txt").write_text(f"{reward}\n", encoding="utf-8")
+
+
 # Root-owned ``.git`` objects from the Modal sandbox cannot overwrite host checkout files.
 # Ephemeral bytecode is excluded so reused workspaces are not blocked by root-owned ``__pycache__``.
 HARVEST_WORKSPACE_TAR_EXCLUDES = (
@@ -1745,21 +1768,29 @@ def run_deepswe_run_in_sandbox(
             agent_result = {"exit_code": int(proc.returncode or 0)}
         elif agent_result is not None and "exit_code" not in agent_result:
             agent_result["exit_code"] = int(proc.returncode or 0)
+        if artifacts_dir is not None:
+            persist_grading_artifacts(
+                sandbox,
+                artifacts_dir,
+                run_logs_remote=run_logs_remote,
+                grade_result=grade_result,
+            )
         if harvest_workspace is not None:
-            harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
+            try:
+                harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
+            except Exception as exc:
+                harvest_info = {"harvested": False, "error": str(exc)}
+                click.echo(f"Workspace harvest failed: {exc}", err=True)
             if agent_result is not None:
                 agent_result["workspace_harvest"] = harvest_info
             elif not grade_only:
                 agent_result = {"workspace_harvest": harvest_info}
         if artifacts_dir is not None:
-            artifacts_dir.mkdir(parents=True, exist_ok=True)
-            model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
-            if model_patch:
-                (artifacts_dir / "model.patch").write_bytes(model_patch)
-            metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
-            if metadata_text:
-                (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
-            harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+            try:
+                harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+            except Exception as exc:
+                harvest = {"harvested": False, "error": str(exc)}
+                click.echo(f"Sandbox log harvest failed: {exc}", err=True)
             if grade_only:
                 grade_result["harvest"] = harvest
             elif agent_result is not None:
@@ -1844,6 +1875,64 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
     (out_dir / "metadata.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def load_agent_sandbox_metadata(agent_artifacts: Path) -> dict[str, Any] | None:
+    """Load in-sandbox metadata copied during Tier-A harvest (before workspace tar)."""
+    path = agent_artifacts / "metadata.json"
+    if not path.is_file():
+        return None
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return loaded if isinstance(loaded, dict) else None
+
+
+def finalize_modal_eval(
+    *,
+    run_root: Path,
+    spec: Any,
+    workspace: Path,
+    malvin_command: str,
+    malvin_args: tuple[str, ...],
+    grade_only: bool,
+    agent_result: dict[str, Any] | None,
+    grade_result: dict[str, Any],
+    modal_error: str | None = None,
+) -> None:
+    """Write host metadata, print grade summary, and exit with verifier/agent status."""
+    malvin_log = find_latest_malvin_log(workspace)
+    metadata: dict[str, Any] = {
+        "task_id": spec.task_id,
+        "runtime": "modal",
+        "workspace": str(workspace.resolve()),
+        "malvin_command": malvin_command if not grade_only else None,
+        "malvin_args": list(malvin_args),
+        "agent": agent_result,
+        "grade": grade_result,
+        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    if modal_error:
+        metadata["modal_error"] = modal_error
+    write_metadata(run_root, metadata)
+    if grade_result.get("reward") is not None:
+        (run_root / "reward.txt").write_text(f"{grade_result['reward']}\n", encoding="utf-8")
+
+    click.echo("\n=== Modal evaluation ===")
+    click.echo(f"reward: {grade_result.get('reward')}")
+    click.echo(f"pass: {grade_result.get('pass')}")
+    if agent_result:
+        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+    click.echo(f"artifacts: {run_root.resolve()}")
+
+    if grade_result.get("pass") is False:
+        raise SystemExit(1)
+    if agent_result and agent_result.get("exit_code") not in (0, None):
+        raise SystemExit(agent_result["exit_code"])
+    if modal_error and grade_result.get("reward") is None:
+        raise SystemExit(1)
+
+
 def run_modal_eval(
     *,
     task_dir: Path,
@@ -1890,112 +1979,109 @@ def run_modal_eval(
         apply_patch(workspace, spec.solution_patch, dry_run=False)
 
     agent_result: dict[str, Any] | None = None
-    grade_result: dict[str, Any]
+    grade_result: dict[str, Any] = {"pass": None, "reward": None}
+    modal_error: str | None = None
+    agent_artifacts: Path | None = None
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     checks = checks_override
     if checks is None:
         checks = discover_deepswe_checks(workspace)
-    if grade_only:
-        grade_img = mount_eval_context(
-            harbor_image(spec, dockerfile=spec.dockerfile),
-            task_dir=spec.task_dir,
-            workspace=workspace,
-            tests_dir=spec.tests_dir,
-            deepswe_run_py=deepswe_run_py,
-        )
-        agent_result, grade_result = run_deepswe_run_in_sandbox(
-            grade_img,
-            command=malvin_command,
-            malvin_argv=list(malvin_args),
-            grade_only=True,
-            skip_grade=False,
-            cursor_secrets=[],
-            artifacts_dir=run_root,
-        )
-    else:
-        agent_checks = offline_agent_checks(checks or "")
-        write_plan_and_checks(
-            spec,
-            workspace,
-            command=malvin_command,
-            checks_override=agent_checks,
-            dry_run=False,
-        )
-        malvin_repo, kiss_repo = validate_toolchain_repos()
-        with stage_toolchain_repos(malvin_repo, kiss_repo) as (malvin_staged, kiss_staged):
-            agent_img = harbor_agent_image(
+    try:
+        if grade_only:
+            grade_img = mount_eval_context(
+                harbor_image(spec, dockerfile=spec.dockerfile),
+                task_dir=spec.task_dir,
+                workspace=workspace,
+                tests_dir=spec.tests_dir,
+                deepswe_run_py=deepswe_run_py,
+            )
+            agent_result, grade_result = run_deepswe_run_in_sandbox(
+                grade_img,
+                command=malvin_command,
+                malvin_argv=list(malvin_args),
+                grade_only=True,
+                skip_grade=False,
+                cursor_secrets=[],
+                artifacts_dir=run_root,
+            )
+        else:
+            agent_checks = offline_agent_checks(checks or "")
+            write_plan_and_checks(
                 spec,
                 workspace,
-                spec.tests_dir,
-                dockerfile=spec.dockerfile,
-                malvin_repo=malvin_staged,
-                kiss_repo=kiss_staged,
-                deepswe_run_py=deepswe_run_py,
-                checks=agent_checks,
+                command=malvin_command,
+                checks_override=agent_checks,
+                dry_run=False,
             )
-            agent_artifacts = run_root / "agent_sandbox"
+            malvin_repo, kiss_repo = validate_toolchain_repos()
+            with stage_toolchain_repos(malvin_repo, kiss_repo) as (malvin_staged, kiss_staged):
+                agent_img = harbor_agent_image(
+                    spec,
+                    workspace,
+                    spec.tests_dir,
+                    dockerfile=spec.dockerfile,
+                    malvin_repo=malvin_staged,
+                    kiss_repo=kiss_staged,
+                    deepswe_run_py=deepswe_run_py,
+                    checks=agent_checks,
+                )
+                agent_artifacts = run_root / "agent_sandbox"
+                if skip_grade:
+                    click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
+                    agent_result, grade_result = run_deepswe_run_in_sandbox(
+                        agent_img,
+                        command=malvin_command,
+                        malvin_argv=list(malvin_args),
+                        grade_only=False,
+                        skip_grade=True,
+                        cursor_secrets=cursor_secrets(),
+                        artifacts_dir=agent_artifacts,
+                        harvest_workspace=workspace,
+                    )
+                else:
+                    click.echo(
+                        "Running malvin agent and Harbor grade in Modal sandbox "
+                        "(Cursor API allowlist, in-sandbox runtime)..."
+                    )
+                    agent_result, grade_result = run_deepswe_run_in_sandbox(
+                        agent_img,
+                        command=malvin_command,
+                        malvin_argv=list(malvin_args),
+                        grade_only=False,
+                        skip_grade=False,
+                        cursor_secrets=cursor_secrets(),
+                        artifacts_dir=agent_artifacts,
+                        harvest_workspace=workspace,
+                    )
+            if agent_result is None:
+                agent_result = {"exit_code": 1}
+            agent_result["runtime"] = "modal-sandbox"
             if skip_grade:
-                click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
-                agent_result, grade_result = run_deepswe_run_in_sandbox(
-                    agent_img,
-                    command=malvin_command,
-                    malvin_argv=list(malvin_args),
-                    grade_only=False,
-                    skip_grade=True,
-                    cursor_secrets=cursor_secrets(),
-                    artifacts_dir=agent_artifacts,
-                    harvest_workspace=workspace,
-                )
+                grade_result = {"pass": None, "reward": None, "skipped": True}
             else:
-                click.echo(
-                    "Running malvin agent and Harbor grade in Modal sandbox "
-                    "(Cursor API allowlist, in-sandbox runtime)..."
-                )
-                agent_result, grade_result = run_deepswe_run_in_sandbox(
-                    agent_img,
-                    command=malvin_command,
-                    malvin_argv=list(malvin_args),
-                    grade_only=False,
-                    skip_grade=False,
-                    cursor_secrets=cursor_secrets(),
-                    artifacts_dir=agent_artifacts,
-                    harvest_workspace=workspace,
-                )
+                grade_result["runtime"] = "modal-sandbox"
+    except Exception as exc:
+        modal_error = str(exc)
+        click.echo(f"Modal solve failed: {exc}", err=True)
+        if agent_artifacts is not None:
+            remote_meta = load_agent_sandbox_metadata(agent_artifacts)
+            if remote_meta:
+                agent_result = remote_meta.get("agent") or agent_result
+                grade_result = remote_meta.get("grade") or grade_result
         if agent_result is None:
-            agent_result = {"exit_code": 1}
-        agent_result["runtime"] = "modal-sandbox"
-        if skip_grade:
-            grade_result = {"pass": None, "reward": None, "skipped": True}
-        else:
-            grade_result["runtime"] = "modal-sandbox"
+            agent_result = {"exit_code": 1, "error": modal_error}
 
-    malvin_log = find_latest_malvin_log(workspace)
-    metadata = {
-        "task_id": spec.task_id,
-        "runtime": "modal",
-        "workspace": str(workspace.resolve()),
-        "malvin_command": malvin_command if not grade_only else None,
-        "malvin_args": list(malvin_args),
-        "agent": agent_result,
-        "grade": grade_result,
-        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-    }
-    write_metadata(run_root, metadata)
-    if grade_result.get("reward") is not None:
-        (run_root / "reward.txt").write_text(f"{grade_result['reward']}\n", encoding="utf-8")
-
-    click.echo("\n=== Modal evaluation ===")
-    click.echo(f"reward: {grade_result.get('reward')}")
-    click.echo(f"pass: {grade_result.get('pass')}")
-    if agent_result:
-        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
-    click.echo(f"artifacts: {run_root.resolve()}")
-
-    if grade_result.get("pass") is False:
-        raise SystemExit(1)
-    if agent_result and agent_result.get("exit_code") not in (0, None):
-        raise SystemExit(agent_result["exit_code"])
+    finalize_modal_eval(
+        run_root=run_root,
+        spec=spec,
+        workspace=workspace,
+        malvin_command=malvin_command,
+        malvin_args=malvin_args,
+        grade_only=grade_only,
+        agent_result=agent_result,
+        grade_result=grade_result,
+        modal_error=modal_error,
+    )
 
 
 @click.command(
@@ -2534,6 +2620,76 @@ def _test_cursor_secrets() -> None:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+def _test_persist_grading_artifacts() -> None:
+    sandbox = MagicMock()
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}})
+    sandbox.filesystem.read_text.return_value = metadata
+    sandbox.filesystem.read_bytes.return_value = b"patch-bytes"
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "agent_sandbox"
+        persist_grading_artifacts(
+            sandbox,
+            artifacts_dir,
+            run_logs_remote="/logs/run",
+            grade_result={"reward": 1, "pass": True},
+        )
+        assert (artifacts_dir / "metadata.json").read_text(encoding="utf-8") == metadata
+        assert (artifacts_dir / "model.patch").read_bytes() == b"patch-bytes"
+        assert (artifacts_dir / "reward.txt").read_text(encoding="utf-8") == "1\n"
+
+
+def _test_tier_a_before_workspace_harvest() -> None:
+    """Grading artifacts must survive workspace tar harvest failures."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": {"exit_code": 0}})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    fake_sandbox.filesystem.read_bytes.return_value = b"patch"
+    image = MagicMock()
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "agent_sandbox"
+        workspace = Path(tmp) / "workspace"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            with patch(
+                f"{__name__}.resolve_agent_sandbox_cidrs",
+                return_value=["9.9.9.9/32"],
+            ):
+                with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox"):
+                    with patch(
+                        f"{__name__}.harvest_sandbox_workspace",
+                        side_effect=RuntimeError("tar OOM"),
+                    ):
+                        with patch(
+                            f"{__name__}.harvest_sandbox_logs",
+                            return_value={"harvested": False},
+                        ):
+                            agent_result, grade_result = run_deepswe_run_in_sandbox(
+                                image,
+                                command="code",
+                                malvin_argv=[],
+                                grade_only=False,
+                                cursor_secrets=[],
+                                artifacts_dir=artifacts_dir,
+                                harvest_workspace=workspace,
+                            )
+        assert (artifacts_dir / "metadata.json").is_file()
+        assert grade_result["reward"] == 1
+        assert agent_result is not None
+        assert agent_result["workspace_harvest"]["harvested"] is False
+
+
+def _test_load_agent_sandbox_metadata() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts = Path(tmp) / "agent_sandbox"
+        artifacts.mkdir()
+        assert load_agent_sandbox_metadata(artifacts) is None
+        payload = {"grade": {"reward": 0, "pass": False}}
+        (artifacts / "metadata.json").write_text(json.dumps(payload), encoding="utf-8")
+        assert load_agent_sandbox_metadata(artifacts) == payload
 
 
 def _test_deepswe_exec_binary_stream_kwargs() -> None:
@@ -3131,6 +3287,9 @@ def run_unit_tests() -> None:
     _test_offline_agent_checks()
     _test_read_remote_file()
     _test_read_remote_bytes()
+    _test_persist_grading_artifacts()
+    _test_tier_a_before_workspace_harvest()
+    _test_load_agent_sandbox_metadata()
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()

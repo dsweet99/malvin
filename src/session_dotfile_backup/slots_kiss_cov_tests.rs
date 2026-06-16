@@ -51,18 +51,18 @@ fn slots_branchy_witness_covers_dotfile_rows() {
             panic!("slot {slot} label mismatch");
         }
     }
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
-    let mut id = |n: usize| format!("id{n}");
-    let backup = backup_slot(0, work, &mut id).expect("backup");
-    if matches!(backup, DotfileBackupState::Present(_)) {
-        restore_slot(work, &backup, 0).expect("restore");
-    } else if matches!(backup, DotfileBackupState::Missing) {
-        panic!("missing backup");
-    } else {
-        panic!("expected backup");
-    }
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
+        let mut id = |n: usize| format!("slots-branchy-{n}");
+        let backup = backup_slot(0, work, &mut id).expect("backup");
+        if matches!(backup, DotfileBackupState::Present(_)) {
+            restore_slot(work, &backup, 0).expect("restore");
+        } else if matches!(backup, DotfileBackupState::Missing) {
+            panic!("missing backup");
+        } else {
+            panic!("expected backup");
+        }
+    });
 }
 
 #[test]
