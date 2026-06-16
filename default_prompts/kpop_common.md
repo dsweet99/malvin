@@ -8,7 +8,13 @@ KPop may be referenced later on like a command, "KPop: <problem statement or que
 
 Apply this method to the user's problem.
 
-Restate the problem clearly.
+Preparation:
+- Restate the problem clearly.
+- Add clarifying constraints to the problem if you sense that something may be subtle or
+  potentially confusing. For example:
+  - Synonymy or near synonymy of terms
+  - Near contradictions in requirements
+  - Unclear behavior at boundaries and interfaces
 
 Repeat until you think you've solved the problem:
 LOOP_START
