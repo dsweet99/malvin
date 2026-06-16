@@ -1,5 +1,5 @@
 use crate::cli::error_run_log;
-use crate::cli::gate_kpop_workflow::{
+use crate::gate_kpop_workflow::{
     fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
     GateKpopLoopParams, GateLoopBehavior,
 };
@@ -120,7 +120,7 @@ async fn run_explain_gate_session(
     explain: &ExplainArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-    prepared: &crate::cli::gate_kpop_workflow::GateKpopPrepared,
+    prepared: &crate::gate_kpop_workflow::GateKpopPrepared,
 ) -> Result<
     (
         bool,

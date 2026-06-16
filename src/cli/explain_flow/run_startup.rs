@@ -2,7 +2,7 @@ use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+use crate::gate_kpop_workflow::GateKpopPrepared;
 
 use super::prep::{
     explain_kpop_request, explain_preflight, prepare_explain_kpop_prompt_store, ExplainKpopRequestInput,

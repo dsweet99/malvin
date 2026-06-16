@@ -231,16 +231,3 @@ fn operational_iterable_closed_for_emit_uses_stream_kind_message() {
         Some("acp: WritableIterable is closed")
     );
 }
-
-#[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_emit_operational_upgrade_plan_stop() {
-    }
-
-    #[test]
-    fn kiss_cov_iterable_closed_stream_message() {
-    }
-}

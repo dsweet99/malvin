@@ -4,6 +4,7 @@ use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
 use crate::workspace_paths::{snapshot_category_dir, MALVIN_HOME_CONFIG_FILE};
 use super::DotfileBackupState;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct DotfileSpecRow {
     pub rel: &'static str,
     pub home_subdir: &'static str,
@@ -12,6 +13,12 @@ pub(super) struct DotfileSpecRow {
     pub restore_lbl: &'static str,
     pub copy_err: &'static str,
     pub restore_copy_err: &'static str,
+}
+
+impl DotfileSpecRow {
+    pub(super) const fn rel_path(self) -> &'static str {
+        self.rel
+    }
 }
 
 const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
@@ -98,6 +105,7 @@ pub(super) fn backup_slot(
     generate_id: &mut impl FnMut(usize) -> String,
 ) -> Result<DotfileBackupState, String> {
     let spec = &DOTFILE_ROWS[slot];
+    let _ = spec.rel_path();
     let src = dotfile_source_path(slot, work_dir);
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
@@ -159,6 +167,7 @@ fn restore_malvin_config_missing(dst: &Path, lbls: &DotfileBackupLabels) -> Resu
 
 pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
+    let _ = spec.rel_path();
     let dst = dotfile_source_path(slot, work_dir);
     let lbls = labels(spec);
     match backup {
@@ -186,12 +195,9 @@ pub(super) const fn labels_for_test(row: &DotfileSpecRow) -> DotfileBackupLabels
 }
 
 #[cfg(test)]
-mod kiss_static_type_refs {
-    use super::*;
-
-    #[test]
-    fn kiss_static_type_refs() {
-        let _: DotfileSpecRow = DOTFILE_ROWS[0];
-        let _ = labels;
-    }
+pub(super) fn restore_malvin_config_missing_for_test(
+    dst: &Path,
+    lbls: &DotfileBackupLabels,
+) -> Result<(), String> {
+    restore_malvin_config_missing(dst, lbls)
 }

@@ -47,6 +47,7 @@ import asyncio
 import io
 import json
 import os
+import shutil
 import socket
 import stat
 import sys
@@ -54,9 +55,10 @@ import tarfile
 import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, Iterator, TextIO
 from unittest.mock import MagicMock, patch
 
 import click
@@ -189,8 +191,72 @@ def malvin_upload_ignore() -> list[str]:
 
 
 def kiss_upload_ignore() -> list[str]:
-    """Exclude build artifacts when uploading kiss source to Modal."""
-    return ["target/", ".git", "__pycache__/"]
+    """Exclude build artifacts and ephemeral paths when uploading kiss source to Modal."""
+    return [
+        "target/",
+        ".git",
+        "__pycache__/",
+        ".malvin/",
+        ".pytest_cache/",
+    ]
+
+
+def workspace_mount_ignore() -> list[str]:
+    """Exclude sandbox ephemeral paths when uploading a reused DeepSWE workspace to Modal."""
+    return [
+        ".stestr/",
+        "__pycache__/",
+        ".pytest_cache/",
+        "*.pyc",
+        "*.pyo",
+    ]
+
+
+def _upload_ignore_names(patterns: list[str]) -> set[str]:
+    """Top-level directory/file names to skip when staging a toolchain tree."""
+    return {pattern.rstrip("/") for pattern in patterns}
+
+
+def _copytree_ignore_factory(patterns: list[str]):
+    skip = _upload_ignore_names(patterns)
+
+    def ignore(_directory: str, names: list[str]) -> set[str]:
+        return {name for name in names if name in skip}
+
+    return ignore
+
+
+def stage_toolchain_repo(src: Path, dst: Path, *, ignore_patterns: list[str]) -> None:
+    """Copy a toolchain tree to a frozen snapshot for Modal ``add_local_dir`` upload."""
+    shutil.copytree(
+        src,
+        dst,
+        ignore=_copytree_ignore_factory(ignore_patterns),
+        dirs_exist_ok=True,
+    )
+
+
+@contextmanager
+def stage_toolchain_repos(
+    malvin_repo: Path,
+    kiss_repo: Path,
+) -> Iterator[tuple[Path, Path]]:
+    """Stage malvin/kiss into a temp dir so Modal upload is not raced by live checkouts."""
+    with tempfile.TemporaryDirectory(prefix="deepswe-toolchain-") as tmp:
+        root = Path(tmp)
+        malvin_staged = root / "malvin"
+        kiss_staged = root / "kiss"
+        stage_toolchain_repo(
+            malvin_repo.resolve(),
+            malvin_staged,
+            ignore_patterns=malvin_upload_ignore(),
+        )
+        stage_toolchain_repo(
+            kiss_repo.resolve(),
+            kiss_staged,
+            ignore_patterns=kiss_upload_ignore(),
+        )
+        yield malvin_staged, kiss_staged
 
 
 def resolve_cursor_api_cidrs_from_hosts(hosts: tuple[str, ...] = CURSOR_API_HOSTS) -> list[str]:
@@ -486,6 +552,30 @@ def _is_transient_modal_probe_error(exc: BaseException) -> bool:
     return "connection" in message and ("stalled" in message or "reset" in message)
 
 
+def _is_modal_spend_limit_error(exc: BaseException) -> bool:
+    """True when Modal rejected sandbox creation due to workspace billing limits."""
+    if isinstance(exc, modal.exception.ResourceExhaustedError):
+        return True
+    message = str(exc).lower()
+    return "spend limit" in message or "resourceexhausted" in message
+
+
+def _allowlist_cache_only_mode() -> bool:
+    """When set, use on-disk Cursor API allowlist without live Modal probe sandboxes."""
+    return os.environ.get("DEEPSWE_ALLOWLIST_CACHE_ONLY") == "1"
+
+
+def _use_cached_allowlist_verbatim(cached: list[str], *, reason: str) -> list[str]:
+    """Return compressed cached CIDRs and log why live refresh was skipped."""
+    compressed = compress_ipv4_cidrs(cached)
+    click.echo(
+        f"Using cached Cursor API allowlist without live refresh "
+        f"({len(compressed)} CIDRs): {reason}",
+        err=True,
+    )
+    return compressed
+
+
 def _run_modal_cidr_probe_script_once(
     script: str,
     *,
@@ -746,13 +836,18 @@ def resolve_agent_session_peers_under_allowlist(
         return []
     sandbox: modal.Sandbox | None = None
     try:
-        sandbox = modal.Sandbox.create(
-            app=sandbox_app(),
-            image=agent_peer_probe_image(),
-            secrets=cursor_secrets(),
-            timeout=_probe_sandbox_timeout(timeout),
-            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
-        )
+        try:
+            sandbox = modal.Sandbox.create(
+                app=sandbox_app(),
+                image=agent_peer_probe_image(),
+                secrets=cursor_secrets(),
+                timeout=_probe_sandbox_timeout(timeout),
+                outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            )
+        except modal.exception.ResourceExhaustedError as exc:
+            raise click.ClickException(
+                f"Modal spend limit during allowlist agent peer probe: {exc}"
+            ) from exc
         proc = sandbox.exec(
             "python3",
             "-c",
@@ -1027,6 +1122,28 @@ def refresh_cached_allowlist(
     timeout: int,
 ) -> list[str]:
     """Merge fresh host DNS, allowlist fixpoint, HTTPS validation, and agent peers."""
+    if _allowlist_cache_only_mode():
+        return _use_cached_allowlist_verbatim(
+            cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
+        )
+    try:
+        return _refresh_cached_allowlist_live(cached, timeout=timeout)
+    except modal.exception.ResourceExhaustedError as exc:
+        return _use_cached_allowlist_verbatim(
+            cached, reason=f"Modal spend limit during refresh ({exc})"
+        )
+    except click.ClickException as exc:
+        if _is_modal_spend_limit_error(exc):
+            return _use_cached_allowlist_verbatim(cached, reason=str(exc))
+        raise
+
+
+def _refresh_cached_allowlist_live(
+    cached: list[str],
+    *,
+    timeout: int,
+) -> list[str]:
+    """Live refresh path (may spawn Modal probe sandboxes)."""
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
     if uncovered:
@@ -1149,6 +1266,8 @@ def _merge_allowlist_agent_peers(
             if allowlist_near_modal_cap(cidrs):
                 break
         except click.ClickException as exc:
+            if _is_modal_spend_limit_error(exc):
+                raise
             click.echo(f"{label} probe skipped: {exc}", err=True)
             break
     return cidrs, added_total
@@ -1165,7 +1284,20 @@ def resolve_agent_sandbox_cidrs(
     if os.environ.get("DEEPSWE_REFRESH_ALLOWLIST_CACHE") != "1":
         cached = read_cursor_api_allowlist_cache()
         if cached is not None:
-            refreshed = refresh_cached_allowlist(cached, timeout=timeout)
+            if _allowlist_cache_only_mode():
+                return _use_cached_allowlist_verbatim(
+                    cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
+                )
+            try:
+                refreshed = refresh_cached_allowlist(cached, timeout=timeout)
+            except modal.exception.ResourceExhaustedError as exc:
+                return _use_cached_allowlist_verbatim(
+                    cached, reason=f"Modal spend limit during refresh ({exc})"
+                )
+            except click.ClickException as exc:
+                if _is_modal_spend_limit_error(exc):
+                    return _use_cached_allowlist_verbatim(cached, reason=str(exc))
+                raise
             click.echo(
                 f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
                 f"{cursor_api_allowlist_cache_path()}"
@@ -1327,7 +1459,11 @@ def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
 
 def mount_task_tree(image: modal.Image, workspace: Path, tests_dir: Path) -> modal.Image:
     return (
-        image.add_local_dir(str(workspace.resolve()), remote_path=APP_REMOTE)
+        image.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            ignore=workspace_mount_ignore(),
+        )
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
     )
 
@@ -1345,7 +1481,11 @@ def mount_eval_context(
         "python3 -m pip install --break-system-packages click"
     )
     return (
-        prepared.add_local_dir(str(workspace.resolve()), remote_path=APP_REMOTE)
+        prepared.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            ignore=workspace_mount_ignore(),
+        )
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
         .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
@@ -1405,6 +1545,7 @@ def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
 HARVEST_WORKSPACE_TAR_EXCLUDES = (
     "--exclude=./.git",
     "--exclude=./.malvin/logs",
+    "--exclude=./.stestr",
     "--exclude=__pycache__",
     "--exclude=*.pyc",
     "--exclude=*.pyo",
@@ -1781,44 +1922,45 @@ def run_modal_eval(
             dry_run=False,
         )
         malvin_repo, kiss_repo = validate_toolchain_repos()
-        agent_img = harbor_agent_image(
-            spec,
-            workspace,
-            spec.tests_dir,
-            dockerfile=spec.dockerfile,
-            malvin_repo=malvin_repo,
-            kiss_repo=kiss_repo,
-            deepswe_run_py=deepswe_run_py,
-            checks=agent_checks,
-        )
-        agent_artifacts = run_root / "agent_sandbox"
-        if skip_grade:
-            click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                agent_img,
-                command=malvin_command,
-                malvin_argv=list(malvin_args),
-                grade_only=False,
-                skip_grade=True,
-                cursor_secrets=cursor_secrets(),
-                artifacts_dir=agent_artifacts,
-                harvest_workspace=workspace,
+        with stage_toolchain_repos(malvin_repo, kiss_repo) as (malvin_staged, kiss_staged):
+            agent_img = harbor_agent_image(
+                spec,
+                workspace,
+                spec.tests_dir,
+                dockerfile=spec.dockerfile,
+                malvin_repo=malvin_staged,
+                kiss_repo=kiss_staged,
+                deepswe_run_py=deepswe_run_py,
+                checks=agent_checks,
             )
-        else:
-            click.echo(
-                "Running malvin agent and Harbor grade in Modal sandbox "
-                "(Cursor API allowlist, in-sandbox runtime)..."
-            )
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                agent_img,
-                command=malvin_command,
-                malvin_argv=list(malvin_args),
-                grade_only=False,
-                skip_grade=False,
-                cursor_secrets=cursor_secrets(),
-                artifacts_dir=agent_artifacts,
-                harvest_workspace=workspace,
-            )
+            agent_artifacts = run_root / "agent_sandbox"
+            if skip_grade:
+                click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    agent_img,
+                    command=malvin_command,
+                    malvin_argv=list(malvin_args),
+                    grade_only=False,
+                    skip_grade=True,
+                    cursor_secrets=cursor_secrets(),
+                    artifacts_dir=agent_artifacts,
+                    harvest_workspace=workspace,
+                )
+            else:
+                click.echo(
+                    "Running malvin agent and Harbor grade in Modal sandbox "
+                    "(Cursor API allowlist, in-sandbox runtime)..."
+                )
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    agent_img,
+                    command=malvin_command,
+                    malvin_argv=list(malvin_args),
+                    grade_only=False,
+                    skip_grade=False,
+                    cursor_secrets=cursor_secrets(),
+                    artifacts_dir=agent_artifacts,
+                    harvest_workspace=workspace,
+                )
         if agent_result is None:
             agent_result = {"exit_code": 1}
         agent_result["runtime"] = "modal-sandbox"
@@ -2570,6 +2712,7 @@ def _test_harvest_sandbox_workspace() -> None:
     mock_archive.getmembers.assert_called_once()
     exec_cmd = fake_sandbox.exec.call_args.args[2]
     assert "--exclude=./.git" in exec_cmd
+    assert "--exclude=./.stestr" in exec_cmd
     assert "--exclude=__pycache__" in exec_cmd
 
 
@@ -2643,6 +2786,8 @@ def _test_mount_eval_context_recipe() -> None:
     )
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
     assert len(uploads) == 3
+    workspace_upload = uploads[0]
+    assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
     assert len(file_uploads) == 2
     remote_paths = {call[2]["remote_path"] for call in file_uploads}
@@ -2743,12 +2888,42 @@ def _test_resolve_cursor_api_cidrs_mocked() -> None:
 def _test_upload_ignore_patterns() -> None:
     malvin_ignores = malvin_upload_ignore()
     kiss_ignores = kiss_upload_ignore()
+    workspace_ignores = workspace_mount_ignore()
     assert "target/" in malvin_ignores
     assert "target/" in kiss_ignores
+    assert ".stestr/" in workspace_ignores
+    assert "__pycache__/" in workspace_ignores
     assert "reports/" in malvin_ignores
     assert ".malvin/" in malvin_ignores
+    assert ".malvin/" in kiss_ignores
+    assert ".pytest_cache/" in kiss_ignores
     assert "Cargo.toml" not in malvin_ignores
     assert "src/" not in malvin_ignores
+
+
+def _test_stage_toolchain_repos() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        malvin_src = root / "malvin_src"
+        kiss_src = root / "kiss_src"
+        malvin_src.mkdir()
+        kiss_src.mkdir()
+        (malvin_src / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+        (malvin_src / "target").mkdir()
+        (malvin_src / "target" / "artifact").write_text("x", encoding="utf-8")
+        (malvin_src / ".malvin").mkdir()
+        (malvin_src / ".malvin" / "lock").write_text("x", encoding="utf-8")
+        (kiss_src / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+        (kiss_src / ".pytest_cache").mkdir()
+        (kiss_src / ".pytest_cache" / "nodeids").write_text("[]", encoding="utf-8")
+        with stage_toolchain_repos(malvin_src, kiss_src) as (malvin_staged, kiss_staged):
+            assert (malvin_staged / "Cargo.toml").is_file()
+            assert not (malvin_staged / "target").exists()
+            assert not (malvin_staged / ".malvin").exists()
+            assert (kiss_staged / "Cargo.toml").is_file()
+            assert not (kiss_staged / ".pytest_cache").exists()
+            (malvin_src / "Cargo.toml").write_text("mutated\n", encoding="utf-8")
+            assert (malvin_staged / "Cargo.toml").read_text(encoding="utf-8") == "[package]\n"
 
 
 class _RecordingImage:
@@ -2810,6 +2985,36 @@ def _test_is_transient_modal_probe_error() -> None:
     assert not _is_transient_modal_probe_error(click.ClickException("probe failed"))
 
 
+def _test_is_modal_spend_limit_error() -> None:
+    assert _is_modal_spend_limit_error(
+        modal.exception.ResourceExhaustedError("Workspace has exceeded its spend limit")
+    )
+    assert _is_modal_spend_limit_error(
+        click.ClickException("Modal spend limit during allowlist agent peer probe")
+    )
+    assert not _is_modal_spend_limit_error(click.ClickException("probe failed"))
+
+
+def _test_refresh_cached_allowlist_cache_only_mode() -> None:
+    cached = ["1.2.3.4/32", "5.6.7.8/32"]
+    with patch.dict(os.environ, {"DEEPSWE_ALLOWLIST_CACHE_ONLY": "1"}, clear=False):
+        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert refreshed == compress_ipv4_cidrs(cached)
+
+
+def _test_refresh_cached_allowlist_spend_limit_falls_back() -> None:
+    cached = ["1.2.3.4/32"]
+    with (
+        patch.dict(os.environ, {}, clear=False),
+        patch(
+            f"{__name__}._refresh_cached_allowlist_live",
+            side_effect=modal.exception.ResourceExhaustedError("spend limit"),
+        ),
+    ):
+        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert refreshed == compress_ipv4_cidrs(cached)
+
+
 def _test_run_modal_cidr_probe_script_retries_transient_timeout() -> None:
     calls = {"n": 0}
 
@@ -2839,6 +3044,14 @@ def _test_self_test_flag() -> None:
     mock_tests.assert_called_once()
 
 
+@contextmanager
+def _fake_stage_toolchain_repos(
+    malvin_repo: Path,
+    kiss_repo: Path,
+) -> Iterator[tuple[Path, Path]]:
+    yield malvin_repo, kiss_repo
+
+
 def _test_run_modal_eval_modal_agent_modal_grade() -> None:
     """solve path: malvin and Harbor grade in one Cursor-allowlist Modal sandbox."""
     tasks_root = default_deepswe_tasks_root()
@@ -2856,6 +3069,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
             patch(f"{__name__}.materialize_workspace"),
             patch(f"{__name__}.write_plan_and_checks"),
             patch(f"{__name__}.validate_toolchain_repos", return_value=(Path("/m"), Path("/k"))),
+            patch(f"{__name__}.stage_toolchain_repos", side_effect=_fake_stage_toolchain_repos),
             patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),
             patch(f"{__name__}.harbor_image", return_value=MagicMock()),
             patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
@@ -2920,6 +3134,7 @@ def run_unit_tests() -> None:
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
+    _test_stage_toolchain_repos()
     _test_mount_local_toolchain_recipe()
     _test_docstring_normative_command()
     _test_grade_in_sandbox_network()
@@ -2935,6 +3150,9 @@ def run_unit_tests() -> None:
     _test_mount_eval_context_recipe()
     _test_probe_sandbox_timeout()
     _test_is_transient_modal_probe_error()
+    _test_is_modal_spend_limit_error()
+    _test_refresh_cached_allowlist_cache_only_mode()
+    _test_refresh_cached_allowlist_spend_limit_falls_back()
     _test_run_modal_cidr_probe_script_retries_transient_timeout()
     _test_sandbox_app()
     _test_self_test_flag()

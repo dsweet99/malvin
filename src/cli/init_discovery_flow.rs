@@ -13,7 +13,7 @@ use crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
 use crate::repo_gates::init_discovery::{InitDiscoveryDecision, validate_checks_command_lines};
 use crate::repo_gates::load_malvin_checks;
 
-use super::gate_kpop_workflow::{
+use crate::gate_kpop_workflow::{
     GateKpopLoopParams, GateKpopPrepared, GateLoopBehavior, run_gate_kpop_loop,
 };
 use super::workflow_kpop_shared::{gate_kpop_loop_iterations, kpop_workflow_context, render_kpop_program_request};

@@ -64,6 +64,9 @@ mod format_tests;
 mod format_tests_b;
 #[cfg(test)]
 mod stdout_log_tests;
+#[cfg(test)]
+#[path = "output_kiss_cov_tests.rs"]
+mod output_kiss_cov_tests;
 
 #[cfg(test)]
 use std::cell::RefCell;

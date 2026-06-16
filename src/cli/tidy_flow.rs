@@ -41,7 +41,7 @@ pub struct TidyArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
+    use crate::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn tidy_effective_max_loops_is_at_least_one() {
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_tidy_kpop_helpers() {
-        let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
+        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]
@@ -100,7 +100,7 @@ mod tests {
             "malvin tidy",
             &prepared,
             &backups,
-            crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY,
+            crate::gate_kpop_workflow::GateLoopBehavior::TIDY,
         )
         .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

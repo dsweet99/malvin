@@ -943,6 +943,60 @@ def run_modal_solve(
     )
 
 
+def _is_modal_spend_limit_error(exc: BaseException) -> bool:
+    """True when Modal rejected work due to workspace billing / spend caps."""
+    try:
+        import modal.exception
+
+        if isinstance(exc, modal.exception.ResourceExhaustedError):
+            return True
+        if isinstance(exc, modal.exception.RemoteError):
+            message = str(exc).lower()
+            return "spend limit" in message or "billing cycle" in message
+    except ModuleNotFoundError:
+        pass
+    message = str(exc).lower()
+    return "spend limit" in message or "billing cycle spend limit" in message
+
+
+def _run_solve_local_docker_fallback(
+    task_dir: Path,
+    *,
+    checks_override: str | None,
+    grade_only: bool,
+    skip_grade: bool,
+    apply_solution: bool,
+    reset_workspace_flag: bool,
+    docker_image: str | None,
+    dry_run: bool,
+    malvin_args: tuple[str, ...],
+) -> None:
+    """Run solve in local Docker when Modal billing blocks sandbox creation."""
+    spec = parse_task_dir(task_dir)
+    results_root = default_deepswe_results_dir()
+    run_root = results_root / spec.task_id / timestamp_dir()
+    workspace = results_root / spec.task_id / "workspace"
+    click.echo(f"Task: {spec.task_id}")
+    click.echo("Runtime: local-docker (Modal spend-limit fallback)")
+    click.echo(f"Workspace: {workspace.resolve()}")
+    click.echo(f"Run artifacts: {run_root.resolve()}")
+    _run_local_docker_task(
+        spec,
+        task_dir,
+        workspace,
+        run_root,
+        malvin_command="code",
+        malvin_args=malvin_args,
+        grade_only=grade_only,
+        skip_grade=skip_grade,
+        apply_solution=apply_solution,
+        reset_workspace_flag=reset_workspace_flag,
+        checks_override=checks_override,
+        docker_image=docker_image,
+        dry_run=dry_run,
+    )
+
+
 def _build_run_metadata(
     spec: TaskSpec,
     workspace: Path,
@@ -1114,16 +1168,35 @@ def run_task(
         if use_local_docker:
             local_docker = True
         else:
-            run_modal_solve(
-                task_dir=task_dir,
-                checks_override=checks_override,
-                grade_only=grade_only,
-                skip_grade=skip_grade,
-                apply_solution=apply_solution,
-                reset_workspace_flag=reset_workspace_flag,
-                dry_run=dry_run,
-                malvin_args=malvin_args,
-            )
+            try:
+                run_modal_solve(
+                    task_dir=task_dir,
+                    checks_override=checks_override,
+                    grade_only=grade_only,
+                    skip_grade=skip_grade,
+                    apply_solution=apply_solution,
+                    reset_workspace_flag=reset_workspace_flag,
+                    dry_run=dry_run,
+                    malvin_args=malvin_args,
+                )
+            except Exception as exc:
+                if not _is_modal_spend_limit_error(exc):
+                    raise
+                click.echo(
+                    "Modal workspace spend limit reached; falling back to local Docker.",
+                    err=True,
+                )
+                _run_solve_local_docker_fallback(
+                    task_dir,
+                    checks_override=checks_override,
+                    grade_only=grade_only,
+                    skip_grade=skip_grade,
+                    apply_solution=apply_solution,
+                    reset_workspace_flag=reset_workspace_flag,
+                    docker_image=docker_image,
+                    dry_run=dry_run,
+                    malvin_args=malvin_args,
+                )
             return
     elif task_dir is None:
         raise click.ClickException("Provide solve TASK_NAME or run --task PATH")
@@ -1731,6 +1804,47 @@ def _test_write_plan_and_checks_discovers() -> None:
         assert "pytest" in checks
 
 
+def _test_is_modal_spend_limit_error() -> None:
+    assert _is_modal_spend_limit_error(RuntimeError("Workspace billing cycle spend limit reached"))
+    try:
+        import modal.exception
+
+        assert _is_modal_spend_limit_error(
+            modal.exception.ResourceExhaustedError("Workspace has exceeded its spend limit")
+        )
+        assert _is_modal_spend_limit_error(
+            modal.exception.RemoteError("billing cycle spend limit reached, cancelling task")
+        )
+    except ModuleNotFoundError:
+        pass
+    assert not _is_modal_spend_limit_error(RuntimeError("connection reset"))
+
+
+def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "bandit-interprocedural-taint-checks"
+    if not task.is_dir():
+        return
+    try:
+        import modal.exception
+    except ModuleNotFoundError:
+        return
+    runner = CliRunner()
+    with patch(
+        "deepswe_modal.run_modal_eval",
+        side_effect=modal.exception.RemoteError("billing cycle spend limit reached"),
+    ):
+        result = runner.invoke(
+            cli,
+            ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
+        )
+    assert result.exit_code == 0, result.output
+    assert "Modal workspace spend limit reached" in result.output
+    assert "local-docker (Modal spend-limit fallback)" in result.output
+
+
 def _test_tasks_command() -> None:
     from click.testing import CliRunner
 
@@ -1824,6 +1938,8 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_write_plan_and_checks_discovers()
     _test_tasks_command()
+    _test_is_modal_spend_limit_error()
+    _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_local_grade_only_apply_solution()
     click.echo("deepswe_run self-tests passed")

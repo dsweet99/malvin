@@ -136,32 +136,30 @@ pub(crate) fn executable_text_busy(err: &io::Error) -> bool {
     }
 }
 
-#[test]
-fn build_agent_acp_command_uses_bin_override_program() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let cmd = build_agent_acp_command(&BuildAgentAcpCommandArgs {
-        cwd: tmp.path(),
-        bin_override: Some(Path::new("/bin/true")),
-        api_key: None,
-        auth_token: None,
-        george_acp_lane: None,
-        model: None,
-        force: false,
-    });
-    assert_eq!(
-        cmd.as_std().get_program().to_string_lossy(),
-        "/bin/true"
-    );
+#[cfg(test)]
+pub(crate) fn cmd_env(cmd: &Command, key: &str) -> Option<std::ffi::OsString> {
+    cmd.as_std()
+        .get_envs()
+        .find_map(|(k, v)| (k == key).then(|| v.map(std::ffi::OsStr::to_os_string)))
+        .flatten()
 }
 
-#[test]
-fn transport_command_kiss_static_refs() {
-    let _ = prepend_standard_path_for_child;
-    let _ = forward_parent_env;
-    let _ = apply_api_and_auth;
-    let _ = apply_acp_tail;
-    let _ = agent_program;
-    let _ = spawn_agent_acp_child;
-    let _ = executable_text_busy;
+#[cfg(test)]
+#[allow(unsafe_code)]
+pub(crate) fn with_env(key: &str, value: Option<&str>, f: impl FnOnce()) {
+    let prior = std::env::var_os(key);
+    unsafe {
+        match value {
+            Some(v) => std::env::set_var(key, v),
+            None => std::env::remove_var(key),
+        }
+    }
+    f();
+    unsafe {
+        match prior {
+            Some(v) => std::env::set_var(key, v),
+            None => std::env::remove_var(key),
+        }
+    }
 }
 

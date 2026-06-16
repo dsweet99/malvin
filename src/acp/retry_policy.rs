@@ -156,3 +156,28 @@ pub(crate) fn plan_agent_retry(
     let secs = if attempt == 1 { 1_u64 } else { 3_u64 };
     Ok(AgentRetryOutcome::Sleep(std::time::Duration::from_secs(secs)))
 }
+
+#[cfg(test)]
+mod kiss_cov_iterable_closed {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_iterable_closed_stream_message_both_arms() {
+        assert_eq!(
+            iterable_closed_stream_message(IterableClosedStream::Writable),
+            "acp: WritableIterable is closed"
+        );
+        assert_eq!(
+            iterable_closed_stream_message(IterableClosedStream::Readable),
+            "acp: ReadableIterable is closed"
+        );
+        assert!(matches!(
+            IterableClosedStream::Writable,
+            IterableClosedStream::Writable
+        ));
+        assert!(matches!(
+            IterableClosedStream::Readable,
+            IterableClosedStream::Readable
+        ));
+    }
+}

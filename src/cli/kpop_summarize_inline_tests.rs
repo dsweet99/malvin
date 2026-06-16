@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use crate::artifacts::create_kpop_run_artifacts;
-use crate::cli::gate_kpop_workflow::GateLoopBehavior;
+use crate::gate_kpop_workflow::GateLoopBehavior;
 use crate::cli::kpop_summarize::{
     code_outer_loop_summarize_params, insert_summarize_log_context, kpop_flows_ran,
     kpop_outer_loop_summarize_params, list_written_exp_logs, maybe_run_gate_inline_summarize,
@@ -146,7 +146,7 @@ fn code_outer_loop_summarize_params_wires_code_command() {
     std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let prepared = super::code_flow::prepare_code_kpop_run(
+    let prepared = crate::cli::code_flow::prepare_code_kpop_run(
         crate::cli::WorkflowCliOptions { force: false },
         "ship it",
     )

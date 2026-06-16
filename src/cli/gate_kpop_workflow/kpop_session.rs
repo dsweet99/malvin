@@ -18,6 +18,13 @@ pub(crate) struct GateKpopMultiturnCtx<'a> {
     pub iteration: &'a mut GateKpopIterationParams<'a>,
 }
 
+impl<'a> GateKpopMultiturnCtx<'a> {
+    #[cfg(test)]
+    pub(crate) const fn iteration_number(&self) -> usize {
+        self.iteration.iteration
+    }
+}
+
 pub(crate) fn post_gate_kpop_gates(
     command: &str,
     prepared: &GateKpopPrepared,
@@ -223,20 +230,6 @@ pub(crate) async fn run_gate_kpop_session(
 }
 
 #[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_kpop_session_symbols() {
-        let _: Option<GateKpopMultiturnCtx<'_>> = None;
-        let _ = post_gate_kpop_gates;
-        let _ = print_gate_kpop_log_line;
-        let _ = build_gate_kpop_prompt;
-        let _ = restore_gate_kpop_session_dotfiles;
-        let _ = finalize_gate_kpop_turn;
-        let _ = run_gate_kpop_coder_turn;
-        let _ = run_gate_kpop_single_turn;
-        let _ = run_gate_kpop_session;
-    }
-}
+#[path = "kpop_session_kiss_cov_tests.rs"]
+mod kpop_session_kiss_cov_tests;
 

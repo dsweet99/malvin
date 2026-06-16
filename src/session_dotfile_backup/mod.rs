@@ -149,6 +149,18 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
 }
 
 #[cfg(test)]
+#[path = "mod_kiss_cov_tests.rs"]
+mod mod_kiss_cov_tests;
+#[cfg(test)]
+mod slots_kiss_cov_shared;
+#[cfg(test)]
+#[path = "slots_kiss_cov_tests.rs"]
+mod slots_kiss_cov_tests;
+#[cfg(test)]
+#[path = "slots_kiss_cov_tests_b.rs"]
+mod slots_kiss_cov_tests_b;
+
+#[cfg(test)]
 #[path = "tests/slot_helpers.rs"]
 mod slot_helpers;
 

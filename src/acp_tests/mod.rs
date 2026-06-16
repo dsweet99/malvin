@@ -18,6 +18,9 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
+#[cfg(test)]
+#[path = "../acp/reader_tests_retry_policy_kiss_cov_tests.rs"]
+mod reader_tests_retry_policy_kiss_cov_tests;
 #[path = "../acp/reader_tests_retry_policy_session_new.rs"]
 pub(crate) mod reader_tests_retry_policy_session_new;
 #[path = "backoff_helpers_tests.rs"]

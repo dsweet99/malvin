@@ -50,7 +50,7 @@ pub struct CodeArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
+    use crate::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn code_effective_max_loops_is_at_least_one() {
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_code_kpop_helpers() {
-        let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
+        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod tests {
             "malvin code",
             &prepared,
             &backups,
-            crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE,
+            crate::gate_kpop_workflow::GateLoopBehavior::CODE,
         )
         .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

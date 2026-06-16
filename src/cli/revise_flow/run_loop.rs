@@ -1,5 +1,5 @@
 use crate::cli::error_run_log;
-use crate::cli::gate_kpop_workflow::{
+use crate::gate_kpop_workflow::{
     fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
     GateKpopLoopParams, GateLoopBehavior,
 };
@@ -167,7 +167,7 @@ mod tests {
         store.ensure_defaults().expect("defaults");
         let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
         let prepared = ReviseKpopPrepared {
-            inner: crate::cli::gate_kpop_workflow::GateKpopPrepared {
+            inner: crate::gate_kpop_workflow::GateKpopPrepared {
                 artifacts,
                 context: std::collections::HashMap::new(),
                 request_text: "req".into(),

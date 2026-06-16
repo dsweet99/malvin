@@ -22,5 +22,12 @@ pub(crate) use run_loop::run_gate_kpop_loop;
 #[cfg(test)]
 pub(crate) use kpop_session::post_gate_kpop_gates;
 #[cfg(test)]
+pub(crate) use kpop_session::GateKpopMultiturnCtx;
+#[cfg(test)]
+pub(crate) use kpop_session::run_gate_kpop_session;
+#[cfg(test)]
 #[path = "gate_kpop_workflow/kpop_session_tests.rs"]
 mod kpop_session_tests;
+#[cfg(test)]
+#[path = "gate_kpop_workflow_kiss_cov_tests.rs"]
+mod gate_kpop_workflow_kiss_cov_tests;

@@ -2,7 +2,7 @@
 
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;
-use crate::cli::gate_kpop_workflow::GateLoopBehavior;
+use crate::gate_kpop_workflow::GateLoopBehavior;
 use crate::prompts::PromptStore;
 
 /// Context for inline summarize at the end of a `malvin kpop` outer-loop iteration.

@@ -109,6 +109,9 @@ pub(crate) fn note_acp_trace_activity(
 mod jsonrpc_error;
 #[path = "transport/command.rs"]
 mod command;
+#[cfg(test)]
+#[path = "transport/command_kiss_cov_tests.rs"]
+mod command_kiss_cov_tests;
 #[path = "transport/rpc_part1.rs"]
 mod rpc_part1;
 #[path = "transport/rpc_wait_args.rs"]
@@ -226,24 +229,14 @@ mod client_impl_flow;
 pub(crate) use client_impl_helpers::*;
 pub(crate) use client_impl_prompt_dispatch::*;
 
-#[cfg(test)]
-#[path = "ops_inline_tests.rs"]
-mod ops_inline_tests;
-#[cfg(test)]
-#[path = "tee_strip_tests.rs"]
-mod tee_strip_tests;
+#[cfg(test)] #[path = "ops_inline_tests.rs"] mod ops_inline_tests;
+#[cfg(test)] #[path = "tee_strip_tests.rs"] mod tee_strip_tests;
 
 #[doc(hidden)]
 pub mod test_captive_session;
 
-#[cfg(test)]
-mod kiss_coverage;
-
-#[cfg(test)]
-#[path = "kiss_coverage_b.rs"]
-mod kiss_coverage_b;
-
+#[cfg(test)] mod kiss_coverage;
+#[cfg(test)] #[path = "kiss_coverage_b.rs"] mod kiss_coverage_b;
 #[cfg(test)] #[path = "inc_kiss_coverage.rs"] mod inc_kiss_coverage;
 #[cfg(test)] #[path = "session_tests_kiss_cov.rs"] mod session_tests_kiss_cov;
-#[cfg(test)]
-pub(crate) mod spawn_test_args;
+#[cfg(test)] pub(crate) mod spawn_test_args;

@@ -172,6 +172,10 @@ pub mod repo_checks;
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
 
+#[cfg(test)]
+#[path = "cli/source_detect_kiss_cov_tests.rs"]
+mod source_detect_kiss_cov_tests;
+
 #[path = "cli/init_cmd.rs"]
 pub mod init_cmd;
 
@@ -184,8 +188,15 @@ pub mod inspire_flow;
 #[path = "cli/plan_flow.rs"]
 pub mod plan_flow;
 
+#[path = "cli/gate_kpop_workflow.rs"]
+pub mod gate_kpop_workflow;
+
 #[path = "cli/mod.rs"]
 pub mod cli;
+
+#[cfg(test)]
+#[path = "lib_test_modules.rs"]
+mod lib_test_modules;
 
 #[cfg(test)]
 #[path = "acp/test_unix_bin.rs"]
@@ -195,47 +206,17 @@ pub mod acp_test_unix_bin;
 #[path = "acp_session_tests/mod.rs"]
 pub(crate) mod acp_session_unit_tests;
 
-#[cfg(test)]
-#[path = "acp_tests/mod.rs"]
-mod acp_tests;
-
-#[cfg(test)]
-#[path = "acp_transport_tests/mod.rs"]
-mod acp_transport_tests;
-
-#[cfg(test)]
-mod coverage_kiss;
-
-#[cfg(test)]
-mod coverage_kiss_agent;
-
-#[cfg(test)]
-mod orchestrator_tests;
-
-#[cfg(test)]
-mod malvin_kiss_coverage;
-
-#[cfg(test)]
-#[path = "acp/transport/rpc_part1_kiss_test.rs"]
-mod acp_rpc_part1_kiss_test;
-
-
-#[cfg(test)]
-mod agent_phase_kiss_cov;
-
-#[cfg(test)]
-#[path = "workspace_paths_tests.rs"]
-mod workspace_paths_tests;
-
-#[cfg(all(test, unix))]
-mod test_stderr_capture;
-
-#[cfg(test)]
-mod malvin_test_seed;
-#[cfg(test)]
-pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
-#[cfg(test)]
-pub mod test_utils;
-
-#[cfg(test)]
-pub mod test_agent_client;
+#[cfg(test)] mod acp_tests;
+#[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
+#[cfg(test)] mod coverage_kiss;
+#[cfg(test)] mod coverage_kiss_agent;
+#[cfg(test)] mod orchestrator_tests;
+#[cfg(test)] mod malvin_kiss_coverage;
+#[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
+#[cfg(test)] mod agent_phase_kiss_cov;
+#[cfg(test)] #[path = "workspace_paths_tests.rs"] mod workspace_paths_tests;
+#[cfg(all(test, unix))] mod test_stderr_capture;
+#[cfg(test)] mod malvin_test_seed;
+#[cfg(test)] pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
+#[cfg(test)] pub mod test_utils;
+#[cfg(test)] pub mod test_agent_client;

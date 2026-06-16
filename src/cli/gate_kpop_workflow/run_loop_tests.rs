@@ -40,7 +40,7 @@ fn session_wrote_kpop_solved_reads_marker() {
 
 #[test]
 fn kpop_solved_early_exit_checks_streak_and_workspace() {
-    use crate::cli::gate_kpop_workflow::GateLoopBehavior;
+    use crate::gate_kpop_workflow::GateLoopBehavior;
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
     std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
@@ -87,7 +87,7 @@ pub(crate) fn gate_early_exit_fixture() -> (
 
 #[test]
 fn gate_kpop_solved_early_exit_needs_streak_and_gates() {
-    use crate::cli::gate_kpop_workflow::GateLoopBehavior;
+    use crate::gate_kpop_workflow::GateLoopBehavior;
     let (_tmp, artifacts, backups, _bin, _guard) = gate_early_exit_fixture();
     let ctx = |behavior, streak| GateKpopEarlyExitCtx {
         behavior,
@@ -112,7 +112,7 @@ fn gate_kpop_loop_session_helpers_are_covered() {
 
 fn fail_gate_prepared_fixture(
     work: &std::path::Path,
-) -> (SessionDotfileBackups, crate::cli::gate_kpop_workflow::GateKpopPrepared) {
+) -> (SessionDotfileBackups, crate::gate_kpop_workflow::GateKpopPrepared) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
     std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
     let artifacts =
@@ -120,7 +120,7 @@ fn fail_gate_prepared_fixture(
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let prepared = crate::cli::gate_kpop_workflow::GateKpopPrepared {
+    let prepared = crate::gate_kpop_workflow::GateKpopPrepared {
         artifacts,
         context: std::collections::HashMap::new(),
         request_text: "req".into(),
@@ -151,8 +151,8 @@ fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
 
 #[test]
 fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
-    use crate::cli::gate_kpop_workflow::GateLoopBehavior;
-    use crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted;
+    use crate::gate_kpop_workflow::GateLoopBehavior;
+    use crate::gate_kpop_workflow::fail_gate_kpop_after_exhausted;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let (backups, prepared) = fail_gate_prepared_fixture(tmp.path());

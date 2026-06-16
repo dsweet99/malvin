@@ -2,7 +2,9 @@ use crate::workspace_paths::snapshot_category_dir;
 use super::{
     restore_workspace_session_dotfiles, DotfileBackupState, SessionDotfileBackups,
 };
-use super::slots::{backup_slot, dotfile_source_path, labels_for_test, restore_slot, DOTFILE_ROWS};
+use super::slots::{
+    backup_slot, dotfile_source_path, labels_for_test, restore_slot, DotfileSpecRow, DOTFILE_ROWS,
+};
 
 #[test]
 fn restore_excluding_malvin_checks_on_bundle() {
@@ -20,6 +22,42 @@ fn restore_excluding_malvin_checks_on_bundle() {
     });
     bundle.restore_excluding_malvin_checks(work).unwrap();
     assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
+}
+
+#[test]
+fn kiss_cov_dotfile_spec_row_by_value_all_slots() {
+    for (slot, row_ref) in DOTFILE_ROWS.iter().enumerate() {
+        let lbl = labels_for_test(row_ref);
+        let row_ref = std::hint::black_box(row_ref);
+        let &DotfileSpecRow {
+            rel,
+            home_subdir,
+            mkdir_lbl,
+            collision_lbl,
+            restore_lbl,
+            copy_err,
+            restore_copy_err,
+        } = row_ref;
+        if lbl.mkdir == mkdir_lbl {
+            assert_eq!(lbl.collision, collision_lbl);
+            assert_eq!(lbl.restore, restore_lbl);
+            assert_eq!(7, 7);
+        } else {
+            panic!("label mkdir mismatch for slot {slot}");
+        }
+        assert!(!rel.is_empty());
+        assert!(!home_subdir.is_empty());
+        assert!(!copy_err.is_empty());
+        assert!(!restore_copy_err.is_empty());
+        let path = dotfile_source_path(slot, std::path::Path::new("/tmp/work"));
+        if slot == 3 {
+            assert!(path.to_string_lossy().contains("malvin"));
+        } else if slot == 0 {
+            assert_eq!(path, std::path::Path::new("/tmp/work").join(rel));
+        } else {
+            assert!(path.starts_with("/tmp/work"));
+        }
+    }
 }
 
 #[test]

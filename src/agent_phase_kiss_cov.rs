@@ -5,6 +5,7 @@ fn mini_phase_hooks_drive_heartbeat() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     crate::agent_phase::reset_phase_state_for_test();
     assert_eq!(crate::agent_phase::heartbeat_label(), "Orienting");
+    crate::agent_phase::clear_orienting();
     crate::agent_phase::note_mini_llm_request();
     assert_eq!(crate::agent_phase::heartbeat_label(), "Reasoning");
     crate::agent_phase::note_mini_bash_exec();

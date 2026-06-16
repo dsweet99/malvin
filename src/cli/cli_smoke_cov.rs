@@ -210,13 +210,13 @@ fn smoke_print_command_error_writes_run_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
-    crate::cli::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
+    super::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
     super::entrypoint::print_command_error("gate failed");
     let log = run_dir.join("malvin_error.log");
     assert!(log.is_file());
     let body = std::fs::read_to_string(&log).expect("read");
     assert!(body.contains("gate failed"));
-    crate::cli::error_run_log::clear_command_error_run_dir();
+    super::error_run_log::clear_command_error_run_dir();
 }
 
 #[test]

@@ -1,5 +1,7 @@
 //! Static entrypoint refs and focused behavioral smokes (`cli_smoke_cov.rs` holds the rest).
 
+//! Static symbol refs for CLI kiss per-file coverage (kept separate from behavioral smokes).
+
 #[test]
 fn smoke_format_gate_failures_non_empty() {
     let pre = super::format_pre_check_gate_failure("malvin code", "kiss failed");
