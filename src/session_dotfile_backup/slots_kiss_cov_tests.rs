@@ -99,27 +99,27 @@ fn kiss_cov_slots_malvin_config_slot_roundtrip() {
 
 #[test]
 fn kiss_cov_slots_backup_restore_roundtrip() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
-    std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
-    let mut generate_id = |n: usize| format!("kiss-slot-{n}");
-    for slot in 0..DOTFILE_ROWS.len() {
-        if slot == MALVIN_CONFIG_SLOT {
-            continue;
-        }
-        let backup = backup_slot(slot, work, &mut generate_id).expect("backup");
-        match backup {
-            DotfileBackupState::Present(_) => {
-                restore_slot(work, &backup, slot).expect("restore");
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+        std::fs::write(work.join(KISSCONFIG_FILE), "[gate]\n").expect("kissconfig");
+        let mut generate_id = |n: usize| format!("kiss-slot-{n}");
+        for slot in 0..DOTFILE_ROWS.len() {
+            if slot == MALVIN_CONFIG_SLOT {
+                continue;
             }
-            DotfileBackupState::Missing if slot == 0 => {
-                panic!("kissconfig slot should be present");
+            let backup = backup_slot(slot, work, &mut generate_id).expect("backup");
+            match backup {
+                DotfileBackupState::Present(_) => {
+                    restore_slot(work, &backup, slot).expect("restore");
+                }
+                DotfileBackupState::Missing if slot == 0 => {
+                    panic!("kissconfig slot should be present");
+                }
+                DotfileBackupState::Missing => {}
             }
-            DotfileBackupState::Missing => {}
         }
-    }
+    });
 }
 
 #[test]

@@ -134,6 +134,7 @@ class TaskSpec:
     solution_patch: Path | None
     repository_url: str | None
     agent_timeout_sec: float
+    verifier_timeout_sec: float
 
 
 def parse_task_dir(task_dir: Path) -> TaskSpec:
@@ -145,6 +146,7 @@ def parse_task_dir(task_dir: Path) -> TaskSpec:
     meta = raw.get("metadata", {})
     env = raw.get("environment", {})
     agent = raw.get("agent", {})
+    verifier = raw.get("verifier", {})
     task_id = meta.get("task_id") or task_dir.name
     base_commit = meta.get("base_commit_hash")
     if not base_commit:
@@ -172,6 +174,7 @@ def parse_task_dir(task_dir: Path) -> TaskSpec:
         solution_patch=solution if solution.is_file() else None,
         repository_url=meta.get("repository_url"),
         agent_timeout_sec=float(agent.get("timeout_sec", 5400.0)),
+        verifier_timeout_sec=float(verifier.get("timeout_sec", 1800.0)),
     )
 
 
@@ -1406,7 +1409,7 @@ def _local_solve_options(f: Any) -> Any:
         "--reset",
         "reset_workspace_flag",
         is_flag=True,
-        help="Hard reset workspace to base_commit before run.",
+        help="Hard reset workspace to base_commit before grade-only run (default for agent solves).",
     )(f)
     f = click.option(
         "--docker-image",
@@ -1515,6 +1518,9 @@ def solve(
     malvin_args: tuple[str, ...],
 ) -> None:
     """Run malvin code and Harbor grade (Modal by default; --local for Docker)."""
+    # Each agent solve starts from base_commit; grade-only keeps opt-in --reset.
+    if not grade_only:
+        reset_workspace_flag = True
     run_task(
         local_task_name=task_name,
         task_dir=None,
@@ -1665,6 +1671,72 @@ def _test_solve_modal_full_dry_run() -> None:
     assert "Running agent on host" not in result.output
 
 
+def _test_solve_resets_workspace_for_agent_runs() -> None:
+    """Agent solves always reset workspace; grade-only keeps opt-in --reset."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    captured: dict[str, bool] = {}
+
+    def fake_modal_eval(**kwargs: Any) -> None:
+        captured["reset_flag"] = kwargs.get("reset_flag", False)
+
+    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+        result = runner.invoke(
+            cli,
+            ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
+        )
+    assert result.exit_code == 0, result.output
+    assert captured.get("reset_flag") is True, captured
+
+    captured.clear()
+    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "bandit-interprocedural-taint-checks",
+                "--grade-only",
+                "--dry-run",
+            ],
+        )
+    assert result.exit_code == 0, result.output
+    assert captured.get("reset_flag") is False, captured
+
+    captured.clear()
+    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "bandit-interprocedural-taint-checks",
+                "--grade-only",
+                "--reset",
+                "--dry-run",
+            ],
+        )
+    assert result.exit_code == 0, result.output
+    assert captured.get("reset_flag") is True, captured
+
+
+def _test_solve_local_dry_run_passes_reset() -> None:
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["solve", "--local", "bandit-interprocedural-taint-checks", "--dry-run"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "--reset" in result.output
+
+
 def _test_solve_command_in_help() -> None:
     from click.testing import CliRunner
 
@@ -1791,6 +1863,7 @@ def _test_write_plan_and_checks_discovers() -> None:
             solution_patch=None,
             repository_url=None,
             agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
         )
         write_plan_and_checks(
             spec,
@@ -1927,6 +2000,8 @@ def run_self_tests() -> None:
     _test_solve_dry_run()
     _test_solve_modal_dry_run()
     _test_solve_modal_full_dry_run()
+    _test_solve_resets_workspace_for_agent_runs()
+    _test_solve_local_dry_run_passes_reset()
     _test_solve_command_in_help()
     _test_bare_invocation_shows_usage()
     _test_list_deepswe_tasks()
