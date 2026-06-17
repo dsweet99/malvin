@@ -8,6 +8,10 @@ one local Docker container (agent image built from Harbor + malvin/kiss/cursor-a
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
 
+Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) replays Harbor
+Dockerfile editable-install steps against the mounted workspace and probes offline gate
+tools so the sandbox matches task intent.
+
 Examples::
 
     python ops/deepswe_run.py tasks
@@ -39,6 +43,7 @@ from unittest.mock import patch
 
 import click
 
+from sandbox_prep import prepare_task_sandbox
 from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
 try:
@@ -59,6 +64,7 @@ IN_SANDBOX_TESTS_DIR = Path("/tests")
 IN_SANDBOX_LOGS_DIR = Path("/logs")
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
+SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
 KISS_TOOLCHAIN_REMOTE = "/opt/toolchain/kiss"
@@ -687,6 +693,8 @@ def docker_local_eval_cmd(
         "-v",
         f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
         "-v",
+        f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
+        "-v",
         f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
         "-v",
         f"{logs_mount.resolve()}:/logs",
@@ -1245,6 +1253,16 @@ def run_task(
         click.echo(f"Applying reference solution: {spec.solution_patch}")
         apply_patch(workspace, spec.solution_patch, dry_run=dry_run)
 
+    checks_text = ""
+    if not grade_only:
+        checks_text = checks_override or discover_deepswe_checks(workspace)
+    prep_result = prepare_task_sandbox(
+        spec,
+        workspace,
+        checks=checks_text,
+        dry_run=dry_run,
+    )
+
     agent_result: dict[str, Any] | None = None
     if not grade_only:
         write_plan_and_checks(
@@ -1289,6 +1307,7 @@ def run_task(
         grade_only=grade_only,
         docker_image=spec.docker_image if not in_sandbox else None,
     )
+    metadata["sandbox_prep"] = prep_result.as_dict()
     _write_host_run_artifacts(run_root, metadata, grade_result, logs_dir, dry_run=dry_run, overwrite_artifacts=True)
     _print_evaluation_summary(grade_result, agent_result, run_root)
     _exit_from_evaluation(grade_result, agent_result)
@@ -1990,6 +2009,39 @@ def _test_local_grade_only_apply_solution() -> None:
     assert "pass: True" in result.output
 
 
+def _test_prepare_task_sandbox_dry_run() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        dockerfile = workspace / "Dockerfile"
+        dockerfile.write_text(
+            "RUN git clone https://example.com/repo .\n"
+            "RUN pip install -e .\n",
+            encoding="utf-8",
+        )
+        spec = TaskSpec(
+            task_dir=workspace,
+            task_id="fake",
+            base_commit="HEAD",
+            docker_image="fake:local",
+            dockerfile=dockerfile,
+            instruction=workspace / "instruction.md",
+            tests_dir=workspace / "tests",
+            test_sh=workspace / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+        )
+        result = prepare_task_sandbox(
+            spec,
+            workspace,
+            checks=f"{KISS_CHECK_COMMAND}\n",
+            dry_run=True,
+        )
+        assert result.sync_commands == ("pip install -e .",), result
+        assert result.ok is True
+
+
 def run_self_tests() -> None:
     _test_malvin_repo_root()
     _test_kiss_repo_root()
@@ -2012,6 +2064,7 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_write_plan_and_checks_discovers()
+    _test_prepare_task_sandbox_dry_run()
     _test_tasks_command()
     _test_is_modal_spend_limit_error()
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()

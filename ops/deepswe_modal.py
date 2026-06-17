@@ -85,6 +85,7 @@ from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain
 
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
+SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 TASK_REMOTE = "/task"
 
@@ -1489,6 +1490,10 @@ def mount_eval_context(
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
         .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "sandbox_prep.py"),
+            remote_path=SANDBOX_PREP_REMOTE,
+        )
         .add_local_file(
             str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
             remote_path=TOOLCHAIN_REPOS_REMOTE,
@@ -2945,9 +2950,9 @@ def _test_mount_eval_context_recipe() -> None:
     workspace_upload = uploads[0]
     assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 2
+    assert len(file_uploads) == 3
     remote_paths = {call[2]["remote_path"] for call in file_uploads}
-    assert remote_paths == {DEEPSWE_RUN_REMOTE, TOOLCHAIN_REPOS_REMOTE}
+    assert remote_paths == {DEEPSWE_RUN_REMOTE, SANDBOX_PREP_REMOTE, TOOLCHAIN_REPOS_REMOTE}
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
     assert "click" in pip_cmds[0][1][0]

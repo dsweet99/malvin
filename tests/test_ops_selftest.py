@@ -6,6 +6,7 @@ import modal_sandbox_lifecycle
 from deepswe_modal import run_unit_tests as run_deepswe_modal_unit_tests
 from deepswe_run import run_self_tests
 from malvin_modal import run_unit_tests as run_malvin_modal_unit_tests
+from sandbox_prep import run_self_tests as run_sandbox_prep_self_tests
 
 
 def test_modal_sandbox_lifecycle_self_test() -> None:
@@ -14,6 +15,10 @@ def test_modal_sandbox_lifecycle_self_test() -> None:
 
 def test_deepswe_run_self_tests() -> None:
     run_self_tests()
+
+
+def test_sandbox_prep_self_tests() -> None:
+    run_sandbox_prep_self_tests()
 
 
 def test_deepswe_modal_unit_tests() -> None:
