@@ -230,6 +230,80 @@ def git_run(workspace: Path, *args: str, dry_run: bool = False) -> None:
     )
 
 
+def docker_daemon_available() -> bool:
+    """True when the local Docker daemon accepts ``docker info``."""
+    try:
+        proc = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return proc.returncode == 0
+
+
+EPHEMERAL_CACHE_DIR_NAMES = (
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".hypothesis",
+)
+DOCKER_EPHEMERAL_PURGE_IMAGE = "alpine:latest"
+
+
+def ephemeral_cache_find_expr() -> str:
+    parts = " -o ".join(f"-name {name}" for name in EPHEMERAL_CACHE_DIR_NAMES)
+    return f"\\( {parts} \\)"
+
+
+def purge_root_owned_ephemeral_caches(workspace: Path, *, dry_run: bool = False) -> bool:
+    """Remove sandbox bytecode caches via Docker when the host user cannot unlink them."""
+    if dry_run or not docker_daemon_available():
+        return False
+    ws = str(workspace.resolve())
+    find_expr = ephemeral_cache_find_expr()
+    shell = (
+        "find /app "
+        "\\( -path /app/.git -o -path /app/.deepswe_tombstones "
+        "-o -path '/app/.deepswe_tombstones/*' \\) -prune -o "
+        f"{find_expr} -type d -prune -exec rm -rf {{}} +"
+    )
+    cmd = [
+        "docker",
+        "run",
+        "--rm",
+        "-v",
+        f"{ws}:/app",
+        DOCKER_EPHEMERAL_PURGE_IMAGE,
+        "sh",
+        "-c",
+        shell,
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        click.echo(
+            "Warning: ephemeral cache purge via Docker failed: "
+            f"{proc.stderr or proc.stdout}",
+            err=True,
+        )
+        return False
+    return True
+
+
+def git_clean(workspace: Path, *, dry_run: bool = False) -> bool:
+    ws = str(workspace.resolve())
+    proc = run_cmd(
+        ["git", "-c", f"safe.directory={ws}", "clean", "-fdx"],
+        cwd=workspace,
+        dry_run=dry_run,
+        check=False,
+    )
+    return proc.returncode == 0
+
+
 def materialize_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
     workspace = workspace.resolve()
     if workspace.exists() and any(workspace.iterdir()):
@@ -250,7 +324,19 @@ def materialize_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> 
 
 def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
     git_run(workspace, "reset", "--hard", spec.base_commit, dry_run=dry_run)
-    git_run(workspace, "clean", "-fdx", dry_run=dry_run)
+    if dry_run:
+        git_run(workspace, "clean", "-fdx", dry_run=True)
+        return
+    purge_root_owned_ephemeral_caches(workspace)
+    if git_clean(workspace):
+        return
+    click.echo("git clean failed; retrying after Docker ephemeral purge", err=True)
+    if purge_root_owned_ephemeral_caches(workspace) and git_clean(workspace):
+        return
+    raise click.ClickException(
+        "git clean -fdx failed after reset (likely root-owned untracked files). "
+        "Ensure Docker is available or remove the workspace checkout."
+    )
 
 
 def canonical_tool(line: str) -> str:
@@ -1956,15 +2042,70 @@ def _test_tasks_command() -> None:
     assert bandit_line.endswith("\tpython"), bandit_line
 
 
-def docker_daemon_available() -> bool:
-    """True when the local Docker daemon accepts ``docker info``."""
-    proc = subprocess.run(
-        ["docker", "info"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return proc.returncode == 0
+def _test_ephemeral_cache_find_expr() -> None:
+    expr = ephemeral_cache_find_expr()
+    assert "__pycache__" in expr
+    assert ".pytest_cache" in expr
+
+
+def _test_reset_workspace_removes_user_pycache() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        run_cmd(["git", "init"], cwd=workspace)
+        run_cmd(["git", "commit", "--allow-empty", "-m", "init"], cwd=workspace)
+        cache = workspace / "pkg" / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "mod.cpython-312.pyc").write_bytes(b"\x00")
+        spec = TaskSpec(
+            task_dir=workspace,
+            task_id="fake",
+            base_commit="HEAD",
+            docker_image="fake:local",
+            dockerfile=workspace / "Dockerfile",
+            instruction=workspace / "instruction.md",
+            tests_dir=workspace / "tests",
+            test_sh=workspace / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+        )
+        reset_workspace(spec, workspace, dry_run=False)
+        assert not cache.exists(), cache
+
+
+def _test_purge_root_owned_ephemeral_caches_docker() -> None:
+    if not docker_daemon_available():
+        return
+    scratch_parent = Path.home() / ".malvin_home" / "deepswe-self-test"
+    scratch_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=scratch_parent) as tmp:
+        workspace = Path(tmp)
+        subprocess.run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{workspace.resolve()}:/app",
+                "alpine",
+                "sh",
+                "-c",
+                "mkdir -p /app/lib/__pycache__ && touch /app/lib/__pycache__/x.pyc",
+            ],
+            check=True,
+        )
+        cache = workspace / "lib" / "__pycache__"
+        assert cache.is_dir()
+        sample = next(cache.iterdir())
+        try:
+            sample.unlink()
+            host_blocked = False
+        except OSError:
+            host_blocked = True
+        assert host_blocked or os.geteuid() == 0, (host_blocked, os.geteuid())
+        assert purge_root_owned_ephemeral_caches(workspace)
+        assert not cache.exists(), cache
 
 
 def _test_run_malvin_uses_plan_name_not_at_notation() -> None:
@@ -2068,6 +2209,9 @@ def run_self_tests() -> None:
     _test_tasks_command()
     _test_is_modal_spend_limit_error()
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
+    _test_ephemeral_cache_find_expr()
+    _test_reset_workspace_removes_user_pycache()
+    _test_purge_root_owned_ephemeral_caches_docker()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_local_grade_only_apply_solution()
     click.echo("deepswe_run self-tests passed")

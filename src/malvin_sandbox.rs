@@ -1,4 +1,4 @@
-//! Host sandbox: process-group isolation and RSS for all malvin-started processes.
+//! Host sandbox: process-group isolation and USS for all malvin-started processes.
 
 use std::collections::HashSet;
 use std::ffi::OsStr;
@@ -155,7 +155,7 @@ pub(crate) fn clear_active_sandbox_session_for_test() {
     clear_active_sandbox_session();
 }
 
-/// RSS for malvin descendants, the agent process group, and reparented session orphans.
+/// USS for malvin descendants, the agent process group, and reparented session orphans.
 #[cfg(unix)]
 #[must_use]
 pub fn malvin_session_rss_bytes(

@@ -67,7 +67,7 @@ async fn malvin_oom_watcher_kills_agent_sleep_at_low_limit() {
     let agent_pgid = agent_child.id();
     assert!(
         malvin_session_rss_bytes(Some(agent_pgid), &baseline).is_some_and(|rss| rss > 1),
-        "setup: sandbox RSS should be measurable"
+        "setup: sandbox USS should be measurable"
     );
     watch_process_group_memory(MemWatchHandles {
         reader_dead: Arc::new(AtomicBool::new(false)),

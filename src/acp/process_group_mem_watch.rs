@@ -12,7 +12,7 @@ const POLL_INTERVAL: Duration = if cfg!(test) {
 } else {
     Duration::from_millis(500)
 };
-/// Consecutive `None` RSS samples before fail-closed teardown (~1.5s at 500ms poll in production).
+/// Consecutive `None` USS samples before fail-closed teardown (~1.5s at 500ms poll in production).
 const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {
@@ -57,7 +57,7 @@ pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     .await;
 }
 
-/// Poll sandbox RSS and terminate on over-limit or sustained measurement failure.
+/// Poll sandbox USS and terminate on over-limit or sustained measurement failure.
 #[cfg(unix)]
 pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,

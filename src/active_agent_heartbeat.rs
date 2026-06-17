@@ -62,7 +62,7 @@ pub(crate) struct ActiveAgentStatsSource {
     pub spawn_baseline: HashSet<u32>,
 }
 
-/// Live agent PG and spawn baseline for sandbox RSS queries (e.g. `current_state`).
+/// Live agent PG and spawn baseline for sandbox USS queries (e.g. `current_state`).
 #[must_use]
 pub fn active_agent_process_group_for_stats() -> Option<ActiveAgentStatsSource> {
     current_active_agent_sandbox().map(|entry| ActiveAgentStatsSource {
@@ -71,7 +71,7 @@ pub fn active_agent_process_group_for_stats() -> Option<ActiveAgentStatsSource> 
     })
 }
 
-/// RSS and process-count suffix for heartbeat payloads, when an agent session is live.
+/// USS and process-count suffix for heartbeat payloads, when an agent session is live.
 #[must_use]
 pub fn active_agent_heartbeat_stats() -> Option<String> {
     let entry = current_active_agent_sandbox()?;
@@ -83,7 +83,7 @@ fn format_agent_stats(pgid: u32, spawn_baseline: &HashSet<u32>) -> Option<String
     let rss = crate::malvin_sandbox::malvin_session_rss_bytes(Some(pgid), spawn_baseline)?;
     let procs = crate::acp::sandbox_monitor_pids(Some(pgid), spawn_baseline).len();
     let rss_label = crate::log_gc::format_freed(rss);
-    Some(format!("sandbox: {rss_label} RSS, {procs} procs"))
+    Some(format!("sandbox: {rss_label} USS, {procs} procs"))
 }
 
 #[cfg(not(unix))]
@@ -137,7 +137,7 @@ mod tests {
         let baseline = snapshot_pids();
         register_active_agent_process_group(Some(pgid), baseline.clone());
         let stats = active_agent_heartbeat_stats().expect("stats");
-        assert!(stats.contains("RSS"));
+        assert!(stats.contains("USS"));
         assert!(stats.contains("procs"));
         let source = super::active_agent_process_group_for_stats().expect("source");
         assert_eq!(source.pgid, pgid);
