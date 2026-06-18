@@ -157,7 +157,7 @@ def main(
 
         workspace = default_deepswe_results_dir() / spec.task_id / "workspace"
     materialize_workspace(spec, workspace, dry_run=False)
-    malvin_repo, kiss_repo = validate_toolchain_repos()
+    malvin_repo = validate_toolchain_repos()
     click.echo(f"Task: {spec.task_id}")
     click.echo(f"Workspace: {workspace.resolve()}")
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
@@ -167,7 +167,6 @@ def main(
         spec.tests_dir,
         dockerfile=spec.dockerfile,
         malvin_repo=malvin_repo,
-        kiss_repo=kiss_repo,
         deepswe_run_py=deepswe_run_py,
     )
     click.echo("Running cursor-agent probe in Modal sandbox...")

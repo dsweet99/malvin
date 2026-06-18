@@ -44,7 +44,7 @@ from unittest.mock import patch
 import click
 
 from sandbox_prep import prepare_task_sandbox
-from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
+from toolchain_repos import kiss_cargo_install_command, kiss_repo_root, malvin_repo_root, validate_toolchain_repos
 
 try:
     import tomllib
@@ -67,7 +67,6 @@ DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
 SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
 TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
-KISS_TOOLCHAIN_REMOTE = "/opt/toolchain/kiss"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
@@ -250,6 +249,7 @@ EPHEMERAL_CACHE_DIR_NAMES = (
     ".mypy_cache",
     ".ruff_cache",
     ".hypothesis",
+    "coverage",
 )
 DOCKER_EPHEMERAL_PURGE_IMAGE = "alpine:latest"
 
@@ -660,10 +660,9 @@ def build_local_agent_image(
     base_image: str,
     *,
     malvin_repo: Path,
-    kiss_repo: Path,
     dry_run: bool,
 ) -> str:
-    """Extend the Harbor base image with Linux malvin, kiss, and cursor-agent."""
+    """Extend the Harbor base image with Linux malvin, stable kiss, and cursor-agent."""
     agent_tag = local_agent_image_tag(spec.task_id)
     if not dry_run:
         probe = subprocess.run(
@@ -677,6 +676,7 @@ def build_local_agent_image(
     if dry_run:
         click.echo(f"Would build local agent image {agent_tag} from {base_image}")
         return agent_tag
+    kiss_install = kiss_cargo_install_command()
     dockerfile = f"""\
 FROM {base_image}
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\
@@ -685,8 +685,7 @@ RUN pip3 install --break-system-packages click
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${{PATH}}"
 COPY malvin {MALVIN_TOOLCHAIN_REMOTE}
-COPY kiss {KISS_TOOLCHAIN_REMOTE}
-RUN cargo install --path {KISS_TOOLCHAIN_REMOTE} --locked && \\
+RUN {kiss_install} && \\
     RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked
 RUN curl -fsSL https://cursor.com/install | bash
 ENV PATH="{TOOLCHAIN_PATH}"
@@ -703,7 +702,6 @@ ENV PATH="{TOOLCHAIN_PATH}"
             build_dir / "malvin",
             extra_skip=(".malvin", ".kissignore"),
         )
-        _copy_toolchain_tree(kiss_repo, build_dir / "kiss")
         run_cmd(["docker", "build", "-t", agent_tag, str(build_dir)])
     return agent_tag
 
@@ -816,12 +814,11 @@ def run_local_eval_in_docker(
     if grade_only:
         eval_image = base_image
     else:
-        malvin_repo, kiss_repo = validate_toolchain_repos()
+        malvin_repo = validate_toolchain_repos()
         eval_image = build_local_agent_image(
             spec,
             base_image,
             malvin_repo=malvin_repo,
-            kiss_repo=kiss_repo,
             dry_run=dry_run,
         )
     deepswe_run_py = Path(__file__).resolve()
@@ -2179,7 +2176,7 @@ def _test_prepare_task_sandbox_dry_run() -> None:
             checks=f"{KISS_CHECK_COMMAND}\n",
             dry_run=True,
         )
-        assert result.sync_commands == ("pip install -e .",), result
+        assert result.sync_commands == (), result
         assert result.ok is True
 
 

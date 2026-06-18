@@ -7,6 +7,14 @@ from pathlib import Path
 
 import click
 
+KISS_CRATE = "kiss-ai"
+KISS_STABLE_VERSION = "0.4.8"
+
+
+def kiss_cargo_install_command() -> str:
+    """Install the pinned stable kiss release from crates.io."""
+    return f"cargo install {KISS_CRATE} --version {KISS_STABLE_VERSION} --locked"
+
 
 def malvin_repo_root() -> Path:
     """Return the malvin repository root (parent of ``ops/``)."""
@@ -21,14 +29,9 @@ def kiss_repo_root() -> Path:
     return malvin_repo_root().parent / "kiss"
 
 
-def validate_toolchain_repos() -> tuple[Path, Path]:
-    """Ensure local malvin and kiss trees exist before building agent images."""
+def validate_toolchain_repos() -> Path:
+    """Ensure the local malvin tree exists before building agent images."""
     malvin_repo = malvin_repo_root()
-    kiss_repo = kiss_repo_root()
     if not (malvin_repo / "Cargo.toml").is_file():
         raise click.ClickException(f"malvin repo not found: {malvin_repo}")
-    if not (kiss_repo / "Cargo.toml").is_file():
-        raise click.ClickException(
-            f"kiss repo not found: {kiss_repo} (set KISS_REPO to override)"
-        )
-    return malvin_repo, kiss_repo
+    return malvin_repo

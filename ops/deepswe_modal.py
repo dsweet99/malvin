@@ -9,12 +9,12 @@ The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox wit
 Cursor API ``outbound_cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
 runs use a separate ``block_network`` sandbox. Open egress remains
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
-malvin and kiss are built from local source
-trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
+malvin is built from local source (``MALVIN_REPO``) when an in-sandbox agent image is required;
+kiss is installed from crates.io at the pinned stable release (see ``toolchain_repos.KISS_STABLE_VERSION``).
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
-``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; kiss at
-``../kiss`` or ``KISS_REPO``; DeepSWE task at ``../deep-swe/tasks/...``.
+``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; DeepSWE task at
+``../deep-swe/tasks/...``.
 
 For headless eval without Cursor credentials, pass ``--mini`` to malvin and set
 ``OPENROUTER_API_KEY`` in the sandbox environment (OpenRouter HTTP egress required).
@@ -68,6 +68,7 @@ from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
+from sandbox_prep import dockerfile_image_build_commands, registry_image_cache_bust_commands
 from deepswe_run import (
     discover_deepswe_checks,
     apply_patch,
@@ -81,7 +82,13 @@ from deepswe_run import (
     write_plan_and_checks,
 )
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
-from toolchain_repos import kiss_repo_root, malvin_repo_root, validate_toolchain_repos
+from toolchain_repos import (
+    KISS_STABLE_VERSION,
+    kiss_cargo_install_command,
+    kiss_repo_root,
+    malvin_repo_root,
+    validate_toolchain_repos,
+)
 
 DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
 DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
@@ -94,7 +101,6 @@ LOGS_REMOTE = "/logs"
 APP_REMOTE = "/app"
 TESTS_REMOTE = "/tests"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
-KISS_TOOLCHAIN_REMOTE = "/opt/toolchain/kiss"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
@@ -191,17 +197,6 @@ def malvin_upload_ignore() -> list[str]:
     ]
 
 
-def kiss_upload_ignore() -> list[str]:
-    """Exclude build artifacts and ephemeral paths when uploading kiss source to Modal."""
-    return [
-        "target/",
-        ".git",
-        "__pycache__/",
-        ".malvin/",
-        ".pytest_cache/",
-    ]
-
-
 def workspace_mount_ignore() -> list[str]:
     """Exclude sandbox ephemeral paths when uploading a reused DeepSWE workspace to Modal."""
     return [
@@ -238,26 +233,17 @@ def stage_toolchain_repo(src: Path, dst: Path, *, ignore_patterns: list[str]) ->
 
 
 @contextmanager
-def stage_toolchain_repos(
-    malvin_repo: Path,
-    kiss_repo: Path,
-) -> Iterator[tuple[Path, Path]]:
-    """Stage malvin/kiss into a temp dir so Modal upload is not raced by live checkouts."""
+def stage_malvin_repo(malvin_repo: Path) -> Iterator[Path]:
+    """Stage malvin into a temp dir so Modal upload is not raced by live checkouts."""
     with tempfile.TemporaryDirectory(prefix="deepswe-toolchain-") as tmp:
         root = Path(tmp)
         malvin_staged = root / "malvin"
-        kiss_staged = root / "kiss"
         stage_toolchain_repo(
             malvin_repo.resolve(),
             malvin_staged,
             ignore_patterns=malvin_upload_ignore(),
         )
-        stage_toolchain_repo(
-            kiss_repo.resolve(),
-            kiss_staged,
-            ignore_patterns=kiss_upload_ignore(),
-        )
-        yield malvin_staged, kiss_staged
+        yield malvin_staged
 
 
 def resolve_cursor_api_cidrs_from_hosts(hosts: tuple[str, ...] = CURSOR_API_HOSTS) -> list[str]:
@@ -1449,13 +1435,55 @@ def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
         thread.join()
 
 
+def _image_build_shell_command(cmd: str, *, workdir: str | None = APP_REMOTE) -> str:
+    """Wrap a Dockerfile replay command for Modal ``Image.run_commands``."""
+    trimmed = cmd.strip()
+    escaped = trimmed.replace('"', '\\"')
+    if workdir:
+        return f'bash -lc "cd {workdir} && {escaped}"'
+    return f'bash -lc "{escaped}"'
+
+
+def _image_build_shell_commands(
+    commands: list[str],
+    *,
+    workdir: str | None = APP_REMOTE,
+) -> list[str]:
+    """Wrap Dockerfile replay commands so Modal image builds run in the task workdir."""
+    return [_image_build_shell_command(cmd, workdir=workdir) for cmd in commands if cmd.strip()]
+
+
 def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
     """Modal image with Harbor task dependencies; workspace/tests mounted at runtime."""
+    docker_image = getattr(spec, "docker_image", None)
+    if docker_image:
+        # Match local Docker: Harbor registry when task.toml provides one. Rebuilding
+        # from Dockerfile on Modal can desync starlette/httpx (httpx2 drift). Modal may
+        # still cache stale registry layers (pydantic v1); re-run a lightweight pydantic
+        # pin after pull (editable replay upgrades starlette → httpx2 drift).
+        click.echo(f"Pulling Harbor image {docker_image}...")
+        base = modal.Image.from_registry(docker_image, force_build=True)
+        build_cmds = registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
+        if build_cmds:
+            click.echo(
+                f"Re-running {len(build_cmds)} registry cache-bust pip step(s) after pull..."
+            )
+            base = base.run_commands(*_image_build_shell_commands(build_cmds, workdir=None))
+        return base
     if dockerfile.is_file():
         click.echo(f"Building Modal image from {dockerfile} (may take several minutes)...")
-        return modal.Image.from_dockerfile(str(dockerfile))
-    click.echo(f"Pulling Harbor image {spec.docker_image}...")
-    return modal.Image.from_registry(spec.docker_image)
+        base = modal.Image.from_dockerfile(str(dockerfile), force_build=True)
+        build_cmds = dockerfile_image_build_commands(dockerfile)
+        if build_cmds:
+            click.echo(
+                f"Re-running {len(build_cmds)} Dockerfile pip step(s) after build "
+                "(Modal layer cache bust)..."
+            )
+            base = base.run_commands(*_image_build_shell_commands(build_cmds))
+        return base
+    raise click.ClickException(
+        "task.toml missing environment.docker_image and no environment/Dockerfile to build"
+    )
 
 
 def mount_task_tree(image: modal.Image, workspace: Path, tests_dir: Path) -> modal.Image:
@@ -1505,9 +1533,9 @@ def mount_local_toolchain(
     image: modal.Image,
     *,
     malvin_repo: Path,
-    kiss_repo: Path,
 ) -> modal.Image:
-    """Layer local malvin/kiss source and build binaries inside the Modal image."""
+    """Layer local malvin source and stable kiss from crates.io inside the Modal image."""
+    kiss_install = kiss_cargo_install_command()
     return (
         image.add_local_dir(
             str(malvin_repo.resolve()),
@@ -1515,14 +1543,8 @@ def mount_local_toolchain(
             ignore=malvin_upload_ignore(),
             copy=True,
         )
-        .add_local_dir(
-            str(kiss_repo.resolve()),
-            remote_path=KISS_TOOLCHAIN_REMOTE,
-            ignore=kiss_upload_ignore(),
-            copy=True,
-        )
         .run_commands(
-            f"bash -lc 'cargo install --path {KISS_TOOLCHAIN_REMOTE} --locked'",
+            f"bash -lc '{kiss_install}'",
             f"bash -lc 'RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked'",
             "curl -fsSL https://cursor.com/install | bash",
             "/root/.local/bin/agent --version || true",
@@ -1840,11 +1862,10 @@ def harbor_agent_image(
     *,
     dockerfile: Path,
     malvin_repo: Path,
-    kiss_repo: Path,
     deepswe_run_py: Path,
     checks: str = "",
 ) -> modal.Image:
-    """Harbor task image plus locally built malvin/kiss, cursor-agent, and deepswe_run."""
+    """Harbor task image plus local malvin, stable kiss, cursor-agent, and deepswe_run."""
     base = harbor_image(spec, dockerfile=dockerfile)
     augmented = base.run_commands(
         "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev python3-pip",
@@ -1853,7 +1874,6 @@ def harbor_agent_image(
     augmented = mount_local_toolchain(
         augmented,
         malvin_repo=malvin_repo,
-        kiss_repo=kiss_repo,
     )
     preinstall = offline_check_tool_install_commands(checks)
     if preinstall:
@@ -2018,15 +2038,14 @@ def run_modal_eval(
                 checks_override=agent_checks,
                 dry_run=False,
             )
-            malvin_repo, kiss_repo = validate_toolchain_repos()
-            with stage_toolchain_repos(malvin_repo, kiss_repo) as (malvin_staged, kiss_staged):
+            malvin_repo = validate_toolchain_repos()
+            with stage_malvin_repo(malvin_repo) as malvin_staged:
                 agent_img = harbor_agent_image(
                     spec,
                     workspace,
                     spec.tests_dir,
                     dockerfile=spec.dockerfile,
                     malvin_repo=malvin_staged,
-                    kiss_repo=kiss_staged,
                     deepswe_run_py=deepswe_run_py,
                     checks=agent_checks,
                 )
@@ -2187,6 +2206,7 @@ def _test_repo_roots() -> None:
     assert (malvin_repo / "ops" / "deepswe_modal.py").is_file()
     kiss_repo = kiss_repo_root()
     assert kiss_repo.name == "kiss"
+    assert KISS_STABLE_VERSION in kiss_cargo_install_command()
 
 
 def _test_default_deepswe_results_dir() -> None:
@@ -2959,17 +2979,15 @@ def _test_mount_eval_context_recipe() -> None:
 
 
 def _test_validate_toolchain_repos() -> None:
-    validate_toolchain_repos()
-    with tempfile.TemporaryDirectory() as tmp:
-        missing = Path(tmp) / "empty"
-        missing.mkdir()
-        with patch.dict(os.environ, {"KISS_REPO": str(missing)}):
+    malvin_repo = validate_toolchain_repos()
+    assert (malvin_repo / "Cargo.toml").is_file()
+    with patch("toolchain_repos.malvin_repo_root", return_value=Path("/nonexistent/malvin")):
             try:
                 validate_toolchain_repos()
             except click.ClickException as exc:
-                assert "kiss repo not found" in str(exc)
+                assert "malvin repo not found" in str(exc)
             else:
-                raise AssertionError("expected ClickException for missing kiss repo")
+                raise AssertionError("expected ClickException for missing malvin repo")
 
 
 def _test_offline_check_tool_install_commands() -> None:
@@ -3048,41 +3066,30 @@ def _test_resolve_cursor_api_cidrs_mocked() -> None:
 
 def _test_upload_ignore_patterns() -> None:
     malvin_ignores = malvin_upload_ignore()
-    kiss_ignores = kiss_upload_ignore()
     workspace_ignores = workspace_mount_ignore()
     assert "target/" in malvin_ignores
-    assert "target/" in kiss_ignores
     assert ".stestr/" in workspace_ignores
     assert "__pycache__/" in workspace_ignores
     assert "reports/" in malvin_ignores
     assert ".malvin/" in malvin_ignores
-    assert ".malvin/" in kiss_ignores
-    assert ".pytest_cache/" in kiss_ignores
     assert "Cargo.toml" not in malvin_ignores
     assert "src/" not in malvin_ignores
 
 
-def _test_stage_toolchain_repos() -> None:
+def _test_stage_malvin_repo() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         malvin_src = root / "malvin_src"
-        kiss_src = root / "kiss_src"
         malvin_src.mkdir()
-        kiss_src.mkdir()
         (malvin_src / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
         (malvin_src / "target").mkdir()
         (malvin_src / "target" / "artifact").write_text("x", encoding="utf-8")
         (malvin_src / ".malvin").mkdir()
         (malvin_src / ".malvin" / "lock").write_text("x", encoding="utf-8")
-        (kiss_src / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
-        (kiss_src / ".pytest_cache").mkdir()
-        (kiss_src / ".pytest_cache" / "nodeids").write_text("[]", encoding="utf-8")
-        with stage_toolchain_repos(malvin_src, kiss_src) as (malvin_staged, kiss_staged):
+        with stage_malvin_repo(malvin_src) as malvin_staged:
             assert (malvin_staged / "Cargo.toml").is_file()
             assert not (malvin_staged / "target").exists()
             assert not (malvin_staged / ".malvin").exists()
-            assert (kiss_staged / "Cargo.toml").is_file()
-            assert not (kiss_staged / ".pytest_cache").exists()
             (malvin_src / "Cargo.toml").write_text("mutated\n", encoding="utf-8")
             assert (malvin_staged / "Cargo.toml").read_text(encoding="utf-8") == "[package]\n"
 
@@ -3108,18 +3115,89 @@ class _RecordingImage:
         return self
 
 
+def _test_harbor_image_prefers_registry_for_fastapi_task() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "fastapi-deprecation-response-headers"
+    if not task.is_dir():
+        return
+    spec = parse_task_dir(task)
+    dockerfile_build = MagicMock(return_value="registry-image")
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_dockerfile", dockerfile_build), patch.object(
+        modal.Image, "from_registry", registry
+    ), patch(
+        f"{__name__}.registry_image_cache_bust_commands",
+        return_value=["pip install --no-cache-dir 'pydantic>=2,<3'"],
+    ):
+        result = harbor_image(spec, dockerfile=spec.dockerfile)
+    assert result == "final-image"
+    registry.assert_called_once_with(spec.docker_image, force_build=True)
+    pulled.run_commands.assert_called_once()
+    run_args = pulled.run_commands.call_args[0]
+    assert len(run_args) == 1
+    assert "pydantic" in run_args[0]
+    dockerfile_build.assert_not_called()
+
+
+def _test_harbor_image_builds_from_dockerfile_with_cache_bust() -> None:
+    from types import SimpleNamespace
+
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "fastapi-deprecation-response-headers"
+    if not task.is_dir():
+        return
+    spec = SimpleNamespace(docker_image=None)
+    dockerfile = task / "environment" / "Dockerfile"
+    dockerfile_build = MagicMock(return_value=MagicMock())
+    built = dockerfile_build.return_value
+    built.run_commands = MagicMock(return_value="final-image")
+    registry = MagicMock(return_value="registry-image")
+    with patch.object(modal.Image, "from_dockerfile", dockerfile_build), patch.object(
+        modal.Image, "from_registry", registry
+    ), patch(
+        f"{__name__}.dockerfile_image_build_commands",
+        return_value=['pip install -e ".[all]"'],
+    ):
+        result = harbor_image(spec, dockerfile=dockerfile)
+    assert result == "final-image"
+    dockerfile_build.assert_called_once_with(str(dockerfile), force_build=True)
+    built.run_commands.assert_called_once()
+    run_args = built.run_commands.call_args[0]
+    assert len(run_args) == 1
+    assert "cd /app" in run_args[0]
+    assert "[all]" in run_args[0]
+    registry.assert_not_called()
+
+
+def _test_harbor_image_pulls_registry_when_no_dockerfile() -> None:
+    from types import SimpleNamespace
+
+    spec = SimpleNamespace(docker_image="example.com/task:latest")
+    dockerfile = Path("/nonexistent/Dockerfile")
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_registry", registry):
+        result = harbor_image(spec, dockerfile=dockerfile)
+    assert result == "final-image"
+    registry.assert_called_once_with("example.com/task:latest", force_build=True)
+    pulled.run_commands.assert_called_once()
+
+
 def _test_mount_local_toolchain_recipe() -> None:
-    malvin_repo, kiss_repo = validate_toolchain_repos()
+    malvin_repo = validate_toolchain_repos()
     recorder = _RecordingImage()
-    mount_local_toolchain(recorder, malvin_repo=malvin_repo, kiss_repo=kiss_repo)
+    mount_local_toolchain(recorder, malvin_repo=malvin_repo)
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
-    assert len(uploads) == 2
+    assert len(uploads) == 1
     assert uploads[0][2]["remote_path"] == MALVIN_TOOLCHAIN_REMOTE
     assert uploads[0][2]["ignore"] == malvin_upload_ignore()
-    assert uploads[1][2]["remote_path"] == KISS_TOOLCHAIN_REMOTE
     commands = next(call[1] for call in recorder.calls if call[0] == "run_commands")
     assert len(commands) == 4
-    assert KISS_TOOLCHAIN_REMOTE in commands[0]
+    assert "kiss-ai" in commands[0]
+    assert "0.4.8" in commands[0]
     assert MALVIN_TOOLCHAIN_REMOTE in commands[1]
     assert "cursor.com/install" in commands[2]
     env_calls = [call for call in recorder.calls if call[0] == "env"]
@@ -3206,11 +3284,8 @@ def _test_self_test_flag() -> None:
 
 
 @contextmanager
-def _fake_stage_toolchain_repos(
-    malvin_repo: Path,
-    kiss_repo: Path,
-) -> Iterator[tuple[Path, Path]]:
-    yield malvin_repo, kiss_repo
+def _fake_stage_malvin_repo(malvin_repo: Path) -> Iterator[Path]:
+    yield malvin_repo
 
 
 def _test_run_modal_eval_modal_agent_modal_grade() -> None:
@@ -3229,8 +3304,8 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         with (
             patch(f"{__name__}.materialize_workspace"),
             patch(f"{__name__}.write_plan_and_checks"),
-            patch(f"{__name__}.validate_toolchain_repos", return_value=(Path("/m"), Path("/k"))),
-            patch(f"{__name__}.stage_toolchain_repos", side_effect=_fake_stage_toolchain_repos),
+            patch(f"{__name__}.validate_toolchain_repos", return_value=Path("/m")),
+            patch(f"{__name__}.stage_malvin_repo", side_effect=_fake_stage_malvin_repo),
             patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),
             patch(f"{__name__}.harbor_image", return_value=MagicMock()),
             patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
@@ -3298,7 +3373,7 @@ def run_unit_tests() -> None:
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
-    _test_stage_toolchain_repos()
+    _test_stage_malvin_repo()
     _test_mount_local_toolchain_recipe()
     _test_docstring_normative_command()
     _test_grade_in_sandbox_network()
@@ -3312,6 +3387,9 @@ def run_unit_tests() -> None:
     _test_can_overlay_existing_file_denies_unremovable()
     _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
+    _test_harbor_image_prefers_registry_for_fastapi_task()
+    _test_harbor_image_builds_from_dockerfile_with_cache_bust()
+    _test_harbor_image_pulls_registry_when_no_dockerfile()
     _test_probe_sandbox_timeout()
     _test_is_transient_modal_probe_error()
     _test_is_modal_spend_limit_error()

@@ -73,7 +73,7 @@ def _patch_toolchain(mod: object, spec: SimpleNamespace, fake_image: MagicMock):
         mod,
         parse_task_dir=MagicMock(return_value=spec),
         materialize_workspace=MagicMock(),
-        validate_toolchain_repos=MagicMock(return_value=(Path("/malvin"), Path("/kiss"))),
+        validate_toolchain_repos=MagicMock(return_value=Path("/malvin")),
         harbor_agent_image=MagicMock(return_value=fake_image),
         cursor_secrets=MagicMock(return_value=[]),
     )
