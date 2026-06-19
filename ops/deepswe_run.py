@@ -28,8 +28,10 @@ Local unit tests (no agent run)::
 
 from __future__ import annotations
 
+import ast
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -140,6 +142,7 @@ class TaskSpec:
     repository_url: str | None
     agent_timeout_sec: float
     verifier_timeout_sec: float
+    environment_memory_mb: int
 
 
 def parse_task_dir(task_dir: Path) -> TaskSpec:
@@ -180,6 +183,7 @@ def parse_task_dir(task_dir: Path) -> TaskSpec:
         repository_url=meta.get("repository_url"),
         agent_timeout_sec=float(agent.get("timeout_sec", 5400.0)),
         verifier_timeout_sec=float(verifier.get("timeout_sec", 1800.0)),
+        environment_memory_mb=int(env.get("memory_mb", 4096)),
     )
 
 
@@ -564,6 +568,243 @@ def discover_deepswe_checks(workspace: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+_MONKEYPATCH_HOOK_RE = re.compile(
+    r"(?:monkeypatch\.setattr|mocker\.patch\.object|patch\.object)\s*\(\s*"
+    r"([^,\)]+)\s*,\s*[\"']([^\"']+)[\"']",
+    re.MULTILINE,
+)
+
+
+_PATCH_SURFACE_PROBE_COMMAND = "python3 .malvin/patch_surface_probe.py"
+_PATCH_SURFACE_PROBE_MAX_TARGETS = 40
+
+
+def _python_module_name(path: Path, workspace: Path) -> str:
+    rel = path.relative_to(workspace)
+    return ".".join(rel.with_suffix("").parts)
+
+
+def scan_class_level_attributes(workspace: Path) -> list[tuple[str, str]]:
+    """Return sorted ``(qualified_class, attr)`` for class-body assignments in source."""
+    results: set[tuple[str, str]] = set()
+    skip_parts = {".git", "__pycache__", ".malvin", "tests", "test", "deprecated"}
+    for path in visit_source_files(workspace):
+        if path.suffix != ".py":
+            continue
+        if any(part in skip_parts or part.startswith("test_") for part in path.parts):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        module = _python_module_name(path, workspace)
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            qual = f"{module}.{node.name}"
+            for item in node.body:
+                if isinstance(item, ast.Assign):
+                    for target in item.targets:
+                        if isinstance(target, ast.Name) and not target.id.startswith("__"):
+                            results.add((qual, target.id))
+                elif isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                    if not item.target.id.startswith("__"):
+                        results.add((qual, item.target.id))
+    return sorted(results)
+
+
+def _hook_class_names(hooks: list[tuple[str, str]]) -> set[str]:
+    names: set[str] = set()
+    for target, _attr in hooks:
+        token = target.strip().split(".")[-1]
+        if token:
+            names.add(token)
+    return names
+
+
+def patch_surface_targets(
+    workspace: Path,
+    *,
+    hooks: list[tuple[str, str]] | None = None,
+) -> list[tuple[str, str]]:
+    """Select class attributes Harbor-style tests are likely to monkeypatch."""
+    hooks = hooks if hooks is not None else scan_pytest_monkeypatch_hooks(workspace)
+    hook_names = _hook_class_names(hooks)
+    hook_pairs = {
+        (target, attr)
+        for target, attr in hooks
+        if "." in target and not target.startswith("monkeypatch")
+    }
+    by_class: dict[str, list[str]] = {}
+    for qual, attr in scan_class_level_attributes(workspace):
+        by_class.setdefault(qual, []).append(attr)
+    selected: set[tuple[str, str]] = set(hook_pairs)
+    for qual, attrs in by_class.items():
+        short = qual.rsplit(".", 1)[-1]
+        if short in hook_names or len(attrs) >= 2:
+            selected.update((qual, attr) for attr in attrs)
+    ordered = sorted(selected)
+    return ordered[:_PATCH_SURFACE_PROBE_MAX_TARGETS]
+
+
+def render_patch_surface_probe(targets: list[tuple[str, str]]) -> str:
+    """Render an offline gate script that verifies monkeypatch.setattr still works."""
+    lines = [
+        "#!/usr/bin/env python3",
+        '"""Verify baseline class attributes remain monkeypatch-settable (DeepSWE gate)."""',
+        "from __future__ import annotations",
+        "",
+        "import importlib",
+        "import sys",
+        "",
+        "TARGETS: list[tuple[str, str]] = [",
+    ]
+    for qual, attr in targets:
+        lines.append(f'    ({qual!r}, {attr!r}),')
+    lines.extend(
+        [
+            "]",
+            "",
+            "",
+            "def _import_class(qual: str):",
+            '    module_name, _, class_name = qual.rpartition(".")',
+            "    mod = importlib.import_module(module_name)",
+            "    return getattr(mod, class_name)",
+            "",
+            "",
+            "def main() -> int:",
+            "    errors: list[str] = []",
+            "    for qual, attr in TARGETS:",
+            "        try:",
+            "            cls = _import_class(qual)",
+            "        except Exception as exc:",
+            '            errors.append(f"{qual}: import failed: {exc}")',
+            "            continue",
+            "        if not hasattr(cls, attr):",
+            '            errors.append(f"{qual}.{attr}: missing class attribute")',
+            "            continue",
+            "        sentinel = object()",
+            "        old = getattr(cls, attr)",
+            "        try:",
+            "            setattr(cls, attr, sentinel)",
+            "            if getattr(cls, attr) is not sentinel:",
+            '                errors.append(f"{qual}.{attr}: setattr did not stick")',
+            "        except Exception as exc:",
+            '            errors.append(f"{qual}.{attr}: not patchable: {exc}")',
+            "        finally:",
+            "            setattr(cls, attr, old)",
+            "    if errors:",
+            "        for err in errors:",
+            '            print(err, file=sys.stderr)',
+            "        return 1",
+            '    print(f"patch surface ok ({len(TARGETS)} targets)")',
+            "    return 0",
+            "",
+            "",
+            'if __name__ == "__main__":',
+            "    raise SystemExit(main())",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def scan_pytest_monkeypatch_hooks(workspace: Path) -> list[tuple[str, str]]:
+    """Return sorted unique ``(target, attr)`` pairs from visible pytest patch patterns."""
+    hooks: set[tuple[str, str]] = set()
+    tests_root = workspace / "tests"
+    if not tests_root.is_dir():
+        return []
+    for path in tests_root.rglob("*.py"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for match in _MONKEYPATCH_HOOK_RE.finditer(text):
+            target = match.group(1).strip()
+            attr = match.group(2).strip()
+            if target and attr:
+                hooks.add((target, attr))
+    return sorted(hooks)
+
+
+def deepswe_evaluation_appendix(workspace: Path) -> str:
+    """General DeepSWE notes appended to ``plan.md`` (not task-specific)."""
+    hooks = scan_pytest_monkeypatch_hooks(workspace)
+    patch_targets = patch_surface_targets(workspace, hooks=hooks)
+    lines = [
+        "",
+        "---",
+        "",
+        "## DeepSWE evaluation notes",
+        "",
+        "External grading may apply hidden tests after this session. Passing "
+        "`.malvin/checks` is necessary but not sufficient.",
+        "Preserve class-level attributes and module bindings that visible tests "
+        "monkeypatch; do not move them solely to instance state.",
+        f"`.malvin/checks` includes `{_PATCH_SURFACE_PROBE_COMMAND}` to verify "
+        "baseline class attributes remain `monkeypatch.setattr`-able.",
+    ]
+    if hooks:
+        lines.extend(
+            [
+                "",
+                "Visible pytest patch hooks (derive similar contracts for classes you modify):",
+            ]
+        )
+        shown = hooks[:30]
+        for target, attr in shown:
+            lines.append(f"- `{target}.{attr}`")
+        if len(hooks) > len(shown):
+            lines.append(f"- ... and {len(hooks) - len(shown)} more")
+    else:
+        lines.extend(
+            [
+                "",
+                "No visible monkeypatch hooks were found; assume hidden tests may patch "
+                "class attributes on classes you modify.",
+            ]
+        )
+    if patch_targets:
+        lines.extend(
+            [
+                "",
+                "Baseline class attributes probed by the patch-surface gate (keep settable on "
+                "the same class object):",
+            ]
+        )
+        shown_targets = patch_targets[:30]
+        for qual, attr in shown_targets:
+            lines.append(f"- `{qual}.{attr}`")
+        if len(patch_targets) > len(shown_targets):
+            lines.append(f"- ... and {len(patch_targets) - len(shown_targets)} more")
+    return "\n".join(lines) + "\n"
+
+
+DEFAULT_MALVIN_MEM_LIMIT_GB = 4
+
+
+def malvin_mem_limit_gb(environment_memory_mb: int) -> int:
+    """Map Harbor ``environment.memory_mb`` to malvin ``mem_limit_gb`` (round up)."""
+    mb = max(0, int(environment_memory_mb))
+    if mb <= DEFAULT_MALVIN_MEM_LIMIT_GB * 1024:
+        return DEFAULT_MALVIN_MEM_LIMIT_GB
+    return (mb + 1023) // 1024
+
+
+def ensure_deepswe_malvin_config(spec: TaskSpec, *, dry_run: bool) -> None:
+    """Seed ``~/.malvin_home/config.toml`` so malvin USS cap matches the task envelope."""
+    mem_gb = malvin_mem_limit_gb(spec.environment_memory_mb)
+    if mem_gb <= DEFAULT_MALVIN_MEM_LIMIT_GB:
+        return
+    config_path = Path.home() / ".malvin_home" / "config.toml"
+    click.echo(f"Seeding malvin USS cap mem_limit_gb={mem_gb} ({config_path})")
+    if dry_run:
+        return
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(f"mem_limit_gb = {mem_gb}\n", encoding="utf-8")
+
+
 def write_plan_and_checks(
     spec: TaskSpec,
     workspace: Path,
@@ -575,12 +816,27 @@ def write_plan_and_checks(
     plan = workspace / "plan.md"
     if not dry_run:
         shutil.copyfile(spec.instruction, plan)
+        plan.write_text(
+            plan.read_text(encoding="utf-8") + deepswe_evaluation_appendix(workspace),
+            encoding="utf-8",
+        )
     malvin_dir = workspace / ".malvin"
     if not dry_run:
         malvin_dir.mkdir(parents=True, exist_ok=True)
     checks = checks_override
     if checks is None:
         checks = discover_deepswe_checks(workspace)
+    if not dry_run:
+        patch_targets = patch_surface_targets(workspace)
+        if patch_targets:
+            probe_path = malvin_dir / "patch_surface_probe.py"
+            probe_path.write_text(
+                render_patch_surface_probe(patch_targets),
+                encoding="utf-8",
+            )
+            probe_path.chmod(probe_path.stat().st_mode | 0o111)
+            if _PATCH_SURFACE_PROBE_COMMAND not in checks:
+                checks = checks.rstrip() + f"\n{_PATCH_SURFACE_PROBE_COMMAND}\n"
     if not checks.endswith("\n"):
         checks += "\n"
     checks_path = malvin_dir / "checks"
@@ -1355,6 +1611,7 @@ def run_task(
             checks_override=checks_override,
             dry_run=dry_run,
         )
+        ensure_deepswe_malvin_config(spec, dry_run=dry_run)
         agent_result = run_malvin(
             workspace,
             command=malvin_command,
@@ -1527,7 +1784,18 @@ def _local_solve_options(f: Any) -> Any:
     return f
 
 
-@click.group()
+class TaskAliasGroup(click.Group):
+    """Route ``deepswe_run.py TASK_NAME`` to ``solve TASK_NAME``."""
+
+    def resolve_command(self, ctx, args):
+        if args:
+            token = click.utils.make_str(args[0])
+            if token not in self.commands and not token.startswith("-"):
+                return "solve", self.get_command(ctx, "solve"), args
+        return super().resolve_command(ctx, args)
+
+
+@click.group(cls=TaskAliasGroup)
 def cli() -> None:
     """Run malvin on a DeepSWE task and grade with Harbor ``tests/test.sh``."""
 
@@ -1850,6 +2118,23 @@ def _test_solve_command_in_help() -> None:
     assert "--task" not in result.output.split("Commands:")[0]
 
 
+def _test_task_name_shorthand_routes_to_solve() -> None:
+    """``deepswe_run.py TASK_NAME`` is equivalent to ``solve TASK_NAME``."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["bandit-interprocedural-taint-checks", "--grade-only", "--dry-run"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Runtime: modal" in result.output
+    assert "bandit-interprocedural-taint-checks" in result.output
+
+
 def _test_bare_invocation_shows_usage() -> None:
     from click.testing import CliRunner
 
@@ -1966,6 +2251,7 @@ def _test_write_plan_and_checks_discovers() -> None:
             repository_url=None,
             agent_timeout_sec=3600.0,
             verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
         )
         write_plan_and_checks(
             spec,
@@ -1977,6 +2263,146 @@ def _test_write_plan_and_checks_discovers() -> None:
         checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
         assert checks.startswith(f"{KISS_CHECK_COMMAND}\n")
         assert "pytest" in checks
+        plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
+        assert "DeepSWE evaluation notes" in plan_text
+
+
+def _test_scan_pytest_monkeypatch_hooks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        tests = root / "tests"
+        tests.mkdir()
+        (tests / "test_api.py").write_text(
+            "def test_x(monkeypatch):\n"
+            '    monkeypatch.setattr(Foo, "bar", 1)\n'
+            '    monkeypatch.setattr(mod.Baz, "qux", 2)\n',
+            encoding="utf-8",
+        )
+        hooks = scan_pytest_monkeypatch_hooks(root)
+        assert hooks == [("Foo", "bar"), ("mod.Baz", "qux")]
+
+
+def _test_deepswe_evaluation_appendix_no_hooks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        appendix = deepswe_evaluation_appendix(root)
+        assert "No visible monkeypatch hooks" in appendix
+
+
+def _test_deepswe_evaluation_appendix_lists_hooks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        tests = root / "tests"
+        tests.mkdir()
+        (tests / "test_x.py").write_text(
+            'monkeypatch.setattr(Igel, "results_path", tmp)\n',
+            encoding="utf-8",
+        )
+        appendix = deepswe_evaluation_appendix(root)
+        assert "`Igel.results_path`" in appendix
+
+
+def _test_scan_class_level_attributes() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        pkg = root / "pkg"
+        pkg.mkdir()
+        (pkg / "mod.py").write_text(
+            "class Foo:\n    bar = 1\n    _hidden = 2\n\nclass Baz:\n    qux: int = 3\n",
+            encoding="utf-8",
+        )
+        attrs = scan_class_level_attributes(root)
+        assert ("pkg.mod.Foo", "bar") in attrs
+        assert ("pkg.mod.Foo", "_hidden") in attrs
+        assert ("pkg.mod.Baz", "qux") in attrs
+
+
+def _test_patch_surface_targets_prefers_config_style_classes() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        pkg = root / "igel"
+        pkg.mkdir()
+        (pkg / "igel.py").write_text(
+            "class Igel:\n"
+            "    results_path = 'x'\n"
+            "    default_model_path = 'y'\n"
+            "    description_file = 'z'\n",
+            encoding="utf-8",
+        )
+        targets = patch_surface_targets(root)
+        assert ("igel.igel.Igel", "results_path") in targets
+
+
+def _test_render_patch_surface_probe_roundtrip() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        pkg = root / "pkg"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("", encoding="utf-8")
+        (pkg / "mod.py").write_text(
+            "class Foo:\n    bar = 1\n",
+            encoding="utf-8",
+        )
+        probe = root / "probe.py"
+        probe.write_text(
+            render_patch_surface_probe([("pkg.mod.Foo", "bar")]),
+            encoding="utf-8",
+        )
+        proc = subprocess.run(
+            [sys.executable, str(probe)],
+            cwd=root,
+            env={**os.environ, "PYTHONPATH": str(root)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "patch surface ok" in proc.stdout
+
+
+def _test_write_plan_and_checks_includes_patch_surface_probe() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        instruction = workspace / "instruction.md"
+        instruction.write_text("fix it\n", encoding="utf-8")
+        pkg = workspace / "pkg"
+        pkg.mkdir()
+        (pkg / "mod.py").write_text("class Foo:\n    a = 1\n    b = 2\n", encoding="utf-8")
+        spec = TaskSpec(
+            task_dir=workspace,
+            task_id="fake",
+            base_commit="HEAD",
+            docker_image="fake:local",
+            dockerfile=workspace / "Dockerfile",
+            instruction=instruction,
+            tests_dir=workspace / "tests",
+            test_sh=workspace / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
+        )
+        write_plan_and_checks(
+            spec,
+            workspace,
+            command="code",
+            checks_override=None,
+            dry_run=False,
+        )
+        checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
+        assert _PATCH_SURFACE_PROBE_COMMAND in checks
+        probe = workspace / ".malvin" / "patch_surface_probe.py"
+        assert probe.is_file(), probe
+        proc = subprocess.run(
+            [sys.executable, str(probe)],
+            cwd=workspace,
+            env={**os.environ, "PYTHONPATH": str(workspace)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
 
 
 def _test_is_modal_spend_limit_error() -> None:
@@ -2066,6 +2492,7 @@ def _test_reset_workspace_removes_user_pycache() -> None:
             repository_url=None,
             agent_timeout_sec=3600.0,
             verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
         )
         reset_workspace(spec, workspace, dry_run=False)
         assert not cache.exists(), cache
@@ -2147,6 +2574,68 @@ def _test_local_grade_only_apply_solution() -> None:
     assert "pass: True" in result.output
 
 
+def _test_malvin_mem_limit_gb_from_task_memory() -> None:
+    assert malvin_mem_limit_gb(4096) == 4
+    assert malvin_mem_limit_gb(8192) == 8
+    assert malvin_mem_limit_gb(5000) == 5
+
+
+def _test_ensure_deepswe_malvin_config_seeds_home_config() -> None:
+    import tempfile
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp) / "home"
+        home.mkdir()
+        spec = TaskSpec(
+            task_dir=Path("/task"),
+            task_id="t",
+            base_commit="abc",
+            docker_image="img",
+            dockerfile=Path("/task/environment/Dockerfile"),
+            instruction=Path("/task/instruction.md"),
+            tests_dir=Path("/task/tests"),
+            test_sh=Path("/task/tests/test.sh"),
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+            environment_memory_mb=8192,
+        )
+        with patch.object(Path, "home", return_value=home):
+            ensure_deepswe_malvin_config(spec, dry_run=False)
+        cfg = home / ".malvin_home" / "config.toml"
+        assert cfg.is_file(), cfg
+        assert "mem_limit_gb = 8" in cfg.read_text(encoding="utf-8")
+
+
+def _test_ensure_deepswe_malvin_config_skips_default_memory() -> None:
+    import tempfile
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp) / "home"
+        home.mkdir()
+        spec = TaskSpec(
+            task_dir=Path("/task"),
+            task_id="t",
+            base_commit="abc",
+            docker_image="img",
+            dockerfile=Path("/task/environment/Dockerfile"),
+            instruction=Path("/task/instruction.md"),
+            tests_dir=Path("/task/tests"),
+            test_sh=Path("/task/tests/test.sh"),
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
+        )
+        with patch.object(Path, "home", return_value=home):
+            ensure_deepswe_malvin_config(spec, dry_run=False)
+        assert not (home / ".malvin_home" / "config.toml").exists()
+
+
 def _test_prepare_task_sandbox_dry_run() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
@@ -2169,6 +2658,7 @@ def _test_prepare_task_sandbox_dry_run() -> None:
             repository_url=None,
             agent_timeout_sec=3600.0,
             verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
         )
         result = prepare_task_sandbox(
             spec,
@@ -2193,6 +2683,7 @@ def run_self_tests() -> None:
     _test_solve_resets_workspace_for_agent_runs()
     _test_solve_local_dry_run_passes_reset()
     _test_solve_command_in_help()
+    _test_task_name_shorthand_routes_to_solve()
     _test_bare_invocation_shows_usage()
     _test_list_deepswe_tasks()
     _test_read_task_language()
@@ -2202,6 +2693,16 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_write_plan_and_checks_discovers()
+    _test_scan_pytest_monkeypatch_hooks()
+    _test_deepswe_evaluation_appendix_no_hooks()
+    _test_deepswe_evaluation_appendix_lists_hooks()
+    _test_scan_class_level_attributes()
+    _test_patch_surface_targets_prefers_config_style_classes()
+    _test_render_patch_surface_probe_roundtrip()
+    _test_write_plan_and_checks_includes_patch_surface_probe()
+    _test_malvin_mem_limit_gb_from_task_memory()
+    _test_ensure_deepswe_malvin_config_seeds_home_config()
+    _test_ensure_deepswe_malvin_config_skips_default_memory()
     _test_prepare_task_sandbox_dry_run()
     _test_tasks_command()
     _test_is_modal_spend_limit_error()

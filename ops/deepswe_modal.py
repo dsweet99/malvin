@@ -68,7 +68,11 @@ from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
-from sandbox_prep import dockerfile_image_build_commands, registry_image_cache_bust_commands
+from sandbox_prep import (
+    dockerfile_bulk_pip_commands,
+    dockerfile_image_build_commands,
+    registry_image_cache_bust_commands,
+)
 from deepswe_run import (
     discover_deepswe_checks,
     apply_patch,
@@ -120,7 +124,8 @@ CURSOR_API_HOSTS = (
 CRITICAL_CURSOR_API_HOSTS = ("api2.cursor.sh", "api.cursor.com")
 
 # Modal Sandbox.create defaults are 0.125 CPU and 128 MiB — too small for malvin +
-# cursor-agent. Match malvin's default mem_limit_gb (default_repo/config.toml).
+# cursor-agent. Agent memory follows task.toml environment.memory_mb; malvin USS cap
+# is seeded separately via ensure_deepswe_malvin_config (default_repo/config.toml = 4 GiB).
 AGENT_SANDBOX_CPU = 2.0
 AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
@@ -1406,9 +1411,23 @@ def sandbox_network_kwargs(
     return {}
 
 
-def agent_sandbox_resource_kwargs() -> dict[str, Any]:
+def agent_sandbox_resource_kwargs(spec: Any | None = None) -> dict[str, Any]:
     """Return Modal ``Sandbox.create`` cpu/memory for agent workloads."""
-    return {"cpu": AGENT_SANDBOX_CPU, "memory": AGENT_SANDBOX_MEMORY_MIB}
+    memory_mib = AGENT_SANDBOX_MEMORY_MIB
+    if spec is not None:
+        task_memory = int(getattr(spec, "environment_memory_mb", 0) or 0)
+        if task_memory > memory_mib:
+            memory_mib = task_memory
+    return {"cpu": AGENT_SANDBOX_CPU, "memory": memory_mib}
+
+
+def agent_sandbox_timeout_sec(spec: Any, *, skip_grade: bool) -> int:
+    """Modal sandbox lifetime: agent (+ verifier when graded) plus headroom."""
+    agent = float(getattr(spec, "agent_timeout_sec", 5400.0))
+    if skip_grade:
+        return int(agent + 900)
+    verifier = float(getattr(spec, "verifier_timeout_sec", 1800.0))
+    return int(agent + verifier + 900)
 
 
 def grade_sandbox_resource_kwargs() -> dict[str, Any]:
@@ -1463,10 +1482,16 @@ def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
         # pin after pull (editable replay upgrades starlette → httpx2 drift).
         click.echo(f"Pulling Harbor image {docker_image}...")
         base = modal.Image.from_registry(docker_image, force_build=True)
-        build_cmds = registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
+        build_cmds = list(
+            registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
+        )
+        if dockerfile.is_file():
+            bulk = dockerfile_bulk_pip_commands(dockerfile)
+            if bulk:
+                build_cmds.extend(bulk)
         if build_cmds:
             click.echo(
-                f"Re-running {len(build_cmds)} registry cache-bust pip step(s) after pull..."
+                f"Re-running {len(build_cmds)} registry image-build pip step(s) after pull..."
             )
             base = base.run_commands(*_image_build_shell_commands(build_cmds, workdir=None))
         return base
@@ -1727,6 +1752,7 @@ def run_deepswe_run_in_sandbox(
     artifacts_dir: Path | None = None,
     harvest_workspace: Path | None = None,
     timeout: int = 7200,
+    spec: Any | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Exec ``deepswe_run.py`` once in a Modal sandbox (agent + grade in one command)."""
     sandbox: modal.Sandbox | None = None
@@ -1741,7 +1767,7 @@ def run_deepswe_run_in_sandbox(
         resources = (
             grade_sandbox_resource_kwargs()
             if grade_only
-            else agent_sandbox_resource_kwargs()
+            else agent_sandbox_resource_kwargs(spec)
         )
         sandbox = modal.Sandbox.create(
             app=sandbox_app(),
@@ -2012,6 +2038,7 @@ def run_modal_eval(
     if checks is None:
         checks = discover_deepswe_checks(workspace)
     try:
+        sandbox_timeout = agent_sandbox_timeout_sec(spec, skip_grade=skip_grade)
         if grade_only:
             grade_img = mount_eval_context(
                 harbor_image(spec, dockerfile=spec.dockerfile),
@@ -2028,6 +2055,8 @@ def run_modal_eval(
                 skip_grade=False,
                 cursor_secrets=[],
                 artifacts_dir=run_root,
+                spec=spec,
+                timeout=sandbox_timeout,
             )
         else:
             agent_checks = offline_agent_checks(checks or "")
@@ -2061,6 +2090,8 @@ def run_modal_eval(
                         cursor_secrets=cursor_secrets(),
                         artifacts_dir=agent_artifacts,
                         harvest_workspace=workspace,
+                        spec=spec,
+                        timeout=sandbox_timeout,
                     )
                 else:
                     click.echo(
@@ -2076,6 +2107,8 @@ def run_modal_eval(
                         cursor_secrets=cursor_secrets(),
                         artifacts_dir=agent_artifacts,
                         harvest_workspace=workspace,
+                        spec=spec,
+                        timeout=sandbox_timeout,
                     )
             if agent_result is None:
                 agent_result = {"exit_code": 1}
@@ -2253,8 +2286,25 @@ def _test_network_kwargs() -> None:
 def _test_sandbox_resource_kwargs() -> None:
     agent = agent_sandbox_resource_kwargs()
     assert agent == {"cpu": 2.0, "memory": 4096}
+    from types import SimpleNamespace
+
+    heavy = agent_sandbox_resource_kwargs(
+        SimpleNamespace(environment_memory_mb=8192)
+    )
+    assert heavy == {"cpu": 2.0, "memory": 8192}
     grade = grade_sandbox_resource_kwargs()
     assert grade == {"cpu": 1.0, "memory": 2048}
+
+
+def _test_agent_sandbox_timeout_sec() -> None:
+    from types import SimpleNamespace
+
+    spec = SimpleNamespace(
+        agent_timeout_sec=5400.0,
+        verifier_timeout_sec=1800.0,
+    )
+    assert agent_sandbox_timeout_sec(spec, skip_grade=False) == 8100
+    assert agent_sandbox_timeout_sec(spec, skip_grade=True) == 6300
 
 
 def _test_compress_ipv4_cidrs() -> None:
@@ -3130,6 +3180,9 @@ def _test_harbor_image_prefers_registry_for_fastapi_task() -> None:
     ), patch(
         f"{__name__}.registry_image_cache_bust_commands",
         return_value=["pip install --no-cache-dir 'pydantic>=2,<3'"],
+    ), patch(
+        f"{__name__}.dockerfile_bulk_pip_commands",
+        return_value=[],
     ):
         result = harbor_image(spec, dockerfile=spec.dockerfile)
     assert result == "final-image"
@@ -3344,6 +3397,7 @@ def run_unit_tests() -> None:
     _test_modal_cidr_allowlist_ipv4_only()
     _test_network_kwargs()
     _test_sandbox_resource_kwargs()
+    _test_agent_sandbox_timeout_sec()
     _test_compress_ipv4_cidrs()
     _test_allowlist_near_modal_cap()
     _test_agent_sandbox_cidrs_union()
