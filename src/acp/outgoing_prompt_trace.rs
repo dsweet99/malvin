@@ -50,3 +50,17 @@ fn coder_prompt_options_default_and_trace_variants_construct() {
     assert!(matches!(uniform, OutgoingPromptTrace::Uniform(_)));
     assert!(matches!(split, OutgoingPromptTrace::DoSplit(_)));
 }
+#[cfg(test)]
+#[path = "outgoing_prompt_trace_test.rs"]
+mod outgoing_prompt_trace_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<DoPromptTraceSplit> = None;
+        let _: Option<UniformOutgoingTrace> = None;
+    }
+}

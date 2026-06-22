@@ -80,7 +80,3 @@ pub(crate) fn split_byte_size(raw: &str) -> Option<(&str, u64)> {
     }
     None
 }
-
-#[cfg(test)]
-#[path = "log_gc_config_tests.rs"]
-mod log_gc_config_tests;

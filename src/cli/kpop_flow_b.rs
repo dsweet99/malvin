@@ -1,10 +1,8 @@
 use crate::artifacts::RunArtifacts;
 use crate::cli::{KpopArgs, SharedOpts};
 
-#[cfg(test)]
 use std::collections::HashMap;
 
-#[cfg(test)]
 use crate::prompts::PromptStore;
 
 pub fn kpop_emit_startup(
@@ -74,7 +72,6 @@ fn merge_acp_prefers_acp_error_when_both_fail() {
     assert_eq!(merged, Err("acp".into()));
 }
 
-#[cfg(test)]
 fn kpop_markdown_fixture_context() -> HashMap<String, String> {
     [
         ("plan_path", "./.malvin/logs/run42/plan.md"),
@@ -97,7 +94,6 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
     .collect()
 }
 
-#[cfg(test)]
 fn assert_substrings_monotonic(prompt: &str, markers: &[&str]) {
     let mut prev: Option<usize> = None;
     for m in markers {
@@ -111,7 +107,6 @@ fn assert_substrings_monotonic(prompt: &str, markers: &[&str]) {
     }
 }
 
-#[cfg(test)]
 fn assert_prompt_contains_each(haystack: &str, needles: &[&str]) {
     for needle in needles {
         assert!(

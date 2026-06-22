@@ -107,9 +107,13 @@ pub(super) fn backup_slot(
     let spec = &DOTFILE_ROWS[slot];
     let _ = spec.rel_path();
     let src = dotfile_source_path(slot, work_dir);
-    if !src.is_file() {
-        return Ok(DotfileBackupState::Missing);
-    }
+    let bytes = match std::fs::read(&src) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(DotfileBackupState::Missing);
+        }
+        Err(e) => return Err(format!("{}: {e}", spec.copy_err)),
+    };
     let root = snapshot_category_dir(spec.home_subdir);
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
@@ -117,7 +121,6 @@ pub(super) fn backup_slot(
     if let Some(parent) = dest_file.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", spec.mkdir_lbl))?;
     }
-    let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", spec.copy_err))?;
     if let Err(e) = std::fs::write(&dest_file, &bytes) {
         let _ = std::fs::remove_dir_all(&dest_dir);
         return Err(format!("{}: {e}", spec.copy_err));
@@ -189,12 +192,10 @@ pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: u
     }
 }
 
-#[cfg(test)]
 pub(super) const fn labels_for_test(row: &DotfileSpecRow) -> DotfileBackupLabels {
     labels(row)
 }
 
-#[cfg(test)]
 pub(super) fn restore_malvin_config_missing_for_test(
     dst: &Path,
     lbls: &DotfileBackupLabels,

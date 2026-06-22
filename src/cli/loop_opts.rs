@@ -134,3 +134,17 @@ mod tests {
         assert_eq!(kpop_agent_loop_exp_iteration(2, 3), 2);
     }
 }
+#[cfg(test)]
+#[path = "loop_opts_test.rs"]
+mod loop_opts_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<GateLoopTenaciousApply> = None;
+        let _: Option<TenaciousBudgetGuard> = None;
+    }
+}

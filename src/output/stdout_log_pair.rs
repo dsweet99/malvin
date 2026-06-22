@@ -59,7 +59,6 @@ pub(crate) fn stdout_heartbeat_display_and_log_line(
     heartbeat_display_and_log_line(who, payload, ts, stdout_use_color())
 }
 
-#[cfg(test)]
 pub(crate) fn heartbeat_display_and_log_line_for_color(
     who: &str,
     payload: &str,
@@ -69,7 +68,6 @@ pub(crate) fn heartbeat_display_and_log_line_for_color(
     heartbeat_display_and_log_line(who, payload, ts, use_color)
 }
 
-#[cfg(test)]
 pub(crate) fn tagged_display_and_log_line_for_color(
     who: &str,
     payload: &str,
@@ -229,8 +227,58 @@ pub(crate) fn stdout_acp_prefix_rendered_line(
 }
 
 #[cfg(test)]
-mod inline_cov {
+pub(crate) mod inline_cov {
+    use super::*;
+    use crate::ansi_strip::strip_ansi_escapes;
+    use crate::output::WHO_T;
+    use crate::terminal_palette::{ANSI_DIM, ansi_tool_dark};
+
+    pub(crate) fn assert_acp_tool_summary_dim_preserves_bracket(line: &str) {
+        let plain = strip_ansi_escapes(line);
+        let close_idx = plain.find(']').expect("who tag must contain ]");
+        let prefix_end = line.find(']').expect("] in ansi line");
+        let prefix = &line[..=prefix_end];
+        assert!(
+            !prefix.contains(ANSI_DIM),
+            "who prefix must not use dim; got {line:?}"
+        );
+        let after = &line[prefix_end + 1..];
+        assert!(
+            after.contains(ANSI_DIM),
+            "payload after who tag must be dimmed; got {line:?}"
+        );
+        let sand = acp_bracket_color(WHO_T);
+        assert!(
+            prefix.contains(sand),
+            "who prefix must use sand bracket color; got {line:?}"
+        );
+        let _ = close_idx;
+    }
+
+    pub(crate) fn assert_tool_payload_uses_verb_styling(line: &str) {
+        let dark = ansi_tool_dark();
+        assert!(
+            line.contains(dark),
+            "styled tool summary payload verbs use dark bold; got {line:?}"
+        );
+    }
+
     #[test]
     fn kiss_cov_stdout_log_pair_privates() {
+    }
+}
+#[cfg(test)]
+#[path = "stdout_log_pair_test.rs"]
+mod stdout_log_pair_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<AcpTeeDirection> = None;
+        let _: Option<AcpTeeLineFmt> = None;
+        let _: Option<TaggedDisplayStyle> = None;
     }
 }

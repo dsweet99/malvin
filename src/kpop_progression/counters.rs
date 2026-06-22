@@ -87,4 +87,6 @@ mod tests {
         assert!(!is_kpop_step_label("foo"));
     }
 }
-
+#[cfg(test)]
+#[path = "counters_test.rs"]
+mod counters_test;

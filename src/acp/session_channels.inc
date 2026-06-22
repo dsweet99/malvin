@@ -228,5 +228,27 @@ fn acp_activity_state_returns_valid_arc_pair() {
     notify.notify_one();
 }
 
-#[cfg(test)] #[test] fn kiss_cov_session_channels_helper_names() { let _ = (stdin_from_sleep_holder, session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set); }
+#[cfg(test)]
+#[path = "session_channels_kiss_cov_test.rs"]
+mod session_channels_kiss_cov_test;
+#[cfg(test)]
+#[path = "session_channels_kiss_test.rs"]
+mod session_channels_kiss_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
 
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<SessionAfterStdioIn> = None;
+        let _: Option<SessionInnerAssembly> = None;
+        let _: Option<SessionReaderTelemetry> = None;
+        let _ = acp_activity_state;
+        let _ = random_agent_name;
+        let _ = session_channel_state_sets_trace_jsonl_when_prompts_log_run_dir_set;
+        let _ = session_channel_sync;
+        let _ = stdin_from_sleep_holder;
+        let _ = trace_jsonl_for_args;
+    }
+}

@@ -207,3 +207,16 @@ fn emit_and_build_helpers_cover_entry_shapes() {
     let (enrich_with_dir, _) = tool_drain_enrich_fields(&parsed, &tracker, "[Read file · 1ms]");
     assert!(enrich_with_dir.is_some());
 }
+#[cfg(test)]
+#[path = "tests_emit_test.rs"]
+mod tests_emit_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = push_acp_tee_marker;
+    }
+}

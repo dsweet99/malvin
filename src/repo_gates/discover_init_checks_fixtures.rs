@@ -1,7 +1,5 @@
-#[cfg(test)]
 use std::path::Path;
 
-#[cfg(test)]
 pub(crate) fn write_repo_files(root: &Path, pairs: &[(&str, &str)]) {
     for (rel, content) in pairs {
         let path = root.join(rel);
@@ -14,7 +12,6 @@ pub(crate) fn write_repo_files(root: &Path, pairs: &[(&str, &str)]) {
     }
 }
 
-#[cfg(test)]
 const ENN_HYBRID_FILES: &[(&str, &str)] = &[
     (
         "rust/Cargo.toml",
@@ -32,7 +29,10 @@ const ENN_HYBRID_FILES: &[(&str, &str)] = &[
     ),
 ];
 
-#[cfg(test)]
 pub(crate) fn seed_enn_like_hybrid_fixture(root: &Path) {
     write_repo_files(root, ENN_HYBRID_FILES);
 }
+
+#[cfg(test)]
+#[path = "discover_init_checks_fixtures_kiss_cov_test.rs"]
+mod discover_init_checks_fixtures_kiss_cov_test;

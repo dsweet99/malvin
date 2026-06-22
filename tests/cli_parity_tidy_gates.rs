@@ -4,6 +4,7 @@
 mod common;
 
 #[cfg(unix)]
+#[cfg(test)]
 mod unix_tests {
     use std::path::PathBuf;
 

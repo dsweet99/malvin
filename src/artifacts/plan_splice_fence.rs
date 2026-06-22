@@ -75,7 +75,6 @@ fn is_fence_open_line(line: &str) -> bool {
     line.starts_with("```") && !line[3..].trim().is_empty()
 }
 
-#[cfg(test)]
 mod fence_fn_coverage {
     use super::*;
 

@@ -127,14 +127,3 @@ pub fn create_kpop_run_artifacts_opts(
     crate::stdout_log_path::set_stdout_log_path(Some(artifacts.stdout_log_path()));
     Ok(artifacts)
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = ensure_kpop_exp_log_file;
-        let _ = write_empty_exp_log;
-    }
-}

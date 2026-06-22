@@ -155,4 +155,3 @@ pub fn remove_legacy_malvin_checks_file(work_dir: &Path) {
         let _ = std::fs::remove_file(legacy);
     }
 }
-

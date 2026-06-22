@@ -205,4 +205,3 @@ pub fn acp_mock_kpop_outer_loop_tampers_gitignore_then_resnapshots_js() -> Strin
     let done = session_update_chunk_line("agent_message_chunk", r"'outer kpop done\n'");
     acp_mock_js("", &format!("    {body}\n{done}"))
 }
-

@@ -67,3 +67,18 @@ fn render_kpop_program_request_with_template(input: RenderKpopProgram<'_>) -> Re
         .map(|s| s.trim().to_string())
         .map_err(|e: PromptError| e.0)
 }
+#[cfg(test)]
+#[path = "workflow_kpop_render_test.rs"]
+mod workflow_kpop_render_test;#[cfg(test)]
+#[path = "workflow_kpop_render_kiss_cov_test.rs"]
+mod workflow_kpop_render_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<RenderKpopProgram> = None;
+    }
+}

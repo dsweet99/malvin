@@ -38,3 +38,9 @@ pub(crate) fn find_legacy_store_path(cursor_dir: &Path, session_id: &str) -> Opt
     }
     None
 }
+#[cfg(test)]
+#[path = "path_test.rs"]
+mod path_test;
+#[cfg(test)]
+#[path = "path_kiss_cov_test.rs"]
+mod path_kiss_cov_test;

@@ -133,7 +133,6 @@ pub(super) fn require_on_path(bin: &str, err: &str) -> Result<(), String> {
     Ok(())
 }
 
-
 pub(super) fn run_command_expect_success(cmd: &mut Command, err: &str) -> Result<(), String> {
     let status = cmd.status().map_err(|e| format!("{err} ({e})"))?;
     if status.success() {
@@ -170,16 +169,4 @@ pub(super) fn write_shell_script(path: &Path, contents: &str, force: bool) -> Re
             .map_err(|e| format!("init: chmod {}: {e}", path.display()))?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = bootstrap_repo_tooling;
-        let _ = repo_already_has_commits;
-        let _ = create_initial_commit;
-    }
 }

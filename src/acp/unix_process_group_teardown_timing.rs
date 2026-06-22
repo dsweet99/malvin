@@ -65,18 +65,15 @@ pub(crate) fn teardown_kill_after_polls() -> u32 {
     }
 }
 
+#[allow(non_snake_case)]
+
 #[cfg(test)]
-mod kiss_cov_auto {
+mod kiss_cov_inline {
     use super::*;
 
     #[test]
-    fn kiss_cov_teardown_timing_fns() {
-        let _ = (
-            test_fast_acp_teardown_enabled,
-            teardown_poll_interval,
-            teardown_total_cap,
-            shutdown_cancel_timeout,
-            teardown_kill_after_polls,
-        );
+    fn kiss_cov_band80_witnesses() {
+        let timeout = shutdown_cancel_timeout();
+        assert!(!timeout.is_zero() || test_fast_acp_teardown_enabled());
     }
 }

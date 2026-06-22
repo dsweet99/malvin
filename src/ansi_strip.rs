@@ -79,14 +79,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = consume_csi_sequence;
-        let _ = consume_osc_sequence;
-    }
-}

@@ -36,13 +36,3 @@ pub fn prepare_tidy_kpop_run(
         malvin_checks_backup,
     })
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = tidy_kpop_workflow_context;
-    }
-}

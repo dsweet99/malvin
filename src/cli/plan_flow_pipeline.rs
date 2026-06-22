@@ -149,23 +149,3 @@ pub(super) fn commit_plan_prompt_3(prep: &PlanRunPrep, response: &str) -> Result
     overwrite_plan_file(&prep.source_plan_path, &fenced).map_err(|e| e.to_string())?;
     remove_plan_user_sidecar(&prep.source_plan_path).map_err(|e| e.to_string())
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_pipeline_symbols() {
-        let _ = run_plan_coder_prompt;
-        let _ = run_plan_prompt_1a;
-        let _ = run_plan_prompt_1b;
-        let _ = run_plan_prompt_2;
-        let _ = run_plan_prompt_3;
-        let _ = stringify!(commit_plan_prompt_1a);
-        let _ = stringify!(commit_plan_prompt_1b);
-        let _ = stringify!(commit_plan_prompt_2);
-        let _ = stringify!(commit_plan_prompt_3);
-        let _ = overwrite_plan_file;
-    }
-}

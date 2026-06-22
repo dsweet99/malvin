@@ -49,7 +49,3 @@ pub(crate) fn print_doc_to_writer(command: Option<&Commands>, mut out: impl Writ
 pub(crate) fn print_doc(command: Option<&Commands>) -> Result<(), String> {
     print_doc_to_writer(command, io::stdout().lock())
 }
-
-#[cfg(test)]
-#[path = "command_docs_tests.rs"]
-mod command_docs_tests;

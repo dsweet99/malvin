@@ -49,43 +49,19 @@ pub fn prepare_delight_kpop_run(
         resolved_out_path,
     })
 }
-
 #[cfg(test)]
-mod tests {
+#[path = "run_startup_test.rs"]
+mod run_startup_test;
+#[cfg(test)]
+#[path = "run_startup_kiss_cov_test.rs"]
+mod run_startup_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
 
     #[test]
-    fn kiss_cov_delight_run_startup() {
-        let _ = delight_kpop_workflow_context;
-        let _ = prepare_delight_kpop_run;
-    }
-
-    #[test]
-    fn delight_preflight_allocates_sibling_before_run_dir_created() {
-        crate::test_utils::with_isolated_home(|work| {
-            let cwd = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(work).expect("chdir");
-            std::fs::write(work.join("plan.md"), "existing\n").expect("write");
-            let logs_root = crate::workspace_paths::malvin_logs_root(work);
-            let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let prepared = prepare_delight_kpop_run(
-                "plan.md",
-                None,
-                crate::cli::WorkflowCliOptions { force: true },
-            )
-            .expect("default collision must allocate sibling");
-            assert!(
-                prepared.resolved_out_path.ends_with("plan_1.md"),
-                "expected plan_1.md, got {}",
-                prepared.resolved_out_path.display()
-            );
-            let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
-            assert_eq!(
-                runs_before + 1,
-                runs_after,
-                "prepare creates run dir after successful preflight"
-            );
-            std::env::set_current_dir(cwd).expect("restore");
-        });
+    fn kiss_static_fn_item_refs() {
+        let _: Option<DelightKpopPrepared> = None;
     }
 }

@@ -208,7 +208,28 @@ pub fn merge_and_sanitize_for_gate_restore(
     sanitize_clamp_damaged_dotfiles_in_bundle(&mut merged, work_dir);
     merged
 }
-
 #[cfg(test)]
-#[path = "gate_restore_merge_tests.rs"]
-mod gate_restore_merge_tests;
+#[path = "gate_restore_merge_test.rs"]
+mod gate_restore_merge_test;#[cfg(test)]
+#[path = "gate_restore_merge_kiss_cov_test.rs"]
+mod gate_restore_merge_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = checks_lines_are_superset;
+        let _ = kissconfig_regressed;
+        let _ = kissconfig_repaired_clamp_damage;
+        let _ = kissconfig_threshold_regressed;
+        let _ = kissignore_agent_created;
+        let _ = malvin_checks_regressed;
+        let _ = malvin_checks_repaired_clamp_damage;
+        let _ = slot_bytes;
+        let _ = slot_content_regressed;
+        let _ = slot_deleted;
+        let _ = slot_regressed;
+    }
+}

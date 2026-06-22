@@ -90,12 +90,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_signal_privates() {
-        let _ = super::observe_tool_update_state;
-        let _ = super::tool_kind_for;
-        let _ = super::observe_execute;
-        let _ = super::observe_non_execute;
-        let _ = super::execute_failed;
-        let _ = super::execute_looks_like_test;
     }
 
     #[test]
@@ -115,19 +109,5 @@ mod tests {
         let tracker = ToolSummaryTracker::default();
         observe_tool_update_state(&mut state, &parsed, &tracker);
         assert!(!state.orienting);
-    }
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = execute_failed;
-        let _ = execute_looks_like_test;
-        let _ = observe_execute;
-        let _ = observe_non_execute;
-        let _ = tool_kind_for;
     }
 }

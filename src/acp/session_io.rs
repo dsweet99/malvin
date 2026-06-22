@@ -64,13 +64,3 @@ mod tests {
         drop(stdout);
     }
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = acp_stdio;
-    }
-}

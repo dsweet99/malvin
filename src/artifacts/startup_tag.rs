@@ -23,14 +23,13 @@ mod tests {
     fn startup_request_tag_label_from_file_stem_or_prompt() {
         let _guard = crate::test_utils::test_env_lock();
         let tmp = tempfile::tempdir().unwrap();
-        let old_cwd = std::env::current_dir().unwrap();
-        std::env::set_current_dir(tmp.path()).unwrap();
-        std::fs::write("plan.md", "x").unwrap();
-        assert_eq!(startup_request_tag_label("plan.md"), "plan");
-        std::fs::create_dir_all("sub").unwrap();
-        std::fs::write("sub/plan_1.md", "y").unwrap();
-        assert_eq!(startup_request_tag_label("sub/plan_1.md"), "plan_1");
-        assert_eq!(startup_request_tag_label("fix it"), "prompt");
-        std::env::set_current_dir(old_cwd).unwrap();
+        crate::test_utils::with_cwd(tmp.path(), || {
+            std::fs::write(tmp.path().join("plan.md"), "plan body\n").unwrap();
+            assert_eq!(startup_request_tag_label("plan.md"), "plan");
+            std::fs::create_dir_all(tmp.path().join("sub")).unwrap();
+            std::fs::write(tmp.path().join("sub/plan_1.md"), "plan one\n").unwrap();
+            assert_eq!(startup_request_tag_label("sub/plan_1.md"), "plan_1");
+            assert_eq!(startup_request_tag_label("fix it"), "prompt");
+        });
     }
 }

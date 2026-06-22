@@ -152,3 +152,19 @@ mod tests {
         );
     }
 }
+#[cfg(test)]
+#[path = "behavior_test.rs"]
+mod behavior_test;#[cfg(test)]
+#[path = "behavior_kiss_cov_test.rs"]
+mod behavior_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<GateKpopExitPolicy> = None;
+        let _: Option<GateLoopBehavior> = None;
+    }
+}

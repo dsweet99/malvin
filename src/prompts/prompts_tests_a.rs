@@ -134,3 +134,19 @@ fn validate_required_rejects_directory_in_place_of_prompt_file() {
         );
     }
 }
+
+#[test]
+fn kpop_prompt_validation_fields_and_source_desc_in_errors() {
+    let store = PromptStore::default_store();
+    let validation = KpopPromptValidation {
+        require_mbc2: true,
+    };
+    assert!(validation.require_mbc2);
+    let err = store
+        .validate_kpop_prompts(validation)
+        .expect_err("embedded store missing kpop files");
+    assert!(
+        err.0.contains("embedded prompts"),
+        "expected prompt_source_desc in error: {err:?}"
+    );
+}

@@ -18,13 +18,11 @@ thread_local! {
     static CAPTURED_STDOUT_LINES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(test)]
 pub(crate) fn enable_stdout_capture() {
     CAPTURE_STDOUT.with(|flag| *flag.borrow_mut() = true);
     CAPTURED_STDOUT_LINES.with(|lines| lines.borrow_mut().clear());
 }
 
-#[cfg(test)]
 pub(crate) fn take_captured_stdout() -> String {
     CAPTURE_STDOUT.with(|flag| *flag.borrow_mut() = false);
     CAPTURED_STDOUT_LINES.with(|lines| lines.borrow_mut().join("\n"))

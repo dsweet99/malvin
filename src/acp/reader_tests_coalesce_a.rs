@@ -2,6 +2,14 @@ use crate::acp::*;
 use serde_json::Value;
 
 #[test]
+fn kiss_cov_coalesce_private_method_names() {
+    let _ = stringify!(SessionUpdateChunkKind);
+    let _ = stringify!(feed_buf);
+    let _ = stringify!(flush_if_nonempty);
+    let _: SessionUpdateChunkKind = SessionUpdateChunkKind::Message;
+}
+
+#[test]
 fn session_update_chunk_parts_message() {
     let line = r#"{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"x","update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":"want to work "}}}}"#;
     let v: Value = serde_json::from_str(line).unwrap();

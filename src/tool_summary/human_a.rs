@@ -63,7 +63,8 @@ pub(crate) fn format_tool_line_human(
             human_done_line(parsed, tracker, kind, elapsed)
         }
         TOOL_PHASE_RUNNING => human_running_line(parsed, tracker, kind, elapsed),
-        TOOL_PHASE_START | TOOL_PHASE_PENDING => human_start_line(parsed, tracker, kind),
+        TOOL_PHASE_START => human_start_line(parsed, tracker, kind),
+        TOOL_PHASE_PENDING => human_start_line(parsed, tracker, kind),
         _ => None,
     }
 }

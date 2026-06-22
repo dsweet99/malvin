@@ -97,14 +97,20 @@ pub fn shorten_middle(s: &str, max_width: usize) -> String {
     out.extend(chars.iter().skip(chars.len().saturating_sub(back)));
     out
 }
-
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_auto{
+#[path = "types_test.rs"]
+mod types_test;#[cfg(test)]
+#[path = "types_kiss_cov_test.rs"]
+mod types_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
 
     #[test]
-    fn kiss_cov_tool_summary_lines_type() {
-        let _: Option<super::ToolSummaryLines> = None;
+    fn kiss_static_fn_item_refs() {
+        let _: Option<ToolCallRecord> = None;
+        let _: Option<ToolSummaryDetail> = None;
+        let _: Option<ToolSummaryLines> = None;
     }
 }

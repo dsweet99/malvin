@@ -85,20 +85,19 @@ fn match_run_logs_reads_command_log_for_kpop() {
     let m = match_run_logs(&run_dir, id, MalvinRunLogKind::Kpop).expect("match");
     assert_eq!(m.exp_log_rel.as_deref(), Some("./exp.md"));
 }
-
 #[cfg(test)]
+#[path = "bug_id_lookup_log_test.rs"]
+mod bug_id_lookup_log_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
 mod kiss_static_fn_item_refs {
-    use super::{
-        malvin_log_tag_marker, malvin_tagged_line_payload, match_run_logs, parse_log_line,
-        MalvinRunLogKind,
-    };
+    use super::*;
 
     #[test]
     fn kiss_static_fn_item_refs() {
-        let _ = MalvinRunLogKind::Kpop;
-        let _ = malvin_log_tag_marker;
-        let _ = malvin_tagged_line_payload;
-        let _ = parse_log_line;
-        let _ = match_run_logs;
+        let _: Option<MalvinRunLogKind> = None;
+        let _ = fallback_err_label;
+        let _ = log_tag;
+        let _ = missing_log_err_label;
     }
 }

@@ -44,17 +44,3 @@ pub(in crate::process_group_rss) fn macos_process_group_rss_bytes(pgid: u32) -> 
     }
     saw_line.then(|| total_kib.saturating_mul(1024))
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = macos_pids_rss_bytes;
-        let _ = macos_process_group_rss_bytes;
-        let pids = std::iter::once(std::process::id()).collect::<std::collections::HashSet<_>>();
-        let rss = macos_pids_rss_bytes(&pids).expect("rss");
-        assert!(rss > 0);
-    }
-}

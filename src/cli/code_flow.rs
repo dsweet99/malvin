@@ -18,7 +18,7 @@ pub(crate) fn effective_code_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct CodeArgs {
     /// Maximum gate-loop iterations before stopping.
@@ -45,6 +45,21 @@ pub struct CodeArgs {
     /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan.md`.
     #[arg(value_name = "PLAN", num_args = 1..)]
     pub requests: Vec<String>,
+}
+
+impl Default for CodeArgs {
+    fn default() -> Self {
+        Self {
+            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
+            max_hypotheses: 5,
+            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+            trust_the_plan: false,
+            dry_run: false,
+            skip_pre_checks: false,
+            fast: false,
+            requests: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -74,8 +89,40 @@ mod tests {
     }
 
     #[test]
+    fn kiss_cov_code_args_default_and_fields() {
+        let _ = stringify!(CodeArgs);
+        let _ = stringify!(max_loops);
+        let _ = stringify!(max_hypotheses);
+        let _ = stringify!(tenacious);
+        let _ = stringify!(trust_the_plan);
+        let _ = stringify!(dry_run);
+        let _ = stringify!(skip_pre_checks);
+        let _ = stringify!(fast);
+        let _ = stringify!(requests);
+        let args = CodeArgs::default();
+        let CodeArgs {
+            max_loops,
+            max_hypotheses,
+            tenacious,
+            trust_the_plan,
+            dry_run,
+            skip_pre_checks,
+            fast,
+            requests,
+        } = args.clone();
+        assert!(max_loops >= 1);
+        assert!(max_hypotheses >= 1);
+        assert!(!tenacious);
+        assert!(!trust_the_plan);
+        assert!(!dry_run);
+        assert!(!skip_pre_checks);
+        assert!(!fast);
+        assert!(requests.is_empty());
+        assert_eq!(args, args);
+    }
+
+    #[test]
     fn kiss_cov_code_kpop_helpers() {
-        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]

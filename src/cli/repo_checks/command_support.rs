@@ -2,13 +2,8 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Output};
-#[cfg(test)]
-use std::sync::Mutex;
 
 use super::types::{RepoGateCommandFailure, RepoGateFailure};
-
-#[cfg(test)]
-static FAKE_COMMAND_DIR_MUTEX: Mutex<()> = Mutex::new(());
 
 pub fn run_command_failure(command: &str, output: &Output) -> RepoGateFailure {
     RepoGateFailure::Command(RepoGateCommandFailure {
@@ -19,7 +14,6 @@ pub fn run_command_failure(command: &str, output: &Output) -> RepoGateFailure {
     })
 }
 
-#[cfg(test)]
 fn fake_command_dir_for_path_env() -> Option<PathBuf> {
     TEST_FAKE_COMMAND_DIR.with(|dir| {
         let mut borrowed = dir.borrow_mut();
@@ -34,7 +28,6 @@ fn fake_command_dir_for_path_env() -> Option<PathBuf> {
     })
 }
 
-#[cfg(test)]
 pub fn apply_fake_path_if_present(command: &mut Command) {
     if let Some(fake_dir) = fake_command_dir_for_path_env() {
         let separator = if cfg!(windows) { ';' } else { ':' };
@@ -46,13 +39,11 @@ pub fn apply_fake_path_if_present(command: &mut Command) {
     }
 }
 
-#[cfg(test)]
 thread_local! {
-    static TEST_FAKE_COMMAND_DIR: std::cell::RefCell<Option<PathBuf>> =
+    pub(crate) static TEST_FAKE_COMMAND_DIR: std::cell::RefCell<Option<PathBuf>> =
         const { std::cell::RefCell::new(None) };
 }
 
-#[cfg(test)]
 pub fn test_fake_command_path(command: &str) -> Option<PathBuf> {
     TEST_FAKE_COMMAND_DIR.with(|dir| {
         let d = {
@@ -71,19 +62,11 @@ pub fn test_fake_command_path(command: &str) -> Option<PathBuf> {
     })
 }
 
-#[cfg(not(test))]
-const fn test_fake_command_path(_: &str) -> Option<PathBuf> {
-    None
-}
-
-#[cfg(test)]
 pub struct FakeCommandDirGuard {
     pub(crate) previous: Option<PathBuf>,
     pub(crate) thread_id: std::thread::ThreadId,
-    pub(crate) _process_lock: Option<std::sync::MutexGuard<'static, ()>>,
 }
 
-#[cfg(test)]
 fn restore_fake_command_dir_guard(guard: &mut FakeCommandDirGuard) {
     if guard.thread_id == std::thread::current().id() {
         TEST_FAKE_COMMAND_DIR.with(|dir| {
@@ -92,25 +75,13 @@ fn restore_fake_command_dir_guard(guard: &mut FakeCommandDirGuard) {
     }
 }
 
-#[cfg(test)]
 impl Drop for FakeCommandDirGuard {
     fn drop(&mut self) {
         restore_fake_command_dir_guard(self);
     }
 }
 
-#[cfg(test)]
 pub fn set_fake_command_dir(path: &std::path::Path) -> FakeCommandDirGuard {
-    let is_outermost = TEST_FAKE_COMMAND_DIR.with(|dir| dir.borrow().is_none());
-    let process_lock = if is_outermost {
-        Some(
-            FAKE_COMMAND_DIR_MUTEX
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner),
-        )
-    } else {
-        None
-    };
     let previous = TEST_FAKE_COMMAND_DIR.with(|dir| {
         let mut guard = dir.borrow_mut();
         guard.replace(path.to_path_buf())
@@ -118,7 +89,6 @@ pub fn set_fake_command_dir(path: &std::path::Path) -> FakeCommandDirGuard {
     FakeCommandDirGuard {
         previous,
         thread_id: std::thread::current().id(),
-        _process_lock: process_lock,
     }
 }
 
@@ -126,47 +96,55 @@ pub fn run_command_for(command: &str) -> PathBuf {
     test_fake_command_path(command).unwrap_or_else(|| command.into())
 }
 
-#[cfg(not(test))]
-pub fn apply_fake_path_if_present(_: &mut Command) {}
-
 #[cfg(test)]
-#[test]
-fn restore_fake_command_dir_guard_restores_previous() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let mut guard: FakeCommandDirGuard = set_fake_command_dir(tmp.path());
-    let _: Option<FakeCommandDirGuard> = None;
-    let _ = restore_fake_command_dir_guard;
-    restore_fake_command_dir_guard(&mut guard);
-    assert_eq!(fake_command_dir_for_path_env(), None);
-}
-
-#[cfg(test)]
-mod command_support_unit_tests {
-    use super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
+mod command_support_tests {
+    use super::*;
 
     #[test]
-    fn run_command_failure_captures_streams() {
-        let output = std::process::Output {
-            status: std::process::ExitStatus::default(),
-            stdout: b"stdout-bytes".to_vec(),
-            stderr: b"stderr-bytes".to_vec(),
-        };
-        let RepoGateFailure::Command(RepoGateCommandFailure {
-            command,
-            stdout,
-            stderr,
-            ..
-        }) = run_command_failure("malvin kiss", &output)
-        else {
-            panic!("expected command failure");
-        };
-        assert_eq!(command, "malvin kiss");
-        assert!(stdout.contains("stdout-bytes"));
-        assert!(stderr.contains("stderr-bytes"));
+    fn fake_command_dir_guard_exposes_thread_id() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let guard = set_fake_command_dir(tmp.path());
+        let FakeCommandDirGuard { thread_id, .. } = guard;
+        assert_eq!(thread_id, std::thread::current().id());
+    }
+
+    #[test]
+    fn restore_fake_command_dir_guard_restores_previous() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut guard: FakeCommandDirGuard = set_fake_command_dir(tmp.path());
+        let _: Option<FakeCommandDirGuard> = None;
+        restore_fake_command_dir_guard(&mut guard);
+        assert_eq!(fake_command_dir_for_path_env(), None);
+    }
+
+    mod command_support_unit_tests {
+        use super::{RepoGateCommandFailure, RepoGateFailure, run_command_failure};
+
+        #[test]
+        fn run_command_failure_captures_streams() {
+            let output = std::process::Output {
+                status: std::process::ExitStatus::default(),
+                stdout: b"stdout-bytes".to_vec(),
+                stderr: b"stderr-bytes".to_vec(),
+            };
+            let RepoGateFailure::Command(RepoGateCommandFailure {
+                command,
+                stdout,
+                stderr,
+                ..
+            }) = run_command_failure("malvin kiss", &output)
+            else {
+                panic!("expected command failure");
+            };
+            assert_eq!(command, "malvin kiss");
+            assert!(stdout.contains("stdout-bytes"));
+            assert!(stderr.contains("stderr-bytes"));
+        }
     }
 }
 
 #[cfg(all(test, windows))]
+#[cfg(test)]
 mod windows_fake_command_path_tests {
     use std::fs;
     use std::process::Command;
@@ -191,6 +169,7 @@ mod windows_fake_command_path_tests {
 }
 
 #[cfg(all(test, unix))]
+#[cfg(test)]
 mod stale_fake_command_path_tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
@@ -230,6 +209,15 @@ mod stale_fake_command_path_tests {
     }
 
     #[test]
+    fn gate_schedule_recorder_types_referenced_from_command_support() {
+        let _: Option<super::gate_schedule_recorder::RecordedGateCommand> = None;
+        let _: Option<super::gate_schedule_recorder::GateCommandRecorderGuard> = None;
+        let _ = stringify!(super::gate_schedule_recorder::GateCommandRecorderState);
+        let _ = super::gate_schedule_recorder::arm_gate_command_recorder;
+        let _ = super::gate_schedule_recorder::try_record_gate_command;
+    }
+
+    #[test]
     fn removed_fake_dir_is_cleared_and_command_falls_back_to_name() {
         let tmp = tempfile::tempdir().unwrap();
         let p = tmp.path().to_path_buf();
@@ -248,3 +236,13 @@ mod stale_fake_command_path_tests {
         TEST_FAKE_COMMAND_DIR.with(|d| assert!(d.borrow().is_none()));
     }
 }
+
+#[cfg(all(test, unix))]
+#[path = "gate_schedule_recorder.rs"]
+pub(crate) mod gate_schedule_recorder;
+#[cfg(test)]
+#[path = "command_support_test.rs"]
+mod command_support_test;
+#[cfg(test)]
+#[path = "command_support_kiss_cov_test.rs"]
+mod command_support_kiss_cov_test;

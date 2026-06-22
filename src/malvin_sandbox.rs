@@ -189,12 +189,11 @@ pub(crate) fn sandbox_still_alive(_: Option<u32>, _: &HashSet<u32>) -> bool {
 mod tests {
     #[test]
     fn kiss_cov_malvin_sandbox_symbols() {
-        let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
-        let _ = super::clear_active_sandbox_session_for_test;
-        let _ = super::init_malvin_spawn_baseline;
-        let _ = super::malvin_spawn_baseline;
-        let _ = super::isolate_child_process_group;
-        let _ = super::isolate_tokio_child_process_group;
-        let _ = super::sandbox_still_alive;
     }
 }
+#[cfg(test)]
+#[path = "malvin_sandbox_test.rs"]
+mod malvin_sandbox_test;
+#[cfg(test)]
+#[path = "malvin_sandbox_kiss_cov_test.rs"]
+mod malvin_sandbox_kiss_cov_test;

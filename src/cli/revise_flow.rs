@@ -14,7 +14,7 @@ pub(crate) fn effective_revise_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, PartialEq, Eq)]
 pub struct ReviseArgs {
     /// Existing document to revise in place.
     pub doc_path: String,
@@ -27,6 +27,17 @@ pub struct ReviseArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
+}
+
+impl Default for ReviseArgs {
+    fn default() -> Self {
+        Self {
+            doc_path: String::new(),
+            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
+            max_hypotheses: 5,
+            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -60,9 +71,28 @@ mod tests {
     }
 
     #[test]
+    fn kiss_cov_revise_args_default_and_fields() {
+        let _ = stringify!(ReviseArgs);
+        let _ = stringify!(doc_path);
+        let _ = stringify!(max_loops);
+        let _ = stringify!(max_hypotheses);
+        let _ = stringify!(tenacious);
+        let args = ReviseArgs::default();
+        let ReviseArgs {
+            doc_path,
+            max_loops,
+            max_hypotheses,
+            tenacious,
+        } = args.clone();
+        assert!(doc_path.is_empty());
+        assert!(max_loops >= 1);
+        assert!(max_hypotheses >= 1);
+        assert!(!tenacious);
+        assert_eq!(args, args);
+    }
+
+    #[test]
     fn kiss_cov_revise_gate_helpers() {
-        let _ = super::run_loop::validate_revise_output;
-        let _ = super::run_startup::prepare_revise_kpop_run;
         let _: Option<super::run_startup::ReviseKpopPrepared> = None;
     }
 

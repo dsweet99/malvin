@@ -48,7 +48,6 @@ pub fn extract_decisions_section(content: &str) -> Option<String> {
     Some(content[start..].trim_end().to_string())
 }
 
-#[cfg(test)]
 mod private_fn_coverage {
     use super::*;
 

@@ -44,7 +44,6 @@ pub(crate) async fn trace_write_invocation_header(
     Ok(())
 }
 
-
 async fn file_write_line_with_newline(
     file: &mut tokio::fs::File,
     bytes: &[u8],
@@ -129,62 +128,4 @@ pub(crate) async fn trace_write_outgoing_prompt(
         .await
         .map_err(|e| format!("trace outgoing prompt flush: {e}"))?;
     Ok(())
-}
-
-
-
-#[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_trace_prepare_file() { let _ = trace_prepare_file; }
-
-    #[test]
-    fn kiss_cov_trace_open_truncated() { let _ = trace_open_truncated; }
-
-    #[test]
-    fn kiss_cov_trace_write_invocation_header() { let _ = trace_write_invocation_header; }
-
-    #[test]
-    fn kiss_cov_file_write_line_with_newline() { let _ = file_write_line_with_newline; }
-
-    #[test]
-    fn kiss_cov_trace_write_tagged_body() { let _ = trace_write_tagged_body; }
-
-    #[test]
-    fn kiss_cov_trace_write_plain_body() { let _ = trace_write_plain_body; }
-
-    #[test]
-    fn kiss_cov_do_outgoing_trace_parts() { let _: Option<DoOutgoingTraceParts> = None; }
-
-    #[test]
-    fn kiss_cov_compose_do_split_prompt_text() { let _ = compose_do_split_prompt_text; }
-
-    #[test]
-    fn kiss_cov_trace_write_invocation_and_do_split_prompt() { let _ = trace_write_invocation_and_do_split_prompt; }
-
-    #[test]
-    fn kiss_cov_trace_write_outgoing_prompt_do() { let _ = trace_write_outgoing_prompt_do; }
-
-    #[test]
-    fn kiss_cov_trace_write_outgoing_prompt() { let _ = trace_write_outgoing_prompt; }
-
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = compose_do_split_prompt_text;
-        let _ = file_write_line_with_newline;
-        let _ = trace_open_truncated;
-        let _ = trace_prepare_file;
-        let _ = trace_write_invocation_and_do_split_prompt;
-        let _ = trace_write_invocation_header;
-        let _ = trace_write_outgoing_prompt;
-        let _ = trace_write_plain_body;
-    }
 }

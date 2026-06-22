@@ -31,6 +31,8 @@ mod loop_opts;
 pub(crate) mod default_output_path;
 pub(crate) mod workflow_kpop_shared;
 pub(crate) mod kpop_summarize;
+#[cfg(test)]
+pub(crate) use kpop_summarize::kpop_summarize_tests;
 
 pub use crate::agent_backend::{build_agent_backend, build_agent_backend_with_tee};
 pub use code_flow_a::{
@@ -39,44 +41,6 @@ pub use code_flow_a::{
     prepare_prompt_store, AgentStdoutTeeFlags, WorkflowCliOptions,
 };
 pub(crate) use code_flow::{run_code, CodeArgs};
-
-#[cfg(test)]
-mod cli_cross_cov;
-#[cfg(test)]
-#[path = "do_flow_tests.rs"]
-mod do_flow_tests;
-#[cfg(test)]
-#[path = "acp_post_run_tests.rs"]
-mod acp_post_run_tests;
-#[cfg(test)]
-#[path = "workflow_kpop_shared_tests.rs"]
-mod workflow_kpop_shared_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_tests.rs"]
-pub(crate) mod kpop_summarize_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_inline_tests.rs"]
-mod kpop_summarize_inline_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_mock_tests.rs"]
-mod kpop_summarize_mock_tests;
-#[cfg(test)]
-#[path = "kpop_summarize_kiss_cov_tests.rs"]
-mod kpop_summarize_kiss_cov_tests;
-#[cfg(test)]
-#[path = "models_cmd_tests.rs"]
-mod models_cmd_tests;
-#[cfg(test)]
-mod cli_smoke_cov;
-#[cfg(test)]
-#[path = "cli_smoke_cov_plan.rs"]
-mod cli_smoke_cov_plan;
-#[cfg(test)]
-mod gate_error_regression;
-#[cfg(test)]
-mod command_log_tests;
-#[cfg(test)]
-mod markdown_flag_parse_tests;
 
 pub use crate::do_flow::run_do;
 pub use crate::inspire_flow::run_inspire;
@@ -92,3 +56,10 @@ pub use delight_flow::run_delight;
 pub use explain_flow::run_explain;
 pub use revise_flow::run_revise;
 pub use tidy_flow::run_tidy;
+
+mod cli_cross_cov;
+
+mod cli_smoke_cov;
+
+#[cfg(test)]
+mod gate_error_regression;

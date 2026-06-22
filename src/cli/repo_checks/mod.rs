@@ -11,10 +11,11 @@ mod tests_gates_common;
 #[cfg(all(test, unix))]
 mod tests_gates_helpers;
 #[cfg(all(test, unix))]
+mod tests_gates_scenarios;
+#[cfg(all(test, unix))]
 mod tests_gates_unix;
 #[cfg(all(test, unix))]
 mod tests_gates_unix_extra;
-#[cfg(test)]
 pub use command_support::{
     set_fake_command_dir, test_fake_command_path, FakeCommandDirGuard,
 };
@@ -23,7 +24,8 @@ pub use gate_run::{
     run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,
     run_repo_workspace_gates_with_details,
 };
-#[cfg(test)]
+#[cfg(all(test, unix))]
+pub(crate) use command_support::gate_schedule_recorder;
 pub(crate) use types::repo_gate_failure_to_string;
 pub use types::{
     GATE_FAILURE_MARKER, RepoGateCommandFailure, RepoGateFailure, RepoGateOutput,

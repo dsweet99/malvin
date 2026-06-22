@@ -72,3 +72,16 @@ fn try_log_under_mutex_does_not_dup_heartbeat_in_sink_queue() {
         1
     );
 }
+#[cfg(test)]
+#[path = "active_tests_sink_queue_test.rs"]
+mod actives_sink_queue_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = try_log_while_sink_mutex_held;
+    }
+}

@@ -88,6 +88,7 @@ pub fn format_logs_dir(run_dir: &Path) -> Result<String, String> {
 }
 
 #[cfg(all(test, unix))]
+#[cfg(test)]
 mod env_path_tests {
     #![allow(unsafe_code)]
 

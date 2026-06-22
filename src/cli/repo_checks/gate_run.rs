@@ -73,7 +73,6 @@ pub fn run_repo_workspace_gates_no_kiss_clamp_with_details(
     run_quality_gates_with_details(work_dir, output, run_log_dir)
 }
 
-#[cfg(test)]
 pub fn prepare_repo_workspace(
     work_dir: &Path,
     output: RepoGateOutput,
@@ -197,7 +196,6 @@ fn run_shell_command_line_with_details(
         Err(run_command_failure(command_line, &output))
     }
 }
-
 #[cfg(test)]
-#[path = "gate_run_tests.rs"]
-mod gate_run_tests;
+#[path = "gate_run_test.rs"]
+mod gate_run_test;

@@ -77,10 +77,7 @@ fn repair_malvin_checks_bytes(work_dir: &Path, bytes: &[u8]) -> Option<Vec<u8>> 
     is_bare_kiss_check_bytes(bytes).then(|| default_malvin_checks_bytes(work_dir))
 }
 
-fn sanitize_malvin_checks_slot(
-    work_dir: &Path,
-    slot: &mut DotfileBackupState,
-) {
+fn sanitize_malvin_checks_slot(work_dir: &Path, slot: &mut DotfileBackupState) {
     let DotfileBackupState::Present(payload) = slot else {
         return;
     };
@@ -121,7 +118,6 @@ pub fn repair_clamp_damaged_dotfiles_on_disk(work_dir: &Path) -> Result<(), Stri
     repair_invalid_malvin_home_config_on_disk(work_dir)?;
     repair_invalid_malvin_checks_on_disk(work_dir)
 }
-
 #[cfg(test)]
-#[path = "gate_restore_repair_tests.rs"]
-mod gate_restore_repair_tests;
+#[path = "gate_restore_repair_test.rs"]
+mod gate_restore_repair_test;

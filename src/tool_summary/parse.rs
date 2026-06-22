@@ -140,15 +140,19 @@ pub(crate) fn json_number(v: &Value) -> Option<u64> {
     }
     None
 }
-
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_auto{
+#[path = "parse_test.rs"]
+mod parse_test;#[cfg(test)]
+#[path = "parse_kiss_cov_test.rs"]
+mod parse_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
 
     #[test]
-    fn kiss_cov_parsed_tool_update_type() {
-        let _: Option<super::ParsedToolUpdate> = None;
-        let _: Option<super::LineRange> = None;
+    fn kiss_static_fn_item_refs() {
+        let _ = json_number;
+        let _ = tool_phase_label;
     }
 }

@@ -236,4 +236,3 @@ fn tool_call_update_pending_labeled_pending_not_start() {
         lines.log
     );
 }
-

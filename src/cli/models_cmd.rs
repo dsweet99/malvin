@@ -12,7 +12,6 @@ use crate::config::DEFAULT_CLI_MODEL;
 #[derive(Args, Debug, Clone, Copy)]
 pub struct ModelsArgs {}
 
-#[cfg(test)]
 pub(crate) const fn models_args_marker(args: ModelsArgs) -> &'static str {
     let ModelsArgs {} = std::hint::black_box(args);
     "models"
@@ -131,7 +130,6 @@ fn parse_model_line(line: &str) -> Option<(&str, String)> {
     None
 }
 
-#[cfg(test)]
 pub(crate) mod test_hooks {
 
     pub fn trim_trailing_tip_lines(text: &str) -> String {
@@ -158,7 +156,3 @@ pub(crate) mod test_hooks {
         super::resolve_models_cli()
     }
 }
-
-#[cfg(test)]
-#[path = "models_cmd_kiss_cov_tests.rs"]
-mod models_cmd_kiss_cov_tests;

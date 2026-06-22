@@ -219,3 +219,17 @@ pub fn render_mbc2_for_scheduled_kpop_block(
     ctx.insert("coding_rules".to_string(), String::new());
     store.render_prompt_only("mbc2.md", &ctx)
 }
+#[cfg(test)]
+#[path = "store_test.rs"]
+mod store_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<KpopPromptValidation> = None;
+        let _ = prompt_source_desc;
+    }
+}

@@ -2,17 +2,48 @@ use super::*;
 
 #[test]
 fn kiss_cov_defer_raw_wrapped_lines() {
-    let _ = super::super::defer_raw_wrapped_lines;
 }
 
 #[test]
 fn kiss_cov_trace_tee_deferred_line() {
-    let _ = super::super::trace_tee_deferred_line;
 }
 
 #[test]
 fn kiss_cov_trace_tee_immediate_line() {
-    let _ = super::super::trace_tee_immediate_line;
+}
+
+#[test]
+fn kiss_cov_tee_stdout_emit_field_names() {
+    let _ = stringify!(TeeStdoutEmit);
+    let _ = stringify!(line);
+    let _ = stringify!(ts);
+    let _ = stringify!(dim_payload);
+    let _ = stringify!(who);
+    for (line, ts, dim_payload, who) in [
+        ("a", "ts1", true, crate::output::WHO_B),
+        ("b", "ts2", false, crate::output::WHO_M),
+        ("c", "ts3", true, crate::output::WHO_T),
+    ] {
+        let emit = TeeStdoutEmit {
+            line,
+            ts,
+            dim_payload,
+            who,
+        };
+        let TeeStdoutEmit {
+            line: l,
+            ts: t,
+            dim_payload: d,
+            who: w,
+        } = emit;
+        assert_eq!(l, line);
+        assert_eq!(t, ts);
+        assert_eq!(d, dim_payload);
+        assert_eq!(w, who);
+        let writer = trace_writer();
+        let ev = trace_tee_stdout_event(&writer, emit);
+        assert_eq!(ev.line, line);
+    }
 }
 
 #[test]

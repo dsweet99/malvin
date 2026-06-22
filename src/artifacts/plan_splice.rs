@@ -94,6 +94,9 @@ pub fn prepare_plan_file_for_run(path: &Path) -> Result<bool, PlanFileError> {
 }
 
 #[cfg(test)]
+#[path = "plan_splice_kiss_cov_test.rs"]
+mod plan_splice_kiss_cov_test;
+
 mod plan_file_io_error {
     use std::io::{Error, ErrorKind};
 
@@ -101,11 +104,3 @@ mod plan_file_io_error {
         Error::new(ErrorKind::InvalidInput, msg.to_string())
     }
 }
-
-#[cfg(test)]
-#[path = "plan_splice_tests.rs"]
-mod plan_splice_tests;
-
-#[cfg(test)]
-#[path = "plan_splice_io_tests.rs"]
-mod plan_splice_io_tests;

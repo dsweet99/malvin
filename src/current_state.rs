@@ -155,7 +155,6 @@ fn read_prev_exp_solved(artifacts: &RunArtifacts, prev: usize) -> Option<bool> {
         .ok()
         .map(|text| crate::kpop_progression::agent_declared_success(&text))
 }
-
 #[cfg(test)]
-#[path = "current_state_tests.rs"]
-mod current_state_tests;
+#[path = "current_state_test.rs"]
+mod current_state_test;

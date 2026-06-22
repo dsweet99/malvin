@@ -4,6 +4,7 @@
 mod common;
 
 #[cfg(unix)]
+#[cfg(test)]
 mod unix_tests {
     use super::common::{
         CodeSpawn, acp_mock_code_kpop_steps_js, combined_cli_output,

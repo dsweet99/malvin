@@ -64,7 +64,6 @@ pub(crate) fn flush_pending_into(sink: &mut DeferredLogSink) {
     }
 }
 
-#[cfg(test)]
 pub(crate) fn pending_len() -> usize {
     pending_entries().len()
 }
@@ -109,7 +108,6 @@ pub(crate) fn unregister() {
     }
 }
 
-#[cfg(test)]
 pub(crate) fn is_registered() -> bool {
     active_mutex().is_some()
 }
@@ -180,11 +178,6 @@ pub(crate) fn try_push(entry: DeferredEntry) -> bool {
 #[cfg(test)]
 #[path = "active_tests_inline.rs"]
 mod active_tests_inline;
-
-#[cfg(test)]
-#[path = "active_tests.rs"]
-mod active_tests;
-
 #[cfg(test)]
 #[path = "active_tests_pending.rs"]
 mod active_tests_pending;
@@ -196,3 +189,6 @@ mod active_tests_sink_queue;
 #[cfg(test)]
 #[path = "active_tests_contention_bugs.rs"]
 mod active_tests_contention_bugs;
+#[cfg(test)]
+#[path = "active_test.rs"]
+mod active_test;

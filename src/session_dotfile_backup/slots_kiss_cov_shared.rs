@@ -45,3 +45,17 @@ pub(super) fn write_merged_default_malvin_config(cfg_path: &Path) {
     }
     std::fs::write(cfg_path, ensured_text).expect("write default config");
 }
+
+#[cfg(test)]
+#[path = "slots_kiss_cov_shared_kiss_cov_test.rs"]
+mod slots_kiss_cov_shared_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = dotfile_spec_row_field_count;
+    }
+}

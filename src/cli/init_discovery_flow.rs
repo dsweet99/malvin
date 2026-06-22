@@ -20,7 +20,7 @@ use super::workflow_kpop_shared::{gate_kpop_loop_iterations, kpop_workflow_conte
 use super::{SharedOpts, WorkflowCliOptions, prepare_kpop_prompt_store};
 
 pub(crate) fn emit_init_discovery_skip(decision: InitDiscoveryDecision) {
-    if let Some(msg) = decision.skip_reason {
+    if let Some(msg) = decision.1 {
         print_stderr_line(MALVIN_WHO, &format!("init: {msg}"));
     }
 }
@@ -160,10 +160,7 @@ mod tests {
 
     #[test]
     fn emit_init_discovery_skip_prints_reason() {
-        emit_init_discovery_skip(crate::repo_gates::init_discovery::InitDiscoveryDecision {
-            run: false,
-            skip_reason: Some("test skip"),
-        });
+        emit_init_discovery_skip((false, Some("test skip")));
     }
 
     #[test]
@@ -204,20 +201,5 @@ mod tests {
         crate::seed_malvin_config(tmp.path(), "");
         let cfg = load_init_agent_config(tmp.path());
         assert_eq!(cfg.max_hypotheses, crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES);
-    }
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = emit_init_discovery_skip;
-        let _ = load_init_agent_config;
-        let _ = init_discovery_checks_valid;
-        let _ = init_discovery_succeeded;
-        let _ = run_init_discovery_kpop;
-        let _ = finish_init_discovery_kpop;
     }
 }

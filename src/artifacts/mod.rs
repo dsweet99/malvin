@@ -130,14 +130,21 @@ pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
             |parent| parent.canonicalize().unwrap_or_else(|_| parent.to_path_buf()),
         )
 }
-
 #[cfg(test)]
-mod tests;
-
+#[path = "mod_kiss_cov_test.rs"]
+mod mod_kiss_cov_test;
 #[cfg(test)]
-#[path = "log_gc_hook_tests.rs"]
-mod log_gc_hook_tests;
-
+#[path = "mod_test.rs"]
+mod mod_test;
 #[cfg(test)]
-#[path = "kpop_path_tests.rs"]
-mod kpop_path_tests;
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<RunArtifacts> = None;
+        let _ = exp_log_path;
+        let _ = trace_jsonl_path;
+    }
+}

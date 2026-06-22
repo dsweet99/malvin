@@ -30,7 +30,6 @@ fn entrypoint_short_help_when_request_missing(
     if doc || request.is_some() {
         return None;
     }
-    let _ = crate::cli::commands_help::print_subcommand_short_help(subcommand);
     Some(Exit::Success)
 }
 
@@ -57,7 +56,6 @@ fn entrypoint_doc_exit(cli: &Cli) -> Exit {
 
 fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
     if cli.command.is_none() && cli.bare_args.is_empty() && !cli.shared.doc {
-        let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
     if let Some(exit) = entrypoint_request_missing_short_help(cli) {

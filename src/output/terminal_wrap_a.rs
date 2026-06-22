@@ -3,14 +3,14 @@ use std::io::{IsTerminal, stderr, stdout};
 use crate::ansi_strip::strip_ansi_escapes;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-fn columns_from_env() -> Option<usize> {
+pub(crate) fn columns_from_env() -> Option<usize> {
     std::env::var("COLUMNS")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
         .filter(|&c| (20..=500).contains(&c))
 }
 
-fn columns_from_tty() -> Option<usize> {
+pub(crate) fn columns_from_tty() -> Option<usize> {
     let (w, _) = terminal_size::terminal_size()?;
     let w = usize::from(w.0);
     if w < 20 {
@@ -67,8 +67,8 @@ pub fn line_wrap_for_prefix_len(
 }
 
 pub(crate) struct LineWrapStyle {
-    allow_word_wrap: bool,
-    use_color: bool,
+    pub(crate) allow_word_wrap: bool,
+    pub(crate) use_color: bool,
 }
 
 pub(crate) fn line_wrap_meta_tagged_stderr(
@@ -81,7 +81,7 @@ pub(crate) fn line_wrap_meta_tagged_stderr(
     line_wrap_for_prefix_len(prefix_len, line, style.allow_word_wrap)
 }
 
-fn line_wrap_meta_tagged_stdout(
+pub(crate) fn line_wrap_meta_tagged_stdout(
     who: &str,
     line: &str,
     style: LineWrapStyle,
@@ -90,7 +90,7 @@ fn line_wrap_meta_tagged_stdout(
     line_wrap_for_prefix_len(prefix_len, line, style.allow_word_wrap)
 }
 
-fn line_wrap_meta_tagged_plain(
+pub(crate) fn line_wrap_meta_tagged_plain(
     ts: &str,
     who: &str,
     line: &str,
@@ -130,7 +130,7 @@ pub fn stderr_line_wrap_meta(ts: &str, who: &str, line: &str) -> (usize, bool) {
     line_wrap_meta_tagged_plain(ts, who, line, stderr_allows_log_word_wrap())
 }
 
-fn char_display_cell(ch: char) -> usize {
+pub(crate) fn char_display_cell(ch: char) -> usize {
     let w = UnicodeWidthChar::width(ch).unwrap_or(0);
     if w == 0 && !ch.is_whitespace() { 1 } else { w }
 }
@@ -161,7 +161,7 @@ pub(crate) fn wrap_push_segment(lines: &mut Vec<String>, chars: &[char], start: 
 }
 
 #[must_use]
-fn wrap_words_single_line_no_newlines(max_display_width: usize, text: &str) -> Vec<String> {
+pub(crate) fn wrap_words_single_line_no_newlines(max_display_width: usize, text: &str) -> Vec<String> {
     let chars: Vec<char> = text.chars().collect();
     let width_prefix = display_width_prefix(&chars);
     let mut lines = Vec::new();
@@ -208,43 +208,4 @@ pub fn wrap_words_bounded(max_payload_chars: usize, text: &str) -> Vec<String> {
         out.push(String::new());
     }
     out
-}
-
-#[cfg(test)]
-#[path = "wrap_tests.rs"]
-mod wrap_tests;
-
-
-#[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_malvin_tagged_stdout_prefix_len() { let _ = malvin_tagged_stdout_prefix_len; }
-
-    #[test]
-    fn kiss_cov_malvin_tagged_stderr_prefix_len() { let _ = malvin_tagged_stderr_prefix_len; }
-
-    #[test]
-    fn kiss_cov_line_wrap_meta_tagged_stderr() { let _ = line_wrap_meta_tagged_stderr; }
-
-    #[test]
-    fn kiss_cov_display_width_prefix() { let _ = display_width_prefix; }
-
-    #[test]
-    fn kiss_cov_wrap_split_at_whitespace() { let _ = wrap_split_at_whitespace; }
-
-    #[test]
-    fn kiss_cov_wrap_push_segment() { let _ = wrap_push_segment; }
-
-    #[test]
-    fn kiss_cov_real_identifier_refs() {
-        use super::*;
-        let _ = display_width_prefix;
-        let _ = line_wrap_meta_tagged_stderr;
-        let _ = malvin_tagged_stderr_prefix_len;
-        let _ = malvin_tagged_stdout_prefix_len;
-        let _ = wrap_push_segment;
-        let _ = wrap_split_at_whitespace;
-    }
 }

@@ -72,7 +72,6 @@ pub fn format_exp_log_relative(
     crate::workflow_context::format_prompt_path(exp_log, &artifacts.work_dir)
 }
 
-#[cfg(test)]
 mod helpers_kiss_inline {
     use super::*;
     use std::collections::HashMap;
@@ -110,4 +109,6 @@ mod helpers_kiss_inline {
         let _ = format_prompt_path(&plan_path, &artifacts.work_dir);
     }
 }
-
+#[cfg(test)]
+#[path = "helpers_test.rs"]
+mod helpers_test;

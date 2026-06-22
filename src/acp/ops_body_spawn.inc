@@ -115,4 +115,3 @@ mod ops_body_spawn_kiss {
         assert_eq!(resolved, cwd.canonicalize().unwrap_or(cwd));
     }
 }
-

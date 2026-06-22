@@ -216,4 +216,3 @@ pub(crate) fn current_phase_for_test() -> AgentPhase {
 pub(crate) fn reset_phase_state_for_test() {
     with_state(|s| *s = PhaseState::fresh());
 }
-

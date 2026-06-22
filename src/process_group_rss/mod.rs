@@ -93,17 +93,6 @@ pub fn pids_rss_bytes(pids: &HashSet<u32>) -> Option<u64> {
         None
     }
 }
-
 #[cfg(test)]
-#[path = "process_group_rss_tests.rs"]
-mod process_group_rss_tests;
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = pids_sandbox_bytes;
-    }
-}
+#[path = "process_group_rss_test.rs"]
+mod process_group_rss_test;

@@ -227,4 +227,6 @@ pub(crate) async fn finish_kpop_acp_session(
         &artifacts.artifact_result_md(),
     )
 }
-
+#[cfg(test)]
+#[path = "workflow_kpop_shared_test.rs"]
+mod workflow_kpop_shared_test;

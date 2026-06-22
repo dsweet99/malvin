@@ -156,3 +156,29 @@ pub(super) fn install_plan_mock_env(mock: &Path, plan: &Path) {
         std::env::set_var("MALVIN_TEST_PLAN_PATH", plan);
     }
 }
+
+#[cfg(test)]
+#[path = "plan_flow_test_helpers_kiss_cov_test.rs"]
+mod plan_flow_test_helpers_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = install_plan_mock_env;
+        let _ = plan_args_for_mock;
+        let _ = plan_flow_test_prep;
+        let _ = plan_pipeline_mock_handler_body;
+        let _ = plan_shared_opts_for_mock;
+        let _ = post_1a_content;
+        let _ = post_1b_content;
+        let _ = post_2_content;
+        let _ = prepare_plan_mock_run;
+        let _ = prepare_plan_mock_run_with_env;
+        let _ = test_plan_run_prep;
+        let _ = test_plan_run_prep_for_plan;
+        let _ = write_plan_pipeline_mock_agent;
+    }
+}

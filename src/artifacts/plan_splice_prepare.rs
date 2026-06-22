@@ -27,8 +27,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_prepare_prompt_1a() {
-        let _ = prepare_plan_file_for_prompt_1a;
-        let _ = RESTATEMENT_SECTION_STUB;
     }
 
     #[test]

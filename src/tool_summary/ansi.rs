@@ -166,7 +166,6 @@ mod inline_tests {
         assert!(styled.contains("Search"));
     }
 }
-
 #[cfg(test)]
-#[path = "ansi_tests.rs"]
-mod ansi_tests;
+#[path = "ansi_test.rs"]
+mod ansi_test;

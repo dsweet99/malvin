@@ -71,97 +71,19 @@ pub fn prepare_explain_kpop_run(
         preflight_snapshot,
     })
 }
-
 #[cfg(test)]
-mod tests {
+#[path = "run_startup_test.rs"]
+mod run_startup_test;
+#[cfg(test)]
+#[path = "run_startup_kiss_cov_test.rs"]
+mod run_startup_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
 
     #[test]
-    fn kiss_cov_explain_run_startup() {
-        let _ = explain_kpop_workflow_context;
-        let _ = prepare_explain_kpop_run;
-    }
-
-    #[test]
-    fn explain_preflight_runs_before_run_dir_created() {
-        crate::test_utils::with_isolated_home(|work| {
-            let cwd = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(work).expect("chdir");
-            let logs_root = crate::workspace_paths::malvin_logs_root(work);
-            let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let Err(err) = prepare_explain_kpop_run(
-                None,
-                "explain.tex",
-                false,
-                crate::cli::WorkflowCliOptions { force: true },
-            ) else {
-                panic!("missing request must fail");
-            };
-            assert!(err.contains("missing required REQUEST"));
-            let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
-            assert_eq!(runs_before, runs_after, "preflight must not create run dirs");
-            std::env::set_current_dir(cwd).expect("restore");
-        });
-    }
-
-    #[test]
-    fn explain_preflight_auto_mode_does_not_allocate_siblings() {
-        crate::test_utils::with_isolated_home(|work| {
-            let cwd = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(work).expect("chdir");
-            std::fs::write(work.join("explain.tex"), "STALE\n").expect("write");
-            std::fs::write(work.join("explain.pdf"), b"%PDF").expect("write");
-            let logs_root = crate::workspace_paths::malvin_logs_root(work);
-            let runs_before = crate::log_gc::list_run_dirs(&logs_root).len();
-            let prepared = prepare_explain_kpop_run(
-                Some(&"topic".to_string()),
-                "explain.tex",
-                false,
-                crate::cli::WorkflowCliOptions { force: true },
-            )
-            .expect("auto out-path must not allocate explain siblings");
-            assert!(
-                prepared.auto_out_path,
-                "default out-path without CLI flag must use auto naming"
-            );
-            assert!(
-                prepared.inner.request_text.contains("snake case"),
-                "auto prompt must instruct title-based naming"
-            );
-            assert!(
-                !work.join("explain_1.tex").exists(),
-                "auto mode must leave stale explain.tex untouched without sibling allocation"
-            );
-            let runs_after = crate::log_gc::list_run_dirs(&logs_root).len();
-            assert_eq!(
-                runs_before + 1,
-                runs_after,
-                "prepare creates run dir after successful preflight"
-            );
-            std::env::set_current_dir(cwd).expect("restore");
-        });
-    }
-
-    #[test]
-    fn explain_preflight_explicit_default_still_allocates_sibling() {
-        crate::test_utils::with_isolated_home(|work| {
-            let cwd = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(work).expect("chdir");
-            std::fs::write(work.join("explain.tex"), "STALE\n").expect("write");
-            std::fs::write(work.join("explain.pdf"), b"%PDF").expect("write");
-            let prepared = prepare_explain_kpop_run(
-                Some(&"topic".to_string()),
-                "explain.tex",
-                true,
-                crate::cli::WorkflowCliOptions { force: true },
-            )
-            .expect("explicit default collision must allocate sibling");
-            assert!(
-                prepared.tex_path.ends_with("explain_1.tex"),
-                "expected explain_1.tex, got {}",
-                prepared.tex_path.display()
-            );
-            std::env::set_current_dir(cwd).expect("restore");
-        });
+    fn kiss_static_fn_item_refs() {
+        let _: Option<ExplainKpopPrepared> = None;
     }
 }

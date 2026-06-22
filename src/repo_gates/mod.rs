@@ -4,23 +4,12 @@ pub(crate) mod canonical_ignore;
 pub(crate) mod discover_py;
 pub mod discover_init_checks;
 pub(crate) mod discover_init_checks_signals;
-#[cfg(test)]
 #[path = "discover_init_checks_fixtures.rs"]
 mod discover_init_checks_fixtures;
 pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
 pub(crate) mod gate_command_match;
-pub(crate) mod sandbox_safe;
-
-#[cfg(test)]
-#[path = "discover_init_checks_tests.rs"]
-mod discover_init_checks_tests;
-
-#[cfg(test)]
-#[path = "discover_init_checks_merge_tests.rs"]
-mod discover_init_checks_merge_tests;
-
-use std::path::{Path, PathBuf};
+pub(crate) mod sandbox_safe;use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
@@ -51,7 +40,6 @@ static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
 #[must_use]
 pub fn cargo_nextest_available(work_dir: &Path) -> bool {
-    let _ = work_dir;
     *CARGO_NEXTEST_AVAILABLE.get_or_init(|| {
         crate::malvin_sandbox::malvin_std_command("cargo")
             .args(["nextest", "--version"])
@@ -231,14 +219,16 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
         .map(std::string::ToString::to_string)
         .collect())
 }
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-#[path = "git_worktree_tests.rs"]
-mod git_worktree_tests;
-
-#[cfg(test)]
 #[path = "tests_command_match.rs"]
 mod tests_command_match;
+
+#[cfg(test)]
+#[path = "discover_init_checks_merge_test.rs"]
+mod discover_init_checks_merge_test;
+
+#[cfg(test)]
+#[path = "repo_gates_test.rs"]
+mod repo_gates_test;
+#[cfg(test)]
+#[path = "git_worktree_test.rs"]
+mod git_worktree_test;

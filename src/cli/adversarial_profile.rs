@@ -43,7 +43,6 @@ pub fn resolve_work_dir_for_plan(plan_path: &Path) -> PathBuf {
         std::path::Path::to_path_buf,
     )
 }
-
 #[cfg(test)]
-#[path = "adversarial_profile_tests.rs"]
-mod adversarial_profile_tests;
+#[path = "adversarial_profile_test.rs"]
+mod adversarial_profile_test;

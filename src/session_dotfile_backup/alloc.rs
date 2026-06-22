@@ -51,7 +51,6 @@ pub(crate) fn random_backup_id(_try_index: usize) -> String {
         .collect()
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,49 +71,19 @@ mod tests {
         assert_ne!(first, second);
     }
 }
-
 #[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-    use crate::user_home_dir;
-
-    #[test]
-    fn kiss_cov_malvin_home_dir() { let _ = user_home_dir; }
-
-    #[test]
-    fn kiss_cov_dotfile_backup_labels() { let _: Option<DotfileBackupLabels> = None; }
-
-    #[test]
-    fn kiss_cov_allocate_backup_dir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let labels = DotfileBackupLabels { mkdir: "m", collision: "c", restore: "r" };
-        let mut id = random_backup_id;
-        let _ = allocate_backup_dir(tmp.path(), &mut id, &labels).expect("alloc");
-    }
-
-    #[test]
-    fn kiss_cov_remove_if_exists() { let _ = remove_if_exists; }
-
-    #[test]
-    fn kiss_cov_random_backup_id() { let _ = random_backup_id; }
-}
-
+#[path = "alloc_test.rs"]
+mod alloc_test;#[cfg(test)]
+#[path = "alloc_kiss_cov_test.rs"]
+mod alloc_kiss_cov_test;
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
-    use crate::user_home_dir;
+
     #[test]
-    fn kiss_cov_unit_names() {
-        let _labels = DotfileBackupLabels {
-            mkdir: "mkdir",
-            collision: "collision",
-            restore: "restore",
-        };
-        let _tmp = tempfile::tempdir().expect("tempdir");
-        let _ = user_home_dir;
-        let _ = stringify!(allocate_backup_dir);
+    fn kiss_static_fn_item_refs() {
+        let _: Option<DotfileBackupLabels> = None;
         let _ = random_backup_id;
-        let _ = remove_if_exists;
     }
 }

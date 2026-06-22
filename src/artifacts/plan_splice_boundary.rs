@@ -109,8 +109,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_boundary_helper_symbols() {
-        let _ = legacy_machine_block_marker_patterns;
-        let _ = count_legacy_begin_malvin_marker_lines;
     }
 
     #[test]

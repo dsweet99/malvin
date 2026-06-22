@@ -43,7 +43,6 @@ pub(crate) fn build_plan_render_context(
         "malvin_command".to_string(),
         "plan".to_string(),
     );
-    let _ = artifacts;
     ctx
 }
 
@@ -72,7 +71,6 @@ pub(crate) fn render_plan_2(store: &PromptStore, ctx: &HashMap<String, String>) 
 pub(crate) fn render_plan_3(store: &PromptStore, ctx: &HashMap<String, String>) -> Result<String, String> {
     render_plan_prompt(store, PLAN_3_REWRITE_MD, ctx)
 }
-
 #[cfg(test)]
-#[path = "plan_flow_prompt_tests.rs"]
-mod plan_flow_prompt_tests;
+#[path = "plan_flow_prompt_test.rs"]
+mod plan_flow_prompt_test;

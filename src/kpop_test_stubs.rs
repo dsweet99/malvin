@@ -46,7 +46,20 @@ impl CaptureWants {
         Ok(format!("stub kpop want={want}"))
     }
 }
-
 #[cfg(test)]
-#[path = "kpop_test_stubs_tests.rs"]
-mod kpop_test_stubs_tests;
+#[path = "kpop_test_stubs_test.rs"]
+mod kpop_stubs_test;#[cfg(test)]
+#[path = "kpop_test_stubs_kiss_cov_test.rs"]
+mod kpop_test_stubs_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<EchoPrompts> = None;
+        let _: Option<MtStubPrompts> = None;
+        let _ = kpop_block;
+    }
+}

@@ -1,33 +1,5 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-
-pub(super) fn write_executable_script(bin_dir: &Path, name: &str, body: &str) {
-    let path = bin_dir.join(name);
-    fs::write(&path, body).expect("write script");
-    let mut perms = fs::metadata(&path).expect("script meta").permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&path, perms).expect("chmod script");
-}
-
-pub(super) fn write_trace_echo_script(bin_dir: &Path, name: &str, trace: &Path, exit_code: i32) {
-    let body = format!(
-        "#!/bin/sh\necho \"{name} $@\" >> \"{}\"\nexit {exit_code}\n",
-        trace.display()
-    );
-    write_executable_script(bin_dir, name, &body);
-}
-
-pub(super) fn install_trace_echo_bins(
-    bin_dir: &Path,
-    trace: &Path,
-    names: &[&str],
-    exit_code: i32,
-) {
-    for name in names {
-        write_trace_echo_script(bin_dir, name, trace, exit_code);
-    }
-}
 
 pub(super) fn workspace_git_minimal_cargo_rs_py_tests(work: &Path) {
     fs::create_dir(work.join(".git")).expect(".git");

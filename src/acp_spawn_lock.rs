@@ -65,7 +65,6 @@ pub fn assert_no_peer_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Re
     }
     #[cfg(not(unix))]
     {
-        let _ = holder_pid;
     }
     let _ = std::fs::remove_file(&path);
     Ok(())
@@ -88,8 +87,6 @@ pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<()
             {
                 return Ok(());
             }
-            #[cfg(not(unix))]
-            let _ = holder_pid;
         }
     }
     if let Some(parent) = path.parent() {

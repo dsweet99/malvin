@@ -133,4 +133,3 @@ fn test_cursor_credentials_token_only() {
     });
     assert_cursor_credentials_forwarding(&cmd, None, Some("t-only"));
 }
-

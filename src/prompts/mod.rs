@@ -47,32 +47,12 @@ pub use crate::user_home::user_home_dir;
 pub use store::{
     KpopPromptValidation, PromptStore, render_header, render_mbc2_for_scheduled_kpop_block,
 };
-
-#[cfg(test)]
-mod embedded_defaults_tests;
-#[cfg(test)]
 #[path = "prompts_tests_a.rs"]
 mod prompts_tests_a;
-#[cfg(test)]
 #[path = "prompts_tests_b.rs"]
 mod prompts_tests_b;
 
-
+#[allow(non_snake_case)]
 #[cfg(test)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_prompt_error() { let _: Option<PromptError> = None; }
-
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _: Option<PromptError> = None;
-    }
-}
+#[path = "embedded_defaults_test.rs"]
+mod embedded_defaults_test;

@@ -28,6 +28,7 @@ fn which_bash() -> Result<std::path::PathBuf, String> {
     Ok(std::path::PathBuf::from(path))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BashExecResult {
     pub exit_code: i32,
     pub stdout: String,

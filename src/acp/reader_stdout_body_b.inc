@@ -189,3 +189,21 @@ pub(crate) fn spawn_acp_stdout_reader(args: ReaderSpawnArgs) -> tokio::task::Joi
     })
 }
 
+#[cfg(test)]
+#[path = "reader_stdout_body_b_kiss_cov_test.rs"]
+mod reader_stdout_body_b_kiss_cov_test;
+#[cfg(test)]
+#[path = "reader_stdout_body_b_kiss_test.rs"]
+mod reader_stdout_body_b_kiss_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<ReaderLoopDrainCtx> = None;
+        let _: Option<ReaderLoopFinishCtx> = None;
+        let _: Option<ReaderLoopLineIo> = None;
+    }
+}

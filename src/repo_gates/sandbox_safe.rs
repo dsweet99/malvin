@@ -47,8 +47,13 @@ fn partition_nextest_line(line: &str, index: u32, total: u32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repo_gates::{DEFAULT_RUST_NEXTEST_PARTITION_1, DEFAULT_RUST_NEXTEST_PARTITION_2};
-    use crate::repo_gates::{gate_command_lines, gate_command_lines_for_workspace_run, load_malvin_checks, MALVIN_CHECKS_FILE};
+    use crate::repo_gates::{
+        DEFAULT_RUST_NEXTEST_PARTITION_1, DEFAULT_RUST_NEXTEST_PARTITION_2, KISS_CHECK_COMMAND,
+    };
+    use crate::repo_gates::{
+        gate_command_lines, gate_command_lines_for_workspace_run, load_malvin_checks,
+        MALVIN_CHECKS_FILE,
+    };
 
     #[test]
     fn gate_command_lines_for_workspace_run_sandbox_safe_transforms_checks() {
@@ -62,6 +67,11 @@ mod tests {
         .unwrap();
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(
+            w.join(".kissconfig"),
+            "[gate]\ntest_coverage_threshold = 90\n",
+        )
+        .unwrap();
+        std::fs::write(
             w.join(".malvin/checks"),
             "kiss check\ncargo clippy -j 2 --all-targets\ncargo nextest run\n",
         )
@@ -69,6 +79,7 @@ mod tests {
         let raw = gate_command_lines(w).unwrap();
         let safe = gate_command_lines_for_workspace_run(w).unwrap();
         assert_eq!(raw[1], "cargo clippy -j 2 --all-targets");
+        assert_eq!(safe[0], KISS_CHECK_COMMAND);
         assert_eq!(safe[1], "cargo clippy -j 2 --all-targets");
         assert_eq!(safe[2], DEFAULT_RUST_NEXTEST_PARTITION_1);
         assert_eq!(safe[3], DEFAULT_RUST_NEXTEST_PARTITION_2);
@@ -128,7 +139,5 @@ mod tests {
     fn smoke_cov_sandbox_safe() {
         let _ = (is_unpartitioned_nextest_run, partition_nextest_line);
         let checks_path = std::path::Path::new("/tmp").join(MALVIN_CHECKS_FILE);
-        let _ = checks_path;
-        let _ = load_malvin_checks;
     }
 }

@@ -34,8 +34,35 @@ impl OpenRouterError {
 mod tests {
     use super::OpenRouterError;
 
+    fn fake_reqwest_error() -> reqwest::Error {
+        reqwest::Client::new()
+            .get("http:///")
+            .build()
+            .expect_err("invalid url")
+    }
+
     #[test]
     fn openrouter_error_retryable_for_rate_limit_and_server_error() {
+        let _variants: [OpenRouterError; 8] = [
+            OpenRouterError::Unauthorized { body: String::new() },
+            OpenRouterError::BillingFailure {
+                status: 402,
+                body: String::new(),
+            },
+            OpenRouterError::RateLimited { body: String::new() },
+            OpenRouterError::ServerError {
+                status: 500,
+                body: String::new(),
+            },
+            OpenRouterError::RequestFailed {
+                status: 400,
+                body: String::new(),
+            },
+            OpenRouterError::MissingContent,
+            OpenRouterError::Transport(fake_reqwest_error()),
+            OpenRouterError::Json(serde_json::from_str::<()>("").unwrap_err()),
+        ];
+        let _ = _variants;
         assert!(OpenRouterError::RateLimited {
             body: "slow".into()
         }

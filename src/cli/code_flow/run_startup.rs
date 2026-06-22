@@ -64,13 +64,3 @@ mod tests {
         assert_eq!(prepared.startup_emit_request, "plan.md");
     }
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = code_kpop_workflow_context;
-    }
-}

@@ -6,11 +6,5 @@ mod kpop_flow_a;
 mod kpop_flow_b;
 #[path = "kpop_flow_run_loop.rs"]
 pub(crate) mod kpop_flow_run_loop;
-#[cfg(test)]
-#[path = "kpop_flow_run_loop_tests.rs"]
-pub(crate) mod kpop_flow_run_loop_tests;
-#[cfg(test)]
-#[path = "kpop_flow_run_loop_kiss_cov_tests.rs"]
-mod kpop_flow_run_loop_kiss_cov_tests;
 
 pub use kpop_flow_a::*;

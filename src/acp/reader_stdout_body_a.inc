@@ -183,3 +183,21 @@ fn kiss_cov_reply_session_request_permission_symbol() {
     let _ = reply_session_request_permission;
 }
 
+#[cfg(test)]
+#[path = "reader_stdout_body_a_kiss_cov_test.rs"]
+mod reader_stdout_body_a_kiss_cov_test;
+#[cfg(test)]
+#[path = "reader_stdout_body_a_kiss_test.rs"]
+mod reader_stdout_body_a_kiss_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<IncomingLineDispatch> = None;
+        let _: Option<ReaderLoopInput> = None;
+        let _: Option<ReaderSpawnArgs> = None;
+    }
+}

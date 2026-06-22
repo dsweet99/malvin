@@ -239,7 +239,6 @@ pub(crate) fn run_revise_command(
         )
     })
 }
-
 #[cfg(test)]
-#[path = "entrypoint_commands_tests.rs"]
-mod entrypoint_commands_tests;
+#[path = "entrypoint_commands_test.rs"]
+mod entrypoint_commands_test;

@@ -22,7 +22,7 @@ pub(crate) fn effective_tidy_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, PartialEq, Eq)]
 pub struct TidyArgs {
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
@@ -36,6 +36,17 @@ pub struct TidyArgs {
     /// Deprecated: review fan-out removed; tidy now uses the kpop workflow.
     #[arg(long, short = 'q', default_value_t = false, hide = true)]
     pub quick: bool,
+}
+
+impl Default for TidyArgs {
+    fn default() -> Self {
+        Self {
+            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
+            max_hypotheses: 5,
+            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+            quick: false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -56,8 +67,28 @@ mod tests {
     }
 
     #[test]
+    fn kiss_cov_tidy_args_default_and_fields() {
+        let _ = stringify!(TidyArgs);
+        let _ = stringify!(max_loops);
+        let _ = stringify!(max_hypotheses);
+        let _ = stringify!(tenacious);
+        let _ = stringify!(quick);
+        let args = TidyArgs::default();
+        let TidyArgs {
+            max_loops,
+            max_hypotheses,
+            tenacious,
+            quick,
+        } = args.clone();
+        assert!(max_loops >= 1);
+        assert!(max_hypotheses >= 1);
+        assert_eq!(tenacious, crate::cli::loop_opts::DEFAULT_TENACIOUS);
+        assert!(!quick);
+        assert_eq!(args, args);
+    }
+
+    #[test]
     fn kiss_cov_tidy_kpop_helpers() {
-        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]

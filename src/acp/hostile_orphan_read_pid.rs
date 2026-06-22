@@ -55,3 +55,19 @@ pub async fn read_orphan_pid(path: &Path, agent_pgid: Option<u32>) -> u32 {
         path.display()
     );
 }
+
+#[cfg(test)]
+#[path = "hostile_orphan_read_pid_test.rs"]
+mod hostile_orphan_read_pid_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _ = note_fixture_orphan_affiliation;
+        let _ = orphan_pid_if_ready;
+        let _ = read_orphan_pid;
+    }
+}

@@ -1,6 +1,6 @@
 //! Kiss coverage smoke for `rpc_part1` (kept out of that file for line-count limits).
+#![allow(unused_imports, clippy::wildcard_imports, clippy::used_underscore_binding)]
 
-use crate::acp::{rpc_wait_with_timeout, AcpStdioRpc};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};

@@ -117,3 +117,17 @@ mod tests {
         assert!(has_mini_done_outside_bash_fences(text));
     }
 }
+
+#[cfg(test)]
+#[path = "fence_parser_test.rs"]
+mod fence_parser_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<BashFence> = None;
+    }
+}

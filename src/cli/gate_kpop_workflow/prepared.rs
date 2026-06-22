@@ -50,5 +50,40 @@ mod tests {
         };
         assert_eq!(prepared.request_text(), "req");
         assert_eq!(prepared.startup_emit_request, "startup");
+        assert!(prepared.artifacts().run_dir.exists());
+        assert!(prepared.context().is_empty());
+        assert!(prepared.store().validate_exists("kpop_program_creative.md").is_ok());
+        let GateKpopPrepared {
+            artifacts,
+            context,
+            request_text,
+            startup_emit_request,
+            store,
+            malvin_checks_backup,
+        } = prepared;
+        assert_eq!(request_text, "req");
+        assert_eq!(startup_emit_request, "startup");
+        assert!(context.is_empty());
+        assert!(artifacts.run_dir.exists());
+        assert!(store.validate_exists("kpop_program_creative.md").is_ok());
+        assert!(matches!(
+            malvin_checks_backup,
+            crate::artifacts::MalvinChecksBackup::Missing
+        ));
+    }
+}
+#[cfg(test)]
+#[path = "prepared_test.rs"]
+mod prepared_test;#[cfg(test)]
+#[path = "prepared_kiss_cov_test.rs"]
+mod prepared_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<GateKpopPrepared> = None;
     }
 }

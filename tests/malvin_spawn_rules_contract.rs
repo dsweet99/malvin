@@ -39,8 +39,6 @@ fn dead_before_next_rejects_live_prior_sandbox() {
         err.contains("still alive"),
         "expected dead-before-next error, got: {err}"
     );
-    let _ = child.kill();
-    let _ = child.wait();
     clear_active_sandbox_session();
 }
 
@@ -55,8 +53,6 @@ fn dead_before_next_allows_after_prior_sandbox_cleared() {
     let pgid = child.id();
     let work = fresh_workdir("malvin_dead_before_next_clear");
     note_active_sandbox_session(Some(pgid), baseline, &work).expect("note");
-    let _ = child.kill();
-    let _ = child.wait();
     clear_active_sandbox_session();
     assert_dead_before_next_spawn().expect("prior sandbox ended");
 }
@@ -79,8 +75,6 @@ fn concurrent_sessions_allowed_with_live_peer_in_workspace() {
         err.contains("ACP spawn lock held"),
         "expected peer lock error, got: {err}"
     );
-    let _ = child.kill();
-    let _ = child.wait();
     malvin::assert_no_peer_acp_spawn_lock_for_slot(&work, slot)
         .expect("stale lock cleared after holder exit");
     assert!(!lock.exists(), "stale lock file removed");
@@ -145,8 +139,6 @@ fn note_active_sandbox_session_rejects_live_peer_lock() {
     let baseline = snapshot_pids();
     let err = note_active_sandbox_session(None, baseline, &work).expect_err("peer blocks note");
     assert!(err.contains("ACP spawn lock held"), "expected peer lock error, got: {err}");
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 /// `clear_active_sandbox_session` must not delete a lock owned by another process on the same slot.
@@ -165,7 +157,6 @@ fn session_lifecycle_does_not_touch_acp_spawn_lock() {
     std::fs::write(&lock, "424242").expect("overwrite with foreign pid");
     clear_active_sandbox_session();
     assert!(lock.exists(), "foreign lock must survive clear_active_sandbox_session");
-    let _ = std::fs::remove_file(&lock);
 }
 
 /// Invalid lock contents are cleared without blocking the caller.
@@ -200,7 +191,6 @@ fn malvin_tokio_command_spawns_in_isolated_process_group() {
             pid,
             "tokio child should be its own process-group leader"
         );
-        let _ = child.kill().await;
     });
 }
 
@@ -217,8 +207,6 @@ fn malvin_std_command_spawns_in_isolated_process_group() {
         pid,
         "child should be its own process-group leader"
     );
-    let _ = child.kill();
-    let _ = child.wait();
 }
 
 #[test]

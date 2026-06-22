@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
+#[derive(Default)]
 struct ActiveAgentSandbox {
     pgid: u32,
     spawn_baseline: HashSet<u32>,
@@ -57,6 +58,7 @@ fn current_active_agent_sandbox() -> Option<ActiveAgentSandbox> {
         })
 }
 
+#[derive(Default)]
 pub(crate) struct ActiveAgentStatsSource {
     pub pgid: u32,
     pub spawn_baseline: HashSet<u32>,
@@ -89,22 +91,6 @@ fn format_agent_stats(pgid: u32, spawn_baseline: &HashSet<u32>) -> Option<String
 #[cfg(not(unix))]
 fn format_agent_stats(_pgid: u32, _: &HashSet<u32>) -> Option<String> {
     None
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_active_agent_heartbeat_privates() {
-        let _: Option<ActiveAgentSandbox> = None;
-        let _ = current_active_agent_sandbox;
-        let _ = format_agent_stats;
-        let _ = register_active_agent_process_group;
-        let _ = unregister_active_agent_process_group;
-        let _ = active_agent_heartbeat_stats;
-    }
 }
 
 #[cfg(test)]
@@ -154,14 +140,30 @@ mod tests {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+mod kiss_cov_inline {
     use super::*;
+
     #[test]
-    fn kiss_cov_unit_names() {
-        let _: Option<ActiveAgentSandbox> = None;
-        let _: Option<ActiveAgentStatsSource> = None;
-        let _ = current_active_agent_sandbox;
-        let _ = format_agent_stats;
+    fn kiss_cov_active_agent_sandbox_fields() {
+        let sandbox = ActiveAgentSandbox {
+            pgid: 42,
+            spawn_baseline: HashSet::from([1, 2]),
+        };
+        let ActiveAgentSandbox { pgid, spawn_baseline } = sandbox;
+        assert_eq!(pgid, 42);
+        assert_eq!(spawn_baseline.len(), 2);
+        let source = ActiveAgentStatsSource {
+            pgid: 99,
+            spawn_baseline: HashSet::new(),
+        };
+        let ActiveAgentStatsSource { pgid, spawn_baseline } = source;
+        assert_eq!(pgid, 99);
+        assert!(spawn_baseline.is_empty());
     }
 }
+#[cfg(test)]
+#[path = "active_agent_heartbeat_test.rs"]
+mod active_agent_heartbeat_test;
+#[cfg(test)]
+#[path = "active_agent_heartbeat_kiss_cov_test.rs"]
+mod active_agent_heartbeat_kiss_cov_test;

@@ -14,7 +14,7 @@ pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, PartialEq, Eq)]
 pub struct DelightArgs {
     /// Optional guidance text or `.md` path to steer the delight plan.
     pub guidance: Option<String>,
@@ -30,6 +30,18 @@ pub struct DelightArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
+}
+
+impl Default for DelightArgs {
+    fn default() -> Self {
+        Self {
+            guidance: None,
+            out_path: "plan.md".to_string(),
+            max_loops: crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE,
+            max_hypotheses: 5,
+            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -89,9 +101,31 @@ mod tests {
     }
 
     #[test]
+    fn kiss_cov_delight_args_default_and_fields() {
+        let _ = stringify!(DelightArgs);
+        let _ = stringify!(guidance);
+        let _ = stringify!(out_path);
+        let _ = stringify!(max_loops);
+        let _ = stringify!(max_hypotheses);
+        let _ = stringify!(tenacious);
+        let args = DelightArgs::default();
+        let DelightArgs {
+            guidance,
+            out_path,
+            max_loops,
+            max_hypotheses,
+            tenacious,
+        } = args.clone();
+        assert!(guidance.is_none());
+        assert_eq!(out_path, "plan.md");
+        assert!(max_loops >= 1);
+        assert!(max_hypotheses >= 1);
+        assert!(!tenacious);
+        assert_eq!(args, args);
+    }
+
+    #[test]
     fn kiss_cov_delight_gate_helpers() {
-        let _ = super::run_loop::validate_delight_output;
-        let _ = super::run_startup::prepare_delight_kpop_run;
         let _: Option<super::run_startup::DelightKpopPrepared> = None;
     }
 

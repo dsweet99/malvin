@@ -20,7 +20,6 @@ pub(crate) use stdout_defer::{try_defer_heartbeat, try_defer_tagged_stdout};
 pub(crate) use stdout_render::{
     flush_stdout_rendered_line, publish_heartbeat_live_terminal, write_heartbeat_log_line,
 };
-#[cfg(test)]
 pub(crate) use stdout_render::emit_stdout_rendered_immediate;
 pub(crate) use stdout_heartbeat::{
     heartbeat_rendered_if_due, log_contains_heartbeat,
@@ -30,10 +29,10 @@ pub(crate) use stdout_display::{
     format_heartbeat_stdout_ansi, format_line_stdout, format_line_stdout_ansi, logical_lines,
 };
 
-#[cfg(test)]
 pub(crate) use stdout_heartbeat::{
     heartbeat_log_offset, poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
     test_set_last_heartbeat_elapsed, HEARTBEAT_TEST_LOCK,
+    maybe_emit_stdout_heartbeat, try_emit_heartbeat_if_due,
 };
 
 pub use stdout_display::{
@@ -52,26 +51,11 @@ pub use acp_tee::{
     print_stdout_acp_tool_summary_tee, termimad_inline_payload_for_stdout,
     termimad_text_lines_for_stdout,
 };
-
-#[cfg(test)]
-mod acp_tee_termimad_tests;
-#[cfg(test)]
-mod acp_tee_tests;
-#[cfg(test)]
-mod format_tests;
-#[cfg(test)]
 #[path = "format_tests_b.rs"]
 mod format_tests_b;
-#[cfg(test)]
-mod stdout_log_tests;
-#[cfg(test)]
-#[path = "output_kiss_cov_tests.rs"]
-mod output_kiss_cov_tests;
 
-#[cfg(test)]
 use std::cell::RefCell;
 use std::io::{IsTerminal, Write, stdout};
-#[cfg(test)]
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -84,25 +68,20 @@ pub const WARNING_WHO: &str = "w";
 pub const ERROR_WHO: &str = "e";
 
 pub(crate) use stdout_terminal::print_stdout_display_line;
-#[cfg(test)]
 pub(crate) use stdout_terminal::{enable_stdout_capture, take_captured_stdout};
 
-#[cfg(test)]
 thread_local! {
     static CAPTURED_STDERR_LINES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
 
-#[cfg(test)]
 pub(crate) fn push_captured_stderr_line(line: String) {
     CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().push(line));
 }
 
-#[cfg(test)]
 pub fn take_captured_stderr_lines() -> Vec<String> {
     CAPTURED_STDERR_LINES.with(|lines| std::mem::take(&mut *lines.borrow_mut()))
 }
 
-#[cfg(test)]
 pub fn clear_captured_stderr_lines() {
     CAPTURED_STDERR_LINES.with(|lines| lines.borrow_mut().clear());
 }
@@ -142,7 +121,6 @@ pub(crate) use who_tag::{
 };
 
 static LOG_USE_COLOR: AtomicBool = AtomicBool::new(false);
-#[cfg(test)]
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub(crate) use crate::terminal_palette::{
@@ -225,3 +203,34 @@ pub use stderr_log::{print_log_error, print_log_warning, print_stderr_line};
 pub(crate) use test_modules::{
     assert_acp_tool_summary_dim_preserves_bracket, assert_tool_payload_uses_verb_styling,
 };
+#[cfg(test)]
+#[path = "stdout_heartbeat_test_support.rs"]
+mod stdout_heartbeat_test_support;
+
+#[cfg(test)]
+#[path = "format_test.rs"]
+mod format_test;
+
+#[cfg(test)]
+#[path = "stdout_log_pair_kiss_cov_test.rs"]
+mod stdout_log_pair_kiss_cov_test;
+
+#[cfg(test)]
+#[path = "stdout_render_kiss_cov_test.rs"]
+mod stdout_render_kiss_cov_test;
+
+#[cfg(test)]
+#[path = "acp_tee_termimad_test.rs"]
+mod acp_tee_termimad_test;
+#[cfg(test)]
+#[path = "output_kiss_cov_test.rs"]
+mod output_kiss_cov_test;
+#[cfg(test)]
+#[path = "stdout_heartbeat_defer_test.rs"]
+mod stdout_heartbeat_defer_test;
+#[cfg(test)]
+#[path = "stdout_log_test.rs"]
+mod stdout_log_test;
+#[cfg(test)]
+#[path = "wrap_test.rs"]
+mod wrap_test;

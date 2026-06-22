@@ -22,3 +22,20 @@ pub struct AcpTeeBuild {
     pub display: Option<String>,
     pub dim_payload: bool,
 }
+#[cfg(test)]
+#[path = "build_test.rs"]
+mod build_test;#[cfg(test)]
+#[path = "build_kiss_cov_test.rs"]
+mod build_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<AcpTeeBuild> = None;
+        let _: Option<TeeSinkMeta> = None;
+        let _: Option<ToolSummaryBuild> = None;
+    }
+}

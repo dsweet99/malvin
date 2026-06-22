@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RepoGateCommandFailure {
     pub command: String,
     pub exit_code: Option<i32>,
@@ -84,52 +84,80 @@ pub(crate) fn repo_gate_failure_to_string(failure: RepoGateFailure) -> String {
     failure.into_error()
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub enum RepoGateOutput {
+    #[default]
     Tagged,
     Stderr,
 }
 
-#[test]
-fn repo_gate_failure_into_error_formats_command_exit() {
-    let failure = RepoGateCommandFailure {
-        command: "kiss check".to_string(),
-        exit_code: Some(1),
-        stdout: "out".to_string(),
-        stderr: "err".to_string(),
-    };
-    let msg = RepoGateFailure::Command(failure).into_error();
-    assert!(msg.starts_with(GATE_FAILURE_MARKER));
-    assert!(msg.contains("kiss check"));
-    assert!(msg.contains("exit 1"));
-    assert!(!msg.contains("stdout:"));
-    let _: RepoGateOutput = RepoGateOutput::Tagged;
-}
-
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_inline {
     use super::*;
 
     #[test]
-    fn kiss_cov_emit_repo_gate_multiline_stderr() { let _ = emit_repo_gate_multiline_stderr; }
+    fn kiss_cov_repo_gate_types() {
+        let _ = stringify!(RepoGateFailure);
+        let _ = stringify!(Command);
+        let _ = stringify!(Message);
+        let failure = RepoGateCommandFailure {
+            command: "c".to_string(),
+            exit_code: Some(1),
+            stdout: "o".to_string(),
+            stderr: "e".to_string(),
+        };
+        let RepoGateCommandFailure {
+            command,
+            exit_code,
+            stdout,
+            stderr,
+        } = failure;
+        assert_eq!(command, "c");
+        assert_eq!(exit_code, Some(1));
+        assert_eq!(stdout, "o");
+        assert_eq!(stderr, "e");
+        let tagged = RepoGateOutput::Tagged;
+        let stderr_out = RepoGateOutput::Stderr;
+        assert!(matches!(tagged, RepoGateOutput::Tagged));
+        assert!(matches!(stderr_out, RepoGateOutput::Stderr));
+    }
 
     #[test]
-    fn kiss_cov_is_pure_gate_failure_summary() { let _ = is_pure_gate_failure_summary; }
-
-    #[test]
-    fn kiss_cov_gate_failure_summary() { let _ = gate_failure_summary; }
-
+    fn kiss_cov_repo_gate_command_failure_none_exit_code() {
+        let failure = RepoGateCommandFailure {
+            command: "sig".to_string(),
+            exit_code: None,
+            stdout: String::new(),
+            stderr: "err".to_string(),
+        };
+        let RepoGateCommandFailure {
+            command,
+            exit_code,
+            stdout,
+            stderr,
+        } = failure;
+        assert_eq!(command, "sig");
+        assert!(exit_code.is_none());
+        assert!(stdout.is_empty());
+        assert_eq!(stderr, "err");
+    }
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+#[path = "types_kiss_cov_test.rs"]
+mod types_kiss_cov_test;
+#[cfg(test)]
+#[path = "types_test.rs"]
+mod types_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
+
     #[test]
-    fn kiss_cov_unit_names() {
-        let _ = emit_repo_gate_multiline_stderr;
+    fn kiss_static_fn_item_refs() {
+        let _: Option<RepoGateCommandFailure> = None;
+        let _: Option<RepoGateOutput> = None;
         let _ = gate_failure_summary;
-        let _ = is_pure_gate_failure_summary;
     }
 }

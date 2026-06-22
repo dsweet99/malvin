@@ -28,3 +28,6 @@ pub(crate) fn effective_cursor_api_key(explicit: Option<&str>) -> Option<String>
 pub(crate) fn effective_cursor_auth_token(explicit: Option<&str>) -> Option<String> {
     nonempty_explicit_or_env_var(explicit, "CURSOR_AUTH_TOKEN")
 }
+#[cfg(test)]
+#[path = "cursor_credentials_test.rs"]
+mod cursor_credentials_test;

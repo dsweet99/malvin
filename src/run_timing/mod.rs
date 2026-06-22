@@ -202,11 +202,10 @@ pub fn persist_open_run_timing_json(
 
 pub use cost::record_mini_http_cost;
 pub use report::print_summary_from_run_dir;
-
-#[cfg(test)]
-mod timing_tests;
-
-#[cfg(test)]
 mod gate_kpop_timing_regressions;
 
 pub mod acp_post_run;
+
+#[cfg(test)]
+#[path = "timing_test.rs"]
+mod timing_test;

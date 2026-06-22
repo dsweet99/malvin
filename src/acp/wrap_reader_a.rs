@@ -10,15 +10,11 @@ pub(crate) mod inline {
     use super::*;
         #[test]
         fn kiss_cov_unit_names() {
+
             let _: Option<IncomingLineDispatch<'_>> = None;
             let _: Option<ReaderLoopInput> = None;
-            let _ = reply_session_request_permission;
         }
     }
 }
 
 pub(crate) use inline::*;
-
-#[cfg(test)]
-#[path = "reader_inline_tests.rs"]
-mod reader_inline_tests;

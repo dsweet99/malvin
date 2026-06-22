@@ -61,3 +61,9 @@ pub fn parse_tool_call_args_from_blob(data: &str) -> Vec<(String, ToolCallArgs)>
         .map(|v| parse_tool_calls_from_value(&v))
         .unwrap_or_default()
 }
+#[cfg(test)]
+#[path = "parse_test.rs"]
+mod parse_test;
+#[cfg(test)]
+#[path = "parse_kiss_cov_test.rs"]
+mod parse_kiss_cov_test;

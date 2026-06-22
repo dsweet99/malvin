@@ -108,7 +108,6 @@ pub(in crate::process_group_rss) fn parse_status_vm_rss_bytes(status: &str) -> O
     parse_proc_kib_field(status, "VmRSS:")
 }
 
-#[cfg(test)]
 pub(in crate::process_group_rss) fn parse_smaps_rollup_pss_bytes(rollup: &str) -> Option<u64> {
     parse_proc_kib_field(rollup, "Pss:")
 }
@@ -137,19 +136,4 @@ pub(in crate::process_group_rss) fn parse_proc_kib_field(text: &str, prefix: &st
         let kb: u64 = kb_str.parse().ok()?;
         kb.checked_mul(1024)
     })
-}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = linux_pids_uss_bytes;
-        let _ = linux_pids_rss_bytes;
-        let _ = linux_process_group_rss_bytes;
-        let pids = std::iter::once(std::process::id()).collect::<std::collections::HashSet<_>>();
-        let rss = linux_pids_rss_bytes(&pids).expect("rss");
-        assert!(rss > 0);
-    }
 }

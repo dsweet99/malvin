@@ -53,8 +53,6 @@ fn peer_name_lock_rejects_while_holder_alive() {
             err.contains(&name_path("probe").display().to_string()),
             "expected lock path in error, got: {err}"
         );
-        let _ = child.kill();
-        let _ = child.wait();
         assert_no_peer_name_lock("probe").expect("stale lock cleared after holder exit");
         assert!(!name_path("probe").exists(), "stale lock file removed");
     });
@@ -81,8 +79,6 @@ fn dead_holder_name_can_be_reused() {
         let holder_pid = child.id();
         std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
         std::fs::write(name_path("probe"), format!("{holder_pid}\n")).expect("write lock");
-        let _ = child.kill();
-        let _ = child.wait();
         acquire_name("probe").expect("dead holder reclaimed");
     });
 }
@@ -160,8 +156,6 @@ fn entrypoint_duplicate_name_via_binary() {
             stderr.contains(&holder_pid.to_string()),
             "stderr must name holder pid; got: {stderr}"
         );
-        let _ = child.kill();
-        let _ = child.wait();
     });
 }
 

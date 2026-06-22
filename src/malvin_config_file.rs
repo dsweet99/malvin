@@ -232,11 +232,3 @@ pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {
 pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
     parse_toml_integer(value).and_then(|i| u64::try_from(i).ok())
 }
-
-#[cfg(test)]
-#[path = "malvin_config_file_tests.rs"]
-mod malvin_config_file_tests;
-
-#[cfg(test)]
-#[path = "malvin_config_file_tests_no_overwrite.rs"]
-mod malvin_config_file_tests_no_overwrite;

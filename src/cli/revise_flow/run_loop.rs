@@ -119,88 +119,20 @@ pub async fn run_revise(
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();
     }
-    let _ = &prepared.inner.malvin_checks_backup;
     r
 }
-
 #[cfg(test)]
-mod tests {
+#[path = "run_loop_test.rs"]
+mod run_loop_test;#[cfg(test)]
+#[path = "run_loop_kiss_cov_test.rs"]
+mod run_loop_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
-    use crate::artifacts::create_kpop_run_artifacts;
 
     #[test]
-    fn revise_post_session_validates_output_file_exists() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let missing = tmp.path().join("doc.md");
-        let err = validate_revise_output(&missing).expect_err("missing");
-        assert!(err.contains("expected document"));
-    }
-
-    #[test]
-    fn revise_post_session_validates_output_file_non_empty() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let empty = tmp.path().join("doc.md");
-        std::fs::write(&empty, "").expect("write");
-        let err = validate_revise_output(&empty).expect_err("empty");
-        assert!(err.contains("non-empty"));
-    }
-
-    #[test]
-    fn revise_post_session_accepts_non_empty_document() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let doc = tmp.path().join("doc.md");
-        std::fs::write(&doc, "# Revised\n\nClear prose.\n").expect("write");
-        validate_revise_output(&doc).expect("ok");
-    }
-
-    #[test]
-    fn revise_run_loop_entry_is_covered() {
-        let _ = run_revise;
-    }
-
-    #[test]
-    fn revise_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let doc = tmp.path().join("doc.md");
-        std::fs::write(&doc, "# Revised\n").expect("write");
-        let store = crate::prompts::PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
-        let prepared = ReviseKpopPrepared {
-            inner: crate::gate_kpop_workflow::GateKpopPrepared {
-                artifacts,
-                context: std::collections::HashMap::new(),
-                request_text: "req".into(),
-                startup_emit_request: "req".into(),
-                store,
-                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
-            },
-            resolved_doc_path: doc,
-        };
-        let shared = crate::cli::SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            no_tenacious: false,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            max_acp_retries: 1,
-            doc: false,
-            name: None,
-            mini: false,
-            mini_max_bash_turns: 32,
-        };
-        let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
-        let err = revise_gate_outcome(ReviseGateFinish {
-            shared: &shared,
-            prepared: &prepared,
-            agent_ran: true,
-            gates_ok: false,
-            run_timing: None,
-            last_backups: &backups,
-            summarize_res: Ok(()),
-        })
-        .expect_err("needs two consecutive solved markers");
-        assert!(err.contains("two consecutive"));
+    fn kiss_static_fn_item_refs() {
+        let _: Option<ReviseGateFinish> = None;
     }
 }

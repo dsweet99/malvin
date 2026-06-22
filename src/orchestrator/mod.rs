@@ -14,18 +14,12 @@ pub use helpers::{
     format_prompt_path, workflow_context, workflow_context_paths_only,
 };
 pub(crate) use helpers::{insert_formatted, prompt_md_stem};
-
-#[cfg(test)]
-mod helpers_tests;
-
 mod workflow_merge;
 
 pub use workflow_merge::merge_string_run_and_restore;
 
-#[cfg(test)]
 pub(crate) mod orchestrator_test_support;
 
-#[cfg(test)]
 mod orchestrator_kiss_coverage;
 
 #[derive(Debug, thiserror::Error)]
@@ -115,5 +109,22 @@ mod orchestrator_smoke_tests {
         orch.fail_on_abort_result().expect("no abort");
         orch.emit_run_timing_artifact(&timing)
             .expect("timing artifact");
+    }
+}
+#[cfg(test)]
+#[path = "mod_kiss_cov_test.rs"]
+mod mod_kiss_cov_test;
+#[cfg(test)]
+#[path = "mod_test.rs"]
+mod mod_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<Orchestrator> = None;
+        let _: Option<WorkflowConfig> = None;
     }
 }

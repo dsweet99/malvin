@@ -176,7 +176,6 @@ pub(crate) fn format_freed(bytes: u64) -> String {
         format!("{bytes} B")
     }
 }
-
 #[cfg(test)]
-#[path = "log_gc_tests.rs"]
-mod log_gc_tests;
+#[path = "log_gc_test.rs"]
+mod log_gc_test;

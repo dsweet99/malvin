@@ -140,7 +140,6 @@ pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
         |r| format!("./{}", r.display()),
     )
 }
-
 #[cfg(test)]
-#[path = "workflow_context_tests.rs"]
-mod workflow_context_tests;
+#[path = "workflow_context_test.rs"]
+mod workflow_context_test;

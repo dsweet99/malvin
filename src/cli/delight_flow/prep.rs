@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::artifacts::resolve_user_md_request;
 use crate::log_gc::list_run_dirs;
 use crate::prompts::{PromptError, PromptStore};
-use crate::workflow_context::{format_prompt_path, insert_formatted};
+use crate::workflow_context::insert_formatted;
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
 use crate::cli::default_output_path::{
@@ -112,7 +112,10 @@ fn format_recent_delight_plans(work_dir: &Path, paths: &[PathBuf]) -> String {
     }
     paths.iter().fold(String::new(), |mut acc, p| {
         use std::fmt::Write as _;
-        let _ = writeln!(acc, "- {}", format_prompt_path(p, work_dir));
+        if !acc.is_empty() {
+            let _ = writeln!(acc);
+        }
+        let _ = write!(acc, "- {}", crate::format_prompt_path(p, work_dir));
         acc
     })
 }
@@ -179,27 +182,3 @@ pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), St
     let work_dir = crate::artifacts::work_dir_for_path(Path::new(&rel_out));
     Ok((resolved_out_path, work_dir))
 }
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_delight_prep_privates() {
-        let _ = delight_out_rel_from_command_log;
-        let _ = delight_plan_candidate_from_run;
-        let _ = format_recent_delight_plans;
-    }
-}
-
-#[cfg(test)]
-#[path = "../delight_flow_prep_tests.rs"]
-mod delight_flow_prep_tests;
-
-#[cfg(test)]
-#[path = "../delight_flow_prep_preflight_tests.rs"]
-mod delight_flow_prep_preflight_tests;
-
-#[cfg(test)]
-#[path = "../delight_flow_prep_recent_plans_tests.rs"]
-mod delight_flow_prep_recent_plans_tests;

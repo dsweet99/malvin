@@ -50,19 +50,3 @@ pub(crate) fn print_plain_tee_wrapped_line(line: &str, ts: &str, emit_stdout_mar
         print_stdout_raw_line_with_ts(&rendered, Some(ts));
     }
 }
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_auto{
-    use super::*;
-
-    #[test]
-    fn kiss_cov_print_tee_unprefixed_wrapped_line() {
-        let _ = super::print_tee_unprefixed_wrapped_line;
-    }
-
-    #[test]
-    fn kiss_cov_print_plain_tee_wrapped_line() {
-        let _ = super::print_plain_tee_wrapped_line;
-    }
-}

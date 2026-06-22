@@ -112,5 +112,4 @@ pub use integration_cli_args::INTEGRATION_TEST_MALVIN_ARGS;
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 
-#[cfg(test)]
 mod acp_mock_syntax_tests;

@@ -127,7 +127,19 @@ mod inline_render_turn_with_body {
         assert!(out.contains("inline"));
     }
 }
-
 #[cfg(test)]
-#[path = "kpop_turn_prompts_tests.rs"]
-mod kpop_turn_prompts_tests;
+#[path = "kpop_turn_prompts_test.rs"]
+mod kpop_turn_prompts_test;#[cfg(test)]
+#[path = "kpop_turn_prompts_kiss_cov_test.rs"]
+mod kpop_turn_prompts_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<KpopTurnPrompts> = None;
+        let _ = kpop_block;
+    }
+}

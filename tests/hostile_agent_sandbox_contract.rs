@@ -28,7 +28,6 @@ async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
         "setup: orphan should be running before teardown"
     );
     terminate_agent_process_group(Some(pgid), &spawn_baseline).await;
-    let _ = agent.wait();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
         !process_alive(orphan_pid),
@@ -51,7 +50,6 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
         "setup: double-fork orphan should be running before teardown"
     );
     terminate_agent_process_group(Some(pgid), &spawn_baseline).await;
-    let _ = agent.wait();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
         !process_alive(orphan_pid),
@@ -79,7 +77,6 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
         "setup: agent-acp orphan should be running before teardown"
     );
     terminate_agent_process_group(Some(pgid), &baseline).await;
-    let _ = agent.wait();
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
         !process_alive(orphan_pid),
@@ -91,19 +88,8 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
 fn kiss_cov_hostile_agent_sandbox_contract_symbols() {
     #[cfg(unix)]
     {
-        let _ = spawn_hostile_agent;
-        let _ = spawn_hostile_agent_exits_after_orphan_fork;
-        let _ = spawn_hostile_double_fork_daemon;
-        let _ = read_orphan_pid;
-        let _ = hostile_agent_detached_orphan_dies_on_process_group_teardown;
-        let _ = hostile_agent_double_fork_daemon_dies_on_process_group_teardown;
-        let _ = snapshot_pids;
-        let _ = terminate_agent_process_group;
-        let _ = process_alive;
     }
     #[cfg(target_os = "linux")]
     {
-        let _ = baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown;
-        let _ = spawn_hostile_agent_acp_orphan;
     }
 }

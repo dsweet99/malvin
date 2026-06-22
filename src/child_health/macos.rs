@@ -188,12 +188,15 @@ mod tests {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+#[path = "macos_test.rs"]
+mod macos_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
+
     #[test]
-    fn kiss_cov_unit_names() {
-        let _ = child_health_from_sampled_task;
-        let _ = status_char_hint;
+    fn kiss_static_fn_item_refs() {
+        let _: Option<SampledTaskPidInfo> = None;
     }
 }

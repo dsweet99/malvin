@@ -75,7 +75,6 @@ impl SharedOpts {
     }
 }
 
-#[cfg(test)]
 impl SharedOpts {
     #[must_use]
     pub(crate) fn test_defaults() -> Self {
@@ -92,5 +91,20 @@ impl SharedOpts {
             mini: false,
             mini_max_bash_turns: 32,
         }
+    }
+}
+#[cfg(test)]
+#[path = "shared_opts_test.rs"]
+mod shared_opts_test;#[cfg(test)]
+#[path = "shared_opts_kiss_cov_test.rs"]
+mod shared_opts_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<GlobalOpts> = None;
     }
 }

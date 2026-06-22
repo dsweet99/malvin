@@ -108,7 +108,3 @@ pub(crate) fn macos_total_memory_bytes() -> Option<u64> {
         .parse()
         .ok()
 }
-
-#[cfg(test)]
-#[path = "mem_limit_config_tests.rs"]
-mod mem_limit_config_tests;

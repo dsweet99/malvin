@@ -84,8 +84,6 @@ mod tests {
 
     #[test]
     fn timing_stdout_append_helpers_cover_branches() {
-        let _ = timing_stdout_append_fixed_ms_fields;
-        let _ = timing_stdout_append_phase_fields;
         let mut s = String::new();
         let mut first = true;
         timing_stdout_append_fixed_ms_fields(

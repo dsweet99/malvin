@@ -52,3 +52,19 @@ mod tests {
         let _: Option<LoopDriverRun> = None;
     }
 }
+
+#[cfg(test)]
+#[path = "loop_types_test.rs"]
+mod loop_types_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<LoopDriverConfig> = None;
+        let _: Option<LoopDriverOutcome> = None;
+        let _: Option<LoopDriverSession> = None;
+    }
+}

@@ -197,19 +197,3 @@ pub(crate) fn dispatch_command(
         Commands::Models(_) => models_cmd::run_models(),
     }
 }
-
-#[cfg(test)]
-#[path = "entrypoint_tenacious_tests.rs"]
-mod entrypoint_tenacious_tests;
-
-#[cfg(test)]
-#[path = "entrypoint_doc_tests.rs"]
-mod entrypoint_doc_tests;
-
-#[cfg(test)]
-#[path = "entrypoint_name_tests.rs"]
-mod entrypoint_name_tests;
-
-#[cfg(test)]
-#[path = "entrypoint_name_unix_tests.rs"]
-mod entrypoint_name_unix_tests;

@@ -97,7 +97,6 @@ fn malvin_init_creates_expected_files_for_python_only() {
         "should always have check-untracked hook"
     );
 
-
     assert!(w.path().join(".gitignore").exists());
     assert!(w.path().join(".kissignore").exists());
     assert!(w.path().join("admin/check_untracked.sh").exists());

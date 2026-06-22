@@ -26,6 +26,7 @@ pub fn mock_llm(responses: Vec<MockStep>) -> LlmBackend {
     LlmBackend::Mock(std::sync::Mutex::new(MockScript {
         responses,
         call_count: 0,
+        #[cfg(test)]
         on_response: None,
     }))
 }

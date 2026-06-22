@@ -100,7 +100,3 @@ impl<'a> KpopMultiturnState<'a> {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "multiturn_transport_retry_tests.rs"]
-mod multiturn_transport_retry_tests;

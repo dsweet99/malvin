@@ -75,10 +75,6 @@ mod tests {
 
     #[test]
     fn kiss_static_fn_item_refs() {
-        let _ = lookup_kpop_id;
-        let _ = dump_kpop_log_to_stdout;
-        let _ = kpop_log_line;
-        let _ = is_kpop_lookup_request;
     }
 
     #[test]

@@ -72,8 +72,6 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
     }
     let tmp = tempfile::tempdir().unwrap();
     let mut id = |n: usize| format!("slot{n}");
-    let _ = backup_slot(0, tmp.path(), &mut id);
-    let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
     let bundle = SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
         kissconfig: DotfileBackupState::Missing,
         malvin_checks: DotfileBackupState::Missing,

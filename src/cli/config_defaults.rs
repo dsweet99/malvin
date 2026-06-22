@@ -193,7 +193,19 @@ pub fn parse_cli_with_config_defaults(
     }
     Ok((cli, matches))
 }
-
 #[cfg(test)]
-#[path = "config_defaults_tests.rs"]
-mod config_defaults_tests;
+#[path = "config_defaults_test.rs"]
+mod config_defaults_test;#[cfg(test)]
+#[path = "config_defaults_kiss_cov_test.rs"]
+mod config_defaults_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<CodeWorkflowLoopMut> = None;
+        let _: Option<LoopDefaultMut> = None;
+    }
+}

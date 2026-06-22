@@ -39,6 +39,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn code_kpop_request_forbids_overwriting_workspace_source_plan() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let plan = tmp.path().join("plan.md");
+        std::fs::write(&plan, "ship widgets\n").expect("write plan");
+        let artifacts =
+            crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        let store = PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let text = code_kpop_request(&store, &artifacts).expect("request");
+        assert!(
+            text.contains("Do not edit, overwrite, or truncate the plan file"),
+            "code kpop request must forbid overwriting workspace source plan: {text:?}"
+        );
+    }
+
+    #[test]
     fn code_kpop_request_has_no_unresolved_braces() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
@@ -59,6 +75,10 @@ mod tests {
         assert!(
             text.contains("Satisfy all constraints"),
             "expected kpop_program wrapper: {text:?}"
+        );
+        assert!(
+            text.contains("Do not edit, overwrite, or truncate the plan file"),
+            "code kpop request must forbid plan file edits: {text:?}"
         );
     }
 

@@ -223,4 +223,3 @@ fn smoke_print_command_error_writes_run_log() {
 fn smoke_prepare_do_prompt_store_loads_defaults() {
     assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
 }
-

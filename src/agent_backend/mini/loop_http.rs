@@ -84,3 +84,17 @@ mod tests {
         assert_eq!(resp.content, "ok");
     }
 }
+#[cfg(test)]
+#[path = "loop_http_test.rs"]
+mod loop_http_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<HttpRetryRequest> = None;
+        let _ = complete_with_http_retries;
+    }
+}

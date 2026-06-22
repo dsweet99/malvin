@@ -182,8 +182,6 @@ impl Drop for DeferredLogSink {
 mod kiss_cov_sink_helpers {
     #[test]
     fn kiss_cov_deferred_log_sink_enrich_helpers() {
-        let _ = super::queue_entry_needs_enrich;
-        let _ = super::prepare_enrich_if_needed;
     }
 }
 

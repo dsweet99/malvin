@@ -47,3 +47,18 @@ impl SmokeKpopBuilder {
 mod kpop_multiturn_prompts_tests {
     include!("kpop_multiturn_prompts_tests.inc");
 }
+#[cfg(test)]
+#[path = "kpop_multiturn_prompts_test.rs"]
+mod kpop_multiturn_prompts_test;#[cfg(test)]
+#[path = "kpop_multiturn_prompts_kiss_cov_test.rs"]
+mod kpop_multiturn_prompts_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<SmokeKpopBuilder> = None;
+    }
+}

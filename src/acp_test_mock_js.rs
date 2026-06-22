@@ -27,3 +27,9 @@ rl.on('line', (line) => {{
 }});"
     )
 }
+#[cfg(test)]
+#[path = "acp_test_mock_js_test.rs"]
+mod acp_test_mock_js_test;
+#[cfg(test)]
+#[path = "acp_test_mock_js_kiss_cov_test.rs"]
+mod acp_test_mock_js_kiss_cov_test;

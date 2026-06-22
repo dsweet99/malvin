@@ -31,7 +31,6 @@ pub fn emit_deferred_entry(entry: &DeferredEntry) {
         }
         DeferredPayload::DisplayLog { display, log } => {
             if crate::output::log_contains_heartbeat(log) {
-                let _ = display;
                 crate::output::append_stdout_log_line(log);
             } else {
                 flush_stdout_rendered_line(display, log);

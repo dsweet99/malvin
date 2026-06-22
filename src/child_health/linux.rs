@@ -103,3 +103,9 @@ mod tests {
         assert_eq!(parse_status_voluntary_ctxt(status), Some(42));
     }
 }
+#[cfg(test)]
+#[path = "linux_test.rs"]
+mod linux_test;
+#[cfg(test)]
+#[path = "linux_kiss_cov_test.rs"]
+mod linux_kiss_cov_test;

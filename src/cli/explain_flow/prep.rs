@@ -200,11 +200,3 @@ pub(crate) fn explain_preflight(
         explain_auto_preflight(text, request_work_dir)
     }
 }
-
-#[cfg(test)]
-#[path = "../explain_flow_prep_tests.rs"]
-mod explain_flow_prep_tests;
-
-#[cfg(test)]
-#[path = "../explain_flow_prep_preflight_tests.rs"]
-mod explain_flow_prep_preflight_tests;

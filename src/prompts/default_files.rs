@@ -82,5 +82,9 @@ mod tests {
         assert!(default_kpop_prompt("kpop_block.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());
         assert!(default_file("code_constraints.md").is_some());
+        let code = default_constraints_prompt("code_constraints.md").expect("code");
+        assert!(code.contains("Do not edit, overwrite, or truncate the plan file"));
+        let kpop = default_kpop_prompt("kpop_common.md").expect("kpop");
+        assert!(kpop.contains("not in `plan.md`"));
     }
 }

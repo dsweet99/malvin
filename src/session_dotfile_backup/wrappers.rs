@@ -113,3 +113,9 @@ pub fn restore_workspace_malvin_config_workspace_backup(
 ) -> Result<(), String> {
     super::slots::restore_slot(work_dir, backup, 5)
 }
+#[cfg(test)]
+#[path = "wrappers_test.rs"]
+mod wrappers_test;
+#[cfg(test)]
+#[path = "wrappers_kiss_cov_test.rs"]
+mod wrappers_kiss_cov_test;

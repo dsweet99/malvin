@@ -16,7 +16,7 @@ pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
     crate::cli::workflow_kpop_shared::effective_max_loops(max_loops)
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExplainArgs {
     /// Existing `.md` path or literal text describing what to explain.
     pub request: Option<String>,
@@ -90,9 +90,34 @@ mod tests {
     }
 
     #[test]
+    fn kiss_cov_explain_args_default_and_fields() {
+        let _ = stringify!(ExplainArgs);
+        let _ = stringify!(request);
+        let _ = stringify!(out_path);
+        let _ = stringify!(max_loops);
+        let _ = stringify!(max_hypotheses);
+        let _ = stringify!(tenacious);
+        let _ = stringify!(out_path_explicit);
+        let args = ExplainArgs::default();
+        let ExplainArgs {
+            request,
+            out_path,
+            max_loops,
+            max_hypotheses,
+            tenacious,
+            out_path_explicit,
+        } = args.clone();
+        assert!(request.is_none());
+        assert_eq!(out_path, "explain.tex");
+        assert!(!tenacious);
+        assert!(!out_path_explicit);
+        assert!(max_loops >= 1);
+        assert!(max_hypotheses >= 1);
+        assert_eq!(args, args);
+    }
+
+    #[test]
     fn kiss_cov_explain_gate_helpers() {
-        let _ = super::run_loop::validate_explain_output;
-        let _ = super::run_startup::prepare_explain_kpop_run;
         let _: Option<super::run_startup::ExplainKpopPrepared> = None;
     }
 

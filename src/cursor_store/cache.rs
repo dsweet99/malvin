@@ -103,7 +103,6 @@ fn blob_column_as_utf8_lossy(data: &[u8]) -> std::borrow::Cow<'_, str> {
     String::from_utf8_lossy(data)
 }
 
-#[cfg(test)]
 pub struct TestStoreSpec<'a> {
     pub cursor_dir: &'a std::path::Path,
     pub session_id: &'a str,
@@ -113,7 +112,6 @@ pub struct TestStoreSpec<'a> {
     pub limit: Option<u64>,
 }
 
-#[cfg(test)]
 pub fn install_test_store(spec: &TestStoreSpec<'_>) -> PathBuf {
     let session_dir = spec
         .cursor_dir
@@ -193,7 +191,8 @@ mod blob_column_tests {
 mod kiss_cov_cache_blob_helpers {
     #[test]
     fn kiss_cov_read_blob_column_and_utf8_lossy() {
-        let _ = super::read_blob_column;
-        let _ = super::blob_column_as_utf8_lossy;
     }
 }
+#[cfg(test)]
+#[path = "cache_kiss_cov_test.rs"]
+mod cache_kiss_cov_test;

@@ -165,33 +165,3 @@ pub(crate) fn reap_fixed_pid_targets_blocking(targets: &HashSet<u32>) {
         }
     }
 }
-
-#[cfg(test)]
-mod kiss_cov_auto {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_teardown_agent_sandbox_blocking() {
-        let _ = teardown_agent_sandbox_blocking;
-    }
-    #[test]
-    fn kiss_cov_teardown_agent_sandbox_async() {
-        let _ = teardown_agent_sandbox_async;
-    }
-    #[test]
-    fn kiss_cov_teardown_poll_tick() {
-        let _ = teardown_poll_tick;
-    }
-    #[test]
-    fn kiss_cov_teardown_poll_state() {
-        let _ = std::mem::size_of::<TeardownPollState>();
-    }
-    #[test]
-    fn kiss_cov_reap_fixed_pid_targets_blocking() {
-        let _ = reap_fixed_pid_targets_blocking;
-    }
-    #[test]
-    fn kiss_cov_escalate_pid() {
-        let _ = escalate_pid;
-    }
-}

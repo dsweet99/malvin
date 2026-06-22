@@ -228,8 +228,19 @@ pub(crate) async fn run_gate_kpop_session(
         "agent (gate kpop) failed after {retries} {noun}. Last error:\n{last_error}"
     ))
 }
-
 #[cfg(test)]
-#[path = "kpop_session_kiss_cov_tests.rs"]
-mod kpop_session_kiss_cov_tests;
+#[path = "kpop_session_test.rs"]
+mod kpop_session_test;#[cfg(test)]
+#[path = "kpop_session_kiss_cov_test.rs"]
+mod kpop_session_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
 
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<GateKpopMultiturnCtx> = None;
+        let _ = iteration_number;
+    }
+}

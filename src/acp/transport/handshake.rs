@@ -67,6 +67,10 @@ pub(crate) async fn handshake_inner(p: HandshakeParams<'_>) -> Result<String, St
 #[test]
 fn handshake_params_and_inner_fn_are_linked_for_coverage() {
     let _: Option<HandshakeParams> = None;
-    let _ = handshake_inner;
 }
-
+#[cfg(test)]
+#[path = "handshake_test.rs"]
+mod handshake_test;
+#[cfg(test)]
+#[path = "handshake_kiss_cov_test.rs"]
+mod handshake_kiss_cov_test;

@@ -11,7 +11,6 @@ pub fn is_lgtm_str(content: &str) -> bool {
     t == "LGTM"
 }
 
-#[cfg(test)]
 mod is_lgtm_path {
     #![allow(clippy::must_use_candidate)]
 
@@ -22,10 +21,8 @@ mod is_lgtm_path {
     }
 }
 
-#[cfg(test)]
 pub use is_lgtm_path::is_lgtm;
 
-#[cfg(test)]
 fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Result<()> {
     if let Some(parent) = artifact_review_path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -33,7 +30,6 @@ fn clear_artifact_review(artifact_review_path: &std::path::Path) -> std::io::Res
     std::fs::write(artifact_review_path, "")
 }
 
-#[cfg(test)]
 /// Test helper: mirrors production sync semantics using [`std::io::Error`].
 ///
 /// # Errors
@@ -45,14 +41,14 @@ pub fn sync_review_file(
     sync_review_file_for_attempt(artifact_review_path).map_err(std::io::Error::other)
 }
 
-#[cfg(test)]
 fn sync_review_then_is_lgtm(artifact_review_path: &std::path::Path) -> std::io::Result<bool> {
     let content = sync_review_file(artifact_review_path)?;
     Ok(content.as_deref().is_some_and(is_lgtm_str))
 }
 
 #[cfg(test)]
-mod fanout_read_tests;
-
+#[path = "fanout_read_test.rs"]
+mod fanout_read_test;
 #[cfg(test)]
-mod tests;
+#[path = "review_sync_test.rs"]
+mod review_sync_test;

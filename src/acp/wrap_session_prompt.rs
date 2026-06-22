@@ -13,6 +13,7 @@ pub(crate) mod inline {
     use super::*;
         #[test]
         fn kiss_cov_unit_names() {
+
             let _: Option<PromptTraceDispatchMeta<'_>> = None;
         }
     }

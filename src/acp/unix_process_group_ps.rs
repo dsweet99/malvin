@@ -206,7 +206,9 @@ pub fn spawned_pids_since_baseline(
 
 #[cfg(not(unix))]
 pub fn signal_process_group(_: u32, _: i32) {}
-
-#[cfg(all(test, unix))]
-#[path = "unix_process_group_ps_tests.rs"]
-pub(crate) mod unix_process_group_ps_tests;
+#[cfg(test)]
+#[path = "unix_process_group_ps_test.rs"]
+mod unix_process_group_ps_test;
+#[cfg(test)]
+#[path = "unix_process_group_ps_kiss_cov_test.rs"]
+mod unix_process_group_ps_kiss_cov_test;

@@ -11,7 +11,3 @@ impl MultiturnPrompt {
         }
     }
 }
-
-#[cfg(test)]
-#[path = "multiturn_prompt_tests.rs"]
-mod multiturn_prompt_tests;

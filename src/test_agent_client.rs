@@ -27,7 +27,14 @@ pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     {
         use std::os::unix::fs::PermissionsExt;
         let path = bin_dir.join(name);
-        std::fs::write(&path, format!("#!/bin/sh\nexit {code}\n")).expect("write fake bin");
+        let script = if name == "kiss" {
+            format!(
+                "#!/bin/sh\nif [ \"$1\" = \"clamp\" ]; then exit 0; fi\nexit {code}\n"
+            )
+        } else {
+            format!("#!/bin/sh\nexit {code}\n")
+        };
+        std::fs::write(&path, script).expect("write fake bin");
         let mut perms = std::fs::metadata(&path).expect("bin meta").permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&path, perms).expect("chmod fake bin");
@@ -35,7 +42,12 @@ pub fn install_exit_gate_bin(bin_dir: &std::path::Path, name: &str, code: i32) {
     #[cfg(windows)]
     {
         let path = bin_dir.join(format!("{name}.cmd"));
-        std::fs::write(&path, format!("@exit {code}\r\n")).expect("write fake bin");
+        let script = if name == "kiss" {
+            format!("@if \"%1\"==\"clamp\" exit /b 0\r\n@exit {code}\r\n")
+        } else {
+            format!("@exit {code}\r\n")
+        };
+        std::fs::write(&path, script).expect("write fake bin");
     }
     #[cfg(not(any(unix, windows)))]
     {

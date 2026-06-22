@@ -19,6 +19,7 @@ pub fn spawn_code(c: &CodeSpawn<'_>) -> std::process::Output {
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", c.mock)
         .env("PATH", c.path_var)
+        .env("MALVIN_TEST_NO_REAL_AGENT", "1")
         .args(["code"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.args(c.extra_args);

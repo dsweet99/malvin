@@ -65,8 +65,6 @@ pub(crate) async fn reader_loop_eof_pending_error() -> String {
     }));
     let err = rx.await.unwrap().unwrap_err();
     let _: () = waiter.await.unwrap();
-    let _ = child.wait().await;
-    let _ = stdin_holder.kill().await;
     err
 }
 
@@ -88,12 +86,15 @@ fn test_reader_loop_drains_pending_on_stdout_eof() {
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
+#[path = "reader_tests_reader_loop_test.rs"]
+mod readers_reader_loop_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
     use super::*;
+
     #[test]
-    fn kiss_cov_unit_names() {
+    fn kiss_static_fn_item_refs() {
         let _: Option<EofReaderSpawnInputs> = None;
-        let _ = eof_reader_spawn_args;
     }
 }

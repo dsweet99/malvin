@@ -109,11 +109,6 @@ fn timing_line_implement_echoes_json_ms_via_same_formatter() {
 #[test]
 fn timing_line_from_json_matches_to_json_value_snapshot() {
     use crate::run_timing::{RunTiming, TimingPhase};
-
-    let _ = write_json_only;
-    let _ = write_json_and_print_summary;
-    let _ = duration_ms_u64;
-    let _ = format_timing_stdout_line_from_json;
     let mut r = RunTiming::default();
     r.mark_wall_start(std::time::Instant::now());
     r.mark_wall_end(std::time::Instant::now());

@@ -59,9 +59,6 @@ pub use acp_spawn_lock::{
     assert_no_peer_acp_spawn_lock_for_slot, release_acp_spawn_lock, set_active_acp_lock_slot,
 };
 pub mod malvin_sandbox;
-#[cfg(test)]
-#[path = "malvin_sandbox_tests.rs"]
-mod malvin_sandbox_tests;
 pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
@@ -92,6 +89,7 @@ pub mod tool_summary;
 mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
+#[path = "acp_test_mock_js.rs"]
 mod acp_test_mock_js;
 pub use acp_test_mock_js::acp_mock_js;
 pub mod agent_backend;
@@ -172,10 +170,6 @@ pub mod repo_checks;
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
 
-#[cfg(test)]
-#[path = "cli/source_detect_kiss_cov_tests.rs"]
-mod source_detect_kiss_cov_tests;
-
 #[path = "cli/init_cmd.rs"]
 pub mod init_cmd;
 
@@ -209,12 +203,10 @@ pub(crate) mod acp_session_unit_tests;
 #[cfg(test)] mod acp_tests;
 #[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
 #[cfg(test)] mod coverage_kiss;
-#[cfg(test)] mod coverage_kiss_agent;
-#[cfg(test)] mod orchestrator_tests;
-#[cfg(test)] mod malvin_kiss_coverage;
-#[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
-#[cfg(test)] mod agent_phase_kiss_cov;
-#[cfg(test)] #[path = "workspace_paths_tests.rs"] mod workspace_paths_tests;
+#[cfg(test)] #[path = "coverage_kiss_agent_test.rs"] mod coverage_kiss_agent;
+#[cfg(test)] #[path = "orchestrator_test.rs"] mod orchestrator_tests;
+#[cfg(test)] #[path = "malvin_kiss_coverage_test.rs"] mod malvin_kiss_coverage;
+
 #[cfg(all(test, unix))] mod test_stderr_capture;
 #[cfg(test)] mod malvin_test_seed;
 #[cfg(test)] pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};

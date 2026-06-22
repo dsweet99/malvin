@@ -41,7 +41,7 @@ pub(crate) fn validate_explain_output(tex_path: &std::path::Path, pdf_path: &std
     Ok(())
 }
 
-struct ExplainGateFinish<'a> {
+pub(crate) struct ExplainGateFinish<'a> {
     shared: &'a SharedOpts,
     prepared: &'a ExplainKpopPrepared,
     tex_path: &'a std::path::Path,
@@ -53,7 +53,7 @@ struct ExplainGateFinish<'a> {
     summarize_res: Result<(), String>,
 }
 
-fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
+pub(crate) fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
     let gate_r = if finish.gates_ok {
         validate_explain_output(finish.tex_path, finish.pdf_path)?;
         finish_gate_kpop_after_pass(
@@ -215,10 +215,22 @@ async fn finish_explain_run(input: ExplainFinishInput<'_>) -> Result<(), String>
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();
     }
-    let _ = &prepared.inner.malvin_checks_backup;
     r
 }
-
 #[cfg(test)]
-#[path = "../explain_flow_run_loop_tests.rs"]
-mod explain_flow_run_loop_tests;
+#[path = "run_loop_test.rs"]
+mod run_loop_test;
+#[cfg(test)]
+#[path = "run_loop_kiss_cov_test.rs"]
+mod run_loop_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<ExplainFinishInput> = None;
+        let _: Option<ExplainGateFinish> = None;
+    }
+}

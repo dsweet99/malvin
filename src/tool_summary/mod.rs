@@ -21,7 +21,6 @@ pub use types::{
 #[allow(unused_imports)]
 pub(crate) use human_a::{execute_effective_exit, execute_stdout_failed};
 pub use ansi::tool_summary_stdout_display;
-#[cfg(test)]
 pub(crate) use ansi::apply_tool_summary_ansi;
 #[allow(unused_imports)]
 pub(crate) use human_b::relativize_tool_path;
@@ -128,7 +127,6 @@ impl ToolSummaryTracker {
 #[cfg(test)]
 mod run_timing_regressions;
 
-#[cfg(test)]
 mod tool_summary_regressions {
     use super::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
     use serde_json::json;
@@ -205,4 +203,3 @@ mod tool_summary_regressions {
         assert_eq!(tracker.call_count(), 0);
     }
 }
-

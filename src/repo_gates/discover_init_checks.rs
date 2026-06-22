@@ -157,4 +157,20 @@ mod augment_helpers_tests {
         let text = std::fs::read_to_string(path).unwrap();
         assert_eq!(text, "kiss check\nruff check .\n");
     }
+
+    #[test]
+    fn checks_cover_precommit_signals_matches_hook_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pre-commit-config.yaml"),
+            "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
+        )
+        .unwrap();
+        let lines = vec!["ruff check .".to_string(), "kiss check".to_string()];
+        assert!(checks_cover_precommit_signals(tmp.path(), &lines));
+        assert!(!checks_cover_precommit_signals(tmp.path(), &["kiss check".to_string()]));
+    }
 }
+#[cfg(test)]
+#[path = "discover_init_checks_kiss_cov_test.rs"]
+mod discover_init_checks_kiss_cov_test;

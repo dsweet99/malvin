@@ -7,7 +7,6 @@ pub enum MockStep {
     RateLimited,
 }
 
-#[cfg(test)]
 pub type MockResponseHook = Box<dyn FnMut(usize, &[ChatMessage]) + Send>;
 
 pub struct MockScript {
@@ -76,5 +75,19 @@ mod tests {
         assert_eq!(first.content, "a");
         let second = llm.complete(&messages).await.expect_err("rate limited");
         assert!(second.is_retryable());
+    }
+}
+#[cfg(test)]
+#[path = "loop_mock_test.rs"]
+mod loop_mock_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<MockScript> = None;
+        let _ = complete;
     }
 }

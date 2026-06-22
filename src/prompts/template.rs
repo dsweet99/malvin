@@ -80,12 +80,9 @@ pub fn substitute_template(template: &str, context: &HashMap<String, String>) ->
     out
 }
 
-#[cfg(test)]
 mod template_kiss {
     #[test]
     fn malformed_brace_placeholders_rejects_unspaced_key() {
-        let _ = crate::prompts::render_mbc2_for_scheduled_kpop_block;
-        let _ = crate::prompts::render_header;
         let _ = super::is_spaced_brace_placeholder_inner;
         let bad = super::malformed_brace_placeholders("x {{plan_path}} y");
         assert_eq!(bad.len(), 1);

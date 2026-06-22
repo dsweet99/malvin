@@ -93,3 +93,19 @@ pub(crate) async fn open_live_prompt_trace_writer(
     }))
 }
 
+#[cfg(test)]
+#[path = "session_prompt_trace_kiss_cov_test.rs"]
+mod session_prompt_trace_kiss_cov_test;
+#[cfg(test)]
+#[path = "session_prompt_trace_kiss_test.rs"]
+mod session_prompt_trace_kiss_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<PromptTraceDispatchMeta> = None;
+    }
+}

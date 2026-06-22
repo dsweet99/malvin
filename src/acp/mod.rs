@@ -10,23 +10,14 @@ mod session_types;
 #[path = "prompt_trace_writer.rs"]
 mod prompt_trace_writer;
 pub(crate) use prompt_trace_writer::LivePromptTraceArgs;
-#[cfg(test)]
 pub(crate) use prompt_trace_writer::open_kpop_timestamp_trace_writer;
 
-#[path = "wrap_handshake_types.rs"]
-mod wrap_handshake_types;
 #[path = "wrap_session_io.rs"]
 mod wrap_session_io;
 #[path = "wrap_session_channels.rs"]
 mod wrap_session_channels;
-pub(crate) use wrap_handshake_types::*;
 pub(crate) use wrap_session_channels::*;
 pub(crate) use wrap_session_io::*;
-
-#[cfg(test)]
-#[path = "session_types_tests.rs"]
-mod session_types_tests;
-
 #[path = "unix_process_group_ps.rs"] mod unix_process_group_ps;
 #[cfg(unix)] #[path = "unix_process_ancestor.rs"] mod unix_process_ancestor;
 #[cfg(unix)] #[path = "unix_process_group_kill_targets.rs"] mod unix_process_group_kill_targets;
@@ -52,10 +43,12 @@ mod process_group_mem_watch;
 #[cfg(unix)] pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
 pub(crate) use jsonl_trace::AcpJsonlTrace;
-#[cfg(test)]
 pub(crate) use session_types::AcpSessionInner;
 pub use session_types::{AcpSession, AcpSpawnArgs};
-pub(crate) use session_types::{PromptTraceWriter, ResponseTx};
+pub(crate) use session_types::{
+    AcpChildStdout, AcpHandshakeContinuation, AcpHandshakeIo, AcpHandshakeSessionOpts,
+    PromptTraceWriter, ResponseTx,
+};
 
 #[path = "cursor_credentials.rs"]
 mod cursor_credentials;
@@ -69,10 +62,13 @@ pub(crate) use coalesce::*;
 mod coalesce_trace;
 pub(crate) use coalesce_trace::*;
 
+#[path = "kpop_stdout_logger_plan_helpers.rs"]
+mod kpop_stdout_logger_plan_helpers;
+pub(crate) use kpop_stdout_logger_plan_helpers::*;
+
 #[path = "trace_line_write_tee.rs"]
 mod trace_line_write_tee;
 mod trace_plain_tee;
-#[cfg(test)]
 pub(crate) use trace_line_write_tee::format_styled_tool_summary_tee_line;
 #[path = "trace_line_write_tool_summary.rs"]
 mod trace_line_write_tool_summary;
@@ -80,17 +76,12 @@ pub(crate) mod trace_line_write;
 pub(crate) use trace_line_write::{
     ReaderTraceLineOpts, reader_loop_verbose_and_trace_line, trace_file_write_line,
 };
-#[cfg(test)]
 pub(crate) use trace_line_write_tool_summary::write_tool_summary_trace_line;
 
 #[path = "session_trace_setup.rs"]
 mod session_trace_setup;
 #[path = "session_prompts_log.rs"]
-mod session_prompts_log;
-#[cfg(test)]
-#[path = "session_trace_tests.rs"]
-mod session_trace_tests;
-pub(crate) use session_prompts_log::*;
+mod session_prompts_log;pub(crate) use session_prompts_log::*;
 pub(crate) use session_trace_setup::*;
 
 use std::sync::Arc;
@@ -109,14 +100,9 @@ pub(crate) fn note_acp_trace_activity(
 mod jsonrpc_error;
 #[path = "transport/command.rs"]
 mod command;
-#[cfg(test)]
-#[path = "transport/command_kiss_cov_tests.rs"]
-mod command_kiss_cov_tests;
 #[path = "transport/rpc_part1.rs"]
 mod rpc_part1;
-#[path = "transport/rpc_wait_args.rs"]
-mod rpc_wait_args;
-pub(crate) use rpc_wait_args::RpcWaitArgs;
+pub(crate) use rpc_part2::RpcWaitArgs;
 #[path = "transport/rpc_part2.rs"]
 mod rpc_part2;
 #[path = "transport/rpc_part2_health.rs"]
@@ -129,7 +115,6 @@ pub(crate) use jsonrpc_error::*;
 pub(crate) use rpc_part1::*;
 pub(crate) use rpc_part2::*;
 
-#[cfg(test)]
 pub(crate) fn acp_rpc_timeout() -> std::time::Duration {
     std::time::Duration::from_secs(crate::config::acp_rpc_timeout_secs_from_env())
 }
@@ -180,11 +165,6 @@ mod session_drop_teardown;
 #[cfg(unix)]
 #[path = "hostile_orphan_test_util.rs"]
 pub mod hostile_orphan_test_util;
-
-#[cfg(test)]
-#[path = "session_tests.rs"]
-mod session_tests;
-
 #[path = "wrap_agent_bundle.rs"]
 mod wrap_agent_bundle;
 #[path = "wrap_retry_policy.rs"]
@@ -214,7 +194,6 @@ pub(crate) use prompt_round_health::PromptRoundHealth;
 mod ops_body_kpop_mt;
 pub(crate) use ops_body_kpop_mt::*;
 
-#[path = "client_impl_helpers.rs"]
 mod client_impl_helpers;
 #[path = "client_impl_session.rs"]
 mod client_impl_session;
@@ -229,14 +208,11 @@ mod client_impl_flow;
 pub(crate) use client_impl_helpers::*;
 pub(crate) use client_impl_prompt_dispatch::*;
 
-#[cfg(test)] #[path = "ops_inline_tests.rs"] mod ops_inline_tests;
-#[cfg(test)] #[path = "tee_strip_tests.rs"] mod tee_strip_tests;
-
 #[doc(hidden)]
 pub mod test_captive_session;
 
-#[cfg(test)] mod kiss_coverage;
-#[cfg(test)] #[path = "kiss_coverage_b.rs"] mod kiss_coverage_b;
-#[cfg(test)] #[path = "inc_kiss_coverage.rs"] mod inc_kiss_coverage;
-#[cfg(test)] #[path = "session_tests_kiss_cov.rs"] mod session_tests_kiss_cov;
 #[cfg(test)] pub(crate) mod spawn_test_args;
+
+#[cfg(test)]
+#[path = "session_test.rs"]
+pub(crate) mod session_test;

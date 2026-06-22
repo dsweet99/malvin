@@ -1,4 +1,8 @@
-use super::{acquire_session_name, assert_no_peer_name_lock, generate_auto_name, generate_auto_name_with, name_path, names_registry_root, sleep_child, with_isolated_names};
+use super::super::{
+    acquire_session_name, assert_no_peer_name_lock, generate_auto_name, generate_auto_name_with,
+    name_path, names_registry_root,
+};
+use super::{sleep_child, with_isolated_names};
 
 #[test]
 fn auto_name_is_five_lowercase_alnum() {

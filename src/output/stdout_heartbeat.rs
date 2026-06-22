@@ -1,7 +1,6 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-#[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::{
@@ -44,7 +43,6 @@ const HEARTBEAT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 static LAST_HEARTBEAT: Mutex<Option<Instant>> = Mutex::new(None);
 static WALL_CLOCK_POLLER: OnceLock<()> = OnceLock::new();
 
-#[cfg(test)]
 pub(crate) static HEARTBEAT_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 pub(crate) fn mark_heartbeat_emitted(now: Instant) {
@@ -97,7 +95,6 @@ pub(crate) fn poll_wall_clock_heartbeat_if_due() {
     try_emit_heartbeat_if_due(Instant::now(), false);
 }
 
-#[cfg(test)]
 static WALL_CLOCK_POLLER_STOP: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn wall_clock_poller_loop() {
@@ -121,14 +118,12 @@ pub(crate) fn spawn_wall_clock_poller_if_needed() {
     });
 }
 
-#[cfg(test)]
 pub(crate) fn reset_stdout_heartbeat_for_test() {
     *LAST_HEARTBEAT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
 }
 
-#[cfg(test)]
 pub(crate) fn test_set_last_heartbeat_elapsed(elapsed: Duration) {
     let last = Instant::now()
         .checked_sub(elapsed)

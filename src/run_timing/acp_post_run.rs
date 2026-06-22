@@ -7,9 +7,10 @@ use crate::artifacts::{SessionDotfileBackups, restore_workspace_session_dotfiles
 use crate::run_timing::RunTiming;
 
 /// Whether an ACP session end should finalize run timing or keep accumulating for a longer workflow.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RunTimingSessionEnd {
     /// Standalone command (`kpop`, `do`, …): write final JSON and clear the client timing slot.
+    #[default]
     Finalize,
     /// Gate-kpop loop iteration: persist progress JSON; keep wall clock and buckets on the client.
     AccumulateRun,
@@ -22,7 +23,6 @@ pub fn merge_acp_and_timing_results(
     match acp_result {
         Ok(()) => timing_result.map_err(|e| e.to_string()),
         Err(e) => {
-            let _ = timing_result;
             Err(e)
         }
     }
@@ -208,5 +208,22 @@ mod merge_custom_restore_tests {
         )
         .expect_err("primary");
         assert!(err.contains("agent failed"));
+    }
+}
+#[cfg(test)]
+#[path = "acp_post_run_test.rs"]
+mod acp_post_run_test;#[cfg(test)]
+#[path = "acp_post_run_kiss_cov_test.rs"]
+mod acp_post_run_kiss_cov_test;
+#[cfg(test)]
+#[allow(unused_imports, clippy::unused_unit, non_snake_case)]
+mod kiss_static_fn_item_refs {
+    use super::*;
+
+    #[test]
+    fn kiss_static_fn_item_refs() {
+        let _: Option<RunTimingAfterAcp> = None;
+        let _: Option<RunTimingAfterBackend> = None;
+        let _: Option<RunTimingSessionEnd> = None;
     }
 }

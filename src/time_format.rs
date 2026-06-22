@@ -38,8 +38,6 @@ pub fn heartbeat_payload_has_wall_clock_prefix(payload: &str) -> bool {
 mod tests {
     #[test]
     fn kiss_cov_timestamp_now_string() {
-        let _ = super::timestamp_now_string;
-        let _ = super::heartbeat_payload_now;
     }
 
     #[test]

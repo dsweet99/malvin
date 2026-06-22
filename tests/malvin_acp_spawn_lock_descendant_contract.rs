@@ -56,7 +56,6 @@ fn peer_acp_spawn_lock_allows_descendant_process() {
     );
     clear_active_sandbox_session();
     assert!(!lock.exists());
-    let _ = active_acp_lock_slot;
 }
 
 #[test]

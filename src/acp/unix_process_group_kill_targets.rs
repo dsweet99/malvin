@@ -4,9 +4,6 @@ use std::collections::{HashMap, HashSet};
 
 #[path = "session_spawn_affiliation.rs"]
 mod session_spawn_affiliation;
-#[cfg(test)]
-#[path = "session_spawn_affiliation_tests.rs"]
-mod session_spawn_affiliation_tests;
 pub(crate) use session_spawn_affiliation::{
     clear_session_spawn_affiliation, is_session_affiliated_pid, note_session_affiliated_pid,
     refresh_session_spawn_affiliation, session_affiliated_or_agent_acp,
