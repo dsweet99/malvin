@@ -1,14 +1,14 @@
 use crate::acp::trace_line_write::TraceFileStdout;
 use crate::acp::*;
 
-struct TraceBWriterOpts {
-    who: &'static str,
-    plain_lines: bool,
-    raw_output: bool,
-    emit_stdout_markdown: bool,
+pub(crate) struct TraceBWriterOpts {
+    pub(crate) who: &'static str,
+    pub(crate) plain_lines: bool,
+    pub(crate) raw_output: bool,
+    pub(crate) emit_stdout_markdown: bool,
 }
 
-async fn open_trace_b_writer(path: &std::path::Path, opts: TraceBWriterOpts) -> PromptTraceWriter {
+pub(crate) async fn open_trace_b_writer(path: &std::path::Path, opts: TraceBWriterOpts) -> PromptTraceWriter {
     let file = tokio::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -44,7 +44,7 @@ const TRACE_STDOUT_OFF: TraceFileStdout<'_> = TraceFileStdout {
 };
 
 #[tokio::test]
-async fn trace_file_write_line_prefixes_with_prompt_who() {
+pub(crate) async fn trace_file_write_line_prefixes_with_prompt_who() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-prefix.log");
     let mut writer = open_trace_b_writer(
@@ -68,7 +68,7 @@ async fn trace_file_write_line_prefixes_with_prompt_who() {
 }
 
 #[tokio::test]
-async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_stdout_only() {
+pub(crate) async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_stdout_only() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-raw-thought.log");
     let mut writer = open_trace_b_writer(
@@ -108,7 +108,7 @@ async fn raw_trace_file_write_line_records_thought_chunks_suppresses_thought_std
 }
 
 #[tokio::test]
-async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
+pub(crate) async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-plain.log");
     let mut writer = open_trace_b_writer(
@@ -134,7 +134,7 @@ async fn trace_file_write_line_plain_mode_omits_tag_prefix() {
 }
 
 #[tokio::test]
-async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
+pub(crate) async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-thought.log");
     let mut writer = open_trace_b_writer(
@@ -163,7 +163,7 @@ async fn trace_file_write_line_brackets_thought_chunks_in_trace_output() {
 }
 
 #[tokio::test]
-async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
+pub(crate) async fn trace_file_write_line_stdout_markdown_flag_tees_without_panic() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-md-tee.log");
     let mut writer = open_trace_b_writer(

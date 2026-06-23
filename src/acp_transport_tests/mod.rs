@@ -28,6 +28,10 @@ pub(crate) use rpc_integration_b::*;
 pub(crate) use rpc_unit::*;
 
 #[cfg(test)]
+#[path = "rest_kiss_cov.rs"]
+mod rest_kiss_cov;
+
+#[cfg(test)]
 mod kiss_coverage {
     use std::sync::atomic::Ordering;
 

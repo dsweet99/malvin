@@ -67,3 +67,7 @@ fn render_kpop_program_request_with_template(input: RenderKpopProgram<'_>) -> Re
         .map(|s| s.trim().to_string())
         .map_err(|e: PromptError| e.0)
 }
+
+#[cfg(test)]
+#[path = "workflow_kpop_render_kiss_cov.rs"]
+mod workflow_kpop_render_kiss_cov;

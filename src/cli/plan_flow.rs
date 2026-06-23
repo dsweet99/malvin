@@ -127,6 +127,10 @@ mod plan_flow_tests;
 mod plan_flow_mock_tests;
 
 #[cfg(test)]
+#[path = "plan_flow_kiss_cov_tests.rs"]
+mod plan_flow_kiss_cov_tests;
+
+#[cfg(test)]
 mod plan_snapshot_tests {
     use super::SessionDotfileBackups;
 

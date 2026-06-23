@@ -11,5 +11,8 @@ mod openrouter_tests;
 #[path = "prompt_too_long_retry_tests.rs"]
 mod prompt_too_long_retry_tests;
 
+#[cfg(test)]
+mod kiss_coverage;
+
 pub use client::OpenRouterClient;
 pub use types::{ChatMessage, ChatRole, CompletionResponse, ResponseUsage};

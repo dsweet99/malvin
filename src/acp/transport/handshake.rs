@@ -69,4 +69,3 @@ fn handshake_params_and_inner_fn_are_linked_for_coverage() {
     let _: Option<HandshakeParams> = None;
     let _ = handshake_inner;
 }
-

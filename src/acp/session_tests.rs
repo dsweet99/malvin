@@ -100,7 +100,7 @@ pub(crate) fn session_with_sleep_child_for_mem_watch(cwd: &Path) -> (AcpSession,
 }
 
 #[tokio::test]
-async fn watch_process_group_memory_kills_over_limit_child() {
+pub(crate) async fn watch_process_group_memory_kills_over_limit_child() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (session, pgid) = session_with_sleep_child_for_mem_watch(tmp.path());
     watch_process_group_memory(crate::acp::process_group_mem_watch::MemWatchHandles {
@@ -159,7 +159,7 @@ fn malvin_child_outside_agent_pg_counts_in_sandbox_rss() {
 }
 
 #[tokio::test]
-async fn spawn_process_group_memory_watcher_starts_for_session() {
+pub(crate) async fn spawn_process_group_memory_watcher_starts_for_session() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (session, _pgid) = session_with_sleep_child_for_mem_watch(tmp.path());
     spawn_process_group_memory_watcher(&session, tmp.path());
@@ -171,7 +171,7 @@ async fn spawn_process_group_memory_watcher_starts_for_session() {
 /// tear down reparented `setsid` orphans (not return early on `!process_group_still_alive`).
 #[cfg(unix)]
 #[tokio::test]
-async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
+pub(crate) async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
     use std::sync::atomic::AtomicBool;
 
     use super::hostile_orphan_test_util::{
@@ -215,7 +215,7 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
 /// reparented `setsid` session-leader orphans die (not only PG members).
 #[cfg(unix)]
 #[tokio::test]
-async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
+pub(crate) async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
     use std::sync::atomic::AtomicBool;
 
     use super::hostile_orphan_test_util::{process_alive, read_orphan_pid, spawn_hostile_agent};

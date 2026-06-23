@@ -50,14 +50,14 @@ fn collect_non_git_workspace_only_checks_root_gitignore_not_subdirs() {
     );
 }
 
-fn seed_nested_gitignore_repo(work: &Path) {
+pub(crate) fn seed_nested_gitignore_repo(work: &Path) {
     std::fs::create_dir_all(work.join("pkg")).unwrap();
     std::fs::write(work.join(".gitignore"), "root\n").unwrap();
     std::fs::write(work.join("pkg/.gitignore"), "pkg\n").unwrap();
     init_git_repo(work);
 }
 
-fn tamper_gitignore_tree(work: &Path) {
+pub(crate) fn tamper_gitignore_tree(work: &Path) {
     std::fs::write(work.join(".gitignore"), "tampered-root\n").unwrap();
     std::fs::write(work.join("pkg/.gitignore"), "tampered-pkg\n").unwrap();
     std::fs::create_dir_all(work.join("new")).unwrap();
@@ -87,7 +87,7 @@ fn nested_gitignore_round_trip_restores_tree_and_removes_agent_created_files() {
     });
 }
 
-fn assert_gitignore_contents(work: &Path, rel: &str, expected: &str) {
+pub(crate) fn assert_gitignore_contents(work: &Path, rel: &str, expected: &str) {
     assert_eq!(
         std::fs::read_to_string(work.join(rel)).unwrap(),
         expected

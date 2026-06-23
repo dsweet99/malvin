@@ -193,3 +193,6 @@ mod kiss_cov_auto {
 #[path = "kpop_flow_a_tests.rs"]
 mod kpop_flow_a_tests;
 
+#[cfg(test)]
+#[path = "kpop_flow_a_kiss_cov_tests.rs"]
+mod kpop_flow_a_kiss_cov_tests;

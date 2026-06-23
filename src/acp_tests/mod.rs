@@ -72,3 +72,6 @@ mod cursor_credentials_tests;
 
 #[path = "../acp/deferred_log_plan_regression.rs"]
 mod deferred_log_plan_regression;
+#[cfg(test)]
+#[path = "acp_helpers_kiss_cov.rs"]
+mod acp_helpers_kiss_cov;

@@ -191,4 +191,4 @@ fn enrich_fields_use_tracker_kind_when_done_update_omits_kind() {
 
 #[cfg(test)]
 #[path = "tests_emit.rs"]
-mod tests_emit;
+pub(crate) mod tests_emit;

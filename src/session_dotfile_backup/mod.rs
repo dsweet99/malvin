@@ -149,6 +149,15 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
 }
 
 #[cfg(test)]
+#[path = "gate_restore_merge_kiss_cov_tests.rs"]
+mod gate_restore_merge_kiss_cov_tests;
+#[cfg(test)]
+#[path = "wrappers_kiss_cov_tests.rs"]
+mod wrappers_kiss_cov_tests;
+#[cfg(test)]
+#[path = "gitignore_tree_kiss_cov_tests.rs"]
+mod gitignore_tree_kiss_cov_tests;
+#[cfg(test)]
 #[path = "mod_kiss_cov_tests.rs"]
 mod mod_kiss_cov_tests;
 #[cfg(test)]

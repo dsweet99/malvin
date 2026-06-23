@@ -45,7 +45,7 @@ impl AcpSession {
         self.0.busy.load(Ordering::SeqCst)
     }
 
-    async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
+    pub(crate) async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
         let io = acp_stdio(&self.0);
         let child_pid = self
             .0

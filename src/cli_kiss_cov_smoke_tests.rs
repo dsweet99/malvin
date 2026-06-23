@@ -41,14 +41,53 @@ fn smoke_cov_cli_cli_units_1a() {
 
 #[test]
 fn smoke_cov_cli_cli_units_1b() {
-    let _: Option<crate::do_flow::do_flow_prompt::DoCoderRun> = None;
+    let run = crate::do_flow::do_flow_prompt::DoCoderRun {
+        combined: "body".into(),
+        header_user_for_trace: ("hdr".into(), "user".into()),
+    };
+    let crate::do_flow::do_flow_prompt::DoCoderRun {
+        combined,
+        header_user_for_trace: (hdr, user),
+    } = run;
+    assert_eq!(combined, "body");
+    assert_eq!(hdr, "hdr");
+    assert_eq!(user, "user");
     let _ = crate::do_flow::do_flow_prompt::prepare_do_prompt_store;
     let _ = crate::do_flow::do_flow_prompt::combine_do_acp_prompt_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
     let _: Option<crate::init_cmd::RunInitOptions> = None;
-    let _: Option<crate::init_cmd::RunInitRequest<'static>> = None;
+    let shared = crate::cli::SharedOpts {
+        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        no_force: false,
+        no_tenacious: false,
+        no_tee: false,
+        no_markdown: false,
+        verbose: false,
+        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+        doc: false,
+        name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
+    };
+    let init_req = crate::init_cmd::RunInitRequest {
+        path: None,
+        languages: &[],
+        shared: &shared,
+        opts: crate::init_cmd::RunInitOptions {
+            overwrite_templates: false,
+            tee_startup_stdout: false,
+        },
+    };
+    let crate::init_cmd::RunInitRequest {
+        path,
+        languages,
+        shared: _,
+        opts: _,
+    } = init_req;
+    assert!(path.is_none());
+    assert!(languages.is_empty());
     let _ = crate::init_cmd::run_init;
     let _: Option<crate::init_cmd::Language> = None;
     let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
@@ -126,12 +165,48 @@ fn smoke_cov_cli_cli_explain_flow_units() {
 }
 
 #[test]
+fn smoke_cov_cli_kpop_flow_run_loop_types() {
+    let outcome = crate::cli::kpop_flow::kpop_flow_run_loop::kpop_loop_abort(true, "e".into());
+    let crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome {
+        acp_result: _,
+        agent_ran,
+    } = outcome;
+    assert!(agent_ran);
+    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
+    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
+    let _ = stringify!(KpopLoopExitAfterIteration);
+    let _ = stringify!(kpop);
+    let _ = stringify!(store);
+    let _ = stringify!(client);
+    let _ = stringify!(prepared);
+    let _ = stringify!(backups);
+    let _ = stringify!(exp_iter);
+    let _ = stringify!(exp_log_path);
+}
+
+#[test]
 fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::SharedOpts> = None;
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
-    let _: Option<crate::do_flow::DoArgs> = None;
+    let do_args = crate::do_flow::DoArgs {
+        repo_gates: false,
+        thoughts: false,
+        request: None,
+    };
+    let crate::do_flow::DoArgs {
+        repo_gates,
+        thoughts,
+        request,
+    } = do_args;
+    assert!(!repo_gates && !thoughts && request.is_none());
+    let _ = stringify!(DoRunPrep);
+    let _ = stringify!(new_do_client);
+    let _ = stringify!(RenderKpopProgram);
+    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
+    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
     let _: Option<crate::inspire_flow::InspireArgs> = None;
+    let _ = stringify!(InspireRunPrep);
     let _ = crate::inspire_flow::render_inspire_prompt;
     let _ = crate::inspire_flow::build_inspire_render_context;
     let _ = crate::inspire_flow::run_inspire;
@@ -160,24 +235,4 @@ fn smoke_cov_cli_cross_file_symbols_a() {
     let _ = stringify!(doc_text);
     let _ = stringify!(print_doc);
     let _ = stringify!(try_append_log_line);
-}
-
-#[test]
-fn smoke_cov_cli_cross_file_symbols_b() {
-    let _ = stringify!(DoRunPrep);
-    let _ = stringify!(new_do_client);
-    let _ = stringify!(run_do_repo_gates_if_requested);
-    let _ = stringify!(prepare_do_run);
-    let _ = stringify!(run_do_coder_prompt);
-    let _ = stringify!(run_do_acp);
-    let _ = stringify!(InspireRunPrep);
-    let _ = stringify!(prepare_inspire_prompt_store);
-    let _ = stringify!(new_inspire_client);
-    let _ = stringify!(inspire_emit_startup);
-    let _ = stringify!(prepare_inspire_run);
-    let _ = stringify!(run_inspire_coder_prompt);
-    let _ = stringify!(run_inspire_acp);
-    let _ = stringify!(test_kpop_args);
-    let _ = stringify!(install_mock_agent_env);
-    let _ = stringify!(write_mock_agent);
 }

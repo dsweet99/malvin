@@ -13,6 +13,10 @@ mod backend_tests;
 #[path = "backend_kpop_tests.rs"]
 mod backend_kpop_tests;
 
+#[cfg(test)]
+#[path = "agent_backend_kiss_cov.rs"]
+mod agent_backend_kiss_cov;
+
 pub use backend::AgentBackend;
 pub use backend_ops::{
     agent_backend_attach_run_timing_for_session, agent_backend_ensure_run_timing_for_session,

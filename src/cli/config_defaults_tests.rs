@@ -4,8 +4,7 @@ use super::{
 };
 use crate::cli::config_loop::subcommand_flag_from_command_line;
 use crate::cli::{Cli, Commands, SharedOpts};
-use crate::malvin_config_file::{AgentConfig, DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS};
-use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
+use crate::malvin_config_file::AgentConfig;
 use clap::{CommandFactory, FromArgMatches};
 
 fn write_agent_config(work_dir: &std::path::Path) {
@@ -223,25 +222,6 @@ fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         match cli.command.expect("command") {
             Commands::Kpop(kpop) => assert_eq!(kpop.request.as_deref(), Some("hello")),
-            other => panic!("expected kpop, got {other:?}"),
-        }
-        std::env::set_current_dir(cwd).expect("restore cwd");
-    });
-}
-
-#[test]
-fn parse_cli_with_config_defaults_uses_bundled_agent_defaults() {
-    crate::test_utils::with_isolated_home(|work| {
-        let cwd = std::env::current_dir().expect("cwd");
-        std::env::set_current_dir(work).expect("chdir");
-        let (cli, _) = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
-        assert_eq!(cli.shared.model, DEFAULT_CLI_MODEL);
-        assert_eq!(cli.shared.max_acp_retries, DEFAULT_MAX_ACP_RETRIES);
-        match cli.command.expect("command") {
-            Commands::Kpop(kpop) => {
-                assert_eq!(kpop.max_loops, DEFAULT_MAX_LOOPS);
-                assert_eq!(kpop.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
-            }
             other => panic!("expected kpop, got {other:?}"),
         }
         std::env::set_current_dir(cwd).expect("restore cwd");

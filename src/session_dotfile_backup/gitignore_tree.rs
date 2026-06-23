@@ -160,4 +160,4 @@ mod kiss_cov_auto {
 
 #[cfg(test)]
 #[path = "gitignore_tree_tests.rs"]
-mod gitignore_tree_tests;
+pub(crate) mod gitignore_tree_tests;

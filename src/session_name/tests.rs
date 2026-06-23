@@ -1,6 +1,9 @@
 use super::*;
 use std::path::Path;
 
+#[path = "session_name_kiss_cov_tests.rs"]
+mod session_name_kiss_cov_tests;
+
 #[path = "auto_name.rs"]
 mod auto_name;
 

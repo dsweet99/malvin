@@ -11,7 +11,7 @@ use crate::agent_backend::test_support::test_io;
 
 const MARKER: &str = "PLAN_CHAIN_MARKER";
 
-fn bash_then_final_responses() -> Vec<MockStep> {
+pub(crate) fn bash_then_final_responses() -> Vec<MockStep> {
     vec![
         MockStep::Ok(CompletionResponse {
             content: format!("```bash\necho {MARKER}\n```"),
@@ -29,7 +29,7 @@ fn bash_then_final_responses() -> Vec<MockStep> {
     ]
 }
 
-fn plan_chain_all_responses() -> Vec<MockStep> {
+pub(crate) fn plan_chain_all_responses() -> Vec<MockStep> {
     let mut responses = bash_then_final_responses();
     // Prompt 3: fence-less first reply triggers one no-fence nudge (same as prompt 1a).
     responses.push(MockStep::Ok(CompletionResponse {
@@ -43,7 +43,7 @@ fn plan_chain_all_responses() -> Vec<MockStep> {
     responses
 }
 
-fn record_marker_at_prompt3_idx3(seen: &Mutex<bool>, idx: usize, messages: &[ChatMessage]) {
+pub(crate) fn record_marker_at_prompt3_idx3(seen: &Mutex<bool>, idx: usize, messages: &[ChatMessage]) {
     if idx != 3 {
         return;
     }
@@ -57,7 +57,7 @@ fn record_marker_at_prompt3_idx3(seen: &Mutex<bool>, idx: usize, messages: &[Cha
     }
 }
 
-fn plan_chain_mock_client(seen_marker: Arc<Mutex<bool>>) -> MiniAgentClient {
+pub(crate) fn plan_chain_mock_client(seen_marker: Arc<Mutex<bool>>) -> MiniAgentClient {
     let hook_seen = Arc::clone(&seen_marker);
     MiniAgentClient::new_mock(
         MiniLoopConfig {
@@ -76,13 +76,13 @@ fn plan_chain_mock_client(seen_marker: Arc<Mutex<bool>>) -> MiniAgentClient {
     )
 }
 
-struct PlanChainWorkDirs {
-    work_dir: tempfile::TempDir,
-    log_1a: PathBuf,
-    log_3: PathBuf,
+pub(crate) struct PlanChainWorkDirs {
+    pub(crate) work_dir: tempfile::TempDir,
+    pub(crate) log_1a: PathBuf,
+    pub(crate) log_3: PathBuf,
 }
 
-fn plan_chain_work_dirs() -> PlanChainWorkDirs {
+pub(crate) fn plan_chain_work_dirs() -> PlanChainWorkDirs {
     let work_dir = tempfile::tempdir().expect("tempdir");
     let log_1a = work_dir.path().join("plan_1a.log");
     let log_3 = work_dir.path().join("plan_3.log");
@@ -93,7 +93,7 @@ fn plan_chain_work_dirs() -> PlanChainWorkDirs {
     }
 }
 
-async fn run_plan_chain_test_prompt_1a(client: &mut MiniAgentClient, work_dir: &Path, log_1a: &Path) {
+pub(crate) async fn run_plan_chain_test_prompt_1a(client: &mut MiniAgentClient, work_dir: &Path, log_1a: &Path) {
     client.begin_coder_session(work_dir).await.expect("begin");
     client
         .run_coder_prompt(
@@ -106,7 +106,7 @@ async fn run_plan_chain_test_prompt_1a(client: &mut MiniAgentClient, work_dir: &
         .expect("prompt 1a");
 }
 
-async fn run_plan_chain_test_prompt_3(client: &mut MiniAgentClient, log_3: &Path) {
+pub(crate) async fn run_plan_chain_test_prompt_3(client: &mut MiniAgentClient, log_3: &Path) {
     client
         .run_coder_prompt(
             "plan prompt 3",
@@ -120,7 +120,7 @@ async fn run_plan_chain_test_prompt_3(client: &mut MiniAgentClient, log_3: &Path
 }
 
 #[tokio::test]
-async fn plan_prompt_chain_shared_history() {
+pub(crate) async fn plan_prompt_chain_shared_history() {
     if super::bash_adapter::ensure_bash_on_path().is_err() {
         return;
     }
@@ -142,21 +142,3 @@ async fn plan_prompt_chain_shared_history() {
     );
 }
 
-#[cfg(test)]
-mod kiss_cov_gate_refs {
-    use super::*;
-
-    #[test]
-    fn kiss_cov_plan_chain_test_symbols() {
-        let _ = (
-            bash_then_final_responses,
-            plan_chain_all_responses,
-            record_marker_at_prompt3_idx3,
-            plan_chain_mock_client,
-            plan_chain_work_dirs,
-            run_plan_chain_test_prompt_1a,
-            run_plan_chain_test_prompt_3,
-            plan_prompt_chain_shared_history,
-        );
-    }
-}

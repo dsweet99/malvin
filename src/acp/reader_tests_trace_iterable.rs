@@ -4,7 +4,7 @@ use crate::acp_tests::reader_tests_trace_kpop_helpers::{
     flush_coalesce_lines, kpop_trace_writer, open_kpop_trace_writer,
 };
 
-fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
+pub(crate) fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
     assert!(
         trace.contains("WritableIterable is closed"),
         "trace file should still record agent text: {trace:?}"
@@ -20,7 +20,7 @@ fn assert_iterable_closed_operational_stderr(stderr: &str, trace: &str) {
     );
 }
 
-fn session_update_message_chunk_json(text: &str) -> serde_json::Value {
+pub(crate) fn session_update_message_chunk_json(text: &str) -> serde_json::Value {
     serde_json::json!({
         "jsonrpc": "2.0",
         "method": "session/update",
@@ -34,7 +34,7 @@ fn session_update_message_chunk_json(text: &str) -> serde_json::Value {
     })
 }
 
-async fn deliver_coalesced_message_chunk(
+pub(crate) async fn deliver_coalesced_message_chunk(
     writer: &mut PromptTraceWriter,
     text: &str,
     tee_stdout: bool,
@@ -55,7 +55,7 @@ async fn deliver_coalesced_message_chunk(
     coalesce
 }
 
-fn assert_split_iterable_closed_operational(stderr: &str, stdout_log: &str) {
+pub(crate) fn assert_split_iterable_closed_operational(stderr: &str, stdout_log: &str) {
     let agent_tag = crate::output::format_who_tag_delim(crate::output::WHO_M);
     assert!(
         stderr.contains(crate::output::WARNING_WHO)
@@ -68,7 +68,7 @@ fn assert_split_iterable_closed_operational(stderr: &str, stdout_log: &str) {
     );
 }
 
-async fn run_split_iterable_closed_fixture() -> (String, String) {
+pub(crate) async fn run_split_iterable_closed_fixture() -> (String, String) {
     let text = format!("{}\n\nError: T: WritableIterable is closed", "p".repeat(95));
     let dir = tempfile::tempdir().unwrap();
     let stdout_path = dir.path().join("stdout-split.log");
@@ -86,7 +86,7 @@ async fn run_split_iterable_closed_fixture() -> (String, String) {
 }
 
 #[tokio::test]
-async fn trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
+pub(crate) async fn trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("trace-iterable-closed.log");
     let file = tokio::fs::OpenOptions::new()
@@ -120,7 +120,7 @@ async fn trace_file_write_line_iterable_closed_warns_without_kpop_tee() {
 }
 
 #[tokio::test]
-async fn readable_iterable_closed_split_coalesce_emits_readable_operational_warning() {
+pub(crate) async fn readable_iterable_closed_split_coalesce_emits_readable_operational_warning() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -147,7 +147,7 @@ async fn readable_iterable_closed_split_coalesce_emits_readable_operational_warn
 }
 
 #[tokio::test]
-async fn iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee() {
+pub(crate) async fn iterable_closed_split_across_coalesce_emissions_suppresses_kpop_tee() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

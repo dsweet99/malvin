@@ -236,7 +236,10 @@ pub(crate) use client_impl_prompt_dispatch::*;
 pub mod test_captive_session;
 
 #[cfg(test)] mod kiss_coverage;
+#[cfg(test)] pub(crate) use kiss_coverage::smoke_reader_loop_eof_pending_error;
 #[cfg(test)] #[path = "kiss_coverage_b.rs"] mod kiss_coverage_b;
 #[cfg(test)] #[path = "inc_kiss_coverage.rs"] mod inc_kiss_coverage;
 #[cfg(test)] #[path = "session_tests_kiss_cov.rs"] mod session_tests_kiss_cov;
+#[cfg(test)] #[path = "session_trace_tests_kiss_cov.rs"] mod session_trace_tests_kiss_cov;
+#[cfg(test)] #[path = "rest_kiss_cov.rs"] mod rest_kiss_cov;
 #[cfg(test)] pub(crate) mod spawn_test_args;

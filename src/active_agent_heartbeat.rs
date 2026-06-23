@@ -3,9 +3,9 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
-struct ActiveAgentSandbox {
-    pgid: u32,
-    spawn_baseline: HashSet<u32>,
+pub(crate) struct ActiveAgentSandbox {
+    pub(crate) pgid: u32,
+    pub(crate) spawn_baseline: HashSet<u32>,
 }
 
 static ACTIVE_AGENT_SANDBOX: Mutex<Vec<ActiveAgentSandbox>> = Mutex::new(Vec::new());

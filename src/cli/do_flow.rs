@@ -206,3 +206,7 @@ mod kiss_cov_gate_refs{
         let _ = run_do_repo_gates_if_requested;
     }
 }
+
+#[cfg(test)]
+#[path = "do_flow_kiss_cov_tests.rs"]
+mod do_flow_kiss_cov_tests;

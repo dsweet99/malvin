@@ -9,7 +9,7 @@ use crate::output::{
 use serde_json::json;
 
 #[test]
-fn h2_read_without_path_suppresses_pending_stdout() {
+pub(crate) fn h2_read_without_path_suppresses_pending_stdout() {
     let pending = json!({
         "method": "session/update",
         "params": {"update": {
@@ -29,7 +29,7 @@ fn h2_read_without_path_suppresses_pending_stdout() {
 }
 
 #[test]
-fn h3_edit_stdout_omits_line_number_for_edit_subject() {
+pub(crate) fn h3_edit_stdout_omits_line_number_for_edit_subject() {
     let v = json!({
         "method": "session/update",
         "params": {"update": {
@@ -64,7 +64,7 @@ fn h3_edit_stdout_omits_line_number_for_edit_subject() {
 }
 
 #[test]
-fn h4_execute_command_newlines_are_escaped_in_stdout_summary() {
+pub(crate) fn h4_execute_command_newlines_are_escaped_in_stdout_summary() {
     let cmd = "python3 -c \"\nprint(1)\n\"";
     let start = json!({
         "method": "session/update",
@@ -101,7 +101,7 @@ fn h4_execute_command_newlines_are_escaped_in_stdout_summary() {
 }
 
 #[tokio::test]
-async fn h6_trace_file_lines_include_timestamp() {
+pub(crate) async fn h6_trace_file_lines_include_timestamp() {
     use crate::acp::open_kpop_timestamp_trace_writer;
     use crate::acp::trace_line_write::TraceFileStdout;
     use crate::acp::SessionUpdateChunkKind;
@@ -133,7 +133,7 @@ async fn h6_trace_file_lines_include_timestamp() {
 }
 
 #[test]
-fn h7_live_stdout_log_both_tool_summary_and_thought_tee_timestamped() {
+pub(crate) fn h7_live_stdout_log_both_tool_summary_and_thought_tee_timestamped() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -194,7 +194,7 @@ fn h7_live_stdout_log_both_tool_summary_and_thought_tee_timestamped() {
 }
 
 #[test]
-fn h8_path_in_start_raw_input_is_retained_on_pending_update() {
+pub(crate) fn h8_path_in_start_raw_input_is_retained_on_pending_update() {
     let start = json!({
         "method": "session/update",
         "params": {"update": {

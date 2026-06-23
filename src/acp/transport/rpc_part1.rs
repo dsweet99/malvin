@@ -237,4 +237,3 @@ mod kiss_cov_auto{
     #[test]
     fn kiss_cov_rpc_request_with_correlation_id() { let _ = rpc_request_with_correlation_id; }
 }
-

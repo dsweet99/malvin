@@ -16,3 +16,7 @@ mod unix_shutdown;
 #[cfg(all(test, unix))]
 #[path = "kiss_unix_shutdown.rs"]
 mod kiss_unix_shutdown;
+
+#[cfg(test)]
+#[path = "kiss_cov_external.rs"]
+mod kiss_cov_external;

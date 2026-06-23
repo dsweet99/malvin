@@ -7,6 +7,8 @@ mod model_resolve;
 mod trace;
 
 #[cfg(test)]
+mod kiss_coverage;
+#[cfg(test)]
 mod client_retry_tests;
 #[cfg(test)]
 mod plan_chain_tests;

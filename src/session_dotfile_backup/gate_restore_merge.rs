@@ -20,12 +20,12 @@ pub(super) fn kissconfig_low_coverage_threshold(bytes: &[u8]) -> bool {
     crate::repo_checks::kissconfig_warn::should_warn_low_test_coverage(&value)
 }
 
-const fn slot_deleted(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) const fn slot_deleted(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
     matches!(anchor, DotfileBackupState::Present(_))
         && matches!(progress, DotfileBackupState::Missing)
 }
 
-const fn kissignore_agent_created(
+pub(crate) const fn kissignore_agent_created(
     anchor: &DotfileBackupState,
     progress: &DotfileBackupState,
 ) -> bool {
@@ -33,14 +33,14 @@ const fn kissignore_agent_created(
         && matches!(progress, DotfileBackupState::Present(_))
 }
 
-const fn slot_bytes(value: &DotfileBackupState) -> Option<&[u8]> {
+pub(crate) const fn slot_bytes(value: &DotfileBackupState) -> Option<&[u8]> {
     match value {
         DotfileBackupState::Present(payload) => Some(payload.bytes.as_slice()),
         DotfileBackupState::Missing => None,
     }
 }
 
-fn slot_content_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn slot_content_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
     let (Some(anchor_bytes), Some(progress_bytes)) = (slot_bytes(anchor), slot_bytes(progress))
     else {
         return false;
@@ -48,7 +48,7 @@ fn slot_content_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupS
     anchor_bytes != progress_bytes
 }
 
-fn kissconfig_threshold_regressed(
+pub(crate) fn kissconfig_threshold_regressed(
     anchor: &DotfileBackupState,
     progress: &DotfileBackupState,
 ) -> bool {
@@ -61,7 +61,7 @@ fn kissconfig_threshold_regressed(
     !anchor_low && progress_low
 }
 
-fn kissconfig_repaired_clamp_damage(
+pub(crate) fn kissconfig_repaired_clamp_damage(
     anchor: &DotfileBackupState,
     progress: &DotfileBackupState,
 ) -> bool {
@@ -73,24 +73,24 @@ fn kissconfig_repaired_clamp_damage(
         && !kissconfig_low_coverage_threshold(progress_bytes)
 }
 
-fn malvin_checks_repaired_clamp_damage(
+pub(crate) fn malvin_checks_repaired_clamp_damage(
     anchor: &DotfileBackupState,
     progress: &DotfileBackupState,
 ) -> bool {
     is_invalid_bare_kiss_checks(anchor) && !is_invalid_bare_kiss_checks(progress)
 }
 
-fn kissconfig_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn kissconfig_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
     slot_deleted(anchor, progress)
         || slot_content_regressed(anchor, progress)
         || kissconfig_threshold_regressed(anchor, progress)
 }
 
-fn slot_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn slot_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
     slot_deleted(anchor, progress) || slot_content_regressed(anchor, progress)
 }
 
-fn checks_lines_are_superset(anchor_bytes: &[u8], progress_bytes: &[u8]) -> bool {
+pub(crate) fn checks_lines_are_superset(anchor_bytes: &[u8], progress_bytes: &[u8]) -> bool {
     let anchor_lines = substantive_check_lines(anchor_bytes);
     let progress_lines = substantive_check_lines(progress_bytes);
     anchor_lines
@@ -98,7 +98,7 @@ fn checks_lines_are_superset(anchor_bytes: &[u8], progress_bytes: &[u8]) -> bool
         .all(|line| progress_lines.iter().any(|p| p == line))
 }
 
-fn malvin_checks_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
+pub(crate) fn malvin_checks_regressed(anchor: &DotfileBackupState, progress: &DotfileBackupState) -> bool {
     if slot_deleted(anchor, progress) {
         return true;
     }

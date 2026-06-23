@@ -55,3 +55,20 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
     });
     assert!(matches!(backups.kissconfig, DotfileBackupState::Missing));
 }
+
+#[test]
+fn kiss_cov_gitignore_file_backup_construct_destructure() {
+    let file = super::gitignore_tree::GitignoreFileBackup {
+        rel: std::path::PathBuf::from(".gitignore"),
+        bytes: b"target/\n".to_vec(),
+    };
+    let super::gitignore_tree::GitignoreFileBackup { rel, bytes } = file;
+    assert_eq!(rel, std::path::PathBuf::from(".gitignore"));
+    assert_eq!(bytes, b"target/\n");
+}
+
+#[test]
+fn kiss_cov_slots_kiss_cov_shared_fn_refs() {
+    let _ = super::slots_kiss_cov_shared::dotfile_spec_row_field_count;
+    let _ = super::alloc::random_backup_id;
+}

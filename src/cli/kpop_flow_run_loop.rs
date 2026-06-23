@@ -1,20 +1,27 @@
 //! Outer `malvin kpop` agent loop (`--max-loops`, early exit on `## KPOP_SOLVED`).
 
-mod kpop_flow_run_loop_types;
-pub(crate) use kpop_flow_run_loop_types::RunKpopAgentLoopsParams;
-
 use std::path::PathBuf;
 
 use crate::artifacts::{ensure_gate_exp_log_file, SessionDotfileBackups};
+use crate::cli::KpopArgs;
 use crate::kpop_progression::{agent_declared_success, read_exp_log_text, KpopMultiturnState};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
+use crate::prompts::PromptStore;
 use crate::KpopTurnPrompts;
 
 use super::kpop_flow_a::{kpop_run_acp_multiturn, KpopAcpMultiturnCtx};
+use super::KpopPrepared;
 use crate::cli::loop_opts::kpop_agent_loop_exp_iteration;
 use crate::cli::workflow_kpop_shared::{
     effective_max_loops, gate_iteration_context, print_kpop_session_log_line,
 };
+
+pub(crate) struct RunKpopAgentLoopsParams<'a> {
+    pub kpop: &'a KpopArgs,
+    pub store: &'a PromptStore,
+    pub client: &'a mut crate::agent_backend::AgentBackend,
+    pub prepared: &'a KpopPrepared,
+}
 
 pub(crate) struct RunKpopAgentLoopsOutcome {
     pub acp_result: Result<(), String>,
@@ -175,4 +182,3 @@ pub(crate) fn clear_legacy_gate_exp_log(artifacts: &crate::artifacts::RunArtifac
         let _ = std::fs::remove_file(artifacts.gate_exp_log_path(0));
     }
 }
-

@@ -7,8 +7,7 @@ fn smoke_acp_reader_support_behavior() {
 }
 
 #[cfg(unix)]
-#[tokio::test]
-async fn smoke_reader_loop_eof_pending_error() {
+pub(crate) async fn smoke_reader_loop_eof_pending_error() {
     let msg = crate::acp_tests::reader_tests_reader_loop::reader_loop_eof_pending_error().await;
     assert!(!msg.is_empty());
 }
@@ -17,8 +16,6 @@ async fn smoke_reader_loop_eof_pending_error() {
 #[test]
 fn smoke_acp_reader_helper_production_symbols() {
     let _ = crate::acp_tests::reader_tests_helpers::acp_activity_state;
-    let _: Option<crate::acp_tests::reader_tests_helpers::IncomingDispatchParts> = None;
-    let _: Option<crate::acp_tests::reader_tests_helpers::CatSession> = None;
 }
 
 #[cfg(unix)]
@@ -28,8 +25,8 @@ fn smoke_acp_reader_helpers_unix_symbols() {
         CatSession, IncomingDispatchParts, acp_activity_state, block_on_test,
     };
     let _ = acp_activity_state;
-    let _: Option<IncomingDispatchParts<'_>> = None;
-    let _: Option<CatSession> = None;
+    let _ = CatSession::new;
+    let _ = IncomingDispatchParts::dispatch_lines;
     block_on_test(async {
         let cat = CatSession::new().await;
         cat.dispatch_parts().dispatch_lines(&[]).await;

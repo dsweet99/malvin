@@ -19,6 +19,10 @@ mod loop_driver_tests;
 #[path = "loop_driver_no_fence_tests.rs"]
 mod loop_driver_no_fence_tests;
 
+#[cfg(test)]
+#[path = "loop_driver_kiss_cov.rs"]
+mod loop_driver_kiss_cov;
+
 pub use loop_inner::run_inner_loop;
 #[cfg(test)]
 pub(crate) use loop_inner::{classify_turn, exhausted_error, push_user_prompt, TurnAction, TurnContext};

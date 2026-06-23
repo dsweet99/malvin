@@ -15,7 +15,7 @@ mod tests_active;
 mod test_fixtures;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[cfg(test)]
 #[path = "tests_plan.rs"]
@@ -80,3 +80,7 @@ fn defer_heartbeat_hook(display: &str, log: &str) -> bool {
 #[cfg(test)]
 #[path = "hook_tests.rs"]
 mod hook_tests;
+
+#[cfg(test)]
+#[path = "deferred_log_kiss_cov_tests.rs"]
+mod deferred_log_kiss_cov_tests;

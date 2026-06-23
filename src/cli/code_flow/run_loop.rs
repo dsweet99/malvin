@@ -159,3 +159,7 @@ mod tests {
         assert!(std::ptr::eq(params.artifacts, &raw const *prepared.artifacts()));
     }
 }
+
+#[cfg(test)]
+#[path = "run_loop_kiss_cov.rs"]
+mod run_loop_kiss_cov;

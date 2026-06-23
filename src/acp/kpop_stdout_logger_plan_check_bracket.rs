@@ -94,7 +94,7 @@ pub(super) fn assert_styled_tool_summary_payloads_match(start_payload: &str, don
     }
 }
 
-async fn tee_tool_summary_updates(
+pub(crate) async fn tee_tool_summary_updates(
     start: &serde_json::Value,
     pending: &serde_json::Value,
     done: &serde_json::Value,

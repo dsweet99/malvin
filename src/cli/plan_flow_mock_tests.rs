@@ -5,7 +5,7 @@ use super::plan_flow_test_helpers::{
 };
 
 #[test]
-fn prepare_plan_run_truncates_and_loads_prompt_store() {
+pub(crate) fn prepare_plan_run_truncates_and_loads_prompt_store() {
     crate::test_utils::with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {
             let plan = work.join("plan.md");
@@ -29,7 +29,7 @@ fn prepare_plan_run_truncates_and_loads_prompt_store() {
 }
 
 #[test]
-fn plan_session_restores_gitignore_after_agent() {
+pub(crate) fn plan_session_restores_gitignore_after_agent() {
     let _ = write_plan_gitignore_tamper_mock_agent;
     crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|work| {
@@ -39,7 +39,7 @@ fn plan_session_restores_gitignore_after_agent() {
     });
 }
 
-async fn run_plan_gitignore_tamper_prompt(prep: &mut super::plan_flow_pipeline::PlanRunPrep) {
+pub(crate) async fn run_plan_gitignore_tamper_prompt(prep: &mut super::plan_flow_pipeline::PlanRunPrep) {
     prep.client
         .begin_coder_session(&prep.artifacts.work_dir)
         .await
@@ -61,7 +61,7 @@ async fn run_plan_gitignore_tamper_prompt(prep: &mut super::plan_flow_pipeline::
     prep.client.end_coder_session().await.expect("end");
 }
 
-async fn run_plan_gitignore_restore_case(work: &std::path::Path) {
+pub(crate) async fn run_plan_gitignore_restore_case(work: &std::path::Path) {
     let plan = work.join("plan.md");
     std::fs::write(&plan, "# User\n").expect("write");
     std::fs::write(work.join(".gitignore"), "plan-gitignore\n").expect("gitignore");
@@ -77,7 +77,7 @@ async fn run_plan_gitignore_restore_case(work: &std::path::Path) {
     );
 }
 
-fn restore_plan_session_dotfiles(
+pub(crate) fn restore_plan_session_dotfiles(
     prep: &super::plan_flow_pipeline::PlanRunPrep,
 ) -> Result<(), String> {
     crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
@@ -88,7 +88,7 @@ fn restore_plan_session_dotfiles(
     )
 }
 
-fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
+pub(crate) fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
 
     let handler = r"    const fs = require('fs');
@@ -105,7 +105,7 @@ fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
 }
 
 #[test]
-fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
+pub(crate) fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
     crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {

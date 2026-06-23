@@ -19,7 +19,7 @@ use crate::output::{
 use serde_json::json;
 
 #[test]
-fn h9_edit_without_path_suppresses_pending_stdout() {
+pub(crate) fn h9_edit_without_path_suppresses_pending_stdout() {
     let pending = json!({
         "method": "session/update",
         "params": {"update": {
@@ -39,7 +39,7 @@ fn h9_edit_without_path_suppresses_pending_stdout() {
 }
 
 #[tokio::test]
-async fn h10_write_trace_line_coalesced_tees_timestamped_tool_summary_to_stdout_log() {
+pub(crate) async fn h10_write_trace_line_coalesced_tees_timestamped_tool_summary_to_stdout_log() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -56,7 +56,7 @@ async fn h10_write_trace_line_coalesced_tees_timestamped_tool_summary_to_stdout_
 }
 
 #[tokio::test]
-async fn h12_tool_summary_trace_and_stdout_log_share_timestamp() {
+pub(crate) async fn h12_tool_summary_trace_and_stdout_log_share_timestamp() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -86,7 +86,7 @@ async fn h12_tool_summary_trace_and_stdout_log_share_timestamp() {
 }
 
 #[test]
-fn h13_read_dotted_title_without_path_suppresses_pending_stdout() {
+pub(crate) fn h13_read_dotted_title_without_path_suppresses_pending_stdout() {
     let pending = json!({
         "method": "session/update",
         "params": {"update": {
@@ -107,7 +107,7 @@ fn h13_read_dotted_title_without_path_suppresses_pending_stdout() {
 }
 
 #[test]
-fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
+pub(crate) fn h11_tool_summary_tee_log_matches_stripped_display_when_color_on() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -189,7 +189,7 @@ fn h22_rendered_tool_summary_tee(
 }
 
 #[tokio::test]
-async fn h22_styled_tool_summary_trace_tee_dims_payload() {
+pub(crate) async fn h22_styled_tool_summary_trace_tee_dims_payload() {
     let start = execute_tool_json("tool_dim", "pending", "echo hi");
     let done = execute_tool_done_json("tool_dim");
     let ts = "20260413.121314.015";
@@ -213,11 +213,11 @@ async fn h22_styled_tool_summary_trace_tee_dims_payload() {
 }
 
 #[test]
-fn h22_tee_writer_opens() {
+pub(crate) fn h22_tee_writer_opens() {
 }
 
 #[test]
-fn h22_rendered_tool_summary_tee_offline() {
+pub(crate) fn h22_rendered_tool_summary_tee_offline() {
     let start = execute_tool_json("tool_dim_offline", "pending", "echo hi");
     let done = execute_tool_done_json("tool_dim_offline");
     let rendered = h22_rendered_tool_summary_tee(std::path::PathBuf::new(), &start, &done, "ts");

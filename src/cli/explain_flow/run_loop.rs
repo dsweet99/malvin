@@ -156,12 +156,12 @@ fn emit_explain_startup(
     )
 }
 
-struct ExplainFinishInput<'a> {
-    explain: &'a mut ExplainArgs,
-    prepared: &'a ExplainKpopPrepared,
-    shared: &'a SharedOpts,
-    workflow: WorkflowCliOptions,
-    gate_session: (
+pub(crate) struct ExplainFinishInput<'a> {
+    pub(crate) explain: &'a mut ExplainArgs,
+    pub(crate) prepared: &'a ExplainKpopPrepared,
+    pub(crate) shared: &'a SharedOpts,
+    pub(crate) workflow: WorkflowCliOptions,
+    pub(crate) gate_session: (
         bool,
         bool,
         Option<std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,

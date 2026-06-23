@@ -7,6 +7,64 @@ fn kiss_cov_mod_private_record_helpers() {
 #[test]
 fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::tool_summary_lines;
+    let record = super::ToolCallRecord {
+        kind: "read".into(),
+        title: "t".into(),
+        command: None,
+        input_path: None,
+        search_query: None,
+        input_line_range: None,
+        started: std::time::Instant::now(),
+        stdout_start_emitted: false,
+    };
+    let super::ToolCallRecord {
+        kind,
+        title: _,
+        command: _,
+        input_path: _,
+        search_query: _,
+        input_line_range: _,
+        started: _,
+        stdout_start_emitted: _,
+    } = record;
+    assert_eq!(kind, "read");
+    let lines = super::ToolSummaryLines {
+        log: "log".into(),
+        stdout: None,
+        stdout_deferred: None,
+    };
+    let super::ToolSummaryLines {
+        log,
+        stdout: _,
+        stdout_deferred: _,
+    } = lines;
+    assert_eq!(log, "log");
+    let parsed = super::parse::ParsedToolUpdate {
+        phase: super::types::TOOL_PHASE_START,
+        id: "id".into(),
+        kind: "read".into(),
+        title: "t".into(),
+        status: None,
+        command: None,
+        input_path: None,
+        input_line_range: None,
+        search_query: None,
+        raw_output: None,
+    };
+    let super::parse::ParsedToolUpdate {
+        phase,
+        id,
+        kind: _,
+        title: _,
+        status: _,
+        command: _,
+        input_path: _,
+        input_line_range: _,
+        search_query: _,
+        raw_output: _,
+    } = parsed;
+    assert_eq!(phase, super::types::TOOL_PHASE_START);
+    assert_eq!(id, "id");
     let _ = super::human_a::format_tool_stdout;
     let _ = super::human_a::execute_effective_exit;
     let _ = super::human_a::execute_stdout_failed;
@@ -22,7 +80,6 @@ fn kiss_cov_tool_summary_core_symbols_for_kiss() {
     let _ = super::parse::tool_phase_label;
     let _ = super::parse_acp::acp_path_value;
     let _ = super::parse_acp::acp_normalize_path;
-    let _: Option<super::parse::ParsedToolUpdate> = None;
 }
 
 #[test]
