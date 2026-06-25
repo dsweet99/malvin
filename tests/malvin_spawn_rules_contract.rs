@@ -3,7 +3,7 @@
 mod common;
 
 #[cfg(unix)]
-use common::{fresh_workdir, sleep_child};
+use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
 use malvin::acp::snapshot_pids;
 #[cfg(unix)]
@@ -120,17 +120,6 @@ fn peer_acp_spawn_lock_allows_same_process_holder() {
     std::fs::write(&lock, std::process::id().to_string()).expect("write self lock");
     assert_no_peer_acp_spawn_lock(&work).expect("same-process holder allowed");
     assert!(lock.exists(), "self-held lock must remain");
-}
-
-#[cfg(unix)]
-fn write_peer_acp_lock(work: &std::path::Path, slot: &str, holder_pid: u32) -> std::path::PathBuf {
-    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
-    let lock = work
-        .join(".malvin")
-        .join("acp_spawn")
-        .join(format!("{slot}.lock"));
-    std::fs::write(&lock, holder_pid.to_string()).expect("write peer lock");
-    lock
 }
 
 /// `note_active_sandbox_session` must fail when a live peer holds the same ACP lock slot.

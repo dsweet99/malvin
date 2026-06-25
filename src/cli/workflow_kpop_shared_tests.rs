@@ -136,17 +136,14 @@ fn run_kpop_workspace_gates_restores_before_executing_checks() {
 }
 
 #[test]
-fn run_kpop_workspace_gates_reconciles_gitignore_after_post_gate_restore() {
+fn run_kpop_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
-    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
     std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
+    let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
     run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass");
     let gitignore = std::fs::read_to_string(tmp.path().join(".gitignore")).expect("read");
-    assert!(
-        gitignore.lines().any(|line| line.trim() == "ops/"),
-        "post-gate restore must not leave drifted gitignore: {gitignore:?}"
-    );
+    assert_eq!(gitignore, "gi\n", "post-gate restore replays session snapshot without reconcile");
 }
 
 fn kpop_gates_restore_fixture(
@@ -195,8 +192,7 @@ fn render_kpop_program_request_includes_scope() {
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
     let gate = Err("__MALVIN_GATE_FAILURE__:`kiss check` failed (exit 1)".into());
     let restore = Err("gitignore restore: Is a directory".into());
-    let reconcile = Ok(());
-    let err = prefer_gate_outcome_over_post_gate_cleanup(gate, restore, reconcile).unwrap_err();
+    let err = prefer_gate_outcome_over_post_gate_cleanup(gate, restore).unwrap_err();
     assert!(err.contains("kiss check"));
     assert!(!err.contains("gitignore restore"));
 }
@@ -206,7 +202,6 @@ fn prefer_gate_outcome_surfaces_restore_when_gate_passed() {
     let err = prefer_gate_outcome_over_post_gate_cleanup(
         Ok(()),
         Err("malvin_checks restore: boom".into()),
-        Ok(()),
     )
     .unwrap_err();
     assert!(err.contains("malvin_checks restore"));

@@ -104,11 +104,32 @@ fn entrypoint_validate_name(cli: &Cli, command: &Commands, bare_invoke: bool) ->
     })
 }
 
+fn entrypoint_sweep_stale_acp_spawn_locks() {
+    let Ok(cwd) = std::env::current_dir() else {
+        return;
+    };
+    if !crate::is_malvin_workspace(&cwd) {
+        return;
+    }
+    let chamber = cwd.join(".malvin").join("acp_spawn");
+    if !chamber.is_dir() {
+        return;
+    }
+    if let Err(e) = crate::acp_spawn_sweep::sweep_stale_acp_spawn_locks(&cwd) {
+        tracing::warn!(
+            target: "malvin::entrypoint",
+            error = %e,
+            "stale ACP spawn lock sweep failed; continuing"
+        );
+    }
+}
+
 fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
     prepare_cli_output(&cli.global);
     if let Some(exit) = entrypoint_before_dispatch(&cli) {
         return exit;
     }
+    entrypoint_sweep_stale_acp_spawn_locks();
     if let Some(exit) = entrypoint_sequential_bare_kpop(&cli, &matches) {
         return exit;
     }

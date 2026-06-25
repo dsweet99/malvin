@@ -1,4 +1,4 @@
 # Cap lib/integration test parallelism so ACP-mock and stdout-lock unit tests stay
 # under the 1s per-test budget under load (24 logical CPUs otherwise spike timings).
 [profile.default]
-test-threads = 1
+test-threads = 8

@@ -54,7 +54,7 @@ mod workspace;
 
 pub use cli_parity_harness_run::*;
 #[cfg(unix)]
-pub use contract::{fresh_workdir, sleep_child};
+pub use contract::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]

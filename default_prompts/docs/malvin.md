@@ -114,6 +114,8 @@ Malvin registers the top-level process under this name in a per-user registry at
 
 Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live ACP session per lock slot in a workspace). Two malvin processes with different `--name` values may both register names and hold live ACP sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
 
+`.malvin/acp_spawn/` holds ephemeral PID lock files. Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
+
 `--doc`, `--help`, `--version`, and bare `malvin` with no `REQUEST` parse `--name` but do not acquire or release a name lock.
 
 ### `--doc`

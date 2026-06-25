@@ -48,6 +48,7 @@ pub use sandbox_oom::{
 };
 pub use current_state::format_current_state;
 mod acp_spawn_lock;
+mod acp_spawn_sweep;
 mod session_name;
 pub use session_name::{
     acquire_name, acquire_session_name, assert_no_peer_name_lock, generate_auto_name,
@@ -58,6 +59,7 @@ pub use acp_spawn_lock::{
     acquire_acp_spawn_lock_for_slot, active_acp_lock_slot,
     assert_no_peer_acp_spawn_lock_for_slot, release_acp_spawn_lock, set_active_acp_lock_slot,
 };
+pub use acp_spawn_sweep::sweep_stale_acp_spawn_locks;
 pub mod malvin_sandbox;
 #[cfg(test)]
 #[path = "malvin_sandbox_tests.rs"]

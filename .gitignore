@@ -11,3 +11,4 @@ results/
 *~
 *.lock
 *.profraw
+.malvin/acp_spawn/

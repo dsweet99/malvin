@@ -157,7 +157,6 @@ pub(crate) fn run_kpop_workspace_gates(
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
     // Carry-forward backups may still hold kiss-clamp damage; repair on disk before executing gates.
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
-    crate::repo_gates::canonical_ignore::reconcile_workspace_ignore_files(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
         work_dir,
@@ -168,20 +167,15 @@ pub(crate) fn run_kpop_workspace_gates(
     // outer retries and the next iteration snapshot cannot anchor off re-damaged files.
     let restore_result =
         restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks);
-    // Final restore re-applies pre-session ignore drift; re-apply canonical ops/ exclusion.
-    let reconcile_result =
-        crate::repo_gates::canonical_ignore::reconcile_workspace_ignore_files(work_dir);
-    prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result, reconcile_result)
+    prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result)
 }
 
 pub(crate) fn prefer_gate_outcome_over_post_gate_cleanup(
     gate_result: Result<(), String>,
     restore_result: Result<(), String>,
-    reconcile_result: Result<(), String>,
 ) -> Result<(), String> {
     gate_result?;
-    restore_result?;
-    reconcile_result
+    restore_result
 }
 
 pub(crate) fn post_kpop_session_gates(

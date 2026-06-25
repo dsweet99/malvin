@@ -3,6 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use crate::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore};
+
 const ACP_SPAWN_LOCK_DIR: &str = "acp_spawn";
 
 static ACTIVE_ACP_LOCK_SLOT: Mutex<Option<String>> = Mutex::new(None);
@@ -92,9 +94,9 @@ pub fn acquire_acp_spawn_lock_for_slot(work_dir: &Path, slot: &str) -> Result<()
             let _ = holder_pid;
         }
     }
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
+    let chamber = acp_spawn_chamber_dir(work_dir);
+    std::fs::create_dir_all(&chamber).map_err(|e| e.to_string())?;
+    ensure_acp_spawn_chamber_gitignore(&chamber)?;
     std::fs::write(&path, self_pid.to_string()).map_err(|e| e.to_string())
 }
 
@@ -149,6 +151,21 @@ mod tests {
         acquire_acp_spawn_lock_for_slot(&work, "beta").expect("beta acquire");
         release_acp_spawn_lock(&work, "alpha");
         release_acp_spawn_lock(&work, "beta");
+    }
+
+    #[test]
+    fn acquire_creates_chamber_gitignore() {
+        let work = std::env::temp_dir().join("malvin_acp_spawn_chamber_gitignore");
+        let _ = std::fs::remove_dir_all(&work);
+        std::fs::create_dir_all(&work).expect("mkdir work");
+        acquire_acp_spawn_lock_for_slot(&work, "chamber").expect("acquire");
+        let gitignore = work.join(".malvin/acp_spawn/.gitignore");
+        assert!(gitignore.is_file(), "chamber .gitignore should exist");
+        assert_eq!(
+            std::fs::read_to_string(&gitignore).expect("read"),
+            crate::acp_spawn_sweep::ACP_SPAWN_CHAMBER_GITIGNORE
+        );
+        release_acp_spawn_lock(&work, "chamber");
     }
 
     /// Child probe: `MALVIN_ACP_LOCK_DESCENDANT_PROBE=<workdir>` must pass assert.
