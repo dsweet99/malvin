@@ -91,11 +91,16 @@ fn read_plan_file_missing_path_errors() {
 
 #[test]
 fn write_plan_file_atomic_rejects_path_without_parent() {
-    let path = std::path::Path::new("plan.md");
-    if path.is_absolute() {
-        return;
-    }
-    assert!(write_plan_file_atomic(path, "x").is_err() || path.parent().is_some());
+    let parentless = std::path::Path::new("");
+    assert!(
+        write_plan_file_atomic(parentless, "x").is_err(),
+        "empty plan path has no parent and must be rejected"
+    );
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("plan.md");
+    write_plan_file_atomic(&path, "ok").expect("valid path with parent should succeed");
+    assert_eq!(std::fs::read_to_string(&path).expect("read"), "ok");
 }
 
 #[test]
