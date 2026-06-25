@@ -12,6 +12,17 @@ fn heartbeat_entry() -> crate::deferred_log::DeferredEntry {
     )
 }
 
+#[test]
+fn heartbeat_entry_builds_display_log_with_heartbeat_marker() {
+    use crate::deferred_log::types::payload::DeferredPayload;
+    let entry = heartbeat_entry();
+    let DeferredPayload::DisplayLog { display, log } = entry.payload else {
+        panic!("expected DisplayLog payload");
+    };
+    assert!(display.contains("HB:"));
+    assert!(log.contains("HB:"));
+}
+
 fn sink_queue_heartbeat_fixture() -> (SharedDeferSink, String, String) {
     let shared = aged_defer_shared("stale_flag");
     let (display, log_line) = crate::output::stdout_heartbeat_display_and_log_line(

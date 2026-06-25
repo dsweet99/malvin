@@ -1,0 +1,14 @@
+# sccache wraps rustc for faster rebuilds (see README.md).
+[build]
+rustc-wrapper = "sccache"
+
+# cargo-difftests instrumentation profile (used only by admin/difftests_*.sh).
+[profile.difftests]
+inherits = "dev"
+rustflags = ["--cfg", "cargo_difftests"]
+
+[env]
+RUST_TEST_THREADS = "1"
+
+[unstable]
+profile-rustflags = true
