@@ -134,8 +134,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Inspire(_)
-        | Commands::Models(_)
-        | Commands::Plan(_) => {}
+        | Commands::Models(_) => {}
     }
 }
 

@@ -12,8 +12,6 @@ pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
 pub use crate::init_cmd::InitArgs;
-pub use crate::plan_flow::PlanArgs;
-
 pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
@@ -71,6 +69,4 @@ pub enum Commands {
     Revise(ReviseArgs),
     /// List available models
     Models(ModelsArgs),
-    /// Reflect on and revise a plan file
-    Plan(PlanArgs),
 }

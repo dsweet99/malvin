@@ -37,6 +37,7 @@ Predicted running time: <prediction>
 - Avoid subagents. They are "too clever by half".
 - Don't try to pass linters by overwriting linter configs. They will just get restored anyway.
    So you'll just be making more work for yourself later on.
+- In whatever you do, respect the VISION.md files.
 
 ## Sandbox memory
 

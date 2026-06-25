@@ -137,10 +137,6 @@ fn smoke_cov_cli_cli_tidy_flow_units() {
 #[test]
 fn smoke_cov_cli_cli_delight_flow_units() {
     let _: Option<crate::cli::delight_flow::DelightArgs> = None;
-    let _ = crate::cli::entrypoint_commands::run_delight_then_plan;
-    let _ = crate::cli::entrypoint_commands::plan_args_for_delight_output;
-    let _ = crate::cli::entrypoint_commands::run_explain_then_revise;
-    let _ = crate::cli::entrypoint_commands::revise_args_for_explain_output;
     let _ = crate::cli::delight_flow::run_delight;
     let _ = crate::cli::delight_flow::effective_delight_max_loops;
     let _ = crate::gate_kpop_workflow::GateLoopBehavior::DELIGHT;
@@ -210,10 +206,6 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = crate::inspire_flow::render_inspire_prompt;
     let _ = crate::inspire_flow::build_inspire_render_context;
     let _ = crate::inspire_flow::run_inspire;
-    let _: Option<crate::plan_flow::PlanArgs> = None;
-    let _ = crate::plan_flow::run_plan;
-    let _ = crate::plan_flow::prepare_plan_prompt_store;
-    let _ = crate::cli::adversarial_profile::adversarial_profile_active;
     let _: Option<crate::cli::models_cmd::ModelsArgs> = None;
     let _: Option<crate::cli::WorkflowCliOptions> = None;
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;

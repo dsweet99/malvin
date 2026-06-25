@@ -1,7 +1,6 @@
 //! Run directories and log paths.
 
 mod md_request;
-mod plan_splice;
 mod startup_tag;
 mod create;
 
@@ -12,15 +11,6 @@ pub use create::{
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
 pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file};
-
-pub use plan_splice::{
-    BEGIN_MALVIN_MARKER, PlanFileError, PlanRunMetadata, detect_rerun_user_span_end,
-    extract_decisions_section, extract_fenced_markdown_block, find_machine_block_start,
-    is_interrupted_machine_plan, prepare_plan_file_for_prompt_1a, prepare_plan_file_for_run,
-    read_plan_file, read_plan_metadata, overwrite_plan_file, plan_user_sidecar_path,
-    remove_plan_user_sidecar, restore_interrupted_plan, snapshot_plan_artifact, validate_post_1a,
-    validate_post_1b, validate_post_2, write_plan_file_atomic, write_plan_metadata,
-};
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,

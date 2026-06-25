@@ -25,7 +25,6 @@ pub(crate) mod revise_flow;
 
 pub(crate) mod code_flow;
 mod code_flow_a;
-pub(crate) mod adversarial_profile;
 pub(crate) mod init_discovery_flow;
 mod loop_opts;
 pub(crate) mod default_output_path;
@@ -69,9 +68,6 @@ mod models_cmd_tests;
 #[cfg(test)]
 mod cli_smoke_cov;
 #[cfg(test)]
-#[path = "cli_smoke_cov_plan.rs"]
-mod cli_smoke_cov_plan;
-#[cfg(test)]
 mod gate_error_regression;
 #[cfg(test)]
 mod command_log_tests;
@@ -80,8 +76,7 @@ mod markdown_flag_parse_tests;
 
 pub use crate::do_flow::run_do;
 pub use crate::inspire_flow::run_inspire;
-pub use crate::plan_flow::{prepare_plan_prompt_store, run_plan};
-pub use args::{Cli, Commands, InspireArgs, KpopArgs, PlanArgs};
+pub use args::{Cli, Commands, InspireArgs, KpopArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;

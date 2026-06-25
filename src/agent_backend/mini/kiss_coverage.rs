@@ -80,36 +80,3 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = super::client_prompt_log::write_prompt_log;
     let _ = stringify!(stdout_log_tool_t_lines);
 }
-
-#[test]
-fn kiss_witness_plan_chain_test_helpers() {
-    let _ = super::plan_chain_tests::bash_then_final_responses;
-    let _ = super::plan_chain_tests::plan_chain_all_responses;
-    let _ = super::plan_chain_tests::record_marker_at_prompt3_idx3;
-    let _ = super::plan_chain_tests::plan_chain_mock_client;
-    let _ = super::plan_chain_tests::plan_chain_work_dirs;
-    let _ = super::plan_chain_tests::run_plan_chain_test_prompt_1a;
-    let _ = super::plan_chain_tests::run_plan_chain_test_prompt_3;
-    let _ = super::plan_chain_tests::plan_prompt_chain_shared_history;
-    let dirs = super::plan_chain_tests::plan_chain_work_dirs();
-    let touched = std::hint::black_box(dirs);
-    let super::plan_chain_tests::PlanChainWorkDirs {
-        work_dir: _,
-        log_1a: _,
-        log_3,
-    } = touched;
-    let built = super::plan_chain_tests::PlanChainWorkDirs {
-        work_dir: tempfile::tempdir().expect("tempdir"),
-        log_1a: std::path::PathBuf::from("plan_1a.log"),
-        log_3: std::path::PathBuf::from("plan_3.log"),
-    };
-    let super::plan_chain_tests::PlanChainWorkDirs {
-        work_dir: _,
-        log_1a,
-        log_3: log3b,
-    } = std::hint::black_box(built);
-    assert!(log_1a.ends_with("plan_1a.log"));
-    assert!(log3b.ends_with("plan_3.log"));
-    let _ = std::mem::size_of::<super::plan_chain_tests::PlanChainWorkDirs>();
-    assert!(log_3.to_string_lossy().contains("plan_3"));
-}

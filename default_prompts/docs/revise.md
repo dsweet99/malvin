@@ -61,7 +61,6 @@ On success, malvin prints `DONE` to stdout.
 
 | Command | When |
 |---------|------|
-| `malvin plan` | Four-prompt refinement on an implementation plan |
 | `malvin delight` | Author a new feature plan from scratch |
 | `malvin explain` | Write a LaTeX explanation PDF |
 

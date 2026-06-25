@@ -3,7 +3,7 @@ use super::Commands;
 pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Do(_) | Commands::Models(_) | Commands::Init(_)
-        | Commands::Inspire(_) | Commands::Plan(_) | Commands::Explain(_) | Commands::Delight(_)
+        | Commands::Inspire(_) | Commands::Explain(_) | Commands::Delight(_)
         | Commands::Revise(_) => Ok(()),
         _ => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;

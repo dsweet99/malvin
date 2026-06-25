@@ -15,7 +15,7 @@ Author a **user-delighting feature plan** via the KPop gate loop scoped by `deli
 
 ## Intention
 
-Generate a fresh, repo-grounded plan for a feature or improvement that would delight the user — without overwriting an existing plan file. On success, malvin automatically runs `malvin plan` on the same `--out-path`. Typical pipeline: `malvin delight` → `malvin code <out-path>`.
+Generate a fresh, repo-grounded plan for a feature or improvement that would delight the user — without overwriting an existing plan file. Typical pipeline: `malvin delight` → `malvin code <out-path>`.
 
 ## Usage
 
@@ -66,9 +66,6 @@ All of the following must hold:
 1. Preflight passed (default `plan.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
 2. Two consecutive outer gate-loop iterations each declared `## KPOP_SOLVED` in their own exp log.
 3. After the session, `--out-path` is a regular file with size &gt; 0.
-4. The decoupled `malvin plan` workflow runs automatically on the same `--out-path` (overwrites it with the revised implementation plan from Prompt 3).
-
-The output file does **not** need plan-pipeline section headings when the delight session finishes; the chained `malvin plan` step produces the final normative spec (no user prefix, no `BEGIN_MALVIN` block).
 
 On success, malvin prints `DONE` to stdout.
 
@@ -77,7 +74,6 @@ On success, malvin prints `DONE` to stdout.
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation; no plan file |
-| `malvin plan` | Four-prompt refinement on an existing plan (runs automatically after `delight`; also available standalone) |
 | `malvin code` | Implement a plan via the gate loop |
 
 ## Examples

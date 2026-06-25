@@ -4,13 +4,12 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, `plan`, and `delight` accept `--name`.
+/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands, bare_invoke: bool) -> bool {
     match command {
         Commands::Do(_)
         | Commands::Code(_)
         | Commands::Tidy(_)
-        | Commands::Plan(_)
         | Commands::Delight(_) => true,
         Commands::Kpop(_) => bare_invoke,
         _ => false,
@@ -22,7 +21,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands, bare_invoke: bool
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, `plan`, and `delight`",
+        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, and `delight`",
     )
 }
 
@@ -36,7 +35,6 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Kpop(_)
         | Commands::Inspire(_)
         | Commands::Models(_)
-        | Commands::Plan(_)
         | Commands::Delight(_)
         | Commands::Explain(_)
         | Commands::Revise(_) => Ok(()),
@@ -177,7 +175,6 @@ pub(crate) fn dispatch_command(
             )
         }),
         Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
-        Commands::Plan(plan) => super::entrypoint_commands::run_plan_command(plan, &shared),
         Commands::Init(init) => {
             let shared = shared.clone();
             let tee = shared.tee_startup_stdout();

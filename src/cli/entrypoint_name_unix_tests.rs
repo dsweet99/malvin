@@ -34,7 +34,7 @@ fn duplicate_name_exits_failure() {
         std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
         std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "plan", "plan.md"]),
+            entrypoint_from(["malvin", "--name", "probe", "code", "plan.md"]),
             Exit::Failure
         );
         let _ = child.kill();
@@ -58,7 +58,7 @@ fn duplicate_name_error_on_stderr_with_background() {
         std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         let stderr = capture_stderr_output(|| {
             assert_eq!(
-                entrypoint_from(["malvin", "--background", "--name", "probe", "plan", "plan.md"]),
+                entrypoint_from(["malvin", "--background", "--name", "probe", "code", "plan.md"]),
                 Exit::Failure
             );
         });

@@ -96,8 +96,8 @@ fn help_omits_removed_ground_sync_and_hunt_commands() {
         "hunt was removed; help was: {s}"
     );
     assert!(
-        contains_help_subcommand(&s, "plan"),
-        "plan subcommand should appear in help; help was: {s}"
+        !contains_help_subcommand(&s, "plan"),
+        "plan was removed; help was: {s}"
     );
 }
 

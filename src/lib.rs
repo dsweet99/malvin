@@ -192,9 +192,6 @@ pub mod do_flow;
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
 
-#[path = "cli/plan_flow.rs"]
-pub mod plan_flow;
-
 #[path = "cli/gate_kpop_workflow.rs"]
 pub mod gate_kpop_workflow;
 

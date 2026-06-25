@@ -27,21 +27,6 @@ pub(crate) fn run_inspire_command(
     })
 }
 
-pub(crate) fn run_plan_command(
-    plan: crate::plan_flow::PlanArgs,
-    shared: &SharedOpts,
-) -> Result<(), String> {
-    run_async_cli(|| {
-        crate::plan_flow::run_plan(
-            plan,
-            shared,
-            WorkflowCliOptions {
-                force: !shared.no_force,
-            },
-        )
-    })
-}
-
 pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Result<(), String> {
     if code.fast {
         code.skip_pre_checks = true;
@@ -102,13 +87,6 @@ pub(crate) fn run_bare_sequential_kpop(
     })
 }
 
-pub(crate) fn plan_args_for_delight_output(out_path: &str) -> crate::plan_flow::PlanArgs {
-    crate::plan_flow::PlanArgs {
-        plan_path: out_path.to_string(),
-        out_path: out_path.to_string(),
-    }
-}
-
 pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &str) -> ReviseArgs {
     ReviseArgs {
         doc_path: doc_path.to_string(),
@@ -139,20 +117,6 @@ pub(crate) async fn run_explain_then_revise(
     .await
 }
 
-pub(crate) async fn run_delight_then_plan(
-    mut delight: DelightArgs,
-    shared: &SharedOpts,
-    workflow: WorkflowCliOptions,
-) -> Result<(), String> {
-    run_delight(&mut delight, shared, workflow).await?;
-    crate::plan_flow::run_plan(
-        plan_args_for_delight_output(&delight.out_path),
-        shared,
-        workflow,
-    )
-    .await
-}
-
 pub(crate) fn run_delight_command(
     mut delight: DelightArgs,
     shared: &mut SharedOpts,
@@ -167,8 +131,8 @@ pub(crate) fn run_delight_command(
         matches,
     });
     run_async_cli(|| {
-        run_delight_then_plan(
-            delight,
+        run_delight(
+            &mut delight,
             shared,
             WorkflowCliOptions {
                 force: !shared.no_force,

@@ -4,14 +4,8 @@ use super::*;
 fn kiss_cov_entrypoint_command_wrappers() {
     let _ = run_explain_command;
     let _ = run_revise_command;
-    let _ = run_delight_then_plan;
+    let _ = run_delight_command;
     let _ = run_explain_then_revise;
-}
-
-#[test]
-fn delight_plan_args_use_same_out_path() {
-    let args = plan_args_for_delight_output("plans/feature.md");
-    assert_eq!(args.plan_path, "plans/feature.md");
 }
 
 #[test]

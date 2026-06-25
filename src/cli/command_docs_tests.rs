@@ -2,7 +2,7 @@ use super::{
     command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC,
 };
 use crate::cli::Cli;
-use crate::cli::args::{Commands, InspireArgs, KpopArgs, PlanArgs};
+use crate::cli::args::{Commands, InspireArgs, KpopArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
 use crate::cli::revise_flow::ReviseArgs;
@@ -74,26 +74,6 @@ fn init_doc_parses_without_languages_when_doc_flag_set() {
         Some(Commands::Init(i)) => assert!(i.languages.is_empty()),
         _ => panic!("expected Init"),
     }
-}
-
-#[test]
-fn plan_doc_parses_with_plan_path_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "plan", "plan.md", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Plan(p)) => assert_eq!(p.plan_path, "plan.md"),
-        _ => panic!("expected Plan"),
-    }
-}
-
-#[test]
-fn print_doc_plan_writes_subcommand_md() {
-    let cmd = Commands::Plan(PlanArgs {
-        plan_path: "plan.md".to_string(),
-        out_path: "plan.md".to_string(),
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    assert!(out.starts_with(b"# malvin plan"));
 }
 
 #[test]

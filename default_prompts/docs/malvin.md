@@ -20,7 +20,7 @@ Bare invocation (no subcommand):
 - `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `./.malvin/logs/`
 - Quote a single request when the text contains spaces (e.g. `malvin "Why does the cache miss?"`)
 
-Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `tidy`, `delight`, `explain`, `models`.
+Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `models`.
 
 ## Commands
 
@@ -29,7 +29,6 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `plan`, `code`, `t
 | `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
-| `plan` | Four-prompt planning workflow on a persistent `plan.md` |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `delight` | Author a user-delighting feature plan via the KPop gate loop |
@@ -182,13 +181,11 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| `code`, `plan`, `do`, `kpop`, `inspire`, bare `malvin` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| `code`, `do`, `kpop`, `inspire`, bare `malvin` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 ### Sequential requests
 
 `malvin` and `malvin code` accept **multiple** positional arguments. Malvin runs each request as a separate invocation in order, waiting for each to finish before starting the next. Each run gets its own directory under `./.malvin/logs/`. This matches calling `malvin` (or `malvin code`) once per argument from the shell.
-
-`malvin plan` accepts only a single plan file.
 
 Examples:
 

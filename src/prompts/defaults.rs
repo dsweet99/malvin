@@ -9,11 +9,6 @@ pub const HEADER_MD: &str = "header.md";
 pub const HEADER_DO_MD: &str = "header_do.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 
-pub const PLAN_1A_RESTATE_MD: &str = "plan_1a_restate.md";
-pub const PLAN_1B_CRITIQUE_MD: &str = "plan_1b_critique.md";
-pub const PLAN_2_DECISIONS_MD: &str = "plan_2_decisions.md";
-pub const PLAN_3_REWRITE_MD: &str = "plan_3_rewrite.md";
-
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
@@ -29,10 +24,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "delight_constraints.md",
     "revise_constraints.md",
     "mini_constraints.md",
-    PLAN_1A_RESTATE_MD,
-    PLAN_1B_CRITIQUE_MD,
-    PLAN_2_DECISIONS_MD,
-    PLAN_3_REWRITE_MD,
     HEADER_MD,
     HEADER_DO_MD,
     DO_HEADER_MD,
