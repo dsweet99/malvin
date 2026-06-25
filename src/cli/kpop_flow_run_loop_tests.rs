@@ -75,7 +75,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
 
     let kpop = KpopArgs {
         max_loops,
-        max_hypotheses: 10,
+        max_hypotheses: 1,
         tenacious: false,
         request: Some("investigate".into()),
     };

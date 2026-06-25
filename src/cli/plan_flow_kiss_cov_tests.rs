@@ -26,5 +26,6 @@ fn kiss_witness_plan_flow_mock_tests() {
     let _ = super::plan_flow_mock_tests::run_plan_gitignore_restore_case;
     let _ = super::plan_flow_mock_tests::restore_plan_session_dotfiles;
     let _ = super::plan_flow_mock_tests::write_plan_gitignore_tamper_mock_agent;
-    let _ = super::plan_flow_mock_tests::run_plan_acp_mock_agent_completes_four_prompt_pipeline;
+    let _ = super::plan_flow_mock_tests::run_plan_acp_mock_agent_prompt_1a_snapshots_artifact;
+    let _ = super::plan_flow_mock_tests::run_plan_acp_mock_agent_finalizes_revised_plan;
 }

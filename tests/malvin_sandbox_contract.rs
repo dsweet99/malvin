@@ -1,4 +1,9 @@
-//! Contract tests for malvin host sandbox (RSS watcher and process-group teardown).
+mod common;
+
+#[cfg(unix)]
+use common::enable_test_fast_teardown;
+#[cfg(unix)]
+use common::test_wait_until_async;
 
 #[cfg(unix)]
 use malvin::acp::{snapshot_pids, terminate_agent_process_group};
@@ -123,6 +128,7 @@ fn malvin_sandbox_monitor_includes_malvin_spawned_sibling() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
+    enable_test_fast_teardown();
     clear_active_sandbox_session();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
@@ -134,9 +140,8 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
 
     terminate_agent_process_group(Some(agent_pgid), &baseline).await;
     clear_active_sandbox_session();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "teardown must kill baseline-amnestied agent acp orphan (pid={orphan_pid})"
     );
     let _ = agent.wait();
@@ -146,6 +151,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
 #[cfg(unix)]
 #[tokio::test]
 async fn user_coincidental_init_orphan_survives_agent_teardown() {
+    enable_test_fast_teardown();
     clear_active_sandbox_session();
     let tmp = tempfile::tempdir().expect("tempdir");
     let user_daemon_pid_file = tmp.path().join("user_daemon.pid");
@@ -156,9 +162,8 @@ async fn user_coincidental_init_orphan_survives_agent_teardown() {
         setup_user_init_reparented_daemon(&mut user_shell_stdin, &user_daemon_pid_file).await;
     terminate_agent_process_group(Some(agent_pgid), &baseline).await;
     clear_active_sandbox_session();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        process_alive(user_daemon_pid),
+        test_wait_until_async(|| process_alive(user_daemon_pid)).await,
         "teardown must not kill unrelated user daemon (pid={user_daemon_pid})"
     );
     cleanup_user_coincidental_test(user_daemon_pid, user_shell, agent_child);
@@ -168,6 +173,7 @@ async fn user_coincidental_init_orphan_survives_agent_teardown() {
 #[cfg(unix)]
 #[tokio::test]
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
+    enable_test_fast_teardown();
     clear_active_sandbox_session();
     let baseline = snapshot_pids();
     let (agent_pgid, sibling_pid, mut agent_child, mut sibling_child) =
@@ -176,10 +182,11 @@ async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
 
     terminate_agent_process_group(Some(agent_pgid), &baseline).await;
     clear_active_sandbox_session();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    assert_ne!(
-        sibling_child.try_wait().expect("wait sibling"),
-        None,
+    assert!(
+        test_wait_until_async(|| {
+            sibling_child.try_wait().expect("wait sibling").is_some()
+        })
+        .await,
         "teardown must terminate malvin sibling outside agent PG (pid={sibling_pid})"
     );
     assert_dead_before_next_spawn().expect("dead-before-next after clean teardown");

@@ -191,9 +191,8 @@ pub(crate) async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits
     );
     let agent_status = agent.wait().expect("wait agent");
     assert!(agent_status.success() || agent_status.code() == Some(0));
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(pgid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(pgid)).await,
         "setup: agent process group leader should have exited"
     );
     watch_process_group_memory(crate::acp::process_group_mem_watch::MemWatchHandles {
@@ -204,9 +203,8 @@ pub(crate) async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits
         run_dir: None,
     })
     .await;
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "mem watcher must kill setsid orphans after agent PG is gone (orphan_pid={orphan_pid})"
     );
 }
@@ -239,9 +237,8 @@ pub(crate) async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
     })
     .await;
     let _ = agent.wait();
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "OOM mem watcher must kill reparented setsid orphans (orphan_pid={orphan_pid})"
     );
 }

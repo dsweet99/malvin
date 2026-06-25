@@ -43,7 +43,7 @@ pub(super) fn test_plan_run_prep(
                     emit_stdout_markdown: false,
                     log_full_outgoing_prompts: false,
                 },
-                crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+                crate::support_paths::DEFAULT_MAX_ACP_RETRIES.min(1),
             ),
         ),
         artifacts: artifacts.clone(),
@@ -79,7 +79,7 @@ pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
     crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
-        no_tenacious: false,
+        no_tenacious: true,
         no_tee: true,
         no_markdown: true,
         verbose: false,

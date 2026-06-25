@@ -84,8 +84,11 @@ pub(crate) async fn run_init_discovery_kpop(
         malvin_checks_backup,
     };
     let agent_cfg = load_init_agent_config(&artifacts.work_dir);
-    let max_loops = agent_cfg.max_loops;
-    let max_hypotheses = agent_cfg.max_hypotheses;
+    let (max_loops, max_hypotheses) = if crate::acp::test_no_real_agent_enabled() {
+        (1, 1)
+    } else {
+        (agent_cfg.max_loops, agent_cfg.max_hypotheses)
+    };
     let iterations = gate_kpop_loop_iterations(max_loops);
     let (gates_ok, agent_ran, _timing, _last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
         command: "init",

@@ -70,7 +70,6 @@ fn revise_fails_when_doc_path_missing() {
 #[test]
 fn revise_fails_when_agent_solves_but_output_empty() {
     let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);

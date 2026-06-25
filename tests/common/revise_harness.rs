@@ -4,6 +4,7 @@ use std::process::Command;
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
 };
+use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct ReviseSpawn<'a> {
     pub workspace: &'a Path,
@@ -23,6 +24,7 @@ pub fn spawn_revise(t: &ReviseSpawn<'_>) -> std::process::Output {
         .env("PATH", t.path_var);
     let mut args: Vec<&str> = vec!["revise", t.doc_path];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
+    args.extend_from_slice(FAST_GATE_LOOP_TEST_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")

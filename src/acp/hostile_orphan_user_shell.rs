@@ -10,25 +10,10 @@ use super::wait_for_init_reparent;
 /// Spawns a long-lived cooperator process (simulating the user's shell) that forks
 /// double-fork daemons on stdin command `DAEMON <pidfile>`.
 pub fn spawn_user_shell_cooperator() -> (Child, ChildStdin) {
-    let script = r"import os,sys,time
-while True:
- line=sys.stdin.readline()
- if not line:
-  break
- parts=line.strip().split()
- if len(parts)>=2 and parts[0]=='DAEMON':
-  pidfile=parts[1]
-  pid=os.fork()
-  if pid==0:
-   os.setsid()
-   g=os.fork()
-   if g==0:
-    open(pidfile,'w').write(str(os.getpid()))
-    os.execvp('sleep',['sleep','120'])
-   time.sleep(0.2)
-   os._exit(0)
-  os.waitpid(pid,0)
-";
+    let child_delay = super::hostile_script_delay_ms(200);
+    let script = format!(
+        "import os,sys,time\nwhile True:\n line=sys.stdin.readline()\n if not line:\n  break\n parts=line.strip().split()\n if len(parts)>=2 and parts[0]=='DAEMON':\n  pidfile=parts[1]\n  pid=os.fork()\n  if pid==0:\n   os.setsid()\n   g=os.fork()\n   if g==0:\n    open(pidfile,'w').write(str(os.getpid()))\n    os.execvp('sleep',['sleep','120'])\n   time.sleep({child_delay} / 1000)\n   os._exit(0)\n  os.waitpid(pid,0)\n",
+    );
     let mut cmd = Command::new("python3");
     cmd.arg("-c").arg(script);
     cmd.stdin(Stdio::piped());

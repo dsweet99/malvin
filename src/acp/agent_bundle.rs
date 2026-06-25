@@ -1,9 +1,9 @@
 use crate::acp::import_prelude::*;
 
-/// Backoff sleep between agent retry attempts. In unit/integration tests, sleeps are skipped so
-/// retry policy tests stay fast while production keeps 1s / 3s wall-clock backoff.
+/// Backoff sleep between agent retry attempts. Skipped in unit tests and when
+/// `MALVIN_TEST_NO_REAL_AGENT=1` so integration subprocess tests stay under the 1s budget.
 pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
-    if cfg!(test) {
+    if cfg!(test) || crate::acp::test_no_real_agent_enabled() {
         return;
     }
     tokio::time::sleep(d).await;

@@ -22,7 +22,14 @@ pub(crate) mod shutdown_kills_descendants {
         pid: u32,
     ) {
         session.shutdown().await.expect("shutdown should complete");
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let poll = crate::test_poll::test_post_teardown_poll_interval();
+        let deadline = tokio::time::Instant::now() + crate::test_poll::test_post_teardown_wait_budget();
+        while tokio::time::Instant::now() < deadline {
+            if !process_exists(pid) {
+                return;
+            }
+            tokio::time::sleep(poll).await;
+        }
 
         assert!(
             !process_exists(pid),

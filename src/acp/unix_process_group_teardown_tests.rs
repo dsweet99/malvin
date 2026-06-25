@@ -92,6 +92,7 @@ async fn terminate_agent_process_group_kills_sleep_child() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
+    crate::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let (mut agent, pgid) = spawn_hostile_agent_acp_orphan(tmp.path(), &orphan_pid_file);
@@ -102,9 +103,8 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
     terminate_agent_process_group(Some(pgid), &baseline).await;
     let _ = agent.wait();
     drop(agent);
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "teardown must kill baseline-amnestied agent acp orphan (pid={orphan_pid})"
     );
 }
@@ -114,6 +114,7 @@ async fn baseline_amnestied_agent_acp_orphan_killed_on_teardown() {
 async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
     use crate::malvin_sandbox::{assert_dead_before_next_spawn, clear_active_sandbox_session};
 
+    crate::test_utils::enable_test_fast_teardown();
     clear_active_sandbox_session();
     let baseline = super::super::unix_process_group_ps::snapshot_pids();
     let (agent_pgid, sibling_pid, mut agent_child, mut sibling_child) =
@@ -121,10 +122,11 @@ async fn malvin_sibling_outside_agent_pg_killed_on_teardown() {
     assert_sibling_monitored_and_blocks_spawn(agent_pgid, sibling_pid, &baseline);
     terminate_agent_process_group(Some(agent_pgid), &baseline).await;
     clear_active_sandbox_session();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    assert_ne!(
-        sibling_child.try_wait().expect("wait sibling"),
-        None,
+    assert!(
+        crate::test_utils::test_wait_until_async(|| {
+            sibling_child.try_wait().expect("wait sibling").is_some()
+        })
+        .await,
         "teardown must terminate malvin sibling outside agent PG (pid={sibling_pid})"
     );
     assert_dead_before_next_spawn().expect("dead-before-next after clean teardown");

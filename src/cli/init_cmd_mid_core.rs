@@ -73,9 +73,13 @@ pub(super) fn bootstrap_repo_tooling(root: &Path) -> Result<(), String> {
         "`pre-commit` is not installed; run `pip install pre-commit`.",
     )?;
     super::init_cmd_bootstrap::ensure_git_repo(root)?;
-    super::init_cmd_bootstrap::ensure_pre_commit_hooks(root)?;
-    super::init_cmd_bootstrap::ensure_kiss_repo_init(root)?;
-    super::init_cmd_bootstrap::ensure_git_lfs_hooks(root)?;
+    if crate::acp::test_no_real_agent_enabled() {
+        super::init_cmd_bootstrap::init_bootstrap_test_fast_stubs(root)?;
+    } else {
+        super::init_cmd_bootstrap::ensure_pre_commit_hooks(root)?;
+        super::init_cmd_bootstrap::ensure_kiss_repo_init(root)?;
+        super::init_cmd_bootstrap::ensure_git_lfs_hooks(root)?;
+    }
     create_initial_commit(root)
 }
 

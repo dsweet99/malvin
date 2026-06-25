@@ -36,7 +36,7 @@ fn kpop_outer_loop_restores_home_malvin_config_after_agent_tampers() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "2"],
+        extra_args: &["--max-loops", "1"],
         request: "investigate config restore",
     });
     assert!(

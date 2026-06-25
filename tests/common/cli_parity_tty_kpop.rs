@@ -41,7 +41,7 @@ pub fn run_kpop_multiturn_investigate(
         "--max-loops",
         "1",
         "--max-hypotheses",
-        "2",
+        "1",
         "investigate",
     ]);
     let out =

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+mod sandbox_test_helpers;
 mod acp_code_fanout_mocks;
 mod acp_code_run;
 mod acp_core;
@@ -59,6 +60,9 @@ pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty_kpop::run_kpop_multiturn_investigate;
 
+pub use sandbox_test_helpers::{
+    enable_test_fast_teardown, test_wait_until_async,
+};
 pub use acp_code_fanout_mocks::*;
 pub use acp_code_run::*;
 pub use acp_core::{acp_mock_js, chunk_line, *};
@@ -108,7 +112,7 @@ pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
 #[cfg(unix)]
-pub use integration_cli_args::INTEGRATION_TEST_MALVIN_ARGS;
+pub use integration_cli_args::{FAST_GATE_LOOP_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 

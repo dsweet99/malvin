@@ -21,6 +21,21 @@ pub(super) struct PlanRunPrep {
 }
 
 pub(super) async fn run_plan_acp(prep: &mut PlanRunPrep) -> Result<(), String> {
+    run_plan_acp_with_phases(prep, PlanAcpPhases::All).await
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum PlanAcpPhases {
+    Prompt1aOnly,
+    FinalOnly,
+    All,
+}
+
+pub(super) async fn run_plan_acp_with_phases(
+    prep: &mut PlanRunPrep,
+    phases: PlanAcpPhases,
+) -> Result<(), String> {
     use crate::agent_backend::{
         agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
         agent_backend_set_run_timing,
@@ -36,7 +51,11 @@ pub(super) async fn run_plan_acp(prep: &mut PlanRunPrep) -> Result<(), String> {
         return Err(e.to_string());
     }
     agent_backend_set_implement_display_name(&prep.client, "plan");
-    let run_res = run_plan_four_prompts(prep).await;
+    let run_res = match phases {
+        PlanAcpPhases::Prompt1aOnly => run_plan_prompt_1a(prep).await,
+        PlanAcpPhases::FinalOnly => run_plan_prompt_3(prep).await,
+        PlanAcpPhases::All => run_plan_four_prompts(prep).await,
+    };
     let end_res = prep.client.end_coder_session().await.map_err(|e| e.to_string());
     let merged =
         crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
@@ -157,6 +176,10 @@ mod kiss_cov_gate_refs{
 
     #[test]
     fn kiss_cov_pipeline_symbols() {
+        let _ = run_plan_acp;
+        let _ = run_plan_acp_with_phases;
+        let _ = PlanAcpPhases::All;
+        let _ = PlanAcpPhases::Prompt1aOnly;
         let _ = run_plan_coder_prompt;
         let _ = run_plan_prompt_1a;
         let _ = run_plan_prompt_1b;

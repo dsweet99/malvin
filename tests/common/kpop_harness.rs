@@ -2,6 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
+use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct KpopSpawn<'a> {
     pub workspace: &'a Path,
@@ -21,6 +22,7 @@ pub fn spawn_kpop(c: &KpopSpawn<'_>) -> std::process::Output {
         .env("PATH", c.path_var)
         .args(["kpop"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(FAST_GATE_LOOP_TEST_ARGS);
     cmd.args(c.extra_args);
     cmd.arg(c.request);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin kpop")

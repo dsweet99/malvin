@@ -1,5 +1,10 @@
 //! Contract tests for host-side sandbox gaps (process-group containment).
 
+mod common;
+
+#[cfg(unix)]
+use common::{enable_test_fast_teardown, test_wait_until_async};
+
 #[cfg(unix)]
 use malvin::acp::{snapshot_pids, terminate_agent_process_group};
 
@@ -18,6 +23,7 @@ use malvin::acp::hostile_orphan_test_util::{
 #[cfg(unix)]
 #[tokio::test]
 async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
+    enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
@@ -29,9 +35,8 @@ async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
     );
     terminate_agent_process_group(Some(pgid), &spawn_baseline).await;
     let _ = agent.wait();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "sandbox should kill session-leader orphans when the agent process group is torn down (orphan_pid={orphan_pid})"
     );
 }
@@ -41,6 +46,7 @@ async fn hostile_agent_detached_orphan_dies_on_process_group_teardown() {
 #[cfg(unix)]
 #[tokio::test]
 async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
+    enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
@@ -52,9 +58,8 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
     );
     terminate_agent_process_group(Some(pgid), &spawn_baseline).await;
     let _ = agent.wait();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "sandbox should kill double-fork init orphans when the agent process group is torn down (orphan_pid={orphan_pid})"
     );
 }
@@ -66,6 +71,7 @@ async fn hostile_agent_double_fork_daemon_dies_on_process_group_teardown() {
 #[cfg(target_os = "linux")]
 #[tokio::test]
 async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
+    enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = snapshot_pids();
@@ -80,9 +86,8 @@ async fn baseline_amnestied_agent_acp_orphan_dies_on_process_group_teardown() {
     );
     terminate_agent_process_group(Some(pgid), &baseline).await;
     let _ = agent.wait();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "sandbox should kill baseline-amnestied agent acp orphans (orphan_pid={orphan_pid})"
     );
 }

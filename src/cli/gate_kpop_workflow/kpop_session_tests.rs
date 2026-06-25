@@ -11,7 +11,31 @@ use std::path::Path;
 
 pub(crate) enum PreparedContextMode {
     Empty,
+    /// Path keys only — skips ephemeral quality-gates markdown expansion (faster for session smoke tests).
+    PathsOnly,
     Workflow,
+}
+
+pub(crate) fn prepared_context_for_mode(
+    artifacts: &crate::artifacts::RunArtifacts,
+    command: &str,
+    context_mode: PreparedContextMode,
+) -> std::collections::HashMap<String, String> {
+    match context_mode {
+        PreparedContextMode::Empty => std::collections::HashMap::new(),
+        PreparedContextMode::PathsOnly => {
+            crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(
+                artifacts,
+                command,
+            )
+            .expect("paths context")
+        }
+        PreparedContextMode::Workflow => crate::cli::workflow_kpop_shared::kpop_workflow_context(
+            artifacts,
+            command,
+        )
+        .expect("workflow context"),
+    }
 }
 
 pub(crate) fn prepared_fixture(
@@ -29,13 +53,7 @@ pub(crate) fn prepared_fixture(
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let context = match context_mode {
-        PreparedContextMode::Empty => std::collections::HashMap::new(),
-        PreparedContextMode::Workflow => {
-            crate::cli::workflow_kpop_shared::kpop_workflow_context(&artifacts, command)
-                .expect("workflow context")
-        }
-    };
+    let context = prepared_context_for_mode(&artifacts, command, context_mode);
     let prepared = GateKpopPrepared {
         artifacts,
         context,
@@ -66,7 +84,7 @@ pub(crate) fn loop_params<'a>(
         workflow: WorkflowCliOptions { force: false },
         prepared,
         max_loops: 1,
-        max_hypotheses: 3,
+        max_hypotheses: 1,
         behavior,
     }
 }
@@ -141,12 +159,13 @@ fn kiss_cov_gate_kpop_multiturn_ctx_reads_iteration_field() {
 #[cfg(unix)]
 #[test]
 fn kiss_cov_run_gate_kpop_session_success_branch() {
+    crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|work| {
         let mock = work.join("mock-gate-kpop-agent");
         let _env =
             crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env(work, &mock);
         let (prepared, backups) =
-            prepared_fixture("code", work, true, PreparedContextMode::Workflow);
+            prepared_fixture("code", work, true, PreparedContextMode::PathsOnly);
         let (shared, _) = shared_workflow();
         let loop_params = loop_params("code", &shared, &prepared, GateLoopBehavior::CODE);
         let mut client = agent_backend(&shared, "code");

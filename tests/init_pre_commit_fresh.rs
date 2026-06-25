@@ -7,7 +7,8 @@ use malvin::MALVIN_CONFIG_REL;
 
 use common::{
     InitOk, assert_git_branch_main, assert_git_head_commit_count, git_show_rev_path,
-    malvin_init_output, malvin_init_output_in_place, tempdir_seeded_dirty_keep,
+    malvin_init_output, malvin_init_output_in_place, seed_malvin_checks,
+    tempdir_seeded_dirty_keep,
 };
 
 use malvin::repo_gates::{
@@ -144,6 +145,8 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
 #[test]
 fn malvin_init_does_not_autocommit_preexisting_repo_changes() {
     let project = tempdir_seeded_dirty_keep();
+    // Skip discovery KPop — this test covers commit behavior, not checks discovery.
+    seed_malvin_checks(project.path(), "kiss check\n");
     let (out, _home) = malvin_init_output(project.path(), &["python"]);
     assert!(out.status.success(), "malvin init failed: {out:?}");
     assert_git_head_commit_count(project.path(), "1");

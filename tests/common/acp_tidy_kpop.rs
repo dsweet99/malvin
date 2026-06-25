@@ -16,25 +16,6 @@ pub const fn acp_mock_kpop_iteration_body() -> &'static str {
         if (p.startsWith('./')) expPath = path.join(process.cwd(), p.slice(2));
         else if (p.startsWith('/')) expPath = p;
         else expPath = path.join(process.cwd(), p);
-      } else {
-        const targetMatch = promptText.match(/exp_log_[^\s`]+\.md/);
-        const target = targetMatch ? targetMatch[0] : null;
-        const os = require('os');
-        const root = path.join(os.homedir(), '.malvin_home', 'logs');
-        if (target && fs.existsSync(root)) {
-          outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-            const bucket = path.join(root, hash.name);
-            const runs = fs.readdirSync(bucket, { withFileTypes: true })
-              .filter((e) => e.isDirectory())
-              .map((e) => e.name)
-              .sort()
-              .reverse();
-            for (const run of runs) {
-              const candidate = path.join(bucket, run, '_kpop', target);
-              if (fs.existsSync(candidate)) { expPath = candidate; break outer; }
-            }
-          }
-        }
       }
       if (expPath) {
         fs.mkdirSync(path.dirname(expPath), { recursive: true });
@@ -86,6 +67,22 @@ pub fn acp_mock_tidy_kpop_steps_js() -> String {
 
 pub fn acp_mock_code_kpop_steps_js() -> String {
     acp_mock_kpop_steps_js(r"'code kpop step\n'")
+}
+
+pub fn acp_mock_kpop_writes_solved_js(chunk: &str) -> String {
+    let solved = "              fs.appendFileSync(expPath, '\\n## KPOP_SOLVED\\n');";
+    let iteration = acp_mock_kpop_iteration_body().replace(
+        "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
+        &format!(
+            "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{solved}"
+        ),
+    );
+    let body = format!(
+        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{iteration}\n    }}",
+        acp_mock_kpop_prompt_preamble(),
+    );
+    let done = session_update_chunk_line("agent_message_chunk", chunk);
+    acp_mock_js("", &format!("{body}\n{done}"))
 }
 
 fn acp_mock_kpop_tamper_dotfile_writes_solved_js(rel: &str) -> String {

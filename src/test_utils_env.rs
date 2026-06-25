@@ -3,6 +3,10 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+pub use crate::test_poll::{
+    test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
+};
+
 fn stable_test_cwd() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }

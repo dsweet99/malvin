@@ -85,6 +85,7 @@ fn run_malvin_code_in_workspace(
         .env("PATH", path)
         .args(["--no-tee", "code"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(common::FAST_GATE_LOOP_TEST_ARGS);
     cmd.args(["--max-loops", "1", "ship it"]);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")
 }

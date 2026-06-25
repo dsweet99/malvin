@@ -80,6 +80,7 @@ fn explain_fails_when_request_missing() {
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
         .env("PATH", &path)
+        .args(common::INTEGRATION_TEST_MALVIN_ARGS)
         .args(["explain", "--max-loops", "1"]);
     let out = common::command_output_with_timeout(&mut cmd, common::MALVIN_TEST_CMD_TIMEOUT)
         .expect("spawn");

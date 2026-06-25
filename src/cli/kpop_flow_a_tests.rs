@@ -133,6 +133,7 @@ async fn run_kpop_multiturn_mock_once(
 #[cfg(unix)]
 #[test]
 fn kpop_run_acp_multiturn_executes_mock_agent() {
+    crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|workspace| {
         let exp_log_path = crate::test_utils::block_on_test_async(async {
             run_kpop_multiturn_mock_once(workspace).await

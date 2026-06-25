@@ -3,23 +3,31 @@ mod common;
 #[cfg(all(unix, target_os = "linux"))]
 mod linux_pty {
     use crate::common::{
-        acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js, only_run_dir,
-        run_do_under_script, run_kpop_multiturn_investigate, run_malvin_under_script_with_mock,
+        acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
+        bin_path_with_fake_kiss, only_run_dir, run_do_under_script,
+        run_kpop_multiturn_investigate, run_malvin_under_script_with_mock, spawn_kpop,
+        test_home_workspace, write_mock_executable, KpopSpawn,
     };
 
     #[test]
     fn kpop_timing_uses_kpop_label_not_implement() {
-        let run = run_malvin_under_script_with_mock(
-            &acp_mock_code_streaming_update_js(),
-            "kpop --max-loops 1 --max-hypotheses 1 investigate",
-            None,
-        );
+        let (root, home, workspace) = test_home_workspace();
+        let path = bin_path_with_fake_kiss(&root);
+        let mock = root.path().join("mock-kpop-timing");
+        write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
+        let out = spawn_kpop(&KpopSpawn {
+            workspace: &workspace,
+            home: &home,
+            mock: &mock,
+            path_var: &path,
+            extra_args: &["--max-loops", "1"],
+            request: "investigate",
+        });
         assert!(
-            run.output.status.success(),
-            "expected kpop success when mock streams only chat: {:?}",
-            run.output
+            out.status.success(),
+            "expected kpop success when mock streams only chat: {out:?}"
         );
-        let stdout = String::from_utf8_lossy(&run.output.stdout);
+        let stdout = String::from_utf8_lossy(&out.stdout);
         assert!(
             stdout.contains("TIMING: "),
             "expected timing summary: {stdout:?}"
@@ -32,7 +40,7 @@ mod linux_pty {
             !stdout.contains("implement = "),
             "did not expect implement timing label in kpop output: {stdout:?}"
         );
-        let run_dir = only_run_dir(&run.workspace, &run.home);
+        let run_dir = only_run_dir(&workspace, &home);
         let timing_path = run_dir.join("run_timing.json");
         let timing_text = std::fs::read_to_string(&timing_path).expect("read run_timing.json");
         assert!(

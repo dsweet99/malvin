@@ -1,6 +1,6 @@
-use super::plan_flow_pipeline::run_plan_acp;
+use super::plan_flow_pipeline::{run_plan_acp_with_phases, PlanAcpPhases};
 use super::plan_flow_test_helpers::{
-    install_plan_mock_env, prepare_plan_mock_run, prepare_plan_mock_run_with_env,
+    install_plan_mock_env, post_2_content, prepare_plan_mock_run, prepare_plan_mock_run_with_env,
     write_plan_pipeline_mock_agent,
 };
 
@@ -105,7 +105,7 @@ pub(crate) fn write_plan_gitignore_tamper_mock_agent(path: &std::path::Path) {
 }
 
 #[test]
-pub(crate) fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
+pub(crate) fn run_plan_acp_mock_agent_prompt_1a_snapshots_artifact() {
     crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {
@@ -113,12 +113,34 @@ pub(crate) fn run_plan_acp_mock_agent_completes_four_prompt_pipeline() {
             std::fs::write(&plan, "# User\n").expect("write");
             let mock = work.join("mock-agent");
             let mut prep = prepare_plan_mock_run(work, &mock, &plan).await;
-            run_plan_acp(&mut prep).await.expect("plan acp");
+            run_plan_acp_with_phases(&mut prep, PlanAcpPhases::Prompt1aOnly)
+                .await
+                .expect("plan acp prompt 1a");
+            assert!(prep.artifacts.run_dir.join("plan.p1a.md").is_file());
+        });
+    });
+}
+
+#[test]
+pub(crate) fn run_plan_acp_mock_agent_finalizes_revised_plan() {
+    crate::test_utils::enable_test_fast_teardown();
+    crate::test_utils::with_isolated_home(|work| {
+        crate::test_utils::block_on_test_async(async {
+            let plan = work.join("plan.md");
+            std::fs::write(&plan, post_2_content()).expect("write");
+            std::fs::write(
+                crate::artifacts::plan_user_sidecar_path(&plan),
+                "# User\n",
+            )
+            .expect("sidecar");
+            let mock = work.join("mock-agent");
+            let mut prep = prepare_plan_mock_run(work, &mock, &plan).await;
+            run_plan_acp_with_phases(&mut prep, PlanAcpPhases::FinalOnly)
+                .await
+                .expect("plan acp final prompt");
             let out = std::fs::read_to_string(&plan).expect("read plan");
             assert_eq!(out, "# Revised\n\nDone.\n");
             assert!(!out.contains("BEGIN_MALVIN"));
-            assert!(prep.artifacts.run_dir.join("plan.p1a.md").is_file());
-            assert!(prep.artifacts.run_dir.join("plan.p2.decisions.md").is_file());
         });
     });
 }

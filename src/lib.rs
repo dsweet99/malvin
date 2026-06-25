@@ -131,6 +131,10 @@ pub use session_dotfile_backup::KissConfigBackup;
 
 pub mod artifacts;
 mod child_health;
+mod test_poll;
+pub use test_poll::{
+    test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
+};
 pub mod config;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
