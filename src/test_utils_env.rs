@@ -3,6 +3,8 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION;
+
 pub use crate::test_poll::{
     test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
 };
@@ -52,6 +54,31 @@ pub fn clear_test_no_real_agent_env() {
     #[allow(unsafe_code)]
     unsafe {
         std::env::remove_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV);
+    }
+}
+
+/// Permit session restore/repair to delete or recreate `~/.malvin_home/config.toml` (test builds only).
+pub fn allow_home_malvin_config_mutation_for_test() {
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
+    }
+}
+
+/// Revoke home-config mutation permission after an isolated-home test finishes.
+pub fn revoke_home_malvin_config_mutation_for_test() {
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::remove_var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION);
+    }
+}
+
+/// Point `$HOME` at a temp directory and allow home-config restore/repair to mutate it.
+pub fn set_test_home_env(home: &Path) {
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("HOME", home);
+        allow_home_malvin_config_mutation_for_test();
     }
 }
 

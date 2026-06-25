@@ -77,7 +77,8 @@ pub use workspace_paths::{
     malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
     malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
     write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
-    MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL, MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
+    MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL, MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
+    MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
 };
 mod terminal_palette;
 mod run_id;

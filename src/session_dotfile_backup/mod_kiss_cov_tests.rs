@@ -68,6 +68,26 @@ fn kiss_cov_gitignore_file_backup_construct_destructure() {
 }
 
 #[test]
+fn kiss_cov_write_merged_default_malvin_config() {
+    let _ = super::slots_kiss_cov_shared::write_merged_default_malvin_config;
+
+    crate::test_utils::with_isolated_home(|work| {
+        let cfg_path = crate::malvin_config_path(work);
+        if let Some(parent) = cfg_path.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir home config parent");
+        }
+        super::slots_kiss_cov_shared::write_merged_default_malvin_config(&cfg_path);
+        assert!(cfg_path.is_file(), "default config should be written");
+        let content = std::fs::read_to_string(&cfg_path).expect("read config");
+        assert!(content.ends_with('\n'), "config should end with newline");
+        assert!(
+            content.contains("[agent]") || content.contains("memory"),
+            "merged template keys should appear"
+        );
+    });
+}
+
+#[test]
 fn kiss_cov_slots_kiss_cov_shared_fn_refs() {
     let _ = super::slots_kiss_cov_shared::dotfile_spec_row_field_count;
     let _ = super::alloc::random_backup_id;

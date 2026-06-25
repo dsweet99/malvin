@@ -15,10 +15,7 @@ fn home_config_path(home: &std::path::Path) -> std::path::PathBuf {
 #[cfg_attr(unix, test)]
 fn do_restores_home_malvin_config_after_mock_agent_overwrites() {
     let (root, home, workspace) = test_home_workspace();
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("HOME", &home);
-    }
+    common::activate_test_home(&home);
     common::seed_malvin_config(&workspace, "x\n");
     let mock = root.path().join("mock-agent-acp-do-malvin-config");
     write_mock_executable(&mock, &acp_mock_do_tampers_malvin_config_js());
@@ -35,10 +32,7 @@ fn do_restores_home_malvin_config_after_mock_agent_overwrites() {
 #[cfg_attr(unix, test)]
 fn do_restores_missing_malvin_config_when_agent_creates_it() {
     let (root, home, workspace) = test_home_workspace();
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("HOME", &home);
-    }
+    common::activate_test_home(&home);
     let cfg = home_config_path(&home);
     let _ = cfg.parent().map(std::fs::remove_dir_all);
     let mock = root.path().join("mock-agent-acp-do-create-malvin-config");
@@ -55,10 +49,7 @@ fn do_restores_missing_malvin_config_when_agent_creates_it() {
 #[cfg_attr(unix, test)]
 fn do_restores_malvin_config_after_tamper_when_present_at_start() {
     let (root, home, workspace) = test_home_workspace();
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("HOME", &home);
-    }
+    common::activate_test_home(&home);
     common::seed_malvin_config(&workspace, "cfg\n");
     let mock = root.path().join("mock-agent-acp-do-tamper-malvin-config");
     write_mock_executable(&mock, &acp_mock_do_tampers_malvin_config_js_only());

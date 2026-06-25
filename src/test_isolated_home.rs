@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 struct IsolatedTestEnv {
     _tmp: tempfile::TempDir,
     old_home: Option<std::ffi::OsString>,
+    old_home_config_mutation: Option<std::ffi::OsString>,
     old_cwd: PathBuf,
 }
 
@@ -18,11 +19,10 @@ impl IsolatedTestEnv {
         let home = tmp.path().join("home");
         std::fs::create_dir_all(&home).unwrap();
         let old_home = std::env::var_os("HOME");
+        let old_home_config_mutation =
+            std::env::var_os(crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION);
         {
-            #[allow(unsafe_code)]
-            unsafe {
-                std::env::set_var("HOME", &home);
-            }
+            super::env::set_test_home_env(&home);
         }
         let work = tmp.path().join("repo");
         std::fs::create_dir_all(&work).unwrap();
@@ -36,6 +36,7 @@ impl IsolatedTestEnv {
             Self {
                 _tmp: tmp,
                 old_home,
+                old_home_config_mutation,
                 old_cwd,
             },
             work,
@@ -53,6 +54,10 @@ impl Drop for IsolatedTestEnv {
             match self.old_home.take() {
                 Some(h) => std::env::set_var("HOME", h),
                 None => std::env::remove_var("HOME"),
+            }
+            match self.old_home_config_mutation.take() {
+                Some(v) => std::env::set_var(crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, v),
+                None => std::env::remove_var(crate::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION),
             }
         }
     }

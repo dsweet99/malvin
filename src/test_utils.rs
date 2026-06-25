@@ -8,8 +8,9 @@ use std::sync::Mutex;
 #[path = "test_utils_env.rs"]
 mod env;
 pub use env::{
-    block_on_test_async, clear_test_no_real_agent_env, enable_test_fast_teardown, restore_cwd,
-    save_cwd, test_post_teardown_poll_interval, test_post_teardown_wait_budget,
+    allow_home_malvin_config_mutation_for_test, block_on_test_async, clear_test_no_real_agent_env,
+    enable_test_fast_teardown, restore_cwd, revoke_home_malvin_config_mutation_for_test,
+    save_cwd, set_test_home_env, test_post_teardown_poll_interval, test_post_teardown_wait_budget,
     test_wait_until_async, SavedEnvVars,
 };
 

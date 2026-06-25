@@ -20,6 +20,18 @@ pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
 /// Global user config filename under [`malvin_user_home_root`].
 pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
+/// When set to `1` during `cargo test`, code may delete or recreate `~/.malvin_home/config.toml`.
+pub const MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION: &str = "MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION";
+
+/// Whether home-config delete/recreate paths may run (always true outside test builds).
+pub(crate) fn home_malvin_config_delete_allowed() -> bool {
+    if cfg!(test) {
+        std::env::var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1")
+    } else {
+        true
+    }
+}
+
 /// Run-directory file recording the canonical workspace cwd for this run.
 pub const WORK_DIR_MANIFEST: &str = "work_dir";
 

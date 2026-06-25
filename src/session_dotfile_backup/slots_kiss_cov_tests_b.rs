@@ -155,16 +155,18 @@ fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
 
 #[test]
 fn kiss_cov_restore_malvin_config_missing_branches() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
-    let spec = &DOTFILE_ROWS[MALVIN_CONFIG_SLOT];
-    let lbls = labels_for_test(spec);
-    assert!(restore_malvin_config_missing_for_test(&work.join("missing"), &lbls).is_ok());
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    let cfg_path = crate::malvin_config_path(work);
-    std::fs::write(&cfg_path, "not valid toml [[[\n").expect("write bad config");
-    assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
-    write_merged_default_malvin_config(&cfg_path);
-    assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
-    assert!(!cfg_path.exists());
+    crate::test_utils::with_isolated_home(|work| {
+        let spec = &DOTFILE_ROWS[MALVIN_CONFIG_SLOT];
+        let lbls = labels_for_test(spec);
+        assert!(restore_malvin_config_missing_for_test(&work.join("missing"), &lbls).is_ok());
+        let cfg_path = crate::malvin_config_path(work);
+        if let Some(parent) = cfg_path.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir home config parent");
+        }
+        std::fs::write(&cfg_path, "not valid toml [[[\n").expect("write bad config");
+        assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
+        write_merged_default_malvin_config(&cfg_path);
+        assert!(restore_malvin_config_missing_for_test(&cfg_path, &lbls).is_ok());
+        assert!(!cfg_path.exists());
+    });
 }

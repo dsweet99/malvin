@@ -21,10 +21,7 @@ fn home_config_path(home: &std::path::Path) -> std::path::PathBuf {
 #[cfg_attr(unix, test)]
 fn kpop_outer_loop_restores_home_malvin_config_after_agent_tampers() {
     let (root, home, workspace) = test_home_workspace();
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("HOME", &home);
-    }
+    common::activate_test_home(&home);
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     common::seed_malvin_config(&workspace, HOME_CONFIG_SEED);

@@ -144,6 +144,9 @@ fn is_ensured_default_malvin_config(bytes: &[u8]) -> bool {
 }
 
 fn restore_malvin_config_missing(dst: &Path, lbls: &DotfileBackupLabels) -> Result<(), String> {
+    if !crate::workspace_paths::home_malvin_config_delete_allowed() {
+        return Ok(());
+    }
     if !dst.exists() {
         return Ok(());
     }

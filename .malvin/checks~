@@ -1,4 +1,0 @@
-ruff check
-kiss check
-cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo
-cargo nextest run

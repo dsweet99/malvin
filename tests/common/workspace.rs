@@ -34,9 +34,11 @@ where
     let work = root.path().join("work");
     std::fs::create_dir_all(&work).expect("mkdir work");
     let old_home = std::env::var_os("HOME");
+    let old_home_config_mutation = std::env::var_os(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION);
     #[allow(unsafe_code)]
     unsafe {
         std::env::set_var("HOME", &home);
+        std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
     }
     f(&work, &home);
     #[allow(unsafe_code)]
@@ -45,6 +47,19 @@ where
             Some(h) => std::env::set_var("HOME", h),
             None => std::env::remove_var("HOME"),
         }
+        match old_home_config_mutation {
+            Some(v) => std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, v),
+            None => std::env::remove_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION),
+        }
+    }
+}
+
+/// Point `$HOME` at an isolated temp home and allow home-config restore/repair to mutate it.
+pub fn activate_test_home(home: &Path) {
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("HOME", home);
+        std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
     }
 }
 
