@@ -35,8 +35,32 @@ fn bundle_with(
         kissignore,
         malvin_config: DotfileBackupState::Missing,
         gitignore,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     }
+}
+
+#[test]
+fn merge_rejects_deleted_vision() {
+    let vision_present = |bytes: &[u8]| crate::session_dotfile_backup::VisionBackup::Present {
+        backup_root: std::path::PathBuf::from("/tmp/test"),
+        files: vec![crate::session_dotfile_backup::VisionFileBackup {
+            rel: std::path::PathBuf::from("VISION.md"),
+            bytes: bytes.to_vec(),
+        }],
+    };
+    let anchor = bundle_with(
+        GitignoreBackup::Missing,
+        DotfileBackupState::Missing,
+        DotfileBackupState::Missing,
+        DotfileBackupState::Missing,
+    );
+    let mut anchor = anchor;
+    anchor.vision = vision_present(b"baseline\n");
+    let mut progress = anchor.clone();
+    progress.vision = crate::session_dotfile_backup::VisionBackup::Missing;
+    let merged = merge_for_gate_restore(&anchor, &progress);
+    assert!(matches!(merged.vision, crate::session_dotfile_backup::VisionBackup::Present { .. }));
 }
 
 #[test]
@@ -70,6 +94,7 @@ fn merge_rejects_kissconfig_and_home_config_tamper() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: present(b"mem_limit_gb = 7\n"),
         gitignore: GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let progress = SessionDotfileBackups {
@@ -78,6 +103,7 @@ fn merge_rejects_kissconfig_and_home_config_tamper() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: present(b"TAMPERED\n"),
         gitignore: GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let merged = merge_for_gate_restore(&anchor, &progress);

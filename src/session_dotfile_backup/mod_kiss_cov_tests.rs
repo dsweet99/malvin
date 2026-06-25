@@ -25,6 +25,7 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
         kissignore: missing.clone(),
         malvin_config: missing.clone(),
         gitignore: super::GitignoreBackup::Missing,
+        vision: super::VisionBackup::Missing,
         malvin_config_workspace: missing,
     };
     let touched = std::hint::black_box(parts);
@@ -34,6 +35,7 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
         kissignore,
         malvin_config,
         gitignore,
+        vision,
         malvin_config_workspace,
     } = touched;
     assert!(matches!(kissconfig, DotfileBackupState::Missing));
@@ -41,6 +43,7 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
     assert!(matches!(kissignore, DotfileBackupState::Missing));
     assert!(matches!(malvin_config, DotfileBackupState::Missing));
     assert!(matches!(gitignore, super::GitignoreBackup::Missing));
+    assert!(matches!(vision, super::VisionBackup::Missing));
     assert!(matches!(
         malvin_config_workspace,
         DotfileBackupState::Missing
@@ -51,6 +54,7 @@ fn kiss_cov_session_dotfile_parts_construct_destructure() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: super::GitignoreBackup::Missing,
+        vision: super::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     });
     assert!(matches!(backups.kissconfig, DotfileBackupState::Missing));
@@ -65,6 +69,17 @@ fn kiss_cov_gitignore_file_backup_construct_destructure() {
     let super::gitignore_tree::GitignoreFileBackup { rel, bytes } = file;
     assert_eq!(rel, std::path::PathBuf::from(".gitignore"));
     assert_eq!(bytes, b"target/\n");
+}
+
+#[test]
+fn kiss_cov_vision_file_backup_construct_destructure() {
+    let file = super::vision_tree::VisionFileBackup {
+        rel: std::path::PathBuf::from("VISION.md"),
+        bytes: b"# Vision\n".to_vec(),
+    };
+    let super::vision_tree::VisionFileBackup { rel, bytes } = file;
+    assert_eq!(rel, std::path::PathBuf::from("VISION.md"));
+    assert_eq!(bytes, b"# Vision\n");
 }
 
 #[test]

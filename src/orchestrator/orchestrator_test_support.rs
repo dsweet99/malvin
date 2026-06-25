@@ -35,6 +35,7 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
         kissignore: KissignoreBackup::Missing,
         malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::MalvinConfigWorkspaceBackup::Missing,
     })
 }

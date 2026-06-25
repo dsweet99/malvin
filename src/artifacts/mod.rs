@@ -24,7 +24,7 @@ pub use plan_splice::{
 
 pub use crate::session_dotfile_backup::{
     GitignoreBackup, KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    MalvinConfigWorkspaceBackup,
+    MalvinConfigWorkspaceBackup, VisionBackup,
     SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
     backup_workspace_gitignore_if_present_with_id, backup_workspace_kissconfig_if_present,
     backup_workspace_kissconfig_if_present_with_id, backup_workspace_kissignore_if_present,
@@ -36,6 +36,8 @@ pub use crate::session_dotfile_backup::{
     restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
     restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
     restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_vision_backup, backup_workspace_vision_if_present,
+    backup_workspace_vision_if_present_with_id,
     restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore,
     merge_for_gate_restore, repair_clamp_damaged_dotfiles_on_disk,
     sanitize_clamp_damaged_dotfiles_in_bundle,

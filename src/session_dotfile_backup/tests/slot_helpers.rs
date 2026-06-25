@@ -18,6 +18,7 @@ fn restore_excluding_malvin_checks_on_bundle() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     });
     bundle.restore_excluding_malvin_checks(work).unwrap();
@@ -80,6 +81,7 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     });
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();

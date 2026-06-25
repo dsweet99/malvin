@@ -1,17 +1,10 @@
+use crate::session_dotfile_backup::tree_test_support::init_git_repo;
 use super::{
     backup_workspace_gitignore_if_present, collect_workspace_gitignore_relpaths,
     restore_workspace_gitignore_backup, GitignoreBackup,
 };
 use crate::test_utils::with_isolated_home;
 use std::path::{Path, PathBuf};
-
-fn init_git_repo(work: &Path) {
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(work)
-        .status()
-        .expect("git init");
-}
 
 #[test]
 fn collect_finds_root_and_nested_gitignore_files() {

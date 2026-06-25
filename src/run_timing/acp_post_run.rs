@@ -90,6 +90,7 @@ pub(crate) fn merge_error_mentions_restore(merge_error: &str) -> bool {
         || merge_error.contains("kissignore restore:")
         || merge_error.contains("malvin_config restore:")
         || merge_error.contains("gitignore restore:")
+        || merge_error.contains("vision restore:")
         || merge_error.contains("malvin_config_workspace restore:")
 }
 

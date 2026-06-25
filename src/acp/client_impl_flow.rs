@@ -157,6 +157,7 @@ mod begin_coder_session_guard_tests {
                 kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+                vision: crate::session_dotfile_backup::VisionBackup::Missing,
                 malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
             },
         );

@@ -90,11 +90,37 @@ fn restore_session_dotfiles_strips_legacy_root_checks_file() {
         kissignore: KissignoreBackup::Missing,
         malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: MalvinConfigWorkspaceBackup::Missing,
     })
     .restore(work)
     .unwrap();
     assert!(!work.join(".malvin_checks").exists());
+}
+
+#[test]
+fn vision_snapshot_round_trip() {
+    with_isolated_home(|work| {
+        seed_pair(work);
+        std::fs::write(work.join("VISION.md"), b"vision\n").unwrap();
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        let vi = work.join("VISION.md");
+        std::fs::write(&vi, b"tampered\n").unwrap();
+        bundle.restore(work).unwrap();
+        assert_eq!(std::fs::read(&vi).unwrap(), b"vision\n");
+    });
+}
+
+#[test]
+fn vision_missing_at_snapshot_removes_agent_created_file() {
+    with_isolated_home(|work| {
+        std::fs::create_dir_all(work).unwrap();
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        let vi = work.join("VISION.md");
+        std::fs::write(&vi, b"agent-created\n").unwrap();
+        bundle.restore(work).unwrap();
+        assert!(!vi.exists());
+    });
 }
 
 #[test]

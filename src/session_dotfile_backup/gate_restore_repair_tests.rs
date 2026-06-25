@@ -115,6 +115,7 @@ fn sanitize_bundle_fixes_poisoned_checks_slot_leaves_kissconfig_unchanged() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
         gitignore: GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let progress = anchor.clone();
@@ -171,6 +172,7 @@ fn sanitize_bundle_replaces_empty_home_malvin_config_with_template() {
         kissignore: DotfileBackupState::Missing,
         malvin_config: poisoned(b""),
         gitignore: GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     sanitize_clamp_damaged_dotfiles_in_bundle(&mut bundle, work);

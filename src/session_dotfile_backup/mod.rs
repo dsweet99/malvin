@@ -3,6 +3,9 @@ pub(crate) mod gate_restore_checks;
 pub(crate) mod gate_restore_merge;
 pub(crate) mod gate_restore_repair;
 mod gitignore_tree;
+#[cfg(test)]
+mod tree_test_support;
+mod vision_tree;
 mod slots;
 mod wrappers;
 
@@ -16,6 +19,10 @@ use std::path::Path;
 pub use gitignore_tree::{
     backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
     restore_workspace_gitignore_backup, GitignoreBackup, GitignoreFileBackup,
+};
+pub use vision_tree::{
+    backup_workspace_vision_if_present, backup_workspace_vision_if_present_with_id,
+    restore_workspace_vision_backup, VisionBackup, VisionFileBackup,
 };
 pub use wrappers::{
     backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
@@ -57,6 +64,7 @@ pub struct SessionDotfileParts {
     pub kissignore: KissignoreBackup,
     pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
+    pub vision: VisionBackup,
     pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
 }
 
@@ -67,6 +75,7 @@ pub struct SessionDotfileBackups {
     pub kissignore: KissignoreBackup,
     pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
+    pub vision: VisionBackup,
     pub malvin_config_workspace: MalvinConfigWorkspaceBackup,
 }
 
@@ -79,6 +88,7 @@ impl SessionDotfileBackups {
             kissignore: parts.kissignore,
             malvin_config: parts.malvin_config,
             gitignore: parts.gitignore,
+            vision: parts.vision,
             malvin_config_workspace: parts.malvin_config_workspace,
         }
     }
@@ -110,6 +120,7 @@ impl SessionDotfileBackups {
             kissignore: backup_slot(2, work_dir, &mut generate_id)?,
             malvin_config: backup_slot(3, work_dir, &mut generate_id)?,
             gitignore: gitignore_tree::backup_gitignore_tree(work_dir, &mut generate_id)?,
+            vision: vision_tree::backup_vision_tree(work_dir, &mut generate_id)?,
             malvin_config_workspace: backup_slot(5, work_dir, &mut generate_id)?,
         })
     }
@@ -145,6 +156,7 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     restore_slot(work_dir, &bundle.kissignore, 2)?;
     restore_slot(work_dir, &bundle.malvin_config, 3)?;
     gitignore_tree::restore_workspace_gitignore_backup(work_dir, &bundle.gitignore)?;
+    vision_tree::restore_workspace_vision_backup(work_dir, &bundle.vision)?;
     restore_slot(work_dir, &bundle.malvin_config_workspace, 5)
 }
 
@@ -157,6 +169,9 @@ mod wrappers_kiss_cov_tests;
 #[cfg(test)]
 #[path = "gitignore_tree_kiss_cov_tests.rs"]
 mod gitignore_tree_kiss_cov_tests;
+#[cfg(test)]
+#[path = "vision_tree_kiss_cov_tests.rs"]
+mod vision_tree_kiss_cov_tests;
 #[cfg(test)]
 #[path = "mod_kiss_cov_tests.rs"]
 mod mod_kiss_cov_tests;

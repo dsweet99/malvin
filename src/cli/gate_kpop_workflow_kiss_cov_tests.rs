@@ -111,6 +111,7 @@ fn kiss_cov_gate_kpop_loop_params_types() {
         kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
         malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
     });
     let mut client = crate::agent_backend::AgentBackend::Acp(crate::acp::AgentClient::with_max_acp_retries(
