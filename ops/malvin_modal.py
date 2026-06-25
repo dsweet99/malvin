@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TextIO
 from unittest.mock import MagicMock, patch
@@ -28,6 +29,10 @@ import click
 from click.testing import CliRunner
 import modal
 from modal.stream_type import StreamType
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
+from modal_sandbox_lifecycle import release_modal_sandbox
 
 APP_NAME = "malvin-modal"
 WORKSPACE = "/workspace"
@@ -165,9 +170,7 @@ def print_empty_argv_help(ctx: click.Context) -> None:
 
 def sandbox_app() -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
-    if app.app_id is not None:
-        return app
-    return modal.App.lookup(APP_NAME, create_if_missing=True)
+    return lookup_sandbox_app(app, APP_NAME)
 
 
 def run_malvin_remote(malvin_argv: list[str]) -> int:
@@ -197,8 +200,7 @@ def run_malvin_remote(malvin_argv: list[str]) -> int:
         stream_process_output(proc, sys.stdout, sys.stderr)
         return finish_process(proc)
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 @click.command(
@@ -276,7 +278,7 @@ def _test_modal_remote() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
         code = run_malvin_remote(["--version"])
     assert code == 7
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def run_unit_tests() -> None:
@@ -290,42 +292,13 @@ def run_unit_tests() -> None:
     _test_click_cli()
 
 
-def test_kiss_static_coverage() -> None:
-    """Register production symbols for kiss static test coverage."""
-    symbols = (
-        build_ignore_patterns,
-        parse_malvin_argv,
-        relay_stream,
-        workspace_image,
-        present_cursor_keys,
-        cursor_secrets,
-        finish_process,
-        stream_process_output,
-        run_local_malvin_usage,
-        render_empty_argv_help,
-        print_empty_argv_help,
-        sandbox_app,
-        run_malvin_remote,
-        cli,
-        main,
-        run_unit_tests,
-    )
-    assert len(symbols) == 16
-
 
 def _test_sandbox_app() -> None:
-    lookup_app = SimpleNamespace(app_id="lookup-id")
-    module_app = SimpleNamespace(app_id="module-id")
-    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
-        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
-            assert sandbox_app() is lookup_app
-        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
-    with patch(f"{__name__}.app", module_app):
-        assert sandbox_app() is module_app
+    test_sandbox_app_lookup(__name__, app, APP_NAME, sandbox_app)
 
 
 def _test_render_empty_argv_help() -> None:
-    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]...\n"
     fake_wrapper = "Usage: python ops/malvin_modal.py [OPTIONS]\n"
     ctx = MagicMock()
     ctx.get_help.return_value = fake_wrapper
@@ -339,7 +312,7 @@ def _test_render_empty_argv_help() -> None:
 
 def _test_empty_argv_help() -> None:
     runner = CliRunner()
-    fake_malvin = "Usage: malvin [COMMAND|REQUEST]\n"
+    fake_malvin = "Usage: malvin [COMMAND|REQUEST]...\n"
     with patch(f"{__name__}.run_local_malvin_usage", return_value=fake_malvin):
         with patch(f"{__name__}.run_malvin_remote") as mock_remote:
             result = runner.invoke(
@@ -371,7 +344,7 @@ def _test_click_cli() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
         result = runner.invoke(cli, ["--version"])
     assert result.exit_code == 7
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 if __name__ == "__main__":

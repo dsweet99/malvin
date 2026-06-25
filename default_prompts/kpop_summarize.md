@@ -1,6 +1,6 @@
 # Summarize the activity
 
-Malvin finished a multi-loop KPop session (`--max-loops` > 1). Read the session logs below—especially the KPop experiment logs—and summarize what happened for the user.
+Malvin finished a multi-flow KPop session (more than one outer-loop agent ran). Read the session logs below—especially the KPop experiment logs—and summarize what happened for the user.
 
 ## Logs to read
 

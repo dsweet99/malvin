@@ -1,4 +1,4 @@
-//! Unified `~/.malvin/config.toml` schema, default merge-on-open, and typed accessors.
+//! Unified `~/.malvin_home/config.toml` schema, default merge-on-open, and typed accessors.
 
 use std::path::Path;
 
@@ -8,6 +8,11 @@ use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
 use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
 use crate::workspace_paths::malvin_config_path;
+
+#[path = "malvin_config_open.rs"]
+mod malvin_config_open;
+pub use malvin_config_open::ensure_malvin_config_file_if_missing;
+use malvin_config_open::create_malvin_config_from_template;
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
@@ -49,7 +54,7 @@ pub struct MalvinConfig {
     pub agent: AgentConfig,
 }
 
-/// Ensure `~/.malvin/config.toml` exists and contains every known key (writes missing defaults).
+/// Ensure `~/.malvin_home/config.toml` exists and contains every known key (writes missing defaults).
 pub fn ensure_malvin_config_file(work_dir: &Path) -> Result<(), String> {
     let _ = open_malvin_config(work_dir)?;
     Ok(())
@@ -73,16 +78,16 @@ pub fn load_malvin_config(work_dir: &Path) -> MalvinConfig {
     parse_malvin_config(&merged)
 }
 
-/// Open workspace config: create if missing, merge missing keys from the template, return typed values.
+/// Open workspace config: create if missing (with template defaults), never rewrite an existing file.
 pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
     let path = malvin_config_path(work_dir);
     ensure_config_parent_dir(&path)?;
     let template = parse_template_value()?;
-    let mut on_disk = read_on_disk_config_value(&path)?;
-    let changed = merge_missing_keys(&mut on_disk, &template);
-    if !path.is_file() || changed {
-        write_config_value(&path, &on_disk)?;
+    if !path.is_file() {
+        return create_malvin_config_from_template(&path, &template);
     }
+    let mut on_disk = read_on_disk_config_value(&path)?;
+    merge_missing_keys(&mut on_disk, &template);
     Ok(parse_malvin_config(
         &toml::to_string(&on_disk).map_err(|e| e.to_string())?,
     ))
@@ -208,22 +213,30 @@ pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {
     value?.as_str().map(str::to_string)
 }
 
-pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
+fn parse_toml_integer(value: Option<&toml::Value>) -> Option<i64> {
     let v = value?;
     if let Some(i) = v.as_integer() {
-        return usize::try_from(i).ok();
+        return Some(i);
     }
     v.as_str()?.parse().ok()
 }
 
+pub(crate) fn read_usize(value: Option<&toml::Value>) -> Option<usize> {
+    parse_toml_integer(value).and_then(|i| usize::try_from(i).ok())
+}
+
 pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {
-    let v = value?;
-    if let Some(i) = v.as_integer() {
-        return u32::try_from(i).ok();
-    }
-    v.as_str()?.parse().ok()
+    parse_toml_integer(value).and_then(|i| u32::try_from(i).ok())
+}
+
+pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
+    parse_toml_integer(value).and_then(|i| u64::try_from(i).ok())
 }
 
 #[cfg(test)]
 #[path = "malvin_config_file_tests.rs"]
 mod malvin_config_file_tests;
+
+#[cfg(test)]
+#[path = "malvin_config_file_tests_no_overwrite.rs"]
+mod malvin_config_file_tests_no_overwrite;

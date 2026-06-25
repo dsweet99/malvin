@@ -14,3 +14,18 @@ pub fn sleep_child(seconds: &str) -> std::process::Child {
     cmd.arg(seconds);
     cmd.spawn().expect("spawn sleep")
 }
+
+#[cfg(unix)]
+pub fn write_peer_acp_lock(
+    work: &std::path::Path,
+    slot: &str,
+    holder_pid: u32,
+) -> std::path::PathBuf {
+    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
+    let lock = work
+        .join(".malvin")
+        .join("acp_spawn")
+        .join(format!("{slot}.lock"));
+    std::fs::write(&lock, holder_pid.to_string()).expect("write peer lock");
+    lock
+}

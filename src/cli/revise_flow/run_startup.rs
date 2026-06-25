@@ -1,7 +1,7 @@
 use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
-use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+use crate::gate_kpop_workflow::GateKpopPrepared;
 
 use super::prep::{prepare_revise_kpop_prompt_store, revise_kpop_request, revise_preflight};
 
@@ -13,7 +13,7 @@ pub struct ReviseKpopPrepared {
 fn revise_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<std::collections::HashMap<String, String>, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "revise")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "revise")
 }
 
 pub fn prepare_revise_kpop_run(

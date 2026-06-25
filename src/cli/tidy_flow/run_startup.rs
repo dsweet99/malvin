@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
-use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+use crate::gate_kpop_workflow::GateKpopPrepared;
 
 use super::prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
 

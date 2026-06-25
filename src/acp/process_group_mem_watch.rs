@@ -7,8 +7,12 @@ use tracing::warn;
 
 use super::session_types::AcpSession;
 
-const POLL_INTERVAL: Duration = Duration::from_millis(500);
-/// Consecutive `None` RSS samples before fail-closed teardown (~1.5s at 500ms poll).
+const POLL_INTERVAL: Duration = if cfg!(test) {
+    Duration::from_millis(10)
+} else {
+    Duration::from_millis(500)
+};
+/// Consecutive `None` USS samples before fail-closed teardown (~1.5s at 500ms poll in production).
 const MAX_CONSECUTIVE_RSS_SAMPLE_FAILURES: u32 = 3;
 
 pub struct MemWatchHandles {
@@ -42,7 +46,6 @@ pub(crate) fn spawn_process_group_memory_watcher(session: &AcpSession, work_dir:
     }
     #[cfg(not(unix))]
     {
-        let _ = stringify!((session, work_dir));
     }
 }
 
@@ -54,7 +57,7 @@ pub async fn watch_process_group_memory(handles: MemWatchHandles) {
     .await;
 }
 
-/// Poll sandbox RSS and terminate on over-limit or sustained measurement failure.
+/// Poll sandbox USS and terminate on over-limit or sustained measurement failure.
 #[cfg(unix)]
 pub async fn watch_process_group_memory_with_rss_sampler(
     handles: MemWatchHandles,
@@ -234,7 +237,6 @@ mod policy_tests {
         assert!(gate_iteration_oom_killed(&artifacts, 1));
         let text = std::fs::read_to_string(artifacts.sandbox_oom_json_path()).expect("read");
         assert!(text.contains(OOM_REASON_MEASUREMENT_FAIL_CLOSED));
-        let _ = stringify!(SandboxOomKillRecord::from_facts);
     }
 }
 

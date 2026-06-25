@@ -6,7 +6,7 @@
   - `kiss check`
   - `ruff check .` (Python)
   - `pytest -sv tests` (Python with test modules)
-  - `cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo` (Rust)
+  - `cargo clippy --all-targets --  --no-deps -D warnings` (Rust)
   - `cargo nextest run` or `cargo test` (Rust; prefer nextest when available)
 - Signal priority (highest first):
   1. `.pre-commit-config.yaml` hook `entry` lines

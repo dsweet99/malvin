@@ -13,7 +13,7 @@ use crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
 use crate::repo_gates::init_discovery::{InitDiscoveryDecision, validate_checks_command_lines};
 use crate::repo_gates::load_malvin_checks;
 
-use super::gate_kpop_workflow::{
+use crate::gate_kpop_workflow::{
     GateKpopLoopParams, GateKpopPrepared, GateLoopBehavior, run_gate_kpop_loop,
 };
 use super::workflow_kpop_shared::{gate_kpop_loop_iterations, kpop_workflow_context, render_kpop_program_request};
@@ -84,10 +84,14 @@ pub(crate) async fn run_init_discovery_kpop(
         malvin_checks_backup,
     };
     let agent_cfg = load_init_agent_config(&artifacts.work_dir);
-    let max_loops = agent_cfg.max_loops;
-    let max_hypotheses = agent_cfg.max_hypotheses;
+    let (max_loops, max_hypotheses) = if crate::acp::test_no_real_agent_enabled() {
+        (1, 1)
+    } else {
+        (agent_cfg.max_loops, agent_cfg.max_hypotheses)
+    };
     let iterations = gate_kpop_loop_iterations(max_loops);
     let (gates_ok, agent_ran, _timing, _last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+        command: "init",
         shared,
         workflow,
         prepared: &prepared,
@@ -98,7 +102,6 @@ pub(crate) async fn run_init_discovery_kpop(
     .await?;
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
             agent_ran,
             shared,
             workflow,
@@ -109,7 +112,7 @@ pub(crate) async fn run_init_discovery_kpop(
     )
     .await;
     let discovery_r = finish_init_discovery_kpop(&prepared, &artifacts.work_dir, iterations, gates_ok);
-    crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(discovery_r, summarize_res)
+    crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(discovery_r, summarize_res)
 }
 
 fn finish_init_discovery_kpop(

@@ -1,3 +1,8 @@
+[workspace]
+members = [".", "malvin-mini"]
+resolver = "2"
+
+
 [package]
 name = "malvin"
 version = "0.1.9"
@@ -12,10 +17,14 @@ categories = ["development-tools"]
 
 [profile.dev]
 incremental = true
+codegen-units = 8
+debug = 0
+lto = false
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4", features = ["derive"] }
+malvin-mini = { path = "malvin-mini" }
 rand = "0.8"
 serde_json = "1"
 tempfile = "3"
@@ -62,3 +71,4 @@ libc = "0.2"
 errno = "0.3"
 libc = "0.2"
 libproc = "0.14"
+

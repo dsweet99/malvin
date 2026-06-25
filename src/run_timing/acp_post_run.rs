@@ -139,6 +139,44 @@ pub fn emit_run_timing_json_only_after_acp(
     })
 }
 
+pub struct RunTimingAfterBackend<'a> {
+    pub backend: &'a mut crate::agent_backend::AgentBackend,
+    pub run_dir: &'a Path,
+    pub timing: &'a Arc<Mutex<RunTiming>>,
+    pub agent_result: Result<(), String>,
+    pub session_end: RunTimingSessionEnd,
+}
+
+pub fn emit_run_timing_after_backend(req: RunTimingAfterBackend<'_>) -> Result<(), String> {
+    let timing_result = match req.session_end {
+        RunTimingSessionEnd::Finalize => {
+            crate::run_timing::finalize_run_timing_json_only(req.run_dir, req.timing)
+        }
+        RunTimingSessionEnd::AccumulateRun => {
+            crate::run_timing::persist_open_run_timing_json(req.run_dir, req.timing)
+        }
+    };
+    if matches!(req.session_end, RunTimingSessionEnd::Finalize) {
+        crate::agent_backend::agent_backend_set_run_timing(req.backend, None);
+    }
+    merge_acp_and_timing_results(req.agent_result, timing_result)
+}
+
+pub fn emit_run_timing_json_only_after_backend(
+    backend: &mut crate::agent_backend::AgentBackend,
+    run_dir: &Path,
+    timing: &Arc<Mutex<RunTiming>>,
+    agent_result: Result<(), String>,
+) -> Result<(), String> {
+    emit_run_timing_after_backend(RunTimingAfterBackend {
+        backend,
+        run_dir,
+        timing,
+        agent_result,
+        session_end: RunTimingSessionEnd::Finalize,
+    })
+}
+
 pub fn merge_acp_restore_check_abort_then_print_timing(
     primary: Result<(), String>,
     artifacts: &crate::artifacts::RunArtifacts,

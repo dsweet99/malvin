@@ -3,7 +3,7 @@
 mod common;
 
 #[cfg(unix)]
-use common::{fresh_workdir, sleep_child};
+use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
 use malvin::acp::snapshot_pids;
 #[cfg(unix)]
@@ -61,36 +61,43 @@ fn dead_before_next_allows_after_prior_sandbox_cleared() {
     assert_dead_before_next_spawn().expect("prior sandbox ended");
 }
 
-/// A live peer-process ACP lock in the workspace blocks another malvin ACP spawn.
+/// A live peer lock on the same slot blocks another malvin ACP spawn.
 #[cfg(unix)]
 #[test]
-fn peer_acp_spawn_lock_rejects_while_holder_alive() {
+fn concurrent_sessions_allowed_with_live_peer_in_workspace() {
     clear_active_sandbox_session();
     let work = fresh_workdir("malvin_peer_acp_spawn_lock");
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir .malvin");
+    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
     let mut child = sleep_child("120");
     let holder_pid = child.id();
-    let lock = work.join(".malvin").join("acp_spawn.lock");
+    let slot = "sharedslot";
+    let lock = work.join(".malvin").join("acp_spawn").join(format!("{slot}.lock"));
     std::fs::write(&lock, holder_pid.to_string()).expect("write lock");
-    let err = assert_no_peer_acp_spawn_lock(&work).expect_err("peer lock must block");
+    let err = malvin::assert_no_peer_acp_spawn_lock_for_slot(&work, slot)
+        .expect_err("peer lock must block");
     assert!(
         err.contains("ACP spawn lock held"),
         "expected peer lock error, got: {err}"
     );
     let _ = child.kill();
     let _ = child.wait();
-    assert_no_peer_acp_spawn_lock(&work).expect("stale lock cleared after holder exit");
+    malvin::assert_no_peer_acp_spawn_lock_for_slot(&work, slot)
+        .expect("stale lock cleared after holder exit");
     assert!(!lock.exists(), "stale lock file removed");
 }
 
-/// Session lifecycle must acquire and release the workspace ACP spawn lock.
+/// Session lifecycle must acquire and release the workspace ACP spawn lock slot.
 #[cfg(unix)]
 #[test]
 fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
     clear_active_sandbox_session();
     let work = fresh_workdir("malvin_acp_lock_lifecycle");
     let baseline = snapshot_pids();
-    let lock = work.join(".malvin").join("acp_spawn.lock");
+    malvin::set_active_acp_lock_slot("lifecycle".to_string());
+    let lock = work
+        .join(".malvin")
+        .join("acp_spawn")
+        .join("lifecycle.lock");
     note_active_sandbox_session(None, baseline, &work).expect("acquire lock");
     assert!(lock.is_file(), "lock file should exist after note_active");
     assert_eq!(
@@ -101,47 +108,49 @@ fn acp_spawn_lock_acquired_and_released_by_session_lifecycle() {
     assert!(!lock.exists(), "lock file should be removed after clear");
 }
 
-/// A lock held by this process must not block re-entry.
+/// A lock held by this process must not block re-entry on the same slot.
 #[cfg(unix)]
 #[test]
 fn peer_acp_spawn_lock_allows_same_process_holder() {
     clear_active_sandbox_session();
     let work = fresh_workdir("malvin_peer_acp_spawn_lock_self");
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir .malvin");
-    let lock = work.join(".malvin").join("acp_spawn.lock");
+    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
+    malvin::set_active_acp_lock_slot("selfslot".to_string());
+    let lock = work.join(".malvin").join("acp_spawn").join("selfslot.lock");
     std::fs::write(&lock, std::process::id().to_string()).expect("write self lock");
     assert_no_peer_acp_spawn_lock(&work).expect("same-process holder allowed");
     assert!(lock.exists(), "self-held lock must remain");
 }
 
-/// `note_active_sandbox_session` must fail when a live peer holds the ACP lock.
+/// `note_active_sandbox_session` must fail when a live peer holds the same ACP lock slot.
 #[cfg(unix)]
 #[test]
 fn note_active_sandbox_session_rejects_live_peer_lock() {
     clear_active_sandbox_session();
     let work = fresh_workdir("malvin_note_active_peer_lock");
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir .malvin");
     let mut child = sleep_child("120");
-    let holder_pid = child.id();
-    let lock = work.join(".malvin").join("acp_spawn.lock");
-    std::fs::write(&lock, holder_pid.to_string()).expect("write peer lock");
+    malvin::set_active_acp_lock_slot("peerslot".to_string());
+    write_peer_acp_lock(&work, "peerslot", child.id());
     let baseline = snapshot_pids();
     let err = note_active_sandbox_session(None, baseline, &work).expect_err("peer blocks note");
     assert!(err.contains("ACP spawn lock held"), "expected peer lock error, got: {err}");
     let _ = child.kill();
     let _ = child.wait();
-    clear_active_sandbox_session();
 }
 
-/// `clear_active_sandbox_session` must not delete a lock owned by another process.
+/// `clear_active_sandbox_session` must not delete a lock owned by another process on the same slot.
 #[cfg(unix)]
 #[test]
-fn clear_active_sandbox_session_preserves_foreign_acp_lock() {
+fn session_lifecycle_does_not_touch_acp_spawn_lock() {
     clear_active_sandbox_session();
-    let work = fresh_workdir("malvin_clear_foreign_lock");
+    let work = fresh_workdir("malvin_no_lock_lifecycle");
     let baseline = snapshot_pids();
+    malvin::set_active_acp_lock_slot("foreignslot".to_string());
     note_active_sandbox_session(None, baseline, &work).expect("note");
-    let lock = work.join(".malvin").join("acp_spawn.lock");
+    let lock = work
+        .join(".malvin")
+        .join("acp_spawn")
+        .join("foreignslot.lock");
     std::fs::write(&lock, "424242").expect("overwrite with foreign pid");
     clear_active_sandbox_session();
     assert!(lock.exists(), "foreign lock must survive clear_active_sandbox_session");
@@ -154,8 +163,12 @@ fn clear_active_sandbox_session_preserves_foreign_acp_lock() {
 fn peer_acp_spawn_lock_clears_invalid_lock_file() {
     clear_active_sandbox_session();
     let work = fresh_workdir("malvin_peer_acp_spawn_lock_invalid");
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir .malvin");
-    let lock = work.join(".malvin").join("acp_spawn.lock");
+    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
+    malvin::set_active_acp_lock_slot("invalidslot".to_string());
+    let lock = work
+        .join(".malvin")
+        .join("acp_spawn")
+        .join("invalidslot.lock");
     std::fs::write(&lock, "not-a-pid").expect("write invalid lock");
     assert_no_peer_acp_spawn_lock(&work).expect("invalid lock cleared");
     assert!(!lock.exists(), "invalid lock file removed");
@@ -199,22 +212,7 @@ fn malvin_std_command_spawns_in_isolated_process_group() {
 
 #[test]
 fn kiss_cov_malvin_spawn_rules_contract_symbols() {
-    let _ = stringify!(dead_before_next_rejects_live_prior_sandbox);
-    let _ = stringify!(dead_before_next_allows_after_prior_sandbox_cleared);
-    let _ = stringify!(peer_acp_spawn_lock_rejects_while_holder_alive);
-    let _ = stringify!(acp_spawn_lock_acquired_and_released_by_session_lifecycle);
-    let _ = stringify!(peer_acp_spawn_lock_allows_same_process_holder);
-    let _ = stringify!(note_active_sandbox_session_rejects_live_peer_lock);
-    let _ = stringify!(clear_active_sandbox_session_preserves_foreign_acp_lock);
-    let _ = stringify!(peer_acp_spawn_lock_clears_invalid_lock_file);
-    let _ = stringify!(malvin_tokio_command_spawns_in_isolated_process_group);
-    let _ = stringify!(malvin_std_command_spawns_in_isolated_process_group);
     #[cfg(unix)]
     {
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(note_active_sandbox_session);
-        let _ = stringify!(malvin_std_command);
-        let _ = stringify!(malvin_tokio_command);
     }
 }

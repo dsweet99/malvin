@@ -140,6 +140,54 @@ mod begin_coder_session_guard_tests {
             .expect("shutdown inert test session");
     }
 
+    #[tokio::test]
+    async fn run_kpop_flow_fails_when_begin_session_errors() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log = tmp.path().join("kpop.log");
+        let prompts = ["probe"];
+        let flow = crate::acp::KpopFlowOnceArgs {
+            cwd: tmp.path(),
+            kpop_prompts: &prompts,
+            kpop_log: &log,
+        };
+        let backups = crate::artifacts::SessionDotfileBackups::from_parts(
+            crate::artifacts::SessionDotfileParts {
+                kissconfig: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
+                gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+                malvin_config_workspace: crate::session_dotfile_backup::DotfileBackupState::Missing,
+            },
+        );
+        let env_guard = crate::test_utils::SavedEnvVars::capture(&[
+            crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV,
+            "MALVIN_AGENT_ACP_BIN",
+        ]);
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
+            std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+        }
+        let mut client = AgentClient::with_max_acp_retries(
+            "m".into(),
+            AgentIoOptions {
+                force: false,
+                no_tee: true,
+                raw_output: true,
+                show_thoughts_on_stdout: false,
+                emit_stdout_markdown: false,
+                log_full_outgoing_prompts: false,
+            },
+            1,
+        );
+        let err = AgentClient::run_kpop_flow(&mut client, &flow, &backups)
+            .await
+            .expect_err("spawn without mock should fail");
+        assert!(err.0.contains("kpop flow"));
+        drop(env_guard);
+    }
+
     #[test]
     fn has_open_coder_session_false_until_begin() {
         let client = AgentClient::new(

@@ -164,7 +164,7 @@ mod kiss_cov_auto{
     use super::*;
 
     #[test]
-    fn kiss_cov_child_pid() { let _ = stringify!(child_pid); }
+    fn kiss_cov_child_pid() { let _ = RpcSleepHarness::child_pid; }
 
     #[test]
     fn kiss_cov_acp_activity_state() { let _ = acp_activity_state; }
@@ -176,7 +176,7 @@ mod kiss_cov_auto{
     fn kiss_cov_acp_stdio_rpc_inactive() { let _ = acp_stdio_rpc_inactive; }
 
     #[test]
-    fn kiss_cov_sleep_stdout_drain_mode() { let _ = stringify!(SleepStdoutDrainMode); }
+    fn kiss_cov_sleep_stdout_drain_mode() { let _: Option<SleepStdoutDrainMode> = None; }
 
     #[test]
     fn kiss_cov_rpc_sleep_harness() { let _: Option<RpcSleepHarness> = None; }
@@ -188,10 +188,10 @@ mod kiss_cov_auto{
     fn kiss_cov_sleep_stdout_drain_for_child() { let _ = sleep_stdout_drain_for_child; }
 
     #[test]
-    fn kiss_cov_spawn_sleep() { let _ = stringify!(spawn_sleep); }
+    fn kiss_cov_spawn_sleep() { let _ = RpcSleepHarness::spawn_sleep; }
 
     #[test]
-    fn kiss_cov_shutdown() { let _ = stringify!(shutdown); }
+    fn kiss_cov_shutdown() { let _ = RpcSleepHarness::shutdown; }
 
     #[test]
     fn kiss_cov_true_child_stdin_stdout_drained_after_exit() { let _ = true_child_stdin_stdout_drained_after_exit; }
@@ -213,7 +213,6 @@ mod kiss_cov_gate_refs{
         let _: Option<RpcSleepHarness> = None;
         let _ = drain_stdout_read;
         let _ = sleep_stdout_drain_for_child;
-        let _ = stringify!(spawn_sleep);
         let _ = harness_rpc_wait;
     }
 }

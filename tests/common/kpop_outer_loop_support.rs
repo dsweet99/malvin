@@ -4,7 +4,7 @@ use std::process::Command;
 
 use super::{
     command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
-    MALVIN_TEST_CMD_TIMEOUT,
+    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
 };
 
 fn malvin_kpop_outer_cmd(
@@ -19,7 +19,8 @@ fn malvin_kpop_outer_cmd(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", outer_loop_bin_path(root))
-        .args(["kpop", "--max-hypotheses", "10"]);
+        .args(["kpop", "--max-hypotheses", "1"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.args(extra_args).arg("investigate");
     cmd
 }

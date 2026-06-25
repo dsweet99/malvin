@@ -93,7 +93,7 @@ fn styled_tool_payload_formats_plain_and_markdown() {
     assert!(enriched.contains("x.rs") || enriched.contains("Read"));
 }
 
-fn push_acp_tee_marker(shared: &SharedDeferSink, i: usize, marker: &str) {
+pub(crate) fn push_acp_tee_marker(shared: &SharedDeferSink, i: usize, marker: &str) {
     shared
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

@@ -16,10 +16,10 @@ pub(crate) use create::{ensure_gate_exp_log_file, ensure_quality_gates_log_file}
 pub use plan_splice::{
     BEGIN_MALVIN_MARKER, PlanFileError, PlanRunMetadata, detect_rerun_user_span_end,
     extract_decisions_section, extract_fenced_markdown_block, find_machine_block_start,
-    prepare_plan_file_for_prompt_1a, prepare_plan_file_for_run, read_plan_file, read_plan_metadata,
-    record_user_span_end_after_1a,
-    snapshot_plan_artifact, splice_plan_file, validate_post_1a, validate_post_1b, validate_post_2,
-    write_plan_file_atomic, write_plan_metadata,
+    is_interrupted_machine_plan, prepare_plan_file_for_prompt_1a, prepare_plan_file_for_run,
+    read_plan_file, read_plan_metadata, overwrite_plan_file, plan_user_sidecar_path,
+    remove_plan_user_sidecar, restore_interrupted_plan, snapshot_plan_artifact, validate_post_1a,
+    validate_post_1b, validate_post_2, write_plan_file_atomic, write_plan_metadata,
 };
 
 pub use crate::session_dotfile_backup::{
@@ -35,10 +35,15 @@ pub use crate::session_dotfile_backup::{
     backup_workspace_malvin_config_workspace_if_present_with_id,
     restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
     restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
-    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup, restore_workspace_session_dotfiles,
+    restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
+    restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore,
+    merge_for_gate_restore, repair_clamp_damaged_dotfiles_on_disk,
+    sanitize_clamp_damaged_dotfiles_in_bundle,
 };
 
-pub use md_request::{is_existing_md_file_path, resolve_user_md_request};
+pub use md_request::{
+    is_existing_md_file_path, looks_like_md_file_path_arg, resolve_user_md_request,
+};
 pub use startup_tag::startup_request_tag_label;
 
 pub use crate::malvin_constants::{QUALITY_GATES_LOG, SANDBOX_OOM_JSON, STDOUT_LOG, TRACE_JSONL};

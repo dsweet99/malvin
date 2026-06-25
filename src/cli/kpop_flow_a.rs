@@ -5,7 +5,11 @@ use crate::artifacts::{
 use crate::kpop_progression::KpopMultiturnState;
 use crate::prompts::PromptStore;
 
-use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, build_agent, prepare_kpop_prompt_store};
+use crate::agent_backend::{
+    agent_backend_ensure_run_timing_for_session, agent_backend_run_kpop_multiturn,
+    build_agent_backend, AgentBackend,
+};
+use crate::cli::{KpopArgs, SharedOpts, WorkflowCliOptions, prepare_kpop_prompt_store};
 
 use super::kpop_flow_b::kpop_emit_startup;
 
@@ -23,24 +27,33 @@ pub struct KpopPrepared {
     pub(in crate) session_dotfile_backups: SessionDotfileBackups,
 }
 
-pub(in crate) fn prepare_kpop_run(kpop: &KpopArgs) -> Result<KpopPrepared, String> {
+pub(in crate) struct KpopArtifactsEarly {
+    pub(in crate) artifacts: RunArtifacts,
+    pub(in crate) text: String,
+}
+
+pub(in crate) fn prepare_kpop_artifacts(kpop: &KpopArgs) -> Result<KpopArtifactsEarly, String> {
     use crate::cli::cli_request::require_cli_request;
-    use crate::orchestrator::workflow_context_paths_only;
     let request = require_cli_request(kpop.request.as_ref(), "kpop")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    Ok(KpopArtifactsEarly { artifacts, text })
+}
+
+pub(in crate) fn finish_kpop_prepared(early: KpopArtifactsEarly) -> Result<KpopPrepared, String> {
+    use crate::orchestrator::workflow_context_paths_only;
     let session_dotfile_backups =
-        SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
-    let mut context = workflow_context_paths_only(&artifacts, "kpop");
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&early.artifacts.work_dir)?;
+    let mut context = workflow_context_paths_only(&early.artifacts, "kpop");
     context.insert(
         "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
+        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&early.artifacts.work_dir)?,
     );
     Ok(KpopPrepared {
-        artifacts,
+        artifacts: early.artifacts,
         context,
-        text,
+        text: early.text,
         session_dotfile_backups,
     })
 }
@@ -49,19 +62,21 @@ pub(crate) fn kpop_boot_store_client_prepared(
     kpop: &KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-) -> Result<(PromptStore, crate::acp::AgentClient, KpopPrepared), String> {
+) -> Result<(PromptStore, AgentBackend, KpopPrepared), String> {
+    let early = prepare_kpop_artifacts(kpop)?;
+    kpop_emit_startup(kpop, shared, &early.artifacts)?;
     let store = kpop_prompt_store(kpop, workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
-    let mut client = build_agent(shared, workflow, emit_stdout_markdown);
+    let mut client = build_agent_backend(shared, workflow, emit_stdout_markdown, "kpop")?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
-    let prepared = prepare_kpop_run(kpop)?;
-    client.prompts_log_run_dir = Some(prepared.artifacts.run_dir.clone());
+    let prepared = finish_kpop_prepared(early)?;
+    client.set_prompts_log_run_dir(Some(prepared.artifacts.run_dir.clone()));
     crate::cli::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
     Ok((store, client, prepared))
 }
 
 pub struct KpopAcpMultiturnCtx<'a> {
-    pub client: &'a mut crate::acp::AgentClient,
+    pub client: &'a mut AgentBackend,
     pub prepared: &'a KpopPrepared,
     pub state: &'a mut KpopMultiturnState<'a>,
 }
@@ -73,32 +88,33 @@ pub(in crate) async fn kpop_run_acp_multiturn(
 ) -> Result<(), String> {
     let timing = match session_end {
         crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun => {
-            ctx.client.ensure_run_timing_for_session()
+            agent_backend_ensure_run_timing_for_session(ctx.client)
         }
         crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize => {
-            ctx.client.attach_run_timing_for_session()
+            crate::agent_backend::agent_backend_attach_run_timing_for_session(ctx.client)
         }
     };
-    let acp_result = ctx
-        .client
-        .run_kpop_multiturn(crate::acp::AgentKpopMultiturnCtl {
+    let acp_result = agent_backend_run_kpop_multiturn(
+        ctx.client,
+        crate::acp::AgentKpopMultiturnCtl {
             cwd: &ctx.prepared.artifacts.work_dir,
             kpop_log: ctx.prepared.artifacts.log_path("kpop"),
             state: ctx.state,
             session_dotfile_backups,
-        })
-        .await
-        .map_err(|e| e.0);
-    crate::acp_post_run::emit_run_timing_after_acp(crate::acp_post_run::RunTimingAfterAcp {
-        client: ctx.client,
+        },
+    )
+    .await
+    .map_err(|e| e.0);
+    crate::acp_post_run::emit_run_timing_after_backend(crate::acp_post_run::RunTimingAfterBackend {
+        backend: ctx.client,
         run_dir: &ctx.prepared.artifacts.run_dir,
         timing: &timing,
-        acp_result,
+        agent_result: acp_result,
         session_end,
     })
 }
 
-fn run_kpop_short_id_lookup(kpop: &KpopArgs) -> Result<(), String> {
+pub(crate) fn run_kpop_short_id_lookup(kpop: &KpopArgs) -> Result<(), String> {
     let id = kpop.request.as_deref().expect("checked above").trim();
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let exp_log = crate::cli::bug_id_lookup_kpop::lookup_kpop_id(&cwd, id)?;
@@ -116,8 +132,6 @@ pub async fn run_kpop(
 
     let (store, mut client, prepared) = kpop_boot_store_client_prepared(&kpop, shared, workflow)?;
 
-    kpop_emit_startup(&kpop, shared, &prepared.artifacts)?;
-
     let loops = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
             kpop: &kpop,
@@ -132,7 +146,6 @@ pub async fn run_kpop(
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::kpop_outer_loop_summarize_params(
             crate::cli::kpop_summarize::KpopOuterLoopSummarizeInputs {
-                max_loops: kpop.max_loops,
                 agent_ran: loops.agent_ran,
                 shared,
             },
@@ -162,68 +175,24 @@ pub async fn run_kpop(
     r
 }
 
-
 #[cfg(test)]
-mod kiss_cov_auto{
+mod kiss_cov_auto {
     use super::*;
 
-    use super::run_kpop_short_id_lookup;
-    use crate::cli::KpopArgs;
-    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
-
     #[test]
-    fn kiss_cov_kpop_prompt_store() { let _ = kpop_prompt_store; }
-
-    #[test]
-    fn kiss_cov_ensure_kpop_exp_log_file() {
-        let _ = stringify!(crate::artifacts::create::ensure_kpop_exp_log_file);
-    }
-
-    #[test]
-    fn kiss_cov_kpop_boot_store_client_prepared() { let _ = kpop_boot_store_client_prepared; }
-
-    #[test]
-    fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
-        crate::test_utils::with_isolated_home(|cwd| {
-            let home = crate::user_home_dir();
-            let run_name = "20260101_000000_abcabcab";
-            let bucket = home.join(".malvin/logs").join(crate::workspace_logs_hash(cwd));
-            let run_dir = bucket.join(run_name);
-            std::fs::create_dir_all(&run_dir).expect("mkdir");
-            crate::write_work_dir_manifest(&run_dir, cwd).expect("manifest");
-            let exp = run_dir.join("_kpop").join(format!("exp_log_{run_name}.md"));
-            std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir kpop");
-            std::fs::write(&exp, "lookup ok\n").expect("write exp");
-            let rel = format!("{}/_kpop/exp_log_{run_name}.md", run_dir.display());
-            std::fs::write(
-                run_dir.join("stdout.log"),
-                format!(
-                    "20260101.000000.000 {}KPOP_LOG: Ma1b2c {rel}\n",
-                    format_who_tag_prefix(MALVIN_WHO)
-                ),
-            )
-            .expect("stdout");
-            let old = std::env::current_dir().expect("cwd");
-            std::env::set_current_dir(cwd).expect("chdir");
-            let kpop = KpopArgs {
-                max_loops: 1,
-                max_hypotheses: 1,
-                tenacious: false,
-                request: Some("Ma1b2c".into()),
-            };
-            run_kpop_short_id_lookup(&kpop).expect("lookup dump");
-            std::env::set_current_dir(old).expect("restore cwd");
-        });
+    fn kiss_cov_kpop_flow_a_structs() {
+        let _: Option<KpopPrepared> = None;
+        let _: Option<KpopArtifactsEarly> = None;
+        let _: Option<KpopAcpMultiturnCtx> = None;
+        let _ = prepare_kpop_artifacts;
+        let _ = finish_kpop_prepared;
     }
 }
 
 #[cfg(test)]
-#[allow(unused_imports)]
-mod kiss_cov_gate_refs{
-    use super::*;
-    #[test]
-    fn kiss_cov_unit_names() {
-        let _ = kpop_boot_store_client_prepared;
-        let _ = stringify!(kpop_prompt_store);
-    }
-}
+#[path = "kpop_flow_a_tests.rs"]
+mod kpop_flow_a_tests;
+
+#[cfg(test)]
+#[path = "kpop_flow_a_kiss_cov_tests.rs"]
+mod kpop_flow_a_kiss_cov_tests;

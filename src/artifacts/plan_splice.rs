@@ -1,4 +1,4 @@
-//! Plan-file boundary parsing and Prompt-3 splice for `malvin plan`.
+//! Plan-file overwrite and Prompt-3 commit for `malvin plan`.
 
 use std::path::{Path, PathBuf};
 
@@ -16,13 +16,17 @@ mod plan_splice_fence;
 pub use plan_metadata::{PlanRunMetadata, read_plan_metadata, write_plan_metadata};
 pub use plan_splice_fence::extract_fenced_markdown_block;
 pub use plan_validate::{
-    extract_decisions_section, record_user_span_end_after_1a, validate_post_1a, validate_post_1b,
-    validate_post_2,
+    extract_decisions_section, validate_post_1a, validate_post_1b, validate_post_2,
 };
-pub use plan_splice_boundary::{detect_rerun_user_span_end, find_machine_block_start};
+pub use plan_splice_boundary::{
+    detect_rerun_user_span_end, find_machine_block_start, is_interrupted_machine_plan,
+    plan_user_sidecar_path, remove_plan_user_sidecar, restore_interrupted_plan,
+};
+
+/// Legacy delimiter name retained for tests and interrupted-run recovery of older plan files.
+pub const BEGIN_MALVIN_MARKER: &str = plan_splice_boundary::LEGACY_BEGIN_MALVIN_MARKER;
 pub use plan_splice_prepare::prepare_plan_file_for_prompt_1a;
 
-pub const BEGIN_MALVIN_MARKER: &str = "BEGIN_MALVIN";
 pub(crate) const PLAN_METADATA_FILE: &str = "plan_metadata.json";
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -60,7 +64,7 @@ pub fn write_plan_file_atomic(path: &Path, content: &str) -> Result<(), PlanFile
     Ok(())
 }
 
-pub fn truncate_plan_for_rerun(path: &Path, user_span_end: usize) -> Result<(), PlanFileError> {
+pub(crate) fn truncate_plan_for_rerun(path: &Path, user_span_end: usize) -> Result<(), PlanFileError> {
     let content = read_plan_file(path)?;
     let truncated = content
         .get(..user_span_end)
@@ -69,50 +73,12 @@ pub fn truncate_plan_for_rerun(path: &Path, user_span_end: usize) -> Result<(), 
     write_plan_file_atomic(path, &truncated)
 }
 
-pub(crate) fn ensure_user_span_trailing_newlines(spliced: &mut String) {
-    if !spliced.ends_with('\n') && !spliced.is_empty() {
-        spliced.push('\n');
+pub fn overwrite_plan_file(path: &Path, body: &str) -> Result<(), PlanFileError> {
+    let mut content = body.trim_end().to_string();
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
     }
-    if !spliced.is_empty()
-        && !spliced.ends_with("\n\n")
-        && !spliced.ends_with('\n')
-    {
-        spliced.push('\n');
-    }
-}
-
-pub(crate) fn append_machine_block(spliced: &mut String, fenced_body: &str) {
-    if !spliced.is_empty() && !spliced.ends_with('\n') {
-        spliced.push('\n');
-    }
-    if !spliced.is_empty()
-        && !spliced.ends_with("\n\n")
-        && !spliced.ends_with("\r\n\r\n")
-    {
-        spliced.push('\n');
-    }
-    spliced.push_str("---\n");
-    spliced.push_str(BEGIN_MALVIN_MARKER);
-    spliced.push('\n');
-    spliced.push_str(fenced_body.trim_end());
-    if !spliced.ends_with('\n') {
-        spliced.push('\n');
-    }
-}
-
-pub fn splice_plan_file(
-    path: &Path,
-    user_span_end: usize,
-    fenced_body: &str,
-) -> Result<(), PlanFileError> {
-    let content = read_plan_file(path)?;
-    let user = content
-        .get(..user_span_end)
-        .ok_or_else(|| PlanFileError::Io("user_span_end out of range".to_string()))?;
-    let mut spliced = user.to_string();
-    ensure_user_span_trailing_newlines(&mut spliced);
-    append_machine_block(&mut spliced, fenced_body);
-    write_plan_file_atomic(path, &spliced)
+    write_plan_file_atomic(path, &content)
 }
 
 pub fn snapshot_plan_artifact(run_dir: &Path, name: &str, source: &Path) -> Result<PathBuf, PlanFileError> {
@@ -123,41 +89,8 @@ pub fn snapshot_plan_artifact(run_dir: &Path, name: &str, source: &Path) -> Resu
     Ok(dest)
 }
 
-pub fn prepare_plan_file_for_run(path: &Path) -> Result<Option<usize>, PlanFileError> {
-    let content = read_plan_file(path)?;
-    match detect_rerun_user_span_end(&content)? {
-        None => Ok(None),
-        Some(user_span_end) => {
-            truncate_plan_for_rerun(path, user_span_end)?;
-            Ok(Some(user_span_end))
-        }
-    }
-}
-
-#[cfg(test)]
-mod private_fn_coverage {
-    use super::*;
-
-    #[test]
-    fn ensure_user_span_trailing_newlines_noop_for_empty() {
-        let mut s = String::new();
-        ensure_user_span_trailing_newlines(&mut s);
-        assert!(s.is_empty());
-    }
-
-    #[test]
-    fn ensure_user_span_trailing_newlines_adds_newline_when_missing() {
-        let mut s = "user".to_string();
-        ensure_user_span_trailing_newlines(&mut s);
-        assert_eq!(s, "user\n");
-    }
-
-    #[test]
-    fn append_machine_block_appends_markers_and_body() {
-        let mut s = "user\n\n".to_string();
-        append_machine_block(&mut s, "# Plan");
-        assert!(s.contains("---\nBEGIN_MALVIN\n# Plan\n"));
-    }
+pub fn prepare_plan_file_for_run(path: &Path) -> Result<bool, PlanFileError> {
+    restore_interrupted_plan(path)
 }
 
 #[cfg(test)]

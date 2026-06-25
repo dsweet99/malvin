@@ -39,13 +39,13 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [COMMAND|REQUEST]".to_string());
+    lines.push("Usage: malvin [COMMAND|REQUEST]...".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
         String::new(),
-        "Pass one REQUEST argument with no subcommand to run KPop.".to_string(),
+        "Pass one or more REQUESTs with no subcommand to run KPop on each in sequence.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);
@@ -77,8 +77,8 @@ mod tests {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(text.contains("Pass one REQUEST argument with no subcommand"));
+        assert!(text.contains("Usage: malvin [COMMAND|REQUEST]..."));
+        assert!(text.contains("one or more REQUESTs"));
         assert!(text.contains("Commands:"));
         assert!(!text.contains("kpop"));
     }
@@ -88,8 +88,8 @@ mod tests {
         let help = render_commands_only_help();
         assert!(help.contains("Commands:"));
         assert!(help.contains("init"));
-        assert!(help.contains("Usage: malvin [COMMAND|REQUEST]"));
-        assert!(help.contains("Pass one REQUEST argument with no subcommand"));
+        assert!(help.contains("Usage: malvin [COMMAND|REQUEST]..."));
+        assert!(help.contains("one or more REQUESTs"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
@@ -130,11 +130,5 @@ mod tests {
 
     #[test]
     fn kiss_cov_commands_help_symbols() {
-        let _ = stringify!(visible_subcommands);
-        let _ = stringify!(format_command_lines);
-        let _ = stringify!(commands_only_help_lines);
-        let _ = stringify!(render_commands_only_help);
-        let _ = stringify!(write_commands_only_help);
-        let _ = stringify!(print_commands_only_help);
     }
 }

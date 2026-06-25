@@ -38,6 +38,16 @@ Predicted running time: <prediction>
 - Don't try to pass linters by overwriting linter configs. They will just get restored anyway.
    So you'll just be making more work for yourself later on.
 
+## Sandbox memory
+
+Malvin enforces a sandbox memory limit (see `Sandbox memory:` in Current state). When USS exceeds that limit, malvin kills the agent process group and the session fails.
+
+- Do not run overlapping heavy commands from `.malvin/checks` in one shell invocation with `&&`, `;`, or `&`.
+- Run at most one `.malvin/checks` line at a time when executing gates manually. Wait for each to exit before starting the next.
+- Sandbox child processes receive a conservative glibc arena cap (`MALLOC_ARENA_MAX`); malvin does not overwrite job or thread env vars you set.
+- Prefer targeted checks while iterating; reserve full quality gates for a final sequential pass.
+- Malvin's built-in quality gate runner already executes `.malvin/checks` lines one at a time. Do not duplicate gate commands in parallel during the same turn.
+
 ---
 
 ## Communication

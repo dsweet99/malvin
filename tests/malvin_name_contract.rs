@@ -6,8 +6,8 @@ mod common;
 use common::{fresh_workdir, sleep_child};
 #[cfg(unix)]
 use malvin::{
-    acquire_name, assert_no_peer_name_lock, malvin_sandbox::assert_no_peer_acp_spawn_lock,
-    name_path, names_registry_root,
+    acquire_acp_spawn_lock_for_slot, acquire_name, assert_no_peer_name_lock, name_path,
+    names_registry_root, release_acp_spawn_lock,
 };
 #[cfg(unix)]
 use std::process::Command;
@@ -119,24 +119,25 @@ fn different_names_same_workspace_both_register() {
     });
 }
 
-/// Workspace ACP spawn locking is unchanged regardless of session name.
+/// Different session-name lock slots in the same workspace may both acquire ACP locks.
 #[cfg(unix)]
 #[test]
-fn same_workspace_still_blocks_second_acp() {
+fn different_acp_lock_slots_same_workspace_both_acquire() {
     malvin::malvin_sandbox::clear_active_sandbox_session();
-    let work = fresh_workdir("malvin_same_workspace_acp_lock");
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir .malvin");
-    let mut child = sleep_child("120");
-    let holder_pid = child.id();
-    let lock = work.join(".malvin").join("acp_spawn.lock");
-    std::fs::write(&lock, holder_pid.to_string()).expect("write lock");
-    let err = assert_no_peer_acp_spawn_lock(&work).expect_err("peer ACP lock must block");
+    let work = fresh_workdir("malvin_different_acp_slots");
+    std::fs::create_dir_all(work.join(".malvin/acp_spawn")).expect("mkdir .malvin");
+    acquire_acp_spawn_lock_for_slot(&work, "alpha").expect("alpha");
+    acquire_acp_spawn_lock_for_slot(&work, "beta").expect("beta");
     assert!(
-        err.contains("ACP spawn lock held"),
-        "expected ACP lock error, got: {err}"
+        work.join(".malvin/acp_spawn/alpha.lock").is_file(),
+        "alpha lock must exist"
     );
-    let _ = child.kill();
-    let _ = child.wait();
+    assert!(
+        work.join(".malvin/acp_spawn/beta.lock").is_file(),
+        "beta lock must exist"
+    );
+    release_acp_spawn_lock(&work, "alpha");
+    release_acp_spawn_lock(&work, "beta");
     malvin::malvin_sandbox::clear_active_sandbox_session();
 }
 
@@ -171,11 +172,9 @@ fn kiss_cov_malvin_name_contract_symbols() {
     let _ = stringify!(dead_holder_name_can_be_reused);
     let _ = stringify!(abandoned_name_file_reclaimed_without_manual_cleanup);
     let _ = stringify!(different_names_same_workspace_both_register);
-    let _ = stringify!(same_workspace_still_blocks_second_acp);
+    let _ = stringify!(different_acp_lock_slots_same_workspace_both_acquire);
     let _ = stringify!(entrypoint_duplicate_name_via_binary);
     #[cfg(unix)]
     {
-        let _ = stringify!(assert_no_peer_name_lock);
-        let _ = stringify!(acquire_name);
     }
 }

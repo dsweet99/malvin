@@ -8,9 +8,9 @@ use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string}
 /// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `bug`, `tidy`, …).
 ///
 /// Runs workspace preparation (`kiss clamp` when applicable) before gate lines.
-/// When `.malvin/checks` is absent, writes the same default gate lines that
-/// [`repo_gates::gate_command_lines`] would return for a missing file, then runs each non-empty
-/// line from `.malvin/checks` in order. Does not run `pre-commit`.
+/// When `.malvin/checks` is absent, materializes default gate lines via
+/// [`repo_gates::ensure_default_malvin_checks_file`], then runs each non-empty line from
+/// `.malvin/checks` in order. Does not run `pre-commit`.
 /// With `run_log_dir: Some(path)`, gate output is also appended to `path/quality_gates.log`.
 pub fn run_repo_workspace_gates(
     work_dir: &Path,
@@ -21,10 +21,11 @@ pub fn run_repo_workspace_gates(
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
+    let gate_result = run_repo_workspace_gates_with_details(work_dir, output, run_log_dir)
         .map_err(repo_gate_failure_to_string);
-    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
-    result
+    let restore_result =
+        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
+    prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
 }
 
 /// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
@@ -39,10 +40,19 @@ pub fn run_repo_workspace_gates_no_kiss_clamp(
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
+    let gate_result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
         .map_err(repo_gate_failure_to_string);
-    restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup)?;
-    result
+    let restore_result =
+        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
+    prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
+}
+
+fn prefer_gate_outcome_over_checks_restore(
+    gate_result: Result<(), String>,
+    restore_result: Result<(), String>,
+) -> Result<(), String> {
+    gate_result?;
+    restore_result
 }
 
 pub fn run_repo_workspace_gates_with_details(
@@ -79,6 +89,9 @@ fn prepare_repo_workspace_with_details(
     run_log_dir: Option<&Path>,
     kiss_clamp_prep: bool,
 ) -> Result<(), RepoGateFailure> {
+    // Choke point: every gate run repairs kiss-clamp damage before prep or checks execute.
+    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)
+        .map_err(RepoGateFailure::Message)?;
     if kiss_clamp_prep {
         ensure_kiss_clamp_if_needed_with_details(work_dir, output, run_log_dir)?;
     }

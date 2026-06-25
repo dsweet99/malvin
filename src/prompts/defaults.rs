@@ -21,12 +21,14 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_block.md",
     "mbc2.md",
     "kpop_program.md",
+    "kpop_program_creative.md",
     "kpop_summarize.md",
     "tidy_constraints.md",
     "code_constraints.md",
     "init_constraints.md",
     "delight_constraints.md",
     "revise_constraints.md",
+    "mini_constraints.md",
     PLAN_1A_RESTATE_MD,
     PLAN_1B_CRITIQUE_MD,
     PLAN_2_DECISIONS_MD,
@@ -73,7 +75,7 @@ mod advice_path_embed_tests {
         let header = render_header(&store, &ctx).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
-            header.contains(".malvin/logs"),
+            header.contains(".malvin_home/logs"),
             "header must render logs_dir to home logs bucket"
         );
         assert!(

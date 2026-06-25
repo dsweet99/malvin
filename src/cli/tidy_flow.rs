@@ -41,7 +41,7 @@ pub struct TidyArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
+    use crate::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn tidy_effective_max_loops_is_at_least_one() {
@@ -57,23 +57,14 @@ mod tests {
 
     #[test]
     fn kiss_cov_tidy_kpop_helpers() {
-        let _ = stringify!(run_loop::run_tidy);
-        let _ = stringify!(run_startup::tidy_kpop_workflow_context);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
-        let _ = stringify!(post_gate_kpop_gates);
-        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
-        let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY);
+        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]
     fn tidy_startup_logs_host_resources_in_command_log() {
+        crate::test_utils::clear_test_no_real_agent_env();
         let tmp = tempfile::tempdir().expect("tempdir");
-        let old = std::env::current_dir().expect("cwd");
+        let old = crate::test_utils::save_cwd();
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_tidy_kpop_run(crate::cli::WorkflowCliOptions { force: false })
         .expect("prepared");
@@ -88,7 +79,7 @@ mod tests {
         .expect("startup");
         let command_log = prepared.artifacts.run_dir.join("command.log");
         let log = std::fs::read_to_string(&command_log).expect("log");
-        std::env::set_current_dir(old).expect("restore cwd");
+        crate::test_utils::restore_cwd(&old);
         assert!(log.contains("Memory:"));
         assert!(log.contains("CPUs:"));
     }
@@ -109,8 +100,7 @@ mod tests {
             "malvin tidy",
             &prepared,
             &backups,
-            crate::cli::gate_kpop_workflow::GateLoopBehavior::TIDY
-                .restore_malvin_checks_after_session(),
+            crate::gate_kpop_workflow::GateLoopBehavior::TIDY,
         )
         .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

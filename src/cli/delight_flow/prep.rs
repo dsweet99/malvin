@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::artifacts::resolve_user_md_request;
 use crate::log_gc::list_run_dirs;
 use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::{format_prompt_path, insert_formatted};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::cli::default_output_path::{
+    allocate_default_sibling_file, path_relative_to_cwd, DELIGHT_DEFAULT_OUT_PATH,
+};
+use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
 
 const DELIGHT_COMMAND_MARKER: &str = "Command: malvin delight";
 const MAX_RECENT_DELIGHT_PLANS: usize = 5;
@@ -16,7 +20,7 @@ pub(crate) fn prepare_delight_kpop_prompt_store(
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
     store
-        .validate_exists("kpop_program.md")
+        .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;
     store
         .validate_exists("delight_constraints.md")
@@ -94,7 +98,9 @@ pub(crate) fn collect_recent_delight_plan_paths(
         if let Some(candidate) =
             delight_plan_candidate_from_run(&run_dir, work_dir, resolved_out_path)
         {
-            collected.push(candidate);
+            if !collected.iter().any(|existing| existing == &candidate) {
+                collected.push(candidate);
+            }
         }
     }
     collected
@@ -111,10 +117,30 @@ fn format_recent_delight_plans(work_dir: &Path, paths: &[PathBuf]) -> String {
     })
 }
 
+pub(crate) fn resolve_delight_guidance(guidance: Option<&String>) -> Result<Option<String>, String> {
+    let Some(raw) = guidance else {
+        return Ok(None);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let (text, _) = resolve_user_md_request(trimmed)?;
+    Ok(Some(text))
+}
+
+pub(crate) fn format_delight_guidance_block(guidance: Option<&str>) -> String {
+    let Some(g) = guidance.map(str::trim).filter(|s| !s.is_empty()) else {
+        return String::new();
+    };
+    format!("- Follow this user guidance for the plan:\n\n{g}\n")
+}
+
 pub(crate) fn delight_kpop_request(
     store: &PromptStore,
     artifacts: &crate::artifacts::RunArtifacts,
     resolved_out_path: &Path,
+    guidance: Option<&str>,
 ) -> Result<String, String> {
     let workspace_root = artifacts.work_dir.as_path();
     let recent_paths = collect_recent_delight_plan_paths(workspace_root, resolved_out_path);
@@ -122,20 +148,48 @@ pub(crate) fn delight_kpop_request(
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "out_plan_path", resolved_out_path, workspace_root);
     ctx.insert("recent_delight_plans".to_string(), recent_delight_plans);
-    render_kpop_program_request(store, "delight_constraints.md", &ctx, artifacts)
+    ctx.insert(
+        "delight_guidance".to_string(),
+        format_delight_guidance_block(guidance),
+    );
+    render_kpop_program_request_creative(store, "delight_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let resolved_out_path = cwd.join(out_path);
-    if resolved_out_path.exists() {
-        return Err(format!(
-            "malvin delight: `{}` already exists; refusing to overwrite",
-            resolved_out_path.display()
-        ));
+    let resolved_out_path = if out_path == DELIGHT_DEFAULT_OUT_PATH {
+        let default = cwd.join(DELIGHT_DEFAULT_OUT_PATH);
+        allocate_default_sibling_file(&default, "plan", ".md")?
+    } else {
+        let resolved = cwd.join(out_path);
+        if resolved.exists() {
+            return Err(format!(
+                "malvin delight: `{}` already exists; refusing to overwrite",
+                resolved.display()
+            ));
+        }
+        resolved
+    };
+    if let Some(parent) = resolved_out_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
     }
-    let work_dir = crate::artifacts::work_dir_for_path(Path::new(out_path));
+    let rel_out = path_relative_to_cwd(&resolved_out_path)?;
+    let work_dir = crate::artifacts::work_dir_for_path(Path::new(&rel_out));
     Ok((resolved_out_path, work_dir))
+}
+
+#[cfg(test)]
+mod kiss_cov_auto {
+    use super::*;
+
+    #[test]
+    fn kiss_cov_delight_prep_privates() {
+        let _ = delight_out_rel_from_command_log;
+        let _ = delight_plan_candidate_from_run;
+        let _ = format_recent_delight_plans;
+    }
 }
 
 #[cfg(test)]
@@ -145,3 +199,7 @@ mod delight_flow_prep_tests;
 #[cfg(test)]
 #[path = "../delight_flow_prep_preflight_tests.rs"]
 mod delight_flow_prep_preflight_tests;
+
+#[cfg(test)]
+#[path = "../delight_flow_prep_recent_plans_tests.rs"]
+mod delight_flow_prep_recent_plans_tests;

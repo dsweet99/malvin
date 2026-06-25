@@ -6,7 +6,7 @@ Implement a **plan** using malvin’s **KPop gate loop**: repeated agent session
 
 | | |
 |---|---|
-| Input | Plan text or path to `.md` → `plan.md` in the run dir |
+| Input | One or more plans (text or `.md` path) → `plan.md` per run dir |
 | Loop | Outer gate iterations; each runs one KPop session |
 | Success | Two consecutive `## KPOP_SOLVED` markers **and** passing `.malvin/checks` gates |
 | Requires | `kiss` on PATH; Cursor agent CLI |
@@ -18,14 +18,16 @@ Take a written plan and drive the workspace to a gate-clean state while followin
 ## Usage
 
 ```text
-malvin code [OPTIONS] <REQUEST>
+malvin code [OPTIONS] <PLAN>...
 ```
 
 ## Arguments
 
-### `<REQUEST>` (required)
+### `<PLAN>...` (required, one or more)
 
 Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin code "Add widget API per plan.md"`). Plan text or a path to an existing `.md` file (no whitespace in the path; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
+
+When multiple plans are given, malvin runs `malvin code` on each in sequence. Each plan gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations.
 
 ## Options
 
@@ -56,7 +58,7 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 3. **Per outer iteration:**
    - Render `kpop_program.md` with `code_constraints.md` as scope.
    - Run one KPop agent session; log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
-   - Snapshot at each outer iteration; restore after each prompt: `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`.
+   - Snapshot at each outer iteration; restore after each prompt: `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` (global defaults).
    - Restore all protected files immediately before post-session quality gates (gate pass/fail is not proof of restore).
    - Track consecutive sessions that end with `## KPOP_SOLVED`.
 4. **Exit** — Success when two consecutive solved markers align with passing workspace gates; otherwise fail after exhaustion (gates rechecked).
@@ -88,6 +90,7 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 
 ```text
 malvin code plan.md
+malvin code plan_1.md plan_2.md plan_3.md
 malvin code --max-loops 3 --max-hypotheses 15 "Add widget API per plan.md"
 malvin --model sonnet-4 code plans/feature.md
 ```

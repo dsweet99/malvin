@@ -12,7 +12,7 @@ pub(super) fn empty_session_dotfile_backups() -> crate::artifacts::SessionDotfil
         malvin_checks: DotfileBackupState::Missing,
         kissignore: DotfileBackupState::Missing,
         malvin_config: DotfileBackupState::Missing,
-        gitignore: DotfileBackupState::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     })
 }
@@ -32,17 +32,19 @@ pub(super) fn test_plan_run_prep(
     render_ctx: HashMap<String, String>,
 ) -> PlanRunPrep {
     PlanRunPrep {
-        client: crate::acp::AgentClient::with_max_acp_retries(
-            "m".into(),
-            crate::acp::AgentIoOptions {
-                force: false,
-                no_tee: true,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-                emit_stdout_markdown: false,
-                log_full_outgoing_prompts: false,
-            },
-            crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        client: crate::agent_backend::AgentBackend::Acp(
+            crate::acp::AgentClient::with_max_acp_retries(
+                "m".into(),
+                crate::acp::AgentIoOptions {
+                    force: false,
+                    no_tee: true,
+                    raw_output: true,
+                    show_thoughts_on_stdout: false,
+                    emit_stdout_markdown: false,
+                    log_full_outgoing_prompts: false,
+                },
+                crate::support_paths::DEFAULT_MAX_ACP_RETRIES.min(1),
+            ),
         ),
         artifacts: artifacts.clone(),
         source_plan_path: plan.to_path_buf(),
@@ -61,35 +63,31 @@ pub(super) fn test_plan_run_prep_for_plan(
     test_plan_run_prep(tmp, artifacts, plan, render_ctx)
 }
 
-pub(super) fn post_1a_content(user: &str) -> String {
-    format!("{user}\n\n---\nBEGIN_MALVIN\n## Restatement\nrestated\n")
+pub(super) fn post_1a_content() -> String {
+    "## Restatement\nrestated\n".to_string()
 }
 
-pub(super) fn post_1b_content(user: &str) -> String {
-    format!(
-        "{}\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n",
-        post_1a_content(user).trim_end()
-    )
+pub(super) fn post_1b_content() -> String {
+    "## Restatement\nrestated\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n".to_string()
 }
 
-pub(super) fn post_2_content(user: &str) -> String {
-    format!(
-        "{}\n\n## DECISIONS\n1. **Verdict:** ok **Evidence:** test\n",
-        post_1b_content(user).trim_end()
-    )
+pub(super) fn post_2_content() -> String {
+    "## Restatement\nrestated\n\n## Critique\ncrit\n\n## Open questions\n1. q?\n\n## DECISIONS\n1. **Verdict:** ok **Evidence:** test\n".to_string()
 }
 
 pub(super) fn plan_shared_opts_for_mock() -> crate::cli::SharedOpts {
     crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: true,
-        no_tenacious: false,
+        no_tenacious: true,
         no_tee: true,
         no_markdown: true,
         verbose: false,
-        max_acp_retries: crate::support_paths::DEFAULT_MAX_ACP_RETRIES,
+        max_acp_retries: 1,
         doc: false,
         name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
     }
 }
 
@@ -122,9 +120,37 @@ pub(super) fn write_plan_pipeline_mock_agent(path: &Path) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+pub(super) fn plan_args_for_mock(plan: &Path) -> super::PlanArgs {
+    super::PlanArgs {
+        plan_path: plan.display().to_string(),
+        out_path: "plan.md".to_string(),
+    }
+}
+
+pub(super) async fn prepare_plan_mock_run(
+    _work: &Path,
+    mock: &Path,
+    plan: &Path,
+) -> super::plan_flow_pipeline::PlanRunPrep {
+    write_plan_pipeline_mock_agent(mock);
+    install_plan_mock_env(mock, plan);
+    prepare_plan_mock_run_with_env(plan).await
+}
+
+pub(super) async fn prepare_plan_mock_run_with_env(plan: &Path) -> super::plan_flow_pipeline::PlanRunPrep {
+    super::prepare_plan_run(
+        &plan_args_for_mock(plan),
+        &plan_shared_opts_for_mock(),
+        crate::cli::WorkflowCliOptions { force: false },
+    )
+    .await
+    .expect("prepare")
+}
+
 #[allow(unsafe_code)]
 pub(super) fn install_plan_mock_env(mock: &Path, plan: &Path) {
     unsafe {
+        std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
         std::env::set_var("MALVIN_AGENT_ACP_BIN", mock);
         std::env::set_var("CURSOR_AGENT_API_KEY", "test-key");
         std::env::set_var("MALVIN_TEST_PLAN_PATH", plan);

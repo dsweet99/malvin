@@ -111,9 +111,6 @@ fn verbose_io_coalescer_switch_flushes_previous_kind_buffer() {
 
 #[test]
 fn coalesce_private_split_and_verbose_feed_helpers() {
-    let _ = stringify!(coalesce_word_split_points);
-    let _ = stringify!(feed_buf);
-    let _ = stringify!(flush_if_nonempty);
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use super::*;
 use crate::log_gc_config::{
-    load_logs_gc_config, parse_byte_size, parse_logs_gc_config, parse_max_bytes_value, read_u64,
+    load_logs_gc_config, parse_byte_size, parse_logs_gc_config, parse_max_bytes_value,
     split_byte_size, LogsGcConfig,
 };
 
@@ -70,7 +70,6 @@ fn log_gc_helpers_cover_policy_edges() {
     assert!(needs_prune(&runs, &config));
     assert_eq!(dir_size(&old), dir_size_inner(&old).expect("dir_size_inner"));
     assert!(mtime_as_utc(&old).is_some());
-    assert_eq!(read_u64(Some(&toml::Value::Integer(5))), Some(5));
     assert_eq!(
         parse_max_bytes_value(&toml::Value::String(String::new())).expect("empty"),
         None

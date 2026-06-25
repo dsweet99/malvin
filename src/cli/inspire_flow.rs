@@ -8,7 +8,11 @@ use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_run_artifacts_from_text, resolve_user_md_request,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{SharedOpts, WorkflowCliOptions, build_agent};
+use crate::agent_backend::{
+    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
+    agent_backend_set_run_timing, build_agent_backend, AgentBackend,
+};
+use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompts::{PromptError, PromptStore, render_mbc2_for_scheduled_kpop_block};
 use crate::run_timing::TimingPhase;
 
@@ -20,7 +24,7 @@ pub struct InspireArgs {
 }
 
 struct InspireRunPrep {
-    client: crate::acp::AgentClient,
+    client: AgentBackend,
     artifacts: RunArtifacts,
     prompt: String,
     session_dotfile_backups: SessionDotfileBackups,
@@ -47,11 +51,15 @@ pub fn render_inspire_prompt(user_prompt: &str) -> Result<String, String> {
     render_mbc2_for_scheduled_kpop_block(&store, &ctx).map_err(|e| e.0)
 }
 
-fn new_inspire_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> crate::acp::AgentClient {
-    build_agent(
+fn new_inspire_client(
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<AgentBackend, String> {
+    build_agent_backend(
         shared,
         workflow,
         shared.acp_stdout_markdown_enabled(),
+        "inspire",
     )
 }
 
@@ -77,7 +85,7 @@ async fn prepare_inspire_run(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<InspireRunPrep, String> {
-    let client = new_inspire_client(shared, workflow);
+    let client = new_inspire_client(shared, workflow)?;
     let request = require_cli_request(inspire.request.as_ref(), "inspire")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = create_run_artifacts_from_text(&text, Some(work_dir.as_path()))
@@ -101,7 +109,8 @@ pub async fn run_inspire(
 ) -> Result<(), String> {
     let mut prep = prepare_inspire_run(&inspire, shared, workflow).await?;
     inspire_emit_startup(&inspire, shared, &prep.artifacts)?;
-    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    prep.client
+        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     let acp_res = run_inspire_acp(&mut prep.client, &prep.artifacts, &prep.prompt).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
@@ -117,7 +126,7 @@ pub async fn run_inspire(
 }
 
 async fn run_inspire_coder_prompt(
-    client: &mut crate::acp::AgentClient,
+    client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
 ) -> Result<(), String> {
@@ -130,6 +139,7 @@ async fn run_inspire_coder_prompt(
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: None,
                 stdout_bracket_label: None,
+                ..Default::default()
             },
         )
         .await
@@ -137,24 +147,21 @@ async fn run_inspire_coder_prompt(
 }
 
 async fn run_inspire_acp(
-    client: &mut crate::acp::AgentClient,
+    client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     prompt: &str,
 ) -> Result<(), String> {
-    let timing = client.attach_run_timing_for_session();
+    let timing = agent_backend_attach_run_timing_for_session(client);
     if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        client.set_run_timing(None);
+        agent_backend_set_run_timing(client, None);
         return Err(e.to_string());
     }
-    timing
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .set_implement_display_name("inspire");
+    agent_backend_set_implement_display_name(client, "inspire");
     let run_res = run_inspire_coder_prompt(client, artifacts, prompt).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
     let merged =
         crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+    crate::acp_post_run::emit_run_timing_json_only_after_backend(
         client,
         &artifacts.run_dir,
         &timing,

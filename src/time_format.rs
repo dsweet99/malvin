@@ -57,7 +57,7 @@ mod tests {
         crate::active_agent_heartbeat::register_active_agent_process_group(Some(pgid), baseline);
         let payload = super::heartbeat_payload_now();
         assert!(payload.contains("sandbox: "));
-        assert!(payload.contains("RSS"));
+        assert!(payload.contains("USS"));
         assert!(payload.contains("procs"));
         crate::active_agent_heartbeat::unregister_active_agent_process_group(Some(pgid));
         crate::active_agent_heartbeat::clear_active_agent_process_groups_for_test();

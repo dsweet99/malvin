@@ -191,7 +191,7 @@ mod active_tests_pending;
 
 #[cfg(test)]
 #[path = "active_tests_sink_queue.rs"]
-mod active_tests_sink_queue;
+pub(crate) mod active_tests_sink_queue;
 
 #[cfg(test)]
 #[path = "active_tests_contention_bugs.rs"]

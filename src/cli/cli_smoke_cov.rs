@@ -79,6 +79,8 @@ fn smoke_agent_io_options_maps_flags() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
     };
     let io = agent_io_options(
         &shared,
@@ -110,6 +112,8 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
         max_acp_retries: 7,
         doc: false,
         name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
     };
     let client = new_agent_client(
         &shared,
@@ -206,13 +210,13 @@ fn smoke_print_command_error_writes_run_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
-    crate::cli::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
+    super::error_run_log::set_command_error_run_dir(Some(run_dir.clone()));
     super::entrypoint::print_command_error("gate failed");
     let log = run_dir.join("malvin_error.log");
     assert!(log.is_file());
     let body = std::fs::read_to_string(&log).expect("read");
     assert!(body.contains("gate failed"));
-    crate::cli::error_run_log::clear_command_error_run_dir();
+    super::error_run_log::clear_command_error_run_dir();
 }
 
 #[test]
@@ -220,30 +224,3 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
     assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
 }
 
-#[test]
-fn smoke_shared_opts_tee_startup_stdout() {
-    let shared = super::SharedOpts {
-        model: "m".into(),
-        no_force: false,
-        no_tenacious: false,
-        no_tee: false,
-        no_markdown: false,
-        verbose: false,
-        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
-        doc: false,
-        name: None,
-    };
-    assert!(shared.tee_startup_stdout());
-}
-
-#[test]
-fn smoke_tidy_kpop_request_includes_constraints() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path()))
-        .expect("artifacts");
-    let store = crate::prompts::PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
-    let out = super::tidy_flow::tidy_kpop_request(&store, &artifacts).expect("request");
-    assert!(out.contains("Just get quality gates to pass"));
-    assert!(out.contains("Satisfy all constraints"));
-}

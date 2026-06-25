@@ -1,5 +1,5 @@
 use crate::cli::error_run_log;
-use crate::cli::gate_kpop_workflow::{
+use crate::gate_kpop_workflow::{
     fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
     GateKpopLoopParams, GateLoopBehavior,
 };
@@ -29,6 +29,7 @@ pub async fn run_tidy(
     let max_loops = effective_tidy_max_loops(tidy.max_loops);
     let max_hypotheses = tidy.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+        command: "tidy",
         shared,
         workflow,
         prepared: &prepared,
@@ -40,7 +41,6 @@ pub async fn run_tidy(
 
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
         &crate::cli::kpop_summarize::OuterLoopSummarizeParams {
-            max_loops,
             agent_ran,
             shared,
             workflow,
@@ -58,10 +58,10 @@ pub async fn run_tidy(
             "malvin tidy",
             &prepared,
             &last_backups,
-            GateLoopBehavior::TIDY.restore_malvin_checks_after_session(),
+            GateLoopBehavior::TIDY,
         )
     };
-    let r = crate::cli::kpop_summarize::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
+    let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);
 
     if r.is_ok() {
         error_run_log::clear_command_error_run_dir();

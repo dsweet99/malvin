@@ -45,7 +45,7 @@ impl AcpSession {
         self.0.busy.load(Ordering::SeqCst)
     }
 
-    async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
+    pub(crate) async fn send_rpc(&self, method: &str, params: Value) -> Result<Value, String> {
         let io = acp_stdio(&self.0);
         let child_pid = self
             .0
@@ -190,7 +190,9 @@ impl AcpSession {
             self.0.process_group_id,
         );
         let cancel_timeout = crate::acp::unix_process_group_teardown_poll::shutdown_cancel_timeout();
-        if !cancel_timeout.is_zero() {
+        if cancel_timeout.is_zero() {
+            let _ = self.cancel().await;
+        } else {
             let _ = tokio::time::timeout(cancel_timeout, self.cancel()).await;
         }
         crate::acp::unix_process_group_teardown::terminate_agent_process_group(

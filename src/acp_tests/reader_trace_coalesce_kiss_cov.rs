@@ -8,6 +8,4 @@ fn kiss_cov_coalesce_write_helpers() {
 
 #[test]
 fn kiss_cov_trace_chunk_coalescer_flush_paths() {
-    let _ = stringify!(flush_other_stream);
-    let _ = stringify!(flush_stream);
 }

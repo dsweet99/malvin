@@ -19,7 +19,7 @@ pub(crate) fn kpop_coalesce_trace_writer(file: tokio::fs::File) -> PromptTraceWr
     }
 }
 
-async fn open_coalesce_trace_at(
+pub(crate) async fn open_coalesce_trace_at(
     path: &std::path::Path,
 ) -> (PromptTraceWriter, TraceChunkCoalescer) {
     let file = tokio::fs::OpenOptions::new()
@@ -73,7 +73,7 @@ pub(crate) async fn deliver_tool_call_session_updates(
     .await;
 }
 
-fn assert_tool_call_lifecycle_summary_tee(trace: &str, stdout: &str) {
+pub(crate) fn assert_tool_call_lifecycle_summary_tee(trace: &str, stdout: &str) {
     assert!(
         !trace.contains("sessionUpdate"),
         "tool lifecycle must be summarized in prompt trace, not raw JSON; got {trace:?}"
@@ -92,7 +92,7 @@ fn assert_tool_call_lifecycle_summary_tee(trace: &str, stdout: &str) {
     );
 }
 
-async fn run_tool_call_lifecycle_tee_fixture() -> (String, String) {
+pub(crate) async fn run_tool_call_lifecycle_tee_fixture() -> (String, String) {
     let tmp = tempfile::tempdir().unwrap();
     let stdout_path = tmp.path().join("stdout.log");
     let trace_path = tmp.path().join("tool-trace.log");
@@ -110,7 +110,7 @@ async fn run_tool_call_lifecycle_tee_fixture() -> (String, String) {
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_writes_non_chunk_lines() {
+pub(crate) async fn write_trace_line_coalesced_writes_non_chunk_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace.log");
     let (mut writer, mut coalesce) = open_coalesce_trace_at(&path).await;
@@ -134,7 +134,7 @@ async fn write_trace_line_coalesced_writes_non_chunk_lines() {
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
+pub(crate) async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace-no-tee.log");
     let file = tokio::fs::OpenOptions::new()
@@ -179,7 +179,7 @@ async fn write_trace_line_coalesced_does_not_tee_parsed_non_chunk_lines() {
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_must_tee_parsed_tool_call_lifecycle_to_stdout() {
+pub(crate) async fn write_trace_line_coalesced_must_tee_parsed_tool_call_lifecycle_to_stdout() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -188,7 +188,7 @@ async fn write_trace_line_coalesced_must_tee_parsed_tool_call_lifecycle_to_stdou
 }
 
 #[tokio::test]
-async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
+pub(crate) async fn write_trace_line_coalesced_writes_malformed_non_json_lines() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coalesce-trace-malformed.log");
     let (mut writer, mut coalesce) = open_coalesce_trace_at(&path).await;

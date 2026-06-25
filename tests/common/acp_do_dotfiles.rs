@@ -84,14 +84,14 @@ pub fn acp_mock_do_creates_kissignore_js() -> String {
 }
 
 pub fn acp_mock_do_tampers_malvin_config_js() -> String {
-    acp_mock_do_tampers_home_dotfile_js(".malvin/config.toml")
+    acp_mock_do_tampers_home_dotfile_js(".malvin_home/config.toml")
 }
 
 pub fn acp_mock_do_tampers_malvin_config_js_only() -> String {
     let tamper = r"    const fs = require('fs');
     const path = require('path');
     const os = require('os');
-    fs.writeFileSync(path.join(os.homedir(), '.malvin', 'config.toml'), 'TAMPERED', 'utf8');";
+    fs.writeFileSync(path.join(os.homedir(), '.malvin_home', 'config.toml'), 'TAMPERED', 'utf8');";
     let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
     acp_mock_js("", &format!("{tamper}\n{msg}"))
 }
@@ -100,8 +100,8 @@ pub fn acp_mock_do_creates_malvin_config_js() -> String {
     let create = r"    const fs = require('fs');
     const path = require('path');
     const os = require('os');
-    fs.mkdirSync(path.join(os.homedir(), '.malvin'), { recursive: true });
-    fs.writeFileSync(path.join(os.homedir(), '.malvin', 'config.toml'), 'CREATED', 'utf8');";
+    fs.mkdirSync(path.join(os.homedir(), '.malvin_home'), { recursive: true });
+    fs.writeFileSync(path.join(os.homedir(), '.malvin_home', 'config.toml'), 'CREATED', 'utf8');";
     let msg = session_update_chunk_line("agent_message_chunk", r"'ok\n'");
     acp_mock_js("", &format!("{create}\n{msg}"))
 }

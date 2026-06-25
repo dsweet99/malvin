@@ -16,7 +16,9 @@ pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct DelightArgs {
-    /// Workspace path for the generated plan (must not already exist).
+    /// Optional guidance text or `.md` path to steer the delight plan.
+    pub guidance: Option<String>,
+    /// Workspace path for the generated plan (default `plan.md` auto-allocates siblings when occupied).
     #[arg(long, default_value = "plan.md")]
     pub out_path: String,
     /// Maximum gate-loop iterations before stopping.
@@ -64,8 +66,21 @@ mod tests {
     }
 
     #[test]
-    fn delight_rejects_extra_positional() {
-        assert!(Cli::try_parse_from(["malvin", "delight", "extra"]).is_err());
+    fn delight_accepts_optional_guidance_positional() {
+        let cli = Cli::try_parse_from(["malvin", "delight", "focus on CLI UX"]).expect("parse");
+        match cli.command {
+            Some(Commands::Delight(d)) => assert_eq!(d.guidance.as_deref(), Some("focus on CLI UX")),
+            other => panic!("expected Delight, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn delight_guidance_defaults_to_none() {
+        let cli = Cli::try_parse_from(["malvin", "delight"]).expect("parse");
+        match cli.command {
+            Some(Commands::Delight(d)) => assert!(d.guidance.is_none()),
+            other => panic!("expected Delight, got {other:?}"),
+        }
     }
 
     #[test]
@@ -75,9 +90,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_delight_gate_helpers() {
-        let _ = stringify!(run_delight);
-        let _ = stringify!(run_startup::prepare_delight_kpop_run);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::DELIGHT);
+        let _ = super::run_loop::validate_delight_output;
+        let _ = super::run_startup::prepare_delight_kpop_run;
+        let _: Option<super::run_startup::DelightKpopPrepared> = None;
     }
 
     #[test]

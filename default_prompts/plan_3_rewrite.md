@@ -2,7 +2,7 @@
 
 You are running **Prompt 3** of `malvin plan`. Read `{{ plan_path }}` including `## Critique`, `## Open questions`, and `## DECISIONS`.
 
-Emit the **revised implementation plan** as your session response inside **one** fenced markdown block (use ` ```markdown ` … ` ``` `). Do **not** edit `{{ plan_path }}` directly — malvin will splice your fenced block.
+Emit the **revised implementation plan** as your session response inside **one** fenced markdown block (use ` ```markdown ` … ` ``` `). Do **not** edit `{{ plan_path }}` directly — malvin will overwrite `{{ plan_path }}` with your fenced block.
 
 The revised plan must:
 

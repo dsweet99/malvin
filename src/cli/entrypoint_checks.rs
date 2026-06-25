@@ -2,7 +2,9 @@ use super::Commands;
 
 pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
-        Commands::Do(_) | Commands::Models(_) | Commands::Init(_) => Ok(()),
+        Commands::Do(_) | Commands::Models(_) | Commands::Init(_)
+        | Commands::Inspire(_) | Commands::Plan(_) | Commands::Explain(_) | Commands::Delight(_)
+        | Commands::Revise(_) => Ok(()),
         _ => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_checks_file(&cwd)?;
@@ -35,7 +37,7 @@ mod tests {
                 dry_run: false,
                 skip_pre_checks: false,
                 fast: false,
-                request: None,
+                requests: vec![],
             }))
             .expect("code should materialize checks");
             assert!(checks.is_file());

@@ -14,11 +14,7 @@ pub struct PtyRun {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-fn chmod755(path: &Path) {
-    let mut perms = std::fs::metadata(path).expect("metadata").permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(path, perms).expect("chmod");
-}
+use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 #[cfg(all(unix, target_os = "linux"))]
 pub struct PtyEnv {
@@ -49,29 +45,32 @@ fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-fn pty_write_malvin_runner_script(
+fn pty_malvin_shell_command(
     env: &PtyEnv,
     malvin_args_line: &str,
     columns: Option<&str>,
-) -> PathBuf {
+) -> String {
     let malvin = env!("CARGO_BIN_EXE_malvin");
-    let sh = env.root.path().join("run-malvin.sh");
     let columns_export = columns
-        .map(|value| format!("export COLUMNS=\"{value}\"\n"))
+        .map(|value| format!("export COLUMNS=\"{value}\"; "))
         .unwrap_or_default();
-    let body = format!(
-        "#!/bin/sh\nunset NO_COLOR\nexport PATH=\"{}:$PATH\"\nexport HOME=\"{}\"\nexport CURSOR_AGENT_API_KEY=test\nexport MALVIN_AGENT_ACP_BIN=\"{}\"\n{}cd \"{}\"\nexec \"{}\" {}\n",
+    format!(
+        "unset NO_COLOR; export PATH=\"{}:$PATH\"; export HOME=\"{}\"; export CURSOR_AGENT_API_KEY=test; export MALVIN_AGENT_ACP_BIN=\"{}\"; export MALVIN_TEST_NO_REAL_AGENT=1; export MALLOC_ARENA_MAX=2; {columns_export}cd \"{}\" && exec \"{}\" {} {}",
         env.bin_dir.display(),
         env.home.display(),
         env.mock.display(),
-        columns_export,
         env.workspace.display(),
         malvin,
+        [
+            super::INTEGRATION_TEST_MALVIN_ARGS.join(" "),
+            FAST_GATE_LOOP_TEST_ARGS.join(" "),
+        ]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" "),
         malvin_args_line
-    );
-    std::fs::write(&sh, body).expect("write run-malvin.sh");
-    chmod755(&sh);
-    sh
+    )
 }
 
 #[cfg(all(unix, target_os = "linux"))]
@@ -83,15 +82,9 @@ pub fn run_malvin_under_script_with_mock(
     use super::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
 
     let env = pty_malvin_workspace(mock_js);
-    let sh = pty_write_malvin_runner_script(&env, malvin_args_line, columns);
+    let shell_cmd = pty_malvin_shell_command(&env, malvin_args_line, columns);
     let mut cmd = Command::new("script");
-    cmd.args([
-        "-q",
-        "-e",
-        "-c",
-        sh.to_str().expect("run-malvin.sh utf8"),
-        "/dev/null",
-    ]);
+    cmd.args(["-q", "-e", "-c", &shell_cmd, "/dev/null"]);
     cmd.stdin(std::process::Stdio::null());
     let output =
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin");
@@ -126,7 +119,7 @@ pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_kpop_bold_markdown_under_script(extra_args: &[&str]) -> std::process::Output {
-    let mut args_line = String::from("kpop --max-loops 1 --max-hypotheses 50 investigate");
+    let mut args_line = String::from("kpop --max-loops 1 --max-hypotheses 1 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);

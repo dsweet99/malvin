@@ -58,13 +58,19 @@ fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
     );
 }
 
-fn assert_malvin_subcommand_not_kiss_gated_without_auth(args: &[&str]) {
+fn assert_malvin_subcommand_not_kiss_gated_without_auth(
+    args: &[&str],
+    work_dir: Option<&std::path::Path>,
+) {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
     #[cfg(unix)]
     let out = run_malvin_path_timed(&isolated_bin, |c| {
         clear_agent_api_env(c);
+        if let Some(work_dir) = work_dir {
+            c.current_dir(work_dir);
+        }
         c.args(args);
     });
     #[cfg(not(unix))]
@@ -108,13 +114,25 @@ fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
 }
 
 #[test]
-fn delight_requires_kiss_on_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["delight"]);
+fn delight_does_not_require_kiss_on_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["delight"], Some(work.path()));
 }
 
 #[test]
-fn explain_requires_kiss_on_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["explain", "topic"]);
+fn revise_does_not_require_kiss_on_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    std::fs::write(work.path().join("doc.md"), "# Doc\n").unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["revise", "doc.md"], Some(work.path()));
+}
+
+#[test]
+fn explain_does_not_require_kiss_on_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["explain", "topic"], Some(work.path()));
 }
 
 #[test]
@@ -150,10 +168,10 @@ fn malvin_tidy_kiss_missing_error_cites_tidy_subcommand() {
 
 #[test]
 fn malvin_do_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["do", "hello"]);
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["do", "hello"], None);
 }
 
 #[test]
 fn malvin_kpop_is_not_kiss_gated_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_not_kiss_gated_without_auth(&["kpop", "x"]);
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["kpop", "x"], None);
 }

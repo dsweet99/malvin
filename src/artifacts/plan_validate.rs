@@ -1,33 +1,24 @@
 //! Post-prompt plan file-shape validation for `malvin plan`.
 
-use super::{detect_rerun_user_span_end, PlanFileError, BEGIN_MALVIN_MARKER};
+use super::PlanFileError;
 
 pub(crate) const SECTION_RESTATEMENT: &str = "## Restatement";
 pub(crate) const SECTION_CRITIQUE: &str = "## Critique";
 pub(crate) const SECTION_OPEN_QUESTIONS: &str = "## Open questions";
 pub(crate) const SECTION_DECISIONS: &str = "## DECISIONS";
 
-pub fn record_user_span_end_after_1a(content: &str) -> Result<usize, PlanFileError> {
-    detect_rerun_user_span_end(content)?
-        .ok_or_else(|| PlanFileError::MissingSection("--- BEGIN_MALVIN after Prompt 1a"))
-}
-
 fn line_is_section_heading(line: &str, heading: &str) -> bool {
     line.trim() == heading
 }
 
-fn section_present_after_marker(content: &str, section: &str) -> bool {
-    let Some(idx) = content.find(BEGIN_MALVIN_MARKER) else {
-        return false;
-    };
-    content[idx..]
+fn section_present(content: &str, section: &str) -> bool {
+    content
         .lines()
         .any(|line| line_is_section_heading(line, section))
 }
 
 pub fn validate_post_1a(content: &str) -> Result<(), PlanFileError> {
-    record_user_span_end_after_1a(content)?;
-    if !section_present_after_marker(content, SECTION_RESTATEMENT) {
+    if !section_present(content, SECTION_RESTATEMENT) {
         return Err(PlanFileError::MissingSection(SECTION_RESTATEMENT));
     }
     Ok(())
@@ -35,10 +26,10 @@ pub fn validate_post_1a(content: &str) -> Result<(), PlanFileError> {
 
 pub fn validate_post_1b(content: &str) -> Result<(), PlanFileError> {
     validate_post_1a(content)?;
-    if !section_present_after_marker(content, SECTION_CRITIQUE) {
+    if !section_present(content, SECTION_CRITIQUE) {
         return Err(PlanFileError::MissingSection(SECTION_CRITIQUE));
     }
-    if !section_present_after_marker(content, SECTION_OPEN_QUESTIONS) {
+    if !section_present(content, SECTION_OPEN_QUESTIONS) {
         return Err(PlanFileError::MissingSection(SECTION_OPEN_QUESTIONS));
     }
     Ok(())
@@ -46,7 +37,7 @@ pub fn validate_post_1b(content: &str) -> Result<(), PlanFileError> {
 
 pub fn validate_post_2(content: &str) -> Result<(), PlanFileError> {
     validate_post_1b(content)?;
-    if !section_present_after_marker(content, SECTION_DECISIONS) {
+    if !section_present(content, SECTION_DECISIONS) {
         return Err(PlanFileError::MissingSection(SECTION_DECISIONS));
     }
     Ok(())
@@ -68,21 +59,23 @@ mod private_fn_coverage {
     }
 
     #[test]
-    fn section_present_after_marker_without_begin_malvin() {
-        assert!(!section_present_after_marker("## Restatement only", SECTION_RESTATEMENT));
-    }
-
-    #[test]
-    fn section_present_after_marker_with_begin_malvin() {
-        let content = format!("{BEGIN_MALVIN_MARKER}\n{SECTION_RESTATEMENT}\n");
-        assert!(section_present_after_marker(&content, SECTION_RESTATEMENT));
-    }
-
-    #[test]
-    fn section_present_after_marker_rejects_heading_in_prose() {
+    fn section_present_rejects_heading_in_prose() {
         let content = format!(
-            "{BEGIN_MALVIN_MARKER}\n{SECTION_RESTATEMENT}\nSee {SECTION_CRITIQUE} below.\n\n{SECTION_OPEN_QUESTIONS}\n1. q\n"
+            "{SECTION_RESTATEMENT}\nSee {SECTION_CRITIQUE} below.\n\n{SECTION_OPEN_QUESTIONS}\n1. q\n"
         );
-        assert!(!section_present_after_marker(&content, SECTION_CRITIQUE));
+        assert!(!section_present(&content, SECTION_CRITIQUE));
+    }
+
+    #[test]
+    fn extract_decisions_section_none_without_heading() {
+        assert!(extract_decisions_section("## Restatement\nonly").is_none());
+    }
+
+    #[test]
+    fn extract_decisions_section_returns_tail_from_heading() {
+        let tail = extract_decisions_section("## Restatement\n\n## DECISIONS\n1. ok\n")
+            .expect("some");
+        assert!(tail.starts_with(SECTION_DECISIONS));
+        assert!(tail.contains("1. ok"));
     }
 }

@@ -8,6 +8,8 @@ pub(crate) mod discover_init_checks_signals;
 mod discover_init_checks_fixtures;
 pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
+pub(crate) mod gate_command_match;
+pub(crate) mod sandbox_safe;
 
 #[cfg(test)]
 #[path = "discover_init_checks_tests.rs"]
@@ -17,8 +19,8 @@ mod discover_init_checks_tests;
 #[path = "discover_init_checks_merge_tests.rs"]
 mod discover_init_checks_merge_tests;
 
-use std::path::Path;
-use std::process::Stdio;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
@@ -33,11 +35,16 @@ pub const KISS_CHECK_COMMAND: &str = "kiss check";
 
 pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
 
-pub const DEFAULT_RUST_CLIPPY: &str = "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
+pub const DEFAULT_RUST_CLIPPY: &str =
+    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
 
 pub const DEFAULT_RUST_TEST: &str = "cargo test";
 
 pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
+
+pub const DEFAULT_RUST_NEXTEST_PARTITION_1: &str = "cargo nextest run --partition hash:1/2";
+
+pub const DEFAULT_RUST_NEXTEST_PARTITION_2: &str = "cargo nextest run --partition hash:2/2";
 
 static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
 
@@ -64,6 +71,38 @@ pub fn default_rust_test_command(work_dir: &Path) -> &'static str {
 }
 
 #[must_use]
+pub fn rust_test_gate_command_lines(work_dir: &Path) -> Vec<String> {
+    if cargo_nextest_available(work_dir) {
+        vec![
+            DEFAULT_RUST_NEXTEST_PARTITION_1.to_string(),
+            DEFAULT_RUST_NEXTEST_PARTITION_2.to_string(),
+        ]
+    } else {
+        vec![DEFAULT_RUST_TEST.to_string()]
+    }
+}
+
+pub use sandbox_safe::sandbox_safe_gate_commands;
+
+/// Git repository root for `work_dir`, when `git rev-parse --show-toplevel` succeeds.
+#[must_use]
+pub fn git_worktree_toplevel(work_dir: &Path) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(work_dir)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if root.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(root))
+}
+
+#[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
     work_dir.join(".git").is_dir()
         || crate::malvin_checks_path(work_dir).is_file()
@@ -81,18 +120,23 @@ pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
     }
     if work_dir.join("Cargo.toml").is_file() {
         out.push(DEFAULT_RUST_CLIPPY.to_string());
-        out.push(default_rust_test_command(work_dir).to_string());
+        out.extend(rust_test_gate_command_lines(work_dir));
     }
     out
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
     let checks_path = crate::malvin_checks_path(work_dir);
-    if checks_path.is_file() {
-        return load_malvin_checks(&checks_path);
+    if !checks_path.is_file() {
+        return Err(format!(
+            "{} is missing (quality gates must be listed in .malvin/checks)",
+            checks_path.display()
+        ));
     }
-    Ok(builtin_gate_command_lines(work_dir))
+    load_malvin_checks(&checks_path)
 }
+
+pub use gate_command_match::command_matches_malvin_checks_gate;
 
 /// Overwrite `.malvin/checks` with language/tooling builtins (for init `--force` rediscovery).
 pub fn refresh_provisional_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
@@ -128,7 +172,8 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
     ensure_default_malvin_checks_file(work_dir)?;
-    load_malvin_checks(&crate::malvin_checks_path(work_dir))
+    let lines = load_malvin_checks(&crate::malvin_checks_path(work_dir))?;
+    Ok(sandbox_safe_gate_commands(&lines))
 }
 
 /// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
@@ -188,3 +233,11 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "git_worktree_tests.rs"]
+mod git_worktree_tests;
+
+#[cfg(test)]
+#[path = "tests_command_match.rs"]
+mod tests_command_match;

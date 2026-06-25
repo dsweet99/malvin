@@ -22,22 +22,27 @@ fn md_path_has_invalid_components(path: &Path) -> bool {
     })
 }
 
+/// True when `arg` syntactically names a `.md` path (case-sensitive suffix, no whitespace).
+#[must_use]
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
+pub fn looks_like_md_file_path_arg(arg: &str) -> bool {
+    let trimmed = arg.trim();
+    !trimmed.is_empty()
+        && !trimmed.chars().any(char::is_whitespace)
+        && trimmed.ends_with(".md")
+        && !md_path_has_invalid_characters(trimmed)
+        && !md_path_has_invalid_components(Path::new(trimmed))
+}
+
 /// True when `arg` names an existing `.md` file (case-sensitive suffix, no whitespace).
 #[must_use]
 #[allow(clippy::case_sensitive_file_extension_comparisons)]
 pub fn is_existing_md_file_path(arg: &str) -> Option<PathBuf> {
+    if !looks_like_md_file_path_arg(arg) {
+        return None;
+    }
     let trimmed = arg.trim();
-    if trimmed.is_empty()
-        || trimmed.chars().any(char::is_whitespace)
-        || !trimmed.ends_with(".md")
-        || md_path_has_invalid_characters(trimmed)
-    {
-        return None;
-    }
     let path = Path::new(trimmed);
-    if md_path_has_invalid_components(path) {
-        return None;
-    }
     let cwd = std::env::current_dir().ok()?;
     let resolved = if path.is_absolute() {
         path.to_path_buf()
@@ -78,6 +83,11 @@ mod kiss_cov_auto{
     #[test]
     fn kiss_cov_is_existing_md_file_path() {
         let _ = super::is_existing_md_file_path;
+    }
+
+    #[test]
+    fn kiss_cov_looks_like_md_file_path_arg() {
+        let _ = super::looks_like_md_file_path_arg;
     }
 
     #[test]

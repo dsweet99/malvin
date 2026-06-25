@@ -90,6 +90,7 @@ fn plan_doc_parses_with_plan_path_when_doc_flag_set() {
 fn print_doc_plan_writes_subcommand_md() {
     let cmd = Commands::Plan(PlanArgs {
         plan_path: "plan.md".to_string(),
+        out_path: "plan.md".to_string(),
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin plan"));
@@ -126,6 +127,7 @@ fn print_doc_explain_writes_subcommand_md() {
         max_loops: 3,
         max_hypotheses: 5,
         tenacious: true,
+        out_path_explicit: false,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert!(out.starts_with(b"# malvin explain"));
@@ -134,6 +136,7 @@ fn print_doc_explain_writes_subcommand_md() {
 #[test]
 fn print_doc_delight_writes_subcommand_md() {
     let cmd = Commands::Delight(DelightArgs {
+        guidance: None,
         out_path: "plan.md".to_string(),
         max_loops: 3,
         max_hypotheses: 5,
@@ -171,7 +174,7 @@ fn malvin_doc_embeds_name_section() {
     let text = String::from_utf8(out).expect("utf8");
     assert!(text.contains("--name"), "doc must mention --name");
     assert!(
-        text.contains(".malvin/names") || text.contains("already holds"),
+        text.contains(".malvin_home/names") || text.contains("already holds"),
         "doc must describe registry or duplicate-name behavior"
     );
 }
@@ -205,6 +208,5 @@ mod kiss_cov_gate_refs {
     fn kiss_cov_unit_names() {
         let _ = doc_text;
         let _ = print_doc;
-        let _ = stringify!(print_doc_to_writer);
     }
 }

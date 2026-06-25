@@ -12,7 +12,6 @@ pub(crate) mod inline {
         fn kiss_cov_unit_names() {
             let _: Option<IncomingLineDispatch<'_>> = None;
             let _: Option<ReaderLoopInput> = None;
-            let _ = stringify!(handle_incoming_line);
             let _ = reply_session_request_permission;
         }
     }

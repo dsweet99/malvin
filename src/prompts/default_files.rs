@@ -8,6 +8,7 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
         "delight_constraints.md" => Some(include_str!("../../default_prompts/delight_constraints.md")),
         "explain_constraints.md" => Some(include_str!("../../default_prompts/explain_constraints.md")),
         "revise_constraints.md" => Some(include_str!("../../default_prompts/revise_constraints.md")),
+        "mini_constraints.md" => Some(include_str!("../../default_prompts/mini_constraints.md")),
         _ => None,
     }
 }
@@ -17,6 +18,9 @@ fn default_kpop_prompt(name: &str) -> Option<&'static str> {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
+        "kpop_program_creative.md" => {
+            Some(include_str!("../../default_prompts/kpop_program_creative.md"))
+        }
         "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
         _ => None,
@@ -57,6 +61,13 @@ mod tests {
         assert!(default_plan_prompt("plan_3_rewrite.md").is_some());
         assert!(default_plan_prompt("missing.md").is_none());
         assert!(default_file("plan_1a_restate.md").is_some());
+    }
+
+    #[test]
+    fn default_file_mini_constraints_embedded() {
+        let text = default_file("mini_constraints.md").expect("mini_constraints");
+        assert!(text.contains("```bash"));
+        assert!(text.contains("--mini"));
     }
 
     #[test]

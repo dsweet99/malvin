@@ -5,18 +5,21 @@ No local Docker required for grading: builds a Modal Image from the task
 Harbor Dockerfile (or pulls the registry image) and execs ``deepswe_run.py``
 once inside a sandbox (agent + grade in one command when not ``--grade-only``).
 
-The default ``solve`` path runs malvin in a Modal sandbox with a Cursor API
-``cidr_allowlist`` (no general internet egress), harvests the workspace, then grades
-in a separate Modal sandbox with ``block_network=True``. Open egress remains
+The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox with a
+Cursor API ``outbound_cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
+runs use a separate ``block_network`` sandbox. Open egress remains
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
-malvin and kiss are built from local source
-trees (``MALVIN_REPO`` / ``KISS_REPO``) when an in-sandbox agent image is required.
+malvin is built from local source (``MALVIN_REPO``) when an in-sandbox agent image is required;
+kiss is installed from crates.io at the pinned stable release (see ``toolchain_repos.KISS_STABLE_VERSION``).
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
-``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; kiss at
-``../kiss`` or ``KISS_REPO``; DeepSWE task at ``../deep-swe/tasks/...``.
+``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; DeepSWE task at
+``../deep-swe/tasks/...``.
 
-Artifacts land under ``~/.malvin/deepswe-results/<task_id>/modal_<timestamp>/``
+For headless eval without Cursor credentials, pass ``--mini`` to malvin and set
+``OPENROUTER_API_KEY`` in the sandbox environment (OpenRouter HTTP egress required).
+
+Artifacts land under ``~/.malvin_home/deepswe-results/<task_id>/modal_<timestamp>/``
 (``metadata.json``, ``reward.txt``). Workspace: ``.../workspace``.
 
 Examples::
@@ -33,23 +36,29 @@ Examples::
 Local unit tests (no Modal credentials)::
 
     python ops/deepswe_modal.py --self-test
+
+Runtime dependency: Modal >= 1.4 recommended (``Sandbox.detach`` releases gRPC
+connections after ``terminate()``; older releases use a command-router close fallback).
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import os
+import shutil
 import socket
 import stat
 import sys
 import tarfile
 import tempfile
 import threading
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, TextIO
+from typing import Any, Iterator, TextIO
 from unittest.mock import MagicMock, patch
 
 import click
@@ -58,9 +67,14 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
+from sandbox_prep import (
+    dockerfile_bulk_pip_commands,
+    dockerfile_image_build_commands,
+    registry_image_cache_bust_commands,
+)
 from deepswe_run import (
-    DEFAULT_CHECKS_CODE,
-    DEFAULT_CHECKS_DO,
+    discover_deepswe_checks,
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
@@ -71,8 +85,19 @@ from deepswe_run import (
     timestamp_dir,
     write_plan_and_checks,
 )
+from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
+from toolchain_repos import (
+    KISS_STABLE_VERSION,
+    kiss_cargo_install_command,
+    kiss_repo_root,
+    malvin_repo_root,
+    validate_toolchain_repos,
+)
 
-DEEPSWE_RUN_REMOTE = "/opt/malvin/ops/deepswe_run.py"
+DEEPSWE_OPS_REMOTE = "/opt/malvin/ops"
+DEEPSWE_RUN_REMOTE = f"{DEEPSWE_OPS_REMOTE}/deepswe_run.py"
+SANDBOX_PREP_REMOTE = f"{DEEPSWE_OPS_REMOTE}/sandbox_prep.py"
+TOOLCHAIN_REPOS_REMOTE = f"{DEEPSWE_OPS_REMOTE}/toolchain_repos.py"
 TASK_REMOTE = "/task"
 
 APP_NAME = "deepswe-modal"
@@ -80,7 +105,6 @@ LOGS_REMOTE = "/logs"
 APP_REMOTE = "/app"
 TESTS_REMOTE = "/tests"
 MALVIN_TOOLCHAIN_REMOTE = "/opt/toolchain/malvin"
-KISS_TOOLCHAIN_REMOTE = "/opt/toolchain/kiss"
 TOOLCHAIN_PATH = (
     "/root/.cargo/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin"
     ":/usr/sbin:/usr/bin:/sbin:/bin"
@@ -100,47 +124,67 @@ CURSOR_API_HOSTS = (
 CRITICAL_CURSOR_API_HOSTS = ("api2.cursor.sh", "api.cursor.com")
 
 # Modal Sandbox.create defaults are 0.125 CPU and 128 MiB — too small for malvin +
-# cursor-agent. Match malvin's default mem_limit_gb (default_repo/config.toml).
+# cursor-agent. Agent memory follows task.toml environment.memory_mb; malvin USS cap
+# is seeded separately via ensure_deepswe_malvin_config (default_repo/config.toml = 4 GiB).
 AGENT_SANDBOX_CPU = 2.0
 AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
 GRADE_SANDBOX_MEMORY_MIB = 2048
 MODAL_MAX_CIDR_ALLOWLIST = 100
+ALLOWLIST_CACHE_TTL_SEC = 86400
 
 app = modal.App(APP_NAME)
 
 
+def cursor_api_allowlist_cache_path() -> Path:
+    """Path for persisted Modal Cursor API CIDR allowlist."""
+    return Path.home() / ".malvin" / "cursor_api_allowlist.json"
+
+
+def read_cursor_api_allowlist_cache() -> list[str] | None:
+    """Return cached allowlist when fresh; ``None`` when missing or stale."""
+    path = cursor_api_allowlist_cache_path()
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        cidrs = payload.get("cidrs")
+        if not isinstance(cidrs, list) or not cidrs:
+            return None
+        ts = payload.get("timestamp_utc")
+        if isinstance(ts, str):
+            cached_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - cached_at).total_seconds()
+            if age > ALLOWLIST_CACHE_TTL_SEC:
+                return None
+        return [str(cidr) for cidr in cidrs]
+    except (json.JSONDecodeError, OSError, TypeError, ValueError):
+        return None
+
+
+def write_cursor_api_allowlist_cache(cidrs: list[str]) -> None:
+    """Persist a compressed allowlist for subsequent solves."""
+    path = cursor_api_allowlist_cache_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cidrs": cidrs,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def critical_cursor_hosts_failed(failed_hosts: list[Any]) -> list[str]:
+    """Return critical Cursor API hostnames that failed HTTPS validation."""
+    return [
+        str(host)
+        for host in failed_hosts
+        if str(host) in CRITICAL_CURSOR_API_HOSTS
+    ]
+
+
 def sandbox_app() -> modal.App:
     """Return an initialized Modal app for sandbox creation."""
-    if app.app_id is not None:
-        return app
-    return modal.App.lookup(APP_NAME, create_if_missing=True)
-
-
-def malvin_repo_root() -> Path:
-    """Return the malvin repository root (parent of ``ops/``)."""
-    return Path(__file__).resolve().parent.parent
-
-
-def kiss_repo_root() -> Path:
-    """Return the kiss-ai source tree (``KISS_REPO`` or sibling ``kiss`` repo)."""
-    override = os.environ.get("KISS_REPO")
-    if override:
-        return Path(override).resolve()
-    return malvin_repo_root().parent / "kiss"
-
-
-def validate_toolchain_repos() -> tuple[Path, Path]:
-    """Ensure local malvin and kiss trees exist before building the agent image."""
-    malvin_repo = malvin_repo_root()
-    kiss_repo = kiss_repo_root()
-    if not (malvin_repo / "Cargo.toml").is_file():
-        raise click.ClickException(f"malvin repo not found: {malvin_repo}")
-    if not (kiss_repo / "Cargo.toml").is_file():
-        raise click.ClickException(
-            f"kiss repo not found: {kiss_repo} (set KISS_REPO to override)"
-        )
-    return malvin_repo, kiss_repo
+    return lookup_sandbox_app(app, APP_NAME)
 
 
 def malvin_upload_ignore() -> list[str]:
@@ -158,9 +202,53 @@ def malvin_upload_ignore() -> list[str]:
     ]
 
 
-def kiss_upload_ignore() -> list[str]:
-    """Exclude build artifacts when uploading kiss source to Modal."""
-    return ["target/", ".git", "__pycache__/"]
+def workspace_mount_ignore() -> list[str]:
+    """Exclude sandbox ephemeral paths when uploading a reused DeepSWE workspace to Modal."""
+    return [
+        ".stestr/",
+        "__pycache__/",
+        ".pytest_cache/",
+        "*.pyc",
+        "*.pyo",
+    ]
+
+
+def _upload_ignore_names(patterns: list[str]) -> set[str]:
+    """Top-level directory/file names to skip when staging a toolchain tree."""
+    return {pattern.rstrip("/") for pattern in patterns}
+
+
+def _copytree_ignore_factory(patterns: list[str]):
+    skip = _upload_ignore_names(patterns)
+
+    def ignore(_directory: str, names: list[str]) -> set[str]:
+        return {name for name in names if name in skip}
+
+    return ignore
+
+
+def stage_toolchain_repo(src: Path, dst: Path, *, ignore_patterns: list[str]) -> None:
+    """Copy a toolchain tree to a frozen snapshot for Modal ``add_local_dir`` upload."""
+    shutil.copytree(
+        src,
+        dst,
+        ignore=_copytree_ignore_factory(ignore_patterns),
+        dirs_exist_ok=True,
+    )
+
+
+@contextmanager
+def stage_malvin_repo(malvin_repo: Path) -> Iterator[Path]:
+    """Stage malvin into a temp dir so Modal upload is not raced by live checkouts."""
+    with tempfile.TemporaryDirectory(prefix="deepswe-toolchain-") as tmp:
+        root = Path(tmp)
+        malvin_staged = root / "malvin"
+        stage_toolchain_repo(
+            malvin_repo.resolve(),
+            malvin_staged,
+            ignore_patterns=malvin_upload_ignore(),
+        )
+        yield malvin_staged
 
 
 def resolve_cursor_api_cidrs_from_hosts(hosts: tuple[str, ...] = CURSOR_API_HOSTS) -> list[str]:
@@ -369,6 +457,8 @@ print(json.dumps({{"failed_hosts": failed, "extra_ips": sorted(extra_ips)}}))
 )
 
 ALLOWLIST_CIDR_PROBE_TIMEOUT = 600
+PROBE_CONNECT_RETRIES = 3
+PROBE_CONNECT_RETRY_DELAY_SEC = 10
 
 OBSERVE_AGENT_PEERS_SCRIPT = r"""
 import json
@@ -444,7 +534,41 @@ def _probe_sandbox_timeout(requested: int) -> int:
     return max(requested, ALLOWLIST_CIDR_PROBE_TIMEOUT)
 
 
-def _run_modal_cidr_probe_script(
+def _is_transient_modal_probe_error(exc: BaseException) -> bool:
+    """True when Modal sandbox command-router connection may succeed on retry."""
+    if isinstance(exc, TimeoutError):
+        return True
+    if isinstance(exc, asyncio.CancelledError):
+        return True
+    message = str(exc).lower()
+    return "connection" in message and ("stalled" in message or "reset" in message)
+
+
+def _is_modal_spend_limit_error(exc: BaseException) -> bool:
+    """True when Modal rejected sandbox creation due to workspace billing limits."""
+    if isinstance(exc, modal.exception.ResourceExhaustedError):
+        return True
+    message = str(exc).lower()
+    return "spend limit" in message or "resourceexhausted" in message
+
+
+def _allowlist_cache_only_mode() -> bool:
+    """When set, use on-disk Cursor API allowlist without live Modal probe sandboxes."""
+    return os.environ.get("DEEPSWE_ALLOWLIST_CACHE_ONLY") == "1"
+
+
+def _use_cached_allowlist_verbatim(cached: list[str], *, reason: str) -> list[str]:
+    """Return compressed cached CIDRs and log why live refresh was skipped."""
+    compressed = compress_ipv4_cidrs(cached)
+    click.echo(
+        f"Using cached Cursor API allowlist without live refresh "
+        f"({len(compressed)} CIDRs): {reason}",
+        err=True,
+    )
+    return compressed
+
+
+def _run_modal_cidr_probe_script_once(
     script: str,
     *,
     cidr_allowlist: list[str] | None = None,
@@ -453,7 +577,7 @@ def _run_modal_cidr_probe_script(
     probe_image: modal.Image | None = None,
     secrets: list[modal.Secret] | None = None,
 ) -> list[str]:
-    """Exec a probe script in a Modal sandbox and parse a JSON CIDR list from stdout."""
+    """Exec one probe attempt in a Modal sandbox and parse a JSON CIDR list from stdout."""
     image = probe_image or cidr_probe_image()
     sandbox: modal.Sandbox | None = None
     sandbox_timeout = _probe_sandbox_timeout(timeout)
@@ -463,7 +587,7 @@ def _run_modal_cidr_probe_script(
         "timeout": sandbox_timeout,
     }
     if cidr_allowlist is not None:
-        create_kwargs["cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
+        create_kwargs["outbound_cidr_allowlist"] = modal_cidr_allowlist(cidr_allowlist)
     if secrets:
         create_kwargs["secrets"] = secrets
     try:
@@ -498,8 +622,42 @@ def _run_modal_cidr_probe_script(
             raise click.ClickException(f"{error_label}: empty CIDR list")
         return sorted(cidrs)
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
+
+
+def _run_modal_cidr_probe_script(
+    script: str,
+    *,
+    cidr_allowlist: list[str] | None = None,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+    error_label: str,
+    probe_image: modal.Image | None = None,
+    secrets: list[modal.Secret] | None = None,
+) -> list[str]:
+    """Exec a probe script in a Modal sandbox with retries on transient router timeouts."""
+    last_exc: BaseException | None = None
+    for attempt in range(1, PROBE_CONNECT_RETRIES + 1):
+        try:
+            return _run_modal_cidr_probe_script_once(
+                script,
+                cidr_allowlist=cidr_allowlist,
+                timeout=timeout,
+                error_label=error_label,
+                probe_image=probe_image,
+                secrets=secrets,
+            )
+        except BaseException as exc:
+            if not _is_transient_modal_probe_error(exc) or attempt >= PROBE_CONNECT_RETRIES:
+                raise
+            last_exc = exc
+            click.echo(
+                f"{error_label}: transient Modal connection error "
+                f"(attempt {attempt}/{PROBE_CONNECT_RETRIES}), retrying in "
+                f"{PROBE_CONNECT_RETRY_DELAY_SEC}s: {exc}",
+                err=True,
+            )
+            time.sleep(PROBE_CONNECT_RETRY_DELAY_SEC)
+    raise last_exc  # pragma: no cover - loop always returns or re-raises
 
 
 def resolve_cursor_api_cidrs_in_modal_sandbox(
@@ -556,7 +714,7 @@ def validate_cursor_https_under_allowlist(
             app=sandbox_app(),
             image=cidr_probe_image(),
             timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
         )
         proc = sandbox.exec(
             "python3",
@@ -595,8 +753,7 @@ def validate_cursor_https_under_allowlist(
             )
         return {"failed_hosts": failed, "extra_ips": extra}
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_cursor_api_cidrs_from_agent_peers(
@@ -658,8 +815,7 @@ def resolve_cursor_api_cidrs_from_agent_peers(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def resolve_agent_session_peers_under_allowlist(
@@ -672,13 +828,18 @@ def resolve_agent_session_peers_under_allowlist(
         return []
     sandbox: modal.Sandbox | None = None
     try:
-        sandbox = modal.Sandbox.create(
-            app=sandbox_app(),
-            image=agent_peer_probe_image(),
-            secrets=cursor_secrets(),
-            timeout=_probe_sandbox_timeout(timeout),
-            cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
-        )
+        try:
+            sandbox = modal.Sandbox.create(
+                app=sandbox_app(),
+                image=agent_peer_probe_image(),
+                secrets=cursor_secrets(),
+                timeout=_probe_sandbox_timeout(timeout),
+                outbound_cidr_allowlist=modal_cidr_allowlist(seed_cidrs),
+            )
+        except modal.exception.ResourceExhaustedError as exc:
+            raise click.ClickException(
+                f"Modal spend limit during allowlist agent peer probe: {exc}"
+            ) from exc
         proc = sandbox.exec(
             "python3",
             "-c",
@@ -725,13 +886,19 @@ def resolve_agent_session_peers_under_allowlist(
             )
         return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
     """Return sorted union of IPv4 /32 (or wider) CIDR strings."""
     return modal_cidr_allowlist(sorted({cidr for group in cidr_lists for cidr in group}))
+
+
+def union_optional_probe_cidrs(cidrs: list[str], probe: list[str]) -> list[str]:
+    """Union probe CIDRs when the probe returned at least one IPv4 entry."""
+    if not probe:
+        return cidrs
+    return union_ipv4_cidrs(cidrs, modal_cidr_allowlist(probe))
 
 
 def compress_ipv4_cidrs(
@@ -823,6 +990,248 @@ def allowlist_near_modal_cap(cidrs: list[str], *, headroom: int = 2) -> bool:
         return True
 
 
+def host_cidrs_not_covered_by_allowlist(
+    host_cidrs: list[str], allowlist: list[str]
+) -> list[str]:
+    """Return host /32 CIDRs whose addresses fall outside all allowlist networks."""
+    import ipaddress
+
+    nets = [ipaddress.ip_network(c, strict=False) for c in allowlist]
+    uncovered: list[str] = []
+    for cidr in host_cidrs:
+        addr = ipaddress.ip_network(cidr, strict=False).network_address
+        if not any(addr in net for net in nets):
+            uncovered.append(cidr)
+    return uncovered
+
+
+def _run_allowlist_dns_fixpoint(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    max_rounds: int,
+) -> list[str]:
+    """Resolve Cursor API hostnames from inside an allowlist-seeded Modal sandbox."""
+    for _ in range(max_rounds):
+        before = len(cidrs)
+        cidrs = union_optional_probe_cidrs(
+            cidrs,
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            ),
+        )
+        if len(cidrs) == before:
+            break
+        if allowlist_near_modal_cap(cidrs):
+            break
+    return cidrs
+
+
+def _expand_allowlist_for_https(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    max_rounds: int = 5,
+    fail_on_critical: bool = True,
+) -> tuple[list[str], int, int]:
+    """Expand CIDRs until critical Cursor API hosts pass HTTPS under the allowlist."""
+    https_validation_added = 0
+    allowlist_agent_peer_added = 0
+    for _ in range(max_rounds):
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if not critical_failed:
+            if failed_hosts:
+                click.echo(
+                    "Allowlist HTTPS validation: non-critical host(s) unreachable "
+                    f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                    f"{'...' if len(failed_hosts) > 5 else ''}); continuing",
+                    err=True,
+                )
+            break
+        before = len(cidrs)
+        extra_ips = validation.get("extra_ips", [])
+        cidrs = union_ipv4_cidrs(
+            cidrs, [f"{ip}/32" for ip in extra_ips if isinstance(ip, str)]
+        )
+        try:
+            cidrs = union_optional_probe_cidrs(
+                cidrs,
+                resolve_cursor_api_cidrs_under_allowlist_peers(
+                    compress_ipv4_cidrs(cidrs), timeout=timeout
+                ),
+            )
+        except click.ClickException as exc:
+            click.echo(f"HTTPS validation peer probe skipped: {exc}", err=True)
+        cidrs = union_optional_probe_cidrs(
+            cidrs,
+            resolve_cursor_api_cidrs_under_allowlist(
+                compress_ipv4_cidrs(cidrs), timeout=timeout
+            ),
+        )
+        https_validation_added += len(cidrs) - before
+        click.echo(
+            f"Allowlist HTTPS validation: {len(failed_hosts)} host(s) failed "
+            f"({', '.join(str(h) for h in failed_hosts[:3])}"
+            f"{'...' if len(failed_hosts) > 3 else ''}); "
+            f"added {len(cidrs) - before} CIDR(s)",
+            err=True,
+        )
+        if len(cidrs) == before:
+            break
+        if allowlist_near_modal_cap(cidrs):
+            break
+        post_round, added = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=1, label="HTTPS-round agent peer"
+        )
+        cidrs = post_round
+        allowlist_agent_peer_added += added
+    else:
+        seed = compress_ipv4_cidrs(cidrs)
+        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+        failed_hosts = validation.get("failed_hosts", [])
+        critical_failed = critical_cursor_hosts_failed(failed_hosts)
+        if critical_failed and fail_on_critical:
+            raise click.ClickException(
+                "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+                f"validation rounds: {', '.join(str(critical_failed))}"
+            )
+        if failed_hosts:
+            click.echo(
+                "Allowlist HTTPS validation: non-critical host(s) still unreachable "
+                f"({', '.join(str(h) for h in failed_hosts[:5])}"
+                f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
+                err=True,
+            )
+    return cidrs, https_validation_added, allowlist_agent_peer_added
+
+
+def refresh_cached_allowlist(
+    cached: list[str],
+    *,
+    timeout: int,
+) -> list[str]:
+    """Merge fresh host DNS, allowlist fixpoint, HTTPS validation, and agent peers."""
+    if _allowlist_cache_only_mode():
+        return _use_cached_allowlist_verbatim(
+            cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
+        )
+    try:
+        return _refresh_cached_allowlist_live(cached, timeout=timeout)
+    except modal.exception.ResourceExhaustedError as exc:
+        return _use_cached_allowlist_verbatim(
+            cached, reason=f"Modal spend limit during refresh ({exc})"
+        )
+    except click.ClickException as exc:
+        if _is_modal_spend_limit_error(exc):
+            return _use_cached_allowlist_verbatim(cached, reason=str(exc))
+        raise
+
+
+def _refresh_cached_allowlist_live(
+    cached: list[str],
+    *,
+    timeout: int,
+) -> list[str]:
+    """Live refresh path (may spawn Modal probe sandboxes)."""
+    host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
+    uncovered = host_cidrs_not_covered_by_allowlist(host_cidrs, cached)
+    if uncovered:
+        click.echo(
+            f"Host DNS has {len(uncovered)} IP(s) outside cached allowlist; merging",
+            err=True,
+        )
+    cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
+    if uncovered:
+        cidrs = _run_allowlist_dns_fixpoint(cidrs, timeout=timeout, max_rounds=3)
+    cidrs, added = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
+    )
+    cidrs, _, _ = _expand_allowlist_for_https(
+        cidrs, timeout=timeout, max_rounds=3, fail_on_critical=True
+    )
+    # Match cold-build finalize: streaming peers differ from TLS and are not always
+    # observed in the first cached refresh round.
+    cidrs, post_added = _merge_allowlist_agent_peers(
+        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
+    )
+    added += post_added
+    seed = compress_ipv4_cidrs(cidrs)
+    final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
+    critical_failed = critical_cursor_hosts_failed(
+        final_validation.get("failed_hosts", [])
+    )
+    if critical_failed:
+        raise click.ClickException(
+            "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
+            f"cached refresh: {', '.join(str(h) for h in critical_failed)}"
+        )
+    refreshed = compress_ipv4_cidrs(cidrs)
+    if refreshed != cached or added:
+        write_cursor_api_allowlist_cache(refreshed)
+    return refreshed
+
+
+CURSOR_API_HOSTS_PIN_SCRIPT = """
+import ipaddress
+import json
+import socket
+import sys
+
+payload = json.loads(sys.argv[1])
+hosts = payload["hosts"]
+nets = [ipaddress.ip_network(c, strict=False) for c in payload["cidrs"]]
+lines: list[str] = []
+for host in hosts:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        continue
+    pinned: list[str] = []
+    for info in infos:
+        ip = info[4][0]
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if any(addr in net for net in nets) and ip not in pinned:
+            pinned.append(ip)
+    for ip in pinned:
+        lines.append(f"{ip} {host}")
+if lines:
+    with open("/etc/hosts", "a", encoding="utf-8") as handle:
+        handle.write("\\n# malvin cursor-api pin\\n")
+        handle.write("\\n".join(lines))
+        handle.write("\\n")
+"""
+
+
+def pin_cursor_api_hosts_in_sandbox(
+    sandbox: modal.Sandbox, cidrs: list[str]
+) -> None:
+    """Append ``/etc/hosts`` entries so Cursor API hostnames resolve to allowed IPv4 only."""
+    payload = json.dumps({"cidrs": cidrs, "hosts": list(CURSOR_API_HOSTS)})
+    proc = sandbox.exec(
+        "python3",
+        "-c",
+        CURSOR_API_HOSTS_PIN_SCRIPT,
+        payload,
+        stdout=StreamType.PIPE,
+        stderr=StreamType.PIPE,
+        text=True,
+    )
+    stderr = proc.stderr.read()
+    proc.wait()
+    if proc.returncode != 0:
+        detail = stderr.strip()
+        click.echo(
+            "Cursor API /etc/hosts pin skipped"
+            + (f": {detail}" if detail else ""),
+            err=True,
+        )
+
+
 def _merge_allowlist_agent_peers(
     cidrs: list[str],
     *,
@@ -849,6 +1258,8 @@ def _merge_allowlist_agent_peers(
             if allowlist_near_modal_cap(cidrs):
                 break
         except click.ClickException as exc:
+            if _is_modal_spend_limit_error(exc):
+                raise
             click.echo(f"{label} probe skipped: {exc}", err=True)
             break
     return cidrs, added_total
@@ -862,6 +1273,34 @@ def resolve_agent_sandbox_cidrs(
 ) -> list[str]:
     """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
+    if os.environ.get("DEEPSWE_REFRESH_ALLOWLIST_CACHE") != "1":
+        cached = read_cursor_api_allowlist_cache()
+        if cached is not None:
+            if _allowlist_cache_only_mode():
+                return _use_cached_allowlist_verbatim(
+                    cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
+                )
+            try:
+                refreshed = refresh_cached_allowlist(cached, timeout=timeout)
+            except modal.exception.ResourceExhaustedError as exc:
+                return _use_cached_allowlist_verbatim(
+                    cached, reason=f"Modal spend limit during refresh ({exc})"
+                )
+            except click.ClickException as exc:
+                if _is_modal_spend_limit_error(exc):
+                    return _use_cached_allowlist_verbatim(cached, reason=str(exc))
+                raise
+            click.echo(
+                f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
+                f"{cursor_api_allowlist_cache_path()}"
+                + (
+                    f", refreshed from {len(cached)}"
+                    if len(refreshed) != len(cached)
+                    else ""
+                )
+                + ")"
+            )
+            return refreshed
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
@@ -899,84 +1338,30 @@ def resolve_agent_sandbox_cidrs(
     except click.ClickException as exc:
         click.echo(f"Allowlist TLS peer probe skipped: {exc}", err=True)
     allowlist_agent_peer_added = 0
-    https_validation_added = 0
-    for _ in range(5):
-        seed = compress_ipv4_cidrs(cidrs)
-        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-        failed_hosts = validation.get("failed_hosts", [])
-        if not failed_hosts:
-            break
-        before = len(cidrs)
-        extra_ips = validation.get("extra_ips", [])
-        cidrs = union_ipv4_cidrs(cidrs, [f"{ip}/32" for ip in extra_ips if isinstance(ip, str)])
-        try:
-            peer_cidrs = modal_cidr_allowlist(
-                resolve_cursor_api_cidrs_under_allowlist_peers(
-                    compress_ipv4_cidrs(cidrs), timeout=timeout
-                )
-            )
-            cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
-        except click.ClickException as exc:
-            click.echo(f"HTTPS validation peer probe skipped: {exc}", err=True)
-        allowlist_dns = modal_cidr_allowlist(
-            resolve_cursor_api_cidrs_under_allowlist(
-                compress_ipv4_cidrs(cidrs), timeout=timeout
-            )
-        )
-        cidrs = union_ipv4_cidrs(cidrs, allowlist_dns)
-        https_validation_added += len(cidrs) - before
-        click.echo(
-            f"Allowlist HTTPS validation: {len(failed_hosts)} host(s) failed "
-            f"({', '.join(str(h) for h in failed_hosts[:3])}"
-            f"{'...' if len(failed_hosts) > 3 else ''}); "
-            f"added {len(cidrs) - before} CIDR(s)",
-            err=True,
-        )
-        if len(cidrs) == before:
-            break
-        if allowlist_near_modal_cap(cidrs):
-            break
-        post_round, added = _merge_allowlist_agent_peers(
-            cidrs, timeout=timeout, max_rounds=1, label="HTTPS-round agent peer"
-        )
-        cidrs = post_round
-        allowlist_agent_peer_added += added
-    else:
-        seed = compress_ipv4_cidrs(cidrs)
-        validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-        failed_hosts = validation.get("failed_hosts", [])
-        critical_failed = [
-            host for host in failed_hosts if host in CRITICAL_CURSOR_API_HOSTS
-        ]
-        if critical_failed:
-            raise click.ClickException(
-                "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
-                f"validation rounds: {', '.join(str(h) for h in critical_failed)}"
-            )
-        if failed_hosts:
-            click.echo(
-                "Allowlist HTTPS validation: non-critical host(s) still unreachable "
-                f"({', '.join(str(h) for h in failed_hosts[:5])}"
-                f"{'...' if len(failed_hosts) > 5 else ''}); continuing with cap",
-                err=True,
-            )
+    cidrs, https_validation_added, https_agent_peers = _expand_allowlist_for_https(
+        cidrs, timeout=timeout, max_rounds=5, fail_on_critical=True
+    )
+    allowlist_agent_peer_added += https_agent_peers
+    seed = compress_ipv4_cidrs(cidrs)
+    # Always observe cursor-agent peers under the converged allowlist. Skipping
+    # this when critical HTTPS hosts pass caused allowlist_agent_peers=+0 and
+    # Connection stalled in the agent sandbox (streaming peers differ from TLS).
     cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=3, label="Post-HTTPS agent peer"
+        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
     )
     allowlist_agent_peer_added += post_https_agent_peers
     seed = compress_ipv4_cidrs(cidrs)
     final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
-    critical_failed = [
-        host
-        for host in final_validation.get("failed_hosts", [])
-        if host in CRITICAL_CURSOR_API_HOSTS
-    ]
+    critical_failed = critical_cursor_hosts_failed(
+        final_validation.get("failed_hosts", [])
+    )
     if critical_failed:
         raise click.ClickException(
             "Cursor API HTTPS unreachable under Modal CIDR allowlist after "
             f"post-HTTPS agent peer merge: {', '.join(str(h) for h in critical_failed)}"
         )
     compressed = compress_ipv4_cidrs(cidrs)
+    write_cursor_api_allowlist_cache(compressed)
     click.echo(
         f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
         f"(raw={len(cidrs)}, host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
@@ -1022,13 +1407,27 @@ def sandbox_network_kwargs(
         return {"block_network": True}
     if cursor_api_only:
         cidrs = cidr_allowlist if cidr_allowlist is not None else resolve_cursor_api_cidrs()
-        return {"cidr_allowlist": modal_cidr_allowlist(cidrs)}
+        return {"outbound_cidr_allowlist": modal_cidr_allowlist(cidrs)}
     return {}
 
 
-def agent_sandbox_resource_kwargs() -> dict[str, Any]:
+def agent_sandbox_resource_kwargs(spec: Any | None = None) -> dict[str, Any]:
     """Return Modal ``Sandbox.create`` cpu/memory for agent workloads."""
-    return {"cpu": AGENT_SANDBOX_CPU, "memory": AGENT_SANDBOX_MEMORY_MIB}
+    memory_mib = AGENT_SANDBOX_MEMORY_MIB
+    if spec is not None:
+        task_memory = int(getattr(spec, "environment_memory_mb", 0) or 0)
+        if task_memory > memory_mib:
+            memory_mib = task_memory
+    return {"cpu": AGENT_SANDBOX_CPU, "memory": memory_mib}
+
+
+def agent_sandbox_timeout_sec(spec: Any, *, skip_grade: bool) -> int:
+    """Modal sandbox lifetime: agent (+ verifier when graded) plus headroom."""
+    agent = float(getattr(spec, "agent_timeout_sec", 5400.0))
+    if skip_grade:
+        return int(agent + 900)
+    verifier = float(getattr(spec, "verifier_timeout_sec", 1800.0))
+    return int(agent + verifier + 900)
 
 
 def grade_sandbox_resource_kwargs() -> dict[str, Any]:
@@ -1038,6 +1437,8 @@ def grade_sandbox_resource_kwargs() -> dict[str, Any]:
 
 def relay_stream(reader: Any, sink: TextIO) -> None:
     for chunk in reader:
+        if isinstance(chunk, bytes):
+            chunk = chunk.decode("utf-8", errors="replace")
         sink.write(chunk)
         sink.flush()
 
@@ -1053,18 +1454,70 @@ def stream_process_output(proc: Any, out: TextIO, err: TextIO) -> None:
         thread.join()
 
 
+def _image_build_shell_command(cmd: str, *, workdir: str | None = APP_REMOTE) -> str:
+    """Wrap a Dockerfile replay command for Modal ``Image.run_commands``."""
+    trimmed = cmd.strip()
+    escaped = trimmed.replace('"', '\\"')
+    if workdir:
+        return f'bash -lc "cd {workdir} && {escaped}"'
+    return f'bash -lc "{escaped}"'
+
+
+def _image_build_shell_commands(
+    commands: list[str],
+    *,
+    workdir: str | None = APP_REMOTE,
+) -> list[str]:
+    """Wrap Dockerfile replay commands so Modal image builds run in the task workdir."""
+    return [_image_build_shell_command(cmd, workdir=workdir) for cmd in commands if cmd.strip()]
+
+
 def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
     """Modal image with Harbor task dependencies; workspace/tests mounted at runtime."""
+    docker_image = getattr(spec, "docker_image", None)
+    if docker_image:
+        # Match local Docker: Harbor registry when task.toml provides one. Rebuilding
+        # from Dockerfile on Modal can desync starlette/httpx (httpx2 drift). Modal may
+        # still cache stale registry layers (pydantic v1); re-run a lightweight pydantic
+        # pin after pull (editable replay upgrades starlette → httpx2 drift).
+        click.echo(f"Pulling Harbor image {docker_image}...")
+        base = modal.Image.from_registry(docker_image, force_build=True)
+        build_cmds = list(
+            registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
+        )
+        if dockerfile.is_file():
+            bulk = dockerfile_bulk_pip_commands(dockerfile)
+            if bulk:
+                build_cmds.extend(bulk)
+        if build_cmds:
+            click.echo(
+                f"Re-running {len(build_cmds)} registry image-build pip step(s) after pull..."
+            )
+            base = base.run_commands(*_image_build_shell_commands(build_cmds, workdir=None))
+        return base
     if dockerfile.is_file():
         click.echo(f"Building Modal image from {dockerfile} (may take several minutes)...")
-        return modal.Image.from_dockerfile(str(dockerfile))
-    click.echo(f"Pulling Harbor image {spec.docker_image}...")
-    return modal.Image.from_registry(spec.docker_image)
+        base = modal.Image.from_dockerfile(str(dockerfile), force_build=True)
+        build_cmds = dockerfile_image_build_commands(dockerfile)
+        if build_cmds:
+            click.echo(
+                f"Re-running {len(build_cmds)} Dockerfile pip step(s) after build "
+                "(Modal layer cache bust)..."
+            )
+            base = base.run_commands(*_image_build_shell_commands(build_cmds))
+        return base
+    raise click.ClickException(
+        "task.toml missing environment.docker_image and no environment/Dockerfile to build"
+    )
 
 
 def mount_task_tree(image: modal.Image, workspace: Path, tests_dir: Path) -> modal.Image:
     return (
-        image.add_local_dir(str(workspace.resolve()), remote_path=APP_REMOTE)
+        image.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            ignore=workspace_mount_ignore(),
+        )
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
     )
 
@@ -1082,10 +1535,22 @@ def mount_eval_context(
         "python3 -m pip install --break-system-packages click"
     )
     return (
-        prepared.add_local_dir(str(workspace.resolve()), remote_path=APP_REMOTE)
+        prepared.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            ignore=workspace_mount_ignore(),
+        )
         .add_local_dir(str(tests_dir.resolve()), remote_path=TESTS_REMOTE)
         .add_local_dir(str(task_dir.resolve()), remote_path=TASK_REMOTE)
         .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "sandbox_prep.py"),
+            remote_path=SANDBOX_PREP_REMOTE,
+        )
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
+            remote_path=TOOLCHAIN_REPOS_REMOTE,
+        )
     )
 
 
@@ -1093,9 +1558,9 @@ def mount_local_toolchain(
     image: modal.Image,
     *,
     malvin_repo: Path,
-    kiss_repo: Path,
 ) -> modal.Image:
-    """Layer local malvin/kiss source and build binaries inside the Modal image."""
+    """Layer local malvin source and stable kiss from crates.io inside the Modal image."""
+    kiss_install = kiss_cargo_install_command()
     return (
         image.add_local_dir(
             str(malvin_repo.resolve()),
@@ -1103,14 +1568,8 @@ def mount_local_toolchain(
             ignore=malvin_upload_ignore(),
             copy=True,
         )
-        .add_local_dir(
-            str(kiss_repo.resolve()),
-            remote_path=KISS_TOOLCHAIN_REMOTE,
-            ignore=kiss_upload_ignore(),
-            copy=True,
-        )
         .run_commands(
-            f"bash -lc 'cargo install --path {KISS_TOOLCHAIN_REMOTE} --locked'",
+            f"bash -lc '{kiss_install}'",
             f"bash -lc 'RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked'",
             "curl -fsSL https://cursor.com/install | bash",
             "/root/.local/bin/agent --version || true",
@@ -1121,25 +1580,79 @@ def mount_local_toolchain(
 
 def read_remote_file(sandbox: modal.Sandbox, path: str) -> str | None:
     try:
-        with sandbox.open(path, "r") as handle:
-            return handle.read()
-    except OSError:
+        return sandbox.filesystem.read_text(path)
+    except (OSError, modal.exception.Error):
         return None
 
 
 def read_remote_bytes(sandbox: modal.Sandbox, path: str) -> bytes | None:
     try:
-        with sandbox.open(path, "rb") as handle:
-            return handle.read()
-    except OSError:
+        return sandbox.filesystem.read_bytes(path)
+    except (OSError, modal.exception.Error):
         return None
 
 
+def persist_grading_artifacts(
+    sandbox: modal.Sandbox,
+    artifacts_dir: Path,
+    *,
+    run_logs_remote: str,
+    grade_result: dict[str, Any],
+) -> None:
+    """Write reward-critical artifacts before heavyweight workspace/log harvest.
+
+    If workspace tar or log archival fails afterward, the run remains gradable.
+    """
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
+    if metadata_text:
+        (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
+    model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+    if model_patch:
+        (artifacts_dir / "model.patch").write_bytes(model_patch)
+    reward = grade_result.get("reward")
+    if reward is not None:
+        (artifacts_dir / "reward.txt").write_text(f"{reward}\n", encoding="utf-8")
+
+
 # Root-owned ``.git`` objects from the Modal sandbox cannot overwrite host checkout files.
+# Ephemeral bytecode is excluded so reused workspaces are not blocked by root-owned ``__pycache__``.
 HARVEST_WORKSPACE_TAR_EXCLUDES = (
     "--exclude=./.git",
     "--exclude=./.malvin/logs",
+    "--exclude=./.stestr",
+    "--exclude=__pycache__",
+    "--exclude=*.pyc",
+    "--exclude=*.pyo",
 )
+
+
+def _can_overlay_existing_file(target: Path) -> bool:
+    """Return whether an existing local file can be replaced by a harvested member."""
+    if not target.is_file():
+        return True
+    if os.access(target, os.W_OK):
+        return True
+    try:
+        target.chmod(target.stat().st_mode | stat.S_IWUSR)
+        return True
+    except OSError:
+        pass
+    try:
+        target.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def _tar_extract_member(
+    archive: tarfile.TarFile, member: tarfile.TarInfo, workspace: Path
+) -> None:
+    """Extract one archive member without applying remote ownership metadata."""
+    try:
+        archive.extract(member, workspace, set_attrs=False, filter="data")
+    except TypeError:  # pragma: no cover - py<3.12
+        archive.extract(member, workspace, set_attrs=False)
 
 
 def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> None:
@@ -1148,15 +1661,12 @@ def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> No
         if member.isdir():
             continue
         target = workspace / member.name
-        if not target.is_file():
-            continue
-        if os.access(target, os.W_OK):
+        if not _can_overlay_existing_file(target):
             continue
         try:
-            target.chmod(target.stat().st_mode | stat.S_IWUSR)
+            _tar_extract_member(archive, member, workspace)
         except OSError:
-            target.unlink(missing_ok=True)
-    archive.extractall(workspace)
+            continue
 
 
 def harvest_sandbox_workspace(sandbox: modal.Sandbox, workspace: Path) -> dict[str, Any]:
@@ -1184,7 +1694,7 @@ def harvest_sandbox_logs(sandbox: modal.Sandbox, out_dir: Path) -> dict[str, Any
         "bash",
         "-lc",
         f"mkdir -p {LOGS_REMOTE}/malvin && "
-        f"(cp -a /root/.malvin/logs/. {LOGS_REMOTE}/malvin/ 2>/dev/null || true) && "
+        f"(cp -a /root/.malvin_home/logs/. {LOGS_REMOTE}/malvin/ 2>/dev/null || true) && "
         f"tar -czf /tmp/deepswe_harvest.tgz -C / logs",
         workdir=APP_REMOTE,
     )
@@ -1221,11 +1731,11 @@ def parse_deepswe_run_result(
         stripped = reward_text.strip()
         if stripped in {"0", "1"}:
             reward = int(stripped)
-    model_patch = read_remote_file(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
+    model_patch = read_remote_bytes(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
     grade_result = {
         "pass": reward == 1,
         "reward": reward,
-        "model_patch_chars": len(model_patch) if model_patch else 0,
+        "model_patch_bytes": len(model_patch) if model_patch else 0,
     }
     return None, grade_result
 
@@ -1242,6 +1752,7 @@ def run_deepswe_run_in_sandbox(
     artifacts_dir: Path | None = None,
     harvest_workspace: Path | None = None,
     timeout: int = 7200,
+    spec: Any | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Exec ``deepswe_run.py`` once in a Modal sandbox (agent + grade in one command)."""
     sandbox: modal.Sandbox | None = None
@@ -1256,7 +1767,7 @@ def run_deepswe_run_in_sandbox(
         resources = (
             grade_sandbox_resource_kwargs()
             if grade_only
-            else agent_sandbox_resource_kwargs()
+            else agent_sandbox_resource_kwargs(spec)
         )
         sandbox = modal.Sandbox.create(
             app=sandbox_app(),
@@ -1267,6 +1778,9 @@ def run_deepswe_run_in_sandbox(
             **resources,
             **network,
         )
+        allowlist = network.get("outbound_cidr_allowlist")
+        if allowlist:
+            pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
         argv = [
             "python3",
             DEEPSWE_RUN_REMOTE,
@@ -1292,8 +1806,8 @@ def run_deepswe_run_in_sandbox(
             stdout=StreamType.PIPE,
             stderr=StreamType.PIPE,
             workdir=APP_REMOTE,
-            text=True,
-            bufsize=1,
+            text=False,
+            bufsize=0,
         )
         click.echo("Running deepswe_run.py on Modal (single exec)...")
         stream_process_output(proc, sys.stdout, sys.stderr)
@@ -1307,29 +1821,64 @@ def run_deepswe_run_in_sandbox(
             agent_result = {"exit_code": int(proc.returncode or 0)}
         elif agent_result is not None and "exit_code" not in agent_result:
             agent_result["exit_code"] = int(proc.returncode or 0)
+        if artifacts_dir is not None:
+            persist_grading_artifacts(
+                sandbox,
+                artifacts_dir,
+                run_logs_remote=run_logs_remote,
+                grade_result=grade_result,
+            )
         if harvest_workspace is not None:
-            harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
+            try:
+                harvest_info = harvest_sandbox_workspace(sandbox, harvest_workspace)
+            except Exception as exc:
+                harvest_info = {"harvested": False, "error": str(exc)}
+                click.echo(f"Workspace harvest failed: {exc}", err=True)
             if agent_result is not None:
                 agent_result["workspace_harvest"] = harvest_info
             elif not grade_only:
                 agent_result = {"workspace_harvest": harvest_info}
         if artifacts_dir is not None:
-            artifacts_dir.mkdir(parents=True, exist_ok=True)
-            model_patch = read_remote_file(sandbox, f"{LOGS_REMOTE}/artifacts/model.patch")
-            if model_patch:
-                (artifacts_dir / "model.patch").write_text(model_patch, encoding="utf-8")
-            metadata_text = read_remote_file(sandbox, f"{run_logs_remote}/metadata.json")
-            if metadata_text:
-                (artifacts_dir / "metadata.json").write_text(metadata_text, encoding="utf-8")
-            harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+            try:
+                harvest = harvest_sandbox_logs(sandbox, artifacts_dir)
+            except Exception as exc:
+                harvest = {"harvested": False, "error": str(exc)}
+                click.echo(f"Sandbox log harvest failed: {exc}", err=True)
             if grade_only:
                 grade_result["harvest"] = harvest
             elif agent_result is not None:
                 agent_result["harvest"] = harvest
         return agent_result, grade_result
     finally:
-        if sandbox is not None:
-            sandbox.terminate()
+        release_modal_sandbox(sandbox)
+
+
+def offline_check_tool_install_commands(checks: str) -> list[str]:
+    """Image-build pip installs so network-blocked agent sandboxes can run quality gates."""
+    pkgs: list[str] = []
+    if "mypy" in checks:
+        pkgs.extend(["mypy", "uv"])
+    if "ruff" in checks:
+        pkgs.append("ruff")
+    if "pytest" in checks:
+        pkgs.append("aggdraw")
+    if not pkgs:
+        return []
+    ordered = list(dict.fromkeys(pkgs))
+    return [f"python3 -m pip install --break-system-packages {' '.join(ordered)}"]
+
+
+def offline_agent_checks(checks: str) -> str:
+    """Rewrite network-dependent quality-gate lines for network-blocked agent sandboxes."""
+    rewritten: list[str] = []
+    for line in checks.splitlines():
+        stripped = line.strip()
+        if stripped == "uv run mypy":
+            rewritten.append("mypy")
+        else:
+            rewritten.append(line)
+    body = "\n".join(rewritten)
+    return body + ("\n" if body and not body.endswith("\n") else "")
 
 
 def harbor_agent_image(
@@ -1339,10 +1888,10 @@ def harbor_agent_image(
     *,
     dockerfile: Path,
     malvin_repo: Path,
-    kiss_repo: Path,
     deepswe_run_py: Path,
+    checks: str = "",
 ) -> modal.Image:
-    """Harbor task image plus locally built malvin/kiss, cursor-agent, and deepswe_run."""
+    """Harbor task image plus local malvin, stable kiss, cursor-agent, and deepswe_run."""
     base = harbor_image(spec, dockerfile=dockerfile)
     augmented = base.run_commands(
         "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev python3-pip",
@@ -1351,8 +1900,10 @@ def harbor_agent_image(
     augmented = mount_local_toolchain(
         augmented,
         malvin_repo=malvin_repo,
-        kiss_repo=kiss_repo,
     )
+    preinstall = offline_check_tool_install_commands(checks)
+    if preinstall:
+        augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
     return mount_eval_context(
         augmented,
         task_dir=spec.task_dir,
@@ -1373,6 +1924,64 @@ def cursor_secrets() -> list[modal.Secret]:
 def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "metadata.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def load_agent_sandbox_metadata(agent_artifacts: Path) -> dict[str, Any] | None:
+    """Load in-sandbox metadata copied during Tier-A harvest (before workspace tar)."""
+    path = agent_artifacts / "metadata.json"
+    if not path.is_file():
+        return None
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return loaded if isinstance(loaded, dict) else None
+
+
+def finalize_modal_eval(
+    *,
+    run_root: Path,
+    spec: Any,
+    workspace: Path,
+    malvin_command: str,
+    malvin_args: tuple[str, ...],
+    grade_only: bool,
+    agent_result: dict[str, Any] | None,
+    grade_result: dict[str, Any],
+    modal_error: str | None = None,
+) -> None:
+    """Write host metadata, print grade summary, and exit with verifier/agent status."""
+    malvin_log = find_latest_malvin_log(workspace)
+    metadata: dict[str, Any] = {
+        "task_id": spec.task_id,
+        "runtime": "modal",
+        "workspace": str(workspace.resolve()),
+        "malvin_command": malvin_command if not grade_only else None,
+        "malvin_args": list(malvin_args),
+        "agent": agent_result,
+        "grade": grade_result,
+        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    if modal_error:
+        metadata["modal_error"] = modal_error
+    write_metadata(run_root, metadata)
+    if grade_result.get("reward") is not None:
+        (run_root / "reward.txt").write_text(f"{grade_result['reward']}\n", encoding="utf-8")
+
+    click.echo("\n=== Modal evaluation ===")
+    click.echo(f"reward: {grade_result.get('reward')}")
+    click.echo(f"pass: {grade_result.get('pass')}")
+    if agent_result:
+        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+    click.echo(f"artifacts: {run_root.resolve()}")
+
+    if grade_result.get("pass") is False:
+        raise SystemExit(1)
+    if agent_result and agent_result.get("exit_code") not in (0, None):
+        raise SystemExit(agent_result["exit_code"])
+    if modal_error and grade_result.get("reward") is None:
+        raise SystemExit(1)
 
 
 def run_modal_eval(
@@ -1407,7 +2016,9 @@ def run_modal_eval(
         else:
             click.echo("Dry run: malvin agent in Modal sandbox (Cursor API allowlist)")
             if not skip_grade:
-                click.echo("Dry run: Harbor grade in separate Modal sandbox (block_network)")
+                click.echo(
+                    "Dry run: Harbor grade in same Modal sandbox (in-sandbox runtime)"
+                )
         return
 
     materialize_workspace(spec, workspace, dry_run=False)
@@ -1419,64 +2030,16 @@ def run_modal_eval(
         apply_patch(workspace, spec.solution_patch, dry_run=False)
 
     agent_result: dict[str, Any] | None = None
-    grade_result: dict[str, Any]
+    grade_result: dict[str, Any] = {"pass": None, "reward": None}
+    modal_error: str | None = None
+    agent_artifacts: Path | None = None
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     checks = checks_override
     if checks is None:
-        checks = DEFAULT_CHECKS_CODE if malvin_command == "code" else DEFAULT_CHECKS_DO
-    if grade_only:
-        grade_img = mount_eval_context(
-            harbor_image(spec, dockerfile=spec.dockerfile),
-            task_dir=spec.task_dir,
-            workspace=workspace,
-            tests_dir=spec.tests_dir,
-            deepswe_run_py=deepswe_run_py,
-        )
-        agent_result, grade_result = run_deepswe_run_in_sandbox(
-            grade_img,
-            command=malvin_command,
-            malvin_argv=list(malvin_args),
-            grade_only=True,
-            skip_grade=False,
-            cursor_secrets=[],
-            artifacts_dir=run_root,
-        )
-    else:
-        write_plan_and_checks(
-            spec,
-            workspace,
-            command=malvin_command,
-            checks_override=checks,
-            dry_run=False,
-        )
-        malvin_repo, kiss_repo = validate_toolchain_repos()
-        agent_img = harbor_agent_image(
-            spec,
-            workspace,
-            spec.tests_dir,
-            dockerfile=spec.dockerfile,
-            malvin_repo=malvin_repo,
-            kiss_repo=kiss_repo,
-            deepswe_run_py=deepswe_run_py,
-        )
-        agent_artifacts = run_root / "agent_sandbox"
-        click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
-        agent_result, _ = run_deepswe_run_in_sandbox(
-            agent_img,
-            command=malvin_command,
-            malvin_argv=list(malvin_args),
-            grade_only=False,
-            skip_grade=True,
-            cursor_secrets=cursor_secrets(),
-            artifacts_dir=agent_artifacts,
-            harvest_workspace=workspace,
-        )
-        if agent_result is None:
-            agent_result = {"exit_code": 1}
-        agent_result["runtime"] = "modal-agent-sandbox"
-        if skip_grade:
-            grade_result = {"pass": None, "reward": None, "skipped": True}
-        else:
+        checks = discover_deepswe_checks(workspace)
+    try:
+        sandbox_timeout = agent_sandbox_timeout_sec(spec, skip_grade=skip_grade)
+        if grade_only:
             grade_img = mount_eval_context(
                 harbor_image(spec, dockerfile=spec.dockerfile),
                 task_dir=spec.task_dir,
@@ -1484,8 +2047,7 @@ def run_modal_eval(
                 tests_dir=spec.tests_dir,
                 deepswe_run_py=deepswe_run_py,
             )
-            click.echo("Running Harbor verifier in Modal sandbox (block_network)...")
-            _, grade_result = run_deepswe_run_in_sandbox(
+            agent_result, grade_result = run_deepswe_run_in_sandbox(
                 grade_img,
                 command=malvin_command,
                 malvin_argv=list(malvin_args),
@@ -1493,36 +2055,90 @@ def run_modal_eval(
                 skip_grade=False,
                 cursor_secrets=[],
                 artifacts_dir=run_root,
+                spec=spec,
+                timeout=sandbox_timeout,
             )
-            grade_result["runtime"] = "modal-grade-sandbox"
+        else:
+            agent_checks = offline_agent_checks(checks or "")
+            write_plan_and_checks(
+                spec,
+                workspace,
+                command=malvin_command,
+                checks_override=agent_checks,
+                dry_run=False,
+            )
+            malvin_repo = validate_toolchain_repos()
+            with stage_malvin_repo(malvin_repo) as malvin_staged:
+                agent_img = harbor_agent_image(
+                    spec,
+                    workspace,
+                    spec.tests_dir,
+                    dockerfile=spec.dockerfile,
+                    malvin_repo=malvin_staged,
+                    deepswe_run_py=deepswe_run_py,
+                    checks=agent_checks,
+                )
+                agent_artifacts = run_root / "agent_sandbox"
+                if skip_grade:
+                    click.echo("Running malvin agent in Modal sandbox (Cursor API allowlist)...")
+                    agent_result, grade_result = run_deepswe_run_in_sandbox(
+                        agent_img,
+                        command=malvin_command,
+                        malvin_argv=list(malvin_args),
+                        grade_only=False,
+                        skip_grade=True,
+                        cursor_secrets=cursor_secrets(),
+                        artifacts_dir=agent_artifacts,
+                        harvest_workspace=workspace,
+                        spec=spec,
+                        timeout=sandbox_timeout,
+                    )
+                else:
+                    click.echo(
+                        "Running malvin agent and Harbor grade in Modal sandbox "
+                        "(Cursor API allowlist, in-sandbox runtime)..."
+                    )
+                    agent_result, grade_result = run_deepswe_run_in_sandbox(
+                        agent_img,
+                        command=malvin_command,
+                        malvin_argv=list(malvin_args),
+                        grade_only=False,
+                        skip_grade=False,
+                        cursor_secrets=cursor_secrets(),
+                        artifacts_dir=agent_artifacts,
+                        harvest_workspace=workspace,
+                        spec=spec,
+                        timeout=sandbox_timeout,
+                    )
+            if agent_result is None:
+                agent_result = {"exit_code": 1}
+            agent_result["runtime"] = "modal-sandbox"
+            if skip_grade:
+                grade_result = {"pass": None, "reward": None, "skipped": True}
+            else:
+                grade_result["runtime"] = "modal-sandbox"
+    except Exception as exc:
+        modal_error = str(exc)
+        click.echo(f"Modal solve failed: {exc}", err=True)
+        if agent_artifacts is not None:
+            remote_meta = load_agent_sandbox_metadata(agent_artifacts)
+            if remote_meta:
+                agent_result = remote_meta.get("agent") or agent_result
+                grade_result = remote_meta.get("grade") or grade_result
+        if agent_result is None:
+            agent_result = {"exit_code": 1, "error": modal_error}
 
-    malvin_log = find_latest_malvin_log(workspace)
-    metadata = {
-        "task_id": spec.task_id,
-        "runtime": "modal",
-        "workspace": str(workspace.resolve()),
-        "malvin_command": malvin_command if not grade_only else None,
-        "malvin_args": list(malvin_args),
-        "agent": agent_result,
-        "grade": grade_result,
-        "malvin_log_dir": str(malvin_log.resolve()) if malvin_log else None,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-    }
-    write_metadata(run_root, metadata)
-    if grade_result.get("reward") is not None:
-        (run_root / "reward.txt").write_text(f"{grade_result['reward']}\n", encoding="utf-8")
-
-    click.echo("\n=== Modal evaluation ===")
-    click.echo(f"reward: {grade_result.get('reward')}")
-    click.echo(f"pass: {grade_result.get('pass')}")
-    if agent_result:
-        click.echo(f"malvin exit: {agent_result.get('exit_code')}")
-    click.echo(f"artifacts: {run_root.resolve()}")
-
-    if grade_result.get("pass") is False:
-        raise SystemExit(1)
-    if agent_result and agent_result.get("exit_code") not in (0, None):
-        raise SystemExit(agent_result["exit_code"])
+    finalize_modal_eval(
+        run_root=run_root,
+        spec=spec,
+        workspace=workspace,
+        malvin_command=malvin_command,
+        malvin_args=malvin_args,
+        grade_only=grade_only,
+        agent_result=agent_result,
+        grade_result=grade_result,
+        modal_error=modal_error,
+    )
 
 
 @click.command(
@@ -1551,7 +2167,7 @@ def run_modal_eval(
     "--results-dir",
     type=click.Path(file_okay=False, path_type=Path),
     default=None,
-    show_default="~/.malvin/deepswe-results",
+        show_default="~/.malvin_home/deepswe-results",
 )
 @click.option(
     "--command",
@@ -1623,6 +2239,7 @@ def _test_repo_roots() -> None:
     assert (malvin_repo / "ops" / "deepswe_modal.py").is_file()
     kiss_repo = kiss_repo_root()
     assert kiss_repo.name == "kiss"
+    assert KISS_STABLE_VERSION in kiss_cargo_install_command()
 
 
 def _test_default_deepswe_results_dir() -> None:
@@ -1657,20 +2274,37 @@ def _test_network_kwargs() -> None:
     assert blocked == {"block_network": True}
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.2.3.4/32"]):
         allowed = sandbox_network_kwargs(cursor_api_only=True, block_all=False)
-    assert allowed == {"cidr_allowlist": ["1.2.3.4/32"]}
+    assert allowed == {"outbound_cidr_allowlist": ["1.2.3.4/32"]}
     assert sandbox_network_kwargs(
         cursor_api_only=True,
         block_all=False,
         cidr_allowlist=["9.9.9.9/32"],
-    ) == {"cidr_allowlist": ["9.9.9.9/32"]}
+    ) == {"outbound_cidr_allowlist": ["9.9.9.9/32"]}
     assert sandbox_network_kwargs(cursor_api_only=False, block_all=False) == {}
 
 
 def _test_sandbox_resource_kwargs() -> None:
     agent = agent_sandbox_resource_kwargs()
     assert agent == {"cpu": 2.0, "memory": 4096}
+    from types import SimpleNamespace
+
+    heavy = agent_sandbox_resource_kwargs(
+        SimpleNamespace(environment_memory_mb=8192)
+    )
+    assert heavy == {"cpu": 2.0, "memory": 8192}
     grade = grade_sandbox_resource_kwargs()
     assert grade == {"cpu": 1.0, "memory": 2048}
+
+
+def _test_agent_sandbox_timeout_sec() -> None:
+    from types import SimpleNamespace
+
+    spec = SimpleNamespace(
+        agent_timeout_sec=5400.0,
+        verifier_timeout_sec=1800.0,
+    )
+    assert agent_sandbox_timeout_sec(spec, skip_grade=False) == 8100
+    assert agent_sandbox_timeout_sec(spec, skip_grade=True) == 6300
 
 
 def _test_compress_ipv4_cidrs() -> None:
@@ -1693,6 +2327,11 @@ def _test_allowlist_near_modal_cap() -> None:
 
 
 def _test_agent_sandbox_cidrs_union() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        _test_agent_sandbox_cidrs_union_body()
+
+
+def _test_agent_sandbox_cidrs_union_body() -> None:
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
             f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
@@ -1722,7 +2361,8 @@ def _test_agent_sandbox_cidrs_union() -> None:
                                 f"{__name__}.validate_cursor_https_under_allowlist",
                                 return_value={"failed_hosts": [], "extra_ips": []},
                             ):
-                                cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
+                                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                                    cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
     assert cidrs == [
         "1.1.1.0/24",
         "2.2.2.0/24",
@@ -1734,6 +2374,286 @@ def _test_agent_sandbox_cidrs_union() -> None:
     ]
 
 
+def _test_critical_cursor_hosts_failed() -> None:
+    failed = ["api2geo.cursor.sh", "api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(failed) == ["api2.cursor.sh", "api.cursor.com"]
+    assert critical_cursor_hosts_failed(["api2geo.cursor.sh"]) == []
+
+
+def _test_cursor_api_allowlist_cache() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        cache = Path(tmp) / "cursor_api_allowlist.json"
+        with patch(f"{__name__}.cursor_api_allowlist_cache_path", return_value=cache):
+            assert read_cursor_api_allowlist_cache() is None
+            write_cursor_api_allowlist_cache(["10.0.0.1/32", "10.0.0.2/32"])
+            loaded = read_cursor_api_allowlist_cache()
+            assert loaded == ["10.0.0.1/32", "10.0.0.2/32"]
+            stale = {
+                "cidrs": ["1.1.1.1/32"],
+                "timestamp_utc": "2020-01-01T00:00:00+00:00",
+            }
+            cache.write_text(json.dumps(stale) + "\n", encoding="utf-8")
+            assert read_cursor_api_allowlist_cache() is None
+
+
+def _test_resolve_agent_sandbox_cidrs_uses_cache() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["9.9.9.9/32"]):
+        with patch(
+            f"{__name__}.refresh_cached_allowlist", return_value=["9.9.9.0/24"]
+        ) as mock_refresh:
+            with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
+                result = resolve_agent_sandbox_cidrs()
+    mock_refresh.assert_called_once_with(["9.9.9.9/32"], timeout=300)
+    mock_dns.assert_not_called()
+    assert result == ["9.9.9.0/24"]
+
+
+def _test_host_cidrs_not_covered_by_allowlist() -> None:
+    assert host_cidrs_not_covered_by_allowlist(
+        ["1.2.3.4/32"], ["1.2.3.0/24"]
+    ) == []
+    assert host_cidrs_not_covered_by_allowlist(
+        ["5.6.7.8/32"], ["1.2.3.0/24"]
+    ) == ["5.6.7.8/32"]
+
+
+def _test_refresh_cached_allowlist_merges_host_dns() -> None:
+    cached = ["1.1.1.0/24"]
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs", return_value=["2.2.2.2/32"]
+    ):
+        with patch(
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._run_allowlist_dns_fixpoint",
+                side_effect=lambda cidrs, **_: cidrs,
+            ) as mock_fixpoint:
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=[
+                        (["1.1.1.0/24", "2.2.2.2/32"], 0),
+                        (["1.1.1.0/24", "2.2.2.2/32", "8.8.8.8/32"], 1),
+                    ],
+                ) as mock_merge:
+                    with patch(
+                        f"{__name__}.write_cursor_api_allowlist_cache"
+                    ) as mock_write:
+                        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert "2.2.2.0/24" in refreshed
+    assert "8.8.8.0/24" in refreshed
+    mock_fixpoint.assert_called_once()
+    assert mock_merge.call_count == 2
+    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
+    mock_write.assert_called_once()
+
+
+def _test_refresh_cached_allowlist_runs_post_https_agent_peer() -> None:
+    """Cached refresh must run the same post-HTTPS agent peer merge as cold build."""
+    with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+        with patch(
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._merge_allowlist_agent_peers",
+                side_effect=[
+                    (["1.1.1.0/24"], 0),
+                    (["1.1.1.0/24", "9.9.9.9/32"], 1),
+                ],
+            ) as mock_merge:
+                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                    refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+    assert mock_merge.call_count == 2
+    assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "9.9.9.0/24" in refreshed
+
+
+def _test_refresh_cached_allowlist_expands_for_https() -> None:
+    """Cached refresh must run HTTPS validation like the cold-build path."""
+    with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+        with patch(
+            f"{__name__}._merge_allowlist_agent_peers",
+            side_effect=[
+                (["1.1.1.0/24"], 0),
+                (["1.1.1.0/24", "5.5.5.5/32"], 0),
+            ],
+        ):
+            with patch(
+                f"{__name__}._expand_allowlist_for_https",
+                return_value=(["1.1.1.0/24", "5.5.5.5/32"], 1, 0),
+            ) as mock_expand:
+                with patch(
+                    f"{__name__}.validate_cursor_https_under_allowlist",
+                    return_value={"failed_hosts": [], "extra_ips": []},
+                ):
+                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                        refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+    mock_expand.assert_called_once()
+    assert "5.5.5.0/24" in refreshed
+
+
+def _test_expand_allowlist_for_https_merges_extra_ips() -> None:
+    validation_calls = {"count": 0}
+
+    def fake_validate(_seed: list[str], *, timeout: int) -> dict[str, list[str]]:
+        validation_calls["count"] += 1
+        if validation_calls["count"] == 1:
+            return {
+                "failed_hosts": ["api2.cursor.sh"],
+                "extra_ips": ["5.5.5.5"],
+            }
+        return {"failed_hosts": [], "extra_ips": []}
+
+    with patch(
+        f"{__name__}.validate_cursor_https_under_allowlist",
+        side_effect=fake_validate,
+    ):
+        with patch(
+            f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+            return_value=[],
+        ):
+            with patch(
+                f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+                return_value=[],
+            ):
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=lambda cidrs, **_: (cidrs, 0),
+                ):
+                    cidrs, added, _ = _expand_allowlist_for_https(
+                        ["1.1.1.1/32"], timeout=60, max_rounds=2
+                    )
+    assert added == 1
+    assert "5.5.5.5/32" in cidrs
+
+
+def _test_run_allowlist_dns_fixpoint_stops_at_fixpoint() -> None:
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+        side_effect=[["2.2.2.2/32"], ["2.2.2.2/32"]],
+    ) as mock_probe:
+        cidrs = _run_allowlist_dns_fixpoint(["1.1.1.1/32"], timeout=60, max_rounds=3)
+    assert mock_probe.call_count == 2
+    assert "2.2.2.2/32" in cidrs
+
+
+def _test_pin_cursor_api_hosts_script_pins_all_allowed_ips() -> None:
+    import subprocess
+
+    with tempfile.TemporaryDirectory() as tmp:
+        hosts_path = Path(tmp) / "hosts"
+        hosts_path.write_text("", encoding="utf-8")
+        payload = json.dumps({"cidrs": ["1.2.3.0/24"], "hosts": ["example.test"]})
+        runner = f"""
+import json
+import ipaddress
+import socket
+import sys
+
+payload = json.loads(sys.argv[1])
+hosts = payload["hosts"]
+nets = [ipaddress.ip_network(c, strict=False) for c in payload["cidrs"]]
+
+def fake_getaddrinfo(host, port, *args, **kwargs):
+    return [
+        (None, None, None, None, ("1.2.3.4", port)),
+        (None, None, None, None, ("1.2.3.5", port)),
+        (None, None, None, None, ("9.9.9.9", port)),
+    ]
+
+socket.getaddrinfo = fake_getaddrinfo
+lines = []
+for host in hosts:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        continue
+    pinned = []
+    for info in infos:
+        ip = info[4][0]
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if any(addr in net for net in nets) and ip not in pinned:
+            pinned.append(ip)
+    for ip in pinned:
+        lines.append(f"{{ip}} {{host}}")
+if lines:
+    with open({str(hosts_path)!r}, "a", encoding="utf-8") as handle:
+        handle.write("\\n# malvin cursor-api pin\\n")
+        handle.write("\\n".join(lines))
+        handle.write("\\n")
+"""
+        subprocess.run(
+            [sys.executable, "-c", runner, payload],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        pinned = hosts_path.read_text(encoding="utf-8")
+    assert "1.2.3.4 example.test" in pinned
+    assert "1.2.3.5 example.test" in pinned
+    assert "9.9.9.9 example.test" not in pinned
+
+
+def _test_pin_cursor_api_hosts_in_sandbox() -> None:
+    fake_proc = MagicMock()
+    fake_proc.stdout.read.return_value = ""
+    fake_proc.stderr.read.return_value = ""
+    fake_proc.returncode = 0
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    pin_cursor_api_hosts_in_sandbox(fake_sandbox, ["1.2.3.0/24"])
+    fake_sandbox.exec.assert_called_once()
+    exec_argv = fake_sandbox.exec.call_args.args
+    assert exec_argv[0] == "python3"
+    payload = json.loads(exec_argv[3])
+    assert payload["cidrs"] == ["1.2.3.0/24"]
+    assert payload["hosts"] == list(CURSOR_API_HOSTS)
+
+
+def _test_post_https_agent_peer_merge_always_runs() -> None:
+    """Post-HTTPS peer merge must run even when critical HTTPS hosts already pass."""
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=None):
+        with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+            with patch(
+                f"{__name__}.resolve_cursor_api_cidrs_in_modal_sandbox",
+                return_value=["2.2.2.2/32"],
+            ):
+                with patch(
+                    f"{__name__}.resolve_cursor_api_cidrs_under_allowlist",
+                    return_value=["4.4.4.4/32"],
+                ):
+                    with patch(
+                        f"{__name__}.resolve_cursor_api_cidrs_under_allowlist_peers",
+                        return_value=[],
+                    ):
+                        with patch(
+                            f"{__name__}.resolve_cursor_api_cidrs_from_agent_peers",
+                            return_value=["3.3.3.3/32"],
+                        ):
+                            with patch(
+                                f"{__name__}.validate_cursor_https_under_allowlist",
+                                return_value={"failed_hosts": [], "extra_ips": []},
+                            ):
+                                with patch(
+                                    f"{__name__}._merge_allowlist_agent_peers",
+                                    return_value=(["1.1.1.1/32", "8.8.8.8/32"], 1),
+                                ) as mock_merge:
+                                    with patch(
+                                        f"{__name__}.write_cursor_api_allowlist_cache"
+                                    ):
+                                        cidrs = resolve_agent_sandbox_cidrs(
+                                            fixpoint_rounds=1
+                                        )
+    mock_merge.assert_called_once()
+    assert mock_merge.call_args.kwargs.get("label") == "Post-HTTPS agent peer"
+    assert "8.8.8.0/24" in cidrs
+
+
 def _test_agent_sandbox_network_kwargs() -> None:
     image = MagicMock()
     with patch(
@@ -1742,16 +2662,21 @@ def _test_agent_sandbox_network_kwargs() -> None:
     ) as mock_resolve:
         kwargs = agent_sandbox_network_kwargs(image)
     mock_resolve.assert_called_once_with(image, timeout=300)
-    assert kwargs == {"cidr_allowlist": ["10.0.0.1/32"]}
+    assert kwargs == {"outbound_cidr_allowlist": ["10.0.0.1/32"]}
 
 
 def _test_stream_helpers() -> None:
     sink = io.StringIO()
     relay_stream(iter(["alpha", "beta"]), sink)
     assert sink.getvalue() == "alphabeta"
+    latin1 = b"passed\n# latin-1 comment: \xe0\xe7\xe9\n"
+    sink = io.StringIO()
+    relay_stream(iter([latin1]), sink)
+    assert "passed" in sink.getvalue()
+    assert "\ufffd" in sink.getvalue()
     out = io.StringIO()
     err = io.StringIO()
-    proc = MagicMock(stdout=iter(["out"]), stderr=iter(["err"]))
+    proc = MagicMock(stdout=iter([b"out"]), stderr=iter([b"err"]))
     stream_process_output(proc, out, err)
     assert out.getvalue() == "out"
     assert err.getvalue() == "err"
@@ -1772,13 +2697,148 @@ def _test_cursor_secrets() -> None:
                 os.environ[key] = value
 
 
+def _test_persist_grading_artifacts() -> None:
+    sandbox = MagicMock()
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}})
+    sandbox.filesystem.read_text.return_value = metadata
+    sandbox.filesystem.read_bytes.return_value = b"patch-bytes"
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "agent_sandbox"
+        persist_grading_artifacts(
+            sandbox,
+            artifacts_dir,
+            run_logs_remote="/logs/run",
+            grade_result={"reward": 1, "pass": True},
+        )
+        assert (artifacts_dir / "metadata.json").read_text(encoding="utf-8") == metadata
+        assert (artifacts_dir / "model.patch").read_bytes() == b"patch-bytes"
+        assert (artifacts_dir / "reward.txt").read_text(encoding="utf-8") == "1\n"
+
+
+def _test_tier_a_before_workspace_harvest() -> None:
+    """Grading artifacts must survive workspace tar harvest failures."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": {"exit_code": 0}})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    fake_sandbox.filesystem.read_bytes.return_value = b"patch"
+    image = MagicMock()
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "agent_sandbox"
+        workspace = Path(tmp) / "workspace"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            with patch(
+                f"{__name__}.resolve_agent_sandbox_cidrs",
+                return_value=["9.9.9.9/32"],
+            ):
+                with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox"):
+                    with patch(
+                        f"{__name__}.harvest_sandbox_workspace",
+                        side_effect=RuntimeError("tar OOM"),
+                    ):
+                        with patch(
+                            f"{__name__}.harvest_sandbox_logs",
+                            return_value={"harvested": False},
+                        ):
+                            agent_result, grade_result = run_deepswe_run_in_sandbox(
+                                image,
+                                command="code",
+                                malvin_argv=[],
+                                grade_only=False,
+                                cursor_secrets=[],
+                                artifacts_dir=artifacts_dir,
+                                harvest_workspace=workspace,
+                            )
+        assert (artifacts_dir / "metadata.json").is_file()
+        assert grade_result["reward"] == 1
+        assert agent_result is not None
+        assert agent_result["workspace_harvest"]["harvested"] is False
+
+
+def _test_load_agent_sandbox_metadata() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts = Path(tmp) / "agent_sandbox"
+        artifacts.mkdir()
+        assert load_agent_sandbox_metadata(artifacts) is None
+        payload = {"grade": {"reward": 0, "pass": False}}
+        (artifacts / "metadata.json").write_text(json.dumps(payload), encoding="utf-8")
+        assert load_agent_sandbox_metadata(artifacts) == payload
+
+
+def _test_deepswe_exec_binary_stream_kwargs() -> None:
+    """Modal rejects line-buffering (bufsize=1) unless text=True."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    image = MagicMock()
+    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+        run_deepswe_run_in_sandbox(
+            image,
+            command="code",
+            malvin_argv=[],
+            grade_only=True,
+            cursor_secrets=[],
+        )
+    exec_kwargs = fake_sandbox.exec.call_args.kwargs
+    assert exec_kwargs["text"] is False
+    assert exec_kwargs["bufsize"] != 1
+
+
+def _test_harvest_binary_model_patch() -> None:
+    """model.patch may contain non-UTF-8 bytes; harvest must use read_bytes."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    binary_patch = b"diff --git a/foo.py b/foo.py\n\xff\xe0binary\n"
+    fake_sandbox.filesystem.read_bytes.return_value = binary_patch
+    image = MagicMock()
+    with tempfile.TemporaryDirectory() as tmp:
+        artifacts_dir = Path(tmp) / "run"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            with patch(f"{__name__}.harvest_sandbox_logs", return_value={"harvested": False}):
+                run_deepswe_run_in_sandbox(
+                    image,
+                    command="code",
+                    malvin_argv=[],
+                    grade_only=True,
+                    cursor_secrets=[],
+                    artifacts_dir=artifacts_dir,
+                )
+        saved = artifacts_dir / "model.patch"
+        assert saved.is_file()
+        assert saved.read_bytes() == binary_patch
+    fake_sandbox.filesystem.read_bytes.assert_called_with(
+        f"{LOGS_REMOTE}/artifacts/model.patch"
+    )
+
+
+def _test_parse_deepswe_run_result_binary_patch() -> None:
+    sandbox = MagicMock()
+    sandbox.filesystem.read_text.return_value = None
+    sandbox.filesystem.read_bytes.return_value = b"\xff\xe0"
+    _agent, grade_result = parse_deepswe_run_result(
+        sandbox,
+        run_logs_remote="/run",
+        grade_only=True,
+    )
+    assert grade_result["model_patch_bytes"] == 2
+
+
 def _test_grade_in_sandbox_network() -> None:
     fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
     fake_proc.wait.return_value = None
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     metadata = json.dumps({"grade": {"reward": 1, "pass": True}, "agent": None})
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         _agent, grade_result = run_deepswe_run_in_sandbox(
@@ -1798,8 +2858,11 @@ def _test_grade_in_sandbox_network() -> None:
     assert exec_argv[1] == DEEPSWE_RUN_REMOTE
     assert exec_argv[2] == "run"
     assert "--grade-only" in exec_argv
+    exec_kwargs = fake_sandbox.exec.call_args.kwargs
+    assert exec_kwargs["text"] is False
+    assert exec_kwargs["bufsize"] == 0
     assert grade_result["reward"] == 1
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_network() -> None:
@@ -1810,21 +2873,23 @@ def _test_agent_sandbox_network() -> None:
     metadata = json.dumps(
         {"agent": {"exit_code": 0}, "grade": {"reward": 0, "pass": False}}
     )
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         with patch(
             f"{__name__}.resolve_agent_sandbox_cidrs",
             return_value=["9.9.9.9/32"],
         ):
-            agent_result, grade_result = run_deepswe_run_in_sandbox(
-                image,
-                command="code",
-                malvin_argv=[],
-                grade_only=False,
-                cursor_secrets=[],
-            )
-    assert mock_create.call_args.kwargs["cidr_allowlist"] == ["9.9.9.9/32"]
+            with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    image,
+                    command="code",
+                    malvin_argv=[],
+                    grade_only=False,
+                    cursor_secrets=[],
+                )
+    mock_pin.assert_called_once_with(fake_sandbox, ["9.9.9.9/32"])
+    assert mock_create.call_args.kwargs["outbound_cidr_allowlist"] == ["9.9.9.9/32"]
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
@@ -1835,7 +2900,7 @@ def _test_agent_sandbox_network() -> None:
     assert "in-sandbox" in exec_argv
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
-    fake_sandbox.terminate.assert_called_once()
+    fake_sandbox.detach.assert_called_once()
 
 
 def _test_agent_sandbox_open_network() -> None:
@@ -1844,7 +2909,7 @@ def _test_agent_sandbox_open_network() -> None:
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     metadata = json.dumps({"agent": {"exit_code": 0}, "grade": {"skipped": True}})
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = metadata
+    fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         agent_result, _grade = run_deepswe_run_in_sandbox(
@@ -1856,7 +2921,7 @@ def _test_agent_sandbox_open_network() -> None:
             open_network=True,
             cursor_secrets=[],
         )
-    assert "cidr_allowlist" not in mock_create.call_args.kwargs
+    assert "outbound_cidr_allowlist" not in mock_create.call_args.kwargs
     assert "block_network" not in mock_create.call_args.kwargs
     assert agent_result["exit_code"] == 0
 
@@ -1867,7 +2932,6 @@ def _test_harvest_sandbox_workspace() -> None:
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
     payload = b"fake tarball"
-    fake_sandbox.open.return_value.__enter__.return_value.read.return_value = payload
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp) / "workspace"
         with patch(f"{__name__}.read_remote_bytes", return_value=payload):
@@ -1876,9 +2940,11 @@ def _test_harvest_sandbox_workspace() -> None:
                 mock_tar.return_value.__enter__.return_value = mock_archive
                 result = harvest_sandbox_workspace(fake_sandbox, workspace)
     assert result["harvested"] is True
-    mock_archive.extractall.assert_called_once_with(workspace)
+    mock_archive.getmembers.assert_called_once()
     exec_cmd = fake_sandbox.exec.call_args.args[2]
     assert "--exclude=./.git" in exec_cmd
+    assert "--exclude=./.stestr" in exec_cmd
+    assert "--exclude=__pycache__" in exec_cmd
 
 
 def _test_extract_tar_over_workspace_readonly_target() -> None:
@@ -1902,6 +2968,42 @@ def _test_extract_tar_over_workspace_readonly_target() -> None:
         assert readonly.read_text(encoding="utf-8") == "new\n"
 
 
+def _test_can_overlay_existing_file_denies_unremovable() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "blocked.pyc"
+        target.write_bytes(b"old")
+        with patch(f"{__name__}.os.access", return_value=False):
+            with patch.object(Path, "chmod", side_effect=PermissionError):
+                with patch.object(Path, "unlink", side_effect=PermissionError):
+                    assert _can_overlay_existing_file(target) is False
+
+
+def _test_extract_tar_over_workspace_skips_unremovable() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        blocked = workspace / "tests/__pycache__/init.cpython-312.pyc"
+        blocked.parent.mkdir(parents=True)
+        blocked.write_bytes(b"old")
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as archive:
+            blocked_data = b"new"
+            blocked_info = tarfile.TarInfo(name="tests/__pycache__/init.cpython-312.pyc")
+            blocked_info.size = len(blocked_data)
+            archive.addfile(blocked_info, io.BytesIO(blocked_data))
+            new_data = b"hello\n"
+            new_info = tarfile.TarInfo(name="new_file.py")
+            new_info.size = len(new_data)
+            archive.addfile(new_info, io.BytesIO(new_data))
+        buf.seek(0)
+        with patch(f"{__name__}.os.access", return_value=False):
+            with patch.object(Path, "chmod", side_effect=PermissionError):
+                with patch.object(Path, "unlink", side_effect=PermissionError):
+                    with tarfile.open(fileobj=buf, mode="r:gz") as archive:
+                        _extract_tar_over_workspace(archive, workspace)
+        assert blocked.read_bytes() == b"old"
+        assert (workspace / "new_file.py").read_text(encoding="utf-8") == "hello\n"
+
+
 def _test_mount_eval_context_recipe() -> None:
     malvin_repo = malvin_repo_root()
     recorder = _RecordingImage()
@@ -1915,34 +3017,65 @@ def _test_mount_eval_context_recipe() -> None:
     )
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
     assert len(uploads) == 3
+    workspace_upload = uploads[0]
+    assert workspace_upload[2]["ignore"] == workspace_mount_ignore()
     file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
-    assert len(file_uploads) == 1
-    assert file_uploads[0][2]["remote_path"] == DEEPSWE_RUN_REMOTE
+    assert len(file_uploads) == 3
+    remote_paths = {call[2]["remote_path"] for call in file_uploads}
+    assert remote_paths == {DEEPSWE_RUN_REMOTE, SANDBOX_PREP_REMOTE, TOOLCHAIN_REPOS_REMOTE}
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
     assert "click" in pip_cmds[0][1][0]
 
 
 def _test_validate_toolchain_repos() -> None:
-    validate_toolchain_repos()
-    with tempfile.TemporaryDirectory() as tmp:
-        missing = Path(tmp) / "empty"
-        missing.mkdir()
-        with patch.dict(os.environ, {"KISS_REPO": str(missing)}):
+    malvin_repo = validate_toolchain_repos()
+    assert (malvin_repo / "Cargo.toml").is_file()
+    with patch("toolchain_repos.malvin_repo_root", return_value=Path("/nonexistent/malvin")):
             try:
                 validate_toolchain_repos()
             except click.ClickException as exc:
-                assert "kiss repo not found" in str(exc)
+                assert "malvin repo not found" in str(exc)
             else:
-                raise AssertionError("expected ClickException for missing kiss repo")
+                raise AssertionError("expected ClickException for missing malvin repo")
+
+
+def _test_offline_check_tool_install_commands() -> None:
+    cmds = offline_check_tool_install_commands("kiss check\nuv run mypy\npytest -sv tests\nruff check .")
+    assert len(cmds) == 1
+    assert "mypy" in cmds[0]
+    assert "ruff" in cmds[0]
+    assert "aggdraw" in cmds[0]
+    assert "uv" in cmds[0]
+    assert offline_check_tool_install_commands("cargo nextest run") == []
+
+
+def _test_offline_agent_checks() -> None:
+    raw = "kiss check\nuv run mypy\npytest -sv tests\nruff check .\n"
+    out = offline_agent_checks(raw)
+    assert "uv run mypy" not in out
+    assert "mypy\n" in out
+    assert "pytest -sv tests" in out
 
 
 def _test_read_remote_file() -> None:
     sandbox = MagicMock()
-    sandbox.open.return_value.__enter__.return_value.read.return_value = "payload"
+    sandbox.filesystem.read_text.return_value = "payload"
     assert read_remote_file(sandbox, "/tmp/x") == "payload"
-    sandbox.open.side_effect = OSError("missing")
+    sandbox.filesystem.read_text.side_effect = OSError("missing")
     assert read_remote_file(sandbox, "/tmp/missing") is None
+    sandbox.filesystem.read_text.side_effect = modal.exception.FilesystemExecutionError("finished")
+    assert read_remote_file(sandbox, "/tmp/dead") is None
+
+
+def _test_read_remote_bytes() -> None:
+    sandbox = MagicMock()
+    sandbox.filesystem.read_bytes.return_value = b"payload"
+    assert read_remote_bytes(sandbox, "/tmp/x") == b"payload"
+    sandbox.filesystem.read_bytes.side_effect = OSError("missing")
+    assert read_remote_bytes(sandbox, "/tmp/missing") is None
+    sandbox.filesystem.read_bytes.side_effect = modal.exception.FilesystemExecutionError("finished")
+    assert read_remote_bytes(sandbox, "/tmp/dead") is None
 
 
 def _test_write_metadata() -> None:
@@ -1983,13 +3116,32 @@ def _test_resolve_cursor_api_cidrs_mocked() -> None:
 
 def _test_upload_ignore_patterns() -> None:
     malvin_ignores = malvin_upload_ignore()
-    kiss_ignores = kiss_upload_ignore()
+    workspace_ignores = workspace_mount_ignore()
     assert "target/" in malvin_ignores
-    assert "target/" in kiss_ignores
+    assert ".stestr/" in workspace_ignores
+    assert "__pycache__/" in workspace_ignores
     assert "reports/" in malvin_ignores
     assert ".malvin/" in malvin_ignores
     assert "Cargo.toml" not in malvin_ignores
     assert "src/" not in malvin_ignores
+
+
+def _test_stage_malvin_repo() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        malvin_src = root / "malvin_src"
+        malvin_src.mkdir()
+        (malvin_src / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+        (malvin_src / "target").mkdir()
+        (malvin_src / "target" / "artifact").write_text("x", encoding="utf-8")
+        (malvin_src / ".malvin").mkdir()
+        (malvin_src / ".malvin" / "lock").write_text("x", encoding="utf-8")
+        with stage_malvin_repo(malvin_src) as malvin_staged:
+            assert (malvin_staged / "Cargo.toml").is_file()
+            assert not (malvin_staged / "target").exists()
+            assert not (malvin_staged / ".malvin").exists()
+            (malvin_src / "Cargo.toml").write_text("mutated\n", encoding="utf-8")
+            assert (malvin_staged / "Cargo.toml").read_text(encoding="utf-8") == "[package]\n"
 
 
 class _RecordingImage:
@@ -2013,18 +3165,92 @@ class _RecordingImage:
         return self
 
 
+def _test_harbor_image_prefers_registry_for_fastapi_task() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "fastapi-deprecation-response-headers"
+    if not task.is_dir():
+        return
+    spec = parse_task_dir(task)
+    dockerfile_build = MagicMock(return_value="registry-image")
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_dockerfile", dockerfile_build), patch.object(
+        modal.Image, "from_registry", registry
+    ), patch(
+        f"{__name__}.registry_image_cache_bust_commands",
+        return_value=["pip install --no-cache-dir 'pydantic>=2,<3'"],
+    ), patch(
+        f"{__name__}.dockerfile_bulk_pip_commands",
+        return_value=[],
+    ):
+        result = harbor_image(spec, dockerfile=spec.dockerfile)
+    assert result == "final-image"
+    registry.assert_called_once_with(spec.docker_image, force_build=True)
+    pulled.run_commands.assert_called_once()
+    run_args = pulled.run_commands.call_args[0]
+    assert len(run_args) == 1
+    assert "pydantic" in run_args[0]
+    dockerfile_build.assert_not_called()
+
+
+def _test_harbor_image_builds_from_dockerfile_with_cache_bust() -> None:
+    from types import SimpleNamespace
+
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "fastapi-deprecation-response-headers"
+    if not task.is_dir():
+        return
+    spec = SimpleNamespace(docker_image=None)
+    dockerfile = task / "environment" / "Dockerfile"
+    dockerfile_build = MagicMock(return_value=MagicMock())
+    built = dockerfile_build.return_value
+    built.run_commands = MagicMock(return_value="final-image")
+    registry = MagicMock(return_value="registry-image")
+    with patch.object(modal.Image, "from_dockerfile", dockerfile_build), patch.object(
+        modal.Image, "from_registry", registry
+    ), patch(
+        f"{__name__}.dockerfile_image_build_commands",
+        return_value=['pip install -e ".[all]"'],
+    ):
+        result = harbor_image(spec, dockerfile=dockerfile)
+    assert result == "final-image"
+    dockerfile_build.assert_called_once_with(str(dockerfile), force_build=True)
+    built.run_commands.assert_called_once()
+    run_args = built.run_commands.call_args[0]
+    assert len(run_args) == 1
+    assert "cd /app" in run_args[0]
+    assert "[all]" in run_args[0]
+    registry.assert_not_called()
+
+
+def _test_harbor_image_pulls_registry_when_no_dockerfile() -> None:
+    from types import SimpleNamespace
+
+    spec = SimpleNamespace(docker_image="example.com/task:latest")
+    dockerfile = Path("/nonexistent/Dockerfile")
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_registry", registry):
+        result = harbor_image(spec, dockerfile=dockerfile)
+    assert result == "final-image"
+    registry.assert_called_once_with("example.com/task:latest", force_build=True)
+    pulled.run_commands.assert_called_once()
+
+
 def _test_mount_local_toolchain_recipe() -> None:
-    malvin_repo, kiss_repo = validate_toolchain_repos()
+    malvin_repo = validate_toolchain_repos()
     recorder = _RecordingImage()
-    mount_local_toolchain(recorder, malvin_repo=malvin_repo, kiss_repo=kiss_repo)
+    mount_local_toolchain(recorder, malvin_repo=malvin_repo)
     uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
-    assert len(uploads) == 2
+    assert len(uploads) == 1
     assert uploads[0][2]["remote_path"] == MALVIN_TOOLCHAIN_REMOTE
     assert uploads[0][2]["ignore"] == malvin_upload_ignore()
-    assert uploads[1][2]["remote_path"] == KISS_TOOLCHAIN_REMOTE
     commands = next(call[1] for call in recorder.calls if call[0] == "run_commands")
     assert len(commands) == 4
-    assert KISS_TOOLCHAIN_REMOTE in commands[0]
+    assert "kiss-ai" in commands[0]
+    assert "0.4.8" in commands[0]
     assert MALVIN_TOOLCHAIN_REMOTE in commands[1]
     assert "cursor.com/install" in commands[2]
     env_calls = [call for call in recorder.calls if call[0] == "env"]
@@ -2045,15 +3271,61 @@ def _test_probe_sandbox_timeout() -> None:
     assert _probe_sandbox_timeout(900) == 900
 
 
+def _test_is_transient_modal_probe_error() -> None:
+    assert _is_transient_modal_probe_error(TimeoutError())
+    assert _is_transient_modal_probe_error(asyncio.CancelledError())
+    assert not _is_transient_modal_probe_error(click.ClickException("probe failed"))
+
+
+def _test_is_modal_spend_limit_error() -> None:
+    assert _is_modal_spend_limit_error(
+        modal.exception.ResourceExhaustedError("Workspace has exceeded its spend limit")
+    )
+    assert _is_modal_spend_limit_error(
+        click.ClickException("Modal spend limit during allowlist agent peer probe")
+    )
+    assert not _is_modal_spend_limit_error(click.ClickException("probe failed"))
+
+
+def _test_refresh_cached_allowlist_cache_only_mode() -> None:
+    cached = ["1.2.3.4/32", "5.6.7.8/32"]
+    with patch.dict(os.environ, {"DEEPSWE_ALLOWLIST_CACHE_ONLY": "1"}, clear=False):
+        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert refreshed == compress_ipv4_cidrs(cached)
+
+
+def _test_refresh_cached_allowlist_spend_limit_falls_back() -> None:
+    cached = ["1.2.3.4/32"]
+    with (
+        patch.dict(os.environ, {}, clear=False),
+        patch(
+            f"{__name__}._refresh_cached_allowlist_live",
+            side_effect=modal.exception.ResourceExhaustedError("spend limit"),
+        ),
+    ):
+        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    assert refreshed == compress_ipv4_cidrs(cached)
+
+
+def _test_run_modal_cidr_probe_script_retries_transient_timeout() -> None:
+    calls = {"n": 0}
+
+    def flaky_once(*args: Any, **kwargs: Any) -> list[str]:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise TimeoutError("command router connect")
+        return ["1.2.3.4/32"]
+
+    with patch(f"{__name__}._run_modal_cidr_probe_script_once", side_effect=flaky_once):
+        with patch(f"{__name__}.time.sleep") as mock_sleep:
+            cidrs = _run_modal_cidr_probe_script("script", error_label="probe")
+    assert cidrs == ["1.2.3.4/32"]
+    assert calls["n"] == 2
+    mock_sleep.assert_called_once_with(PROBE_CONNECT_RETRY_DELAY_SEC)
+
+
 def _test_sandbox_app() -> None:
-    lookup_app = SimpleNamespace(app_id="lookup-id")
-    module_app = SimpleNamespace(app_id="module-id")
-    with patch(f"{__name__}.app", SimpleNamespace(app_id=None)):
-        with patch.object(modal.App, "lookup", return_value=lookup_app) as mock_lookup:
-            assert sandbox_app() is lookup_app
-        mock_lookup.assert_called_once_with(APP_NAME, create_if_missing=True)
-    with patch(f"{__name__}.app", module_app):
-        assert sandbox_app() is module_app
+    test_sandbox_app_lookup(__name__, app, APP_NAME, sandbox_app)
 
 
 def _test_self_test_flag() -> None:
@@ -2064,8 +3336,13 @@ def _test_self_test_flag() -> None:
     mock_tests.assert_called_once()
 
 
+@contextmanager
+def _fake_stage_malvin_repo(malvin_repo: Path) -> Iterator[Path]:
+    yield malvin_repo
+
+
 def _test_run_modal_eval_modal_agent_modal_grade() -> None:
-    """solve path: malvin in Cursor-allowlist Modal sandbox, Harbor grade in block_network sandbox."""
+    """solve path: malvin and Harbor grade in one Cursor-allowlist Modal sandbox."""
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "bandit-interprocedural-taint-checks"
     if not task.is_dir():
@@ -2080,13 +3357,14 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         with (
             patch(f"{__name__}.materialize_workspace"),
             patch(f"{__name__}.write_plan_and_checks"),
-            patch(f"{__name__}.validate_toolchain_repos", return_value=(Path("/m"), Path("/k"))),
+            patch(f"{__name__}.validate_toolchain_repos", return_value=Path("/m")),
+            patch(f"{__name__}.stage_malvin_repo", side_effect=_fake_stage_malvin_repo),
             patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),
             patch(f"{__name__}.harbor_image", return_value=MagicMock()),
             patch(f"{__name__}.mount_eval_context", return_value=MagicMock()),
             patch(
                 f"{__name__}.run_deepswe_run_in_sandbox",
-                side_effect=[(fake_agent, {"skipped": True}), (None, fake_grade)],
+                return_value=(fake_agent, fake_grade),
             ) as mock_sandbox,
             patch(f"{__name__}.cursor_secrets", return_value=[MagicMock()]),
             patch(f"{__name__}.find_latest_malvin_log", return_value=None),
@@ -2100,14 +3378,12 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
                 skip_grade=False,
                 dry_run=False,
             )
-        assert mock_sandbox.call_count == 2
-        agent_call, grade_call = mock_sandbox.call_args_list
+        assert mock_sandbox.call_count == 1
+        agent_call = mock_sandbox.call_args
         assert agent_call.kwargs["grade_only"] is False
-        assert agent_call.kwargs["skip_grade"] is True
+        assert agent_call.kwargs["skip_grade"] is False
         assert agent_call.kwargs.get("open_network") is not True
         assert agent_call.kwargs["harvest_workspace"] == workspace
-        assert grade_call.kwargs["grade_only"] is True
-        assert grade_call.kwargs["cursor_secrets"] == []
         reward_files = list(results.rglob("reward.txt"))
         assert reward_files, results
         assert reward_files[0].read_text(encoding="utf-8").strip() == "1"
@@ -2121,29 +3397,70 @@ def run_unit_tests() -> None:
     _test_modal_cidr_allowlist_ipv4_only()
     _test_network_kwargs()
     _test_sandbox_resource_kwargs()
+    _test_agent_sandbox_timeout_sec()
     _test_compress_ipv4_cidrs()
     _test_allowlist_near_modal_cap()
     _test_agent_sandbox_cidrs_union()
+    _test_critical_cursor_hosts_failed()
+    _test_cursor_api_allowlist_cache()
+    _test_resolve_agent_sandbox_cidrs_uses_cache()
+    _test_host_cidrs_not_covered_by_allowlist()
+    _test_refresh_cached_allowlist_merges_host_dns()
+    _test_refresh_cached_allowlist_runs_post_https_agent_peer()
+    _test_refresh_cached_allowlist_expands_for_https()
+    _test_expand_allowlist_for_https_merges_extra_ips()
+    _test_run_allowlist_dns_fixpoint_stops_at_fixpoint()
+    _test_pin_cursor_api_hosts_script_pins_all_allowed_ips()
+    _test_pin_cursor_api_hosts_in_sandbox()
+    _test_post_https_agent_peer_merge_always_runs()
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
     _test_cursor_secrets()
     _test_validate_toolchain_repos()
+    _test_offline_check_tool_install_commands()
+    _test_offline_agent_checks()
     _test_read_remote_file()
+    _test_read_remote_bytes()
+    _test_persist_grading_artifacts()
+    _test_tier_a_before_workspace_harvest()
+    _test_load_agent_sandbox_metadata()
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
+    _test_stage_malvin_repo()
     _test_mount_local_toolchain_recipe()
     _test_docstring_normative_command()
     _test_grade_in_sandbox_network()
+    _test_deepswe_exec_binary_stream_kwargs()
+    _test_harvest_binary_model_patch()
+    _test_parse_deepswe_run_result_binary_patch()
     _test_agent_sandbox_network()
     _test_agent_sandbox_open_network()
     _test_harvest_sandbox_workspace()
     _test_extract_tar_over_workspace_readonly_target()
+    _test_can_overlay_existing_file_denies_unremovable()
+    _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
+    _test_harbor_image_prefers_registry_for_fastapi_task()
+    _test_harbor_image_builds_from_dockerfile_with_cache_bust()
+    _test_harbor_image_pulls_registry_when_no_dockerfile()
     _test_probe_sandbox_timeout()
+    _test_is_transient_modal_probe_error()
+    _test_is_modal_spend_limit_error()
+    _test_refresh_cached_allowlist_cache_only_mode()
+    _test_refresh_cached_allowlist_spend_limit_falls_back()
+    _test_run_modal_cidr_probe_script_retries_transient_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
+    from modal_sandbox_lifecycle import _test_release_modal_sandbox
+
+    _test_release_modal_sandbox()
     _test_run_modal_eval_modal_agent_modal_grade()
+
+
+
+
+
 
 
 if __name__ == "__main__":

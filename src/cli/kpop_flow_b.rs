@@ -38,6 +38,8 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
         doc: false,
         name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,

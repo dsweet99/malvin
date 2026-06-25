@@ -1,4 +1,4 @@
-//! Resolve bare `malvin [OPTIONS] REQUEST` invocations (no subcommand) into kpop.
+//! Resolve bare `malvin [OPTIONS] REQUEST...` invocations (no subcommand) into kpop.
 
 use clap::parser::ValueSource;
 use clap::ArgMatches;
@@ -21,9 +21,9 @@ pub(crate) fn require_bare_request(
 }
 
 pub(crate) struct BareLoopOpts {
-    max_loops: usize,
-    max_hypotheses: usize,
-    tenacious: bool,
+    pub(crate) max_loops: usize,
+    pub(crate) max_hypotheses: usize,
+    pub(crate) tenacious: bool,
 }
 
 pub(crate) fn bare_loop_opts(cli: &Cli, matches: &ArgMatches, defaults: BareLoopOpts) -> BareLoopOpts {
@@ -50,7 +50,7 @@ pub(crate) fn bare_loop_opts(cli: &Cli, matches: &ArgMatches, defaults: BareLoop
 }
 
 pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Commands, String> {
-    let request = require_bare_request(cli.bare_request.as_ref(), "REQUEST")?;
+    let request = require_bare_request(cli.bare_args.first(), "REQUEST")?;
     let loops = bare_loop_opts(
         cli,
         matches,
@@ -68,12 +68,12 @@ pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Comma
     }))
 }
 
-/// When `command` is unset, interpret trailing `bare_request` as a kpop request.
+/// When `command` is unset, interpret a single trailing `REQUEST` as a kpop request.
 pub(crate) fn resolve_bare_command(cli: &mut Cli, matches: &ArgMatches) -> Result<(), String> {
     if cli.command.is_some() || cli.shared.doc {
         return Ok(());
     }
-    if cli.bare_request.is_none() {
+    if cli.bare_args.is_empty() || cli.bare_args.len() > 1 {
         return Ok(());
     }
     cli.command = Some(resolve_bare_kpop(cli, matches)?);

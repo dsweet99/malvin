@@ -9,7 +9,7 @@ use common::{
 
 #[cfg(unix)]
 fn home_config_path(home: &std::path::Path) -> std::path::PathBuf {
-    home.join(".malvin/config.toml")
+    home.join(".malvin_home/config.toml")
 }
 
 #[cfg_attr(unix, test)]
@@ -28,7 +28,7 @@ fn do_restores_home_malvin_config_after_mock_agent_overwrites() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let restored = std::fs::read_to_string(home_config_path(&home)).expect("read ~/.malvin/config.toml");
+    let restored = std::fs::read_to_string(home_config_path(&home)).expect("read ~/.malvin_home/config.toml");
     assert_eq!(restored, "x\n");
 }
 
@@ -68,6 +68,6 @@ fn do_restores_malvin_config_after_tamper_when_present_at_start() {
         "malvin do failed: {:?}",
         String::from_utf8_lossy(&out.stderr)
     );
-    let restored = std::fs::read_to_string(home_config_path(&home)).expect("read ~/.malvin/config.toml");
+    let restored = std::fs::read_to_string(home_config_path(&home)).expect("read ~/.malvin_home/config.toml");
     assert_eq!(restored, "cfg\n");
 }

@@ -13,7 +13,7 @@ pub fn acp_mock_do_streaming_update_js() -> String {
 
 pub fn acp_mock_do_streaming_wordy_long_msg_js() -> String {
     let prompt = format!(
-        "    const words = Array(15).fill('abcdefghij').join(' ');\n{}",
+        "    const words = Array(8).fill('abcdefghij').join(' ');\n{}",
         session_update_chunk_line("agent_message_chunk", r"words + '\n'")
     );
     acp_mock_js("", &prompt)

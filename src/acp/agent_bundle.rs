@@ -1,27 +1,21 @@
 use crate::acp::import_prelude::*;
-pub(crate) use tokio::time::sleep as tokio_sleep;
 
-#[derive(Debug, Clone)]
+/// Backoff sleep between agent retry attempts. Skipped in unit tests and when
+/// `MALVIN_TEST_NO_REAL_AGENT=1` so integration subprocess tests stay under the 1s budget.
+pub(crate) async fn agent_backoff_sleep(d: std::time::Duration) {
+    if cfg!(test) || crate::acp::test_no_real_agent_enabled() {
+        return;
+    }
+    tokio::time::sleep(d).await;
+}
+
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{0}")]
 pub struct AgentError(pub String);
 
-impl std::fmt::Display for AgentError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for AgentError {}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{0}")]
 pub struct AuthError(pub String);
-
-impl std::fmt::Display for AuthError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for AuthError {}
 
 #[derive(Debug, Clone, Copy)]
 #[allow(clippy::struct_excessive_bools)]
@@ -36,10 +30,47 @@ pub struct AgentIoOptions {
 }
 
 #[cfg(test)]
-mod agent_bundle_kiss_cov {
-    #[test]
-    fn agent_error_and_auth_error_display() {
-        assert_eq!(super::AgentError("e".into()).to_string(), "e");
-        assert_eq!(super::AuthError("a".into()).to_string(), "a");
-    }
+#[test]
+fn agent_error_display_roundtrip() {
+    let _ = AgentError;
+    let err = AgentError("e".into());
+    assert_eq!(err.to_string(), "e");
+    assert_eq!(format!("{err}"), "e");
+}
+
+#[cfg(test)]
+#[test]
+fn auth_error_display_roundtrip() {
+    let _ = AuthError;
+    let err = AuthError("a".into());
+    assert_eq!(err.to_string(), "a");
+    assert_eq!(format!("{err}"), "a");
+}
+
+#[cfg(test)]
+#[test]
+fn agent_error_error_trait() {
+    let err = AgentError("e".into());
+    let _: &dyn std::error::Error = &err;
+}
+
+#[cfg(test)]
+#[test]
+fn auth_error_error_trait() {
+    let err = AuthError("a".into());
+    let _: &dyn std::error::Error = &err;
+}
+
+#[cfg(test)]
+#[test]
+fn agent_io_options_default_fields() {
+    let io = AgentIoOptions {
+        force: false,
+        no_tee: false,
+        raw_output: false,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: false,
+        log_full_outgoing_prompts: false,
+    };
+    assert!(!io.force);
 }

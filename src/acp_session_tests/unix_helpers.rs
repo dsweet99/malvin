@@ -10,7 +10,18 @@ pub(super) fn process_exists(pid: u32) -> bool {
 
 #[cfg(unix)]
 pub(super) async fn wait_for_pid_file(path: &std::path::Path) -> u32 {
-    for _ in 0..300 {
+    let poll = if crate::acp::test_no_real_agent_enabled() {
+        std::time::Duration::from_millis(1)
+    } else {
+        std::time::Duration::from_millis(20)
+    };
+    let budget = if crate::acp::test_no_real_agent_enabled() {
+        std::time::Duration::from_millis(100)
+    } else {
+        std::time::Duration::from_secs(6)
+    };
+    let deadline = tokio::time::Instant::now() + budget;
+    while tokio::time::Instant::now() < deadline {
         if let Ok(raw) = tokio::fs::read_to_string(path).await {
             if let Ok(pid) = raw.trim().parse::<u32>() {
                 if process_exists(pid) {
@@ -18,7 +29,7 @@ pub(super) async fn wait_for_pid_file(path: &std::path::Path) -> u32 {
                 }
             }
         }
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        tokio::time::sleep(poll).await;
     }
     panic!("pid file was not written or process not alive: {}", path.display());
 }

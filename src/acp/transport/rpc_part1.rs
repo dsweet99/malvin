@@ -152,7 +152,7 @@ pub(crate) async fn rpc_wait_with_timeout(
     wait: impl std::future::Future<Output = Result<Value, String>>,
     state: RpcWaitContext<'_>,
 ) -> Result<Value, String> {
-    let (_acp_activity_seq, acp_activity_notify, pending, child_pid) = state;
+    let (acp_activity_seq, acp_activity_notify, pending, child_pid) = state;
     tokio::pin!(wait);
     loop {
         tokio::select! {
@@ -163,8 +163,7 @@ pub(crate) async fn rpc_wait_with_timeout(
                 return Ok(result);
             }
             () = acp_activity_notify.notified() => {
-                let _ = stringify!(acp_activity_seq
-                    .load(std::sync::atomic::Ordering::SeqCst));
+                let _ = acp_activity_seq.load(std::sync::atomic::Ordering::SeqCst);
             }
             () = tokio::time::sleep(timeout) => {
                 let timeout_err = if let Some(child_pid) = child_pid {
@@ -237,9 +236,4 @@ mod kiss_cov_auto{
 
     #[test]
     fn kiss_cov_rpc_request_with_correlation_id() { let _ = rpc_request_with_correlation_id; }
-
-    #[test]
-    fn kiss_cov_rpc_wait_with_timeout() { let _ = stringify!(rpc_wait_with_timeout); }
-
 }
-

@@ -1,7 +1,13 @@
 use super::*;
 use std::path::Path;
 
-fn with_isolated_names<F>(f: F)
+#[path = "session_name_kiss_cov_tests.rs"]
+mod session_name_kiss_cov_tests;
+
+#[path = "auto_name.rs"]
+mod auto_name;
+
+pub(super) fn with_isolated_names<F>(f: F)
 where
     F: FnOnce(&Path),
 {
@@ -15,7 +21,7 @@ where
     });
 }
 
-fn sleep_child(seconds: &str) -> std::process::Child {
+pub(super) fn sleep_child(seconds: &str) -> std::process::Child {
     let mut cmd = crate::malvin_sandbox::malvin_std_command("sleep");
     cmd.arg(seconds);
     cmd.spawn().expect("spawn sleep")
@@ -172,76 +178,3 @@ fn parse_holder_pid_rejects_garbage() {
     assert_eq!(parse_holder_pid("12 34"), None);
 }
 
-#[test]
-fn auto_name_is_five_lowercase_alnum() {
-    with_isolated_names(|_| {
-        let names: Vec<String> = (0..8).map(|i| format!("a{i:04}")).collect();
-        let (name, guard) = generate_auto_name_with(|i| names[i].clone()).expect("auto name");
-        assert!(name
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
-        assert_eq!(name.len(), 5);
-        drop(guard);
-    });
-}
-
-#[cfg(unix)]
-#[test]
-fn auto_name_retries_on_live_collision() {
-    with_isolated_names(|_| {
-        let mut child = sleep_child("120");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("aaaaa"), format!("{holder_pid}\n")).expect("live peer");
-        let (name, guard) = generate_auto_name_with(|i| {
-            if i == 0 {
-                "aaaaa".to_string()
-            } else {
-                "bbbbb".to_string()
-            }
-        })
-        .expect("second draw succeeds");
-        assert_eq!(name, "bbbbb");
-        let _ = child.kill();
-        let _ = child.wait();
-        drop(guard);
-    });
-}
-
-#[test]
-fn auto_name_reclaims_stale_file_on_draw() {
-    with_isolated_names(|_| {
-        std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("aaaaa"), "424242\n").expect("stale");
-        let (name, guard) =
-            generate_auto_name_with(|_| "aaaaa".to_string()).expect("reclaim stale draw");
-        assert_eq!(name, "aaaaa");
-        drop(guard);
-    });
-}
-
-#[cfg(unix)]
-#[test]
-fn auto_name_fails_after_sixteen_live_collisions() {
-    with_isolated_names(|_| {
-        let mut child = sleep_child("120");
-        let holder_pid = child.id();
-        std::fs::create_dir_all(names_registry_root()).expect("mkdir names");
-        std::fs::write(name_path("aaaaa"), format!("{holder_pid}\n")).expect("live peer");
-        let err = generate_auto_name_with(|_| "aaaaa".to_string()).expect_err("16 collisions");
-        assert!(
-            err.contains("failed to allocate a unique auto-generated session name"),
-            "err={err}"
-        );
-        let _ = child.kill();
-        let _ = child.wait();
-    });
-}
-
-#[test]
-fn kiss_cov_session_name_symbols() {
-    let _ = stringify!(acquire_name);
-    let _ = stringify!(assert_no_peer_name_lock);
-    let _ = stringify!(generate_auto_name);
-    let _ = stringify!(release_name);
-}

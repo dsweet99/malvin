@@ -74,6 +74,8 @@ mod inspire_tests {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
+            mini: false,
+            mini_max_bash_turns: 32,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -105,6 +107,8 @@ mod inspire_tests {
             max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
             doc: false,
             name: None,
+            mini: false,
+            mini_max_bash_turns: 32,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

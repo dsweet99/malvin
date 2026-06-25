@@ -3,7 +3,7 @@ use crate::acp_tests::reader_tests_trace_kpop_helpers::{
     flush_coalesce_lines, kpop_stdout_trace_fixture, open_kpop_trace_writer,
 };
 
-fn assert_upgrade_plan_operational_stderr(stderr: &str, trace: &str) {
+pub(crate) fn assert_upgrade_plan_operational_stderr(stderr: &str, trace: &str) {
     assert!(
         trace.contains("Upgrade your plan to continue"),
         "trace file should still record agent text: {trace:?}"
@@ -20,12 +20,12 @@ fn assert_upgrade_plan_operational_stderr(stderr: &str, trace: &str) {
     );
 }
 
-fn feed_upgrade_plan_split(coalesce: &mut TraceChunkCoalescer) {
+pub(crate) fn feed_upgrade_plan_split(coalesce: &mut TraceChunkCoalescer) {
     coalesce.feed(SessionUpdateChunkKind::Message, "Upgrade your plan");
     coalesce.feed(SessionUpdateChunkKind::Message, " to continue");
 }
 
-async fn run_upgrade_plan_split_coalesce_fixture() -> (String, String, String) {
+pub(crate) async fn run_upgrade_plan_split_coalesce_fixture() -> (String, String, String) {
     let fixture = kpop_stdout_trace_fixture("upgrade-plan");
     crate::output::set_stdout_log_path(Some(fixture.stdout_path.clone()));
     let mut writer = open_kpop_trace_writer(&fixture.trace_path).await;
@@ -43,7 +43,7 @@ async fn run_upgrade_plan_split_coalesce_fixture() -> (String, String, String) {
 }
 
 #[tokio::test]
-async fn upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee() {
+pub(crate) async fn upgrade_plan_split_coalesce_emits_operational_error_without_kpop_tee() {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

@@ -1,10 +1,10 @@
 # Plan Prompt 1b — critique and open questions
 
-You are running **Prompt 1b** of `malvin plan`. The file `{{ plan_path }}` already contains the user plan, `---`, `BEGIN_MALVIN`, and `## Restatement` from Prompt 1a.
+You are running **Prompt 1b** of `malvin plan`. The file `{{ plan_path }}` already contains `## Restatement` from Prompt 1a. Read the original user plan in `{{ user_plan_path }}`.
 
 Append to `{{ plan_path }}`:
 
-1. Section `## Critique` — critique the **original user text above `---`** (not the restatement). Use the restatement only to verify comprehension. Address at minimum:
+1. Section `## Critique` — critique the **original user plan** in `{{ user_plan_path }}` (not the restatement). Use the restatement only to verify comprehension. Address at minimum:
    - Errors and gaps
    - Soundness
    - Simplicity (too simple / too complex)

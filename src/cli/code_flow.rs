@@ -10,7 +10,7 @@ mod run_loop;
 #[allow(unused_imports)]
 pub use prep::{code_kpop_request, prepare_code_kpop_prompt_store};
 #[allow(unused_imports)]
-pub use run_startup::{prepare_code_kpop_run, CodeKpopPrepared};
+pub(crate) use run_startup::{prepare_code_kpop_run, CodeKpopPrepared};
 pub use run_loop::run_code;
 
 #[must_use]
@@ -43,13 +43,14 @@ pub struct CodeArgs {
     #[arg(short = 'f', default_value_t = false, hide = true)]
     pub fast: bool,
     /// Request text or path to an existing `.md` file → `.malvin/logs/.../plan.md`.
-    pub request: Option<String>,
+    #[arg(value_name = "PLAN", num_args = 1..)]
+    pub requests: Vec<String>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::gate_kpop_workflow::post_gate_kpop_gates;
+    use crate::gate_kpop_workflow::post_gate_kpop_gates;
 
     #[test]
     fn code_effective_max_loops_is_at_least_one() {
@@ -61,7 +62,7 @@ mod tests {
             dry_run: false,
             skip_pre_checks: false,
             fast: false,
-            request: Some("req".to_string()),
+            requests: vec!["req".to_string()],
         };
         let _kpop = crate::cli::KpopArgs {
             max_loops: 1,
@@ -74,18 +75,7 @@ mod tests {
 
     #[test]
     fn kiss_cov_code_kpop_helpers() {
-        let _ = stringify!(run_loop::run_code);
-        let _ = stringify!(crate::cli::kpop_summarize::code_outer_loop_summarize_params);
-        let _ = stringify!(run_startup::code_kpop_workflow_context);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_loop);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::run_gate_kpop_session);
-        let _ = stringify!(post_gate_kpop_gates);
-        let _ = stringify!(crate::cli::workflow_kpop_shared::run_kpop_workspace_gates);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::finish_gate_kpop_after_pass);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::print_gate_kpop_log_line);
-        let _: Option<crate::cli::gate_kpop_workflow::GateKpopPrepared> = None;
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE);
+        let _: Option<crate::gate_kpop_workflow::GateKpopPrepared> = None;
     }
 
     #[test]
@@ -133,8 +123,7 @@ mod tests {
             "malvin code",
             &prepared,
             &backups,
-            crate::cli::gate_kpop_workflow::GateLoopBehavior::CODE
-                .restore_malvin_checks_after_session(),
+            crate::gate_kpop_workflow::GateLoopBehavior::CODE,
         )
         .expect_err("gates");
         std::env::set_current_dir(old).expect("restore cwd");

@@ -2,11 +2,11 @@ use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     resolve_user_md_request,
 };
-use crate::cli::gate_kpop_workflow::GateKpopPrepared;
+use crate::gate_kpop_workflow::GateKpopPrepared;
 
 use super::prep::{code_kpop_request, prepare_code_kpop_prompt_store};
 
-pub type CodeKpopPrepared = GateKpopPrepared;
+pub(crate) type CodeKpopPrepared = GateKpopPrepared;
 
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
@@ -14,7 +14,7 @@ fn code_kpop_workflow_context(
     crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "code")
 }
 
-pub fn prepare_code_kpop_run(
+pub(crate) fn prepare_code_kpop_run(
     workflow: crate::cli::WorkflowCliOptions,
     cli_request: &str,
 ) -> Result<CodeKpopPrepared, String> {
@@ -42,7 +42,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_code_kpop_workflow_context() {
-        let _ = stringify!(code_kpop_workflow_context);
     }
 
     #[test]

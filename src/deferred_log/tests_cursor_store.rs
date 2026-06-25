@@ -12,8 +12,12 @@ fn ingest_prepare_failure_disables_cache_and_stops_retry() {
     std::fs::create_dir_all(&session_dir).unwrap();
     let db_path = session_dir.join("store.db");
     let conn = rusqlite::Connection::open(&db_path).expect("open store.db");
-    conn.execute_batch("CREATE TABLE other (x INTEGER);")
-        .expect("schema without blobs");
+    conn.execute_batch(
+        "PRAGMA synchronous=OFF;
+         PRAGMA journal_mode=MEMORY;
+         CREATE TABLE other (x INTEGER);",
+    )
+    .expect("schema without blobs");
     drop(conn);
     let mut cache = CursorStoreCache::new("schema-mismatch".to_string(), tmp.path().to_path_buf());
     cache.ensure_open();

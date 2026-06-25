@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use super::alloc::{allocate_backup_dir, malvin_home_dir, remove_if_exists, DotfileBackupLabels};
+use super::alloc::{allocate_backup_dir, remove_if_exists, DotfileBackupLabels};
+use crate::workspace_paths::{snapshot_category_dir, MALVIN_HOME_CONFIG_FILE};
 use super::DotfileBackupState;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct DotfileSpecRow {
     pub rel: &'static str,
     pub home_subdir: &'static str,
@@ -11,6 +13,12 @@ pub(super) struct DotfileSpecRow {
     pub restore_lbl: &'static str,
     pub copy_err: &'static str,
     pub restore_copy_err: &'static str,
+}
+
+impl DotfileSpecRow {
+    pub(super) const fn rel_path(self) -> &'static str {
+        self.rel
+    }
 }
 
 const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
@@ -32,11 +40,12 @@ pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
 const KISSCONFIG_FILE: &str = ".kissconfig";
 const KISSIGNORE_FILE: &str = ".kissignore";
 const GITIGNORE_FILE: &str = ".gitignore";
+const MALVIN_CONFIG_SLOT: usize = 3;
 
 pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     DotfileSpecRow {
         rel: KISSCONFIG_FILE,
-        home_subdir: "kissconfigs",
+        home_subdir: "kissconfig",
         mkdir_lbl: "kissconfig backup mkdir",
         collision_lbl: "kissconfig backup mkdir",
         restore_lbl: "kissconfig restore",
@@ -45,7 +54,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: crate::MALVIN_CHECKS_REL,
-        home_subdir: "malvin_checks_snapshots",
+        home_subdir: "malvin_checks",
         mkdir_lbl: "malvin_checks backup mkdir",
         collision_lbl: "malvin_checks backup mkdir",
         restore_lbl: "malvin_checks restore",
@@ -54,7 +63,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: KISSIGNORE_FILE,
-        home_subdir: "kissignore_snapshots",
+        home_subdir: "kissignore",
         mkdir_lbl: "kissignore backup mkdir",
         collision_lbl: "kissignore backup mkdir",
         restore_lbl: "kissignore restore",
@@ -62,17 +71,17 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
         restore_copy_err: "kissignore restore",
     },
     DotfileSpecRow {
-        rel: crate::MALVIN_CONFIG_REL,
-        home_subdir: "malvin_config_snapshots",
+        rel: MALVIN_HOME_CONFIG_FILE,
+        home_subdir: "malvin_config",
         mkdir_lbl: "malvin_config backup mkdir",
         collision_lbl: "malvin_config backup mkdir",
         restore_lbl: "malvin_config restore",
-        copy_err: ".malvin/config.toml backup copy",
+        copy_err: "~/.malvin_home/config.toml backup copy",
         restore_copy_err: "malvin_config restore",
     },
     DotfileSpecRow {
         rel: GITIGNORE_FILE,
-        home_subdir: "gitignore_snapshots",
+        home_subdir: "gitignore",
         mkdir_lbl: "gitignore backup mkdir",
         collision_lbl: "gitignore backup mkdir",
         restore_lbl: "gitignore restore",
@@ -81,7 +90,7 @@ pub(super) const DOTFILE_ROWS: [DotfileSpecRow; 6] = [
     },
     DotfileSpecRow {
         rel: crate::MALVIN_CONFIG_REL,
-        home_subdir: "malvin_config_workspace_snapshots",
+        home_subdir: "malvin_config_workspace",
         mkdir_lbl: "malvin_config_workspace backup mkdir",
         collision_lbl: "malvin_config_workspace backup mkdir",
         restore_lbl: "malvin_config_workspace restore",
@@ -96,11 +105,12 @@ pub(super) fn backup_slot(
     generate_id: &mut impl FnMut(usize) -> String,
 ) -> Result<DotfileBackupState, String> {
     let spec = &DOTFILE_ROWS[slot];
+    let _ = spec.rel_path();
     let src = dotfile_source_path(slot, work_dir);
     if !src.is_file() {
         return Ok(DotfileBackupState::Missing);
     }
-    let root = malvin_home_dir().join(".malvin").join(spec.home_subdir);
+    let root = snapshot_category_dir(spec.home_subdir);
     let lbls = labels(spec);
     let dest_dir = allocate_backup_dir(&root, generate_id, &lbls)?;
     let dest_file = dest_dir.join(spec.rel);
@@ -118,12 +128,56 @@ pub(super) fn backup_slot(
     }))
 }
 
+fn is_ensured_default_malvin_config(bytes: &[u8]) -> bool {
+    let Ok(template) = crate::malvin_config_file::parse_template_value() else {
+        return false;
+    };
+    let mut ensured = toml::Value::Table(toml::map::Map::new());
+    crate::malvin_config_file::merge_missing_keys(&mut ensured, &template);
+    let Ok(mut ensured_text) = toml::to_string_pretty(&ensured) else {
+        return false;
+    };
+    if !ensured_text.ends_with('\n') {
+        ensured_text.push('\n');
+    }
+    std::str::from_utf8(bytes).is_ok_and(|on_disk| on_disk == ensured_text)
+}
+
+fn restore_malvin_config_missing(dst: &Path, lbls: &DotfileBackupLabels) -> Result<(), String> {
+    if !dst.exists() {
+        return Ok(());
+    }
+    if !dst.is_file() {
+        return remove_if_exists(dst, lbls.restore);
+    }
+    let bytes = std::fs::read(dst).map_err(|e| format!("{}: {e}", lbls.restore))?;
+    if is_ensured_default_malvin_config(&bytes) {
+        return remove_if_exists(dst, lbls.restore);
+    }
+    let keep = std::str::from_utf8(&bytes)
+        .ok()
+        .and_then(|text| text.parse::<toml::Value>().ok())
+        .is_some();
+    if keep {
+        Ok(())
+    } else {
+        remove_if_exists(dst, lbls.restore)
+    }
+}
+
 pub(super) fn restore_slot(work_dir: &Path, backup: &DotfileBackupState, slot: usize) -> Result<(), String> {
     let spec = &DOTFILE_ROWS[slot];
+    let _ = spec.rel_path();
     let dst = dotfile_source_path(slot, work_dir);
     let lbls = labels(spec);
     match backup {
-        DotfileBackupState::Missing => remove_if_exists(&dst, lbls.restore),
+        DotfileBackupState::Missing => {
+            if slot == MALVIN_CONFIG_SLOT {
+                restore_malvin_config_missing(&dst, &lbls)
+            } else {
+                remove_if_exists(&dst, lbls.restore)
+            }
+        }
         DotfileBackupState::Present(payload) => {
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)
@@ -141,12 +195,9 @@ pub(super) const fn labels_for_test(row: &DotfileSpecRow) -> DotfileBackupLabels
 }
 
 #[cfg(test)]
-mod kiss_static_type_refs {
-    use super::*;
-
-    #[test]
-    fn kiss_static_type_refs() {
-        let _: DotfileSpecRow = DOTFILE_ROWS[0];
-        let _ = labels;
-    }
+pub(super) fn restore_malvin_config_missing_for_test(
+    dst: &Path,
+    lbls: &DotfileBackupLabels,
+) -> Result<(), String> {
+    restore_malvin_config_missing(dst, lbls)
 }

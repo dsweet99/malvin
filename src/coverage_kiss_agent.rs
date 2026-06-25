@@ -8,7 +8,6 @@ use std::fmt::Write as _;
 
 #[test]
 fn agent_error_and_auth_error_display_via_fmt() {
-    let _ = stringify!(fmt);
     let mut buf = String::new();
     write!(buf, "{}", AgentError("agent err".into())).expect("fmt AgentError");
     assert_eq!(buf, "agent err");
@@ -40,9 +39,6 @@ fn replace_coder_session_slot_for_tests_opens_session() {
 
 #[test]
 fn kpop_flow_once_args_and_run_kpop_flow_symbols() {
-    let _ = stringify!(run_kpop_flow);
-    let _ = stringify!(KpopFlowOnceArgs);
-    let _ = stringify!(KpopPromptRound);
     let tmp = tempfile::tempdir().expect("tempdir");
     let log = tmp.path().join("kpop.log");
     let prompts = ["probe"];

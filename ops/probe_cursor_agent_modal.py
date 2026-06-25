@@ -11,6 +11,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     APP_REMOTE,
     agent_sandbox_network_kwargs,
@@ -104,7 +105,7 @@ def probe_in_sandbox(
         proc.wait()
     finally:
         if sandbox is not None:
-            sandbox.terminate()
+            release_modal_sandbox(sandbox)
 
 
 @click.command()
@@ -156,7 +157,7 @@ def main(
 
         workspace = default_deepswe_results_dir() / spec.task_id / "workspace"
     materialize_workspace(spec, workspace, dry_run=False)
-    malvin_repo, kiss_repo = validate_toolchain_repos()
+    malvin_repo = validate_toolchain_repos()
     click.echo(f"Task: {spec.task_id}")
     click.echo(f"Workspace: {workspace.resolve()}")
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
@@ -166,7 +167,6 @@ def main(
         spec.tests_dir,
         dockerfile=spec.dockerfile,
         malvin_repo=malvin_repo,
-        kiss_repo=kiss_repo,
         deepswe_run_py=deepswe_run_py,
     )
     click.echo("Running cursor-agent probe in Modal sandbox...")
@@ -187,6 +187,7 @@ def main(
 @app.local_entrypoint(name="probe_cursor_agent")
 def probe_cursor_agent_entry(*arglist: str) -> None:
     main.main(args=list(arglist), prog_name="modal run ops/probe_cursor_agent_modal.py", standalone_mode=True)
+
 
 
 if __name__ == "__main__":

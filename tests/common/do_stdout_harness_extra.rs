@@ -92,6 +92,7 @@ pub fn run_do_say_hi_path_prefixed_mid(ctx: &DoBinCtx, mid: &[&str]) -> std::pro
         std::env::var("PATH").unwrap_or_default()
     );
     let mut args: Vec<&str> = vec!["do"];
+    args.extend_from_slice(super::INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(mid);
     args.push("say hi");
     command_output_with_timeout(
@@ -149,6 +150,7 @@ pub fn run_malvin_do_home_workspace(
             .env("HOME", home)
             .env("CURSOR_AGENT_API_KEY", "test-key")
             .env("MALVIN_AGENT_ACP_BIN", mock)
+            .args(super::INTEGRATION_TEST_MALVIN_ARGS)
             .args(["do", "say hi"]),
         MALVIN_TEST_CMD_TIMEOUT,
     )

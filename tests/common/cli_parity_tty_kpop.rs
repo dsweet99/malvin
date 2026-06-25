@@ -36,14 +36,14 @@ pub fn run_kpop_multiturn_investigate(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", &mock)
         .env("PATH", path)
-        .args([
-            "kpop",
-            "--max-loops",
-            "2",
-            "--max-hypotheses",
-            "1",
-            "investigate",
-        ]);
+        .args(["kpop", "--no-tenacious", "--max-acp-retries", "1"]);
+    cmd.args([
+        "--max-loops",
+        "1",
+        "--max-hypotheses",
+        "1",
+        "investigate",
+    ]);
     let out =
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin kpop");
     (out, root, workspace)

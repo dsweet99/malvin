@@ -208,3 +208,7 @@ mod kiss_cov_gate_refs{
         let _ = tee_tool_summary_plain;
     }
 }
+
+#[cfg(test)]
+#[path = "trace_line_write_tool_summary_kiss_cov.rs"]
+mod trace_line_write_tool_summary_kiss_cov;

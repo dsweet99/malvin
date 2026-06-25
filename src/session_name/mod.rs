@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::alnum_id::random_alnum;
-use crate::user_home_dir;
+use crate::workspace_paths::malvin_user_home_root;
 
 const NAMES_SUBDIR: &str = "names";
 const AUTO_NAME_LEN: usize = 5;
@@ -14,7 +14,7 @@ const ACQUIRE_MAX_ATTEMPTS: usize = 4;
 
 #[must_use]
 pub fn names_registry_root() -> PathBuf {
-    user_home_dir().join(".malvin").join(NAMES_SUBDIR)
+    malvin_user_home_root().join(NAMES_SUBDIR)
 }
 
 #[must_use]

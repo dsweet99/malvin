@@ -76,10 +76,9 @@ fn execute_looks_like_test(parsed: &ParsedToolUpdate, tracker: &ToolSummaryTrack
         .or_else(|| tracker.record(&parsed.id).and_then(|r| r.command.as_deref()))
         .or_else(|| parsed.title.strip_prefix('`').and_then(|t| t.strip_suffix('`')))
         .unwrap_or("");
-    let lower = cmd.to_ascii_lowercase();
-    ["nextest", "cargo test", "pytest", "kiss check", "clippy", "cargo clippy"]
-        .iter()
-        .any(|needle| lower.contains(needle))
+    std::env::current_dir().is_ok_and(|wd| {
+        crate::repo_gates::command_matches_malvin_checks_gate(cmd, &wd)
+    })
 }
 
 #[cfg(test)]

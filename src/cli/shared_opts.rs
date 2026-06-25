@@ -46,9 +46,15 @@ pub struct SharedOpts {
     /// Log full outgoing agent prompt bodies to stdout and `prompts.log` (default: prompt name only).
     #[arg(short, long, global = true, default_value_t = false)]
     pub verbose: bool,
-    /// Max bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
+    /// Max agent retries per spawn, HTTP completion, or gate iteration (1s / 3s backoff between tries).
     #[arg(long = "max-acp-retries", global = true, default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
+    /// Use in-process mini agent (`OpenRouter` + bash loop) instead of Cursor ACP.
+    #[arg(long, global = true, default_value_t = false)]
+    pub mini: bool,
+    /// Max bash execution rounds per `run_coder_prompt` when `--mini` [default: 32].
+    #[arg(long = "mini-max-bash-turns", global = true, default_value_t = 32)]
+    pub mini_max_bash_turns: u32,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]
     pub doc: bool,
@@ -66,5 +72,25 @@ impl SharedOpts {
     #[must_use]
     pub(crate) const fn acp_stdout_markdown_enabled(&self) -> bool {
         !self.no_markdown
+    }
+}
+
+#[cfg(test)]
+impl SharedOpts {
+    #[must_use]
+    pub(crate) fn test_defaults() -> Self {
+        Self {
+            model: crate::config::DEFAULT_CLI_MODEL.into(),
+            no_force: true,
+            no_tenacious: false,
+            no_tee: true,
+            no_markdown: true,
+            verbose: false,
+            max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+            doc: false,
+            name: None,
+            mini: false,
+            mini_max_bash_turns: 32,
+        }
     }
 }

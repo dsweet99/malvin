@@ -5,7 +5,6 @@ use super::RunArtifacts;
 
 pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io::Result<()> {
     let path = artifacts.quality_gates_log_path();
-    let _ = stringify!(std::fs::remove_file(&path));
     std::fs::write(&path, "")
 }
 

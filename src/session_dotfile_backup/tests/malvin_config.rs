@@ -5,9 +5,98 @@ use std::path::Path;
 use crate::artifacts::{
     MalvinConfigBackup, backup_workspace_malvin_config_if_present,
     backup_workspace_malvin_config_if_present_with_id, restore_workspace_malvin_config_backup,
+    SessionDotfileBackups,
 };
 use crate::test_utils::with_isolated_home;
-use crate::{malvin_config_path, MALVIN_CONFIG_REL, seed_malvin_config};
+use crate::malvin_config_file::open_malvin_config;
+use crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk;
+use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
+
+#[test]
+fn snapshot_after_ensuring_home_config_records_present_when_file_was_absent() {
+    with_isolated_home(|work| {
+        let cfg = malvin_config_path(work);
+        assert!(!cfg.exists());
+        let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(cfg.is_file());
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Present(_)));
+    });
+}
+
+/// Gate loops call `ensure_default_malvin_config_file` during a session. A plain `snapshot` that
+/// records `Missing` makes the post-session restore delete that ensured file, so the next
+/// iteration snapshots `Missing` again and every restore keeps wiping the config.
+#[test]
+fn plain_snapshot_missing_restore_wipes_ensure_created_home_config() {
+    with_isolated_home(|work| {
+        let cfg = malvin_config_path(work);
+        assert!(!cfg.exists());
+        let bundle = SessionDotfileBackups::snapshot(work).unwrap();
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Missing));
+        crate::repo_gates::ensure_default_malvin_config_file(work).unwrap();
+        assert!(cfg.is_file(), "ensure must materialize home config mid-session");
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        assert!(
+            !cfg.exists(),
+            "Missing restore must delete ensured config — this is the reset bug"
+        );
+    });
+}
+
+#[test]
+fn snapshot_after_ensure_tolerates_invalid_on_disk_config() {
+    with_isolated_home(|work| {
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        let cfg = malvin_config_path(work);
+        let iteration_start =
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        seed_malvin_config(work, "TAMPERED\n");
+        let post_agent =
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(matches!(
+            post_agent.malvin_config,
+            MalvinConfigBackup::Present(_)
+        ));
+        iteration_start.restore_excluding_malvin_checks(work).unwrap();
+        let restored = std::fs::read_to_string(&cfg).unwrap();
+        assert!(restored.contains("mem_limit_gb = 7"));
+        assert!(!restored.contains("TAMPERED"));
+    });
+}
+
+#[test]
+fn snapshot_after_ensure_breaks_missing_restore_cycle() {
+    with_isolated_home(|work| {
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        let cfg = malvin_config_path(work);
+        let bundle = SessionDotfileBackups::snapshot_after_ensuring_home_config(work).unwrap();
+        assert!(matches!(bundle.malvin_config, MalvinConfigBackup::Present(_)));
+        seed_malvin_config(work, "TAMPERED\n");
+        bundle.restore_excluding_malvin_checks(work).unwrap();
+        let restored = std::fs::read_to_string(&cfg).unwrap();
+        assert!(
+            restored.contains("mem_limit_gb = 7"),
+            "restore must put back snapshotted bytes, got: {restored:?}"
+        );
+        assert!(!restored.contains("TAMPERED"));
+    });
+}
+
+#[test]
+fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
+    with_isolated_home(|work| {
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        let cfg = malvin_config_path(work);
+        std::fs::write(&cfg, b"").expect("agent truncates home config");
+        repair_clamp_damaged_dotfiles_on_disk(work).expect("repair");
+        let restored = std::fs::read_to_string(&cfg).expect("read home config");
+        assert!(
+            restored.contains("mem_limit_gb"),
+            "repair must recreate template defaults, got: {restored:?}"
+        );
+        assert_ne!(restored, "mem_limit_gb = 7\n", "empty damage replaced with template");
+    });
+}
 
 #[test]
 fn malvin_config_backup_skips_when_home_file_missing() {
@@ -41,9 +130,23 @@ fn malvin_config_backup_round_trip_restores_home_file() {
 fn malvin_config_backup_missing_restores_by_removing_created_home_file() {
     with_isolated_home(|work| {
         let backup = backup_workspace_malvin_config_if_present(work).unwrap();
-        seed_malvin_config(work, "CREATED\n");
+        open_malvin_config(work).expect("create ensured default");
         restore_workspace_malvin_config_backup(work, &backup).unwrap();
         assert!(!malvin_config_path(work).exists());
+    });
+}
+
+#[test]
+fn malvin_config_missing_restore_preserves_user_edited_home_config() {
+    with_isolated_home(|work| {
+        let backup = backup_workspace_malvin_config_if_present(work).unwrap();
+        seed_malvin_config(work, "mem_limit_gb = 7\n");
+        restore_workspace_malvin_config_backup(work, &backup).unwrap();
+        let restored = std::fs::read_to_string(malvin_config_path(work)).unwrap();
+        assert!(
+            restored.contains("mem_limit_gb = 7"),
+            "user-edited home config must survive Missing restore, got: {restored:?}"
+        );
     });
 }
 
@@ -67,7 +170,8 @@ fn malvin_config_backup_retries_on_existing_collision() {
         let home = std::env::var_os("HOME").unwrap();
         let dir = Path::new(&home)
             .join(".malvin")
-            .join("malvin_config_snapshots");
+            .join("snapshots")
+            .join("malvin_config");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
 
@@ -87,9 +191,9 @@ fn malvin_config_backup_retries_on_existing_collision() {
 
         assert_eq!(
             payload.backup_path.as_path(),
-            dir.join("bbbbb").join(MALVIN_CONFIG_REL).as_path()
+            dir.join("bbbbb").join(MALVIN_HOME_CONFIG_FILE).as_path()
         );
         assert!(payload.backup_path.is_file());
-        assert!(!dir.join("aaaaa").join(MALVIN_CONFIG_REL).exists());
+        assert!(!dir.join("aaaaa").join(MALVIN_HOME_CONFIG_FILE).exists());
     });
 }

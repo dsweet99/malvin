@@ -5,10 +5,10 @@ mod bug_id_lookup_log;
 
 pub(crate) use bug_id_lookup_log::MalvinRunLogKind;
 
-pub(super) struct BugLogMatch {
-    run_dir: PathBuf,
-    log_file: PathBuf,
-    exp_log_rel: Option<String>,
+pub(crate) struct BugLogMatch {
+    pub(crate) run_dir: PathBuf,
+    pub(crate) log_file: PathBuf,
+    pub(crate) exp_log_rel: Option<String>,
 }
 
 #[derive(Debug)]

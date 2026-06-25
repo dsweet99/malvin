@@ -22,19 +22,24 @@ pub(crate) mod shutdown_kills_descendants {
         pid: u32,
     ) {
         session.shutdown().await.expect("shutdown should complete");
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-
-        if process_exists(pid) {
-            let _ = stringify!(std::process::Command::new("kill")
-                .arg("-KILL")
-                .arg(pid.to_string())
-                .status());
-            panic!("shutdown left agent-spawned descendant process {pid} alive");
+        let poll = crate::test_poll::test_post_teardown_poll_interval();
+        let deadline = tokio::time::Instant::now() + crate::test_poll::test_post_teardown_wait_budget();
+        while tokio::time::Instant::now() < deadline {
+            if !process_exists(pid) {
+                return;
+            }
+            tokio::time::sleep(poll).await;
         }
+
+        assert!(
+            !process_exists(pid),
+            "shutdown left agent-spawned descendant process {pid} alive"
+        );
     }
 
     #[tokio::test]
     pub(crate) async fn shutdown_sends_cancel_before_teardown() {
+        crate::test_utils::enable_test_fast_teardown();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("rpc-trace-agent");
         crate::test_utils::write_acp_jsonrpc_mock_rpc_trace(&bin).await;
@@ -59,6 +64,7 @@ pub(crate) mod shutdown_kills_descendants {
 
     #[tokio::test]
     pub(crate) async fn shutdown_kills_agent_spawned_descendants() {
+        crate::test_utils::enable_test_fast_teardown();
         let tmp = tempfile::tempdir().unwrap();
         let bin = tmp.path().join("descendant-spawning-agent");
         write_descendant_spawning_acp_mock(&bin).await;

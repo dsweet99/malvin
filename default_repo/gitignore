@@ -1,8 +1,10 @@
 target/
+ops/
 **/__pycache__/
 **/*.py[cod]
 **/*.rs.bk
 .malvin/logs/
+.malvin/acp_spawn/
 .malvin_checks
 /log
 /log_2

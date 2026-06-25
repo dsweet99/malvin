@@ -53,6 +53,8 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_unit_names() {
         let _ = macos_pids_rss_bytes;
         let _ = macos_process_group_rss_bytes;
-        assert!(stringify!(macos_pids_rss_bytes).contains("macos_pids_rss_bytes"));
+        let pids = std::iter::once(std::process::id()).collect::<std::collections::HashSet<_>>();
+        let rss = macos_pids_rss_bytes(&pids).expect("rss");
+        assert!(rss > 0);
     }
 }

@@ -3,6 +3,43 @@ use std::process::Command;
 
 use super::write_mock_executable;
 
+#[cfg(unix)]
+use super::workspace::chmod755;
+
+/// Stub `kiss` and `pre-commit` so init integration tests avoid real tool startup.
+#[cfg(unix)]
+fn write_fast_init_tool_stubs(bin_dir: &Path) {
+    std::fs::create_dir_all(bin_dir).expect("mkdir init tool stubs");
+    super::write_fake_kiss(&bin_dir.join("kiss"));
+    let pre_commit = bin_dir.join("pre-commit");
+    std::fs::write(
+        &pre_commit,
+        "#!/usr/bin/env sh\n\
+case \"$1\" in\n\
+  install)\n\
+    mkdir -p .git/hooks\n\
+    printf '%s\\n' '#!/bin/sh' 'exit 0' > .git/hooks/pre-commit\n\
+    chmod +x .git/hooks/pre-commit\n\
+    exit 0\n\
+    ;;\n\
+esac\n\
+exit 0\n",
+    )
+    .expect("write pre-commit stub");
+    chmod755(&pre_commit);
+}
+
+#[cfg(unix)]
+fn init_test_path_with_fast_tools(home: &Path) -> String {
+    let bin_dir = home.join("init-test-bin");
+    write_fast_init_tool_stubs(&bin_dir);
+    format!(
+        "{}:{}",
+        bin_dir.display(),
+        std::env::var("PATH").unwrap_or_default()
+    )
+}
+
 pub fn acp_mock_init_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
@@ -39,8 +76,11 @@ fn apply_malvin_init_test_env(
     cmd.env("HOME", home)
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_TEST_NO_REAL_AGENT", "1")
+        .env("MALLOC_ARENA_MAX", "2")
         .env("MALVIN_AGENT_ACP_BIN", mock_bin.as_os_str())
         .env("PRE_COMMIT_HOME", pre_commit_home);
+    #[cfg(unix)]
+    cmd.env("PATH", init_test_path_with_fast_tools(home));
 }
 
 fn configure_malvin_init_cmd(

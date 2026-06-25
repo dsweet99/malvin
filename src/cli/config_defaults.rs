@@ -1,4 +1,4 @@
-//! Apply workspace `~/.malvin/config.toml` defaults to parsed CLI values when flags were not set.
+//! Apply `~/.malvin_home/config.toml` defaults to parsed CLI values when flags were not set.
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, CommandFactory, FromArgMatches};
@@ -33,6 +33,20 @@ pub(crate) fn apply_loop_defaults(
     }
 }
 
+pub(crate) fn apply_bare_sequential_config_defaults(
+    matches: &ArgMatches,
+    cli: &mut Cli,
+    agent: &AgentConfig,
+) {
+    apply_shared_config_defaults(matches, &mut cli.shared, agent);
+    if !subcommand_flag_from_command_line(matches, "kpop", "max_loops") {
+        cli.bare_max_loops = agent.max_loops;
+    }
+    if !subcommand_flag_from_command_line(matches, "kpop", "max_hypotheses") {
+        cli.bare_max_hypotheses = agent.max_hypotheses;
+    }
+}
+
 pub(crate) struct CodeWorkflowLoopMut<'a> {
     pub subcommand: &'a str,
     pub max_loops: &'a mut usize,
@@ -56,22 +70,11 @@ fn apply_code_workflow_loop_defaults(
     );
 }
 
-pub fn apply_workspace_config_defaults(
+fn apply_gate_loop_command_defaults(
     matches: &ArgMatches,
-    cli: &mut Cli,
-) -> Result<(), String> {
-    let Some(command) = cli.command.as_mut() else {
-        if cli.bare_request.is_none() {
-            return Ok(());
-        }
-        return Err("internal: bare kpop request not resolved".into());
-    };
-    if matches!(command, Commands::Do(_) | Commands::Models(_)) {
-        return Ok(());
-    }
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
-    apply_shared_config_defaults(matches, &mut cli.shared, &agent);
+    command: &mut Commands,
+    agent: &AgentConfig,
+) {
     match command {
         Commands::Code(code) => apply_code_workflow_loop_defaults(
             matches,
@@ -79,7 +82,7 @@ pub fn apply_workspace_config_defaults(
                 subcommand: "code",
                 max_loops: &mut code.max_loops,
                 max_hypotheses: &mut code.max_hypotheses,
-                agent: &agent,
+                agent,
             },
         ),
         Commands::Kpop(kpop) => apply_loop_defaults(
@@ -98,7 +101,7 @@ pub fn apply_workspace_config_defaults(
                 subcommand: "tidy",
                 max_loops: &mut tidy.max_loops,
                 max_hypotheses: &mut tidy.max_hypotheses,
-                agent: &agent,
+                agent,
             },
         ),
         Commands::Delight(delight) => apply_code_workflow_loop_defaults(
@@ -107,7 +110,7 @@ pub fn apply_workspace_config_defaults(
                 subcommand: "delight",
                 max_loops: &mut delight.max_loops,
                 max_hypotheses: &mut delight.max_hypotheses,
-                agent: &agent,
+                agent,
             },
         ),
         Commands::Explain(explain) => apply_code_workflow_loop_defaults(
@@ -116,7 +119,7 @@ pub fn apply_workspace_config_defaults(
                 subcommand: "explain",
                 max_loops: &mut explain.max_loops,
                 max_hypotheses: &mut explain.max_hypotheses,
-                agent: &agent,
+                agent,
             },
         ),
         Commands::Revise(revise) => apply_code_workflow_loop_defaults(
@@ -125,7 +128,7 @@ pub fn apply_workspace_config_defaults(
                 subcommand: "revise",
                 max_loops: &mut revise.max_loops,
                 max_hypotheses: &mut revise.max_hypotheses,
-                agent: &agent,
+                agent,
             },
         ),
         Commands::Do(_)
@@ -134,6 +137,29 @@ pub fn apply_workspace_config_defaults(
         | Commands::Models(_)
         | Commands::Plan(_) => {}
     }
+}
+
+pub fn apply_workspace_config_defaults(
+    matches: &ArgMatches,
+    cli: &mut Cli,
+) -> Result<(), String> {
+    if matches!(cli.command, Some(Commands::Do(_) | Commands::Models(_))) {
+        return Ok(());
+    }
+
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
+
+    if cli.command.is_none() && cli.bare_args.len() > 1 {
+        apply_bare_sequential_config_defaults(matches, cli, &agent);
+        return Ok(());
+    }
+
+    let Some(command) = cli.command.as_mut() else {
+        return Ok(());
+    };
+    apply_shared_config_defaults(matches, &mut cli.shared, &agent);
+    apply_gate_loop_command_defaults(matches, command, &agent);
     Ok(())
 }
 

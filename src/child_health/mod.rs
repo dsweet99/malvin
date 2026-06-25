@@ -175,8 +175,6 @@ mod child_health_smoke {
     #[test]
     fn sample_child_health_current_process() {
         let _health = crate::child_health::sample_child_health(std::process::id());
-        let _ = stringify!(health.exists);
-        let _ = stringify!(health.zombie);
     }
 }
 

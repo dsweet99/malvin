@@ -113,4 +113,26 @@ mod fence_fn_coverage {
     fn find_matching_fence_close_falls_back_to_rfind_for_inline_close() {
         assert_eq!(find_matching_fence_close("inline```"), Some(6));
     }
+
+    #[test]
+    fn extract_fenced_markdown_block_accepts_markdown_and_md_fences() {
+        assert_eq!(
+            extract_fenced_markdown_block("```markdown\nhello\n```").expect("markdown"),
+            "hello"
+        );
+        assert_eq!(
+            extract_fenced_markdown_block("```md\nworld\n```").expect("md"),
+            "world"
+        );
+        assert_eq!(
+            extract_fenced_markdown_block("```\nplain\n```").expect("plain"),
+            "plain"
+        );
+    }
+
+    #[test]
+    fn extract_fenced_markdown_block_rejects_empty_or_missing_fence() {
+        assert!(extract_fenced_markdown_block("```markdown\n\n```").is_err());
+        assert!(extract_fenced_markdown_block("no fence here").is_err());
+    }
 }

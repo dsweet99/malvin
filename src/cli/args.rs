@@ -24,7 +24,7 @@ pub use super::shared_opts::GlobalOpts;
     version,
     about = "Non-interactive CLI agent, via Cursor ACP",
     disable_help_subcommand = true,
-    after_help = "Bare invocation: malvin REQUEST runs kpop (same as malvin kpop REQUEST). REQUEST must be one shell argument; quote for spaces. Use subcommands for do, code, and tidy."
+    after_help = "Bare invocation: malvin REQUEST... runs kpop on each request in sequence (same as malvin kpop REQUEST). Use subcommands for do, code, and tidy."
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -40,9 +40,9 @@ pub struct Cli {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999` for bare kpop invocations.
     #[arg(long = "tenacious", default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub bare_tenacious: bool,
-    /// When no subcommand: kpop request text or path.
-    #[arg(value_name = "REQUEST")]
-    pub bare_request: Option<String>,
+    /// When no subcommand: kpop request text or path(s).
+    #[arg(value_name = "REQUEST", num_args = 0..)]
+    pub bare_args: Vec<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

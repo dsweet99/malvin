@@ -9,9 +9,7 @@ mod run_loop;
 
 pub use run_loop::run_explain;
 
-pub(crate) fn explain_revise_doc_path(request: &str, out_path: &str) -> Result<String, String> {
-    prep::explain_revise_doc_path(request, out_path)
-}
+pub(crate) use prep::explain_revise_doc_path;
 
 #[must_use]
 pub(crate) fn effective_explain_max_loops(max_loops: usize) -> usize {
@@ -34,6 +32,9 @@ pub struct ExplainArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
+    /// Set when the user passes `--out-path` on the command line (not a clap flag).
+    #[arg(skip)]
+    pub out_path_explicit: bool,
 }
 
 #[cfg(test)]
@@ -90,10 +91,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_explain_gate_helpers() {
-        let _ = stringify!(run_explain);
-        let _ = stringify!(explain_revise_doc_path);
-        let _ = stringify!(run_startup::prepare_explain_kpop_run);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::EXPLAIN);
+        let _ = super::run_loop::validate_explain_output;
+        let _ = super::run_startup::prepare_explain_kpop_run;
+        let _: Option<super::run_startup::ExplainKpopPrepared> = None;
     }
 
     #[test]

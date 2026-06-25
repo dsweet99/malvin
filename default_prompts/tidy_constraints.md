@@ -1,1 +1,3 @@
 - Just get quality gates to pass.
+- The whole codebase is in scope.
+- All quality-gate violations are in scope.

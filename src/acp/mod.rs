@@ -44,6 +44,10 @@ pub use unix_process_group_teardown::{
 #[cfg(unix)] pub(crate) use unix_process_ancestor::is_ancestor_pid;
 #[cfg(unix)] pub(crate) use unix_process_group_ps::pid_alive;
 #[cfg(unix)] pub use unix_sandbox_monitor::sandbox_monitor_pids;
+#[cfg(unix)]
+pub(crate) use unix_process_group_kill_targets::{
+    clear_session_spawn_affiliation, refresh_session_spawn_affiliation,
+};
 mod process_group_mem_watch;
 #[cfg(unix)] pub use process_group_mem_watch::{MemWatchHandles, watch_process_group_memory};
 
@@ -105,6 +109,9 @@ pub(crate) fn note_acp_trace_activity(
 mod jsonrpc_error;
 #[path = "transport/command.rs"]
 mod command;
+#[cfg(test)]
+#[path = "transport/command_kiss_cov_tests.rs"]
+mod command_kiss_cov_tests;
 #[path = "transport/rpc_part1.rs"]
 mod rpc_part1;
 #[path = "transport/rpc_wait_args.rs"]
@@ -147,7 +154,6 @@ pub(crate) fn requires_cursor_login_auth(
 fn acp_rpc_timeout_and_login_auth_smoke() {
     assert!(acp_rpc_timeout().as_secs() > 0);
     assert!(!requires_cursor_login_auth(Some("key"), Some("token")));
-    let _ = stringify!(requires_cursor_login_auth(None, None));
 }
 
 #[path = "wrap_reader_a.rs"]
@@ -214,6 +220,8 @@ mod client_impl_helpers;
 mod client_impl_session;
 #[path = "client_impl_prompt_dispatch.rs"]
 mod client_impl_prompt_dispatch;
+#[path = "client_impl_prompt_retry.rs"]
+pub(crate) mod client_impl_prompt_retry;
 #[path = "client_impl_prompt.rs"]
 mod client_impl_prompt;
 #[path = "client_impl_flow.rs"]
@@ -221,25 +229,17 @@ mod client_impl_flow;
 pub(crate) use client_impl_helpers::*;
 pub(crate) use client_impl_prompt_dispatch::*;
 
-#[cfg(test)]
-#[path = "ops_inline_tests.rs"]
-mod ops_inline_tests;
-
-#[cfg(test)]
-#[path = "tee_strip_tests.rs"]
-mod tee_strip_tests;
+#[cfg(test)] #[path = "ops_inline_tests.rs"] mod ops_inline_tests;
+#[cfg(test)] #[path = "tee_strip_tests.rs"] mod tee_strip_tests;
 
 #[doc(hidden)]
 pub mod test_captive_session;
 
-#[cfg(test)]
-mod kiss_coverage;
-
-#[cfg(test)]
-#[path = "kiss_coverage_b.rs"]
-mod kiss_coverage_b;
-
+#[cfg(test)] mod kiss_coverage;
+#[cfg(test)] pub(crate) use kiss_coverage::smoke_reader_loop_eof_pending_error;
+#[cfg(test)] #[path = "kiss_coverage_b.rs"] mod kiss_coverage_b;
 #[cfg(test)] #[path = "inc_kiss_coverage.rs"] mod inc_kiss_coverage;
 #[cfg(test)] #[path = "session_tests_kiss_cov.rs"] mod session_tests_kiss_cov;
-#[cfg(test)]
-pub(crate) mod spawn_test_args;
+#[cfg(test)] #[path = "session_trace_tests_kiss_cov.rs"] mod session_trace_tests_kiss_cov;
+#[cfg(test)] #[path = "rest_kiss_cov.rs"] mod rest_kiss_cov;
+#[cfg(test)] pub(crate) mod spawn_test_args;

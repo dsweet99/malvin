@@ -19,7 +19,6 @@ async fn multiturn_after_successful_round(
         .map_err(AgentError)?;
     let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);
     if hypotheses_after > after.state.max_hypotheses {
-        let _ = stringify!(session.shutdown().await);
         return Err(AgentError(format!(
             "experiment log counts {hypotheses_after} hypothesis steps, exceeding --max-hypotheses ({})",
             after.state.max_hypotheses
@@ -41,7 +40,6 @@ pub(crate) async fn run_kpop_multiturn_once(
             Ok(Some(p)) => p,
             Ok(None) => break,
             Err(e) => {
-                let _ = stringify!(s.shutdown().await);
                 return Err(AgentError(e));
             }
         };
@@ -56,9 +54,7 @@ pub(crate) async fn run_kpop_multiturn_once(
         })
         .await
         {
-            return kpop_fail_after_prompt(
-                &s,
-                KpopFailAfterPrompt {
+            return kpop_fail_after_prompt(KpopFailAfterPrompt {
                     cwd: ctl.cwd,
                     session_dotfile_backups: ctl.session_dotfile_backups,
                     err: e,

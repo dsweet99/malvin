@@ -94,6 +94,7 @@ fn delight_command_accepts_session_name() {
     use crate::cli::delight_flow::DelightArgs;
     assert!(command_accepts_session_name(
         &Commands::Delight(DelightArgs {
+            guidance: None,
             out_path: "plan.md".to_string(),
             max_loops: 1,
             max_hypotheses: 5,
@@ -113,6 +114,7 @@ fn explain_command_rejects_session_name() {
             max_loops: 1,
             max_hypotheses: 5,
             tenacious: false,
+            out_path_explicit: false,
         }),
         false
     ));
@@ -126,7 +128,7 @@ fn bare_request_resolves_to_kpop_that_accepts_session_name() {
         parse_cli_with_config_defaults(["malvin", "--name", "probe", "investigate cache"])
             .expect("parse bare kpop");
     let command = cli.command.expect("bare request resolves to subcommand");
-    assert!(cli.bare_request.is_some());
+    assert!(cli.bare_args.len() == 1);
     assert!(command_accepts_session_name(&command, true));
 }
 

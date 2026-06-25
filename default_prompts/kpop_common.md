@@ -8,7 +8,13 @@ KPop may be referenced later on like a command, "KPop: <problem statement or que
 
 Apply this method to the user's problem.
 
-Restate the problem clearly.
+Preparation:
+- Restate the problem clearly.
+- Add clarifying constraints to the problem if you sense that something may be subtle or
+  potentially confusing. For example:
+  - Synonymy or near synonymy of terms
+  - Near contradictions in requirements
+  - Unclear behavior at boundaries and interfaces
 
 Repeat until you think you've solved the problem:
 LOOP_START
@@ -25,3 +31,4 @@ Log your hypotheses and test results -- as they become available -- to `{{ exp_l
 as you generate them. They are valuable. The user and other agents will want to read them.
 
 When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
+

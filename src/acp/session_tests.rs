@@ -93,13 +93,14 @@ pub(crate) fn acp_session_from_sleep_child(
 }
 
 pub(crate) fn session_with_sleep_child_for_mem_watch(cwd: &Path) -> (AcpSession, u32) {
+    crate::test_utils::enable_test_fast_teardown();
     let (child, stdin, pgid) = spawn_sleep_child_in_new_process_group(cwd);
     let session = acp_session_from_sleep_child(cwd, child, stdin, pgid);
     (session, pgid)
 }
 
 #[tokio::test]
-async fn watch_process_group_memory_kills_over_limit_child() {
+pub(crate) async fn watch_process_group_memory_kills_over_limit_child() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (session, pgid) = session_with_sleep_child_for_mem_watch(tmp.path());
     watch_process_group_memory(crate::acp::process_group_mem_watch::MemWatchHandles {
@@ -158,7 +159,7 @@ fn malvin_child_outside_agent_pg_counts_in_sandbox_rss() {
 }
 
 #[tokio::test]
-async fn spawn_process_group_memory_watcher_starts_for_session() {
+pub(crate) async fn spawn_process_group_memory_watcher_starts_for_session() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (session, _pgid) = session_with_sleep_child_for_mem_watch(tmp.path());
     spawn_process_group_memory_watcher(&session, tmp.path());
@@ -170,28 +171,28 @@ async fn spawn_process_group_memory_watcher_starts_for_session() {
 /// tear down reparented `setsid` orphans (not return early on `!process_group_still_alive`).
 #[cfg(unix)]
 #[tokio::test]
-async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
+pub(crate) async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
     use std::sync::atomic::AtomicBool;
 
     use super::hostile_orphan_test_util::{
         process_alive, read_orphan_pid, spawn_hostile_agent_exits_after_orphan_fork,
     };
 
+    crate::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();
     let (mut agent, pgid) =
         spawn_hostile_agent_exits_after_orphan_fork(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: setsid orphan should be running"
     );
     let agent_status = agent.wait().expect("wait agent");
     assert!(agent_status.success() || agent_status.code() == Some(0));
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(pgid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(pgid)).await,
         "setup: agent process group leader should have exited"
     );
     watch_process_group_memory(crate::acp::process_group_mem_watch::MemWatchHandles {
@@ -202,9 +203,8 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
         run_dir: None,
     })
     .await;
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "mem watcher must kill setsid orphans after agent PG is gone (orphan_pid={orphan_pid})"
     );
 }
@@ -213,16 +213,17 @@ async fn watch_process_group_memory_kills_orphan_after_agent_pg_exits() {
 /// reparented `setsid` session-leader orphans die (not only PG members).
 #[cfg(unix)]
 #[tokio::test]
-async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
+pub(crate) async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
     use std::sync::atomic::AtomicBool;
 
     use super::hostile_orphan_test_util::{process_alive, read_orphan_pid, spawn_hostile_agent};
 
+    crate::test_utils::enable_test_fast_teardown();
     let tmp = tempfile::tempdir().expect("tempdir");
     let orphan_pid_file = tmp.path().join("orphan.pid");
     let spawn_baseline = super::unix_process_group_ps::snapshot_pids();
     let (mut agent, pgid) = spawn_hostile_agent(tmp.path(), &orphan_pid_file);
-    let orphan_pid = read_orphan_pid(&orphan_pid_file).await;
+    let orphan_pid = read_orphan_pid(&orphan_pid_file, Some(pgid)).await;
     assert!(
         process_alive(orphan_pid),
         "setup: setsid orphan should be running before OOM teardown"
@@ -236,9 +237,8 @@ async fn watch_process_group_memory_kills_setsid_orphan_on_oom() {
     })
     .await;
     let _ = agent.wait();
-    tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(
-        !process_alive(orphan_pid),
+        crate::test_utils::test_wait_until_async(|| !process_alive(orphan_pid)).await,
         "OOM mem watcher must kill reparented setsid orphans (orphan_pid={orphan_pid})"
     );
 }

@@ -123,7 +123,9 @@ pub fn install_test_store(spec: &TestStoreSpec<'_>) -> PathBuf {
     let db_path = session_dir.join("store.db");
     let conn = rusqlite::Connection::open(&db_path).expect("open store.db");
     conn.execute_batch(
-        "CREATE TABLE blobs (id TEXT PRIMARY KEY, data BLOB);
+        "PRAGMA synchronous=OFF;
+         PRAGMA journal_mode=MEMORY;
+         CREATE TABLE blobs (id TEXT PRIMARY KEY, data BLOB);
          CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);",
     )
     .expect("schema");

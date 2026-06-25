@@ -4,6 +4,7 @@ use std::process::Command;
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
 };
+use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct ExplainSpawn<'a> {
     pub workspace: &'a Path,
@@ -12,6 +13,21 @@ pub struct ExplainSpawn<'a> {
     pub path_var: &'a str,
     pub request: &'a str,
     pub extra_args: &'a [&'a str],
+}
+
+pub fn seed_stale_default_explain_outputs(workspace: &Path) {
+    std::fs::write(workspace.join("explain.tex"), "STALE\n").expect("write stale tex");
+    std::fs::write(workspace.join("explain.pdf"), b"%PDF-1.4 stale").expect("write stale pdf");
+}
+
+pub fn assert_default_explain_sibling_outputs(workspace: &Path) {
+    let stale = std::fs::read_to_string(workspace.join("explain.tex")).expect("read stale tex");
+    assert_eq!(stale, "STALE\n", "original explain.tex must be untouched");
+    let tex = std::fs::read_to_string(workspace.join("explain_1.tex")).expect("read allocated tex");
+    assert!(
+        tex.contains("Revised"),
+        "explain must chain malvin revise on allocated path: {tex:?}"
+    );
 }
 
 pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
@@ -23,6 +39,7 @@ pub fn spawn_explain(t: &ExplainSpawn<'_>) -> std::process::Output {
         .env("PATH", t.path_var);
     let mut args: Vec<&str> = vec!["explain", t.request];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
+    args.extend_from_slice(FAST_GATE_LOOP_TEST_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")

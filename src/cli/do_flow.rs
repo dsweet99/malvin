@@ -2,7 +2,11 @@
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions, agent_io_options, new_agent_client};
+use crate::agent_backend::{
+    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
+    agent_backend_set_run_timing, build_agent_backend_with_tee, AgentBackend,
+};
+use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
 use crate::repo_checks;
 use crate::run_timing::TimingPhase;
@@ -28,7 +32,7 @@ pub struct DoArgs {
 }
 
 struct DoRunPrep {
-    client: crate::acp::AgentClient,
+    client: AgentBackend,
     artifacts: RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
     session_dotfile_backups: SessionDotfileBackups,
@@ -38,35 +42,23 @@ fn new_do_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     thoughts: bool,
-) -> crate::acp::AgentClient {
+) -> Result<AgentBackend, String> {
     let interactive = agent_stdout_tee_enabled();
     let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
-    if interactive {
-        return new_agent_client(
-            shared,
-            agent_io_options(
-                shared,
-                workflow,
-                AgentStdoutTeeFlags {
-                    emit_stdout_markdown: emit_markdown,
-                    raw_output: false,
-                    show_thoughts_on_stdout: thoughts,
-                },
-            ),
-        );
-    }
-    new_agent_client(
-        shared,
-        agent_io_options(
-            shared,
-            workflow,
-            AgentStdoutTeeFlags {
-                emit_stdout_markdown: false,
-                raw_output: true,
-                show_thoughts_on_stdout: thoughts,
-            },
-        ),
-    )
+    let tee = if interactive {
+        AgentStdoutTeeFlags {
+            emit_stdout_markdown: emit_markdown,
+            raw_output: false,
+            show_thoughts_on_stdout: thoughts,
+        }
+    } else {
+        AgentStdoutTeeFlags {
+            emit_stdout_markdown: false,
+            raw_output: true,
+            show_thoughts_on_stdout: thoughts,
+        }
+    };
+    build_agent_backend_with_tee(shared, workflow, tee)
 }
 
 fn run_do_repo_gates_if_requested(
@@ -89,7 +81,7 @@ async fn prepare_do_run(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<DoRunPrep, String> {
-    let client = new_do_client(shared, workflow, do_args.thoughts);
+    let client = new_do_client(shared, workflow, do_args.thoughts)?;
     let request = require_cli_request(do_args.request.as_ref(), "do")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
@@ -118,7 +110,8 @@ pub async fn run_do(
 ) -> Result<(), String> {
     let mut prep = prepare_do_run(&do_args, shared, workflow).await?;
     crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
-    prep.client.prompts_log_run_dir = Some(prep.artifacts.run_dir.clone());
+    prep.client
+        .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     let acp_res = run_do_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
         acp_res,
@@ -134,7 +127,7 @@ pub async fn run_do(
 }
 
 async fn run_do_coder_prompt(
-    client: &mut crate::acp::AgentClient,
+    client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     coder: &do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
@@ -148,6 +141,7 @@ async fn run_do_coder_prompt(
                 llm_phase: Some(TimingPhase::Implement),
                 do_trace_split: Some((header.as_str(), user.as_str())),
                 stdout_bracket_label: None,
+                ..Default::default()
             },
         )
         .await
@@ -155,21 +149,21 @@ async fn run_do_coder_prompt(
 }
 
 async fn run_do_acp(
-    client: &mut crate::acp::AgentClient,
+    client: &mut AgentBackend,
     artifacts: &RunArtifacts,
     coder: do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
-    let timing = client.attach_run_timing_for_session();
+    let timing = agent_backend_attach_run_timing_for_session(client);
     if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        client.set_run_timing(None);
+        agent_backend_set_run_timing(client, None);
         return Err(e.to_string());
     }
-    client.set_timing_implement_display_name("do");
+    agent_backend_set_implement_display_name(client, "do");
     let run_res = run_do_coder_prompt(client, artifacts, &coder).await;
     let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
     let merged =
         crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_acp(
+    crate::acp_post_run::emit_run_timing_json_only_after_backend(
         client,
         &artifacts.run_dir,
         &timing,
@@ -212,3 +206,7 @@ mod kiss_cov_gate_refs{
         let _ = run_do_repo_gates_if_requested;
     }
 }
+
+#[cfg(test)]
+#[path = "do_flow_kiss_cov_tests.rs"]
+mod do_flow_kiss_cov_tests;

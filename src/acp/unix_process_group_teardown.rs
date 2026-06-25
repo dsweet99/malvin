@@ -10,7 +10,7 @@ pub(crate) use super::unix_process_group_kill_targets::baseline_amnestied_agent_
 pub(crate) use super::unix_process_group_kill_targets::kill_targets_for_teardown;
 #[cfg(all(unix, test))]
 pub(crate) use super::unix_process_group_kill_targets::{
-    descendant_pids, malvin_session_spawn_pids, reparented_init_orphans,
+    descendant_pids, malvin_session_spawn_pids,
 };
 
 #[cfg(unix)]
@@ -79,9 +79,7 @@ mod kiss_cov_gate_refs {
         let _ = reap_baseline_amnestied_agent_orphans_blocking;
         let _ = baseline_amnestied_agent_orphans;
         #[cfg(unix)]
-        let _ = stringify!(unix_process_group_teardown_tests::malvin_sibling_outside_agent_pg_killed_on_teardown);
         #[cfg(unix)]
-        let _ = stringify!(unix_process_group_teardown_tests::baseline_amnestied_agent_acp_orphan_killed_on_teardown);
         #[cfg(unix)]
         let _ = crate::acp::unix_process_group_teardown_poll::reap_fixed_pid_targets_blocking;
     }

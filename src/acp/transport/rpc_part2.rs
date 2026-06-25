@@ -113,7 +113,6 @@ async fn write_rpc_line_appends_flush_line_readable_on_child_stdout() {
     drop(stdin);
     let line = read_first_stdout_line(stdout).await;
     assert!(line.contains("jsonrpc"), "{}", line);
-    let _ = stringify!(child.wait().await);
 }
 
 

@@ -7,11 +7,13 @@ use malvin::MALVIN_CONFIG_REL;
 
 use common::{
     InitOk, assert_git_branch_main, assert_git_head_commit_count, git_show_rev_path,
-    malvin_init_output, malvin_init_output_in_place, tempdir_seeded_dirty_keep,
+    malvin_init_output, malvin_init_output_in_place, seed_malvin_checks,
+    tempdir_seeded_dirty_keep,
 };
 
 use malvin::repo_gates::{
-    DEFAULT_PYTEST_CHECK, DEFAULT_RUST_CLIPPY, DEFAULT_RUST_NEXTEST, DEFAULT_RUST_TEST,
+    DEFAULT_PYTEST_CHECK, DEFAULT_RUST_CLIPPY, DEFAULT_RUST_NEXTEST, DEFAULT_RUST_NEXTEST_PARTITION_1,
+    DEFAULT_RUST_NEXTEST_PARTITION_2, DEFAULT_RUST_TEST,
 };
 
 fn init_combined_output(out: &std::process::Output) -> String {
@@ -46,7 +48,10 @@ fn malvin_init_rust_empty_directory_seeds_rust_quality_gates() {
         "expected clippy in checks; got: {checks:?}"
     );
     let has_test_runner = lines.iter().any(|l| {
-        *l == DEFAULT_RUST_NEXTEST || *l == DEFAULT_RUST_TEST
+        *l == DEFAULT_RUST_NEXTEST
+            || *l == DEFAULT_RUST_TEST
+            || *l == DEFAULT_RUST_NEXTEST_PARTITION_1
+            || *l == DEFAULT_RUST_NEXTEST_PARTITION_2
     });
     assert!(
         has_test_runner,
@@ -128,8 +133,8 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
         "init must write {MALVIN_ADVICE_REL}"
     );
     assert!(
-        w.home_path().join(".malvin/config.toml").is_file(),
-        "init must write ~/.malvin/config.toml"
+        w.home_path().join(".malvin_home/config.toml").is_file(),
+        "init must write ~/.malvin_home/config.toml"
     );
     assert!(
         !w.path().join(MALVIN_CONFIG_REL).exists(),
@@ -140,6 +145,8 @@ fn malvin_init_creates_initial_commit_for_fresh_repo() {
 #[test]
 fn malvin_init_does_not_autocommit_preexisting_repo_changes() {
     let project = tempdir_seeded_dirty_keep();
+    // Skip discovery KPop — this test covers commit behavior, not checks discovery.
+    seed_malvin_checks(project.path(), "kiss check\n");
     let (out, _home) = malvin_init_output(project.path(), &["python"]);
     assert!(out.status.success(), "malvin init failed: {out:?}");
     assert_git_head_commit_count(project.path(), "1");

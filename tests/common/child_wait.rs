@@ -37,6 +37,25 @@ fn join_stdio_reader(jh: JoinHandle<Vec<u8>>) -> std::io::Result<Vec<u8>> {
 }
 
 #[cfg(unix)]
+fn subprocess_wait_poll_interval() -> Duration {
+    if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some() {
+        Duration::from_millis(1)
+    } else {
+        Duration::from_millis(20)
+    }
+}
+
+#[cfg(unix)]
+fn wait_for_subprocess_tick(spin_budget: &mut u32) {
+    if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some() && *spin_budget > 0 {
+        *spin_budget -= 1;
+        std::hint::spin_loop();
+        return;
+    }
+    std::thread::sleep(subprocess_wait_poll_interval());
+}
+
+#[cfg(unix)]
 fn output_joined(
     status: std::process::ExitStatus,
     stdout_jh: JoinHandle<Vec<u8>>,
@@ -78,6 +97,11 @@ pub fn wait_child_with_timeout(
     stderr_jh: JoinHandle<Vec<u8>>,
     deadline: Instant,
 ) -> std::io::Result<std::process::Output> {
+    let mut spin_budget = if std::env::var_os("MALVIN_TEST_NO_REAL_AGENT").is_some() {
+        500
+    } else {
+        0
+    };
     loop {
         match child.try_wait() {
             Ok(Some(status)) => return output_joined(status, stdout_jh, stderr_jh),
@@ -96,7 +120,7 @@ pub fn wait_child_with_timeout(
                         ),
                     ));
                 }
-                std::thread::sleep(Duration::from_millis(20));
+                wait_for_subprocess_tick(&mut spin_budget);
             }
             Err(e) => {
                 let _ = stdout_jh.join();

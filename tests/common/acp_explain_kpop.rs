@@ -1,15 +1,18 @@
 use super::acp_tidy_kpop::{acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble};
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
-const EXPLAIN_OUTPUT_WRITE: &str = r"      const texMatch = promptText.match(/Write LaTeX source to [`']?([^\s`'\n]+)/);
+const EXPLAIN_OUTPUT_WRITE: &str = r"      let texRel;
+      const texMatch = promptText.match(/Write LaTeX source to [`']?([^\s`'\n]+)/);
       if (texMatch) {
-        let texRel = texMatch[1].replace(/^\.\//, '');
-        const texAbs = path.isAbsolute(texRel) ? texRel : path.join(process.cwd(), texRel);
-        fs.mkdirSync(path.dirname(texAbs), { recursive: true });
-        fs.writeFileSync(texAbs, '\\documentclass{article}\\begin{document}Explain\\end{document}', 'utf8');
-        const pdfAbs = texAbs.replace(/\.tex$/, '.pdf');
-        fs.writeFileSync(pdfAbs, '%PDF-1.4 mock', 'utf8');
-      }";
+        texRel = texMatch[1].replace(/^\.\//, '');
+      } else {
+        texRel = 'gate_loop_exit.tex';
+      }
+      const texAbs = path.isAbsolute(texRel) ? texRel : path.join(process.cwd(), texRel);
+      fs.mkdirSync(path.dirname(texAbs), { recursive: true });
+      fs.writeFileSync(texAbs, '\\documentclass{article}\\begin{document}Explain\\end{document}', 'utf8');
+      const pdfAbs = texAbs.replace(/\.tex$/, '.pdf');
+      fs.writeFileSync(pdfAbs, '%PDF-1.4 mock', 'utf8');";
 
 const REVISE_DOC_WRITE: &str = r"      const docMatch = promptText.match(/Revise [`']?([^\s`'\n]+)[`']? in place/);
       if (docMatch) {
@@ -41,7 +44,7 @@ fn acp_mock_explain_iteration_body() -> String {
 
 fn acp_mock_explain_revise_iteration_body() -> String {
     let preface = format!(
-        "      if (promptText.includes('Write LaTeX source to')) {{\n{EXPLAIN_OUTPUT_WRITE}\n      }} else if (promptText.match(/Revise [`']?([^\\s`']+)[`']? in place/)) {{\n{REVISE_DOC_WRITE}\n      }}"
+        "      if (promptText.includes('Write LaTeX source to') || promptText.includes('Write LaTeX source and compile')) {{\n{EXPLAIN_OUTPUT_WRITE}\n      }} else if (promptText.match(/Revise [`']?([^\\s`']+)[`']? in place/)) {{\n{REVISE_DOC_WRITE}\n      }}"
     );
     acp_mock_kpop_iteration_with_preface(&preface)
 }

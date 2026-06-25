@@ -16,13 +16,6 @@ fn push_tagged_entry(shared: &Arc<std::sync::Mutex<DeferredLogSink>>, display: &
         .push_entry(build_display_log_entry(display.to_string(), log.to_string()));
 }
 
-fn sink_queue_len(shared: &Arc<std::sync::Mutex<DeferredLogSink>>) -> usize {
-    shared
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .queue_len()
-}
-
 fn finish_defer_log_test(ctx: DeferLogTestCtx) -> String {
     flush_active_sink(ctx.shared);
     crate::output::set_stdout_log_path(None);
@@ -127,7 +120,13 @@ fn wall_clock_heartbeat_log_order_follows_defer_queue_fifo() {
     let text = {
         let ctx = defer_log_test_ctx(true);
         push_tagged_entry(&ctx.shared, "QUEUED_FIRST", "QUEUED_FIRST");
-        assert_eq!(sink_queue_len(&ctx.shared), 1);
+        assert_eq!(
+            ctx.shared
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .queue_len(),
+            1
+        );
         crate::output::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
         crate::output::poll_wall_clock_heartbeat_if_due();
         finish_defer_log_test(ctx)

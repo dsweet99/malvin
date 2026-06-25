@@ -64,13 +64,16 @@ mod format_tests;
 mod format_tests_b;
 #[cfg(test)]
 mod stdout_log_tests;
+#[cfg(test)]
+#[path = "output_kiss_cov_tests.rs"]
+mod output_kiss_cov_tests;
 
 #[cfg(test)]
 use std::cell::RefCell;
 use std::io::{IsTerminal, Write, stdout};
 #[cfg(test)]
 use std::sync::Mutex;
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub(crate) use self::terminal_wrap::{
     stderr_line_wrap_meta, stdout_line_wrap_meta, wrap_words_bounded,
@@ -138,7 +141,7 @@ pub(crate) use who_tag::{
     payload_after_fixed_width_who_tag,
 };
 
-static LOG_USE_COLOR: OnceLock<bool> = OnceLock::new();
+static LOG_USE_COLOR: AtomicBool = AtomicBool::new(false);
 #[cfg(test)]
 pub(crate) static STDOUT_LOG_TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -179,12 +182,12 @@ pub fn format_line_with_timestamp_ansi(ts: &str, who: &str, line: &str) -> Strin
 pub fn init_stdout_style(no_color: bool) {
     let disabled_by_env = std::env::var_os("NO_COLOR").is_some();
     let use_color = !no_color && !disabled_by_env;
-    let _ = LOG_USE_COLOR.set(use_color);
+    LOG_USE_COLOR.store(use_color, Ordering::Relaxed);
     crate::output::stdout_heartbeat::spawn_wall_clock_poller_if_needed();
 }
 
 pub(crate) fn log_use_color() -> bool {
-    *LOG_USE_COLOR.get().unwrap_or(&false)
+    LOG_USE_COLOR.load(Ordering::Relaxed)
 }
 
 pub(crate) fn stdout_use_color() -> bool {

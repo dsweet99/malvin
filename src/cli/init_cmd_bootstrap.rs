@@ -92,6 +92,42 @@ pub(super) fn ensure_git_lfs_hooks(root: &Path) -> Result<(), String> {
     )
 }
 
+/// Skip slow `pre-commit` / `kiss init` / `git lfs install` subprocesses during integration tests.
+pub(super) fn init_bootstrap_test_fast_stubs(root: &Path) -> Result<(), String> {
+    write_fast_kissconfig_if_missing(root)?;
+    write_fast_pre_commit_hook_if_missing(root)
+}
+
+fn write_fast_kissconfig_if_missing(root: &Path) -> Result<(), String> {
+    if kiss_repo_initialized(root) {
+        return Ok(());
+    }
+    std::fs::write(
+        root.join(".kissconfig"),
+        "[gate]\ntest_coverage_threshold = 90\n",
+    )
+    .map_err(|e| e.to_string())
+}
+
+fn write_fast_pre_commit_hook_if_missing(root: &Path) -> Result<(), String> {
+    if !inside_git_work_tree(root) || pre_commit_hooks_installed(root) {
+        return Ok(());
+    }
+    let hook = root.join(".git/hooks/pre-commit");
+    if let Some(parent) = hook.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&hook, "#!/bin/sh\n# pre-commit\nexit 0\n").map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&hook).map_err(|e| e.to_string())?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&hook, perms).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod unit_tests {
     use super::*;

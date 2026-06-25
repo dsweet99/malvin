@@ -19,9 +19,9 @@ fn seed_log_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
 }
 
 fn write_gc_config_age_only(home: &Path) {
-    std::fs::create_dir_all(home.join(".malvin")).expect("mkdir .malvin");
+    std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
     std::fs::write(
-        home.join(".malvin/config.toml"),
+        home.join(malvin::MALVIN_USER_HOME_DIR).join("config.toml"),
         "[logs]\nmax_age_days = 30\nmax_bytes = \"\"\n",
     )
     .expect("write config");
@@ -85,6 +85,7 @@ fn run_malvin_code_in_workspace(
         .env("PATH", path)
         .args(["--no-tee", "code"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.args(common::FAST_GATE_LOOP_TEST_ARGS);
     cmd.args(["--max-loops", "1", "ship it"]);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")
 }

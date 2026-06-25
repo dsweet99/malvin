@@ -18,7 +18,7 @@ const SESSION_ID: &str = "deferred-log-regression-session";
 const TOOL_CALL_ID: &str = "toolu_test_read_fixture_001";
 const READ_PATH: &str = "/home/user/project/src/index.ts";
 
-fn read_start_empty_raw_input() -> Value {
+pub(crate) fn read_start_empty_raw_input() -> Value {
     json!({
         "method": "session/update",
         "params": {"update": {
@@ -32,7 +32,7 @@ fn read_start_empty_raw_input() -> Value {
     })
 }
 
-fn read_done_empty_raw_input() -> Value {
+pub(crate) fn read_done_empty_raw_input() -> Value {
     json!({
         "method": "session/update",
         "params": {"update": {
@@ -99,7 +99,7 @@ fn defer_trace_writer(trace_file: tokio::fs::File, work_dir: PathBuf) -> PromptT
     writer
 }
 
-async fn tee_read_lifecycle_stdout(work_dir: &Path, start: &Value, done: &Value) -> String {
+pub(crate) async fn tee_read_lifecycle_stdout(work_dir: &Path, start: &Value, done: &Value) -> String {
     let fixture = {
         let _guard = stdout_log_test_guard();
         begin_stdout_log_fixture()
@@ -126,7 +126,7 @@ async fn tee_read_lifecycle_stdout(work_dir: &Path, start: &Value, done: &Value)
 }
 
 #[tokio::test]
-async fn read_done_tee_shows_store_db_path_when_wire_raw_input_empty() {
+pub(crate) async fn read_done_tee_shows_store_db_path_when_wire_raw_input_empty() {
     let tmp = tempfile::tempdir().unwrap();
     install_test_store(&TestStoreSpec {
         cursor_dir: tmp.path(),

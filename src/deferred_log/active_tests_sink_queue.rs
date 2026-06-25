@@ -15,7 +15,7 @@ fn sink_queue_contention_fixture() -> (SharedDeferSink, String, String) {
     (shared, display, log_line)
 }
 
-fn try_log_while_sink_mutex_held(shared: &SharedDeferSink) {
+pub(crate) fn try_log_while_sink_mutex_held(shared: &SharedDeferSink) {
     let _hold = shared
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

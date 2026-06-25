@@ -1,0 +1,21 @@
+Satisfy all constraints.
+
+
+Scope Constraints:
+{{ scope_constraints }}
+
+General Constraints:
+- Agents can overfit tests to kiss's coverage estimator. Look for signs of this. Replace the overfitted tests with good unit tests
+  - Make tests F.I.R.S.T.:  Fast, Independent, Repeatable, Self-Validating, Timely.
+  - For any non-trivial feature addition or for a bug fix, write at least one failing test first.
+  - Call a function or method directly. Test a meaningful aspect of its behavior.
+- Agents can overfit code to tests or evaluation metrics. Look for signs of this (e.g., special-casing). Excise the overfitted code.
+  - Consider metamorphic tests and fuzzing tests to help prevent code from overfitting to tests.
+- NO serious bugs in scope
+- No serious time-complexity inefficiencies in scope
+- No serious memory-complexity inefficiencies in scope
+- Each unit test tests something meaningful. Simple tests are fine. Bogus tests are not.
+- Any code you write should be idiomatic. (For example: Don't use ".inc" files in Rust.)
+
+If you write new code:
+- Stay in scope.

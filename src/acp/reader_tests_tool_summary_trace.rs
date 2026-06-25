@@ -1,7 +1,7 @@
 use crate::tool_summary::{ToolSummaryDetail, ToolSummaryTracker, tool_summary_lines};
 use serde_json::json;
 
-async fn write_parsed_trace_line(
+pub(crate) async fn write_parsed_trace_line(
     writer: &mut crate::acp::PromptTraceWriter,
     coalesce: &mut crate::acp::TraceChunkCoalescer,
     raw_line: &str,
@@ -20,7 +20,7 @@ async fn write_parsed_trace_line(
 }
 
 #[tokio::test]
-async fn coalesced_tool_done_omits_full_stdout_in_trace() {
+pub(crate) async fn coalesced_tool_done_omits_full_stdout_in_trace() {
     let start_line = r#"{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call","toolCallId":"tool_done","kind":"execute","status":"pending","rawInput":{"command":"false"}}}}"#;
     let done_line = r#"{"method":"session/update","params":{"update":{"sessionUpdate":"tool_call_update","toolCallId":"tool_done","kind":"execute","status":"completed","rawOutput":{"exitCode":101,"stdout":"warning: unused import\n","stderr":"error: could not compile\n"}}}}"#;
     let dir = tempfile::tempdir().unwrap();
@@ -59,7 +59,7 @@ async fn coalesced_tool_done_omits_full_stdout_in_trace() {
 }
 
 #[test]
-fn long_command_uses_middle_ellipsis() {
+pub(crate) fn long_command_uses_middle_ellipsis() {
     let long_cmd = format!(
         "cd {} && cargo clippy && cargo nextest run",
         "a/".repeat(30)

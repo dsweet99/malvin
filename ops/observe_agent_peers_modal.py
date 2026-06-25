@@ -12,6 +12,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     APP_REMOTE,
     OBSERVE_AGENT_PEERS_SCRIPT,
@@ -57,7 +58,7 @@ def observe_in_sandbox(
         return json.loads(stdout.strip() or "{}")
     finally:
         if sandbox is not None:
-            sandbox.terminate()
+            release_modal_sandbox(sandbox)
 
 
 @click.command()
@@ -78,7 +79,7 @@ def main(task_dir: Path) -> None:
         / "workspace"
     )
     materialize_workspace(spec, workspace, dry_run=False)
-    malvin_repo, kiss_repo = validate_toolchain_repos()
+    malvin_repo = validate_toolchain_repos()
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
     image = harbor_agent_image(
         spec,
@@ -86,7 +87,6 @@ def main(task_dir: Path) -> None:
         spec.tests_dir,
         dockerfile=spec.dockerfile,
         malvin_repo=malvin_repo,
-        kiss_repo=kiss_repo,
         deepswe_run_py=deepswe_run_py,
     )
     click.echo("Observing cursor-agent TCP peers (open egress)...")
@@ -110,6 +110,7 @@ def observe_agent_peers_entry(*arglist: str) -> None:
         prog_name="modal run ops/observe_agent_peers_modal.py",
         standalone_mode=True,
     )
+
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ use crate::artifacts::{
 use crate::test_utils::with_isolated_home;
 
 /// Regression: an agent running as the same UID can overwrite the on-disk snapshot under
-/// `~/.malvin` after backup; restore must still write the bytes captured at snapshot time.
+/// `~/.malvin_home` after backup; restore must still write the bytes captured at snapshot time.
 #[test]
 fn poisoned_disk_snapshot_does_not_change_restored_workspace_content() {
     with_isolated_home(|work| {

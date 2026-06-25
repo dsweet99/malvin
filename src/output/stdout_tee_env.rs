@@ -24,9 +24,6 @@ pub fn agent_stdout_tee_enabled() -> bool {
 mod tests {
     #[test]
     fn kiss_cov_stdout_tee_env() {
-        let _ = stringify!(stdout_is_interactive);
-        let _ = stringify!(force_stdout_tee_from_env);
-        let _ = stringify!(agent_stdout_tee_enabled);
     }
 }
 

@@ -1,3 +1,5 @@
 - Satisfy any constraints listed in `{{ plan_path }}`.
 - If `{{ plan_path }}` contains a plan: Complete the entire plan.
-- If `{{ plan_path }}` has explicit instructions: Carry out all of the instructions
+- If `{{ plan_path }}` has explicit instructions: Carry out all of the instructions.
+- External evaluation (e.g. Harbor in DeepSWE) may apply hidden tests after your session. Passing `.malvin/checks` is necessary but not sufficient: derive and run tests from every behavioral claim in the plan before declaring `KPOP_SOLVED`.
+- When refactoring classes, keep existing class-level attributes patchable (`monkeypatch.setattr(Class, "attr", ...)`). Do not move them solely to instance state or module-only storage if the class had a class-body binding at task start.

@@ -12,6 +12,7 @@ import modal
 from modal.stream_type import StreamType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from modal_sandbox_lifecycle import release_modal_sandbox
 from deepswe_modal import (
     RESOLVE_CURSOR_CIDRS_IN_SANDBOX_SCRIPT,
     app,
@@ -53,16 +54,17 @@ def main() -> None:
         cidrs = json.loads(out.strip())
         print(f"probe_sec={time.time()-t0:.1f} cidrs={len(cidrs)}")
     finally:
-        probe.terminate()
+        release_modal_sandbox(probe)
 
     allow = modal.Sandbox.create(
-        app=app, image=image, timeout=180, cidr_allowlist=cidrs,
+        app=app, image=image, timeout=180, outbound_cidr_allowlist=cidrs,
     )
     try:
         print(f"gap_sec={time.time()-t0:.1f}")
         run_https(allow)
     finally:
-        allow.terminate()
+        release_modal_sandbox(allow)
+
 
 
 if __name__ == "__main__":

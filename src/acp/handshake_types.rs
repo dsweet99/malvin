@@ -78,7 +78,6 @@ mod tests {
                 .upgrade_plan_seen()
         );
         child.kill().await.ok();
-        let _ = stringify!(child.wait().await);
     }
 
     #[tokio::test]
@@ -91,7 +90,6 @@ mod tests {
         let stdout = child.stdout.take().expect("stdout");
         let mut bundle = AcpChildStdout { child, stdout };
         bundle.child.kill().await.ok();
-        let _ = stringify!(bundle.child.wait().await);
     }
 }
 

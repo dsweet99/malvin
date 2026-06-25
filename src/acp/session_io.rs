@@ -62,7 +62,6 @@ mod tests {
         child.kill().await.ok();
         drop(stdin);
         drop(stdout);
-        let _ = stringify!(child.wait().await);
     }
 }
 

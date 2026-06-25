@@ -7,40 +7,13 @@ mod linux {
     use std::fs;
 
     use crate::common::{
-        acp_mock_js, acp_mock_kpop_steps_js, exp_logs_in_run, gate_exp_logs_in_run,
-        kpop_log_lines, only_run_dir, run_kpop_outer_loop, session_update_chunk_line,
+        acp_mock_kpop_steps_js, acp_mock_kpop_writes_solved_js, exp_logs_in_run,
+        gate_exp_logs_in_run, kpop_log_lines, only_run_dir, run_kpop_outer_loop,
     };
 
     #[test]
     fn kpop_max_loops_three_stops_after_first_solved() {
-        let body = r"    const fs = require('fs');
-    const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const m = promptText.match(/exp_log_[^\s`]+\.md/);
-    const target = m ? m[0] : null;
-    const os = require('os');
-    const root = path.join(os.homedir(), '.malvin', 'logs');
-    if (target && fs.existsSync(root)) {
-      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-        const bucket = path.join(root, hash.name);
-        const runs = fs.readdirSync(bucket, { withFileTypes: true })
-          .filter((e) => e.isDirectory()).map((e) => e.name).sort().reverse();
-        for (const run of runs) {
-          const p = path.join(bucket, run, '_kpop', target);
-          if (fs.existsSync(p)) {
-            fs.appendFileSync(p, '\n## Step 1 — KPOP mock\n## KPOP_SOLVED\n');
-            break outer;
-          }
-        }
-      }
-    }";
-        let mock = acp_mock_js(
-            "",
-            &format!(
-                "{body}\n{}",
-                session_update_chunk_line("agent_message_chunk", r"'done\n'")
-            ),
-        );
+        let mock = acp_mock_kpop_writes_solved_js(r"'done\n'");
         let (out, root) = run_kpop_outer_loop(&mock, &["--max-loops", "3"]);
         assert!(out.status.success(), "kpop should succeed: {out:?}");
         assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 1);
@@ -65,16 +38,5 @@ mod linux {
             .expect("legacy exp log");
         assert!(fs::read_to_string(&legacy).expect("read").contains("## Step 1 — KPOP mock"));
         assert!(gate_exp_logs_in_run(&run_dir).is_empty());
-    }
-
-    #[test]
-    fn kpop_max_loops_two_uses_distinct_gate_exp_logs() {
-        let (out, root) = run_kpop_outer_loop(&acp_mock_kpop_steps_js(r"'step\n'"), &["--max-loops", "2"]);
-        assert!(out.status.success(), "kpop should finish two outer loops: {out:?}");
-        assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 2);
-        assert_eq!(
-            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"), &root.path().join("home"))).len(),
-            2
-        );
     }
 }

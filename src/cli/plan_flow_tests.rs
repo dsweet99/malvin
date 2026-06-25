@@ -8,25 +8,22 @@ use super::plan_flow_test_helpers::{
     test_plan_run_prep_for_plan,
 };
 use super::{
-    prepare_source_plan, resolve_plan_source_path, validate_plan_markers_before_run, PlanArgs,
+    prepare_source_plan, validate_plan_markers_before_run, PlanArgs,
 };
 use crate::artifacts::{
-    detect_rerun_user_span_end, read_plan_metadata, snapshot_plan_artifact, validate_post_1b,
-    validate_post_2, write_plan_metadata, PlanRunMetadata,
+    detect_rerun_user_span_end, plan_user_sidecar_path, read_plan_metadata, restore_interrupted_plan,
+    snapshot_plan_artifact, validate_post_1b, validate_post_2, write_plan_metadata,
+    PlanRunMetadata,
 };
 
 #[test]
-fn resolve_plan_source_path_requires_existing_md() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "x").expect("write");
-    let old = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(tmp.path()).expect("chdir");
-    let got = resolve_plan_source_path("plan.md").expect("resolve");
-    std::env::set_current_dir(old).expect("restore");
-    assert!(got.ends_with("plan.md"));
-    assert!(resolve_plan_source_path("missing.md").is_err());
-    assert!(resolve_plan_source_path("bad path.md").is_err());
+fn plan_args_debug() {
+    let args = PlanArgs {
+        plan_path: "plan.md".to_string(),
+        out_path: "plan.md".to_string(),
+    };
+    let dbg = format!("{args:?}");
+    assert!(dbg.contains("plan.md"));
 }
 
 #[test]
@@ -42,11 +39,27 @@ fn ambiguous_markers_without_clean_rerun_fail_validation() {
 }
 
 #[test]
-fn rerun_truncates_machine_block_before_prompts() {
+fn validate_post_2_requires_decisions_after_open_questions() {
+    let ok = "## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. q\n\n## DECISIONS\n0. **Verdict:** none **Evidence:** n/a\n";
+    validate_post_2(ok).expect("valid");
+}
+
+#[test]
+fn rerun_restores_user_plan_from_sidecar() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "## Restatement\nold\n").expect("write");
+    std::fs::write(plan_user_sidecar_path(&plan), "# User\n").expect("sidecar");
+    prepare_source_plan(&plan).expect("prep");
+    assert_eq!(std::fs::read_to_string(&plan).expect("read"), "# User\n");
+}
+
+#[test]
+fn rerun_truncates_legacy_machine_block_before_prompts() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "# User\n\n---\nBEGIN_MALVIN\nold\n").expect("write");
-    prepare_source_plan(&plan).expect("prep");
+    restore_interrupted_plan(&plan).expect("restore");
     assert_eq!(std::fs::read_to_string(&plan).expect("read"), "# User\n\n");
 }
 
@@ -66,7 +79,7 @@ fn metadata_written_after_1a_shape() {
 
 #[test]
 fn post_1b_file_shape_includes_numbered_open_questions() {
-    let content = "# Plan\n\n---\nBEGIN_MALVIN\n## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. First?\n2. Second?\n";
+    let content = "## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. First?\n2. Second?\n";
     validate_post_1b(content).expect("valid");
 }
 
@@ -76,28 +89,13 @@ fn run_dir_snapshots_paths() {
     let run_dir = tmp.path().join("run");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "# User\n\n---\nBEGIN_MALVIN\n## Restatement\n").expect("write");
+    std::fs::write(&plan, "## Restatement\nrestated\n").expect("write");
     snapshot_plan_artifact(&run_dir, "plan.p1a.md", &plan).expect("snap");
     assert!(run_dir.join("plan.p1a.md").is_file());
 }
 
 #[test]
-fn plan_args_debug() {
-    let args = PlanArgs {
-        plan_path: "plan.md".to_string(),
-    };
-    let dbg = format!("{args:?}");
-    assert!(dbg.contains("plan.md"));
-}
-
-#[test]
-fn validate_post_2_requires_decisions_after_open_questions() {
-    let ok = "# Plan\n\n---\nBEGIN_MALVIN\n## Restatement\nr\n\n## Critique\nc\n\n## Open questions\n1. q\n\n## DECISIONS\n0. **Verdict:** none **Evidence:** n/a\n";
-    validate_post_2(ok).expect("valid");
-}
-
-#[test]
-fn detect_rerun_user_span_end_from_clean_file() {
+fn detect_rerun_user_span_end_from_legacy_file() {
     let content = "# User\n\n---\nBEGIN_MALVIN\nx\n";
     assert_eq!(detect_rerun_user_span_end(content).expect("ok"), Some(8));
 }
@@ -106,13 +104,10 @@ fn detect_rerun_user_span_end_from_clean_file() {
 fn commit_plan_prompt_1a_writes_metadata_and_snapshot() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
-    let user = "# User\n";
-    std::fs::write(&plan, post_1a_content(user)).expect("write");
+    std::fs::write(&plan, post_1a_content()).expect("write");
     let prep = test_plan_run_prep_for_plan(&tmp, &artifacts, &plan);
     let content = std::fs::read_to_string(&plan).expect("read");
-    let span = commit_plan_prompt_1a(&prep, &content).expect("commit 1a");
-    let expected = detect_rerun_user_span_end(&content).expect("detect").expect("span");
-    assert_eq!(span, expected);
+    commit_plan_prompt_1a(&prep, &content).expect("commit 1a");
     assert!(artifacts.run_dir.join("plan.p1a.md").is_file());
 }
 
@@ -120,7 +115,7 @@ fn commit_plan_prompt_1a_writes_metadata_and_snapshot() {
 fn commit_plan_prompt_1b_snapshots_post_critique_file() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
-    std::fs::write(&plan, post_1b_content("# User\n")).expect("write");
+    std::fs::write(&plan, post_1b_content()).expect("write");
     let prep = test_plan_run_prep_for_plan(&tmp, &artifacts, &plan);
     commit_plan_prompt_1b(&prep, &std::fs::read_to_string(&plan).expect("read")).expect("commit");
     assert!(artifacts.run_dir.join("plan.p1b.md").is_file());
@@ -130,7 +125,7 @@ fn commit_plan_prompt_1b_snapshots_post_critique_file() {
 fn commit_plan_prompt_2_writes_decisions_artifact() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
-    std::fs::write(&plan, post_2_content("# User\n")).expect("write");
+    std::fs::write(&plan, post_2_content()).expect("write");
     let prep = test_plan_run_prep_for_plan(&tmp, &artifacts, &plan);
     commit_plan_prompt_2(&prep, &std::fs::read_to_string(&plan).expect("read")).expect("commit");
     let decisions = std::fs::read_to_string(artifacts.run_dir.join("plan.p2.decisions.md"))
@@ -139,16 +134,18 @@ fn commit_plan_prompt_2_writes_decisions_artifact() {
 }
 
 #[test]
-fn commit_plan_prompt_3_splices_fenced_response() {
+fn commit_plan_prompt_3_overwrites_fenced_response() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
-    let user = "# User\n";
-    std::fs::write(&plan, user).expect("write");
+    std::fs::write(&plan, "## Restatement\n").expect("write");
+    std::fs::write(plan_user_sidecar_path(&plan), "# User\n").expect("sidecar");
     let prep = test_plan_run_prep_for_plan(&tmp, &artifacts, &plan);
-    commit_plan_prompt_3(&prep, user.len(), "```markdown\n# Revised\n\nShip.\n```").expect("commit");
+    commit_plan_prompt_3(&prep, "```markdown\n# Revised\n\nShip.\n```").expect("commit");
     let out = std::fs::read_to_string(&plan).expect("read");
-    assert!(out.contains("# Revised"));
-    assert!(out.contains("---\nBEGIN_MALVIN"));
+    assert_eq!(out, "# Revised\n\nShip.\n");
+    assert!(!out.contains("BEGIN_MALVIN"));
+    assert!(!out.contains("# User"));
+    assert!(!plan_user_sidecar_path(&plan).is_file());
 }
 
 #[test]
@@ -156,5 +153,5 @@ fn commit_plan_prompt_3_rejects_empty_fence() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (artifacts, plan) = plan_flow_test_prep(&tmp);
     let prep = test_plan_run_prep(&tmp, &artifacts, &plan, HashMap::new());
-    assert!(commit_plan_prompt_3(&prep, 0, "```markdown\n```").is_err());
+    assert!(commit_plan_prompt_3(&prep, "```markdown\n```").is_err());
 }

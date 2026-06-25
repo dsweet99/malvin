@@ -1,8 +1,8 @@
-//! Host sandbox: process-group isolation and RSS for all malvin-started processes.
+//! Host sandbox: process-group isolation and USS for all malvin-started processes.
 
 use std::collections::HashSet;
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
@@ -18,7 +18,8 @@ static MALVIN_SPAWN_BASELINE: OnceLock<HashSet<u32>> = OnceLock::new();
 struct ActiveSandboxSession {
     pgid: Option<u32>,
     baseline: HashSet<u32>,
-    work_dir: std::path::PathBuf,
+    work_dir: PathBuf,
+    acp_lock_slot: String,
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
@@ -29,11 +30,9 @@ pub fn init_malvin_spawn_baseline() {
         if !crate::acp::test_no_real_agent_enabled() {
             crate::acp::reap_baseline_amnestied_agent_orphans_blocking();
         }
-        let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(crate::acp::snapshot_pids));
     }
     #[cfg(not(unix))]
     {
-        let _ = stringify!(MALVIN_SPAWN_BASELINE.get_or_init(HashSet::new));
     }
 }
 
@@ -62,11 +61,22 @@ pub fn isolate_tokio_child_process_group(cmd: &mut tokio::process::Command) {
 #[cfg(not(unix))]
 pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
+/// Cap glibc arena count for sandbox children.
+fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
+    cmd.env("MALLOC_ARENA_MAX", "2");
+}
+
+/// Cap glibc arena count for sandbox children.
+fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
+    cmd.env("MALLOC_ARENA_MAX", "2");
+}
+
 /// Build a std [`std::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
+    apply_sandbox_resource_limits(&mut cmd);
     cmd
 }
 
@@ -75,6 +85,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
+    apply_sandbox_resource_limits_tokio(&mut cmd);
     cmd
 }
 
@@ -103,6 +114,7 @@ pub fn note_active_sandbox_session(
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
+    let acp_lock_slot = crate::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
         .lock()
@@ -110,20 +122,32 @@ pub fn note_active_sandbox_session(
         pgid,
         baseline,
         work_dir: work_dir.to_path_buf(),
+        acp_lock_slot,
     });
     Ok(())
 }
 
+/// Records an active mini (`--mini`) session for dead-before-next enforcement.
+pub fn note_active_mini_session(work_dir: &Path) -> Result<(), String> {
+    note_active_sandbox_session(None, malvin_spawn_baseline(), work_dir)
+}
+
+/// Clears the recorded mini session after teardown completes.
+pub fn clear_active_mini_session() {
+    clear_active_sandbox_session();
+}
+
 /// Clears the recorded sandbox session after teardown completes.
 pub fn clear_active_sandbox_session() {
-    let work_dir = ACTIVE_SANDBOX_SESSION
+    let session = ACTIVE_SANDBOX_SESSION
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .take()
-        .map(|session| session.work_dir);
-    if let Some(work_dir) = work_dir {
-        release_acp_spawn_lock(&work_dir);
+        .take();
+    if let Some(session) = session {
+        release_acp_spawn_lock(&session.work_dir, &session.acp_lock_slot);
     }
+    #[cfg(unix)]
+    crate::acp::clear_session_spawn_affiliation();
 }
 
 #[cfg(test)]
@@ -131,7 +155,7 @@ pub(crate) fn clear_active_sandbox_session_for_test() {
     clear_active_sandbox_session();
 }
 
-/// RSS for malvin descendants, the agent process group, and reparented session orphans.
+/// USS for malvin descendants, the agent process group, and reparented session orphans.
 #[cfg(unix)]
 #[must_use]
 pub fn malvin_session_rss_bytes(
@@ -150,6 +174,7 @@ pub fn malvin_session_rss_bytes(_: Option<u32>, _: &HashSet<u32>) -> Option<u64>
 
 #[cfg(unix)]
 pub(crate) fn sandbox_still_alive(agent_pgid: Option<u32>, session_baseline: &HashSet<u32>) -> bool {
+    crate::acp::refresh_session_spawn_affiliation(agent_pgid, session_baseline);
     sandbox_monitor_pids(agent_pgid, session_baseline)
         .into_iter()
         .any(crate::acp::pid_alive)
@@ -164,25 +189,12 @@ pub(crate) fn sandbox_still_alive(_: Option<u32>, _: &HashSet<u32>) -> bool {
 mod tests {
     #[test]
     fn kiss_cov_malvin_sandbox_symbols() {
-        let _ = stringify!(init_malvin_spawn_baseline);
         let _ = crate::acp::reap_baseline_amnestied_agent_orphans_blocking;
-        let _ = stringify!(malvin_spawn_baseline);
-        let _ = stringify!(isolate_child_process_group);
-        let _ = stringify!(isolate_tokio_child_process_group);
-        let _ = stringify!(malvin_session_rss_bytes);
-        let _ = stringify!(sandbox_still_alive);
-        let _ = stringify!(malvin_std_command);
-        let _ = stringify!(malvin_tokio_command);
-        let _ = stringify!(assert_dead_before_next_spawn);
-        let _ = stringify!(note_active_sandbox_session);
-        let _ = stringify!(clear_active_sandbox_session);
-        let _ = stringify!(ActiveSandboxSession);
         let _ = super::clear_active_sandbox_session_for_test;
         let _ = super::init_malvin_spawn_baseline;
         let _ = super::malvin_spawn_baseline;
         let _ = super::isolate_child_process_group;
         let _ = super::isolate_tokio_child_process_group;
-        let _ = stringify!(super::malvin_tokio_command("true"));
         let _ = super::sandbox_still_alive;
     }
 }

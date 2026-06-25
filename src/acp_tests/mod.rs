@@ -18,10 +18,15 @@ pub(crate) mod reader_tests_reader_loop;
 pub(crate) mod reader_tests_prompt_round_health;
 #[path = "../acp/reader_tests_retry_policy.rs"]
 pub(crate) mod reader_tests_retry_policy;
+#[cfg(test)]
+#[path = "../acp/reader_tests_retry_policy_kiss_cov_tests.rs"]
+mod reader_tests_retry_policy_kiss_cov_tests;
 #[path = "../acp/reader_tests_retry_policy_session_new.rs"]
 pub(crate) mod reader_tests_retry_policy_session_new;
 #[path = "backoff_helpers_tests.rs"]
 mod backoff_helpers_tests;
+#[path = "client_impl_prompt_retry_tests.rs"]
+mod client_impl_prompt_retry_tests;
 #[path = "../acp/reader_tests_tool_summary.rs"]
 pub(crate) mod reader_tests_tool_summary;
 #[path = "../acp/reader_tests_tool_summary_human.rs"]
@@ -67,3 +72,6 @@ mod cursor_credentials_tests;
 
 #[path = "../acp/deferred_log_plan_regression.rs"]
 mod deferred_log_plan_regression;
+#[cfg(test)]
+#[path = "acp_helpers_kiss_cov.rs"]
+mod acp_helpers_kiss_cov;

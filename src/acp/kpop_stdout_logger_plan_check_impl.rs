@@ -14,7 +14,7 @@ use crate::tool_summary::{
 use serde_json::json;
 
 #[tokio::test]
-async fn h14_fast_execute_done_emits_one_stdout_summary_line() {
+pub(crate) async fn h14_fast_execute_done_emits_one_stdout_summary_line() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) =
@@ -41,7 +41,7 @@ async fn h14_fast_execute_done_emits_one_stdout_summary_line() {
 }
 
 #[test]
-fn h15_read_done_shows_path_from_start_raw_input() {
+pub(crate) fn h15_read_done_shows_path_from_start_raw_input() {
     let tmp = tempfile::tempdir().unwrap();
     let path = "src/acp/trace_line_write.rs";
     let start = json!({
@@ -74,7 +74,7 @@ fn h15_read_done_shows_path_from_start_raw_input() {
 }
 
 #[test]
-fn h16_search_done_includes_query_from_start_raw_input() {
+pub(crate) fn h16_search_done_includes_query_from_start_raw_input() {
     let start = json!({
         "method": "session/update",
         "params": {"update": {
@@ -103,7 +103,7 @@ fn h16_search_done_includes_query_from_start_raw_input() {
 }
 
 #[test]
-fn h17_relativize_tool_path_under_work_dir() {
+pub(crate) fn h17_relativize_tool_path_under_work_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let abs = tmp.path().join("src/foo.rs");
     let rel = relativize_tool_path(abs.to_str().unwrap(), Some(tmp.path()));
@@ -111,7 +111,7 @@ fn h17_relativize_tool_path_under_work_dir() {
 }
 
 #[tokio::test]
-async fn h18_raw_output_writer_suppresses_tool_stdout_tee() {
+pub(crate) async fn h18_raw_output_writer_suppresses_tool_stdout_tee() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) =
@@ -130,7 +130,7 @@ async fn h18_raw_output_writer_suppresses_tool_stdout_tee() {
 }
 
 #[tokio::test]
-async fn h19_thought_stdout_three_space_indent_no_brackets() {
+pub(crate) async fn h19_thought_stdout_three_space_indent_no_brackets() {
     let _guard = stdout_log_test_guard();
     let mut fixture = begin_stdout_log_fixture();
     fixture.trace_path = fixture.tmp.path().join("trace-thought.log");
@@ -163,7 +163,7 @@ async fn h19_thought_stdout_three_space_indent_no_brackets() {
 }
 
 #[tokio::test]
-async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
+pub(crate) async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) =
@@ -196,7 +196,7 @@ async fn h20_styled_tool_summary_stdout_line_omits_payload_brackets() {
 }
 
 #[tokio::test]
-async fn h23_start_and_done_tool_summary_omit_payload_brackets() {
+pub(crate) async fn h23_start_and_done_tool_summary_omit_payload_brackets() {
     let path = "src/acp/trace_line_write.rs";
     let (start_line, done_line) =
         super::kpop_stdout_logger_plan_check_bracket::tee_read_tool_bracket_pair_stdout(path).await;
@@ -212,7 +212,7 @@ async fn h23_start_and_done_tool_summary_omit_payload_brackets() {
 }
 
 #[tokio::test]
-async fn h21_unstyled_tool_summary_omits_brackets() {
+pub(crate) async fn h21_unstyled_tool_summary_omits_brackets() {
     let _guard = stdout_log_test_guard();
     let fixture = begin_stdout_log_fixture();
     let (mut writer, mut coalesce) = open_trace_writer(&fixture.trace_path).await;

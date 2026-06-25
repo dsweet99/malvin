@@ -61,9 +61,9 @@ mod tests {
 
     #[test]
     fn kiss_cov_revise_gate_helpers() {
-        let _ = stringify!(run_revise);
-        let _ = stringify!(run_startup::prepare_revise_kpop_run);
-        let _ = stringify!(crate::cli::gate_kpop_workflow::GateLoopBehavior::REVISE);
+        let _ = super::run_loop::validate_revise_output;
+        let _ = super::run_startup::prepare_revise_kpop_run;
+        let _: Option<super::run_startup::ReviseKpopPrepared> = None;
     }
 
     #[test]

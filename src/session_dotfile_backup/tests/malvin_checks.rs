@@ -68,7 +68,8 @@ fn malvin_checks_backup_retries_on_existing_collision() {
         let home = std::env::var_os("HOME").unwrap();
         let dir = Path::new(&home)
             .join(".malvin")
-            .join("malvin_checks_snapshots");
+            .join("snapshots")
+            .join("malvin_checks");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::create_dir_all(dir.join("aaaaa")).unwrap();
 

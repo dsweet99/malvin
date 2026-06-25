@@ -5,6 +5,7 @@
         clippy::mutex_integer,
         clippy::await_holding_lock,
         clippy::unnecessary_struct_initialization,
+        clippy::large_stack_arrays,
         dead_code,
         clippy::use_self
     )
@@ -37,6 +38,7 @@ mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
 mod gate_loop_session;
+mod sequential_requests;
 mod sandbox_oom;
 mod current_state;
 pub mod mem_limit_config;
@@ -46,13 +48,22 @@ pub use sandbox_oom::{
 };
 pub use current_state::format_current_state;
 mod acp_spawn_lock;
+mod acp_spawn_sweep;
 mod session_name;
 pub use session_name::{
     acquire_name, acquire_session_name, assert_no_peer_name_lock, generate_auto_name,
     generate_auto_name_with, name_path, names_registry_root, parse_holder_pid, release_name,
     validate_name, SessionNameGuard,
 };
+pub use acp_spawn_lock::{
+    acquire_acp_spawn_lock_for_slot, active_acp_lock_slot,
+    assert_no_peer_acp_spawn_lock_for_slot, release_acp_spawn_lock, set_active_acp_lock_slot,
+};
+pub use acp_spawn_sweep::sweep_stale_acp_spawn_locks;
 pub mod malvin_sandbox;
+#[cfg(test)]
+#[path = "malvin_sandbox_tests.rs"]
+mod malvin_sandbox_tests;
 pub mod process_group_rss;
 mod alnum_id;
 mod malvin_short_id;
@@ -64,9 +75,9 @@ pub mod workspace_paths;
 pub use workspace_paths::{
     canonical_work_dir_for_logs, find_malvin_logs_root, is_malvin_workspace, malvin_advice_path,
     malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
-    read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
+    malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
     write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
-    MALVIN_LOGS_REL, WORK_DIR_MANIFEST,
+    MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL, MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
 };
 mod terminal_palette;
 mod run_id;
@@ -85,6 +96,7 @@ mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
 mod acp_test_mock_js;
 pub use acp_test_mock_js::acp_mock_js;
+pub mod agent_backend;
 pub mod acp;
 pub mod ansi_strip;
 pub use acp::{
@@ -121,6 +133,10 @@ pub use session_dotfile_backup::KissConfigBackup;
 
 pub mod artifacts;
 mod child_health;
+mod test_poll;
+pub use test_poll::{
+    test_post_teardown_poll_interval, test_post_teardown_wait_budget, test_wait_until_async,
+};
 pub mod config;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
@@ -162,6 +178,10 @@ pub mod repo_checks;
 #[path = "cli/source_detect.rs"]
 pub mod source_detect;
 
+#[cfg(test)]
+#[path = "cli/source_detect_kiss_cov_tests.rs"]
+mod source_detect_kiss_cov_tests;
+
 #[path = "cli/init_cmd.rs"]
 pub mod init_cmd;
 
@@ -174,8 +194,15 @@ pub mod inspire_flow;
 #[path = "cli/plan_flow.rs"]
 pub mod plan_flow;
 
+#[path = "cli/gate_kpop_workflow.rs"]
+pub mod gate_kpop_workflow;
+
 #[path = "cli/mod.rs"]
 pub mod cli;
+
+#[cfg(test)]
+#[path = "lib_test_modules.rs"]
+mod lib_test_modules;
 
 #[cfg(test)]
 #[path = "acp/test_unix_bin.rs"]
@@ -185,51 +212,17 @@ pub mod acp_test_unix_bin;
 #[path = "acp_session_tests/mod.rs"]
 pub(crate) mod acp_session_unit_tests;
 
-#[cfg(test)]
-#[path = "acp_tests/mod.rs"]
-mod acp_tests;
-
-#[cfg(test)]
-#[path = "acp_transport_tests/mod.rs"]
-mod acp_transport_tests;
-
-#[cfg(test)]
-mod coverage_kiss;
-
-#[cfg(test)]
-mod coverage_kiss_agent;
-
-#[cfg(test)]
-mod orchestrator_tests;
-
-#[cfg(test)]
-mod malvin_kiss_coverage;
-
-#[cfg(test)]
-#[path = "acp/transport/rpc_part1_kiss_test.rs"]
-mod acp_rpc_part1_kiss_test;
-
-
-#[cfg(test)]
-mod agent_phase_kiss_cov;
-
-#[cfg(test)]
-#[path = "output/output_kiss_cov.rs"]
-mod output_kiss_cov;
-
-#[cfg(test)]
-#[path = "cli/source_detect_kiss_cov.rs"]
-mod source_detect_kiss_cov;
-
-#[cfg(all(test, unix))]
-mod test_stderr_capture;
-
-#[cfg(test)]
-mod malvin_test_seed;
-#[cfg(test)]
-pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
-#[cfg(test)]
-pub mod test_utils;
-
-#[cfg(test)]
-pub mod test_agent_client;
+#[cfg(test)] mod acp_tests;
+#[cfg(test)] #[path = "acp_transport_tests/mod.rs"] mod acp_transport_tests;
+#[cfg(test)] mod coverage_kiss;
+#[cfg(test)] mod coverage_kiss_agent;
+#[cfg(test)] mod orchestrator_tests;
+#[cfg(test)] mod malvin_kiss_coverage;
+#[cfg(test)] #[path = "acp/transport/rpc_part1_kiss_test.rs"] mod acp_rpc_part1_kiss_test;
+#[cfg(test)] mod agent_phase_kiss_cov;
+#[cfg(test)] #[path = "workspace_paths_tests.rs"] mod workspace_paths_tests;
+#[cfg(all(test, unix))] mod test_stderr_capture;
+#[cfg(test)] mod malvin_test_seed;
+#[cfg(test)] pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
+#[cfg(test)] pub mod test_utils;
+#[cfg(test)] pub mod test_agent_client;
