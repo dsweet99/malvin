@@ -151,6 +151,13 @@ fn kiss_cov_tool_summary_human_symbols_for_kiss() {
 }
 
 #[test]
+fn kiss_cov_classify_bash_comment_symbols_for_kiss() {
+    let _ = super::classify_bash::tool_comment_log_prefix;
+    let _ = super::classify_bash::TOOL_COMMENT_LOG_PREFIX_CHARS;
+    let _: Option<super::classify_bash::ClassifiedToolLineInput> = None;
+}
+
+#[test]
 fn kiss_cov_tool_summary_human_b_detail_symbols_for_kiss() {
     let _ = super::human_b::read_output_path;
     let _ = super::human_b::human_edit_subject_path;

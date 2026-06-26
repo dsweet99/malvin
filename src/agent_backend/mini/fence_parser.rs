@@ -1,38 +1,40 @@
 //! Extract ```bash … ``` fenced blocks from assistant text.
 
+#[path = "fence_parse_state.rs"]
+mod fence_parse_state;
+
+use fence_parse_state::FenceParseState;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BashFence {
     pub command: String,
+    pub comment: Option<String>,
 }
 
 /// Returns bash fence commands in document order.
 #[must_use]
 pub fn parse_bash_fences(text: &str) -> Vec<BashFence> {
-    let mut out = Vec::new();
-    let mut lines = text.lines();
-    while let Some(line) = lines.next() {
-        let trimmed = line.trim();
-        if !is_bash_fence_open(trimmed) {
-            continue;
-        }
-        let mut cmd = String::new();
-        for inner in lines.by_ref() {
-            if inner.trim() == "```" {
-                break;
-            }
-            if !cmd.is_empty() {
-                cmd.push('\n');
-            }
-            cmd.push_str(inner);
-        }
-        if !cmd.trim().is_empty() {
-            out.push(BashFence { command: cmd });
-        }
+    let mut state = FenceParseState::new();
+    for line in text.lines() {
+        state.handle_line(line);
     }
-    out
+    state.out
 }
 
-fn is_bash_fence_open(trimmed: &str) -> bool {
+pub(crate) fn comment_from_pending(pending: &[String]) -> Option<String> {
+    if pending.is_empty() {
+        return None;
+    }
+    let joined = pending.join(" ");
+    let normalized: String = joined.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
+}
+
+pub(crate) fn is_bash_fence_open(trimmed: &str) -> bool {
     if !trimmed.starts_with("```") {
         return false;
     }
@@ -73,6 +75,32 @@ mod tests {
         let blocks = parse_bash_fences(text);
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].command, "echo hi");
+        assert_eq!(blocks[0].comment.as_deref(), Some("thought"));
+    }
+
+    #[test]
+    fn fence_parser_comment_from_prose_before_fence() {
+        let text = "List recent logs\n```bash\nls -ltr logs\n```";
+        let blocks = parse_bash_fences(text);
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].comment.as_deref(), Some("List recent logs"));
+    }
+
+    #[test]
+    fn fence_parser_multiple_blocks_get_local_comments() {
+        let text = "first step\n```bash\necho one\n```\nsecond step\n```bash\necho two\n```";
+        let blocks = parse_bash_fences(text);
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0].comment.as_deref(), Some("first step"));
+        assert_eq!(blocks[1].comment.as_deref(), Some("second step"));
+    }
+
+    #[test]
+    fn fence_parser_no_prose_yields_no_comment() {
+        let text = "```bash\necho hi\n```";
+        let blocks = parse_bash_fences(text);
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].comment.is_none());
     }
 
     #[test]
@@ -103,6 +131,11 @@ mod tests {
         let blocks = parse_bash_fences(text);
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].command, "true");
+    }
+
+    #[test]
+    fn kiss_witness_fence_parse_state_type() {
+        let _ = std::mem::size_of::<super::fence_parse_state::FenceParseState>();
     }
 
     #[test]

@@ -13,6 +13,9 @@ mod kiss_coverage;
 mod client_retry_tests;
 #[cfg(test)]
 mod trace_tests;
+#[cfg(test)]
+#[path = "trace_comment_tests.rs"]
+mod trace_comment_tests;
 pub use trace::MiniTraceSink;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};

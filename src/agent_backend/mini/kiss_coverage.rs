@@ -20,8 +20,9 @@ fn kiss_witness_bash_exec_result_type() {
 fn kiss_witness_fence_parser_and_loop_types() {
     let fence = super::fence_parser::BashFence {
         command: "echo hi".into(),
+        comment: None,
     };
-    let super::fence_parser::BashFence { command } = std::hint::black_box(fence);
+    let super::fence_parser::BashFence { command, comment: _ } = std::hint::black_box(fence);
     assert_eq!(command, "echo hi");
     let _ = std::mem::size_of::<super::fence_parser::BashFence>();
     let config = super::loop_driver::LoopDriverConfig {

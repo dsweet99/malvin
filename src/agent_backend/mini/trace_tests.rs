@@ -28,7 +28,7 @@ fn test_io(no_tee: bool) -> crate::acp::AgentIoOptions {
     }
 }
 
-fn trace_sink(tmp: &tempfile::TempDir, no_tee: bool) -> MiniTraceSink {
+pub(crate) fn trace_sink(tmp: &tempfile::TempDir, no_tee: bool) -> MiniTraceSink {
     MiniTraceSink::new(Some(tmp.path().to_path_buf()), test_io(no_tee))
 }
 
@@ -42,22 +42,22 @@ fn parse_trace_lines(path: &std::path::Path) -> Vec<serde_json::Value> {
 
 #[test]
 fn format_mini_bash_tool_line_run_fallback_matches_acp_execute_done_shape() {
-    let line = format_mini_bash_tool_line("echo hi", 0, Duration::from_millis(12));
+    let line = format_mini_bash_tool_line("echo hi", 0, Duration::from_millis(12), None);
     assert_eq!(line, "Run echo hi · 12ms · ✓");
-    let fail = format_mini_bash_tool_line("false", 1, Duration::from_millis(5));
+    let fail = format_mini_bash_tool_line("false", 1, Duration::from_millis(5), None);
     assert_eq!(fail, "Run false · 5ms · ✗ exit 1");
 }
 
 #[test]
 fn format_mini_bash_tool_line_classifies_cat_as_read() {
-    let line = format_mini_bash_tool_line("cat file.txt", 0, Duration::from_millis(3));
+    let line = format_mini_bash_tool_line("cat file.txt", 0, Duration::from_millis(3), None);
     assert!(line.starts_with("Read file.txt"));
 }
 
 #[test]
 fn format_mini_bash_tool_line_flattens_multiline_commands_to_single_line() {
     let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
-    let line = format_mini_bash_tool_line(command, 0, Duration::from_millis(3));
+    let line = format_mini_bash_tool_line(command, 0, Duration::from_millis(3), None);
     assert!(
         !line.contains('\n'),
         "tool summary must be one physical line; got {line:?}"
@@ -89,14 +89,14 @@ fn mini_trace_acp_schema_llm_usage() {
 fn mini_trace_acp_schema_bash_exec() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sink = trace_sink(&tmp, true);
-    sink.mini_bash_exec("echo hi", 0, Duration::from_millis(1));
+    sink.mini_bash_exec("echo hi", 0, Duration::from_millis(1), None);
     let text = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
     assert!(text.contains("direction"));
     assert!(text.contains("tool_call"));
     assert!(!text.contains("mini_bash_exec"));
 }
 
-fn with_stdout_log_test_lock<F: FnOnce()>(f: F) {
+pub(crate) fn with_stdout_log_test_lock<F: FnOnce()>(f: F) {
     let _guard = crate::output::STDOUT_LOG_TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -110,7 +110,7 @@ fn mini_stdout_emits_bash_tool_summary_with_t_tag() {
         let log_path = tmp.path().join("stdout.log");
         crate::output::set_stdout_log_path(Some(log_path.clone()));
         let sink = trace_sink(&tmp, false);
-        sink.mini_bash_exec("echo hi", 0, Duration::from_millis(3));
+        sink.mini_bash_exec("echo hi", 0, Duration::from_millis(3), None);
         let text = std::fs::read_to_string(log_path).expect("stdout log");
         assert!(text.contains("t|"));
         assert!(text.contains("Run echo hi"));
@@ -126,7 +126,7 @@ fn mini_stdout_cat_emits_read_summary() {
         let log_path = tmp.path().join("stdout.log");
         crate::output::set_stdout_log_path(Some(log_path.clone()));
         let sink = trace_sink(&tmp, false);
-        sink.mini_bash_exec("cat README.md", 0, Duration::from_millis(3));
+        sink.mini_bash_exec("cat README.md", 0, Duration::from_millis(3), None);
         let text = std::fs::read_to_string(log_path).expect("stdout log");
         assert!(text.contains("Read README.md"));
         crate::output::set_stdout_log_path(None);
@@ -141,7 +141,7 @@ fn mini_stdout_multiline_bash_emits_single_t_tagged_line() {
         crate::output::set_stdout_log_path(Some(log_path.clone()));
         let sink = trace_sink(&tmp, false);
         let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
-        sink.mini_bash_exec(command, 0, Duration::from_millis(3));
+        sink.mini_bash_exec(command, 0, Duration::from_millis(3), None);
         let text = std::fs::read_to_string(log_path).expect("stdout log");
         assert_eq!(
             text.lines().count(),
@@ -217,7 +217,7 @@ fn mini_no_tee_still_writes_acp_trace_assistant() {
 fn mini_no_tee_still_writes_acp_trace_bash() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sink = trace_sink(&tmp, true);
-    sink.mini_bash_exec("echo hi", 0, Duration::from_millis(1));
+    sink.mini_bash_exec("echo hi", 0, Duration::from_millis(1), None);
     let text = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
     assert!(text.contains("tool_call"));
 }

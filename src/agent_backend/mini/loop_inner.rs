@@ -226,7 +226,7 @@ fn append_bash_observation(
         let t0 = Instant::now();
         let result = run_bash_command(session.cwd.as_path(), &fence.command).map_err(AgentError)?;
         let elapsed = t0.elapsed();
-        trace.mini_bash_exec(&fence.command, result.exit_code, elapsed);
+        trace.mini_bash_exec(&fence.command, result.exit_code, elapsed, fence.comment.as_deref());
         crate::agent_phase::note_mini_bash_exec_done(result.exit_code, &fence.command);
         results.push(result);
     }

@@ -12,7 +12,7 @@ use crate::acp::AgentIoOptions;
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_M, WHO_T};
 use crate::tool_summary::{
     bash_kind_wire_name, classify_bash_command, format_classified_tool_line,
-    tool_summary_stdout_display,
+    tool_summary_stdout_display, ClassifiedToolLineInput,
 };
 
 pub struct MiniTraceSink {
@@ -68,7 +68,13 @@ impl MiniTraceSink {
         }
     }
 
-    pub fn mini_bash_exec(&self, command: &str, exit_code: i32, elapsed: Duration) {
+    pub fn mini_bash_exec(
+        &self,
+        command: &str,
+        exit_code: i32,
+        elapsed: Duration,
+        comment: Option<&str>,
+    ) {
         let kind = classify_bash_command(command);
         if let Some(trace) = self.acp_trace() {
             emit_bash_tool_call(&trace, bash_kind_wire_name(kind), command, exit_code);
@@ -76,7 +82,13 @@ impl MiniTraceSink {
         if self.io.no_tee || crate::output::stdout_suppressed() {
             return;
         }
-        let plain = format_classified_tool_line(kind, command, exit_code, elapsed);
+        let plain = format_classified_tool_line(ClassifiedToolLineInput {
+            kind,
+            command,
+            exit_code,
+            elapsed,
+            comment,
+        });
         let display = tool_summary_stdout_display(&plain);
         let ts = crate::output::timestamp_now_string();
         crate::output::print_stdout_acp_tool_summary_tee(
@@ -125,11 +137,17 @@ fn assistant_chunks(text: &str) -> Vec<&str> {
 
 /// Legacy helper kept for trace unit tests.
 #[allow(dead_code)]
-pub(crate) fn format_mini_bash_tool_line(command: &str, exit_code: i32, elapsed: Duration) -> String {
-    format_classified_tool_line(
-        classify_bash_command(command),
+pub(crate) fn format_mini_bash_tool_line(
+    command: &str,
+    exit_code: i32,
+    elapsed: Duration,
+    comment: Option<&str>,
+) -> String {
+    format_classified_tool_line(ClassifiedToolLineInput {
+        kind: classify_bash_command(command),
         command,
         exit_code,
         elapsed,
-    )
+        comment,
+    })
 }

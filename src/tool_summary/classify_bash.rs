@@ -53,14 +53,32 @@ fn extract_edit_subject(cmd: &str) -> String {
     cmd.split_whitespace().last().unwrap_or("file").to_string()
 }
 
-pub fn format_classified_tool_line(
-    kind: BashToolKind,
-    command: &str,
-    exit_code: i32,
-    elapsed: Duration,
-) -> String {
-    let dur = humanize_duration(elapsed);
-    let subject = match kind {
+pub const TOOL_COMMENT_LOG_PREFIX_CHARS: usize = 30;
+
+pub fn tool_comment_log_prefix(comment: &str) -> Option<String> {
+    let normalized: String = comment.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() {
+        return None;
+    }
+    Some(
+        normalized
+            .chars()
+            .take(TOOL_COMMENT_LOG_PREFIX_CHARS)
+            .collect(),
+    )
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ClassifiedToolLineInput<'a> {
+    pub kind: BashToolKind,
+    pub command: &'a str,
+    pub exit_code: i32,
+    pub elapsed: Duration,
+    pub comment: Option<&'a str>,
+}
+
+fn classified_tool_subject(kind: BashToolKind, command: &str) -> String {
+    match kind {
         BashToolKind::Read => {
             let path = extract_read_subject(command);
             shorten_middle(
@@ -86,18 +104,39 @@ pub fn format_classified_tool_line(
             let flattened = escape_tool_subject_fragment(command.trim());
             shorten_middle(&flattened, TOOL_DISPLAY_MAX_WIDTH)
         }
-    };
-    let prefix = match kind {
+    }
+}
+
+const fn classified_tool_prefix(kind: BashToolKind) -> &'static str {
+    match kind {
         BashToolKind::Read => "Read",
         BashToolKind::Search => "Search",
         BashToolKind::Edit => "Edit",
         BashToolKind::Run => "Run",
-    };
-    if exit_code == 0 {
-        format!("{prefix} {subject} · {dur} · ✓")
-    } else {
-        format!("{prefix} {subject} · {dur} · ✗ exit {exit_code}")
     }
+}
+
+fn classified_tool_status_line(
+    head: &str,
+    dur: &str,
+    exit_code: i32,
+    comment: Option<&str>,
+) -> String {
+    let comment_seg = comment.and_then(tool_comment_log_prefix);
+    match (exit_code == 0, comment_seg.as_deref()) {
+        (true, Some(c)) => format!("{head} · {c} · {dur} · ✓"),
+        (true, None) => format!("{head} · {dur} · ✓"),
+        (false, Some(c)) => format!("{head} · {c} · {dur} · ✗ exit {exit_code}"),
+        (false, None) => format!("{head} · {dur} · ✗ exit {exit_code}"),
+    }
+}
+
+pub fn format_classified_tool_line(input: ClassifiedToolLineInput<'_>) -> String {
+    let dur = humanize_duration(input.elapsed);
+    let subject = classified_tool_subject(input.kind, input.command);
+    let prefix = classified_tool_prefix(input.kind);
+    let head = format!("{prefix} {subject}");
+    classified_tool_status_line(&head, &dur, input.exit_code, input.comment)
 }
 
 pub const fn bash_kind_wire_name(kind: BashToolKind) -> &'static str {
@@ -143,13 +182,40 @@ mod tests {
 
     #[test]
     fn format_read_line() {
-        let line = format_classified_tool_line(
-            BashToolKind::Read,
-            "cat README.md",
-            0,
-            Duration::from_millis(10),
-        );
+        let line = format_classified_tool_line(ClassifiedToolLineInput {
+            kind: BashToolKind::Read,
+            command: "cat README.md",
+            exit_code: 0,
+            elapsed: Duration::from_millis(10),
+            comment: None,
+        });
         assert!(line.starts_with("Read README.md"));
         assert!(line.contains("✓"));
+    }
+
+    #[test]
+    fn tool_comment_log_prefix_truncates_to_30_chars() {
+        let long = "abcdefghijklmnopqrstuvwxyz0123456789";
+        assert_eq!(
+            tool_comment_log_prefix(long).as_deref(),
+            Some("abcdefghijklmnopqrstuvwxyz0123")
+        );
+        assert_eq!(tool_comment_log_prefix("  hi   there  ").as_deref(), Some("hi there"));
+        assert!(tool_comment_log_prefix("   ").is_none());
+    }
+
+    #[test]
+    fn format_line_inserts_comment_segment_before_duration() {
+        let line = format_classified_tool_line(ClassifiedToolLineInput {
+            kind: BashToolKind::Run,
+            command: "git status",
+            exit_code: 0,
+            elapsed: Duration::from_millis(4),
+            comment: Some("Check working tree before commit"),
+        });
+        assert_eq!(
+            line,
+            "Run git status · Check working tree before comm · 4ms · ✓"
+        );
     }
 }

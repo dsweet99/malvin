@@ -14,7 +14,11 @@ mod kiss_coverage;
 #[cfg(test)]
 mod smoke_coverage;
 
-pub use classify_bash::{bash_kind_wire_name, classify_bash_command, format_classified_tool_line, BashToolKind};
+pub use classify_bash::{
+    bash_kind_wire_name, classify_bash_command, format_classified_tool_line,
+    tool_comment_log_prefix, BashToolKind, ClassifiedToolLineInput,
+    TOOL_COMMENT_LOG_PREFIX_CHARS,
+};
 #[allow(unused_imports)]
 pub use types::{
     ToolSummaryDetail, ToolSummaryLines, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH,

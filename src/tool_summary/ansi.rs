@@ -127,11 +127,22 @@ pub(crate) fn ansi_style_tool_segment_running_or_path(seg: &str) -> String {
     {
         return ansi_style_done_verb(seg);
     }
-    if seg.contains("matches") || seg.contains("exit ") || seg.contains("ms") || seg.contains('s')
-    {
+    if is_tool_metadata_segment(seg) {
         return format!("{ANSI_DIM}{seg}{ANSI_RESET}");
     }
     ansi_style_path_tail(seg)
+}
+
+fn is_tool_metadata_segment(seg: &str) -> bool {
+    let t = seg.trim();
+    if t.contains("matches") || t.contains("exit ") {
+        return true;
+    }
+    if t.ends_with("ms") {
+        return true;
+    }
+    // Second durations from humanize_duration, e.g. "1.2s" — not prose comments.
+    t.ends_with('s') && t.as_bytes().first().is_some_and(u8::is_ascii_digit)
 }
 
 pub(crate) fn is_byte_size_segment(seg: &str) -> bool {

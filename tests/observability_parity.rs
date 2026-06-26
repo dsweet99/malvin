@@ -36,6 +36,60 @@ fn mock_llm(steps: Vec<MockStep>) -> LlmBackend {
 }
 
 #[tokio::test]
+async fn observability_parity_tool_log_includes_fence_comment() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    malvin::output::set_stdout_log_path(Some(log_path.clone()));
+    let trace = trace_with_run_dir(&tmp, false);
+    let mut session = LoopDriverSession {
+        messages: vec![],
+        cwd: tmp.path().to_path_buf(),
+    };
+    let target = tmp.path().join("seen.txt");
+    std::fs::write(&target, "x").expect("write");
+
+    run_inner_loop(LoopDriverRun {
+        llm: &mock_llm(vec![
+            MockStep::Ok(CompletionResponse {
+                content: format!(
+                    "Inspect target file contents\n```bash\ncat {}\n```",
+                    target.display()
+                ),
+                usage: None,
+            }),
+            MockStep::Ok(CompletionResponse {
+                content: "done".into(),
+                usage: None,
+            }),
+            MockStep::Ok(CompletionResponse {
+                content: "done".into(),
+                usage: None,
+            }),
+        ]),
+        session: &mut session,
+        user_prompt: "go",
+        config: &LoopDriverConfig {
+            max_bash_turns: 4,
+            max_http_retries: 1,
+            mini_constraints: "c",
+        },
+        trace: &trace,
+        timing: None,
+        llm_phase: None,
+        single_attempt: true,
+    })
+    .await
+    .expect("loop");
+
+    let stdout = std::fs::read_to_string(log_path).expect("stdout");
+    assert!(
+        stdout.contains("Inspect target file contents"),
+        "tool log must carry fence comment; got {stdout:?}"
+    );
+    malvin::output::set_stdout_log_path(None);
+}
+
+#[tokio::test]
 async fn observability_parity_trace_acp_schema_after_mock_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let trace = trace_with_run_dir(&tmp, true);
