@@ -15,7 +15,12 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
     std::fs::write(workspace.join(".malvin/checks"), content).expect("write .malvin/checks");
 }
 
+/// Requires isolated `HOME`; see plan.md.
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
+    assert!(
+        std::env::var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1"),
+        "seed_malvin_config requires with_isolated_home or activate_test_home (see plan.md)"
+    );
     let path = malvin::malvin_config_path(workspace);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("mkdir ~/.malvin_home");

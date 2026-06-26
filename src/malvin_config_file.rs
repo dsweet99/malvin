@@ -94,6 +94,9 @@ pub fn open_malvin_config(work_dir: &Path) -> Result<MalvinConfig, String> {
 }
 
 pub(crate) fn ensure_config_parent_dir(path: &Path) -> Result<(), String> {
+    if path == crate::workspace_paths::malvin_home_config_path() {
+        crate::workspace_paths::assert_home_malvin_config_disk_io_allowed("create")?;
+    }
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
@@ -112,6 +115,9 @@ pub(crate) fn read_on_disk_config_value(path: &Path) -> Result<toml::Value, Stri
 }
 
 pub(crate) fn write_config_value(path: &Path, value: &toml::Value) -> Result<(), String> {
+    if path == crate::workspace_paths::malvin_home_config_path() {
+        crate::workspace_paths::assert_home_malvin_config_disk_io_allowed("write")?;
+    }
     let serialized =
         toml::to_string_pretty(value).map_err(|e| format!("serialize {}: {e}", path.display()))?;
     let mut content = serialized;

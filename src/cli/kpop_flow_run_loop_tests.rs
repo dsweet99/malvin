@@ -44,19 +44,20 @@ fn kpop_loop_snapshot_ensures_home_config_exists() {
 
 #[test]
 fn snapshot_kpop_loop_dotfiles_and_exp_log_builds_paths() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    let snap = snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 2).expect("snapshot");
-    let KpopLoopSnapshot {
-        exp_iter,
-        exp_log_path,
-        backups: _,
-    } = snap;
-    assert_eq!(exp_iter, 1);
-    assert!(exp_log_path.is_file());
-    assert!(exp_log_path.to_string_lossy().contains("_g1.md"));
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
+        let snap = snapshot_kpop_loop_dotfiles_and_exp_log(&artifacts, 1, 2).expect("snapshot");
+        let KpopLoopSnapshot {
+            exp_iter,
+            exp_log_path,
+            backups: _,
+        } = snap;
+        assert_eq!(exp_iter, 1);
+        assert!(exp_log_path.is_file());
+        assert!(exp_log_path.to_string_lossy().contains("_g1.md"));
+    });
 }
 
 #[test]

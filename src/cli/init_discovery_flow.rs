@@ -203,10 +203,11 @@ mod tests {
 
     #[test]
     fn load_init_agent_config_reads_workspace_defaults() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        crate::seed_malvin_config(tmp.path(), "");
-        let cfg = load_init_agent_config(tmp.path());
-        assert_eq!(cfg.max_hypotheses, crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES);
+        crate::test_utils::with_isolated_home(|work| {
+            crate::seed_malvin_config(work, "");
+            let cfg = load_init_agent_config(work);
+            assert_eq!(cfg.max_hypotheses, crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES);
+        });
     }
 }
 

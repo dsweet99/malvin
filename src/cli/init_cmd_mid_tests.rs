@@ -121,12 +121,13 @@ mod tests {
 
     #[test]
     fn ensure_malvin_workspace_layout_sanitizes_cargo_package_name() {
-        let tmp = tempfile::tempdir().unwrap();
-        let nested = tmp.path().join("My-Project-2");
-        std::fs::create_dir_all(&nested).unwrap();
-        ensure_malvin_workspace_layout(&nested, false, &[Language::Rust]).unwrap();
-        let toml = std::fs::read_to_string(nested.join("Cargo.toml")).unwrap();
-        assert!(toml.contains("name = \"my_project_2\""));
+        crate::test_utils::with_isolated_home(|work| {
+            let nested = work.join("My-Project-2");
+            std::fs::create_dir_all(&nested).unwrap();
+            ensure_malvin_workspace_layout(&nested, false, &[Language::Rust]).unwrap();
+            let toml = std::fs::read_to_string(nested.join("Cargo.toml")).unwrap();
+            assert!(toml.contains("name = \"my_project_2\""));
+        });
     }
 
     #[test]

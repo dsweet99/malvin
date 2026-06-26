@@ -9,6 +9,7 @@ use crate::workspace_paths::{
 
 #[test]
 fn path_helpers_and_workspace_marker() {
+    let _ = crate::seed_malvin_config;
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     assert_eq!(malvin_checks_path(w), w.join(MALVIN_CHECKS_REL));
@@ -103,7 +104,7 @@ fn remove_legacy_malvin_checks_file_deletes_legacy_not_layout_checks() {
 #[test]
 fn home_malvin_config_delete_blocked_without_test_mutation_flag() {
     use crate::artifacts::SessionDotfileBackups;
-    use crate::malvin_config_file::open_malvin_config;
+    use crate::malvin_config_file::{open_malvin_config, write_config_value};
 
     crate::test_utils::with_isolated_home(|work| {
         let cfg = malvin_config_path(work);
@@ -116,6 +117,11 @@ fn home_malvin_config_delete_blocked_without_test_mutation_flag() {
         assert!(
             cfg.is_file(),
             "without mutation flag, Missing restore must not delete home config"
+        );
+        let value: toml::Value = toml::from_str("mem_limit_gb = 99").expect("toml");
+        assert!(
+            write_config_value(&cfg, &value).is_err(),
+            "write must fail without mutation consent"
         );
         crate::test_utils::allow_home_malvin_config_mutation_for_test();
     });

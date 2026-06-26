@@ -145,7 +145,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert_prompt_contains_each(
         &kpop,
         &[
-            "Restate the problem clearly",
+            "Brainstorm",
             "Hypothesize",
             "Complete up to `2` KPOP iterations",
             "iterations budget",

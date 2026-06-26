@@ -20,16 +20,33 @@ pub const MALVIN_USER_HOME_DIR: &str = ".malvin_home";
 /// Global user config filename under [`malvin_user_home_root`].
 pub const MALVIN_HOME_CONFIG_FILE: &str = "config.toml";
 
-/// When set to `1` during `cargo test`, code may delete or recreate `~/.malvin_home/config.toml`.
+/// When set to `1` during `cargo test`, code may create/write/delete `~/.malvin_home/config.toml`.
 pub const MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION: &str = "MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION";
 
-/// Whether home-config delete/recreate paths may run (always true outside test builds).
-pub(crate) fn home_malvin_config_delete_allowed() -> bool {
+/// Whether home-config disk mutation may run (always true outside test builds).
+pub(crate) fn home_malvin_config_disk_io_allowed() -> bool {
     if cfg!(test) {
         std::env::var(MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION).as_deref() == Ok("1")
     } else {
         true
     }
+}
+
+/// Refuse home-config disk mutation in test builds when isolation consent is absent.
+pub(crate) fn assert_home_malvin_config_disk_io_allowed(op: &str) -> Result<(), String> {
+    if home_malvin_config_disk_io_allowed() {
+        Ok(())
+    } else {
+        Err(format!(
+            "refusing {op} on ~/.malvin_home/config.toml without test isolation; \
+             use with_isolated_home or activate_test_home (see plan.md)"
+        ))
+    }
+}
+
+/// Whether home-config delete/recreate paths may run (always true outside test builds).
+pub(crate) fn home_malvin_config_delete_allowed() -> bool {
+    home_malvin_config_disk_io_allowed()
 }
 
 /// Run-directory file recording the canonical workspace cwd for this run.

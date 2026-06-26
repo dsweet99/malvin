@@ -147,7 +147,7 @@ pub fn apply_workspace_config_defaults(
     }
 
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let agent = crate::malvin_config_file::open_malvin_config(&cwd)?.agent;
+    let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
 
     if cli.command.is_none() && cli.bare_args.len() > 1 {
         apply_bare_sequential_config_defaults(matches, cli, &agent);
