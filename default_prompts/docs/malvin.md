@@ -88,7 +88,9 @@ When `--mini` is set:
 - `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4`.
 - `--no-force` is a no-op (nothing to approve).
 - `--max-acp-retries` applies independently to gate iteration retries, HTTP completion retries, and is documented as agent retries.
-- Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and as a `COST:` line immediately after `TIMING:` on finalize.
+- Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and as fields on the same `TIMING:` finalize line (`total_cost`, `mean_cost_per_tx`, …).
+- `trace.jsonl` uses the same ACP-shaped `direction` / `message` records as non-mini runs (synthetic, not JSON-RPC wire capture).
+- Bash tool summaries on stdout use the same Read / Search / Edit / Run vocabulary as ACP when heuristics match.
 
 Environment variables (mini only):
 

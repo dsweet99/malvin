@@ -5,7 +5,6 @@ use std::time::Duration;
 use serde_json::{Value, json};
 
 use super::cost::cost_stats;
-use super::report_cost_line::format_cost_stdout_line_from_json;
 use super::{RUN_TIMING_JSON_FILE, RunTiming};
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
@@ -65,9 +64,6 @@ pub(super) fn write_json_and_print_summary(r: &RunTiming, run_dir: &Path) -> io:
     serde_json::to_writer_pretty(file, &json)?;
 
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(&json));
-    if let Some(cost_line) = format_cost_stdout_line_from_json(&json) {
-        print_stdout_line(MALVIN_WHO, &cost_line);
-    }
     Ok(())
 }
 
@@ -84,9 +80,6 @@ pub fn print_summary_from_run_dir(run_dir: &Path) -> io::Result<()> {
     let file = std::fs::File::open(path)?;
     let json: Value = serde_json::from_reader(file)?;
     print_stdout_line(MALVIN_WHO, &format_timing_stdout_line_from_json(&json));
-    if let Some(cost_line) = format_cost_stdout_line_from_json(&json) {
-        print_stdout_line(MALVIN_WHO, &cost_line);
-    }
     Ok(())
 }
 
@@ -215,9 +208,28 @@ fn run_timing_json_includes_cost_block_under_mini() {
 
 #[test]
 fn no_cost_line_when_no_cost_data() {
+    use super::report_cost_line::format_cost_stdout_line_from_json;
     use crate::run_timing::RunTiming;
 
     let r = RunTiming::default();
     let json = to_json_value(&r);
     assert!(format_cost_stdout_line_from_json(&json).is_none());
+}
+
+#[test]
+fn cost_fields_folded_into_timing_line_not_separate_stdout() {
+    use crate::run_timing::RunTiming;
+    use malvin_mini::ResponseUsage;
+
+    let mut r = RunTiming::default();
+    r.record_mini_http_cost(&ResponseUsage {
+        prompt_tokens: None,
+        completion_tokens: None,
+        total_tokens: Some(1),
+        cost: Some(0.0842),
+    });
+    let json = to_json_value(&r);
+    let line = format_timing_stdout_line_from_json(&json);
+    assert!(line.contains("total_cost = 0.0842"));
+    assert!(!line.starts_with("COST:"));
 }

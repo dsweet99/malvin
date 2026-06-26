@@ -1,3 +1,4 @@
+mod acp_trace_shim;
 mod bash_adapter;
 mod client;
 mod client_prompt_log;
@@ -15,4 +16,7 @@ mod trace_tests;
 pub use trace::MiniTraceSink;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};
-pub use loop_driver::{LlmBackend, MockScript, MockStep};
+pub use loop_driver::{
+    run_inner_loop, LoopDriverConfig, LoopDriverOutcome, LoopDriverRun, LoopDriverSession,
+    LlmBackend, MockScript, MockStep,
+};

@@ -50,10 +50,7 @@ impl MiniAgentClient {
             session: None,
             last_response: None,
             timing: None,
-            trace: MiniTraceSink {
-                run_dir: None,
-                io,
-            },
+            trace: MiniTraceSink::new(None, io),
         })
     }
 
@@ -67,10 +64,7 @@ impl MiniAgentClient {
             session: None,
             last_response: None,
             timing: None,
-            trace: MiniTraceSink {
-                run_dir: None,
-                io,
-            },
+            trace: MiniTraceSink::new(None, io),
         }
     }
 
@@ -136,9 +130,12 @@ impl MiniAgentClient {
         crate::prompts::enforce_no_unresolved_braces_in(prompt, opts.stdout_bracket_label)
             .map_err(|e| AgentError(e.0))?;
 
+        let mini_constraints = default_file("mini_constraints.md").unwrap_or("");
+        let effective_prompt = format!("{mini_constraints}\n\n{prompt}");
+
         write_prompt_log(PromptLogWrite {
             client: self,
-            prompt,
+            prompt: &effective_prompt,
             log_path,
             who,
             opts: &opts,
@@ -147,8 +144,10 @@ impl MiniAgentClient {
         let driver_config = LoopDriverConfig {
             max_bash_turns: self.config.max_bash_turns,
             max_http_retries: self.config.max_http_retries,
-            mini_constraints: default_file("mini_constraints.md").unwrap_or(""),
+            mini_constraints,
         };
+
+        self.trace.log_outgoing_prompt(&effective_prompt);
 
         self.run_coder_prompt_with_retries(prompt, &driver_config, opts).await
     }

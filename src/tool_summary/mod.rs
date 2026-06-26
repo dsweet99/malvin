@@ -1,3 +1,4 @@
+mod classify_bash;
 mod types;
 mod parse;
 mod parse_acp;
@@ -13,6 +14,7 @@ mod kiss_coverage;
 #[cfg(test)]
 mod smoke_coverage;
 
+pub use classify_bash::{bash_kind_wire_name, classify_bash_command, format_classified_tool_line, BashToolKind};
 #[allow(unused_imports)]
 pub use types::{
     ToolSummaryDetail, ToolSummaryLines, ToolSummaryTracker, TOOL_DISPLAY_MAX_WIDTH,

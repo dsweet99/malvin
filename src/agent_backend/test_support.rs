@@ -15,10 +15,7 @@ pub fn mini_done_response() -> CompletionResponse {
 
 #[must_use]
 pub fn mini_test_trace() -> MiniTraceSink {
-    MiniTraceSink {
-        run_dir: None,
-        io: test_io(),
-    }
+    MiniTraceSink::new(None, test_io())
 }
 
 #[must_use]

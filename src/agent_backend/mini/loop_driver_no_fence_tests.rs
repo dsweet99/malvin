@@ -1,3 +1,4 @@
+use crate::agent_backend::mini::MiniTraceSink;
 use super::{
     run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, MockStep,
 };
@@ -43,6 +44,47 @@ async fn loop_driver_no_fence_triggers_nudge_before_final() {
         .messages
         .iter()
         .any(|m| m.content == "your last response had no ```bash``` block"));
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let trace = MiniTraceSink::new(Some(tmp.path().to_path_buf()), crate::acp::AgentIoOptions {
+        force: false,
+        no_tee: true,
+        raw_output: true,
+        show_thoughts_on_stdout: false,
+        emit_stdout_markdown: false,
+        log_full_outgoing_prompts: false,
+    });
+    let llm2 = mock_llm(vec![
+        MockStep::Ok(CompletionResponse {
+            content: "no fence".into(),
+            usage: None,
+        }),
+        MockStep::Ok(CompletionResponse {
+            content: "still no".into(),
+            usage: None,
+        }),
+    ]);
+    let mut session2 = LoopDriverSession {
+        messages: vec![],
+        cwd: std::env::temp_dir(),
+    };
+    let result = run_inner_loop(LoopDriverRun {
+        llm: &llm2,
+        session: &mut session2,
+        user_prompt: "go",
+        config: &LoopDriverConfig {
+            max_bash_turns: 2,
+            max_http_retries: 3,
+            mini_constraints: "constraints",
+        },
+        trace: &trace,
+        timing: None,
+        llm_phase: None,
+        single_attempt: true,
+    })
+    .await;
+    assert!(result.is_err());
+    let prompts = std::fs::read_to_string(tmp.path().join("prompts.log")).expect("prompts");
+    assert!(prompts.contains("your last response had no ```bash``` block"));
 }
 
 #[tokio::test]

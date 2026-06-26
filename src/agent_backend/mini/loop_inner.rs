@@ -39,11 +39,61 @@ pub(crate) struct TurnContext {
     pub bash_executed: bool,
 }
 
-/// Run the inner loop for one user prompt (already includes mini constraints when caller prepends).
-///
-/// # Errors
-///
-/// Returns [`AgentError`] when HTTP or bash budget is exhausted.
+/// Run the inner loop for one user prompt (constraints prepended by caller).
+struct TurnDispatch<'a> {
+    assistant_text: &'a str,
+    session: &'a mut LoopDriverSession,
+    trace: &'a crate::agent_backend::mini::trace::MiniTraceSink,
+    transcript: &'a mut String,
+    no_fence_nudge_used: &'a mut bool,
+    bash_executed: &'a mut bool,
+    final_text: &'a mut String,
+    max_bash_turns: u32,
+    turn: u32,
+}
+
+fn apply_turn_action(action: TurnAction, ctx: TurnDispatch<'_>) -> Result<bool, AgentError> {
+    let TurnDispatch {
+        assistant_text,
+        session,
+        trace,
+        transcript,
+        no_fence_nudge_used,
+        bash_executed,
+        final_text,
+        max_bash_turns,
+        turn,
+    } = ctx;
+    match action {
+        TurnAction::Done(text) => {
+            *final_text = text;
+            trace.mini_assistant(final_text);
+            Ok(true)
+        }
+        TurnAction::Continue => {
+            trace.stream_assistant_chunks(assistant_text);
+            if !*no_fence_nudge_used {
+                *no_fence_nudge_used = true;
+                session.messages.push(ChatMessage {
+                    role: ChatRole::User,
+                    content: NO_FENCE_NUDGE.into(),
+                });
+                trace.log_nudge(NO_FENCE_NUDGE);
+            }
+            Ok(false)
+        }
+        TurnAction::RunBash(fences) => {
+            trace.stream_assistant_chunks(assistant_text);
+            append_bash_observation(session, &fences, trace, transcript)?;
+            *bash_executed = true;
+            if turn + 1 >= max_bash_turns {
+                return Err(exhausted_error(max_bash_turns, transcript));
+            }
+            Ok(false)
+        }
+    }
+}
+
 pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome, AgentError> {
     let LoopDriverRun {
         llm,
@@ -81,31 +131,25 @@ pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome,
             content: assistant_text.clone(),
         });
 
-        match classify_turn(&assistant_text, &TurnContext {
+        let action = classify_turn(&assistant_text, &TurnContext {
             no_fence_nudge_used,
             bash_executed,
-        }) {
-            TurnAction::Done(text) => {
-                final_text = text;
-                trace.mini_assistant(&final_text);
-                break;
-            }
-            TurnAction::Continue => {
-                if !no_fence_nudge_used {
-                    no_fence_nudge_used = true;
-                    session.messages.push(ChatMessage {
-                        role: ChatRole::User,
-                        content: NO_FENCE_NUDGE.into(),
-                    });
-                }
-            }
-            TurnAction::RunBash(fences) => {
-                append_bash_observation(session, &fences, trace, &mut transcript)?;
-                bash_executed = true;
-                if turn + 1 >= config.max_bash_turns {
-                    return Err(exhausted_error(config.max_bash_turns, &transcript));
-                }
-            }
+        });
+        if apply_turn_action(
+            action,
+            TurnDispatch {
+                assistant_text: &assistant_text,
+                session,
+                trace,
+                transcript: &mut transcript,
+                no_fence_nudge_used: &mut no_fence_nudge_used,
+                bash_executed: &mut bash_executed,
+                final_text: &mut final_text,
+                max_bash_turns: config.max_bash_turns,
+                turn,
+            },
+        )? {
+            break;
         }
     }
 

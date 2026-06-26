@@ -114,6 +114,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn mini_write_prompt_log_includes_effective_constraints() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(true);
+        client.prompts_log_run_dir = Some(tmp.path().to_path_buf());
+        let log = tmp.path().join("kpop.log");
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "constraints block\n\nbody text",
+            log_path: &log,
+            who: "kpop",
+            opts: &CoderPromptOptions::default(),
+        })
+        .expect("write");
+        let text = std::fs::read_to_string(&log).expect("read");
+        assert!(text.contains("constraints block"));
+        assert!(text.contains("body text"));
+        let run_prompts = std::fs::read_to_string(tmp.path().join("prompts.log")).expect("mirror");
+        assert!(run_prompts.contains("constraints block"));
+    }
+
+    #[tokio::test]
     async fn mini_write_prompt_log_appends_log_file() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let client = test_client(true);
