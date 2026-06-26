@@ -7,7 +7,7 @@ use crate::cli::{Cli, Commands, SharedOpts};
 use crate::malvin_config_file::AgentConfig;
 use clap::{CommandFactory, FromArgMatches};
 
-fn write_agent_config(work_dir: &std::path::Path) {
+pub(super) fn write_agent_config(work_dir: &std::path::Path) {
     let path = crate::malvin_config_path(work_dir);
     let mut text = std::fs::read_to_string(&path).expect("read");
     if text.contains("[agent]") {
@@ -15,6 +15,7 @@ fn write_agent_config(work_dir: &std::path::Path) {
             .lines()
             .filter(|line| {
                 !line.starts_with("model =")
+                    && !line.starts_with("\"model-mini\"")
                     && !line.starts_with("max_hypotheses =")
                     && !line.starts_with("max_loops =")
                     && !line.starts_with("max_loops_code =")
@@ -25,12 +26,12 @@ fn write_agent_config(work_dir: &std::path::Path) {
             .join("\n");
     }
     text.push_str(
-        "\n[agent]\nmodel = \"cfg-model\"\nmax_hypotheses = 42\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
+        "\n[agent]\nmodel = \"cfg-model\"\n\"model-mini\" = \"cfg-mini-model\"\nmax_hypotheses = 42\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
     );
     std::fs::write(&path, text).expect("write");
 }
 
-fn with_seeded_agent_config(f: impl FnOnce()) {
+pub(super) fn with_seeded_agent_config(f: impl FnOnce()) {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
@@ -85,6 +86,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
 
     let agent = AgentConfig {
         model: "cfg".into(),
+        model_mini: "cfg-mini".into(),
         max_hypotheses: 40,
         max_loops: 8,
         max_loops_code: 6,

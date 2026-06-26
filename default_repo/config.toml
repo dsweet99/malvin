@@ -4,6 +4,7 @@ theme = "dark"
 
 [agent]
 model = "auto"
+"model-mini" = "anthropic/claude-sonnet-4"
 max_hypotheses = 5
 max_loops = 1
 max_loops_code = 3

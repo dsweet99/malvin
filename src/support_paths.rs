@@ -52,6 +52,9 @@ pub fn command_line() -> Option<&'static str> {
 
 pub const DEFAULT_CLI_MODEL: &str = "auto";
 
+/// Default `OpenRouter` model slug for `--mini` when config/CLI use `"auto"`.
+pub const MINI_DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+
 /// Default bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
 pub const DEFAULT_MAX_ACP_RETRIES: u32 = 3;
 

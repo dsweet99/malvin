@@ -1,6 +1,6 @@
 //! Model slug resolution for `--mini`.
 
-pub const MINI_DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+pub use crate::support_paths::MINI_DEFAULT_MODEL;
 
 /// Resolve `--model auto` to the v1 hardcoded default; pass through other slugs.
 #[must_use]

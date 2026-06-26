@@ -85,7 +85,8 @@ Use the in-process mini agent backend (OpenRouter HTTP + bash fence loop) instea
 
 When `--mini` is set:
 
-- `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4`.
+- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `anthropic/claude-sonnet-4`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
+- `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
 - `--no-force` is a no-op (nothing to approve).
 - `--max-acp-retries` applies independently to gate iteration retries, HTTP completion retries, and is documented as agent retries.
 - Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and as fields on the same `TIMING:` finalize line (`total_cost`, `mean_cost_per_tx`, …).

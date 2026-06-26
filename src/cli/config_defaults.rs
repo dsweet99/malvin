@@ -33,12 +33,22 @@ pub(crate) fn apply_loop_defaults(
     }
 }
 
+fn apply_mini_model_default(matches: &ArgMatches, shared: &mut SharedOpts, agent: &AgentConfig) {
+    if !shared.mini {
+        return;
+    }
+    if !global_flag_from_command_line(matches, "model") {
+        shared.model = agent.model_mini.clone();
+    }
+}
+
 pub(crate) fn apply_bare_sequential_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
     agent: &AgentConfig,
 ) {
     apply_shared_config_defaults(matches, &mut cli.shared, agent);
+    apply_mini_model_default(matches, &mut cli.shared, agent);
     if !subcommand_flag_from_command_line(matches, "kpop", "max_loops") {
         cli.bare_max_loops = agent.max_loops;
     }
@@ -158,6 +168,7 @@ pub fn apply_workspace_config_defaults(
         return Ok(());
     };
     apply_shared_config_defaults(matches, &mut cli.shared, &agent);
+    apply_mini_model_default(matches, &mut cli.shared, &agent);
     apply_gate_loop_command_defaults(matches, command, &agent);
     Ok(())
 }
@@ -196,3 +207,7 @@ pub fn parse_cli_with_config_defaults(
 #[cfg(test)]
 #[path = "config_defaults_tests.rs"]
 mod config_defaults_tests;
+
+#[cfg(test)]
+#[path = "config_defaults_tests_mini.rs"]
+mod config_defaults_tests_mini;

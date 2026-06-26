@@ -12,7 +12,7 @@ List model ids from the installed Cursor agent CLI. No malvin prompts and no `./
 
 ## Intention
 
-Discover valid `--model` values for other malvin commands.
+Discover valid `--model` values for other malvin commands (ACP / Cursor CLI). For `--mini`, model slugs come from OpenRouter; configure `[agent]."model-mini"` or pass `--model` (see `malvin --doc` under `--mini`).
 
 ## Usage
 

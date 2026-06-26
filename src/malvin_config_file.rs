@@ -6,13 +6,16 @@ use crate::log_gc_config::{LogsGcConfig, parse_logs_gc_config};
 use crate::terminal_palette::TerminalTheme;
 use crate::mem_limit_config::{default_mem_limit_gb, parse_mem_limit_gb};
 use crate::output::print_log_warning;
-use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES};
+use crate::support_paths::{DEFAULT_CLI_MODEL, DEFAULT_MAX_ACP_RETRIES, MINI_DEFAULT_MODEL};
 use crate::workspace_paths::malvin_config_path;
 
 #[path = "malvin_config_open.rs"]
 mod malvin_config_open;
+#[path = "malvin_config_agent.rs"]
+mod malvin_config_agent;
 pub use malvin_config_open::ensure_malvin_config_file_if_missing;
 use malvin_config_open::create_malvin_config_from_template;
+pub(crate) use malvin_config_agent::parse_agent_config;
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
@@ -26,6 +29,7 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentConfig {
     pub model: String,
+    pub model_mini: String,
     pub max_hypotheses: usize,
     /// Gate-loop budget for kpop and bare invocation.
     pub max_loops: usize,
@@ -38,6 +42,7 @@ impl Default for AgentConfig {
     fn default() -> Self {
         Self {
             model: DEFAULT_CLI_MODEL.to_string(),
+            model_mini: MINI_DEFAULT_MODEL.to_string(),
             max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_loops: DEFAULT_MAX_LOOPS,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
@@ -194,27 +199,6 @@ pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
     }
 }
 
-pub(crate) fn parse_agent_config(text: &str) -> Result<AgentConfig, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
-    let agent = value
-        .get("agent")
-        .ok_or_else(|| "missing [agent] section".to_string())?;
-    Ok(agent_config_from_table(agent))
-}
-
-pub(crate) fn agent_config_from_table(agent: &toml::Value) -> AgentConfig {
-    let defaults = AgentConfig::default();
-    AgentConfig {
-        model: read_string(agent.get("model")).unwrap_or(defaults.model),
-        max_hypotheses: read_usize(agent.get("max_hypotheses")).unwrap_or(defaults.max_hypotheses),
-        max_loops: read_usize(agent.get("max_loops")).unwrap_or(defaults.max_loops),
-        max_loops_code: read_usize(agent.get("max_loops_code")).unwrap_or(defaults.max_loops_code),
-        max_acp_retries: read_u32(agent.get("max_acp_retries")).unwrap_or(defaults.max_acp_retries),
-    }
-}
-
 pub(crate) fn read_string(value: Option<&toml::Value>) -> Option<String> {
     value?.as_str().map(str::to_string)
 }
@@ -238,6 +222,10 @@ pub(crate) fn read_u32(value: Option<&toml::Value>) -> Option<u32> {
 pub(crate) fn read_u64(value: Option<&toml::Value>) -> Option<u64> {
     parse_toml_integer(value).and_then(|i| u64::try_from(i).ok())
 }
+
+#[cfg(test)]
+#[path = "malvin_config_file_tests_model_mini.rs"]
+mod malvin_config_file_tests_model_mini;
 
 #[cfg(test)]
 #[path = "malvin_config_file_tests.rs"]
