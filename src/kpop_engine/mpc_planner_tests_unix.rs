@@ -38,7 +38,7 @@ macro_rules! mpc_enabled_workflow {
         std::fs::create_dir_all(cfg_path.parent().expect("parent")).expect("mkdir");
         std::fs::write(&cfg_path, "mpc = true\n").expect("write mpc config");
         let mock = $work.join("mock-mpc-agent");
-        let _env = install_mock_agent_env($work, &mock);
+        let env = install_mock_agent_env($work, &mock);
         let script = mpc_append_mock_script!();
         std::fs::write(&mock, script.as_bytes()).expect("write mock");
         let mut perms = std::fs::metadata(&mock).expect("meta").permissions();
@@ -59,7 +59,7 @@ macro_rules! mpc_enabled_workflow {
         );
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        (artifacts, context, store, user_request)
+        (artifacts, context, store, user_request, env)
     }};
 }
 
@@ -67,7 +67,7 @@ macro_rules! mpc_enabled_workflow {
 fn run_mpc_planner_session_appends_separator_when_enabled() {
     with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {
-            let (artifacts, context, store, user_request) = mpc_enabled_workflow!(work);
+            let (artifacts, context, store, user_request, _env) = mpc_enabled_workflow!(work);
             let (_kpop, shared, workflow) = test_kpop_args(1);
             run_mpc_planner_session(MpcPlannerParams {
                 shared: &shared,
@@ -91,7 +91,7 @@ fn run_mpc_planner_session_appends_separator_when_enabled() {
 fn run_mpc_planner_session_reuses_existing_client() {
     with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {
-            let (artifacts, context, store, user_request) = mpc_enabled_workflow!(work);
+            let (artifacts, context, store, user_request, _env) = mpc_enabled_workflow!(work);
             let (_kpop, shared, workflow) = test_kpop_args(1);
             let mut client = crate::agent_backend::build_agent_backend(
                 &shared,

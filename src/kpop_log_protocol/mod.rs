@@ -1,4 +1,4 @@
-//! **`KPopLogProtocol`** — parsed markers in `exp_log_*.md` (see `concepts.md`).
+//! **`KPopLogProtocol`** — parsed markers in `exp_log_*.md` (see `src/kpop_engine/`).
 //!
 //! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
 //! interprets for budget checks and early exit. Prompt sources: `default_prompts/kpop_common.md`,

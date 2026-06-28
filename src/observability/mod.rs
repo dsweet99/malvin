@@ -1,6 +1,6 @@
 //! Dual-contract observability for malvin runs.
 //!
-//! Malvin maintains two parallel output channels with different contracts (see `concepts.md` §1):
+//! Malvin maintains two parallel output channels with different contracts:
 //!
 //! | Channel | Artifact | Contract |
 //! |---|---|---|

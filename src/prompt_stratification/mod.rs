@@ -1,4 +1,4 @@
-//! Prompt stratification (see `concepts.md` §5).
+//! Prompt stratification (see `concepts.md` §4).
 //!
 //! Agent prompts are assembled as ordered string layers joined with blank lines.
 //! Each workflow keeps layer order explicit at its recipe site; there is no prompt AST.

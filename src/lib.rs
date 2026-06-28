@@ -167,6 +167,7 @@ pub mod observability;
 pub mod kpop_log_protocol;
 pub mod kpop_program;
 pub mod kpop_soft_constraints;
+pub mod nested_budget_scopes;
 pub mod prompt_stratification;
 pub mod output;
 pub mod prompts;
