@@ -5,8 +5,6 @@ use std::sync::Mutex;
 
 use crate::acp_spawn_sweep::{acp_spawn_chamber_dir, ensure_acp_spawn_chamber_gitignore};
 
-const ACP_SPAWN_LOCK_DIR: &str = "acp_spawn";
-
 static ACTIVE_ACP_LOCK_SLOT: Mutex<Option<String>> = Mutex::new(None);
 
 /// Records the session-name lock slot for this process (set at entrypoint when `--name` is used).
@@ -27,10 +25,7 @@ pub fn active_acp_lock_slot() -> String {
 
 #[must_use]
 pub(crate) fn acp_spawn_lock_path(work_dir: &Path, slot: &str) -> PathBuf {
-    work_dir
-        .join(".malvin")
-        .join(ACP_SPAWN_LOCK_DIR)
-        .join(format!("{slot}.lock"))
+    acp_spawn_chamber_dir(work_dir).join(format!("{slot}.lock"))
 }
 
 /// Cross-process guard: one live agent session per workspace lock slot.
@@ -116,56 +111,52 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn acp_spawn_lock_round_trip() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_lock_unit");
-        let _ = std::fs::remove_dir_all(&work);
-        std::fs::create_dir_all(&work).expect("mkdir work");
-        let slot = "testslot";
-        let lock = acp_spawn_lock_path(&work, slot);
-        acquire_acp_spawn_lock_for_slot(&work, slot).expect("acquire");
-        assert!(lock.is_file());
-        assert_no_peer_acp_spawn_lock_for_slot(&work, slot).expect("self holder");
-        release_acp_spawn_lock(&work, slot);
-        assert!(!lock.exists());
+        crate::test_utils::with_isolated_home(|work| {
+            let slot = "testslot";
+            let lock = acp_spawn_lock_path(work, slot);
+            acquire_acp_spawn_lock_for_slot(work, slot).expect("acquire");
+            assert!(lock.is_file());
+            assert_no_peer_acp_spawn_lock_for_slot(work, slot).expect("self holder");
+            release_acp_spawn_lock(work, slot);
+            assert!(!lock.exists());
+        });
     }
 
     #[test]
     fn set_active_acp_lock_slot_used_by_assert_no_peer() {
         set_active_acp_lock_slot("unitslot".into());
         assert_eq!(active_acp_lock_slot(), "unitslot");
-        let work = std::env::temp_dir().join("malvin_acp_spawn_lock_active_slot");
-        let _ = std::fs::remove_dir_all(&work);
-        std::fs::create_dir_all(&work).expect("mkdir work");
-        assert_no_peer_acp_spawn_lock(&work).expect("no lock file yet");
-        acquire_acp_spawn_lock(&work).expect("acquire via active slot");
-        assert_no_peer_acp_spawn_lock(&work).expect("self holder");
-        release_acp_spawn_lock(&work, "unitslot");
+        crate::test_utils::with_isolated_home(|work| {
+            assert_no_peer_acp_spawn_lock(work).expect("no lock file yet");
+            acquire_acp_spawn_lock(work).expect("acquire via active slot");
+            assert_no_peer_acp_spawn_lock(work).expect("self holder");
+            release_acp_spawn_lock(work, "unitslot");
+        });
     }
 
     #[test]
     fn different_acp_lock_slots_do_not_block_each_other() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_lock_slots");
-        let _ = std::fs::remove_dir_all(&work);
-        std::fs::create_dir_all(&work).expect("mkdir work");
-        acquire_acp_spawn_lock_for_slot(&work, "alpha").expect("alpha");
-        assert_no_peer_acp_spawn_lock_for_slot(&work, "beta").expect("beta slot free");
-        acquire_acp_spawn_lock_for_slot(&work, "beta").expect("beta acquire");
-        release_acp_spawn_lock(&work, "alpha");
-        release_acp_spawn_lock(&work, "beta");
+        crate::test_utils::with_isolated_home(|work| {
+            acquire_acp_spawn_lock_for_slot(work, "alpha").expect("alpha");
+            assert_no_peer_acp_spawn_lock_for_slot(work, "beta").expect("beta slot free");
+            acquire_acp_spawn_lock_for_slot(work, "beta").expect("beta acquire");
+            release_acp_spawn_lock(work, "alpha");
+            release_acp_spawn_lock(work, "beta");
+        });
     }
 
     #[test]
     fn acquire_creates_chamber_gitignore() {
-        let work = std::env::temp_dir().join("malvin_acp_spawn_chamber_gitignore");
-        let _ = std::fs::remove_dir_all(&work);
-        std::fs::create_dir_all(&work).expect("mkdir work");
-        acquire_acp_spawn_lock_for_slot(&work, "chamber").expect("acquire");
-        let gitignore = work.join(".malvin/acp_spawn/.gitignore");
-        assert!(gitignore.is_file(), "chamber .gitignore should exist");
-        assert_eq!(
-            std::fs::read_to_string(&gitignore).expect("read"),
-            crate::acp_spawn_sweep::ACP_SPAWN_CHAMBER_GITIGNORE
-        );
-        release_acp_spawn_lock(&work, "chamber");
+        crate::test_utils::with_isolated_home(|work| {
+            acquire_acp_spawn_lock_for_slot(work, "chamber").expect("acquire");
+            let gitignore = acp_spawn_chamber_dir(work).join(".gitignore");
+            assert!(gitignore.is_file(), "chamber .gitignore should exist");
+            assert_eq!(
+                std::fs::read_to_string(&gitignore).expect("read"),
+                crate::acp_spawn_sweep::ACP_SPAWN_CHAMBER_GITIGNORE
+            );
+            release_acp_spawn_lock(work, "chamber");
+        });
     }
 
     /// Child probe: `MALVIN_ACP_LOCK_DESCENDANT_PROBE=<workdir>` must pass assert.

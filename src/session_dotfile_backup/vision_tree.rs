@@ -58,7 +58,7 @@ fn collect_root_vision_only(work_dir: &Path) -> Vec<PathBuf> {
 
 #[must_use]
 pub fn collect_workspace_vision_relpaths(work_dir: &Path) -> Vec<PathBuf> {
-    if crate::repo_gates::git_worktree_toplevel(work_dir).is_some() {
+    if crate::git_worktree_toplevel(work_dir).is_some() {
         let mut found = Vec::new();
         walk_vision_files(work_dir, work_dir, &mut found);
         found.sort();

@@ -2,24 +2,64 @@
 
 mod common;
 
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use common::InitOk;
 use common::{git_stdout, malvin_init_output};
 
-#[test]
-fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
+struct PreCommitMissingFixture {
+    _path_root: tempfile::TempDir,
+    isolated_bin: PathBuf,
+    project: tempfile::TempDir,
+}
+
+fn pre_commit_missing_fixture() -> PreCommitMissingFixture {
     let path_root = tempfile::tempdir().unwrap();
     let isolated_bin = path_root.path().join("bin");
     std::fs::create_dir_all(&isolated_bin).unwrap();
-    let project = tempfile::tempdir().unwrap();
+    let git_stub = isolated_bin.join("git");
+    std::fs::write(
+        &git_stub,
+        "#!/bin/sh\ncase \"$1\" in init) exit 0 ;; rev-parse) pwd ;; *) exit 0 ;; esac\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&git_stub).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&git_stub, perms).unwrap();
+    }
+    PreCommitMissingFixture {
+        _path_root: path_root,
+        isolated_bin,
+        project: tempfile::tempdir().unwrap(),
+    }
+}
 
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("PATH", &isolated_bin)
+fn assert_pre_commit_missing_message(msg: &str) {
+    assert!(msg.contains("Command:"), "expected startup command prelude: {msg:?}");
+    assert!(msg.contains("Logs:"), "expected startup Logs header: {msg:?}");
+    assert!(
+        msg.contains("pre-commit"),
+        "expected explicit pre-commit hint; got: {msg:?}"
+    );
+}
+
+fn malvin_init_output_for(path: &Path, isolated_bin: &Path) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_malvin"))
+        .env("PATH", isolated_bin)
         .args(["init", "python", "--path"])
-        .arg(project.path())
+        .arg(path)
         .output()
-        .expect("spawn malvin init");
+        .expect("spawn malvin init")
+}
+
+#[test]
+fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
+    let fixture = pre_commit_missing_fixture();
+    let out = malvin_init_output_for(fixture.project.path(), &fixture.isolated_bin);
 
     assert!(
         !out.status.success(),
@@ -30,18 +70,7 @@ fn malvin_init_fails_fast_when_pre_commit_missing_from_path() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(
-        msg.contains("Command:"),
-        "expected startup command prelude: {msg:?}"
-    );
-    assert!(
-        msg.contains("Logs:"),
-        "expected startup Logs header: {msg:?}"
-    );
-    assert!(
-        msg.contains("pre-commit"),
-        "expected explicit pre-commit hint; got: {msg:?}"
-    );
+    assert_pre_commit_missing_message(&msg);
 }
 
 #[test]

@@ -22,19 +22,15 @@ pub(super) async fn run_kpop_prompt(
         .await
 }
 
-pub(super) async fn check_hypothesis_budget(
+pub(super) async fn guard_bridge_hypothesis_budget(
     client: &mut MiniAgentClient,
     ctl: &AgentKpopMultiturnCtl<'_, '_>,
 ) -> Result<(), AgentError> {
-    let exp_text = crate::kpop_progression::read_exp_log_text(ctl.state.exp_log_path())
+    let exp_log = crate::kpop_experiment_log::ExperimentLog::read(ctl.state.exp_log_path())
         .map_err(AgentError)?;
-    let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);
-    if hypotheses_after > ctl.state.max_hypotheses {
+    if let Err(msg) = exp_log.check_hypothesis_budget(ctl.state.max_hypotheses) {
         client.end_coder_session().await.ok();
-        return Err(AgentError(format!(
-            "experiment log counts {hypotheses_after} hypothesis steps, exceeding --max-hypotheses ({})",
-            ctl.state.max_hypotheses
-        )));
+        return Err(AgentError(msg));
     }
     Ok(())
 }
@@ -51,4 +47,56 @@ pub(super) async fn restore_dotfiles_or_close(
         return Err(e);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod budget_tests {
+    use super::guard_bridge_hypothesis_budget;
+    use crate::acp::AgentKpopMultiturnCtl;
+    use crate::agent_backend::mini::MiniAgentClient;
+    use crate::agent_backend::test_support::{mini_loop_config, test_io};
+    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
+    use crate::kpop_progression::KpopMultiturnState;
+    use crate::orchestrator::orchestrator_test_support::empty_dotfile_backups;
+
+    #[tokio::test]
+    async fn check_hypothesis_budget_ok_and_over() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let exp = tmp.path().join("exp.md");
+        std::fs::write(&exp, "## Step 1 — KPop x\n## Step 2 — KPop y\n").expect("write");
+        let mut state =
+            KpopMultiturnState::new(KpopMultiturnPrompts::Smoke(SmokeKpopBuilder), exp, 1)
+                .expect("state");
+        let backups = empty_dotfile_backups();
+        let mut client = MiniAgentClient::new_mock(
+            mini_loop_config(1, 1),
+            test_io(),
+            crate::agent_backend::mini::LlmBackend::Mock(std::sync::Mutex::new(
+                crate::agent_backend::mini::MockScript {
+                    responses: vec![],
+                    call_count: 0,
+                    on_response: None,
+                },
+            )),
+        );
+        let ctl = AgentKpopMultiturnCtl {
+            cwd: tmp.path(),
+            kpop_log: tmp.path().join("kpop.log"),
+            state: &mut state,
+            session_dotfile_backups: &backups,
+        };
+        let err = guard_bridge_hypothesis_budget(&mut client, &ctl)
+            .await
+            .expect_err("over budget");
+        assert!(err.0.contains("exceeding --max-hypotheses"));
+        std::fs::write(ctl.state.exp_log_path(), "## Step 1 — KPop x\n").expect("rewrite");
+        guard_bridge_hypothesis_budget(&mut client, &ctl)
+            .await
+            .expect("within budget");
+    }
+
+    #[test]
+    fn kiss_cov_guard_bridge_hypothesis_budget_symbol() {
+        let _ = stringify!(guard_bridge_hypothesis_budget);
+    }
 }

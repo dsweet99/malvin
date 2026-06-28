@@ -206,14 +206,15 @@ fn finalize_init_checks_from_repo_writes_malvin_checks() {
     if crate::lookup_bin_on_path("kiss").is_none() || crate::lookup_bin_on_path("ruff").is_none() {
         return;
     }
-    let tmp = tempfile::tempdir().unwrap();
-    std::fs::write(
-        tmp.path().join(".pre-commit-config.yaml"),
-        "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
-    )
-    .unwrap();
-    finalize_init_checks_from_repo(tmp.path()).unwrap();
-    let checks = std::fs::read_to_string(tmp.path().join(".malvin/checks")).unwrap();
-    assert!(checks.contains("kiss check"));
-    assert!(checks.contains("ruff check ."));
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::write(
+            work.join(".pre-commit-config.yaml"),
+            "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
+        )
+        .unwrap();
+        finalize_init_checks_from_repo(work).unwrap();
+        let checks = std::fs::read_to_string(crate::malvin_checks_path(work)).unwrap();
+        assert!(checks.contains("kiss check"));
+        assert!(checks.contains("ruff check ."));
+    });
 }

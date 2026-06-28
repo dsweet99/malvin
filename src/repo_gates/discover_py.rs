@@ -21,7 +21,7 @@ fn root_has_python_project_markers(root: &Path) -> bool {
 
 /// Avoid recursively scanning arbitrary cwd trees (e.g. `$HOME`) when inferring Python gates.
 fn should_walk_for_python_sources(root: &Path) -> bool {
-    crate::repo_gates::git_worktree_toplevel(root).is_some()
+    crate::git_worktree_toplevel(root).is_some()
 }
 
 fn root_level_has_py_file(root: &Path) -> bool {

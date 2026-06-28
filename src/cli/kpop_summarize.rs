@@ -7,6 +7,7 @@ pub(crate) use kpop_summarize_inline::{
     GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
 };
 
+use crate::prompt_stratification::join_strata;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -196,7 +197,7 @@ pub(crate) fn render_kpop_summarize_prompt(
     let body = store
         .render_prompt_only(SUMMARIZE_PROMPT, &ctx)
         .map_err(|e: PromptError| e.0)?;
-    Ok(format!("{}\n\n{}", header.trim_end(), body.trim_end()))
+    Ok(join_strata([&header, &body]))
 }
 
 pub(crate) async fn run_summarize_coder_prompt(

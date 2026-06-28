@@ -47,8 +47,17 @@ mod tests {
     #[test]
     fn prepare_code_kpop_run_resolves_plan() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        assert!(
+            std::process::Command::new("git")
+                .args(["init"])
+                .current_dir(tmp.path())
+                .status()
+                .expect("git init")
+                .success()
+        );
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "build feature\n").expect("write plan");
+        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(

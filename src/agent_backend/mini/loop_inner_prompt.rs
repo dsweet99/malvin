@@ -2,6 +2,8 @@
 
 use malvin_mini::{ChatMessage, ChatRole};
 
+use crate::prompt_stratification::join_strata;
+
 use super::loop_types::{LoopDriverConfig, LoopDriverSession};
 
 pub(crate) fn push_user_prompt(
@@ -15,11 +17,11 @@ pub(crate) fn push_user_prompt(
             String::new()
         } else {
             format!(
-                "\n\nYour OpenRouter model slug is `{}`. When asked which LLM you are, name this slug.",
+                "Your OpenRouter model slug is `{}`. When asked which LLM you are, name this slug.",
                 session.llm_model_slug
             )
         };
-        format!("{}{}\n\n{}", config.mini_constraints, model_line, user_prompt)
+        join_strata([config.mini_constraints, model_line.as_str(), user_prompt])
     } else {
         user_prompt.to_string()
     };

@@ -88,7 +88,7 @@ When `--mini` is set:
 - Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `anthropic/claude-sonnet-4`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
 - `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
 - `--no-force` is a no-op (nothing to approve).
-- `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below).
+- `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below). OpenRouter billing/credit failures (402/403) and ACP “upgrade your plan” errors fail immediately at the gate level without retry or `mini gate attempt N failed` wrapping.
 - `[agent].max_mini_transport_retries` in `~/.malvin_home/config.toml` (default **3**) caps retries for all non-billing OpenRouter HTTP failures (429, 5xx, 4xx, auth, JSON decode, reqwest transport, provider capacity). Billing/payment failures (402/403) fail immediately. `--mini-max-http-retries` is deprecated and ignored by the mini retry loop.
 - Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and on a separate `COST:` finalize line after `TIMING:` (`total_cost`, `mean_cost_per_tx`, …).
 - `trace.jsonl` uses the same ACP-shaped `direction` / `message` records as non-mini runs (synthetic, not JSON-RPC wire capture). Each OpenRouter HTTP attempt also records a `miniHttpExchange` audit field (status, body capped at 64 KiB, error when present); raw HTTP is never teed to stdout.
@@ -117,7 +117,9 @@ Malvin registers the top-level process under this name in a per-user registry at
 
 Session names are independent of the workspace-scoped `.malvin/acp_spawn/<slot>.lock` files (one live ACP session per lock slot in a workspace). Two malvin processes with different `--name` values may both register names and hold live ACP sessions in the same workspace concurrently; only one process may hold each lock slot at a time.
 
-`.malvin/acp_spawn/` holds ephemeral PID lock files. Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
+`.malvin/acp_spawn/` holds ephemeral PID lock files at the workspace **git root** when `cwd` is inside a git work tree; outside git, locks and quality-gate lists live under `~/.malvin/acp_spawn/` and `~/.malvin/checks/` (shared). Advice and workspace config copies remain `{cwd}/.malvin/advice.md` and `{cwd}/.malvin/config.toml`. Legacy `{cwd}/.malvin/checks` files are read as a fallback until migrated; new writes always target the resolved root.
+
+Any lock whose holder PID is dead (or whose contents are not a valid PID) is safe to delete manually. Lock files are not version-controlled; if they were accidentally committed, run `git rm -r --cached .malvin/acp_spawn/`. Malvin reclaims stale locks automatically on startup in a workspace (directory sweep after early-exit paths such as `--doc`, bare help, and missing-request short help) and when a slot is acquired; live sessions are never disturbed.
 
 `--doc`, `--help`, `--version`, and bare `malvin` with no `REQUEST` parse `--name` but do not acquire or release a name lock.
 

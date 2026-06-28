@@ -6,6 +6,36 @@ use crate::test_utils::{revoke_home_malvin_config_mutation_for_test, with_isolat
 fn kiss_cov_unit_names() {
     let _ = seed_malvin_checks;
     let _ = seed_malvin_config;
+    let _ = stringify!(ensure_git_repo_for_checks_seed);
+}
+
+#[test]
+fn seed_malvin_checks_writes_under_git_root() {
+    with_isolated_home(|work| {
+        seed_malvin_checks(work, "kiss check\n");
+        assert!(crate::malvin_checks_path(work).is_file());
+    });
+}
+
+#[test]
+fn ensure_git_repo_for_checks_seed_idempotent() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    super::ensure_git_repo_for_checks_seed(work);
+    super::ensure_git_repo_for_checks_seed(work);
+}
+
+#[test]
+fn seed_malvin_checks_skips_git_init_when_repo_exists() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let work = tmp.path();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(work)
+        .status()
+        .expect("git init");
+    seed_malvin_checks(work, "kiss check\n");
+    assert!(crate::malvin_checks_path(work).is_file());
 }
 
 #[test]

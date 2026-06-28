@@ -2,8 +2,7 @@ use crate::cli::workflow_kpop_shared::*;
 
 fn kpop_render_fixture(workflow: &str) -> (crate::prompts::PromptStore, crate::artifacts::RunArtifacts) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+    crate::seed_malvin_checks(tmp.path(), "kiss check\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts(workflow, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
@@ -82,6 +81,11 @@ fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
 #[test]
 fn gate_iteration_context_overrides_exp_log() {
     let tmp = tempfile::tempdir().expect("tempdir");
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(tmp.path())
+        .status()
+        .expect("git init");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let base = kpop_workflow_context(&artifacts, "code").expect("ctx");
@@ -100,14 +104,20 @@ fn bare_kiss_repair_fixture(
         crate::repo_checks::FakeCommandDirGuard,
     ),
 ) {
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+    if crate::git_worktree_toplevel(work).is_none() {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init");
+    }
     std::fs::write(
         work.join(".kissconfig"),
         "[gate]\ntest_coverage_threshold = 0\n",
     )
     .expect("kissconfig");
     let guard = crate::test_agent_client::write_fake_gate(work, "kiss", 0);
-    std::fs::write(work.join(".malvin/checks"), "kiss\n").expect("re-poison");
+    std::fs::write(crate::malvin_checks_path(work), "kiss\n").expect("re-poison");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     (artifacts, guard)
@@ -131,7 +141,7 @@ fn run_kpop_workspace_gates_restores_before_executing_checks() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
     let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
-    std::fs::write(tmp.path().join(".malvin/checks"), "false\n").expect("tamper");
+    std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
     run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
 }
 

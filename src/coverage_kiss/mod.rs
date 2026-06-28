@@ -9,6 +9,8 @@ mod sandbox_oom_kiss_cov_tests;
 #[cfg(test)]
 mod kpop;
 #[cfg(test)]
+mod git_root_malvin_kiss_cov;
+#[cfg(test)]
 mod sync;
 #[cfg(test)]
 mod wires;

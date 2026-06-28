@@ -9,6 +9,11 @@ use crate::do_flow::do_flow_prompt::{
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(tmp.path())
+        .status()
+        .expect("git init");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "ignored").expect("plan");
     let run_dir = tmp.path().join(".malvin/logs").join("r");

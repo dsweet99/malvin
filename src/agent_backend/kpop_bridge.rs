@@ -10,7 +10,7 @@ use crate::acp::{
 
 use super::mini::MiniAgentClient;
 
-use kpop_bridge_prompt::{check_hypothesis_budget, restore_dotfiles_or_close, run_kpop_prompt};
+use kpop_bridge_prompt::{guard_bridge_hypothesis_budget, restore_dotfiles_or_close, run_kpop_prompt};
 
 pub(crate) async fn run_kpop_flow_once_mini(
     client: &mut MiniAgentClient,
@@ -60,7 +60,7 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
             .await;
         }
         restore_dotfiles_or_close(client, ctl.cwd, ctl.session_dotfile_backups).await?;
-        check_hypothesis_budget(client, ctl).await?;
+        guard_bridge_hypothesis_budget(client, ctl).await?;
         ctl.state.record_kpop_block_prompt_completed();
     }
 

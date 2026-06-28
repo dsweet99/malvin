@@ -22,9 +22,17 @@ mod tests {
     #[test]
     fn ensure_malvin_checks_for_command_writes_defaults_except_do_and_models() {
         crate::test_utils::with_isolated_home(|work| {
+            assert!(
+                std::process::Command::new("git")
+                    .args(["init"])
+                    .current_dir(work)
+                    .status()
+                    .expect("git init")
+                    .success()
+            );
             let cwd = std::env::current_dir().expect("cwd");
             std::env::set_current_dir(work).expect("chdir");
-            let checks = work.join(".malvin/checks");
+            let checks = crate::malvin_checks_path(work);
             let config = crate::malvin_config_path(work);
             assert!(!checks.exists());
             assert!(!config.exists());

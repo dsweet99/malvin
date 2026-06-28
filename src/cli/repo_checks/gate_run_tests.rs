@@ -85,28 +85,44 @@ fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
 }
 
 #[cfg(unix)]
-#[test]
-fn gate_run_wires_private_runners_on_minimal_workspace() {
+fn minimal_git_cargo_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let work = tmp.path();
+    let work = tmp.path().to_path_buf();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(&work)
+        .status()
+        .expect("git init");
     std::fs::write(
         work.join("Cargo.toml"),
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",
     )
     .expect("Cargo.toml");
+    (tmp, work)
+}
+
+#[cfg(unix)]
+#[test]
+fn gate_run_wires_private_runners_on_minimal_workspace() {
+    let (_tmp, work) = minimal_git_cargo_workspace();
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_zero_exit_gate_bins(bin_dir.path());
     let _guard = set_fake_command_dir(bin_dir.path());
 
-    run_quality_gates_with_details(work, RepoGateOutput::Tagged, None).expect("quality gates");
-    run_repo_workspace_gates_with_details(work, RepoGateOutput::Tagged, None)
+    run_quality_gates_with_details(&work, RepoGateOutput::Tagged, None).expect("quality gates");
+    run_repo_workspace_gates_with_details(&work, RepoGateOutput::Tagged, None)
         .expect("workspace gates");
-    run_repo_workspace_gates_no_kiss_clamp_with_details(work, RepoGateOutput::Tagged, None)
+    run_repo_workspace_gates_no_kiss_clamp_with_details(&work, RepoGateOutput::Tagged, None)
         .expect("workspace gates without kiss clamp");
 }
 
 #[test]
 fn kiss_cov_wires_tests_gates_unix_scan() {
+    #[cfg(unix)]
+    {
+        let (_tmp, work) = minimal_git_cargo_workspace();
+        assert!(work.join("Cargo.toml").is_file());
+    }
 }
 
 #[test]

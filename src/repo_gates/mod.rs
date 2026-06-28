@@ -19,8 +19,8 @@ mod discover_init_checks_tests;
 #[path = "discover_init_checks_merge_tests.rs"]
 mod discover_init_checks_merge_tests;
 
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::path::Path;
+use std::process::Stdio;
 use std::sync::OnceLock;
 
 use discover_py::python_ruff_and_pytest_flags;
@@ -84,28 +84,10 @@ pub fn rust_test_gate_command_lines(work_dir: &Path) -> Vec<String> {
 
 pub use sandbox_safe::sandbox_safe_gate_commands;
 
-/// Git repository root for `work_dir`, when `git rev-parse --show-toplevel` succeeds.
-#[must_use]
-pub fn git_worktree_toplevel(work_dir: &Path) -> Option<PathBuf> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(work_dir)
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if root.is_empty() {
-        return None;
-    }
-    Some(PathBuf::from(root))
-}
-
 #[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
     work_dir.join(".git").is_dir()
-        || crate::malvin_checks_path(work_dir).is_file()
+        || crate::resolve_malvin_checks_path(work_dir).is_file()
         || crate::is_malvin_workspace(work_dir)
 }
 
@@ -126,7 +108,7 @@ pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
-    let checks_path = crate::malvin_checks_path(work_dir);
+    let checks_path = crate::resolve_malvin_checks_path(work_dir);
     if !checks_path.is_file() {
         return Err(format!(
             "{} is missing (quality gates must be listed in .malvin/checks)",
@@ -153,6 +135,21 @@ pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> 
     if checks_path.is_file() {
         return Ok(());
     }
+    let legacy = crate::legacy_malvin_checks_path(work_dir);
+    if legacy.is_file() {
+        if let Some(parent) = checks_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+        }
+        std::fs::copy(&legacy, &checks_path).map_err(|e| {
+            format!(
+                "copy legacy {} -> {}: {e}",
+                legacy.display(),
+                checks_path.display()
+            )
+        })?;
+        return Ok(());
+    }
     let lines = builtin_gate_command_lines(work_dir);
     let mut content = lines.join("\n");
     if !content.is_empty() {
@@ -172,43 +169,15 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
     ensure_default_malvin_checks_file(work_dir)?;
-    let lines = load_malvin_checks(&crate::malvin_checks_path(work_dir))?;
+    let lines = load_malvin_checks(&crate::resolve_malvin_checks_path(work_dir))?;
     Ok(sandbox_safe_gate_commands(&lines))
 }
 
-/// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
-///
-/// Reads **only** [`.malvin/checks`]. Returns an error if that file is not a regular file.
-/// Callers that need defaults materialized first should run [`ensure_default_malvin_checks_file`].
-pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> {
-    let checks_path = crate::malvin_checks_path(work_dir);
-    if !checks_path.is_file() {
-        return Err(format!(
-            "{} is missing (expected a regular file before expanding {{ quality_gates }})",
-            checks_path.display()
-        ));
-    }
-    let lines = load_malvin_checks(&checks_path)?;
-    Ok(format_quality_gates_markdown(&lines))
-}
+mod prompt_markdown;
 
-/// Materializes default `.malvin/checks` only while building prompt markdown, then restores prior state.
-///
-/// Avoids leaving an untracked `.malvin/checks` when the workspace had none before the call.
-pub fn prompt_quality_gates_markdown_ephemeral(work_dir: &Path) -> Result<String, String> {
-    use crate::session_dotfile_backup::{
-        backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
-    };
-    let backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = (|| {
-        ensure_default_malvin_checks_file(work_dir)?;
-        prompt_quality_gates_markdown(work_dir)
-    })();
-    restore_workspace_malvin_checks_backup(work_dir, &backup)?;
-    result
-}
-
-#[must_use]
+pub use prompt_markdown::{
+    prompt_quality_gates_markdown, prompt_quality_gates_markdown_ephemeral,
+};
 pub fn format_quality_gates_markdown(commands: &[String]) -> String {
     if commands.is_empty() {
         return String::new();
@@ -232,11 +201,27 @@ pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
 }
 
 #[cfg(test)]
+#[path = "checks_test_helpers.rs"]
+pub(crate) mod checks_test_helpers;
+
+#[cfg(test)]
+#[path = "checks_test_helpers_test.rs"]
+mod checks_test_helpers_test;
+
+#[cfg(test)]
 mod tests;
 
 #[cfg(test)]
 #[path = "git_worktree_tests.rs"]
 mod git_worktree_tests;
+
+#[cfg(test)]
+#[path = "repo_gates_kiss_cov_tests.rs"]
+mod repo_gates_kiss_cov_tests;
+
+#[cfg(test)]
+#[path = "tests_git_root_layout.rs"]
+mod tests_git_root_layout;
 
 #[cfg(test)]
 #[path = "tests_command_match.rs"]

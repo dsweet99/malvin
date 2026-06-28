@@ -108,10 +108,7 @@ fn entrypoint_sweep_stale_acp_spawn_locks() {
     let Ok(cwd) = std::env::current_dir() else {
         return;
     };
-    if !crate::is_malvin_workspace(&cwd) {
-        return;
-    }
-    let chamber = cwd.join(".malvin").join("acp_spawn");
+    let chamber = crate::malvin_acp_spawn_chamber_dir(&cwd);
     if !chamber.is_dir() {
         return;
     }

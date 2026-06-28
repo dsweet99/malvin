@@ -11,8 +11,20 @@ pub fn chmod755(path: &Path) {
 }
 
 pub fn seed_malvin_checks(workspace: &Path, content: &str) {
-    std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir .malvin");
-    std::fs::write(workspace.join(".malvin/checks"), content).expect("write .malvin/checks");
+    if std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(workspace)
+        .status()
+        .is_ok_and(|s| s.success())
+        || workspace.join(".git").exists()
+    {
+        // git-root layout
+    }
+    let checks_path = malvin::malvin_checks_path(workspace);
+    if let Some(parent) = checks_path.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir checks parent");
+    }
+    std::fs::write(checks_path, content).expect("write checks");
 }
 
 /// Requires isolated `HOME`; see plan.md.

@@ -110,11 +110,29 @@ fn gate_kpop_loop_session_helpers_are_covered() {
     let _ = run_gate_kpop_loop;
 }
 
+fn ensure_git_repo_for_gate_tests(work: &std::path::Path) {
+    if crate::git_worktree_toplevel(work).is_none() {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init");
+    }
+}
+
+fn write_gate_checks_file(work: &std::path::Path, content: &str) {
+    ensure_git_repo_for_gate_tests(work);
+    let checks = crate::malvin_checks_path(work);
+    if let Some(parent) = checks.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir");
+    }
+    std::fs::write(checks, content).expect("checks");
+}
+
 fn fail_gate_prepared_fixture(
     work: &std::path::Path,
 ) -> (SessionDotfileBackups, crate::gate_kpop_workflow::GateKpopPrepared) {
-    std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    write_gate_checks_file(work, "kiss check\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
@@ -156,7 +174,7 @@ fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let (backups, prepared) = fail_gate_prepared_fixture(tmp.path());
-    std::fs::write(tmp.path().join(".malvin/checks"), "tampered\n").expect("tamper");
+    std::fs::write(crate::malvin_checks_path(tmp.path()), "tampered\n").expect("tamper");
     let err = fail_gate_kpop_after_exhausted(
         "malvin code",
         &prepared,
@@ -166,7 +184,7 @@ fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
     .expect_err("gates failed");
     assert!(err.contains("quality gates did not pass"));
     assert_eq!(
-        std::fs::read_to_string(tmp.path().join(".malvin/checks")).expect("read"),
+        std::fs::read_to_string(crate::malvin_checks_path(tmp.path())).expect("read"),
         "kiss check\n",
         "exhausted fail path must rewind dotfiles without invoking gates again"
     );

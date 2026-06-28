@@ -55,6 +55,11 @@ fn kiss_cov_dotfile_spec_row_by_value_all_slots() {
             assert!(path.to_string_lossy().contains("malvin"));
         } else if slot == 0 {
             assert_eq!(path, std::path::Path::new("/tmp/work").join(rel));
+        } else if slot == 1 {
+            assert_eq!(
+                path,
+                crate::resolve_malvin_checks_path(std::path::Path::new("/tmp/work"))
+            );
         } else {
             assert!(path.starts_with("/tmp/work"));
         }

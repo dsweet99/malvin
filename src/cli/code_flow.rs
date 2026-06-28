@@ -81,6 +81,11 @@ mod tests {
     #[test]
     fn code_startup_logs_host_resources_in_command_log() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(
@@ -107,8 +112,16 @@ mod tests {
     #[test]
     fn code_post_kpop_gates_fails_when_gates_fail() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".malvin/checks"), "kiss\n").expect("checks");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+        let checks = crate::malvin_checks_path(tmp.path());
+        if let Some(parent) = checks.parent() {
+            std::fs::create_dir_all(parent).expect("mkdir");
+        }
+        std::fs::write(checks, "kiss\n").expect("checks");
         let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 1);
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");

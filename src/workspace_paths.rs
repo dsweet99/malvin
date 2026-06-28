@@ -2,6 +2,14 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "workspace_paths_data_root.rs"]
+pub(crate) mod workspace_paths_data_root;
+
+pub use workspace_paths_data_root::{
+    git_worktree_toplevel, legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir,
+    malvin_checks_path, malvin_data_root, resolve_malvin_checks_path,
+};
+
 pub const MALVIN_DIR: &str = ".malvin";
 
 pub const MALVIN_CHECKS_REL: &str = ".malvin/checks";
@@ -56,11 +64,6 @@ const LEGACY_MALVIN_CHECKS_FILE: &str = ".malvin_checks";
 
 const FNV1A_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV1A_PRIME: u64 = 0x0000_0100_0000_01B3;
-
-#[must_use]
-pub fn malvin_checks_path(work_dir: &Path) -> PathBuf {
-    work_dir.join(MALVIN_CHECKS_REL)
-}
 
 #[must_use]
 pub fn malvin_advice_path(work_dir: &Path) -> PathBuf {

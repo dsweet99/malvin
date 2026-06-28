@@ -141,8 +141,7 @@ mod tests {
     #[test]
     fn init_kpop_request_expands_placeholders() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         let artifacts = create_kpop_run_artifacts("init", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
@@ -173,8 +172,7 @@ mod tests {
     fn init_discovery_checks_valid_accepts_kiss_when_present() {
         if crate::lookup_bin_on_path("kiss").is_some() {
             let tmp = tempfile::tempdir().expect("tempdir");
-            std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-            std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+            crate::seed_malvin_checks(tmp.path(), "kiss check\n");
             init_discovery_checks_valid(tmp.path()).expect("valid");
         }
     }
@@ -192,8 +190,7 @@ mod tests {
             return;
         }
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         let artifacts = create_kpop_run_artifacts("init", Some(tmp.path())).expect("artifacts");
         let exp = artifacts.gate_exp_log_path(1);
         std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir");

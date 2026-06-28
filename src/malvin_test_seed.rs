@@ -5,8 +5,22 @@ use std::path::Path;
 
 #[cfg(test)]
 pub fn seed_malvin_checks(work: &Path, content: &str) {
-    std::fs::create_dir_all(work.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
-    std::fs::write(crate::malvin_checks_path(work), content).expect("write .malvin/checks");
+    ensure_git_repo_for_checks_seed(work);
+    let path = crate::malvin_checks_path(work);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir checks parent");
+    }
+    std::fs::write(path, content).expect("write checks");
+}
+
+#[cfg(test)]
+fn ensure_git_repo_for_checks_seed(work: &Path) {
+    if crate::git_worktree_toplevel(work).is_none() {
+        let _ = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status();
+    }
 }
 
 /// Requires isolated `HOME`; see plan.md.

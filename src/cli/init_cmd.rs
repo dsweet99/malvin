@@ -112,6 +112,7 @@ pub async fn run_init(req: RunInitRequest<'_>) -> Result<(), String> {
     );
     let r = async {
         write_init_templates(&root, req.opts.overwrite_templates, &languages)?;
+        init_cmd_bootstrap::ensure_git_repo(&root)?;
         ensure_malvin_workspace_layout(&root, req.opts.overwrite_templates, &languages)?;
         bootstrap_repo_tooling(&root)?;
         if discovery_decision.run && req.opts.overwrite_templates && checks_existed_before {

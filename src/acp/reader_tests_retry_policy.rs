@@ -1,6 +1,7 @@
 use crate::acp::{
     AgentRetryOutcome, IterableClosedStream, agent_error_requires_coder_session_teardown,
-    agent_string_is_cannot_use_model, agent_string_is_upgrade_plan,
+    agent_string_is_cannot_use_model, agent_string_is_openrouter_billing_failure,
+    agent_string_is_upgrade_plan,
     emit_operational_upgrade_plan_stop, iterable_closed_stream_from_buffer,
     operational_iterable_closed_for_emit, operational_iterable_closed_log_line,
     operational_upgrade_plan_for_emit, plan_agent_retry, retries_noun,
@@ -10,6 +11,21 @@ use crate::support_paths::DEFAULT_MAX_ACP_RETRIES;
 use std::time::Duration;
 
 const TEST_MAX_ATTEMPTS: u32 = DEFAULT_MAX_ACP_RETRIES;
+
+#[test]
+fn openrouter_billing_failure_substring_is_detected_case_insensitively() {
+    assert!(agent_string_is_openrouter_billing_failure(
+        "OpenRouter billing/credit failure (402): no credits"
+    ));
+    assert!(!agent_string_is_openrouter_billing_failure("timed out"));
+}
+
+#[test]
+fn openrouter_billing_errors_do_not_retry_even_with_high_max() {
+    let msg = "mini OpenRouter HTTP failed after 1 transport attempts (limit 3): OpenRouter billing/credit failure (402): no credits";
+    let err = plan_agent_retry(msg, 1, 9999).expect_err("billing must fail fast");
+    assert_eq!(err.0, msg);
+}
 
 #[test]
 fn upgrade_plan_substring_is_detected_case_insensitively() {

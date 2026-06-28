@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::prompt_stratification::join_strata;
 use crate::prompts::{PromptError, PromptStore, render_header};
 
 #[derive(Debug)]
@@ -31,15 +32,8 @@ impl KpopTurnPrompts<'_> {
             None
         };
         rules.map_or_else(
-            || Ok(format!("{}\n\n{}", common.trim_end(), body.trim_end())),
-            |rules| {
-                Ok(format!(
-                    "{}\n\n{}\n\n{}",
-                    rules.trim_end(),
-                    common.trim_end(),
-                    body.trim_end()
-                ))
-            },
+            || Ok(join_strata([&common, &body])),
+            |rules| Ok(join_strata([&rules, &common, &body])),
         )
     }
 
@@ -65,12 +59,7 @@ impl KpopTurnPrompts<'_> {
             .store
             .render_prompt_only("kpop_block.md", &ctx)
             .map_err(|e: PromptError| e.0)?;
-        Ok(format!(
-            "{}\n\n{}\n\n{}",
-            header.trim_end(),
-            common.trim_end(),
-            body.trim_end()
-        ))
+        Ok(join_strata([&header, &common, &body]))
     }
 
     /// # Errors

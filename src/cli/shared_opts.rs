@@ -12,7 +12,7 @@ pub struct GlobalOpts {
     /// Turn off color output.
     #[arg(long, global = true, default_value_t = false)]
     pub no_color: bool,
-    /// Suppress all stdout (run logs under `.malvin/logs` are unchanged).
+    /// Suppress all stdout.
     #[arg(short = 'b', long, global = true, default_value_t = false)]
     pub background: bool,
 }

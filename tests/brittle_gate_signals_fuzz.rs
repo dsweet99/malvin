@@ -10,7 +10,6 @@
 //! `brittle_precommit_ruff_case_fuzz` runs in default nextest (`canonical_tool` ruff fix).
 
 use malvin::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates;
-use malvin::workspace_paths::MALVIN_CHECKS_REL;
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -41,13 +40,23 @@ fn write_precommit_ruff_entry(root: &std::path::Path, entry: &str) {
 }
 
 fn seed_kiss_only_checks(root: &std::path::Path) {
-    let dir = root.join(".malvin");
-    std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("checks"), "kiss check\n").unwrap();
+    assert!(
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(root)
+            .status()
+            .expect("git init")
+            .success()
+    );
+    let path = malvin::malvin_checks_path(root);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::write(path, "kiss check\n").unwrap();
 }
 
 fn checks_lines(root: &std::path::Path) -> Vec<String> {
-    let text = std::fs::read_to_string(root.join(MALVIN_CHECKS_REL)).unwrap();
+    let text = std::fs::read_to_string(malvin::resolve_malvin_checks_path(root)).unwrap();
     text.lines().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect()
 }
 

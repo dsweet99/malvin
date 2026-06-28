@@ -15,7 +15,7 @@ fn gate_line_matches_command(gate_line: &str, cmd: &str) -> bool {
 /// Whether `cmd` resembles a line from [`.malvin/checks`] (including sandbox-expanded forms).
 #[must_use]
 pub fn command_matches_malvin_checks_gate(cmd: &str, work_dir: &Path) -> bool {
-    let checks_path = crate::malvin_checks_path(work_dir);
+    let checks_path = crate::resolve_malvin_checks_path(work_dir);
     if !checks_path.is_file() {
         return false;
     }

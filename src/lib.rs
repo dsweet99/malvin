@@ -73,12 +73,13 @@ pub use malvin_short_id::{
 mod malvin_constants;
 pub mod workspace_paths;
 pub use workspace_paths::{
-    canonical_work_dir_for_logs, find_malvin_logs_root, is_malvin_workspace, malvin_advice_path,
-    malvin_checks_path, malvin_config_path, malvin_home_config_path, malvin_home_logs_root, malvin_logs_root,
-    malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file, workspace_logs_hash,
-    write_work_dir_manifest, MALVIN_ADVICE_REL, MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR,
-    MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL, MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION,
-    MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
+    canonical_work_dir_for_logs, find_malvin_logs_root, git_worktree_toplevel, is_malvin_workspace,
+    legacy_malvin_checks_path, malvin_acp_spawn_chamber_dir, malvin_advice_path, malvin_checks_path,
+    malvin_config_path, malvin_data_root, malvin_home_config_path, malvin_home_logs_root,
+    malvin_logs_root, malvin_user_home_root, read_work_dir_manifest, remove_legacy_malvin_checks_file,
+    resolve_malvin_checks_path, workspace_logs_hash, write_work_dir_manifest, MALVIN_ADVICE_REL,
+    MALVIN_CHECKS_REL, MALVIN_CONFIG_REL, MALVIN_DIR, MALVIN_HOME_CONFIG_FILE, MALVIN_LOGS_REL,
+    MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, MALVIN_USER_HOME_DIR, WORK_DIR_MANIFEST,
 };
 mod terminal_palette;
 mod run_id;
@@ -163,6 +164,8 @@ pub use orchestrator::{
 };
 pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
 pub mod observability;
+pub mod kpop_experiment_log;
+pub mod prompt_stratification;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;

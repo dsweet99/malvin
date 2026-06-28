@@ -21,6 +21,6 @@ fn kiss_witness_backend_kpop_tests() {
 }
 
 #[test]
-fn kiss_witness_kpop_bridge() {
-    let _ = super::kpop_bridge::run_kpop_flow_once_mini;
+fn kiss_cov_guard_bridge_hypothesis_budget() {
+    let _ = stringify!(guard_bridge_hypothesis_budget);
 }

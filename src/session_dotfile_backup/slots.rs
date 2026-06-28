@@ -32,6 +32,8 @@ const fn labels(spec: &DotfileSpecRow) -> DotfileBackupLabels {
 pub(super) fn dotfile_source_path(slot: usize, work_dir: &Path) -> PathBuf {
     if slot == 3 {
         crate::malvin_config_path(work_dir)
+    } else if DOTFILE_ROWS[slot].rel == crate::MALVIN_CHECKS_REL {
+        crate::resolve_malvin_checks_path(work_dir)
     } else {
         work_dir.join(DOTFILE_ROWS[slot].rel)
     }

@@ -32,7 +32,7 @@ pub fn create_run_dir(base_dir: Option<&Path>, opts: RunDirOptions) -> std::io::
     std::fs::create_dir_all(&run_root)?;
     if opts.gc {
         crate::log_gc::prune_logs_before_run(parent);
-        if crate::is_malvin_workspace(parent) {
+        if crate::malvin_acp_spawn_chamber_dir(parent).is_dir() {
             let _ = crate::acp_spawn_sweep::sweep_stale_acp_spawn_locks(parent);
         }
     }

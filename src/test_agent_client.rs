@@ -89,9 +89,17 @@ pub fn write_fake_gate(
     gate_name: &str,
     exit_code: i32,
 ) -> (tempfile::TempDir, crate::repo_checks::FakeCommandDirGuard) {
-    std::fs::create_dir_all(work_dir.join(crate::MALVIN_DIR)).expect("mkdir .malvin");
-    std::fs::write(crate::malvin_checks_path(work_dir), format!("{gate_name}\n"))
-        .expect("checks");
+    if crate::git_worktree_toplevel(work_dir).is_none() {
+        let _ = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work_dir)
+            .status();
+    }
+    let checks = crate::malvin_checks_path(work_dir);
+    if let Some(parent) = checks.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir checks parent");
+    }
+    std::fs::write(checks, format!("{gate_name}\n")).expect("checks");
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_exit_gate_bin(bin_dir.path(), gate_name, exit_code);
     let guard = crate::repo_checks::set_fake_command_dir(bin_dir.path());
@@ -108,6 +116,6 @@ mod write_fake_gate_tests {
         let work = tmp.path().join("fresh");
         std::fs::create_dir_all(&work).expect("mkdir work");
         let (_bin, _guard) = write_fake_gate(&work, "kiss", 0);
-        assert!(work.join(".malvin/checks").is_file());
+        assert!(crate::malvin_checks_path(&work).is_file());
     }
 }

@@ -1,6 +1,7 @@
 use std::fs;
 
 use crate::repo_gates;
+use crate::test_utils::with_isolated_home;
 
 use super::command_support::set_fake_command_dir;
 use super::gate_run::prepare_repo_workspace;
@@ -31,54 +32,53 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
 
 #[test]
 fn run_repo_workspace_gates_materializes_default_malvin_checks() {
-    let tmp = tempfile::tempdir().unwrap();
-    let work = tmp.path();
-    fs::create_dir(work.join(".git")).unwrap();
-    fs::write(work.join("main.rs"), "fn main() {}\n").unwrap();
-    fs::write(
-        work.join(".kissconfig"),
-        "[gate]\ntest_coverage_threshold = 90\n",
-    )
-    .unwrap();
-    let malvin_checks = work.join(repo_gates::MALVIN_CHECKS_FILE);
-    assert!(!malvin_checks.exists());
-    let bin_dir = tempfile::tempdir().unwrap();
-    write_executable_script(bin_dir.path(), "kiss", "#!/bin/sh\nexit 0\n");
-    let _guard = set_fake_command_dir(bin_dir.path());
-    assert!(run_repo_workspace_gates(work, RepoGateOutput::Tagged, None).is_ok());
-    assert!(
-        !malvin_checks.exists(),
-        "ephemeral gate runs must restore Missing .malvin/checks so repo-root shadow files \
-         are not left behind"
-    );
+    with_isolated_home(|work| {
+        super::tests_gates_helpers::git_init_work(work);
+        fs::write(work.join("main.rs"), "fn main() {}\n").unwrap();
+        fs::write(
+            work.join(".kissconfig"),
+            "[gate]\ntest_coverage_threshold = 90\n",
+        )
+        .unwrap();
+        let malvin_checks = crate::malvin_checks_path(work);
+        assert!(!malvin_checks.exists());
+        let bin_dir = tempfile::tempdir().unwrap();
+        write_executable_script(bin_dir.path(), "kiss", "#!/bin/sh\nexit 0\n");
+        let _guard = set_fake_command_dir(bin_dir.path());
+        assert!(run_repo_workspace_gates(work, RepoGateOutput::Tagged, None).is_ok());
+        assert!(
+            !malvin_checks.exists(),
+            "ephemeral gate runs must restore Missing .malvin/checks"
+        );
+    });
 }
 
 #[test]
 fn run_repo_workspace_gates_runs_tree_builtins_without_git_or_malvin_checks() {
-    let tmp = tempfile::tempdir().unwrap();
-    let work = tmp.path();
-    fs::write(
-        work.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .unwrap();
-    let bin_dir = tempfile::tempdir().unwrap();
-    let trace = bin_dir.path().join("trace.log");
-    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo"], 0);
-    let _guard = set_fake_command_dir(bin_dir.path());
-    let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
-    assert!(result.is_ok());
-    let log = fs::read_to_string(&trace).unwrap();
-    assert!(log_contains_command(&log, "kiss check"));
-    assert!(log_contains_command(&log, "cargo clippy"));
-    assert!(log_contains_command(&log, repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1));
+    with_isolated_home(|work| {
+        fs::write(
+            work.join("Cargo.toml"),
+            "[package]\nname = 'm'\nversion = '0.1.0'\n",
+        )
+        .unwrap();
+        let bin_dir = tempfile::tempdir().unwrap();
+        let trace = bin_dir.path().join("trace.log");
+        install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo"], 0);
+        let _guard = set_fake_command_dir(bin_dir.path());
+        let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
+        assert!(result.is_ok());
+        let log = fs::read_to_string(&trace).unwrap();
+        assert!(log_contains_command(&log, "kiss check"));
+        assert!(log_contains_command(&log, "cargo clippy"));
+        assert!(log_contains_command(&log, repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1));
+    });
 }
 
 #[test]
 fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
-    fs::create_dir(work.join(".git")).unwrap();
+    super::tests_gates_helpers::git_init_work(work);
     fs::write(work.join("script.py"), "print('ok')\n").unwrap();
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");

@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::gate_kpop_workflow::GateLoopBehavior;
 use crate::cli::kpop_summarize::{
@@ -143,7 +141,11 @@ fn list_written_exp_logs_collects_kpop_dir_md_files() {
 #[test]
 fn code_outer_loop_summarize_params_wires_code_command() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(tmp.path())
+        .status()
+        .expect("git init");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let prepared = crate::cli::code_flow::prepare_code_kpop_run(

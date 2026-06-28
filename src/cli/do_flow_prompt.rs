@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::artifacts::RunArtifacts;
+use crate::prompt_stratification::join_strata;
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore, render_header};
 
 pub(crate) struct DoCoderRun {
@@ -31,7 +32,7 @@ pub fn combine_do_prompt_file_and_user(
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
-    let combined = format!("{header}\n\n{user}");
+    let combined = join_strata([&header, &user]);
     Ok((combined, header, user))
 }
 
@@ -44,7 +45,7 @@ pub fn combine_do_acp_prompt_header_and_user(
     let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
     let header = render_header(store, &context).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
-    let combined = format!("{header}\n\n{user}");
+    let combined = join_strata([&header, &user]);
     Ok((combined, header, user))
 }
 
@@ -66,8 +67,8 @@ pub(crate) fn build_do_coder_run_with_store(
     let (_, coding_header, _) =
         combine_do_acp_prompt_header_and_user(store, artifacts, "")?;
     let (_, do_header, user) = combine_do_raw_header_and_user(store, artifacts, text)?;
-    let combined = format!("{coding_header}\n\n{do_header}\n\n{user}");
-    let trace_header = format!("{coding_header}\n\n{do_header}");
+    let combined = join_strata([&coding_header, &do_header, &user]);
+    let trace_header = join_strata([&coding_header, &do_header]);
     Ok(DoCoderRun {
         combined,
         header_user_for_trace: (trace_header, user),

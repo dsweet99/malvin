@@ -45,6 +45,13 @@ pub fn workflow_ctx_for_smoke(
     tmp: &tempfile::TempDir,
     run_artifact_body: &str,
 ) -> (RunArtifacts, PromptStore, HashMap<String, String>) {
+    if crate::git_worktree_toplevel(tmp.path()).is_none() {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+    }
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();

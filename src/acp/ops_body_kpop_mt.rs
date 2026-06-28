@@ -15,14 +15,10 @@ async fn multiturn_after_successful_round(
     after: MultiturnRoundAfter<'_, '_>,
 ) -> Result<(), AgentError> {
     restore_session_dotfiles_after_success(after.cwd, after.session_dotfile_backups)?;
-    let exp_text = crate::kpop_progression::read_exp_log_text(after.state.exp_log_path())
+    let exp_log = crate::kpop_experiment_log::ExperimentLog::read(after.state.exp_log_path())
         .map_err(AgentError)?;
-    let hypotheses_after = crate::kpop_progression::hypotheses_emitted(&exp_text);
-    if hypotheses_after > after.state.max_hypotheses {
-        return Err(AgentError(format!(
-            "experiment log counts {hypotheses_after} hypothesis steps, exceeding --max-hypotheses ({})",
-            after.state.max_hypotheses
-        )));
+    if let Err(msg) = exp_log.check_hypothesis_budget(after.state.max_hypotheses) {
+        return Err(AgentError(msg));
     }
     after.state.record_kpop_block_prompt_completed();
     Ok(())

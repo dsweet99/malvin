@@ -41,6 +41,11 @@ mod tests {
     #[test]
     fn code_kpop_request_has_no_unresolved_braces() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "ship widgets\n").expect("write plan");
         let artifacts =

@@ -105,6 +105,11 @@ fn kiss_cov_dotfile_rows_destructure_by_value() {
             assert!(path.to_string_lossy().contains("malvin"));
         } else if slot == 0 {
             assert_eq!(path, Path::new("/tmp/work").join(KISSCONFIG_FILE));
+        } else if slot == 1 {
+            assert_eq!(
+                path,
+                crate::resolve_malvin_checks_path(Path::new("/tmp/work"))
+            );
         } else {
             assert!(path.starts_with("/tmp/work"));
         }

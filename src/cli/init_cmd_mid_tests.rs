@@ -104,13 +104,14 @@ mod tests {
     #[test]
     fn ensure_malvin_workspace_layout_writes_checks_advice_and_logs() {
         crate::test_utils::with_isolated_home(|work| {
+            super::super::init_cmd_bootstrap::ensure_git_repo(work).unwrap();
             ensure_malvin_workspace_layout(work, false, &[Language::Rust]).unwrap();
-            assert!(work.join(".malvin/checks").is_file());
+            assert!(crate::malvin_checks_path(work).is_file());
             assert!(work.join(crate::MALVIN_ADVICE_REL).is_file());
             assert!(crate::malvin_logs_root(work).is_dir());
             assert!(crate::malvin_home_config_path().is_file());
             assert!(work.join("Cargo.toml").is_file());
-            let checks = std::fs::read_to_string(work.join(".malvin/checks")).unwrap();
+            let checks = std::fs::read_to_string(crate::malvin_checks_path(work)).unwrap();
             assert!(checks.contains("cargo clippy"));
             assert!(
                 checks.contains("cargo nextest run") || checks.contains("cargo test"),
@@ -124,6 +125,7 @@ mod tests {
         crate::test_utils::with_isolated_home(|work| {
             let nested = work.join("My-Project-2");
             std::fs::create_dir_all(&nested).unwrap();
+            super::super::init_cmd_bootstrap::ensure_git_repo(&nested).unwrap();
             ensure_malvin_workspace_layout(&nested, false, &[Language::Rust]).unwrap();
             let toml = std::fs::read_to_string(nested.join("Cargo.toml")).unwrap();
             assert!(toml.contains("name = \"my_project_2\""));

@@ -1,9 +1,9 @@
-use super::git_worktree_toplevel;
+use crate::git_worktree_toplevel;
 use std::fs;
 
 #[cfg(test)]
 mod kiss_cov_auto {
-    use super::git_worktree_toplevel;
+    use crate::git_worktree_toplevel;
 
     #[test]
     fn kiss_cov_git_worktree_toplevel() {

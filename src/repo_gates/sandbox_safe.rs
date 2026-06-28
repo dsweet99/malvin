@@ -54,15 +54,23 @@ mod tests {
     fn gate_command_lines_for_workspace_run_sandbox_safe_transforms_checks() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
-        std::fs::create_dir(w.join(".git")).unwrap();
+        assert!(
+            std::process::Command::new("git")
+                .args(["init"])
+                .current_dir(w)
+                .status()
+                .unwrap()
+                .success()
+        );
         std::fs::write(
             w.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
         )
         .unwrap();
-        std::fs::create_dir_all(w.join(".malvin")).unwrap();
+        let checks = crate::malvin_checks_path(w);
+        std::fs::create_dir_all(checks.parent().unwrap()).unwrap();
         std::fs::write(
-            w.join(".malvin/checks"),
+            &checks,
             "kiss check\ncargo clippy -j 2 --all-targets\ncargo nextest run\n",
         )
         .unwrap();
@@ -97,7 +105,14 @@ mod tests {
     fn gate_command_lines_for_workspace_run_matches_file_after_ensure() {
         let tmp = tempfile::tempdir().unwrap();
         let w = tmp.path();
-        std::fs::create_dir(w.join(".git")).unwrap();
+        assert!(
+            std::process::Command::new("git")
+                .args(["init"])
+                .current_dir(w)
+                .status()
+                .unwrap()
+                .success()
+        );
         std::fs::write(
             w.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
@@ -110,18 +125,18 @@ mod tests {
 
     #[test]
     fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
-        let tmp = tempfile::tempdir().unwrap();
-        let w = tmp.path();
-        std::fs::create_dir_all(w.join(".malvin")).unwrap();
-        std::fs::write(
-            w.join(".malvin/checks"),
-            "custom-a\ncargo nextest run\n",
-        )
-        .unwrap();
-        let md = crate::repo_gates::prompt_quality_gates_markdown(w).unwrap();
-        assert!(md.contains("`custom-a`"));
-        assert!(md.contains("`cargo nextest run`"));
-        assert!(!md.contains("--partition"));
+        crate::test_utils::with_isolated_home(|w| {
+            std::fs::create_dir_all(w.join(".malvin")).unwrap();
+            std::fs::write(
+                w.join(".malvin/checks"),
+                "custom-a\ncargo nextest run\n",
+            )
+            .unwrap();
+            let md = crate::repo_gates::prompt_quality_gates_markdown(w).unwrap();
+            assert!(md.contains("`custom-a`"));
+            assert!(md.contains("`cargo nextest run`"));
+            assert!(!md.contains("--partition"));
+        });
     }
 
     #[test]

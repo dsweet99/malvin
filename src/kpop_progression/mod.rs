@@ -1,4 +1,4 @@
-mod counters;
+pub(crate) mod counters;
 mod multiturn;
 mod multiturn_types;
 

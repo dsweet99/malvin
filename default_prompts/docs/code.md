@@ -8,7 +8,7 @@ Implement a **plan** using malvin’s **KPop gate loop**: repeated agent session
 |---|---|
 | Input | One or more plans (text or `.md` path) → `plan.md` per run dir |
 | Loop | Outer gate iterations; each runs one KPop session |
-| Success | Two consecutive `## KPOP_SOLVED` markers **and** passing `.malvin/checks` gates |
+| Success | Two consecutive `## KPOP_SOLVED` markers **and** passing quality gates from `.malvin/checks` (git repo root when inside a git work tree, else `~/.malvin/checks`) |
 | Requires | `kiss` on PATH; Cursor agent CLI |
 
 ## Intention
