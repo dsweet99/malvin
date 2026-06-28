@@ -75,7 +75,12 @@ mod inspire_tests {
             doc: false,
             name: None,
             mini: false,
-            mini_max_bash_turns: 32,
+        mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
         };
         let client = crate::cli::build_agent(
             &shared,
@@ -109,6 +114,11 @@ mod inspire_tests {
             name: None,
             mini: false,
             mini_max_bash_turns: 32,
+            mini_max_http_turns: 32,
+            mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
         };
         crate::cli::run_emit::emit_run_startup_sequence(
             &artifacts,

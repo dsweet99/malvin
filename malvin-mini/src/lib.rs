@@ -4,7 +4,6 @@
 mod config;
 mod error;
 mod openrouter;
-mod prompt_shrink;
 
 #[cfg(test)]
 mod test_support;

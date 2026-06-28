@@ -1,3 +1,5 @@
+
+# do mode
 You are in `malvin do` right now.
 
 Read to yourself, please. Use your thoughts for reasoning and understanding.

@@ -1,7 +1,7 @@
 //! Unit tests for [`super::models_cmd`].
 
 use super::models_cmd::test_hooks::*;
-use super::models_cmd::run_models;
+use super::models_cmd::{run_models, ModelsArgs};
 
 #[test]
 fn trim_trailing_tips_drops_banner() {
@@ -88,7 +88,7 @@ fn run_models_reads_fake_agent_models_output() {
     perms.set_mode(0o755);
     std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
     let _guard = set_fake_command_dir(tmp.path());
-    run_models().expect("fake agent models");
+    run_models(ModelsArgs { mini: false }).expect("fake agent models");
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }

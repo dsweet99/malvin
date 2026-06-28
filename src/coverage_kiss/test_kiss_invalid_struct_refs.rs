@@ -68,7 +68,13 @@ fn kiss_invalid_struct_value_refs_3() {
 fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::agent_backend::mini::client_retry_tests::RetryPollutionObservation;
     let _ = crate::agent_backend::mini::loop_driver::loop_http::HttpRetryRequest;
-    let _ = crate::agent_backend::mini::loop_driver::loop_inner::CompleteTurnRequest;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_types::CompleteTurnRequest;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_types::LoopPhase::Investigate;
+    let _ = crate::agent_backend::mini::client_gate_retry::ForkLedgerBuild;
+    let _ = crate::agent_backend::mini::client_gate_retry::GateAttemptOutcome;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_phases::BashTurnInput;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_bash::BashObservationInput;
+    let _ = crate::agent_backend::mini::loop_driver::loop_inner_finish::TerminalEmitCtx;
     let _ = crate::agent_backend::mini::loop_driver::loop_types::LoopDriverRun;
     let _ = crate::child_health::evaluate_after_acp_silence;
     let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::log_tag;
@@ -170,20 +176,20 @@ fn kiss_invalid_struct_value_refs_gate10_3() {
     let _ = crate::acp_transport_tests::rpc_unit::test_write_rpc_line_fails_after_child_stdin_closed;
     let _ = crate::acp_transport_tests::shared_handshake::write_bad_session_new_mock;
     let _ = crate::acp_transport_tests::shared_handshake::write_authenticate_rejected_but_session_new_ok_mock;
-    let _ = crate::agent_backend::backend_kpop_tests::mock_backend;
+    let _ = crate::agent_backend::backend_kpop_test_helpers::mock_backend;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_gate10_4() {
-    let _ = crate::agent_backend::backend_kpop_tests::empty_backups;
+    let _ = crate::agent_backend::backend_kpop_test_helpers::empty_backups;
     let _ = crate::agent_backend::mini::client_retry_tests::count_user_messages_with_marker;
     let _ = crate::agent_backend::mini::client_retry_tests::observe_retry_http_history;
     let _ = crate::agent_backend::mini::client_retry_tests::retry_pollution_mock_client;
     let _ = crate::agent_backend::mini::client_retry_tests::run_retry_pollution_prompt;
     let _ = crate::agent_backend::mini::client_retry_tests::assert_retry_history_is_clean;
     let _ = crate::agent_backend::mini::client_retry_tests::mini_coder_prompt_retry_does_not_pollute_session_history;
-    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_no_fence_triggers_nudge_before_final;
-    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_after_nudge_without_bash_errors;
+    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_completes_in_one_turn;
+    let _ = crate::agent_backend::mini::loop_driver_no_fence_tests::loop_driver_fenceless_no_nudge_in_prompts_log;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_single_fence_runs_bash_and_appends_observation;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_line_terminates;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mini_done_inside_fence_still_runs_bash;

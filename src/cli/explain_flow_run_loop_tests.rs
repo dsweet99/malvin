@@ -90,6 +90,11 @@ fn explain_gate_outcome_fixture() -> (
         name: None,
         mini: false,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
     };
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
     (tmp, prepared, shared, backups)

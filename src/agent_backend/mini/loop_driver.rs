@@ -2,6 +2,20 @@
 
 #[path = "loop_http.rs"]
 mod loop_http;
+#[path = "loop_inner_finish.rs"]
+mod loop_inner_finish;
+#[path = "loop_inner_prompt.rs"]
+mod loop_inner_prompt;
+#[path = "loop_inner_phases.rs"]
+mod loop_inner_phases;
+#[path = "loop_inner_types.rs"]
+mod loop_inner_types;
+#[path = "loop_inner_classify.rs"]
+mod loop_inner_classify;
+#[path = "loop_inner_http.rs"]
+mod loop_inner_http;
+#[path = "loop_inner_bash.rs"]
+mod loop_inner_bash;
 #[path = "loop_inner.rs"]
 mod loop_inner;
 #[path = "loop_mock.rs"]
@@ -25,6 +39,12 @@ mod loop_driver_kiss_cov;
 
 pub use loop_inner::run_inner_loop;
 #[cfg(test)]
-pub(crate) use loop_inner::{classify_turn, exhausted_error, push_user_prompt, TurnAction, TurnContext};
+pub(crate) use loop_inner_classify::classify_turn;
+#[cfg(test)]
+pub(crate) use loop_inner_finish::exhausted_error;
+#[cfg(test)]
+pub(crate) use loop_inner_prompt::push_user_prompt;
+#[cfg(test)]
+pub(crate) use loop_inner_types::TurnAction;
 pub use loop_mock::{LlmBackend, MockScript, MockStep};
 pub use loop_types::{LoopDriverConfig, LoopDriverOutcome, LoopDriverRun, LoopDriverSession};

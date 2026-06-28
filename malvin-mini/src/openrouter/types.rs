@@ -26,4 +26,5 @@ pub struct ResponseUsage {
 pub struct CompletionResponse {
     pub content: String,
     pub usage: Option<ResponseUsage>,
+    pub reasoning: Option<String>,
 }

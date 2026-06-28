@@ -1,39 +1,33 @@
 use super::client::{build_request_headers, OpenRouterClient};
-use super::serde_types::{ChatCompletionRequest, ChatCompletionResponse, ChatChoiceMessage};
+use super::serde_types::{ChatCompletionRequest, ChatCompletionResponse};
 use super::types::{ChatMessage, CompletionResponse};
-use crate::error::OpenRouterError;
-use crate::prompt_shrink::{is_prompt_too_long_error, shrink_messages};
+use crate::error::{is_prompt_too_long_error, OpenRouterError};
 
 impl OpenRouterClient {
     /// # Errors
     ///
-    /// Returns [`OpenRouterError`] on HTTP or API failures.
+    /// Returns [`OpenRouterError`] on HTTP or API failures. Context-length failures return
+    /// [`OpenRouterError::ContextOverflow`] without mutating messages.
     pub async fn complete(&self, messages: &[ChatMessage]) -> Result<CompletionResponse, OpenRouterError> {
-        let mut current = messages.to_vec();
-        loop {
-            let url = format!(
-                "{}/chat/completions",
-                self.config().base_url.trim_end_matches('/')
-            );
-            let body = ChatCompletionRequest {
-                model: &self.config().model,
-                messages: &current,
-            };
-            let headers = build_request_headers(self.config())?;
-            let resp = self.http().post(url).headers(headers).json(&body).send().await?;
-            let status = resp.status().as_u16();
-            let text = resp.text().await?;
-            match map_http_status(status, &text) {
-                Ok(()) => return parse_completion_body(&text),
-                Err(err) if is_prompt_too_long_error(&err) => {
-                    let shrunk = shrink_messages(&current);
-                    if shrunk == current {
-                        return Err(err);
-                    }
-                    current = shrunk;
-                }
-                Err(err) => return Err(err),
-            }
+        let url = format!(
+            "{}/chat/completions",
+            self.config().base_url.trim_end_matches('/')
+        );
+        let body = ChatCompletionRequest {
+            model: &self.config().model,
+            messages,
+        };
+        let headers = build_request_headers(self.config())?;
+        let resp = self.http().post(url).headers(headers).json(&body).send().await?;
+        let status = resp.status().as_u16();
+        let text = resp.text().await?;
+        match map_http_status(status, &text) {
+            Ok(()) => parse_completion_body(&text),
+            Err(err) if is_prompt_too_long_error(&err) => Err(OpenRouterError::ContextOverflow {
+                body: err.to_string(),
+                message_count: messages.len(),
+            }),
+            Err(err) => Err(err),
         }
     }
 }
@@ -60,17 +54,58 @@ fn map_http_status(status: u16, body: &str) -> Result<(), OpenRouterError> {
 }
 
 fn parse_completion_body(text: &str) -> Result<CompletionResponse, OpenRouterError> {
-    let parsed: ChatCompletionResponse = serde_json::from_str(text)?;
-    let content = parsed
+    let mut value: serde_json::Value = serde_json::from_str(text)?;
+    normalize_message_content_fields(&mut value);
+    let parsed: ChatCompletionResponse = serde_json::from_value(value)?;
+    let message = parsed
         .choices
         .first()
         .and_then(|c| c.message.as_ref())
-        .and_then(|m: &ChatChoiceMessage| m.content.clone())
         .ok_or(OpenRouterError::MissingContent)?;
+    let content = message.text_content().ok_or(OpenRouterError::MissingContent)?;
+    let reasoning = message.reasoning.clone();
     Ok(CompletionResponse {
         content,
         usage: parsed.usage,
+        reasoning,
     })
+}
+
+fn normalize_message_content_fields(value: &mut serde_json::Value) {
+    let Some(choices) = value.get_mut("choices").and_then(serde_json::Value::as_array_mut) else {
+        return;
+    };
+    for choice in choices {
+        let Some(content) = choice.pointer_mut("/message/content") else {
+            continue;
+        };
+        if let Some(normalized) = normalize_content_value(content) {
+            *content = normalized;
+        } else if content.is_array() {
+            *content = serde_json::Value::String(String::new());
+        }
+    }
+}
+
+fn normalize_content_value(content: &serde_json::Value) -> Option<serde_json::Value> {
+    match content {
+        serde_json::Value::Array(parts) => {
+            let joined: Vec<String> = parts
+                .iter()
+                .filter_map(|part| {
+                    part.get("text")
+                        .and_then(serde_json::Value::as_str)
+                        .map(str::to_string)
+                })
+                .collect();
+            if joined.is_empty() {
+                None
+            } else {
+                Some(serde_json::Value::String(joined.join("\n")))
+            }
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -107,5 +142,43 @@ mod tests {
         assert_eq!(resp.usage.and_then(|u| u.total_tokens), Some(3));
         let err = parse_completion_body(r#"{"choices":[{"message":{}}]}"#).expect_err("missing");
         assert!(matches!(err, OpenRouterError::MissingContent));
+    }
+
+    #[test]
+    fn parse_completion_body_accepts_content_parts_array() {
+        let body = r#"{"choices":[{"message":{"content":[{"type":"text","text":"hello"}]}}]}"#;
+        let resp = parse_completion_body(body).expect("parse parts");
+        assert_eq!(resp.content, "hello");
+    }
+
+    #[test]
+    fn parse_completion_body_joins_multiple_content_parts() {
+        let body = r#"{"choices":[{"message":{"content":[
+            {"type":"text","text":"line1"},
+            {"type":"text","text":"line2"}
+        ]}}]}"#;
+        let resp = parse_completion_body(body).expect("parse parts");
+        assert_eq!(resp.content, "line1\nline2");
+    }
+
+    #[test]
+    fn parse_completion_body_prefers_non_empty_text_over_reasoning() {
+        let body = r#"{"choices":[{"message":{"content":"answer","reasoning":"think"}}]}"#;
+        let resp = parse_completion_body(body).expect("parse text");
+        assert_eq!(resp.content, "answer");
+    }
+
+    #[test]
+    fn parse_completion_body_falls_back_to_reasoning() {
+        let body = r#"{"choices":[{"message":{"content":"","reasoning":"think"}}]}"#;
+        let resp = parse_completion_body(body).expect("parse reasoning");
+        assert_eq!(resp.content, "think");
+    }
+
+    #[test]
+    fn parse_completion_body_skips_parts_without_text() {
+        let body = r#"{"choices":[{"message":{"content":[{"type":"text"}],"reasoning":"only"}}]}"#;
+        let resp = parse_completion_body(body).expect("parse empty parts");
+        assert_eq!(resp.content, "only");
     }
 }

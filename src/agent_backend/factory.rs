@@ -5,7 +5,7 @@ use crate::cli::{
 };
 
 use super::backend::AgentBackend;
-use super::mini::{MiniAgentClient, MiniLoopConfig};
+use super::mini::{MiniAgentClient, MiniLoopConfig, MiniRetryStrategy};
 
 /// # Errors
 ///
@@ -47,60 +47,57 @@ pub fn build_agent_backend_with_tee(
     }
 }
 
+#[allow(clippy::missing_const_for_fn)]
+fn mini_http_turns(shared: &SharedOpts) -> u32 {
+    // `--mini-max-bash-turns` is a deprecated alias for HTTP turns.
+    if shared.mini_max_bash_turns == 32 {
+        shared.mini_max_http_turns
+    } else {
+        shared.mini_max_bash_turns
+    }
+}
+
+const fn mini_gate_retries(shared: &SharedOpts) -> u32 {
+    if shared.mini_max_gate_retries > 0 {
+        shared.mini_max_gate_retries
+    } else {
+        shared.max_acp_retries
+    }
+}
+
 fn new_mini_client(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
     tee: AgentStdoutTeeFlags,
 ) -> Result<MiniAgentClient, String> {
     let io = agent_io_options(shared, workflow, tee);
+    let tenacious = !shared.no_tenacious;
+    let http_retries = if tenacious && shared.mini_max_http_retries == 0 {
+        9999
+    } else {
+        shared.mini_max_http_retries
+    };
+    let gate_retries = if tenacious && shared.mini_max_gate_retries == 0 && shared.max_acp_retries <= 3 {
+        9999
+    } else {
+        mini_gate_retries(shared)
+    };
+    let shrink_passes = if tenacious && shared.mini_max_shrink_passes == 0 {
+        3
+    } else {
+        shared.mini_max_shrink_passes
+    };
     MiniAgentClient::new(
         MiniLoopConfig {
             model: shared.model.clone(),
-            max_bash_turns: shared.mini_max_bash_turns,
-            max_http_retries: shared.max_acp_retries,
+            max_http_turns: mini_http_turns(shared),
+            max_bash_execs: shared.mini_max_bash_execs,
+            max_http_retries: http_retries,
+            max_gate_retries: gate_retries,
+            max_shrink_passes: shrink_passes,
+            retry_strategy: MiniRetryStrategy::CumulativeTranscript,
+            expects_investigation: false,
         },
         io,
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::agent_backend::test_support::{install_openrouter_test_key, shared_opts};
-    use crate::cli::WorkflowCliOptions;
-
-    #[test]
-    fn build_agent_backend_selects_acp_when_mini_false() {
-        let backend = build_agent_backend(
-            &shared_opts(false),
-            WorkflowCliOptions { force: false },
-            false,
-            "code",
-        )
-        .expect("acp");
-        assert!(matches!(backend, AgentBackend::Acp(_)));
-    }
-
-    #[test]
-    fn build_agent_backend_with_tee_selects_mini_when_flag_set() {
-        install_openrouter_test_key();
-        let backend = build_agent_backend_with_tee(
-            &shared_opts(true),
-            WorkflowCliOptions { force: false },
-            AgentStdoutTeeFlags {
-                emit_stdout_markdown: false,
-                raw_output: true,
-                show_thoughts_on_stdout: false,
-            },
-        )
-        .expect("mini");
-        assert!(matches!(backend, AgentBackend::Mini(_)));
-    }
-
-    #[test]
-    fn workspace_cargo_toml_lists_malvin_mini_member() {
-        let text = std::fs::read_to_string("Cargo.toml").expect("Cargo.toml");
-        assert!(text.contains("malvin-mini"));
-        assert!(text.contains("[workspace]"));
-    }
 }

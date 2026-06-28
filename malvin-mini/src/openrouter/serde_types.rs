@@ -22,4 +22,14 @@ pub(super) struct ChatChoice {
 #[derive(Serialize, Deserialize)]
 pub(super) struct ChatChoiceMessage {
     pub content: Option<String>,
+    pub reasoning: Option<String>,
+}
+
+impl ChatChoiceMessage {
+    pub(super) fn text_content(&self) -> Option<String> {
+        self.content
+            .clone()
+            .filter(|text| !text.is_empty())
+            .or_else(|| self.reasoning.clone())
+    }
 }

@@ -73,18 +73,14 @@ mod tests {
 
     use super::{run_kpop_flow_once_mini, run_kpop_multiturn_once_mini};
     use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
-    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
-    use crate::agent_backend::test_support::{mini_done_response, test_io};
+    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
+    use crate::agent_backend::test_support::{mini_done_response, mini_loop_config, test_io};
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
     use crate::kpop_progression::KpopMultiturnState;
 
     fn mock_client(responses: Vec<MockStep>) -> MiniAgentClient {
         MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "anthropic/claude-sonnet-4".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             test_io(),
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses,
@@ -140,11 +136,7 @@ mod tests {
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let exp_log_for_hook = exp_log.clone();
         let mut client = MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "anthropic/claude-sonnet-4".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             test_io(),
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses: vec![MockStep::Ok(mini_done_response())],
@@ -187,11 +179,7 @@ mod tests {
             .expect("snapshot");
         let work = tmp.path().to_path_buf();
         let mut client = MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "m".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             test_io(),
             LlmBackend::Mock(Mutex::new(MockScript {
                 responses: vec![MockStep::Ok(mini_done_response())],

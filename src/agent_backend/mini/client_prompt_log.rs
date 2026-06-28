@@ -29,6 +29,9 @@ pub fn write_prompt_log(ctx: PromptLogWrite<'_>) -> Result<(), AgentError> {
 }
 
 fn emit_stdout_line(client: &MiniAgentClient, label: &str, prompt: &str, who: &str) {
+    if client.trace.plain_lines {
+        return;
+    }
     if client.io.log_full_outgoing_prompts {
         crate::output::print_stdout_line(label, prompt);
     } else {
@@ -83,17 +86,14 @@ fn mirror_prompt_log_to_run_dir(client: &MiniAgentClient, line: &str) {
 mod tests {
     use super::*;
     use crate::acp::CoderPromptOptions;
-    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MiniLoopConfig, MockScript, MockStep};
+    use crate::agent_backend::test_support::mini_loop_config;
+    use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
     use malvin_mini::CompletionResponse;
     use std::sync::Mutex;
 
     fn test_client(verbose: bool) -> MiniAgentClient {
         MiniAgentClient::new_mock(
-            MiniLoopConfig {
-                model: "m".into(),
-                max_bash_turns: 4,
-                max_http_retries: 1,
-            },
+            mini_loop_config(4, 1),
             crate::acp::AgentIoOptions {
                 force: false,
                 no_tee: true,
@@ -106,11 +106,39 @@ mod tests {
                 responses: vec![MockStep::Ok(CompletionResponse {
                     content: "ok".into(),
                     usage: None,
+                    reasoning: None,
                 })],
                 call_count: 0,
                 on_response: None,
             })),
         )
+    }
+
+    #[tokio::test]
+    async fn mini_do_prompt_log_skips_live_stdout_bracket() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut client = test_client(false);
+        client.trace.plain_lines = true;
+        let log = tmp.path().join("do.log");
+        let log_path = log.clone();
+        crate::output::set_stdout_log_path(Some(tmp.path().join("stdout.log")));
+        write_prompt_log(PromptLogWrite {
+            client: &client,
+            prompt: "body",
+            log_path: &log_path,
+            who: "do",
+            opts: &CoderPromptOptions {
+                do_trace_split: Some(("header", "user")),
+                ..Default::default()
+            },
+        })
+        .expect("write");
+        let stdout = std::fs::read_to_string(tmp.path().join("stdout.log")).unwrap_or_default();
+        assert!(
+            stdout.is_empty(),
+            "plain do must not emit d|[do] bracket on stdout; got {stdout:?}"
+        );
+        crate::output::set_stdout_log_path(None);
     }
 
     #[tokio::test]

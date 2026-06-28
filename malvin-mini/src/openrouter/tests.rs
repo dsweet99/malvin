@@ -9,7 +9,7 @@ use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
-async fn openrouter_serializes_model_messages_and_headers() {
+pub(crate) async fn openrouter_serializes_model_messages_and_headers() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/chat/completions"))
@@ -31,7 +31,7 @@ async fn openrouter_serializes_model_messages_and_headers() {
 }
 
 #[tokio::test]
-async fn openrouter_error_maps_401_unauthorized() {
+pub(crate) async fn openrouter_error_maps_401_unauthorized() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(401).set_body_string("bad key"))
@@ -43,7 +43,7 @@ async fn openrouter_error_maps_401_unauthorized() {
 }
 
 #[tokio::test]
-async fn openrouter_error_maps_429_rate_limit() {
+pub(crate) async fn openrouter_error_maps_429_rate_limit() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(429).set_body_string("slow down"))
@@ -56,7 +56,7 @@ async fn openrouter_error_maps_429_rate_limit() {
 }
 
 #[tokio::test]
-async fn openrouter_error_maps_500_server_error() {
+pub(crate) async fn openrouter_error_maps_500_server_error() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(500).set_body_string("boom"))
@@ -69,7 +69,7 @@ async fn openrouter_error_maps_500_server_error() {
 }
 
 #[tokio::test]
-async fn openrouter_error_maps_billing_failure() {
+pub(crate) async fn openrouter_error_maps_billing_failure() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(402).set_body_string("no credits"))
@@ -81,7 +81,7 @@ async fn openrouter_error_maps_billing_failure() {
 }
 
 #[tokio::test]
-async fn openrouter_mock_http_complete_returns_usage() {
+pub(crate) async fn openrouter_mock_http_complete_returns_usage() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -97,7 +97,7 @@ async fn openrouter_mock_http_complete_returns_usage() {
 }
 
 #[tokio::test]
-async fn openrouter_mock_http_complete_returns_usage_cost() {
+pub(crate) async fn openrouter_mock_http_complete_returns_usage_cost() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -134,6 +134,7 @@ fn openrouter_private_response_types_round_trip_serialization() {
         choices: vec![ChatChoice {
             message: Some(ChatChoiceMessage {
                 content: Some("ok".into()),
+                reasoning: None,
             }),
         }],
         usage: Some(ResponseUsage {
@@ -176,7 +177,7 @@ fn kiss_cov_openrouter_private_serde_types() {
 }
 
 #[tokio::test]
-async fn openrouter_error_on_non_200_request_failed() {
+pub(crate) async fn openrouter_error_on_non_200_request_failed() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(418).set_body_string("teapot"))
@@ -188,7 +189,7 @@ async fn openrouter_error_on_non_200_request_failed() {
 }
 
 #[tokio::test]
-async fn openrouter_error_on_missing_content() {
+pub(crate) async fn openrouter_error_on_missing_content() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({

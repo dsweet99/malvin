@@ -6,33 +6,36 @@ use std::sync::{Arc, Mutex};
 use malvin_mini::OpenRouterClient;
 
 use super::bash_adapter::ensure_bash_on_path;
+use super::client_gate_retry::run_coder_prompt_with_gate_retries;
 use super::client_prompt_log::{write_prompt_log, PromptLogWrite};
-use super::loop_driver::{
-    run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, LlmBackend,
-};
+use super::loop_driver::{LoopDriverConfig, LoopDriverSession, LlmBackend};
 use super::model_resolve::resolve_mini_model;
+use super::retry_fork::MiniRetryStrategy;
 use super::trace::MiniTraceSink;
-use crate::acp::{
-    backoff_after_agent_failure, retries_noun, AgentError, AgentIoOptions, AuthError,
-    CoderPromptOptions,
-};
+use crate::acp::{AgentError, AgentIoOptions, AuthError, CoderPromptOptions};
 use crate::prompts::default_file;
 
 pub struct MiniLoopConfig {
     pub model: String,
-    pub max_bash_turns: u32,
+    pub max_http_turns: u32,
+    pub max_bash_execs: u32,
     pub max_http_retries: u32,
+    pub max_gate_retries: u32,
+    pub max_shrink_passes: u32,
+    pub retry_strategy: MiniRetryStrategy,
+    pub expects_investigation: bool,
 }
 
 pub struct MiniAgentClient {
     pub config: MiniLoopConfig,
     pub io: AgentIoOptions,
     pub prompts_log_run_dir: Option<PathBuf>,
-    llm: LlmBackend,
-    session: Option<LoopDriverSession>,
-    last_response: Option<String>,
+    pub(crate) llm: LlmBackend,
+    pub(crate) session: Option<LoopDriverSession>,
+    pub(crate) last_response: Option<String>,
     pub(crate) timing: Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
-    trace: MiniTraceSink,
+    pub(crate) trace: MiniTraceSink,
+    prompt_counter: u32,
 }
 
 impl MiniAgentClient {
@@ -51,6 +54,7 @@ impl MiniAgentClient {
             last_response: None,
             timing: None,
             trace: MiniTraceSink::new(None, io),
+            prompt_counter: 0,
         })
     }
 
@@ -65,6 +69,7 @@ impl MiniAgentClient {
             last_response: None,
             timing: None,
             trace: MiniTraceSink::new(None, io),
+            prompt_counter: 0,
         }
     }
 
@@ -87,7 +92,7 @@ impl MiniAgentClient {
 
     #[must_use]
     pub const fn max_acp_retries(&self) -> u32 {
-        self.config.max_http_retries
+        self.config.max_gate_retries
     }
 
     pub async fn begin_coder_session(&mut self, cwd: &Path) -> Result<(), AgentError> {
@@ -100,7 +105,12 @@ impl MiniAgentClient {
         self.session = Some(LoopDriverSession {
             messages: vec![],
             cwd: cwd.to_path_buf(),
+            constraints_prepended: false,
+            bash_commands_this_prompt: vec![],
+            prompt_index: 0,
+            llm_model_slug: resolve_mini_model(&self.config.model),
         });
+        self.prompt_counter = 0;
         Ok(())
     }
 
@@ -131,7 +141,13 @@ impl MiniAgentClient {
             .map_err(|e| AgentError(e.0))?;
 
         let mini_constraints = default_file("mini_constraints.md").unwrap_or("");
-        let effective_prompt = format!("{mini_constraints}\n\n{prompt}");
+        let effective_prompt = if self.session.as_ref().is_some_and(|s| !s.constraints_prepended) {
+            format!("{mini_constraints}\n\n{prompt}")
+        } else {
+            prompt.to_string()
+        };
+
+        self.trace.plain_lines = opts.do_trace_split.is_some();
 
         write_prompt_log(PromptLogWrite {
             client: self,
@@ -142,73 +158,21 @@ impl MiniAgentClient {
         })?;
 
         let driver_config = LoopDriverConfig {
-            max_bash_turns: self.config.max_bash_turns,
+            max_http_turns: self.config.max_http_turns,
+            max_bash_execs: self.config.max_bash_execs,
             max_http_retries: self.config.max_http_retries,
+            max_shrink_passes: self.config.max_shrink_passes,
             mini_constraints,
+            expects_investigation: self.config.expects_investigation,
         };
 
         self.trace.log_outgoing_prompt(&effective_prompt);
 
-        self.run_coder_prompt_with_retries(prompt, &driver_config, opts).await
-    }
+        let session = self.session.as_mut().expect("session checked above");
+        session.prompt_index = self.prompt_counter;
+        self.prompt_counter += 1;
 
-    async fn run_coder_prompt_with_retries(
-        &mut self,
-        prompt: &str,
-        driver_config: &LoopDriverConfig,
-        opts: CoderPromptOptions<'_>,
-    ) -> Result<(), AgentError> {
-        let max_attempts = if opts.single_attempt {
-            1
-        } else {
-            self.config.max_http_retries.max(1)
-        };
-        let mut last_error = String::new();
-        let mut attempts_used = 0_u32;
-        for attempt in 1..=max_attempts {
-            attempts_used = attempt;
-            let session = self.session.as_mut().expect("session checked above");
-            let message_checkpoint = session.messages.len();
-            match run_inner_loop(LoopDriverRun {
-                llm: &self.llm,
-                session,
-                user_prompt: prompt,
-                config: driver_config,
-                trace: &self.trace,
-                timing: self.timing.as_ref(),
-                llm_phase: opts.llm_phase,
-                single_attempt: opts.single_attempt,
-            })
-            .await
-            {
-                Ok(outcome) => {
-                    self.last_response = Some(outcome.final_assistant_text);
-                    return Ok(());
-                }
-                Err(e) => {
-                    last_error = e.0;
-                    session.messages.truncate(message_checkpoint);
-                    if opts.single_attempt {
-                        return Err(AgentError(last_error));
-                    }
-                    if backoff_after_agent_failure(
-                        self.timing.as_ref(),
-                        &last_error,
-                        attempt,
-                        max_attempts,
-                    )
-                    .await?
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-        let retries = attempts_used.saturating_sub(1);
-        let noun = retries_noun(retries);
-        Err(AgentError(format!(
-            "mini agent (gate_iteration) failed after {retries} {noun}. Last error:\n{last_error}"
-        )))
+        run_coder_prompt_with_gate_retries(self, prompt, &driver_config, opts).await
     }
 }
 
@@ -222,8 +186,13 @@ mod client_tests {
         let client = MiniAgentClient::new_mock(
             MiniLoopConfig {
                 model: "m".into(),
-                max_bash_turns: 4,
+                max_http_turns: 4,
+                max_bash_execs: 128,
                 max_http_retries: 1,
+                max_gate_retries: 1,
+                max_shrink_passes: 0,
+                retry_strategy: MiniRetryStrategy::CumulativeTranscript,
+                expects_investigation: false,
             },
             AgentIoOptions {
                 force: false,
@@ -237,6 +206,7 @@ mod client_tests {
                 responses: vec![MockStep::Ok(malvin_mini::CompletionResponse {
                     content: "ok".into(),
                     usage: None,
+                    reasoning: None,
                 })],
                 call_count: 0,
                 on_response: None,

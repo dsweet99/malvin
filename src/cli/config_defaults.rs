@@ -153,6 +153,11 @@ pub fn apply_workspace_config_defaults(
     cli: &mut Cli,
 ) -> Result<(), String> {
     if matches!(cli.command, Some(Commands::Do(_) | Commands::Models(_))) {
+        if cli.shared.mini {
+            let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+            let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
+            apply_mini_model_default(matches, &mut cli.shared, &agent);
+        }
         return Ok(());
     }
 

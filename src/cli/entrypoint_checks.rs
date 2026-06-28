@@ -59,7 +59,7 @@ mod tests {
             assert!(!checks.exists());
             assert!(!config.exists());
 
-            ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs {}))
+            ensure_malvin_checks_for_command(&Commands::Models(ModelsArgs { mini: false }))
                 .expect("models must not create checks");
             assert!(!checks.exists());
             assert!(!config.exists());

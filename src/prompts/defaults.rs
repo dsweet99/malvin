@@ -6,7 +6,6 @@ mod default_files;
 pub use default_files::default_file;
 
 pub const HEADER_MD: &str = "header.md";
-pub const HEADER_DO_MD: &str = "header_do.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
@@ -25,7 +24,6 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "revise_constraints.md",
     "mini_constraints.md",
     HEADER_MD,
-    HEADER_DO_MD,
     DO_HEADER_MD,
 ];
 
@@ -93,25 +91,3 @@ mod do_header_tests {
     }
 }
 
-#[cfg(test)]
-mod header_do_tests {
-    use super::HEADER_DO_MD;
-    use super::default_file;
-
-    #[test]
-    fn embedded_header_do_omits_log_reading_mandate() {
-        let s = default_file(HEADER_DO_MD).expect("header_do must be embedded");
-        let lower = s.to_ascii_lowercase();
-        assert!(!lower.contains("recent logs"));
-        assert!(!lower.contains("rl: be sure to look at recent logs"));
-        assert!(!lower.contains("## history"));
-        assert!(
-            !lower.contains("## definition: claims vs hypotheses"),
-            "do coding header must not impose epistemic log-citation rules"
-        );
-        assert!(
-            !lower.contains("cite evidence"),
-            "do coding header must not require evidence citations"
-        );
-    }
-}

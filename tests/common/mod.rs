@@ -50,6 +50,7 @@ mod explain_harness;
 #[cfg(unix)]
 mod revise_harness;
 mod contract;
+pub mod mini_test_helpers;
 pub mod observability_parity;
 mod workspace;
 

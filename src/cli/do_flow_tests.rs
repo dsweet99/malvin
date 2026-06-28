@@ -6,7 +6,7 @@ use crate::do_flow::do_flow_prompt::{
     build_do_coder_run, build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
-use crate::prompts::{DO_HEADER_MD, HEADER_DO_MD, HEADER_MD, PromptStore};
+use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 
 fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
     let plan = tmp.path().join("plan.md");
@@ -42,7 +42,7 @@ fn assert_do_triple_join(combined: &str, coding_header: &str, do_header: &str, u
 fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
-    std::fs::write(prompt_root.join(HEADER_DO_MD), "CODING_HDR\n").expect("header_do");
+    std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
     std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_HDR\n").expect("do_header");
     std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
     PromptStore::with_root(prompt_root)
@@ -66,7 +66,7 @@ fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
 #[test]
 fn prepare_do_prompt_store_loads_default_templates() {
     let store = prepare_do_prompt_store().expect("store");
-    assert!(store.validate_exists(HEADER_DO_MD).is_ok());
+    assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(DO_HEADER_MD).is_ok());
 }
 
@@ -90,8 +90,12 @@ fn build_do_coder_run_default_store_produces_dual_headers() {
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("malvin do"));
     assert!(
-        !run.combined.to_ascii_lowercase().contains("recent logs"),
-        "do prompt must not invite log-reading narration"
+        run.combined.contains("Context Prep"),
+        "do prompt must include standard header content"
+    );
+    assert!(
+        run.combined.contains("User:"),
+        "do prompt must render current_state from workflow context"
     );
     assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
 }

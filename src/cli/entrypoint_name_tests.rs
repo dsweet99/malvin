@@ -86,7 +86,7 @@ fn explicit_kpop_subcommand_rejects_session_name() {
 
 #[test]
 fn models_command_rejects_session_name() {
-    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs {}), false));
+    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs { mini: false }), false));
 }
 
 #[test]

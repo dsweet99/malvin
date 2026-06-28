@@ -4,24 +4,12 @@ use malvin_mini::ResponseUsage;
 
 use super::trace::format_mini_bash_tool_line;
 use super::MiniTraceSink;
-use crate::output::{is_log_timestamp_token, WHO_B, WHO_M};
-
-fn stdout_log_tool_t_lines(text: &str) -> Vec<&str> {
-    text.lines()
-        .filter(|line| {
-            let Some((ts, rest)) = line.split_once(' ') else {
-                return false;
-            };
-            is_log_timestamp_token(ts) && rest.starts_with("t|")
-        })
-        .collect()
-}
 
 fn test_io(no_tee: bool) -> crate::acp::AgentIoOptions {
     crate::acp::AgentIoOptions {
         force: false,
         no_tee,
-        raw_output: !no_tee,
+        raw_output: false,
         show_thoughts_on_stdout: false,
         emit_stdout_markdown: false,
         log_full_outgoing_prompts: false,
@@ -104,110 +92,10 @@ pub(crate) fn with_stdout_log_test_lock<F: FnOnce()>(f: F) {
 }
 
 #[test]
-fn mini_stdout_emits_bash_tool_summary_with_t_tag() {
-    with_stdout_log_test_lock(|| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let log_path = tmp.path().join("stdout.log");
-        crate::output::set_stdout_log_path(Some(log_path.clone()));
-        let sink = trace_sink(&tmp, false);
-        sink.mini_bash_exec("echo hi", 0, Duration::from_millis(3), None);
-        let text = std::fs::read_to_string(log_path).expect("stdout log");
-        assert!(text.contains("t|"));
-        assert!(text.contains("Run echo hi"));
-        assert!(text.contains("✓"));
-        crate::output::set_stdout_log_path(None);
-    });
-}
-
-#[test]
-fn mini_stdout_cat_emits_read_summary() {
-    with_stdout_log_test_lock(|| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let log_path = tmp.path().join("stdout.log");
-        crate::output::set_stdout_log_path(Some(log_path.clone()));
-        let sink = trace_sink(&tmp, false);
-        sink.mini_bash_exec("cat README.md", 0, Duration::from_millis(3), None);
-        let text = std::fs::read_to_string(log_path).expect("stdout log");
-        assert!(text.contains("Read README.md"));
-        crate::output::set_stdout_log_path(None);
-    });
-}
-
-#[test]
-fn mini_stdout_multiline_bash_emits_single_t_tagged_line() {
-    with_stdout_log_test_lock(|| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let log_path = tmp.path().join("stdout.log");
-        crate::output::set_stdout_log_path(Some(log_path.clone()));
-        let sink = trace_sink(&tmp, false);
-        let command = "cat >> /path/file << 'EOF'\ncontent\nEOF";
-        sink.mini_bash_exec(command, 0, Duration::from_millis(3), None);
-        let text = std::fs::read_to_string(log_path).expect("stdout log");
-        assert_eq!(
-            text.lines().count(),
-            1,
-            "multiline command must log exactly one physical line; got {text:?}"
-        );
-        let t_lines = stdout_log_tool_t_lines(&text);
-        assert_eq!(
-            t_lines.len(),
-            1,
-            "multiline command must produce exactly one timestamped t| line; got {text:?}"
-        );
-        let payload = t_lines[0]
-            .split_once(' ')
-            .map_or(t_lines[0], |(_, rest)| rest);
-        assert!(
-            !payload.contains('\n'),
-            "t| payload must not contain embedded newlines"
-        );
-        assert!(payload.starts_with("t|Edit "));
-        assert!(payload.contains("/path/file"));
-        assert!(payload.ends_with("· 3ms · ✓"));
-        crate::output::set_stdout_log_path(None);
-    });
-}
-
-#[test]
-fn mini_stdout_emits_assistant_with_m_tag_not_b_tag() {
-    with_stdout_log_test_lock(|| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let log_path = tmp.path().join("stdout.log");
-        crate::output::set_stdout_log_path(Some(log_path.clone()));
-        let sink = trace_sink(&tmp, false);
-        sink.mini_assistant("hello from mini");
-        let text = std::fs::read_to_string(log_path).expect("stdout log");
-        assert!(
-            text.contains(&format!("{WHO_M}|")),
-            "assistant text must use m| tag, got {text:?}"
-        );
-        assert!(
-            !text.contains(&format!("{WHO_B}|")),
-            "assistant text must not use b| tag, got {text:?}"
-        );
-        crate::output::set_stdout_log_path(None);
-    });
-}
-
-#[test]
-fn mini_stdout_skips_assistant_when_no_tee() {
-    with_stdout_log_test_lock(|| {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let log_path = tmp.path().join("stdout.log");
-        crate::output::set_stdout_log_path(Some(log_path.clone()));
-        let sink = trace_sink(&tmp, true);
-        sink.mini_assistant("hidden");
-        let text = std::fs::read_to_string(log_path).unwrap_or_default();
-        assert!(text.is_empty(), "no_tee must suppress assistant stdout; got {text:?}");
-        crate::output::set_stdout_log_path(None);
-    });
-}
-
-#[test]
 fn mini_no_tee_still_writes_acp_trace_assistant() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sink = trace_sink(&tmp, true);
-    sink.mini_assistant("trace only");
+    sink.stream_assistant_chunks("trace only");
     let text = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
     assert!(text.contains("agent_message_chunk"));
     assert!(text.contains("trace only"));
@@ -226,7 +114,7 @@ fn mini_no_tee_still_writes_acp_trace_bash() {
 fn mini_trace_acp_schema_assistant_full_text() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sink = trace_sink(&tmp, true);
-    sink.mini_assistant("hello assistant");
+    sink.stream_assistant_chunks("hello assistant");
     let text = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
     assert!(text.contains("agent_message_chunk"));
     assert!(text.contains("hello assistant"));
@@ -242,4 +130,14 @@ fn mini_trace_outgoing_prompt_has_direction_out() {
     let records = parse_trace_lines(&tmp.path().join("trace.jsonl"));
     assert_eq!(records.len(), 1);
     assert_eq!(records[0]["direction"], "out");
+}
+
+#[test]
+fn mini_no_tee_still_writes_acp_trace_reasoning() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let sink = trace_sink(&tmp, true);
+    sink.mini_thought("hidden reasoning blob");
+    let text = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
+    assert!(text.contains("agent_thought_chunk"));
+    assert!(text.contains("hidden reasoning blob"));
 }

@@ -11,6 +11,13 @@ pub struct BashFence {
     pub comment: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FenceParseWarning {
+    UnrecognizedFenceTag,
+    UnclosedFence,
+    FencelessAfterBashOnlyTurn,
+}
+
 /// Returns bash fence commands in document order.
 #[must_use]
 pub fn parse_bash_fences(text: &str) -> Vec<BashFence> {
@@ -19,6 +26,41 @@ pub fn parse_bash_fences(text: &str) -> Vec<BashFence> {
         state.handle_line(line);
     }
     state.out
+}
+
+/// Collect parse warnings for assistant text (malformed fences, unclosed blocks).
+#[must_use]
+pub fn scan_fence_warnings(text: &str) -> Vec<FenceParseWarning> {
+    let mut warnings = Vec::new();
+    let mut inside_bash_fence = false;
+    let mut inside_unknown_fence = false;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if inside_bash_fence {
+            if trimmed == "```" {
+                inside_bash_fence = false;
+            }
+            continue;
+        }
+        if inside_unknown_fence {
+            if trimmed == "```" {
+                inside_unknown_fence = false;
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") {
+            if is_bash_fence_open(trimmed) {
+                inside_bash_fence = true;
+            } else if trimmed != "```" {
+                warnings.push(FenceParseWarning::UnrecognizedFenceTag);
+                inside_unknown_fence = true;
+            }
+        }
+    }
+    if inside_bash_fence || inside_unknown_fence {
+        warnings.push(FenceParseWarning::UnclosedFence);
+    }
+    warnings
 }
 
 pub(crate) fn comment_from_pending(pending: &[String]) -> Option<String> {
@@ -136,6 +178,12 @@ mod tests {
     #[test]
     fn kiss_witness_fence_parse_state_type() {
         let _ = std::mem::size_of::<super::fence_parse_state::FenceParseState>();
+    }
+
+    #[test]
+    fn scan_fence_warnings_detects_unrecognized_tag() {
+        let warnings = scan_fence_warnings("```shell\necho hi\n```");
+        assert!(warnings.contains(&FenceParseWarning::UnrecognizedFenceTag));
     }
 
     #[test]

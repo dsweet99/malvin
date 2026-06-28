@@ -12,6 +12,11 @@ pub enum OpenRouterError {
     ServerError { status: u16, body: String },
     #[error("OpenRouter request failed ({status}): {body}")]
     RequestFailed { status: u16, body: String },
+    #[error("OpenRouter context overflow: {body}")]
+    ContextOverflow {
+        body: String,
+        message_count: usize,
+    },
     #[error("OpenRouter response missing assistant content")]
     MissingContent,
     #[error("HTTP transport error: {0}")]
@@ -28,6 +33,18 @@ impl OpenRouterError {
             Self::RateLimited { .. } | Self::ServerError { .. }
         )
     }
+
+    #[must_use]
+    pub const fn is_context_overflow(&self) -> bool {
+        matches!(self, Self::ContextOverflow { .. })
+    }
+}
+
+#[must_use]
+pub fn is_prompt_too_long_error(err: &OpenRouterError) -> bool {
+    err.to_string()
+        .to_ascii_lowercase()
+        .contains("prompt is too long")
 }
 
 #[cfg(test)]
@@ -54,5 +71,22 @@ mod tests {
             body: "teapot".into()
         }
         .is_retryable());
+    }
+
+    #[test]
+    fn is_prompt_too_long_error_matches_request_failed_body() {
+        let err = OpenRouterError::RequestFailed {
+            status: 400,
+            body: r#"{"error":"prompt is too long"}"#.into(),
+        };
+        assert!(super::is_prompt_too_long_error(&err));
+        assert!(!super::is_prompt_too_long_error(&OpenRouterError::RateLimited {
+            body: "slow".into()
+        }));
+    }
+
+    #[test]
+    fn kiss_cov_is_prompt_too_long_error() {
+        let _ = super::is_prompt_too_long_error;
     }
 }

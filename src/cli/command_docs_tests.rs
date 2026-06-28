@@ -17,7 +17,7 @@ fn capture_doc(command: Option<&Commands>) -> Result<Vec<u8>, String> {
 
 #[test]
 fn subcommand_doc_embeds_have_malvin_heading() {
-    let md = command_doc_markdown(&Commands::Models(ModelsArgs {}));
+    let md = command_doc_markdown(&Commands::Models(ModelsArgs { mini: false }));
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
         max_loops: 1,

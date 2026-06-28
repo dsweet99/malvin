@@ -1,4 +1,4 @@
-//! `do` subcommand: one coder ACP prompt with dual headers (`header_do.md` + `do_header.md`) and user request.
+//! `do` subcommand: one coder ACP prompt with dual headers (`header.md` + `do_header.md`) and user request.
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -132,7 +132,8 @@ async fn run_do_coder_prompt(
     coder: &do_flow_prompt::DoCoderRun,
 ) -> Result<(), String> {
     let (ref header, ref user) = coder.header_user_for_trace;
-    client
+    crate::output::set_heartbeat_stdout_suppressed(true);
+    let run = client
         .run_coder_prompt(
             &coder.combined,
             &artifacts.log_path("do"),
@@ -145,7 +146,9 @@ async fn run_do_coder_prompt(
             },
         )
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string());
+    crate::output::set_heartbeat_stdout_suppressed(false);
+    run
 }
 
 async fn run_do_acp(

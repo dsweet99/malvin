@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::output::stdout_heartbeat::{
     maybe_emit_stdout_heartbeat, poll_wall_clock_heartbeat_if_due, reset_stdout_heartbeat_for_test,
@@ -119,4 +119,16 @@ fn heartbeat_logs_during_stdout_silence_when_interval_elapsed() {
     assert!(heartbeat_payload_has_wall_clock_prefix(payload));
     assert!(terminal.contains(payload));
     assert!(!terminal.trim().starts_with("20"));
+}
+
+#[test]
+fn heartbeat_suppressed_for_do_plain_stdout() {
+    let (terminal, text) = due_heartbeat_render_capture_test(|| {
+        crate::output::set_heartbeat_stdout_suppressed(true);
+        crate::output::stdout_heartbeat::test_set_last_heartbeat_elapsed(Duration::from_secs(61));
+        try_emit_heartbeat_if_due(Instant::now(), false);
+        crate::output::set_heartbeat_stdout_suppressed(false);
+    });
+    assert!(terminal.is_empty(), "do plain must not emit h| on terminal; got {terminal:?}");
+    assert!(text.is_empty(), "do plain must not emit h| to stdout.log; got {text:?}");
 }

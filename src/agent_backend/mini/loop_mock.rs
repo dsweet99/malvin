@@ -5,6 +5,8 @@ use malvin_mini::{ChatMessage, CompletionResponse, OpenRouterError};
 pub enum MockStep {
     Ok(CompletionResponse),
     RateLimited,
+    ContextOverflow,
+    RequestFailed { status: u16, body: String },
 }
 
 #[cfg(test)]
@@ -39,6 +41,16 @@ impl LlmBackend {
                     Some(MockStep::RateLimited) => {
                         Err(OpenRouterError::RateLimited { body: "slow".into() })
                     }
+                    Some(MockStep::ContextOverflow) => Err(OpenRouterError::ContextOverflow {
+                        body: "prompt is too long".into(),
+                        message_count: messages.len(),
+                    }),
+                    Some(MockStep::RequestFailed { status, body }) => {
+                        Err(OpenRouterError::RequestFailed {
+                            status: *status,
+                            body: body.clone(),
+                        })
+                    }
                     None => Err(OpenRouterError::RequestFailed {
                         status: 0,
                         body: "mock script exhausted".into(),
@@ -62,6 +74,7 @@ mod tests {
                 MockStep::Ok(CompletionResponse {
                     content: "a".into(),
                     usage: None,
+                    reasoning: None,
                 }),
                 MockStep::RateLimited,
             ],

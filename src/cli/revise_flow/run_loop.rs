@@ -188,7 +188,12 @@ mod tests {
             doc: false,
             name: None,
             mini: false,
-            mini_max_bash_turns: 32,
+        mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
         };
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
         let err = revise_gate_outcome(ReviseGateFinish {

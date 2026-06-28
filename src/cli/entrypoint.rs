@@ -191,7 +191,7 @@ pub(crate) fn dispatch_command(
                 .await
             })
         }
-        Commands::Models(_) => models_cmd::run_models(),
+        Commands::Models(models) => models_cmd::run_models(models),
     }
 }
 

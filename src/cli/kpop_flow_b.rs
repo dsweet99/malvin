@@ -40,6 +40,11 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
         name: None,
         mini: false,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
@@ -145,7 +150,6 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     assert_prompt_contains_each(
         &kpop,
         &[
-            "Brainstorm",
             "Hypothesize",
             "Complete up to `2` KPOP iterations",
             "iterations budget",

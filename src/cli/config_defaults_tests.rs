@@ -106,6 +106,11 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         name: None,
         mini: false,
         mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
     };
     apply_shared_config_defaults(&matches, &mut shared, &agent);
     assert_eq!(shared.model, "cfg");

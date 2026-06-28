@@ -36,6 +36,16 @@ fn apply_mini_model_default_ignored_without_mini_flag() {
 }
 
 #[test]
+fn apply_mini_model_default_for_do_when_mini() {
+    with_seeded_agent_config(|| {
+        let matches = Cli::command().get_matches_from(["malvin", "do", "--mini", "hello"]);
+        let mut cli = Cli::from_arg_matches(&matches).expect("cli");
+        apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
+        assert_eq!(cli.shared.model, "cfg-mini-model");
+    });
+}
+
+#[test]
 fn apply_bare_sequential_mini_model_default() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from(["malvin", "--mini", "a.md", "b.md"]);

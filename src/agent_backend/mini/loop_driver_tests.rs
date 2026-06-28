@@ -1,13 +1,17 @@
 use super::{
     run_inner_loop, LoopDriverConfig, LoopDriverRun, LoopDriverSession, MockStep,
 };
+use crate::agent_backend::mini::MiniRetryStrategy;
 use crate::agent_backend::test_support::{mini_test_trace, mock_llm};
 use malvin_mini::{ChatRole, CompletionResponse, ResponseUsage};
 
 fn test_config() -> LoopDriverConfig {
     LoopDriverConfig {
-        max_bash_turns: 8,
+        max_http_turns: 8,
         max_http_retries: 3,
+            max_bash_execs: 128,
+            max_shrink_passes: 0,
+            expects_investigation: false,
         mini_constraints: "constraints",
     }
 }
@@ -19,19 +23,21 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
         MockStep::Ok(CompletionResponse {
             content: "```bash\necho hi > out.txt\n```".into(),
             usage: None,
+                    reasoning: None,
         }),
         MockStep::Ok(CompletionResponse {
             content: "summary".into(),
             usage: None,
-        }),
-        MockStep::Ok(CompletionResponse {
-            content: "summary".into(),
-            usage: None,
+                    reasoning: None,
         }),
     ]);
     let mut session = LoopDriverSession {
         messages: vec![],
         cwd: tmp.path().to_path_buf(),
+        constraints_prepended: false,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+    llm_model_slug: String::new(),
     };
     let out = run_inner_loop(LoopDriverRun {
         llm: &llm,
@@ -42,6 +48,8 @@ async fn loop_driver_single_fence_runs_bash_and_appends_observation() {
         timing: None,
         llm_phase: None,
         single_attempt: true,
+    gate_attempt: 1,
+    retry_strategy: MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -55,10 +63,15 @@ async fn loop_driver_mini_done_line_terminates() {
     let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
         content: "MINI_DONE\n".into(),
         usage: None,
+                    reasoning: None,
     })]);
     let mut session = LoopDriverSession {
         messages: vec![],
         cwd: std::env::temp_dir(),
+        constraints_prepended: false,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+    llm_model_slug: String::new(),
     };
     let out = run_inner_loop(LoopDriverRun {
         llm: &llm,
@@ -69,6 +82,8 @@ async fn loop_driver_mini_done_line_terminates() {
         timing: None,
         llm_phase: None,
         single_attempt: true,
+    gate_attempt: 1,
+    retry_strategy: MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -82,19 +97,21 @@ async fn loop_driver_mini_done_inside_fence_still_runs_bash() {
         MockStep::Ok(CompletionResponse {
             content: "```bash\nMINI_DONE\necho fenced > fenced_out.txt\n```".into(),
             usage: None,
+                    reasoning: None,
         }),
         MockStep::Ok(CompletionResponse {
             content: "done after bash".into(),
             usage: None,
-        }),
-        MockStep::Ok(CompletionResponse {
-            content: "done after bash".into(),
-            usage: None,
+                    reasoning: None,
         }),
     ]);
     let mut session = LoopDriverSession {
         messages: vec![],
         cwd: tmp.path().to_path_buf(),
+        constraints_prepended: false,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+    llm_model_slug: String::new(),
     };
     let out = run_inner_loop(LoopDriverRun {
         llm: &llm,
@@ -105,6 +122,8 @@ async fn loop_driver_mini_done_inside_fence_still_runs_bash() {
         timing: None,
         llm_phase: None,
         single_attempt: true,
+    gate_attempt: 1,
+    retry_strategy: MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -117,10 +136,15 @@ async fn loop_driver_prepends_mini_constraints() {
     let llm = mock_llm(vec![MockStep::Ok(CompletionResponse {
         content: "MINI_DONE".into(),
         usage: None,
+                    reasoning: None,
     })]);
     let mut session = LoopDriverSession {
         messages: vec![],
         cwd: std::env::temp_dir(),
+        constraints_prepended: false,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+    llm_model_slug: String::new(),
     };
     run_inner_loop(LoopDriverRun {
         llm: &llm,
@@ -131,6 +155,8 @@ async fn loop_driver_prepends_mini_constraints() {
         timing: None,
         llm_phase: None,
         single_attempt: true,
+    gate_attempt: 1,
+    retry_strategy: MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("loop");
@@ -155,25 +181,35 @@ async fn loop_driver_mock_http_retry_on_429() {
                 total_tokens: None,
                 cost: Some(0.01),
             }),
+            reasoning: None,
         }),
     ]);
     let mut session = LoopDriverSession {
         messages: vec![],
         cwd: std::env::temp_dir(),
+        constraints_prepended: false,
+        bash_commands_this_prompt: vec![],
+        prompt_index: 0,
+    llm_model_slug: String::new(),
     };
     let out = run_inner_loop(LoopDriverRun {
         llm: &llm,
         session: &mut session,
         user_prompt: "go",
         config: &LoopDriverConfig {
-            max_bash_turns: 4,
+            max_http_turns: 4,
             max_http_retries: 3,
+            max_bash_execs: 128,
+            max_shrink_passes: 0,
+            expects_investigation: false,
             mini_constraints: "c",
         },
         trace: &mini_test_trace(),
         timing: None,
         llm_phase: None,
         single_attempt: false,
+    gate_attempt: 1,
+    retry_strategy: MiniRetryStrategy::CumulativeTranscript,
     })
     .await
     .expect("retry ok");

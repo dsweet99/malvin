@@ -55,8 +55,8 @@ fn kiss_witness_acp_transport_and_backend_c() {
 
 #[test]
 fn kiss_witness_cli_and_artifacts_d() {
-    let _ = stringify!(loop_driver_no_fence_triggers_nudge_before_final);
-    let _ = stringify!(loop_driver_fenceless_after_nudge_without_bash_errors);
+    let _ = stringify!(loop_driver_fenceless_completes_in_one_turn);
+    let _ = stringify!(loop_driver_fenceless_no_nudge_in_prompts_log);
     let _ = stringify!(seed_home_logs_for_gc_test);
     let _ = stringify!(seed_short_id_lookup_fixture);
     let _ = stringify!(seed_kpop_multiturn_mock_workspace);

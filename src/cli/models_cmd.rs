@@ -10,12 +10,16 @@ use clap::Args;
 use crate::config::DEFAULT_CLI_MODEL;
 
 #[derive(Args, Debug, Clone, Copy)]
-pub struct ModelsArgs {}
+pub struct ModelsArgs {
+    /// List `OpenRouter` models for `--mini` instead of Cursor agent models.
+    #[arg(long, default_value_t = false)]
+    pub mini: bool,
+}
 
 #[cfg(test)]
 pub(crate) const fn models_args_marker(args: ModelsArgs) -> &'static str {
-    let ModelsArgs {} = std::hint::black_box(args);
-    "models"
+    let ModelsArgs { mini } = std::hint::black_box(args);
+    if mini { "models-mini" } else { "models" }
 }
 
 fn resolve_models_cli() -> Result<PathBuf, String> {
@@ -26,7 +30,11 @@ fn resolve_models_cli() -> Result<PathBuf, String> {
 }
 
 /// Print models from `cursor-agent models` / `agent models` with a short footer.
-pub fn run_models() -> Result<(), String> {
+pub fn run_models(args: ModelsArgs) -> Result<(), String> {
+    if args.mini {
+        run_mini_models();
+        return Ok(());
+    }
     let bin = resolve_models_cli()?;
     let output = crate::malvin_sandbox::malvin_std_command(&bin)
         .arg("models")
@@ -55,6 +63,25 @@ pub fn run_models() -> Result<(), String> {
     );
     Ok(())
 }
+
+fn run_mini_models() {
+    use crate::support_paths::MINI_DEFAULT_MODEL;
+    for (id, desc) in MINI_OPENROUTER_MODELS {
+        print_stdout_line(MALVIN_WHO, &format!("{id}\t{desc}"));
+    }
+    print_stdout_line(MALVIN_WHO, "");
+    print_stdout_line(
+        MALVIN_WHO,
+        &format!("Default mini model: {MINI_DEFAULT_MODEL}"),
+    );
+}
+
+const MINI_OPENROUTER_MODELS: &[(&str, &str)] = &[
+    ("anthropic/claude-sonnet-4", "Claude Sonnet 4 (mini default)"),
+    ("anthropic/claude-3.5-sonnet", "Claude 3.5 Sonnet"),
+    ("openai/gpt-4.1", "GPT-4.1"),
+    ("google/gemini-2.5-pro-preview", "Gemini 2.5 Pro"),
+];
 
 fn trim_trailing_tip_lines(text: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();

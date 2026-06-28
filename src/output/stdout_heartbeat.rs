@@ -1,8 +1,6 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-
-#[cfg(test)]
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::{
     stdout_heartbeat_display_and_log_line, timestamp_now_string, write_heartbeat_log_line, WHO_H,
@@ -32,6 +30,18 @@ pub(crate) fn heartbeat_log_offset(text: &str) -> Option<usize> {
         offset += line.len() + 1;
     }
     None
+}
+
+static HEARTBEAT_STDOUT_SUPPRESSED: AtomicBool = AtomicBool::new(false);
+
+/// When true, wall-clock heartbeats are not written to stdout or `stdout.log` (e.g. `malvin do`).
+pub fn set_heartbeat_stdout_suppressed(suppress: bool) {
+    HEARTBEAT_STDOUT_SUPPRESSED.store(suppress, Ordering::Relaxed);
+}
+
+#[must_use]
+pub fn heartbeat_stdout_suppressed() -> bool {
+    HEARTBEAT_STDOUT_SUPPRESSED.load(Ordering::Relaxed)
 }
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(60);
@@ -83,6 +93,9 @@ pub(crate) fn heartbeat_due(last: Instant, now: Instant) -> bool {
 }
 
 pub(crate) fn try_emit_heartbeat_if_due(now: Instant, arm_if_unarmed: bool) {
+    if heartbeat_stdout_suppressed() {
+        return;
+    }
     let Some((display, log)) = heartbeat_rendered_if_due(now, arm_if_unarmed) else {
         return;
     };
