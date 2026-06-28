@@ -179,6 +179,10 @@ Consumers must know which file to trust for which question. Named types live in 
 
 During live ACP sessions, malvin may defer agent stdout lines briefly before writing them to the terminal and `stdout.log`. Each line waits until it has been queued for at least **`max_age`** (default **1000ms**, env `MALVIN_DEFER_LOG_MAX_AGE_MS`) so tool summaries can be enriched from Cursor’s local `store.db` while preserving FIFO order. Set `MALVIN_DEFER_LOG=0` to disable deferral.
 
+## Home config (`~/.malvin_home/config.toml`)
+
+Top-level keys include `mem_limit_gb`, `theme`, and `mpc` (default **false**). When `mpc = true`, agent-backed KPop entry points (`code`, `tidy`, `delight`, `explain`, `revise`, init discovery, bare `malvin REQUEST`, and `kpop`) run one MPC planning-agent session after prepare and before the gate loop. The planning agent may edit the on-disk user brief at `user_request_path`; logs go to `mpc_planner.log` and `_kpop/mpc_planner_log.md` in the run directory. With `mpc = false`, behavior is unchanged.
+
 ## Log retention
 
 Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.

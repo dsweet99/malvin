@@ -155,6 +155,16 @@ fn kiss_cov_kpop_engine_loop_params_types() {
 }
 
 #[test]
+fn kiss_cov_mpc_planner_private_fn_names() {
+    let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_prompt);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_context);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_enabled);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_exp_log_path);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_session);
+    let _ = stringify!(crate::kpop_engine::MpcPlannerParams);
+}
+
+#[test]
 fn kiss_cov_kpop_session_private_fn_names() {
     let _ = stringify!(build_kpop_engine_prompt);
     let _ = stringify!(restore_kpop_engine_session_dotfiles);

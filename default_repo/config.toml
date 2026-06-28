@@ -1,6 +1,8 @@
 mem_limit_gb = 4
 # Terminal color palette: "dark" (default) or "light" (for pale backgrounds).
 theme = "dark"
+# When true, run an MPC planning agent to transform user_request_path before the KPop loop.
+mpc = false
 
 [agent]
 model = "auto"

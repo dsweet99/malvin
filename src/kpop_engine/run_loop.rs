@@ -201,6 +201,7 @@ pub(crate) async fn run_kpop_engine(
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
     let mut last_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
+    super::mpc_planner::run_mpc_planner_for_kpop_engine(&params).await?;
     if params.behavior.skip_kpop_on_initial_pass
         && !params.behavior.skip_workspace_quality_gates
         && run_kpop_workspace_gates(

@@ -13,9 +13,12 @@ use crate::workspace_paths::malvin_config_path;
 mod malvin_config_open;
 #[path = "malvin_config_agent.rs"]
 mod malvin_config_agent;
+#[path = "malvin_config_top.rs"]
+mod malvin_config_top;
 pub use malvin_config_open::ensure_malvin_config_file_if_missing;
 use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
+pub(crate) use malvin_config_top::{parse_mpc, parse_theme};
 
 pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
@@ -57,6 +60,7 @@ impl Default for AgentConfig {
 pub struct MalvinConfig {
     pub mem_limit_gb: u64,
     pub theme: TerminalTheme,
+    pub mpc: bool,
     pub logs: LogsGcConfig,
     pub agent: AgentConfig,
 }
@@ -179,25 +183,16 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
         print_log_warning(&format!("could not parse theme: {msg}"));
         TerminalTheme::Dark
     });
+    let mpc = parse_mpc(text).unwrap_or_else(|msg| {
+        print_log_warning(&format!("could not parse mpc: {msg}"));
+        false
+    });
     MalvinConfig {
         mem_limit_gb,
         theme,
+        mpc,
         logs,
         agent,
-    }
-}
-
-pub(crate) fn parse_theme(text: &str) -> Result<TerminalTheme, String> {
-    let value: toml::Value = text
-        .parse()
-        .map_err(|e| format!("invalid TOML: {e}"))?;
-    let Some(raw) = read_string(value.get("theme")) else {
-        return Ok(TerminalTheme::Dark);
-    };
-    match raw.to_ascii_lowercase().as_str() {
-        "dark" => Ok(TerminalTheme::Dark),
-        "light" => Ok(TerminalTheme::Light),
-        other => Err(format!("unsupported theme {other:?}; use \"dark\" or \"light\"")),
     }
 }
 

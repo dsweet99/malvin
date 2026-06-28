@@ -36,11 +36,13 @@ fn open_malvin_config_creates_file_with_all_sections() {
         let text = std::fs::read_to_string(&path).expect("read");
         assert!(text.contains("[logs]"));
         assert!(text.contains("[agent]"));
+        assert!(text.contains("mpc = false"));
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
         assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
         assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
         assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
+        assert!(!cfg.mpc);
         assert!(text.contains("theme"));
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
     });
@@ -209,9 +211,11 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     assert!(cfg.mem_limit_gb >= 1);
     assert_eq!(cfg.logs.max_age_days, crate::log_gc_config::LogsGcConfig::default().max_age_days);
     assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
+    assert!(!cfg.mpc);
     let full = MalvinConfig {
         mem_limit_gb: cfg.mem_limit_gb,
         theme: cfg.theme,
+        mpc: cfg.mpc,
         logs: cfg.logs,
         agent: cfg.agent.clone(),
     };
@@ -219,4 +223,23 @@ fn parse_malvin_config_falls_back_when_values_invalid_or_missing() {
     assert_eq!(read_string(None), None);
     assert_eq!(read_usize(None), None);
     assert_eq!(read_u32(None), None);
+}
+
+#[test]
+fn parse_mpc_defaults_false_and_reads_true() {
+    use super::{parse_malvin_config, parse_mpc, MalvinConfig};
+
+    assert!(!parse_mpc("mem_limit_gb = 4").expect("parse"));
+    assert!(parse_mpc("mpc = true").expect("true"));
+    assert!(!parse_mpc("mpc = false").expect("false"));
+    let cfg = parse_malvin_config("mem_limit_gb = 4\nmpc = true\n");
+    assert!(cfg.mpc);
+    let full = MalvinConfig {
+        mem_limit_gb: cfg.mem_limit_gb,
+        theme: cfg.theme,
+        mpc: cfg.mpc,
+        logs: cfg.logs,
+        agent: cfg.agent.clone(),
+    };
+    assert!(full.mpc);
 }
