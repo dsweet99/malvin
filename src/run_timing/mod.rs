@@ -1,5 +1,6 @@
 //! Wall-clock and phase-bucketed LLM wait timing for agent runs.
-//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop` also print [`RUN_TIMING_SUMMARY_PREFIX`].
+//!
+//! JSON is always written to [`RUN_TIMING_JSON_FILE`]; `code`/`kpop` also print [`RUN_TIMING_SUMMARY_PREFIX`] and, when cost data exists, a separate `COST:` line.
 
 mod cost;
 mod report;
@@ -205,6 +206,9 @@ pub use report::print_summary_from_run_dir;
 
 #[cfg(test)]
 mod timing_tests;
+
+#[cfg(test)]
+mod timing_footnote_tests;
 
 #[cfg(test)]
 mod gate_kpop_timing_regressions;

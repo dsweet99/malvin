@@ -56,30 +56,11 @@ fn timing_stdout_append_phase_fields(s: &mut String, first: &mut bool, v: &Value
     }
 }
 
-fn timing_stdout_append_cost_fields(s: &mut String, first: &mut bool, v: &Value) {
-    let Some(cost) = v.get("cost") else {
-        return;
-    };
-    if let Some(total) = cost.get("total_cost").and_then(Value::as_f64) {
-        timing_line_append_part(s, first, "total_cost", &format!("{total:.4}"));
-    }
-    if let Some(mean) = cost.get("mean_cost_per_tx").and_then(Value::as_f64) {
-        timing_line_append_part(s, first, "mean_cost_per_tx", &format!("{mean:.4}"));
-    }
-    if let Some(median) = cost.get("median_cost_per_tx").and_then(Value::as_f64) {
-        timing_line_append_part(s, first, "median_cost_per_tx", &format!("{median:.4}"));
-    }
-    if let Some(max) = cost.get("max_cost_per_tx").and_then(Value::as_f64) {
-        timing_line_append_part(s, first, "max_cost_per_tx", &format!("{max:.4}"));
-    }
-}
-
 pub(super) fn format_timing_stdout_line_from_json(v: &Value) -> String {
     let mut s = String::from(RUN_TIMING_SUMMARY_PREFIX);
     let mut first = true;
     timing_stdout_append_fixed_ms_fields(&mut s, &mut first, v);
     timing_stdout_append_phase_fields(&mut s, &mut first, v);
-    timing_stdout_append_cost_fields(&mut s, &mut first, v);
     s
 }
 
@@ -89,7 +70,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn timing_line_includes_cost_fields_when_present() {
+    fn timing_line_omits_cost_fields_when_present_in_json() {
         let json = json!({
             "wall_clock_ms": 1000,
             "llm_wait_ms": 100,
@@ -102,8 +83,8 @@ mod tests {
             }
         });
         let line = format_timing_stdout_line_from_json(&json);
-        assert!(line.contains("total_cost = 0.0842"));
-        assert!(line.contains("mean_cost_per_tx = 0.0042"));
+        assert!(!line.contains("total_cost"));
+        assert!(!line.contains("mean_cost_per_tx"));
     }
 
     #[test]
