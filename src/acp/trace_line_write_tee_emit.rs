@@ -1,3 +1,7 @@
+//! Deferred and immediate narrative tee emission for ACP trace lines.
+//!
+//! Audit records stay on the wire/`trace.jsonl` path; this module tees to the narrative channel.
+//! See [`crate::observability`] for trust rules.
 use super::{from_agent_who, trace_tee_stdout_event, trace_tee_tool_summary_stdout_event, TeeStdoutEmit};
 use crate::acp::trace_line_write::TraceTeeStdoutCtx;
 use crate::acp::trace_plain_tee::print_plain_tee_wrapped_line;

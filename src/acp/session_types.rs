@@ -1,4 +1,7 @@
 //! Core session state types for `agent acp`.
+//!
+//! [`PromptTraceWriter`] tees narrative stdout and writes audit `trace.jsonl`; see
+//! [`crate::observability`] for channel trust rules.
 use super::jsonl_trace::AcpJsonlTrace;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};

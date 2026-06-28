@@ -157,11 +157,21 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 |------|------|
 | `plan.md` or `request.md` | Copy of user input for this run |
 | `kpop.log`, `do.log`, `inspire.log`, … | Per-prompt transcripts |
-| `stdout.log` | Tee of agent stdout (unless `--no-tee`) |
+| `stdout.log` | Tee of agent stdout (unless `--no-tee`) — **narrative** channel |
+| `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |
 | `quality_gates.log` | Workspace gate commands and output when gates run |
 | `_kpop/exp_log_*.md` | KPop experiment logs (gate-loop and investigation commands) |
 | `result.md` | `ABORT:` prefix stops workflows that check it |
+
+### Narrative vs audit (trust rule)
+
+Each run writes two parallel channels with different contracts:
+
+- **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, …). Use for skimming a run and vocabulary/ordering checks.
+- **`trace.jsonl` (audit):** machine-authoritative ACP-shaped JSONL (`agent_message_chunk`, `tool_call`, mini-only fields like `miniTerminal`, `miniHttpExchange`). Use for tool exit codes, shrink/fork events, and gate-loop audit tooling.
+
+Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
 
 ## Deferred stdout logging
 

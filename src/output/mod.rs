@@ -1,4 +1,6 @@
 //! Shared line-oriented formatting for stdout, stderr, and run logs.
+//!
+//! Narrative channel for dual-contract observability — see [`crate::observability`].
 
 pub(crate) mod acp_tee;
 mod acp_tee_markdown;

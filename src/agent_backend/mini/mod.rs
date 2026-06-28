@@ -35,7 +35,8 @@ mod trace_http_exchange_tests;
 #[cfg(test)]
 #[path = "loop_http_retry_tests.rs"]
 mod loop_http_retry_tests;
-pub use trace::MiniTraceSink;
+pub use trace::{record_http_exchange, MiniTraceSink};
+pub use acp_trace_shim::MiniHttpExchangeRecord;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};
 pub use retry_fork::MiniRetryStrategy;

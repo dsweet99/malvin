@@ -46,6 +46,18 @@ pub fn trace_contains_substring(path: &Path, needle: &str) {
     );
 }
 
+pub fn assert_stdout_lacks_substring(path: &Path, needle: &str) {
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    assert!(
+        !text.contains(needle),
+        "stdout.log must not contain {needle:?}; got:\n{text}"
+    );
+}
+
+pub fn assert_audit_contains(path: &Path, needle: &str) {
+    trace_contains_substring(path, needle);
+}
+
 pub fn stdout_m_before_t_on_multiturn(path: &Path) {
     let text = std::fs::read_to_string(path).expect("read stdout");
     let m_pos = text.find("m|").expect("stdout must contain m|");

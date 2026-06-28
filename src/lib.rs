@@ -162,6 +162,7 @@ pub use orchestrator::{
     Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
 };
 pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
+pub mod observability;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;

@@ -172,7 +172,7 @@ fn truncate_http_body_for_trace(body: &str) -> String {
     }
 }
 
-pub(crate) struct MiniHttpExchangeRecord<'a> {
+pub struct MiniHttpExchangeRecord<'a> {
     pub attempt: u32,
     pub status: Option<u16>,
     pub body: Option<&'a str>,
