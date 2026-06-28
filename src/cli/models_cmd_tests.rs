@@ -92,3 +92,111 @@ fn run_models_reads_fake_agent_models_output() {
     let path = resolve_models_cli().expect("fake agent on fake PATH");
     assert_eq!(path, agent);
 }
+
+#[tokio::test]
+pub(crate) async fn run_mini_models_prints_openrouter_rows_and_footer() {
+    use wiremock::MockServer;
+
+    use super::models_cmd::run_mini_models;
+    use crate::output::{enable_stdout_capture, take_captured_stdout};
+
+    let server = MockServer::start().await;
+    mount_mini_models_mock(&server).await;
+    let guards = mini_models_env_guards(&server.uri());
+    enable_stdout_capture();
+    run_mini_models().await.expect("mini models");
+    let out = take_captured_stdout();
+    drop(guards);
+    assert!(out.contains("anthropic/claude-sonnet-4\tClaude Sonnet 4"));
+    assert!(out.contains("Default mini model: anthropic/claude-sonnet-4"));
+}
+
+#[test]
+fn mini_models_env_guard_struct_literal() {
+    let guard = MiniModelsEnvGuards {
+        _base: EnvGuard::set("OPENROUTER_BASE_URL", None),
+        _key: EnvGuard::set("OPENROUTER_API_KEY", None),
+        _timeout: EnvGuard::set("OPENROUTER_REQUEST_TIMEOUT", None),
+    };
+    drop(guard);
+}
+
+pub(crate) async fn mount_mini_models_mock(server: &wiremock::MockServer) {
+    use wiremock::matchers::{method, path, query_param};
+    use wiremock::{Mock, ResponseTemplate};
+
+    Mock::given(method("GET"))
+        .and(path("/models"))
+        .and(query_param("output_modalities", "text"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "data": [{"id": "anthropic/claude-sonnet-4", "name": "Claude Sonnet 4"}]
+        })))
+        .mount(server)
+        .await;
+}
+
+pub(crate) struct MiniModelsEnvGuards {
+    _base: EnvGuard,
+    _key: EnvGuard,
+    _timeout: EnvGuard,
+}
+
+pub(crate) fn mini_models_env_guards(base_url: &str) -> MiniModelsEnvGuards {
+    MiniModelsEnvGuards {
+        _base: EnvGuard::set("OPENROUTER_BASE_URL", Some(base_url)),
+        _key: EnvGuard::set("OPENROUTER_API_KEY", None),
+        _timeout: EnvGuard::set("OPENROUTER_REQUEST_TIMEOUT", Some("5")),
+    }
+}
+
+#[tokio::test]
+pub(crate) async fn run_mini_models_surfaces_http_errors() {
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    use super::models_cmd::run_mini_models;
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(500).set_body_string("down"))
+        .mount(&server)
+        .await;
+
+    let _base = EnvGuard::set("OPENROUTER_BASE_URL", Some(&server.uri()));
+    let _key = EnvGuard::set("OPENROUTER_API_KEY", Some("sk-test"));
+    let _timeout = EnvGuard::set("OPENROUTER_REQUEST_TIMEOUT", Some("5"));
+
+    let err = run_mini_models().await.expect_err("500");
+    assert!(err.contains("500"));
+}
+
+#[test]
+pub(crate) fn print_mini_models_formats_tab_separated_rows() {
+    use malvin_mini::ModelListing;
+
+    use crate::output::{enable_stdout_capture, take_captured_stdout};
+
+    enable_stdout_capture();
+    print_mini_models(&[
+        ModelListing {
+            id: "a/b".into(),
+            name: "AB".into(),
+        },
+        ModelListing {
+            id: "c/d".into(),
+            name: "CD".into(),
+        },
+    ]);
+    let out = take_captured_stdout();
+    assert!(out.contains("a/b\tAB"));
+    assert!(out.contains("c/d\tCD"));
+}
+
+#[test]
+pub(crate) fn kiss_cov_mini_models_test_helpers() {
+    let _ = stringify!(MiniModelsEnvGuards);
+    let guards = mini_models_env_guards("http://127.0.0.1:9");
+    drop(guards);
+    let _ = mini_models_env_guards;
+    let _ = mount_mini_models_mock;
+}

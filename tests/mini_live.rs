@@ -118,6 +118,25 @@ fn mini_live_kpop_exp_log() {
 
 #[cfg(unix)]
 #[test]
+#[ignore = "live OpenRouter models listing; MALVIN_LIVE_MINI=1 cargo nextest run mini_live -- --ignored"]
+fn mini_live_models_listing() {
+    if !mini_live_prereqs_met() {
+        eprintln!("skip: set MALVIN_LIVE_MINI=1 and OPENROUTER_API_KEY to run");
+        return;
+    }
+    let (_root, output) = run_mini_live_in_workspace(&["models", "--mini", "--no-color"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("anthropic/"));
+    assert!(stdout.contains("Default mini model: anthropic/claude-sonnet-4"));
+}
+
+#[cfg(unix)]
+#[test]
 fn mini_live_tests_compile_and_skip_without_env() {
     assert!(!mini_live_prereqs_met() || std::env::var_os("OPENROUTER_API_KEY").is_some());
     let _ = MALVIN_TEST_CMD_TIMEOUT;

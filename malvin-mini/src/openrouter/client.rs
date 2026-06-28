@@ -31,17 +31,30 @@ impl OpenRouterClient {
 }
 
 pub(super) fn build_request_headers(config: &OpenRouterConfig) -> Result<HeaderMap, OpenRouterError> {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {}", config.api_key)).map_err(|e| {
-            OpenRouterError::RequestFailed {
-                status: 0,
-                body: format!("invalid authorization header: {e}"),
-            }
-        })?,
-    );
+    let mut headers = build_common_headers(config)?;
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    Ok(headers)
+}
+
+pub(super) fn build_catalog_request_headers(
+    config: &OpenRouterConfig,
+) -> Result<HeaderMap, OpenRouterError> {
+    build_common_headers(config)
+}
+
+fn build_common_headers(config: &OpenRouterConfig) -> Result<HeaderMap, OpenRouterError> {
+    let mut headers = HeaderMap::new();
+    if !config.api_key.is_empty() {
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", config.api_key)).map_err(|e| {
+                OpenRouterError::RequestFailed {
+                    status: 0,
+                    body: format!("invalid authorization header: {e}"),
+                }
+            })?,
+        );
+    }
     if let Some(ref referer) = config.http_referer {
         headers.insert(
             "HTTP-Referer",
@@ -61,6 +74,19 @@ mod tests {
 
     use super::{build_request_headers, OpenRouterClient};
     use crate::config::OpenRouterConfig;
+
+    #[test]
+    fn build_catalog_request_headers_omits_auth_when_api_key_empty() {
+        let config = OpenRouterConfig {
+            model: String::new(),
+            api_key: String::new(),
+            http_referer: None,
+            request_timeout: Duration::from_secs(30),
+            base_url: "https://openrouter.ai/api/v1".into(),
+        };
+        let headers = super::build_catalog_request_headers(&config).expect("headers");
+        assert!(headers.get("authorization").is_none());
+    }
 
     #[test]
     fn build_request_headers_includes_auth_and_referer() {

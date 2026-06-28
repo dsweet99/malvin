@@ -191,7 +191,13 @@ pub(crate) fn dispatch_command(
                 .await
             })
         }
-        Commands::Models(models) => models_cmd::run_models(models),
+        Commands::Models(models) => {
+            if models.mini {
+                run_async_cli(models_cmd::run_mini_models)
+            } else {
+                models_cmd::run_models(models)
+            }
+        }
     }
 }
 

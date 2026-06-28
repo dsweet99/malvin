@@ -10,4 +10,7 @@ mod test_support;
 
 pub use config::OpenRouterConfig;
 pub use error::OpenRouterError;
-pub use openrouter::{ChatMessage, ChatRole, CompletionResponse, CompletionWithMeta, HttpExchangeMeta, OpenRouterClient, ResponseUsage};
+pub use openrouter::{
+    ChatMessage, ChatRole, CompletionResponse, CompletionWithMeta, HttpExchangeMeta, ModelListing,
+    OpenRouterClient, ResponseUsage,
+};

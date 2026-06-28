@@ -1,5 +1,7 @@
 mod client;
 mod complete;
+mod list_models;
+mod models_list_response;
 mod http_exchange;
 mod provider_error;
 mod serde_types;
@@ -18,9 +20,14 @@ mod prompt_too_long_retry_tests;
 mod fetch_completion_tests;
 
 #[cfg(test)]
+#[path = "list_models_tests.rs"]
+mod list_models_tests;
+
+#[cfg(test)]
 mod kiss_coverage;
 
 pub use client::OpenRouterClient;
+pub use list_models::ModelListing;
 pub use http_exchange::{CompletionWithMeta, HttpExchangeMeta};
 pub use types::{
     ChatMessage, ChatRole, CompletionResponse, ResponseUsage,

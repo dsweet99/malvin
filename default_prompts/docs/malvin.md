@@ -33,7 +33,7 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `d
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `delight` | Author a user-delighting feature plan via the KPop gate loop |
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
-| `models` | List models available from the Cursor agent CLI |
+| `models` | List models (Cursor agent CLI by default; `models --mini` lists OpenRouter) |
 
 Hidden (backward compatible): `kpop` — prefer bare `malvin REQUEST` for investigation.
 
@@ -103,7 +103,7 @@ Environment variables (mini only):
 | `OPENROUTER_BASE_URL` | no | Override API base (testing) |
 | `OPENROUTER_REQUEST_TIMEOUT` | no | HTTP timeout in seconds (default 120) |
 
-`malvin models` ignores `--mini` and still uses the Cursor CLI.
+`malvin models` uses the Cursor agent CLI by default. Use the subcommand flag `malvin models --mini` to list OpenRouter models (no Cursor CLI required). Global `--mini` on other subcommands does not affect `malvin models`.
 
 ### `--mini-max-bash-turns <N>` (default: 32)
 
@@ -185,8 +185,8 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for agent subcommands and `models` when not using `--mini`).
-- **OpenRouter** (when `--mini`): `OPENROUTER_API_KEY` and network access; model slugs from OpenRouter (see `--model` above).
+- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `malvin models` without `--mini`, and for agent subcommands).
+- **OpenRouter** (when `--mini` or `malvin models --mini`): `OPENROUTER_API_KEY` for completions; listing works without a key. Network access required for live fetches.
 - **`bash` on `PATH`** (when `--mini`): required on Linux and macOS; Windows native is not supported in v1 (use WSL).
 - **kiss**: required before `code` and `tidy` start; installed/configured by `init`.
 - **pre-commit**: installed and hooked by `init`.

@@ -1,4 +1,4 @@
-use malvin_mini::{ChatMessage, ChatRole, CompletionResponse, ResponseUsage};
+use malvin_mini::{ChatMessage, ChatRole, CompletionResponse, ModelListing, ResponseUsage};
 
 #[test]
 fn openrouter_types_roundtrip() {
@@ -29,5 +29,12 @@ fn openrouter_types_roundtrip() {
         let CompletionResponse { content, usage, reasoning: _ } = resp;
         assert_eq!(content, "done");
         assert!(usage.is_some());
+        let listing = ModelListing {
+            id: "openai/gpt-4.1".into(),
+            name: "GPT-4.1".into(),
+        };
+        let ModelListing { id, name } = listing;
+        assert_eq!(id, "openai/gpt-4.1");
+        assert_eq!(name, "GPT-4.1");
     }
 }

@@ -7,6 +7,7 @@ use super::prompt_too_long_retry_tests;
 #[test]
 fn kiss_witness_openrouter_test_fns() {
     let _ = OpenRouterClient::complete;
+    let _ = OpenRouterClient::list_models;
     let _ = (
         openrouter_tests::openrouter_serializes_model_messages_and_headers,
         openrouter_tests::openrouter_error_maps_401_unauthorized,
@@ -22,6 +23,10 @@ fn kiss_witness_openrouter_test_fns() {
         super::fetch_completion_tests::fetch_completion_body_surfaces_transport_errors,
         super::fetch_completion_tests::fetch_completion_body_surfaces_header_validation_errors,
         super::fetch_completion_tests::fetch_completion_body_reads_success_body,
+        super::list_models_tests::list_models_parses_success_response,
+        super::list_models_tests::list_models_maps_401_to_unauthorized,
+        super::list_models_tests::list_models_maps_500_to_server_error,
+        super::list_models_tests::list_models_works_without_api_key,
         prompt_too_long_retry_tests::twelve_word_prompt,
         prompt_too_long_retry_tests::openrouter_complete_surfaces_invalid_referer_header_errors,
         prompt_too_long_retry_tests::openrouter_prompt_too_long_maps_to_context_overflow,
@@ -36,6 +41,7 @@ fn kiss_witness_openrouter_serde_types() {
 }
 
 fn kiss_witness_openrouter_request_response_types() {
+    use super::list_models::ModelListing;
     use super::serde_types::{
         ChatChoice, ChatChoiceMessage, ChatCompletionRequest, ChatCompletionResponse,
     };
@@ -80,6 +86,12 @@ fn kiss_witness_openrouter_request_response_types() {
 
     let _ = stringify!(deserialize_message_content);
     let _ = stringify!(deserialize_message_content_accepts_text_and_parts);
+
+    let listing = ModelListing {
+        id: "id".into(),
+        name: "name".into(),
+    };
+    assert_eq!(listing.id, "id");
 }
 
 fn kiss_witness_openrouter_http_exchange_types() {
@@ -123,7 +135,8 @@ fn kiss_witness_openrouter_http_exchange_types() {
     let _ = stringify!(outcome_from_http_body);
     let _ = stringify!(provider_transport_from_body);
     let _ = super::provider_error::provider_transport_from_body;
-    let _ = stringify!(fetch_completion_body);
+    let _ = stringify!(ModelListing);
+    let _ = stringify!(list_models_url);
     let _ = stringify!(completion_with_meta_and_transport_meta_helpers);
     let _ = stringify!(kiss_witness_completion_post_url);
     let _ = stringify!(kiss_witness_transport_failure_meta);

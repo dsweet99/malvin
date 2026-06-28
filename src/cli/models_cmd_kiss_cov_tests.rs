@@ -112,17 +112,6 @@ fn kiss_cov_run_models_surfaces_agent_failure() {
     assert!(err.contains("models"));
 }
 
-#[test]
-fn kiss_cov_models_cmd_private_fn_names() {
-    let _ = stringify!(trim_trailing_tip_lines);
-    let _ = stringify!(looks_like_tip_banner_line);
-    let _ = stringify!(models_display_lines);
-    let _ = stringify!(print_parsed_or_fallback);
-    let _ = stringify!(parse_model_line);
-    let _ = stringify!(resolve_models_cli);
-    let _ = stringify!(models_args_marker);
-}
-
 #[cfg(unix)]
 #[test]
 fn kiss_cov_run_models_fake_agent_branchy_executable() {
@@ -149,4 +138,42 @@ fn kiss_cov_run_models_fake_agent_branchy_executable() {
     } else {
         panic!("fake agent models should succeed");
     }
+}
+
+#[test]
+fn kiss_cov_models_mini_integration_tests() {
+    let _ = (
+        crate::cli::models_cmd_tests::run_mini_models_prints_openrouter_rows_and_footer,
+        crate::cli::models_cmd_tests::run_mini_models_surfaces_http_errors,
+        crate::cli::models_cmd_tests::print_mini_models_formats_tab_separated_rows,
+        crate::cli::models_cmd_tests::kiss_cov_mini_models_test_helpers,
+    );
+}
+
+#[test]
+fn kiss_cov_models_cmd_private_fn_names() {
+    use super::test_hooks::EnvGuard;
+
+    let _ = stringify!(trim_trailing_tip_lines);
+    let _ = stringify!(looks_like_tip_banner_line);
+    let _ = stringify!(models_display_lines);
+    let _ = stringify!(print_parsed_or_fallback);
+    let _ = stringify!(parse_model_line);
+    let _ = stringify!(resolve_models_cli);
+    let _ = stringify!(print_mini_models);
+    let _ = stringify!(run_mini_models);
+    let _ = stringify!(models_args_marker);
+    let _ = EnvGuard::set("MALVIN_KISS_COV_ENV", Some("1"));
+}
+
+#[test]
+fn kiss_cov_models_mini_branch_witness() {
+    use super::test_hooks::EnvGuard;
+    use super::{run_mini_models, ModelsArgs};
+
+    let args = ModelsArgs { mini: true };
+    assert!(args.mini);
+    let _guard = EnvGuard::set("MALVIN_KISS_COV_MINI", None);
+    let _ = run_mini_models;
+    let _ = stringify!(EnvGuard);
 }

@@ -7,7 +7,7 @@ use crate::error::OpenRouterError;
 #[path = "complete_parse.rs"]
 mod complete_parse;
 
-pub(crate) use complete_parse::outcome_from_http_body;
+pub(crate) use complete_parse::{map_http_status, outcome_from_http_body};
 
 pub(crate) fn completion_with_meta(result: Result<super::types::CompletionResponse, OpenRouterError>, http: HttpExchangeMeta) -> CompletionWithMeta {
     CompletionWithMeta { result, http }

@@ -30,11 +30,7 @@ fn resolve_models_cli() -> Result<PathBuf, String> {
 }
 
 /// Print models from `cursor-agent models` / `agent models` with a short footer.
-pub fn run_models(args: ModelsArgs) -> Result<(), String> {
-    if args.mini {
-        run_mini_models();
-        return Ok(());
-    }
+pub fn run_models(_args: ModelsArgs) -> Result<(), String> {
     let bin = resolve_models_cli()?;
     let output = crate::malvin_sandbox::malvin_std_command(&bin)
         .arg("models")
@@ -64,24 +60,29 @@ pub fn run_models(args: ModelsArgs) -> Result<(), String> {
     Ok(())
 }
 
-fn run_mini_models() {
+/// Fetch `OpenRouter` models for `malvin models --mini`.
+pub async fn run_mini_models() -> Result<(), String> {
+    use malvin_mini::{OpenRouterClient, OpenRouterConfig};
+
     use crate::support_paths::MINI_DEFAULT_MODEL;
-    for (id, desc) in MINI_OPENROUTER_MODELS {
-        print_stdout_line(MALVIN_WHO, &format!("{id}\t{desc}"));
-    }
+
+    let config = OpenRouterConfig::from_env_for_listing()?;
+    let client = OpenRouterClient::new(config).map_err(|e| e.to_string())?;
+    let models = client.list_models().await.map_err(|e| e.to_string())?;
+    print_mini_models(&models);
     print_stdout_line(MALVIN_WHO, "");
     print_stdout_line(
         MALVIN_WHO,
         &format!("Default mini model: {MINI_DEFAULT_MODEL}"),
     );
+    Ok(())
 }
 
-const MINI_OPENROUTER_MODELS: &[(&str, &str)] = &[
-    ("anthropic/claude-sonnet-4", "Claude Sonnet 4 (mini default)"),
-    ("anthropic/claude-3.5-sonnet", "Claude 3.5 Sonnet"),
-    ("openai/gpt-4.1", "GPT-4.1"),
-    ("google/gemini-2.5-pro-preview", "Gemini 2.5 Pro"),
-];
+fn print_mini_models(models: &[malvin_mini::ModelListing]) {
+    for model in models {
+        print_stdout_line(MALVIN_WHO, &format!("{}\t{}", model.id, model.name));
+    }
+}
 
 fn trim_trailing_tip_lines(text: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();
@@ -161,6 +162,37 @@ fn parse_model_line(line: &str) -> Option<(&str, String)> {
 #[cfg(test)]
 pub(crate) mod test_hooks {
 
+    pub struct EnvGuard {
+        key: &'static str,
+        prior: Option<String>,
+    }
+
+    impl EnvGuard {
+        #[allow(unsafe_code)]
+        pub fn set(key: &'static str, value: Option<&str>) -> Self {
+            let prior = std::env::var(key).ok();
+            unsafe {
+                match value {
+                    Some(v) => std::env::set_var(key, v),
+                    None => std::env::remove_var(key),
+                }
+            }
+            Self { key, prior }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        #[allow(unsafe_code)]
+        fn drop(&mut self) {
+            unsafe {
+                match &self.prior {
+                    Some(v) => std::env::set_var(self.key, v),
+                    None => std::env::remove_var(self.key),
+                }
+            }
+        }
+    }
+
     pub fn trim_trailing_tip_lines(text: &str) -> String {
         super::trim_trailing_tip_lines(text)
     }
@@ -183,6 +215,10 @@ pub(crate) mod test_hooks {
 
     pub fn resolve_models_cli() -> Result<std::path::PathBuf, String> {
         super::resolve_models_cli()
+    }
+
+    pub fn print_mini_models(models: &[malvin_mini::ModelListing]) {
+        super::print_mini_models(models);
     }
 }
 

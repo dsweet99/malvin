@@ -48,6 +48,7 @@ unicode-width = "0.2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 
 [dev-dependencies]
+wiremock = "0.6"
 
 [lib]
 name = "malvin"

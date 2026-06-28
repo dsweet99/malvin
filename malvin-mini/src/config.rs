@@ -24,19 +24,29 @@ impl OpenRouterConfig {
     pub fn from_env(model: String) -> Result<Self, String> {
         let api_key = std::env::var("OPENROUTER_API_KEY")
             .map_err(|_| "OPENROUTER_API_KEY is not set".to_string())?;
+        Ok(Self::from_env_parts(model, api_key))
+    }
+
+    /// Build config for `GET /models` listing. `OPENROUTER_API_KEY` is optional.
+    pub fn from_env_for_listing() -> Result<Self, String> {
+        let api_key = std::env::var("OPENROUTER_API_KEY").unwrap_or_default();
+        Ok(Self::from_env_parts(String::new(), api_key))
+    }
+
+    fn from_env_parts(model: String, api_key: String) -> Self {
         let http_referer = std::env::var("OPENROUTER_HTTP_REFERER").ok();
         let base_url = std::env::var("OPENROUTER_BASE_URL")
             .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         let request_timeout = request_timeout_from_secs_str(
             std::env::var("OPENROUTER_REQUEST_TIMEOUT").ok().as_deref(),
         );
-        Ok(Self {
+        Self {
             model,
             api_key,
             http_referer,
             request_timeout,
             base_url,
-        })
+        }
     }
 }
 
@@ -85,6 +95,28 @@ mod tests {
             let err = OpenRouterConfig::from_env("model-x".into()).expect_err("missing key");
             assert!(err.contains("OPENROUTER_API_KEY"));
         });
+    }
+
+    #[test]
+    fn openrouter_config_from_env_for_listing_allows_missing_api_key() {
+        with_env("OPENROUTER_API_KEY", None, || {
+            let cfg = OpenRouterConfig::from_env_for_listing().expect("listing config");
+            assert!(cfg.api_key.is_empty());
+            assert_eq!(cfg.base_url, DEFAULT_BASE_URL);
+        });
+    }
+
+    #[test]
+    fn openrouter_config_from_env_for_listing_reads_api_key_when_set() {
+        with_env("OPENROUTER_API_KEY", Some("sk-list"), || {
+            let cfg = OpenRouterConfig::from_env_for_listing().expect("listing config");
+            assert_eq!(cfg.api_key, "sk-list");
+        });
+    }
+
+    #[test]
+    fn kiss_cov_openrouter_config_from_env_for_listing() {
+        let _ = OpenRouterConfig::from_env_for_listing;
     }
 
     #[test]
