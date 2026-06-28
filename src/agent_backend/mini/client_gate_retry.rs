@@ -6,7 +6,7 @@ use super::loop_driver::LoopDriverConfig;
 use super::terminal::{MiniPhase, MiniTerminalReason, MiniTerminalRecord};
 use super::trace_audit::{emit_retry_fork, emit_terminal};
 use crate::acp::{
-    backoff_after_agent_failure, retries_noun, AgentError, CoderPromptOptions,
+    backoff_after_mini_gate_failure, retries_noun, AgentError, CoderPromptOptions,
 };
 
 pub(crate) struct ForkLedgerBuild {
@@ -98,7 +98,7 @@ pub(crate) async fn should_stop_gate_retries(
     if check.single_attempt {
         return Ok(true);
     }
-    backoff_after_agent_failure(
+    backoff_after_mini_gate_failure(
         check.timing,
         check.last_error,
         check.attempt,
@@ -132,6 +132,7 @@ mod gate_retry_stop_tests {
             max_http_turns: 4,
             max_bash_execs: 128,
             max_http_retries: 1,
+            max_transport_retries: 3,
             max_shrink_passes: 0,
             mini_constraints: "c",
             expects_investigation: false,

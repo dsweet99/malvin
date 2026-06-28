@@ -8,6 +8,7 @@ pub struct LoopDriverConfig {
     pub max_http_turns: u32,
     pub max_bash_execs: u32,
     pub max_http_retries: u32,
+    pub max_transport_retries: u32,
     pub max_shrink_passes: u32,
     pub mini_constraints: &'static str,
     /// When true, a fenceless reply without `MINI_DONE` is `FencelessPremature`.
@@ -54,6 +55,7 @@ mod tests {
             max_http_turns: 1,
             max_bash_execs: 128,
             max_http_retries: 1,
+            max_transport_retries: 3,
             max_shrink_passes: 0,
             mini_constraints: "c",
             expects_investigation: false,

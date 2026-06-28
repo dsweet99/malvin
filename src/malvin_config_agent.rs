@@ -14,9 +14,18 @@ pub(crate) fn parse_agent_config(text: &str) -> Result<AgentConfig, String> {
 
 pub(crate) fn agent_config_from_table(agent: &toml::Value) -> AgentConfig {
     let defaults = AgentConfig::default();
+    let base = agent_config_base(agent, &defaults);
     AgentConfig {
-        model: super::read_string(agent.get("model")).unwrap_or(defaults.model),
-        model_mini: super::read_string(agent.get("model-mini")).unwrap_or(defaults.model_mini),
+        max_mini_transport_retries: super::read_u32(agent.get("max_mini_transport_retries"))
+            .unwrap_or(defaults.max_mini_transport_retries),
+        ..base
+    }
+}
+
+fn agent_config_base(agent: &toml::Value, defaults: &AgentConfig) -> AgentConfig {
+    AgentConfig {
+        model: super::read_string(agent.get("model")).unwrap_or_else(|| defaults.model.clone()),
+        model_mini: super::read_string(agent.get("model-mini")).unwrap_or_else(|| defaults.model_mini.clone()),
         max_hypotheses: super::read_usize(agent.get("max_hypotheses"))
             .unwrap_or(defaults.max_hypotheses),
         max_loops: super::read_usize(agent.get("max_loops")).unwrap_or(defaults.max_loops),
@@ -24,5 +33,6 @@ pub(crate) fn agent_config_from_table(agent: &toml::Value) -> AgentConfig {
             .unwrap_or(defaults.max_loops_code),
         max_acp_retries: super::read_u32(agent.get("max_acp_retries"))
             .unwrap_or(defaults.max_acp_retries),
+        max_mini_transport_retries: defaults.max_mini_transport_retries,
     }
 }

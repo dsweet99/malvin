@@ -6,7 +6,7 @@ use malvin_mini::ResponseUsage;
 
 use super::acp_trace_shim::{
     append_out_raw, emit_agent_message_chunk, emit_agent_thought_chunk, emit_bash_tool_call,
-    emit_llm_usage, trace_for_run_dir,
+    emit_llm_usage, emit_mini_http_exchange, trace_for_run_dir, MiniHttpExchangeRecord,
 };
 use crate::acp::AgentIoOptions;
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_B, WHO_M, WHO_T};
@@ -123,12 +123,16 @@ impl MiniTraceSink {
         );
     }
 
-    pub fn stream_assistant_chunks(&self, text: &str) {
+    pub fn record_assistant_audit(&self, text: &str) {
         if let Some(trace) = self.acp_trace_for_audit() {
             for chunk in assistant_chunks(text) {
                 emit_agent_message_chunk(&trace, chunk);
             }
         }
+    }
+
+    pub fn stream_assistant_chunks(&self, text: &str) {
+        self.record_assistant_audit(text);
         if self.io.no_tee || crate::output::stdout_suppressed() {
             return;
         }
@@ -138,7 +142,15 @@ impl MiniTraceSink {
             }
         }
     }
+}
 
+pub(crate) fn record_http_exchange(sink: &MiniTraceSink, record: MiniHttpExchangeRecord<'_>) {
+    if let Some(trace) = sink.acp_trace_for_audit() {
+        emit_mini_http_exchange(&trace, record);
+    }
+}
+
+impl MiniTraceSink {
     pub fn mini_assistant_with_reasoning(&self, content: &str, reasoning: Option<&str>) {
         if let Some(r) = reasoning {
             self.mini_thought(r);

@@ -26,7 +26,7 @@ pub(crate) async fn openrouter_serializes_model_messages_and_headers() {
         role: ChatRole::User,
         content: "hi".into(),
     }];
-    let resp = client.complete(&messages).await.expect("complete");
+    let resp = client.complete(&messages).await.result.expect("complete");
     assert_eq!(resp.content, "ok");
 }
 
@@ -38,7 +38,7 @@ pub(crate) async fn openrouter_error_maps_401_unauthorized() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("401");
+    let err = client.complete(&[]).await.result.expect_err("401");
     assert!(matches!(err, OpenRouterError::Unauthorized { .. }));
 }
 
@@ -50,7 +50,7 @@ pub(crate) async fn openrouter_error_maps_429_rate_limit() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("429");
+    let err = client.complete(&[]).await.result.expect_err("429");
     assert!(matches!(err, OpenRouterError::RateLimited { .. }));
     assert!(err.is_retryable());
 }
@@ -63,7 +63,7 @@ pub(crate) async fn openrouter_error_maps_500_server_error() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("500");
+    let err = client.complete(&[]).await.result.expect_err("500");
     assert!(matches!(err, OpenRouterError::ServerError { .. }));
     assert!(err.is_retryable());
 }
@@ -76,7 +76,7 @@ pub(crate) async fn openrouter_error_maps_billing_failure() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("402");
+    let err = client.complete(&[]).await.result.expect_err("402");
     assert!(matches!(err, OpenRouterError::BillingFailure { .. }));
 }
 
@@ -91,7 +91,7 @@ pub(crate) async fn openrouter_mock_http_complete_returns_usage() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let resp = client.complete(&[]).await.expect("ok");
+    let resp = client.complete(&[]).await.result.expect("ok");
     let usage = resp.usage.expect("usage");
     assert_eq!(usage.total_tokens, Some(15));
 }
@@ -107,7 +107,7 @@ pub(crate) async fn openrouter_mock_http_complete_returns_usage_cost() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let resp = client.complete(&[]).await.expect("ok");
+    let resp = client.complete(&[]).await.result.expect("ok");
     let usage = resp.usage.expect("usage");
     assert!((usage.cost.unwrap_or(0.0) - 0.0042).abs() < f64::EPSILON);
 }
@@ -177,6 +177,15 @@ fn kiss_cov_openrouter_private_serde_types() {
 }
 
 #[tokio::test]
+pub(crate) async fn openrouter_complete_transport_error_on_unreachable_host() {
+    let client = OpenRouterClient::new(test_config("http://127.0.0.1:1")).expect("client");
+    let meta = client.complete(&[]).await;
+    let err = meta.result.expect_err("transport");
+    assert!(matches!(err, OpenRouterError::Transport(_)));
+    assert_eq!(meta.http.status, None);
+}
+
+#[tokio::test]
 pub(crate) async fn openrouter_error_on_non_200_request_failed() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
@@ -184,7 +193,7 @@ pub(crate) async fn openrouter_error_on_non_200_request_failed() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("418");
+    let err = client.complete(&[]).await.result.expect_err("418");
     assert!(matches!(err, OpenRouterError::RequestFailed { status: 418, .. }));
 }
 
@@ -199,7 +208,7 @@ pub(crate) async fn openrouter_error_on_missing_content() {
         .mount(&server)
         .await;
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
-    let err = client.complete(&[]).await.expect_err("missing content");
+    let err = client.complete(&[]).await.result.expect_err("missing content");
     assert!(matches!(err, OpenRouterError::MissingContent));
 }
 
@@ -223,6 +232,7 @@ mod kiss_cov_gate_refs {
             kiss_cov_openrouter_private_serde_types,
             openrouter_error_on_non_200_request_failed,
             openrouter_error_on_missing_content,
+            openrouter_complete_transport_error_on_unreachable_host,
         );
     }
 }

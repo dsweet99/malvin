@@ -157,6 +157,7 @@ pub fn apply_workspace_config_defaults(
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
             apply_mini_model_default(matches, &mut cli.shared, &agent);
+            cli.shared.mini_max_transport_retries = agent.max_mini_transport_retries;
         }
         return Ok(());
     }
@@ -189,6 +190,7 @@ pub(crate) fn apply_shared_config_defaults(
     if !global_flag_from_command_line(matches, "max_acp_retries") {
         shared.max_acp_retries = agent.max_acp_retries;
     }
+    shared.mini_max_transport_retries = agent.max_mini_transport_retries;
 }
 
 pub fn parse_cli_with_config_defaults(

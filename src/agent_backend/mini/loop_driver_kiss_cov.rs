@@ -4,6 +4,9 @@
 fn kiss_witness_loop_http() {
     let _: Option<super::loop_http::HttpRetryRequest<'_>> = None;
     let _ = super::loop_http::complete_with_http_retries;
+    let _ = std::mem::size_of::<super::loop_http_retry::HttpRetryLimits>();
+    let _ = std::mem::size_of::<super::loop_http_retry::HttpRetryCounters>();
+    let _ = stringify!(kiss_witness_http_retry_limits_and_counters);
 }
 
 #[test]

@@ -64,6 +64,9 @@ pub struct SharedOpts {
     /// Max transient `OpenRouter` HTTP retries per completion when `--mini` [default: 0].
     #[arg(long = "mini-max-http-retries", global = true, default_value_t = 0)]
     pub mini_max_http_retries: u32,
+    /// Max transport-layer retries per `OpenRouter` completion when `--mini` (from config when unset).
+    #[arg(skip)]
+    pub mini_max_transport_retries: u32,
     /// Max whole-loop gate retries after failure when `--mini` [default: 0].
     #[arg(long = "mini-max-gate-retries", global = true, default_value_t = 0)]
     pub mini_max_gate_retries: u32,
@@ -109,6 +112,7 @@ impl SharedOpts {
             mini_max_http_turns: 32,
             mini_max_bash_execs: 128,
             mini_max_http_retries: 0,
+            mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
             mini_max_gate_retries: 0,
             mini_max_shrink_passes: 0,
         }

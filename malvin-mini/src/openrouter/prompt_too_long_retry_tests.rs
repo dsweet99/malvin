@@ -27,7 +27,7 @@ pub(crate) async fn openrouter_complete_surfaces_invalid_referer_header_errors()
     let mut config = openrouter_test_config(&server.uri());
     config.http_referer = Some("bad\nreferer".into());
     let client = OpenRouterClient::new(config).expect("client");
-    let err = client.complete(&[]).await.expect_err("invalid referer");
+    let err = client.complete(&[]).await.result.expect_err("invalid referer");
     assert!(matches!(err, OpenRouterError::RequestFailed { status: 0, .. }));
 }
 
@@ -40,7 +40,7 @@ pub(crate) async fn openrouter_prompt_too_long_maps_to_context_overflow() {
         role: ChatRole::User,
         content: "only".into(),
     }];
-    let err = client.complete(&messages).await.expect_err("overflow");
+    let err = client.complete(&messages).await.result.expect_err("overflow");
     assert!(matches!(err, OpenRouterError::ContextOverflow { .. }));
 }
 
@@ -52,6 +52,7 @@ pub(crate) async fn openrouter_prompt_too_long_does_not_retry_in_transport() {
     let err = client
         .complete(&twelve_word_prompt())
         .await
+        .result
         .expect_err("transport does not shrink-retry");
     assert!(matches!(err, OpenRouterError::ContextOverflow { .. }));
 }

@@ -9,6 +9,7 @@ fn test_config() -> LoopDriverConfig {
     LoopDriverConfig {
         max_http_turns: 8,
         max_http_retries: 3,
+        max_transport_retries: 3,
             max_bash_execs: 128,
             max_shrink_passes: 0,
             expects_investigation: false,
@@ -199,6 +200,7 @@ async fn loop_driver_mock_http_retry_on_429() {
         config: &LoopDriverConfig {
             max_http_turns: 4,
             max_http_retries: 3,
+            max_transport_retries: 3,
             max_bash_execs: 128,
             max_shrink_passes: 0,
             expects_investigation: false,

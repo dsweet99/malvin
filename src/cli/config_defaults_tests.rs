@@ -91,6 +91,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         max_loops: 8,
         max_loops_code: 6,
         max_acp_retries: 6,
+        max_mini_transport_retries: 3,
     };
     let config_max_hypotheses = agent.max_hypotheses;
     let config_max_loops = agent.max_loops;
@@ -109,6 +110,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,
         mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
     };

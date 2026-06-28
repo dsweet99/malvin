@@ -88,9 +88,10 @@ When `--mini` is set:
 - Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `anthropic/claude-sonnet-4`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
 - `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
 - `--no-force` is a no-op (nothing to approve).
-- `--max-acp-retries` applies independently to gate iteration retries, HTTP completion retries, and is documented as agent retries.
+- `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below).
+- `[agent].max_mini_transport_retries` in `~/.malvin_home/config.toml` (default **3**) caps retries for OpenRouter transport failures and JSON decode errors after a 200 response, separate from `--mini-max-http-retries` (429/5xx API retries).
 - Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and as fields on the same `TIMING:` finalize line (`total_cost`, `mean_cost_per_tx`, …).
-- `trace.jsonl` uses the same ACP-shaped `direction` / `message` records as non-mini runs (synthetic, not JSON-RPC wire capture).
+- `trace.jsonl` uses the same ACP-shaped `direction` / `message` records as non-mini runs (synthetic, not JSON-RPC wire capture). Each OpenRouter HTTP attempt also records a `miniHttpExchange` audit field (status, body capped at 64 KiB, error when present); raw HTTP is never teed to stdout.
 - Bash tool summaries on stdout use the same Read / Search / Edit / Run vocabulary as ACP when heuristics match.
 
 Environment variables (mini only):

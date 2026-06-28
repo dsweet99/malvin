@@ -27,6 +27,29 @@ fn mini_do_plain_stdout_emits_untagged_assistant() {
 }
 
 #[test]
+fn mini_do_plain_stdout_suppresses_bash_fence_assistant_text() {
+    with_stdout_log_test_lock(|| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let log_path = tmp.path().join("stdout.log");
+        crate::output::set_stdout_log_path(Some(log_path.clone()));
+        let mut sink = trace_sink(&tmp, false);
+        sink.plain_lines = true;
+        sink.record_assistant_audit("```bash\ncat plan_dco.md\n```");
+        let text = std::fs::read_to_string(log_path).unwrap_or_default();
+        assert!(
+            text.is_empty(),
+            "plain do must suppress bash fence assistant text; got {text:?}"
+        );
+        let trace = std::fs::read_to_string(tmp.path().join("trace.jsonl")).expect("trace");
+        assert!(
+            trace.contains("agent_message_chunk"),
+            "trace must still record assistant chunks; got {trace:?}"
+        );
+        crate::output::set_stdout_log_path(None);
+    });
+}
+
+#[test]
 fn mini_do_plain_stdout_suppresses_bash_tool_tee() {
     with_stdout_log_test_lock(|| {
         let tmp = tempfile::tempdir().expect("tempdir");

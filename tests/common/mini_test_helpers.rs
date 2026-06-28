@@ -45,6 +45,7 @@ pub const fn parity_loop_config(mini_constraints: &'static str) -> malvin::agent
     malvin::agent_backend::mini::LoopDriverConfig {
         max_http_turns: 4,
         max_http_retries: 1,
+        max_transport_retries: 3,
         max_bash_execs: 128,
         max_shrink_passes: 0,
         expects_investigation: false,

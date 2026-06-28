@@ -59,6 +59,7 @@ pub fn loop_driver_config(max_http_turns: u32, max_http_retries: u32) -> LoopDri
         max_http_turns,
         max_bash_execs: 128,
         max_http_retries,
+        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         max_shrink_passes: 0,
         mini_constraints: "constraints",
         expects_investigation: false,
@@ -84,6 +85,7 @@ pub fn mini_loop_config(max_http_turns: u32, max_http_retries: u32) -> MiniLoopC
         max_http_turns,
         max_bash_execs: 128,
         max_http_retries,
+        max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         max_gate_retries: max_http_retries,
         max_shrink_passes: 0,
         retry_strategy: MiniRetryStrategy::CumulativeTranscript,
@@ -108,6 +110,7 @@ pub fn shared_opts(mini: bool) -> SharedOpts {
         mini_max_http_turns: 32,
         mini_max_bash_execs: 128,
         mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
     }

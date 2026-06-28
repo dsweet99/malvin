@@ -9,6 +9,7 @@ max_hypotheses = 5
 max_loops = 1
 max_loops_code = 3
 max_acp_retries = 3
+max_mini_transport_retries = 3
 
 [logs]
 # Delete runs older than this many days (dirname timestamp, else mtime).

@@ -57,6 +57,7 @@ pub const MINI_DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 
 /// Default bounded attempts per ACP spawn or `session/prompt` (1s / 3s backoff between tries).
 pub const DEFAULT_MAX_ACP_RETRIES: u32 = 3;
+pub const DEFAULT_MAX_MINI_TRANSPORT_RETRIES: u32 = 3;
 
 pub const DEFAULT_ACP_RPC_TIMEOUT_SECS: u64 = 600;
 

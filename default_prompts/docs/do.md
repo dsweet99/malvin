@@ -63,6 +63,8 @@ One coder prompt per invocation:
 
 No implement, review, concerns, learn, or summary phases.
 
+With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo intermediate ` ```bash ` fenced tool payloads; final fenceless answers still appear. Full assistant text and tool calls remain in `trace.jsonl`.
+
 ## Session behavior
 
 - Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`; restores after the session.

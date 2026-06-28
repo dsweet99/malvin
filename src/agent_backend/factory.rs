@@ -82,6 +82,7 @@ fn new_mini_client(
     } else {
         mini_gate_retries(shared)
     };
+    let transport_retries = shared.mini_max_transport_retries.max(1);
     let shrink_passes = if tenacious && shared.mini_max_shrink_passes == 0 {
         3
     } else {
@@ -93,6 +94,7 @@ fn new_mini_client(
             max_http_turns: mini_http_turns(shared),
             max_bash_execs: shared.mini_max_bash_execs,
             max_http_retries: http_retries,
+            max_transport_retries: transport_retries,
             max_gate_retries: gate_retries,
             max_shrink_passes: shrink_passes,
             retry_strategy: MiniRetryStrategy::CumulativeTranscript,

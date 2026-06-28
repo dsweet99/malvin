@@ -169,6 +169,7 @@ mod gate_retry_role_tests {
             max_http_turns: 4,
             max_bash_execs: 128,
             max_http_retries: 1,
+            max_transport_retries: 3,
             max_shrink_passes: 0,
             mini_constraints: "constraints",
             expects_investigation: false,

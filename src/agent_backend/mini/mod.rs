@@ -21,14 +21,20 @@ mod client_retry_tests;
 #[cfg(test)]
 mod trace_tests;
 #[cfg(test)]
+#[path = "trace_stdout_tee_tests.rs"]
+mod trace_stdout_tee_tests;
+#[cfg(test)]
 #[path = "trace_do_plain_tests.rs"]
 mod trace_do_plain_tests;
 #[cfg(test)]
 #[path = "trace_comment_tests.rs"]
 mod trace_comment_tests;
 #[cfg(test)]
-#[path = "trace_stdout_tee_tests.rs"]
-mod trace_stdout_tee_tests;
+#[path = "trace_http_exchange_tests.rs"]
+mod trace_http_exchange_tests;
+#[cfg(test)]
+#[path = "loop_http_retry_tests.rs"]
+mod loop_http_retry_tests;
 pub use trace::MiniTraceSink;
 
 pub use client::{MiniAgentClient, MiniLoopConfig};

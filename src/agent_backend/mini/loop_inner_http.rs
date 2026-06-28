@@ -88,9 +88,11 @@ async fn complete_turn(req: CompleteTurnRequest<'_>) -> Result<CompletionRespons
     let response = complete_with_http_retries(HttpRetryRequest {
         llm,
         messages: &session.messages,
-        max_retries: config.max_http_retries,
+        max_api_retries: config.max_http_retries,
+        max_transport_retries: config.max_transport_retries,
         single_attempt,
         timing,
+        trace: Some(trace),
     })
     .await?;
     record_llm(timing, llm_phase.unwrap_or(TimingPhase::Implement), t0.elapsed());

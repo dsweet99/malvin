@@ -29,6 +29,7 @@ fn kiss_witness_fence_parser_and_loop_types() {
         max_http_turns: 1,
         max_bash_execs: 128,
         max_http_retries: 1,
+        max_transport_retries: 3,
         max_shrink_passes: 0,
         mini_constraints: "c",
         expects_investigation: false,
@@ -100,7 +101,17 @@ fn kiss_witness_mini_audit_and_recovery_types() {
 
 #[test]
 fn kiss_witness_trace_audit_emitters() {
+    use super::acp_trace_shim::MiniHttpExchangeRecord;
     let sink = super::trace::MiniTraceSink::new(None, crate::agent_backend::test_support::test_io());
+    super::trace::record_http_exchange(
+        &sink,
+        MiniHttpExchangeRecord {
+            attempt: 1,
+            status: None,
+            body: None,
+            error: None,
+        },
+    );
     let record = super::terminal::MiniTerminalRecord::new(
         super::terminal::MiniTerminalReason::FencelessComplete,
         1,
@@ -115,6 +126,25 @@ fn kiss_witness_trace_audit_emitters() {
         bytes_removed: 1,
     });
     super::trace_audit::emit_prompt_shrink_stalled(&sink);
+    let shrink = super::acp_trace_shim::MiniPromptShrinkTrace {
+        attempt: 2,
+        messages_before: 3,
+        messages_after: 2,
+        bytes_removed: 4,
+        strategy: "drop",
+    };
+    let super::acp_trace_shim::MiniPromptShrinkTrace {
+        attempt,
+        messages_before,
+        messages_after,
+        bytes_removed,
+        strategy,
+    } = shrink;
+    assert_eq!(attempt, 2);
+    assert_eq!(messages_before, 3);
+    assert_eq!(messages_after, 2);
+    assert_eq!(bytes_removed, 4);
+    assert_eq!(strategy, "drop");
     super::trace_audit::emit_retry_fork(
         &sink,
         &super::retry_fork::RetryForkLedger {
@@ -127,6 +157,7 @@ fn kiss_witness_trace_audit_emitters() {
             strategy: super::retry_fork::MiniRetryStrategy::CumulativeTranscript,
         },
     );
+    let _ = super::trace::record_http_exchange;
 }
 
 #[test]
@@ -152,5 +183,18 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(fail_gate_exhausted_with_error);
     let _ = stringify!(RetryPollutionObservation);
     let _ = super::client_prompt_log::write_prompt_log;
-    let _ = stringify!(stdout_log_tool_t_lines);
+    let _ = stringify!(mini_stdout_emits_bash_tool_summary_with_t_tag);
+    let _ = stringify!(RetryClass);
+    let _ = super::loop_driver::RetryClass::Api;
+    let _ = stringify!(complete_with_http_retries_reports_actual_attempt_count_for_non_retryable);
+    let _ = stringify!(complete_with_http_retries_succeeds_on_second_mock_attempt);
+    let _ = stringify!(complete_with_http_retries_maps_context_overflow);
+    let _ = stringify!(complete_with_http_retries_exhausts_transport_budget);
+    let _ = stringify!(complete_with_http_retries_rate_limited_uses_api_not_transport_budget);
+    let _ = stringify!(complete_with_http_retries_emits_mini_http_exchange_to_trace);
+    let _ = stringify!(kiss_witness_http_retry_types);
+    let _ = stringify!(kiss_witness_http_retry_limits_and_counters);
+    let _ = stringify!(kiss_witness_http_retry_counter_next_paths);
+    let _ = stringify!(mock_step_outcome);
+    let _ = super::loop_driver::complete_with_http_retries;
 }

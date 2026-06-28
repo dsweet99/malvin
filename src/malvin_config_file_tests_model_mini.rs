@@ -86,6 +86,7 @@ max_acp_retries = 5
             max_loops: 3,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
+            max_mini_transport_retries: 3,
         }
     );
 }

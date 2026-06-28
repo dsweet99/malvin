@@ -78,7 +78,11 @@ fn investigate_bash_turn(
     input: BashTurnInput<'_>,
 ) -> Result<InvestigateStep, AgentError> {
     if input.stream_warnings {
-        req.trace.stream_assistant_chunks(input.assistant_text);
+        if req.trace.plain_lines {
+            req.trace.record_assistant_audit(input.assistant_text);
+        } else {
+            req.trace.stream_assistant_chunks(input.assistant_text);
+        }
     }
     counters.had_bash_this_prompt = true;
     let fence_count = u32::try_from(input.fences.len()).unwrap_or(u32::MAX);
@@ -96,7 +100,11 @@ fn investigate_bash_turn(
         );
         return Ok(InvestigateStep::Failed(err));
     }
-    req.trace.stream_assistant_chunks(input.assistant_text);
+    if req.trace.plain_lines {
+        req.trace.record_assistant_audit(input.assistant_text);
+    } else {
+        req.trace.stream_assistant_chunks(input.assistant_text);
+    }
     if let Some(r) = input.reasoning {
         req.trace.mini_thought(r);
     }

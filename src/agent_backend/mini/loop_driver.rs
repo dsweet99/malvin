@@ -2,6 +2,8 @@
 
 #[path = "loop_http.rs"]
 mod loop_http;
+#[path = "loop_http_retry.rs"]
+mod loop_http_retry;
 #[path = "loop_inner_finish.rs"]
 mod loop_inner_finish;
 #[path = "loop_inner_prompt.rs"]
@@ -20,6 +22,8 @@ mod loop_inner_bash;
 mod loop_inner;
 #[path = "loop_mock.rs"]
 mod loop_mock;
+#[path = "loop_mock_outcomes.rs"]
+mod loop_mock_outcomes;
 #[path = "loop_types.rs"]
 mod loop_types;
 
@@ -48,3 +52,9 @@ pub(crate) use loop_inner_prompt::push_user_prompt;
 pub(crate) use loop_inner_types::TurnAction;
 pub use loop_mock::{LlmBackend, MockScript, MockStep};
 pub use loop_types::{LoopDriverConfig, LoopDriverOutcome, LoopDriverRun, LoopDriverSession};
+#[allow(unused_imports)]
+pub(crate) use loop_http::{HttpCompletionError, HttpRetryRequest, RetryClass};
+#[allow(unused_imports)]
+pub(crate) use loop_http_retry::{
+    complete_with_http_retries, HttpRetryCounters, HttpRetryLimits,
+};

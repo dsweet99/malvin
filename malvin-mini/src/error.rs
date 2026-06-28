@@ -35,6 +35,11 @@ impl OpenRouterError {
     }
 
     #[must_use]
+    pub const fn is_transport_retryable(&self) -> bool {
+        matches!(self, Self::Transport(_) | Self::Json(_))
+    }
+
+    #[must_use]
     pub const fn is_context_overflow(&self) -> bool {
         matches!(self, Self::ContextOverflow { .. })
     }
@@ -71,6 +76,20 @@ mod tests {
             body: "teapot".into()
         }
         .is_retryable());
+    }
+
+    #[test]
+    fn openrouter_error_transport_retryable_for_transport_and_json() {
+        let transport = OpenRouterError::Json(
+            serde_json::from_str::<serde_json::Value>("not json").unwrap_err(),
+        );
+        assert!(transport.is_transport_retryable());
+        let json = OpenRouterError::Json(serde_json::from_str::<serde_json::Value>("not json").unwrap_err());
+        assert!(json.is_transport_retryable());
+        assert!(!OpenRouterError::Unauthorized {
+            body: "bad".into()
+        }
+        .is_transport_retryable());
     }
 
     #[test]

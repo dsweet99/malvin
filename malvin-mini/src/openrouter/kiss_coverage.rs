@@ -17,6 +17,10 @@ fn kiss_witness_openrouter_test_fns() {
         openrouter_tests::openrouter_mock_http_complete_returns_usage_cost,
         openrouter_tests::openrouter_error_on_non_200_request_failed,
         openrouter_tests::openrouter_error_on_missing_content,
+        openrouter_tests::openrouter_complete_transport_error_on_unreachable_host,
+        super::fetch_completion_tests::fetch_completion_body_surfaces_transport_errors,
+        super::fetch_completion_tests::fetch_completion_body_surfaces_header_validation_errors,
+        super::fetch_completion_tests::fetch_completion_body_reads_success_body,
         prompt_too_long_retry_tests::twelve_word_prompt,
         prompt_too_long_retry_tests::openrouter_complete_surfaces_invalid_referer_header_errors,
         prompt_too_long_retry_tests::openrouter_prompt_too_long_maps_to_context_overflow,
@@ -26,6 +30,11 @@ fn kiss_witness_openrouter_test_fns() {
 
 #[test]
 fn kiss_witness_openrouter_serde_types() {
+    kiss_witness_openrouter_request_response_types();
+    kiss_witness_openrouter_http_exchange_types();
+}
+
+fn kiss_witness_openrouter_request_response_types() {
     use super::serde_types::{
         ChatChoice, ChatChoiceMessage, ChatCompletionRequest, ChatCompletionResponse,
     };
@@ -70,4 +79,49 @@ fn kiss_witness_openrouter_serde_types() {
 
     let _ = stringify!(deserialize_message_content);
     let _ = stringify!(deserialize_message_content_accepts_text_and_parts);
+}
+
+fn kiss_witness_openrouter_http_exchange_types() {
+    use crate::error::OpenRouterError;
+
+    let http = super::http_exchange::HttpExchangeMeta {
+        status: Some(200),
+        body: Some("body".into()),
+    };
+    let super::http_exchange::HttpExchangeMeta { status, body } = http;
+    assert_eq!(status, Some(200));
+    assert_eq!(body.as_deref(), Some("body"));
+
+    let with_meta = super::http_exchange::CompletionWithMeta {
+        result: Ok(super::types::CompletionResponse {
+            content: "ok".into(),
+            usage: None,
+            reasoning: None,
+        }),
+        http: super::http_exchange::HttpExchangeMeta {
+            status: Some(200),
+            body: None,
+        },
+    };
+    let super::http_exchange::CompletionWithMeta { result, http } = with_meta;
+    assert_eq!(result.as_ref().expect("ok").content, "ok");
+    assert_eq!(http.status, Some(200));
+    let err_meta = super::http_exchange::CompletionWithMeta {
+        result: Err(OpenRouterError::MissingContent),
+        http: super::http_exchange::HttpExchangeMeta {
+            status: Some(500),
+            body: Some("err".into()),
+        },
+    };
+    assert!(err_meta.result.is_err());
+    assert_eq!(err_meta.http.body.as_deref(), Some("err"));
+    let _ = stringify!(completion_with_meta_exposes_result_and_http);
+    let _ = super::complete::completion_with_meta;
+    let _ = super::complete::transport_meta;
+    let _ = super::complete::transport_failure_meta;
+    let _ = stringify!(outcome_from_http_body);
+    let _ = stringify!(fetch_completion_body);
+    let _ = stringify!(completion_with_meta_and_transport_meta_helpers);
+    let _ = stringify!(kiss_witness_completion_post_url);
+    let _ = stringify!(kiss_witness_transport_failure_meta);
 }

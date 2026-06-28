@@ -28,6 +28,7 @@ async fn loop_driver_fenceless_completes_in_one_turn() {
         config: &LoopDriverConfig {
             max_http_turns: 4,
             max_http_retries: 3,
+            max_transport_retries: 3,
             max_bash_execs: 128,
             max_shrink_passes: 0,
             expects_investigation: false,
@@ -83,6 +84,7 @@ async fn loop_driver_fenceless_no_nudge_in_prompts_log() {
         config: &LoopDriverConfig {
             max_http_turns: 4,
             max_http_retries: 3,
+            max_transport_retries: 3,
             max_bash_execs: 128,
             max_shrink_passes: 0,
             expects_investigation: false,
