@@ -5,6 +5,7 @@ use crate::orchestrator::{
 };
 use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
+use crate::test_utils::with_isolated_home;
 
 fn tmp_review_artifact() -> (tempfile::TempDir, std::path::PathBuf) {
     let t = tempfile::tempdir().unwrap();
@@ -101,58 +102,60 @@ fn sync_review_file_returns_nonempty_artifact_text() {
 
 #[test]
 fn workflow_context_review_path_points_to_artifact() {
-    let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join(".malvin/logs").join("run123");
-    std::fs::create_dir_all(&run_dir).unwrap();
-    let plan_path = run_dir.join("plan.md");
-    std::fs::write(&plan_path, "test plan").unwrap();
+    with_isolated_home(|work| {
+        let run_dir = work.join(".malvin/logs").join("run123");
+        std::fs::create_dir_all(&run_dir).unwrap();
+        let plan_path = run_dir.join("plan.md");
+        std::fs::write(&plan_path, "test plan").unwrap();
 
-    let artifacts = RunArtifacts {
-        run_dir,
-        plan_path,
-        work_dir: t.path().to_path_buf(),
-    };
-    let prompts = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &prompts, "code").expect("workflow_context");
+        let artifacts = RunArtifacts {
+            run_dir,
+            plan_path,
+            work_dir: work.to_path_buf(),
+        };
+        let prompts = PromptStore::default_store();
+        let ctx = workflow_context(&artifacts, &prompts, "code").expect("workflow_context");
 
-    let review_path = ctx
-        .get("review_path")
-        .expect("review_path must be in context");
+        let review_path = ctx
+            .get("review_path")
+            .expect("review_path must be in context");
 
-    assert!(
-        review_path.contains(".malvin/logs"),
-        "review_path must point to artifact (./.malvin/logs/.../review.md); got: {review_path}"
-    );
-    assert_eq!(
-        review_path, "./.malvin/logs/run123/review.md",
-        "review_path should be the artifact path"
-    );
-    assert!(
-        ctx.contains_key("quality_gates"),
-        "quality_gates must be in context"
-    );
-    assert_eq!(
-        ctx.get("quality_gates_log").map(String::as_str),
-        Some("./.malvin/logs/run123/quality_gates.log"),
-        "quality_gates_log should point to the run artifact log"
-    );
+        assert!(
+            review_path.contains(".malvin/logs"),
+            "review_path must point to artifact (./.malvin/logs/.../review.md); got: {review_path}"
+        );
+        assert_eq!(
+            review_path, "./.malvin/logs/run123/review.md",
+            "review_path should be the artifact path"
+        );
+        assert!(
+            ctx.contains_key("quality_gates"),
+            "quality_gates must be in context"
+        );
+        assert_eq!(
+            ctx.get("quality_gates_log").map(String::as_str),
+            Some("./.malvin/logs/run123/quality_gates.log"),
+            "quality_gates_log should point to the run artifact log"
+        );
+    });
 }
 
 #[test]
 fn workflow_context_includes_malvin_command() {
-    let t = tempfile::tempdir().unwrap();
-    let run_dir = t.path().join(".malvin/logs").join("run123");
-    std::fs::create_dir_all(&run_dir).unwrap();
-    let plan_path = run_dir.join("plan.md");
-    std::fs::write(&plan_path, "test plan").unwrap();
-    let artifacts = RunArtifacts {
-        run_dir,
-        plan_path,
-        work_dir: t.path().to_path_buf(),
-    };
-    let prompts = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &prompts, "tidy").expect("workflow_context");
-    assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+    with_isolated_home(|work| {
+        let run_dir = work.join(".malvin/logs").join("run123");
+        std::fs::create_dir_all(&run_dir).unwrap();
+        let plan_path = run_dir.join("plan.md");
+        std::fs::write(&plan_path, "test plan").unwrap();
+        let artifacts = RunArtifacts {
+            run_dir,
+            plan_path,
+            work_dir: work.to_path_buf(),
+        };
+        let prompts = PromptStore::default_store();
+        let ctx = workflow_context(&artifacts, &prompts, "tidy").expect("workflow_context");
+        assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
+    });
 }
 
 #[test]
