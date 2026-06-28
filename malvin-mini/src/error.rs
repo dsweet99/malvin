@@ -19,6 +19,8 @@ pub enum OpenRouterError {
     },
     #[error("OpenRouter response missing assistant content")]
     MissingContent,
+    #[error("{provider}: {detail}")]
+    ProviderTransport { provider: String, detail: String },
     #[error("HTTP transport error: {0}")]
     Transport(#[from] reqwest::Error),
     #[error("JSON decode error: {0}")]
@@ -27,16 +29,14 @@ pub enum OpenRouterError {
 
 impl OpenRouterError {
     #[must_use]
-    pub const fn is_retryable(&self) -> bool {
-        matches!(
-            self,
-            Self::RateLimited { .. } | Self::ServerError { .. }
-        )
+    pub const fn is_billing_failure(&self) -> bool {
+        matches!(self, Self::BillingFailure { .. })
     }
 
+    /// True for every error that should consume the mini transport retry budget.
     #[must_use]
     pub const fn is_transport_retryable(&self) -> bool {
-        matches!(self, Self::Transport(_) | Self::Json(_))
+        !self.is_billing_failure() && !self.is_context_overflow()
     }
 
     #[must_use]
@@ -57,37 +57,54 @@ mod tests {
     use super::OpenRouterError;
 
     #[test]
-    fn openrouter_error_retryable_for_rate_limit_and_server_error() {
+    fn openrouter_error_billing_failure_is_not_transport_retryable() {
+        assert!(OpenRouterError::BillingFailure {
+            status: 402,
+            body: "no credits".into()
+        }
+        .is_billing_failure());
+        assert!(!OpenRouterError::BillingFailure {
+            status: 403,
+            body: "forbidden".into()
+        }
+        .is_transport_retryable());
+    }
+
+    #[test]
+    fn openrouter_error_transport_retryable_for_non_billing_failures() {
         assert!(OpenRouterError::RateLimited {
             body: "slow".into()
         }
-        .is_retryable());
+        .is_transport_retryable());
         assert!(OpenRouterError::ServerError {
             status: 503,
             body: "down".into()
         }
-        .is_retryable());
-        assert!(!OpenRouterError::Unauthorized {
+        .is_transport_retryable());
+        assert!(OpenRouterError::Unauthorized {
             body: "bad".into()
         }
-        .is_retryable());
-        assert!(!OpenRouterError::RequestFailed {
+        .is_transport_retryable());
+        assert!(OpenRouterError::RequestFailed {
             status: 418,
             body: "teapot".into()
         }
-        .is_retryable());
+        .is_transport_retryable());
+        assert!(OpenRouterError::MissingContent.is_transport_retryable());
+        let json = OpenRouterError::Json(serde_json::from_str::<serde_json::Value>("not json").unwrap_err());
+        assert!(json.is_transport_retryable());
+        assert!(OpenRouterError::ProviderTransport {
+            provider: "Nvidia".into(),
+            detail: "ResourceExhausted".into(),
+        }
+        .is_transport_retryable());
     }
 
     #[test]
-    fn openrouter_error_transport_retryable_for_transport_and_json() {
-        let transport = OpenRouterError::Json(
-            serde_json::from_str::<serde_json::Value>("not json").unwrap_err(),
-        );
-        assert!(transport.is_transport_retryable());
-        let json = OpenRouterError::Json(serde_json::from_str::<serde_json::Value>("not json").unwrap_err());
-        assert!(json.is_transport_retryable());
-        assert!(!OpenRouterError::Unauthorized {
-            body: "bad".into()
+    fn openrouter_error_context_overflow_is_not_transport_retryable() {
+        assert!(!OpenRouterError::ContextOverflow {
+            body: "too long".into(),
+            message_count: 1,
         }
         .is_transport_retryable());
     }

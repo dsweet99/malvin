@@ -199,11 +199,11 @@ fn kiss_invalid_struct_value_refs_gate10_4() {
 fn kiss_invalid_struct_value_refs_gate10_5() {
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_prepends_mini_constraints;
     let _ = crate::agent_backend::mini::loop_driver_tests::loop_driver_mock_http_retry_on_429;
-    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_reports_actual_attempt_count_for_non_retryable;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_non_billing_errors_exhaust_transport_budget;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_succeeds_on_second_mock_attempt;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_maps_context_overflow;
-    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_exhausts_transport_budget;
-    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_rate_limited_uses_api_not_transport_budget;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_retries_nvidia_resource_exhausted;
+    let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_billing_failure_fails_on_first_attempt;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::complete_with_http_retries_emits_mini_http_exchange_to_trace;
     let _ = crate::agent_backend::mini::loop_http_retry_tests::kiss_witness_http_retry_types;
     let _ = crate::agent_backend::mini::trace_stdout_tee_tests::mini_stdout_emits_bash_tool_summary_with_t_tag;

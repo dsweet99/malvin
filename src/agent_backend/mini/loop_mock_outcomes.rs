@@ -49,6 +49,40 @@ pub(super) fn mock_request_failed_pair(
     )
 }
 
+pub(super) fn mock_billing_failure_pair(
+    status: u16,
+    body: &str,
+) -> (Result<CompletionResponse, OpenRouterError>, HttpExchangeMeta) {
+    (
+        Err(OpenRouterError::BillingFailure {
+            status,
+            body: body.to_string(),
+        }),
+        mock_http_meta(Some(status), Some(body)),
+    )
+}
+
+pub(super) fn mock_provider_transport_pair() -> (Result<CompletionResponse, OpenRouterError>, HttpExchangeMeta) {
+    let body = r#"{
+        "error": {
+            "message": "Provider returned error",
+            "code": 503,
+            "metadata": {
+                "provider_name": "Nvidia",
+                "raw": "ResourceExhausted",
+                "error_type": "provider_overloaded"
+            }
+        }
+    }"#;
+    (
+        Err(OpenRouterError::ProviderTransport {
+            provider: "Nvidia".into(),
+            detail: "ResourceExhausted".into(),
+        }),
+        mock_http_meta(Some(200), Some(body)),
+    )
+}
+
 pub(super) fn mock_json_transport_pair() -> (Result<CompletionResponse, OpenRouterError>, HttpExchangeMeta) {
     (
         Err(mock_json_error()),

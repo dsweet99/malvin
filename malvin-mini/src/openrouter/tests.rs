@@ -52,7 +52,7 @@ pub(crate) async fn openrouter_error_maps_429_rate_limit() {
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
     let err = client.complete(&[]).await.result.expect_err("429");
     assert!(matches!(err, OpenRouterError::RateLimited { .. }));
-    assert!(err.is_retryable());
+    assert!(err.is_transport_retryable());
 }
 
 #[tokio::test]
@@ -65,7 +65,7 @@ pub(crate) async fn openrouter_error_maps_500_server_error() {
     let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
     let err = client.complete(&[]).await.result.expect_err("500");
     assert!(matches!(err, OpenRouterError::ServerError { .. }));
-    assert!(err.is_retryable());
+    assert!(err.is_transport_retryable());
 }
 
 #[tokio::test]

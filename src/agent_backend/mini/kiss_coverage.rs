@@ -184,13 +184,11 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(RetryPollutionObservation);
     let _ = super::client_prompt_log::write_prompt_log;
     let _ = stringify!(mini_stdout_emits_bash_tool_summary_with_t_tag);
-    let _ = stringify!(RetryClass);
-    let _ = super::loop_driver::RetryClass::Api;
-    let _ = stringify!(complete_with_http_retries_reports_actual_attempt_count_for_non_retryable);
+    let _ = stringify!(complete_with_http_retries_non_billing_errors_exhaust_transport_budget);
     let _ = stringify!(complete_with_http_retries_succeeds_on_second_mock_attempt);
     let _ = stringify!(complete_with_http_retries_maps_context_overflow);
-    let _ = stringify!(complete_with_http_retries_exhausts_transport_budget);
-    let _ = stringify!(complete_with_http_retries_rate_limited_uses_api_not_transport_budget);
+    let _ = stringify!(complete_with_http_retries_retries_nvidia_resource_exhausted);
+    let _ = stringify!(complete_with_http_retries_billing_failure_fails_on_first_attempt);
     let _ = stringify!(complete_with_http_retries_emits_mini_http_exchange_to_trace);
     let _ = stringify!(kiss_witness_http_retry_types);
     let _ = stringify!(kiss_witness_http_retry_limits_and_counters);

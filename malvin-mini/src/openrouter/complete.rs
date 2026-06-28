@@ -31,6 +31,55 @@ fn completion_post_url(base_url: &str) -> String {
     format!("{}/chat/completions", base_url.trim_end_matches('/'))
 }
 
+async fn post_chat_completion(
+    client: &OpenRouterClient,
+    url: String,
+    body: &ChatCompletionRequest<'_>,
+    headers: reqwest::header::HeaderMap,
+) -> Result<reqwest::Response, CompletionWithMeta> {
+    match client.http().post(url).headers(headers).json(body).send().await {
+        Ok(response) => Ok(response),
+        Err(err) => Err(transport_failure_meta(None, err)),
+    }
+}
+
+impl OpenRouterClient {
+    /// # Errors
+    ///
+    /// Returns [`OpenRouterError`] on HTTP or API failures. Context-length failures return
+    /// [`OpenRouterError::ContextOverflow`] without mutating messages.
+    pub async fn complete(&self, messages: &[ChatMessage]) -> CompletionWithMeta {
+        match self.fetch_completion_body(messages).await {
+            Ok((status, text)) => outcome_from_http_body(status, text, messages.len()),
+            Err(meta) => meta,
+        }
+    }
+
+    pub(crate) async fn fetch_completion_body(
+        &self,
+        messages: &[ChatMessage],
+    ) -> Result<(u16, String), CompletionWithMeta> {
+        let url = completion_post_url(&self.config().base_url);
+        let body = ChatCompletionRequest {
+            model: &self.config().model,
+            messages,
+        };
+        let headers = match build_request_headers(self.config()) {
+            Ok(h) => h,
+            Err(e) => return Err(completion_with_meta(Err(e), transport_meta(None, None))),
+        };
+        let resp = match post_chat_completion(self, url, &body, headers).await {
+            Ok(response) => response,
+            Err(meta) => return Err(meta),
+        };
+        let status = resp.status().as_u16();
+        match resp.text().await {
+            Ok(text) => Ok((status, text)),
+            Err(e) => Err(transport_failure_meta(Some(status), e)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod kiss_witness {
     use crate::error::OpenRouterError;
@@ -90,54 +139,5 @@ mod kiss_witness {
             });
         let with_status = transport_failure_meta(Some(200), err2);
         assert_eq!(with_status.http.status, Some(200));
-    }
-}
-
-async fn post_chat_completion(
-    client: &OpenRouterClient,
-    url: String,
-    body: &ChatCompletionRequest<'_>,
-    headers: reqwest::header::HeaderMap,
-) -> Result<reqwest::Response, CompletionWithMeta> {
-    match client.http().post(url).headers(headers).json(body).send().await {
-        Ok(response) => Ok(response),
-        Err(err) => Err(transport_failure_meta(None, err)),
-    }
-}
-
-impl OpenRouterClient {
-    /// # Errors
-    ///
-    /// Returns [`OpenRouterError`] on HTTP or API failures. Context-length failures return
-    /// [`OpenRouterError::ContextOverflow`] without mutating messages.
-    pub async fn complete(&self, messages: &[ChatMessage]) -> CompletionWithMeta {
-        match self.fetch_completion_body(messages).await {
-            Ok((status, text)) => outcome_from_http_body(status, text, messages.len()),
-            Err(meta) => meta,
-        }
-    }
-
-    pub(crate) async fn fetch_completion_body(
-        &self,
-        messages: &[ChatMessage],
-    ) -> Result<(u16, String), CompletionWithMeta> {
-        let url = completion_post_url(&self.config().base_url);
-        let body = ChatCompletionRequest {
-            model: &self.config().model,
-            messages,
-        };
-        let headers = match build_request_headers(self.config()) {
-            Ok(h) => h,
-            Err(e) => return Err(completion_with_meta(Err(e), transport_meta(None, None))),
-        };
-        let resp = match post_chat_completion(self, url, &body, headers).await {
-            Ok(response) => response,
-            Err(meta) => return Err(meta),
-        };
-        let status = resp.status().as_u16();
-        match resp.text().await {
-            Ok(text) => Ok((status, text)),
-            Err(e) => Err(transport_failure_meta(Some(status), e)),
-        }
     }
 }

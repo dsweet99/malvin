@@ -1,6 +1,7 @@
 mod client;
 mod complete;
 mod http_exchange;
+mod provider_error;
 mod serde_types;
 mod types;
 

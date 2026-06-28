@@ -3,9 +3,13 @@ use crate::openrouter::http_exchange::CompletionWithMeta;
 use crate::openrouter::types::CompletionResponse;
 use crate::error::{is_prompt_too_long_error, OpenRouterError};
 
+use super::super::provider_error::provider_transport_from_body;
 use super::{completion_with_meta, transport_meta};
 
 pub(crate) fn outcome_from_http_body(status: u16, text: String, message_count: usize) -> CompletionWithMeta {
+    if let Some(err) = provider_transport_from_body(&text) {
+        return completion_with_meta(Err(err), transport_meta(Some(status), Some(text)));
+    }
     let result = match map_http_status(status, &text) {
         Ok(()) => parse_completion_body(&text),
         Err(err) if is_prompt_too_long_error(&err) => Err(OpenRouterError::ContextOverflow {

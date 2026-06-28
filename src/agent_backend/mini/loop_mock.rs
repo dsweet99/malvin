@@ -5,8 +5,8 @@ use malvin_mini::{
 };
 
 use super::loop_mock_outcomes::{
-    mock_context_overflow_pair, mock_json_transport_pair, mock_ok_pair, mock_rate_limited_pair,
-    mock_request_failed_pair,
+    mock_billing_failure_pair, mock_context_overflow_pair, mock_json_transport_pair, mock_ok_pair,
+    mock_provider_transport_pair, mock_rate_limited_pair, mock_request_failed_pair,
 };
 
 pub enum MockStep {
@@ -14,8 +14,10 @@ pub enum MockStep {
     RateLimited,
     ContextOverflow,
     RequestFailed { status: u16, body: String },
+    BillingFailure { status: u16, body: String },
     Transport,
     Json,
+    ProviderTransport,
 }
 
 #[cfg(test)]
@@ -44,7 +46,9 @@ fn mock_step_outcome(step: &MockStep, messages: &[ChatMessage]) -> LlmCompletion
         MockStep::RateLimited => mock_rate_limited_pair(),
         MockStep::ContextOverflow => mock_context_overflow_pair(messages.len()),
         MockStep::RequestFailed { status, body } => mock_request_failed_pair(*status, body),
+        MockStep::BillingFailure { status, body } => mock_billing_failure_pair(*status, body),
         MockStep::Transport | MockStep::Json => mock_json_transport_pair(),
+        MockStep::ProviderTransport => mock_provider_transport_pair(),
     };
     LlmCompletionOutcome { result, http }
 }
@@ -113,7 +117,7 @@ mod tests {
         let first = llm.complete(&messages).await.result.expect("first");
         assert_eq!(first.content, "a");
         let second = llm.complete(&messages).await.result.expect_err("rate limited");
-        assert!(second.is_retryable());
+        assert!(second.is_transport_retryable());
     }
 
     #[test]

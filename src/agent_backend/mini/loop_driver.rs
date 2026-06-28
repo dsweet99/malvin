@@ -53,7 +53,7 @@ pub(crate) use loop_inner_types::TurnAction;
 pub use loop_mock::{LlmBackend, MockScript, MockStep};
 pub use loop_types::{LoopDriverConfig, LoopDriverOutcome, LoopDriverRun, LoopDriverSession};
 #[allow(unused_imports)]
-pub(crate) use loop_http::{HttpCompletionError, HttpRetryRequest, RetryClass};
+pub(crate) use loop_http::{HttpCompletionError, HttpRetryRequest};
 #[allow(unused_imports)]
 pub(crate) use loop_http_retry::{
     complete_with_http_retries, HttpRetryCounters, HttpRetryLimits,

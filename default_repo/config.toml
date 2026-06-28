@@ -9,6 +9,7 @@ max_hypotheses = 5
 max_loops = 1
 max_loops_code = 3
 max_acp_retries = 3
+# Retries per OpenRouter HTTP completion for all non-billing failures (429, 5xx, 4xx, transport, JSON decode, provider capacity).
 max_mini_transport_retries = 3
 
 [logs]

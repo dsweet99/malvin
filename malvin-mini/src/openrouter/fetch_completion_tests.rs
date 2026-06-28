@@ -4,6 +4,30 @@ use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
+pub(crate) async fn fetch_completion_body_maps_http_200_nvidia_resource_exhausted() {
+    let server = MockServer::start().await;
+    let body = r#"{
+        "error": {
+            "message": "Provider returned error",
+            "code": 503,
+            "metadata": {
+                "provider_name": "Nvidia",
+                "raw": "{\"error\":{\"message\":\"ResourceExhausted\"}}",
+                "error_type": "provider_overloaded"
+            }
+        }
+    }"#;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(body))
+        .mount(&server)
+        .await;
+    let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
+    let err = client.complete(&[]).await.result.expect_err("resource exhausted");
+    assert!(err.is_transport_retryable());
+    assert_eq!(err.to_string(), "Nvidia: ResourceExhausted");
+}
+
+#[tokio::test]
 pub(crate) async fn fetch_completion_body_surfaces_transport_errors() {
     let client = OpenRouterClient::new(test_config("http://127.0.0.1:1")).expect("client");
     let meta = client
@@ -49,6 +73,7 @@ pub(crate) async fn fetch_completion_body_reads_success_body() {
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::{
+        fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
         fetch_completion_body_reads_success_body,
         fetch_completion_body_surfaces_header_validation_errors,
         fetch_completion_body_surfaces_transport_errors,
@@ -57,6 +82,7 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_fetch_completion_body_tests() {
         let _ = (
+            fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
             fetch_completion_body_surfaces_transport_errors,
             fetch_completion_body_surfaces_header_validation_errors,
             fetch_completion_body_reads_success_body,
