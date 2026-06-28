@@ -94,6 +94,10 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
         ("advice_path", "./.malvin/advice.md"),
         ("logs_dir", "./.malvin/logs/run42"),
         (
+            "user_request_path",
+            "./.malvin/logs/run42/request.md",
+        ),
+        (
             "current_state",
             "User: test\nDate/time: now\nSandbox memory: limit 4 GiB\nRetry: not a retry",
         ),
@@ -136,7 +140,6 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let mut turn = crate::KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text: "do the thing",
         prepend_rules_once: true,
     };
     let kpop = turn.kpop_block(2, 10).unwrap();
@@ -145,7 +148,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &[
             "Know thyself, agent",
             "# Definition: KPop",
-            "# This KPOP turn",
+            "# Action",
         ],
     );
     assert_prompt_contains_each(
@@ -155,6 +158,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Complete up to `2` KPOP iterations",
             "iterations budget",
             ".malvin/logs/run42/_kpop/exp_log_run42.md",
+            ".malvin/logs/run42/request.md",
         ],
     );
     assert!(

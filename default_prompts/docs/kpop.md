@@ -58,8 +58,8 @@ Each agent run:
 
 | Piece | Role |
 |-------|------|
-| **KPOP common** | Shared rules, workspace quality-gates markdown, request text |
-| **KPOP block** | Agent adds new `## Step` hypotheses in one turn batch |
+| **KPOP common** | Shared rules, workspace quality-gates markdown |
+| **KPOP block** | Agent adds new `## Step` hypotheses in one turn batch; user brief at `user_request_path` on disk |
 | Experiment log | `./.malvin/logs/<run>/_kpop/exp_log_<run>.md` (second run may use `_g2` suffix, etc.) |
 
 ## KPOP_LOG line

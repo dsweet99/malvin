@@ -42,13 +42,24 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
             request: Some("fast startup".into()),
         };
         let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
-        assert_eq!(early.text, "fast startup");
+        let request_path = early.artifacts.plan_path.clone();
+        assert!(
+            std::fs::read_to_string(&request_path)
+                .expect("read request")
+                .contains("fast startup")
+        );
         assert_eq!(
             early.artifacts.work_dir.canonicalize().expect("work_dir"),
             work.canonicalize().expect("work")
         );
         let prepared = finish_kpop_prepared(early).expect("prepared");
-        assert_eq!(prepared.text, "fast startup");
+        assert!(
+            prepared
+                .context
+                .get("user_request_path")
+                .expect("user_request_path")
+                .contains("request.md")
+        );
         assert!(prepared.context.contains_key("quality_gates"));
         assert!(matches!(
             prepared.session_dotfile_backups.gitignore,
@@ -112,7 +123,6 @@ async fn run_kpop_multiturn_mock_once(
     let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
         store: &store,
         base: &iteration_context,
-        request_text: &prepared.text,
         prepend_rules_once: true,
     });
     let mut state = KpopMultiturnState::new(builder, snap.exp_log_path.clone(), kpop.max_hypotheses)

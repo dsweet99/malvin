@@ -127,7 +127,6 @@ pub(crate) async fn run_kpop_agent_loops(
         let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
             store: params.store,
             base: &iteration_context,
-            request_text: &params.prepared.text,
             prepend_rules_once: agent_loop == 1,
         });
         let mut state = match KpopMultiturnState::new(

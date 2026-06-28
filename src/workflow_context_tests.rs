@@ -111,6 +111,11 @@ fn insert_artifact_paths_populates_expected_keys() {
     assert!(ctx.contains_key("review_prep_path"));
     assert!(ctx.contains_key("advice_path"));
     assert!(ctx.contains_key("logs_dir"));
+    assert!(ctx.contains_key("user_request_path"));
+    assert_eq!(
+        ctx.get("user_request_path").map(String::as_str),
+        ctx.get("plan_path").map(String::as_str),
+    );
 }
 
 #[test]

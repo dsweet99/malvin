@@ -42,8 +42,8 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_branchy_executable_witness()
     }
     if run.skip_workspace_quality_gates {
         panic!("code behavior should not skip gates");
-    } else if prepared.request_text() == "req" {
-        assert_eq!(prepared.request_text(), "req");
+    } else if prepared.request_text == "req" {
+        assert_eq!(prepared.request_text, "req");
     } else {
         panic!("unexpected request text");
     }

@@ -24,7 +24,15 @@ pub fn acp_mock_code_with_run_dir_js(body: &str) -> String {
     let prompt = format!(
         r"    const fs = require('fs');
     const path = require('path');
-    const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
+    let promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
+    const userReqMatch = promptText.match(/User request \(read this file\):\s*\n\n`([^`]+)`/);
+    if (userReqMatch) {{
+      let reqRel = userReqMatch[1].replace(/^\.\//, '');
+      const reqAbs = path.isAbsolute(reqRel) ? reqRel : path.join(process.cwd(), reqRel);
+      try {{
+        promptText += '\n' + fs.readFileSync(reqAbs, 'utf8');
+      }} catch {{}}
+    }}
     const os = require('os');
     const runRoot = path.join(os.homedir(), '.malvin_home', 'logs');
     let runDir = null;

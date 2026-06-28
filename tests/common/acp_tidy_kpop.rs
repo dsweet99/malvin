@@ -3,7 +3,15 @@ use super::acp_core::{acp_mock_js, session_update_chunk_line};
 pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     r"    const fs = require('fs');
     const path = require('path');
-    const promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';"
+    let promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
+    const userReqMatch = promptText.match(/User request \(read this file\):\s*\n\n`([^`]+)`/);
+    if (userReqMatch) {
+      let reqRel = userReqMatch[1].replace(/^\.\//, '');
+      const reqAbs = path.isAbsolute(reqRel) ? reqRel : path.join(process.cwd(), reqRel);
+      try {
+        promptText += '\n' + fs.readFileSync(reqAbs, 'utf8');
+      } catch {}
+    }"
 }
 
 pub const fn acp_mock_kpop_iteration_body() -> &'static str {

@@ -114,6 +114,12 @@ impl RunArtifacts {
     }
 }
 
+/// On-disk `KPop` user brief for flows where it differs from [`RunArtifacts::plan_path`] (e.g. `code`).
+#[must_use]
+pub fn user_request_path(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("user_request.md")
+}
+
 pub(crate) fn work_dir_for_path(path: &Path) -> PathBuf {
     path.parent()
         .filter(|p| !p.as_os_str().is_empty())

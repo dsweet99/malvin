@@ -1,14 +1,20 @@
 use crate::cli::workflow_kpop_shared::*;
 use crate::kpop_program::render_repo_program;
 
-fn kpop_render_fixture(workflow: &str) -> (crate::prompts::PromptStore, crate::artifacts::RunArtifacts) {
+fn kpop_render_fixture(
+    workflow: &str,
+) -> (
+    tempfile::TempDir,
+    crate::prompts::PromptStore,
+    crate::artifacts::RunArtifacts,
+) {
     let tmp = tempfile::tempdir().expect("tempdir");
     crate::seed_malvin_checks(tmp.path(), "kiss check\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts(workflow, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    (store, artifacts)
+    (tmp, store, artifacts)
 }
 
 #[test]
@@ -26,7 +32,7 @@ fn kpop_engine_loop_iterations_is_one_plus_max_loops() {
 
 #[test]
 fn kpop_workflow_context_includes_quality_gates() {
-    let (_store, artifacts) = kpop_render_fixture("code");
+    let (_tmp, _store, artifacts) = kpop_render_fixture("code");
     let ctx = kpop_workflow_context(&artifacts, "code").expect("context");
     assert!(ctx.contains_key("quality_gates"));
 }
@@ -192,7 +198,7 @@ fn restore_failure_prevents_gate_run() {
 
 #[test]
 fn render_repo_program_includes_scope() {
-    let (store, artifacts) = kpop_render_fixture("code");
+    let (_tmp, store, artifacts) = kpop_render_fixture("code");
     let mut ctx = std::collections::HashMap::new();
     ctx.insert("plan_path".to_string(), "./plan.md".into());
     let text = render_repo_program(&store, "code_constraints.md", &ctx, &artifacts).expect("render");

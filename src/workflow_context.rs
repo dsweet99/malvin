@@ -19,15 +19,11 @@ fn insert_quality_gates_log_paths(
     context.insert("quality_gates_path".to_string(), path);
 }
 
-fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
-    let base = &artifacts.work_dir;
-    insert_formatted(context, "plan_path", &artifacts.plan_path, base);
-    let kpop_dir = artifacts
-        .run_dir
-        .join("_kpop")
-        .canonicalize()
-        .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
-    insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
+fn insert_review_artifact_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
     insert_formatted(
         context,
         "review_path",
@@ -46,6 +42,19 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         &artifacts.artifact_result_md(),
         base,
     );
+}
+
+fn insert_kpop_and_workspace_paths(
+    context: &mut HashMap<String, String>,
+    artifacts: &RunArtifacts,
+    base: &Path,
+) {
+    let kpop_dir = artifacts
+        .run_dir
+        .join("_kpop")
+        .canonicalize()
+        .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
+    insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
     insert_formatted(
         context,
@@ -60,6 +69,14 @@ fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunA
         &crate::malvin_logs_root(base),
         base,
     );
+}
+
+fn insert_artifact_paths(context: &mut HashMap<String, String>, artifacts: &RunArtifacts) {
+    let base = &artifacts.work_dir;
+    insert_formatted(context, "plan_path", &artifacts.plan_path, base);
+    insert_formatted(context, "user_request_path", &artifacts.plan_path, base);
+    insert_kpop_and_workspace_paths(context, artifacts, base);
+    insert_review_artifact_paths(context, artifacts, base);
     insert_quality_gates_log_paths(context, artifacts, base);
 }
 

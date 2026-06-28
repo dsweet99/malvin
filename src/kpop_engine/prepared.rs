@@ -5,6 +5,8 @@ use crate::prompts::PromptStore;
 pub(crate) struct KPopEnginePrepared {
     pub artifacts: RunArtifacts,
     pub context: HashMap<String, String>,
+    /// Retained for tests and introspection; turn prompts read `user_request_path` on disk.
+    #[allow(dead_code)]
     pub request_text: String,
     pub startup_emit_request: String,
     pub store: PromptStore,
@@ -18,10 +20,6 @@ impl KPopEnginePrepared {
 
     pub(crate) const fn context(&self) -> &HashMap<String, String> {
         &self.context
-    }
-
-    pub(crate) fn request_text(&self) -> &str {
-        &self.request_text
     }
 
     pub(crate) const fn store(&self) -> &PromptStore {
@@ -48,7 +46,7 @@ mod tests {
             store,
             malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
         };
-        assert_eq!(prepared.request_text(), "req");
+        assert_eq!(prepared.request_text, "req");
         assert_eq!(prepared.startup_emit_request, "startup");
     }
 }

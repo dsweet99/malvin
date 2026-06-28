@@ -23,13 +23,11 @@ pub(in crate) fn kpop_prompt_store(
 pub struct KpopPrepared {
     pub(in crate) artifacts: RunArtifacts,
     pub(in crate) context: HashMap<String, String>,
-    pub(in crate) text: String,
     pub(in crate) session_dotfile_backups: SessionDotfileBackups,
 }
 
 pub(in crate) struct KpopArtifactsEarly {
     pub(in crate) artifacts: RunArtifacts,
-    pub(in crate) text: String,
 }
 
 pub(in crate) fn prepare_kpop_artifacts(kpop: &KpopArgs) -> Result<KpopArtifactsEarly, String> {
@@ -38,7 +36,7 @@ pub(in crate) fn prepare_kpop_artifacts(kpop: &KpopArgs) -> Result<KpopArtifacts
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    Ok(KpopArtifactsEarly { artifacts, text })
+    Ok(KpopArtifactsEarly { artifacts })
 }
 
 pub(in crate) fn finish_kpop_prepared(early: KpopArtifactsEarly) -> Result<KpopPrepared, String> {
@@ -53,7 +51,6 @@ pub(in crate) fn finish_kpop_prepared(early: KpopArtifactsEarly) -> Result<KpopP
     Ok(KpopPrepared {
         artifacts: early.artifacts,
         context,
-        text: early.text,
         session_dotfile_backups,
     })
 }

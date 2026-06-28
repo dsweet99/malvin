@@ -1,7 +1,7 @@
 //! Per-turn prompt assembly for **`KPopEngine`** sessions.
 //!
 //! - **`KPop`** (`kpop_common.md`): agent-side Popper method (Hypothesize → Predict → Falsify).
-//! - **`KPopEngine` turn** (`kpop_block.md`): per-iteration budget and `{{ user_request }}` injection.
+//! - **`KPopEngine` turn** (`kpop_block.md`): per-iteration budget and `{{ user_request_path }}` (from `base` context).
 
 use std::collections::HashMap;
 
@@ -12,7 +12,6 @@ use crate::prompts::{PromptError, PromptStore, render_header};
 pub struct KpopTurnPrompts<'a> {
     pub store: &'a PromptStore,
     pub base: &'a HashMap<String, String>,
-    pub request_text: &'a str,
     pub prepend_rules_once: bool,
 }
 
@@ -51,7 +50,6 @@ impl KpopTurnPrompts<'_> {
         let mut ctx = self.base.clone();
         ctx.insert("want".to_string(), max_hypotheses.to_string());
         ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
-        ctx.insert("user_request".to_string(), self.request_text.to_string());
         let header = self
             .store
             .render_prompt_only("header.md", &ctx)
@@ -81,7 +79,6 @@ impl KpopTurnPrompts<'_> {
             "remaining_hypotheses".to_string(),
             remaining_after_this_turn.to_string(),
         );
-        ctx.insert("user_request".to_string(), self.request_text.to_string());
         let with_rules = self.prepend_rules_once;
         let prompt = self.render_turn_with_body("kpop_block.md", &ctx, with_rules)?;
         self.prepend_rules_once = false;
@@ -100,25 +97,27 @@ mod inline_render_turn_with_body {
         let root = tmp.path().join("prompts");
         std::fs::create_dir_all(&root).expect("mkdir");
         std::fs::write(root.join("kpop_common.md"), "common {{ want }}\n").expect("write");
-        std::fs::write(root.join("kpop_block.md"), "block {{ user_request }}\n").expect("write");
+        std::fs::write(root.join("kpop_block.md"), "block {{ user_request_path }}\n").expect("write");
         let store = crate::prompts::PromptStore::with_root(root);
         store.ensure_defaults().expect("defaults");
-        let base = HashMap::from([("plan_path".to_string(), "p".to_string())]);
+        let base = HashMap::from([
+            ("plan_path".to_string(), "p".to_string()),
+            ("user_request_path".to_string(), "./req.md".to_string()),
+        ]);
         let ctx = HashMap::from([
             ("want".to_string(), "1".to_string()),
             ("remaining_hypotheses".to_string(), "0".to_string()),
-            ("user_request".to_string(), "inline".to_string()),
+            ("user_request_path".to_string(), "./req.md".to_string()),
         ]);
         let prompts = KpopTurnPrompts {
             store: &store,
             base: &base,
-            request_text: "inline",
             prepend_rules_once: false,
         };
         let out = prompts
             .render_turn_with_body("kpop_block.md", &ctx, false)
             .expect("render");
-        assert!(out.contains("inline"));
+        assert!(out.contains("./req.md"));
     }
 }
 

@@ -60,7 +60,6 @@ fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, 
             &ctx.iteration.exp_log_path,
             ctx.iteration.iteration,
         ),
-        request_text: prepared.request_text(),
         prepend_rules_once: false,
     }
     .kpop_engine_single_turn_prompt(params.max_hypotheses)

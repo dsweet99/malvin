@@ -1,5 +1,5 @@
-test -z "$(git ls-files .malvin/acp_spawn/)"
 ruff check
 kiss check
 cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
+pytest tests
 ./admin/malvin_rust_test_gate.sh

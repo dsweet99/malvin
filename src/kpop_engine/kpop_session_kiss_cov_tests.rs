@@ -29,8 +29,8 @@ fn kiss_cov_run_kpop_hard_constraints_after_session_skip_branch_executable() {
     }
     if run.skip_workspace_quality_gates {
         panic!("code should run gates");
-    } else if prepared.request_text() == "req" {
-        assert_eq!(prepared.request_text(), "req");
+    } else if prepared.request_text == "req" {
+        assert_eq!(prepared.request_text, "req");
     } else {
         panic!("unexpected text");
     }

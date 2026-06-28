@@ -13,6 +13,10 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
         ("logs_dir".to_string(), "./.malvin/logs/run42".to_string()),
         ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
         (
+            "user_request_path".to_string(),
+            "./.malvin/logs/run/request.md".to_string(),
+        ),
+        (
             "current_state".to_string(),
             "User: test\nRetry: not a retry".to_string(),
         ),
@@ -29,7 +33,7 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
             "kpop_common.md",
             "<<common want={{ want }} rem={{ remaining_hypotheses }}>>\n",
         ),
-        ("kpop_block.md", "<<block req={{ user_request }}>>\n"),
+        ("kpop_block.md", "<<block req={{ user_request_path }}>>\n"),
         ("mbc2.md", "MBC2\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
@@ -43,7 +47,6 @@ fn kpop_block_turn_context(
     base: &HashMap<String, String>,
     want: usize,
     remaining_after_this_turn: usize,
-    request_text: &str,
 ) -> HashMap<String, String> {
     let mut ctx = base.clone();
     ctx.insert("want".to_string(), want.to_string());
@@ -51,7 +54,6 @@ fn kpop_block_turn_context(
         "remaining_hypotheses".to_string(),
         remaining_after_this_turn.to_string(),
     );
-    ctx.insert("user_request".to_string(), request_text.to_string());
     ctx
 }
 
@@ -83,18 +85,16 @@ fn expected_kpop_block_output(
 fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
-    let request_text = "render-turn smoke";
+    let request_path = "./.malvin/logs/run/request.md";
     let prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text,
         prepend_rules_once: false,
     };
     let gate = prompts.kpop_engine_single_turn_prompt(5).expect("gate prompt");
     let mut ctx = base.clone();
     ctx.insert("want".to_string(), "5".to_string());
     ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
-    ctx.insert("user_request".to_string(), request_text.to_string());
     let header = store
         .render_prompt_only("header.md", &ctx)
         .expect("header");
@@ -111,21 +111,20 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
         body.trim_end()
     );
     assert_eq!(gate, expected);
+    assert!(gate.contains(request_path));
 }
 
 #[test]
 fn kpop_block_matches_independently_rendered_sections() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
-    let request_text = "fix the bug\nwant=99 remaining=99";
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text,
         prepend_rules_once: true,
     };
 
-    let ctx_first = kpop_block_turn_context(&base, 3, 7, request_text);
+    let ctx_first = kpop_block_turn_context(&base, 3, 7);
     let first = prompts.kpop_block(3, 7).expect("first kpop turn");
     assert_eq!(
         first,
@@ -133,7 +132,7 @@ fn kpop_block_matches_independently_rendered_sections() {
         "first turn should equal header + common + block with exact composition"
     );
 
-    let ctx_second = kpop_block_turn_context(&base, 1, 0, request_text);
+    let ctx_second = kpop_block_turn_context(&base, 1, 0);
     let second = prompts.kpop_block(1, 0).expect("second kpop turn");
     assert_eq!(
         second,
@@ -146,16 +145,14 @@ fn kpop_block_matches_independently_rendered_sections() {
 fn kpop_block_without_prepend_rules_never_includes_header() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
-    let request_text = "no header please";
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text,
         prepend_rules_once: false,
     };
 
     for (want, remaining) in [(0, 0_usize), (42, usize::MAX)] {
-        let ctx = kpop_block_turn_context(&base, want, remaining, request_text);
+        let ctx = kpop_block_turn_context(&base, want, remaining);
         let out = prompts.kpop_block(want, remaining).expect("kpop turn");
         assert_eq!(
             out,

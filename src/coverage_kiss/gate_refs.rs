@@ -81,21 +81,26 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     for (name, body) in [
         ("header.md", "hdr\n"),
         ("kpop_common.md", "common {{ want }}\n"),
-        ("kpop_block.md", "block {{ user_request }}\n"),
+        ("kpop_block.md", "block {{ user_request_path }}\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
     let store = PromptStore::with_root(root);
     store.ensure_defaults().expect("defaults");
-    let base = HashMap::from([("plan_path".to_string(), "p".to_string())]);
+    let base = HashMap::from([
+        ("plan_path".to_string(), "p".to_string()),
+        (
+            "user_request_path".to_string(),
+            "./.malvin/logs/run/user_request.md".to_string(),
+        ),
+    ]);
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
-        request_text: "req",
         prepend_rules_once: false,
     };
     let out = prompts.kpop_block(1, 0).expect("kpop block");
-    assert!(out.contains("req"));
+    assert!(out.contains("user_request.md"));
 }
 
 #[test]
