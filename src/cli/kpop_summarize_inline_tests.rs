@@ -1,5 +1,5 @@
 use crate::artifacts::create_kpop_run_artifacts;
-use crate::gate_kpop_workflow::GateLoopBehavior;
+use crate::kpop_engine::KPopHardConstraints;
 use crate::cli::kpop_summarize::{
     code_outer_loop_summarize_params, insert_summarize_log_context, kpop_flows_ran,
     kpop_outer_loop_summarize_params, list_written_exp_logs, maybe_run_gate_inline_summarize,
@@ -16,25 +16,25 @@ fn gate_iteration_inline_summarize_predicate() {
         1,
         3,
         0,
-        GateLoopBehavior::CODE
+        KPopHardConstraints::CODE
     ));
     assert!(!should_inline_outer_loop_summarize_on_gate_iteration(
         2,
         3,
         0,
-        GateLoopBehavior::CODE
+        KPopHardConstraints::CODE
     ));
     assert!(should_inline_outer_loop_summarize_on_gate_iteration(
         2,
         3,
         1,
-        GateLoopBehavior::CODE
+        KPopHardConstraints::CODE
     ));
     assert!(should_inline_outer_loop_summarize_on_gate_iteration(
         3,
         3,
         0,
-        GateLoopBehavior::CODE
+        KPopHardConstraints::CODE
     ));
 }
 
@@ -227,7 +227,7 @@ async fn run_gate_inline_summarize_first_iteration(
         iteration: 1,
         total_iterations: 3,
         consecutive_solved_entering: 0,
-        behavior: GateLoopBehavior::CODE,
+        behavior: KPopHardConstraints::CODE,
     })
     .await?;
     client.end_coder_session().await.map_err(|e| e.to_string())?;

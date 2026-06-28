@@ -13,10 +13,11 @@ use crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
 use crate::repo_gates::init_discovery::{InitDiscoveryDecision, validate_checks_command_lines};
 use crate::repo_gates::load_malvin_checks;
 
-use crate::gate_kpop_workflow::{
-    GateKpopLoopParams, GateKpopPrepared, GateLoopBehavior, run_gate_kpop_loop,
+use crate::kpop_engine::{
+    KPopEngineParams, KPopEnginePrepared, KPopHardConstraints, run_kpop_engine,
 };
-use super::workflow_kpop_shared::{gate_kpop_loop_iterations, kpop_workflow_context, render_kpop_program_request};
+use crate::kpop_program::render_repo_program;
+use super::workflow_kpop_shared::{kpop_engine_loop_iterations, kpop_workflow_context};
 use super::{SharedOpts, WorkflowCliOptions, prepare_kpop_prompt_store};
 
 pub(crate) fn emit_init_discovery_skip(decision: InitDiscoveryDecision) {
@@ -37,7 +38,7 @@ fn prepare_init_kpop_prompt_store(workflow: WorkflowCliOptions) -> Result<Prompt
 }
 
 fn init_kpop_request(store: &PromptStore, artifacts: &RunArtifacts) -> Result<String, String> {
-    render_kpop_program_request(store, "init_constraints.md", &HashMap::new(), artifacts)
+    render_repo_program(store, "init_constraints.md", &HashMap::new(), artifacts)
 }
 
 fn load_init_agent_config(work_dir: &Path) -> AgentConfig {
@@ -75,7 +76,7 @@ pub(crate) async fn run_init_discovery_kpop(
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = kpop_workflow_context(artifacts, "init")?;
-    let prepared = GateKpopPrepared {
+    let prepared = KPopEnginePrepared {
         artifacts: artifacts.clone(),
         context,
         request_text: request_text.clone(),
@@ -89,15 +90,15 @@ pub(crate) async fn run_init_discovery_kpop(
     } else {
         (agent_cfg.max_loops, agent_cfg.max_hypotheses)
     };
-    let iterations = gate_kpop_loop_iterations(max_loops);
-    let (gates_ok, agent_ran, _timing, _last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let iterations = kpop_engine_loop_iterations(max_loops);
+    let (gates_ok, agent_ran, _timing, _last_backups) = run_kpop_engine(KPopEngineParams {
         command: "init",
         shared,
         workflow,
         prepared: &prepared,
         max_loops,
         max_hypotheses,
-        behavior: GateLoopBehavior::INIT,
+        behavior: KPopHardConstraints::INIT,
     })
     .await?;
     let summarize_res = crate::cli::kpop_summarize::run_outer_loop_summarize_if_warranted(
@@ -116,7 +117,7 @@ pub(crate) async fn run_init_discovery_kpop(
 }
 
 fn finish_init_discovery_kpop(
-    prepared: &GateKpopPrepared,
+    prepared: &KPopEnginePrepared,
     work_dir: &std::path::Path,
     iterations: usize,
     gates_ok: bool,

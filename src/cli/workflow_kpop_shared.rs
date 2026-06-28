@@ -5,12 +5,6 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::format_workspace_gate_failure;
 use crate::output::{MALVIN_WHO, print_stdout_line};
 
-#[path = "workflow_kpop_render.rs"]
-mod workflow_kpop_render;
-
-pub(crate) use workflow_kpop_render::{
-    render_kpop_program_request, render_kpop_program_request_creative,
-};
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
@@ -30,37 +24,13 @@ pub(crate) fn prefer_gate_outcome_over_summarize<T>(
 }
 
 #[must_use]
-pub(crate) fn gate_kpop_loop_iterations(max_loops: usize) -> usize {
+pub(crate) fn kpop_engine_loop_iterations(max_loops: usize) -> usize {
     let base = effective_max_loops(max_loops);
     if crate::acp::test_no_real_agent_enabled() {
         return base;
     }
     base.saturating_add(1)
 }
-
-pub(crate) fn kpop_program_context(
-    work_dir: &Path,
-    scope_constraints: &str,
-    artifacts: &RunArtifacts,
-) -> Result<HashMap<String, String>, String> {
-    let quality_gates =
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(work_dir)?;
-    let mut context = HashMap::new();
-    context.insert(
-        "scope_constraints".to_string(),
-        scope_constraints.trim().to_string(),
-    );
-    context.insert("quality_gates".to_string(), quality_gates);
-    context.insert(
-        "quality_gates_path".to_string(),
-        crate::format_prompt_path(
-            &artifacts.quality_gates_log_path(),
-            &artifacts.work_dir,
-        ),
-    );
-    Ok(context)
-}
-
 pub(crate) fn kpop_workflow_context(
     artifacts: &RunArtifacts,
     workflow: &str,

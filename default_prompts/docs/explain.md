@@ -8,7 +8,7 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | `explain.tex` and `explain.pdf` in the request work directory (override with `--out-path`) |
-| Loop | Full gate-kpop loop (`GateLoopBehavior::EXPLAIN`) |
+| Loop | Full gate-kpop loop (`KPopHardConstraints::EXPLAIN`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
 | Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
 | Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |

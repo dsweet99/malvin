@@ -1,11 +1,11 @@
 use crate::cli::SharedOpts;
 
-use super::kpop_session::post_gate_kpop_gates;
-use super::prepared::GateKpopPrepared;
+use super::kpop_session::run_kpop_hard_constraints_after_session;
+use super::prepared::KPopEnginePrepared;
 
-pub(crate) fn finish_gate_kpop_after_pass(
+pub(crate) fn finish_kpop_engine_after_pass(
     _shared: &SharedOpts,
-    prepared: &GateKpopPrepared,
+    prepared: &KPopEnginePrepared,
     _agent_ran: bool,
     run_timing: Option<&std::sync::Arc<std::sync::Mutex<crate::run_timing::RunTiming>>>,
 ) -> Result<(), String> {
@@ -20,13 +20,13 @@ pub(crate) fn finish_gate_kpop_after_pass(
     Ok(())
 }
 
-pub(crate) fn fail_gate_kpop_after_exhausted(
+pub(crate) fn fail_kpop_engine_after_exhausted(
     command: &str,
-    prepared: &GateKpopPrepared,
+    prepared: &KPopEnginePrepared,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-    behavior: super::behavior::GateLoopBehavior,
+    behavior: super::behavior::KPopHardConstraints,
 ) -> Result<(), String> {
-    // Code/tidy exhaustion already ran gates in `run_gate_kpop_loop`. Rewind disk so gate-prep
+    // Code/tidy exhaustion already ran gates in `run_kpop_engine`. Rewind disk so gate-prep
     // side effects cannot poison the next outer retry; do not run gates a second time.
     if behavior.recheck_gates_after_exhausted && !behavior.skip_workspace_quality_gates {
         let work_dir = prepared.artifacts().work_dir.as_path();
@@ -43,7 +43,7 @@ pub(crate) fn fail_gate_kpop_after_exhausted(
             "workspace quality gates did not pass after the kpop session",
         ));
     }
-    post_gate_kpop_gates(command, prepared, session_dotfile_backups, behavior)
+    run_kpop_hard_constraints_after_session(command, prepared, session_dotfile_backups, behavior)
 }
 
 #[cfg(test)]
@@ -51,8 +51,8 @@ mod kiss_cov_auto {
     use super::*;
 
     #[test]
-    fn kiss_cov_gate_kpop_finish() {
-        let _ = finish_gate_kpop_after_pass;
-        let _ = fail_gate_kpop_after_exhausted;
+    fn kiss_cov_kpop_engine_finish() {
+        let _ = finish_kpop_engine_after_pass;
+        let _ = fail_kpop_engine_after_exhausted;
     }
 }

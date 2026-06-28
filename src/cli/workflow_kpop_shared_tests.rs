@@ -1,4 +1,5 @@
 use crate::cli::workflow_kpop_shared::*;
+use crate::kpop_program::render_repo_program;
 
 fn kpop_render_fixture(workflow: &str) -> (crate::prompts::PromptStore, crate::artifacts::RunArtifacts) {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -17,10 +18,10 @@ fn effective_max_loops_is_at_least_one() {
 }
 
 #[test]
-fn gate_kpop_loop_iterations_is_one_plus_max_loops() {
+fn kpop_engine_loop_iterations_is_one_plus_max_loops() {
     crate::test_utils::clear_test_no_real_agent_env();
-    assert_eq!(gate_kpop_loop_iterations(0), 2);
-    assert_eq!(gate_kpop_loop_iterations(5), 6);
+    assert_eq!(kpop_engine_loop_iterations(0), 2);
+    assert_eq!(kpop_engine_loop_iterations(5), 6);
 }
 
 #[test]
@@ -190,11 +191,11 @@ fn restore_failure_prevents_gate_run() {
 }
 
 #[test]
-fn render_kpop_program_request_includes_scope() {
+fn render_repo_program_includes_scope() {
     let (store, artifacts) = kpop_render_fixture("code");
     let mut ctx = std::collections::HashMap::new();
     ctx.insert("plan_path".to_string(), "./plan.md".into());
-    let text = render_kpop_program_request(&store, "code_constraints.md", &ctx, &artifacts).expect("render");
+    let text = render_repo_program(&store, "code_constraints.md", &ctx, &artifacts).expect("render");
     assert!(text.contains("quality_gates"));
 }
 

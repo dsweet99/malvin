@@ -164,7 +164,9 @@ pub use orchestrator::{
 };
 pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
 pub mod observability;
-pub mod kpop_experiment_log;
+pub mod kpop_log_protocol;
+pub mod kpop_program;
+pub mod kpop_soft_constraints;
 pub mod prompt_stratification;
 pub mod output;
 pub mod prompts;
@@ -196,8 +198,7 @@ pub mod do_flow;
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
 
-#[path = "cli/gate_kpop_workflow.rs"]
-pub mod gate_kpop_workflow;
+pub mod kpop_engine;
 
 #[path = "cli/mod.rs"]
 pub mod cli;

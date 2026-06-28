@@ -26,7 +26,7 @@ pub(super) async fn guard_bridge_hypothesis_budget(
     client: &mut MiniAgentClient,
     ctl: &AgentKpopMultiturnCtl<'_, '_>,
 ) -> Result<(), AgentError> {
-    let exp_log = crate::kpop_experiment_log::ExperimentLog::read(ctl.state.exp_log_path())
+    let exp_log = crate::kpop_log_protocol::ExperimentLog::read(ctl.state.exp_log_path())
         .map_err(AgentError)?;
     if let Err(msg) = exp_log.check_hypothesis_budget(ctl.state.max_hypotheses) {
         client.end_coder_session().await.ok();

@@ -5,13 +5,13 @@ use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
 
 use crate::agent_backend::{agent_backend_set_run_timing, build_agent_backend};
 use crate::cli::workflow_kpop_shared::{
-    gate_kpop_loop_iterations, run_kpop_workspace_gates,
+    kpop_engine_loop_iterations, run_kpop_workspace_gates,
 };
 
-use super::kpop_session::{print_gate_kpop_log_line, run_gate_kpop_session, GateKpopMultiturnCtx};
-use super::params::{GateKpopIterationParams, GateKpopLoopParams};
+use super::kpop_session::{print_kpop_engine_log_line, run_kpop_engine_session, KPopEngineMultiturnCtx};
+use super::params::{KPopEngineIterationParams, KPopEngineParams};
 
-type GateKpopLoopOutcome = (
+type KPopEngineLoopOutcome = (
     bool,
     bool,
     Option<Arc<Mutex<crate::run_timing::RunTiming>>>,
@@ -26,7 +26,7 @@ pub(crate) fn session_wrote_kpop_solved(exp_log_path: &Path) -> Result<bool, Str
 fn run_gate_workspace_gates_with_fresh_backups(
     artifacts: &crate::artifacts::RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
-    behavior: super::behavior::GateLoopBehavior,
+    behavior: super::behavior::KPopHardConstraints,
 ) -> bool {
     run_kpop_workspace_gates(
         artifacts,
@@ -37,7 +37,7 @@ fn run_gate_workspace_gates_with_fresh_backups(
 }
 
 pub(crate) fn kpop_solved_early_exit(
-    behavior: super::behavior::GateLoopBehavior,
+    behavior: super::behavior::KPopHardConstraints,
     consecutive_solved: usize,
     artifacts: &crate::artifacts::RunArtifacts,
     session_dotfile_backups: &SessionDotfileBackups,
@@ -52,8 +52,8 @@ pub(crate) fn kpop_solved_early_exit(
     }
 }
 
-pub(crate) struct GateKpopEarlyExitCtx<'a> {
-    pub behavior: super::behavior::GateLoopBehavior,
+pub(crate) struct KPopEngineEarlyExitCtx<'a> {
+    pub behavior: super::behavior::KPopHardConstraints,
     pub consecutive_solved: usize,
     pub artifacts: &'a crate::artifacts::RunArtifacts,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
@@ -61,7 +61,7 @@ pub(crate) struct GateKpopEarlyExitCtx<'a> {
     pub run_timing: Option<&'a Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
 
-pub(crate) fn gate_kpop_solved_early_exit(ctx: GateKpopEarlyExitCtx<'_>) -> Option<GateKpopLoopOutcome> {
+pub(crate) fn kpop_engine_solved_early_exit(ctx: KPopEngineEarlyExitCtx<'_>) -> Option<KPopEngineLoopOutcome> {
     if kpop_solved_early_exit(
         ctx.behavior,
         ctx.consecutive_solved,
@@ -98,8 +98,8 @@ pub(crate) fn restore_carry_forward_before_iteration_snapshot(
     Ok(())
 }
 
-fn build_authenticated_gate_kpop_client(
-    params: &GateKpopLoopParams<'_>,
+fn build_authenticated_kpop_engine_client(
+    params: &KPopEngineParams<'_>,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
 ) -> Result<crate::agent_backend::AgentBackend, String> {
     let mut client = build_agent_backend(
@@ -109,13 +109,13 @@ fn build_authenticated_gate_kpop_client(
         params.command,
     )
     .map_err(|e| e.to_string())?;
-    wire_gate_kpop_client(&mut client, params, run_timing);
+    wire_kpop_engine_client(&mut client, params, run_timing);
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     Ok(client)
 }
 
-pub(crate) async fn run_gate_kpop_on_loop_iteration(
-    params: &GateKpopLoopParams<'_>,
+pub(crate) async fn run_kpop_engine_on_loop_iteration(
+    params: &KPopEngineParams<'_>,
     iteration: usize,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
     consecutive_solved_entering: usize,
@@ -128,14 +128,14 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
     )
     .map_err(|e| e.to_string())?;
 
-    let mut client = build_authenticated_gate_kpop_client(params, run_timing)?;
+    let mut client = build_authenticated_kpop_engine_client(params, run_timing)?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-    print_gate_kpop_log_line(params.prepared, &exp_log_path);
+    print_kpop_engine_log_line(params.prepared, &exp_log_path);
 
-    let total_iterations = gate_kpop_loop_iterations(params.max_loops);
+    let total_iterations = kpop_engine_loop_iterations(params.max_loops);
     crate::gate_loop_session::set_active_gate_iteration(Some(iteration));
-    let mut iteration_params = GateKpopIterationParams {
+    let mut iteration_params = KPopEngineIterationParams {
         loop_params: params,
         session_dotfile_backups: &session_dotfile_backups,
         client: &mut client,
@@ -144,17 +144,17 @@ pub(crate) async fn run_gate_kpop_on_loop_iteration(
         consecutive_solved_entering,
         exp_log_path,
     };
-    let mut ctx = GateKpopMultiturnCtx {
+    let mut ctx = KPopEngineMultiturnCtx {
         iteration: &mut iteration_params,
     };
-    let post_agent_backups = run_gate_kpop_session(&mut ctx).await?;
+    let post_agent_backups = run_kpop_engine_session(&mut ctx).await?;
     crate::gate_loop_session::set_active_gate_iteration(None);
     Ok(post_agent_backups)
 }
 
-pub(crate) fn wire_gate_kpop_client(
+pub(crate) fn wire_kpop_engine_client(
     client: &mut crate::agent_backend::AgentBackend,
-    params: &GateKpopLoopParams<'_>,
+    params: &KPopEngineParams<'_>,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
 ) {
     agent_backend_set_run_timing(client, Some(Arc::clone(run_timing)));
@@ -174,17 +174,17 @@ pub(crate) fn refresh_consecutive_solved_streak(
     }
 }
 
-pub(crate) async fn gate_kpop_loop_one_iteration(
-    params: &GateKpopLoopParams<'_>,
+pub(crate) async fn kpop_engine_loop_one_iteration(
+    params: &KPopEngineParams<'_>,
     iteration: usize,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
     consecutive_solved: usize,
-) -> Result<(usize, SessionDotfileBackups, Option<GateKpopLoopOutcome>), String> {
+) -> Result<(usize, SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
     let session_dotfile_backups =
-        run_gate_kpop_on_loop_iteration(params, iteration, run_timing, consecutive_solved).await?;
+        run_kpop_engine_on_loop_iteration(params, iteration, run_timing, consecutive_solved).await?;
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
     let streak = refresh_consecutive_solved_streak(consecutive_solved, &exp_log_path)?;
-    let early = gate_kpop_solved_early_exit(GateKpopEarlyExitCtx {
+    let early = kpop_engine_solved_early_exit(KPopEngineEarlyExitCtx {
         behavior: params.behavior,
         consecutive_solved: streak,
         artifacts: params.prepared.artifacts(),
@@ -195,9 +195,9 @@ pub(crate) async fn gate_kpop_loop_one_iteration(
     Ok((streak, session_dotfile_backups, early))
 }
 
-pub(crate) async fn run_gate_kpop_loop(
-    params: GateKpopLoopParams<'_>,
-) -> Result<GateKpopLoopOutcome, String> {
+pub(crate) async fn run_kpop_engine(
+    params: KPopEngineParams<'_>,
+) -> Result<KPopEngineLoopOutcome, String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
     let mut last_backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
@@ -213,14 +213,14 @@ pub(crate) async fn run_gate_kpop_loop(
         return Ok((true, false, None, last_backups));
     }
 
-    let iterations = gate_kpop_loop_iterations(params.max_loops);
-    let run_timing = crate::run_timing::attach_gate_kpop_loop_run_timing();
+    let iterations = kpop_engine_loop_iterations(params.max_loops);
+    let run_timing = crate::run_timing::attach_kpop_engine_loop_run_timing();
     let mut consecutive_solved = 0usize;
     for iteration in 1..=iterations {
         if iteration > 1 {
             restore_carry_forward_before_iteration_snapshot(work_dir, Some(&last_backups))?;
         }
-        let (streak, backups, early) = gate_kpop_loop_one_iteration(
+        let (streak, backups, early) = kpop_engine_loop_one_iteration(
             &params,
             iteration,
             &run_timing,

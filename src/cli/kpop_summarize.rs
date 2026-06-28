@@ -101,7 +101,7 @@ pub(crate) const fn should_inline_outer_loop_summarize_on_gate_iteration(
     iteration: usize,
     total_iterations: usize,
     consecutive_solved_entering: usize,
-    behavior: crate::gate_kpop_workflow::GateLoopBehavior,
+    behavior: crate::kpop_engine::KPopHardConstraints,
 ) -> bool {
     if iteration < 2 {
         return false;

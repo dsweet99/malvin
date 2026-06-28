@@ -2,14 +2,14 @@ use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
 use crate::cli::cli_request::require_cli_request;
-use crate::gate_kpop_workflow::GateKpopPrepared;
+use crate::kpop_engine::KPopEnginePrepared;
 
 use super::prep::{
     explain_kpop_request, explain_preflight, prepare_explain_kpop_prompt_store, ExplainKpopRequestInput,
 };
 
 pub struct ExplainKpopPrepared {
-    pub inner: GateKpopPrepared,
+    pub inner: KPopEnginePrepared,
     pub tex_path: std::path::PathBuf,
     pub pdf_path: std::path::PathBuf,
     pub request_work_dir: std::path::PathBuf,
@@ -54,7 +54,7 @@ pub fn prepare_explain_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = explain_kpop_workflow_context(&artifacts)?;
-    let inner = GateKpopPrepared {
+    let inner = KPopEnginePrepared {
         artifacts,
         context,
         request_text: request_body.clone(),

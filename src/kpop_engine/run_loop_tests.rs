@@ -1,19 +1,19 @@
 use super::{
-    build_authenticated_gate_kpop_client,
-    gate_kpop_loop_one_iteration, gate_kpop_solved_early_exit, kpop_solved_early_exit,
+    build_authenticated_kpop_engine_client,
+    kpop_engine_loop_one_iteration, kpop_engine_solved_early_exit, kpop_solved_early_exit,
     refresh_consecutive_solved_streak, restore_carry_forward_before_iteration_snapshot,
-    run_gate_kpop_loop, run_gate_kpop_on_loop_iteration, run_gate_workspace_gates_with_fresh_backups,
-    session_wrote_kpop_solved, wire_gate_kpop_client, GateKpopEarlyExitCtx,
+    run_kpop_engine, run_kpop_engine_on_loop_iteration, run_gate_workspace_gates_with_fresh_backups,
+    session_wrote_kpop_solved, wire_kpop_engine_client, KPopEngineEarlyExitCtx,
 };
 
 #[test]
 fn kiss_cov_gate_run_loop_privates() {
     let _ = (
-        gate_kpop_loop_one_iteration,
-        run_gate_kpop_on_loop_iteration,
-        wire_gate_kpop_client,
+        kpop_engine_loop_one_iteration,
+        run_kpop_engine_on_loop_iteration,
+        wire_kpop_engine_client,
         run_gate_workspace_gates_with_fresh_backups,
-        build_authenticated_gate_kpop_client,
+        build_authenticated_kpop_engine_client,
     );
 }
 use crate::artifacts::SessionDotfileBackups;
@@ -40,7 +40,7 @@ fn session_wrote_kpop_solved_reads_marker() {
 
 #[test]
 fn kpop_solved_early_exit_checks_streak_and_workspace() {
-    use crate::gate_kpop_workflow::GateLoopBehavior;
+    use crate::kpop_engine::KPopHardConstraints;
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
     std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
@@ -49,19 +49,19 @@ fn kpop_solved_early_exit_checks_streak_and_workspace() {
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
     assert!(!kpop_solved_early_exit(
-        GateLoopBehavior::CODE,
+        KPopHardConstraints::CODE,
         1,
         &artifacts,
         &backups
     ));
     assert!(kpop_solved_early_exit(
-        GateLoopBehavior::CODE,
+        KPopHardConstraints::CODE,
         2,
         &artifacts,
         &backups
     ));
     assert!(kpop_solved_early_exit(
-        GateLoopBehavior::INIT,
+        KPopHardConstraints::INIT,
         1,
         &artifacts,
         &backups
@@ -86,10 +86,10 @@ pub(crate) fn gate_early_exit_fixture() -> (
 }
 
 #[test]
-fn gate_kpop_solved_early_exit_needs_streak_and_gates() {
-    use crate::gate_kpop_workflow::GateLoopBehavior;
+fn kpop_engine_solved_early_exit_needs_streak_and_gates() {
+    use crate::kpop_engine::KPopHardConstraints;
     let (_tmp, artifacts, backups, _bin, _guard) = gate_early_exit_fixture();
-    let ctx = |behavior, streak| GateKpopEarlyExitCtx {
+    let ctx = |behavior, streak| KPopEngineEarlyExitCtx {
         behavior,
         consecutive_solved: streak,
         artifacts: &artifacts,
@@ -97,17 +97,17 @@ fn gate_kpop_solved_early_exit_needs_streak_and_gates() {
         agent_ran: true,
         run_timing: None,
     };
-    assert!(gate_kpop_solved_early_exit(ctx(GateLoopBehavior::CODE, 1)).is_none());
-    assert!(gate_kpop_solved_early_exit(ctx(GateLoopBehavior::CODE, 2)).is_some());
-    assert!(gate_kpop_solved_early_exit(ctx(GateLoopBehavior::INIT, 1)).is_some());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 1)).is_none());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 2)).is_some());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::INIT, 1)).is_some());
 }
 
 #[test]
-fn gate_kpop_loop_session_helpers_are_covered() {
-    let _ = run_gate_kpop_on_loop_iteration;
-    let _ = wire_gate_kpop_client;
-    let _ = gate_kpop_loop_one_iteration;
-    let _ = run_gate_kpop_loop;
+fn kpop_engine_loop_session_helpers_are_covered() {
+    let _ = run_kpop_engine_on_loop_iteration;
+    let _ = wire_kpop_engine_client;
+    let _ = kpop_engine_loop_one_iteration;
+    let _ = run_kpop_engine;
 }
 
 fn ensure_git_repo_for_gate_tests(work: &std::path::Path) {
@@ -131,14 +131,14 @@ fn write_gate_checks_file(work: &std::path::Path, content: &str) {
 
 fn fail_gate_prepared_fixture(
     work: &std::path::Path,
-) -> (SessionDotfileBackups, crate::gate_kpop_workflow::GateKpopPrepared) {
+) -> (SessionDotfileBackups, crate::kpop_engine::KPopEnginePrepared) {
     write_gate_checks_file(work, "kiss check\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let prepared = crate::gate_kpop_workflow::GateKpopPrepared {
+    let prepared = crate::kpop_engine::KPopEnginePrepared {
         artifacts,
         context: std::collections::HashMap::new(),
         request_text: "req".into(),
@@ -169,17 +169,17 @@ fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
 
 #[test]
 fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
-    use crate::gate_kpop_workflow::GateLoopBehavior;
-    use crate::gate_kpop_workflow::fail_gate_kpop_after_exhausted;
+    use crate::kpop_engine::KPopHardConstraints;
+    use crate::kpop_engine::fail_kpop_engine_after_exhausted;
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let (backups, prepared) = fail_gate_prepared_fixture(tmp.path());
     std::fs::write(crate::malvin_checks_path(tmp.path()), "tampered\n").expect("tamper");
-    let err = fail_gate_kpop_after_exhausted(
+    let err = fail_kpop_engine_after_exhausted(
         "malvin code",
         &prepared,
         &backups,
-        GateLoopBehavior::CODE,
+        KPopHardConstraints::CODE,
     )
     .expect_err("gates failed");
     assert!(err.contains("quality gates did not pass"));

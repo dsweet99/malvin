@@ -1,7 +1,7 @@
 use crate::cli::error_run_log;
-use crate::gate_kpop_workflow::{
-    fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
-    GateKpopLoopParams, GateLoopBehavior,
+use crate::kpop_engine::{
+    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass, run_kpop_engine,
+    KPopEngineParams, KPopHardConstraints,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -38,7 +38,7 @@ struct DelightGateFinish<'a> {
 fn delight_gate_outcome(finish: DelightGateFinish<'_>) -> Result<(), String> {
     let gate_r = if finish.gates_ok {
         validate_delight_output(&finish.prepared.resolved_out_path)?;
-        finish_gate_kpop_after_pass(
+        finish_kpop_engine_after_pass(
             finish.shared,
             &finish.prepared.inner,
             finish.agent_ran,
@@ -54,11 +54,11 @@ fn delight_gate_outcome(finish: DelightGateFinish<'_>) -> Result<(), String> {
             )
         }
     } else {
-        fail_gate_kpop_after_exhausted(
+        fail_kpop_engine_after_exhausted(
             "malvin delight",
             &finish.prepared.inner,
             finish.last_backups,
-            GateLoopBehavior::DELIGHT,
+            KPopHardConstraints::DELIGHT,
         )
     };
     crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
@@ -85,14 +85,14 @@ pub async fn run_delight(
 
     let max_loops = effective_delight_max_loops(delight.max_loops);
     let max_hypotheses = delight.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "delight",
         shared,
         workflow,
         prepared: &prepared.inner,
         max_loops,
         max_hypotheses,
-        behavior: GateLoopBehavior::DELIGHT,
+        behavior: KPopHardConstraints::DELIGHT,
     })
     .await?;
 
@@ -169,7 +169,7 @@ mod tests {
         store.ensure_defaults().expect("defaults");
         let artifacts = create_kpop_run_artifacts("delight", Some(tmp.path())).expect("artifacts");
         let prepared = DelightKpopPrepared {
-            inner: crate::gate_kpop_workflow::GateKpopPrepared {
+            inner: crate::kpop_engine::KPopEnginePrepared {
                 artifacts,
                 context: std::collections::HashMap::new(),
                 request_text: "req".into(),

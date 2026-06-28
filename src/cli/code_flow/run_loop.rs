@@ -1,7 +1,7 @@
 use crate::cli::error_run_log;
-use crate::gate_kpop_workflow::{
-    fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
-    GateKpopLoopParams, GateLoopBehavior,
+use crate::kpop_engine::{
+    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass, run_kpop_engine,
+    KPopEngineParams, KPopHardConstraints,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -35,18 +35,18 @@ struct CodeGateFinish<'a> {
 
 fn code_gate_outcome(finish: CodeGateFinish<'_>) -> Result<(), String> {
     let gate_r = if finish.gates_ok {
-        finish_gate_kpop_after_pass(
+        finish_kpop_engine_after_pass(
             finish.shared,
             finish.prepared,
             finish.agent_ran,
             finish.run_timing,
         )
     } else {
-        fail_gate_kpop_after_exhausted(
+        fail_kpop_engine_after_exhausted(
             "malvin code",
             finish.prepared,
             finish.last_backups,
-            GateLoopBehavior::CODE,
+            KPopHardConstraints::CODE,
         )
     };
     crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
@@ -69,14 +69,14 @@ pub async fn run_code(
 
     let max_loops = effective_code_max_loops(code.max_loops);
     let max_hypotheses = code.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "code",
         shared,
         workflow,
         prepared: &prepared,
         max_loops,
         max_hypotheses,
-        behavior: GateLoopBehavior::CODE,
+        behavior: KPopHardConstraints::CODE,
     })
     .await?;
 

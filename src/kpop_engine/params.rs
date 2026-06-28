@@ -1,21 +1,21 @@
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 
-use super::behavior::GateLoopBehavior;
-use super::prepared::GateKpopPrepared;
+use super::behavior::KPopHardConstraints;
+use super::prepared::KPopEnginePrepared;
 
-pub(crate) struct GateKpopLoopParams<'a> {
+pub(crate) struct KPopEngineParams<'a> {
     pub command: &'a str,
     pub shared: &'a SharedOpts,
     pub workflow: WorkflowCliOptions,
-    pub prepared: &'a GateKpopPrepared,
+    pub prepared: &'a KPopEnginePrepared,
     pub max_loops: usize,
     pub max_hypotheses: usize,
-    pub behavior: GateLoopBehavior,
+    pub behavior: KPopHardConstraints,
 }
 
-pub(crate) struct GateKpopIterationParams<'a> {
-    pub loop_params: &'a GateKpopLoopParams<'a>,
+pub(crate) struct KPopEngineIterationParams<'a> {
+    pub loop_params: &'a KPopEngineParams<'a>,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub client: &'a mut crate::agent_backend::AgentBackend,
     pub iteration: usize,
@@ -27,7 +27,7 @@ pub(crate) struct GateKpopIterationParams<'a> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn gate_kpop_iteration_params_is_covered() {
+    fn kpop_engine_iteration_params_is_covered() {
     }
 }
 
@@ -37,7 +37,7 @@ mod kiss_cov_gate_refs{
     use super::*;
     #[test]
     fn kiss_cov_unit_names() {
-        let _: Option<GateKpopIterationParams> = None;
-        let _: Option<GateKpopLoopParams> = None;
+        let _: Option<KPopEngineIterationParams> = None;
+        let _: Option<KPopEngineParams> = None;
     }
 }

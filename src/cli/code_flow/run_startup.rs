@@ -2,11 +2,11 @@ use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_run_artifacts_from_text,
     resolve_user_md_request,
 };
-use crate::gate_kpop_workflow::GateKpopPrepared;
+use crate::kpop_engine::KPopEnginePrepared;
 
 use super::prep::{code_kpop_request, prepare_code_kpop_prompt_store};
 
-pub(crate) type CodeKpopPrepared = GateKpopPrepared;
+pub(crate) type CodeKpopPrepared = KPopEnginePrepared;
 
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
@@ -26,7 +26,7 @@ pub(crate) fn prepare_code_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = code_kpop_workflow_context(&artifacts)?;
-    Ok(GateKpopPrepared {
+    Ok(KPopEnginePrepared {
         artifacts,
         context,
         request_text,

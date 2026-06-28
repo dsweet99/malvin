@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::artifacts::{MalvinChecksBackup, RunArtifacts};
 use crate::prompts::PromptStore;
 
-pub(crate) struct GateKpopPrepared {
+pub(crate) struct KPopEnginePrepared {
     pub artifacts: RunArtifacts,
     pub context: HashMap<String, String>,
     pub request_text: String,
@@ -11,7 +11,7 @@ pub(crate) struct GateKpopPrepared {
     pub malvin_checks_backup: MalvinChecksBackup,
 }
 
-impl GateKpopPrepared {
+impl KPopEnginePrepared {
     pub(crate) const fn artifacts(&self) -> &RunArtifacts {
         &self.artifacts
     }
@@ -34,13 +34,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn gate_kpop_prepared_accessors_are_covered() {
+    fn kpop_engine_prepared_accessors_are_covered() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let prepared = GateKpopPrepared {
+        let prepared = KPopEnginePrepared {
             artifacts,
             context: HashMap::new(),
             request_text: "req".into(),

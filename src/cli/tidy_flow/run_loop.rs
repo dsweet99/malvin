@@ -1,7 +1,7 @@
 use crate::cli::error_run_log;
-use crate::gate_kpop_workflow::{
-    fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
-    GateKpopLoopParams, GateLoopBehavior,
+use crate::kpop_engine::{
+    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass, run_kpop_engine,
+    KPopEngineParams, KPopHardConstraints,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -28,14 +28,14 @@ pub async fn run_tidy(
 
     let max_loops = effective_tidy_max_loops(tidy.max_loops);
     let max_hypotheses = tidy.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "tidy",
         shared,
         workflow,
         prepared: &prepared,
         max_loops,
         max_hypotheses,
-        behavior: GateLoopBehavior::TIDY,
+        behavior: KPopHardConstraints::TIDY,
     })
     .await?;
 
@@ -52,13 +52,13 @@ pub async fn run_tidy(
     .await;
 
     let gate_r = if gates_ok {
-        finish_gate_kpop_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
+        finish_kpop_engine_after_pass(shared, &prepared, agent_ran, run_timing.as_ref())
     } else {
-        fail_gate_kpop_after_exhausted(
+        fail_kpop_engine_after_exhausted(
             "malvin tidy",
             &prepared,
             &last_backups,
-            GateLoopBehavior::TIDY,
+            KPopHardConstraints::TIDY,
         )
     };
     let r = crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, summarize_res);

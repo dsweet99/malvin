@@ -1,9 +1,9 @@
-//! External kiss witnesses for `gate_kpop_workflow/` (must be `*_tests.rs` for kiss).
+//! External kiss witnesses for `kpop_engine/` (must be `*_tests.rs` for kiss).
 
 use crate::artifacts::SessionDotfileBackups;
-use crate::gate_kpop_workflow::{post_gate_kpop_gates, GateKpopMultiturnCtx, GateKpopPrepared, GateLoopBehavior};
+use crate::kpop_engine::{run_kpop_hard_constraints_after_session, KPopEngineMultiturnCtx, KPopEnginePrepared, KPopHardConstraints};
 
-fn post_gate_fixture() -> (GateKpopPrepared, SessionDotfileBackups) {
+fn post_gate_fixture() -> (KPopEnginePrepared, SessionDotfileBackups) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
@@ -13,7 +13,7 @@ fn post_gate_fixture() -> (GateKpopPrepared, SessionDotfileBackups) {
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let prepared = GateKpopPrepared {
+    let prepared = KPopEnginePrepared {
         artifacts,
         context: std::collections::HashMap::new(),
         request_text: "req".into(),
@@ -25,17 +25,17 @@ fn post_gate_fixture() -> (GateKpopPrepared, SessionDotfileBackups) {
 }
 
 #[test]
-fn kiss_cov_gate_kpop_multiturn_ctx_type_witness() {
-    let _ = std::mem::size_of::<GateKpopMultiturnCtx<'_>>();
-    let _: Option<GateKpopMultiturnCtx<'_>> = None;
+fn kiss_cov_kpop_engine_multiturn_ctx_type_witness() {
+    let _ = std::mem::size_of::<KPopEngineMultiturnCtx<'_>>();
+    let _: Option<KPopEngineMultiturnCtx<'_>> = None;
 }
 
 #[test]
-fn kiss_cov_post_gate_kpop_gates_branchy_executable_witness() {
+fn kiss_cov_run_kpop_hard_constraints_after_session_branchy_executable_witness() {
     let (prepared, backups) = post_gate_fixture();
-    let skip = GateLoopBehavior::DELIGHT;
-    let run = GateLoopBehavior::CODE;
-    if post_gate_kpop_gates("code", &prepared, &backups, skip).is_ok() {
+    let skip = KPopHardConstraints::DELIGHT;
+    let run = KPopHardConstraints::CODE;
+    if run_kpop_hard_constraints_after_session("code", &prepared, &backups, skip).is_ok() {
         assert!(skip.skip_workspace_quality_gates);
     } else {
         panic!("skip gates should succeed");
@@ -50,18 +50,18 @@ fn kiss_cov_post_gate_kpop_gates_branchy_executable_witness() {
 }
 
 #[test]
-fn kiss_cov_gate_kpop_loop_params_types() {
+fn kiss_cov_kpop_engine_loop_params_types() {
     use crate::artifacts::SessionDotfileBackups;
     use crate::cli::WorkflowCliOptions;
-    use super::params::{GateKpopIterationParams, GateKpopLoopParams};
-    use crate::gate_kpop_workflow::{GateKpopPrepared, GateLoopBehavior};
+    use super::params::{KPopEngineIterationParams, KPopEngineParams};
+    use crate::kpop_engine::{KPopEnginePrepared, KPopHardConstraints};
 
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
-    let prepared = GateKpopPrepared {
+    let prepared = KPopEnginePrepared {
         artifacts,
         context: std::collections::HashMap::new(),
         request_text: "req".into(),
@@ -89,16 +89,16 @@ fn kiss_cov_gate_kpop_loop_params_types() {
         mini_max_shrink_passes: 0,
     };
     let workflow = WorkflowCliOptions { force: false };
-    let loop_params = GateKpopLoopParams {
+    let loop_params = KPopEngineParams {
         command: "code",
         shared: &shared,
         workflow,
         prepared: &prepared,
         max_loops: 1,
         max_hypotheses: 5,
-        behavior: GateLoopBehavior::CODE,
+        behavior: KPopHardConstraints::CODE,
     };
-    let GateKpopLoopParams {
+    let KPopEngineParams {
         command,
         shared: _,
         workflow: _,
@@ -132,7 +132,7 @@ fn kiss_cov_gate_kpop_loop_params_types() {
         },
         1,
     ));
-    let iteration = GateKpopIterationParams {
+    let iteration = KPopEngineIterationParams {
         loop_params: &loop_params,
         session_dotfile_backups: &backups,
         client: &mut client,
@@ -141,7 +141,7 @@ fn kiss_cov_gate_kpop_loop_params_types() {
         consecutive_solved_entering: 0,
         exp_log_path: tmp.path().join("exp.md"),
     };
-    let GateKpopIterationParams {
+    let KPopEngineIterationParams {
         loop_params: _,
         session_dotfile_backups: _,
         client: _,
@@ -156,12 +156,12 @@ fn kiss_cov_gate_kpop_loop_params_types() {
 
 #[test]
 fn kiss_cov_kpop_session_private_fn_names() {
-    let _ = stringify!(build_gate_kpop_prompt);
-    let _ = stringify!(restore_gate_kpop_session_dotfiles);
-    let _ = stringify!(finalize_gate_kpop_turn);
-    let _ = stringify!(run_gate_kpop_coder_turn);
-    let _ = stringify!(run_gate_kpop_single_turn);
-    let _ = stringify!(run_gate_kpop_session);
-    let _ = stringify!(print_gate_kpop_log_line);
+    let _ = stringify!(build_kpop_engine_prompt);
+    let _ = stringify!(restore_kpop_engine_session_dotfiles);
+    let _ = stringify!(finalize_kpop_engine_turn);
+    let _ = stringify!(run_kpop_engine_coder_turn);
+    let _ = stringify!(run_kpop_engine_single_turn);
+    let _ = stringify!(run_kpop_engine_session);
+    let _ = stringify!(print_kpop_engine_log_line);
     let _ = stringify!(iteration_number);
 }

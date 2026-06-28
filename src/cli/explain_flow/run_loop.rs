@@ -1,7 +1,7 @@
 use crate::cli::error_run_log;
-use crate::gate_kpop_workflow::{
-    fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
-    GateKpopLoopParams, GateLoopBehavior,
+use crate::kpop_engine::{
+    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass, run_kpop_engine,
+    KPopEngineParams, KPopHardConstraints,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -56,7 +56,7 @@ struct ExplainGateFinish<'a> {
 fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
     let gate_r = if finish.gates_ok {
         validate_explain_output(finish.tex_path, finish.pdf_path)?;
-        finish_gate_kpop_after_pass(
+        finish_kpop_engine_after_pass(
             finish.shared,
             &finish.prepared.inner,
             finish.agent_ran,
@@ -72,11 +72,11 @@ fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
             )
         }
     } else {
-        fail_gate_kpop_after_exhausted(
+        fail_kpop_engine_after_exhausted(
             "malvin explain",
             &finish.prepared.inner,
             finish.last_backups,
-            GateLoopBehavior::EXPLAIN,
+            KPopHardConstraints::EXPLAIN,
         )
     };
     crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
@@ -120,7 +120,7 @@ async fn run_explain_gate_session(
     explain: &ExplainArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
-    prepared: &crate::gate_kpop_workflow::GateKpopPrepared,
+    prepared: &crate::kpop_engine::KPopEnginePrepared,
 ) -> Result<
     (
         bool,
@@ -130,14 +130,14 @@ async fn run_explain_gate_session(
     ),
     String,
 > {
-    run_gate_kpop_loop(GateKpopLoopParams {
+    run_kpop_engine(KPopEngineParams {
         command: "explain",
         shared,
         workflow,
         prepared,
         max_loops: effective_explain_max_loops(explain.max_loops),
         max_hypotheses: explain.max_hypotheses.max(1),
-        behavior: GateLoopBehavior::EXPLAIN,
+        behavior: KPopHardConstraints::EXPLAIN,
     })
     .await
 }

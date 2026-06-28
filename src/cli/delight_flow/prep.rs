@@ -10,7 +10,7 @@ use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
 use crate::cli::default_output_path::{
     allocate_default_sibling_file, path_relative_to_cwd, DELIGHT_DEFAULT_OUT_PATH,
 };
-use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
+use crate::kpop_program::render_creative_program;
 
 const DELIGHT_COMMAND_MARKER: &str = "Command: malvin delight";
 const MAX_RECENT_DELIGHT_PLANS: usize = 5;
@@ -152,7 +152,7 @@ pub(crate) fn delight_kpop_request(
         "delight_guidance".to_string(),
         format_delight_guidance_block(guidance),
     );
-    render_kpop_program_request_creative(store, "delight_constraints.md", &ctx, artifacts)
+    render_creative_program(store, "delight_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), String> {

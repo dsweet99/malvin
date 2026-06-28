@@ -5,7 +5,7 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::insert_formatted;
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
+use crate::kpop_program::render_creative_program;
 
 pub(crate) fn prepare_revise_kpop_prompt_store(
     workflow: WorkflowCliOptions,
@@ -49,7 +49,7 @@ pub(crate) fn revise_kpop_request(
     let workspace_root = artifacts.work_dir.as_path();
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "doc_path", resolved_doc_path, workspace_root);
-    render_kpop_program_request_creative(store, "revise_constraints.md", &ctx, artifacts)
+    render_creative_program(store, "revise_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn revise_preflight(doc_path: &str) -> Result<(PathBuf, PathBuf), String> {

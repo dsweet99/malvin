@@ -1,12 +1,12 @@
 use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
-use crate::gate_kpop_workflow::GateKpopPrepared;
+use crate::kpop_engine::KPopEnginePrepared;
 
 use super::prep::{delight_kpop_request, delight_preflight, prepare_delight_kpop_prompt_store};
 
 pub struct DelightKpopPrepared {
-    pub inner: GateKpopPrepared,
+    pub inner: KPopEnginePrepared,
     pub resolved_out_path: std::path::PathBuf,
 }
 
@@ -36,7 +36,7 @@ pub fn prepare_delight_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = delight_kpop_workflow_context(&artifacts)?;
-    let inner = GateKpopPrepared {
+    let inner = KPopEnginePrepared {
         artifacts,
         context,
         request_text: request_text.clone(),

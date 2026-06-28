@@ -2,7 +2,7 @@
 
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::RunArtifacts;
-use crate::gate_kpop_workflow::GateLoopBehavior;
+use crate::kpop_engine::KPopHardConstraints;
 use crate::prompts::PromptStore;
 
 /// Context for inline summarize at the end of a `malvin kpop` outer-loop iteration.
@@ -51,7 +51,7 @@ pub(crate) struct GateInlineSummarizeCtx<'a> {
     pub iteration: usize,
     pub total_iterations: usize,
     pub consecutive_solved_entering: usize,
-    pub behavior: GateLoopBehavior,
+    pub behavior: KPopHardConstraints,
 }
 
 /// Runs inline summarize inside an open gate-kpop coder session when warranted.

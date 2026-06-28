@@ -54,7 +54,7 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 ## Workflow
 
 1. **Startup** — Create run dir, copy plan to `plan.md`, emit command line and paths.
-2. **Gate loop** (`GateLoopBehavior::CODE`) — Unlike `tidy`, **always** enters the loop (no “gates already pass” fast path).
+2. **Gate loop** (`KPopHardConstraints::CODE`) — Unlike `tidy`, **always** enters the loop (no “gates already pass” fast path).
 3. **Per outer iteration:**
    - Render `kpop_program.md` with `code_constraints.md` as scope.
    - Run one KPop agent session; log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.

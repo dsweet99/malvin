@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::kpop_experiment_log::ExperimentLog;
+use crate::kpop_log_protocol::ExperimentLog;
 
 /// Reads the experiment log at `path` into a string.
 ///

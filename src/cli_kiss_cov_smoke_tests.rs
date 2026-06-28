@@ -115,14 +115,14 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = crate::cli::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
-    let _ = stringify!(gate_kpop_session_declared_solved_detects_kpop_solved_marker);
-    let _ = stringify!(crate::gate_kpop_workflow::run_gate_kpop_loop);
-    let _ = stringify!(crate::gate_kpop_workflow::post_gate_kpop_gates);
-    let _ = stringify!(crate::gate_kpop_workflow::finish_gate_kpop_after_pass);
-    let _ = stringify!(crate::gate_kpop_workflow::fail_gate_kpop_after_exhausted);
-    let _: Option<crate::gate_kpop_workflow::GateKpopLoopParams> = None;
+    let _ = stringify!(kpop_engine_session_declared_solved_detects_kpop_solved_marker);
+    let _ = stringify!(crate::kpop_engine::run_kpop_engine);
+    let _ = stringify!(crate::kpop_engine::run_kpop_hard_constraints_after_session);
+    let _ = stringify!(crate::kpop_engine::finish_kpop_engine_after_pass);
+    let _ = stringify!(crate::kpop_engine::fail_kpop_engine_after_exhausted);
+    let _: Option<crate::kpop_engine::KPopEngineParams> = None;
     let _ = stringify!(gate_early_exit_fixture);
-    let _: Option<crate::gate_kpop_workflow::GateKpopMultiturnCtx<'_>> = None;
+    let _: Option<crate::kpop_engine::KPopEngineMultiturnCtx<'_>> = None;
 }
 
 #[test]
@@ -145,7 +145,7 @@ fn smoke_cov_cli_cli_delight_flow_units() {
     let _: Option<crate::cli::delight_flow::DelightArgs> = None;
     let _ = crate::cli::delight_flow::run_delight;
     let _ = crate::cli::delight_flow::effective_delight_max_loops;
-    let _ = crate::gate_kpop_workflow::GateLoopBehavior::DELIGHT;
+    let _ = crate::kpop_engine::KPopHardConstraints::DELIGHT;
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn smoke_cov_cli_cli_revise_flow_units() {
     let _: Option<crate::cli::revise_flow::ReviseArgs> = None;
     let _ = crate::cli::revise_flow::run_revise;
     let _ = crate::cli::revise_flow::effective_revise_max_loops;
-    let _ = crate::gate_kpop_workflow::GateLoopBehavior::REVISE;
+    let _ = crate::kpop_engine::KPopHardConstraints::REVISE;
     let _ = crate::cli::entrypoint_commands::run_revise_command;
 }
 
@@ -162,7 +162,7 @@ fn smoke_cov_cli_cli_explain_flow_units() {
     let _: Option<crate::cli::explain_flow::ExplainArgs> = None;
     let _ = crate::cli::explain_flow::run_explain;
     let _ = crate::cli::explain_flow::effective_explain_max_loops;
-    let _ = crate::gate_kpop_workflow::GateLoopBehavior::EXPLAIN;
+    let _ = crate::kpop_engine::KPopHardConstraints::EXPLAIN;
     let _ = crate::cli::entrypoint_commands::run_explain_command;
 }
 
@@ -204,7 +204,7 @@ fn smoke_cov_cli_cli_symbols_a() {
     assert!(!repo_gates && !thoughts && request.is_none());
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
-    let _ = stringify!(RenderKpopProgram);
+    let _ = stringify!(RenderRepoProgram);
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
     let _: Option<crate::inspire_flow::InspireArgs> = None;

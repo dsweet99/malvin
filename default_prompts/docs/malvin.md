@@ -216,7 +216,7 @@ malvin kpop notes/question.md
 
 ## Gate-loop commands (shared pattern)
 
-`code` and `tidy` share an outer **gate loop** implemented in `gate_kpop_workflow`:
+`code` and `tidy` share an outer **gate loop** implemented in `kpop_engine`:
 
 1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md` or `tidy_constraints.md`) rendered through `kpop_program.md`.
 2. The agent records hypotheses in `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.

@@ -1,7 +1,7 @@
 use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::kpop_program::render_repo_program;
 
 pub fn prepare_code_kpop_prompt_store(
     workflow: WorkflowCliOptions,
@@ -26,7 +26,7 @@ pub fn code_kpop_request(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
     );
-    render_kpop_program_request(
+    render_repo_program(
         store,
         "code_constraints.md",
         &context,

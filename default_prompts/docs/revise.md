@@ -8,7 +8,7 @@ Revise an **existing document in place** via the KPop gate loop scoped by `revis
 |---|---|
 | Input | Positional `DOC_PATH` — existing file to revise |
 | Output | Same path, edited in place (no `--out-path`) |
-| Loop | Full gate-kpop loop (`GateLoopBehavior::REVISE`) |
+| Loop | Full gate-kpop loop (`KPopHardConstraints::REVISE`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`) |
 | Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
 | Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `explain` / `delight`) |

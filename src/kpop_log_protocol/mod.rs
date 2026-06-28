@@ -1,4 +1,4 @@
-//! `KPop` experiment log protocol (see `concepts.md` §9).
+//! **`KPopLogProtocol`** — parsed markers in `exp_log_*.md` (see `concepts.md`).
 //!
 //! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
 //! interprets for budget checks and early exit. Prompt sources: `default_prompts/kpop_common.md`,
@@ -126,5 +126,5 @@ fn step_kind(line: &str) -> Option<StepHeadingKind> {
 }
 
 #[cfg(test)]
-#[path = "experiment_log_tests.rs"]
-mod experiment_log_tests;
+#[path = "log_protocol_tests.rs"]
+mod log_protocol_tests;

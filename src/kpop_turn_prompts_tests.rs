@@ -80,7 +80,7 @@ fn expected_kpop_block_output(
 }
 
 #[test]
-fn render_turn_with_body_matches_gate_kpop_single_turn_without_header() {
+fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let request_text = "render-turn smoke";
@@ -90,7 +90,7 @@ fn render_turn_with_body_matches_gate_kpop_single_turn_without_header() {
         request_text,
         prepend_rules_once: false,
     };
-    let gate = prompts.gate_kpop_single_turn_prompt(5).expect("gate prompt");
+    let gate = prompts.kpop_engine_single_turn_prompt(5).expect("gate prompt");
     let mut ctx = base.clone();
     ctx.insert("want".to_string(), "5".to_string());
     ctx.insert("remaining_hypotheses".to_string(), "0".to_string());

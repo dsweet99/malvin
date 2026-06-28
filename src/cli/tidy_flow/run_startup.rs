@@ -3,11 +3,11 @@ use std::path::Path;
 use crate::artifacts::{
     backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts,
 };
-use crate::gate_kpop_workflow::GateKpopPrepared;
+use crate::kpop_engine::KPopEnginePrepared;
 
 use super::prep::{prepare_tidy_kpop_prompt_store, tidy_kpop_request};
 
-pub type TidyKpopPrepared = GateKpopPrepared;
+pub type TidyKpopPrepared = KPopEnginePrepared;
 
 fn tidy_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
@@ -27,7 +27,7 @@ pub fn prepare_tidy_kpop_run(
     let malvin_checks_backup =
         backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
     let context = tidy_kpop_workflow_context(&artifacts)?;
-    Ok(GateKpopPrepared {
+    Ok(KPopEnginePrepared {
         artifacts,
         context,
         request_text: request_text.clone(),

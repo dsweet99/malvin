@@ -228,7 +228,7 @@ fn kiss_cov_cli_helper_symbols() {
     let _ = stringify!(CodeWorkflowLoopMut);
     let _ = stringify!(ExplainResolvedOutputs);
     let _ = stringify!(ExplainKpopRequestInput);
-    let _ = stringify!(GateKpopPrepared);
+    let _ = stringify!(KPopEnginePrepared);
     let _ = stringify!(InspireRunPrep);
     let _ = stringify!(OuterLoopSummarizeParams);
     let _ = stringify!(CodeOuterLoopSummarizeInputs);

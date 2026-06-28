@@ -54,7 +54,7 @@ fn explain_gate_outcome_prepared(tmp: &tempfile::TempDir) -> ExplainKpopPrepared
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("explain", Some(tmp.path())).expect("artifacts");
     ExplainKpopPrepared {
-        inner: crate::gate_kpop_workflow::GateKpopPrepared {
+        inner: crate::kpop_engine::KPopEnginePrepared {
             artifacts,
             context: std::collections::HashMap::new(),
             request_text: "req".into(),

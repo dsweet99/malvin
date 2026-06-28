@@ -96,7 +96,7 @@ fn kiss_invalid_struct_value_refs_5() {
     let _ = crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::InlineSummarizeOnKpopLoopCtx;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
-    let _ = crate::cli::workflow_kpop_shared::workflow_kpop_render::RenderKpopProgram;
+    let _ = crate::kpop_program::RenderRepoProgram;
     let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
     let _ = crate::kpop_test_stubs::EchoPrompts;
     let _ = crate::kpop_test_stubs::kpop_block;

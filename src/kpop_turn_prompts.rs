@@ -1,3 +1,8 @@
+//! Per-turn prompt assembly for **`KPopEngine`** sessions.
+//!
+//! - **`KPop`** (`kpop_common.md`): agent-side Popper method (Hypothesize → Predict → Falsify).
+//! - **`KPopEngine` turn** (`kpop_block.md`): per-iteration budget and `{{ user_request }}` injection.
+
 use std::collections::HashMap;
 
 use crate::prompt_stratification::join_strata;
@@ -42,7 +47,7 @@ impl KpopTurnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn gate_kpop_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
+    pub fn kpop_engine_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
         let mut ctx = self.base.clone();
         ctx.insert("want".to_string(), max_hypotheses.to_string());
         ctx.insert("remaining_hypotheses".to_string(), "0".to_string());

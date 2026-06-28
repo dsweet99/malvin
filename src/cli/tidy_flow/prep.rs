@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
-use crate::cli::workflow_kpop_shared::render_kpop_program_request;
+use crate::kpop_program::render_repo_program;
 
 pub fn prepare_tidy_kpop_prompt_store(
     workflow: WorkflowCliOptions,
@@ -22,13 +22,13 @@ pub fn tidy_kpop_request(
     store: &PromptStore,
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<String, String> {
-    render_kpop_program_request(store, "tidy_constraints.md", &HashMap::new(), artifacts)
+    render_repo_program(store, "tidy_constraints.md", &HashMap::new(), artifacts)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::workflow_kpop_shared::kpop_program_context;
+    use crate::kpop_program::kpop_program_context;
 
     #[test]
     fn tidy_kpop_request_has_no_unresolved_braces() {

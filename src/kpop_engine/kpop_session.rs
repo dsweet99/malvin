@@ -11,25 +11,25 @@ use crate::cli::workflow_kpop_shared::{
 };
 use crate::run_timing::TimingPhase;
 
-use super::params::GateKpopIterationParams;
-use super::prepared::GateKpopPrepared;
+use super::params::KPopEngineIterationParams;
+use super::prepared::KPopEnginePrepared;
 
-pub(crate) struct GateKpopMultiturnCtx<'a> {
-    pub iteration: &'a mut GateKpopIterationParams<'a>,
+pub(crate) struct KPopEngineMultiturnCtx<'a> {
+    pub iteration: &'a mut KPopEngineIterationParams<'a>,
 }
 
-impl<'a> GateKpopMultiturnCtx<'a> {
+impl<'a> KPopEngineMultiturnCtx<'a> {
     #[cfg(test)]
     pub(crate) const fn iteration_number(&self) -> usize {
         self.iteration.iteration
     }
 }
 
-pub(crate) fn post_gate_kpop_gates(
+pub(crate) fn run_kpop_hard_constraints_after_session(
     command: &str,
-    prepared: &GateKpopPrepared,
+    prepared: &KPopEnginePrepared,
     session_dotfile_backups: &crate::artifacts::SessionDotfileBackups,
-    behavior: super::behavior::GateLoopBehavior,
+    behavior: super::behavior::KPopHardConstraints,
 ) -> Result<(), String> {
     if behavior.skip_workspace_quality_gates {
         return Ok(());
@@ -42,14 +42,14 @@ pub(crate) fn post_gate_kpop_gates(
     )
 }
 
-pub(crate) fn print_gate_kpop_log_line(prepared: &GateKpopPrepared, exp_log_path: &std::path::Path) {
+pub(crate) fn print_kpop_engine_log_line(prepared: &KPopEnginePrepared, exp_log_path: &std::path::Path) {
     crate::cli::workflow_kpop_shared::print_kpop_session_log_line(
         prepared.artifacts(),
         exp_log_path,
     );
 }
 
-fn build_gate_kpop_prompt(ctx: &GateKpopMultiturnCtx<'_>) -> Result<String, String> {
+fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let params = ctx.iteration.loop_params;
     let prepared = params.prepared;
     KpopTurnPrompts {
@@ -63,10 +63,10 @@ fn build_gate_kpop_prompt(ctx: &GateKpopMultiturnCtx<'_>) -> Result<String, Stri
         request_text: prepared.request_text(),
         prepend_rules_once: false,
     }
-    .gate_kpop_single_turn_prompt(params.max_hypotheses)
+    .kpop_engine_single_turn_prompt(params.max_hypotheses)
 }
 
-fn restore_gate_kpop_session_dotfiles(ctx: &GateKpopMultiturnCtx<'_>) -> Result<(), String> {
+fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {
     let prepared = ctx.iteration.loop_params.prepared;
     let work_dir = prepared.artifacts().work_dir.as_path();
     let backups = ctx.iteration.session_dotfile_backups;
@@ -82,12 +82,12 @@ fn restore_gate_kpop_session_dotfiles(ctx: &GateKpopMultiturnCtx<'_>) -> Result<
     }
 }
 
-async fn finalize_gate_kpop_turn(
-    ctx: &mut GateKpopMultiturnCtx<'_>,
+async fn finalize_kpop_engine_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
     work_dir: &std::path::Path,
     prompt_result: Result<(), AgentError>,
 ) -> Result<(), String> {
-    if let Err(restore_err) = restore_gate_kpop_session_dotfiles(ctx) {
+    if let Err(restore_err) = restore_kpop_engine_session_dotfiles(ctx) {
         ctx.iteration.client.end_coder_session().await.ok();
         return kpop_fail_after_prompt(KpopFailAfterPrompt {
             cwd: work_dir,
@@ -107,8 +107,8 @@ async fn finalize_gate_kpop_turn(
     Ok(())
 }
 
-async fn run_gate_kpop_coder_turn(
-    ctx: &mut GateKpopMultiturnCtx<'_>,
+async fn run_kpop_engine_coder_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
     prompt: &str,
     work_dir: &std::path::Path,
     log_path: &std::path::Path,
@@ -153,15 +153,15 @@ async fn run_gate_kpop_coder_turn(
     prompt_result
 }
 
-async fn run_gate_kpop_single_turn(
-    ctx: &mut GateKpopMultiturnCtx<'_>,
+async fn run_kpop_engine_single_turn(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
 ) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
     let prepared = ctx.iteration.loop_params.prepared;
-    let prompt = build_gate_kpop_prompt(ctx)?;
+    let prompt = build_kpop_engine_prompt(ctx)?;
     let work_dir = prepared.artifacts().work_dir.as_path();
     let log_path = prepared.artifacts().log_path("kpop");
     let prompt_result =
-        run_gate_kpop_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
+        run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
     let post_agent_backups = if prompt_result.is_ok() {
         Some(
             crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(
@@ -171,12 +171,12 @@ async fn run_gate_kpop_single_turn(
     } else {
         None
     };
-    finalize_gate_kpop_turn(ctx, work_dir, prompt_result).await?;
+    finalize_kpop_engine_turn(ctx, work_dir, prompt_result).await?;
     Ok(post_agent_backups)
 }
 
-pub(crate) async fn run_gate_kpop_session(
-    ctx: &mut GateKpopMultiturnCtx<'_>,
+pub(crate) async fn run_kpop_engine_session(
+    ctx: &mut KPopEngineMultiturnCtx<'_>,
 ) -> Result<crate::artifacts::SessionDotfileBackups, String> {
     let iteration_start = ctx.iteration.session_dotfile_backups.clone();
     let max_attempts = ctx.iteration.client.max_acp_retries();
@@ -184,7 +184,7 @@ pub(crate) async fn run_gate_kpop_session(
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {
         attempts_used = attempt;
-        match run_gate_kpop_single_turn(ctx).await {
+        match run_kpop_engine_single_turn(ctx).await {
             Ok(post_agent_backups) => {
                 finish_kpop_acp_session(
                     ctx.iteration.loop_params.prepared.artifacts(),

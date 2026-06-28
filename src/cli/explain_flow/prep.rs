@@ -6,7 +6,7 @@ use crate::prompts::{PromptError, PromptStore};
 
 use super::super::{WorkflowCliOptions, prepare_kpop_prompt_store};
 use crate::cli::default_output_path::allocate_default_tex_pdf_pair;
-use crate::cli::workflow_kpop_shared::render_kpop_program_request_creative;
+use crate::kpop_program::render_creative_program;
 
 #[path = "prep_discover.rs"]
 pub(crate) mod prep_discover;
@@ -117,7 +117,7 @@ pub(crate) fn explain_kpop_request(
             workspace_root,
         ),
     );
-    render_kpop_program_request_creative(store, "explain_constraints.md", &ctx, artifacts)
+    render_creative_program(store, "explain_constraints.md", &ctx, artifacts)
 }
 
 pub(crate) fn explain_revise_doc_path(request: &str, out_path: &str) -> Result<String, String> {

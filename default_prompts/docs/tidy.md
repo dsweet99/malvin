@@ -51,7 +51,7 @@ See `malvin --doc`.
 |-------|----------|
 | First gate check | Run all commands in `.malvin/checks`; append output to `quality_gates.log` |
 | Gates pass | Emit startup summary, print `DONE`, exit (no ACP session) |
-| Gates fail | Print failure details to stderr; enter gate loop (`GateLoopBehavior::TIDY`) |
+| Gates fail | Print failure details to stderr; enter gate loop (`KPopHardConstraints::TIDY`) |
 
 **Gate loop (when agent runs):**
 

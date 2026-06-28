@@ -1,7 +1,7 @@
 use crate::cli::error_run_log;
-use crate::gate_kpop_workflow::{
-    fail_gate_kpop_after_exhausted, finish_gate_kpop_after_pass, run_gate_kpop_loop,
-    GateKpopLoopParams, GateLoopBehavior,
+use crate::kpop_engine::{
+    fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass, run_kpop_engine,
+    KPopEngineParams, KPopHardConstraints,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -38,7 +38,7 @@ struct ReviseGateFinish<'a> {
 fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
     let gate_r = if finish.gates_ok {
         validate_revise_output(&finish.prepared.resolved_doc_path)?;
-        finish_gate_kpop_after_pass(
+        finish_kpop_engine_after_pass(
             finish.shared,
             &finish.prepared.inner,
             finish.agent_ran,
@@ -54,11 +54,11 @@ fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
             )
         }
     } else {
-        fail_gate_kpop_after_exhausted(
+        fail_kpop_engine_after_exhausted(
             "malvin revise",
             &finish.prepared.inner,
             finish.last_backups,
-            GateLoopBehavior::REVISE,
+            KPopHardConstraints::REVISE,
         )
     };
     crate::cli::workflow_kpop_shared::prefer_gate_outcome_over_summarize(gate_r, finish.summarize_res)
@@ -83,14 +83,14 @@ pub async fn run_revise(
 
     let max_loops = effective_revise_max_loops(revise.max_loops);
     let max_hypotheses = revise.max_hypotheses.max(1);
-    let (gates_ok, agent_ran, run_timing, last_backups) = run_gate_kpop_loop(GateKpopLoopParams {
+    let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "revise",
         shared,
         workflow,
         prepared: &prepared.inner,
         max_loops,
         max_hypotheses,
-        behavior: GateLoopBehavior::REVISE,
+        behavior: KPopHardConstraints::REVISE,
     })
     .await?;
 
@@ -167,7 +167,7 @@ mod tests {
         store.ensure_defaults().expect("defaults");
         let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
         let prepared = ReviseKpopPrepared {
-            inner: crate::gate_kpop_workflow::GateKpopPrepared {
+            inner: crate::kpop_engine::KPopEnginePrepared {
                 artifacts,
                 context: std::collections::HashMap::new(),
                 request_text: "req".into(),
