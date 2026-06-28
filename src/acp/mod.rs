@@ -69,6 +69,10 @@ pub(crate) use coalesce::*;
 mod coalesce_trace;
 pub(crate) use coalesce_trace::*;
 
+#[path = "contract_fixture.rs"] mod contract_fixture;
+#[doc(hidden)] pub use contract_fixture::contract_acp_tee_tool_fixture;
+#[cfg(test)]
+pub(crate) use contract_fixture::{open_contract_trace_writer, tee_coalesced_tool_execute};
 #[path = "trace_line_write_tee.rs"]
 mod trace_line_write_tee;
 mod trace_plain_tee;

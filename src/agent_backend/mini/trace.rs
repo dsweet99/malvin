@@ -12,7 +12,7 @@ use super::acp_trace_shim::{
     emit_llm_usage, emit_mini_http_exchange, trace_for_run_dir, MiniHttpExchangeRecord,
 };
 use crate::acp::AgentIoOptions;
-use crate::observability::{AuditEventKind, ObservabilityChannel};
+use crate::observability::{narrative_suppressed, AUDIT_CHANNEL, NARRATIVE_CHANNEL, AuditEventKind, ObservabilityChannel};
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_B, WHO_M, WHO_T};
 use crate::tool_summary::{
     bash_kind_wire_name, classify_bash_command, format_classified_tool_line,
@@ -27,9 +27,9 @@ pub struct MiniTraceSink {
 }
 
 /// Channel target for [`emit_audit`] and audit-only public methods.
-pub const MINI_AUDIT_CHANNEL: ObservabilityChannel = ObservabilityChannel::Audit;
+pub const MINI_AUDIT_CHANNEL: ObservabilityChannel = AUDIT_CHANNEL;
 /// Channel target for [`emit_narrative`] and dual-emission methods.
-pub const MINI_NARRATIVE_CHANNEL: ObservabilityChannel = ObservabilityChannel::Narrative;
+pub const MINI_NARRATIVE_CHANNEL: ObservabilityChannel = NARRATIVE_CHANNEL;
 
 impl MiniTraceSink {
     #[must_use]
@@ -90,7 +90,7 @@ impl MiniTraceSink {
         if self.plain_lines || self.io.raw_output {
             return;
         }
-        if narrative_suppressed(self) {
+        if mini_narrative_suppressed(self) {
             return;
         }
         let plain = format_classified_tool_line(ClassifiedToolLineInput {
@@ -152,14 +152,14 @@ pub(crate) fn emit_audit(
     }
 }
 
-fn narrative_suppressed(sink: &MiniTraceSink) -> bool {
-    sink.io.no_tee || crate::output::stdout_suppressed()
+fn mini_narrative_suppressed(sink: &MiniTraceSink) -> bool {
+    narrative_suppressed(sink.io.no_tee)
 }
 
 /// Write one narrative line to stdout / `stdout.log`, respecting suppression flags.
 pub(crate) fn emit_narrative(sink: &MiniTraceSink, who: &str, chunk: &str) {
     assert!(matches!(MINI_NARRATIVE_CHANNEL, ObservabilityChannel::Narrative));
-    if chunk.is_empty() || narrative_suppressed(sink) {
+    if chunk.is_empty() || mini_narrative_suppressed(sink) {
         return;
     }
     if sink.plain_lines || sink.io.raw_output {

@@ -97,3 +97,16 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     let out = prompts.kpop_block(1, 0).expect("kpop block");
     assert!(out.contains("req"));
 }
+
+#[test]
+fn kiss_cov_acp_observability_contract_fixture() {
+    crate::acp_tests::reader_tests_helpers::block_on_test(async {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let trace_path = tmp.path().join("trace.jsonl");
+        let stdout_path = tmp.path().join("stdout.log");
+        let (trace, stdout) =
+            crate::acp::contract_acp_tee_tool_fixture(&trace_path, &stdout_path).await;
+        assert!(trace.contains("echo contract"), "trace={trace:?}");
+        assert!(stdout.contains("Run "), "stdout={stdout:?}");
+    });
+}

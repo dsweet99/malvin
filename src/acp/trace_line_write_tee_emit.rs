@@ -145,7 +145,7 @@ pub(crate) fn trace_tee_immediate_line(
     ));
 }
 
-pub(crate) fn trace_tee_stdout_line(
+pub(crate) fn tee_narrative_line_impl(
     writer: &mut PromptTraceWriter,
     line: &str,
     display_line: Option<&str>,

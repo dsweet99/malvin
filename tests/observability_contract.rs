@@ -1,7 +1,7 @@
 //! Cross-channel observability contract tests (narrative vs audit).
 //!
-//! Mini-only coverage for now; ACP-backed runs share the same channel split via
-//! `PromptTraceWriter` (see [`malvin::observability`]).
+//! Mini coverage uses [`MiniTraceSink`]; ACP coverage uses
+//! [`malvin::acp::contract_acp_tee_tool_fixture`] (see [`malvin::observability`]).
 mod common;
 
 use std::time::Duration;
@@ -135,4 +135,29 @@ fn contract_record_assistant_audit_leaves_stdout_empty() {
     assert_stdout_lacks_substring(&log_path, "secret audit-only body");
     assert_audit_contains(&tmp.path().join("trace.jsonl"), "secret audit-only body");
     malvin::output::set_stdout_log_path(None);
+}
+
+#[tokio::test]
+async fn contract_acp_tool_tee_narrative_vocab_audit_json_stays_off_stdout() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let log_path = tmp.path().join("stdout.log");
+    let trace_path = tmp.path().join("trace.jsonl");
+    let (trace, _stdout) =
+        malvin::acp::contract_acp_tee_tool_fixture(&trace_path, &log_path).await;
+    assert_stdout_tool_vocab(&log_path, &["Run"]);
+    assert_audit_contains(&trace_path, "echo contract");
+    assert_stdout_lacks_substring(&log_path, "toolCallId");
+    assert_stdout_lacks_substring(&log_path, "sessionUpdate");
+    for field in audit_only_session_update_fields() {
+        assert_stdout_lacks_substring(&log_path, field);
+    }
+    assert!(
+        trace.contains("echo contract"),
+        "trace must record tool audit content; got:\n{trace}"
+    );
+}
+
+#[test]
+fn kiss_cov_acp_contract_fixture_symbols() {
+    let _ = malvin::acp::contract_acp_tee_tool_fixture;
 }
