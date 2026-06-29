@@ -1,22 +1,6 @@
 //! Mini loop terminal reasons and records (`mini.md` audit contract).
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MiniPhase {
-    Investigate,
-    WindDown,
-    Terminal,
-}
-
-impl MiniPhase {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Investigate => "investigate",
-            Self::WindDown => "wind_down",
-            Self::Terminal => "terminal",
-        }
-    }
-}
+pub use crate::coder_prompt_phase::MiniPhase;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiniTerminalReason {

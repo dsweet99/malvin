@@ -43,15 +43,19 @@ All malvin-started subprocesses are expected to go through **`malvin_std_command
 
 There is no `SandboxHandle` passed through the loop—policy is ambient global state plus convention.
 
+**Named counterpart:** `SandboxSpawnPolicyAspect` in `src/session_sandbox_policy/`.
+
 **Where:** `src/malvin_sandbox.rs`, `src/process_group_rss.rs`, `src/mem_limit_config.rs`, `src/agent_backend/mini/bash_adapter.rs`, `src/current_state.rs`
 
 ---
 
 ## 6. Investigate / WindDown / Terminal phase machine
 
-Inside each `run_coder_prompt`, the mini loop moves through **Investigate** (multi-turn HTTP + bash fences), **WindDown** (one grace completion after limits or premature fenceless replies), and **Terminal** (record outcome and stop). These phases are private enums in `loop_inner_phases.rs`, not part of the public API.
+Inside each `run_coder_prompt`, the mini loop moves through **Investigate** (multi-turn HTTP + bash fences), **WindDown** (one grace completion after limits or premature fenceless replies), and **Terminal** (record outcome and stop). The phase enum is named in `coder_prompt_phase/` and re-exported from `terminal.rs`; transition logic stays procedural in the inner-loop modules.
 
 The same three-phase *shape* echoes informally at outer gate loops (try → wind down → exit) without a shared abstraction.
+
+**Named counterpart:** `MiniPhase` in `src/coder_prompt_phase/` (re-exported from `terminal.rs`).
 
 **Where:** `src/agent_backend/mini/loop_inner_phases.rs`, `src/agent_backend/mini/loop_inner_classify.rs`, `src/agent_backend/mini/terminal.rs`
 

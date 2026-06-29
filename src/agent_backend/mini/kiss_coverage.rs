@@ -202,4 +202,6 @@ fn kiss_witness_loop_driver_and_client_helpers() {
 fn kiss_witness_concept_type_enums() {
     let _ = std::mem::size_of::<crate::acp_trace_impersonation::SyntheticAcpSessionUpdate>();
     let _ = std::mem::size_of::<crate::reliability_tier::ReliabilityTier>();
+    let _ = std::mem::size_of::<crate::session_sandbox_policy::SandboxSpawnPolicyAspect>();
+    let _ = std::mem::size_of::<crate::coder_prompt_phase::MiniPhase>();
 }
