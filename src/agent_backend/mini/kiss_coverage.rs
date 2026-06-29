@@ -197,3 +197,9 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = super::loop_driver::complete_with_http_retries;
     let _ = std::mem::size_of::<crate::fork_state::ForkState>();
 }
+
+#[test]
+fn kiss_witness_concept_type_enums() {
+    let _ = std::mem::size_of::<crate::acp_trace_impersonation::SyntheticAcpSessionUpdate>();
+    let _ = std::mem::size_of::<crate::reliability_tier::ReliabilityTier>();
+}

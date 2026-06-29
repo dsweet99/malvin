@@ -83,6 +83,7 @@ pub use exit::Exit;
 pub use kpop_flow::run_kpop;
 pub use run_emit::emit_run_startup_sequence;
 pub use shared_opts::SharedOpts;
+pub use loop_opts::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
 pub use delight_flow::run_delight;
 pub use explain_flow::run_explain;
 pub use revise_flow::run_revise;
