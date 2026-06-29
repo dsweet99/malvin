@@ -1,7 +1,9 @@
 //! Gate-iteration retry fork ledger (`miniRetryFork` trace events).
 
-use std::hash::{Hash, Hasher};
-use std::path::Path;
+use crate::fork_state::ForkState;
+
+#[allow(unused_imports)]
+pub use crate::fork_state::workspace_manifest_hash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiniRetryStrategy {
@@ -46,32 +48,14 @@ pub struct RetryForkLedger {
     pub strategy: MiniRetryStrategy,
 }
 
-/// Best-effort workspace manifest hash from `git status --porcelain` or empty cwd listing.
-#[must_use]
-pub fn workspace_manifest_hash(cwd: &Path) -> String {
-    let git = std::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(cwd)
-        .output();
-    if let Ok(out) = git {
-        if out.status.success() {
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            out.stdout.hash(&mut hasher);
-            return format!("git:{:x}", hasher.finish());
+impl RetryForkLedger {
+    #[must_use]
+    pub fn checkpoint(&self) -> ForkState {
+        ForkState {
+            message_checkpoint_len: self.message_checkpoint_len,
+            workspace_manifest_hash: self.workspace_manifest_hash.clone(),
         }
     }
-    let mut names: Vec<String> = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(cwd) {
-        for entry in entries.flatten() {
-            names.push(entry.file_name().to_string_lossy().into_owned());
-        }
-    }
-    names.sort();
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    for name in &names {
-        name.hash(&mut hasher);
-    }
-    format!("dir:{:x}", hasher.finish())
 }
 
 pub fn build_divergence_observation(
@@ -94,15 +78,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn workspace_manifest_hash_is_stable_for_same_dir() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let a = workspace_manifest_hash(tmp.path());
-        let b = workspace_manifest_hash(tmp.path());
-        assert_eq!(a, b);
-        assert!(!a.is_empty());
-    }
-
-    #[test]
     fn fork_outcome_and_strategy_wire_names() {
         assert_eq!(ForkOutcome::Failed.as_str(), "failed");
         assert_eq!(MiniRetryStrategy::WorkspaceSnapshot.as_str(), "workspace-snapshot");
@@ -116,6 +91,13 @@ mod tests {
             strategy: MiniRetryStrategy::WorkspaceSnapshot,
         };
         assert_eq!(ledger.attempt, 2);
+        assert_eq!(
+            ledger.checkpoint(),
+            ForkState {
+                message_checkpoint_len: 3,
+                workspace_manifest_hash: "h".into(),
+            }
+        );
     }
 
     #[test]

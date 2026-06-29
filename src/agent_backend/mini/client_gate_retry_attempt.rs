@@ -9,9 +9,9 @@ use super::client_gate_retry::{
 use super::loop_driver::{run_inner_loop, LoopDriverRun, LoopDriverSession};
 use super::retry_fork::{
     build_divergence_observation, ForkOutcome, MiniRetryStrategy, RetryForkLedger,
-    workspace_manifest_hash,
 };
 use crate::acp::AgentError;
+use crate::fork_state::ForkState;
 
 pub(super) async fn run_one_gate_attempt(
     client: &mut MiniAgentClient,
@@ -25,8 +25,7 @@ pub(super) async fn run_one_gate_attempt(
         attempt,
     } = run;
     let session = client.session.as_mut().expect("session checked above");
-    let message_checkpoint = session.messages.len();
-    let manifest_hash = workspace_manifest_hash(session.cwd.as_path());
+    let checkpoint = ForkState::capture(session.cwd.as_path(), session.messages.len());
     session.bash_commands_this_prompt.clear();
 
     let result = run_inner_loop(LoopDriverRun {
@@ -52,8 +51,7 @@ pub(super) async fn run_one_gate_attempt(
     let ledger = build_fork_ledger(ForkLedgerBuild {
         prompt_index: session.prompt_index,
         attempt,
-        message_checkpoint_len: message_checkpoint,
-        workspace_manifest_hash: manifest_hash,
+        checkpoint,
         bash_commands,
         outcome: if outcome_ok {
             ForkOutcome::Succeeded
@@ -80,11 +78,12 @@ pub(super) async fn run_one_gate_attempt(
 }
 
 pub(super) fn build_fork_ledger(input: ForkLedgerBuild) -> RetryForkLedger {
+    let (message_checkpoint_len, workspace_manifest_hash) = input.checkpoint.into();
     RetryForkLedger {
         prompt_index: input.prompt_index,
         attempt: input.attempt,
-        message_checkpoint_len: input.message_checkpoint_len,
-        workspace_manifest_hash: input.workspace_manifest_hash,
+        message_checkpoint_len,
+        workspace_manifest_hash,
         bash_commands: input.bash_commands,
         outcome: input.outcome,
         strategy: input.strategy,
@@ -97,12 +96,13 @@ fn apply_retry_strategy(
     ledger: &RetryForkLedger,
     last_error: &str,
 ) {
+    let checkpoint = ledger.checkpoint();
     match retry_strategy {
         MiniRetryStrategy::CumulativeTranscript => {
             let obs = build_divergence_observation(
                 &session.bash_commands_this_prompt,
                 last_error,
-                &ledger.workspace_manifest_hash,
+                &checkpoint.workspace_manifest_hash,
             );
             session.messages.push(ChatMessage {
                 role: ChatRole::User,
@@ -110,7 +110,9 @@ fn apply_retry_strategy(
             });
         }
         MiniRetryStrategy::WorkspaceSnapshot => {
-            session.messages.truncate(ledger.message_checkpoint_len);
+            session
+                .messages
+                .truncate(checkpoint.message_checkpoint_len);
         }
     }
 }

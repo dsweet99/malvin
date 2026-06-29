@@ -8,12 +8,12 @@ use super::trace_audit::{emit_retry_fork, emit_terminal};
 use crate::acp::{
     backoff_after_mini_gate_failure, retries_noun, AgentError, CoderPromptOptions,
 };
+use crate::fork_state::ForkState;
 
 pub(crate) struct ForkLedgerBuild {
     pub(super) prompt_index: u32,
     pub(super) attempt: u32,
-    pub(super) message_checkpoint_len: usize,
-    pub(super) workspace_manifest_hash: String,
+    pub(super) checkpoint: ForkState,
     pub(super) bash_commands: Vec<String>,
     pub(super) outcome: super::retry_fork::ForkOutcome,
     pub(super) strategy: super::retry_fork::MiniRetryStrategy,

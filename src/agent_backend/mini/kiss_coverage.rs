@@ -195,4 +195,5 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(kiss_witness_http_retry_counter_next_paths);
     let _ = stringify!(mock_step_outcome);
     let _ = super::loop_driver::complete_with_http_retries;
+    let _ = std::mem::size_of::<crate::fork_state::ForkState>();
 }
