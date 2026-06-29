@@ -1,6 +1,6 @@
 # malvin models
 
-List model ids for malvin runs. No malvin prompts and no `./.malvin/logs` run directory.
+List model ids for malvin runs. No malvin prompts and no run directory under `~/.malvin_home/logs/`.
 
 ## Summary
 

@@ -31,18 +31,18 @@ malvin kpop <KPOP_ID>                   # log lookup only
 
 Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin "Why does the cache miss?"`). Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
-Bare `malvin REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations. The hidden `kpop` subcommand accepts a single request only.
+Bare `malvin REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `~/.malvin_home/logs/<hash>/`, equivalent to separate shell invocations. The hidden `kpop` subcommand accepts a single request only.
 
 ### `<KPOP_ID>` (log lookup)
 
-Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `{cwd}/.malvin/logs/**` for `KPOP_LOG: <id>` and prints the experiment log. No agent session.
+Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Malvin searches `~/.malvin_home/logs/<hash>/` for `KPOP_LOG: <id>` and prints the experiment log. No agent session.
 
 ## Options
 
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--max-loops` | 1 | Separate kpop agent runs; stops early when a run’s log contains `## KPOP_SOLVED` |
-| `--max-hypotheses` | 10 | `## Step … — KPOP` budget **per** agent run |
+| `--max-hypotheses` | 5 (CLI default; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted) | `## Step … — KPOP` budget **per** agent run |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -60,15 +60,17 @@ Each agent run:
 |-------|------|
 | **KPOP common** | Shared rules, workspace quality-gates markdown |
 | **KPOP block** | Agent adds new `## Step` hypotheses in one turn batch; user brief at `user_request_path` on disk |
-| Experiment log | `./.malvin/logs/<run>/_kpop/exp_log_<run>.md` (second run may use `_g2` suffix, etc.) |
+| Experiment log | `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<run>.md` (second run may use `_g2` suffix, etc.) |
 
 ## KPOP_LOG line
 
 At startup malvin prints:
 
 ```text
-[malvin] KPOP_LOG: Ma3bx9 ./.malvin/logs/<run_id>/_kpop/exp_log_<run_id>.md
+[malvin] KPOP_LOG: Ma3bx9 _kpop/exp_log_<run_id>.md
 ```
+
+The printed path is work-dir-relative via `format_prompt_path` and may differ from the literal home path string (`~/.malvin_home/logs/<hash>/<run>/…`).
 
 Use `malvin kpop Ma3bx9` later to dump that log.
 

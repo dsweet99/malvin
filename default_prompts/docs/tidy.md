@@ -29,7 +29,7 @@ No positional arguments. Work directory is always `.` (cwd).
 
 Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
 
-### `--max-hypotheses <N>` (default: 10)
+### `--max-hypotheses <N>` (default: 5; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted)
 
 Hypothesis budget per KPop session inside the gate loop.
 
@@ -71,7 +71,7 @@ See `malvin --doc`.
 
 ## Artifacts
 
-- `./.malvin/logs/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
+- `~/.malvin_home/logs/<hash>/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
 - `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
 
 ## Examples

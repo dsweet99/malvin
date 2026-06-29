@@ -2,8 +2,8 @@
 
 - USER_REQUEST = current contents of `{{ user_request_path }}`
 - Append to `{{ user_request_path }}`. Preserve the original  USER_REQUEST at the top.
-  - *If there is NO more work to be planned*: Append a single exact line `## MPC_DONE` to `{{ user_request_path }}`.
-  - *If there is more work to plan*
+  - *If there is NO more work to be done, i.e. if the USER_REQUEST is already satisfied*: Append a single exact line `## MPC_DONE` to `{{ user_request_path }}`.
+  - *If there is more work to be done*:
     - Write section "Current State": describe codebase state adjacent to (affects or might be affected by) USER_REQUEST. Include structure and behaviors.
       - Scope: The changes needed to satisfy USER_REQUEST; Current State is the baseline only.
     - Write section "Q&A":

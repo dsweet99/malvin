@@ -11,7 +11,7 @@ Author a **user-delighting feature plan** via the KPop gate loop scoped by `deli
 | Loop | Full gate-kpop loop (`KPopHardConstraints::DELIGHT`) |
 | Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
 | Exit policy | Two consecutive `## KPOP_SOLVED` markers in per-iteration exp logs; workspace gates need not pass |
-| Requires | `kiss` on PATH (same preflight as `code` / `tidy`) |
+| Requires | No `kiss` or `.malvin/checks` preflight at CLI entry (document workflow, like `explain` / `revise`) |
 
 ## Intention
 

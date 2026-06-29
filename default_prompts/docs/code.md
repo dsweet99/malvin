@@ -27,7 +27,7 @@ malvin code [OPTIONS] <PLAN>...
 
 Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin code "Add widget API per plan.md"`). Plan text or a path to an existing `.md` file (no whitespace in the path; case-sensitive `.md` suffix). Copy stored as `plan.md` in the run directory. Nonexistent `.md` paths are treated as literal text.
 
-When multiple plans are given, malvin runs `malvin code` on each in sequence. Each plan gets its own run directory under `./.malvin/logs/`, equivalent to separate shell invocations.
+When multiple plans are given, malvin runs `malvin code` on each in sequence. Each plan gets its own run directory under `~/.malvin_home/logs/<hash>/`, equivalent to separate shell invocations.
 
 ## Options
 
@@ -35,7 +35,7 @@ When multiple plans are given, malvin runs `malvin code` on each in sequence. Ea
 
 Outer gate-loop budget. Malvin runs up to `max(N, 1) + 1` outer iterations (see `malvin --doc`, section “Gate-loop commands”).
 
-### `--max-hypotheses <N>` (default: 10)
+### `--max-hypotheses <N>` (default: 5; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted)
 
 Per-session hypothesis budget: maximum `## Step … — KPOP` lines the agent should add in one gate-loop iteration (`{{ want }}` in the rendered prompt).
 
@@ -73,7 +73,7 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 
 ## Artifacts
 
-- `./.malvin/logs/<run>/plan.md` — input plan
+- `~/.malvin_home/logs/<hash>/<run>/plan.md` — input plan
 - `_kpop/exp_log_*.md` — experiment log (authoritative for KPop steps)
 - `kpop.log` — session transcript
 - `quality_gates.log` — gate command output

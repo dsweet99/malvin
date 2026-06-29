@@ -55,7 +55,7 @@ See `malvin --doc`. Init uses the agent for discovery (when it runs) and the sum
 4. Require `kiss` on PATH; run `kiss init`.
 5. Install git LFS if available.
 6. If the repo has no commits: `git add .`, initial commit as malvin (`--no-verify`). Does not rename the current branch.
-7. Ensure `.malvin/checks`, `{{ advice_path }}`, `.malvin/config.toml`, and `.malvin/logs/` exist (checks seeded with language-appropriate defaults when missing).
+7. Ensure `.malvin/checks`, `{{ advice_path }}`, `.malvin/config.toml`, and the home logs bucket `~/.malvin_home/logs/<hash>/` exist (via `malvin_logs_root`; checks seeded with language-appropriate defaults when missing).
 
 ## Checks discovery (existing repos)
 

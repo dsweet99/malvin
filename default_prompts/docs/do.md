@@ -8,7 +8,7 @@ One **single-turn** agent session: no gate loop, no KPop experiment log, no revi
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Plain stdout (no markdown styling) |
-| Log | `do.log` under `./.malvin/logs/<run>/` |
+| Log | `do.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 
 ## Intention
 

@@ -17,10 +17,10 @@ malvin [OPTIONS] [<COMMAND> | REQUEST...]
 Bare invocation (no subcommand):
 
 - `malvin REQUEST` — KPop investigation (same as `malvin kpop REQUEST`)
-- `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `./.malvin/logs/`
+- `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `~/.malvin_home/logs/<hash>/`
 - Quote a single request when the text contains spaces (e.g. `malvin "Why does the cache miss?"`)
 
-Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `models`.
+Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`.
 
 ## Commands
 
@@ -33,6 +33,7 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `d
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
 | `delight` | Author a user-delighting feature plan via the KPop gate loop |
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
+| `revise` | Revise an existing document in place via the KPop gate loop |
 | `models` | List models (Cursor agent CLI by default; `models --mini` lists OpenRouter) |
 
 Hidden (backward compatible): `kpop` — prefer bare `malvin REQUEST` for investigation.
@@ -61,7 +62,7 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tenacious`
 
-By default gate-loop commands (`code`, `kpop`, `tidy`, bare `malvin REQUEST`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
+By default gate-loop commands (`code`, `kpop`, `tidy`, `delight`, `explain`, `revise`, bare `malvin REQUEST`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
 
 ### `--no-tee`
 
@@ -69,7 +70,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `inspire`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `delight`, `explain`, `revise`, `inspire`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -105,13 +106,17 @@ Environment variables (mini only):
 
 `malvin models` uses the Cursor agent CLI by default. Use the subcommand flag `malvin models --mini` to list OpenRouter models (no Cursor CLI required). Global `--mini` on other subcommands does not affect `malvin models`.
 
-### `--mini-max-bash-turns <N>` (default: 32)
+### `--mini-max-http-turns <N>` (default: 32)
 
-Maximum HTTP completion rounds inside one `run_coder_prompt` when `--mini`. Each round may execute multiple ` ```bash ` blocks before the next OpenRouter call.
+Maximum HTTP completion rounds inside one `run_coder_prompt` when `--mini`. Each round may execute multiple ` ```bash ` blocks before the next OpenRouter call. `--mini-max-bash-turns` is a deprecated hidden alias for the same flag.
+
+### `--mini-max-bash-execs <N>` (default: 128)
+
+Maximum bash fence executions across all HTTP turns in one `run_coder_prompt` when `--mini`.
 
 ### `--name <NAME>`
 
-Optional session name for `do`, `plan`, `code`, `tidy`, and bare `malvin REQUEST` (not the hidden `kpop` subcommand). When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+Optional session name for `do`, `code`, `tidy`, `delight`, and bare `malvin REQUEST` (not the hidden `kpop` subcommand). When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
@@ -129,8 +134,9 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 
 - `malvin --doc` — this overview.
 - `malvin <COMMAND> --doc` — documentation for that subcommand.
+- `malvin revise doc.md --doc` — `revise` requires a placeholder `DOC_PATH` (any existing or dummy filename) even with `--doc`.
 
-Other subcommand arguments (for example `<REQUEST>` or `init` languages) are not required when `--doc` is set.
+Other subcommand arguments (for example `<REQUEST>` or `init` languages) are not required when `--doc` is set, except `revise` as noted above.
 
 ### `-h` / `--help`
 
@@ -147,7 +153,7 @@ When no subcommand is given, these global flags apply to the kpop workflow (same
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--max-loops` | 1 | How many separate kpop agent runs (each with its own experiment log); code/tidy use config `max_loops_code` (default 3) when unset |
-| `--max-hypotheses` | 10 | `## Step … — KPOP` budget per agent run |
+| `--max-hypotheses` | 5 (CLI default; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted) | `## Step … — KPOP` budget per agent run |
 | `--tenacious` | on | Sets `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -205,7 +211,7 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 ### Sequential requests
 
-`malvin` and `malvin code` accept **multiple** positional arguments. Malvin runs each request as a separate invocation in order, waiting for each to finish before starting the next. Each run gets its own directory under `./.malvin/logs/`. This matches calling `malvin` (or `malvin code`) once per argument from the shell.
+`malvin` and `malvin code` accept **multiple** positional arguments. Malvin runs each request as a separate invocation in order, waiting for each to finish before starting the next. Each run gets its own directory under `~/.malvin_home/logs/<hash>/`. This matches calling `malvin` (or `malvin code`) once per argument from the shell.
 
 Examples:
 
@@ -220,11 +226,11 @@ malvin kpop notes/question.md
 
 ## Gate-loop commands (shared pattern)
 
-`code` and `tidy` share an outer **gate loop** implemented in `kpop_engine`:
+`code`, `tidy`, `delight`, `explain`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md` or `tidy_constraints.md`) rendered through `kpop_program.md`.
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, `delight_constraints.md`, `explain_constraints.md`, or `revise_constraints.md`) rendered through `kpop_program.md`.
 2. The agent records hypotheses in `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when **two consecutive** sessions write `## KPOP_SOLVED` and workspace quality gates pass.
+3. Malvin exits early when **two consecutive** sessions write `## KPOP_SOLVED` and workspace quality gates pass (`code` / `tidy`). Document workflows (`delight`, `explain`, `revise`) use the same loop machinery but do not require passing workspace gates for exit.
 4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 
-See `malvin code --doc` and `malvin tidy --doc` for command-specific behavior.
+See `malvin code --doc`, `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and `malvin revise --doc` for command-specific behavior.
