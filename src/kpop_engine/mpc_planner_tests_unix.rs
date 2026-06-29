@@ -64,6 +64,23 @@ macro_rules! mpc_enabled_workflow {
     }};
 }
 
+macro_rules! mpc_disabled_skip_workflow {
+    ($work:expr) => {{
+        crate::malvin_test_seed::seed_malvin_config($work, "mpc = false\n");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("plan", Some($work)).expect("artifacts");
+        let user_request = crate::artifacts::user_request_path(&artifacts);
+        std::fs::write(&user_request, "brief\n").expect("write brief");
+        let context = WorkflowRenderContext::from(HashMap::from([(
+            "user_request_path".to_string(),
+            "./user_request.md".to_string(),
+        )]));
+        let store = PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        (artifacts, context, store, user_request)
+    }};
+}
+
 #[test]
 fn run_mpc_planner_session_appends_separator_when_enabled() {
     with_isolated_home(|work| {
@@ -125,16 +142,7 @@ fn run_mpc_planner_session_reuses_existing_client() {
 fn run_mpc_planner_session_skipped_when_disabled() {
     with_isolated_home(|work| {
         crate::test_utils::block_on_test_async(async {
-            let artifacts =
-                crate::artifacts::create_kpop_run_artifacts("plan", Some(work)).expect("artifacts");
-            let user_request = crate::artifacts::user_request_path(&artifacts);
-            std::fs::write(&user_request, "brief\n").expect("write brief");
-            let context = WorkflowRenderContext::from(HashMap::from([(
-                "user_request_path".to_string(),
-                "./user_request.md".to_string(),
-            )]));
-            let store = PromptStore::default_store();
-            store.ensure_defaults().expect("defaults");
+            let (artifacts, context, store, user_request) = mpc_disabled_skip_workflow!(work);
             let (_kpop, shared, workflow) = test_kpop_args(1);
             run_mpc_planner_session(MpcPlannerParams {
                 shared: &shared,

@@ -85,11 +85,11 @@ fn mpc_planner_exp_log_path_is_under_kpop_dir() {
 #[test]
 fn mpc_enabled_reads_config() {
     with_isolated_home(|work| {
-        assert!(!mpc_enabled(work));
+        assert!(mpc_enabled(work));
         let path = malvin_config_path(work);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&path, "mpc = true\n").expect("write");
-        assert!(mpc_enabled(work));
+        std::fs::write(&path, "mpc = false\n").expect("write");
+        assert!(!mpc_enabled(work));
     });
 }
 

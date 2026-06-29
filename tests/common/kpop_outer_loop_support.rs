@@ -3,8 +3,8 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{
-    command_output_with_timeout, test_home_workspace, write_fake_kiss, write_mock_executable,
-    INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
+    activate_test_home, command_output_with_timeout, seed_malvin_config, test_home_workspace,
+    write_fake_kiss, write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
 };
 
 fn malvin_kpop_outer_cmd(
@@ -39,8 +39,13 @@ fn outer_loop_bin_path(root: &tempfile::TempDir) -> String {
 pub fn run_kpop_outer_loop(
     mock_js: &str,
     extra_args: &[&str],
+    home_config_seed: Option<&str>,
 ) -> (std::process::Output, tempfile::TempDir) {
     let (root, home, workspace) = test_home_workspace();
+    if let Some(content) = home_config_seed {
+        activate_test_home(&home);
+        seed_malvin_config(&workspace, content);
+    }
     let mock = root.path().join("mock-agent-acp-kpop-outer");
     write_mock_executable(&mock, mock_js);
     fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");

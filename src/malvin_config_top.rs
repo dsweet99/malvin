@@ -32,5 +32,5 @@ pub(crate) fn parse_mpc(text: &str) -> Result<bool, String> {
     let value: toml::Value = text
         .parse()
         .map_err(|e| format!("invalid TOML: {e}"))?;
-    Ok(read_bool(value.get("mpc")).unwrap_or(false))
+    Ok(read_bool(value.get("mpc")).unwrap_or(true))
 }

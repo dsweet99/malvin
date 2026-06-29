@@ -185,7 +185,7 @@ pub(crate) fn parse_malvin_config(text: &str) -> MalvinConfig {
     });
     let mpc = parse_mpc(text).unwrap_or_else(|msg| {
         print_log_warning(&format!("could not parse mpc: {msg}"));
-        false
+        true
     });
     MalvinConfig {
         mem_limit_gb,
