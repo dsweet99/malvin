@@ -18,6 +18,6 @@
   - Don't mark anything "optional".
   - Don't leave any decisions open.
   - Don't change code. Plan only.
-  - If both work phases are empty/omitted, i.e., there is simply no work to be done, append a single line to `{{ user_request_path }}`, `## MPC_DONE`.  Otherwise *do not* append `## MPC_DONE`.
+  - Append a single exact line `## MPC_DONE` to `{{ user_request_path }}` when **planning has converged**: your re-audit of the working tree and latest experiment log shows the current Work Phase is already satisfied, and you would not change Current State, Q&A, or Phases on another pass. Otherwise do **not** append `## MPC_DONE`. Implementer close-out (gates, `## KPOP_SOLVED`) does **not** block `## MPC_DONE` once that close-out is complete — it means you have no further plan to add.
 
 KPop: the MPC Request above
