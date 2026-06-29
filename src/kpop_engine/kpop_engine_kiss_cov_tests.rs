@@ -15,7 +15,7 @@ fn post_gate_fixture() -> (KPopEnginePrepared, SessionDotfileBackups) {
     store.ensure_defaults().expect("defaults");
     let prepared = KPopEnginePrepared {
         artifacts,
-        context: std::collections::HashMap::new(),
+        context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
         startup_emit_request: "req".into(),
         store,
@@ -63,7 +63,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
     store.ensure_defaults().expect("defaults");
     let prepared = KPopEnginePrepared {
         artifacts,
-        context: std::collections::HashMap::new(),
+        context: crate::prompt_stratification::WorkflowRenderContext::default(),
         request_text: "req".into(),
         startup_emit_request: "req".into(),
         store,

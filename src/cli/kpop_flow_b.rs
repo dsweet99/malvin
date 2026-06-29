@@ -81,8 +81,12 @@ fn merge_acp_prefers_acp_error_when_both_fail() {
 }
 
 #[cfg(test)]
-fn kpop_markdown_fixture_context() -> HashMap<String, String> {
-    [
+use crate::prompt_stratification::WorkflowRenderContext;
+
+#[cfg(test)]
+fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
+    WorkflowRenderContext::from(
+        [
         ("plan_path", "./.malvin/logs/run42/plan.md"),
         ("kpop_log_dir", "./.malvin/logs/run42/_kpop"),
         ("review_path", "./.malvin/logs/run42/review.md"),
@@ -104,7 +108,8 @@ fn kpop_markdown_fixture_context() -> HashMap<String, String> {
     ]
     .into_iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))
-    .collect()
+    .collect::<HashMap<String, String>>(),
+    )
 }
 
 #[cfg(test)]

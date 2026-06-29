@@ -7,6 +7,7 @@ use crate::agent_backend::AgentBackend;
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::config::DEFAULT_MAX_ACP_RETRIES;
+use crate::prompt_stratification::WorkflowRenderContext;
 use std::path::Path;
 
 pub(crate) enum PreparedContextMode {
@@ -20,9 +21,9 @@ pub(crate) fn prepared_context_for_mode(
     artifacts: &crate::artifacts::RunArtifacts,
     command: &str,
     context_mode: PreparedContextMode,
-) -> std::collections::HashMap<String, String> {
+) -> WorkflowRenderContext {
     match context_mode {
-        PreparedContextMode::Empty => std::collections::HashMap::new(),
+        PreparedContextMode::Empty => WorkflowRenderContext::default(),
         PreparedContextMode::PathsOnly => {
             crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(
                 artifacts,

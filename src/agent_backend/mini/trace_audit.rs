@@ -9,16 +9,16 @@ use super::context_recovery::{DROP_STRATEGY_OLDEST_WHOLE, ShrinkEvent};
 use super::retry_fork::RetryForkLedger;
 use super::terminal::MiniTerminalRecord;
 use super::trace::{emit_audit, MiniTraceSink};
-use crate::observability::AuditEventKind;
+use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate;
 
 pub(crate) fn emit_terminal(sink: &MiniTraceSink, record: &MiniTerminalRecord) {
-    emit_audit(sink, AuditEventKind::MiniTerminal, |trace| {
+    emit_audit(sink, SyntheticAcpSessionUpdate::MiniTerminal, |trace| {
         emit_mini_terminal(trace, record);
     });
 }
 
 pub(crate) fn emit_prompt_shrink(sink: &MiniTraceSink, event: &ShrinkEvent) {
-    emit_audit(sink, AuditEventKind::MiniPromptShrink, |trace| {
+    emit_audit(sink, SyntheticAcpSessionUpdate::MiniPromptShrink, |trace| {
         emit_mini_prompt_shrink(
             trace,
             super::acp_trace_shim::MiniPromptShrinkTrace {
@@ -33,13 +33,13 @@ pub(crate) fn emit_prompt_shrink(sink: &MiniTraceSink, event: &ShrinkEvent) {
 }
 
 pub(crate) fn emit_prompt_shrink_stalled(sink: &MiniTraceSink) {
-    emit_audit(sink, AuditEventKind::MiniPromptShrinkStalled, |trace| {
+    emit_audit(sink, SyntheticAcpSessionUpdate::MiniPromptShrinkStalled, |trace| {
         emit_mini_prompt_shrink_stalled(trace);
     });
 }
 
 pub(crate) fn emit_retry_fork(sink: &MiniTraceSink, ledger: &RetryForkLedger) {
-    emit_audit(sink, AuditEventKind::MiniRetryFork, |trace| {
+    emit_audit(sink, SyntheticAcpSessionUpdate::MiniRetryFork, |trace| {
         emit_mini_retry_fork(trace, ledger);
     });
 }

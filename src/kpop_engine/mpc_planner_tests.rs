@@ -4,6 +4,7 @@ use super::{
     build_mpc_planner_context, build_mpc_planner_prompt, mpc_enabled, mpc_planner_exp_log_path,
     run_mpc_planner_session, MpcPlannerParams,
 };
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
@@ -27,7 +28,7 @@ fn mpc_test_store() -> (tempfile::TempDir, PromptStore) {
 #[test]
 fn build_mpc_planner_prompt_joins_sections_in_order() {
     let (_tmp, store) = mpc_test_store();
-    let ctx = HashMap::from([
+    let ctx = WorkflowRenderContext::from(HashMap::from([
         ("plan_path".to_string(), "./plan.md".to_string()),
         (
             "user_request_path".to_string(),
@@ -35,7 +36,7 @@ fn build_mpc_planner_prompt_joins_sections_in_order() {
         ),
         ("exp_log".to_string(), "./_kpop/mpc_planner_log.md".to_string()),
         ("current_state".to_string(), "User: test".to_string()),
-    ]);
+    ]));
     let out = build_mpc_planner_prompt(&store, &ctx).expect("prompt");
     let hdr = out.find("HDR").expect("header");
     let common = out.find("COMMON").expect("common");
@@ -51,10 +52,10 @@ fn build_mpc_planner_context_sets_dedicated_exp_log() {
     with_isolated_home(|work| {
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
-        let base = HashMap::from([(
+        let base = WorkflowRenderContext::from(HashMap::from([(
             "user_request_path".to_string(),
             "./user_request.md".to_string(),
-        )]);
+        )]));
         let ctx = build_mpc_planner_context(&base, &artifacts);
         let exp_log = ctx.get("exp_log").expect("exp_log");
         assert!(exp_log.contains("mpc_planner_log.md"));
@@ -87,7 +88,7 @@ fn mpc_enabled_reads_config() {
 fn build_mpc_planner_prompt_errors_on_missing_templates() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store = PromptStore::with_root(tmp.path().join("empty"));
-    assert!(build_mpc_planner_prompt(&store, &HashMap::new()).is_err());
+    assert!(build_mpc_planner_prompt(&store, &WorkflowRenderContext::default()).is_err());
 }
 
 #[test]

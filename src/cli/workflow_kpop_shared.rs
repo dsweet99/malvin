@@ -1,15 +1,16 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::format_workspace_gate_failure;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::output::{MALVIN_WHO, print_stdout_line};
+use crate::prompt_stratification::WorkflowRenderContext;
 
 use crate::repo_checks::{RepoGateOutput, run_repo_workspace_gates};
 
 #[must_use]
 pub(crate) fn effective_max_loops(max_loops: usize) -> usize {
-    max_loops.max(1)
+    BudgetScopeLayer::effective_outer_loop_iterations(max_loops)
 }
 
 /// Prefer a gate-loop (or discovery) outcome over a summarize-session error.
@@ -34,14 +35,14 @@ pub(crate) fn kpop_engine_loop_iterations(max_loops: usize) -> usize {
 pub(crate) fn kpop_workflow_context(
     artifacts: &RunArtifacts,
     workflow: &str,
-) -> Result<HashMap<String, String>, String> {
+) -> Result<WorkflowRenderContext, String> {
     kpop_workflow_context_with_gates(artifacts, workflow, true)
 }
 
 pub(crate) fn kpop_workflow_context_without_gates(
     artifacts: &RunArtifacts,
     workflow: &str,
-) -> Result<HashMap<String, String>, String> {
+) -> Result<WorkflowRenderContext, String> {
     kpop_workflow_context_with_gates(artifacts, workflow, false)
 }
 
@@ -49,7 +50,7 @@ fn kpop_workflow_context_with_gates(
     artifacts: &RunArtifacts,
     workflow: &str,
     include_quality_gates: bool,
-) -> Result<HashMap<String, String>, String> {
+) -> Result<WorkflowRenderContext, String> {
     let mut context = crate::orchestrator::workflow_context_paths_only(artifacts, workflow);
     if include_quality_gates {
         context.insert(
@@ -86,11 +87,11 @@ pub(crate) fn clear_quality_gates_log_for_next_agent(artifacts: &RunArtifacts) -
 }
 
 pub(crate) fn gate_iteration_context(
-    base: &HashMap<String, String>,
+    base: &WorkflowRenderContext,
     artifacts: &RunArtifacts,
     exp_log_path: &Path,
     iteration: usize,
-) -> HashMap<String, String> {
+) -> WorkflowRenderContext {
     let mut ctx = base.clone();
     let exp_log = crate::format_prompt_path(exp_log_path, &artifacts.work_dir);
     ctx.insert("exp_log".to_string(), exp_log);

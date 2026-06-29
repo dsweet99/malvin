@@ -1,9 +1,8 @@
 //! Sandbox as session-scoped spawn policy (see `concepts.md` §5).
 //!
 //! All malvin-started subprocesses are expected to go through `malvin_std_command` /
-//! `malvin_tokio_command` while an active coder session holds the sandbox slot. This module
-//! names the policy aspects for documentation and typing; enforcement stays in
-//! `malvin_sandbox` and related call sites.
+//! `malvin_tokio_command` while an active coder session holds the sandbox slot. Production
+//! references [`SandboxSpawnPolicyAspect`] at enforcement sites in `malvin_sandbox`.
 
 /// One aspect of the ambient session sandbox spawn policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -12,7 +12,8 @@ use super::acp_trace_shim::{
     emit_llm_usage, emit_mini_http_exchange, trace_for_run_dir, MiniHttpExchangeRecord,
 };
 use crate::acp::AgentIoOptions;
-use crate::observability::{narrative_suppressed, AUDIT_CHANNEL, NARRATIVE_CHANNEL, AuditEventKind, ObservabilityChannel};
+use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate;
+use crate::observability::{narrative_suppressed, AUDIT_CHANNEL, NARRATIVE_CHANNEL, ObservabilityChannel};
 use crate::output::{AcpTeeDirection, AcpTeeStdoutEvent, WHO_B, WHO_M, WHO_T};
 use crate::tool_summary::{
     bash_kind_wire_name, classify_bash_command, format_classified_tool_line,
@@ -49,13 +50,13 @@ impl MiniTraceSink {
 
     /// Audit-only: outgoing prompt body (`out` direction).
     pub fn log_outgoing_prompt(&self, text: &str) {
-        emit_audit(self, AuditEventKind::OutRaw, |trace| append_out_raw(trace, text));
+        emit_audit(self, SyntheticAcpSessionUpdate::OutRaw, |trace| append_out_raw(trace, text));
     }
 
     /// Audit-only: LLM token usage (`miniUsage` extension).
     pub fn mini_llm_request(&self, usage: Option<&ResponseUsage>) {
         if let Some(u) = usage {
-            emit_audit(self, AuditEventKind::LlmUsage, |trace| emit_llm_usage(trace, u));
+            emit_audit(self, SyntheticAcpSessionUpdate::LlmUsage, |trace| emit_llm_usage(trace, u));
         }
     }
 
@@ -64,7 +65,7 @@ impl MiniTraceSink {
         if text.is_empty() {
             return;
         }
-        emit_audit(self, AuditEventKind::AgentThoughtChunk, |trace| {
+        emit_audit(self, SyntheticAcpSessionUpdate::AgentThoughtChunk, |trace| {
             emit_agent_thought_chunk(trace, text);
         });
         if !self.io.show_thoughts_on_stdout {
@@ -84,7 +85,7 @@ impl MiniTraceSink {
         comment: Option<&str>,
     ) {
         let kind = classify_bash_command(command);
-        emit_audit(self, AuditEventKind::ToolCall, |trace| {
+        emit_audit(self, SyntheticAcpSessionUpdate::ToolCall, |trace| {
             emit_bash_tool_call(trace, bash_kind_wire_name(kind), command, exit_code);
         });
         if self.plain_lines || self.io.raw_output {
@@ -117,7 +118,7 @@ impl MiniTraceSink {
 
     /// Audit-only: assistant text chunks (`agent_message_chunk`).
     pub fn record_assistant_audit(&self, text: &str) {
-        emit_audit(self, AuditEventKind::AgentMessageChunk, |trace| {
+        emit_audit(self, SyntheticAcpSessionUpdate::AgentMessageChunk, |trace| {
             for chunk in assistant_chunks(text) {
                 emit_agent_message_chunk(trace, chunk);
             }
@@ -143,7 +144,7 @@ impl MiniTraceSink {
 /// Write one audit-only event to `trace.jsonl`. No narrative emission.
 pub(crate) fn emit_audit(
     sink: &MiniTraceSink,
-    _kind: AuditEventKind,
+    _kind: SyntheticAcpSessionUpdate,
     write: impl FnOnce(&crate::acp::AcpJsonlTrace),
 ) {
     assert!(matches!(MINI_AUDIT_CHANNEL, ObservabilityChannel::Audit));
@@ -175,7 +176,7 @@ pub(crate) fn emit_narrative(sink: &MiniTraceSink, who: &str, chunk: &str) {
 }
 
 pub fn record_http_exchange(sink: &MiniTraceSink, record: MiniHttpExchangeRecord<'_>) {
-    emit_audit(sink, AuditEventKind::MiniHttpExchange, |trace| {
+    emit_audit(sink, SyntheticAcpSessionUpdate::MiniHttpExchange, |trace| {
         emit_mini_http_exchange(trace, record);
     });
 }

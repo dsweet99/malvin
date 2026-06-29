@@ -1,7 +1,8 @@
 //! Prompt stratification (see `concepts.md` §4).
 //!
 //! Agent prompts are assembled as ordered string layers joined with blank lines.
-//! Each workflow keeps layer order explicit at its recipe site; there is no prompt AST.
+//! Each workflow keeps layer order explicit at its recipe site via [`PromptStratum`] labels;
+//! there is no prompt AST.
 
 use std::collections::HashMap;
 
@@ -31,6 +32,16 @@ where
     trimmed.join("\n\n")
 }
 
+/// Like [`join_strata`], but each part carries a [`PromptStratum`] label for typing.
+#[must_use]
+pub fn join_labeled_strata<I, S>(parts: I) -> String
+where
+    I: IntoIterator<Item = (PromptStratum, S)>,
+    S: AsRef<str>,
+{
+    join_strata(parts.into_iter().map(|(_, s)| s))
+}
+
 /// Typed placeholder context for workflow prompt rendering.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WorkflowRenderContext(pub HashMap<String, String>);
@@ -53,6 +64,16 @@ impl WorkflowRenderContext {
 
     pub fn insert(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.0.insert(key.into(), value.into());
+    }
+
+    #[must_use]
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.0.get(key)
+    }
+
+    #[must_use]
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.0.contains_key(key)
     }
 }
 

@@ -7,6 +7,7 @@ use crate::do_flow::do_flow_prompt::{
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
+use crate::prompt_stratification::WorkflowRenderContext;
 
 fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
     std::process::Command::new("git")
@@ -60,7 +61,7 @@ fn combine_do_prompt_file_and_user_joins_rendered_template_and_request() {
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(HEADER_MD), "TMPL\n").expect("tmpl");
     let store = PromptStore::with_root(prompt_root);
-    let ctx = HashMap::from([("k".into(), "v".into())]);
+    let ctx = WorkflowRenderContext::from(HashMap::from([("k".into(), "v".into())]));
     let (combined, header, user) =
         combine_do_prompt_file_and_user(&store, "BODY\n", HEADER_MD, &ctx).expect("combine");
     assert_eq!(header, "TMPL");

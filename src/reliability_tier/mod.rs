@@ -1,8 +1,8 @@
 //! Tenacious resilience tier (see `concepts.md` §7).
 //!
 //! `--no-tenacious` opts into conservative gate-loop and ACP retry budgets; default CLI
-//! parsing keeps tenacious expansion on. This module names the tier for documentation and
-//! typing; `apply_tenacious` in `loop_opts` still applies budgets at call sites.
+//! parsing keeps tenacious expansion on. Production resolves tiers via
+//! [`ReliabilityTier::resolve`] in `apply_gate_loop_tenacious` / `apply_tenacious`.
 
 use crate::cli::{TENACIOUS_MAX_ACP_RETRIES, TENACIOUS_MAX_LOOPS};
 use crate::config::DEFAULT_MAX_ACP_RETRIES;

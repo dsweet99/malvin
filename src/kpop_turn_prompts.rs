@@ -3,15 +3,13 @@
 //! - **`KPop`** (`kpop_common.md`): agent-side Popper method (Hypothesize → Predict → Falsify).
 //! - **`KPopEngine` turn** (`kpop_block.md`): per-iteration budget and `{{ user_request_path }}` (from `base` context).
 
-use std::collections::HashMap;
-
-use crate::prompt_stratification::join_strata;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore, render_header};
 
 #[derive(Debug)]
 pub struct KpopTurnPrompts<'a> {
     pub store: &'a PromptStore,
-    pub base: &'a HashMap<String, String>,
+    pub base: &'a WorkflowRenderContext,
     pub prepend_rules_once: bool,
 }
 
@@ -19,25 +17,37 @@ impl KpopTurnPrompts<'_> {
     fn render_turn_with_body(
         &self,
         body_file: &str,
-        ctx: &HashMap<String, String>,
+        ctx: &WorkflowRenderContext,
         with_rules: bool,
     ) -> Result<String, String> {
+        let map = ctx.as_map();
         let common = self
             .store
-            .render_prompt_only("kpop_common.md", ctx)
+            .render_prompt_only("kpop_common.md", map)
             .map_err(|e: PromptError| e.0)?;
         let body = self
             .store
-            .render_prompt_only(body_file, ctx)
+            .render_prompt_only(body_file, map)
             .map_err(|e: PromptError| e.0)?;
         let rules = if with_rules {
-            Some(render_header(self.store, ctx).map_err(|e: PromptError| e.0)?)
+            Some(render_header(self.store, map).map_err(|e: PromptError| e.0)?)
         } else {
             None
         };
         rules.map_or_else(
-            || Ok(join_strata([&common, &body])),
-            |rules| Ok(join_strata([&rules, &common, &body])),
+            || {
+                Ok(join_labeled_strata([
+                    (PromptStratum::EmbeddedTemplate, &common),
+                    (PromptStratum::GateLoopBlock, &body),
+                ]))
+            },
+            |rules| {
+                Ok(join_labeled_strata([
+                    (PromptStratum::WorkflowHeader, &rules),
+                    (PromptStratum::EmbeddedTemplate, &common),
+                    (PromptStratum::GateLoopBlock, &body),
+                ]))
+            },
         )
     }
 
@@ -50,19 +60,24 @@ impl KpopTurnPrompts<'_> {
         let mut ctx = self.base.clone();
         ctx.insert("want".to_string(), max_hypotheses.to_string());
         ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+        let map = ctx.as_map();
         let header = self
             .store
-            .render_prompt_only("header.md", &ctx)
+            .render_prompt_only("header.md", map)
             .map_err(|e: PromptError| e.0)?;
         let common = self
             .store
-            .render_prompt_only("kpop_common.md", &ctx)
+            .render_prompt_only("kpop_common.md", map)
             .map_err(|e: PromptError| e.0)?;
         let body = self
             .store
-            .render_prompt_only("kpop_block.md", &ctx)
+            .render_prompt_only("kpop_block.md", map)
             .map_err(|e: PromptError| e.0)?;
-        Ok(join_strata([&header, &common, &body]))
+        Ok(join_labeled_strata([
+            (PromptStratum::WorkflowHeader, header),
+            (PromptStratum::EmbeddedTemplate, common),
+            (PromptStratum::GateLoopBlock, body),
+        ]))
     }
 
     /// # Errors
@@ -100,15 +115,15 @@ mod inline_render_turn_with_body {
         std::fs::write(root.join("kpop_block.md"), "block {{ user_request_path }}\n").expect("write");
         let store = crate::prompts::PromptStore::with_root(root);
         store.ensure_defaults().expect("defaults");
-        let base = HashMap::from([
+        let base = WorkflowRenderContext::from(HashMap::from([
             ("plan_path".to_string(), "p".to_string()),
             ("user_request_path".to_string(), "./req.md".to_string()),
-        ]);
-        let ctx = HashMap::from([
+        ]));
+        let ctx = WorkflowRenderContext::from(HashMap::from([
             ("want".to_string(), "1".to_string()),
             ("remaining_hypotheses".to_string(), "0".to_string()),
             ("user_request_path".to_string(), "./req.md".to_string()),
-        ]);
+        ]));
         let prompts = KpopTurnPrompts {
             store: &store,
             base: &base,

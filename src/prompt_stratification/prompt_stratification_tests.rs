@@ -1,4 +1,4 @@
-use super::{join_strata, PromptStratum, WorkflowRenderContext};
+use super::{join_labeled_strata, join_strata, PromptStratum, WorkflowRenderContext};
 
 #[test]
 fn join_strata_skips_empty_and_trims_trailing_whitespace() {
@@ -12,6 +12,17 @@ fn workflow_render_context_round_trip() {
     assert_eq!(ctx.as_map().get("plan_path").map(String::as_str), Some("/tmp/plan.md"));
     let map = ctx.into_map();
     assert_eq!(map.len(), 1);
+}
+
+#[test]
+fn join_labeled_strata_matches_join_strata_output() {
+    assert_eq!(
+        join_labeled_strata([
+            (PromptStratum::WorkflowHeader, "header"),
+            (PromptStratum::UserRequest, "body"),
+        ]),
+        join_strata(["header", "body"])
+    );
 }
 
 #[test]

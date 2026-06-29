@@ -152,3 +152,18 @@ fn insert_formatted_stores_workflow_relative_path() {
     insert_formatted(&mut ctx, "plan_path", &plan, tmp.path());
     assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
 }
+
+#[test]
+fn workflow_context_returns_plan_path_and_quality_gates() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan_path = tmp.path().join("plan.md");
+    std::fs::write(&plan_path, "plan\n").expect("write plan");
+    crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+    let artifacts =
+        crate::artifacts::create_run_artifacts(&plan_path, Some(tmp.path())).expect("artifacts");
+    let store = crate::prompts::PromptStore::default_store();
+    store.ensure_defaults().expect("defaults");
+    let ctx = super::workflow_context(&artifacts, &store, "code").expect("context");
+    assert!(ctx.contains_key("plan_path"));
+    assert!(ctx.contains_key("quality_gates"));
+}

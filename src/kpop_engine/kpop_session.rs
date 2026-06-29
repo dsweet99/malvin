@@ -6,6 +6,7 @@ use crate::acp::{
     backoff_after_agent_failure, kpop_fail_after_prompt, restore_session_dotfiles, AgentError,
     CoderPromptOptions, KpopFailAfterPrompt,
 };
+use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::cli::workflow_kpop_shared::{
     finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
 };
@@ -178,7 +179,8 @@ pub(crate) async fn run_kpop_engine_session(
     ctx: &mut KPopEngineMultiturnCtx<'_>,
 ) -> Result<crate::artifacts::SessionDotfileBackups, String> {
     let iteration_start = ctx.iteration.session_dotfile_backups.clone();
-    let max_attempts = ctx.iteration.client.max_acp_retries();
+    let max_attempts = BudgetScopeLayer::AcpSpawnRetry
+        .effective_max_attempts(ctx.iteration.client.max_acp_retries(), false);
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {

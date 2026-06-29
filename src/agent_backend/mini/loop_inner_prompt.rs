@@ -2,7 +2,7 @@
 
 use malvin_mini::{ChatMessage, ChatRole};
 
-use crate::prompt_stratification::join_strata;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum};
 
 use super::loop_types::{LoopDriverConfig, LoopDriverSession};
 
@@ -21,7 +21,11 @@ pub(crate) fn push_user_prompt(
                 session.llm_model_slug
             )
         };
-        join_strata([config.mini_constraints, model_line.as_str(), user_prompt])
+        join_labeled_strata([
+            (PromptStratum::MiniConstraints, config.mini_constraints),
+            (PromptStratum::PlaceholderContext, model_line.as_str()),
+            (PromptStratum::UserRequest, user_prompt),
+        ])
     } else {
         user_prompt.to_string()
     };

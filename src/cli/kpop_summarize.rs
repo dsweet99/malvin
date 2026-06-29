@@ -7,8 +7,7 @@ pub(crate) use kpop_summarize_inline::{
     GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
 };
 
-use crate::prompt_stratification::join_strata;
-use std::collections::HashMap;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
@@ -163,7 +162,7 @@ pub(crate) fn exp_log_paths_markdown(artifacts: &RunArtifacts) -> String {
 }
 
 pub(crate) fn insert_summarize_log_context(
-    ctx: &mut HashMap<String, String>,
+    ctx: &mut WorkflowRenderContext,
     artifacts: &RunArtifacts,
     kpop_flows_ran: usize,
 ) {
@@ -193,11 +192,14 @@ pub(crate) fn render_kpop_summarize_prompt(
 ) -> Result<String, String> {
     let mut ctx = kpop_workflow_context(artifacts, malvin_command)?;
     insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
-    let header = render_header(store, &ctx).map_err(|e: PromptError| e.0)?;
+    let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store
-        .render_prompt_only(SUMMARIZE_PROMPT, &ctx)
+        .render_prompt_only(SUMMARIZE_PROMPT, ctx.as_map())
         .map_err(|e: PromptError| e.0)?;
-    Ok(join_strata([&header, &body]))
+    Ok(join_labeled_strata([
+        (PromptStratum::WorkflowHeader, header),
+        (PromptStratum::GateLoopBlock, body),
+    ]))
 }
 
 pub(crate) async fn run_summarize_coder_prompt(

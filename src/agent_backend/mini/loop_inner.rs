@@ -8,6 +8,7 @@ use super::loop_inner_types::{CompleteTurnRequest, LoopCounters, LoopPhase};
 use super::loop_types::{LoopDriverOutcome, LoopDriverRun};
 use crate::agent_backend::mini::retry_fork::MiniRetryStrategy;
 use crate::acp::AgentError;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
 pub async fn run_inner_loop(run: LoopDriverRun<'_>) -> Result<LoopDriverOutcome, AgentError> {
     let LoopDriverRun {
@@ -92,7 +93,10 @@ async fn run_investigate_phase(
     let config = turn_req.config;
     let trace = turn_req.trace;
 
-    if counters.investigate_http_turns >= config.max_http_turns {
+    if counters.investigate_http_turns
+        >= BudgetScopeLayer::MiniHttpTurn
+            .effective_max_attempts(config.max_http_turns, turn_req.single_attempt)
+    {
         if !counters.had_bash_this_prompt {
             return Ok(InvestigatePhaseResult::Failed(finish_exhausted(
                 trace,

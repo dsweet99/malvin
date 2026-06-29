@@ -64,6 +64,28 @@ fn budget_scope_layer_all_layers_have_expected_cli_flags() {
 }
 
 #[test]
+fn effective_max_attempts_single_attempt_forces_one_at_gate_layer() {
+    assert_eq!(
+        BudgetScopeLayer::MiniGateIteration.effective_max_attempts(5, true),
+        1
+    );
+    assert_eq!(
+        BudgetScopeLayer::MiniGateIteration.effective_max_attempts(5, false),
+        5
+    );
+    assert_eq!(
+        BudgetScopeLayer::MiniHttpTurn.effective_max_attempts(32, true),
+        32
+    );
+}
+
+#[test]
+fn effective_outer_loop_iterations_is_at_least_one() {
+    assert_eq!(BudgetScopeLayer::effective_outer_loop_iterations(0), 1);
+    assert_eq!(BudgetScopeLayer::effective_outer_loop_iterations(3), 3);
+}
+
+#[test]
 fn budget_scope_layer_single_attempt_and_billing_flags() {
     for layer in BudgetScopeLayer::all() {
         let single = layer.respects_single_attempt();

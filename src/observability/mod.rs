@@ -38,20 +38,7 @@ pub enum ObservabilityChannel {
 }
 
 /// Known audit record kinds (ACP session updates and mini-only extensions).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AuditEventKind {
-    AgentMessageChunk,
-    AgentThoughtChunk,
-    ToolCall,
-    ToolCallUpdate,
-    OutRaw,
-    LlmUsage,
-    MiniTerminal,
-    MiniHttpExchange,
-    MiniPromptShrink,
-    MiniPromptShrinkStalled,
-    MiniRetryFork,
-}
+pub use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate as AuditEventKind;
 
 /// Who-tag on narrative lines (`m|`, `t|`, …). See [`crate::output`] for formatting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -140,6 +127,16 @@ mod tests {
             NarrativeWhoTag::Ops,
         ] {
             assert_eq!(tag.as_str().len(), 1);
+        }
+    }
+
+    #[test]
+    fn synthetic_acp_session_update_round_trips_audit_event_kind_alias() {
+        use crate::acp_trace_impersonation::SyntheticAcpSessionUpdate;
+        use crate::observability::AuditEventKind;
+        for variant in SyntheticAcpSessionUpdate::all() {
+            let alias: AuditEventKind = *variant;
+            assert_eq!(format!("{alias:?}"), format!("{variant:?}"));
         }
     }
 

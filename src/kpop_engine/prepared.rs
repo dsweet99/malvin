@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use crate::artifacts::{MalvinChecksBackup, RunArtifacts};
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
 pub(crate) struct KPopEnginePrepared {
     pub artifacts: RunArtifacts,
-    pub context: HashMap<String, String>,
+    pub context: WorkflowRenderContext,
     /// Retained for tests and introspection; turn prompts read `user_request_path` on disk.
     #[allow(dead_code)]
     pub request_text: String,
@@ -18,7 +18,7 @@ impl KPopEnginePrepared {
         &self.artifacts
     }
 
-    pub(crate) const fn context(&self) -> &HashMap<String, String> {
+    pub(crate) const fn context(&self) -> &WorkflowRenderContext {
         &self.context
     }
 
@@ -40,7 +40,7 @@ mod tests {
         store.ensure_defaults().expect("defaults");
         let prepared = KPopEnginePrepared {
             artifacts,
-            context: HashMap::new(),
+            context: WorkflowRenderContext::default(),
             request_text: "req".into(),
             startup_emit_request: "startup".into(),
             store,

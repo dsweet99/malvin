@@ -15,12 +15,17 @@ fn sandbox_spawn_policy_aspect_malvin_std_command_flags() {
 }
 
 #[test]
-fn sandbox_spawn_policy_aspect_variants_exist() {
-    let _ = (
-        SandboxSpawnPolicyAspect::ProcessGroupIsolation,
-        SandboxSpawnPolicyAspect::MallocArenaCap,
-        SandboxSpawnPolicyAspect::DeadBeforeNextSpawn,
-        SandboxSpawnPolicyAspect::SessionRssMonitor,
-        SandboxSpawnPolicyAspect::AcpSpawnLock,
-    );
+fn all_aspects_have_runtime_references() {
+    let sources = [
+        include_str!("../malvin_sandbox.rs"),
+        include_str!("../acp_spawn_lock.rs"),
+        include_str!("../process_group_rss/mod.rs"),
+    ];
+    for aspect in SandboxSpawnPolicyAspect::all() {
+        let needle = format!("SandboxSpawnPolicyAspect::{aspect:?}");
+        assert!(
+            sources.iter().any(|src| src.contains(&needle)),
+            "missing production reference for {aspect:?}"
+        );
+    }
 }

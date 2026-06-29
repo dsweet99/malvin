@@ -7,6 +7,7 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::acp_spawn_lock::{acquire_acp_spawn_lock, release_acp_spawn_lock};
 pub use crate::acp_spawn_lock::assert_no_peer_acp_spawn_lock;
+use crate::session_sandbox_policy::SandboxSpawnPolicyAspect;
 
 #[cfg(unix)]
 use crate::acp::sandbox_monitor_pids;
@@ -23,6 +24,11 @@ struct ActiveSandboxSession {
 }
 
 static ACTIVE_SANDBOX_SESSION: Mutex<Option<ActiveSandboxSession>> = Mutex::new(None);
+
+const MALVIN_STD_COMMAND_ASPECTS: &[SandboxSpawnPolicyAspect] = &[
+    SandboxSpawnPolicyAspect::ProcessGroupIsolation,
+    SandboxSpawnPolicyAspect::MallocArenaCap,
+];
 
 pub fn init_malvin_spawn_baseline() {
     #[cfg(unix)]
@@ -46,6 +52,7 @@ pub fn malvin_spawn_baseline() -> HashSet<u32> {
 #[cfg(unix)]
 pub fn isolate_child_process_group(cmd: &mut std::process::Command) {
     use std::os::unix::process::CommandExt;
+    let _aspect = SandboxSpawnPolicyAspect::ProcessGroupIsolation;
     cmd.process_group(0);
 }
 
@@ -63,6 +70,7 @@ pub fn isolate_tokio_child_process_group(_: &mut tokio::process::Command) {}
 
 /// Cap glibc arena count for sandbox children.
 fn apply_sandbox_resource_limits(cmd: &mut std::process::Command) {
+    let _aspect = SandboxSpawnPolicyAspect::MallocArenaCap;
     cmd.env("MALLOC_ARENA_MAX", "2");
 }
 
@@ -74,6 +82,7 @@ fn apply_sandbox_resource_limits_tokio(cmd: &mut tokio::process::Command) {
 /// Build a std [`std::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
+    let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = std::process::Command::new(program);
     isolate_child_process_group(&mut cmd);
     apply_sandbox_resource_limits(&mut cmd);
@@ -83,6 +92,7 @@ pub fn malvin_std_command(program: impl AsRef<OsStr>) -> std::process::Command {
 /// Build a tokio [`tokio::process::Command`] with sandbox process-group isolation applied.
 #[must_use]
 pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Command {
+    let _ = MALVIN_STD_COMMAND_ASPECTS;
     let mut cmd = tokio::process::Command::new(program);
     isolate_tokio_child_process_group(&mut cmd);
     apply_sandbox_resource_limits_tokio(&mut cmd);
@@ -91,6 +101,7 @@ pub fn malvin_tokio_command(program: impl AsRef<OsStr>) -> tokio::process::Comma
 
 /// Returns an error when a prior malvin sandbox session still has live processes.
 pub fn assert_dead_before_next_spawn() -> Result<(), String> {
+    let _aspect = SandboxSpawnPolicyAspect::DeadBeforeNextSpawn;
     let still_alive = {
         let prior = ACTIVE_SANDBOX_SESSION
             .lock()
@@ -114,6 +125,7 @@ pub fn note_active_sandbox_session(
     baseline: HashSet<u32>,
     work_dir: &Path,
 ) -> Result<(), String> {
+    let _aspect = SandboxSpawnPolicyAspect::AcpSpawnLock;
     let acp_lock_slot = crate::acp_spawn_lock::active_acp_lock_slot();
     acquire_acp_spawn_lock(work_dir)?;
     *ACTIVE_SANDBOX_SESSION
@@ -162,6 +174,7 @@ pub fn malvin_session_rss_bytes(
     agent_pgid: Option<u32>,
     session_baseline: &HashSet<u32>,
 ) -> Option<u64> {
+    let _aspect = SandboxSpawnPolicyAspect::SessionRssMonitor;
     let pids = sandbox_monitor_pids(agent_pgid, session_baseline);
     pids_sandbox_bytes(&pids)
 }

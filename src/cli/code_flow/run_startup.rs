@@ -10,7 +10,7 @@ pub(crate) type CodeKpopPrepared = KPopEnginePrepared;
 
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<std::collections::HashMap<String, String>, String> {
+) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
     crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "code")
 }
 
@@ -88,6 +88,7 @@ mod tests {
         );
         let user_req_fmt = prepared
             .context
+            .as_map()
             .get("user_request_path")
             .expect("user_request_path in context");
         assert_ne!(

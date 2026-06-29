@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use crate::artifacts::{
     RunArtifacts, SessionDotfileBackups, create_kpop_run_artifacts, resolve_user_md_request,
 };
 use crate::kpop_progression::KpopMultiturnState;
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
 use crate::agent_backend::{
@@ -22,7 +22,7 @@ pub(in crate) fn kpop_prompt_store(
 
 pub struct KpopPrepared {
     pub(in crate) artifacts: RunArtifacts,
-    pub(in crate) context: HashMap<String, String>,
+    pub(in crate) context: WorkflowRenderContext,
     pub(in crate) session_dotfile_backups: SessionDotfileBackups,
 }
 

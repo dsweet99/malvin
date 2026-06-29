@@ -9,6 +9,7 @@ use crate::acp::{
     backoff_after_mini_gate_failure, retries_noun, AgentError, CoderPromptOptions,
 };
 use crate::fork_state::ForkState;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
 pub(crate) struct ForkLedgerBuild {
     pub(super) prompt_index: u32,
@@ -47,11 +48,8 @@ pub(crate) async fn run_coder_prompt_with_gate_retries(
     driver_config: &LoopDriverConfig,
     opts: CoderPromptOptions<'_>,
 ) -> Result<(), AgentError> {
-    let max_attempts = if opts.single_attempt {
-        1
-    } else {
-        client.config.max_gate_retries.max(1)
-    };
+    let layer = BudgetScopeLayer::MiniGateIteration;
+    let max_attempts = layer.effective_max_attempts(client.config.max_gate_retries, opts.single_attempt);
     let mut last_error = String::new();
     let mut attempts_used = 0_u32;
     for attempt in 1..=max_attempts {

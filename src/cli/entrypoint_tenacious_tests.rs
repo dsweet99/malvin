@@ -3,6 +3,7 @@ use crate::cli::loop_opts::{
     apply_tenacious, tenacious_budget_guard, TenaciousBudgetGuard, TENACIOUS_MAX_ACP_RETRIES,
     TENACIOUS_MAX_LOOPS,
 };
+use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
 use clap::{CommandFactory, FromArgMatches};
 
 fn apply_kpop_tenacious(
@@ -10,10 +11,14 @@ fn apply_kpop_tenacious(
     shared: &mut crate::cli::SharedOpts,
     guard: TenaciousBudgetGuard,
 ) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: kpop.tenacious,
+        no_tenacious: shared.no_tenacious,
+    });
     apply_tenacious(
         &mut kpop.max_loops,
         &mut shared.max_acp_retries,
-        kpop.tenacious && !shared.no_tenacious,
+        tier,
         guard,
     );
 }

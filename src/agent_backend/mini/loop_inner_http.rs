@@ -5,6 +5,7 @@ use std::time::Instant;
 use malvin_mini::CompletionResponse;
 
 use crate::agent_backend::mini::context_recovery::shrink_one_whole_message;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::agent_backend::mini::terminal::{
     MiniPhase, MiniTerminalReason, MiniTerminalRecord,
 };
@@ -34,7 +35,9 @@ pub(crate) async fn complete_turn_with_recovery(
         match complete_turn(turn_req).await {
             Ok(r) => return Ok(r),
             Err(HttpCompletionError::ContextOverflow) => {
-                if shrink_passes_used >= req.config.max_shrink_passes {
+                let max_shrink = BudgetScopeLayer::MiniShrinkPass
+                    .effective_max_attempts(req.config.max_shrink_passes, req.single_attempt);
+                if shrink_passes_used >= max_shrink {
                     let record = MiniTerminalRecord::new(
                         MiniTerminalReason::ContextOverflow,
                         counters.http_turn_count,

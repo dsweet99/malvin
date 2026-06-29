@@ -6,6 +6,7 @@ use std::os::unix::fs::PermissionsExt;
 use super::{run_mpc_planner_session, MpcPlannerParams};
 use crate::cli::kpop_flow::kpop_flow_run_loop_tests::{install_mock_agent_env, test_kpop_args};
 use super::super::mpc_planner_exp_log_path;
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 use crate::test_utils::with_isolated_home;
 use crate::workspace_paths::malvin_config_path;
@@ -126,10 +127,10 @@ fn run_mpc_planner_session_skipped_when_disabled() {
                 crate::artifacts::create_kpop_run_artifacts("plan", Some(work)).expect("artifacts");
             let user_request = crate::artifacts::user_request_path(&artifacts);
             std::fs::write(&user_request, "brief\n").expect("write brief");
-            let context = HashMap::from([(
+            let context = WorkflowRenderContext::from(HashMap::from([(
                 "user_request_path".to_string(),
                 "./user_request.md".to_string(),
-            )]);
+            )]));
             let store = PromptStore::default_store();
             store.ensure_defaults().expect("defaults");
             let (_kpop, shared, workflow) = test_kpop_args(1);

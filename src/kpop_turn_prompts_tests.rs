@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use crate::kpop_turn_prompts::KpopTurnPrompts;
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{PromptStore, render_header};
 
-fn kpop_turn_test_context() -> HashMap<String, String> {
-    HashMap::from([
+fn kpop_turn_test_context() -> WorkflowRenderContext {
+    WorkflowRenderContext::from(HashMap::from([
         (
             "plan_path".to_string(),
             "plan/with $ and\nmulti-line path".to_string(),
@@ -20,7 +21,7 @@ fn kpop_turn_test_context() -> HashMap<String, String> {
             "current_state".to_string(),
             "User: test\nRetry: not a retry".to_string(),
         ),
-    ])
+    ]))
 }
 
 fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
@@ -44,10 +45,10 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
 }
 
 fn kpop_block_turn_context(
-    base: &HashMap<String, String>,
+    base: &WorkflowRenderContext,
     want: usize,
     remaining_after_this_turn: usize,
-) -> HashMap<String, String> {
+) -> WorkflowRenderContext {
     let mut ctx = base.clone();
     ctx.insert("want".to_string(), want.to_string());
     ctx.insert(
@@ -59,17 +60,18 @@ fn kpop_block_turn_context(
 
 fn expected_kpop_block_output(
     store: &PromptStore,
-    ctx: &HashMap<String, String>,
+    ctx: &WorkflowRenderContext,
     with_rules: bool,
 ) -> String {
+    let map = ctx.as_map();
     let common = store
-        .render_prompt_only("kpop_common.md", ctx)
+        .render_prompt_only("kpop_common.md", map)
         .expect("common");
     let body = store
-        .render_prompt_only("kpop_block.md", ctx)
+        .render_prompt_only("kpop_block.md", map)
         .expect("block");
     if with_rules {
-        let header = render_header(store, ctx).expect("header");
+        let header = render_header(store, map).expect("header");
         format!(
             "{}\n\n{}\n\n{}",
             header.trim_end(),
@@ -95,14 +97,15 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     let mut ctx = base.clone();
     ctx.insert("want".to_string(), "5".to_string());
     ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
+    let map = ctx.as_map();
     let header = store
-        .render_prompt_only("header.md", &ctx)
+        .render_prompt_only("header.md", map)
         .expect("header");
     let common = store
-        .render_prompt_only("kpop_common.md", &ctx)
+        .render_prompt_only("kpop_common.md", map)
         .expect("common");
     let body = store
-        .render_prompt_only("kpop_block.md", &ctx)
+        .render_prompt_only("kpop_block.md", map)
         .expect("block");
     let expected = format!(
         "{}\n\n{}\n\n{}",
@@ -159,7 +162,7 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
             expected_kpop_block_output(&store, &ctx, false),
             "prepend_rules_once=false should never prepend header"
         );
-        let header = render_header(&store, &ctx).expect("header");
+        let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(
             !out.contains(header.trim()),
             "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"

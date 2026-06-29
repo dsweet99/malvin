@@ -8,6 +8,7 @@ use crate::cli::kpop_summarize::{
     should_inline_outer_loop_summarize_on_kpop_loop, CodeOuterLoopSummarizeInputs,
     GateInlineSummarizeCtx, InlineSummarizeOnKpopLoopCtx,
 };
+use crate::prompt_stratification::WorkflowRenderContext;
 use super::kpop_summarize_tests::{kpop_inputs, summarize_test_workspace, write_exp_logs};
 
 #[test]
@@ -107,7 +108,7 @@ fn insert_summarize_log_context_populates_expected_keys() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
     let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let mut ctx = std::collections::HashMap::new();
+    let mut ctx = WorkflowRenderContext::default();
     insert_summarize_log_context(&mut ctx, &artifacts, 2);
     assert!(ctx.contains_key("kpop_log"));
     assert!(ctx.contains_key("stdout_log"));

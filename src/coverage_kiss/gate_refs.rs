@@ -72,6 +72,7 @@ fn agent_bundle_agent_error_auth_error_fmt() {
 #[test]
 fn kiss_cov_kpop_turn_render_turn_with_body() {
     use crate::kpop_turn_prompts::KpopTurnPrompts;
+    use crate::prompt_stratification::WorkflowRenderContext;
     use crate::prompts::PromptStore;
     use std::collections::HashMap;
 
@@ -87,13 +88,13 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     }
     let store = PromptStore::with_root(root);
     store.ensure_defaults().expect("defaults");
-    let base = HashMap::from([
+    let base = WorkflowRenderContext::from(HashMap::from([
         ("plan_path".to_string(), "p".to_string()),
         (
             "user_request_path".to_string(),
             "./.malvin/logs/run/user_request.md".to_string(),
         ),
-    ]);
+    ]));
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,

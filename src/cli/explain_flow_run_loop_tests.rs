@@ -56,7 +56,7 @@ fn explain_gate_outcome_prepared(tmp: &tempfile::TempDir) -> ExplainKpopPrepared
     ExplainKpopPrepared {
         inner: crate::kpop_engine::KPopEnginePrepared {
             artifacts,
-            context: std::collections::HashMap::new(),
+            context: crate::prompt_stratification::WorkflowRenderContext::default(),
             request_text: "req".into(),
             startup_emit_request: "req".into(),
             store,

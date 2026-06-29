@@ -29,7 +29,7 @@ pub fn code_kpop_request(
     render_repo_program(
         store,
         "code_constraints.md",
-        &context,
+        context.as_map(),
         artifacts,
     )
 }

@@ -8,6 +8,7 @@ use crate::artifacts::{
     SessionDotfileBackups, create_run_artifacts_from_text,
 };
 use crate::orchestrator::workflow_context;
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
 #[must_use]
@@ -44,7 +45,7 @@ pub fn empty_dotfile_backups() -> SessionDotfileBackups {
 pub fn workflow_ctx_for_smoke(
     tmp: &tempfile::TempDir,
     run_artifact_body: &str,
-) -> (RunArtifacts, PromptStore, HashMap<String, String>) {
+) -> (RunArtifacts, PromptStore, WorkflowRenderContext) {
     if crate::git_worktree_toplevel(tmp.path()).is_none() {
         std::process::Command::new("git")
             .args(["init"])

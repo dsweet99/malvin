@@ -8,6 +8,7 @@ use super::loop_http::{
 use super::loop_mock::LlmCompletionOutcome;
 use crate::agent_backend::mini::acp_trace_shim::MiniHttpExchangeRecord;
 use crate::agent_backend::mini::trace::{record_http_exchange, MiniTraceSink};
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
 #[derive(Copy, Clone)]
 pub(crate) struct HttpRetryLimits {
@@ -34,7 +35,9 @@ impl HttpRetryCounters {
             return HttpRetryStep::Stop(HttpCompletionError::ContextOverflow);
         }
         self.last_error = err.to_string();
-        if err.is_billing_failure() {
+        if err.is_billing_failure()
+            && BudgetScopeLayer::MiniTransportRetry.billing_fails_immediately()
+        {
             return HttpRetryStep::Stop(HttpCompletionError::Exhausted(exhaustion_message(
                 1,
                 limits.transport,
@@ -55,11 +58,8 @@ impl HttpRetryCounters {
 
 fn retry_limits(max_transport_retries: u32, single_attempt: bool) -> HttpRetryLimits {
     HttpRetryLimits {
-        transport: if single_attempt {
-            1
-        } else {
-            max_transport_retries.max(1)
-        },
+        transport: BudgetScopeLayer::MiniTransportRetry
+            .effective_max_attempts(max_transport_retries, single_attempt),
     }
 }
 

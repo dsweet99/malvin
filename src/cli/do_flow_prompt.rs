@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use crate::artifacts::RunArtifacts;
-use crate::prompt_stratification::join_strata;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptError, PromptStore, render_header};
 
 pub(crate) struct DoCoderRun {
@@ -25,14 +23,18 @@ pub fn combine_do_prompt_file_and_user(
     store: &PromptStore,
     text: &str,
     template_file: &str,
-    context: &HashMap<String, String>,
+    context: &WorkflowRenderContext,
 ) -> Result<(String, String, String), String> {
+    let map = context.as_map();
     let header_body = store
-        .render_prompt_only(template_file, context)
+        .render_prompt_only(template_file, map)
         .map_err(|e: PromptError| e.0)?;
     let header = header_body.trim_end().to_string();
     let user = text.trim_end().to_string();
-    let combined = join_strata([&header, &user]);
+    let combined = join_labeled_strata([
+        (PromptStratum::WorkflowHeader, &header),
+        (PromptStratum::UserRequest, &user),
+    ]);
     Ok((combined, header, user))
 }
 
@@ -43,9 +45,12 @@ pub fn combine_do_acp_prompt_header_and_user(
 ) -> Result<(String, String, String), String> {
     use crate::orchestrator::workflow_context;
     let context = workflow_context(artifacts, store, "do").map_err(|e: PromptError| e.0)?;
-    let header = render_header(store, &context).map_err(|e: PromptError| e.0)?;
+    let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
-    let combined = join_strata([&header, &user]);
+    let combined = join_labeled_strata([
+        (PromptStratum::WorkflowHeader, &header),
+        (PromptStratum::UserRequest, &user),
+    ]);
     Ok((combined, header, user))
 }
 
@@ -67,8 +72,15 @@ pub(crate) fn build_do_coder_run_with_store(
     let (_, coding_header, _) =
         combine_do_acp_prompt_header_and_user(store, artifacts, "")?;
     let (_, do_header, user) = combine_do_raw_header_and_user(store, artifacts, text)?;
-    let combined = join_strata([&coding_header, &do_header, &user]);
-    let trace_header = join_strata([&coding_header, &do_header]);
+    let combined = join_labeled_strata([
+        (PromptStratum::WorkflowHeader, &coding_header),
+        (PromptStratum::WorkflowHeader, &do_header),
+        (PromptStratum::UserRequest, &user),
+    ]);
+    let trace_header = join_labeled_strata([
+        (PromptStratum::WorkflowHeader, &coding_header),
+        (PromptStratum::WorkflowHeader, &do_header),
+    ]);
     Ok(DoCoderRun {
         combined,
         header_user_for_trace: (trace_header, user),

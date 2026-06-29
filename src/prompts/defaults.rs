@@ -62,7 +62,7 @@ mod advice_path_embed_tests {
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
         let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
-        let header = render_header(&store, &ctx).expect("header");
+        let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
             header.contains(".malvin_home/logs"),

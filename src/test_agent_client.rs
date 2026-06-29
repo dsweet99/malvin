@@ -50,7 +50,7 @@ pub struct TidyTestSession {
     pub client: crate::acp::AgentClient,
     pub artifacts: crate::artifacts::RunArtifacts,
     pub store: crate::prompts::PromptStore,
-    pub context: std::collections::HashMap<String, String>,
+    pub context: crate::prompt_stratification::WorkflowRenderContext,
     pub backups: crate::artifacts::SessionDotfileBackups,
 }
 

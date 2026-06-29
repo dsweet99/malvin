@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
-
+use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::{PromptError, PromptStore};
 
 pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
@@ -95,12 +95,12 @@ fn insert_current_state(
 pub fn workflow_context_paths_only(
     artifacts: &RunArtifacts,
     malvin_command: &str,
-) -> HashMap<String, String> {
+) -> WorkflowRenderContext {
     let mut context = HashMap::new();
     insert_artifact_paths(&mut context, artifacts);
     insert_current_state(&mut context, artifacts, &artifacts.work_dir);
     context.insert("malvin_command".to_string(), malvin_command.to_string());
-    context
+    WorkflowRenderContext::new(context)
 }
 
 /// Builds the full workflow render context (paths, quality gates, `kpop` slot).
@@ -112,14 +112,14 @@ pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,
     malvin_command: &str,
-) -> Result<HashMap<String, String>, PromptError> {
+) -> Result<WorkflowRenderContext, PromptError> {
     let mut context = workflow_context_paths_only(artifacts, malvin_command);
     context.insert(
         "quality_gates".to_string(),
         crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)
             .map_err(PromptError)?,
     );
-    let kpop_content = prompts.render_prompt_only("kpop_common.md", &context)?;
+    let kpop_content = prompts.render_prompt_only("kpop_common.md", context.as_map())?;
     context.insert("kpop".to_string(), kpop_content);
     Ok(context)
 }

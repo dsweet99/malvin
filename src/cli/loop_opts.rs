@@ -2,6 +2,8 @@
 
 use clap::ArgMatches;
 
+use crate::reliability_tier::{ReliabilityTier, ReliabilityTierFlags};
+
 use super::config_defaults::global_flag_from_command_line;
 use super::config_loop::subcommand_flag_from_command_line;
 
@@ -34,10 +36,14 @@ pub struct GateLoopTenaciousApply<'a> {
 }
 
 pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
+    let tier = ReliabilityTier::resolve(ReliabilityTierFlags {
+        tenacious: input.tenacious,
+        no_tenacious: input.no_tenacious,
+    });
     apply_tenacious(
         input.max_loops,
         input.max_acp_retries,
-        input.tenacious && !input.no_tenacious,
+        tier,
         tenacious_budget_guard(input.matches, input.subcommand),
     );
 }
@@ -47,10 +53,10 @@ pub fn apply_gate_loop_tenacious(input: GateLoopTenaciousApply<'_>) {
 pub fn apply_tenacious(
     max_loops: &mut usize,
     max_acp_retries: &mut u32,
-    tenacious: bool,
+    tier: ReliabilityTier,
     guard: TenaciousBudgetGuard,
 ) {
-    if tenacious {
+    if tier == ReliabilityTier::Tenacious {
         if !guard.max_loops_explicit {
             *max_loops = TENACIOUS_MAX_LOOPS;
         }
@@ -81,7 +87,7 @@ mod tests {
         apply_tenacious(
             &mut loops,
             &mut retries,
-            true,
+            ReliabilityTier::Tenacious,
             TenaciousBudgetGuard {
                 max_loops_explicit: false,
                 max_acp_retries_explicit: false,
@@ -98,7 +104,7 @@ mod tests {
         apply_tenacious(
             &mut loops,
             &mut retries,
-            true,
+            ReliabilityTier::Tenacious,
             TenaciousBudgetGuard {
                 max_loops_explicit: true,
                 max_acp_retries_explicit: false,
@@ -125,6 +131,23 @@ mod tests {
         });
         assert_eq!(loops, TENACIOUS_MAX_LOOPS);
         assert_eq!(retries, TENACIOUS_MAX_ACP_RETRIES);
+    }
+
+    #[test]
+    fn apply_tenacious_conservative_leaves_budgets() {
+        let mut loops = 3usize;
+        let mut retries = 5u32;
+        apply_tenacious(
+            &mut loops,
+            &mut retries,
+            ReliabilityTier::Conservative,
+            TenaciousBudgetGuard {
+                max_loops_explicit: false,
+                max_acp_retries_explicit: false,
+            },
+        );
+        assert_eq!(loops, 3);
+        assert_eq!(retries, 5);
     }
 
     #[test]

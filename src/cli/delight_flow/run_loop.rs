@@ -171,7 +171,7 @@ mod tests {
         let prepared = DelightKpopPrepared {
             inner: crate::kpop_engine::KPopEnginePrepared {
                 artifacts,
-                context: std::collections::HashMap::new(),
+                context: crate::prompt_stratification::WorkflowRenderContext::default(),
                 request_text: "req".into(),
                 startup_emit_request: "req".into(),
                 store,

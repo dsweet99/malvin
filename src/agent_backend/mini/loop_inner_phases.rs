@@ -10,6 +10,7 @@ use super::loop_inner_http::complete_turn_with_recovery;
 use super::loop_inner_types::{CompleteTurnRequest, LoopCounters, TurnAction};
 use super::loop_types::LoopDriverOutcome;
 use crate::acp::AgentError;
+use crate::nested_budget_scopes::BudgetScopeLayer;
 
 pub(crate) enum InvestigateStep {
     Continue,
@@ -86,7 +87,9 @@ fn investigate_bash_turn(
     }
     counters.had_bash_this_prompt = true;
     let fence_count = u32::try_from(input.fences.len()).unwrap_or(u32::MAX);
-    if counters.bash_exec_count + fence_count > req.config.max_bash_execs {
+    if counters.bash_exec_count + fence_count
+        > BudgetScopeLayer::MiniBashExec.effective_max_attempts(req.config.max_bash_execs, req.single_attempt)
+    {
         let err = finish_exhausted(
             req.trace,
             req.config.max_http_turns,
@@ -117,7 +120,9 @@ fn investigate_bash_turn(
             counters,
         },
     )?;
-    if counters.investigate_http_turns >= req.config.max_http_turns {
+    if counters.investigate_http_turns
+        >= BudgetScopeLayer::MiniHttpTurn.effective_max_attempts(req.config.max_http_turns, req.single_attempt)
+    {
         Ok(InvestigateStep::SwitchToWindDown)
     } else {
         Ok(InvestigateStep::Continue)

@@ -1,12 +1,11 @@
 //! Optional MPC planning agent session before the `KPop` gate loop.
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::prompt_stratification::join_strata;
+use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
@@ -22,9 +21,9 @@ pub(crate) fn mpc_planner_exp_log_path(artifacts: &RunArtifacts) -> PathBuf {
 }
 
 pub(crate) fn build_mpc_planner_context(
-    base: &HashMap<String, String>,
+    base: &WorkflowRenderContext,
     artifacts: &RunArtifacts,
-) -> HashMap<String, String> {
+) -> WorkflowRenderContext {
     let mut ctx = base.clone();
     let exp_log_path = mpc_planner_exp_log_path(artifacts);
     let exp_log = crate::format_prompt_path(&exp_log_path, &artifacts.work_dir);
@@ -47,18 +46,23 @@ pub(crate) fn build_mpc_planner_context(
 /// Returns `Err` when a prompt template cannot be rendered.
 pub(crate) fn build_mpc_planner_prompt(
     store: &PromptStore,
-    context: &HashMap<String, String>,
+    context: &WorkflowRenderContext,
 ) -> Result<String, String> {
+    let map = context.as_map();
     let header = store
-        .render_prompt_only("header.md", context)
+        .render_prompt_only("header.md", map)
         .map_err(|e: PromptError| e.0)?;
     let common = store
-        .render_prompt_only("kpop_common.md", context)
+        .render_prompt_only("kpop_common.md", map)
         .map_err(|e: PromptError| e.0)?;
     let body = store
-        .render_prompt_only("mpc_planner.md", context)
+        .render_prompt_only("mpc_planner.md", map)
         .map_err(|e: PromptError| e.0)?;
-    Ok(join_strata([&header, &common, &body]))
+    Ok(join_labeled_strata([
+        (PromptStratum::WorkflowHeader, header),
+        (PromptStratum::EmbeddedTemplate, common),
+        (PromptStratum::GateLoopBlock, body),
+    ]))
 }
 
 pub(crate) struct MpcPlannerParams<'a> {
@@ -66,7 +70,7 @@ pub(crate) struct MpcPlannerParams<'a> {
     pub workflow: WorkflowCliOptions,
     pub store: &'a PromptStore,
     pub artifacts: &'a RunArtifacts,
-    pub context: &'a HashMap<String, String>,
+    pub context: &'a WorkflowRenderContext,
     pub command: &'a str,
     pub client: Option<&'a mut AgentBackend>,
 }
