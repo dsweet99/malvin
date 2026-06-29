@@ -74,7 +74,7 @@ On success, malvin prints `DONE` to stdout.
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation |
-| `malvin delight` | Author a feature plan |
+| `malvin delight` | Author a feature pitch |
 | `malvin revise` | Prose clarity pass on an existing document (runs automatically after `explain`; also available standalone) |
 | `malvin code` | Implement a plan via the gate loop |
 

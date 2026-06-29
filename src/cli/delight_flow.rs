@@ -16,10 +16,10 @@ pub(crate) fn effective_delight_max_loops(max_loops: usize) -> usize {
 
 #[derive(Args, Debug, Clone)]
 pub struct DelightArgs {
-    /// Optional guidance text or `.md` path to steer the delight plan.
+    /// Optional guidance text or `.md` path to steer the delight pitch.
     pub guidance: Option<String>,
-    /// Workspace path for the generated plan (default `plan.md` auto-allocates siblings when occupied).
-    #[arg(long, default_value = "plan.md")]
+    /// Workspace path for the generated pitch (default `pitch.md` auto-allocates siblings when occupied).
+    #[arg(long, default_value = "pitch.md")]
     pub out_path: String,
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
@@ -39,10 +39,10 @@ mod tests {
     use clap::{CommandFactory, FromArgMatches, Parser};
 
     #[test]
-    fn delight_args_default_out_path_is_plan_md() {
+    fn delight_args_default_out_path_is_pitch_md() {
         let cli = Cli::try_parse_from(["malvin", "delight"]).expect("parse");
         match cli.command {
-            Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
+            Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
             other => panic!("expected Delight, got {other:?}"),
         }
     }

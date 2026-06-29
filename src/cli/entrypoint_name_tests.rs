@@ -95,7 +95,7 @@ fn delight_command_accepts_session_name() {
     assert!(command_accepts_session_name(
         &Commands::Delight(DelightArgs {
             guidance: None,
-            out_path: "plan.md".to_string(),
+            out_path: "pitch.md".to_string(),
             max_loops: 1,
             max_hypotheses: 5,
             tenacious: false,

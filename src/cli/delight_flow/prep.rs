@@ -13,7 +13,7 @@ use crate::cli::default_output_path::{
 use crate::kpop_program::render_creative_program;
 
 const DELIGHT_COMMAND_MARKER: &str = "Command: malvin delight";
-const MAX_RECENT_DELIGHT_PLANS: usize = 5;
+const MAX_RECENT_DELIGHT_PITCHES: usize = 5;
 
 pub(crate) fn prepare_delight_kpop_prompt_store(
     workflow: WorkflowCliOptions,
@@ -31,7 +31,7 @@ pub(crate) fn prepare_delight_kpop_prompt_store(
 pub(crate) fn parse_delight_out_path_from_command_line(command_line: &str) -> String {
     let args: Vec<&str> = command_line.split_whitespace().collect();
     let Some(idx) = args.iter().position(|&a| a == "delight") else {
-        return "plan.md".to_string();
+        return "pitch.md".to_string();
     };
     let tail = &args[idx + 1..];
     let mut i = 0;
@@ -49,7 +49,7 @@ pub(crate) fn parse_delight_out_path_from_command_line(command_line: &str) -> St
         }
         i += 1;
     }
-    "plan.md".to_string()
+    "pitch.md".to_string()
 }
 
 fn delight_out_rel_from_command_log(text: &str) -> Option<String> {
@@ -62,11 +62,11 @@ fn delight_out_rel_from_command_log(text: &str) -> Option<String> {
                 line.contains(DELIGHT_COMMAND_MARKER)
                     .then(|| parse_delight_out_path_from_command_line(line))
             })
-            .unwrap_or_else(|| "plan.md".to_string()),
+            .unwrap_or_else(|| "pitch.md".to_string()),
     )
 }
 
-fn delight_plan_candidate_from_run(
+fn delight_pitch_candidate_from_run(
     run_dir: &Path,
     work_dir: &Path,
     resolved_out_path: &Path,
@@ -80,7 +80,7 @@ fn delight_plan_candidate_from_run(
     Some(candidate)
 }
 
-pub(crate) fn collect_recent_delight_plan_paths(
+pub(crate) fn collect_recent_delight_pitch_paths(
     work_dir: &Path,
     resolved_out_path: &Path,
 ) -> Vec<PathBuf> {
@@ -92,11 +92,11 @@ pub(crate) fn collect_recent_delight_plan_paths(
     run_dirs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let mut collected = Vec::new();
     for run_dir in run_dirs {
-        if collected.len() >= MAX_RECENT_DELIGHT_PLANS {
+        if collected.len() >= MAX_RECENT_DELIGHT_PITCHES {
             break;
         }
         if let Some(candidate) =
-            delight_plan_candidate_from_run(&run_dir, work_dir, resolved_out_path)
+            delight_pitch_candidate_from_run(&run_dir, work_dir, resolved_out_path)
         {
             if !collected.iter().any(|existing| existing == &candidate) {
                 collected.push(candidate);
@@ -106,7 +106,7 @@ pub(crate) fn collect_recent_delight_plan_paths(
     collected
 }
 
-fn format_recent_delight_plans(work_dir: &Path, paths: &[PathBuf]) -> String {
+fn format_recent_delight_pitches(work_dir: &Path, paths: &[PathBuf]) -> String {
     if paths.is_empty() {
         return String::new();
     }
@@ -133,7 +133,7 @@ pub(crate) fn format_delight_guidance_block(guidance: Option<&str>) -> String {
     let Some(g) = guidance.map(str::trim).filter(|s| !s.is_empty()) else {
         return String::new();
     };
-    format!("- Follow this user guidance for the plan:\n\n{g}\n")
+    format!("- Follow this user guidance for the pitch:\n\n{g}\n")
 }
 
 pub(crate) fn delight_kpop_request(
@@ -143,11 +143,11 @@ pub(crate) fn delight_kpop_request(
     guidance: Option<&str>,
 ) -> Result<String, String> {
     let workspace_root = artifacts.work_dir.as_path();
-    let recent_paths = collect_recent_delight_plan_paths(workspace_root, resolved_out_path);
-    let recent_delight_plans = format_recent_delight_plans(workspace_root, &recent_paths);
+    let recent_paths = collect_recent_delight_pitch_paths(workspace_root, resolved_out_path);
+    let recent_delight_pitches = format_recent_delight_pitches(workspace_root, &recent_paths);
     let mut ctx = HashMap::new();
-    insert_formatted(&mut ctx, "out_plan_path", resolved_out_path, workspace_root);
-    ctx.insert("recent_delight_plans".to_string(), recent_delight_plans);
+    insert_formatted(&mut ctx, "out_pitch_path", resolved_out_path, workspace_root);
+    ctx.insert("recent_delight_pitchs".to_string(), recent_delight_pitches);
     ctx.insert(
         "delight_guidance".to_string(),
         format_delight_guidance_block(guidance),
@@ -159,7 +159,7 @@ pub(crate) fn delight_preflight(out_path: &str) -> Result<(PathBuf, PathBuf), St
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let resolved_out_path = if out_path == DELIGHT_DEFAULT_OUT_PATH {
         let default = cwd.join(DELIGHT_DEFAULT_OUT_PATH);
-        allocate_default_sibling_file(&default, "plan", ".md")?
+        allocate_default_sibling_file(&default, "pitch", ".md")?
     } else {
         let resolved = cwd.join(out_path);
         if resolved.exists() {
@@ -187,8 +187,8 @@ mod kiss_cov_auto {
     #[test]
     fn kiss_cov_delight_prep_privates() {
         let _ = delight_out_rel_from_command_log;
-        let _ = delight_plan_candidate_from_run;
-        let _ = format_recent_delight_plans;
+        let _ = delight_pitch_candidate_from_run;
+        let _ = format_recent_delight_pitches;
     }
 }
 
@@ -201,5 +201,5 @@ mod delight_flow_prep_tests;
 mod delight_flow_prep_preflight_tests;
 
 #[cfg(test)]
-#[path = "../delight_flow_prep_recent_plans_tests.rs"]
-mod delight_flow_prep_recent_plans_tests;
+#[path = "../delight_flow_prep_recent_pitches_tests.rs"]
+mod delight_flow_prep_recent_pitches_tests;

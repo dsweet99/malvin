@@ -31,7 +31,7 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `d
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
-| `delight` | Author a user-delighting feature plan via the KPop gate loop |
+| `delight` | Author a user-delighting feature pitch via the KPop gate loop |
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
 | `revise` | Revise an existing document in place via the KPop gate loop |
 | `models` | List models (Cursor agent CLI by default; `models --mini` lists OpenRouter) |

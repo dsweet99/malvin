@@ -81,7 +81,7 @@ fn delight_doc_parses_without_out_path() {
     let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "plan.md"),
+        Some(Commands::Delight(d)) => assert_eq!(d.out_path, "pitch.md"),
         _ => panic!("expected Delight"),
     }
 }
@@ -117,7 +117,7 @@ fn print_doc_explain_writes_subcommand_md() {
 fn print_doc_delight_writes_subcommand_md() {
     let cmd = Commands::Delight(DelightArgs {
         guidance: None,
-        out_path: "plan.md".to_string(),
+        out_path: "pitch.md".to_string(),
         max_loops: 3,
         max_hypotheses: 5,
         tenacious: true,

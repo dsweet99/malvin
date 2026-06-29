@@ -7,9 +7,9 @@ fn delight_proceeds_when_out_path_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let (resolved, work_dir) = delight_preflight("plan.md").expect("ok");
+    let (resolved, work_dir) = delight_preflight("pitch.md").expect("ok");
     std::env::set_current_dir(old).expect("restore");
-    assert_eq!(resolved.file_name().unwrap(), "plan.md");
+    assert_eq!(resolved.file_name().unwrap(), "pitch.md");
     assert_eq!(work_dir, PathBuf::from("."));
 }
 
@@ -28,33 +28,33 @@ fn delight_work_dir_is_dot_for_root_filename() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let (_, work_dir) = delight_preflight("plan.md").expect("ok");
+    let (_, work_dir) = delight_preflight("pitch.md").expect("ok");
     std::env::set_current_dir(old).expect("restore");
     assert_eq!(work_dir, PathBuf::from("."));
 }
 
 #[test]
-fn delight_allocates_plan_1_when_default_plan_md_exists() {
+fn delight_allocates_pitch_1_when_default_pitch_md_exists() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "existing\n").expect("write");
+    std::fs::write(tmp.path().join("pitch.md"), "existing\n").expect("write");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let (resolved, work_dir) = delight_preflight("plan.md").expect("alloc");
+    let (resolved, work_dir) = delight_preflight("pitch.md").expect("alloc");
     std::env::set_current_dir(old).expect("restore");
-    assert_eq!(resolved.file_name().unwrap(), "plan_1.md");
+    assert_eq!(resolved.file_name().unwrap(), "pitch_1.md");
     assert_eq!(work_dir, PathBuf::from("."));
 }
 
 #[test]
-fn delight_allocates_plan_2_when_plan_md_and_plan_1_exist() {
+fn delight_allocates_pitch_2_when_pitch_md_and_pitch_1_exist() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "a\n").expect("write");
-    std::fs::write(tmp.path().join("plan_1.md"), "b\n").expect("write");
+    std::fs::write(tmp.path().join("pitch.md"), "a\n").expect("write");
+    std::fs::write(tmp.path().join("pitch_1.md"), "b\n").expect("write");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
-    let (resolved, _) = delight_preflight("plan.md").expect("alloc");
+    let (resolved, _) = delight_preflight("pitch.md").expect("alloc");
     std::env::set_current_dir(old).expect("restore");
-    assert_eq!(resolved.file_name().unwrap(), "plan_2.md");
+    assert_eq!(resolved.file_name().unwrap(), "pitch_2.md");
 }
 
 #[test]

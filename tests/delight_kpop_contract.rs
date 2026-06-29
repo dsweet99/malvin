@@ -37,11 +37,11 @@ fn delight_runs_kpop_when_gates_already_pass() {
 
 #[cfg(unix)]
 #[test]
-fn delight_allocates_sibling_when_default_plan_preexists() {
+fn delight_allocates_sibling_when_default_pitch_preexists() {
     let (root, home, workspace) = test_home_workspace();
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
-    std::fs::write(workspace.join("plan.md"), "existing\n").expect("seed plan");
+    std::fs::write(workspace.join("pitch.md"), "existing\n").expect("seed pitch");
     let path = bin_path_with_fake_kiss(&root);
     let mock = root.path().join("mock-delight-sibling");
     write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
@@ -58,11 +58,11 @@ fn delight_allocates_sibling_when_default_plan_preexists() {
         "delight must run kpop after sibling allocation: status={:?} combined={combined:?}",
         out.status,
     );
-    let stale = std::fs::read_to_string(workspace.join("plan.md")).expect("read stale plan");
-    assert_eq!(stale, "existing\n", "original plan.md must be untouched");
+    let stale = std::fs::read_to_string(workspace.join("pitch.md")).expect("read stale pitch");
+    assert_eq!(stale, "existing\n", "original pitch.md must be untouched");
     assert!(
-        workspace.join("plan_1.md").exists(),
-        "preflight must allocate plan_1.md before kpop starts"
+        workspace.join("pitch_1.md").exists(),
+        "preflight must allocate pitch_1.md before kpop starts"
     );
 }
 
@@ -138,8 +138,8 @@ fn delight_writes_custom_out_path() {
         out.status,
     );
     assert!(
-        !workspace.join("plan.md").exists(),
-        "default plan.md must not be created when out-path is custom"
+        !workspace.join("pitch.md").exists(),
+        "default pitch.md must not be created when out-path is custom"
     );
 }
 

@@ -62,7 +62,7 @@ pub enum Commands {
     Kpop(KpopArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
-    /// Author a user-delighting feature plan
+    /// Author a user-delighting feature pitch
     Delight(DelightArgs),
     /// Explain code or concepts via LaTeX PDF
     Explain(ExplainArgs),

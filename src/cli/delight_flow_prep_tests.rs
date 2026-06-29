@@ -3,8 +3,8 @@ use crate::prompts::PromptStore;
 
 use super::*;
 
-fn seed_prior_delight_plan(tmp: &std::path::Path, out_rel: &str) {
-    std::fs::write(tmp.join(out_rel), "old plan\n").expect("write old");
+fn seed_prior_delight_pitch(tmp: &std::path::Path, out_rel: &str) {
+    std::fs::write(tmp.join(out_rel), "old pitch\n").expect("write old");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp);
     let run_dir = logs_root.join("20260101_120000_abc12345");
     std::fs::create_dir_all(&run_dir).expect("mkdir run");
@@ -48,7 +48,7 @@ fn prepare_delight_kpop_prompt_store_loads_program_and_constraints() {
 #[test]
 fn delight_kpop_request_has_no_unresolved_braces() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
+    let out = tmp.path().join("pitch.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         !text.contains("{{"),
@@ -57,20 +57,20 @@ fn delight_kpop_request_has_no_unresolved_braces() {
 }
 
 #[test]
-fn delight_kpop_request_includes_out_plan_path() {
+fn delight_kpop_request_includes_out_pitch_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("plans/delight.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         text.contains("plans/delight.md") || text.contains("./plans/delight.md"),
-        "expected out_plan_path in request: {text:?}"
+        "expected out_pitch_path in request: {text:?}"
     );
 }
 
 #[test]
 fn delight_kpop_request_includes_kpop_program_wrapper() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
+    let out = tmp.path().join("pitch.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         text.contains("Satisfy all constraints"),
@@ -79,10 +79,10 @@ fn delight_kpop_request_includes_kpop_program_wrapper() {
 }
 
 #[test]
-fn delight_kpop_request_includes_recent_delight_plans_when_present() {
+fn delight_kpop_request_includes_recent_delight_pitches_when_present() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    seed_prior_delight_plan(tmp.path(), "old.md");
-    let out = tmp.path().join("plan.md");
+    seed_prior_delight_pitch(tmp.path(), "old.md");
+    let out = tmp.path().join("pitch.md");
     let artifacts = crate::artifacts::create_kpop_run_artifacts_opts(
         "delight",
         Some(tmp.path()),
@@ -94,17 +94,17 @@ fn delight_kpop_request_includes_recent_delight_plans_when_present() {
     let text = delight_kpop_request(&store, &artifacts, &out, None).expect("request");
     assert!(
         text.contains("old.md"),
-        "expected recent delight plan path in request: {text:?}"
+        "expected recent delight pitch path in request: {text:?}"
     );
 }
 
 #[test]
-fn delight_kpop_request_empty_recent_delight_plans_when_none() {
+fn delight_kpop_request_empty_recent_delight_pitches_when_none() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
+    let out = tmp.path().join("pitch.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
-        !text.contains("{{ recent_delight_plans }}"),
+        !text.contains("{{ recent_delight_pitchs }}"),
         "placeholder must be expanded: {text:?}"
     );
 }
@@ -112,7 +112,7 @@ fn delight_kpop_request_empty_recent_delight_plans_when_none() {
 #[test]
 fn delight_kpop_request_includes_guidance_when_provided() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
+    let out = tmp.path().join("pitch.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, Some("focus on CLI UX"));
     assert!(
         text.contains("focus on CLI UX"),
@@ -127,7 +127,7 @@ fn delight_kpop_request_includes_guidance_when_provided() {
 #[test]
 fn delight_kpop_request_omits_guidance_block_when_none() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
+    let out = tmp.path().join("pitch.md");
     let text = delight_kpop_request_in_workspace(tmp.path(), &out, None);
     assert!(
         !text.contains("Follow this user guidance"),
@@ -170,6 +170,6 @@ fn parse_delight_out_path_from_command_line_variants() {
     );
     assert_eq!(
         parse_delight_out_path_from_command_line("Command: malvin delight"),
-        "plan.md"
+        "pitch.md"
     );
 }

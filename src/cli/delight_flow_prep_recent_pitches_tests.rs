@@ -1,14 +1,14 @@
 use super::*;
 
 #[test]
-fn collect_recent_delight_plans_empty_when_no_logs() {
+fn collect_recent_delight_pitches_empty_when_no_logs() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let out = tmp.path().join("plan.md");
-    assert!(collect_recent_delight_plan_paths(tmp.path(), &out).is_empty());
+    let out = tmp.path().join("pitch.md");
+    assert!(collect_recent_delight_pitch_paths(tmp.path(), &out).is_empty());
 }
 
 #[test]
-fn collect_recent_delight_plans_finds_prior_out_path() {
+fn collect_recent_delight_pitches_finds_prior_out_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::fs::write(tmp.path().join("old.md"), "x\n").expect("write");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
@@ -19,28 +19,46 @@ fn collect_recent_delight_plans_finds_prior_out_path() {
         "Command: malvin delight --out-path old.md\n",
     )
     .expect("log");
-    let out = tmp.path().join("plan.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
+    let out = tmp.path().join("pitch.md");
+    let paths = collect_recent_delight_pitch_paths(tmp.path(), &out);
     assert_eq!(paths.len(), 1);
     assert!(paths[0].ends_with("old.md"));
 }
 
 #[test]
-fn collect_recent_delight_plans_defaults_to_plan_md() {
+fn collect_recent_delight_pitches_defaults_to_pitch_md() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
+    std::fs::write(tmp.path().join("pitch.md"), "prior\n").expect("write");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
     let run_dir = logs_root.join("20260102_120000_abc12345");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
     let out = tmp.path().join("new.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
+    let paths = collect_recent_delight_pitch_paths(tmp.path(), &out);
+    assert_eq!(paths.len(), 1);
+    assert!(paths[0].ends_with("pitch.md"));
+}
+
+#[test]
+fn collect_recent_delight_pitches_defaults_to_plan_md_from_historical_runs() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
+    let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
+    let run_dir = logs_root.join("20260102_120000_abc12345");
+    std::fs::create_dir_all(&run_dir).expect("mkdir");
+    std::fs::write(
+        run_dir.join("command.log"),
+        "Command: malvin delight --out-path plan.md\n",
+    )
+    .expect("log");
+    let out = tmp.path().join("new.md");
+    let paths = collect_recent_delight_pitch_paths(tmp.path(), &out);
     assert_eq!(paths.len(), 1);
     assert!(paths[0].ends_with("plan.md"));
 }
 
 #[test]
-fn collect_recent_delight_plans_skips_missing_files() {
+fn collect_recent_delight_pitches_skips_missing_files() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
     let run_dir = logs_root.join("20260101_120000_abc12345");
@@ -50,12 +68,12 @@ fn collect_recent_delight_plans_skips_missing_files() {
         "Command: malvin delight --out-path gone.md\n",
     )
     .expect("log");
-    let out = tmp.path().join("plan.md");
-    assert!(collect_recent_delight_plan_paths(tmp.path(), &out).is_empty());
+    let out = tmp.path().join("pitch.md");
+    assert!(collect_recent_delight_pitch_paths(tmp.path(), &out).is_empty());
 }
 
 #[test]
-fn collect_recent_delight_plans_caps_at_five() {
+fn collect_recent_delight_pitches_caps_at_five() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
     for i in 0..6 {
@@ -69,33 +87,33 @@ fn collect_recent_delight_plans_caps_at_five() {
         .expect("log");
     }
     let out = tmp.path().join("new.md");
-    assert_eq!(collect_recent_delight_plan_paths(tmp.path(), &out).len(), 5);
+    assert_eq!(collect_recent_delight_pitch_paths(tmp.path(), &out).len(), 5);
 }
 
 #[test]
-fn collect_recent_delight_plans_dedupes_repeated_paths() {
+fn collect_recent_delight_pitches_dedupes_repeated_paths() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "prior\n").expect("write");
+    std::fs::write(tmp.path().join("pitch.md"), "prior\n").expect("write");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
     for run in ["20260101_120000_abc12345", "20260102_120000_abc12346"] {
         let run_dir = logs_root.join(run);
         std::fs::create_dir_all(&run_dir).expect("mkdir");
         std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
     }
-    let out = tmp.path().join("plan_1.md");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &out);
+    let out = tmp.path().join("pitch_1.md");
+    let paths = collect_recent_delight_pitch_paths(tmp.path(), &out);
     assert_eq!(paths.len(), 1);
-    assert!(paths[0].ends_with("plan.md"));
+    assert!(paths[0].ends_with("pitch.md"));
 }
 
 #[test]
-fn collect_recent_delight_plans_excludes_current_out_path() {
+fn collect_recent_delight_pitches_excludes_current_out_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::write(tmp.path().join("plan.md"), "x\n").expect("write");
+    std::fs::write(tmp.path().join("pitch.md"), "x\n").expect("write");
     let logs_root = crate::workspace_paths::malvin_logs_root(tmp.path());
     let run_dir = logs_root.join("20260101_120000_abc12345");
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     std::fs::write(run_dir.join("command.log"), "Command: malvin delight\n").expect("log");
-    let paths = collect_recent_delight_plan_paths(tmp.path(), &tmp.path().join("plan.md"));
+    let paths = collect_recent_delight_pitch_paths(tmp.path(), &tmp.path().join("pitch.md"));
     assert!(paths.is_empty());
 }

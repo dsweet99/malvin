@@ -12,13 +12,13 @@ use super::{effective_delight_max_loops, DelightArgs};
 pub(crate) fn validate_delight_output(resolved_out_path: &std::path::Path) -> Result<(), String> {
     let meta = std::fs::metadata(resolved_out_path).map_err(|_| {
         format!(
-            "malvin delight: expected plan file at `{}`",
+            "malvin delight: expected pitch file at `{}`",
             resolved_out_path.display()
         )
     })?;
     if !meta.is_file() || meta.len() == 0 {
         return Err(format!(
-            "malvin delight: expected non-empty plan file at `{}`",
+            "malvin delight: expected non-empty pitch file at `{}`",
             resolved_out_path.display()
         ));
     }
@@ -135,7 +135,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let missing = tmp.path().join("plan.md");
         let err = validate_delight_output(&missing).expect_err("missing");
-        assert!(err.contains("expected plan file"));
+        assert!(err.contains("expected pitch file"));
     }
 
     #[test]
