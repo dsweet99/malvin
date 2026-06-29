@@ -18,8 +18,6 @@
   - Don't mark anything "optional".
   - Don't leave any decisions open.
   - Don't change code. Plan only.
-  - If there is no more work to do, append a single line to `{{ user_request_path }}`, `## MPC_DONE`
-
-Planning runs at the start of each outer gate-loop iteration until the brief declares `## MPC_DONE`.
+  - If both work phases are empty/omitted, i.e., there is simply no work to be done, append a single line to `{{ user_request_path }}`, `## MPC_DONE`.  Otherwise *do not* append `## MPC_DONE`.
 
 KPop: the MPC Request above

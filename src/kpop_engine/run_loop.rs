@@ -2,6 +2,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
+use crate::mpc_planning_brief::MpcPlanningBriefAspect;
 
 use crate::cli::workflow_kpop_shared::{
     kpop_engine_loop_iterations, run_kpop_workspace_gates,
@@ -104,6 +105,7 @@ async fn mpc_done_exit_after_planner(
     iteration: usize,
     last_backups: &SessionDotfileBackups,
 ) -> Result<bool, String> {
+    let _aspect = MpcPlanningBriefAspect::PlannerSessionHook;
     super::mpc_planner::run_mpc_planner_for_kpop_engine_iteration(params, iteration).await?;
     let brief_path = crate::workflow_context::resolve_user_brief_path(
         params.prepared.artifacts(),

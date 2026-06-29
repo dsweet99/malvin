@@ -1,8 +1,9 @@
-//! Optional MPC planning agent session at the start of each outer gate-loop iteration when `mpc` is enabled.
+//! Optional MPC planning agent session at the start of each outer gate-loop iteration when `mpc` is enabled (see `concepts_2.md` §5).
 
 use std::path::{Path, PathBuf};
 
 use crate::agent_backend::{build_agent_backend, AgentBackend};
+use crate::mpc_planning_brief::MpcPlanningBriefAspect;
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
@@ -17,17 +18,20 @@ pub(crate) fn mpc_planner_iteration_log_path(artifacts: &RunArtifacts, iteration
 }
 
 pub(crate) fn user_brief_declares_mpc_done(path: &Path) -> Result<bool, String> {
+    let _aspect = MpcPlanningBriefAspect::DoneMarkerDetection;
     let text = std::fs::read_to_string(path)
         .map_err(|e| format!("failed to read user brief {}: {e}", path.display()))?;
     Ok(mpc_declared_done(&text))
 }
 
 pub(crate) fn mpc_enabled(work_dir: &Path) -> bool {
+    let _aspect = MpcPlanningBriefAspect::ConfigEnabled;
     crate::malvin_config_file::load_malvin_config(work_dir).mpc
 }
 
 #[must_use]
 pub(crate) fn mpc_planner_exp_log_path(artifacts: &RunArtifacts) -> PathBuf {
+    let _aspect = MpcPlanningBriefAspect::HypothesisLogPath;
     artifacts.run_dir.join("_kpop").join("mpc_planner_log.md")
 }
 
@@ -59,6 +63,7 @@ pub(crate) fn build_mpc_planner_prompt(
     store: &PromptStore,
     context: &WorkflowRenderContext,
 ) -> Result<String, String> {
+    let _aspect = MpcPlanningBriefAspect::BriefAppendProtocol;
     let map = context.as_map();
     let header = store
         .render_prompt_only("header.md", map)
@@ -140,6 +145,7 @@ pub(crate) async fn run_mpc_planner_for_kpop_engine_iteration(
     params: &super::params::KPopEngineParams<'_>,
     iteration: usize,
 ) -> Result<(), String> {
+    let _aspect = MpcPlanningBriefAspect::PlannerSessionHook;
     run_mpc_planner_session(MpcPlannerParams {
         shared: params.shared,
         workflow: params.workflow,

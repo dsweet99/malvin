@@ -174,6 +174,7 @@ pub mod nested_budget_scopes;
 pub mod prompt_stratification;
 pub mod reliability_tier;
 pub mod session_sandbox_policy;
+pub mod mpc_planning_brief;
 pub mod output;
 pub mod prompts;
 pub mod repo_gates;
