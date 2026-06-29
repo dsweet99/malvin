@@ -78,6 +78,7 @@ fn run_mpc_planner_session_appends_separator_when_enabled() {
                 context: &context,
                 command: "code",
                 client: None,
+                iteration: None,
             })
             .await
             .expect("mpc session");
@@ -110,6 +111,7 @@ fn run_mpc_planner_session_reuses_existing_client() {
                 context: &context,
                 command: "code",
                 client: Some(&mut client),
+                iteration: None,
             })
             .await
             .expect("mpc with reused client");
@@ -142,6 +144,7 @@ fn run_mpc_planner_session_skipped_when_disabled() {
                 context: &context,
                 command: "code",
                 client: None,
+                iteration: None,
             })
             .await
             .expect("skip mpc");

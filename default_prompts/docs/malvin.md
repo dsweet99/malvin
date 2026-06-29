@@ -181,7 +181,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb`, `theme`, and `mpc` (default **false**). When `mpc = true`, agent-backed KPop entry points (`code`, `tidy`, `delight`, `explain`, `revise`, init discovery, bare `malvin REQUEST`, and `kpop`) run one MPC planning-agent session after prepare and before the gate loop. The planning agent may edit the on-disk user brief at `user_request_path`; logs go to `mpc_planner.log` and `_kpop/mpc_planner_log.md` in the run directory. With `mpc = false`, behavior is unchanged.
+Top-level keys include `mem_limit_gb`, `theme`, and `mpc` (default **false**). When `mpc = true`, agent-backed KPop entry points (`code`, `tidy`, `delight`, `explain`, `revise`, init discovery, bare `malvin REQUEST`, and `kpop`) run an MPC planning-agent session at the start of each outer gate-loop iteration. The planning agent may edit the on-disk user brief at `user_request_path`; when the brief contains `## MPC_DONE` and quality gates pass (for workflows that already run `.malvin/checks`), malvin exits the outer loop without running the KPop implementer for that iteration. Per-iteration logs go to `mpc_planner_{n}.log` and append to `_kpop/mpc_planner_log.md` in the run directory. While `mpc = true`, the consecutive `## KPOP_SOLVED` early-exit path is disabled; with `mpc = false`, behavior is unchanged.
 
 ## Log retention
 

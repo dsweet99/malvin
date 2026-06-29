@@ -2,8 +2,8 @@
 
 use super::kpop_flow_run_loop::{
     clear_legacy_gate_exp_log, kpop_exp_log_declares_solved, kpop_loop_abort,
-    snapshot_kpop_loop_dotfiles_and_exp_log, run_kpop_agent_loops, KpopLoopSnapshot,
-    RunKpopAgentLoopsOutcome, RunKpopAgentLoopsParams,
+    kpop_loop_exit_after_iteration, snapshot_kpop_loop_dotfiles_and_exp_log,
+    run_kpop_agent_loops, KpopLoopSnapshot, RunKpopAgentLoopsOutcome, RunKpopAgentLoopsParams,
 };
 
 #[test]
@@ -104,10 +104,14 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
 }
 
 #[cfg(unix)]
-pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::path::Path) -> crate::test_utils::SavedEnvVars {
+fn install_mock_agent_env_inner(
+    workspace: &std::path::Path,
+    mock: &std::path::Path,
+    write_script: fn(&std::path::Path),
+) -> crate::test_utils::SavedEnvVars {
     #![allow(unsafe_code)]
 
-    write_mock_agent(mock);
+    write_script(mock);
     let bin_dir = workspace.join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     crate::test_agent_client::install_exit_gate_bin(&bin_dir, "kiss", 0);
@@ -129,6 +133,11 @@ pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::pa
         std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
     }
     guard
+}
+
+#[cfg(unix)]
+pub(crate) fn install_mock_agent_env(workspace: &std::path::Path, mock: &std::path::Path) -> crate::test_utils::SavedEnvVars {
+    install_mock_agent_env_inner(workspace, mock, write_mock_agent)
 }
 
 #[cfg(unix)]
@@ -158,6 +167,25 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
     std::fs::set_permissions(path, perms).expect("chmod");
 }
 
+#[test]
+fn kpop_loop_exit_after_iteration_suppresses_solved_exit_when_mpc_on() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("exp.md");
+    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
+    let exit = kpop_loop_exit_after_iteration(&path, 1, 2, true).expect("read");
+    assert!(exit.will_exit_after_this_loop);
+    assert!(!exit.early_exit_on_solved);
+}
+
+#[test]
+fn kpop_loop_exit_after_iteration_allows_solved_exit_when_mpc_off() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("exp.md");
+    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
+    let exit = kpop_loop_exit_after_iteration(&path, 1, 2, false).expect("read");
+    assert!(exit.early_exit_on_solved);
+}
+
 #[cfg(unix)]
 mod unix_cov {
     use super::super::kpop_flow_run_loop::{run_kpop_agent_loops, RunKpopAgentLoopsParams};
@@ -179,6 +207,8 @@ mod unix_cov {
                 std::fs::write(&kpop_dir, "not a directory").expect("block _kpop");
                 let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
                     kpop: &kpop,
+                    shared: &shared,
+                    workflow,
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,
@@ -202,6 +232,8 @@ mod unix_cov {
                     kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
                 let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
                     kpop: &kpop,
+                    shared: &shared,
+                    workflow,
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,

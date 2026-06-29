@@ -37,6 +37,16 @@ pub fn agent_declared_success(text: &str) -> bool {
     ExperimentLog::from_text(text).kpop_solved_marker_count() > 0
 }
 
+#[must_use]
+pub fn count_mpc_done_markers(text: &str) -> usize {
+    ExperimentLog::from_text(text).mpc_done_marker_count()
+}
+
+#[must_use]
+pub fn mpc_declared_done(text: &str) -> bool {
+    ExperimentLog::from_text(text).mpc_done_marker_count() > 0
+}
+
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::{

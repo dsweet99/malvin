@@ -146,6 +146,32 @@ fn resolve_nonexistent_path(abs: &Path) -> PathBuf {
         .unwrap_or_else(|| abs.to_path_buf())
 }
 
+pub(crate) fn resolve_prompt_context_path(
+    context: &WorkflowRenderContext,
+    key: &str,
+    base: &Path,
+    fallback: &Path,
+) -> PathBuf {
+    context.get(key).map_or_else(
+        || fallback.to_path_buf(),
+        |s| resolve_path_against_base(Path::new(s), base),
+    )
+}
+
+/// On-disk user brief the MPC planner edits (may differ from [`RunArtifacts::plan_path`]).
+#[must_use]
+pub(crate) fn resolve_user_brief_path(
+    artifacts: &RunArtifacts,
+    context: &WorkflowRenderContext,
+) -> PathBuf {
+    resolve_prompt_context_path(
+        context,
+        "user_request_path",
+        artifacts.work_dir.as_path(),
+        &artifacts.plan_path,
+    )
+}
+
 #[must_use]
 pub fn format_prompt_path(path: &Path, base_dir: &Path) -> String {
     let base_r = base_dir

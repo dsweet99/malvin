@@ -9,6 +9,35 @@ fn counts_steps_in_exp_log() {
 }
 
 #[test]
+fn declares_mpc_done_requires_exact_marker_line() {
+    let log = ExperimentLog::from_text("## MPC_DONE extra\n");
+    assert_eq!(log.mpc_done_marker_count(), 0);
+    let log = ExperimentLog::from_text("## MPC_DONE\n");
+    assert_eq!(log.mpc_done_marker_count(), 1);
+    assert_eq!(
+        ExperimentLog::from_text("## MPC_DONE\n## MPC_DONE\n").mpc_done_marker_count(),
+        2
+    );
+    assert_eq!(ExperimentLog::from_text("preamble\n").mpc_done_marker_count(), 0);
+    assert_eq!(
+        ExperimentLog::from_text("  ## MPC_DONE\n").mpc_done_marker_count(),
+        1
+    );
+    assert_eq!(
+        ExperimentLog::from_text("## MPC_DONE   \n").mpc_done_marker_count(),
+        1
+    );
+    assert_eq!(
+        ExperimentLog::from_text("## MPC_DONE trailing\n").mpc_done_marker_count(),
+        0
+    );
+    assert_eq!(
+        ExperimentLog::from_text("## MPC_DONE-ish\n").mpc_done_marker_count(),
+        0
+    );
+}
+
+#[test]
 fn declares_kpop_solved_requires_exact_marker_line() {
     let log = ExperimentLog::from_text("## KPOP_SOLVED extra\n");
     assert!(!log.declares_kpop_solved());

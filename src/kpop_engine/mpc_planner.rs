@@ -1,4 +1,4 @@
-//! Optional MPC planning agent session before the `KPop` gate loop.
+//! Optional MPC planning agent session at the start of each outer gate-loop iteration when `mpc` is enabled.
 
 use std::path::{Path, PathBuf};
 
@@ -10,6 +10,17 @@ use crate::prompts::{PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
 use crate::acp::{CoderPromptOptions, restore_session_dotfiles};
+use crate::kpop_progression::mpc_declared_done;
+
+pub(crate) fn mpc_planner_iteration_log_path(artifacts: &RunArtifacts, iteration: usize) -> PathBuf {
+    artifacts.log_path(&format!("mpc_planner_{iteration}"))
+}
+
+pub(crate) fn user_brief_declares_mpc_done(path: &Path) -> Result<bool, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("failed to read user brief {}: {e}", path.display()))?;
+    Ok(mpc_declared_done(&text))
+}
 
 pub(crate) fn mpc_enabled(work_dir: &Path) -> bool {
     crate::malvin_config_file::load_malvin_config(work_dir).mpc
@@ -73,6 +84,8 @@ pub(crate) struct MpcPlannerParams<'a> {
     pub context: &'a WorkflowRenderContext,
     pub command: &'a str,
     pub client: Option<&'a mut AgentBackend>,
+    /// Outer gate-loop iteration (1-based); suffixes `mpc_planner_{n}.log`.
+    pub iteration: Option<usize>,
 }
 
 fn ensure_mpc_planner_exp_log(artifacts: &RunArtifacts) -> Result<PathBuf, String> {
@@ -122,9 +135,10 @@ fn mpc_planner_session_dotfiles(work_dir: &Path) -> Result<SessionDotfileBackups
     SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)
 }
 
-/// Hook for [`super::run_loop::run_kpop_engine`]: optional MPC session before gate iterations.
-pub(crate) async fn run_mpc_planner_for_kpop_engine(
+/// Hook for [`super::run_loop::run_kpop_engine`]: optional MPC session at the start of one gate iteration.
+pub(crate) async fn run_mpc_planner_for_kpop_engine_iteration(
     params: &super::params::KPopEngineParams<'_>,
+    iteration: usize,
 ) -> Result<(), String> {
     run_mpc_planner_session(MpcPlannerParams {
         shared: params.shared,
@@ -134,6 +148,7 @@ pub(crate) async fn run_mpc_planner_for_kpop_engine(
         context: params.prepared.context(),
         command: params.command,
         client: None,
+        iteration: Some(iteration),
     })
     .await
 }
@@ -149,9 +164,13 @@ pub(crate) fn prepare_mpc_planner_turn(params: &MpcPlannerParams<'_>) -> Result<
     let _exp_log_path = ensure_mpc_planner_exp_log(params.artifacts)?;
     let ctx = build_mpc_planner_context(params.context, params.artifacts);
     let prompt = build_mpc_planner_prompt(params.store, &ctx)?;
+    let log_path = params.iteration.map_or_else(
+        || params.artifacts.log_path("mpc_planner"),
+        |iteration| mpc_planner_iteration_log_path(params.artifacts, iteration),
+    );
     Ok(MpcPlannerTurnPrepared {
         work_dir: params.artifacts.work_dir.clone(),
-        log_path: params.artifacts.log_path("mpc_planner"),
+        log_path,
         session_dotfile_backups: mpc_planner_session_dotfiles(params.artifacts.work_dir.as_path())?,
         prompt,
     })

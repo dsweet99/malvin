@@ -1,10 +1,11 @@
 use super::{
-    build_authenticated_kpop_engine_client,
-    kpop_engine_loop_one_iteration, kpop_engine_solved_early_exit, kpop_solved_early_exit,
-    refresh_consecutive_solved_streak, restore_carry_forward_before_iteration_snapshot,
+    kpop_engine_loop_one_iteration, kpop_engine_solved_early_exit,
+    refresh_consecutive_solved_streak,
+    restore_carry_forward_before_iteration_snapshot,
     run_kpop_engine, run_kpop_engine_on_loop_iteration, run_gate_workspace_gates_with_fresh_backups,
     session_wrote_kpop_solved, wire_kpop_engine_client, KPopEngineEarlyExitCtx,
 };
+use super::super::run_loop_exit::{GateLoopExitCtx, kpop_solved_early_exit};
 
 #[test]
 fn kiss_cov_gate_run_loop_privates() {
@@ -13,7 +14,6 @@ fn kiss_cov_gate_run_loop_privates() {
         run_kpop_engine_on_loop_iteration,
         wire_kpop_engine_client,
         run_gate_workspace_gates_with_fresh_backups,
-        build_authenticated_kpop_engine_client,
     );
 }
 use crate::artifacts::SessionDotfileBackups;
@@ -48,23 +48,22 @@ fn kpop_solved_early_exit_checks_streak_and_workspace() {
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
-    assert!(!kpop_solved_early_exit(
-        KPopHardConstraints::CODE,
-        1,
-        &artifacts,
-        &backups
-    ));
+    let gate_ctx = |mpc_enabled| GateLoopExitCtx {
+        behavior: KPopHardConstraints::CODE,
+        artifacts: &artifacts,
+        session_dotfile_backups: &backups,
+        mpc_enabled,
+    };
+    assert!(!kpop_solved_early_exit(&gate_ctx(false), 1));
+    assert!(kpop_solved_early_exit(&gate_ctx(false), 2));
     assert!(kpop_solved_early_exit(
-        KPopHardConstraints::CODE,
-        2,
-        &artifacts,
-        &backups
-    ));
-    assert!(kpop_solved_early_exit(
-        KPopHardConstraints::INIT,
+        &GateLoopExitCtx {
+            behavior: KPopHardConstraints::INIT,
+            artifacts: &artifacts,
+            session_dotfile_backups: &backups,
+            mpc_enabled: false,
+        },
         1,
-        &artifacts,
-        &backups
     ));
 }
 
@@ -89,17 +88,19 @@ pub(crate) fn gate_early_exit_fixture() -> (
 fn kpop_engine_solved_early_exit_needs_streak_and_gates() {
     use crate::kpop_engine::KPopHardConstraints;
     let (_tmp, artifacts, backups, _bin, _guard) = gate_early_exit_fixture();
-    let ctx = |behavior, streak| KPopEngineEarlyExitCtx {
+    let ctx = |behavior, streak, mpc_enabled| KPopEngineEarlyExitCtx {
         behavior,
         consecutive_solved: streak,
         artifacts: &artifacts,
         session_dotfile_backups: &backups,
         agent_ran: true,
         run_timing: None,
+        mpc_enabled,
     };
-    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 1)).is_none());
-    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 2)).is_some());
-    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::INIT, 1)).is_some());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 1, false)).is_none());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 2, false)).is_some());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::INIT, 1, false)).is_some());
+    assert!(kpop_engine_solved_early_exit(ctx(KPopHardConstraints::CODE, 2, true)).is_none());
 }
 
 #[test]

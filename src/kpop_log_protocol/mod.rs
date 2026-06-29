@@ -78,11 +78,15 @@ impl ExperimentLog {
     pub fn kpop_solved_marker_count(&self) -> usize {
         self.text
             .lines()
-            .filter(|line| {
-                let t = line.trim_start();
-                t.strip_prefix("## KPOP_SOLVED")
-                    .is_some_and(|rest| rest.trim().is_empty())
-            })
+            .filter(|line| marker_line_is_exact("## KPOP_SOLVED", line))
+            .count()
+    }
+
+    #[must_use]
+    pub fn mpc_done_marker_count(&self) -> usize {
+        self.text
+            .lines()
+            .filter(|line| marker_line_is_exact("## MPC_DONE", line))
             .count()
     }
 
@@ -100,6 +104,12 @@ impl ExperimentLog {
         }
         Ok(())
     }
+}
+
+fn marker_line_is_exact(marker: &str, line: &str) -> bool {
+    let t = line.trim_start();
+    t.strip_prefix(marker)
+        .is_some_and(|rest| rest.trim().is_empty())
 }
 
 fn is_kpop_step_label(tail: &str) -> bool {

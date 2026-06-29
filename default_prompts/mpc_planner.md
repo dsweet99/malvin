@@ -18,5 +18,8 @@
   - Don't mark anything "optional".
   - Don't leave any decisions open.
   - Don't change code. Plan only.
+  - If there is no more work to do, append a single line to `{{ user_request_path }}`, `## MPC_DONE`
+
+Planning runs at the start of each outer gate-loop iteration until the brief declares `## MPC_DONE`.
 
 KPop: the MPC Request above

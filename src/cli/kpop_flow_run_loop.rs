@@ -18,6 +18,8 @@ use crate::cli::workflow_kpop_shared::{
 
 pub(crate) struct RunKpopAgentLoopsParams<'a> {
     pub kpop: &'a KpopArgs,
+    pub shared: &'a crate::cli::SharedOpts,
+    pub workflow: crate::cli::WorkflowCliOptions,
     pub store: &'a PromptStore,
     pub client: &'a mut crate::agent_backend::AgentBackend,
     pub prepared: &'a KpopPrepared,
@@ -58,33 +60,35 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
     })
 }
 
-struct KpopLoopExitAfterIteration {
-    declares_solved: bool,
-    will_exit_after_this_loop: bool,
+pub(crate) struct KpopLoopExitAfterIteration {
+    pub(crate) will_exit_after_this_loop: bool,
+    pub(crate) early_exit_on_solved: bool,
 }
 
-fn kpop_loop_exit_after_iteration(
+pub(crate) fn kpop_loop_exit_after_iteration(
     exp_log_path: &PathBuf,
     agent_loop: usize,
     max_loops: usize,
+    mpc_on: bool,
 ) -> Result<KpopLoopExitAfterIteration, String> {
     let declares_solved = kpop_exp_log_declares_solved(exp_log_path)?;
     Ok(KpopLoopExitAfterIteration {
-        declares_solved,
         will_exit_after_this_loop: declares_solved || agent_loop == max_loops,
+        early_exit_on_solved: declares_solved && !mpc_on,
     })
 }
 
 async fn finish_kpop_loop_iteration(
     params: &mut RunKpopAgentLoopsParams<'_>,
     loop_snapshot: &KpopLoopSnapshot,
-    agent_loop: usize,
-    max_loops: usize,
+    bounds: (usize, usize, bool),
 ) -> Result<Option<bool>, String> {
+    let (agent_loop, max_loops, mpc_on) = bounds;
     let exit = kpop_loop_exit_after_iteration(
         &loop_snapshot.exp_log_path,
         agent_loop,
         max_loops,
+        mpc_on,
     )?;
     crate::cli::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop(
         crate::cli::kpop_summarize::InlineSummarizeOnKpopLoopCtx {
@@ -97,72 +101,132 @@ async fn finish_kpop_loop_iteration(
         },
     )
     .await?;
-    Ok(exit.declares_solved.then_some(true))
+    Ok(exit.early_exit_on_solved.then_some(true))
+}
+
+async fn run_kpop_multiturn_for_loop(
+    params: &mut RunKpopAgentLoopsParams<'_>,
+    loop_snapshot: &KpopLoopSnapshot,
+    agent_loop: usize,
+    max_loops: usize,
+) -> Result<Result<(), String>, String> {
+    print_kpop_session_log_line(&params.prepared.artifacts, &loop_snapshot.exp_log_path);
+    let iteration_context = gate_iteration_context(
+        &params.prepared.context,
+        &params.prepared.artifacts,
+        &loop_snapshot.exp_log_path,
+        loop_snapshot.exp_iter,
+    );
+    let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
+        store: params.store,
+        base: &iteration_context,
+        prepend_rules_once: agent_loop == 1,
+    });
+    let mut state = KpopMultiturnState::new(
+        builder,
+        loop_snapshot.exp_log_path.clone(),
+        params.kpop.max_hypotheses,
+    )?;
+    crate::gate_loop_session::set_active_gate_iteration(Some(loop_snapshot.exp_iter));
+    let acp_result = kpop_run_acp_multiturn(
+        KpopAcpMultiturnCtx {
+            client: params.client,
+            prepared: params.prepared,
+            state: &mut state,
+        },
+        &loop_snapshot.backups,
+        if agent_loop == max_loops {
+            crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize
+        } else {
+            crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun
+        },
+    )
+    .await;
+    crate::gate_loop_session::set_active_gate_iteration(None);
+    Ok(acp_result)
+}
+
+async fn run_mpc_at_kpop_loop_start(
+    params: &mut RunKpopAgentLoopsParams<'_>,
+    agent_loop: usize,
+) -> Result<bool, String> {
+    if !crate::kpop_engine::mpc_enabled(&params.prepared.artifacts.work_dir) {
+        return Ok(false);
+    }
+    crate::kpop_engine::run_mpc_planner_session(crate::kpop_engine::MpcPlannerParams {
+        shared: params.shared,
+        workflow: params.workflow,
+        store: params.store,
+        artifacts: &params.prepared.artifacts,
+        context: &params.prepared.context,
+        command: "kpop",
+        client: Some(params.client),
+        iteration: Some(agent_loop),
+    })
+    .await?;
+    let brief_path = crate::workflow_context::resolve_user_brief_path(
+        &params.prepared.artifacts,
+        &params.prepared.context,
+    );
+    crate::kpop_engine::user_brief_declares_mpc_done(&brief_path)
+}
+
+async fn run_kpop_agent_loop_turn(
+    params: &mut RunKpopAgentLoopsParams<'_>,
+    agent_loop: usize,
+    max_loops: usize,
+    mpc_on: bool,
+) -> Result<(bool, Option<RunKpopAgentLoopsOutcome>, Result<(), String>), String> {
+    if run_mpc_at_kpop_loop_start(params, agent_loop).await? {
+        return Ok((true, None, Ok(())));
+    }
+    let loop_snapshot = snapshot_kpop_loop_dotfiles_and_exp_log(
+        &params.prepared.artifacts,
+        agent_loop,
+        max_loops,
+    )?;
+    let last_acp = run_kpop_multiturn_for_loop(params, &loop_snapshot, agent_loop, max_loops).await?;
+    if last_acp.is_err() {
+        return Ok((
+            false,
+            Some(RunKpopAgentLoopsOutcome {
+                acp_result: last_acp,
+                agent_ran: true,
+            }),
+            Ok(()),
+        ));
+    }
+    if finish_kpop_loop_iteration(params, &loop_snapshot, (agent_loop, max_loops, mpc_on))
+        .await?
+        .is_some()
+    {
+        return Ok((
+            false,
+            Some(RunKpopAgentLoopsOutcome {
+                acp_result: last_acp,
+                agent_ran: true,
+            }),
+            Ok(()),
+        ));
+    }
+    Ok((false, None, last_acp))
 }
 
 pub(crate) async fn run_kpop_agent_loops(
     mut params: RunKpopAgentLoopsParams<'_>,
 ) -> RunKpopAgentLoopsOutcome {
     let max_loops = effective_max_loops(params.kpop.max_loops);
+    let mpc_on = crate::kpop_engine::mpc_enabled(&params.prepared.artifacts.work_dir);
     clear_legacy_gate_exp_log(&params.prepared.artifacts, max_loops);
     let mut last_acp = Ok(());
     let mut agent_ran = false;
     for agent_loop in 1..=max_loops {
         agent_ran = true;
-        let loop_snapshot = match snapshot_kpop_loop_dotfiles_and_exp_log(
-            &params.prepared.artifacts,
-            agent_loop,
-            max_loops,
-        ) {
-            Ok(s) => s,
+        match run_kpop_agent_loop_turn(&mut params, agent_loop, max_loops, mpc_on).await {
+            Ok((true, _, _)) => break,
+            Ok((false, Some(outcome), _)) => return outcome,
+            Ok((false, None, acp)) => last_acp = acp,
             Err(e) => return kpop_loop_abort(agent_ran, e),
-        };
-        print_kpop_session_log_line(&params.prepared.artifacts, &loop_snapshot.exp_log_path);
-        let iteration_context = gate_iteration_context(
-            &params.prepared.context,
-            &params.prepared.artifacts,
-            &loop_snapshot.exp_log_path,
-            loop_snapshot.exp_iter,
-        );
-        let builder = KpopMultiturnPrompts::Turn(KpopTurnPrompts {
-            store: params.store,
-            base: &iteration_context,
-            prepend_rules_once: agent_loop == 1,
-        });
-        let mut state = match KpopMultiturnState::new(
-            builder,
-            loop_snapshot.exp_log_path.clone(),
-            params.kpop.max_hypotheses,
-        ) {
-            Ok(s) => s,
-            Err(e) => return kpop_loop_abort(agent_ran, e),
-        };
-        crate::gate_loop_session::set_active_gate_iteration(Some(loop_snapshot.exp_iter));
-        last_acp = kpop_run_acp_multiturn(
-            KpopAcpMultiturnCtx {
-                client: params.client,
-                prepared: params.prepared,
-                state: &mut state,
-            },
-            &loop_snapshot.backups,
-            if agent_loop == max_loops {
-                crate::run_timing::acp_post_run::RunTimingSessionEnd::Finalize
-            } else {
-                crate::run_timing::acp_post_run::RunTimingSessionEnd::AccumulateRun
-            },
-        )
-        .await;
-        crate::gate_loop_session::set_active_gate_iteration(None);
-        if last_acp.is_err() {
-            break;
-        }
-        match finish_kpop_loop_iteration(&mut params, &loop_snapshot, agent_loop, max_loops).await {
-            Ok(Some(_)) => break,
-            Ok(None) => {}
-            Err(e) => {
-                last_acp = Err(e);
-                break;
-            }
         }
     }
     RunKpopAgentLoopsOutcome {

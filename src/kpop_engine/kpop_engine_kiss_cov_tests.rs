@@ -155,6 +155,13 @@ fn kiss_cov_kpop_engine_loop_params_types() {
 }
 
 #[test]
+fn kiss_cov_kpop_engine_loop_iteration_ctx_type() {
+    use super::run_loop::{KpopEngineLoopIterationCtx, KPopEngineEarlyExitCtx};
+    let _ = std::mem::size_of::<KpopEngineLoopIterationCtx<'_>>();
+    let _ = std::mem::size_of::<KPopEngineEarlyExitCtx<'_>>();
+}
+
+#[test]
 fn kiss_cov_mpc_planner_private_fn_names() {
     let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_prompt);
     let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_context);
@@ -162,6 +169,9 @@ fn kiss_cov_mpc_planner_private_fn_names() {
     let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_exp_log_path);
     let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_session);
     let _ = stringify!(crate::kpop_engine::MpcPlannerParams);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_iteration_log_path);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::user_brief_declares_mpc_done);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_for_kpop_engine_iteration);
 }
 
 #[test]

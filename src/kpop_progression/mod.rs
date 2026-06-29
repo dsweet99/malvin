@@ -11,7 +11,7 @@ mod multiturn_kiss;
 
 pub use counters::{
     agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
-    hypotheses_emitted, read_exp_log_text,
+    count_mpc_done_markers, hypotheses_emitted, mpc_declared_done, read_exp_log_text,
 };
 pub use multiturn::KpopMultiturnState;
 pub use multiturn_types::KpopMultiturnParams;

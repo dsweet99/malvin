@@ -129,20 +129,11 @@ pub async fn run_kpop(
 
     let (store, mut client, prepared) = kpop_boot_store_client_prepared(&kpop, shared, workflow)?;
 
-    crate::kpop_engine::run_mpc_planner_session(crate::kpop_engine::MpcPlannerParams {
-        shared,
-        workflow,
-        store: &store,
-        artifacts: &prepared.artifacts,
-        context: &prepared.context,
-        command: "kpop",
-        client: Some(&mut client),
-    })
-    .await?;
-
     let loops = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
             kpop: &kpop,
+            shared,
+            workflow,
             store: &store,
             client: &mut client,
             prepared: &prepared,

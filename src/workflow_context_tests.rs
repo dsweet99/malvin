@@ -3,8 +3,10 @@ use std::path::{Path, PathBuf};
 
 use super::{
     format_prompt_path, insert_artifact_paths, insert_current_state, insert_formatted,
-    resolve_nonexistent_path, resolve_path_against_base, workflow_context_paths_only,
+    resolve_nonexistent_path, resolve_path_against_base, resolve_user_brief_path,
+    workflow_context_paths_only,
 };
+use crate::prompt_stratification::WorkflowRenderContext;
 
 #[test]
 fn resolve_path_against_base_resolves_relative_plan_path() {
@@ -151,6 +153,40 @@ fn insert_formatted_stores_workflow_relative_path() {
     let mut ctx = HashMap::new();
     insert_formatted(&mut ctx, "plan_path", &plan, tmp.path());
     assert_eq!(ctx.get("plan_path").map(String::as_str), Some("./plan.md"));
+}
+
+#[test]
+fn resolve_user_brief_path_uses_context_override() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let override_path = tmp.path().join("user_request.md");
+    let mut ctx = HashMap::new();
+    insert_formatted(
+        &mut ctx,
+        "user_request_path",
+        &override_path,
+        tmp.path(),
+    );
+    let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::from(ctx));
+    assert_eq!(resolved, override_path.canonicalize().unwrap_or_else(|_| override_path));
+}
+
+#[test]
+fn resolve_user_brief_path_falls_back_to_plan_path() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let plan = tmp.path().join("plan.md");
+    std::fs::write(&plan, "p").expect("write");
+    let artifacts = crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+    let resolved = resolve_user_brief_path(&artifacts, &WorkflowRenderContext::default());
+    assert_eq!(
+        resolved,
+        artifacts
+            .plan_path
+            .canonicalize()
+            .unwrap_or_else(|_| artifacts.plan_path.clone())
+    );
 }
 
 #[test]

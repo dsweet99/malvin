@@ -4,9 +4,12 @@ mod params;
 mod kpop_session;
 mod kpop_session_finish;
 mod mpc_planner;
+mod run_loop_exit;
 mod run_loop;
 
-pub(crate) use mpc_planner::{run_mpc_planner_session, MpcPlannerParams};
+pub(crate) use mpc_planner::{
+    mpc_enabled, run_mpc_planner_session, user_brief_declares_mpc_done, MpcPlannerParams,
+};
 
 pub(crate) use kpop_session_finish::{
     fail_kpop_engine_after_exhausted, finish_kpop_engine_after_pass,

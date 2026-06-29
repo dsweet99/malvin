@@ -64,6 +64,15 @@ fn build_mpc_planner_context_sets_dedicated_exp_log() {
 }
 
 #[test]
+fn mpc_planner_iteration_log_path_suffixes_iteration() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("x", Some(tmp.path())).expect("artifacts");
+    let path = super::mpc_planner_iteration_log_path(&artifacts, 2);
+    assert!(path.to_string_lossy().contains("mpc_planner_2"));
+}
+
+#[test]
 fn mpc_planner_exp_log_path_is_under_kpop_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =

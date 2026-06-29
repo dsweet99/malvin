@@ -1,6 +1,6 @@
 use super::counters::{
     agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
-    hypotheses_emitted, read_exp_log_text,
+    count_mpc_done_markers, hypotheses_emitted, mpc_declared_done, read_exp_log_text,
 };
 
 #[test]
@@ -11,6 +11,8 @@ fn kiss_cov_counter_wrapper_symbols() {
         count_kpop_entries,
         count_mbc2_entries,
         count_kpop_solved_markers,
+        count_mpc_done_markers,
+        mpc_declared_done,
         read_exp_log_text,
     );
     let _ = stringify!(agent_declared_success);
@@ -30,6 +32,18 @@ fn counts_steps_in_exp_log() {
     assert_eq!(count_kpop_entries(text), 2);
     assert_eq!(count_mbc2_entries(text), 1);
     assert_eq!(hypotheses_emitted(text), 3);
+}
+
+#[test]
+fn mpc_declared_done_requires_exact_marker_line() {
+    assert!(!mpc_declared_done("## MPC_DONE extra\n"));
+    assert!(mpc_declared_done("## MPC_DONE\n"));
+    assert_eq!(count_mpc_done_markers("## MPC_DONE\n## MPC_DONE\n"), 2);
+    assert_eq!(count_mpc_done_markers("preamble\n"), 0);
+    assert_eq!(count_mpc_done_markers("  ## MPC_DONE\n"), 1);
+    assert_eq!(count_mpc_done_markers("## MPC_DONE   \n"), 1);
+    assert_eq!(count_mpc_done_markers("## MPC_DONE trailing\n"), 0);
+    assert_eq!(count_mpc_done_markers("## MPC_DONE-ish\n"), 0);
 }
 
 #[test]
