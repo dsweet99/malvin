@@ -93,7 +93,8 @@ async fn prepare_inspire_run(
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let prompt = render_inspire_prompt(&text)?;
-    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+    let session_dotfile_backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(InspireRunPrep {
         client,
         artifacts,
@@ -167,6 +168,26 @@ async fn run_inspire_acp(
         &timing,
         merged,
     )
+}
+
+#[cfg(test)]
+mod inspire_snapshot_tests {
+    use super::SessionDotfileBackups;
+    use crate::malvin_config_path;
+    use crate::test_utils::with_isolated_home;
+
+    #[test]
+    fn inspire_prepare_snapshot_ensures_home_config_exists() {
+        with_isolated_home(|work| {
+            let cfg = malvin_config_path(work);
+            assert!(!cfg.exists());
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
+            assert!(
+                cfg.is_file(),
+                "inspire session snapshot must ensure ~/.malvin_home/config.toml exists"
+            );
+        });
+    }
 }
 
 #[cfg(test)]
