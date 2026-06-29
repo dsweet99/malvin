@@ -1,6 +1,6 @@
 use super::{
-    format_current_state, format_local_datetime, format_retry_line, format_sandbox_memory_line,
-    format_user_identity,
+    assemble_user_identity, format_current_state, format_local_datetime, format_retry_line,
+    format_sandbox_memory_line, format_user_identity,
 };
 
 #[test]
@@ -11,6 +11,50 @@ fn format_user_identity_includes_name() {
     {
         assert!(id.contains("uid "));
         assert!(super::effective_user_id().is_some());
+    }
+}
+
+#[test]
+fn assemble_user_identity_with_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("David Sweet")),
+        "dsweet (uid 1000, David Sweet)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_omits_redundant_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("dsweet")),
+        "dsweet (uid 1000)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_omits_empty_full_name() {
+    assert_eq!(
+        assemble_user_identity("dsweet", Some(1000), Some("")),
+        "dsweet (uid 1000)"
+    );
+}
+
+#[test]
+fn assemble_user_identity_without_uid() {
+    assert_eq!(assemble_user_identity("unknown", None, Some("Bob")), "unknown");
+}
+
+#[cfg(unix)]
+#[test]
+fn format_user_identity_includes_gecos_full_name_when_distinct() {
+    let id = format_user_identity();
+    let uid = super::effective_user_id().expect("uid");
+    if let Some(full_name) = super::passwd_gecos_full_name(uid) {
+        if full_name != std::env::var("USER").unwrap_or_default() {
+            assert!(
+                id.contains(&full_name),
+                "expected full name {full_name:?} in {id:?}"
+            );
+        }
     }
 }
 

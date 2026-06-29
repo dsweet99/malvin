@@ -26,14 +26,59 @@ pub fn format_current_state(
 
 #[must_use]
 pub fn format_user_identity() -> String {
-    let name = std::env::var("USER")
+    let login = std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
         .unwrap_or_else(|_| "unknown".to_string());
-    if let Some(uid) = effective_user_id() {
-        format!("{name} (uid {uid})")
-    } else {
-        name
+    let uid = effective_user_id();
+    let full_name = uid.and_then(passwd_gecos_full_name);
+    assemble_user_identity(&login, uid, full_name.as_deref())
+}
+
+#[must_use]
+pub fn assemble_user_identity(
+    login: &str,
+    uid: Option<u32>,
+    full_name: Option<&str>,
+) -> String {
+    let include_full_name = full_name.filter(|name| !name.is_empty() && *name != login);
+    match (uid, include_full_name) {
+        (Some(uid), Some(name)) => format!("{login} (uid {uid}, {name})"),
+        (Some(uid), None) => format!("{login} (uid {uid})"),
+        (None, _) => login.to_string(),
     }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod passwd_gecos {
+    #![allow(unsafe_code)]
+
+    #[must_use]
+    pub fn full_name(uid: u32) -> Option<String> {
+        // SAFETY: getpwuid is POSIX; we only read pw_gecos and do not retain the pointer.
+        let pw = unsafe { libc::getpwuid(uid) };
+        if pw.is_null() {
+            return None;
+        }
+        let gecos = unsafe { std::ffi::CStr::from_ptr((*pw).pw_gecos) };
+        let full_name = gecos
+            .to_str()
+            .ok()?
+            .split(',')
+            .next()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())?;
+        Some(full_name.to_string())
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn passwd_gecos_full_name(uid: u32) -> Option<String> {
+    passwd_gecos::full_name(uid)
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn passwd_gecos_full_name(_uid: u32) -> Option<String> {
+    None
 }
 
 #[cfg(unix)]
