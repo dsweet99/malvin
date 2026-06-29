@@ -19,6 +19,7 @@ fn kiss_witness_openrouter_test_fns() {
         openrouter_tests::openrouter_error_on_non_200_request_failed,
         openrouter_tests::openrouter_error_on_missing_content,
         openrouter_tests::openrouter_complete_transport_error_on_unreachable_host,
+        super::fetch_completion_tests::fetch_completion_body_maps_http_200_non_retryable_provider_error,
         super::fetch_completion_tests::fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
         super::fetch_completion_tests::fetch_completion_body_surfaces_transport_errors,
         super::fetch_completion_tests::fetch_completion_body_surfaces_header_validation_errors,
@@ -133,6 +134,8 @@ fn kiss_witness_openrouter_http_exchange_types() {
     let _ = super::complete::transport_meta;
     let _ = super::complete::transport_failure_meta;
     let _ = stringify!(outcome_from_http_body);
+    let _ = stringify!(provider_fatal_from_body);
+    let _ = super::provider_error::provider_fatal_from_body;
     let _ = stringify!(provider_transport_from_body);
     let _ = super::provider_error::provider_transport_from_body;
     let _ = stringify!(ModelListing);

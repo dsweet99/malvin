@@ -107,6 +107,22 @@ async fn complete_with_http_retries_retries_nvidia_resource_exhausted() {
 }
 
 #[tokio::test]
+async fn complete_with_http_retries_stops_on_provider_fatal_error() {
+    let llm = mock_llm(vec![MockStep::ProviderFatal]);
+    let err = run_http_retries(&llm, TRANSPORT_LIMIT, false)
+        .await
+        .expect_err("provider fatal");
+    assert!(matches!(err, HttpCompletionError::Exhausted(ref msg) if msg.contains("Conversation roles must alternate")));
+    let call_count = {
+        let LlmBackend::Mock(m) = &llm else {
+            panic!("mock llm");
+        };
+        m.lock().expect("lock").call_count
+    };
+    assert_eq!(call_count, 1, "provider fatal must not retry");
+}
+
+#[tokio::test]
 async fn complete_with_http_retries_billing_failure_fails_on_first_attempt() {
     let llm = mock_llm(vec![
         MockStep::BillingFailure {

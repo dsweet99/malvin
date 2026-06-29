@@ -188,6 +188,7 @@ fn kiss_witness_loop_driver_and_client_helpers() {
     let _ = stringify!(complete_with_http_retries_succeeds_on_second_mock_attempt);
     let _ = stringify!(complete_with_http_retries_maps_context_overflow);
     let _ = stringify!(complete_with_http_retries_retries_nvidia_resource_exhausted);
+    let _ = stringify!(complete_with_http_retries_stops_on_provider_fatal_error);
     let _ = stringify!(complete_with_http_retries_billing_failure_fails_on_first_attempt);
     let _ = stringify!(complete_with_http_retries_emits_mini_http_exchange_to_trace);
     let _ = stringify!(kiss_witness_http_retry_types);

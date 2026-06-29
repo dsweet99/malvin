@@ -62,6 +62,27 @@ pub(super) fn mock_billing_failure_pair(
     )
 }
 
+pub(super) fn mock_provider_fatal_pair() -> (Result<CompletionResponse, OpenRouterError>, HttpExchangeMeta) {
+    let body = r#"{
+        "error": {
+            "message": "Provider returned error",
+            "code": 400,
+            "metadata": {
+                "provider_name": "Nvidia",
+                "raw": "{\"error\":{\"message\":\"Conversation roles must alternate user/assistant/user/assistant/...\"}}",
+                "error_type": "invalid_request"
+            }
+        }
+    }"#;
+    (
+        Err(OpenRouterError::ProviderError {
+            provider: "Nvidia".into(),
+            detail: "Conversation roles must alternate user/assistant/user/assistant/...".into(),
+        }),
+        mock_http_meta(Some(200), Some(body)),
+    )
+}
+
 pub(super) fn mock_provider_transport_pair() -> (Result<CompletionResponse, OpenRouterError>, HttpExchangeMeta) {
     let body = r#"{
         "error": {

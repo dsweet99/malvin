@@ -12,6 +12,17 @@ pub(crate) fn provider_transport_from_body(body: &str) -> Option<OpenRouterError
     }
 }
 
+/// When OpenRouter returns HTTP 200 with a non-retryable provider error envelope,
+/// surface `{provider}: {detail}` without retrying.
+pub(crate) fn provider_fatal_from_body(body: &str) -> Option<OpenRouterError> {
+    let (provider, error_type, top_message, raw_detail) = parse_provider_error_envelope(body)?;
+    if is_provider_transport_retryable(&error_type, &top_message, &raw_detail) {
+        return None;
+    }
+    let detail = select_provider_detail(&top_message, &raw_detail);
+    Some(OpenRouterError::ProviderError { provider, detail })
+}
+
 fn parse_provider_error_envelope(body: &str) -> Option<(String, String, String, String)> {
     let value: serde_json::Value = serde_json::from_str(body).ok()?;
     let error = value.get("error")?;
@@ -86,7 +97,10 @@ fn is_provider_transport_retryable(error_type: &str, detail: &str, raw_detail: &
 
 #[cfg(test)]
 mod tests {
-    use super::{extract_raw_message, provider_transport_from_body, select_provider_detail};
+    use super::{
+        extract_raw_message, provider_fatal_from_body, provider_transport_from_body,
+        select_provider_detail,
+    };
 
     #[test]
     fn provider_transport_from_http_200_nvidia_resource_exhausted() {
@@ -121,6 +135,27 @@ mod tests {
         }"#;
         let err = provider_transport_from_body(body).expect("provider transport");
         assert_eq!(err.to_string(), "Nvidia: ResourceExhausted");
+    }
+
+    #[test]
+    fn provider_fatal_from_http_200_invalid_request() {
+        let body = r#"{
+            "error": {
+                "message": "Provider returned error",
+                "code": 400,
+                "metadata": {
+                    "provider_name": "Nvidia",
+                    "raw": "{\"error\":{\"message\":\"Conversation roles must alternate user/assistant/user/assistant/...\"}}",
+                    "error_type": "invalid_request"
+                }
+            }
+        }"#;
+        let err = provider_fatal_from_body(body).expect("provider fatal");
+        assert!(!err.is_transport_retryable());
+        assert_eq!(
+            err.to_string(),
+            "Nvidia: Conversation roles must alternate user/assistant/user/assistant/..."
+        );
     }
 
     #[test]

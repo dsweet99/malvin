@@ -21,6 +21,8 @@ pub enum OpenRouterError {
     MissingContent,
     #[error("{provider}: {detail}")]
     ProviderTransport { provider: String, detail: String },
+    #[error("{provider}: {detail}")]
+    ProviderError { provider: String, detail: String },
     #[error("HTTP transport error: {0}")]
     Transport(#[from] reqwest::Error),
     #[error("JSON decode error: {0}")]
@@ -33,10 +35,17 @@ impl OpenRouterError {
         matches!(self, Self::BillingFailure { .. })
     }
 
+    #[must_use]
+    pub const fn is_provider_error(&self) -> bool {
+        matches!(self, Self::ProviderError { .. })
+    }
+
     /// True for every error that should consume the mini transport retry budget.
     #[must_use]
     pub const fn is_transport_retryable(&self) -> bool {
-        !self.is_billing_failure() && !self.is_context_overflow()
+        !self.is_billing_failure()
+            && !self.is_context_overflow()
+            && !self.is_provider_error()
     }
 
     #[must_use]
@@ -68,6 +77,20 @@ mod tests {
             body: "forbidden".into()
         }
         .is_transport_retryable());
+    }
+
+    #[test]
+    fn openrouter_error_provider_error_is_not_transport_retryable() {
+        let err = OpenRouterError::ProviderError {
+            provider: "Nvidia".into(),
+            detail: "Conversation roles must alternate user/assistant/user/assistant/...".into(),
+        };
+        assert!(err.is_provider_error());
+        assert!(!err.is_transport_retryable());
+        assert_eq!(
+            err.to_string(),
+            "Nvidia: Conversation roles must alternate user/assistant/user/assistant/..."
+        );
     }
 
     #[test]

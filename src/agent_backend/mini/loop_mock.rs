@@ -6,7 +6,8 @@ use malvin_mini::{
 
 use super::loop_mock_outcomes::{
     mock_billing_failure_pair, mock_context_overflow_pair, mock_json_transport_pair, mock_ok_pair,
-    mock_provider_transport_pair, mock_rate_limited_pair, mock_request_failed_pair,
+    mock_provider_fatal_pair, mock_provider_transport_pair, mock_rate_limited_pair,
+    mock_request_failed_pair,
 };
 
 pub enum MockStep {
@@ -18,6 +19,7 @@ pub enum MockStep {
     Transport,
     Json,
     ProviderTransport,
+    ProviderFatal,
 }
 
 #[cfg(test)]
@@ -49,6 +51,7 @@ fn mock_step_outcome(step: &MockStep, messages: &[ChatMessage]) -> LlmCompletion
         MockStep::BillingFailure { status, body } => mock_billing_failure_pair(*status, body),
         MockStep::Transport | MockStep::Json => mock_json_transport_pair(),
         MockStep::ProviderTransport => mock_provider_transport_pair(),
+        MockStep::ProviderFatal => mock_provider_fatal_pair(),
     };
     LlmCompletionOutcome { result, http }
 }

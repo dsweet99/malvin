@@ -28,6 +28,33 @@ pub(crate) async fn fetch_completion_body_maps_http_200_nvidia_resource_exhauste
 }
 
 #[tokio::test]
+pub(crate) async fn fetch_completion_body_maps_http_200_non_retryable_provider_error() {
+    let server = MockServer::start().await;
+    let body = r#"{
+        "error": {
+            "message": "Provider returned error",
+            "code": 400,
+            "metadata": {
+                "provider_name": "Nvidia",
+                "raw": "{\"error\":{\"message\":\"Conversation roles must alternate user/assistant/user/assistant/...\"}}",
+                "error_type": "invalid_request"
+            }
+        }
+    }"#;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(body))
+        .mount(&server)
+        .await;
+    let client = OpenRouterClient::new(test_config(&server.uri())).expect("client");
+    let err = client.complete(&[]).await.result.expect_err("provider fatal");
+    assert!(!err.is_transport_retryable());
+    assert_eq!(
+        err.to_string(),
+        "Nvidia: Conversation roles must alternate user/assistant/user/assistant/..."
+    );
+}
+
+#[tokio::test]
 pub(crate) async fn fetch_completion_body_surfaces_transport_errors() {
     let client = OpenRouterClient::new(test_config("http://127.0.0.1:1")).expect("client");
     let meta = client
@@ -73,6 +100,7 @@ pub(crate) async fn fetch_completion_body_reads_success_body() {
 #[cfg(test)]
 mod kiss_cov_gate_refs {
     use super::{
+        fetch_completion_body_maps_http_200_non_retryable_provider_error,
         fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
         fetch_completion_body_reads_success_body,
         fetch_completion_body_surfaces_header_validation_errors,
@@ -82,6 +110,7 @@ mod kiss_cov_gate_refs {
     #[test]
     fn kiss_cov_fetch_completion_body_tests() {
         let _ = (
+            fetch_completion_body_maps_http_200_non_retryable_provider_error,
             fetch_completion_body_maps_http_200_nvidia_resource_exhausted,
             fetch_completion_body_surfaces_transport_errors,
             fetch_completion_body_surfaces_header_validation_errors,

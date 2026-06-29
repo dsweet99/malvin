@@ -3,22 +3,43 @@ use crate::openrouter::http_exchange::CompletionWithMeta;
 use crate::openrouter::types::CompletionResponse;
 use crate::error::{is_prompt_too_long_error, OpenRouterError};
 
-use super::super::provider_error::provider_transport_from_body;
+use super::super::provider_error::{provider_fatal_from_body, provider_transport_from_body};
 use super::{completion_with_meta, transport_meta};
 
-pub(crate) fn outcome_from_http_body(status: u16, text: String, message_count: usize) -> CompletionWithMeta {
-    if let Some(err) = provider_transport_from_body(&text) {
-        return completion_with_meta(Err(err), transport_meta(Some(status), Some(text)));
-    }
-    let result = match map_http_status(status, &text) {
-        Ok(()) => parse_completion_body(&text),
+fn http_body_outcome_with_meta(
+    status: u16,
+    text: String,
+    result: Result<CompletionResponse, OpenRouterError>,
+) -> CompletionWithMeta {
+    completion_with_meta(result, transport_meta(Some(status), Some(text)))
+}
+
+fn provider_envelope_outcome(status: u16, text: String) -> Option<CompletionWithMeta> {
+    let err = provider_transport_from_body(&text).or_else(|| provider_fatal_from_body(&text))?;
+    Some(http_body_outcome_with_meta(status, text, Err(err)))
+}
+
+fn parse_http_body_result(
+    status: u16,
+    text: &str,
+    message_count: usize,
+) -> Result<CompletionResponse, OpenRouterError> {
+    match map_http_status(status, text) {
+        Ok(()) => parse_completion_body(text),
         Err(err) if is_prompt_too_long_error(&err) => Err(OpenRouterError::ContextOverflow {
             body: err.to_string(),
             message_count,
         }),
         Err(err) => Err(err),
-    };
-    completion_with_meta(result, transport_meta(Some(status), Some(text)))
+    }
+}
+
+pub(crate) fn outcome_from_http_body(status: u16, text: String, message_count: usize) -> CompletionWithMeta {
+    if let Some(outcome) = provider_envelope_outcome(status, text.clone()) {
+        return outcome;
+    }
+    let result = parse_http_body_result(status, &text, message_count);
+    http_body_outcome_with_meta(status, text, result)
 }
 
 pub(crate) fn map_http_status(status: u16, body: &str) -> Result<(), OpenRouterError> {
@@ -99,7 +120,7 @@ fn normalize_content_value(content: &serde_json::Value) -> Option<serde_json::Va
 
 #[cfg(test)]
 mod tests {
-    use super::{map_http_status, parse_completion_body};
+    use super::{map_http_status, outcome_from_http_body, parse_completion_body};
     use crate::error::OpenRouterError;
 
     #[test]
@@ -155,6 +176,29 @@ mod tests {
         let body = r#"{"choices":[{"message":{"content":"answer","reasoning":"think"}}]}"#;
         let resp = parse_completion_body(body).expect("parse text");
         assert_eq!(resp.content, "answer");
+    }
+
+    #[test]
+    fn outcome_from_http_body_maps_non_retryable_provider_error() {
+        let body = r#"{
+            "error": {
+                "message": "Provider returned error",
+                "code": 400,
+                "metadata": {
+                    "provider_name": "Nvidia",
+                    "raw": "{\"error\":{\"message\":\"Conversation roles must alternate user/assistant/user/assistant/...\"}}",
+                    "error_type": "invalid_request"
+                }
+            }
+        }"#;
+        let meta = outcome_from_http_body(200, body.into(), 1);
+        let err = meta.result.expect_err("provider error");
+        assert!(err.is_provider_error());
+        assert!(!err.is_transport_retryable());
+        assert_eq!(
+            err.to_string(),
+            "Nvidia: Conversation roles must alternate user/assistant/user/assistant/..."
+        );
     }
 
     #[test]

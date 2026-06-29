@@ -35,6 +35,13 @@ impl HttpRetryCounters {
             return HttpRetryStep::Stop(HttpCompletionError::ContextOverflow);
         }
         self.last_error = err.to_string();
+        if err.is_provider_error() {
+            return HttpRetryStep::Stop(HttpCompletionError::Exhausted(exhaustion_message(
+                1,
+                limits.transport,
+                &self.last_error,
+            )));
+        }
         if err.is_billing_failure()
             && BudgetScopeLayer::MiniTransportRetry.billing_fails_immediately()
         {
@@ -179,6 +186,21 @@ mod kiss_witness {
                 &OpenRouterError::BillingFailure {
                     status: 402,
                     body: "no credits".into(),
+                },
+                limits
+            ),
+            HttpRetryStep::Stop(HttpCompletionError::Exhausted(_))
+        ));
+        let mut provider_fatal = HttpRetryCounters {
+            transport_failures: 0,
+            last_error: String::new(),
+        };
+        assert!(matches!(
+            provider_fatal.next(
+                &OpenRouterError::ProviderError {
+                    provider: "Nvidia".into(),
+                    detail: "Conversation roles must alternate user/assistant/user/assistant/..."
+                        .into(),
                 },
                 limits
             ),
