@@ -85,8 +85,8 @@ Use the in-process mini agent backend (OpenRouter HTTP + bash fence loop) instea
 
 When `--mini` is set:
 
-- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `anthropic/claude-sonnet-4`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
-- `--model` is sent to OpenRouter; `--model auto` resolves to `anthropic/claude-sonnet-4` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
+- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `nvidia/nemotron-3-ultra-550b-a55b:free`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
+- `--model` is sent to OpenRouter; `--model auto` resolves to `nvidia/nemotron-3-ultra-550b-a55b:free` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
 - `--no-force` is a no-op (nothing to approve).
 - `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below). OpenRouter billing/credit failures (402/403) and ACP “upgrade your plan” errors fail immediately at the gate level without retry or `mini gate attempt N failed` wrapping.
 - `[agent].max_mini_transport_retries` in `~/.malvin_home/config.toml` (default **3**) caps retries for all non-billing OpenRouter HTTP failures (429, 5xx, 4xx, auth, JSON decode, reqwest transport, provider capacity). Billing/payment failures (402/403) fail immediately. `--mini-max-http-retries` is deprecated and ignored by the mini retry loop.
@@ -185,7 +185,7 @@ Top-level keys include `mem_limit_gb`, `theme`, and `mpc` (default **false**). W
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` ensures the home config file exists with defaults.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` and agent-backed commands (including `malvin do`, `code`, and `tidy`) ensure the home config file exists with defaults.
 
 ## External dependencies
 

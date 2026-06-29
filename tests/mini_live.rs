@@ -132,7 +132,7 @@ fn mini_live_models_listing() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("anthropic/"));
-    assert!(stdout.contains("Default mini model: anthropic/claude-sonnet-4"));
+    assert!(stdout.contains("Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free"));
 }
 
 #[cfg(unix)]

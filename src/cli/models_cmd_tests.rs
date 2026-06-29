@@ -108,7 +108,7 @@ pub(crate) async fn run_mini_models_prints_openrouter_rows_and_footer() {
     let out = take_captured_stdout();
     drop(guards);
     assert!(out.contains("anthropic/claude-sonnet-4\tClaude Sonnet 4"));
-    assert!(out.contains("Default mini model: anthropic/claude-sonnet-4"));
+    assert!(out.contains("Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free"));
 }
 
 #[test]

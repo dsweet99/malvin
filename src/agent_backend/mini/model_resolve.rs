@@ -17,7 +17,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolve_mini_model_auto_returns_claude_sonnet_4() {
+    fn resolve_mini_model_auto_returns_default_slug() {
         assert_eq!(resolve_mini_model("auto"), MINI_DEFAULT_MODEL);
     }
 

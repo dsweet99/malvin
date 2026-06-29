@@ -43,7 +43,7 @@ See `malvin --doc`. Only `--no-color` materially affects output formatting. Glob
 1. `GET {OPENROUTER_BASE_URL}/models?output_modalities=text&sort=most-popular` (default base URL: `https://openrouter.ai/api/v1`).
 2. `OPENROUTER_API_KEY` is optional for this public catalog; when set, the same Bearer / referer headers as mini completions are sent.
 3. Print one tab-separated row per model: `slug\tname`.
-4. Print blank line and: `Default mini model: anthropic/claude-sonnet-4`.
+4. Print blank line and: `Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free`.
 5. Network or API failures exit non-zero with an error message (no static fallback list).
 
 Environment variables (mini listing only):

@@ -94,7 +94,8 @@ async fn prepare_do_run(
     run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let coder = do_flow_prompt::build_do_coder_run(&artifacts, &text)?;
-    let session_dotfile_backups = SessionDotfileBackups::snapshot(&artifacts.work_dir)?;
+    let session_dotfile_backups =
+        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     Ok(DoRunPrep {
         client,
         artifacts,
@@ -177,11 +178,26 @@ async fn run_do_acp(
 #[cfg(test)]
 mod do_snapshot_tests {
     use super::SessionDotfileBackups;
+    use crate::malvin_config_path;
+    use crate::test_utils::with_isolated_home;
 
     #[test]
     fn snapshot_do_session_dotfiles_on_empty_workdir() {
         let tmp = tempfile::tempdir().expect("tempdir");
         SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+    }
+
+    #[test]
+    fn do_prepare_snapshot_ensures_home_config_exists() {
+        with_isolated_home(|work| {
+            let cfg = malvin_config_path(work);
+            assert!(!cfg.exists());
+            SessionDotfileBackups::snapshot_after_ensuring_home_config(work).expect("snapshot");
+            assert!(
+                cfg.is_file(),
+                "do session snapshot must ensure ~/.malvin_home/config.toml exists"
+            );
+        });
     }
 }
 

@@ -6,7 +6,7 @@ mpc = false
 
 [agent]
 model = "auto"
-"model-mini" = "anthropic/claude-sonnet-4"
+"model-mini" = "nvidia/nemotron-3-ultra-550b-a55b:free"
 max_hypotheses = 5
 max_loops = 1
 max_loops_code = 3
