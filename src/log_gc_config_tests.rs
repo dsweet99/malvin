@@ -1,10 +1,26 @@
 use super::*;
 
 #[test]
+fn parse_logs_gc_config_max_count_contract() {
+    let default_count = LogsGcConfig::default().max_count;
+    let cases: &[(&str, u64)] = &[
+        ("[logs]\n", default_count),
+        ("[logs]\nmax_count = 500\n", 500),
+        ("[logs]\nmax_count = 0\n", 0),
+        ("[logs]\nmax_count = true\n", default_count),
+    ];
+    for (toml, want_count) in cases {
+        let cfg = parse_logs_gc_config(toml).expect("parse");
+        assert_eq!(cfg.max_count, *want_count, "toml={toml:?}");
+    }
+}
+
+#[test]
 fn parse_logs_gc_config_reads_toml_section() {
     let cfg = parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
     assert_eq!(cfg.max_age_days, 7);
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
+    assert_eq!(cfg.max_count, LogsGcConfig::default().max_count);
 }
 
 #[test]

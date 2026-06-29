@@ -87,7 +87,7 @@ async fn prepare_do_run(
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
         Some(work_dir.as_path()),
-        crate::run_id::RunDirOptions::without_gc(),
+        crate::run_id::RunDirOptions::default(),
     )
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));

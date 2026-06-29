@@ -15,6 +15,7 @@ mod entrypoint_checks;
 pub(crate) mod error_run_log;
 pub(crate) mod exit;
 pub(crate) mod kpop_flow;
+pub(crate) mod logs_cmd;
 pub(crate) mod models_cmd;
 pub(crate) mod run_emit;
 pub(crate) mod shared_opts;

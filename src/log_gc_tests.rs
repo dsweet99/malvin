@@ -1,4 +1,7 @@
 use super::*;
+use super::log_gc_prune::{
+    mtime_as_utc, needs_prune, over_age_limit, over_byte_cap, prune_run_dirs,
+};
 use crate::log_gc_config::{
     load_logs_gc_config, parse_byte_size, parse_logs_gc_config, parse_max_bytes_value,
     split_byte_size, LogsGcConfig,
@@ -8,6 +11,14 @@ const RUN_OLDEST: &str = "20260101_000000_aaaaaaa1";
 const RUN_MID: &str = "20260102_000000_bbbbbbb2";
 const RUN_NEWEST: &str = "20260103_000000_ccccccc3";
 const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
+
+fn config_no_count_cap() -> LogsGcConfig {
+    LogsGcConfig {
+        max_count: 0,
+        max_age_days: 0,
+        max_bytes: None,
+    }
+}
 
 #[test]
 fn parse_byte_size_accepts_binary_units() {
@@ -48,7 +59,11 @@ fn load_logs_gc_config_uses_defaults_when_missing() {
 
 #[test]
 fn parse_logs_gc_config_reads_toml() {
-    let cfg = parse_logs_gc_config("[logs]\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n").expect("parse");
+    let cfg = parse_logs_gc_config(
+        "[logs]\nmax_count = 500\nmax_age_days = 7\nmax_bytes = \"1MiB\"\n",
+    )
+    .expect("parse");
+    assert_eq!(cfg.max_count, 500);
     assert_eq!(cfg.max_age_days, 7);
     assert_eq!(cfg.max_bytes, parse_byte_size("1MiB"));
 }
@@ -60,14 +75,16 @@ fn log_gc_helpers_cover_policy_edges() {
     std::fs::create_dir_all(&old).expect("mkdir");
     std::fs::write(old.join("nested.log"), "x").expect("write");
     let runs = vec![old.clone()];
+    let total = dir_size(&old);
     let config = LogsGcConfig {
+        max_count: 0,
         max_age_days: 30,
         max_bytes: Some(0),
     };
-    assert!(over_byte_cap(&runs, Some(0)));
-    assert!(!over_byte_cap(&runs, None));
+    assert!(over_byte_cap(total, Some(0)));
+    assert!(!over_byte_cap(total, None));
     assert!(over_age_limit(runs.last(), config.max_age_days));
-    assert!(needs_prune(&runs, &config));
+    assert!(needs_prune(&runs, total, &config));
     assert_eq!(dir_size(&old), dir_size_inner(&old).expect("dir_size_inner"));
     assert!(mtime_as_utc(&old).is_some());
     assert_eq!(
@@ -94,11 +111,7 @@ fn prune_keeps_dated_run_when_arbitrary_subdir_would_sort_newer() {
     std::fs::create_dir_all(logs.join(RUN_NEWEST)).expect("run dir");
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    let config = LogsGcConfig {
-        max_age_days: 0,
-        max_bytes: None,
-    };
-    prune_run_dirs(&mut runs, &config);
+    prune_run_dirs(&mut runs, &config_no_count_cap());
     assert!(
         logs.join(RUN_NEWEST).is_dir(),
         "GC must not remove dated run dirs in favor of arbitrary log subdirs"
@@ -113,11 +126,7 @@ fn prune_leaves_non_run_log_subdirs_untouched() {
     std::fs::create_dir_all(logs.join("hand_notes")).expect("mkdir");
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-    let config = LogsGcConfig {
-        max_age_days: 0,
-        max_bytes: None,
-    };
-    prune_run_dirs(&mut runs, &config);
+    prune_run_dirs(&mut runs, &config_no_count_cap());
     assert!(logs.join("hand_notes").is_dir());
 }
 
@@ -130,6 +139,7 @@ fn prune_removes_run_dir_when_over_age_limit() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
+        max_count: 0,
         max_age_days: 30,
         max_bytes: None,
     };
@@ -157,6 +167,7 @@ fn prune_removes_oldest_when_over_byte_cap() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
+        max_count: 0,
         max_age_days: 0,
         max_bytes: Some(3000),
     };
@@ -191,6 +202,7 @@ fn prune_retries_or_reports_when_delete_fails_and_limits_still_exceeded() {
     let mut runs = list_run_dirs(&logs);
     runs.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
     let config = LogsGcConfig {
+        max_count: 0,
         max_age_days: 0,
         max_bytes: Some(1000),
     };

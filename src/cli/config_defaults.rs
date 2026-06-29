@@ -144,7 +144,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Inspire(_)
-        | Commands::Models(_) => {}
+        | Commands::Models(_) | Commands::Logs(_) => {}
     }
 }
 
@@ -152,7 +152,7 @@ pub fn apply_workspace_config_defaults(
     matches: &ArgMatches,
     cli: &mut Cli,
 ) -> Result<(), String> {
-    if matches!(cli.command, Some(Commands::Do(_) | Commands::Models(_))) {
+    if matches!(cli.command, Some(Commands::Do(_) | Commands::Models(_) | Commands::Logs(_))) {
         if cli.shared.mini {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;

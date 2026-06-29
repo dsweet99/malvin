@@ -191,7 +191,7 @@ Top-level keys include `mem_limit_gb`, `theme`, and `mpc` (default **true**). Wh
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_age_days`, `max_bytes`). `malvin init` and `malvin do` skip pruning. `malvin init` and agent-backed commands (including `malvin do`, `code`, and `tidy`) ensure the home config file exists with defaults.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). `malvin init` skips pruning. Use `malvin logs status` to inspect retention state and `malvin logs gc` (with optional `--dry-run`) to prune manually without starting an agent session. `malvin init` and agent-backed commands (including `malvin do`, `code`, and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command or `malvin logs gc` may delete excess oldest runs once.
 
 ## External dependencies
 

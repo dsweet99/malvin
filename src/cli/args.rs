@@ -8,6 +8,7 @@ use super::explain_flow::ExplainArgs;
 use super::revise_flow::ReviseArgs;
 use super::tidy_flow::TidyArgs;
 
+pub use super::logs_cmd::LogsArgs;
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
@@ -69,4 +70,6 @@ pub enum Commands {
     Revise(ReviseArgs),
     /// List available models
     Models(ModelsArgs),
+    /// Inspect and manage run-log retention
+    Logs(LogsArgs),
 }

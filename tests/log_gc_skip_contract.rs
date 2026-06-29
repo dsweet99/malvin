@@ -1,4 +1,4 @@
-//! Integration smoke: GC skip for `do`/`init`, GC-on for `code`.
+//! Integration smoke: GC skip for `init`, GC-on for `do` and `code`.
 
 use malvin::output::{format_who_tag_delim, MALVIN_WHO};
 
@@ -6,7 +6,7 @@ mod common;
 
 use std::path::Path;
 
-use common::{malvin_init_output_with_home, run_do_with_mock, test_home_workspace};
+use common::{malvin_init_output_with_home, test_home_workspace};
 
 const SEED_RUN: &str = "20260101_000000_seedseed";
 const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
@@ -22,7 +22,7 @@ fn write_gc_config_age_only(home: &Path) {
     std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
     std::fs::write(
         home.join(malvin::MALVIN_USER_HOME_DIR).join("config.toml"),
-        "[logs]\nmax_age_days = 30\nmax_bytes = \"\"\n",
+        "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\n",
     )
     .expect("write config");
 }
@@ -50,13 +50,41 @@ fn malvin_init_does_not_prune_preexisting_log_dirs() {
 
 #[cfg(unix)]
 #[test]
-fn malvin_do_does_not_prune_preexisting_log_dirs() {
-    let (_root, home, workspace) = test_home_workspace();
-    let seed = seed_log_run(&workspace, &home);
-    let out = run_do_with_mock(&[]);
-    assert!(out.status.success(), "malvin do failed: {out:?}");
-    assert!(seed.is_dir(), "malvin do must not GC pre-seeded run log dirs");
-    assert!(seed.join("marker.txt").is_file());
+fn malvin_do_prunes_preexisting_log_dirs() {
+    use common::{
+        acp_mock_do_streaming_update_js, combined_cli_output, command_output_with_timeout,
+        write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
+    };
+    use std::process::Command;
+
+    let (root, home, workspace) = test_home_workspace();
+    common::activate_test_home(&home);
+    write_gc_config_age_only(&home);
+    let old = seed_old_run(&workspace, &home);
+
+    let mock = root.path().join("mock-agent-acp-do-gc");
+    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
+    cmd.current_dir(&workspace)
+        .env("HOME", &home)
+        .env("CURSOR_AGENT_API_KEY", "test-key")
+        .env("MALVIN_AGENT_ACP_BIN", &mock)
+        .args(["--no-tee", "do"]);
+    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
+    cmd.arg("say hi");
+    let out =
+        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin do");
+    let combined = combined_cli_output(&out);
+    assert!(out.status.success(), "malvin do failed: {combined:?}");
+    assert!(
+        combined.contains("pruned 1 run log(s)"),
+        "malvin do must GC before creating run dir: {combined:?}"
+    );
+    assert!(
+        combined.contains(&format_who_tag_delim(MALVIN_WHO)),
+        "prune line must use standard malvin logger tag: {combined:?}"
+    );
+    assert!(!old.exists(), "malvin do must GC aged seeded run dir");
 }
 
 #[cfg(unix)]
@@ -96,6 +124,7 @@ fn malvin_code_prunes_preexisting_log_dirs() {
     use common::{combined_cli_output, test_home_workspace};
 
     let (root, home, workspace) = test_home_workspace();
+    common::activate_test_home(&home);
     write_gc_config_age_only(&home);
     let old = seed_old_run(&workspace, &home);
 

@@ -15,7 +15,9 @@ max_acp_retries = 3
 max_mini_transport_retries = 3
 
 [logs]
+# Max run directories per workspace bucket; 0 = unlimited.
+max_count = 1000
 # Delete runs older than this many days (dirname timestamp, else mtime).
 max_age_days = 90
-# Cap total size of ~/.malvin_home/logs/<hash>/ (B, KiB, MiB, GiB, TiB).
+# Cap total size of ~/.malvin_home/logs/<hash>/ (B, KiB, MiB, GiB, TiB). Empty = disabled.
 max_bytes = "2GiB"
