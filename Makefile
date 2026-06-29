@@ -26,4 +26,4 @@ install:
 	cargo install --path . --force
 
 test:
-	cargo nextest run
+	pytest tests && cargo nextest run
