@@ -36,6 +36,7 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Inspire(_)
         | Commands::Models(_)
         | Commands::Logs(_)
+        | Commands::GenerateScript(_)
         | Commands::Delight(_)
         | Commands::Explain(_)
         | Commands::Revise(_) => Ok(()),
@@ -192,11 +193,13 @@ pub(crate) fn dispatch_command(
                 .await
             })
         }
-        cmd @ (Commands::Models(_) | Commands::Logs(_)) => dispatch_models_or_logs(cmd),
+        cmd @ (Commands::Models(_) | Commands::Logs(_) | Commands::GenerateScript(_)) => {
+            dispatch_agent_free(cmd)
+        }
     }
 }
 
-fn dispatch_models_or_logs(command: Commands) -> Result<(), String> {
+fn dispatch_agent_free(command: Commands) -> Result<(), String> {
     match command {
         Commands::Models(models) => {
             if models.mini {
@@ -206,7 +209,8 @@ fn dispatch_models_or_logs(command: Commands) -> Result<(), String> {
             }
         }
         Commands::Logs(logs) => super::logs_cmd::run_logs(logs),
-        _ => Err("dispatch_models_or_logs: unexpected command".to_string()),
+        Commands::GenerateScript(args) => super::generate_script_cmd::run_generate_script(args),
+        _ => Err("dispatch_agent_free: unexpected command".to_string()),
     }
 }
 

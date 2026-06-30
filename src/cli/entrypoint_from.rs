@@ -40,6 +40,7 @@ fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
         Commands::Code(code) => (code.requests.first(), "code"),
         Commands::Inspire(inspire) => (inspire.request.as_ref(), "inspire"),
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
+        Commands::GenerateScript(args) => (args.recipe.as_ref(), "generate-script"),
         _ => return None,
     };
     entrypoint_short_help_when_request_missing(cli.shared.doc, request, subcommand)

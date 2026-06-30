@@ -8,7 +8,7 @@ use common::{
     ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_kpop_solved_without_output_js,
     acp_mock_explain_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
     seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
-    spawn_explain, test_home_workspace, workspace_kiss_check_only, write_mock_executable,
+    spawn_explain, test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -18,8 +18,7 @@ fn explain_runs_kpop_when_gates_already_pass() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-kpop");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -43,8 +42,7 @@ fn explain_writes_custom_out_path() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-custom-out");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -72,8 +70,7 @@ fn explain_fails_when_request_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-should-not-run");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
     let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(&workspace)
         .env("HOME", &home)
@@ -100,8 +97,7 @@ fn explain_auto_mode_leaves_stale_default_outputs_untouched() {
     workspace_kiss_check_only(&workspace);
     seed_stale_default_explain_outputs(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-stale");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -131,8 +127,7 @@ fn explain_fails_when_agent_solves_but_output_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-no-output");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_solved_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_solved_without_output_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,
@@ -151,8 +146,7 @@ fn explain_kpop_fails_when_post_session_pdf_empty() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-explain-empty-pdf");
-    write_mock_executable(&mock, &acp_mock_explain_kpop_empty_pdf_js());
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_empty_pdf_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,

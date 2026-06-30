@@ -8,7 +8,7 @@ use common::{
     MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
     seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
     write_failing_gate_tools,
-    write_fake_kiss, write_mock_executable,
+    write_fake_kiss, cached_mock_executable,
 };
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -135,8 +135,7 @@ fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let trace = root.path().join("quality-trace.log");
     write_failing_gate_tools(&bin_dir, &trace);
-    let mock = root.path().join("mock-agent-acp-tidy");
-    write_mock_executable(&mock, &acp_mock_tidy_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
     let original_path = std::env::var("PATH").unwrap_or_default();
     let path = format!("{}:{original_path}", bin_dir.display());
 

@@ -5,13 +5,12 @@ use std::process::Command;
 
 #[cfg(all(unix, target_os = "linux"))]
 fn kpop_multiturn_prep(mock_js: &str) -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf, String) {
-    use super::{test_home_workspace, write_fake_kiss, write_mock_executable};
+    use super::{test_home_workspace, write_fake_kiss, cached_mock_executable};
 
     let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join("mock-agent-acp-kpop");
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable( mock_js);
     write_fake_kiss(&bin_dir.join("kiss"));
     let path = format!(
         "{}:{}",

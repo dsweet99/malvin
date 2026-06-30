@@ -5,13 +5,13 @@ mod linux_pty {
     use crate::common::{
         acp_mock_code_streaming_long_bold_markdown_js, acp_mock_code_streaming_rich_markdown_js,
         assert_markdown_stdout_and_logs, only_run_dir, read_all_logs,
-        run_code_max_loops_zero_under_script, run_kpop_bold_markdown_under_script,
-        run_malvin_under_script_with_mock,
+        run_code_max_loops_zero_under_openpty, run_kpop_bold_markdown_under_openpty,
+        run_malvin_under_openpty_with_mock,
     };
 
     #[test]
     fn code_pty_markdown_strips_bold_markers_without_no_markdown() {
-        let out = run_code_max_loops_zero_under_script(&[]);
+        let out = run_code_max_loops_zero_under_openpty(&[]);
         assert!(
             out.status.success(),
             "expected code success when post-kpop gates pass: {out:?}"
@@ -33,7 +33,7 @@ mod linux_pty {
 
     #[test]
     fn code_pty_no_markdown_preserves_bold_markers() {
-        let out = run_code_max_loops_zero_under_script(&["--no-markdown"]);
+        let out = run_code_max_loops_zero_under_openpty(&["--no-markdown"]);
         assert!(
             out.status.success(),
             "expected code success when post-kpop gates pass: {out:?}"
@@ -51,7 +51,7 @@ mod linux_pty {
 
     #[test]
     fn code_pty_no_color_disables_markdown_styling() {
-        let out = run_code_max_loops_zero_under_script(&["--no-color"]);
+        let out = run_code_max_loops_zero_under_openpty(&["--no-color"]);
         assert!(
             out.status.success(),
             "expected code success when post-kpop gates pass: {out:?}"
@@ -73,7 +73,7 @@ mod linux_pty {
 
     #[test]
     fn code_stdout_markdown_styles_stdout_but_logs_stay_raw() {
-        let run = run_malvin_under_script_with_mock(
+        let run = run_malvin_under_openpty_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
             "code --trust-the-plan --max-loops 0 ship",
             None,
@@ -88,7 +88,7 @@ mod linux_pty {
 
     #[test]
     fn kpop_stdout_markdown_styles_stdout_but_logs_stay_raw() {
-        let run = run_malvin_under_script_with_mock(
+        let run = run_malvin_under_openpty_with_mock(
             &acp_mock_code_streaming_rich_markdown_js(),
             "kpop --max-loops 1 --max-hypotheses 1 investigate",
             None,
@@ -103,7 +103,7 @@ mod linux_pty {
 
     #[test]
     fn code_stdout_markdown_wrap_keeps_long_bold_span_styled() {
-        let run = run_malvin_under_script_with_mock(
+        let run = run_malvin_under_openpty_with_mock(
             &acp_mock_code_streaming_long_bold_markdown_js(),
             "code --trust-the-plan --max-loops 0 ship",
             Some("40"),
@@ -140,7 +140,7 @@ mod linux_pty {
 
     #[test]
     fn kpop_pty_markdown_strips_bold_markers_without_no_markdown() {
-        let out = run_kpop_bold_markdown_under_script(&[]);
+        let out = run_kpop_bold_markdown_under_openpty(&[]);
         assert!(
             out.status.success(),
             "expected kpop success when agent streams markdown only: {out:?}"
@@ -162,7 +162,7 @@ mod linux_pty {
 
     #[test]
     fn kpop_pty_no_markdown_preserves_bold_markers() {
-        let out = run_kpop_bold_markdown_under_script(&["--no-markdown"]);
+        let out = run_kpop_bold_markdown_under_openpty(&["--no-markdown"]);
         assert!(
             out.status.success(),
             "expected kpop success when agent streams markdown only: {out:?}"

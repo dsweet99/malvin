@@ -20,7 +20,7 @@ Bare invocation (no subcommand):
 - `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `~/.malvin_home/logs/<hash>/`
 - Quote a single request when the text contains spaces (e.g. `malvin "Why does the cache miss?"`)
 
-Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`.
+Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`, `generate-script`.
 
 ## Commands
 
@@ -35,6 +35,8 @@ Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `d
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
 | `revise` | Revise an existing document in place via the KPop gate loop |
 | `models` | List models (Cursor agent CLI by default; `models --mini` lists OpenRouter) |
+| `generate-script` | Materialize auto-script JSON and stub shell scripts from a recipe (agent-free) |
+| `logs` | Inspect and prune run-log retention under `~/.malvin_home/logs/` |
 
 Hidden (backward compatible): `kpop` — prefer bare `malvin REQUEST` for investigation.
 

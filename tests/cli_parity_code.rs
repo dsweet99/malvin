@@ -4,7 +4,7 @@ mod common;
 use common::{
     CodeSpawn, acp_mock_code_kpop_abort_result_js, bin_path_with_failing_gates,
     combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_code, test_home_workspace,
-    workspace_kiss_check_only, write_mock_executable,
+    workspace_kiss_check_only, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -15,8 +15,7 @@ fn code_stops_when_kpop_writes_abort_result() {
     workspace_kiss_check_only(&workspace);
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
-    let mock = root.path().join("mock-code-kpop-abort");
-    write_mock_executable(&mock, &acp_mock_code_kpop_abort_result_js());
+    let mock = cached_mock_executable( &acp_mock_code_kpop_abort_result_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,

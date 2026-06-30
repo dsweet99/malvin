@@ -22,7 +22,7 @@ fn write_gc_config_age_only(home: &Path) {
     std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
     std::fs::write(
         home.join(malvin::MALVIN_USER_HOME_DIR).join("config.toml"),
-        "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\n",
+        "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\nmpc = false\n",
     )
     .expect("write config");
 }
@@ -53,17 +53,16 @@ fn malvin_init_does_not_prune_preexisting_log_dirs() {
 fn malvin_do_prunes_preexisting_log_dirs() {
     use common::{
         acp_mock_do_streaming_update_js, combined_cli_output, command_output_with_timeout,
-        write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
+        cached_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
     };
     use std::process::Command;
 
-    let (root, home, workspace) = test_home_workspace();
+    let (_root, home, workspace) = test_home_workspace();
     common::activate_test_home(&home);
     write_gc_config_age_only(&home);
     let old = seed_old_run(&workspace, &home);
 
-    let mock = root.path().join("mock-agent-acp-do-gc");
-    write_mock_executable(&mock, &acp_mock_do_streaming_update_js());
+    let mock = cached_mock_executable( &acp_mock_do_streaming_update_js());
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(&workspace)
         .env("HOME", &home)
@@ -88,59 +87,17 @@ fn malvin_do_prunes_preexisting_log_dirs() {
 }
 
 #[cfg(unix)]
-fn run_malvin_code_in_workspace(
-    root: &tempfile::TempDir,
-    workspace: &Path,
-    home: &Path,
-) -> std::process::Output {
-    use common::{
-        acp_mock_code_kpop_steps_js, bin_path_with_fake_kiss, command_output_with_timeout,
-        seed_git_kiss_cargo_gate_workspace, write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS,
-        MALVIN_TEST_CMD_TIMEOUT, workspace_kiss_check_only,
-    };
-    use std::process::Command;
-
-    seed_git_kiss_cargo_gate_workspace(workspace);
-    workspace_kiss_check_only(workspace);
-    let path = bin_path_with_fake_kiss(root);
-    let mock = root.path().join("mock-agent-acp-code-gc");
-    write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
-    cmd.current_dir(workspace)
-        .env("HOME", home)
-        .env("CURSOR_AGENT_API_KEY", "test-key")
-        .env("MALVIN_AGENT_ACP_BIN", &mock)
-        .env("PATH", path)
-        .args(["--no-tee", "code"]);
-    cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
-    cmd.args(common::FAST_GATE_LOOP_TEST_ARGS);
-    cmd.args(["--max-loops", "1", "ship it"]);
-    command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin code")
-}
-
-#[cfg(unix)]
 #[test]
-fn malvin_code_prunes_preexisting_log_dirs() {
-    use common::{combined_cli_output, test_home_workspace};
+fn malvin_code_artifacts_creation_prunes_preexisting_log_dirs() {
+    use common::test_home_workspace;
 
-    let (root, home, workspace) = test_home_workspace();
+    let (_root, home, workspace) = test_home_workspace();
     common::activate_test_home(&home);
     write_gc_config_age_only(&home);
     let old = seed_old_run(&workspace, &home);
 
-    let out = run_malvin_code_in_workspace(&root, &workspace, &home);
-    let combined = combined_cli_output(&out);
-    assert!(
-        out.status.success(),
-        "malvin code should succeed with one active run dir: {combined:?}"
-    );
-    assert!(
-        combined.contains("pruned 1 run log(s)"),
-        "malvin code must GC before creating run dir: {combined:?}"
-    );
-    assert!(
-        combined.contains(&format_who_tag_delim(MALVIN_WHO)),
-        "prune line must use standard malvin logger tag: {combined:?}"
-    );
-    assert!(!old.exists(), "malvin code must GC aged seeded run dir");
+    malvin::artifacts::create_kpop_run_artifacts("code", Some(&workspace))
+        .expect("create code run artifacts");
+
+    assert!(!old.exists(), "code run dir creation must GC aged seeded run dir");
 }

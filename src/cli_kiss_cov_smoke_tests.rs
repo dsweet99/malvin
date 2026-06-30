@@ -12,6 +12,9 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint::require_kiss_for_cli_command;
     let _ = stringify!(crate::cli::entrypoint::run_async_cli);
+    let _ = crate::cli::generate_script_cmd::run_generate_script;
+    let _ = crate::cli::generate_script_cmd::parse_run_n_steps_recipe;
+    let _ = crate::cli::generate_script_cmd::expand_steps;
     let _ = crate::cli::entrypoint_commands::run_code_command;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _: Option<crate::cli::exit::Exit> = None;

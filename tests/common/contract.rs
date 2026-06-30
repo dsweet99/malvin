@@ -26,6 +26,50 @@ pub fn sleep_child(seconds: &str) -> std::process::Child {
 }
 
 #[cfg(unix)]
+pub struct FakePathGuard {
+    old_path: Option<String>,
+}
+
+#[cfg(unix)]
+impl Drop for FakePathGuard {
+    fn drop(&mut self) {
+        #[allow(unsafe_code)]
+        unsafe {
+            match &self.old_path {
+                Some(path) => std::env::set_var("PATH", path),
+                None => std::env::remove_var("PATH"),
+            }
+        }
+    }
+}
+
+#[cfg(unix)]
+pub fn prepend_fake_agent_models_to_path(body: &str) -> (tempfile::TempDir, FakePathGuard) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().expect("fake agent dir");
+    let agent = dir.path().join("agent");
+    std::fs::write(&agent, body).expect("write fake agent");
+    let mut perms = std::fs::metadata(&agent).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&agent, perms).expect("chmod fake agent");
+    let old_path = std::env::var("PATH").ok();
+    let new_path = format!(
+        "{}:{}",
+        dir.path().display(),
+        old_path.as_deref().unwrap_or("")
+    );
+    #[allow(unsafe_code)]
+    unsafe {
+        std::env::set_var("PATH", new_path);
+    }
+    (
+        dir,
+        FakePathGuard { old_path },
+    )
+}
+
+#[cfg(unix)]
 pub fn write_peer_acp_lock(
     work: &std::path::Path,
     slot: &str,

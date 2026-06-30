@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import os
 import sys
 from pathlib import Path
 
@@ -59,15 +60,29 @@ def test_kiss_admin_violation_manifest_symbols():
     assert Path(out).read_text(encoding="utf-8").splitlines()[1].startswith("/malvin/src/foo.rs")
 
 
-def test_kiss_admin_bulk_witness_gen_main_smoke():
+def test_kiss_admin_bulk_witness_gen_main_smoke(tmp_path: Path):
     mod = _load_triage_module("kiss_bulk_witness_gen")
-    root = Path(__file__).resolve().parents[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_kiss = bin_dir / "kiss"
+    fake_kiss.write_text(
+        "#!/bin/sh\n"
+        "echo 'VIOLATION:test_coverage:/malvin/src/foo.rs:1:Bar: 0% covered.'\n",
+        encoding="utf-8",
+    )
+    fake_kiss.chmod(0o755)
     old_argv = sys.argv
+    old_path = os.environ.get("PATH")
     try:
-        sys.argv = ["kiss_bulk_witness_gen.py", str(root)]
+        sys.argv = ["kiss_bulk_witness_gen.py", str(tmp_path)]
+        os.environ["PATH"] = f"{bin_dir}:{old_path or ''}"
         assert mod.kiss_bulk_cli() == 0
     finally:
         sys.argv = old_argv
-    out = root / "src/coverage_kiss/bulk_witness_contract.rs"
+        if old_path is None:
+            os.environ.pop("PATH", None)
+        else:
+            os.environ["PATH"] = old_path
+    out = tmp_path / "src/coverage_kiss/bulk_witness_contract.rs"
     assert out.is_file()
     assert "kiss_witness_" in out.read_text(encoding="utf-8")

@@ -7,11 +7,11 @@ mod common;
 use common::{
     CodeSpawn, acp_mock_kpop_tampers_home_malvin_config_writes_solved_js, bin_path_with_fake_kiss,
     seed_git_kiss_cargo_gate_workspace, spawn_code, test_home_workspace,
-    workspace_kiss_check_only, write_mock_executable,
+    workspace_kiss_check_only, cached_mock_executable,
 };
 
 #[cfg(unix)]
-const HOME_CONFIG_SEED: &str = "mem_limit_gb = 7\n";
+const HOME_CONFIG_SEED: &str = "mem_limit_gb = 7\nmpc = false\n";
 
 #[cfg(unix)]
 fn home_config_path(home: &std::path::Path) -> std::path::PathBuf {
@@ -26,8 +26,7 @@ fn code_gate_loop_restores_home_malvin_config_after_agent_tampers() {
     workspace_kiss_check_only(&workspace);
     common::seed_malvin_config(&workspace, HOME_CONFIG_SEED);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-code-kpop-home-config-restore");
-    write_mock_executable(&mock, &acp_mock_kpop_tampers_home_malvin_config_writes_solved_js());
+    let mock = cached_mock_executable( &acp_mock_kpop_tampers_home_malvin_config_writes_solved_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,

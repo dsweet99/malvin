@@ -4,7 +4,7 @@ use std::process::Command;
 
 use super::{
     activate_test_home, command_output_with_timeout, seed_malvin_config, test_home_workspace,
-    write_fake_kiss, write_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
+    write_fake_kiss, cached_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
 };
 
 fn malvin_kpop_outer_cmd(
@@ -46,8 +46,7 @@ pub fn run_kpop_outer_loop(
         activate_test_home(&home);
         seed_malvin_config(&workspace, content);
     }
-    let mock = root.path().join("mock-agent-acp-kpop-outer");
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable( mock_js);
     fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
     fs::write(workspace.join(".gitignore"), "baseline-gitignore\n").expect("gitignore");
     let mut cmd = malvin_kpop_outer_cmd(&root, &home, &mock, extra_args);

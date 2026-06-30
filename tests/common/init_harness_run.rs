@@ -1,7 +1,8 @@
 use std::path::Path;
 use std::process::Command;
 
-use super::write_mock_executable;
+use super::cached_mock_executable;
+use super::activate_test_home;
 
 #[cfg(unix)]
 use super::workspace::chmod755;
@@ -108,8 +109,8 @@ fn spawn_malvin_init(
     in_place: bool,
 ) -> std::process::Output {
     let pre_commit_home = tempfile::tempdir().expect("pre-commit home tempdir");
-    let mock_bin = home.join("mock-acp-init");
-    write_mock_executable(&mock_bin, &acp_mock_init_js());
+    activate_test_home(home);
+    let mock_bin = cached_mock_executable(&acp_mock_init_js());
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     configure_malvin_init_cmd(&mut cmd, project, init_args, in_place);
     apply_malvin_init_test_env(&mut cmd, home, &mock_bin, pre_commit_home.path());

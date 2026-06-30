@@ -8,7 +8,7 @@ use common::{
     DelightSpawn, acp_mock_delight_kpop_empty_output_js, acp_mock_delight_kpop_solved_without_output_js,
     acp_mock_delight_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
     seed_git_kiss_cargo_gate_workspace, spawn_delight, test_home_workspace, workspace_kiss_check_only,
-    write_mock_executable,
+    cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -18,8 +18,7 @@ fn delight_runs_kpop_when_gates_already_pass() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-kpop");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -43,8 +42,7 @@ fn delight_allocates_sibling_when_default_pitch_preexists() {
     workspace_kiss_check_only(&workspace);
     std::fs::write(workspace.join("pitch.md"), "existing\n").expect("seed pitch");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-sibling");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -75,8 +73,7 @@ fn delight_fails_when_custom_out_path_preexists() {
     std::fs::create_dir_all(workspace.join("plans")).expect("mkdir");
     std::fs::write(workspace.join("plans/existing.md"), "existing\n").expect("seed plan");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-custom-exists");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -103,8 +100,7 @@ fn delight_fails_when_agent_solves_but_output_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-no-output");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_solved_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_solved_without_output_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -122,8 +118,7 @@ fn delight_writes_custom_out_path() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-custom-path");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,
@@ -150,8 +145,7 @@ fn delight_kpop_fails_when_post_session_output_empty() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-delight-empty-output");
-    write_mock_executable(&mock, &acp_mock_delight_kpop_empty_output_js());
+    let mock = cached_mock_executable( &acp_mock_delight_kpop_empty_output_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,

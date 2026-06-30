@@ -76,6 +76,20 @@ fn code_subcommand_accepts_multiple_plans() {
 }
 
 #[test]
+fn generate_script_subcommand_parses() {
+    let cli = parse(&["malvin", "generate-script", "run-3-steps: a.sh,b.sh,c.sh"]);
+    match cli.command {
+        Some(Commands::GenerateScript(g)) => {
+            assert_eq!(
+                g.recipe.as_deref(),
+                Some("run-3-steps: a.sh,b.sh,c.sh")
+            );
+        }
+        other => panic!("expected generate-script, got {other:?}"),
+    }
+}
+
+#[test]
 fn kiss_cov_bare_resolve_helper_names() {
     const NAMES: &[&str] = &["resolve_bare_kpop", "resolve_bare_command"];
     assert_eq!(NAMES.len(), 2);

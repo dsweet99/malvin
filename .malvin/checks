@@ -3,3 +3,4 @@ kiss check
 cargo clippy --jobs 3 --all-targets --all-features -- -D warnings -W clippy::cargo
 pytest tests
 ./admin/malvin_rust_test_gate.sh
+DEEPSWE_SKIP_DOCKER_SELFTESTS=0 ./admin/test_timing_gate.sh

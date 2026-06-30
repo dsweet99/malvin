@@ -9,7 +9,7 @@ use common::{
     acp_mock_kpop_tampers_kissconfig_writes_solved_js,
     acp_mock_kpop_tampers_malvin_checks_writes_solved_js, bin_path_with_failing_gates,
     bin_path_with_fake_kiss, combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_code,
-    test_home_workspace, workspace_kiss_check_only, write_mock_executable,
+    test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -19,8 +19,7 @@ fn code_runs_kpop_when_gates_already_pass() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-code-kpop");
-    write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,
@@ -50,8 +49,7 @@ fn code_kpop_fails_when_post_session_gates_still_fail() {
     workspace_kiss_check_only(&workspace);
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
-    let mock = root.path().join("mock-code-kpop-gates");
-    write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
+    let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,
@@ -79,8 +77,7 @@ fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
     workspace_kiss_check_only(&workspace);
     std::fs::write(workspace.join(".kissconfig"), "x\n").expect("kissconfig");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-code-kpop-kissconfig-restore");
-    write_mock_executable(&mock, &acp_mock_kpop_tampers_kissconfig_writes_solved_js());
+    let mock = cached_mock_executable( &acp_mock_kpop_tampers_kissconfig_writes_solved_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,
@@ -111,8 +108,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = root.path().join("mock-code-kpop-checks-restore");
-    write_mock_executable(&mock, &acp_mock_kpop_tampers_malvin_checks_writes_solved_js());
+    let mock = cached_mock_executable( &acp_mock_kpop_tampers_malvin_checks_writes_solved_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,
@@ -144,8 +140,7 @@ fn kpop_tamper_abort_does_not_run_gates() {
     workspace_kiss_check_only(&workspace);
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
-    let mock = root.path().join("mock-code-kpop-abort");
-    write_mock_executable(&mock, &acp_mock_kpop_abort_tampers_checks_js());
+    let mock = cached_mock_executable( &acp_mock_kpop_abort_tampers_checks_js());
     let out = spawn_code(&CodeSpawn {
         workspace: &workspace,
         home: &home,

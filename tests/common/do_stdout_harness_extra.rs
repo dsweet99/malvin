@@ -6,7 +6,7 @@ use std::process::Command;
 #[cfg(unix)]
 use super::{
     MALVIN_TEST_CMD_TIMEOUT, acp_mock_do_streaming_update_js, command_output_with_timeout,
-    test_home_workspace, write_mock_executable,
+    test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -69,8 +69,7 @@ pub fn prepare_do_bin_streaming_mock(mock_js: &str) -> DoBinCtx {
     let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join("mock-agent-acp-do");
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable( mock_js);
     DoBinCtx {
         root,
         home,

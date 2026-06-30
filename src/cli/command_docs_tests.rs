@@ -149,6 +149,34 @@ fn print_doc_revise_writes_subcommand_md() {
 }
 
 #[test]
+fn generate_script_doc_parses_without_recipe_when_doc_flag_set() {
+    use crate::cli::args::GenerateScriptArgs;
+    let cli = Cli::try_parse_from(["malvin", "generate-script", "--doc"]).expect("parse");
+    assert!(cli.shared.doc);
+    match cli.command.as_ref() {
+        Some(Commands::GenerateScript(g)) => assert!(g.recipe.is_none()),
+        _ => panic!("expected GenerateScript"),
+    }
+    let _ = GenerateScriptArgs {
+        recipe: None,
+        output: None,
+        scripts_dir: None,
+    };
+}
+
+#[test]
+fn print_doc_generate_script_writes_subcommand_md() {
+    use crate::cli::args::GenerateScriptArgs;
+    let cmd = Commands::GenerateScript(GenerateScriptArgs {
+        recipe: Some("run-3-steps: a.sh,b.sh,c.sh".to_string()),
+        output: None,
+        scripts_dir: None,
+    });
+    let out = capture_doc(Some(&cmd)).expect("capture");
+    assert!(out.starts_with(b"# malvin generate-script"));
+}
+
+#[test]
 fn malvin_doc_embeds_name_section() {
     let out = capture_doc(None).expect("capture");
     let text = String::from_utf8(out).expect("utf8");

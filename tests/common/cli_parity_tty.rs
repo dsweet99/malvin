@@ -1,9 +1,8 @@
 #[cfg(all(unix, target_os = "linux"))]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(all(unix, target_os = "linux"))]
 use std::path::{Path, PathBuf};
+
 #[cfg(all(unix, target_os = "linux"))]
-use std::process::Command;
+pub use super::cli_parity_tty_openpty::PtyEnv;
 
 #[cfg(all(unix, target_os = "linux"))]
 pub struct PtyRun {
@@ -14,26 +13,16 @@ pub struct PtyRun {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
-
-#[cfg(all(unix, target_os = "linux"))]
-pub struct PtyEnv {
-    pub root: tempfile::TempDir,
-    pub home: PathBuf,
-    pub workspace: PathBuf,
-    pub bin_dir: PathBuf,
-    pub mock: PathBuf,
-}
+use super::cli_parity_tty_openpty;
 
 #[cfg(all(unix, target_os = "linux"))]
 fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
-    use super::{test_home_workspace, write_fake_kiss, write_mock_executable};
+    use super::{cached_mock_executable, test_home_workspace, write_fake_kiss};
 
     let (root, home, workspace) = test_home_workspace();
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join("mock-agent-acp-md");
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable(mock_js);
     write_fake_kiss(&bin_dir.join("kiss"));
     PtyEnv {
         root,
@@ -45,49 +34,17 @@ fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-fn pty_malvin_shell_command(
-    env: &PtyEnv,
-    malvin_args_line: &str,
-    columns: Option<&str>,
-) -> String {
-    let malvin = env!("CARGO_BIN_EXE_malvin");
-    let columns_export = columns
-        .map(|value| format!("export COLUMNS=\"{value}\"; "))
-        .unwrap_or_default();
-    format!(
-        "unset NO_COLOR; export PATH=\"{}:$PATH\"; export HOME=\"{}\"; export CURSOR_AGENT_API_KEY=test; export MALVIN_AGENT_ACP_BIN=\"{}\"; export MALVIN_TEST_NO_REAL_AGENT=1; export MALLOC_ARENA_MAX=2; {columns_export}cd \"{}\" && exec \"{}\" {} {}",
-        env.bin_dir.display(),
-        env.home.display(),
-        env.mock.display(),
-        env.workspace.display(),
-        malvin,
-        [
-            super::INTEGRATION_TEST_MALVIN_ARGS.join(" "),
-            FAST_GATE_LOOP_TEST_ARGS.join(" "),
-        ]
-        .into_iter()
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join(" "),
-        malvin_args_line
-    )
-}
-
-#[cfg(all(unix, target_os = "linux"))]
-pub fn run_malvin_under_script_with_mock(
+pub fn run_malvin_under_openpty_with_mock(
     mock_js: &str,
     malvin_args_line: &str,
     columns: Option<&str>,
 ) -> PtyRun {
-    use super::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
-
     let env = pty_malvin_workspace(mock_js);
-    let shell_cmd = pty_malvin_shell_command(&env, malvin_args_line, columns);
-    let mut cmd = Command::new("script");
-    cmd.args(["-q", "-e", "-c", &shell_cmd, "/dev/null"]);
-    cmd.stdin(std::process::Stdio::null());
-    let output =
-        command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("script malvin");
+    let output = cli_parity_tty_openpty::run_malvin_under_openpty(
+        &env,
+        malvin_args_line,
+        columns,
+    );
     PtyRun {
         _root: env.root,
         home: env.home,
@@ -97,9 +54,9 @@ pub fn run_malvin_under_script_with_mock(
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_malvin_under_script(malvin_args_line: &str) -> std::process::Output {
+pub fn run_malvin_under_openpty(malvin_args_line: &str) -> std::process::Output {
     use super::acp_mock_code_streaming_bold_markdown_js;
-    run_malvin_under_script_with_mock(
+    run_malvin_under_openpty_with_mock(
         &acp_mock_code_streaming_bold_markdown_js(),
         malvin_args_line,
         None,
@@ -108,33 +65,33 @@ pub fn run_malvin_under_script(malvin_args_line: &str) -> std::process::Output {
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_code_max_loops_zero_under_script(extra_args: &[&str]) -> std::process::Output {
+pub fn run_code_max_loops_zero_under_openpty(extra_args: &[&str]) -> std::process::Output {
     let mut args_line = String::from("code --trust-the-plan --max-loops 0 ship");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);
     }
-    run_malvin_under_script(&args_line)
+    run_malvin_under_openpty(&args_line)
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_kpop_bold_markdown_under_script(extra_args: &[&str]) -> std::process::Output {
+pub fn run_kpop_bold_markdown_under_openpty(extra_args: &[&str]) -> std::process::Output {
     let mut args_line = String::from("kpop --max-loops 1 --max-hypotheses 1 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);
     }
-    run_malvin_under_script(&args_line)
+    run_malvin_under_openpty(&args_line)
 }
 
 #[cfg(all(unix, target_os = "linux"))]
-pub fn run_do_under_script(global_lead: &[&str]) -> std::process::Output {
+pub fn run_do_under_openpty(global_lead: &[&str]) -> std::process::Output {
     let mut args_line = global_lead.join(" ");
     if !args_line.is_empty() {
         args_line.push(' ');
     }
     args_line.push_str("do \"say hi\"");
-    run_malvin_under_script(&args_line)
+    run_malvin_under_openpty(&args_line)
 }
 
 #[cfg(all(unix, target_os = "linux"))]

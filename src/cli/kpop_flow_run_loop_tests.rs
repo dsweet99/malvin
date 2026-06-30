@@ -5,7 +5,6 @@ use super::kpop_flow_run_loop::{
     kpop_loop_exit_after_iteration, snapshot_kpop_loop_dotfiles_and_exp_log,
     run_kpop_agent_loops, KpopLoopSnapshot, RunKpopAgentLoopsOutcome, RunKpopAgentLoopsParams,
 };
-
 #[test]
 fn kpop_exp_log_declares_solved_reads_marker() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -225,6 +224,7 @@ mod unix_cov {
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
                 std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
+                crate::malvin_test_seed::seed_malvin_config(workspace, "mpc = false\n");
                 let mock = workspace.join("mock-agent");
                 let _env = install_mock_agent_env(workspace, &mock);
                 let (kpop, shared, workflow) = test_kpop_args(1);

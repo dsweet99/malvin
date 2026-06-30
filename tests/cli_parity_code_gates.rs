@@ -8,7 +8,7 @@ mod unix_tests {
     use super::common::{
         CodeSpawn, acp_mock_code_kpop_steps_js, combined_cli_output,
         seed_git_kiss_cargo_gate_workspace, spawn_code, test_home_workspace,
-        workspace_kiss_check_only, write_failing_gate_tools, write_mock_executable,
+        workspace_kiss_check_only, write_failing_gate_tools, cached_mock_executable,
     };
 
     #[test]
@@ -20,8 +20,7 @@ mod unix_tests {
         std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
         let trace = root.path().join("gate-trace.log");
         write_failing_gate_tools(&bin_dir, &trace);
-        let mock = root.path().join("mock-agent-acp-code-gates");
-        write_mock_executable(&mock, &acp_mock_code_kpop_steps_js());
+        let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
         let path = format!(
             "{}:{}",
             bin_dir.display(),

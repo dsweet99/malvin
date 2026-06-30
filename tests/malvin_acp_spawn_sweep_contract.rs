@@ -3,7 +3,7 @@
 mod common;
 
 #[cfg(unix)]
-use common::{fresh_workdir, sleep_child, write_peer_acp_lock};
+use common::{fresh_workdir, prepend_fake_agent_models_to_path, sleep_child, write_peer_acp_lock};
 #[cfg(unix)]
 use malvin::malvin_sandbox::clear_active_sandbox_session;
 #[cfg(unix)]
@@ -39,6 +39,9 @@ fn malvin_doc_does_not_sweep_but_models_does() {
     std::fs::create_dir_all(&chamber).expect("mkdir chamber");
     let stale = chamber.join("dead.lock");
     std::fs::write(&stale, "424242").expect("stale lock");
+    let (_fake_dir, _path_guard) = prepend_fake_agent_models_to_path(
+        "#!/bin/sh\nif [ \"$1\" = models ]; then printf 'composer-2 — Fast\\n'; exit 0; fi\nexit 1\n",
+    );
     let bin = env!("CARGO_BIN_EXE_malvin");
     let doc = Command::new(bin)
         .current_dir(&work)

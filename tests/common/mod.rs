@@ -11,6 +11,8 @@ mod acp_tidy_kpop;
 mod child_wait;
 mod cli_parity_harness_run;
 #[cfg(all(unix, target_os = "linux"))]
+#[cfg(all(unix, target_os = "linux"))]
+mod cli_parity_tty_openpty;
 mod cli_parity_tty;
 #[cfg(all(unix, target_os = "linux"))]
 mod cli_parity_tty_kpop;
@@ -56,7 +58,7 @@ mod workspace;
 
 pub use cli_parity_harness_run::*;
 #[cfg(unix)]
-pub use contract::{fresh_workdir, sleep_child, write_peer_acp_lock};
+pub use contract::{fresh_workdir, prepend_fake_agent_models_to_path, sleep_child, write_peer_acp_lock};
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]
@@ -102,10 +104,11 @@ pub use tidy_harness::{
     workspace_kiss_check_only,
 };
 pub use workspace::{
-    malvin_run_logs_bucket, only_run_dir, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks,
+    malvin_run_logs_bucket, only_run_dir, seed_fast_integration_malvin_config,
+    seed_git_gate_workspace_cached, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks,
     seed_malvin_config, test_home_workspace, with_isolated_home, activate_test_home,
     write_failing_gate_tools,
-    write_fake_kiss, write_mock_executable,
+    write_fake_kiss, write_mock_executable, cached_mock_executable,
 };
 
 #[cfg(unix)]

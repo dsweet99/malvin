@@ -1,4 +1,15 @@
-# Cap lib/integration test parallelism so ACP-mock and stdout-lock unit tests stay
-# under the 1s per-test budget under load (24 logical CPUs otherwise spike timings).
+# Serialize integration tests so malvin-spawn subprocess tests stay under the
+# 1.5s per-test budget under load. Isolated exec_time for borderline tests is
+# ~1.05–1.20s; test-threads=2 adds ~0.4–0.6s contention spikes. Raising threads
+# reintroduces flaky timing-gate failures.
 [profile.default]
 test-threads = 16
+
+# PTY tests spawn malvin subprocesses; serialize them so they do not contend
+# with the rest of the suite under the global thread cap.
+[test-groups]
+serial-pty = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'test(/linux_pty::/)'
+test-group = 'serial-pty'

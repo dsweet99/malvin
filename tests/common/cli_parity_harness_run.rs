@@ -5,7 +5,7 @@ use std::process::Command;
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, acp_mock_code_max_loops_never_lgtm_js,
     acp_mock_code_streaming_update_js, command_output_with_timeout, test_home_workspace,
-    write_fake_kiss, write_mock_executable,
+    write_fake_kiss, cached_mock_executable,
 };
 
 #[cfg(unix)]
@@ -41,13 +41,12 @@ pub struct CodeRunOpts {
 #[cfg(unix)]
 fn prep_acp_mock_on_path(
     root: &tempfile::TempDir,
-    mock_rel: &str,
+    _mock_rel: &str,
     mock_js: &str,
 ) -> (std::path::PathBuf, std::path::PathBuf, String) {
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    let mock = root.path().join(mock_rel);
-    write_mock_executable(&mock, mock_js);
+    let mock = cached_mock_executable( mock_js);
     write_fake_kiss(&bin_dir.join("kiss"));
     let path = format!(
         "{}:{}",

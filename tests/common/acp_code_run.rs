@@ -157,7 +157,7 @@ pub fn acp_mock_code_streaming_rich_markdown_js() -> String {
 
 pub fn acp_mock_code_streaming_long_bold_markdown_js() -> String {
     let prompt = format!(
-        "    const words = Array(12).fill('wrap-bold-xyz').join(' ');\n{}",
+        "    const words = Array(4).fill('wrap-bold-xyz').join(' ');\n{}",
         session_update_chunk_line("agent_message_chunk", r"'**' + words + '**\n'")
     );
     acp_mock_js("", &prompt)

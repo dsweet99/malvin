@@ -4,17 +4,16 @@ mod common;
 mod linux_pty {
     use crate::common::{
         acp_mock_code_streaming_update_js, acp_mock_kpop_tamper_then_restore_js,
-        bin_path_with_fake_kiss, only_run_dir, run_do_under_script,
-        run_kpop_multiturn_investigate, run_malvin_under_script_with_mock, spawn_kpop,
-        test_home_workspace, write_mock_executable, KpopSpawn,
+        bin_path_with_fake_kiss, only_run_dir, run_do_under_openpty,
+        run_kpop_multiturn_investigate, run_malvin_under_openpty_with_mock, spawn_kpop,
+        test_home_workspace, cached_mock_executable, KpopSpawn,
     };
 
     #[test]
     fn kpop_timing_uses_kpop_label_not_implement() {
         let (root, home, workspace) = test_home_workspace();
         let path = bin_path_with_fake_kiss(&root);
-        let mock = root.path().join("mock-kpop-timing");
-        write_mock_executable(&mock, &acp_mock_code_streaming_update_js());
+        let mock = cached_mock_executable( &acp_mock_code_streaming_update_js());
         let out = spawn_kpop(&KpopSpawn {
             workspace: &workspace,
             home: &home,
@@ -55,7 +54,7 @@ mod linux_pty {
 
     #[test]
     fn kpop_max_loops_controls_outer_agent_runs() {
-        let run = run_malvin_under_script_with_mock(
+        let run = run_malvin_under_openpty_with_mock(
             &acp_mock_code_streaming_update_js(),
             "kpop --max-loops 1 --max-hypotheses 1 investigate",
             None,
@@ -99,7 +98,7 @@ mod linux_pty {
 
     #[test]
     fn do_pty_strips_bold_markers_without_global_no_markdown() {
-        let out = run_do_under_script(&[]);
+        let out = run_do_under_openpty(&[]);
         assert!(
             out.status.success(),
             "expected successful do run under PTY: {out:?}"
@@ -121,7 +120,7 @@ mod linux_pty {
 
     #[test]
     fn do_pty_preserves_bold_markers_with_global_no_markdown() {
-        let out = run_do_under_script(&["--no-markdown"]);
+        let out = run_do_under_openpty(&["--no-markdown"]);
         assert!(
             out.status.success(),
             "expected successful do run under PTY: {out:?}"
