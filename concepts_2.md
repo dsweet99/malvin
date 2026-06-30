@@ -112,7 +112,7 @@ The restore sandwich enforced in `workflow_kpop_shared.rs` (pre-gate restore →
 
 ### Problem it solves
 
-When `mpc` is enabled in workspace config, an MPC planner agent runs at the start of each outer gate-loop iteration. It appends planning sections to `request.md` (Current State, Q&A, Phases) and logs KPop hypotheses to `mpc_planner_log.md`. The outer loop exits planning when the brief contains `## MPC_DONE` and workspace gates pass. This separates long-horizon planning from execution agents while keeping plan state in the user brief file.
+When `mpc` is enabled in workspace config, an MPC planner agent runs at the start of each outer gate-loop iteration. Before each planner session, malvin restores the on-disk user brief from `user_request_baseline.md` (captured on the first planner run in that session) so prior planning sections do not accumulate. The planner appends planning sections to `request.md` (Current State, Q&A, Phases) and logs KPop hypotheses to `mpc_planner_log.md`. The outer loop exits planning when the brief contains `## MPC_DONE` and workspace gates pass. This separates long-horizon planning from execution agents while keeping plan state in the user brief file.
 
 ### Where it lives
 
@@ -131,4 +131,4 @@ Prompt recipe, agent session startup, brief file I/O, done-marker detection, and
 
 ### Related typing aids
 
-`MpcPlanningBriefAspect` enum lists the six protocol aspects and notes which module owns each at runtime. Production code references the enum at enforcement sites in `kpop_engine` for documentation cross-links; runtime behavior remains in `mpc_planner`, `run_loop`, `run_loop_exit`, and related modules.
+`MpcPlanningBriefAspect` enum lists the seven protocol aspects and notes which module owns each at runtime. Production code references the enum at enforcement sites in `kpop_engine` for documentation cross-links; runtime behavior remains in `mpc_planner`, `run_loop`, `run_loop_exit`, and related modules.

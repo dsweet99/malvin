@@ -1,8 +1,8 @@
 use super::MpcPlanningBriefAspect;
 
 #[test]
-fn mpc_planning_brief_aspect_all_has_six_variants() {
-    assert_eq!(MpcPlanningBriefAspect::all().len(), 6);
+fn mpc_planning_brief_aspect_all_has_seven_variants() {
+    assert_eq!(MpcPlanningBriefAspect::all().len(), 7);
 }
 
 #[test]

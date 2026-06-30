@@ -1,7 +1,7 @@
 # MPC Request
 
 - USER_REQUEST = current contents of `{{ user_request_path }}`
-- Append to `{{ user_request_path }}`. Preserve the original  USER_REQUEST at the top.
+- Append to `{{ user_request_path }}`. Preserve the original USER_REQUEST at the top (malvin resets the brief from `user_request_baseline.md` before each planner session, so prior planning sections are cleared automatically).
   - *If there is NO more work to be done, i.e. if the USER_REQUEST is already satisfied*: Append a single exact line `## MPC_DONE` to `{{ user_request_path }}`.
   - *If there is more work to be done*:
     - Write section "Current State": describe codebase state adjacent to (affects or might be affected by) USER_REQUEST. Include structure and behaviors.

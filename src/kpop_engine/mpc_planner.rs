@@ -17,6 +17,35 @@ pub(crate) fn mpc_planner_iteration_log_path(artifacts: &RunArtifacts, iteration
     artifacts.log_path(&format!("mpc_planner_{iteration}"))
 }
 
+pub(crate) fn user_brief_baseline_path(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("user_request_baseline.md")
+}
+
+pub(crate) fn reset_user_brief_before_planner(
+    artifacts: &RunArtifacts,
+    context: &WorkflowRenderContext,
+) -> Result<(), String> {
+    let _aspect = MpcPlanningBriefAspect::BriefBaselineReset;
+    let brief_path = crate::workflow_context::resolve_user_brief_path(artifacts, context);
+    let baseline_path = user_brief_baseline_path(artifacts);
+    if !baseline_path.is_file() {
+        let brief_text = std::fs::read_to_string(&brief_path).map_err(|e| {
+            format!(
+                "failed to read user brief {}: {e}",
+                brief_path.display()
+            )
+        })?;
+        std::fs::write(&baseline_path, &brief_text).map_err(|e| e.to_string())?;
+    }
+    let baseline = std::fs::read_to_string(&baseline_path).map_err(|e| {
+        format!(
+            "failed to read user brief baseline {}: {e}",
+            baseline_path.display()
+        )
+    })?;
+    std::fs::write(&brief_path, &baseline).map_err(|e| e.to_string())
+}
+
 pub(crate) fn user_brief_declares_mpc_done(path: &Path) -> Result<bool, String> {
     let _aspect = MpcPlanningBriefAspect::DoneMarkerDetection;
     let text = std::fs::read_to_string(path)
@@ -168,6 +197,7 @@ pub(crate) struct MpcPlannerTurnPrepared {
 
 pub(crate) fn prepare_mpc_planner_turn(params: &MpcPlannerParams<'_>) -> Result<MpcPlannerTurnPrepared, String> {
     let _exp_log_path = ensure_mpc_planner_exp_log(params.artifacts)?;
+    reset_user_brief_before_planner(params.artifacts, params.context)?;
     let ctx = build_mpc_planner_context(params.context, params.artifacts);
     let prompt = build_mpc_planner_prompt(params.store, &ctx)?;
     let log_path = params.iteration.map_or_else(

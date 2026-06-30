@@ -20,6 +20,8 @@ pub enum MpcPlanningBriefAspect {
     DoneMarkerDetection,
     /// `mpc_done_early_exit` and KPop-solved suppression when MPC is on.
     ExitGateIntegration,
+    /// `reset_user_brief_before_planner` snapshots/restores brief via `user_request_baseline.md`.
+    BriefBaselineReset,
 }
 
 impl MpcPlanningBriefAspect {
@@ -33,6 +35,7 @@ impl MpcPlanningBriefAspect {
             Self::HypothesisLogPath,
             Self::DoneMarkerDetection,
             Self::ExitGateIntegration,
+            Self::BriefBaselineReset,
         ]
     }
 
@@ -46,6 +49,7 @@ impl MpcPlanningBriefAspect {
             Self::HypothesisLogPath => "src/kpop_engine/mpc_planner.rs",
             Self::DoneMarkerDetection => "src/kpop_progression/counters.rs",
             Self::ExitGateIntegration => "src/kpop_engine/run_loop_exit.rs",
+            Self::BriefBaselineReset => "src/workflow_context.rs",
         }
     }
 }

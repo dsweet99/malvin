@@ -172,6 +172,8 @@ fn kiss_cov_mpc_planner_private_fn_names() {
     let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_iteration_log_path);
     let _ = stringify!(crate::kpop_engine::mpc_planner::user_brief_declares_mpc_done);
     let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_for_kpop_engine_iteration);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::reset_user_brief_before_planner);
+    let _ = stringify!(crate::kpop_engine::mpc_planner::user_brief_baseline_path);
 }
 
 #[test]
