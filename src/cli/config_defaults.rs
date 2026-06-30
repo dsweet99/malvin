@@ -144,7 +144,7 @@ fn apply_gate_loop_command_defaults(
         Commands::Do(_)
         | Commands::Init(_)
         | Commands::Inspire(_)
-        | Commands::Models(_) | Commands::Logs(_) | Commands::GenerateScript(_) => {}
+        | Commands::Models(_) | Commands::Logs(_) => {}
     }
 }
 
@@ -158,7 +158,6 @@ pub fn apply_workspace_config_defaults(
             Commands::Do(_)
                 | Commands::Models(_)
                 | Commands::Logs(_)
-                | Commands::GenerateScript(_)
         )
     ) {
         if cli.shared.mini {

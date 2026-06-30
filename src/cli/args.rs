@@ -8,7 +8,6 @@ use super::explain_flow::ExplainArgs;
 use super::revise_flow::ReviseArgs;
 use super::tidy_flow::TidyArgs;
 
-pub use super::generate_script_cmd::GenerateScriptArgs;
 pub use super::logs_cmd::LogsArgs;
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
@@ -73,7 +72,4 @@ pub enum Commands {
     Models(ModelsArgs),
     /// Inspect and manage run-log retention
     Logs(LogsArgs),
-    /// Generate auto-script JSON and stub shell scripts from a recipe
-    #[command(name = "generate-script")]
-    GenerateScript(GenerateScriptArgs),
 }

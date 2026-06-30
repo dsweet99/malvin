@@ -28,9 +28,6 @@ pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
         Commands::Inspire(_) => include_str!("../../default_prompts/docs/inspire.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
         Commands::Logs(_) => include_str!("../../default_prompts/docs/logs.md"),
-        Commands::GenerateScript(_) => {
-            include_str!("../../default_prompts/docs/generate-script.md")
-        }
         _ => panic!("uncovered command doc"),
     }
 }

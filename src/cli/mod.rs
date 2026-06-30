@@ -9,8 +9,6 @@ mod commands_help;
 mod commands_help_subcommand;
 mod config_defaults;
 mod config_loop;
-pub(crate) mod generate_script_recipe;
-pub(crate) mod generate_script_cmd;
 pub(crate) mod entrypoint;
 pub(crate) mod entrypoint_commands;
 mod entrypoint_checks;
