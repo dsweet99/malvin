@@ -1,3 +1,4 @@
+use crate::kpop_log_protocol::strip_declared_success_on_disk;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::agent_backend::agent_backend_timing;
@@ -8,10 +9,11 @@ use crate::acp::{
 };
 use crate::nested_budget_scopes::BudgetScopeLayer;
 use crate::cli::workflow_kpop_shared::{
-    finish_kpop_acp_session, gate_iteration_context, post_kpop_session_gates,
+    gate_iteration_context, post_kpop_session_gates,
 };
 use crate::run_timing::TimingPhase;
 
+use super::kpop_session_finish::finish_kpop_engine_session_success;
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
 
@@ -189,28 +191,12 @@ pub(crate) async fn run_kpop_engine_session(
         attempts_used = attempt;
         match run_kpop_engine_single_turn(ctx).await {
             Ok(post_agent_backups) => {
-                finish_kpop_acp_session(
-                    ctx.iteration.loop_params.prepared.artifacts(),
-                    ctx.iteration.session_dotfile_backups,
-                    ctx.iteration
-                        .loop_params
-                        .behavior
-                        .restore_malvin_checks_after_session(),
-                )
-                .await?;
-                let progress = post_agent_backups.unwrap_or_else(|| iteration_start.clone());
-                let work_dir = ctx
-                    .iteration
-                    .loop_params
-                    .prepared
-                    .artifacts()
-                    .work_dir
-                    .as_path();
-                return Ok(crate::artifacts::merge_and_sanitize_for_gate_restore(
+                return finish_kpop_engine_session_success(
+                    ctx,
                     &iteration_start,
-                    &progress,
-                    work_dir,
-                ));
+                    post_agent_backups,
+                )
+                .await;
             }
             Err(e) => {
                 last_error = e;
@@ -220,7 +206,9 @@ pub(crate) async fn run_kpop_engine_session(
                 {
                     Err(err) => return Err(err.0),
                     Ok(true) => break,
-                    Ok(false) => {}
+                    Ok(false) => {
+                        strip_declared_success_on_disk(&ctx.iteration.exp_log_path);
+                    }
                 }
             }
         }

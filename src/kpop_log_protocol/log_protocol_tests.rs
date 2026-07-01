@@ -1,4 +1,4 @@
-use super::{ExperimentLog, StepHeadingKind};
+use super::{strip_declared_success_on_disk, ExperimentLog, StepHeadingKind};
 
 #[test]
 fn counts_steps_in_exp_log() {
@@ -43,6 +43,38 @@ fn read_round_trip() {
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "body\n").expect("write");
     assert_eq!(ExperimentLog::read(&path).expect("read").as_str(), "body\n");
+}
+
+#[test]
+fn strip_declared_success_removes_marker_and_trailing_content() {
+    let mut log = ExperimentLog::from_text(
+        "## Step 1 — KPop x\nbody\n## KPOP_SOLVED\nsummary\nmore\n",
+    );
+    assert!(log.strip_declared_success());
+    assert_eq!(log.as_str(), "## Step 1 — KPop x\nbody\n");
+    assert!(!log.declares_kpop_solved());
+}
+
+#[test]
+fn strip_declared_success_noop_without_marker() {
+    let mut log = ExperimentLog::from_text("## Step 1 — KPop x\n");
+    assert!(!log.strip_declared_success());
+    assert_eq!(log.as_str(), "## Step 1 — KPop x\n");
+}
+
+#[test]
+fn strip_declared_success_on_disk_removes_marker() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("exp.md");
+    std::fs::write(
+        &path,
+        "## Step 1 — KPop x\n## KPOP_SOLVED\nmore\n",
+    )
+    .expect("write");
+    strip_declared_success_on_disk(&path);
+    let log = ExperimentLog::read(&path).expect("read");
+    assert_eq!(log.as_str(), "## Step 1 — KPop x\n");
+    assert!(!log.declares_kpop_solved());
 }
 
 #[test]

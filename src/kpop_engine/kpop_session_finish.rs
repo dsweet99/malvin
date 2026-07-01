@@ -1,7 +1,38 @@
 use crate::cli::SharedOpts;
 
-use super::kpop_session::run_kpop_hard_constraints_after_session;
+use super::kpop_session::{run_kpop_hard_constraints_after_session, KPopEngineMultiturnCtx};
 use super::prepared::KPopEnginePrepared;
+
+use crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
+
+pub(crate) async fn finish_kpop_engine_session_success(
+    ctx: &KPopEngineMultiturnCtx<'_>,
+    iteration_start: &crate::artifacts::SessionDotfileBackups,
+    post_agent_backups: Option<crate::artifacts::SessionDotfileBackups>,
+) -> Result<crate::artifacts::SessionDotfileBackups, String> {
+    finish_kpop_acp_session(
+        ctx.iteration.loop_params.prepared.artifacts(),
+        ctx.iteration.session_dotfile_backups,
+        ctx.iteration
+            .loop_params
+            .behavior
+            .restore_malvin_checks_after_session(),
+    )
+    .await?;
+    let progress = post_agent_backups.unwrap_or_else(|| iteration_start.clone());
+    let work_dir = ctx
+        .iteration
+        .loop_params
+        .prepared
+        .artifacts()
+        .work_dir
+        .as_path();
+    Ok(crate::artifacts::merge_and_sanitize_for_gate_restore(
+        iteration_start,
+        &progress,
+        work_dir,
+    ))
+}
 
 pub(crate) fn finish_kpop_engine_after_pass(
     _shared: &SharedOpts,

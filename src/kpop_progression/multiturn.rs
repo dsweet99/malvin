@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use super::counters::{agent_declared_success, hypotheses_emitted, read_exp_log_text};
+use crate::kpop_log_protocol::strip_declared_success_on_disk;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
@@ -89,15 +90,13 @@ impl<'a> KpopMultiturnState<'a> {
 
     /// Clears the in-flight prompt latch after a failed ACP transport attempt so the outer
     /// retry loop can call [`Self::next_prompt`] again.
+    ///
+    /// Strips any `## KPOP_SOLVED` marker written during the failed attempt so a retry
+    /// cannot short-circuit to success without restore, budget checks, or a fresh agent pass.
     pub(crate) fn reset_for_transport_retry(&mut self) {
         self.prompt_sent = false;
-        let Ok(text) = read_exp_log_text(&self.exp_log_path) else {
-            self.done = false;
-            return;
-        };
-        if !agent_declared_success(&text) && hypotheses_emitted(&text) < self.max_hypotheses {
-            self.done = false;
-        }
+        self.done = false;
+        strip_declared_success_on_disk(&self.exp_log_path);
     }
 }
 

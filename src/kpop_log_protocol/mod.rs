@@ -82,6 +82,26 @@ impl ExperimentLog {
             .count()
     }
 
+    /// Remove the first `## KPOP_SOLVED` marker and all lines after it.
+    ///
+    /// Returns `true` when the log contained a solved marker and was truncated.
+    #[must_use]
+    pub fn strip_declared_success(&mut self) -> bool {
+        if !self.declares_kpop_solved() {
+            return false;
+        }
+        let lines: Vec<&str> = self.text.lines().collect();
+        let keep = lines
+            .iter()
+            .position(|line| marker_line_is_exact("## KPOP_SOLVED", line))
+            .unwrap_or(lines.len());
+        self.text = lines[..keep].join("\n");
+        if !self.text.is_empty() && !self.text.ends_with('\n') {
+            self.text.push('\n');
+        }
+        true
+    }
+
     /// Fail when hypothesis steps exceed `max`.
     ///
     /// # Errors
@@ -95,6 +115,18 @@ impl ExperimentLog {
             ));
         }
         Ok(())
+    }
+}
+
+/// Remove stale `## KPOP_SOLVED` from disk before an ACP transport retry.
+///
+/// Read/write failures are ignored so retry can proceed with prior on-disk state.
+pub fn strip_declared_success_on_disk(path: &Path) {
+    let Ok(mut log) = ExperimentLog::read(path) else {
+        return;
+    };
+    if log.strip_declared_success() {
+        let _ = std::fs::write(path, log.as_str());
     }
 }
 
