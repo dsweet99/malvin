@@ -17,9 +17,10 @@ use super::cli_parity_tty_openpty;
 
 #[cfg(all(unix, target_os = "linux"))]
 fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
-    use super::{cached_mock_executable, test_home_workspace, write_fake_kiss};
+    use super::{cached_mock_executable, fast_test_home_workspace, seed_malvin_checks, write_fake_kiss};
 
-    let (root, home, workspace) = test_home_workspace();
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let mock = cached_mock_executable(mock_js);
@@ -66,12 +67,18 @@ pub fn run_malvin_under_openpty(malvin_args_line: &str) -> std::process::Output 
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_code_max_loops_zero_under_openpty(extra_args: &[&str]) -> std::process::Output {
+    use super::acp_mock_code_streaming_bold_markdown_kpop_steps_js;
     let mut args_line = String::from("code --trust-the-plan --max-loops 0 ship");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);
     }
-    run_malvin_under_openpty(&args_line)
+    run_malvin_under_openpty_with_mock(
+        &acp_mock_code_streaming_bold_markdown_kpop_steps_js(),
+        &args_line,
+        None,
+    )
+    .output
 }
 
 #[cfg(all(unix, target_os = "linux"))]

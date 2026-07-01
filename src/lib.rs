@@ -97,7 +97,10 @@ mod deferred_log;
 mod cursor_store;
 pub use cursor_store::store_db_contains_substring;
 mod acp_test_mock_js;
-pub use acp_test_mock_js::acp_mock_js;
+pub use acp_test_mock_js::{
+    acp_mock_js, acp_mock_mpc_planner_chunk_js, acp_mock_wrap_handler_with_mpc_fast_path,
+    MPC_REQUEST_PROMPT_MATCH_JS,
+};
 pub mod agent_backend;
 pub mod acp;
 pub mod ansi_strip;

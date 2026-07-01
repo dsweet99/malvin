@@ -5,10 +5,9 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS, acp_mock_tidy_kpop_steps_js, command_output_with_timeout,
-    seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, test_home_workspace,
-    write_failing_gate_tools,
-    write_fake_kiss, cached_mock_executable,
+    FAST_GATE_LOOP_TEST_ARGS, MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS,
+    acp_mock_tidy_kpop_steps_js, command_output_with_timeout, seed_malvin_checks,
+    write_failing_gate_tools, write_fake_kiss, cached_mock_executable, fast_test_home_workspace,
 };
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -16,12 +15,6 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 #[cfg(unix)]
 use std::process::Command;
-
-#[cfg(unix)]
-fn seed_tidy_workspace(workspace: &Path) {
-    seed_git_kiss_cargo_gate_workspace(workspace);
-    std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
-}
 
 #[cfg(unix)]
 struct MalvinTidySpawn<'a> {
@@ -42,7 +35,8 @@ fn spawn_malvin_tidy(c: &MalvinTidySpawn<'_>) -> std::process::Output {
         .env("PATH", c.path)
         .args(["tidy"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
-    cmd.args(["--max-loops", "1"]);
+    cmd.args(FAST_GATE_LOOP_TEST_ARGS);
+    cmd.args(["--max-loops", "0"]);
     command_output_with_timeout(&mut cmd, c.timeout).expect("spawn malvin")
 }
 
@@ -64,7 +58,7 @@ struct TidySkipFixture {
 
 #[cfg(unix)]
 fn tidy_skip_agent_fixture() -> TidySkipFixture {
-    let (root, home, workspace) = test_home_workspace();
+    let (root, home, workspace) = fast_test_home_workspace();
     std::fs::create_dir(workspace.join(".git")).expect("mkdir .git");
     seed_malvin_checks(&workspace, "kiss check\n");
     let bin_dir = root.path().join("bin");
@@ -128,9 +122,9 @@ fn malvin_tidy_skips_agent_when_quality_gates_already_pass() {
 
 #[cfg_attr(unix, test)]
 fn malvin_tidy_runs_quality_gates_around_kpop_when_gates_fail() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_tidy_workspace(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
     seed_malvin_checks(&workspace, "kiss check\n");
+    std::fs::write(workspace.join("script.py"), "print('broken')\n").expect("write python file");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let trace = root.path().join("quality-trace.log");

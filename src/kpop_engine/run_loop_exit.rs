@@ -1,4 +1,4 @@
-//! Gate-loop exit predicates for `KPop` and MPC (see `concepts_2.md` §5 for MPC done integration).
+//! Gate-loop exit predicates for MPC done (see `concepts_2.md` §5).
 
 use std::path::Path;
 
@@ -12,7 +12,6 @@ pub(crate) struct GateLoopExitCtx<'a> {
     pub behavior: KPopHardConstraints,
     pub artifacts: &'a crate::artifacts::RunArtifacts,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
-    pub mpc_enabled: bool,
 }
 
 pub(crate) fn run_gate_workspace_gates_with_fresh_backups(
@@ -26,20 +25,6 @@ pub(crate) fn run_gate_workspace_gates_with_fresh_backups(
         behavior.restore_malvin_checks_after_session(),
     )
     .is_ok()
-}
-
-pub(crate) fn kpop_solved_early_exit(
-    ctx: &GateLoopExitCtx<'_>,
-    consecutive_solved: usize,
-) -> bool {
-    if ctx.mpc_enabled {
-        let _aspect = MpcPlanningBriefAspect::ExitGateIntegration;
-        return false;
-    }
-    if consecutive_solved < ctx.behavior.consecutive_kpop_solved_to_exit() {
-        return false;
-    }
-    gates_pass_for_exit(ctx)
 }
 
 pub(crate) fn mpc_done_early_exit(

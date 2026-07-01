@@ -22,7 +22,7 @@ fn write_gc_config_age_only(home: &Path) {
     std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
     std::fs::write(
         home.join(malvin::MALVIN_USER_HOME_DIR).join("config.toml"),
-        "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\nmpc = false\n",
+        "[logs]\nmax_count = 0\nmax_age_days = 30\nmax_bytes = \"\"\n",
     )
     .expect("write config");
 }

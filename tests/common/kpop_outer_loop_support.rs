@@ -3,8 +3,9 @@ use std::path::Path;
 use std::process::Command;
 
 use super::{
-    activate_test_home, command_output_with_timeout, seed_malvin_config, test_home_workspace,
-    write_fake_kiss, cached_mock_executable, INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT,
+    activate_test_home, command_output_with_timeout, fast_test_home_workspace, seed_malvin_checks,
+    seed_malvin_config, write_fake_kiss, cached_mock_executable, INTEGRATION_TEST_MALVIN_ARGS,
+    MALVIN_TEST_CMD_TIMEOUT,
 };
 
 fn malvin_kpop_outer_cmd(
@@ -41,14 +42,12 @@ pub fn run_kpop_outer_loop(
     extra_args: &[&str],
     home_config_seed: Option<&str>,
 ) -> (std::process::Output, tempfile::TempDir) {
-    let (root, home, workspace) = test_home_workspace();
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     if let Some(content) = home_config_seed {
-        activate_test_home(&home);
         seed_malvin_config(&workspace, content);
     }
-    let mock = cached_mock_executable( mock_js);
-    fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
-    fs::write(workspace.join(".gitignore"), "baseline-gitignore\n").expect("gitignore");
+    let mock = cached_mock_executable(mock_js);
     let mut cmd = malvin_kpop_outer_cmd(&root, &home, &mock, extra_args);
     let output = command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn");
     (output, root)

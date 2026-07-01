@@ -1,8 +1,8 @@
 use super::MpcPlanningBriefAspect;
 
 #[test]
-fn mpc_planning_brief_aspect_all_has_seven_variants() {
-    assert_eq!(MpcPlanningBriefAspect::all().len(), 7);
+fn mpc_planning_brief_aspect_all_has_six_variants() {
+    assert_eq!(MpcPlanningBriefAspect::all().len(), 6);
 }
 
 #[test]
@@ -19,6 +19,7 @@ fn mpc_planning_brief_aspect_primary_modules_are_unique_and_non_empty() {
 fn all_aspects_have_runtime_references() {
     let sources = [
         include_str!("../kpop_engine/mpc_planner.rs"),
+        include_str!("../kpop_engine/mpc_planner_brief.rs"),
         include_str!("../kpop_engine/run_loop_exit.rs"),
         include_str!("../kpop_engine/run_loop.rs"),
     ];

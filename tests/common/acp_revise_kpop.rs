@@ -1,5 +1,7 @@
 use super::acp_tidy_kpop::{acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble};
-use super::acp_core::{acp_mock_js, session_update_chunk_line};
+use super::acp_core::{
+    acp_mock_js, acp_mock_kpop_mpc_or_iteration_branch_open_js, session_update_chunk_line,
+};
 
 const REVISE_DOC_WRITE: &str = r"      const docMatch = promptText.match(/Revise [`']?([^\s`'\n]+)[`']? in place/);
       if (docMatch) {
@@ -29,17 +31,18 @@ fn acp_mock_revise_kpop_body(doc_write: &str) -> String {
     acp_mock_revise_iteration_body().replace(REVISE_DOC_WRITE, doc_write)
 }
 
-fn acp_mock_revise_kpop_script(doc_write: &str) -> String {
+fn acp_mock_revise_kpop_script(doc_write: &str, done: &str) -> String {
     format!(
-        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n    }}",
+        "{}\n{}\n{}\n{done}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_revise_kpop_body(doc_write)
+        acp_mock_kpop_mpc_or_iteration_branch_open_js(),
+        acp_mock_revise_kpop_body(doc_write),
     )
 }
 
 pub fn acp_mock_revise_kpop_steps_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'revise kpop step\n'");
-    acp_mock_js("", &format!("{}\n{done}", acp_mock_revise_kpop_script(REVISE_DOC_WRITE)))
+    acp_mock_js("", &acp_mock_revise_kpop_script(REVISE_DOC_WRITE, &done))
 }
 
 const REVISE_DOC_DELETE: &str = r"      const docMatch = promptText.match(/Revise [`']?([^\s`'\n]+)[`']? in place/);
@@ -51,10 +54,7 @@ const REVISE_DOC_DELETE: &str = r"      const docMatch = promptText.match(/Revis
 
 pub fn acp_mock_revise_kpop_solved_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'revise solved only\n'");
-    acp_mock_js(
-        "",
-        &format!("{}\n{done}", acp_mock_revise_kpop_script(REVISE_DOC_DELETE)),
-    )
+    acp_mock_js("", &acp_mock_revise_kpop_script(REVISE_DOC_DELETE, &done))
 }
 
 pub fn acp_mock_revise_kpop_empty_output_js() -> String {
@@ -66,5 +66,5 @@ pub fn acp_mock_revise_kpop_empty_output_js() -> String {
         fs.writeFileSync(docAbs, '', 'utf8');
       }";
     let done = session_update_chunk_line("agent_message_chunk", r"'revise empty output\n'");
-    acp_mock_js("", &format!("{}\n{done}", acp_mock_revise_kpop_script(empty_write)))
+    acp_mock_js("", &acp_mock_revise_kpop_script(empty_write, &done))
 }

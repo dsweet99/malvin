@@ -6,17 +6,15 @@ mod common;
 #[cfg(unix)]
 use common::{
     ReviseSpawn, acp_mock_revise_kpop_empty_output_js, acp_mock_revise_kpop_solved_without_output_js,
-    acp_mock_revise_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
-    seed_git_kiss_cargo_gate_workspace, spawn_revise, test_home_workspace, workspace_kiss_check_only,
-    cached_mock_executable,
+    acp_mock_revise_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output, fast_test_home_workspace,
+    seed_malvin_checks, spawn_revise, cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
 fn revise_runs_kpop_when_gates_already_pass() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     std::fs::write(workspace.join("doc.md"), "# Draft\n\nHedgy maybe text.\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_steps_js());
@@ -26,7 +24,7 @@ fn revise_runs_kpop_when_gates_already_pass() {
         mock: &mock,
         path_var: &path,
         doc_path: "doc.md",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "0"],
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -39,9 +37,8 @@ fn revise_runs_kpop_when_gates_already_pass() {
 #[cfg(unix)]
 #[test]
 fn revise_fails_when_doc_path_missing() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_steps_js());
     let out = spawn_revise(&ReviseSpawn {
@@ -50,7 +47,7 @@ fn revise_fails_when_doc_path_missing() {
         mock: &mock,
         path_var: &path,
         doc_path: "missing.md",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "0"],
     });
     let combined = combined_cli_output(&out);
     assert!(!out.status.success(), "expected failure when doc missing: {combined:?}");
@@ -67,8 +64,8 @@ fn revise_fails_when_doc_path_missing() {
 #[cfg(unix)]
 #[test]
 fn revise_fails_when_agent_solves_but_output_empty() {
-    let (root, home, workspace) = test_home_workspace();
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_empty_output_js());
@@ -78,7 +75,7 @@ fn revise_fails_when_agent_solves_but_output_empty() {
         mock: &mock,
         path_var: &path,
         doc_path: "doc.md",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "0"],
     });
     assert!(!out.status.success(), "expected failure for empty doc: {out:?}");
 }
@@ -86,9 +83,8 @@ fn revise_fails_when_agent_solves_but_output_empty() {
 #[cfg(unix)]
 #[test]
 fn revise_fails_when_agent_solves_but_output_missing() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_solved_without_output_js());
@@ -98,7 +94,7 @@ fn revise_fails_when_agent_solves_but_output_missing() {
         mock: &mock,
         path_var: &path,
         doc_path: "doc.md",
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--max-loops", "0"],
     });
     assert!(!out.status.success(), "expected failure when output missing: {out:?}");
 }

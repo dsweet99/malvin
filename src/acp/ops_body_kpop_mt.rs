@@ -24,24 +24,53 @@ async fn multiturn_after_successful_round(
     Ok(())
 }
 
+async fn end_reused_coder_session(client: &mut AgentClient) {
+    client.end_coder_session().await.ok();
+}
+
+async fn finish_kpop_multiturn_session(
+    client: &mut AgentClient,
+    reuse_open: bool,
+    owned: Option<AcpSession>,
+) -> Result<(), AgentError> {
+    if reuse_open {
+        client.end_coder_session().await
+    } else {
+        owned.expect("owned session").shutdown().await.map_err(AgentError)
+    }
+}
+
 // Mirrors `run_kpop_flow_once`: ACP session plus per-prompt workspace restores for session dotfiles.
 pub(crate) async fn run_kpop_multiturn_once(
-    client: &AgentClient,
+    client: &mut AgentClient,
     ctl: &mut AgentKpopMultiturnCtl<'_, '_>,
 ) -> Result<(), AgentError> {
-    let s = spawn_agent_acp_session(client, ctl.cwd).await?;
+    let reuse_open = client.has_open_coder_session();
+    let owned = if reuse_open {
+        None
+    } else {
+        Some(spawn_agent_acp_session(client, ctl.cwd).await?)
+    };
 
     loop {
+        let session = if reuse_open {
+            client.coder_session.as_ref().expect("open coder session")
+        } else {
+            owned.as_ref().expect("spawned session")
+        };
         let prompt = match ctl.state.next_prompt() {
             Ok(Some(p)) => p,
             Ok(None) => break,
             Err(e) => {
+                if reuse_open {
+                    end_reused_coder_session(client).await;
+                }
                 return Err(AgentError(e));
             }
         };
         let text = prompt.as_str();
         if let Err(e) = kpop_round(KpopPromptRound {
-            session: &s,
+            session,
             client,
             text,
             log: ctl.kpop_log.as_path(),
@@ -50,17 +79,19 @@ pub(crate) async fn run_kpop_multiturn_once(
         })
         .await
         {
+            if reuse_open {
+                end_reused_coder_session(client).await;
+            }
             return kpop_fail_after_prompt(KpopFailAfterPrompt {
-                    cwd: ctl.cwd,
-                    session_dotfile_backups: ctl.session_dotfile_backups,
-                    err: e,
-                    phase: "prompt",
-                },
-            )
+                cwd: ctl.cwd,
+                session_dotfile_backups: ctl.session_dotfile_backups,
+                err: e,
+                phase: "prompt",
+            })
             .await;
         }
         multiturn_after_successful_round(
-            &s,
+            session,
             MultiturnRoundAfter {
                 cwd: ctl.cwd,
                 session_dotfile_backups: ctl.session_dotfile_backups,
@@ -70,7 +101,7 @@ pub(crate) async fn run_kpop_multiturn_once(
         .await?;
     }
 
-    s.shutdown().await.map_err(AgentError)
+    finish_kpop_multiturn_session(client, reuse_open, owned).await
 }
 
 #[cfg(test)]
@@ -84,6 +115,12 @@ mod kiss_cov_auto{
     fn kiss_cov_multiturn_after_successful_round() { let _ = multiturn_after_successful_round; }
 
     #[test]
+    fn kiss_cov_end_reused_coder_session() { let _ = end_reused_coder_session; }
+
+    #[test]
+    fn kiss_cov_finish_kpop_multiturn_session() { let _ = finish_kpop_multiturn_session; }
+
+    #[test]
     fn kiss_cov_run_kpop_multiturn_once() { let _ = run_kpop_multiturn_once; }
 }
 
@@ -95,6 +132,8 @@ mod kiss_cov_gate_refs{
     fn kiss_cov_unit_names() {
         let _: Option<MultiturnRoundAfter> = None;
         let _ = multiturn_after_successful_round;
+        let _ = end_reused_coder_session;
+        let _ = finish_kpop_multiturn_session;
         let _ = run_kpop_multiturn_once;
     }
 }

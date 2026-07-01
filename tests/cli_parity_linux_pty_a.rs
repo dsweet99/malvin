@@ -3,9 +3,10 @@ mod common;
 #[cfg(all(unix, target_os = "linux"))]
 mod linux_pty {
     use crate::common::{
-        acp_mock_code_streaming_long_bold_markdown_js, acp_mock_code_streaming_rich_markdown_js,
-        assert_markdown_stdout_and_logs, only_run_dir, read_all_logs,
-        run_code_max_loops_zero_under_openpty, run_kpop_bold_markdown_under_openpty,
+        acp_mock_code_streaming_long_bold_markdown_js,
+        acp_mock_code_streaming_rich_markdown_kpop_steps_js,
+        acp_mock_code_streaming_rich_markdown_js, assert_markdown_stdout_and_logs, only_run_dir,
+        read_all_logs, run_code_max_loops_zero_under_openpty, run_kpop_bold_markdown_under_openpty,
         run_malvin_under_openpty_with_mock,
     };
 
@@ -74,7 +75,7 @@ mod linux_pty {
     #[test]
     fn code_stdout_markdown_styles_stdout_but_logs_stay_raw() {
         let run = run_malvin_under_openpty_with_mock(
-            &acp_mock_code_streaming_rich_markdown_js(),
+            &acp_mock_code_streaming_rich_markdown_kpop_steps_js(),
             "code --trust-the-plan --max-loops 0 ship",
             None,
         );

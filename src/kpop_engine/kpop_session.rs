@@ -115,10 +115,12 @@ async fn run_kpop_engine_coder_turn(
 ) -> Result<(), AgentError> {
     let params = ctx.iteration.loop_params;
     let prepared = params.prepared;
-    ctx.iteration
-        .client
-        .begin_coder_session(work_dir)
-        .await?;
+    if !ctx.iteration.client.has_open_coder_session() {
+        ctx.iteration
+            .client
+            .begin_coder_session(work_dir)
+            .await?;
+    }
     let mut prompt_result = ctx
         .iteration
         .client

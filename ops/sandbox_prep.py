@@ -302,6 +302,16 @@ def probe_check_tools(checks: str, workspace: Path) -> list[str]:
             if proc.returncode != 0:
                 detail = (proc.stderr or proc.stdout or "").strip()
                 errors.append(f"pytest import failed: {detail or 'unknown'}")
+        elif tool == "stestr":
+            proc = subprocess.run(
+                ["stestr", "--version"],
+                cwd=workspace,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if proc.returncode != 0:
+                errors.append("stestr is not callable")
         elif tool == "mypy":
             proc = subprocess.run(
                 ["mypy", "--version"],

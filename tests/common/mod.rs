@@ -106,7 +106,8 @@ pub use tidy_harness::{
 pub use workspace::{
     malvin_run_logs_bucket, only_run_dir, seed_fast_integration_malvin_config,
     seed_git_gate_workspace_cached, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks,
-    seed_malvin_config, test_home_workspace, with_isolated_home, activate_test_home,
+    seed_malvin_config, test_home_workspace, fast_test_home_workspace, with_isolated_home,
+    activate_test_home,
     write_failing_gate_tools,
     write_fake_kiss, write_mock_executable, cached_mock_executable,
 };

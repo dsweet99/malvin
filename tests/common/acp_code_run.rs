@@ -148,11 +148,20 @@ pub fn acp_mock_code_streaming_bold_markdown_js() -> String {
     acp_mock_js("", &prompt)
 }
 
+pub fn acp_mock_code_streaming_bold_markdown_kpop_steps_js() -> String {
+    super::acp_tidy_kpop::acp_mock_kpop_writes_solved_js(r"'**boldline**\n'")
+}
+
 pub fn acp_mock_code_streaming_rich_markdown_js() -> String {
-    let heading = session_update_chunk_line("agent_message_chunk", r"'# md-heading-xyz\n'");
-    let list = session_update_chunk_line("agent_message_chunk", r"'- md-item-xyz\n'");
-    let bold = session_update_chunk_line("agent_message_chunk", r"'**md-bold-xyz**\n'");
-    acp_mock_js("", &format!("{heading}\n{list}\n{bold}"))
+    let prompt = session_update_chunk_line(
+        "agent_message_chunk",
+        r"'# md-heading-xyz\n- md-item-xyz\n**md-bold-xyz**\n'",
+    );
+    acp_mock_js("", &prompt)
+}
+
+pub fn acp_mock_code_streaming_rich_markdown_kpop_steps_js() -> String {
+    super::acp_tidy_kpop::acp_mock_rich_markdown_kpop_writes_solved_js()
 }
 
 pub fn acp_mock_code_streaming_long_bold_markdown_js() -> String {

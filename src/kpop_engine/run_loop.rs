@@ -9,13 +9,12 @@ use crate::cli::workflow_kpop_shared::{
 };
 
 pub(crate) use super::run_loop_exit::{
-    kpop_solved_early_exit, mpc_done_early_exit, run_gate_workspace_gates_with_fresh_backups,
-    GateLoopExitCtx,
+    mpc_done_early_exit, run_gate_workspace_gates_with_fresh_backups, GateLoopExitCtx,
 };
 
 #[path = "run_loop_iteration.rs"]
 mod run_loop_iteration;
-pub(crate) use run_loop_iteration::kpop_engine_loop_one_iteration;
+pub(crate) use run_loop_iteration::{kpop_engine_loop_one_iteration, KpopEngineLoopIterationCtx};
 #[cfg(test)]
 pub(crate) use run_loop_iteration::{run_kpop_engine_on_loop_iteration, wire_kpop_engine_client};
 
@@ -29,43 +28,6 @@ pub(crate) type KPopEngineLoopOutcome = (
 pub(crate) fn session_wrote_kpop_solved(exp_log_path: &Path) -> Result<bool, String> {
     let text = read_exp_log_text(exp_log_path)?;
     Ok(agent_declared_success(&text))
-}
-
-pub(crate) struct KPopEngineEarlyExitCtx<'a> {
-    pub behavior: super::behavior::KPopHardConstraints,
-    pub consecutive_solved: usize,
-    pub artifacts: &'a crate::artifacts::RunArtifacts,
-    pub session_dotfile_backups: &'a SessionDotfileBackups,
-    pub agent_ran: bool,
-    pub run_timing: Option<&'a Arc<Mutex<crate::run_timing::RunTiming>>>,
-    pub mpc_enabled: bool,
-}
-
-pub(crate) fn kpop_engine_solved_early_exit(ctx: KPopEngineEarlyExitCtx<'_>) -> Option<KPopEngineLoopOutcome> {
-    let gate_ctx = GateLoopExitCtx {
-        behavior: ctx.behavior,
-        artifacts: ctx.artifacts,
-        session_dotfile_backups: ctx.session_dotfile_backups,
-        mpc_enabled: ctx.mpc_enabled,
-    };
-    if kpop_solved_early_exit(&gate_ctx, ctx.consecutive_solved) {
-        Some((
-            true,
-            ctx.agent_ran,
-            ctx.run_timing.cloned(),
-            ctx.session_dotfile_backups.clone(),
-        ))
-    } else {
-        None
-    }
-}
-
-pub(crate) struct KpopEngineLoopIterationCtx<'a> {
-    pub params: &'a super::params::KPopEngineParams<'a>,
-    pub iteration: usize,
-    pub run_timing: &'a Arc<Mutex<crate::run_timing::RunTiming>>,
-    pub consecutive_solved: usize,
-    pub mpc_on: bool,
 }
 
 /// Restore loop-carried dotfile backups before anchoring the next iteration.
@@ -104,9 +66,21 @@ async fn mpc_done_exit_after_planner(
     params: &super::params::KPopEngineParams<'_>,
     iteration: usize,
     last_backups: &SessionDotfileBackups,
+    client: &mut crate::agent_backend::AgentBackend,
 ) -> Result<bool, String> {
     let _aspect = MpcPlanningBriefAspect::PlannerSessionHook;
-    super::mpc_planner::run_mpc_planner_for_kpop_engine_iteration(params, iteration).await?;
+    super::mpc_planner::run_mpc_planner_session(super::mpc_planner::MpcPlannerParams {
+        shared: params.shared,
+        workflow: params.workflow,
+        store: params.prepared.store(),
+        artifacts: params.prepared.artifacts(),
+        context: params.prepared.context(),
+        command: params.command,
+        client: Some(client),
+        keep_session_open: true,
+        iteration: Some(iteration),
+    })
+    .await?;
     let brief_path = crate::workflow_context::resolve_user_brief_path(
         params.prepared.artifacts(),
         params.prepared.context(),
@@ -115,7 +89,6 @@ async fn mpc_done_exit_after_planner(
         behavior: params.behavior,
         artifacts: params.prepared.artifacts(),
         session_dotfile_backups: last_backups,
-        mpc_enabled: true,
     };
     mpc_done_early_exit(&gate_ctx, &brief_path)
 }
@@ -133,19 +106,55 @@ fn exhausted_loop_gate_ok(
         )
 }
 
-fn prepare_kpop_engine_loop(
-    work_dir: &Path,
-) -> Result<(SessionDotfileBackups, bool), String> {
+fn prepare_kpop_engine_loop(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
-    let backups = SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
-    Ok((backups, super::mpc_planner::mpc_enabled(work_dir)))
+    SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)
+}
+
+struct KpopEngineIterationInput<'a> {
+    params: &'a super::params::KPopEngineParams<'a>,
+    iteration: usize,
+    consecutive_solved: usize,
+    last_backups: &'a SessionDotfileBackups,
+    run_timing: &'a Arc<Mutex<crate::run_timing::RunTiming>>,
+}
+
+async fn run_kpop_engine_iteration(
+    input: KpopEngineIterationInput<'_>,
+) -> Result<(usize, SessionDotfileBackups, bool), String> {
+    let KpopEngineIterationInput {
+        params,
+        iteration,
+        consecutive_solved,
+        last_backups,
+        run_timing,
+    } = input;
+    let mut client =
+        run_loop_iteration::build_authenticated_kpop_engine_client(params, run_timing)?;
+    if mpc_done_exit_after_planner(params, iteration, last_backups, &mut client).await? {
+        if client.has_open_coder_session() {
+            client.end_coder_session().await.map_err(|e| e.to_string())?;
+        }
+        return Ok((consecutive_solved, last_backups.clone(), true));
+    }
+    let (streak, backups) = kpop_engine_loop_one_iteration(KpopEngineLoopIterationCtx {
+        params,
+        iteration,
+        consecutive_solved,
+        client: &mut client,
+    })
+    .await?;
+    if client.has_open_coder_session() {
+        client.end_coder_session().await.map_err(|e| e.to_string())?;
+    }
+    Ok((streak, backups, false))
 }
 
 pub(crate) async fn run_kpop_engine(
     params: super::params::KPopEngineParams<'_>,
 ) -> Result<KPopEngineLoopOutcome, String> {
     let work_dir = params.prepared.artifacts().work_dir.as_path();
-    let (mut last_backups, mpc_on) = prepare_kpop_engine_loop(work_dir)?;
+    let mut last_backups = prepare_kpop_engine_loop(work_dir)?;
     if params.behavior.skip_kpop_on_initial_pass
         && !params.behavior.skip_workspace_quality_gates
         && run_kpop_workspace_gates(
@@ -165,22 +174,19 @@ pub(crate) async fn run_kpop_engine(
         if iteration > 1 {
             restore_carry_forward_before_iteration_snapshot(work_dir, Some(&last_backups))?;
         }
-        if mpc_on && mpc_done_exit_after_planner(&params, iteration, &last_backups).await? {
-            return Ok((true, false, Some(run_timing), last_backups));
-        }
-        let (streak, backups, early) = kpop_engine_loop_one_iteration(KpopEngineLoopIterationCtx {
+        let (streak, backups, mpc_done) = run_kpop_engine_iteration(KpopEngineIterationInput {
             params: &params,
             iteration,
-            run_timing: &run_timing,
             consecutive_solved,
-            mpc_on,
+            last_backups: &last_backups,
+            run_timing: &run_timing,
         })
         .await?;
+        if mpc_done {
+            return Ok((true, false, Some(run_timing), last_backups));
+        }
         consecutive_solved = streak;
         last_backups = backups;
-        if let Some(outcome) = early {
-            return Ok(outcome);
-        }
     }
     Ok((exhausted_loop_gate_ok(&params, &last_backups), true, Some(run_timing), last_backups))
 }

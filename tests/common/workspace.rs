@@ -73,10 +73,9 @@ pub fn activate_test_home(home: &Path) {
     seed_fast_integration_malvin_config(home);
 }
 
-/// Isolated `$HOME` config for integration subprocess tests: disable MPC planner sessions
-/// (default `mpc = true` doubles ACP mock invocations per gate-loop iteration).
+/// Isolated `$HOME` config for integration subprocess tests.
 pub fn seed_fast_integration_malvin_config(home: &Path) {
-    seed_malvin_config(home, "mpc = false\n");
+    seed_malvin_config(home, "mem_limit_gb = 4\n");
 }
 
 fn restore_env_var(key: &str, value: Option<std::ffi::OsString>) {
@@ -90,22 +89,19 @@ fn restore_env_var(key: &str, value: Option<std::ffi::OsString>) {
 }
 
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
+    let (root, home, workspace) = fast_test_home_workspace();
+    std::fs::write(workspace.join(".kissconfig"), "x").expect("kissconfig");
+    (root, home, workspace)
+}
+
+/// Like [`test_home_workspace`] but without a workspace `.kissconfig` (faster gate-loop subprocess tests).
+pub fn fast_test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let root = tempfile::tempdir().expect("tempdir");
     let home = root.path().join("home");
     let workspace = root.path().join("workspace");
     std::fs::create_dir_all(&home).expect("mkdir home");
     std::fs::create_dir_all(&workspace).expect("mkdir workspace");
-    std::fs::write(workspace.join(".kissconfig"), "x").expect("kissconfig");
-    let old_home = std::env::var_os("HOME");
-    let old_mutation = std::env::var_os(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION);
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("HOME", &home);
-        std::env::set_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, "1");
-    }
-    seed_fast_integration_malvin_config(&home);
-    restore_env_var("HOME", old_home);
-    restore_env_var(malvin::MALVIN_TEST_ALLOW_HOME_CONFIG_MUTATION, old_mutation);
+    activate_test_home(&home);
     (root, home, workspace)
 }
 

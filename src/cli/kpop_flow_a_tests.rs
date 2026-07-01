@@ -90,7 +90,9 @@ fn seed_kpop_multiturn_mock_workspace(
     workspace: &std::path::Path,
 ) -> (std::path::PathBuf, crate::test_utils::SavedEnvVars) {
     use crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
+    use crate::repo_gates::checks_test_helpers::write_git_root_checks;
 
+    write_git_root_checks(workspace, b"kiss check\n");
     std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
     let mock = workspace.join("mock-agent");
     let env = install_mock_agent_env(workspace, &mock);
@@ -138,18 +140,4 @@ async fn run_kpop_multiturn_mock_once(
     )
     .await?;
     Ok(snap.exp_log_path)
-}
-
-#[cfg(unix)]
-#[test]
-fn kpop_run_acp_multiturn_executes_mock_agent() {
-    crate::test_utils::enable_test_fast_teardown();
-    crate::test_utils::with_isolated_home(|workspace| {
-        let exp_log_path = crate::test_utils::block_on_test_async(async {
-            run_kpop_multiturn_mock_once(workspace).await
-        })
-        .expect("multiturn");
-        let text = std::fs::read_to_string(exp_log_path).expect("read");
-        assert!(text.contains("## Step 1 — KPOP mock"));
-    });
 }

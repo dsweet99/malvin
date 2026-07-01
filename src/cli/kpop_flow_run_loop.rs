@@ -1,4 +1,4 @@
-//! Outer `malvin kpop` agent loop (`--max-loops`, early exit on `## KPOP_SOLVED`).
+//! Outer `malvin kpop` agent loop (`--max-loops`).
 
 use std::path::PathBuf;
 
@@ -62,33 +62,29 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
 
 pub(crate) struct KpopLoopExitAfterIteration {
     pub(crate) will_exit_after_this_loop: bool,
-    pub(crate) early_exit_on_solved: bool,
 }
 
 pub(crate) fn kpop_loop_exit_after_iteration(
     exp_log_path: &PathBuf,
     agent_loop: usize,
     max_loops: usize,
-    mpc_on: bool,
 ) -> Result<KpopLoopExitAfterIteration, String> {
     let declares_solved = kpop_exp_log_declares_solved(exp_log_path)?;
     Ok(KpopLoopExitAfterIteration {
         will_exit_after_this_loop: declares_solved || agent_loop == max_loops,
-        early_exit_on_solved: declares_solved && !mpc_on,
     })
 }
 
 async fn finish_kpop_loop_iteration(
     params: &mut RunKpopAgentLoopsParams<'_>,
     loop_snapshot: &KpopLoopSnapshot,
-    bounds: (usize, usize, bool),
-) -> Result<Option<bool>, String> {
-    let (agent_loop, max_loops, mpc_on) = bounds;
+    bounds: (usize, usize),
+) -> Result<(), String> {
+    let (agent_loop, max_loops) = bounds;
     let exit = kpop_loop_exit_after_iteration(
         &loop_snapshot.exp_log_path,
         agent_loop,
         max_loops,
-        mpc_on,
     )?;
     crate::cli::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop(
         crate::cli::kpop_summarize::InlineSummarizeOnKpopLoopCtx {
@@ -101,7 +97,7 @@ async fn finish_kpop_loop_iteration(
         },
     )
     .await?;
-    Ok(exit.early_exit_on_solved.then_some(true))
+    Ok(())
 }
 
 async fn run_kpop_multiturn_for_loop(
@@ -150,9 +146,6 @@ async fn run_mpc_at_kpop_loop_start(
     params: &mut RunKpopAgentLoopsParams<'_>,
     agent_loop: usize,
 ) -> Result<bool, String> {
-    if !crate::kpop_engine::mpc_enabled(&params.prepared.artifacts.work_dir) {
-        return Ok(false);
-    }
     crate::kpop_engine::run_mpc_planner_session(crate::kpop_engine::MpcPlannerParams {
         shared: params.shared,
         workflow: params.workflow,
@@ -161,6 +154,7 @@ async fn run_mpc_at_kpop_loop_start(
         context: &params.prepared.context,
         command: "kpop",
         client: Some(params.client),
+        keep_session_open: true,
         iteration: Some(agent_loop),
     })
     .await?;
@@ -175,7 +169,6 @@ async fn run_kpop_agent_loop_turn(
     params: &mut RunKpopAgentLoopsParams<'_>,
     agent_loop: usize,
     max_loops: usize,
-    mpc_on: bool,
 ) -> Result<(bool, Option<RunKpopAgentLoopsOutcome>, Result<(), String>), String> {
     if run_mpc_at_kpop_loop_start(params, agent_loop).await? {
         return Ok((true, None, Ok(())));
@@ -196,19 +189,7 @@ async fn run_kpop_agent_loop_turn(
             Ok(()),
         ));
     }
-    if finish_kpop_loop_iteration(params, &loop_snapshot, (agent_loop, max_loops, mpc_on))
-        .await?
-        .is_some()
-    {
-        return Ok((
-            false,
-            Some(RunKpopAgentLoopsOutcome {
-                acp_result: last_acp,
-                agent_ran: true,
-            }),
-            Ok(()),
-        ));
-    }
+    finish_kpop_loop_iteration(params, &loop_snapshot, (agent_loop, max_loops)).await?;
     Ok((false, None, last_acp))
 }
 
@@ -216,13 +197,12 @@ pub(crate) async fn run_kpop_agent_loops(
     mut params: RunKpopAgentLoopsParams<'_>,
 ) -> RunKpopAgentLoopsOutcome {
     let max_loops = effective_max_loops(params.kpop.max_loops);
-    let mpc_on = crate::kpop_engine::mpc_enabled(&params.prepared.artifacts.work_dir);
     clear_legacy_gate_exp_log(&params.prepared.artifacts, max_loops);
     let mut last_acp = Ok(());
     let mut agent_ran = false;
     for agent_loop in 1..=max_loops {
         agent_ran = true;
-        match run_kpop_agent_loop_turn(&mut params, agent_loop, max_loops, mpc_on).await {
+        match run_kpop_agent_loop_turn(&mut params, agent_loop, max_loops).await {
             Ok((true, _, _)) => break,
             Ok((false, Some(outcome), _)) => return outcome,
             Ok((false, None, acp)) => last_acp = acp,

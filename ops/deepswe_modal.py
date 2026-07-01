@@ -69,7 +69,6 @@ from modal.stream_type import StreamType
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
-    dockerfile_bulk_pip_commands,
     dockerfile_image_build_commands,
     registry_image_cache_bust_commands,
 )
@@ -1144,8 +1143,9 @@ def _refresh_cached_allowlist_live(
             err=True,
         )
     cidrs = compress_ipv4_cidrs(union_ipv4_cidrs(cached, host_cidrs))
-    if uncovered:
-        cidrs = _run_allowlist_dns_fixpoint(cidrs, timeout=timeout, max_rounds=3)
+    # Always run in-sandbox DNS fixpoint: host DNS may appear covered by cached
+    # CIDRs while streaming peers resolved only inside the allowlist are missing.
+    cidrs = _run_allowlist_dns_fixpoint(cidrs, timeout=timeout, max_rounds=3)
     cidrs, added = _merge_allowlist_agent_peers(
         cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
     )
@@ -1485,13 +1485,9 @@ def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
         build_cmds = list(
             registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
         )
-        if dockerfile.is_file():
-            bulk = dockerfile_bulk_pip_commands(dockerfile)
-            if bulk:
-                build_cmds.extend(bulk)
         if build_cmds:
             click.echo(
-                f"Re-running {len(build_cmds)} registry image-build pip step(s) after pull..."
+                f"Re-running {len(build_cmds)} registry cache-bust pip step(s) after pull..."
             )
             base = base.run_commands(*_image_build_shell_commands(build_cmds, workdir=None))
         return base
@@ -2457,39 +2453,69 @@ def _test_refresh_cached_allowlist_runs_post_https_agent_peer() -> None:
             return_value={"failed_hosts": [], "extra_ips": []},
         ):
             with patch(
-                f"{__name__}._merge_allowlist_agent_peers",
-                side_effect=[
-                    (["1.1.1.0/24"], 0),
-                    (["1.1.1.0/24", "9.9.9.9/32"], 1),
-                ],
-            ) as mock_merge:
-                with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
-                    refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+                f"{__name__}._run_allowlist_dns_fixpoint",
+                side_effect=lambda cidrs, **_: cidrs,
+            ):
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=[
+                        (["1.1.1.0/24"], 0),
+                        (["1.1.1.0/24", "9.9.9.9/32"], 1),
+                    ],
+                ) as mock_merge:
+                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                        refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
     assert mock_merge.call_count == 2
     assert mock_merge.call_args_list[1].kwargs.get("label") == "Post-HTTPS agent peer"
     assert "9.9.9.0/24" in refreshed
+
+
+def _test_refresh_cached_allowlist_runs_fixpoint_when_host_dns_covered() -> None:
+    """Cached refresh must run in-sandbox DNS fixpoint even when host DNS is covered."""
+    cached = ["1.1.1.0/24"]
+    with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
+        with patch(
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._run_allowlist_dns_fixpoint",
+                side_effect=lambda cidrs, **_: cidrs + ["3.3.3.3/32"],
+            ) as mock_fixpoint:
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                    side_effect=lambda cidrs, **_: (cidrs, 0),
+                ):
+                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                        refreshed = refresh_cached_allowlist(cached, timeout=60)
+    mock_fixpoint.assert_called_once()
+    assert "3.3.3.0/24" in refreshed
 
 
 def _test_refresh_cached_allowlist_expands_for_https() -> None:
     """Cached refresh must run HTTPS validation like the cold-build path."""
     with patch(f"{__name__}.resolve_cursor_api_cidrs", return_value=["1.1.1.1/32"]):
         with patch(
-            f"{__name__}._merge_allowlist_agent_peers",
-            side_effect=[
-                (["1.1.1.0/24"], 0),
-                (["1.1.1.0/24", "5.5.5.5/32"], 0),
-            ],
+            f"{__name__}._run_allowlist_dns_fixpoint",
+            side_effect=lambda cidrs, **_: cidrs,
         ):
             with patch(
-                f"{__name__}._expand_allowlist_for_https",
-                return_value=(["1.1.1.0/24", "5.5.5.5/32"], 1, 0),
-            ) as mock_expand:
+                f"{__name__}._merge_allowlist_agent_peers",
+                side_effect=[
+                    (["1.1.1.0/24"], 0),
+                    (["1.1.1.0/24", "5.5.5.5/32"], 0),
+                ],
+            ):
                 with patch(
-                    f"{__name__}.validate_cursor_https_under_allowlist",
-                    return_value={"failed_hosts": [], "extra_ips": []},
-                ):
-                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
-                        refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
+                    f"{__name__}._expand_allowlist_for_https",
+                    return_value=(["1.1.1.0/24", "5.5.5.5/32"], 1, 0),
+                ) as mock_expand:
+                    with patch(
+                        f"{__name__}.validate_cursor_https_under_allowlist",
+                        return_value={"failed_hosts": [], "extra_ips": []},
+                    ):
+                        with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                            refreshed = refresh_cached_allowlist(["1.1.1.0/24"], timeout=60)
     mock_expand.assert_called_once()
     assert "5.5.5.0/24" in refreshed
 
@@ -3165,6 +3191,34 @@ class _RecordingImage:
         return self
 
 
+def _test_harbor_image_registry_skips_bulk_pip_replay() -> None:
+    from sandbox_prep import dockerfile_bulk_pip_commands
+
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "fastapi-deprecation-response-headers"
+    if not task.is_dir():
+        return
+    spec = parse_task_dir(task)
+    bulk_cmds = dockerfile_bulk_pip_commands(spec.dockerfile)
+    assert bulk_cmds, "task Dockerfile must define bulk pip for this regression test"
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_registry", registry), patch(
+        f"{__name__}.registry_image_cache_bust_commands",
+        return_value=["pip install --no-cache-dir 'pydantic>=2,<3'"],
+    ):
+        result = harbor_image(spec, dockerfile=spec.dockerfile)
+    assert result == "final-image"
+    pulled.run_commands.assert_called_once()
+    run_args = pulled.run_commands.call_args[0]
+    assert len(run_args) == 1
+    joined = " ".join(run_args)
+    assert "pydantic" in joined
+    for bulk_cmd in bulk_cmds:
+        assert bulk_cmd not in joined
+
+
 def _test_harbor_image_prefers_registry_for_fastapi_task() -> None:
     tasks_root = default_deepswe_tasks_root()
     task = tasks_root / "fastapi-deprecation-response-headers"
@@ -3180,9 +3234,6 @@ def _test_harbor_image_prefers_registry_for_fastapi_task() -> None:
     ), patch(
         f"{__name__}.registry_image_cache_bust_commands",
         return_value=["pip install --no-cache-dir 'pydantic>=2,<3'"],
-    ), patch(
-        f"{__name__}.dockerfile_bulk_pip_commands",
-        return_value=[],
     ):
         result = harbor_image(spec, dockerfile=spec.dockerfile)
     assert result == "final-image"
@@ -3389,8 +3440,8 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         assert reward_files[0].read_text(encoding="utf-8").strip() == "1"
 
 
-def run_unit_tests() -> None:
-    """Local tests for deepswe_modal helpers (no Modal network)."""
+def run_cidr_allowlist_unit_tests() -> None:
+    """CIDR, DNS allowlist, and network-kwargs unit tests."""
     _test_repo_roots()
     _test_default_deepswe_results_dir()
     _test_cursor_cidrs()
@@ -3403,16 +3454,25 @@ def run_unit_tests() -> None:
     _test_agent_sandbox_cidrs_union()
     _test_critical_cursor_hosts_failed()
     _test_cursor_api_allowlist_cache()
+
+
+def run_allowlist_refresh_unit_tests() -> None:
+    """Allowlist cache refresh, DNS fixpoint, and host-pin unit tests."""
     _test_resolve_agent_sandbox_cidrs_uses_cache()
     _test_host_cidrs_not_covered_by_allowlist()
     _test_refresh_cached_allowlist_merges_host_dns()
     _test_refresh_cached_allowlist_runs_post_https_agent_peer()
+    _test_refresh_cached_allowlist_runs_fixpoint_when_host_dns_covered()
     _test_refresh_cached_allowlist_expands_for_https()
     _test_expand_allowlist_for_https_merges_extra_ips()
     _test_run_allowlist_dns_fixpoint_stops_at_fixpoint()
     _test_pin_cursor_api_hosts_script_pins_all_allowed_ips()
     _test_pin_cursor_api_hosts_in_sandbox()
     _test_post_https_agent_peer_merge_always_runs()
+
+
+def run_agent_toolchain_unit_tests() -> None:
+    """Agent sandbox network, stream helpers, secrets, and toolchain unit tests."""
     _test_agent_sandbox_network_kwargs()
     _test_stream_helpers()
     _test_cursor_secrets()
@@ -3424,6 +3484,10 @@ def run_unit_tests() -> None:
     _test_persist_grading_artifacts()
     _test_tier_a_before_workspace_harvest()
     _test_load_agent_sandbox_metadata()
+
+
+def run_harvest_sandbox_unit_tests() -> None:
+    """Harvest, staging, tar overlay, and eval-context unit tests."""
     _test_write_metadata()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
@@ -3441,6 +3505,11 @@ def run_unit_tests() -> None:
     _test_can_overlay_existing_file_denies_unremovable()
     _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
+
+
+def run_harbor_modal_probe_unit_tests() -> None:
+    """Harbor image, modal probe, sandbox app, and self-test flag unit tests."""
+    _test_harbor_image_registry_skips_bulk_pip_replay()
     _test_harbor_image_prefers_registry_for_fastapi_task()
     _test_harbor_image_builds_from_dockerfile_with_cache_bust()
     _test_harbor_image_pulls_registry_when_no_dockerfile()
@@ -3452,10 +3521,24 @@ def run_unit_tests() -> None:
     _test_run_modal_cidr_probe_script_retries_transient_timeout()
     _test_sandbox_app()
     _test_self_test_flag()
+
+
+def run_modal_lifecycle_eval_unit_tests() -> None:
+    """Modal sandbox lifecycle release and eval-grade unit tests."""
     from modal_sandbox_lifecycle import _test_release_modal_sandbox
 
     _test_release_modal_sandbox()
     _test_run_modal_eval_modal_agent_modal_grade()
+
+
+def run_unit_tests() -> None:
+    """Local tests for deepswe_modal helpers (no Modal network)."""
+    run_cidr_allowlist_unit_tests()
+    run_allowlist_refresh_unit_tests()
+    run_agent_toolchain_unit_tests()
+    run_harvest_sandbox_unit_tests()
+    run_harbor_modal_probe_unit_tests()
+    run_modal_lifecycle_eval_unit_tests()
 
 
 

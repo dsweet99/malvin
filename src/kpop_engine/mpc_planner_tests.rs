@@ -1,14 +1,11 @@
-use std::collections::HashMap;
-
 use super::{
-    build_mpc_planner_context, build_mpc_planner_prompt, mpc_enabled, mpc_planner_exp_log_path,
+    build_mpc_planner_context, build_mpc_planner_prompt, mpc_planner_exp_log_path,
     prepare_mpc_planner_turn, reset_user_brief_before_planner, run_mpc_planner_session,
-    user_brief_baseline_path, MpcPlannerParams,
+    user_brief_baseline_path, MpcPlannerParams, MpcPlannerTurnPrepared,
 };
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 use crate::test_utils::with_isolated_home;
-use crate::workspace_paths::malvin_config_path;
 
 macro_rules! mpc_prepare_turn_reset_workflow {
     ($work:expr) => {{
@@ -49,6 +46,8 @@ fn mpc_test_store() -> (tempfile::TempDir, PromptStore) {
 
 #[test]
 fn build_mpc_planner_prompt_joins_sections_in_order() {
+    use std::collections::HashMap;
+
     let (_tmp, store) = mpc_test_store();
     let ctx = WorkflowRenderContext::from(HashMap::from([
         ("plan_path".to_string(), "./plan.md".to_string()),
@@ -71,6 +70,8 @@ fn build_mpc_planner_prompt_joins_sections_in_order() {
 
 #[test]
 fn build_mpc_planner_context_sets_dedicated_exp_log() {
+    use std::collections::HashMap;
+
     with_isolated_home(|work| {
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
@@ -102,17 +103,6 @@ fn mpc_planner_exp_log_path_is_under_kpop_dir() {
     let path = mpc_planner_exp_log_path(&artifacts);
     assert!(path.to_string_lossy().contains("_kpop"));
     assert!(path.ends_with("mpc_planner_log.md"));
-}
-
-#[test]
-fn mpc_enabled_reads_config() {
-    with_isolated_home(|work| {
-        assert!(mpc_enabled(work));
-        let path = malvin_config_path(work);
-        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
-        std::fs::write(&path, "mpc = false\n").expect("write");
-        assert!(!mpc_enabled(work));
-    });
 }
 
 #[test]
@@ -170,6 +160,30 @@ fn reset_user_brief_before_planner_restores_on_second_call() {
 }
 
 #[test]
+fn prepare_mpc_planner_turn_populates_work_dir_log_path_and_prompt() {
+    with_isolated_home(|work| {
+        let (artifacts, _brief_path, store, shared, workflow, context) =
+            mpc_prepare_turn_reset_workflow!(work);
+        let params = MpcPlannerParams {
+            shared: &shared,
+            workflow,
+            store: &store,
+            artifacts: &artifacts,
+            context: &context,
+            command: "code",
+            client: None,
+            keep_session_open: false,
+            iteration: Some(3),
+        };
+        let prepared: MpcPlannerTurnPrepared = prepare_mpc_planner_turn(&params).expect("prepare");
+        assert_eq!(prepared.work_dir, artifacts.work_dir);
+        assert!(prepared.log_path.to_string_lossy().contains("mpc_planner_3"));
+        assert!(!prepared.prompt.is_empty());
+        assert!(prepared.prompt.contains("MPC"));
+    });
+}
+
+#[test]
 fn prepare_mpc_planner_turn_resets_brief_before_second_call() {
     with_isolated_home(|work| {
         let (artifacts, brief_path, store, shared, workflow, context) =
@@ -182,6 +196,7 @@ fn prepare_mpc_planner_turn_resets_brief_before_second_call() {
             context: &context,
             command: "code",
             client: None,
+            keep_session_open: false,
             iteration,
         };
         prepare_mpc_planner_turn(&params(Some(1))).expect("iteration 1 prepare");
@@ -197,7 +212,6 @@ fn prepare_mpc_planner_turn_resets_brief_before_second_call() {
 #[test]
 fn kiss_cov_mpc_planner_params_struct() {
     let _: Option<MpcPlannerParams> = None;
-    let _: Option<super::MpcPlannerTurnPrepared> = None;
 }
 
 #[cfg(all(test, unix))]

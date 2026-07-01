@@ -11,7 +11,7 @@ use common::{
 };
 
 #[cfg(unix)]
-const HOME_CONFIG_SEED: &str = "mem_limit_gb = 7\nmpc = false\n";
+const HOME_CONFIG_SEED: &str = "mem_limit_gb = 7\n";
 
 #[cfg(unix)]
 fn home_config_path(home: &std::path::Path) -> std::path::PathBuf {

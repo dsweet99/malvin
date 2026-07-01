@@ -8,7 +8,7 @@ mod run_loop_exit;
 mod run_loop;
 
 pub(crate) use mpc_planner::{
-    mpc_enabled, run_mpc_planner_session, user_brief_declares_mpc_done, MpcPlannerParams,
+    run_mpc_planner_session, user_brief_declares_mpc_done, MpcPlannerParams,
 };
 
 pub(crate) use kpop_session_finish::{

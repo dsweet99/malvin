@@ -8,16 +8,15 @@ use common::{
     CodeSpawn, acp_mock_code_kpop_steps_js, acp_mock_kpop_abort_tampers_checks_js,
     acp_mock_kpop_tampers_kissconfig_writes_solved_js,
     acp_mock_kpop_tampers_malvin_checks_writes_solved_js, bin_path_with_failing_gates,
-    bin_path_with_fake_kiss, combined_cli_output, seed_git_kiss_cargo_gate_workspace, spawn_code,
-    test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
+    bin_path_with_fake_kiss, combined_cli_output, seed_malvin_checks, spawn_code,
+    fast_test_home_workspace, test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
 fn code_runs_kpop_when_gates_already_pass() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
     let out = spawn_code(&CodeSpawn {
@@ -25,7 +24,7 @@ fn code_runs_kpop_when_gates_already_pass() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
     });
     let combined = combined_cli_output(&out);
@@ -44,9 +43,8 @@ fn code_runs_kpop_when_gates_already_pass() {
 #[cfg(unix)]
 #[test]
 fn code_kpop_fails_when_post_session_gates_still_fail() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
@@ -55,7 +53,7 @@ fn code_kpop_fails_when_post_session_gates_still_fail() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
     });
     assert!(
@@ -73,8 +71,7 @@ fn code_kpop_fails_when_post_session_gates_still_fail() {
 #[test]
 fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
     let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    seed_malvin_checks(&workspace, "kiss check\n");
     std::fs::write(workspace.join(".kissconfig"), "x\n").expect("kissconfig");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_kpop_tampers_kissconfig_writes_solved_js());
@@ -83,7 +80,7 @@ fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
     });
     let combined = combined_cli_output(&out);
@@ -104,9 +101,8 @@ fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
 #[cfg(unix)]
 #[test]
 fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_kpop_tampers_malvin_checks_writes_solved_js());
     let out = spawn_code(&CodeSpawn {
@@ -114,7 +110,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
     });
     let combined = combined_cli_output(&out);
@@ -135,9 +131,8 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
 #[cfg(unix)]
 #[test]
 fn kpop_tamper_abort_does_not_run_gates() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_git_kiss_cargo_gate_workspace(&workspace);
-    workspace_kiss_check_only(&workspace);
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "kiss check\n");
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_kpop_abort_tampers_checks_js());
@@ -146,7 +141,7 @@ fn kpop_tamper_abort_does_not_run_gates() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--max-loops", "1"],
+        extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
     });
     assert!(

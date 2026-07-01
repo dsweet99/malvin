@@ -5,13 +5,17 @@ use crate::cli::workflow_kpop_shared::kpop_engine_loop_iterations;
 
 use super::super::kpop_session::{print_kpop_engine_log_line, run_kpop_engine_session, KPopEngineMultiturnCtx};
 use super::super::params::{KPopEngineIterationParams, KPopEngineParams};
-use super::{
-    kpop_engine_solved_early_exit, refresh_consecutive_solved_streak, KPopEngineEarlyExitCtx,
-    KPopEngineLoopOutcome, KpopEngineLoopIterationCtx,
-};
+use super::refresh_consecutive_solved_streak;
 use crate::artifacts::SessionDotfileBackups;
 
-fn build_authenticated_kpop_engine_client(
+pub(crate) struct KpopEngineLoopIterationCtx<'a> {
+    pub params: &'a super::super::params::KPopEngineParams<'a>,
+    pub iteration: usize,
+    pub consecutive_solved: usize,
+    pub client: &'a mut crate::agent_backend::AgentBackend,
+}
+
+pub(crate) fn build_authenticated_kpop_engine_client(
     params: &KPopEngineParams<'_>,
     run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
 ) -> Result<crate::agent_backend::AgentBackend, String> {
@@ -37,11 +41,12 @@ pub(crate) fn wire_kpop_engine_client(
 }
 
 pub(crate) async fn run_kpop_engine_on_loop_iteration(
-    params: &KPopEngineParams<'_>,
-    iteration: usize,
-    run_timing: &Arc<Mutex<crate::run_timing::RunTiming>>,
-    consecutive_solved_entering: usize,
+    ctx: KpopEngineLoopIterationCtx<'_>,
 ) -> Result<SessionDotfileBackups, String> {
+    let params = ctx.params;
+    let iteration = ctx.iteration;
+    let consecutive_solved_entering = ctx.consecutive_solved;
+    let client = ctx.client;
     let work_dir = &params.prepared.artifacts().work_dir;
     crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
     let exp_log_path = crate::artifacts::ensure_gate_exp_log_file(
@@ -50,7 +55,6 @@ pub(crate) async fn run_kpop_engine_on_loop_iteration(
     )
     .map_err(|e| e.to_string())?;
 
-    let mut client = build_authenticated_kpop_engine_client(params, run_timing)?;
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;
     print_kpop_engine_log_line(params.prepared, &exp_log_path);
@@ -60,7 +64,7 @@ pub(crate) async fn run_kpop_engine_on_loop_iteration(
     let mut iteration_params = KPopEngineIterationParams {
         loop_params: params,
         session_dotfile_backups: &session_dotfile_backups,
-        client: &mut client,
+        client,
         iteration,
         total_iterations,
         consecutive_solved_entering,
@@ -76,24 +80,12 @@ pub(crate) async fn run_kpop_engine_on_loop_iteration(
 
 pub(crate) async fn kpop_engine_loop_one_iteration(
     ctx: KpopEngineLoopIterationCtx<'_>,
-) -> Result<(usize, SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
-    let session_dotfile_backups = run_kpop_engine_on_loop_iteration(
-        ctx.params,
-        ctx.iteration,
-        ctx.run_timing,
-        ctx.consecutive_solved,
-    )
-    .await?;
-    let exp_log_path = ctx.params.prepared.artifacts().gate_exp_log_path(ctx.iteration);
-    let streak = refresh_consecutive_solved_streak(ctx.consecutive_solved, &exp_log_path)?;
-    let early = kpop_engine_solved_early_exit(KPopEngineEarlyExitCtx {
-        behavior: ctx.params.behavior,
-        consecutive_solved: streak,
-        artifacts: ctx.params.prepared.artifacts(),
-        session_dotfile_backups: &session_dotfile_backups,
-        agent_ran: true,
-        run_timing: Some(ctx.run_timing),
-        mpc_enabled: ctx.mpc_on,
-    });
-    Ok((streak, session_dotfile_backups, early))
+) -> Result<(usize, SessionDotfileBackups), String> {
+    let iteration = ctx.iteration;
+    let consecutive_solved = ctx.consecutive_solved;
+    let artifacts = ctx.params.prepared.artifacts();
+    let session_dotfile_backups = run_kpop_engine_on_loop_iteration(ctx).await?;
+    let exp_log_path = artifacts.gate_exp_log_path(iteration);
+    let streak = refresh_consecutive_solved_streak(consecutive_solved, &exp_log_path)?;
+    Ok((streak, session_dotfile_backups))
 }

@@ -9,8 +9,7 @@ mod unix_tests {
 
     use super::common::{
         TidySpawn, acp_mock_tidy_kpop_steps_js, bin_path_with_failing_gates, combined_cli_output,
-        seed_git_kiss_cargo_gate_workspace, seed_malvin_checks, spawn_tidy, test_home_workspace,
-        cached_mock_executable,
+        seed_malvin_checks, spawn_tidy, fast_test_home_workspace, cached_mock_executable,
     };
 
     struct TidyStartupGateFixture {
@@ -23,8 +22,7 @@ mod unix_tests {
 
     impl TidyStartupGateFixture {
         fn new() -> Self {
-            let (root, home, workspace) = test_home_workspace();
-            seed_git_kiss_cargo_gate_workspace(&workspace);
+            let (root, home, workspace) = fast_test_home_workspace();
             seed_malvin_checks(&workspace, "kiss check\n");
             let trace = root.path().join("tidy-startup-gate-trace.log");
             let path = bin_path_with_failing_gates(&root, &trace);
@@ -44,7 +42,7 @@ mod unix_tests {
                 home: &self.home,
                 mock: &self.mock,
                 path_var: &self.path,
-                extra_args: &["--max-loops", "1"],
+                extra_args: &["--max-loops", "0"],
             })
         }
     }

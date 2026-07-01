@@ -60,6 +60,7 @@ except ModuleNotFoundError:  # pragma: no cover - py310
 
 KISS_CHECK_COMMAND = "kiss check"
 DEFAULT_PYTEST_CHECK = "pytest -sv tests"
+DEFAULT_STESTR_CHECK = "stestr run"
 DEFAULT_RUST_CLIPPY = (
     "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo"
 )
@@ -546,6 +547,18 @@ def python_ruff_and_pytest_flags(root: Path) -> tuple[bool, bool]:
     return has_py, has_pytest
 
 
+def repo_uses_stestr(root: Path) -> bool:
+    """True when repo test deps or tox config indicate stestr (not pytest)."""
+    for name in ("test-requirements.txt", "requirements-dev.txt", "requirements.txt"):
+        path = root / name
+        if path.is_file() and "stestr" in path.read_text(encoding="utf-8", errors="replace"):
+            return True
+    tox = root / "tox.ini"
+    if tox.is_file() and "stestr run" in tox.read_text(encoding="utf-8", errors="replace"):
+        return True
+    return False
+
+
 def cargo_nextest_available() -> bool:
     proc = subprocess.run(
         ["cargo", "nextest", "--version"],
@@ -568,7 +581,10 @@ def builtin_gate_command_lines(root: Path) -> list[str]:
     if has_py:
         out.append("ruff check .")
     if has_pytest:
-        out.append(DEFAULT_PYTEST_CHECK)
+        if repo_uses_stestr(root):
+            out.append(DEFAULT_STESTR_CHECK)
+        else:
+            out.append(DEFAULT_PYTEST_CHECK)
     if (root / "Cargo.toml").is_file():
         out.append(DEFAULT_RUST_CLIPPY)
         out.append(default_rust_test_command())
@@ -605,6 +621,10 @@ def discover_deepswe_check_lines(root: Path) -> list[str]:
         if any(canonical_tool(line) == canonical_tool(fallback) for line in merged):
             continue
         merged.append(fallback)
+    if repo_uses_stestr(root):
+        merged = [line for line in merged if canonical_tool(line) != "pytest"]
+        if not any(canonical_tool(line) == "stestr" for line in merged):
+            merged.append(DEFAULT_STESTR_CHECK)
     return ensure_kiss_check_first(merged)
 
 
@@ -2283,6 +2303,33 @@ def _test_discover_deepswe_checks_python_repo() -> None:
         assert DEFAULT_PYTEST_CHECK in text
 
 
+def _test_discover_deepswe_checks_stestr_repo() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "tests").mkdir()
+        (root / "tests" / "test_mod.py").write_text(
+            "def test_x():\n    assert True\n", encoding="utf-8"
+        )
+        (root / "test-requirements.txt").write_text("stestr>=2.5.0\n", encoding="utf-8")
+        text = discover_deepswe_checks(root)
+        assert DEFAULT_STESTR_CHECK in text
+        assert DEFAULT_PYTEST_CHECK not in text
+
+
+def _test_discover_deepswe_checks_stestr_drops_stale_pytest() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        malvin_dir = root / ".malvin"
+        malvin_dir.mkdir()
+        (malvin_dir / "checks").write_text(
+            f"{KISS_CHECK_COMMAND}\n{DEFAULT_PYTEST_CHECK}\n", encoding="utf-8"
+        )
+        (root / "test-requirements.txt").write_text("stestr>=2.5.0\n", encoding="utf-8")
+        text = discover_deepswe_checks(root)
+        assert DEFAULT_STESTR_CHECK in text
+        assert DEFAULT_PYTEST_CHECK not in text
+
+
 def _test_discover_deepswe_checks_precommit() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -2835,6 +2882,8 @@ def run_self_tests() -> None:
     _test_list_deepswe_tasks_with_language()
     _test_discover_deepswe_checks_minimal()
     _test_discover_deepswe_checks_python_repo()
+    _test_discover_deepswe_checks_stestr_repo()
+    _test_discover_deepswe_checks_stestr_drops_stale_pytest()
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_write_plan_and_checks_discovers()

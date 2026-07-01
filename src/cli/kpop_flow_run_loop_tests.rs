@@ -103,7 +103,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
 }
 
 #[cfg(unix)]
-fn install_mock_agent_env_inner(
+pub(crate) fn install_mock_agent_env_inner(
     workspace: &std::path::Path,
     mock: &std::path::Path,
     write_script: fn(&std::path::Path),
@@ -159,7 +159,12 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
     let handler = format!(
         "{body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
     );
-    let script = SCRIPT.get_or_init(|| format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler)));
+    let script = SCRIPT.get_or_init(|| {
+        format!(
+            "#!/usr/bin/env node\n{}\n",
+            crate::acp_mock_js("", &crate::acp_mock_wrap_handler_with_mpc_fast_path(&handler))
+        )
+    });
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);
@@ -167,22 +172,12 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
 }
 
 #[test]
-fn kpop_loop_exit_after_iteration_suppresses_solved_exit_when_mpc_on() {
+fn kpop_loop_exit_after_iteration_never_exits_early_on_solved() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    let exit = kpop_loop_exit_after_iteration(&path, 1, 2, true).expect("read");
+    let exit = kpop_loop_exit_after_iteration(&path, 1, 2).expect("read");
     assert!(exit.will_exit_after_this_loop);
-    assert!(!exit.early_exit_on_solved);
-}
-
-#[test]
-fn kpop_loop_exit_after_iteration_allows_solved_exit_when_mpc_off() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    let exit = kpop_loop_exit_after_iteration(&path, 1, 2, false).expect("read");
-    assert!(exit.early_exit_on_solved);
 }
 
 #[cfg(unix)]
@@ -221,13 +216,15 @@ mod unix_cov {
 
     #[test]
     fn run_kpop_agent_loops_executes_mock_agent() {
+        crate::test_utils::enable_test_fast_teardown();
         crate::test_utils::with_isolated_home(|workspace| {
             crate::test_utils::block_on_test_async(async {
-                std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
-                crate::malvin_test_seed::seed_malvin_config(workspace, "mpc = false\n");
+                use crate::repo_gates::checks_test_helpers::write_git_root_checks;
+
+                write_git_root_checks(workspace, b"kiss check\n");
                 let mock = workspace.join("mock-agent");
                 let _env = install_mock_agent_env(workspace, &mock);
-                let (kpop, shared, workflow) = test_kpop_args(1);
+                let (kpop, shared, workflow) = test_kpop_args(0);
                 let (store, mut client, prepared) =
                     kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
                 let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
