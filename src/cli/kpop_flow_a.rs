@@ -132,8 +132,6 @@ pub async fn run_kpop(
     let loops = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {
             kpop: &kpop,
-            shared,
-            workflow,
             store: &store,
             client: &mut client,
             prepared: &prepared,

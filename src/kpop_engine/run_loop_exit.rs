@@ -1,9 +1,6 @@
-//! Gate-loop exit predicates for MPC done (see `concepts_2.md` §5).
-
-use std::path::Path;
+//! Gate-loop exit predicates for consecutive `## KPOP_SOLVED` markers.
 
 use crate::artifacts::SessionDotfileBackups;
-use crate::mpc_planning_brief::MpcPlanningBriefAspect;
 use crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
 
 use super::behavior::KPopHardConstraints;
@@ -27,16 +24,14 @@ pub(crate) fn run_gate_workspace_gates_with_fresh_backups(
     .is_ok()
 }
 
-pub(crate) fn mpc_done_early_exit(
+pub(crate) fn kpop_solved_early_exit(
     ctx: &GateLoopExitCtx<'_>,
-    brief_path: &Path,
-) -> Result<bool, String> {
-    let _aspect = MpcPlanningBriefAspect::ExitGateIntegration;
-    if !super::mpc_planner::user_brief_declares_mpc_done(brief_path)? {
-        let _done_aspect = MpcPlanningBriefAspect::DoneMarkerDetection;
-        return Ok(false);
+    consecutive_solved: usize,
+) -> bool {
+    if consecutive_solved < ctx.behavior.consecutive_kpop_solved_to_exit() {
+        return false;
     }
-    Ok(gates_pass_for_exit(ctx))
+    gates_pass_for_exit(ctx)
 }
 
 fn gates_pass_for_exit(ctx: &GateLoopExitCtx<'_>) -> bool {

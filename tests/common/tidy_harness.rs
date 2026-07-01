@@ -3,7 +3,7 @@ use std::process::Command;
 
 use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
-    write_failing_gate_tools, write_fake_kiss,
+    write_fake_kiss,
 };
 use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
@@ -13,6 +13,8 @@ pub struct TidySpawn<'a> {
     pub mock: &'a Path,
     pub path_var: &'a str,
     pub extra_args: &'a [&'a str],
+    /// When set, gate subprocess stubs append invocations to this path via `MALVIN_TEST_GATE_TRACE`.
+    pub gate_trace: Option<&'a Path>,
 }
 
 pub fn spawn_tidy(t: &TidySpawn<'_>) -> std::process::Output {
@@ -29,6 +31,9 @@ pub fn spawn_tidy_with_timeout(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", t.mock)
         .env("PATH", t.path_var);
+    if let Some(trace) = t.gate_trace {
+        cmd.env("MALVIN_TEST_GATE_TRACE", trace);
+    }
     let mut args: Vec<&str> = vec!["tidy"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
     args.extend_from_slice(FAST_GATE_LOOP_TEST_ARGS);
@@ -41,15 +46,8 @@ pub fn workspace_kiss_check_only(workspace: &Path) {
     super::seed_malvin_checks(workspace, "kiss check\n");
 }
 
-pub fn bin_path_with_failing_gates(root: &tempfile::TempDir, trace: &Path) -> String {
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    write_failing_gate_tools(&bin_dir, trace);
-    format!(
-        "{}:{}",
-        bin_dir.display(),
-        std::env::var("PATH").unwrap_or_default()
-    )
+pub fn bin_path_with_failing_gates(_root: &tempfile::TempDir, _trace: &Path) -> String {
+    super::gate_bin_cache::static_failing_gates_path_var()
 }
 
 pub fn write_kiss_fail_until_n_passes(path: &Path, trace: &Path, fail_count: u32) {
@@ -88,13 +86,6 @@ pub fn bin_path_with_kiss_fail_until_n_passes(
     )
 }
 
-pub fn bin_path_with_fake_kiss(root: &tempfile::TempDir) -> String {
-    let bin_dir = root.path().join("bin");
-    std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    write_fake_kiss(&bin_dir.join("kiss"));
-    format!(
-        "{}:{}",
-        bin_dir.display(),
-        std::env::var("PATH").unwrap_or_default()
-    )
+pub fn bin_path_with_fake_kiss(_root: &tempfile::TempDir) -> String {
+    super::gate_bin_cache::static_fake_kiss_path_var()
 }

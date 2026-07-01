@@ -27,6 +27,15 @@ pub fn seed_malvin_checks(workspace: &Path, content: &str) {
     std::fs::write(checks_path, content).expect("write checks");
 }
 
+/// Seed workspace `.malvin/checks` without `git init` (ABORT-path tests that never restore checks).
+pub fn seed_malvin_checks_legacy_fast(workspace: &Path, content: &str) {
+    let checks_path = workspace.join(".malvin").join("checks");
+    if let Some(parent) = checks_path.parent() {
+        std::fs::create_dir_all(parent).expect("mkdir checks parent");
+    }
+    std::fs::write(checks_path, content).expect("write checks");
+}
+
 /// Requires isolated `HOME`; see plan.md.
 pub fn seed_malvin_config(workspace: &Path, content: &str) {
     assert!(
@@ -168,7 +177,7 @@ fn mock_cache_key(js: &str) -> u64 {
 }
 
 #[cfg(unix)]
-fn mock_cache_root() -> &'static tempfile::TempDir {
+pub fn mock_cache_root() -> &'static tempfile::TempDir {
     static ROOT: std::sync::OnceLock<tempfile::TempDir> = std::sync::OnceLock::new();
     ROOT.get_or_init(|| tempfile::tempdir().expect("mock cache tempdir"))
 }
@@ -229,11 +238,4 @@ pub fn write_failing_command(path: &Path, trace: &Path) {
     let mut perms = std::fs::metadata(path).expect("metadata").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(path, perms).expect("chmod");
-}
-
-#[cfg(unix)]
-pub fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
-    for name in ["kiss", "cargo", "ruff", "pytest"] {
-        write_failing_command(&bin_dir.join(name), trace);
-    }
 }

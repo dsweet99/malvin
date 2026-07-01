@@ -3,8 +3,6 @@ pub const REVIEW_WRITE_PROMPT_MATCH_JS: &str =
 
 pub const CONCERNS_PROMPT_MATCH_JS: &str = "promptText.includes(\"reviewer's concerns\")";
 
-pub use malvin::MPC_REQUEST_PROMPT_MATCH_JS;
-
 pub const ARGV_CAPTURE_PREAMBLE: &str = r"const fs = require('fs');
 const capturePath = process.env.MALVIN_CAPTURE_ARGS_PATH;
 if (capturePath) {
@@ -12,39 +10,13 @@ if (capturePath) {
 }
 ";
 
-/// Integration-test mock builder: skips handler body on MPC planner prompts.
 pub fn acp_mock_js(preamble: &str, prompt_handler: &str) -> String {
-    let mpc_chunk = malvin::acp_mock_mpc_planner_chunk_js();
-    let wrapped = format!(
-        r"    let __skipPromptHandler = false;
-    (function() {{
-      const promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
-      if ({MPC_REQUEST_PROMPT_MATCH_JS}) {{
-{mpc_chunk}
-        __skipPromptHandler = true;
-      }}
-    }})();
-    if (!__skipPromptHandler) {{
-{prompt_handler}
-    }}"
-    );
-    malvin::acp_mock_js(preamble, &wrapped)
+    malvin::acp_mock_js(preamble, prompt_handler)
 }
 
 pub fn session_update_chunk_line(kind: &str, text_expr: &str) -> String {
     format!(
         r"    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: '{kind}', content: {{ type: 'text', text: {text_expr} }} }} }} }}));"
-    )
-}
-
-pub fn acp_mock_mpc_planner_fast_path_js() -> String {
-    session_update_chunk_line("agent_message_chunk", r"'mpc planner done\n'")
-}
-
-pub fn acp_mock_kpop_mpc_or_iteration_branch_open_js() -> String {
-    let chunk = acp_mock_mpc_planner_fast_path_js();
-    format!(
-        "    if (__mpcPlanner) {{\n{chunk}\n    }} else if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{"
     )
 }
 
@@ -205,31 +177,25 @@ pub fn acp_mock_bug_kpop_solved_js() -> String {
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
-    let branch_open = acp_mock_kpop_mpc_or_iteration_branch_open_js();
-    let body = format!(
-        r"    let promptText = (((msg.params || {{}}).prompt || [])[0] || {{}}).text || '';
-    const __mpcPlanner = {MPC_REQUEST_PROMPT_MATCH_JS};
-{branch_open}
-    const fs = require('fs');
+    let body = r"    const fs = require('fs');
     const path = require('path');
     const kpopAttempts = (typeof this.kpopAttempts === 'undefined') ? 0 : this.kpopAttempts;
     this.kpopAttempts = kpopAttempts + 1;
-    const kiss = (() => {{ try {{ return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); }} catch {{ return ''; }} }})();
-    const gitignore = (() => {{ try {{ return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); }} catch {{ return ''; }} }})();
-    if (kpopAttempts === 0) {{
+    const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+    const gitignore = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); } catch { return ''; } })();
+    if (kpopAttempts === 0) {
       fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
       fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'TAMPERED', 'utf8');
-    }} else {{
-      if (kiss !== 'k = 1\n') {{
+    } else {
+      if (kiss !== 'k = 1\n') {
         fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
-      }}
-      if (gitignore !== 'g = 1\n') {{
+      }
+      if (gitignore !== 'g = 1\n') {
         fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: gitignore tamper restored incorrectly\n', 'utf8');
-      }}
-    }}"
-    );
+      }
+    }";
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop prompt done\n'");
-    acp_mock_js("", &format!("{body}\n{done}\n    }}"))
+    acp_mock_js("", &format!("    {body}\n{done}"))
 }
 
 #[cfg(all(unix, target_os = "linux"))]

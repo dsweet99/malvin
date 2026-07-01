@@ -159,12 +159,7 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
     let handler = format!(
         "{body}\n    console.log(JSON.stringify({{ jsonrpc: '2.0', method: 'session/update', params: {{ update: {{ sessionUpdate: 'agent_message_chunk', content: {{ type: 'text', text: 'step\\n' }} }} }} }}));"
     );
-    let script = SCRIPT.get_or_init(|| {
-        format!(
-            "#!/usr/bin/env node\n{}\n",
-            crate::acp_mock_js("", &crate::acp_mock_wrap_handler_with_mpc_fast_path(&handler))
-        )
-    });
+    let script = SCRIPT.get_or_init(|| format!("#!/usr/bin/env node\n{}\n", crate::acp_mock_js("", &handler)));
     std::fs::write(path, script.as_bytes()).expect("write mock");
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);
@@ -172,12 +167,13 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
 }
 
 #[test]
-fn kpop_loop_exit_after_iteration_never_exits_early_on_solved() {
+fn kpop_loop_exit_after_iteration_exits_early_on_solved() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
     let exit = kpop_loop_exit_after_iteration(&path, 1, 2).expect("read");
     assert!(exit.will_exit_after_this_loop);
+    assert!(exit.early_exit_on_solved);
 }
 
 #[cfg(unix)]
@@ -201,8 +197,6 @@ mod unix_cov {
                 std::fs::write(&kpop_dir, "not a directory").expect("block _kpop");
                 let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
                     kpop: &kpop,
-                    shared: &shared,
-                    workflow,
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,
@@ -229,8 +223,6 @@ mod unix_cov {
                     kpop_boot_store_client_prepared(&kpop, &shared, workflow).expect("boot");
                 let outcome = run_kpop_agent_loops(RunKpopAgentLoopsParams {
                     kpop: &kpop,
-                    shared: &shared,
-                    workflow,
                     store: &store,
                     client: &mut client,
                     prepared: &prepared,

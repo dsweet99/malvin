@@ -166,18 +166,9 @@ fn kiss_cov_kpop_engine_loop_iteration_ctx_type() {
 }
 
 #[test]
-fn kiss_cov_mpc_planner_private_fn_names() {
-    let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_prompt);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::build_mpc_planner_context);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_exp_log_path);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_session);
-    let _ = stringify!(crate::kpop_engine::MpcPlannerParams);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::mpc_planner_iteration_log_path);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::user_brief_declares_mpc_done);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::run_mpc_planner_session);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::reset_user_brief_before_planner);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::user_brief_baseline_path);
-    let _ = stringify!(crate::kpop_engine::mpc_planner::MpcPlannerTurnPrepared);
+fn kiss_cov_kpop_engine_early_exit_fn_names() {
+    let _ = stringify!(crate::kpop_engine::run_loop::kpop_engine_solved_early_exit);
+    let _ = stringify!(crate::kpop_engine::run_loop_exit::kpop_solved_early_exit);
 }
 
 #[test]

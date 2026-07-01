@@ -91,7 +91,7 @@ Malvin assembles agent prompts from many sources: embedded markdown templates, w
 
 - `src/prompt_stratification/mod.rs` — `join_strata`, `join_labeled_strata`, `WorkflowRenderContext`
 - `src/workflow_context.rs` — populates placeholder keys (artifact paths, gate logs) into a context map
-- `src/cli/do_flow_prompt.rs`, `src/kpop_turn_prompts.rs`, `src/kpop_engine/mpc_planner.rs` — per-workflow prompt recipes using labeled strata
+- `src/cli/do_flow_prompt.rs`, `src/kpop_turn_prompts.rs`, `src/kpop_engine/kpop_session.rs` — per-workflow prompt recipes using labeled strata
 - `src/cli/*/prep.rs` — workflow-specific context preparation (code, tidy, delight, revise, explain flows)
 - `default_prompts/` — embedded markdown templates and constraint blocks loaded by `PromptStore`
 

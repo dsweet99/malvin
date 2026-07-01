@@ -8,7 +8,8 @@ use common::{
     CodeSpawn, acp_mock_code_kpop_steps_js, acp_mock_kpop_abort_tampers_checks_js,
     acp_mock_kpop_tampers_kissconfig_writes_solved_js,
     acp_mock_kpop_tampers_malvin_checks_writes_solved_js, bin_path_with_failing_gates,
-    bin_path_with_fake_kiss, combined_cli_output, seed_malvin_checks, spawn_code,
+    bin_path_with_fake_kiss, combined_cli_output, seed_malvin_checks,
+    seed_malvin_checks_legacy_fast, spawn_code, ABORT_CODE_TEST_ARGS,
     fast_test_home_workspace, test_home_workspace, cached_mock_executable,
 };
 
@@ -26,6 +27,7 @@ fn code_runs_kpop_when_gates_already_pass() {
         path_var: &path,
         extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
+        gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -55,6 +57,7 @@ fn code_kpop_fails_when_post_session_gates_still_fail() {
         path_var: &path,
         extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
+        gate_trace: Some(&trace),
     });
     assert!(
         !out.status.success(),
@@ -82,6 +85,7 @@ fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
         path_var: &path,
         extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
+        gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -112,6 +116,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
         path_var: &path,
         extra_args: &["--trust-the-plan", "--max-loops", "0"],
         request: "ship it",
+        gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -132,7 +137,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
 #[test]
 fn kpop_tamper_abort_does_not_run_gates() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks_legacy_fast(&workspace, "kiss check\n");
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_kpop_abort_tampers_checks_js());
@@ -141,8 +146,9 @@ fn kpop_tamper_abort_does_not_run_gates() {
         home: &home,
         mock: &mock,
         path_var: &path,
-        extra_args: &["--trust-the-plan", "--max-loops", "0"],
+        extra_args: ABORT_CODE_TEST_ARGS,
         request: "ship it",
+        gate_trace: Some(&trace),
     });
     assert!(
         !out.status.success(),

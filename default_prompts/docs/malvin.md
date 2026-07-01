@@ -188,7 +188,7 @@ During live ACP sessions, malvin may defer agent stdout lines briefly before wri
 
 ## Home config (`~/.malvin_home/config.toml`)
 
-Top-level keys include `mem_limit_gb` and `theme`. Agent-backed KPop entry points (`code`, `tidy`, `delight`, `explain`, `revise`, init discovery, bare `malvin REQUEST`, and `kpop`) always run an MPC planning-agent session at the start of each outer gate-loop iteration. Before each planner session, malvin restores the user brief from `user_request_baseline.md` (snapshot from the first planner run) so agents need not deduplicate prior planning sections. The planning agent may edit the on-disk user brief at `user_request_path`; when the brief contains `## MPC_DONE` and quality gates pass (for workflows that already run `.malvin/checks`), malvin exits the outer loop without running the KPop implementer for that iteration. Per-iteration logs go to `mpc_planner_{n}.log` and append to `_kpop/mpc_planner_log.md` in the run directory. Consecutive `## KPOP_SOLVED` markers in experiment logs do not terminate the outer gate loop.
+Top-level keys include `mem_limit_gb` and `theme`.
 
 ## Log retention
 
@@ -229,9 +229,9 @@ malvin kpop notes/question.md
 
 `code`, `tidy`, `delight`, `explain`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin runs an MPC planning-agent session, then may run one KPop implementer session scoped by that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, `delight_constraints.md`, `explain_constraints.md`, or `revise_constraints.md`) rendered through `kpop_program.md`.
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session scoped by that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, `delight_constraints.md`, `explain_constraints.md`, or `revise_constraints.md`) rendered through `kpop_program.md`.
 2. The agent records hypotheses in `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when the user brief contains `## MPC_DONE` and workspace quality gates pass (for workflows that run `.malvin/checks`). Consecutive `## KPOP_SOLVED` markers do not terminate the outer loop.
+3. Malvin exits early when **two consecutive** sessions write `## KPOP_SOLVED` and workspace quality gates pass (`code` / `tidy`). Document workflows (`delight`, `explain`, `revise`) use the same loop machinery but do not require passing workspace gates for exit.
 4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 
 See `malvin code --doc`, `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and `malvin revise --doc` for command-specific behavior.

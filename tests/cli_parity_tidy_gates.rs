@@ -18,6 +18,7 @@ mod unix_tests {
         home: PathBuf,
         mock: PathBuf,
         path: String,
+        trace: PathBuf,
     }
 
     impl TidyStartupGateFixture {
@@ -33,6 +34,7 @@ mod unix_tests {
                 home,
                 mock,
                 path,
+                trace,
             }
         }
 
@@ -43,6 +45,7 @@ mod unix_tests {
                 mock: &self.mock,
                 path_var: &self.path,
                 extra_args: &["--max-loops", "0"],
+                gate_trace: Some(&self.trace),
             })
         }
     }

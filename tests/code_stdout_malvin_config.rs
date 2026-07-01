@@ -34,6 +34,7 @@ fn code_gate_loop_restores_home_malvin_config_after_agent_tampers() {
         path_var: &path,
         extra_args: &["--max-loops", "1"],
         request: "ship it",
+        gate_trace: None,
     });
     assert!(
         out.status.success(),

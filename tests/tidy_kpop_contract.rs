@@ -24,6 +24,7 @@ fn tidy_skips_kpop_when_gates_already_pass() {
         mock: &mock,
         path_var: &path,
         extra_args: &["--max-loops", "0"],
+        gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(
@@ -52,6 +53,7 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
         mock: &mock,
         path_var: &path,
         extra_args: &["--max-loops", "0"],
+        gate_trace: Some(&trace),
     });
     assert!(
         !out.status.success(),
@@ -79,6 +81,7 @@ fn tidy_gate_loop_restores_session_gitignore_after_early_exit_gates() {
         mock: &mock,
         path_var: &path,
         extra_args: &["--max-loops", "0"],
+        gate_trace: None,
     });
     let combined = combined_cli_output(&out);
     assert!(

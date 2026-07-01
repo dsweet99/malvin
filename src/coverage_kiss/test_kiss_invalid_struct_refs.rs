@@ -156,9 +156,6 @@ fn kiss_invalid_struct_value_refs_gate10_2() {
     let _ = crate::acp_session_tests::unix_shutdown::shutdown_sends_cancel_before_teardown;
     let _ = crate::acp_session_tests::unix_shutdown::shutdown_kills_agent_spawned_descendants;
     let _ = crate::acp_test_mock_js::acp_mock_js;
-    let _ = crate::acp_test_mock_js::acp_mock_mpc_planner_chunk_js;
-    let _ = crate::acp_test_mock_js::acp_mock_wrap_handler_with_mpc_fast_path;
-    let _ = crate::acp_test_mock_js::MPC_REQUEST_PROMPT_MATCH_JS;
     let _ = crate::acp_transport_tests::child_health_a::spawn_json_activity_then_response;
     let _ = crate::acp_transport_tests::child_health_a::spawn_activity_then_kill_child;
     let _ = crate::acp_transport_tests::child_health_a::rpc_request_with_correlation_id_stays_alive_while_json_updates_arrive;

@@ -158,8 +158,9 @@ pub(crate) fn resolve_prompt_context_path(
     )
 }
 
-/// On-disk user brief the MPC planner edits (may differ from [`RunArtifacts::plan_path`]).
+/// On-disk user brief path (may differ from [`RunArtifacts::plan_path`]).
 #[must_use]
+#[allow(dead_code)]
 pub(crate) fn resolve_user_brief_path(
     artifacts: &RunArtifacts,
     context: &WorkflowRenderContext,

@@ -7,30 +7,25 @@ mod common;
 mod unix_tests {
     use super::common::{
         CodeSpawn, acp_mock_code_kpop_steps_js, combined_cli_output, seed_malvin_checks,
-        spawn_code, test_home_workspace, write_failing_gate_tools, cached_mock_executable,
+        spawn_code, fast_test_home_workspace, cached_mock_executable,
+        static_failing_gates_path_var,
     };
 
     #[test]
     fn gate_loop_failure_surfaces_guidance_message() {
-        let (root, home, workspace) = test_home_workspace();
+        let (root, home, workspace) = fast_test_home_workspace();
         seed_malvin_checks(&workspace, "kiss check\n");
-        let bin_dir = root.path().join("bin");
-        std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
         let trace = root.path().join("gate-trace.log");
-        write_failing_gate_tools(&bin_dir, &trace);
         let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
-        let path = format!(
-            "{}:{}",
-            bin_dir.display(),
-            std::env::var("PATH").unwrap_or_default()
-        );
+        let path = static_failing_gates_path_var();
         let out = spawn_code(&CodeSpawn {
             workspace: &workspace,
             home: &home,
             mock: &mock,
             path_var: &path,
-            extra_args: &["--max-loops", "0"],
+            extra_args: &["--trust-the-plan", "--max-loops", "0"],
             request: "ship it",
+            gate_trace: Some(&trace),
         });
         assert!(
             !out.status.success(),

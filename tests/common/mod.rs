@@ -55,6 +55,8 @@ mod contract;
 pub mod mini_test_helpers;
 pub mod observability_parity;
 mod workspace;
+#[cfg(unix)]
+mod gate_bin_cache;
 
 pub use cli_parity_harness_run::*;
 #[cfg(unix)]
@@ -103,13 +105,14 @@ pub use tidy_harness::{
     bin_path_with_kiss_fail_until_n_passes, spawn_tidy, spawn_tidy_with_timeout,
     workspace_kiss_check_only,
 };
+pub use gate_bin_cache::{static_fake_kiss_path_var, static_failing_gates_path_var, write_failing_gate_tools};
 pub use workspace::{
     malvin_run_logs_bucket, only_run_dir, seed_fast_integration_malvin_config,
     seed_git_gate_workspace_cached, seed_git_kiss_cargo_gate_workspace, seed_malvin_checks,
     seed_malvin_config, test_home_workspace, fast_test_home_workspace, with_isolated_home,
     activate_test_home,
-    write_failing_gate_tools,
     write_fake_kiss, write_mock_executable, cached_mock_executable,
+    seed_malvin_checks_legacy_fast,
 };
 
 #[cfg(unix)]
@@ -119,7 +122,7 @@ pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
 #[cfg(unix)]
-pub use integration_cli_args::{FAST_GATE_LOOP_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
+pub use integration_cli_args::{ABORT_CODE_TEST_ARGS, FAST_GATE_LOOP_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 

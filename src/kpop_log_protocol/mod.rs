@@ -82,14 +82,6 @@ impl ExperimentLog {
             .count()
     }
 
-    #[must_use]
-    pub fn mpc_done_marker_count(&self) -> usize {
-        self.text
-            .lines()
-            .filter(|line| marker_line_is_exact("## MPC_DONE", line))
-            .count()
-    }
-
     /// Fail when hypothesis steps exceed `max`.
     ///
     /// # Errors

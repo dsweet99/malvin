@@ -1,4 +1,4 @@
-//! Outer `malvin kpop` agent loop (`--max-loops`).
+//! Outer `malvin kpop` agent loop (`--max-loops`, early exit on `## KPOP_SOLVED`).
 
 use std::path::PathBuf;
 
@@ -18,8 +18,6 @@ use crate::cli::workflow_kpop_shared::{
 
 pub(crate) struct RunKpopAgentLoopsParams<'a> {
     pub kpop: &'a KpopArgs,
-    pub shared: &'a crate::cli::SharedOpts,
-    pub workflow: crate::cli::WorkflowCliOptions,
     pub store: &'a PromptStore,
     pub client: &'a mut crate::agent_backend::AgentBackend,
     pub prepared: &'a KpopPrepared,
@@ -62,6 +60,7 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
 
 pub(crate) struct KpopLoopExitAfterIteration {
     pub(crate) will_exit_after_this_loop: bool,
+    pub(crate) early_exit_on_solved: bool,
 }
 
 pub(crate) fn kpop_loop_exit_after_iteration(
@@ -72,6 +71,7 @@ pub(crate) fn kpop_loop_exit_after_iteration(
     let declares_solved = kpop_exp_log_declares_solved(exp_log_path)?;
     Ok(KpopLoopExitAfterIteration {
         will_exit_after_this_loop: declares_solved || agent_loop == max_loops,
+        early_exit_on_solved: declares_solved,
     })
 }
 
@@ -79,7 +79,7 @@ async fn finish_kpop_loop_iteration(
     params: &mut RunKpopAgentLoopsParams<'_>,
     loop_snapshot: &KpopLoopSnapshot,
     bounds: (usize, usize),
-) -> Result<(), String> {
+) -> Result<Option<bool>, String> {
     let (agent_loop, max_loops) = bounds;
     let exit = kpop_loop_exit_after_iteration(
         &loop_snapshot.exp_log_path,
@@ -97,7 +97,7 @@ async fn finish_kpop_loop_iteration(
         },
     )
     .await?;
-    Ok(())
+    Ok(exit.early_exit_on_solved.then_some(true))
 }
 
 async fn run_kpop_multiturn_for_loop(
@@ -142,37 +142,11 @@ async fn run_kpop_multiturn_for_loop(
     Ok(acp_result)
 }
 
-async fn run_mpc_at_kpop_loop_start(
-    params: &mut RunKpopAgentLoopsParams<'_>,
-    agent_loop: usize,
-) -> Result<bool, String> {
-    crate::kpop_engine::run_mpc_planner_session(crate::kpop_engine::MpcPlannerParams {
-        shared: params.shared,
-        workflow: params.workflow,
-        store: params.store,
-        artifacts: &params.prepared.artifacts,
-        context: &params.prepared.context,
-        command: "kpop",
-        client: Some(params.client),
-        keep_session_open: true,
-        iteration: Some(agent_loop),
-    })
-    .await?;
-    let brief_path = crate::workflow_context::resolve_user_brief_path(
-        &params.prepared.artifacts,
-        &params.prepared.context,
-    );
-    crate::kpop_engine::user_brief_declares_mpc_done(&brief_path)
-}
-
 async fn run_kpop_agent_loop_turn(
     params: &mut RunKpopAgentLoopsParams<'_>,
     agent_loop: usize,
     max_loops: usize,
-) -> Result<(bool, Option<RunKpopAgentLoopsOutcome>, Result<(), String>), String> {
-    if run_mpc_at_kpop_loop_start(params, agent_loop).await? {
-        return Ok((true, None, Ok(())));
-    }
+) -> Result<(Option<RunKpopAgentLoopsOutcome>, Result<(), String>), String> {
     let loop_snapshot = snapshot_kpop_loop_dotfiles_and_exp_log(
         &params.prepared.artifacts,
         agent_loop,
@@ -181,7 +155,6 @@ async fn run_kpop_agent_loop_turn(
     let last_acp = run_kpop_multiturn_for_loop(params, &loop_snapshot, agent_loop, max_loops).await?;
     if last_acp.is_err() {
         return Ok((
-            false,
             Some(RunKpopAgentLoopsOutcome {
                 acp_result: last_acp,
                 agent_ran: true,
@@ -189,8 +162,19 @@ async fn run_kpop_agent_loop_turn(
             Ok(()),
         ));
     }
-    finish_kpop_loop_iteration(params, &loop_snapshot, (agent_loop, max_loops)).await?;
-    Ok((false, None, last_acp))
+    if finish_kpop_loop_iteration(params, &loop_snapshot, (agent_loop, max_loops))
+        .await?
+        .is_some()
+    {
+        return Ok((
+            Some(RunKpopAgentLoopsOutcome {
+                acp_result: last_acp,
+                agent_ran: true,
+            }),
+            Ok(()),
+        ));
+    }
+    Ok((None, last_acp))
 }
 
 pub(crate) async fn run_kpop_agent_loops(
@@ -203,9 +187,8 @@ pub(crate) async fn run_kpop_agent_loops(
     for agent_loop in 1..=max_loops {
         agent_ran = true;
         match run_kpop_agent_loop_turn(&mut params, agent_loop, max_loops).await {
-            Ok((true, _, _)) => break,
-            Ok((false, Some(outcome), _)) => return outcome,
-            Ok((false, None, acp)) => last_acp = acp,
+            Ok((Some(outcome), _)) => return outcome,
+            Ok((None, acp)) => last_acp = acp,
             Err(e) => return kpop_loop_abort(agent_ran, e),
         }
     }
