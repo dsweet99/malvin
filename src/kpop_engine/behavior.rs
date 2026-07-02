@@ -51,6 +51,12 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
+    pub const KPOP: Self = Self {
+        skip_kpop_on_initial_pass: false,
+        recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: true,
+        exit: KPopHardConstraintsExit::CodeTidy,
+    };
 
     #[must_use]
     pub const fn require_passing_gates_for_exit(self) -> bool {
@@ -113,6 +119,13 @@ mod tests {
         assert_eq!(KPopHardConstraints::REVISE.exit, KPopHardConstraintsExit::CodeTidy);
         assert!(KPopHardConstraints::REVISE.require_passing_gates_for_exit());
         const { assert!(KPopHardConstraints::REVISE.skip_workspace_quality_gates); }
+    }
+
+    #[test]
+    fn kpop_behavior_skips_workspace_gates_for_exit() {
+        assert!(KPopHardConstraints::KPOP.require_passing_gates_for_exit());
+        const { assert!(KPopHardConstraints::KPOP.skip_workspace_quality_gates); }
+        assert!(KPopHardConstraints::KPOP.restore_malvin_checks_after_session());
     }
 
     #[test]

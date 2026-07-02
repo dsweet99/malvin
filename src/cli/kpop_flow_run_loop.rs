@@ -74,7 +74,7 @@ pub(crate) fn kpop_loop_exit_after_iteration(
     let mpc_plan_done =
         mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))?;
     let gate_ctx = crate::kpop_engine::GateLoopExitCtx {
-        behavior: crate::kpop_engine::KPopHardConstraints::CODE,
+        behavior: crate::kpop_engine::KPopHardConstraints::KPOP,
         artifacts,
         session_dotfile_backups,
     };

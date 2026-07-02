@@ -1,4 +1,4 @@
-- Discover how this repo runs quality gates today and write the result to `.malvin/checks` (one shell command per non-empty line, in run order).
+- Discover how the repo in `{{ repo_root_path }}` runs quality gates (linters and unit tests; not integration tests or other slow or complex tests) today and write the result to `{{ repo_root_path }}/.malvin/checks` (one shell command per non-empty line, in run order).
 - Prefer repo-native invocations over malvin builtins when evidence exists in the tree (e.g. `uv run pytest`, `make test`, `pnpm test`, `cargo test -p crate`, scoped pytest paths).
 - Deduplicate: one canonical line per tool (e.g. one `ruff check .`, not three pre-commit ruff hooks).
 - Always include `kiss check` unless the repo explicitly excludes kiss.
@@ -13,4 +13,4 @@
   2. `Makefile` / `justfile` test and lint targets
   3. `pyproject.toml` / `package.json` scripts
   4. `.github/workflows/*.{yml,yaml}` CI steps
-
+  5. Other

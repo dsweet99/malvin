@@ -162,7 +162,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Hypothesize",
             ".malvin/logs/run42/_kpop/mpc_plan.md",
             ".malvin/logs/run42/request.md",
-            "KPOP: Implement the plan",
+            "KPOP: Execute the work phase",
         ],
     );
     assert!(

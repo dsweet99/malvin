@@ -1,10 +1,10 @@
 //! Kiss identifier refs for [`crate::cli::kpop_flow::kpop_flow_run_loop`] and its test helpers.
 
 #[test]
-fn kpop_loop_exit_after_iteration_exits_early_on_done_with_gates() {
+fn kpop_loop_exit_after_iteration_exits_early_on_done_without_gates() {
     use crate::repo_gates::checks_test_helpers::mpc_plan_gate_exit_fixture;
 
-    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(true);
+    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(false);
     std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
     let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
         &artifacts,
@@ -18,20 +18,26 @@ fn kpop_loop_exit_after_iteration_exits_early_on_done_with_gates() {
 }
 
 #[test]
-fn kpop_loop_exit_after_iteration_requires_gates_when_done() {
-    use crate::repo_gates::checks_test_helpers::mpc_plan_gate_exit_fixture;
-
-    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(false);
-    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
-    let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
-        &artifacts,
-        &backups,
-        1,
-        2,
-    )
-    .expect("read");
-    assert!(!exit.early_exit_on_solved);
-    assert!(!exit.will_exit_after_this_loop);
+fn kpop_loop_exit_after_iteration_waits_for_done() {
+    crate::test_utils::with_isolated_home(|work| {
+        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("test", Some(work)).expect("artifacts");
+        let backups =
+            crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(work)
+                .expect("snapshot");
+        std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "still working\n")
+            .expect("write");
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
+            &artifacts,
+            &backups,
+            1,
+            2,
+        )
+        .expect("read");
+        assert!(!exit.early_exit_on_solved);
+        assert!(!exit.will_exit_after_this_loop);
+    });
 }
 
 #[test]

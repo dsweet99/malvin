@@ -38,7 +38,12 @@ fn prepare_init_kpop_prompt_store(workflow: WorkflowCliOptions) -> Result<Prompt
 }
 
 fn init_kpop_request(store: &PromptStore, artifacts: &RunArtifacts) -> Result<String, String> {
-    render_repo_program(store, "init_constraints.md", &HashMap::new(), artifacts)
+    let mut ctx = HashMap::new();
+    ctx.insert(
+        "repo_root_path".to_string(),
+        artifacts.work_dir.display().to_string(),
+    );
+    render_repo_program(store, "init_constraints.md", &ctx, artifacts)
 }
 
 fn load_init_agent_config(work_dir: &Path) -> AgentConfig {
@@ -147,7 +152,7 @@ mod tests {
         let text = init_kpop_request(&store, &artifacts).expect("request");
         assert!(!text.contains("{{"), "init kpop request must expand placeholders: {text:?}");
         assert!(
-            text.contains("Discover how this repo runs quality gates"),
+            text.contains("Discover how the repo in") && text.contains("runs quality gates"),
             "expected init_constraints: {text:?}"
         );
     }

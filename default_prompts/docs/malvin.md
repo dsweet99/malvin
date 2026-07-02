@@ -230,7 +230,7 @@ malvin kpop notes/question.md
 
 1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin clears `_kpop/mpc_plan.md`, then may run one KPop agent session. Scope comes from that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `plan.md`. The agent prompt is `header.md` + `kpop_common.md` (Popper method) + `mpc_block.md` (write plan → review → revise → implement → `DONE`).
 2. The agent logs hypotheses and test results to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when the mpc plan file contains exactly `DONE` and workspace quality gates pass (`code` / `tidy` / bare `malvin REQUEST`). Document workflows (`delight`, `explain`, `revise`) use the same loop machinery but do not require passing workspace gates for exit.
+3. Malvin exits early when the mpc plan file contains exactly `DONE` and workspace quality gates pass (`code` / `tidy`). Bare `malvin REQUEST` and document workflows (`delight`, `explain`, `revise`) exit on mpc plan `DONE` without requiring passing workspace gates.
 4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 
 See `malvin code --doc`, `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and `malvin revise --doc` for command-specific behavior.

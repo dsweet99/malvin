@@ -177,6 +177,7 @@ fn smoke_cov_cli_kpop_flow_run_loop_types() {
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
     let _ = stringify!(KpopLoopExitAfterIteration);
+    let _ = crate::kpop_engine::KPopHardConstraints::KPOP;
     let _ = stringify!(kpop);
     let _ = stringify!(store);
     let _ = stringify!(client);

@@ -2,7 +2,7 @@ use clap::Args;
 
 #[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
-    /// How many times to run the kpop agent (stops early when mpc plan contains `DONE` and gates pass).
+    /// How many times to run the kpop agent (stops early when mpc plan contains `DONE`).
     #[arg(long, default_value_t = 1)]
     pub max_loops: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.

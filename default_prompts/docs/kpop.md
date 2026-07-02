@@ -40,7 +40,7 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 1 | Separate kpop agent runs; stops early when mpc plan `DONE` and workspace gates pass |
+| `--max-loops` | 1 | Separate kpop agent runs; stops early when mpc plan `DONE` |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -85,7 +85,7 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 
 Stops when any of:
 
-- mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE` and workspace quality gates pass
+- mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE`
 - `--max-loops` runs complete without early success
 - Internal error
 
