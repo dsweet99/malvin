@@ -51,10 +51,20 @@ See `malvin --doc`.
 
 **Gate loop (when agent runs):**
 
-1. Each outer iteration runs one KPop session with `tidy_constraints.md` + `kpop_program.md`.
-2. Agent logs to `_kpop/exp_log_<iteration>.md`.
+1. Each outer iteration clears `_kpop/mpc_plan.md`, renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session (`header.md` + `kpop_common.md` + `mpc_block.md`).
+2. Agent logs hypotheses and test results to `_kpop/exp_log_<iteration>.md`.
 3. Early exit on mpc plan `DONE` with passing gates.
 4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
+
+## Prompt roles
+
+| Artifact | Role |
+|----------|------|
+| `tidy_constraints.md` | Implicit goal: pass workspace quality gates |
+| `kpop_program.md` | Rendered into `plan.md` — scope + quality gates |
+| `kpop_common.md` | Popper method; log to experiment log |
+| `mpc_block.md` | MPC workflow per session |
+| `header.md` | Prepended on each gate-loop agent turn |
 
 ## Comparison to `code`
 

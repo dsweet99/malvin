@@ -52,13 +52,22 @@ See `malvin --doc`. Does **not** require `kiss` at CLI entry (unlike `code` / `t
 
 ## Multiturn architecture
 
-Each agent run:
+Each agent session is a **single turn** assembled from three prompt layers (plus `header.md` on the first turn of a session):
 
 | Piece | Role |
 |-------|------|
-| **KPOP common** | Shared rules, workspace quality-gates markdown |
-| **KPOP block** | Agent adds new `## Step` hypotheses in one turn batch; user brief at `user_request_path` on disk |
-| Experiment log | `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<run>.md` (second run may use `_g2` suffix, etc.) |
+| **kpop_common** | Popper method: hypothesize → predict → falsify; log outcomes to the experiment log |
+| **mpc_block** | MPC workflow: write plan → KPop-review plan → revise plan → implement → write exactly `DONE` to mpc plan file |
+| **User brief** | On disk at `user_request_path` (`request.md` in the run dir) |
+
+Per-session artifacts under `_kpop/`:
+
+| File | Role |
+|------|------|
+| `exp_log_<run>.md` | Experiment log — hypotheses, tests, and results (authoritative for investigation) |
+| `mpc_plan.md` | Per-iteration MPC scratch plan; exactly `DONE` signals the agent finished this session |
+
+Between outer `--max-loops` iterations, malvin clears `mpc_plan.md` (and may record a done marker for the prior iteration). Each outer iteration gets its own experiment log (`_g2`, `_g3`, … suffix when applicable).
 
 ## KPOP_LOG line
 
@@ -83,8 +92,9 @@ Stops when any of:
 ## Artifacts
 
 - `request.md` — input brief
-- `_kpop/exp_log_*.md` — experiment log (authoritative)
-- `kpop.log` — multiturn transcript
+- `_kpop/mpc_plan.md` — per-iteration MPC plan scratch file (exactly `DONE` for early exit)
+- `_kpop/exp_log_*.md` — experiment log (authoritative for hypotheses and test results)
+- `kpop.log` — session transcript
 - `quality_gates.log` when gates are embedded in prompts
 
 ## Related commands

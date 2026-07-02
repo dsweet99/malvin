@@ -44,7 +44,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 | Command | When |
 |---------|------|
-| `malvin kpop` | Test hypotheses and record `## Step` lines |
+| `malvin kpop` | Hypothesis-driven investigation with `_kpop/exp_log` |
 | `malvin do` | General single-turn coding task with full header |
 
 ## Examples

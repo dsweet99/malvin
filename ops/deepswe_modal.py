@@ -78,6 +78,7 @@ from deepswe_run import (
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
     find_latest_malvin_log,
+    malvin_needs_task_plan,
     materialize_workspace,
     parse_task_dir,
     reset_workspace,
@@ -170,6 +171,15 @@ def write_cursor_api_allowlist_cache(cidrs: list[str]) -> None:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def invalidate_cursor_api_allowlist_cache() -> None:
+    """Remove the on-disk Cursor API allowlist cache."""
+    path = cursor_api_allowlist_cache_path()
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def critical_cursor_hosts_failed(failed_hosts: list[Any]) -> list[str]:
@@ -461,10 +471,14 @@ PROBE_CONNECT_RETRY_DELAY_SEC = 10
 
 OBSERVE_AGENT_PEERS_SCRIPT = r"""
 import json
+import select
 import socket
 import struct
 import subprocess
 import time
+
+AGENT_PROBE_WALL_SEC = 45.0
+AGENT_PROBE_POLL_SEC = 0.25
 
 
 def hex_endpoint(raw: str) -> tuple[str, int]:
@@ -488,25 +502,57 @@ def tcp_peers(pid: int) -> set[tuple[str, int]]:
     return out
 
 
+def drain_stderr_nonblocking(stderr) -> str:
+    chunks: list[str] = []
+    while True:
+        try:
+            ready, _, _ = select.select([stderr], [], [], 0)
+        except (OSError, ValueError):
+            break
+        if not ready:
+            break
+        chunk = stderr.read(4096)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return "".join(chunks)
+
+
 proc = subprocess.Popen(
     ["cursor-agent", "--force", "--trust", "-p", "Hello"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.STDOUT,
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.PIPE,
     text=True,
 )
 seen: set[str] = set()
-for _ in range(40):
+output_chunks: list[str] = []
+deadline = time.monotonic() + AGENT_PROBE_WALL_SEC
+while time.monotonic() < deadline:
     if proc.poll() is not None:
         break
     for ip, _port in tcp_peers(proc.pid):
         seen.add(ip)
-    time.sleep(0.25)
-try:
-    proc.communicate(timeout=30)
-except subprocess.TimeoutExpired:
+    if proc.stderr is not None:
+        chunk = drain_stderr_nonblocking(proc.stderr)
+        if chunk:
+            output_chunks.append(chunk)
+    time.sleep(AGENT_PROBE_POLL_SEC)
+if proc.poll() is None:
     proc.kill()
-    proc.communicate()
-print(json.dumps({"peer_ips": sorted(seen)}))
+remainder, _ = proc.communicate(timeout=10)
+if remainder:
+    output_chunks.append(remainder)
+output = "".join(output_chunks)
+connection_stalled = "Connection stalled" in output
+print(
+    json.dumps(
+        {
+            "peer_ips": sorted(seen),
+            "connection_stalled": connection_stalled,
+            "agent_exit": proc.returncode,
+        }
+    )
+)
 """
 
 
@@ -823,8 +869,30 @@ def resolve_agent_session_peers_under_allowlist(
     timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
 ) -> list[str]:
     """Observe TCP peers during cursor-agent hello under a converged CIDR allowlist."""
+    payload = _observe_agent_session_under_allowlist(seed_cidrs, timeout=timeout)
+    peer_ips = payload.get("peer_ips", [])
+    if not isinstance(peer_ips, list):
+        raise click.ClickException("Modal agent peer probe under allowlist: invalid payload")
+    agent_exit = payload.get("agent_exit")
+    if agent_exit not in (0, None) and not peer_ips:
+        raise click.ClickException("Modal agent peer probe under allowlist failed")
+    if agent_exit not in (0, None) and peer_ips:
+        click.echo(
+            f"Allowlist agent peer probe exit={agent_exit} "
+            f"but observed {len(peer_ips)} peer IP(s); merging into allowlist",
+            err=True,
+        )
+    return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
+
+
+def _observe_agent_session_under_allowlist(
+    seed_cidrs: list[str],
+    *,
+    timeout: int = ALLOWLIST_CIDR_PROBE_TIMEOUT,
+) -> dict[str, Any]:
+    """Run cursor-agent hello under a CIDR allowlist and return peer/session metadata."""
     if not cursor_secrets():
-        return []
+        return {"peer_ips": [], "connection_stalled": False, "agent_exit": 0}
     sandbox: modal.Sandbox | None = None
     try:
         try:
@@ -859,33 +927,87 @@ def resolve_agent_session_peers_under_allowlist(
             ) from exc
         if stderr.strip():
             click.echo(stderr, err=True)
-        payload = json.loads(stdout.strip() or "{}")
-        peer_ips = payload.get("peer_ips", [])
-        if not isinstance(peer_ips, list):
-            if proc.returncode != 0:
-                detail = (stderr or stdout or "").strip()
-                raise click.ClickException(
-                    "Modal agent peer probe under allowlist failed"
-                    + (f": {detail}" if detail else "")
-                )
-            raise click.ClickException(
-                "Modal agent peer probe under allowlist: invalid payload"
-            )
-        if proc.returncode != 0 and peer_ips:
-            click.echo(
-                f"Allowlist agent peer probe exit={proc.returncode} "
-                f"but observed {len(peer_ips)} peer IP(s); merging into allowlist",
-                err=True,
-            )
-        elif proc.returncode != 0:
-            detail = (stderr or stdout or "").strip()
-            raise click.ClickException(
-                "Modal agent peer probe under allowlist failed"
-                + (f": {detail}" if detail else "")
-            )
-        return [f"{ip}/32" for ip in peer_ips if isinstance(ip, str) and ":" not in ip]
+        return parse_agent_peer_probe_payload(stdout)
     finally:
         release_modal_sandbox(sandbox)
+
+
+def parse_agent_peer_probe_payload(stdout: str) -> dict[str, Any]:
+    """Parse JSON from ``OBSERVE_AGENT_PEERS_SCRIPT`` stdout."""
+    try:
+        payload = json.loads(stdout.strip() or "{}")
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(
+            "Modal agent peer probe under allowlist: invalid JSON payload"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise click.ClickException("Modal agent peer probe under allowlist: invalid payload")
+    peer_ips = payload.get("peer_ips", [])
+    if not isinstance(peer_ips, list):
+        raise click.ClickException("Modal agent peer probe under allowlist: invalid payload")
+    return {
+        "peer_ips": [str(ip) for ip in peer_ips if isinstance(ip, str)],
+        "connection_stalled": bool(payload.get("connection_stalled")),
+        "agent_exit": payload.get("agent_exit"),
+    }
+
+
+def peer_ips_not_covered_by_allowlist(
+    peer_ips: list[str], allowlist: list[str]
+) -> list[str]:
+    """Return peer IPs that fall outside all allowlist networks."""
+    import ipaddress
+
+    nets = [ipaddress.ip_network(c, strict=False) for c in allowlist]
+    uncovered: list[str] = []
+    for ip in peer_ips:
+        if ":" in ip:
+            continue
+        addr = ipaddress.ip_address(ip)
+        if not any(addr in net for net in nets):
+            uncovered.append(ip)
+    return uncovered
+
+
+def agent_session_ok_under_allowlist(
+    seed_cidrs: list[str],
+    *,
+    timeout: int,
+) -> bool:
+    """Return True when cursor-agent hello succeeds under the compressed allowlist."""
+    if not cursor_secrets():
+        return True
+    payload = _observe_agent_session_under_allowlist(seed_cidrs, timeout=timeout)
+    if payload.get("connection_stalled"):
+        click.echo(
+            "Agent session preflight: Connection stalled under allowlist",
+            err=True,
+        )
+        return False
+    peer_ips = payload.get("peer_ips", [])
+    if not peer_ips:
+        click.echo(
+            "Agent session preflight: no TCP peers observed under allowlist",
+            err=True,
+        )
+        return False
+    uncovered = peer_ips_not_covered_by_allowlist(peer_ips, seed_cidrs)
+    if uncovered:
+        click.echo(
+            "Agent session preflight: peer IP(s) outside allowlist: "
+            f"{', '.join(uncovered[:5])}"
+            f"{'...' if len(uncovered) > 5 else ''}",
+            err=True,
+        )
+        return False
+    agent_exit = payload.get("agent_exit")
+    if agent_exit not in (0, None):
+        click.echo(
+            f"Agent session preflight: cursor-agent exit={agent_exit}",
+            err=True,
+        )
+        return False
+    return True
 
 
 def union_ipv4_cidrs(*cidr_lists: list[str]) -> list[str]:
@@ -1111,6 +1233,7 @@ def refresh_cached_allowlist(
     cached: list[str],
     *,
     timeout: int,
+    skip_agent_probes: bool = False,
 ) -> list[str]:
     """Merge fresh host DNS, allowlist fixpoint, HTTPS validation, and agent peers."""
     if _allowlist_cache_only_mode():
@@ -1118,7 +1241,9 @@ def refresh_cached_allowlist(
             cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
         )
     try:
-        return _refresh_cached_allowlist_live(cached, timeout=timeout)
+        return _refresh_cached_allowlist_live(
+            cached, timeout=timeout, skip_agent_probes=skip_agent_probes
+        )
     except modal.exception.ResourceExhaustedError as exc:
         return _use_cached_allowlist_verbatim(
             cached, reason=f"Modal spend limit during refresh ({exc})"
@@ -1133,6 +1258,7 @@ def _refresh_cached_allowlist_live(
     cached: list[str],
     *,
     timeout: int,
+    skip_agent_probes: bool = False,
 ) -> list[str]:
     """Live refresh path (may spawn Modal probe sandboxes)."""
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
@@ -1146,18 +1272,21 @@ def _refresh_cached_allowlist_live(
     # Always run in-sandbox DNS fixpoint: host DNS may appear covered by cached
     # CIDRs while streaming peers resolved only inside the allowlist are missing.
     cidrs = _run_allowlist_dns_fixpoint(cidrs, timeout=timeout, max_rounds=3)
-    cidrs, added = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
-    )
+    added = 0
+    if not skip_agent_probes:
+        cidrs, added = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=3, label="Cached allowlist agent peer"
+        )
     cidrs, _, _ = _expand_allowlist_for_https(
         cidrs, timeout=timeout, max_rounds=3, fail_on_critical=True
     )
     # Match cold-build finalize: streaming peers differ from TLS and are not always
     # observed in the first cached refresh round.
-    cidrs, post_added = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
-    )
-    added += post_added
+    if not skip_agent_probes:
+        cidrs, post_added = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
+        )
+        added += post_added
     seed = compress_ipv4_cidrs(cidrs)
     final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
     critical_failed = critical_cursor_hosts_failed(
@@ -1256,6 +1385,21 @@ def _merge_allowlist_agent_peers(
             if added == 0:
                 break
             if allowlist_near_modal_cap(cidrs):
+                compressed = compress_ipv4_cidrs(cidrs)
+                if raw_peers:
+                    try:
+                        merged = compress_ipv4_cidrs(
+                            union_ipv4_cidrs(
+                                compressed, modal_cidr_allowlist(raw_peers)
+                            )
+                        )
+                        if len(merged) <= MODAL_MAX_CIDR_ALLOWLIST:
+                            cidrs = merged
+                            added_total += max(0, len(cidrs) - before)
+                    except click.ClickException:
+                        cidrs = compressed
+                else:
+                    cidrs = compressed
                 break
         except click.ClickException as exc:
             if _is_modal_spend_limit_error(exc):
@@ -1265,11 +1409,79 @@ def _merge_allowlist_agent_peers(
     return cidrs, added_total
 
 
+def finalize_allowlist_with_agent_validation(
+    cidrs: list[str],
+    *,
+    timeout: int,
+    label: str = "allowlist finalize",
+) -> list[str]:
+    """Re-merge late agent peers, validate cursor-agent hello, fail fast when blocked."""
+    if not cursor_secrets():
+        return compress_ipv4_cidrs(cidrs)
+    working = list(cidrs)
+    raw_late = resolve_cursor_api_cidrs_from_agent_peers(timeout=timeout)
+    late_open = modal_cidr_allowlist(raw_late) if raw_late else []
+    if late_open:
+        before = len(working)
+        working = union_ipv4_cidrs(working, late_open)
+        if len(working) > before:
+            click.echo(
+                f"{label}: merged {len(working) - before} late open-network "
+                "agent peer CIDR(s)",
+                err=True,
+            )
+    working, _ = _merge_allowlist_agent_peers(
+        working,
+        timeout=timeout,
+        max_rounds=5,
+        label=f"{label} agent peer",
+    )
+    seed = compress_ipv4_cidrs(working)
+    if agent_session_ok_under_allowlist(seed, timeout=timeout):
+        click.echo(
+            f"{label}: agent session preflight passed ({len(seed)} CIDRs)",
+            err=True,
+        )
+        return seed
+    click.echo(
+        f"{label}: agent session preflight failed; retrying peer expansion",
+        err=True,
+    )
+    if late_open:
+        working = union_ipv4_cidrs(working, late_open)
+    working, _ = _merge_allowlist_agent_peers(
+        working,
+        timeout=timeout,
+        max_rounds=3,
+        label=f"{label} retry agent peer",
+    )
+    seed = compress_ipv4_cidrs(working)
+    if agent_session_ok_under_allowlist(seed, timeout=timeout):
+        click.echo(
+            f"{label}: agent session preflight passed after retry "
+            f"({len(seed)} CIDRs)",
+            err=True,
+        )
+        return seed
+    raise click.ClickException(
+        "Cursor API agent session preflight failed under Modal CIDR allowlist "
+        "(Connection stalled or peers uncovered). Retry with "
+        "DEEPSWE_REFRESH_ALLOWLIST_CACHE=1 or run "
+        "ops/probe_cursor_agent_modal.py to diagnose."
+    )
+
+
+def _agent_allowlist_preflight_failed(exc: BaseException) -> bool:
+    """True when finalize raised because cursor-agent could not run under the allowlist."""
+    return "agent session preflight failed" in str(exc).lower()
+
+
 def resolve_agent_sandbox_cidrs(
     image: modal.Image | None = None,
     *,
     timeout: int = 300,
     fixpoint_rounds: int = 8,
+    skip_agent_probes: bool = False,
 ) -> list[str]:
     """Build agent allowlist: host DNS ∪ open Modal probe ∪ allowlist DNS fixpoint."""
     _ = image  # egress probes use cidr_probe_image(); agent image is irrelevant.
@@ -1281,7 +1493,11 @@ def resolve_agent_sandbox_cidrs(
                     cached, reason="DEEPSWE_ALLOWLIST_CACHE_ONLY=1"
                 )
             try:
-                refreshed = refresh_cached_allowlist(cached, timeout=timeout)
+                refreshed = refresh_cached_allowlist(
+                    cached,
+                    timeout=timeout,
+                    skip_agent_probes=skip_agent_probes,
+                )
             except modal.exception.ResourceExhaustedError as exc:
                 return _use_cached_allowlist_verbatim(
                     cached, reason=f"Modal spend limit during refresh ({exc})"
@@ -1290,25 +1506,64 @@ def resolve_agent_sandbox_cidrs(
                 if _is_modal_spend_limit_error(exc):
                     return _use_cached_allowlist_verbatim(cached, reason=str(exc))
                 raise
-            click.echo(
-                f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
-                f"{cursor_api_allowlist_cache_path()}"
-                + (
-                    f", refreshed from {len(cached)}"
-                    if len(refreshed) != len(cached)
-                    else ""
+            if skip_agent_probes:
+                click.echo(
+                    f"Using cached Cursor API allowlist ({len(refreshed)} CIDRs from "
+                    f"{cursor_api_allowlist_cache_path()}, connectivity-probe refresh)",
+                    err=True,
                 )
-                + ")"
-            )
-            return refreshed
+                return refreshed
+            try:
+                final = finalize_allowlist_with_agent_validation(
+                    refreshed, timeout=timeout, label="Cached allowlist"
+                )
+            except click.ClickException as exc:
+                if _agent_allowlist_preflight_failed(exc):
+                    invalidate_cursor_api_allowlist_cache()
+                    click.echo(
+                        "Cached allowlist failed agent preflight; cold rebuilding",
+                        err=True,
+                    )
+                else:
+                    raise
+            else:
+                if final != refreshed:
+                    write_cursor_api_allowlist_cache(final)
+                click.echo(
+                    f"Using cached Cursor API allowlist ({len(final)} CIDRs from "
+                    f"{cursor_api_allowlist_cache_path()}"
+                    + (
+                        f", refreshed from {len(cached)}"
+                        if len(final) != len(cached)
+                        else ""
+                    )
+                    + ")"
+                )
+                return final
+    return _build_agent_sandbox_cidrs_cold(
+        timeout=timeout,
+        fixpoint_rounds=fixpoint_rounds,
+        skip_agent_probes=skip_agent_probes,
+    )
+
+
+def _build_agent_sandbox_cidrs_cold(
+    *,
+    timeout: int,
+    fixpoint_rounds: int,
+    skip_agent_probes: bool = False,
+) -> list[str]:
+    """Cold-build Cursor API CIDR allowlist with agent-session preflight."""
     host_cidrs = modal_cidr_allowlist(resolve_cursor_api_cidrs())
     open_modal_cidrs = modal_cidr_allowlist(
         resolve_cursor_api_cidrs_in_modal_sandbox(timeout=timeout)
     )
     agent_peer_added = 0
-    agent_peer_cidrs = modal_cidr_allowlist(
-        resolve_cursor_api_cidrs_from_agent_peers(timeout=timeout)
-    )
+    agent_peer_cidrs: list[str] = []
+    if not skip_agent_probes:
+        agent_peer_cidrs = modal_cidr_allowlist(
+            resolve_cursor_api_cidrs_from_agent_peers(timeout=timeout)
+        )
     cidrs = union_ipv4_cidrs(host_cidrs, open_modal_cidrs, agent_peer_cidrs)
     agent_peer_added = len(agent_peer_cidrs)
     fixpoint_added = 0
@@ -1327,29 +1582,27 @@ def resolve_agent_sandbox_cidrs(
             break
     peer_added = 0
     before_peers = len(cidrs)
-    try:
-        peer_cidrs = modal_cidr_allowlist(
-            resolve_cursor_api_cidrs_under_allowlist_peers(
-                compress_ipv4_cidrs(cidrs), timeout=timeout
+    if not skip_agent_probes:
+        try:
+            peer_cidrs = modal_cidr_allowlist(
+                resolve_cursor_api_cidrs_under_allowlist_peers(
+                    compress_ipv4_cidrs(cidrs), timeout=timeout
+                )
             )
-        )
-        cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
-        peer_added = len(cidrs) - before_peers
-    except click.ClickException as exc:
-        click.echo(f"Allowlist TLS peer probe skipped: {exc}", err=True)
+            cidrs = union_ipv4_cidrs(cidrs, peer_cidrs)
+            peer_added = len(cidrs) - before_peers
+        except click.ClickException as exc:
+            click.echo(f"Allowlist TLS peer probe skipped: {exc}", err=True)
     allowlist_agent_peer_added = 0
     cidrs, https_validation_added, https_agent_peers = _expand_allowlist_for_https(
         cidrs, timeout=timeout, max_rounds=5, fail_on_critical=True
     )
     allowlist_agent_peer_added += https_agent_peers
-    seed = compress_ipv4_cidrs(cidrs)
-    # Always observe cursor-agent peers under the converged allowlist. Skipping
-    # this when critical HTTPS hosts pass caused allowlist_agent_peers=+0 and
-    # Connection stalled in the agent sandbox (streaming peers differ from TLS).
-    cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
-        cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
-    )
-    allowlist_agent_peer_added += post_https_agent_peers
+    if not skip_agent_probes:
+        cidrs, post_https_agent_peers = _merge_allowlist_agent_peers(
+            cidrs, timeout=timeout, max_rounds=1, label="Post-HTTPS agent peer"
+        )
+        allowlist_agent_peer_added += post_https_agent_peers
     seed = compress_ipv4_cidrs(cidrs)
     final_validation = validate_cursor_https_under_allowlist(seed, timeout=timeout)
     critical_failed = critical_cursor_hosts_failed(
@@ -1361,28 +1614,45 @@ def resolve_agent_sandbox_cidrs(
             f"post-HTTPS agent peer merge: {', '.join(str(h) for h in critical_failed)}"
         )
     compressed = compress_ipv4_cidrs(cidrs)
-    write_cursor_api_allowlist_cache(compressed)
+    if skip_agent_probes:
+        write_cursor_api_allowlist_cache(compressed)
+        click.echo(
+            f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
+            f"(connectivity-probe cold build, host={len(host_cidrs)}, "
+            f"open_modal={len(open_modal_cidrs)})",
+            err=True,
+        )
+        return compressed
+    final = finalize_allowlist_with_agent_validation(
+        compressed, timeout=timeout, label="Cold build"
+    )
+    write_cursor_api_allowlist_cache(final)
     click.echo(
-        f"Cursor API allowlist: {len(compressed)} IPv4 CIDRs "
+        f"Cursor API allowlist: {len(final)} IPv4 CIDRs "
         f"(raw={len(cidrs)}, host={len(host_cidrs)}, open_modal={len(open_modal_cidrs)}, "
         f"agent_session_peers={agent_peer_added}, "
         f"allowlist_dns_fixpoint=+{fixpoint_added}, allowlist_peer=+{peer_added}, "
         f"allowlist_agent_peers=+{allowlist_agent_peer_added}, "
         f"https_validation=+{https_validation_added})"
     )
-    return compressed
+    return final
 
 
 def agent_sandbox_network_kwargs(
     image: modal.Image | None = None,
     *,
     timeout: int = 300,
+    skip_agent_probes: bool = False,
 ) -> dict[str, Any]:
     """Return Modal kwargs for agent sandboxes with Modal-aware Cursor CIDR allowlist."""
     return sandbox_network_kwargs(
         cursor_api_only=True,
         block_all=False,
-        cidr_allowlist=resolve_agent_sandbox_cidrs(image, timeout=timeout),
+        cidr_allowlist=resolve_agent_sandbox_cidrs(
+            image,
+            timeout=timeout,
+            skip_agent_probes=skip_agent_probes,
+        ),
     )
 
 
@@ -1759,7 +2029,9 @@ def run_deepswe_run_in_sandbox(
         elif open_network:
             network = sandbox_network_kwargs(cursor_api_only=False, block_all=False)
         else:
-            network = agent_sandbox_network_kwargs(image)
+            network = agent_sandbox_network_kwargs(
+                image, skip_agent_probes=skip_grade
+            )
         resources = (
             grade_sandbox_resource_kwargs()
             if grade_only
@@ -2030,9 +2302,11 @@ def run_modal_eval(
     modal_error: str | None = None
     agent_artifacts: Path | None = None
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
-    checks = checks_override
-    if checks is None:
-        checks = discover_deepswe_checks(workspace)
+    checks = ""
+    if malvin_needs_task_plan(malvin_command):
+        checks = checks_override
+        if checks is None:
+            checks = discover_deepswe_checks(workspace)
     try:
         sandbox_timeout = agent_sandbox_timeout_sec(spec, skip_grade=skip_grade)
         if grade_only:
@@ -2056,13 +2330,14 @@ def run_modal_eval(
             )
         else:
             agent_checks = offline_agent_checks(checks or "")
-            write_plan_and_checks(
-                spec,
-                workspace,
-                command=malvin_command,
-                checks_override=agent_checks,
-                dry_run=False,
-            )
+            if malvin_needs_task_plan(malvin_command):
+                write_plan_and_checks(
+                    spec,
+                    workspace,
+                    command=malvin_command,
+                    checks_override=agent_checks,
+                    dry_run=False,
+                )
             malvin_repo = validate_toolchain_repos()
             with stage_malvin_repo(malvin_repo) as malvin_staged:
                 agent_img = harbor_agent_image(
@@ -2358,7 +2633,15 @@ def _test_agent_sandbox_cidrs_union_body() -> None:
                                 return_value={"failed_hosts": [], "extra_ips": []},
                             ):
                                 with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
-                                    cidrs = resolve_agent_sandbox_cidrs(fixpoint_rounds=3)
+                                    with patch(
+                                        f"{__name__}.finalize_allowlist_with_agent_validation",
+                                        side_effect=lambda cidrs, **_: compress_ipv4_cidrs(
+                                            cidrs
+                                        ),
+                                    ):
+                                        cidrs = resolve_agent_sandbox_cidrs(
+                                            fixpoint_rounds=3
+                                        )
     assert cidrs == [
         "1.1.1.0/24",
         "2.2.2.0/24",
@@ -2397,9 +2680,16 @@ def _test_resolve_agent_sandbox_cidrs_uses_cache() -> None:
         with patch(
             f"{__name__}.refresh_cached_allowlist", return_value=["9.9.9.0/24"]
         ) as mock_refresh:
-            with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
-                result = resolve_agent_sandbox_cidrs()
-    mock_refresh.assert_called_once_with(["9.9.9.9/32"], timeout=300)
+            with patch(
+                f"{__name__}.finalize_allowlist_with_agent_validation",
+                return_value=["9.9.9.0/24"],
+            ) as mock_finalize:
+                with patch(f"{__name__}.resolve_cursor_api_cidrs") as mock_dns:
+                    result = resolve_agent_sandbox_cidrs()
+    mock_refresh.assert_called_once_with(
+        ["9.9.9.9/32"], timeout=300, skip_agent_probes=False
+    )
+    mock_finalize.assert_called_once()
     mock_dns.assert_not_called()
     assert result == ["9.9.9.0/24"]
 
@@ -2411,6 +2701,136 @@ def _test_host_cidrs_not_covered_by_allowlist() -> None:
     assert host_cidrs_not_covered_by_allowlist(
         ["5.6.7.8/32"], ["1.2.3.0/24"]
     ) == ["5.6.7.8/32"]
+
+
+def _test_peer_ips_not_covered_by_allowlist() -> None:
+    assert peer_ips_not_covered_by_allowlist(["1.2.3.4"], ["1.2.3.0/24"]) == []
+    assert peer_ips_not_covered_by_allowlist(["5.6.7.8"], ["1.2.3.0/24"]) == [
+        "5.6.7.8"
+    ]
+
+
+def _test_observe_agent_peers_script_nonblocking() -> None:
+    """Probe script must not block on stdout while polling TCP peers."""
+    assert "select.select" in OBSERVE_AGENT_PEERS_SCRIPT
+    assert "drain_stderr_nonblocking" in OBSERVE_AGENT_PEERS_SCRIPT
+    assert "subprocess.DEVNULL" in OBSERVE_AGENT_PEERS_SCRIPT
+    assert "AGENT_PROBE_WALL_SEC" in OBSERVE_AGENT_PEERS_SCRIPT
+    assert "proc.kill()" in OBSERVE_AGENT_PEERS_SCRIPT
+
+
+def _test_parse_agent_peer_probe_payload() -> None:
+    payload = parse_agent_peer_probe_payload(
+        '{"peer_ips": ["1.2.3.4"], "connection_stalled": true, "agent_exit": 1}'
+    )
+    assert payload["peer_ips"] == ["1.2.3.4"]
+    assert payload["connection_stalled"] is True
+    assert payload["agent_exit"] == 1
+
+
+def _test_agent_session_ok_under_allowlist() -> None:
+    with patch(f"{__name__}.cursor_secrets", return_value=[]):
+        assert agent_session_ok_under_allowlist(["1.1.1.0/24"], timeout=60)
+    with patch(
+        f"{__name__}._observe_agent_session_under_allowlist",
+        return_value={
+            "peer_ips": ["1.2.3.4"],
+            "connection_stalled": False,
+            "agent_exit": 0,
+        },
+    ):
+        assert agent_session_ok_under_allowlist(["1.2.3.0/24"], timeout=60)
+    with patch(
+        f"{__name__}._observe_agent_session_under_allowlist",
+        return_value={
+            "peer_ips": [],
+            "connection_stalled": True,
+            "agent_exit": 1,
+        },
+    ):
+        assert not agent_session_ok_under_allowlist(["1.2.3.0/24"], timeout=60)
+
+
+def _test_finalize_allowlist_raises_on_stall() -> None:
+    with patch(f"{__name__}.cursor_secrets", return_value=[MagicMock()]):
+        with patch(
+            f"{__name__}.resolve_cursor_api_cidrs_from_agent_peers", return_value=[]
+        ):
+            with patch(
+                f"{__name__}._merge_allowlist_agent_peers",
+                side_effect=lambda cidrs, **_: (cidrs, 0),
+            ):
+                with patch(
+                    f"{__name__}.agent_session_ok_under_allowlist", return_value=False
+                ):
+                    try:
+                        finalize_allowlist_with_agent_validation(
+                            ["1.1.1.0/24"], timeout=60, label="test"
+                        )
+                    except click.ClickException as exc:
+                        assert "agent session preflight failed" in str(exc).lower()
+                    else:
+                        raise AssertionError("expected ClickException")
+
+
+def _test_resolve_agent_sandbox_cidrs_cold_rebuild_on_preflight_fail() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["9.9.9.9/32"]):
+        with patch(
+            f"{__name__}.refresh_cached_allowlist", return_value=["9.9.9.0/24"]
+        ):
+            with patch(
+                f"{__name__}.finalize_allowlist_with_agent_validation",
+                side_effect=click.ClickException("agent session preflight failed"),
+            ):
+                with patch(
+                    f"{__name__}._build_agent_sandbox_cidrs_cold",
+                    return_value=["8.8.8.0/24"],
+                ) as mock_cold:
+                    with patch(f"{__name__}.invalidate_cursor_api_allowlist_cache") as mock_inv:
+                        result = resolve_agent_sandbox_cidrs()
+    mock_inv.assert_called_once()
+    mock_cold.assert_called_once()
+    assert result == ["8.8.8.0/24"]
+
+
+def _test_refresh_cached_allowlist_skips_agent_probes() -> None:
+    cached = ["1.1.1.0/24"]
+    with patch(
+        f"{__name__}.resolve_cursor_api_cidrs", return_value=["2.2.2.2/32"]
+    ):
+        with patch(
+            f"{__name__}.validate_cursor_https_under_allowlist",
+            return_value={"failed_hosts": [], "extra_ips": []},
+        ):
+            with patch(
+                f"{__name__}._run_allowlist_dns_fixpoint",
+                side_effect=lambda cidrs, **_: cidrs,
+            ):
+                with patch(
+                    f"{__name__}._merge_allowlist_agent_peers",
+                ) as mock_merge:
+                    with patch(f"{__name__}.write_cursor_api_allowlist_cache"):
+                        refreshed = refresh_cached_allowlist(
+                            cached, timeout=60, skip_agent_probes=True
+                        )
+    mock_merge.assert_not_called()
+    assert "2.2.2.0/24" in refreshed
+
+
+def _test_resolve_agent_sandbox_cidrs_skips_finalize_for_probe() -> None:
+    with patch(f"{__name__}.read_cursor_api_allowlist_cache", return_value=["1.1.1.0/24"]):
+        with patch(
+            f"{__name__}.refresh_cached_allowlist",
+            return_value=["1.1.1.0/24", "2.2.2.0/24"],
+        ) as mock_refresh:
+            with patch(
+                f"{__name__}.finalize_allowlist_with_agent_validation",
+            ) as mock_finalize:
+                result = resolve_agent_sandbox_cidrs(skip_agent_probes=True)
+    mock_refresh.assert_called_once()
+    assert mock_refresh.call_args.kwargs.get("skip_agent_probes") is True
+    mock_finalize.assert_not_called()
+    assert "2.2.2.0/24" in result
 
 
 def _test_refresh_cached_allowlist_merges_host_dns() -> None:
@@ -2672,9 +3092,15 @@ def _test_post_https_agent_peer_merge_always_runs() -> None:
                                     with patch(
                                         f"{__name__}.write_cursor_api_allowlist_cache"
                                     ):
-                                        cidrs = resolve_agent_sandbox_cidrs(
-                                            fixpoint_rounds=1
-                                        )
+                                        with patch(
+                                            f"{__name__}.finalize_allowlist_with_agent_validation",
+                                            side_effect=lambda cidrs, **_: compress_ipv4_cidrs(
+                                                cidrs
+                                            ),
+                                        ):
+                                            cidrs = resolve_agent_sandbox_cidrs(
+                                                fixpoint_rounds=1
+                                            )
     mock_merge.assert_called_once()
     assert mock_merge.call_args.kwargs.get("label") == "Post-HTTPS agent peer"
     assert "8.8.8.0/24" in cidrs
@@ -2687,7 +3113,9 @@ def _test_agent_sandbox_network_kwargs() -> None:
         return_value=["10.0.0.1/32"],
     ) as mock_resolve:
         kwargs = agent_sandbox_network_kwargs(image)
-    mock_resolve.assert_called_once_with(image, timeout=300)
+    mock_resolve.assert_called_once_with(
+        image, timeout=300, skip_agent_probes=False
+    )
     assert kwargs == {"outbound_cidr_allowlist": ["10.0.0.1/32"]}
 
 
@@ -3459,8 +3887,16 @@ def run_cidr_allowlist_unit_tests() -> None:
 def run_allowlist_refresh_unit_tests() -> None:
     """Allowlist cache refresh, DNS fixpoint, and host-pin unit tests."""
     _test_resolve_agent_sandbox_cidrs_uses_cache()
+    _test_resolve_agent_sandbox_cidrs_cold_rebuild_on_preflight_fail()
     _test_host_cidrs_not_covered_by_allowlist()
+    _test_peer_ips_not_covered_by_allowlist()
+    _test_observe_agent_peers_script_nonblocking()
+    _test_parse_agent_peer_probe_payload()
+    _test_agent_session_ok_under_allowlist()
+    _test_finalize_allowlist_raises_on_stall()
     _test_refresh_cached_allowlist_merges_host_dns()
+    _test_refresh_cached_allowlist_skips_agent_probes()
+    _test_resolve_agent_sandbox_cidrs_skips_finalize_for_probe()
     _test_refresh_cached_allowlist_runs_post_https_agent_peer()
     _test_refresh_cached_allowlist_runs_fixpoint_when_host_dns_covered()
     _test_refresh_cached_allowlist_expands_for_https()
