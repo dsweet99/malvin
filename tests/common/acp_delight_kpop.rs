@@ -1,5 +1,5 @@
 use super::acp_tidy_kpop::{
-    acp_mock_kpop_budget_match_js, acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble,
+    acp_mock_kpop_block_match_js, acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble,
 };
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
@@ -40,7 +40,7 @@ fn acp_mock_delight_kpop_script(pitch_write: &str) -> String {
     format!(
         "{}\n    if ({}) {{\n{}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_budget_match_js(),
+        acp_mock_kpop_block_match_js(),
         acp_mock_delight_kpop_body(pitch_write),
     )
 }

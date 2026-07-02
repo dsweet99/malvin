@@ -56,7 +56,7 @@ mod linux_pty {
     fn kpop_max_loops_controls_outer_agent_runs() {
         let run = run_malvin_under_openpty_with_mock(
             &acp_mock_code_streaming_update_js(),
-            "kpop --max-loops 1 --max-hypotheses 1 investigate",
+            "kpop --max-loops 1 investigate",
             None,
         );
         assert!(

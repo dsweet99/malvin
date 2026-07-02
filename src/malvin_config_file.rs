@@ -20,7 +20,6 @@ use malvin_config_open::create_malvin_config_from_template;
 pub(crate) use malvin_config_agent::parse_agent_config;
 pub(crate) use malvin_config_top::parse_theme;
 
-pub const DEFAULT_MAX_HYPOTHESES: usize = 5;
 pub const DEFAULT_MAX_LOOPS: usize = 1;
 pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
@@ -33,7 +32,6 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 pub struct AgentConfig {
     pub model: String,
     pub model_mini: String,
-    pub max_hypotheses: usize,
     /// Gate-loop budget for kpop and bare invocation.
     pub max_loops: usize,
     /// Gate-loop budget for code and tidy.
@@ -47,7 +45,6 @@ impl Default for AgentConfig {
         Self {
             model: DEFAULT_CLI_MODEL.to_string(),
             model_mini: MINI_DEFAULT_MODEL.to_string(),
-            max_hypotheses: DEFAULT_MAX_HYPOTHESES,
             max_loops: DEFAULT_MAX_LOOPS,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: DEFAULT_MAX_ACP_RETRIES,

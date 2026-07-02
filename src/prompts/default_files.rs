@@ -16,7 +16,7 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
     match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
-        "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
+        "mpc_block.md" => Some(include_str!("../../default_prompts/mpc_block.md")),
         "kpop_program.md" => Some(include_str!("../../default_prompts/kpop_program.md")),
         "kpop_program_creative.md" => {
             Some(include_str!("../../default_prompts/kpop_program_creative.md"))
@@ -57,7 +57,7 @@ mod tests {
         assert!(default_constraints_prompt("explain_constraints.md").is_some());
         assert!(default_constraints_prompt("revise_constraints.md").is_some());
         assert!(default_constraints_prompt("missing.md").is_none());
-        assert!(default_kpop_prompt("kpop_block.md").is_some());
+        assert!(default_kpop_prompt("mpc_block.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());
         assert!(default_file("code_constraints.md").is_some());
     }

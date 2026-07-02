@@ -27,14 +27,12 @@ pub async fn run_tidy(
     )?;
 
     let max_loops = effective_tidy_max_loops(tidy.max_loops);
-    let max_hypotheses = tidy.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "tidy",
         shared,
         workflow,
         prepared: &prepared,
         max_loops,
-        max_hypotheses,
         behavior: KPopHardConstraints::TIDY,
     })
     .await?;

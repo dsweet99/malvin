@@ -43,9 +43,7 @@ pub fn run_kpop_multiturn_investigate(
     cmd.args([
         "--max-loops",
         "0",
-        "--max-hypotheses",
-        "1",
-        "investigate",
+                "investigate",
     ]);
     let out =
         command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin kpop");

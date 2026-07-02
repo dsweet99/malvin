@@ -1,5 +1,5 @@
 use super::{
-    DEFAULT_MAX_HYPOTHESES, DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
+    DEFAULT_MAX_LOOPS, DEFAULT_MAX_LOOPS_CODE,
     ensure_config_parent_dir,
     load_malvin_config, merge_missing_keys, open_malvin_config,
     parse_agent_config, parse_template_value, read_on_disk_config_value, write_config_value,
@@ -39,8 +39,7 @@ fn open_malvin_config_creates_file_with_all_sections() {
         assert!(!text.contains("mpc"));
         assert_eq!(cfg.agent.model, DEFAULT_CLI_MODEL);
         assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
-        assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
+                assert_eq!(cfg.agent.max_loops, DEFAULT_MAX_LOOPS);
         assert_eq!(cfg.agent.max_loops_code, DEFAULT_MAX_LOOPS_CODE);
         assert!(text.contains("theme"));
         assert_eq!(cfg.theme, crate::terminal_palette::TerminalTheme::Dark);
@@ -62,8 +61,7 @@ fn open_malvin_config_merges_missing_agent_in_memory_only() {
         let after = std::fs::read_to_string(&path).expect("read after");
         assert_eq!(before, after, "existing config.toml must never be rewritten");
         assert_eq!(cfg.mem_limit_gb, 6);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
-        assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
+                assert_eq!(cfg.agent.model_mini, MINI_DEFAULT_MODEL);
     });
 }
 
@@ -72,14 +70,12 @@ fn parse_agent_config_reads_values() {
     let text = r#"
 [agent]
 model = "gpt-5"
-max_hypotheses = 7
 max_loops = 3
 max_acp_retries = 5
 "#;
     let agent = parse_agent_config(text).expect("parse");
     assert_eq!(agent.model, "gpt-5");
-    assert_eq!(agent.max_hypotheses, 7);
-    assert_eq!(agent.max_loops, 3);
+        assert_eq!(agent.max_loops, 3);
     assert_eq!(agent.max_acp_retries, 5);
 }
 
@@ -88,13 +84,11 @@ fn parse_agent_config_accepts_string_numbers() {
     let text = r#"
 [agent]
 model = "m"
-max_hypotheses = "11"
 max_loops = "2"
 max_acp_retries = "4"
 "#;
     let agent = parse_agent_config(text).expect("parse");
-    assert_eq!(agent.max_hypotheses, 11);
-    assert_eq!(agent.max_loops, 2);
+        assert_eq!(agent.max_loops, 2);
     assert_eq!(agent.max_acp_retries, 4);
 }
 
@@ -166,8 +160,7 @@ fn load_malvin_config_merges_partial_file_in_memory_only() {
         std::fs::write(&path, "mem_limit_gb = 8\n").expect("write");
         let cfg = load_malvin_config(work);
         assert_eq!(cfg.mem_limit_gb, 8);
-        assert_eq!(cfg.agent.max_hypotheses, DEFAULT_MAX_HYPOTHESES);
-        let text = std::fs::read_to_string(&path).expect("read");
+                let text = std::fs::read_to_string(&path).expect("read");
         assert!(!text.contains("[agent]"));
     });
 }

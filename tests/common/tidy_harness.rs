@@ -5,7 +5,6 @@ use super::{
     INTEGRATION_TEST_MALVIN_ARGS, MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout,
     write_fake_kiss,
 };
-use super::integration_cli_args::FAST_GATE_LOOP_TEST_ARGS;
 
 pub struct TidySpawn<'a> {
     pub workspace: &'a Path,
@@ -36,7 +35,6 @@ pub fn spawn_tidy_with_timeout(
     }
     let mut args: Vec<&str> = vec!["tidy"];
     args.extend_from_slice(INTEGRATION_TEST_MALVIN_ARGS);
-    args.extend_from_slice(FAST_GATE_LOOP_TEST_ARGS);
     args.extend_from_slice(t.extra_args);
     cmd.args(args);
     command_output_with_timeout(&mut cmd, timeout).expect("spawn malvin")

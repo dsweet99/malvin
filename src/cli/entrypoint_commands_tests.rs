@@ -14,15 +14,13 @@ fn revise_args_for_explain_output_use_tex_path() {
         request: Some("topic".to_string()),
         out_path: "explain.tex".to_string(),
         max_loops: 7,
-        max_hypotheses: 11,
         tenacious: false,
         out_path_explicit: false,
     };
     let args = revise_args_for_explain_output(&explain, "docs/paper.tex");
     assert_eq!(args.doc_path, "docs/paper.tex");
     assert_eq!(args.max_loops, 7);
-    assert_eq!(args.max_hypotheses, 11);
-    assert!(!args.tenacious);
+        assert!(!args.tenacious);
 }
 
 #[test]
@@ -32,7 +30,6 @@ fn kiss_cov_explain_entrypoint_branch() {
         request: Some("topic".to_string()),
         out_path: "explain.tex".to_string(),
         max_loops: 1,
-        max_hypotheses: 5,
         tenacious: true,
         out_path_explicit: false,
     });
@@ -46,7 +43,6 @@ fn kiss_cov_delight_entrypoint_branch() {
         guidance: None,
         out_path: "pitch.md".to_string(),
         max_loops: 1,
-        max_hypotheses: 5,
         tenacious: true,
     });
     let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
@@ -58,7 +54,6 @@ fn kiss_cov_revise_entrypoint_branch() {
     let cmd = Commands::Revise(crate::cli::revise_flow::ReviseArgs {
         doc_path: "doc.md".to_string(),
         max_loops: 1,
-        max_hypotheses: 5,
         tenacious: true,
     });
     let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);

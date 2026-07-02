@@ -29,10 +29,6 @@ No positional arguments. Work directory is always `.` (cwd).
 
 Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
 
-### `--max-hypotheses <N>` (default: 5; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted)
-
-Hypothesis budget per KPop session inside the gate loop.
-
 ### `--tenacious` (default: on)
 
 Sets `--max-acp-retries=9999` and `--max-loops=9999`.
@@ -78,6 +74,6 @@ See `malvin --doc`.
 
 ```text
 malvin tidy
-malvin tidy --max-loops 5 --max-hypotheses 20
+malvin tidy --max-loops 5
 malvin tidy && malvin code plan.md
 ```

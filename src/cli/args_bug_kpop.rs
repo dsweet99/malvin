@@ -5,9 +5,6 @@ pub struct KpopArgs {
     /// How many times to run the kpop agent (stops early when mpc plan contains `DONE` and gates pass).
     #[arg(long, default_value_t = 1)]
     pub max_loops: usize,
-    /// Total `KPop` hypothesis steps (## Step headings in the exp log) per agent run.
-    #[arg(long, default_value_t = 5)]
-    pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,

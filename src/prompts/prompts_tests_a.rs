@@ -18,7 +18,7 @@ fn validate_kpop_prompts_ok_with_only_kpop_while_full_set_would_fail() {
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    std::fs::write(root.join("mpc_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -37,7 +37,7 @@ fn validate_kpop_prompts_does_not_require_mbc2_when_not_requested() {
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    std::fs::write(root.join("mpc_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -52,7 +52,7 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "").unwrap();
     std::fs::write(root.join("kpop_common.md"), "kc").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "kb").unwrap();
+    std::fs::write(root.join("mpc_block.md"), "kb").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
     let err = store
         .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
@@ -71,9 +71,9 @@ fn render_expands_coding_rules_placeholder_to_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "H").unwrap();
-    std::fs::write(root.join("kpop_block.md"), "{{ coding_rules }}").unwrap();
+    std::fs::write(root.join("mpc_block.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let out = store.render("kpop_block.md", &HashMap::new()).unwrap();
+    let out = store.render("mpc_block.md", &HashMap::new()).unwrap();
     assert_eq!(out, "");
 }
 

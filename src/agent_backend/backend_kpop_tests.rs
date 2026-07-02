@@ -32,7 +32,7 @@ fn agent_backend_run_kpop_multiturn_mini_delegates() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mini_done_backend();
-        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
@@ -102,7 +102,7 @@ fn agent_backend_run_kpop_multiturn_mini_succeeds_on_second_attempt() {
             ],
             2,
         );
-        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),

@@ -122,7 +122,7 @@ pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
 pub use init_harness::*;
 #[cfg(unix)]
-pub use integration_cli_args::{ABORT_CODE_TEST_ARGS, FAST_GATE_LOOP_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
+pub use integration_cli_args::{ABORT_CODE_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
 #[cfg(unix)]
 pub use enn_hybrid_fixture::*;
 

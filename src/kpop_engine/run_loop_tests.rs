@@ -115,52 +115,6 @@ fn restore_carry_forward_before_iteration_snapshot_undoes_disk_regress() {
     assert_eq!(files[0].bytes, BASELINE.as_bytes());
 }
 
-#[cfg(unix)]
-#[test]
-fn kpop_engine_loop_rejects_over_budget_exp_log_after_session() {
-    use super::run_loop_iteration::{
-        build_authenticated_kpop_engine_client, kpop_engine_loop_one_iteration,
-        KpopEngineLoopIterationCtx,
-    };
-    use crate::kpop_engine::kpop_session_tests::{
-        loop_params, prepared_fixture, shared_workflow, PreparedContextMode,
-    };
-    use crate::kpop_engine::{KPopEngineParams, KPopHardConstraints};
-    use std::sync::{Arc, Mutex};
-
-    crate::test_utils::enable_test_fast_teardown();
-    crate::test_utils::with_isolated_home(|work| {
-        let mock = work.join("mock-gate-kpop-agent");
-        let _env =
-            crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env(work, &mock);
-        let (prepared, _backups) =
-            prepared_fixture("code", work, true, PreparedContextMode::PathsOnly);
-        let (shared, _) = shared_workflow();
-        let base = loop_params("code", &shared, &prepared, KPopHardConstraints::CODE);
-        let loop_params = KPopEngineParams {
-            max_hypotheses: 0,
-            ..base
-        };
-        let run_timing = Arc::new(Mutex::new(crate::run_timing::RunTiming::default()));
-        crate::test_utils::block_on_test_async(async {
-            let mut client =
-                build_authenticated_kpop_engine_client(&loop_params, &run_timing).expect("client");
-            let err = kpop_engine_loop_one_iteration(KpopEngineLoopIterationCtx {
-                params: &loop_params,
-                iteration: 1,
-                run_timing: &run_timing,
-                client: &mut client,
-            })
-            .await
-            .expect_err("mock agent writes one hypothesis step; budget is zero");
-            assert!(
-                err.contains("hypothesis steps"),
-                "expected budget error, got: {err}"
-            );
-        });
-    });
-}
-
 #[test]
 fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
     use crate::kpop_engine::KPopHardConstraints;

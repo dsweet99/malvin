@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    FAST_GATE_LOOP_TEST_ARGS, MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS,
+    MALVIN_TEST_CMD_TIMEOUT, INTEGRATION_TEST_MALVIN_ARGS,
     acp_mock_tidy_kpop_steps_js, command_output_with_timeout, seed_malvin_checks,
     write_failing_gate_tools, write_fake_kiss, cached_mock_executable, fast_test_home_workspace,
 };
@@ -35,7 +35,6 @@ fn spawn_malvin_tidy(c: &MalvinTidySpawn<'_>) -> std::process::Output {
         .env("PATH", c.path)
         .args(["tidy"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
-    cmd.args(FAST_GATE_LOOP_TEST_ARGS);
     cmd.args(["--max-loops", "0"]);
     command_output_with_timeout(&mut cmd, c.timeout).expect("spawn malvin")
 }

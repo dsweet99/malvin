@@ -16,7 +16,6 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
             .filter(|line| {
                 !line.starts_with("model =")
                     && !line.starts_with("\"model-mini\"")
-                    && !line.starts_with("max_hypotheses =")
                     && !line.starts_with("max_loops =")
                     && !line.starts_with("max_loops_code =")
                     && !line.starts_with("max_acp_retries =")
@@ -26,7 +25,7 @@ pub(super) fn write_agent_config(work_dir: &std::path::Path) {
             .join("\n");
     }
     text.push_str(
-        "\n[agent]\nmodel = \"cfg-model\"\n\"model-mini\" = \"cfg-mini-model\"\nmax_hypotheses = 42\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
+        "\n[agent]\nmodel = \"cfg-model\"\n\"model-mini\" = \"cfg-mini-model\"\nmax_loops = 9\nmax_loops_code = 7\nmax_acp_retries = 8\n",
     );
     std::fs::write(&path, text).expect("write");
 }
@@ -62,18 +61,15 @@ fn apply_loop_defaults_honors_partial_cli_overrides() {
             "malvin", "kpop", "--max-loops", "3", "hello",
         ]);
         let mut max_loops = 3_usize;
-        let mut max_hypotheses = 1_usize;
         apply_loop_defaults(
             &matches,
             "kpop",
             LoopDefaultMut {
                 max_loops: &mut max_loops,
-                max_hypotheses: &mut max_hypotheses,
                 config_max_loops: 9,
-                config_max_hypotheses: 42,
             },
         );
-        assert_eq!((max_loops, max_hypotheses), (3, 42));
+        assert_eq!(max_loops, 3);
     });
 }
 
@@ -87,13 +83,11 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     let agent = AgentConfig {
         model: "cfg".into(),
         model_mini: "cfg-mini".into(),
-        max_hypotheses: 40,
         max_loops: 8,
         max_loops_code: 6,
         max_acp_retries: 6,
         max_mini_transport_retries: 3,
     };
-    let config_max_hypotheses = agent.max_hypotheses;
     let config_max_loops = agent.max_loops;
     let mut shared = SharedOpts {
         model: "old".into(),
@@ -119,18 +113,15 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert_eq!(shared.max_acp_retries, 6);
 
     let mut max_loops = 1_usize;
-    let mut max_hypotheses = 1_usize;
     apply_loop_defaults(
         &matches,
         "kpop",
         LoopDefaultMut {
             max_loops: &mut max_loops,
-            max_hypotheses: &mut max_hypotheses,
             config_max_loops,
-            config_max_hypotheses,
         },
     );
-    assert_eq!((max_loops, max_hypotheses), (8, 40));
+    assert_eq!(max_loops, 8);
 }
 
 #[test]
@@ -142,7 +133,7 @@ fn apply_workspace_config_defaults_overrides_unset_flags() {
         assert_eq!(cli.shared.model, "cfg-model");
         assert_eq!(cli.shared.max_acp_retries, 8);
         match cli.command.expect("command") {
-            Commands::Kpop(kpop) => assert_eq!((kpop.max_loops, kpop.max_hypotheses), (9, 42)),
+            Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 9),
             other => panic!("expected kpop, got {other:?}"),
         }
     });
@@ -153,14 +144,14 @@ fn apply_workspace_config_defaults_respects_explicit_cli_flags() {
     with_seeded_agent_config(|| {
         let matches = Cli::command().get_matches_from([
             "malvin", "--model", "cli-model", "--max-acp-retries", "2", "kpop",
-            "--max-loops", "3", "--max-hypotheses", "4", "hello",
+            "--max-loops", "3", "hello",
         ]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model, "cli-model");
         assert_eq!(cli.shared.max_acp_retries, 2);
         match cli.command.expect("command") {
-            Commands::Kpop(kpop) => assert_eq!((kpop.max_loops, kpop.max_hypotheses), (3, 4)),
+            Commands::Kpop(kpop) => assert_eq!(kpop.max_loops, 3),
             other => panic!("expected kpop, got {other:?}"),
         }
     });
@@ -171,11 +162,11 @@ fn assert_workflow_defaults(argv: &[&str]) {
     let mut cli = Cli::from_arg_matches(&matches).expect("cli");
     apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
     match cli.command.expect("command") {
-        Commands::Code(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
-        Commands::Tidy(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
-        Commands::Delight(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
-        Commands::Explain(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
-        Commands::Revise(a) => assert_eq!((a.max_loops, a.max_hypotheses), (7, 42)),
+        Commands::Code(a) => assert_eq!(a.max_loops, 7),
+        Commands::Tidy(a) => assert_eq!(a.max_loops, 7),
+        Commands::Delight(a) => assert_eq!(a.max_loops, 7),
+        Commands::Explain(a) => assert_eq!(a.max_loops, 7),
+        Commands::Revise(a) => assert_eq!(a.max_loops, 7),
         other => panic!("unexpected command {other:?}"),
     }
 }

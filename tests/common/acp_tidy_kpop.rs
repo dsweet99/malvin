@@ -14,9 +14,12 @@ pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     }"
 }
 
+pub const fn acp_mock_kpop_block_match_js() -> &'static str {
+    "promptText.includes('_kpop/exp_log_')"
+}
+
 pub const fn acp_mock_kpop_iteration_body() -> &'static str {
-    r"      const wantMatch = promptText.match(/budget for any KPOPs in this session is (\d+)/);
-      const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
+    r"      const want = 1;
       function resolvePromptPath(relOrAbs) {
         if (relOrAbs.startsWith('./')) return path.join(process.cwd(), relOrAbs.slice(2));
         if (relOrAbs.startsWith('/')) return relOrAbs;
@@ -44,15 +47,11 @@ pub const fn acp_mock_kpop_iteration_body() -> &'static str {
       }"
 }
 
-pub const fn acp_mock_kpop_budget_match_js() -> &'static str {
-    "promptText.match(/budget for any KPOPs in this session is (\\d+)/)"
-}
-
 fn acp_mock_kpop_steps_body() -> String {
     format!(
         "{}\n    if ({}) {{\n{}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_budget_match_js(),
+        acp_mock_kpop_block_match_js(),
         acp_mock_kpop_iteration_body()
     )
 }
@@ -71,7 +70,7 @@ pub fn acp_mock_kpop_steps_with_summarize_js(chunk: &str) -> String {
         &format!(
             "{}\n    if (promptText.includes('Summarize the activity')) {{\n{summarize_done}\n    }} else if ({}) {{\n{}\n{kpop_done}\n    }}",
             acp_mock_kpop_prompt_preamble(),
-            acp_mock_kpop_budget_match_js(),
+            acp_mock_kpop_block_match_js(),
             acp_mock_kpop_iteration_body(),
         ),
     )
@@ -105,7 +104,7 @@ pub fn acp_mock_kpop_writes_solved_js(chunk: &str) -> String {
     let body = format!(
         "{}\n    if ({}) {{\n{iteration}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_budget_match_js(),
+        acp_mock_kpop_block_match_js(),
     );
     let done = session_update_chunk_line("agent_message_chunk", chunk);
     acp_mock_js("", &format!("{body}\n{done}"))
@@ -130,7 +129,7 @@ fn acp_mock_kpop_tamper_dotfile_writes_solved_js(rel: &str) -> String {
     let body = format!(
         "{}\n    if ({}) {{\n{iteration}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_budget_match_js(),
+        acp_mock_kpop_block_match_js(),
     );
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop tamper solved\n'");
     acp_mock_js("", &format!("{body}\n{done}"))
@@ -162,7 +161,7 @@ pub fn acp_mock_kpop_tampers_home_malvin_config_writes_solved_js() -> String {
     let body = format!(
         "{}\n    if ({}) {{\n{iteration}\n    }}",
         acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_budget_match_js(),
+        acp_mock_kpop_block_match_js(),
     );
     let done = session_update_chunk_line("agent_message_chunk", r"'kpop home config tamper solved\n'");
     acp_mock_js("", &format!("{body}\n{done}"))
@@ -178,7 +177,7 @@ pub fn acp_mock_code_kpop_abort_result_js() -> String {
 
 pub fn acp_mock_immediate_abort_result_js(message: &str) -> String {
     let body = format!(
-        r"    if (promptText.match(/(?:budget for any KPOPs in this session is (\d+)|Complete up to [`]?(\d+)[`]? KPOP iterations)/)) {{
+        r"    if (promptText.includes('_kpop/exp_log_')) {{
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: {message}\n');
     }}"
     );
@@ -187,7 +186,7 @@ pub fn acp_mock_immediate_abort_result_js(message: &str) -> String {
 
 pub fn acp_mock_immediate_abort_tampers_checks_js(message: &str) -> String {
     let body = format!(
-        r"    if (promptText.match(/(?:budget for any KPOPs in this session is (\d+)|Complete up to [`]?(\d+)[`]? KPOP iterations)/)) {{
+        r"    if (promptText.includes('_kpop/exp_log_')) {{
       fs.writeFileSync(path.join(process.cwd(), '.malvin/checks'), 'TAMPERED\n', 'utf8');
       fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: {message}\n');
     }}"

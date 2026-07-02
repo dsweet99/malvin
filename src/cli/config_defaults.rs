@@ -15,9 +15,7 @@ pub(crate) fn global_flag_from_command_line(matches: &ArgMatches, id: &str) -> b
 
 pub(crate) struct LoopDefaultMut<'a> {
     pub max_loops: &'a mut usize,
-    pub max_hypotheses: &'a mut usize,
     pub config_max_loops: usize,
-    pub config_max_hypotheses: usize,
 }
 
 pub(crate) fn apply_loop_defaults(
@@ -27,9 +25,6 @@ pub(crate) fn apply_loop_defaults(
 ) {
     if !subcommand_flag_from_command_line(matches, subcommand, "max_loops") {
         *loops.max_loops = loops.config_max_loops;
-    }
-    if !subcommand_flag_from_command_line(matches, subcommand, "max_hypotheses") {
-        *loops.max_hypotheses = loops.config_max_hypotheses;
     }
 }
 
@@ -52,15 +47,11 @@ pub(crate) fn apply_bare_sequential_config_defaults(
     if !subcommand_flag_from_command_line(matches, "kpop", "max_loops") {
         cli.bare_max_loops = agent.max_loops;
     }
-    if !subcommand_flag_from_command_line(matches, "kpop", "max_hypotheses") {
-        cli.bare_max_hypotheses = agent.max_hypotheses;
-    }
 }
 
 pub(crate) struct CodeWorkflowLoopMut<'a> {
     pub subcommand: &'a str,
     pub max_loops: &'a mut usize,
-    pub max_hypotheses: &'a mut usize,
     pub agent: &'a AgentConfig,
 }
 
@@ -73,9 +64,7 @@ fn apply_code_workflow_loop_defaults(
         loops.subcommand,
         LoopDefaultMut {
             max_loops: loops.max_loops,
-            max_hypotheses: loops.max_hypotheses,
             config_max_loops: loops.agent.max_loops_code,
-            config_max_hypotheses: loops.agent.max_hypotheses,
         },
     );
 }
@@ -91,7 +80,6 @@ fn apply_gate_loop_command_defaults(
             CodeWorkflowLoopMut {
                 subcommand: "code",
                 max_loops: &mut code.max_loops,
-                max_hypotheses: &mut code.max_hypotheses,
                 agent,
             },
         ),
@@ -100,9 +88,7 @@ fn apply_gate_loop_command_defaults(
             "kpop",
             LoopDefaultMut {
                 max_loops: &mut kpop.max_loops,
-                max_hypotheses: &mut kpop.max_hypotheses,
                 config_max_loops: agent.max_loops,
-                config_max_hypotheses: agent.max_hypotheses,
             },
         ),
         Commands::Tidy(tidy) => apply_code_workflow_loop_defaults(
@@ -110,7 +96,6 @@ fn apply_gate_loop_command_defaults(
             CodeWorkflowLoopMut {
                 subcommand: "tidy",
                 max_loops: &mut tidy.max_loops,
-                max_hypotheses: &mut tidy.max_hypotheses,
                 agent,
             },
         ),
@@ -119,7 +104,6 @@ fn apply_gate_loop_command_defaults(
             CodeWorkflowLoopMut {
                 subcommand: "delight",
                 max_loops: &mut delight.max_loops,
-                max_hypotheses: &mut delight.max_hypotheses,
                 agent,
             },
         ),
@@ -128,7 +112,6 @@ fn apply_gate_loop_command_defaults(
             CodeWorkflowLoopMut {
                 subcommand: "explain",
                 max_loops: &mut explain.max_loops,
-                max_hypotheses: &mut explain.max_hypotheses,
                 agent,
             },
         ),
@@ -137,7 +120,6 @@ fn apply_gate_loop_command_defaults(
             CodeWorkflowLoopMut {
                 subcommand: "revise",
                 max_loops: &mut revise.max_loops,
-                max_hypotheses: &mut revise.max_hypotheses,
                 agent,
             },
         ),

@@ -30,11 +30,8 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     std::fs::create_dir_all(&root).expect("mkdir");
     for (name, body) in [
         ("header.md", "<<hdr plan={{ plan_path }}>>\n"),
-        (
-            "kpop_common.md",
-            "<<common want={{ want }} rem={{ remaining_hypotheses }}>>\n",
-        ),
-        ("kpop_block.md", "<<block req={{ user_request_path }}>>\n"),
+        ("kpop_common.md", "<<common>>\n"),
+        ("mpc_block.md", "<<block req={{ user_request_path }}>>\n"),
         ("mbc2.md", "MBC2\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
@@ -42,20 +39,6 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     let store = PromptStore::with_root(root);
     store.ensure_defaults().expect("defaults");
     (tmp, store)
-}
-
-fn kpop_block_turn_context(
-    base: &WorkflowRenderContext,
-    want: usize,
-    remaining_after_this_turn: usize,
-) -> WorkflowRenderContext {
-    let mut ctx = base.clone();
-    ctx.insert("want".to_string(), want.to_string());
-    ctx.insert(
-        "remaining_hypotheses".to_string(),
-        remaining_after_this_turn.to_string(),
-    );
-    ctx
 }
 
 fn expected_kpop_block_output(
@@ -68,7 +51,7 @@ fn expected_kpop_block_output(
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
     let body = store
-        .render_prompt_only("kpop_block.md", map)
+        .render_prompt_only("mpc_block.md", map)
         .expect("block");
     if with_rules {
         let header = render_header(store, map).expect("header");
@@ -93,11 +76,8 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
         base: &base,
         prepend_rules_once: false,
     };
-    let gate = prompts.kpop_engine_single_turn_prompt(5).expect("gate prompt");
-    let mut ctx = base.clone();
-    ctx.insert("want".to_string(), "5".to_string());
-    ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
-    let map = ctx.as_map();
+    let gate = prompts.kpop_engine_single_turn_prompt().expect("gate prompt");
+    let map = base.as_map();
     let header = store
         .render_prompt_only("header.md", map)
         .expect("header");
@@ -105,7 +85,7 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
     let body = store
-        .render_prompt_only("kpop_block.md", map)
+        .render_prompt_only("mpc_block.md", map)
         .expect("block");
     let expected = format!(
         "{}\n\n{}\n\n{}",
@@ -115,6 +95,10 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     );
     assert_eq!(gate, expected);
     assert!(gate.contains(request_path));
+    assert!(
+        !gate.contains("budget for any KPOPs"),
+        "gate prompt must not include hypothesis budget wording"
+    );
 }
 
 #[test]
@@ -127,19 +111,17 @@ fn kpop_block_matches_independently_rendered_sections() {
         prepend_rules_once: true,
     };
 
-    let ctx_first = kpop_block_turn_context(&base, 3, 7);
-    let first = prompts.kpop_block(3, 7).expect("first kpop turn");
+    let first = prompts.kpop_block().expect("first kpop turn");
     assert_eq!(
         first,
-        expected_kpop_block_output(&store, &ctx_first, true),
+        expected_kpop_block_output(&store, &base, true),
         "first turn should equal header + common + block with exact composition"
     );
 
-    let ctx_second = kpop_block_turn_context(&base, 1, 0);
-    let second = prompts.kpop_block(1, 0).expect("second kpop turn");
+    let second = prompts.kpop_block().expect("second kpop turn");
     assert_eq!(
         second,
-        expected_kpop_block_output(&store, &ctx_second, false),
+        expected_kpop_block_output(&store, &base, false),
         "after prepend_rules_once is consumed, output should omit header"
     );
 }
@@ -154,18 +136,15 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
         prepend_rules_once: false,
     };
 
-    for (want, remaining) in [(0, 0_usize), (42, usize::MAX)] {
-        let ctx = kpop_block_turn_context(&base, want, remaining);
-        let out = prompts.kpop_block(want, remaining).expect("kpop turn");
-        assert_eq!(
-            out,
-            expected_kpop_block_output(&store, &ctx, false),
-            "prepend_rules_once=false should never prepend header"
-        );
-        let header = render_header(&store, ctx.as_map()).expect("header");
-        assert!(
-            !out.contains(header.trim()),
-            "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
-        );
-    }
+    let out = prompts.kpop_block().expect("kpop turn");
+    assert_eq!(
+        out,
+        expected_kpop_block_output(&store, &base, false),
+        "prepend_rules_once=false should never prepend header"
+    );
+    let header = render_header(&store, base.as_map()).expect("header");
+    assert!(
+        !out.contains(header.trim()),
+        "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
+    );
 }

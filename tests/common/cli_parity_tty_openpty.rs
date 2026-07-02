@@ -44,7 +44,7 @@ fn malvin_pty_command(
 ) -> portable_pty::CommandBuilder {
     use portable_pty::CommandBuilder;
 
-    use super::integration_cli_args::{FAST_GATE_LOOP_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
+    use super::integration_cli_args::{INTEGRATION_TEST_MALVIN_ARGS};
 
     let mut cmd = CommandBuilder::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.cwd(&env.workspace);
@@ -66,9 +66,6 @@ fn malvin_pty_command(
         cmd.env("COLUMNS", cols);
     }
     for arg in INTEGRATION_TEST_MALVIN_ARGS {
-        cmd.arg(arg);
-    }
-    for arg in FAST_GATE_LOOP_TEST_ARGS {
         cmd.arg(arg);
     }
     for arg in split_malvin_args_line(malvin_args_line) {

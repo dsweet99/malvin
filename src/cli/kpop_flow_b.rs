@@ -49,7 +49,6 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
-        max_hypotheses: 1,
         tenacious: false,
         request: Some("smoke".into()),
     };
@@ -148,13 +147,13 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         base: &base,
         prepend_rules_once: true,
     };
-    let kpop = turn.kpop_block(2, 10).unwrap();
+    let kpop = turn.kpop_block().unwrap();
     assert_substrings_monotonic(
         &kpop,
         &[
             "Know thyself, agent",
             "# Definition: KPop",
-            "budget for any KPOPs in this session is 2",
+            "Write a plan to satisfy the user's request",
         ],
     );
     assert_prompt_contains_each(
@@ -165,6 +164,10 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             ".malvin/logs/run42/request.md",
             "KPOP: Implement the plan",
         ],
+    );
+    assert!(
+        !kpop.contains("budget for any KPOPs"),
+        "kpop_block must not include hypothesis budget wording: {kpop:?}"
     );
     assert!(
         !kpop.contains("Complete up to"),

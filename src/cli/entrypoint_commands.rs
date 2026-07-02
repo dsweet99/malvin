@@ -54,7 +54,6 @@ pub(crate) fn run_bare_sequential_kpop(
         matches,
         BareLoopOpts {
             max_loops: cli.bare_max_loops,
-            max_hypotheses: cli.bare_max_hypotheses,
             tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
         },
     );
@@ -72,14 +71,12 @@ pub(crate) fn run_bare_sequential_kpop(
     };
     ensure_malvin_checks_for_command(&Commands::Kpop(KpopArgs {
         max_loops,
-        max_hypotheses: loops.max_hypotheses,
         tenacious: loops.tenacious,
         request: None,
     }))?;
     crate::sequential_requests::run_sequential("", &cli.bare_args, |request| {
         let kpop = KpopArgs {
             max_loops,
-            max_hypotheses: loops.max_hypotheses,
             tenacious: loops.tenacious,
             request: Some(request.to_string()),
         };
@@ -91,7 +88,6 @@ pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &s
     ReviseArgs {
         doc_path: doc_path.to_string(),
         max_loops: explain.max_loops,
-        max_hypotheses: explain.max_hypotheses,
         tenacious: explain.tenacious,
     }
 }

@@ -22,7 +22,6 @@ pub(crate) fn require_bare_request(
 
 pub(crate) struct BareLoopOpts {
     pub(crate) max_loops: usize,
-    pub(crate) max_hypotheses: usize,
     pub(crate) tenacious: bool,
 }
 
@@ -32,11 +31,6 @@ pub(crate) fn bare_loop_opts(cli: &Cli, matches: &ArgMatches, defaults: BareLoop
             cli.bare_max_loops
         } else {
             defaults.max_loops
-        },
-        max_hypotheses: if subcommand_flag_from_command_line(matches, "kpop", "max_hypotheses") {
-            cli.bare_max_hypotheses
-        } else {
-            defaults.max_hypotheses
         },
         tenacious: if matches
             .value_source("bare_tenacious")
@@ -56,13 +50,11 @@ pub(crate) fn resolve_bare_kpop(cli: &Cli, matches: &ArgMatches) -> Result<Comma
         matches,
         BareLoopOpts {
             max_loops: 1,
-            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
         },
     );
     Ok(Commands::Kpop(KpopArgs {
         max_loops: loops.max_loops,
-        max_hypotheses: loops.max_hypotheses,
         tenacious: loops.tenacious,
         request: Some(request),
     }))

@@ -99,9 +99,7 @@ fn mini_live_kpop_exp_log() {
         "--no-tee",
         "--max-loops",
         "1",
-        "--max-hypotheses",
-        "1",
-        "--max-acp-retries",
+                "--max-acp-retries",
         "1",
         "why is the sky blue?",
     ]);

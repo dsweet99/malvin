@@ -24,9 +24,6 @@ pub struct CodeArgs {
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
-    #[arg(long, default_value_t = 5)]
-    pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
@@ -56,8 +53,7 @@ mod tests {
     fn code_effective_max_loops_is_at_least_one() {
         let code = CodeArgs {
             max_loops: 0,
-            max_hypotheses: 10,
-            tenacious: false,
+                tenacious: false,
             trust_the_plan: false,
             dry_run: false,
             skip_pre_checks: false,
@@ -66,8 +62,7 @@ mod tests {
         };
         let _kpop = crate::cli::KpopArgs {
             max_loops: 1,
-            max_hypotheses: 10,
-            tenacious: false,
+                tenacious: false,
             request: Some("req".to_string()),
         };
         assert_eq!(effective_code_max_loops(code.max_loops), 1);

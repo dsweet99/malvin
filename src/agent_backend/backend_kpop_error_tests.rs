@@ -54,7 +54,7 @@ fn agent_backend_run_kpop_multiturn_mini_stops_on_non_retryable_error() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mock_backend_bash_turn_exhaustion();
-        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
@@ -78,7 +78,7 @@ fn agent_backend_run_kpop_multiturn_mini_reports_failure_after_retries() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mock_backend(vec![MockStep::RateLimited], 2);
-        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),

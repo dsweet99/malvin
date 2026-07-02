@@ -10,7 +10,6 @@ Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, 
 |---|---|
 | Input | One or more investigation briefs → `request.md` per run dir |
 | Loop | `--max-loops` separate agent **runs** (each with its own experiment log) |
-| Per run | Up to `--max-hypotheses` typed `## Step … — KPOP` lines |
 | Lookup | `malvin kpop <KPOP_ID>` prints a prior log (no agent) |
 
 ## Intention
@@ -42,7 +41,6 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--max-loops` | 1 | Separate kpop agent runs; stops early when mpc plan `DONE` and workspace gates pass |
-| `--max-hypotheses` | 5 (CLI default; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted) | `## Step … — KPOP` budget **per** agent run |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -79,7 +77,6 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 Stops when any of:
 
 - mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE` and workspace quality gates pass
-- Typed step count reaches `--max-hypotheses`
 - `--max-loops` runs complete without early success
 - Internal error
 
@@ -103,6 +100,6 @@ Stops when any of:
 ```text
 malvin "Why does cache invalidation fail under load?"
 malvin req_1.md req_2.md req_3.md
-malvin kpop questions/regression.md --max-hypotheses 20
+malvin kpop questions/regression.md
 malvin kpop Ma3bx9
 ```

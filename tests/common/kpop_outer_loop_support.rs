@@ -20,7 +20,7 @@ fn malvin_kpop_outer_cmd(
         .env("CURSOR_AGENT_API_KEY", "test-key")
         .env("MALVIN_AGENT_ACP_BIN", mock)
         .env("PATH", outer_loop_bin_path(root))
-        .args(["kpop", "--max-hypotheses", "1"]);
+        .args(["kpop"]);
     cmd.args(INTEGRATION_TEST_MALVIN_ARGS);
     cmd.args(extra_args).arg("investigate");
     cmd

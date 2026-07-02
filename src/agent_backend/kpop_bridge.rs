@@ -10,7 +10,7 @@ use crate::acp::{
 
 use super::mini::MiniAgentClient;
 
-use kpop_bridge_prompt::{guard_bridge_hypothesis_budget, restore_dotfiles_or_close, run_kpop_prompt};
+use kpop_bridge_prompt::{restore_dotfiles_or_close, run_kpop_prompt};
 
 pub(crate) async fn run_kpop_flow_once_mini(
     client: &mut MiniAgentClient,
@@ -66,7 +66,6 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
             .await;
         }
         restore_dotfiles_or_close(client, ctl.cwd, ctl.session_dotfile_backups).await?;
-        guard_bridge_hypothesis_budget(client, ctl).await?;
         ctl.state.record_kpop_block_prompt_completed();
     }
 
@@ -133,44 +132,6 @@ mod tests {
         assert!(!client.has_open_coder_session());
     }
 
-    #[tokio::test]
-    async fn run_kpop_multiturn_once_mini_fails_when_hypothesis_budget_exceeded() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let exp_log = tmp.path().join("exp.md");
-        std::fs::write(&exp_log, "# exp\n").expect("exp log");
-        let exp_log_for_hook = exp_log.clone();
-        let mut client = MiniAgentClient::new_mock(
-            mini_loop_config(4, 1),
-            test_io(),
-            LlmBackend::Mock(Mutex::new(MockScript {
-                responses: vec![MockStep::Ok(mini_done_response())],
-                call_count: 0,
-                on_response: Some(Box::new(move |_, _| {
-                    std::fs::write(
-                        &exp_log_for_hook,
-                        "# exp\n## Step 1 — KPOP\n## Step 2 — KPOP\n## Step 3 — KPOP\n",
-                    )
-                    .expect("write exp");
-                })),
-            })),
-        );
-        let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
-            tmp.path(),
-            exp_log,
-            2,
-        );
-        let mut ctl = AgentKpopMultiturnCtl {
-            cwd: tmp.path(),
-            kpop_log: tmp.path().join("kpop.log"),
-            state: &mut state,
-            session_dotfile_backups: &empty_backups(),
-        };
-        let err = run_kpop_multiturn_once_mini(&mut client, &mut ctl)
-            .await
-            .expect_err("hypothesis budget");
-        assert!(err.0.contains("hypothesis steps"));
-    }
-
     fn kissconfig_dir_blocks_restore(work: &std::path::Path) {
         let kiss = work.join(".kissconfig");
         let _ = std::fs::remove_file(&kiss);
@@ -226,7 +187,6 @@ mod tests {
         let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
             tmp.path(),
             exp_log,
-            2,
         );
         let mut ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),

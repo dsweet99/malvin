@@ -126,11 +126,10 @@ fn unit_helpers_join_request_bare_loop() {
         &matches,
         BareLoopOpts {
             max_loops: 9,
-            max_hypotheses: 8,
-            tenacious: true,
+                tenacious: true,
         },
     );
-    assert_eq!((opts.max_loops, opts.max_hypotheses), (9, 8));
+    assert_eq!(opts.max_loops, 9);
 }
 
 #[test]

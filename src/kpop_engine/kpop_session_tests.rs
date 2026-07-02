@@ -85,7 +85,6 @@ pub(crate) fn loop_params<'a>(
         workflow: WorkflowCliOptions { force: false },
         prepared,
         max_loops: 1,
-        max_hypotheses: 1,
         behavior,
     }
 }

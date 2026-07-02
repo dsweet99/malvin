@@ -84,10 +84,10 @@ pub(crate) async fn run_init_discovery_kpop(
         malvin_checks_backup,
     };
     let agent_cfg = load_init_agent_config(&artifacts.work_dir);
-    let (max_loops, max_hypotheses) = if crate::acp::test_no_real_agent_enabled() {
-        (1, 1)
+    let max_loops = if crate::acp::test_no_real_agent_enabled() {
+        1
     } else {
-        (agent_cfg.max_loops, agent_cfg.max_hypotheses)
+        agent_cfg.max_loops
     };
     let iterations = kpop_engine_loop_iterations(max_loops);
     let (gates_ok, agent_ran, _timing, _last_backups) = run_kpop_engine(KPopEngineParams {
@@ -96,7 +96,6 @@ pub(crate) async fn run_init_discovery_kpop(
         workflow,
         prepared: &prepared,
         max_loops,
-        max_hypotheses,
         behavior: KPopHardConstraints::INIT,
     })
     .await?;
@@ -204,7 +203,7 @@ mod tests {
         crate::test_utils::with_isolated_home(|work| {
             crate::seed_malvin_config(work, "");
             let cfg = load_init_agent_config(work);
-            assert_eq!(cfg.max_hypotheses, crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES);
+            assert_eq!(cfg.max_loops, crate::malvin_config_file::DEFAULT_MAX_LOOPS);
         });
     }
 }

@@ -15,15 +15,6 @@ fn read_round_trip() {
     std::fs::write(&path, "body\n").expect("write");
     assert_eq!(ExperimentLog::read(&path).expect("read").as_str(), "body\n");
 }
-
-#[test]
-fn check_hypothesis_budget_ok_and_over() {
-    let log = ExperimentLog::from_text("## Step 1 — KPop x\n");
-    assert!(log.check_hypothesis_budget(1).is_ok());
-    let err = log.check_hypothesis_budget(0).expect_err("over budget");
-    assert!(err.contains("exceeding --max-hypotheses"));
-}
-
 #[test]
 fn step_kind_classifies_kpop_mbc2_and_rejects_kpopulation() {
     use super::step_kind;

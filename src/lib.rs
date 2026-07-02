@@ -143,7 +143,7 @@ pub mod config;
 mod kpop_test_stubs;
 mod kpop_turn_prompts;
 pub use kpop_test_stubs::{
-    CaptureWants as KpopCaptureWants, EchoPrompts as KpopEchoPrompts, MtStubPrompts,
+    CaptureBlocks as KpopCaptureBlocks, EchoPrompts as KpopEchoPrompts, MtStubPrompts,
 };
 pub use kpop_turn_prompts::KpopTurnPrompts;
 pub mod kpop_multiturn_prompts;

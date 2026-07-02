@@ -89,9 +89,8 @@ pub(crate) async fn kpop_engine_loop_one_iteration(
     let run_timing = ctx.run_timing;
     let session_dotfile_backups = run_kpop_engine_on_loop_iteration(ctx).await?;
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
-    let exp_log = crate::kpop_log_protocol::ExperimentLog::read(&exp_log_path)
+    let _exp_log = crate::kpop_log_protocol::ExperimentLog::read(&exp_log_path)
         .map_err(|e| e.to_string())?;
-    exp_log.check_hypothesis_budget(params.max_hypotheses)?;
     let mpc_plan_done = session_mpc_plan_declares_done(params.prepared.artifacts())?;
     let early = kpop_engine_mpc_plan_early_exit(KPopEngineEarlyExitCtx {
         behavior: params.behavior,

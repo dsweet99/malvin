@@ -53,8 +53,7 @@ fn bare_kpop_command_accepts_session_name_when_bare_invoke() {
     assert!(command_accepts_session_name(
         &Commands::Kpop(KpopArgs {
             max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
+                tenacious: false,
             request: Some("task".into()),
         }),
         true
@@ -66,8 +65,7 @@ fn explicit_kpop_subcommand_rejects_session_name() {
     assert!(!command_accepts_session_name(
         &Commands::Kpop(KpopArgs {
             max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
+                tenacious: false,
             request: Some("task".into()),
         }),
         false
@@ -75,8 +73,7 @@ fn explicit_kpop_subcommand_rejects_session_name() {
     assert!(unsupported_name_error(
         &Commands::Kpop(KpopArgs {
             max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
+                tenacious: false,
             request: Some("task".into()),
         }),
         false
@@ -97,8 +94,7 @@ fn delight_command_accepts_session_name() {
             guidance: None,
             out_path: "pitch.md".to_string(),
             max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
+                tenacious: false,
         }),
         false
     ));
@@ -112,8 +108,7 @@ fn explain_command_rejects_session_name() {
             request: Some("topic".to_string()),
             out_path: "explain.tex".to_string(),
             max_loops: 1,
-            max_hypotheses: 5,
-            tenacious: false,
+                tenacious: false,
             out_path_explicit: false,
         }),
         false

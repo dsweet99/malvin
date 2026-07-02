@@ -7,8 +7,8 @@ impl MtStubPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("stub kpop want={want}"))
+    pub fn kpop_block(&mut self) -> Result<String, String> {
+        Ok("stub kpop block".to_string())
     }
 }
 
@@ -19,31 +19,31 @@ impl EchoPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        Ok(format!("K{want}"))
+    pub fn kpop_block(&mut self) -> Result<String, String> {
+        Ok("K".to_string())
     }
 }
 
 #[derive(Debug)]
-pub struct CaptureWants {
-    pub wants: Arc<Mutex<Vec<usize>>>,
+pub struct CaptureBlocks {
+    pub blocks: Arc<Mutex<Vec<()>>>,
 }
 
-impl CaptureWants {
+impl CaptureBlocks {
     /// # Panics
     ///
-    /// Panics if the wants mutex is poisoned when recording a block.
+    /// Panics if the blocks mutex is poisoned when recording a block.
     #[must_use]
-    pub const fn new(wants: Arc<Mutex<Vec<usize>>>) -> Self {
-        Self { wants }
+    pub const fn new(blocks: Arc<Mutex<Vec<()>>>) -> Self {
+        Self { blocks }
     }
 
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self, want: usize, _: usize) -> Result<String, String> {
-        self.wants.lock().expect("wants lock").push(want);
-        Ok(format!("stub kpop want={want}"))
+    pub fn kpop_block(&mut self) -> Result<String, String> {
+        self.blocks.lock().expect("blocks lock").push(());
+        Ok("stub kpop block".to_string())
     }
 }
 

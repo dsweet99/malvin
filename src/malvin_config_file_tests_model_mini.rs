@@ -39,7 +39,7 @@ fn open_malvin_config_merges_model_mini_in_memory_only() {
 
 [agent]
 model = "auto"
-max_hypotheses = 5
+max_loops = 5
 "#,
         )
         .expect("write");
@@ -72,7 +72,6 @@ fn parse_agent_config_reads_values_includes_model_mini_default() {
     let text = r#"
 [agent]
 model = "gpt-5"
-max_hypotheses = 7
 max_loops = 3
 max_acp_retries = 5
 "#;
@@ -82,8 +81,7 @@ max_acp_retries = 5
         AgentConfig {
             model: "gpt-5".to_string(),
             model_mini: MINI_DEFAULT_MODEL.to_string(),
-            max_hypotheses: 7,
-            max_loops: 3,
+                max_loops: 3,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
             max_mini_transport_retries: 3,

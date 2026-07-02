@@ -68,14 +68,12 @@ pub async fn run_code(
     emit_code_run_startup(shared, &prepared)?;
 
     let max_loops = effective_code_max_loops(code.max_loops);
-    let max_hypotheses = code.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "code",
         shared,
         workflow,
         prepared: &prepared,
         max_loops,
-        max_hypotheses,
         behavior: KPopHardConstraints::CODE,
     })
     .await?;

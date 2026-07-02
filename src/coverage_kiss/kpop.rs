@@ -24,7 +24,6 @@ fn smoke_kpop_progression_and_multiturn() {
         crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(crate::MtStubPrompts),
         exp,
         mpc,
-        10,
     )
     .expect("multiturn state");
     assert_eq!(

@@ -13,7 +13,6 @@ fn kpop_multiturn_transport_retry_offers_prompt_again_after_failed_attempt() {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
         mpc_plan_path: tmp.path().join("mpc_plan.md"),
-        max_hypotheses: 10,
     })
     .expect("state");
 
@@ -40,7 +39,6 @@ fn reset_for_transport_retry_clears_done_latch_set_by_prompt_sent() {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
         mpc_plan_path: tmp.path().join("mpc_plan.md"),
-        max_hypotheses: 10,
     })
     .expect("state");
 
@@ -69,7 +67,6 @@ fn transport_retry_strips_stale_mpc_plan_done_and_reoffers_prompt() {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path: exp_log_path.clone(),
         mpc_plan_path: mpc_plan_path.clone(),
-        max_hypotheses: 10,
     })
     .expect("state");
 

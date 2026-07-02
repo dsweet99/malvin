@@ -133,7 +133,6 @@ async fn run_kpop_multiturn_for_loop(
         builder,
         loop_snapshot.exp_log_path.clone(),
         crate::artifacts::mpc_plan_path(&params.prepared.artifacts),
-        params.kpop.max_hypotheses,
     )?;
     crate::gate_loop_session::set_active_gate_iteration(Some(loop_snapshot.exp_iter));
     let acp_result = kpop_run_acp_multiturn(

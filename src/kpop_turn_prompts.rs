@@ -1,7 +1,7 @@
 //! Per-turn prompt assembly for **`KPopEngine`** sessions.
 //!
 //! - **`KPop`** (`kpop_common.md`): agent-side Popper method (Hypothesize → Predict → Falsify).
-//! - **`KPopEngine` turn** (`kpop_block.md`): per-iteration budget and `{{ user_request_path }}` (from `base` context).
+//! - **`KPopEngine` turn** (`mpc_block.md`): per-iteration MPC plan workflow and `{{ user_request_path }}` (from `base` context).
 
 use crate::prompt_stratification::{join_labeled_strata, PromptStratum, WorkflowRenderContext};
 use crate::prompts::{PromptError, PromptStore, render_header};
@@ -51,16 +51,13 @@ impl KpopTurnPrompts<'_> {
         )
     }
 
-    /// Gate workflow: `header.md` + `kpop_common.md` + `kpop_block.md` in one prompt (`want` = budget).
+    /// Gate workflow: `header.md` + `kpop_common.md` + `mpc_block.md` in one prompt.
     ///
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_engine_single_turn_prompt(&self, max_hypotheses: usize) -> Result<String, String> {
-        let mut ctx = self.base.clone();
-        ctx.insert("want".to_string(), max_hypotheses.to_string());
-        ctx.insert("remaining_hypotheses".to_string(), "0".to_string());
-        let map = ctx.as_map();
+    pub fn kpop_engine_single_turn_prompt(&self) -> Result<String, String> {
+        let map = self.base.as_map();
         let header = self
             .store
             .render_prompt_only("header.md", map)
@@ -71,7 +68,7 @@ impl KpopTurnPrompts<'_> {
             .map_err(|e: PromptError| e.0)?;
         let body = self
             .store
-            .render_prompt_only("kpop_block.md", map)
+            .render_prompt_only("mpc_block.md", map)
             .map_err(|e: PromptError| e.0)?;
         Ok(join_labeled_strata([
             (PromptStratum::WorkflowHeader, header),
@@ -83,19 +80,9 @@ impl KpopTurnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_block(
-        &mut self,
-        want: usize,
-        remaining_after_this_turn: usize,
-    ) -> Result<String, String> {
-        let mut ctx = self.base.clone();
-        ctx.insert("want".to_string(), want.to_string());
-        ctx.insert(
-            "remaining_hypotheses".to_string(),
-            remaining_after_this_turn.to_string(),
-        );
+    pub fn kpop_block(&mut self) -> Result<String, String> {
         let with_rules = self.prepend_rules_once;
-        let prompt = self.render_turn_with_body("kpop_block.md", &ctx, with_rules)?;
+        let prompt = self.render_turn_with_body("mpc_block.md", self.base, with_rules)?;
         self.prepend_rules_once = false;
         Ok(prompt)
     }
@@ -111,8 +98,8 @@ mod inline_render_turn_with_body {
         let tmp = tempfile::tempdir().expect("tempdir");
         let root = tmp.path().join("prompts");
         std::fs::create_dir_all(&root).expect("mkdir");
-        std::fs::write(root.join("kpop_common.md"), "common {{ want }}\n").expect("write");
-        std::fs::write(root.join("kpop_block.md"), "block {{ user_request_path }}\n").expect("write");
+        std::fs::write(root.join("kpop_common.md"), "common\n").expect("write");
+        std::fs::write(root.join("mpc_block.md"), "block {{ user_request_path }}\n").expect("write");
         let store = crate::prompts::PromptStore::with_root(root);
         store.ensure_defaults().expect("defaults");
         let base = WorkflowRenderContext::from(HashMap::from([
@@ -120,8 +107,6 @@ mod inline_render_turn_with_body {
             ("user_request_path".to_string(), "./req.md".to_string()),
         ]));
         let ctx = WorkflowRenderContext::from(HashMap::from([
-            ("want".to_string(), "1".to_string()),
-            ("remaining_hypotheses".to_string(), "0".to_string()),
             ("user_request_path".to_string(), "./req.md".to_string()),
         ]));
         let prompts = KpopTurnPrompts {
@@ -130,7 +115,7 @@ mod inline_render_turn_with_body {
             prepend_rules_once: false,
         };
         let out = prompts
-            .render_turn_with_body("kpop_block.md", &ctx, false)
+            .render_turn_with_body("mpc_block.md", &ctx, false)
             .expect("render");
         assert!(out.contains("./req.md"));
     }

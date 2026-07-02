@@ -65,7 +65,7 @@ fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, 
         ),
         prepend_rules_once: false,
     }
-    .kpop_engine_single_turn_prompt(params.max_hypotheses)
+    .kpop_engine_single_turn_prompt()
 }
 
 fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {

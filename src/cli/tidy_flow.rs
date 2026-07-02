@@ -27,9 +27,6 @@ pub struct TidyArgs {
     /// Maximum gate-loop iterations before stopping.
     #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_LOOPS_CODE)]
     pub max_loops: usize,
-    /// Number of hypotheses per `KPop` round.
-    #[arg(long, default_value_t = 5)]
-    pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
@@ -47,13 +44,11 @@ mod tests {
     fn tidy_effective_max_loops_is_at_least_one() {
         let tidy = TidyArgs {
             max_loops: 0,
-            max_hypotheses: 10,
-            tenacious: false,
+                tenacious: false,
             quick: false,
         };
         assert_eq!(effective_tidy_max_loops(tidy.max_loops), 1);
-        assert_eq!(tidy.max_hypotheses, 10);
-    }
+            }
 
     #[test]
     fn kiss_cov_tidy_kpop_helpers() {

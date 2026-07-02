@@ -81,8 +81,8 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     std::fs::create_dir_all(&root).expect("mkdir");
     for (name, body) in [
         ("header.md", "hdr\n"),
-        ("kpop_common.md", "common {{ want }}\n"),
-        ("kpop_block.md", "block {{ user_request_path }}\n"),
+        ("kpop_common.md", "common\n"),
+        ("mpc_block.md", "block {{ user_request_path }}\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -100,7 +100,7 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
         base: &base,
         prepend_rules_once: false,
     };
-    let out = prompts.kpop_block(1, 0).expect("kpop block");
+    let out = prompts.kpop_block().expect("kpop block");
     assert!(out.contains("user_request.md"));
 }
 

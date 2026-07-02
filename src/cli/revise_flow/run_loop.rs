@@ -82,14 +82,12 @@ pub async fn run_revise(
     )?;
 
     let max_loops = effective_revise_max_loops(revise.max_loops);
-    let max_hypotheses = revise.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "revise",
         shared,
         workflow,
         prepared: &prepared.inner,
         max_loops,
-        max_hypotheses,
         behavior: KPopHardConstraints::REVISE,
     })
     .await?;

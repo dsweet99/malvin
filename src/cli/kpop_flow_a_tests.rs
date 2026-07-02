@@ -37,8 +37,7 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
         std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
         let kpop = KpopArgs {
             max_loops: 1,
-            max_hypotheses: 1,
-            tenacious: false,
+                tenacious: false,
             request: Some("fast startup".into()),
         };
         let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
@@ -76,8 +75,7 @@ fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
         std::env::set_current_dir(cwd).expect("chdir");
         let kpop = KpopArgs {
             max_loops: 1,
-            max_hypotheses: 1,
-            tenacious: false,
+                tenacious: false,
             request: Some("Ma1b2c".into()),
         };
         run_kpop_short_id_lookup(&kpop).expect("lookup dump");
@@ -131,8 +129,7 @@ async fn run_kpop_multiturn_mock_once(
         builder,
         snap.exp_log_path.clone(),
         crate::artifacts::mpc_plan_path(&prepared.artifacts),
-        kpop.max_hypotheses,
-    )
+            )
         .map_err(|e| e.to_string())?;
     kpop_run_acp_multiturn(
         KpopAcpMultiturnCtx {

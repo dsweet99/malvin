@@ -127,8 +127,8 @@ impl PromptStore {
         if self.prompt_text("kpop_common.md").is_err() {
             missing.push("kpop_common.md");
         }
-        if self.prompt_text("kpop_block.md").is_err() {
-            missing.push("kpop_block.md");
+        if self.prompt_text("mpc_block.md").is_err() {
+            missing.push("mpc_block.md");
         }
         if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
             missing.push("mbc2.md");

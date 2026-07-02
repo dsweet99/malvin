@@ -1,9 +1,9 @@
 //! **`KPopLogProtocol`** — parsed step headings in `exp_log_*.md` (see `src/kpop_engine/`).
 //!
 //! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
-//! interprets for budget checks. Completion is declared via mpc plan `DONE` in
-//! `_kpop/mpc_plan.md` (see `default_prompts/kpop_block.md`). Prompt sources:
-//! `default_prompts/kpop_common.md`, `default_prompts/kpop_block.md`.
+//! interprets for observability (step counts). Completion is declared via mpc plan `DONE` in
+//! `_kpop/mpc_plan.md` (see `default_prompts/mpc_block.md`). Prompt sources:
+//! `default_prompts/kpop_common.md`, `default_prompts/mpc_block.md`.
 
 /// Parsed marker kind on a `## Step K — …` heading line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -68,20 +68,6 @@ impl ExperimentLog {
         self.kpop_step_count() + self.mbc2_step_count()
     }
 
-    /// Fail when hypothesis steps exceed `max`.
-    ///
-    /// # Errors
-    ///
-    /// Returns the shared budget-exceeded message used by gate and multiturn flows.
-    pub fn check_hypothesis_budget(&self, max: usize) -> Result<(), String> {
-        let count = self.hypothesis_step_count();
-        if count > max {
-            return Err(format!(
-                "experiment log counts {count} hypothesis steps, exceeding --max-hypotheses ({max})"
-            ));
-        }
-        Ok(())
-    }
 }
 
 fn is_kpop_step_label(tail: &str) -> bool {

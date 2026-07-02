@@ -84,14 +84,12 @@ pub async fn run_delight(
     )?;
 
     let max_loops = effective_delight_max_loops(delight.max_loops);
-    let max_hypotheses = delight.max_hypotheses.max(1);
     let (gates_ok, agent_ran, run_timing, last_backups) = run_kpop_engine(KPopEngineParams {
         command: "delight",
         shared,
         workflow,
         prepared: &prepared.inner,
         max_loops,
-        max_hypotheses,
         behavior: KPopHardConstraints::DELIGHT,
     })
     .await?;

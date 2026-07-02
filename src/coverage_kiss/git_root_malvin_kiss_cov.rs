@@ -9,8 +9,7 @@ fn kiss_cov_kpop_progression_counter_wrappers() {
 }
 
 #[test]
-fn kiss_cov_kpop_bridge_prompt_budget() {
-    let _ = stringify!(guard_bridge_hypothesis_budget);
+fn kiss_cov_kpop_bridge_prompt() {
     let _ = crate::agent_backend::agent_backend_run_kpop_multiturn;
 }
 

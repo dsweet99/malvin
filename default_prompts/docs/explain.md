@@ -43,10 +43,6 @@ With the default basename `explain.tex`, outputs stay in the request work direct
 
 Outer gate-loop budget (`max(N, 1) + 1` iterations). `0` is treated as `1`.
 
-### `--max-hypotheses <N>` (default: 5)
-
-Hypothesis budget per KPop session inside the gate loop.
-
 ### `--tenacious` (default: on)
 
 Sets `--max-acp-retries=9999` and `--max-loops=9999`.

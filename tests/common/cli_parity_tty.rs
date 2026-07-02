@@ -83,7 +83,7 @@ pub fn run_code_max_loops_zero_under_openpty(extra_args: &[&str]) -> std::proces
 
 #[cfg(all(unix, target_os = "linux"))]
 pub fn run_kpop_bold_markdown_under_openpty(extra_args: &[&str]) -> std::process::Output {
-    let mut args_line = String::from("kpop --max-loops 1 --max-hypotheses 1 investigate");
+    let mut args_line = String::from("kpop --max-loops 1 investigate");
     for a in extra_args {
         args_line.push(' ');
         args_line.push_str(a);

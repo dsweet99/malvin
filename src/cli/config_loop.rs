@@ -26,7 +26,6 @@ pub(crate) fn bare_workflow_flag_from_command_line(
     }
     let bare_id = match id {
         "max_loops" => "bare_max_loops",
-        "max_hypotheses" => "bare_max_hypotheses",
         "tenacious" => "bare_tenacious",
         _ => return false,
     };
@@ -59,12 +58,6 @@ mod tests {
         let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "hello"]);
         assert!(subcommand_flag_from_command_line(&matches, "kpop", "max_loops"));
         assert!(!subcommand_flag_from_command_line(&matches, "code", "max_loops"));
-    }
-
-    #[test]
-    fn bare_invocation_max_hypotheses_flag_detected_at_top_level() {
-        let matches = Cli::command().get_matches_from(["malvin", "--max-hypotheses", "7", "hello"]);
-        assert!(subcommand_flag_from_command_line(&matches, "kpop", "max_hypotheses"));
     }
 
     #[test]

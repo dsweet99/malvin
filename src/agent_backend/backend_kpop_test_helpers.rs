@@ -46,7 +46,6 @@ pub(crate) fn mini_done_backend() -> AgentBackend {
 pub(crate) fn smoke_multiturn_state(
     work: &std::path::Path,
     exp_log: std::path::PathBuf,
-    max_hypotheses: usize,
 ) -> crate::kpop_progression::KpopMultiturnState<'static> {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 
@@ -54,7 +53,6 @@ pub(crate) fn smoke_multiturn_state(
         KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log,
         work.join("mpc_plan.md"),
-        max_hypotheses,
     )
     .expect("state")
 }
@@ -64,6 +62,6 @@ fn smoke_multiturn_state_builds_state() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let exp = tmp.path().join("exp.md");
     std::fs::write(&exp, "# exp\n").expect("write");
-    let state = smoke_multiturn_state(tmp.path(), exp, 2);
-    assert_eq!(state.max_hypotheses, 2);
+    let state = smoke_multiturn_state(tmp.path(), exp);
+    assert!(!state.prompt_sent);
 }

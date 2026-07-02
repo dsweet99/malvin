@@ -35,10 +35,6 @@ When multiple plans are given, malvin runs `malvin code` on each in sequence. Ea
 
 Outer gate-loop budget. Malvin runs up to `max(N, 1) + 1` outer iterations (see `malvin --doc`, section “Gate-loop commands”).
 
-### `--max-hypotheses <N>` (default: 5; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted)
-
-Per-session hypothesis budget: maximum `## Step … — KPOP` lines the agent should add in one gate-loop iteration (`{{ want }}` in the rendered prompt).
-
 ### `--tenacious` (default: on)
 
 Sets `--max-acp-retries=9999` and `--max-loops=9999`.
@@ -91,6 +87,6 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 ```text
 malvin code plan.md
 malvin code plan_1.md plan_2.md plan_3.md
-malvin code --max-loops 3 --max-hypotheses 15 "Add widget API per plan.md"
+malvin code --max-loops 3 "Add widget API per plan.md"
 malvin --model sonnet-4 code plans/feature.md
 ```
