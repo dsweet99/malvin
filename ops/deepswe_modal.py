@@ -16,8 +16,11 @@ Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY
 ``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; DeepSWE task at
 ``../deep-swe/tasks/...``.
 
-For headless eval without Cursor credentials, pass ``--mini`` to malvin and set
-``OPENROUTER_API_KEY`` in the sandbox environment (OpenRouter HTTP egress required).
+Modal agent sandboxes do not inherit interactive ``agent login`` sessions from the
+host. Export a Cursor API key in the shell that launches this command.
+
+``--mini`` with OpenRouter on Modal is **not** implemented yet; local/host ``--mini``
+remains a separate path.
 
 Artifacts land under ``~/.malvin_home/deepswe-results/<task_id>/modal_<timestamp>/``
 (``metadata.json``, ``reward.txt``). Workspace: ``.../workspace``.
@@ -892,7 +895,7 @@ def _observe_agent_session_under_allowlist(
 ) -> dict[str, Any]:
     """Run cursor-agent hello under a CIDR allowlist and return peer/session metadata."""
     if not cursor_secrets():
-        return {"peer_ips": [], "connection_stalled": False, "agent_exit": 0}
+        return {"peer_ips": [], "connection_stalled": True, "agent_exit": 1}
     sandbox: modal.Sandbox | None = None
     try:
         try:
@@ -976,7 +979,7 @@ def agent_session_ok_under_allowlist(
 ) -> bool:
     """Return True when cursor-agent hello succeeds under the compressed allowlist."""
     if not cursor_secrets():
-        return True
+        return False
     payload = _observe_agent_session_under_allowlist(seed_cidrs, timeout=timeout)
     if payload.get("connection_stalled"):
         click.echo(
@@ -1417,7 +1420,7 @@ def finalize_allowlist_with_agent_validation(
 ) -> list[str]:
     """Re-merge late agent peers, validate cursor-agent hello, fail fast when blocked."""
     if not cursor_secrets():
-        return compress_ipv4_cidrs(cidrs)
+        require_cursor_credentials_for_agent(grade_only=False)
     working = list(cidrs)
     raw_late = resolve_cursor_api_cidrs_from_agent_peers(timeout=timeout)
     late_open = modal_cidr_allowlist(raw_late) if raw_late else []
@@ -2029,9 +2032,7 @@ def run_deepswe_run_in_sandbox(
         elif open_network:
             network = sandbox_network_kwargs(cursor_api_only=False, block_all=False)
         else:
-            network = agent_sandbox_network_kwargs(
-                image, skip_agent_probes=skip_grade
-            )
+            network = agent_sandbox_network_kwargs(image)
         resources = (
             grade_sandbox_resource_kwargs()
             if grade_only
@@ -2181,12 +2182,39 @@ def harbor_agent_image(
     )
 
 
+CURSOR_CREDENTIAL_ENV_KEYS = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"]
+MODAL_CURSOR_SECRET_NAME_ENV = "MODAL_CURSOR_SECRET_NAME"
+_CURSOR_CREDENTIALS_ERROR = (
+    "Cursor API key required for Modal agent runs. "
+    "Export CURSOR_AGENT_API_KEY, CURSOR_API_KEY, or AGENT_API_KEY "
+    "in the shell that launches this command. "
+    "Interactive `agent login` is not available inside Modal sandboxes."
+)
+
+
+def cursor_credentials_available() -> bool:
+    """Return True when local env keys or a named Modal secret can supply credentials."""
+    if any(os.environ.get(key) for key in CURSOR_CREDENTIAL_ENV_KEYS):
+        return True
+    return bool(os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV))
+
+
+def require_cursor_credentials_for_agent(*, grade_only: bool) -> None:
+    """Fail fast on the host when Modal agent runs lack Cursor credentials."""
+    if grade_only:
+        return
+    if not cursor_credentials_available():
+        raise click.ClickException(_CURSOR_CREDENTIALS_ERROR)
+
+
 def cursor_secrets() -> list[modal.Secret]:
-    keys = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"]
-    present = [k for k in keys if os.environ.get(k)]
-    if not present:
-        return []
-    return [modal.Secret.from_local_environ(present)]
+    present = [k for k in CURSOR_CREDENTIAL_ENV_KEYS if os.environ.get(k)]
+    if present:
+        return [modal.Secret.from_local_environ(present)]
+    secret_name = os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV)
+    if secret_name:
+        return [modal.Secret.from_name(secret_name)]
+    return []
 
 
 def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
@@ -2282,6 +2310,8 @@ def run_modal_eval(
     click.echo("Runtime: modal")
     click.echo(f"Workspace: {workspace.resolve()}")
     click.echo(f"Artifacts: {run_root.resolve()}")
+
+    require_cursor_credentials_for_agent(grade_only=grade_only)
 
     if dry_run:
         click.echo("Dry run: would materialize workspace")
@@ -2736,7 +2766,7 @@ def _test_parse_agent_peer_probe_payload() -> None:
 
 def _test_agent_session_ok_under_allowlist() -> None:
     with patch(f"{__name__}.cursor_secrets", return_value=[]):
-        assert agent_session_ok_under_allowlist(["1.1.1.0/24"], timeout=60)
+        assert not agent_session_ok_under_allowlist(["1.1.1.0/24"], timeout=60)
     with patch(
         f"{__name__}._observe_agent_session_under_allowlist",
         return_value={
@@ -3125,6 +3155,34 @@ def _test_agent_sandbox_network_kwargs() -> None:
     assert kwargs == {"outbound_cidr_allowlist": ["10.0.0.1/32"]}
 
 
+def _test_hello_sandbox_runs_full_allowlist_probes() -> None:
+    """``hello`` (skip_grade=True) must still run full CIDR agent-session validation."""
+    fake_proc = MagicMock(stdout=iter([]), stderr=iter([]), returncode=0)
+    fake_proc.wait.return_value = None
+    fake_sandbox = MagicMock()
+    fake_sandbox.exec.return_value = fake_proc
+    metadata = json.dumps({"agent": {"exit_code": 0}, "grade": {"skipped": True}})
+    fake_sandbox.filesystem.read_text.return_value = metadata
+    image = MagicMock()
+    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+        with patch(
+            f"{__name__}.agent_sandbox_network_kwargs",
+            return_value={"outbound_cidr_allowlist": ["1.2.3.4/32"]},
+        ) as mock_network:
+            with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox"):
+                agent_result, grade_result = run_deepswe_run_in_sandbox(
+                    image,
+                    command="hello",
+                    malvin_argv=[],
+                    grade_only=False,
+                    skip_grade=True,
+                    cursor_secrets=[],
+                )
+    mock_network.assert_called_once_with(image)
+    assert agent_result["exit_code"] == 0
+    assert grade_result.get("skipped") is True
+
+
 def _test_stream_helpers() -> None:
     sink = io.StringIO()
     relay_stream(iter(["alpha", "beta"]), sink)
@@ -3143,12 +3201,73 @@ def _test_stream_helpers() -> None:
 
 
 def _test_cursor_secrets() -> None:
-    keys = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"]
+    keys = CURSOR_CREDENTIAL_ENV_KEYS + [MODAL_CURSOR_SECRET_NAME_ENV]
     saved = {key: os.environ.pop(key, None) for key in keys}
     try:
         assert cursor_secrets() == []
+        assert not cursor_credentials_available()
         os.environ["CURSOR_API_KEY"] = "test-key"
+        assert cursor_credentials_available()
         assert len(cursor_secrets()) == 1
+        os.environ.pop("CURSOR_API_KEY", None)
+        os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = "modal-cursor-secret"
+        assert cursor_credentials_available()
+        with patch(f"{__name__}.modal.Secret.from_name", return_value=MagicMock()) as mock_name:
+            assert len(cursor_secrets()) == 1
+            mock_name.assert_called_once_with("modal-cursor-secret")
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def _test_require_cursor_credentials_for_agent() -> None:
+    keys = CURSOR_CREDENTIAL_ENV_KEYS + [MODAL_CURSOR_SECRET_NAME_ENV]
+    saved = {key: os.environ.pop(key, None) for key in keys}
+    try:
+        require_cursor_credentials_for_agent(grade_only=True)
+        try:
+            require_cursor_credentials_for_agent(grade_only=False)
+        except click.ClickException as exc:
+            assert "Cursor API key required" in str(exc)
+        else:
+            raise AssertionError("expected ClickException")
+        os.environ["AGENT_API_KEY"] = "test-key"
+        require_cursor_credentials_for_agent(grade_only=False)
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
+def _test_run_modal_eval_missing_credentials() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "bandit-interprocedural-taint-checks"
+    if not task.is_dir():
+        return
+    keys = CURSOR_CREDENTIAL_ENV_KEYS + [MODAL_CURSOR_SECRET_NAME_ENV]
+    saved = {key: os.environ.pop(key, None) for key in keys}
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp) / "workspace"
+            workspace.mkdir()
+            results = Path(tmp) / "results"
+            try:
+                run_modal_eval(
+                    task_dir=task,
+                    workspace=workspace,
+                    results_dir=results,
+                    dry_run=True,
+                )
+            except click.ClickException as exc:
+                assert "Cursor API key required" in str(exc)
+                assert "Dry run:" not in str(exc)
+            else:
+                raise AssertionError("expected ClickException")
     finally:
         for key, value in saved.items():
             if value is None:
@@ -3942,8 +4061,11 @@ def run_allowlist_refresh_unit_tests() -> None:
 def run_agent_toolchain_unit_tests() -> None:
     """Agent sandbox network, stream helpers, secrets, and toolchain unit tests."""
     _test_agent_sandbox_network_kwargs()
+    _test_hello_sandbox_runs_full_allowlist_probes()
     _test_stream_helpers()
     _test_cursor_secrets()
+    _test_require_cursor_credentials_for_agent()
+    _test_run_modal_eval_missing_credentials()
     _test_validate_toolchain_repos()
     _test_offline_check_tool_install_commands()
     _test_offline_agent_checks()

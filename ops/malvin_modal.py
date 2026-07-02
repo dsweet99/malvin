@@ -2,6 +2,11 @@
 
 """Run malvin on Modal, forwarding host CLI arguments to the remote malvin process.
 
+Modal sandboxes do not inherit interactive ``agent login`` sessions from the host.
+Export ``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY`` in the
+shell that launches this command (or set ``MODAL_CURSOR_SECRET_NAME`` for a Modal-stored
+secret).
+
 Runtime dependency: install Modal with ``pip install modal`` or ``uv pip install modal``.
 
 Gating smoke test (requires Modal credentials and network)::
@@ -37,6 +42,13 @@ from modal_sandbox_lifecycle import release_modal_sandbox
 APP_NAME = "malvin-modal"
 WORKSPACE = "/workspace"
 CURSOR_ENV_KEYS = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY"]
+MODAL_CURSOR_SECRET_NAME_ENV = "MODAL_CURSOR_SECRET_NAME"
+_CURSOR_CREDENTIALS_ERROR = (
+    "Cursor API key required for Modal agent runs. "
+    "Export CURSOR_AGENT_API_KEY, CURSOR_API_KEY, or AGENT_API_KEY "
+    "in the shell that launches this command. "
+    "Interactive `agent login` is not available inside Modal sandboxes."
+)
 # Modal Sandbox.create defaults (0.125 CPU, 128 MiB) are too small for malvin + cursor-agent.
 SANDBOX_CPU = 2.0
 SANDBOX_MEMORY_MIB = 4096
@@ -108,12 +120,28 @@ def present_cursor_keys() -> list[str]:
     return [key for key in CURSOR_ENV_KEYS if os.environ.get(key)]
 
 
+def cursor_credentials_available() -> bool:
+    """Return True when local env keys or a named Modal secret can supply credentials."""
+    if present_cursor_keys():
+        return True
+    return bool(os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV))
+
+
+def require_cursor_credentials_for_agent() -> None:
+    """Fail fast on the host when Modal agent runs lack Cursor credentials."""
+    if not cursor_credentials_available():
+        raise click.ClickException(_CURSOR_CREDENTIALS_ERROR)
+
+
 def cursor_secrets() -> list[modal.Secret]:
     """Inject Cursor API keys present in the local environment."""
     present = present_cursor_keys()
-    if not present:
-        return []
-    return [modal.Secret.from_local_environ(present)]
+    if present:
+        return [modal.Secret.from_local_environ(present)]
+    secret_name = os.environ.get(MODAL_CURSOR_SECRET_NAME_ENV)
+    if secret_name:
+        return [modal.Secret.from_name(secret_name)]
+    return []
 
 
 def finish_process(proc: Any) -> int:
@@ -175,6 +203,7 @@ def sandbox_app() -> modal.App:
 
 def run_malvin_remote(malvin_argv: list[str]) -> int:
     """Create sandbox, exec malvin, stream I/O, terminate sandbox."""
+    require_cursor_credentials_for_agent()
     image = workspace_image()
     secrets = cursor_secrets()
     sandbox: modal.Sandbox | None = None
@@ -249,15 +278,28 @@ def _test_static_helpers() -> None:
 
 def _test_cursor_and_stream() -> None:
     saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
+    saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
     try:
         assert present_cursor_keys() == []
         assert cursor_secrets() == []
+        assert not cursor_credentials_available()
         os.environ["CURSOR_API_KEY"] = "test-key"
         assert present_cursor_keys() == ["CURSOR_API_KEY"]
+        assert cursor_credentials_available()
         assert len(cursor_secrets()) == 1
+        os.environ.pop("CURSOR_API_KEY", None)
+        os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = "modal-cursor-secret"
+        assert cursor_credentials_available()
+        with patch(f"{__name__}.modal.Secret.from_name", return_value=MagicMock()) as mock_name:
+            assert len(cursor_secrets()) == 1
+            mock_name.assert_called_once_with("modal-cursor-secret")
     finally:
         for key, value in saved.items():
             os.environ.pop(key, None) if value is None else os.environ.__setitem__(key, value)
+        if saved_secret is None:
+            os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+        else:
+            os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
     out = io.StringIO()
     err = io.StringIO()
     proc = SimpleNamespace(stdout=iter(["out"]), stderr=iter(["err"]))
@@ -275,10 +317,40 @@ def _test_modal_remote() -> None:
     )
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
-    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
-        code = run_malvin_remote(["--version"])
-    assert code == 7
-    fake_sandbox.detach.assert_called_once()
+    saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
+    saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+    try:
+        os.environ["CURSOR_API_KEY"] = "test-key"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            code = run_malvin_remote(["--version"])
+        assert code == 7
+        fake_sandbox.detach.assert_called_once()
+    finally:
+        for key, value in saved.items():
+            os.environ.pop(key, None) if value is None else os.environ.__setitem__(key, value)
+        if saved_secret is None:
+            os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+        else:
+            os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
+
+
+def _test_modal_remote_missing_credentials() -> None:
+    saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
+    saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+    try:
+        try:
+            run_malvin_remote(["--version"])
+        except click.ClickException as exc:
+            assert "Cursor API key required" in str(exc)
+        else:
+            raise AssertionError("expected ClickException")
+    finally:
+        for key, value in saved.items():
+            os.environ.pop(key, None) if value is None else os.environ.__setitem__(key, value)
+        if saved_secret is None:
+            os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+        else:
+            os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
 
 
 def run_unit_tests() -> None:
@@ -287,6 +359,7 @@ def run_unit_tests() -> None:
     _test_cursor_and_stream()
     _test_sandbox_app()
     _test_modal_remote()
+    _test_modal_remote_missing_credentials()
     _test_render_empty_argv_help()
     _test_empty_argv_help()
     _test_click_cli()
@@ -341,10 +414,21 @@ def _test_click_cli() -> None:
     )
     fake_sandbox = MagicMock()
     fake_sandbox.exec.return_value = fake_proc
-    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
-        result = runner.invoke(cli, ["--version"])
-    assert result.exit_code == 7
-    fake_sandbox.detach.assert_called_once()
+    saved = {key: os.environ.pop(key, None) for key in CURSOR_ENV_KEYS}
+    saved_secret = os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+    try:
+        os.environ["CURSOR_API_KEY"] = "test-key"
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
+            result = runner.invoke(cli, ["--version"])
+        assert result.exit_code == 7
+        fake_sandbox.detach.assert_called_once()
+    finally:
+        for key, value in saved.items():
+            os.environ.pop(key, None) if value is None else os.environ.__setitem__(key, value)
+        if saved_secret is None:
+            os.environ.pop(MODAL_CURSOR_SECRET_NAME_ENV, None)
+        else:
+            os.environ[MODAL_CURSOR_SECRET_NAME_ENV] = saved_secret
 
 
 if __name__ == "__main__":

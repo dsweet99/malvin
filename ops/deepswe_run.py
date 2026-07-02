@@ -3,7 +3,10 @@
 
 Phase-0/1 harness from ``deepswe.md``. ``solve TASK_NAME`` runs malvin in a Modal
 sandbox with a Cursor API CIDR allowlist, harvests the workspace, then grades in a
-separate Modal sandbox with ``block_network=True``. ``solve --local TASK_NAME`` runs both phases in
+separate Modal sandbox with ``block_network=True``. Modal agent runs require a Cursor
+API key (``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the
+shell that launches the command; interactive ``agent login`` is not available inside
+Modal sandboxes. ``solve --local TASK_NAME`` runs both phases in
 one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
@@ -21,7 +24,7 @@ Examples::
     python ops/deepswe_run.py tasks
     python ops/deepswe_run.py solve bandit-interprocedural-taint-checks
     python ops/deepswe_run.py solve --local bandit-interprocedural-taint-checks
-    python ops/deepswe_run.py hello bandit-interprocedural-taint-checks
+    python ops/deepswe_run.py hello bandit-interprocedural-taint-checks  # Modal auth + CIDR smoke (no grade)
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
     python ops/deepswe_run.py run --task /task --workspace /app --runtime in-sandbox --command code
@@ -1480,12 +1483,14 @@ def run_modal_solve(
 ) -> None:
     """Dispatch task-name solves to Modal (lazy import keeps self-test Modal-free)."""
     try:
-        from deepswe_modal import run_modal_eval
+        from deepswe_modal import require_cursor_credentials_for_agent, run_modal_eval
     except ModuleNotFoundError as exc:
         raise click.ClickException(
             "Modal runtime requires the modal package (pip install modal). "
             "Use --local for local Docker instead."
         ) from exc
+
+    require_cursor_credentials_for_agent(grade_only=grade_only)
     run_modal_eval(
         task_dir=task_dir,
         malvin_command=malvin_command,
@@ -2167,7 +2172,7 @@ def hello(
     dry_run: bool,
     malvin_args: tuple[str, ...],
 ) -> None:
-    """Run malvin hello (Cursor connectivity probe). Use ``--host`` for a local probe."""
+    """Run malvin hello (Cursor connectivity probe). Default: full Modal sandbox smoke test (auth + CIDR allowlist, no Harbor grade). Use ``--host`` for a local probe."""
     if run_on_host:
         if use_local_docker:
             raise click.ClickException("Use either --host or --local, not both")
@@ -2283,6 +2288,37 @@ def _test_solve_dry_run() -> None:
     assert "--runtime in-sandbox" in result.output
 
 
+def _patch_modal_cursor_credentials() -> Any:
+    """Self-test helper: agent Modal paths require host Cursor credentials."""
+    return patch("deepswe_modal.cursor_credentials_available", return_value=True)
+
+
+def _test_solve_modal_missing_credentials() -> None:
+    """Agent Modal solve fails fast when host lacks Cursor credentials."""
+    from click.testing import CliRunner
+
+    tasks_root = default_deepswe_tasks_root()
+    if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
+        return
+    keys = ["CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY", "MODAL_CURSOR_SECRET_NAME"]
+    saved = {key: os.environ.pop(key, None) for key in keys}
+    try:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
+        )
+        assert result.exit_code != 0, result.output
+        assert "Cursor API key required" in result.output
+        assert "Dry run: would materialize workspace" not in result.output
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
 def _test_solve_modal_dry_run() -> None:
     from click.testing import CliRunner
 
@@ -2314,10 +2350,11 @@ def _test_solve_modal_full_dry_run() -> None:
     if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
         return
     runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
-    )
+    with _patch_modal_cursor_credentials():
+        result = runner.invoke(
+            cli,
+            ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
+        )
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "Dry run: malvin agent in Modal sandbox (Cursor API allowlist)" in result.output
@@ -2338,7 +2375,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     def fake_modal_eval(**kwargs: Any) -> None:
         captured["reset_flag"] = kwargs.get("reset_flag", False)
 
-    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+    with _patch_modal_cursor_credentials(), patch("deepswe_modal.run_modal_eval", fake_modal_eval):
         result = runner.invoke(
             cli,
             ["solve", "bandit-interprocedural-taint-checks", "--dry-run"],
@@ -2744,9 +2781,12 @@ def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
     except ModuleNotFoundError:
         return
     runner = CliRunner()
-    with patch(
-        "deepswe_modal.run_modal_eval",
-        side_effect=modal.exception.RemoteError("billing cycle spend limit reached"),
+    with (
+        _patch_modal_cursor_credentials(),
+        patch(
+            "deepswe_modal.run_modal_eval",
+            side_effect=modal.exception.RemoteError("billing cycle spend limit reached"),
+        ),
     ):
         result = runner.invoke(
             cli,
@@ -3047,7 +3087,7 @@ def _test_hello_modal_dry_run() -> None:
     def fake_modal_eval(**kwargs: Any) -> None:
         captured.update(kwargs)
 
-    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
+    with _patch_modal_cursor_credentials(), patch("deepswe_modal.run_modal_eval", fake_modal_eval):
         result = runner.invoke(
             cli,
             ["hello", "bandit-interprocedural-taint-checks", "--dry-run"],
@@ -3211,6 +3251,7 @@ def run_self_tests() -> None:
     _test_docker_local_eval_cmd()
     _test_solve_dry_run()
     _test_solve_modal_dry_run()
+    _test_solve_modal_missing_credentials()
     _test_solve_modal_full_dry_run()
     _test_solve_resets_workspace_for_agent_runs()
     _test_solve_local_dry_run_passes_reset()
