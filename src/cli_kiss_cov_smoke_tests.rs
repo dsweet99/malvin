@@ -115,7 +115,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = crate::cli::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
-    let _ = stringify!(kpop_engine_session_declared_solved_detects_kpop_solved_marker);
+    let _ = stringify!(gate_retry_strips_stale_mpc_plan_done_before_next_attempt);
     let _ = stringify!(crate::kpop_engine::run_kpop_engine);
     let _ = stringify!(crate::kpop_engine::run_kpop_hard_constraints_after_session);
     let _ = stringify!(crate::kpop_engine::finish_kpop_engine_after_pass);

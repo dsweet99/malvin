@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    ReviseSpawn, acp_mock_revise_kpop_empty_output_js, acp_mock_revise_kpop_solved_without_output_js,
+    ReviseSpawn, acp_mock_revise_kpop_empty_output_js, acp_mock_revise_mpc_plan_done_without_output_js,
     acp_mock_revise_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output, fast_test_home_workspace,
     seed_malvin_checks, spawn_revise, cached_mock_executable,
 };
@@ -87,7 +87,7 @@ fn revise_fails_when_agent_solves_but_output_missing() {
     seed_malvin_checks(&workspace, "kiss check\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_revise_kpop_solved_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_revise_mpc_plan_done_without_output_js());
     let out = spawn_revise(&ReviseSpawn {
         workspace: &workspace,
         home: &home,

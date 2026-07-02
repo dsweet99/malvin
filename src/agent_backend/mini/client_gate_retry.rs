@@ -9,7 +9,6 @@ use crate::acp::{
     backoff_after_mini_gate_failure, retries_noun, AgentError, CoderPromptOptions,
 };
 use crate::fork_state::ForkState;
-use crate::kpop_log_protocol::strip_declared_success_on_disk;
 use crate::kpop_progression::strip_mpc_plan_done_on_disk;
 use crate::nested_budget_scopes::BudgetScopeLayer;
 
@@ -83,9 +82,6 @@ pub(crate) async fn run_coder_prompt_with_gate_retries(
         .await?
         {
             return fail_gate_exhausted_with_error(client, &last_error);
-        }
-        if let Some(exp_log_path) = opts.exp_log_path {
-            strip_declared_success_on_disk(exp_log_path);
         }
         if let Some(mpc_plan_path) = opts.mpc_plan_path {
             strip_mpc_plan_done_on_disk(mpc_plan_path);

@@ -2,8 +2,7 @@
 
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
-use super::{run_kpop_engine_session, KPopEngineParams, KPopEngineMultiturnCtx, KPopHardConstraints};
-use crate::kpop_log_protocol::strip_declared_success_on_disk;
+use super::{run_kpop_engine_session, KPopEngineMultiturnCtx, KPopEngineParams, KPopHardConstraints};
 use crate::agent_backend::AgentBackend;
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
@@ -120,25 +119,6 @@ pub(crate) fn build_iteration_params(input: IterationFixture<'_>) -> KPopEngineI
         exp_log_path: input.exp_log_path,
     }
 }
-
-#[test]
-fn     strip_stale_kpop_solved_for_transport_retry_removes_marker_from_disk() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(
-        &path,
-        "## Step 1 — KPOP stale\n## KPOP_SOLVED\npremature\n",
-    )
-    .expect("write");
-    strip_declared_success_on_disk(&path);
-    let text = std::fs::read_to_string(&path).expect("read");
-    assert!(
-        !text.contains("## KPOP_SOLVED"),
-        "stale KPOP_SOLVED must be removed from disk: {text:?}"
-    );
-    assert!(text.contains("## Step 1 — KPOP stale"));
-}
-
 
 #[cfg(unix)]
 #[test]

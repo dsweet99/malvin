@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    DelightSpawn, acp_mock_delight_kpop_empty_output_js, acp_mock_delight_kpop_solved_without_output_js,
+    DelightSpawn, acp_mock_delight_kpop_empty_output_js, acp_mock_delight_mpc_plan_done_without_output_js,
     acp_mock_delight_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output, seed_malvin_checks,
     spawn_delight, fast_test_home_workspace, cached_mock_executable,
 };
@@ -95,7 +95,7 @@ fn delight_fails_when_agent_solves_but_output_missing() {
     let (root, home, workspace) = fast_test_home_workspace();
     seed_malvin_checks(&workspace, "kiss check\n");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_delight_kpop_solved_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_delight_mpc_plan_done_without_output_js());
     let out = spawn_delight(&DelightSpawn {
         workspace: &workspace,
         home: &home,

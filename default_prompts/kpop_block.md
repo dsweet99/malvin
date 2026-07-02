@@ -14,7 +14,7 @@ The budget for any KPOPs in this session is {{ want }}.
 
 4. KPOP: Implement the plan.
 
-
+5. When work is complete, overwrite `{{ mpc_plan_path }}` with exactly `DONE` (same early-exit contract as step 1).
 
 ## User request (read this file):
 

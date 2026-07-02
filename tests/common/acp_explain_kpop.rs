@@ -87,7 +87,7 @@ pub fn acp_mock_explain_kpop_steps_js() -> String {
     acp_mock_js("", &format!("{}\n{done}", acp_mock_explain_revise_kpop_script()))
 }
 
-pub fn acp_mock_explain_kpop_solved_without_output_js() -> String {
+pub fn acp_mock_explain_mpc_plan_done_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'explain solved only\n'");
     acp_mock_js("", &format!("{}\n{done}", acp_mock_explain_kpop_script("")))
 }

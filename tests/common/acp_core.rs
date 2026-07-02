@@ -146,7 +146,7 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
     )
 }
 
-pub fn acp_mock_bug_kpop_solved_js() -> String {
+pub fn acp_mock_bug_mpc_plan_done_js() -> String {
     let body = r"    const fs = require('fs');
     const path = require('path');
     const os = require('os');

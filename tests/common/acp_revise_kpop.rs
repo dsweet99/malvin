@@ -57,7 +57,7 @@ const REVISE_DOC_DELETE: &str = r"      const docMatch = promptText.match(/Revis
         try { fs.unlinkSync(docAbs); } catch (_) {}
       }";
 
-pub fn acp_mock_revise_kpop_solved_without_output_js() -> String {
+pub fn acp_mock_revise_mpc_plan_done_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'revise solved only\n'");
     acp_mock_js(
         "",

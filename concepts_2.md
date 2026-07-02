@@ -8,25 +8,26 @@ This glossary documents cross-cutting ideas that malvin implements across many m
 
 ### Problem it solves
 
-The outer `KPopEngine` gate loop must decide when to stop iterating. Exit depends on workflow-specific rules: consecutive `## KPOP_SOLVED` markers in the experiment log (threshold varies by workflow), and whether workspace quality gates must pass before the loop terminates. Operators and workflow authors need predictable stop conditions without each call site re-implementing the same predicates.
+The outer `KPopEngine` gate loop must decide when to stop iterating. Exit depends on workflow-specific rules: whether the mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE`, and whether workspace quality gates must pass before the loop terminates. Operators and workflow authors need predictable stop conditions without each call site re-implementing the same predicates.
 
 ### Where it lives
 
-- `src/kpop_engine/run_loop_exit.rs` — `GateLoopExitCtx`, `kpop_solved_early_exit`, `gates_pass_for_exit`
-- `src/kpop_engine/behavior.rs` — `KPopHardConstraints`, `KPopHardConstraintsExit` presets per workflow (consecutive-solved threshold, gate requirement, checks restore)
+- `src/kpop_engine/run_loop_exit.rs` — `GateLoopExitCtx`, `mpc_plan_early_exit`, `gates_pass_for_exit`
+- `src/kpop_engine/behavior.rs` — `KPopHardConstraints`, `KPopHardConstraintsExit` presets per workflow (gate requirement, checks restore)
 - `src/kpop_engine/run_loop.rs` — iteration driver, carry-forward dotfile restore before each snapshot
-- `src/kpop_progression/counters.rs` — parses experiment log for consecutive `## KPOP_SOLVED` streaks
-- `src/kpop_log_protocol/mod.rs` — `ExperimentLog` marker parsing (`## Step N — KPop`, `## KPOP_SOLVED`)
+- `src/kpop_progression/mpc_plan.rs` — `mpc_plan_declares_done`, `strip_mpc_plan_done_on_disk`
+- `src/kpop_progression/counters.rs` — `agent_declared_success` (delegates to mpc plan `DONE`)
+- `src/kpop_log_protocol/mod.rs` — `ExperimentLog` step-heading parsing (`## Step N — KPop`)
 
-When consecutive `## KPOP_SOLVED` markers meet the workflow threshold and gates pass (where required), the outer gate loop exits early.
+When the mpc plan declares `DONE` and gates pass (where required), the outer gate loop exits early via `mpc_plan_early_exit`.
 
 ### Why there is no single type
 
-Exit predicates, consecutive-solved streak tracking, and gate re-run at exit are separate functions wired through `GateLoopExitCtx`. `KPopHardConstraints` is a config bundle describing per-workflow thresholds, not a state machine that owns iteration progress or marker history.
+Exit predicates, mpc plan `DONE` checks, and gate re-run at exit are separate functions wired through `GateLoopExitCtx`. `KPopHardConstraints` is a config bundle describing per-workflow gate requirements, not a state machine that owns iteration progress.
 
 ### Related typing aids
 
-`GateLoopExitCtx` bundles references needed at exit time. `KPopHardConstraints` and `KPopHardConstraintsExit` label workflow presets. `ExperimentLog` parses marker headings but does not drive the loop. Each aid documents a slice of the contract; none coordinates the full exit lifecycle.
+`GateLoopExitCtx` bundles references needed at exit time. `KPopHardConstraints` and `KPopHardConstraintsExit` label workflow presets. `ExperimentLog` parses hypothesis-step headings but does not drive loop exit. Each aid documents a slice of the contract; none coordinates the full exit lifecycle.
 
 ---
 

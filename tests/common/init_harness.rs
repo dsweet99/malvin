@@ -22,7 +22,7 @@ pub fn run_has_mpc_plan_done(run_dir: &Path) -> bool {
         .is_ok_and(|text| text.trim() == "DONE")
 }
 
-pub fn gate_exp_logs_with_kpop_solved(run_dir: &Path) -> Vec<std::path::PathBuf> {
+pub fn paths_where_mpc_plan_is_done(run_dir: &Path) -> Vec<std::path::PathBuf> {
     if run_has_mpc_plan_done(run_dir) {
         vec![run_dir.join("_kpop").join("mpc_plan.md")]
     } else {

@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KPopHardConstraintsExit {
-    /// Two consecutive `## KPOP_SOLVED` markers and passing gates; restore checks each turn.
+    /// `CodeTidy` = single mpc plan `DONE` and passing gates; restore checks each turn.
     CodeTidy,
-    /// One `## KPOP_SOLVED` and valid checks file; do not restore `.malvin/checks` between turns.
+    /// `InitDiscovery` = mpc plan `DONE` and valid checks file; do not restore `.malvin/checks` between turns.
     InitDiscovery,
 }
 

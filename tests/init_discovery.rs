@@ -5,7 +5,7 @@ mod common;
 use std::fs;
 
 use common::{
-    gate_exp_logs_with_kpop_solved, git_commit_all, git_init, malvin_init_output, only_run_dir,
+    paths_where_mpc_plan_is_done, git_commit_all, git_init, malvin_init_output, only_run_dir,
 };
 
 fn committed_repo_with_readme() -> tempfile::TempDir {
@@ -40,8 +40,8 @@ fn malvin_init_runs_discovery_on_committed_existing_repo() {
 
     let run_dir = only_run_dir(project.path(), home.path());
     assert!(
-        !gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
-        "expected at least one gate exp log with ## KPOP_SOLVED under {}",
+        !paths_where_mpc_plan_is_done(&run_dir).is_empty(),
+        "expected mpc plan DONE under {}",
         run_dir.display()
     );
 

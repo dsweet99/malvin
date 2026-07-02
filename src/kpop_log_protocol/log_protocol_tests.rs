@@ -1,4 +1,4 @@
-use super::{strip_declared_success_on_disk, ExperimentLog, StepHeadingKind};
+use super::{ExperimentLog, StepHeadingKind};
 
 #[test]
 fn counts_steps_in_exp_log() {
@@ -9,72 +9,11 @@ fn counts_steps_in_exp_log() {
 }
 
 #[test]
-fn declares_kpop_solved_requires_exact_marker_line() {
-    let log = ExperimentLog::from_text("## KPOP_SOLVED extra\n");
-    assert!(!log.declares_kpop_solved());
-    let log = ExperimentLog::from_text("## KPOP_SOLVED\n");
-    assert!(log.declares_kpop_solved());
-    assert_eq!(
-        ExperimentLog::from_text("## KPOP_SOLVED\n## KPOP_SOLVED\n").kpop_solved_marker_count(),
-        2
-    );
-    assert_eq!(ExperimentLog::from_text("preamble\n").kpop_solved_marker_count(), 0);
-    assert_eq!(
-        ExperimentLog::from_text("  ## KPOP_SOLVED\n").kpop_solved_marker_count(),
-        1
-    );
-    assert_eq!(
-        ExperimentLog::from_text("## KPOP_SOLVED   \n").kpop_solved_marker_count(),
-        1
-    );
-    assert_eq!(
-        ExperimentLog::from_text("## KPOP_SOLVED trailing\n").kpop_solved_marker_count(),
-        0
-    );
-    assert_eq!(
-        ExperimentLog::from_text("## KPOP_SOLVED-ish\n").kpop_solved_marker_count(),
-        0
-    );
-}
-
-#[test]
 fn read_round_trip() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "body\n").expect("write");
     assert_eq!(ExperimentLog::read(&path).expect("read").as_str(), "body\n");
-}
-
-#[test]
-fn strip_declared_success_removes_marker_and_trailing_content() {
-    let mut log = ExperimentLog::from_text(
-        "## Step 1 — KPop x\nbody\n## KPOP_SOLVED\nsummary\nmore\n",
-    );
-    assert!(log.strip_declared_success());
-    assert_eq!(log.as_str(), "## Step 1 — KPop x\nbody\n");
-    assert!(!log.declares_kpop_solved());
-}
-
-#[test]
-fn strip_declared_success_noop_without_marker() {
-    let mut log = ExperimentLog::from_text("## Step 1 — KPop x\n");
-    assert!(!log.strip_declared_success());
-    assert_eq!(log.as_str(), "## Step 1 — KPop x\n");
-}
-
-#[test]
-fn strip_declared_success_on_disk_removes_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(
-        &path,
-        "## Step 1 — KPop x\n## KPOP_SOLVED\nmore\n",
-    )
-    .expect("write");
-    strip_declared_success_on_disk(&path);
-    let log = ExperimentLog::read(&path).expect("read");
-    assert_eq!(log.as_str(), "## Step 1 — KPop x\n");
-    assert!(!log.declares_kpop_solved());
 }
 
 #[test]

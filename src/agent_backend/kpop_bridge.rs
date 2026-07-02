@@ -19,7 +19,7 @@ pub(crate) async fn run_kpop_flow_once_mini(
 ) -> Result<(), AgentError> {
     client.begin_coder_session(args.cwd).await?;
     for prompt in args.kpop_prompts {
-        if let Err(e) = run_kpop_prompt(client, prompt, args.kpop_log, None).await {
+        if let Err(e) = run_kpop_prompt(client, prompt, args.kpop_log).await {
             client.end_coder_session().await.ok();
             return kpop_fail_after_prompt(KpopFailAfterPrompt {
                 cwd: args.cwd,
@@ -53,7 +53,6 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
             client,
             prompt.as_str(),
             ctl.kpop_log.as_path(),
-            Some(ctl.state.exp_log_path()),
         )
         .await
         {

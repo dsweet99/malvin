@@ -1,4 +1,3 @@
-use crate::kpop_log_protocol::strip_declared_success_on_disk;
 use crate::kpop_progression::strip_mpc_plan_done_on_disk;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
@@ -134,7 +133,6 @@ async fn run_kpop_engine_coder_turn(
             CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 single_attempt: true,
-                exp_log_path: Some(&ctx.iteration.exp_log_path),
                 mpc_plan_path: Some(&crate::artifacts::mpc_plan_path(prepared.artifacts())),
                 ..Default::default()
             },
@@ -213,7 +211,6 @@ pub(crate) async fn run_kpop_engine_session(
                     Err(err) => return Err(err.0),
                     Ok(true) => break,
                     Ok(false) => {
-                        strip_declared_success_on_disk(&ctx.iteration.exp_log_path);
                         strip_mpc_plan_done_on_disk(&crate::artifacts::mpc_plan_path(
                             ctx.iteration.loop_params.prepared.artifacts(),
                         ));

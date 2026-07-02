@@ -11,8 +11,8 @@ mod counters_tests;
 mod multiturn_kiss;
 
 pub use counters::{
-    agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
-    hypotheses_emitted, read_exp_log_text,
+    agent_declared_success, count_kpop_entries, count_mbc2_entries, hypotheses_emitted,
+    read_exp_log_text,
 };
 pub use mpc_plan::{mpc_plan_declares_done, strip_mpc_plan_done_on_disk};
 pub use multiturn::KpopMultiturnState;

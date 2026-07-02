@@ -1,6 +1,6 @@
 # malvin code
 
-Implement a **plan** using malvin’s **KPop gate loop**: repeated agent sessions scoped by `code_constraints.md` until quality gates pass and the experiment log records consecutive success.
+Implement a **plan** using malvin’s **KPop gate loop**: repeated agent sessions scoped by `code_constraints.md` until the mpc plan file declares `DONE` and quality gates pass.
 
 ## Summary
 

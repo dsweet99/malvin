@@ -1,6 +1,6 @@
 use super::counters::{
-    agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
-    hypotheses_emitted, read_exp_log_text,
+    agent_declared_success, count_kpop_entries, count_mbc2_entries, hypotheses_emitted,
+    read_exp_log_text,
 };
 
 #[test]
@@ -10,7 +10,6 @@ fn kiss_cov_counter_wrapper_symbols() {
         hypotheses_emitted,
         count_kpop_entries,
         count_mbc2_entries,
-        count_kpop_solved_markers,
         read_exp_log_text,
     );
     let _ = stringify!(agent_declared_success);
@@ -21,7 +20,8 @@ fn kiss_cov_counters_module_path_refs() {
     use crate::kpop_progression::counters::{agent_declared_success, hypotheses_emitted};
     let text = "## Step 1 — KPop a\n";
     assert_eq!(hypotheses_emitted(text), 1);
-    assert!(!agent_declared_success(text));
+    let tmp = tempfile::tempdir().expect("tempdir");
+    assert!(!agent_declared_success(tmp.path().join("mpc_plan.md").as_path()));
 }
 
 #[test]
@@ -33,15 +33,16 @@ fn counts_steps_in_exp_log() {
 }
 
 #[test]
-fn agent_declared_success_requires_exact_marker_line() {
-    assert!(!agent_declared_success("## KPOP_SOLVED extra\n"));
-    assert!(agent_declared_success("## KPOP_SOLVED\n"));
-    assert_eq!(count_kpop_solved_markers("## KPOP_SOLVED\n## KPOP_SOLVED\n"), 2);
-    assert_eq!(count_kpop_solved_markers("preamble\n"), 0);
-    assert_eq!(count_kpop_solved_markers("  ## KPOP_SOLVED\n"), 1);
-    assert_eq!(count_kpop_solved_markers("## KPOP_SOLVED   \n"), 1);
-    assert_eq!(count_kpop_solved_markers("## KPOP_SOLVED trailing\n"), 0);
-    assert_eq!(count_kpop_solved_markers("## KPOP_SOLVED-ish\n"), 0);
+fn agent_declared_success_requires_mpc_plan_done() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("mpc_plan.md");
+    assert!(!agent_declared_success(&path));
+    std::fs::write(&path, "DONE\n").expect("write");
+    assert!(agent_declared_success(&path));
+    std::fs::write(&path, "DONE extra\n").expect("write");
+    assert!(!agent_declared_success(&path));
+    std::fs::write(&path, "NOT DONE\n").expect("write");
+    assert!(!agent_declared_success(&path));
 }
 
 #[test]

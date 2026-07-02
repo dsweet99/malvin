@@ -5,7 +5,7 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_kpop_solved_without_output_js,
+    ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_mpc_plan_done_without_output_js,
     acp_mock_explain_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
     seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
     spawn_explain, test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
@@ -127,7 +127,7 @@ fn explain_fails_when_agent_solves_but_output_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_kpop_solved_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_explain_mpc_plan_done_without_output_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,

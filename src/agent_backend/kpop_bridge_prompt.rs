@@ -6,12 +6,10 @@ use crate::artifacts::SessionDotfileBackups;
 use crate::agent_backend::mini::MiniAgentClient;
 
 pub(super) fn kpop_coder_opts<'a>(
-    exp_log_path: Option<&'a std::path::Path>,
     mpc_plan_path: Option<&'a std::path::Path>,
 ) -> CoderPromptOptions<'a> {
     CoderPromptOptions {
         llm_phase: Some(crate::run_timing::TimingPhase::Implement),
-        exp_log_path,
         mpc_plan_path,
         ..Default::default()
     }
@@ -21,10 +19,9 @@ pub(super) async fn run_kpop_prompt(
     client: &mut MiniAgentClient,
     prompt: &str,
     log_path: &std::path::Path,
-    exp_log_path: Option<&std::path::Path>,
 ) -> Result<(), AgentError> {
     client
-        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts(exp_log_path, None))
+        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts(None))
         .await
 }
 

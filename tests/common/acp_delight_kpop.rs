@@ -50,7 +50,7 @@ pub fn acp_mock_delight_kpop_steps_js() -> String {
     acp_mock_js("", &format!("{}\n{done}", acp_mock_delight_kpop_script(DELIGHT_PITCH_WRITE)))
 }
 
-pub fn acp_mock_delight_kpop_solved_without_output_js() -> String {
+pub fn acp_mock_delight_mpc_plan_done_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'delight solved only\n'");
     acp_mock_js("", &format!("{}\n{done}", acp_mock_delight_kpop_script("")))
 }

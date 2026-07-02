@@ -21,8 +21,6 @@ pub struct CoderPromptOptions<'a> {
     pub stdout_bracket_label: Option<&'a str>,
     /// When true, skip client-level prompt retries (gate kpop outer loop owns retries).
     pub single_attempt: bool,
-    /// When set, strip stale `## KPOP_SOLVED` from this experiment log before each gate retry.
-    pub exp_log_path: Option<&'a Path>,
     /// When set, strip stale mpc plan `DONE` before each gate retry.
     pub mpc_plan_path: Option<&'a Path>,
 }

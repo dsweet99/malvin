@@ -31,7 +31,6 @@ impl AgentClient {
             do_trace_split,
             stdout_bracket_label,
             single_attempt,
-            exp_log_path: _,
             mpc_plan_path: _,
         } = opts;
         let session = self
@@ -118,7 +117,6 @@ mod tests {
                     do_trace_split: None,
                     stdout_bracket_label: None,
                     single_attempt: true,
-                    exp_log_path: None,
                     mpc_plan_path: None,
                 },
             )

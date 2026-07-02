@@ -5,7 +5,7 @@ mod common;
 use std::fs;
 
 use common::{
-    gate_exp_logs_with_kpop_solved, git_init, malvin_init_output, only_run_dir,
+    paths_where_mpc_plan_is_done, git_init, malvin_init_output, only_run_dir,
 };
 
 fn combined_output(out: &std::process::Output) -> String {
@@ -46,7 +46,7 @@ fn malvin_init_empty_repo_skips_discovery_and_uses_builtin_checks() {
 
     let run_dir = only_run_dir(project.path(), home.path());
     assert!(
-        gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
+        paths_where_mpc_plan_is_done(&run_dir).is_empty(),
         "empty repo must not run KPop discovery"
     );
 }
@@ -126,8 +126,8 @@ fn malvin_init_unborn_head_with_precommit_only_triggers_discovery() {
 
     let run_dir = only_run_dir(project.path(), home.path());
     assert!(
-        !gate_exp_logs_with_kpop_solved(&run_dir).is_empty(),
-        "expected KPop discovery exp log with ## KPOP_SOLVED under {}",
+        !paths_where_mpc_plan_is_done(&run_dir).is_empty(),
+        "expected mpc plan DONE under {}",
         run_dir.display()
     );
 }

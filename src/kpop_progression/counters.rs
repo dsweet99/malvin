@@ -2,6 +2,8 @@ use std::path::Path;
 
 use crate::kpop_log_protocol::ExperimentLog;
 
+use super::mpc_plan::mpc_plan_declares_done;
+
 /// Reads the experiment log at `path` into a string.
 ///
 /// # Errors
@@ -27,30 +29,27 @@ pub fn hypotheses_emitted(text: &str) -> usize {
     log.kpop_step_count() + log.mbc2_step_count()
 }
 
+/// True when the mpc plan file at `path` exists and its trimmed contents are exactly `DONE`.
 #[must_use]
-pub fn count_kpop_solved_markers(text: &str) -> usize {
-    ExperimentLog::from_text(text).kpop_solved_marker_count()
-}
-
-#[must_use]
-pub fn agent_declared_success(text: &str) -> bool {
-    ExperimentLog::from_text(text).kpop_solved_marker_count() > 0
+pub fn agent_declared_success(path: &Path) -> bool {
+    mpc_plan_declares_done(path).unwrap_or(false)
 }
 
 #[cfg(test)]
 mod kiss_cov_gate_refs {
-    use super::{
-        agent_declared_success, count_kpop_entries, count_kpop_solved_markers, count_mbc2_entries,
-        hypotheses_emitted,
-    };
+    use super::{agent_declared_success, count_kpop_entries, count_mbc2_entries, hypotheses_emitted};
 
     #[test]
     fn kiss_cov_counter_wrappers_execute() {
-        let text = "## Step 1 — KPop a\n## KPOP_SOLVED\n";
+        let text = "## Step 1 — KPop a\n";
         assert_eq!(count_kpop_entries(text), 1);
         assert_eq!(count_mbc2_entries(text), 0);
         assert_eq!(hypotheses_emitted(text), 1);
-        assert!(agent_declared_success(text));
-        assert_eq!(count_kpop_solved_markers(text), 1);
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mpc = tmp.path().join("mpc_plan.md");
+        assert!(!agent_declared_success(&mpc));
+        std::fs::write(&mpc, "DONE\n").expect("write");
+        assert!(agent_declared_success(&mpc));
     }
 }

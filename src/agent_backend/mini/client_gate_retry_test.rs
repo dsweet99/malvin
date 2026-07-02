@@ -130,33 +130,31 @@ async fn gate_retry_billing_failure_fails_fast_without_gate_attempt_message() {
 }
 
 #[tokio::test]
-async fn gate_retry_strips_stale_kpop_solved_before_next_attempt() {
+async fn gate_retry_strips_stale_mpc_plan_done_before_next_attempt() {
     use std::path::PathBuf;
 
-    use crate::kpop_log_protocol::ExperimentLog;
-
     let tmp = tempfile::tempdir().expect("tempdir");
-    let exp_log_path: PathBuf = tmp.path().join("exp_log.md");
-    std::fs::write(&exp_log_path, "## Step 1 — KPop x\n").expect("write exp log");
-    let mut client = gate_retry_kpop_strip_mock_client(&exp_log_path);
+    let mpc_plan_path: PathBuf = tmp.path().join("mpc_plan.md");
+    std::fs::write(&mpc_plan_path, "").expect("write mpc plan");
+    let mut client = gate_retry_mpc_plan_strip_mock_client(&mpc_plan_path);
     let work_dir = tempfile::tempdir().expect("workdir");
     let log_path = work_dir.path().join("gate_kpop.log");
-    run_gate_retry_kpop_strip_prompt(&mut client, work_dir.path(), &log_path, &exp_log_path).await;
-    let log = ExperimentLog::read(&exp_log_path).expect("read exp log");
-    assert!(
-        !log.declares_kpop_solved(),
-        "stale KPOP_SOLVED from failed gate attempt must be stripped before retry: {:?}",
-        log.as_str()
+    run_gate_retry_mpc_plan_strip_prompt(&mut client, work_dir.path(), &log_path, &mpc_plan_path)
+        .await;
+    assert_eq!(
+        std::fs::read_to_string(&mpc_plan_path).expect("read mpc plan"),
+        "",
+        "stale mpc plan DONE from failed gate attempt must be stripped before retry"
     );
 }
 
-fn gate_retry_kpop_strip_mock_client(exp_log_path: &std::path::Path) -> MiniAgentClient {
+fn gate_retry_mpc_plan_strip_mock_client(mpc_plan_path: &std::path::Path) -> MiniAgentClient {
     use std::sync::Mutex;
 
     use crate::agent_backend::mini::{LlmBackend, MockScript, MockStep};
     use crate::agent_backend::test_support::{mini_done_response, mini_loop_config, test_io};
 
-    let exp_log_for_hook = exp_log_path.to_path_buf();
+    let mpc_plan_for_hook = mpc_plan_path.to_path_buf();
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
         responses: vec![
             MockStep::RateLimited,
@@ -165,11 +163,8 @@ fn gate_retry_kpop_strip_mock_client(exp_log_path: &std::path::Path) -> MiniAgen
         call_count: 0,
         on_response: Some(Box::new(move |idx, _| {
             if idx == 0 {
-                std::fs::write(
-                    &exp_log_for_hook,
-                    "## Step 1 — KPop x\n## KPOP_SOLVED\npremature\n",
-                )
-                .expect("simulate agent writing solved before gate failure");
+                std::fs::write(&mpc_plan_for_hook, "DONE\n")
+                    .expect("simulate agent writing done before gate failure");
             }
         })),
     }));
@@ -180,11 +175,11 @@ fn gate_retry_kpop_strip_mock_client(exp_log_path: &std::path::Path) -> MiniAgen
     MiniAgentClient::new_mock(config, test_io(), llm)
 }
 
-async fn run_gate_retry_kpop_strip_prompt(
+async fn run_gate_retry_mpc_plan_strip_prompt(
     client: &mut MiniAgentClient,
     work_dir: &std::path::Path,
     log_path: &std::path::Path,
-    exp_log_path: &std::path::Path,
+    mpc_plan_path: &std::path::Path,
 ) {
     use crate::acp::CoderPromptOptions;
 
@@ -196,7 +191,7 @@ async fn run_gate_retry_kpop_strip_prompt(
             "gate_kpop",
             CoderPromptOptions {
                 single_attempt: false,
-                exp_log_path: Some(exp_log_path),
+                mpc_plan_path: Some(mpc_plan_path),
                 ..Default::default()
             },
         )

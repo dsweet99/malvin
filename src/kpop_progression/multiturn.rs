@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use super::counters::{hypotheses_emitted, read_exp_log_text};
-use crate::kpop_log_protocol::strip_declared_success_on_disk;
 use crate::kpop_progression::{mpc_plan_declares_done, strip_mpc_plan_done_on_disk};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
@@ -101,7 +100,6 @@ impl<'a> KpopMultiturnState<'a> {
     pub(crate) fn reset_for_transport_retry(&mut self) {
         self.prompt_sent = false;
         self.done = false;
-        strip_declared_success_on_disk(&self.exp_log_path);
         strip_mpc_plan_done_on_disk(&self.mpc_plan_path);
     }
 }

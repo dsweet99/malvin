@@ -283,7 +283,7 @@ The first row is the fork baseline (\texttt{rich} v15.0.0).
 
 \paragraph{kiss cplx.} \textbf{Y} if \texttt{kiss} complexity/clamp checks beyond structural targets were active; \textbf{N} if only structural targets were enforced.
 
-\paragraph{KPop.} \textbf{Y} if the run used \texttt{malvin tidy} with KPop (including two consecutive \texttt{\#\# KPOP\_SOLVED} early exit); \textbf{N} for the cursor baseline, \texttt{exp-rich-cursor-kiss}, or \exptidy{-no-kpop} (Appendix~\ref{app:kpop}).
+\paragraph{KPop.} \textbf{Y} if the run used \texttt{malvin tidy} with KPop (including mpc plan \texttt{DONE} early exit); \textbf{N} for the cursor baseline, \texttt{exp-rich-cursor-kiss}, or \exptidy{-no-kpop} (Appendix~\ref{app:kpop}).
 
 \subsection{Outcome metrics}
 \label{sec:outcome-metrics}
@@ -797,7 +797,7 @@ All tables report \texttt{kiss\_stats} output: unit count $N$, distribution perc
 \section{KPop}
 \label{app:kpop}
 
-KPop (``Karl Popper'') is the structured investigation method \texttt{malvin tidy} injects into agent prompts via shipped template files (\texttt{kpop\_common.md}, \texttt{kpop\_block.md} in the \texttt{malvin} repository). Each \texttt{malvin tidy} iteration renders this definition together with scope constraints, the \texttt{.malvin/checks} script list, and a per-turn block that caps hypotheses per session and accepts \texttt{\#\# KPOP\_SOLVED} when the agent believes the problem is resolved. Hypothesis-and-test traces are written to experiment logs under \texttt{.malvin/logs/<run>/\_kpop/exp\_log\_*.md}.
+KPop (``Karl Popper'') is the structured investigation method \texttt{malvin tidy} injects into agent prompts via shipped template files (\texttt{kpop\_common.md}, \texttt{kpop\_block.md} in the \texttt{malvin} repository). Each \texttt{malvin tidy} iteration renders this definition together with scope constraints, the \texttt{.malvin/checks} script list, and a per-turn block that caps hypotheses per session. The agent declares completion by writing exactly \texttt{DONE} to \texttt{\_kpop/mpc\_plan.md}. Hypothesis-and-test traces are written to experiment logs under \texttt{.malvin/logs/<run>/\_kpop/exp\_log\_*.md}.
 
 \subsection{Definition}
 
@@ -846,7 +846,7 @@ The explicit \textbf{Brainstorm} step calls \texttt{malvin inspire} to diversify
 
 \subsection{Ablated definition (\texttt{exp-rich-tidy-no-kpop})}
 
-\texttt{exp-rich-tidy-no-kpop} replaces \texttt{kpop\_common.md} with a minimal prompt while keeping \texttt{malvin tidy} (including the requirement for two consecutive \texttt{\#\# KPOP\_SOLVED} markers with \texttt{.malvin/checks} passing):
+\texttt{exp-rich-tidy-no-kpop} replaces \texttt{kpop\_common.md} with a minimal prompt while keeping \texttt{malvin tidy} (including the requirement for mpc plan \texttt{DONE} with \texttt{.malvin/checks} passing):
 
 \begin{kpopdef}
 # Definition: KPop
@@ -869,7 +869,7 @@ This ablation removes structured hypothesize--predict--falsify steps and the \te
 When KPop is ablated, \texttt{malvin tidy} still asks the agent to append an executive summary to the experiment log at end of turn. The following is the agent-written summary from one \texttt{exp-rich-tidy-no-kpop} run (eight outer \texttt{malvin tidy} loops, \texttt{g1}--\texttt{g8}):
 
 \begin{quote}\small
-I ran \texttt{malvin tidy} on the \texttt{rich} fork (\texttt{exp-rich-tidy-no-kpop}) with the goal of passing \texttt{kiss check}, \texttt{ruff check .}, and \texttt{pytest -sv tests}. The session took eight KPop loops (g1--g8). In g1 I did the substantive work: added behavioral tests in \texttt{tests/test\_kiss\_gaps.py}, fixed several existing tests and \texttt{rich/syntax.py}, configured ruff in \texttt{pyproject.toml}, and created \texttt{.kissignore} to exclude demo code and modules where {\texttt{kiss}}'s global name matching cannot disambiguate short names like \texttt{render} and \texttt{cell\_len}. That loop passed all three scripts in-session and declared \texttt{\#\# KPOP\_SOLVED}. Loops g2--g7 repeated the same pattern: each restored \texttt{.kissignore}, verified the three scripts in-session, and declared \texttt{\#\# KPOP\_SOLVED} again, but the outer \texttt{malvin tidy} loop still failed because \texttt{malvin} restores session dotfiles before post-session \texttt{.malvin/checks} run---and \texttt{.kissignore} was missing at snapshot time, so restore deleted any agent-created copy. In g8 I diagnosed that deadlock by reading malvin's dotfile-restore logic and switched to nested \texttt{.gitignore} files under \texttt{examples/}, \texttt{benchmarks/}, \texttt{tools/}, and \texttt{rich/} that kiss honors via \texttt{WalkBuilder} but malvin does not restore. That brought kiss from 39 failing files to zero without relying on \texttt{.kissignore}. I also fixed the ignore files to use \texttt{*} with \texttt{!.gitignore} so they remain trackable in git. Post-g8 \texttt{.malvin/checks} all passed: kiss \texttt{NO VIOLATIONS}, ruff clean, 987 pytest tests passed. The main remaining concern is that the \texttt{rich/.gitignore} approach is effective but somewhat blunt---it excludes entire Rich modules from kiss analysis rather than addressing collisions per module.
+I ran \texttt{malvin tidy} on the \texttt{rich} fork (\texttt{exp-rich-tidy-no-kpop}) with the goal of passing \texttt{kiss check}, \texttt{ruff check .}, and \texttt{pytest -sv tests}. The session took eight KPop loops (g1--g8). In g1 I did the substantive work: added behavioral tests in \texttt{tests/test\_kiss\_gaps.py}, fixed several existing tests and \texttt{rich/syntax.py}, configured ruff in \texttt{pyproject.toml}, and created \texttt{.kissignore} to exclude demo code and modules where {\texttt{kiss}}'s global name matching cannot disambiguate short names like \texttt{render} and \texttt{cell\_len}. That loop passed all three scripts in-session and declared completion under the then-current exit protocol. Loops g2--g7 repeated the same pattern: each restored \texttt{.kissignore}, verified the three scripts in-session, and declared completion again, but the outer \texttt{malvin tidy} loop still failed because \texttt{malvin} restores session dotfiles before post-session \texttt{.malvin/checks} run---and \texttt{.kissignore} was missing at snapshot time, so restore deleted any agent-created copy. In g8 I diagnosed that deadlock by reading malvin's dotfile-restore logic and switched to nested \texttt{.gitignore} files under \texttt{examples/}, \texttt{benchmarks/}, \texttt{tools/}, and \texttt{rich/} that kiss honors via \texttt{WalkBuilder} but malvin does not restore. That brought kiss from 39 failing files to zero without relying on \texttt{.kissignore}. I also fixed the ignore files to use \texttt{*} with \texttt{!.gitignore} so they remain trackable in git. Post-g8 \texttt{.malvin/checks} all passed: kiss \texttt{NO VIOLATIONS}, ruff clean, 987 pytest tests passed. The main remaining concern is that the \texttt{rich/.gitignore} approach is effective but somewhat blunt---it excludes entire Rich modules from kiss analysis rather than addressing collisions per module.
 \end{quote}
 
 \paragraph{Dotfile-restore loophole.}

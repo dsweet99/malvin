@@ -15,8 +15,8 @@ pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
 }
 
 pub const fn acp_mock_kpop_iteration_body() -> &'static str {
-    r"      const wantMatch = promptText.match(/(?:budget for any KPOPs in this session is (\d+)|Complete up to [`]?(\d+)[`]? KPOP iterations)/);
-      const want = wantMatch ? parseInt(wantMatch[1] || wantMatch[2], 10) : 1;
+    r"      const wantMatch = promptText.match(/budget for any KPOPs in this session is (\d+)/);
+      const want = wantMatch ? parseInt(wantMatch[1], 10) : 1;
       function resolvePromptPath(relOrAbs) {
         if (relOrAbs.startsWith('./')) return path.join(process.cwd(), relOrAbs.slice(2));
         if (relOrAbs.startsWith('/')) return relOrAbs;
@@ -45,7 +45,7 @@ pub const fn acp_mock_kpop_iteration_body() -> &'static str {
 }
 
 pub const fn acp_mock_kpop_budget_match_js() -> &'static str {
-    "promptText.match(/(?:budget for any KPOPs in this session is (\\d+)|Complete up to [`]?(\\d+)[`]? KPOP iterations)/)"
+    "promptText.match(/budget for any KPOPs in this session is (\\d+)/)"
 }
 
 fn acp_mock_kpop_steps_body() -> String {

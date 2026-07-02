@@ -85,7 +85,7 @@ mod tests {
     fn kpop_lookup_finds_unique_kpop_log_line() {
         with_test_home(|home, cwd| {
             let (run_dir, exp) = seed_home_run(home, cwd, "20260101_000000_abcabcab");
-            std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write exp");
+            std::fs::write(&exp, "## Step 1 — KPop lookup\n").expect("write exp");
             let rel = format!(
                 "{}/_kpop/exp_log_20260101_000000_abcabcab.md",
                 run_dir.display()

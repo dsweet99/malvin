@@ -1,10 +1,9 @@
-//! **`KPopLogProtocol`** — parsed markers in `exp_log_*.md` (see `src/kpop_engine/`).
+//! **`KPopLogProtocol`** — parsed step headings in `exp_log_*.md` (see `src/kpop_engine/`).
 //!
 //! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
-//! interprets for budget checks and early exit. Prompt sources: `default_prompts/kpop_common.md`,
-//! `default_prompts/kpop_block.md`.
-
-use std::path::Path;
+//! interprets for budget checks. Completion is declared via mpc plan `DONE` in
+//! `_kpop/mpc_plan.md` (see `default_prompts/kpop_block.md`). Prompt sources:
+//! `default_prompts/kpop_common.md`, `default_prompts/kpop_block.md`.
 
 /// Parsed marker kind on a `## Step K — …` heading line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -32,7 +31,7 @@ impl ExperimentLog {
     /// # Errors
     ///
     /// Returns `Err` when the file cannot be read.
-    pub fn read(path: &Path) -> Result<Self, String> {
+    pub fn read(path: &std::path::Path) -> Result<Self, String> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| format!("failed to read exp log {}: {e}", path.display()))?;
         Ok(Self::from_text(text))
@@ -69,39 +68,6 @@ impl ExperimentLog {
         self.kpop_step_count() + self.mbc2_step_count()
     }
 
-    #[must_use]
-    pub fn declares_kpop_solved(&self) -> bool {
-        self.kpop_solved_marker_count() > 0
-    }
-
-    #[must_use]
-    pub fn kpop_solved_marker_count(&self) -> usize {
-        self.text
-            .lines()
-            .filter(|line| marker_line_is_exact("## KPOP_SOLVED", line))
-            .count()
-    }
-
-    /// Remove the first `## KPOP_SOLVED` marker and all lines after it.
-    ///
-    /// Returns `true` when the log contained a solved marker and was truncated.
-    #[must_use]
-    pub fn strip_declared_success(&mut self) -> bool {
-        if !self.declares_kpop_solved() {
-            return false;
-        }
-        let lines: Vec<&str> = self.text.lines().collect();
-        let keep = lines
-            .iter()
-            .position(|line| marker_line_is_exact("## KPOP_SOLVED", line))
-            .unwrap_or(lines.len());
-        self.text = lines[..keep].join("\n");
-        if !self.text.is_empty() && !self.text.ends_with('\n') {
-            self.text.push('\n');
-        }
-        true
-    }
-
     /// Fail when hypothesis steps exceed `max`.
     ///
     /// # Errors
@@ -116,24 +82,6 @@ impl ExperimentLog {
         }
         Ok(())
     }
-}
-
-/// Remove stale `## KPOP_SOLVED` from disk before an ACP transport retry.
-///
-/// Read/write failures are ignored so retry can proceed with prior on-disk state.
-pub fn strip_declared_success_on_disk(path: &Path) {
-    let Ok(mut log) = ExperimentLog::read(path) else {
-        return;
-    };
-    if log.strip_declared_success() {
-        let _ = std::fs::write(path, log.as_str());
-    }
-}
-
-fn marker_line_is_exact(marker: &str, line: &str) -> bool {
-    let t = line.trim_start();
-    t.strip_prefix(marker)
-        .is_some_and(|rest| rest.trim().is_empty())
 }
 
 fn is_kpop_step_label(tail: &str) -> bool {
