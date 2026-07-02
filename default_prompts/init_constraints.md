@@ -13,5 +13,4 @@
   2. `Makefile` / `justfile` test and lint targets
   3. `pyproject.toml` / `package.json` scripts
   4. `.github/workflows/*.{yml,yaml}` CI steps
-- Success means a faithful command list, not passing every gate on first run. Append `## KPOP_SOLVED` when `.malvin/checks` is correct.
-- Note sources and trade-offs briefly in this experiment log.
+

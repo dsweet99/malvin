@@ -1,4 +1,5 @@
 use crate::kpop_log_protocol::strip_declared_success_on_disk;
+use crate::kpop_progression::strip_mpc_plan_done_on_disk;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::agent_backend::agent_backend_timing;
@@ -133,12 +134,18 @@ async fn run_kpop_engine_coder_turn(
             CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 single_attempt: true,
+                exp_log_path: Some(&ctx.iteration.exp_log_path),
+                mpc_plan_path: Some(&crate::artifacts::mpc_plan_path(prepared.artifacts())),
                 ..Default::default()
             },
         )
         .await;
     if prompt_result.is_ok() {
         let malvin_command = format!("malvin {}", params.command);
+        let mpc_plan_done = crate::kpop_progression::mpc_plan_declares_done(
+            &crate::artifacts::mpc_plan_path(prepared.artifacts()),
+        )
+        .unwrap_or(false);
         prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
             crate::cli::kpop_summarize::GateInlineSummarizeCtx {
                 client: ctx.iteration.client,
@@ -147,8 +154,7 @@ async fn run_kpop_engine_coder_turn(
                 malvin_command: &malvin_command,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
-                consecutive_solved_entering: ctx.iteration.consecutive_solved_entering,
-                behavior: params.behavior,
+                mpc_plan_done,
             },
         )
         .await
@@ -208,6 +214,9 @@ pub(crate) async fn run_kpop_engine_session(
                     Ok(true) => break,
                     Ok(false) => {
                         strip_declared_success_on_disk(&ctx.iteration.exp_log_path);
+                        strip_mpc_plan_done_on_disk(&crate::artifacts::mpc_plan_path(
+                            ctx.iteration.loop_params.prepared.artifacts(),
+                        ));
                     }
                 }
             }

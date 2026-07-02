@@ -12,6 +12,7 @@ fn kpop_multiturn_transport_retry_offers_prompt_again_after_failed_attempt() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
+        mpc_plan_path: tmp.path().join("mpc_plan.md"),
         max_hypotheses: 10,
     })
     .expect("state");
@@ -38,6 +39,7 @@ fn reset_for_transport_retry_clears_done_latch_set_by_prompt_sent() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
+        mpc_plan_path: tmp.path().join("mpc_plan.md"),
         max_hypotheses: 10,
     })
     .expect("state");
@@ -56,6 +58,35 @@ fn reset_for_transport_retry_clears_done_latch_set_by_prompt_sent() {
 }
 
 #[test]
+fn transport_retry_strips_stale_mpc_plan_done_and_reoffers_prompt() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let exp_log_path = tmp.path().join("exp_log.md");
+    let mpc_plan_path = tmp.path().join("mpc_plan.md");
+    std::fs::write(&exp_log_path, "\n").expect("write exp log");
+    std::fs::write(&mpc_plan_path, "").expect("write mpc plan");
+
+    let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
+        builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
+        exp_log_path: exp_log_path.clone(),
+        mpc_plan_path: mpc_plan_path.clone(),
+        max_hypotheses: 10,
+    })
+    .expect("state");
+
+    assert!(state.next_prompt().expect("first prompt").is_some());
+    std::fs::write(&mpc_plan_path, "DONE\n").expect("simulate agent writing done before failure");
+    state.reset_for_transport_retry();
+    assert!(
+        state.next_prompt().expect("retry prompt").is_some(),
+        "transport retry must re-offer after stripping stale mpc plan DONE"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&mpc_plan_path).expect("read mpc plan"),
+        ""
+    );
+}
+
+#[test]
 fn transport_retry_strips_stale_kpop_solved_and_reoffers_prompt() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let exp_log_path = tmp.path().join("exp_log.md");
@@ -64,6 +95,7 @@ fn transport_retry_strips_stale_kpop_solved_and_reoffers_prompt() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path: exp_log_path.clone(),
+        mpc_plan_path: tmp.path().join("mpc_plan.md"),
         max_hypotheses: 10,
     })
     .expect("state");

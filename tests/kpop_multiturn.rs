@@ -18,9 +18,11 @@ fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
         "## Step 1 — KPOP a\n## Step 2 — KPOP b\n## Step 3 — MBC2 c\n",
     )
     .unwrap();
+    let mpc_plan = tmp.path().join("mpc_plan.md");
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubEcho(KpopEchoPrompts),
         exp_log_path: path,
+        mpc_plan_path: mpc_plan,
         max_hypotheses: 3,
     })
     .unwrap();
@@ -28,12 +30,16 @@ fn multiturn_stops_immediately_when_exp_log_already_at_max_hypotheses() {
 }
 
 #[test]
-fn multiturn_exits_when_exp_log_hits_success_marker() {
-    let tmp = tempfile::NamedTempFile::new().unwrap();
-    std::fs::write(tmp.path(), "## KPOP_SOLVED\nx\n").unwrap();
+fn multiturn_exits_when_mpc_plan_hits_done() {
+    let tmp = tempfile::tempdir().unwrap();
+    let exp = tmp.path().join("exp.md");
+    let mpc_plan = tmp.path().join("mpc_plan.md");
+    std::fs::write(&exp, "\n").unwrap();
+    std::fs::write(&mpc_plan, "DONE\n").unwrap();
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubEcho(KpopEchoPrompts),
-        exp_log_path: tmp.path().to_path_buf(),
+        exp_log_path: exp,
+        mpc_plan_path: mpc_plan,
         max_hypotheses: 100,
     })
     .unwrap();
@@ -45,9 +51,11 @@ fn kpop_want_equals_max_hypotheses_in_single_prompt() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
+    let mpc_plan = tmp.path().join("mpc_plan.md");
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
+        mpc_plan_path: mpc_plan,
         max_hypotheses: 3,
     })
     .unwrap();
@@ -62,9 +70,11 @@ fn kpop_single_prompt_then_stop_even_after_agent_writes_steps() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
+    let mpc_plan = tmp.path().join("mpc_plan.md");
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path.clone(),
+        mpc_plan_path: mpc_plan,
         max_hypotheses: 50,
     })
     .unwrap();

@@ -57,7 +57,7 @@ See `malvin --doc`.
 
 1. Each outer iteration runs one KPop session with `tidy_constraints.md` + `kpop_program.md`.
 2. Agent logs to `_kpop/exp_log_<iteration>.md`.
-3. Early exit on two consecutive `## KPOP_SOLVED` with passing gates.
+3. Early exit on mpc plan `DONE` with passing gates.
 4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
 
 ## Comparison to `code`

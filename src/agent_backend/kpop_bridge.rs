@@ -19,7 +19,7 @@ pub(crate) async fn run_kpop_flow_once_mini(
 ) -> Result<(), AgentError> {
     client.begin_coder_session(args.cwd).await?;
     for prompt in args.kpop_prompts {
-        if let Err(e) = run_kpop_prompt(client, prompt, args.kpop_log).await {
+        if let Err(e) = run_kpop_prompt(client, prompt, args.kpop_log, None).await {
             client.end_coder_session().await.ok();
             return kpop_fail_after_prompt(KpopFailAfterPrompt {
                 cwd: args.cwd,
@@ -49,7 +49,14 @@ pub(crate) async fn run_kpop_multiturn_once_mini(
                 return Err(AgentError(e));
             }
         };
-        if let Err(e) = run_kpop_prompt(client, prompt.as_str(), ctl.kpop_log.as_path()).await {
+        if let Err(e) = run_kpop_prompt(
+            client,
+            prompt.as_str(),
+            ctl.kpop_log.as_path(),
+            Some(ctl.state.exp_log_path()),
+        )
+        .await
+        {
             client.end_coder_session().await.ok();
             return kpop_fail_after_prompt(KpopFailAfterPrompt {
                 cwd: ctl.cwd,
@@ -75,8 +82,6 @@ mod tests {
     use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
     use crate::agent_backend::mini::{LlmBackend, MiniAgentClient, MockScript, MockStep};
     use crate::agent_backend::test_support::{mini_done_response, mini_loop_config, test_io};
-    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
-    use crate::kpop_progression::KpopMultiturnState;
 
     fn mock_client(responses: Vec<MockStep>) -> MiniAgentClient {
         MiniAgentClient::new_mock(
@@ -150,8 +155,11 @@ mod tests {
                 })),
             })),
         );
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state = KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
+            tmp.path(),
+            exp_log,
+            2,
+        );
         let mut ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
             kpop_log: tmp.path().join("kpop.log"),
@@ -216,8 +224,11 @@ mod tests {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut client = mock_client(vec![MockStep::Ok(mini_done_response())]);
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state = KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
+            tmp.path(),
+            exp_log,
+            2,
+        );
         let mut ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
             kpop_log: tmp.path().join("kpop.log"),

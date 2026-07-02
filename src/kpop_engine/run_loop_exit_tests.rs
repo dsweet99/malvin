@@ -1,19 +1,20 @@
 use crate::kpop_engine::KPopHardConstraints;
 
-use super::super::run_loop_exit::{GateLoopExitCtx, kpop_solved_early_exit};
+use super::super::run_loop_exit::{GateLoopExitCtx, mpc_plan_early_exit};
 use super::run_loop_tests::gate_early_exit_fixture;
 use super::{KPopEngineEarlyExitCtx, KpopEngineLoopIterationCtx};
 
 #[test]
-fn kpop_solved_early_exit_requires_streak_and_gates() {
+fn mpc_plan_early_exit_requires_done_and_gates() {
     let (_tmp, artifacts, backups, _bin, _guard) = gate_early_exit_fixture();
     let gate_ctx = GateLoopExitCtx {
         behavior: KPopHardConstraints::CODE,
         artifacts: &artifacts,
         session_dotfile_backups: &backups,
     };
-    assert!(!kpop_solved_early_exit(&gate_ctx, 1));
-    assert!(kpop_solved_early_exit(&gate_ctx, 2));
+    assert!(!mpc_plan_early_exit(&gate_ctx, false));
+    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write done");
+    assert!(mpc_plan_early_exit(&gate_ctx, true));
 }
 
 #[test]
@@ -33,12 +34,11 @@ fn kpop_engine_loop_ctx_types_are_constructible() {
         params: &params,
         iteration: 1,
         run_timing: &run_timing,
-        consecutive_solved: 0,
         client: &mut client,
     };
     let _ = KPopEngineEarlyExitCtx {
         behavior: KPopHardConstraints::CODE,
-        consecutive_solved: 1,
+        mpc_plan_done: true,
         artifacts: &prepared.artifacts,
         session_dotfile_backups: &backups,
         agent_ran: true,

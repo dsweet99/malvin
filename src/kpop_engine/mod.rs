@@ -12,6 +12,7 @@ pub(crate) use kpop_session_finish::{
 pub(crate) use prepared::KPopEnginePrepared;
 pub(crate) use behavior::KPopHardConstraints;
 pub(crate) use params::KPopEngineParams;
+pub(crate) use run_loop_exit::{GateLoopExitCtx, mpc_plan_early_exit};
 pub(crate) use run_loop::run_kpop_engine;
 
 #[cfg(test)]

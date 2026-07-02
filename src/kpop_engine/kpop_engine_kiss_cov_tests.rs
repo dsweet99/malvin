@@ -138,7 +138,6 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         client: &mut client,
         iteration: 1,
         total_iterations: 1,
-        consecutive_solved_entering: 0,
         exp_log_path: tmp.path().join("exp.md"),
     };
     let KPopEngineIterationParams {
@@ -147,7 +146,6 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         client: _,
         iteration: iter,
         total_iterations,
-        consecutive_solved_entering: _,
         exp_log_path: _,
     } = iteration;
     assert_eq!(iter, 1);
@@ -167,8 +165,8 @@ fn kiss_cov_kpop_engine_loop_iteration_ctx_type() {
 
 #[test]
 fn kiss_cov_kpop_engine_early_exit_fn_names() {
-    let _ = stringify!(crate::kpop_engine::run_loop::kpop_engine_solved_early_exit);
-    let _ = stringify!(crate::kpop_engine::run_loop_exit::kpop_solved_early_exit);
+    let _ = stringify!(crate::kpop_engine::run_loop::kpop_engine_mpc_plan_early_exit);
+    let _ = stringify!(crate::kpop_engine::run_loop_exit::mpc_plan_early_exit);
 }
 
 #[test]

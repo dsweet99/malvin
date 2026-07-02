@@ -16,13 +16,18 @@ pub use super::init_harness_run::{
     malvin_init_output, malvin_init_output_in_place, malvin_init_output_with_home,
 };
 
+pub fn run_has_mpc_plan_done(run_dir: &Path) -> bool {
+    let path = run_dir.join("_kpop").join("mpc_plan.md");
+    std::fs::read_to_string(path)
+        .is_ok_and(|text| text.trim() == "DONE")
+}
+
 pub fn gate_exp_logs_with_kpop_solved(run_dir: &Path) -> Vec<std::path::PathBuf> {
-    super::gate_exp_logs_in_run(run_dir)
-        .into_iter()
-        .filter(|p| {
-            std::fs::read_to_string(p).is_ok_and(|text| text.contains("## KPOP_SOLVED"))
-        })
-        .collect()
+    if run_has_mpc_plan_done(run_dir) {
+        vec![run_dir.join("_kpop").join("mpc_plan.md")]
+    } else {
+        Vec::new()
+    }
 }
 
 pub fn git_stdout(project: &Path, args: &[&str]) -> String {

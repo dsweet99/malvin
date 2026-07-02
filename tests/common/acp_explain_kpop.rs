@@ -1,4 +1,6 @@
-use super::acp_tidy_kpop::{acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble};
+use super::acp_tidy_kpop::{
+    acp_mock_kpop_budget_match_js, acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble,
+};
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
 const EXPLAIN_OUTPUT_WRITE: &str = r"      let texRel;
@@ -22,7 +24,12 @@ const REVISE_DOC_WRITE: &str = r"      const docMatch = promptText.match(/Revise
         fs.writeFileSync(docAbs, '# Revised\n\nClear prose.\n', 'utf8');
       }";
 
-const EXPLAIN_SOLVED_APPEND: &str = r"          fs.appendFileSync(expPath, '\n## KPOP_SOLVED\n');";
+const EXPLAIN_DONE_APPEND: &str = r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
+      if (mpcMatch) {
+        const mpcPath = resolvePromptPath(mpcMatch[1]);
+        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
+        fs.writeFileSync(mpcPath, 'DONE\n');
+      }";
 
 fn acp_mock_kpop_iteration_with_preface(preface: &str) -> String {
     acp_mock_kpop_iteration_body()
@@ -33,7 +40,7 @@ fn acp_mock_kpop_iteration_with_preface(preface: &str) -> String {
         .replace(
             "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
             &format!(
-                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{EXPLAIN_SOLVED_APPEND}"
+                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{EXPLAIN_DONE_APPEND}"
             ),
         )
 }
@@ -59,16 +66,18 @@ fn acp_mock_explain_revise_kpop_body() -> String {
 
 fn acp_mock_explain_kpop_script(output_write: &str) -> String {
     format!(
-        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n    }}",
+        "{}\n    if ({}) {{\n{}\n    }}",
         acp_mock_kpop_prompt_preamble(),
+        acp_mock_kpop_budget_match_js(),
         acp_mock_explain_kpop_body(output_write)
     )
 }
 
 fn acp_mock_explain_revise_kpop_script() -> String {
     format!(
-        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n    }}",
+        "{}\n    if ({}) {{\n{}\n    }}",
         acp_mock_kpop_prompt_preamble(),
+        acp_mock_kpop_budget_match_js(),
         acp_mock_explain_revise_kpop_body()
     )
 }

@@ -49,7 +49,7 @@ fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
             Err(e)
         } else {
             Err(
-                "malvin revise: gate loop did not exit on two consecutive ## KPOP_SOLVED markers"
+                "malvin revise: gate loop did not exit on mpc plan DONE"
                     .to_string(),
             )
         }
@@ -206,7 +206,7 @@ mod tests {
             last_backups: &backups,
             summarize_res: Ok(()),
         })
-        .expect_err("needs two consecutive solved markers");
-        assert!(err.contains("two consecutive"));
+        .expect_err("needs mpc plan DONE");
+        assert!(err.contains("mpc plan DONE"));
     }
 }

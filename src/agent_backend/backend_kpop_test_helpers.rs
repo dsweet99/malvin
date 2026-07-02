@@ -42,3 +42,28 @@ pub(crate) fn empty_backups() -> crate::artifacts::SessionDotfileBackups {
 pub(crate) fn mini_done_backend() -> AgentBackend {
     mock_backend(vec![MockStep::Ok(mini_done_response())], 1)
 }
+
+pub(crate) fn smoke_multiturn_state(
+    work: &std::path::Path,
+    exp_log: std::path::PathBuf,
+    max_hypotheses: usize,
+) -> crate::kpop_progression::KpopMultiturnState<'static> {
+    use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
+
+    crate::kpop_progression::KpopMultiturnState::new(
+        KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
+        exp_log,
+        work.join("mpc_plan.md"),
+        max_hypotheses,
+    )
+    .expect("state")
+}
+
+#[test]
+fn smoke_multiturn_state_builds_state() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let exp = tmp.path().join("exp.md");
+    std::fs::write(&exp, "# exp\n").expect("write");
+    let state = smoke_multiturn_state(tmp.path(), exp, 2);
+    assert_eq!(state.max_hypotheses, 2);
+}

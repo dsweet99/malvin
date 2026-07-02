@@ -170,9 +170,9 @@ fn infer_gate_retry_reasons(artifacts: Option<&RunArtifacts>, iteration: usize) 
 }
 
 fn append_unsolved_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
-    if read_prev_exp_solved(artifacts, prev) == Some(false) {
+    if read_prev_mpc_plan_had_done(artifacts, prev) == Some(false) {
         reasons.push(
-            "previous KPop session did not write ## KPOP_SOLVED to its experiment log".to_string(),
+            "previous KPop session did not write DONE to the mpc plan file".to_string(),
         );
     }
 }
@@ -184,21 +184,20 @@ fn append_oom_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: 
 }
 
 fn append_gates_reason(reasons: &mut Vec<String>, artifacts: &RunArtifacts, prev: usize) {
-    if read_prev_exp_solved(artifacts, prev) == Some(true) && reasons.is_empty() {
+    if read_prev_mpc_plan_had_done(artifacts, prev) == Some(true) && reasons.is_empty() {
         reasons.push(
-            "quality gates did not pass after previous ## KPOP_SOLVED session".to_string(),
+            "quality gates did not pass after previous mpc plan DONE".to_string(),
         );
     }
 }
 
-fn read_prev_exp_solved(artifacts: &RunArtifacts, prev: usize) -> Option<bool> {
-    let path = artifacts.gate_exp_log_path(prev);
-    if !path.is_file() {
+fn read_prev_mpc_plan_had_done(artifacts: &RunArtifacts, prev: usize) -> Option<bool> {
+    let exp_path = artifacts.gate_exp_log_path(prev);
+    if !exp_path.is_file() {
         return None;
     }
-    std::fs::read_to_string(path)
-        .ok()
-        .map(|text| crate::kpop_progression::agent_declared_success(&text))
+    let marker = crate::artifacts::mpc_plan_done_marker_path(artifacts, prev);
+    Some(marker.is_file())
 }
 
 #[cfg(test)]

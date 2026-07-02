@@ -5,9 +5,14 @@ use crate::artifacts::SessionDotfileBackups;
 
 use crate::agent_backend::mini::MiniAgentClient;
 
-pub(super) fn kpop_coder_opts() -> CoderPromptOptions<'static> {
+pub(super) fn kpop_coder_opts<'a>(
+    exp_log_path: Option<&'a std::path::Path>,
+    mpc_plan_path: Option<&'a std::path::Path>,
+) -> CoderPromptOptions<'a> {
     CoderPromptOptions {
         llm_phase: Some(crate::run_timing::TimingPhase::Implement),
+        exp_log_path,
+        mpc_plan_path,
         ..Default::default()
     }
 }
@@ -16,9 +21,10 @@ pub(super) async fn run_kpop_prompt(
     client: &mut MiniAgentClient,
     prompt: &str,
     log_path: &std::path::Path,
+    exp_log_path: Option<&std::path::Path>,
 ) -> Result<(), AgentError> {
     client
-        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts())
+        .run_coder_prompt(prompt, log_path, "kpop", kpop_coder_opts(exp_log_path, None))
         .await
 }
 
@@ -65,7 +71,12 @@ mod budget_tests {
         let exp = tmp.path().join("exp.md");
         std::fs::write(&exp, "## Step 1 — KPop x\n## Step 2 — KPop y\n").expect("write");
         let mut state =
-            KpopMultiturnState::new(KpopMultiturnPrompts::Smoke(SmokeKpopBuilder), exp, 1)
+            KpopMultiturnState::new(
+                KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
+                exp,
+                tmp.path().join("mpc_plan.md"),
+                1,
+            )
                 .expect("state");
         let backups = empty_dotfile_backups();
         let mut client = MiniAgentClient::new_mock(

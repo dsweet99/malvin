@@ -117,7 +117,6 @@ pub(crate) fn build_iteration_params(input: IterationFixture<'_>) -> KPopEngineI
         client: input.client,
         iteration: input.iteration,
         total_iterations: input.total_iterations,
-        consecutive_solved_entering: 0,
         exp_log_path: input.exp_log_path,
     }
 }
@@ -140,26 +139,6 @@ fn     strip_stale_kpop_solved_for_transport_retry_removes_marker_from_disk() {
     assert!(text.contains("## Step 1 — KPOP stale"));
 }
 
-#[test]
-fn ghost_kpop_solved_does_not_increment_streak_after_transport_retry_strip() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\nghost\n").expect("write");
-    strip_declared_success_on_disk(&path);
-    assert_eq!(
-        super::run_loop::refresh_consecutive_solved_streak(0, &path).expect("read"),
-        0,
-        "stale KPOP_SOLVED must not credit consecutive-solved streak after strip"
-    );
-}
-
-#[test]
-fn kpop_engine_session_declared_solved_detects_kpop_solved_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    assert!(super::run_loop::session_wrote_kpop_solved(&path).expect("read"));
-}
 
 #[cfg(unix)]
 #[test]

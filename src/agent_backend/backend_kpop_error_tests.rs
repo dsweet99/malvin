@@ -1,14 +1,13 @@
 //! Error-path `KPop` delegation tests for [`super::backend::AgentBackend`].
 
 use super::backend_kpop_test_helpers::{
-    empty_backups, mock_backend, mock_backend_bash_turn_exhaustion,
+    empty_backups, mock_backend, mock_backend_bash_turn_exhaustion, smoke_multiturn_state,
 };
 use super::{
     agent_backend_run_kpop_flow, agent_backend_run_kpop_multiturn,
 };
 use super::mini::MockStep;
 use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
-use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 
 #[test]
 fn agent_backend_run_kpop_flow_mini_stops_on_non_retryable_error() {
@@ -55,9 +54,7 @@ fn agent_backend_run_kpop_multiturn_mini_stops_on_non_retryable_error() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mock_backend_bash_turn_exhaustion();
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state =
-            crate::kpop_progression::KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
@@ -81,9 +78,7 @@ fn agent_backend_run_kpop_multiturn_mini_reports_failure_after_retries() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mock_backend(vec![MockStep::RateLimited], 2);
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state =
-            crate::kpop_progression::KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),

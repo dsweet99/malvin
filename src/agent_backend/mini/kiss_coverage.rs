@@ -200,6 +200,13 @@ fn kiss_witness_loop_driver_and_client_helpers() {
 }
 
 #[test]
+fn kiss_witness_gate_retry_kpop_strip() {
+    let _ = stringify!(gate_retry_strips_stale_kpop_solved_before_next_attempt);
+    let _ = stringify!(gate_retry_kpop_strip_mock_client);
+    let _ = stringify!(run_gate_retry_kpop_strip_prompt);
+}
+
+#[test]
 fn kiss_witness_concept_type_enums() {
     let _ = std::mem::size_of::<crate::acp_trace_impersonation::SyntheticAcpSessionUpdate>();
     let _ = std::mem::size_of::<crate::reliability_tier::ReliabilityTier>();

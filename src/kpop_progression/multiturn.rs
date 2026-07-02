@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use super::counters::{agent_declared_success, hypotheses_emitted, read_exp_log_text};
+use super::counters::{hypotheses_emitted, read_exp_log_text};
 use crate::kpop_log_protocol::strip_declared_success_on_disk;
+use crate::kpop_progression::{mpc_plan_declares_done, strip_mpc_plan_done_on_disk};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
@@ -10,6 +11,7 @@ use super::multiturn_types::KpopMultiturnParams;
 pub struct KpopMultiturnState<'a> {
     pub(crate) builder: KpopMultiturnPrompts<'a>,
     pub(crate) exp_log_path: PathBuf,
+    pub(crate) mpc_plan_path: PathBuf,
     pub max_hypotheses: usize,
     pub(crate) prompt_sent: bool,
     pub(crate) done: bool,
@@ -28,11 +30,13 @@ impl<'a> KpopMultiturnState<'a> {
     pub fn new(
         builder: KpopMultiturnPrompts<'a>,
         exp_log_path: PathBuf,
+        mpc_plan_path: PathBuf,
         max_hypotheses: usize,
     ) -> Result<Self, String> {
         Self::from_params(KpopMultiturnParams {
             builder,
             exp_log_path,
+            mpc_plan_path,
             max_hypotheses,
         })
     }
@@ -47,6 +51,7 @@ impl<'a> KpopMultiturnState<'a> {
         Ok(Self {
             builder: params.builder,
             exp_log_path: params.exp_log_path,
+            mpc_plan_path: params.mpc_plan_path,
             max_hypotheses: params.max_hypotheses,
             prompt_sent: false,
             done: false,
@@ -63,7 +68,7 @@ impl<'a> KpopMultiturnState<'a> {
             return Ok(None);
         }
         let text = read_exp_log_text(&self.exp_log_path)?;
-        if agent_declared_success(&text) {
+        if mpc_plan_declares_done(&self.mpc_plan_path).unwrap_or(false) {
             self.done = true;
             return Ok(None);
         }
@@ -91,12 +96,13 @@ impl<'a> KpopMultiturnState<'a> {
     /// Clears the in-flight prompt latch after a failed ACP transport attempt so the outer
     /// retry loop can call [`Self::next_prompt`] again.
     ///
-    /// Strips any `## KPOP_SOLVED` marker written during the failed attempt so a retry
+    /// Strips any stale mpc plan `DONE` marker written during the failed attempt so a retry
     /// cannot short-circuit to success without restore, budget checks, or a fresh agent pass.
     pub(crate) fn reset_for_transport_retry(&mut self) {
         self.prompt_sent = false;
         self.done = false;
         strip_declared_success_on_disk(&self.exp_log_path);
+        strip_mpc_plan_done_on_disk(&self.mpc_plan_path);
     }
 }
 

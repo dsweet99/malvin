@@ -35,3 +35,25 @@ pub(crate) fn write_legacy_cwd_checks(work: &Path, content: impl AsRef<[u8]>) {
     }
     std::fs::write(path, content.as_ref()).expect("write legacy checks");
 }
+
+#[cfg(test)]
+pub(crate) fn mpc_plan_gate_exit_fixture(
+    gate_passes: bool,
+) -> (
+    tempfile::TempDir,
+    crate::artifacts::RunArtifacts,
+    crate::artifacts::SessionDotfileBackups,
+) {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let (cmd, name, code) = if gate_passes {
+        (b"kiss check\n".as_slice(), "kiss", 0)
+    } else {
+        (b"false\n".as_slice(), "false", 1)
+    };
+    write_git_root_checks(tmp.path(), cmd);
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), name, code);
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("backups");
+    (tmp, artifacts, backups)
+}

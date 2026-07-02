@@ -19,6 +19,7 @@ fn smoke_kpop_progression_and_multiturn() {
     let state = crate::kpop_progression::KpopMultiturnState::new(
         crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(crate::MtStubPrompts),
         exp,
+        tmp.path().join("mpc_plan.md"),
         10,
     )
     .expect("multiturn state");

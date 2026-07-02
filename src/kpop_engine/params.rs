@@ -20,7 +20,6 @@ pub(crate) struct KPopEngineIterationParams<'a> {
     pub client: &'a mut crate::agent_backend::AgentBackend,
     pub iteration: usize,
     pub total_iterations: usize,
-    pub consecutive_solved_entering: usize,
     pub exp_log_path: std::path::PathBuf,
 }
 

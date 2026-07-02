@@ -127,7 +127,12 @@ async fn run_kpop_multiturn_mock_once(
         base: &iteration_context,
         prepend_rules_once: true,
     });
-    let mut state = KpopMultiturnState::new(builder, snap.exp_log_path.clone(), kpop.max_hypotheses)
+    let mut state = KpopMultiturnState::new(
+        builder,
+        snap.exp_log_path.clone(),
+        crate::artifacts::mpc_plan_path(&prepared.artifacts),
+        kpop.max_hypotheses,
+    )
         .map_err(|e| e.to_string())?;
     kpop_run_acp_multiturn(
         KpopAcpMultiturnCtx {

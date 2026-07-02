@@ -1,7 +1,7 @@
 //! `KPop` delegation tests for [`super::backend::AgentBackend`].
 
 use super::backend_kpop_test_helpers::{
-    empty_backups, mini_done_backend, mock_backend,
+    empty_backups, mini_done_backend, mock_backend, smoke_multiturn_state,
 };
 use super::{
     agent_backend_attach_run_timing_for_session, agent_backend_run_kpop_flow,
@@ -9,7 +9,6 @@ use super::{
 };
 use super::mini::MockStep;
 use crate::acp::{AgentKpopMultiturnCtl, KpopFlowOnceArgs};
-use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 
 #[test]
 fn agent_backend_forwards_attach_run_timing_for_session() {
@@ -33,9 +32,7 @@ fn agent_backend_run_kpop_multiturn_mini_delegates() {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut backend = mini_done_backend();
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state =
-            crate::kpop_progression::KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),
@@ -105,9 +102,7 @@ fn agent_backend_run_kpop_multiturn_mini_succeeds_on_second_attempt() {
             ],
             2,
         );
-        let builder = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-        let mut state =
-            crate::kpop_progression::KpopMultiturnState::new(builder, exp_log, 2).expect("state");
+        let mut state = smoke_multiturn_state(tmp.path(), exp_log, 2);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
             cwd: tmp.path(),

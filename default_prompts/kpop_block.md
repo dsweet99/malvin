@@ -1,11 +1,21 @@
 
-# Action
 
-Complete up to `{{ want }}` KPOP iterations in this turn. Before beginning each iteration, write a section header `## Step K — KPOP …` to `{{ exp_log }}`; use the next integer K that is not already used in that file.
- - Only write `## Step K - KPOP` once per iteration. If you want to use subsubsection headings inside the iteration, make them textually distinct.
+The budget for any KPOPs in this session is {{ want }}.
 
-If you believe you have solved the problem or there is simply no more to do before using the iterations budget, append a section `## KPOP_SOLVED` with one short paragraph explaining your decision, and stop adding new steps.
+1. Write a plan to satisfy the user's request (see below):
+  - Write to `{{ mpc_plan_path }}`
+  - If you believe there is nothing left to do, write "DONE" to `{{ mpc_plan_path }}` and stop.
 
-User request (read this file):
+2. KPOP: Check the plan for contradictions, errors, scope violation/creep, or plan inefficiency.
+  - Append any questions you might have. Do research to answer your questions.
+  - Leave no decisions open.
+  
+3. Revise the plan to address your review in step 2.
+
+4. KPOP: Implement the plan.
+
+
+
+## User request (read this file):
 
 `{{ user_request_path }}`

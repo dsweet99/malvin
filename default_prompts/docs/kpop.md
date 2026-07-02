@@ -41,7 +41,7 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 1 | Separate kpop agent runs; stops early when a run’s log contains `## KPOP_SOLVED` |
+| `--max-loops` | 1 | Separate kpop agent runs; stops early when mpc plan `DONE` and workspace gates pass |
 | `--max-hypotheses` | 5 (CLI default; overridden by `[agent].max_hypotheses` in `~/.malvin_home/config.toml` when the flag is omitted) | `## Step … — KPOP` budget **per** agent run |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
@@ -78,7 +78,7 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 
 Stops when any of:
 
-- Experiment log contains a line exactly `## KPOP_SOLVED`
+- mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE` and workspace quality gates pass
 - Typed step count reaches `--max-hypotheses`
 - `--max-loops` runs complete without early success
 - Internal error

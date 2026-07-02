@@ -1,5 +1,4 @@
 use crate::artifacts::create_kpop_run_artifacts;
-use crate::kpop_engine::KPopHardConstraints;
 use crate::cli::kpop_summarize::{
     code_outer_loop_summarize_params, insert_summarize_log_context, kpop_flows_ran,
     kpop_outer_loop_summarize_params, list_written_exp_logs, maybe_run_gate_inline_summarize,
@@ -13,30 +12,10 @@ use super::kpop_summarize_tests::{kpop_inputs, summarize_test_workspace, write_e
 
 #[test]
 fn gate_iteration_inline_summarize_predicate() {
-    assert!(!should_inline_outer_loop_summarize_on_gate_iteration(
-        1,
-        3,
-        0,
-        KPopHardConstraints::CODE
-    ));
-    assert!(!should_inline_outer_loop_summarize_on_gate_iteration(
-        2,
-        3,
-        0,
-        KPopHardConstraints::CODE
-    ));
-    assert!(should_inline_outer_loop_summarize_on_gate_iteration(
-        2,
-        3,
-        1,
-        KPopHardConstraints::CODE
-    ));
-    assert!(should_inline_outer_loop_summarize_on_gate_iteration(
-        3,
-        3,
-        0,
-        KPopHardConstraints::CODE
-    ));
+    assert!(!should_inline_outer_loop_summarize_on_gate_iteration(1, 3, false));
+    assert!(!should_inline_outer_loop_summarize_on_gate_iteration(2, 3, false));
+    assert!(should_inline_outer_loop_summarize_on_gate_iteration(2, 3, true));
+    assert!(should_inline_outer_loop_summarize_on_gate_iteration(3, 3, false));
 }
 
 #[test]
@@ -227,8 +206,7 @@ async fn run_gate_inline_summarize_first_iteration(
         malvin_command: "malvin code",
         iteration: 1,
         total_iterations: 3,
-        consecutive_solved_entering: 0,
-        behavior: KPopHardConstraints::CODE,
+        mpc_plan_done: false,
     })
     .await?;
     client.end_coder_session().await.map_err(|e| e.to_string())?;

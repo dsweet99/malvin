@@ -57,8 +57,14 @@ pub fn acp_mock_init_js() -> String {
       }
       if (expPath) {
         fs.mkdirSync(path.dirname(expPath), { recursive: true });
-        fs.appendFileSync(expPath, '\n## KPOP_SOLVED\n');
+        fs.appendFileSync(expPath, '\n## Step 1 — KPOP mock\n');
       }
+      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
+      let mpcRel = mpcMatch ? mpcMatch[1] : path.join('_kpop', 'mpc_plan.md');
+      if (mpcRel.startsWith('./')) mpcRel = path.join(process.cwd(), mpcRel.slice(2));
+      else if (!mpcRel.startsWith('/')) mpcRel = path.join(process.cwd(), mpcRel);
+      fs.mkdirSync(path.dirname(mpcRel), { recursive: true });
+      fs.writeFileSync(mpcRel, 'DONE\n');
       const checksPath = path.join(process.cwd(), '.malvin', 'checks');
       fs.mkdirSync(path.dirname(checksPath), { recursive: true });
       fs.writeFileSync(checksPath, 'kiss check\n');

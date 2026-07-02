@@ -1,6 +1,40 @@
 //! Kiss identifier refs for [`crate::cli::kpop_flow::kpop_flow_run_loop`] and its test helpers.
 
 #[test]
+fn kpop_loop_exit_after_iteration_exits_early_on_done_with_gates() {
+    use crate::repo_gates::checks_test_helpers::mpc_plan_gate_exit_fixture;
+
+    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(true);
+    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
+    let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
+        &artifacts,
+        &backups,
+        1,
+        2,
+    )
+    .expect("read");
+    assert!(exit.will_exit_after_this_loop);
+    assert!(exit.early_exit_on_solved);
+}
+
+#[test]
+fn kpop_loop_exit_after_iteration_requires_gates_when_done() {
+    use crate::repo_gates::checks_test_helpers::mpc_plan_gate_exit_fixture;
+
+    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(false);
+    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
+    let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
+        &artifacts,
+        &backups,
+        1,
+        2,
+    )
+    .expect("read");
+    assert!(!exit.early_exit_on_solved);
+    assert!(!exit.will_exit_after_this_loop);
+}
+
+#[test]
 fn kiss_cov_kpop_flow_run_loop_privates() {
     let outcome = super::kpop_flow_run_loop::kpop_loop_abort(false, "err".into());
     let super::kpop_flow_run_loop::RunKpopAgentLoopsOutcome {
@@ -12,7 +46,6 @@ fn kiss_cov_kpop_flow_run_loop_privates() {
     let _: Option<super::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
     let _: Option<super::kpop_flow_run_loop::KpopLoopSnapshot> = None;
     let _ = super::kpop_flow_run_loop::run_kpop_agent_loops;
-    let _ = super::kpop_flow_run_loop::kpop_exp_log_declares_solved;
     let _ = super::kpop_flow_run_loop::clear_legacy_gate_exp_log;
     let _ = stringify!(KpopLoopExitAfterIteration);
     let _ = stringify!(declares_solved);

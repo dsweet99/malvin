@@ -99,15 +99,12 @@ pub(crate) const fn outer_loop_summarize_warranted(kpop_flows_ran: usize) -> boo
 pub(crate) const fn should_inline_outer_loop_summarize_on_gate_iteration(
     iteration: usize,
     total_iterations: usize,
-    consecutive_solved_entering: usize,
-    behavior: crate::kpop_engine::KPopHardConstraints,
+    mpc_plan_done: bool,
 ) -> bool {
     if iteration < 2 {
         return false;
     }
-    let solved_threshold_met = consecutive_solved_entering.saturating_add(1)
-        >= behavior.consecutive_kpop_solved_to_exit();
-    iteration == total_iterations || solved_threshold_met
+    iteration == total_iterations || mpc_plan_done
 }
 
 /// Whether the current `malvin kpop` loop is the last active agent that should inline summarize.

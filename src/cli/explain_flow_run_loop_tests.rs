@@ -115,6 +115,6 @@ fn explain_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
         last_backups: &backups,
         summarize_res: Ok(()),
     })
-    .expect_err("needs two consecutive solved markers");
-    assert!(err.contains("two consecutive"));
+    .expect_err("needs mpc plan DONE");
+    assert!(err.contains("mpc plan DONE"));
 }

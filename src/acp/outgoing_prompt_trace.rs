@@ -1,5 +1,7 @@
 // Outgoing ACP trace layout for `session/prompt` (uniform stem vs `malvin do` split).
 
+use std::path::Path;
+
 /// Single-stem trace (`>who`) plus optional override for the stdout `[label...]` line.
 pub struct UniformOutgoingTrace<'a> {
     pub trace_who: &'a str,
@@ -19,6 +21,10 @@ pub struct CoderPromptOptions<'a> {
     pub stdout_bracket_label: Option<&'a str>,
     /// When true, skip client-level prompt retries (gate kpop outer loop owns retries).
     pub single_attempt: bool,
+    /// When set, strip stale `## KPOP_SOLVED` from this experiment log before each gate retry.
+    pub exp_log_path: Option<&'a Path>,
+    /// When set, strip stale mpc plan `DONE` before each gate retry.
+    pub mpc_plan_path: Option<&'a Path>,
 }
 
 /// How outgoing `session/prompt` text is mirrored to the trace file and (when tee is on) stdout.

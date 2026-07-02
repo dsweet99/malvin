@@ -1,18 +1,10 @@
 //! Tests for [`super::kpop_flow_run_loop`].
 
 use super::kpop_flow_run_loop::{
-    clear_legacy_gate_exp_log, kpop_exp_log_declares_solved, kpop_loop_abort,
-    kpop_loop_exit_after_iteration, snapshot_kpop_loop_dotfiles_and_exp_log,
+    clear_legacy_gate_exp_log, kpop_loop_abort,
+    snapshot_kpop_loop_dotfiles_and_exp_log,
     run_kpop_agent_loops, KpopLoopSnapshot, RunKpopAgentLoopsOutcome, RunKpopAgentLoopsParams,
 };
-#[test]
-fn kpop_exp_log_declares_solved_reads_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    assert!(kpop_exp_log_declares_solved(&path).expect("read"));
-}
-
 #[test]
 fn kpop_loop_abort_records_error_and_agent_ran() {
     let outcome = kpop_loop_abort(true, "setup failed".into());
@@ -164,16 +156,6 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(path, perms).expect("chmod");
-}
-
-#[test]
-fn kpop_loop_exit_after_iteration_exits_early_on_solved() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    let exit = kpop_loop_exit_after_iteration(&path, 1, 2).expect("read");
-    assert!(exit.will_exit_after_this_loop);
-    assert!(exit.early_exit_on_solved);
 }
 
 #[cfg(unix)]

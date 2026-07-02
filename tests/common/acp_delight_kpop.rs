@@ -1,4 +1,6 @@
-use super::acp_tidy_kpop::{acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble};
+use super::acp_tidy_kpop::{
+    acp_mock_kpop_budget_match_js, acp_mock_kpop_iteration_body, acp_mock_kpop_prompt_preamble,
+};
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
 const DELIGHT_PITCH_WRITE: &str = r"      const outMatch = promptText.match(/Write a new pitch to [`']?([^\s`'\n]+)/);
@@ -9,7 +11,12 @@ const DELIGHT_PITCH_WRITE: &str = r"      const outMatch = promptText.match(/Wri
         fs.writeFileSync(outAbs, '# Delight pitch\n\nA delightful improvement.\n', 'utf8');
       }";
 
-const DELIGHT_SOLVED_APPEND: &str = r"          fs.appendFileSync(expPath, '\n## KPOP_SOLVED\n');";
+const DELIGHT_DONE_APPEND: &str = r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
+      if (mpcMatch) {
+        const mpcPath = resolvePromptPath(mpcMatch[1]);
+        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
+        fs.writeFileSync(mpcPath, 'DONE\n');
+      }";
 
 fn acp_mock_delight_iteration_body() -> String {
     acp_mock_kpop_iteration_body()
@@ -20,7 +27,7 @@ fn acp_mock_delight_iteration_body() -> String {
         .replace(
             "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
             &format!(
-                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{DELIGHT_SOLVED_APPEND}"
+                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{DELIGHT_DONE_APPEND}"
             ),
         )
 }
@@ -31,8 +38,9 @@ fn acp_mock_delight_kpop_body(pitch_write: &str) -> String {
 
 fn acp_mock_delight_kpop_script(pitch_write: &str) -> String {
     format!(
-        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{}\n    }}",
+        "{}\n    if ({}) {{\n{}\n    }}",
         acp_mock_kpop_prompt_preamble(),
+        acp_mock_kpop_budget_match_js(),
         acp_mock_delight_kpop_body(pitch_write),
     )
 }

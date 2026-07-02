@@ -1,4 +1,4 @@
-//! Gate-loop exit predicates for consecutive `## KPOP_SOLVED` markers.
+//! Gate-loop exit predicates for `DONE` in the MPC plan file.
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
@@ -24,14 +24,8 @@ pub(crate) fn run_gate_workspace_gates_with_fresh_backups(
     .is_ok()
 }
 
-pub(crate) fn kpop_solved_early_exit(
-    ctx: &GateLoopExitCtx<'_>,
-    consecutive_solved: usize,
-) -> bool {
-    if consecutive_solved < ctx.behavior.consecutive_kpop_solved_to_exit() {
-        return false;
-    }
-    gates_pass_for_exit(ctx)
+pub(crate) fn mpc_plan_early_exit(ctx: &GateLoopExitCtx<'_>, mpc_plan_done: bool) -> bool {
+    mpc_plan_done && gates_pass_for_exit(ctx)
 }
 
 fn gates_pass_for_exit(ctx: &GateLoopExitCtx<'_>) -> bool {

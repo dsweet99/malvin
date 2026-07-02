@@ -8,7 +8,7 @@ Implement a **plan** using malvin’s **KPop gate loop**: repeated agent session
 |---|---|
 | Input | One or more plans (text or `.md` path) → `plan.md` per run dir |
 | Loop | Outer gate iterations; each runs one KPop session |
-| Success | Two consecutive `## KPOP_SOLVED` markers **and** passing quality gates from `.malvin/checks` (git repo root when inside a git work tree, else `~/.malvin/checks`) |
+| Success | mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE` **and** passing quality gates from `.malvin/checks` (git repo root when inside a git work tree, else `~/.malvin/checks`) |
 | Requires | `kiss` on PATH; Cursor agent CLI |
 
 ## Intention
@@ -60,8 +60,8 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
    - Run one KPop agent session; log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
    - Snapshot at each outer iteration; restore after each prompt: `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` (global defaults).
    - Restore all protected files immediately before post-session quality gates (gate pass/fail is not proof of restore).
-   - Track consecutive sessions that end with `## KPOP_SOLVED`.
-4. **Exit** — Success when two consecutive solved markers align with passing workspace gates; otherwise fail after exhaustion (gates rechecked).
+   - Track whether the mpc plan file ends with exactly `DONE`.
+4. **Exit** — Success when mpc plan `DONE` aligns with passing workspace gates; otherwise fail after exhaustion (gates rechecked).
 
 ## Prompt roles
 

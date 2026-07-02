@@ -92,6 +92,7 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
         ("review_path", "./.malvin/logs/run42/review.md"),
         ("result_path", "./.malvin/logs/run42/result.md"),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
+        ("mpc_plan_path", "./.malvin/logs/run42/_kpop/mpc_plan.md"),
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
@@ -153,22 +154,21 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &[
             "Know thyself, agent",
             "# Definition: KPop",
-            "# Action",
+            "budget for any KPOPs in this session is 2",
         ],
     );
     assert_prompt_contains_each(
         &kpop,
         &[
             "Hypothesize",
-            "Complete up to `2` KPOP iterations",
-            "iterations budget",
-            ".malvin/logs/run42/_kpop/exp_log_run42.md",
+            ".malvin/logs/run42/_kpop/mpc_plan.md",
             ".malvin/logs/run42/request.md",
+            "KPOP: Implement the plan",
         ],
     );
     assert!(
-        !kpop.contains("Complete exactly"),
-        "kpop_block must use up-to wording: {kpop:?}"
+        !kpop.contains("Complete up to"),
+        "kpop_block must not use backticked want budget wording: {kpop:?}"
     );
     assert!(
         !kpop.contains("remaining_hypotheses"),

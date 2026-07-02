@@ -162,12 +162,10 @@ pub fn acp_mock_bug_kpop_solved_js() -> String {
         for (const run of runs) {
         const kpopDir = path.join(bucket, run, '_kpop');
         if (!fs.existsSync(kpopDir)) continue;
-        for (const name of fs.readdirSync(kpopDir)) {
-          if (name.startsWith('exp_log_') && name.endsWith('.md')) {
-            fs.appendFileSync(path.join(kpopDir, name), '\n## KPOP_SOLVED\n');
-            break outer;
-          }
-        }
+        const mpcPlan = path.join(kpopDir, 'mpc_plan.md');
+        fs.mkdirSync(kpopDir, { recursive: true });
+        fs.writeFileSync(mpcPlan, 'DONE\n');
+        break outer;
         }
       }
     }";

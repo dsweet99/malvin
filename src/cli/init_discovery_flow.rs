@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::artifacts::{RunArtifacts, backup_workspace_malvin_checks_if_present};
-use crate::kpop_progression::{agent_declared_success, read_exp_log_text};
+use crate::kpop_progression::mpc_plan_declares_done;
 use crate::malvin_checks_path;
 use crate::malvin_config_file::{self, AgentConfig};
 use crate::output::{MALVIN_WHO, print_stderr_line};
@@ -53,12 +53,11 @@ fn init_discovery_checks_valid(work_dir: &Path) -> Result<(), String> {
 fn init_discovery_succeeded(artifacts: &RunArtifacts, iterations: usize) -> Result<bool, String> {
     for i in 1..=iterations {
         let exp = artifacts.gate_exp_log_path(i);
-        if exp.is_file() {
-            let text = read_exp_log_text(&exp)?;
-            if agent_declared_success(&text) && init_discovery_checks_valid(&artifacts.work_dir).is_ok()
-            {
-                return Ok(true);
-            }
+        if exp.is_file()
+            && mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))?
+            && init_discovery_checks_valid(&artifacts.work_dir).is_ok()
+        {
+            return Ok(true);
         }
     }
     Ok(false)
@@ -125,7 +124,7 @@ fn finish_init_discovery_kpop(
     let solved = init_discovery_succeeded(&prepared.artifacts, iterations)?;
     if !solved {
         return Err(
-            "init checks discovery: agent did not declare KPOP_SOLVED with a valid .malvin/checks"
+            "init checks discovery: agent did not write mpc plan DONE with a valid .malvin/checks"
                 .to_string(),
         );
     }
@@ -186,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn init_discovery_succeeded_true_with_marker_and_valid_checks() {
+    fn init_discovery_succeeded_true_with_done_and_valid_checks() {
         if crate::lookup_bin_on_path("kiss").is_none() {
             return;
         }
@@ -195,7 +194,8 @@ mod tests {
         let artifacts = create_kpop_run_artifacts("init", Some(tmp.path())).expect("artifacts");
         let exp = artifacts.gate_exp_log_path(1);
         std::fs::create_dir_all(exp.parent().unwrap()).expect("mkdir");
-        std::fs::write(&exp, "## KPOP_SOLVED\n").expect("write");
+        std::fs::write(&exp, "## Step 1 — KPOP mock\n").expect("write");
+        std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
         assert!(init_discovery_succeeded(&artifacts, 1).expect("read"));
     }
 

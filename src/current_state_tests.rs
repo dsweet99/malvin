@@ -119,14 +119,14 @@ fn format_retry_line_first_gate_iteration_is_not_retry() {
 }
 
 #[test]
-fn format_retry_line_second_iteration_is_retry_without_solved() {
+fn format_retry_line_second_iteration_is_retry_without_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     crate::artifacts::ensure_gate_exp_log_file(&artifacts, 1).expect("exp log");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("retry #1"));
-    assert!(line.contains("KPOP_SOLVED"));
+    assert!(line.contains("mpc plan"));
 }
 
 #[test]
@@ -152,13 +152,18 @@ fn format_retry_line_detects_oom_from_sandbox_marker() {
 }
 
 #[test]
-fn format_retry_line_gates_failure_after_solved() {
+fn format_retry_line_gates_failure_after_done() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## KPOP_SOLVED\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
+    std::fs::write(
+        crate::artifacts::mpc_plan_done_marker_path(&artifacts, 1),
+        "",
+    )
+    .expect("marker");
     let line = format_retry_line(Some(2), Some(&artifacts));
     assert!(line.contains("quality gates"));
 }
@@ -174,11 +179,17 @@ fn format_current_state_joins_all_sections() {
 }
 
 #[test]
-fn read_prev_exp_solved_missing_file_returns_none() {
+fn kiss_cov_current_state_non_unix_branch() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    assert!(super::read_prev_exp_solved(&artifacts, 99).is_none());
+    assert!(super::read_prev_mpc_plan_had_done(&artifacts, 99).is_none());
+    let _ = super::current_sandbox_rss_bytes;
+    let _ = super::effective_user_id;
+    let _ = super::append_unsolved_reason;
+    let _ = super::append_oom_reason;
+    let _ = super::append_gates_reason;
+    let _ = super::read_prev_mpc_plan_had_done;
 }
 
 #[test]
@@ -218,24 +229,19 @@ fn append_oom_reason_records_memory_kill() {
 }
 
 #[test]
-fn append_gates_reason_after_solved_session() {
+fn append_gates_reason_after_done_session() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let prev = artifacts.gate_exp_log_path(1);
     std::fs::create_dir_all(prev.parent().expect("parent")).expect("mkdir");
-    std::fs::write(&prev, "## KPOP_SOLVED\n").expect("write");
+    std::fs::write(&prev, "## Step 1 — KPOP mock\n").expect("write");
+    std::fs::write(
+        crate::artifacts::mpc_plan_done_marker_path(&artifacts, 1),
+        "",
+    )
+    .expect("marker");
     let mut reasons = Vec::new();
     super::append_gates_reason(&mut reasons, &artifacts, 1);
     assert!(reasons.iter().any(|r| r.contains("quality gates")));
-}
-
-#[test]
-fn kiss_cov_current_state_non_unix_branch() {
-    let _ = super::current_sandbox_rss_bytes;
-    let _ = super::effective_user_id;
-    let _ = super::append_unsolved_reason;
-    let _ = super::append_oom_reason;
-    let _ = super::append_gates_reason;
-    let _ = super::read_prev_exp_solved;
 }

@@ -53,14 +53,6 @@ impl KPopHardConstraints {
     };
 
     #[must_use]
-    pub const fn consecutive_kpop_solved_to_exit(self) -> usize {
-        match self.exit {
-            KPopHardConstraintsExit::CodeTidy => 2,
-            KPopHardConstraintsExit::InitDiscovery => 1,
-        }
-    }
-
-    #[must_use]
     pub const fn require_passing_gates_for_exit(self) -> bool {
         matches!(self.exit, KPopHardConstraintsExit::CodeTidy)
     }
@@ -96,9 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn code_tidy_exit_policy_requires_two_solved_and_passing_gates() {
-        assert_eq!(KPopHardConstraints::CODE.consecutive_kpop_solved_to_exit(), 2);
-        assert_eq!(KPopHardConstraints::TIDY.consecutive_kpop_solved_to_exit(), 2);
+    fn code_tidy_exit_policy_requires_passing_gates() {
         assert!(KPopHardConstraints::CODE.require_passing_gates_for_exit());
         assert!(KPopHardConstraints::TIDY.require_passing_gates_for_exit());
         const { assert!(!KPopHardConstraints::CODE.skip_workspace_quality_gates); }
@@ -106,18 +96,13 @@ mod tests {
     }
 
     #[test]
-    fn init_discovery_exit_policy_requires_one_solved_without_gate_pass() {
-        assert_eq!(KPopHardConstraints::INIT.consecutive_kpop_solved_to_exit(), 1);
+    fn init_discovery_exit_policy_allows_done_without_gate_pass() {
         assert!(!KPopHardConstraints::INIT.require_passing_gates_for_exit());
     }
 
     #[test]
     fn explain_behavior_matches_delight_exit_policy() {
         assert_eq!(KPopHardConstraints::EXPLAIN.exit, KPopHardConstraintsExit::CodeTidy);
-        assert_eq!(
-            KPopHardConstraints::EXPLAIN.consecutive_kpop_solved_to_exit(),
-            KPopHardConstraints::DELIGHT.consecutive_kpop_solved_to_exit(),
-        );
         assert!(KPopHardConstraints::EXPLAIN.require_passing_gates_for_exit());
         const { assert!(KPopHardConstraints::EXPLAIN.skip_workspace_quality_gates); }
         const { assert!(KPopHardConstraints::DELIGHT.skip_workspace_quality_gates); }
@@ -126,16 +111,12 @@ mod tests {
     #[test]
     fn revise_behavior_matches_explain_exit_policy() {
         assert_eq!(KPopHardConstraints::REVISE.exit, KPopHardConstraintsExit::CodeTidy);
-        assert_eq!(
-            KPopHardConstraints::REVISE.consecutive_kpop_solved_to_exit(),
-            KPopHardConstraints::EXPLAIN.consecutive_kpop_solved_to_exit(),
-        );
         assert!(KPopHardConstraints::REVISE.require_passing_gates_for_exit());
         const { assert!(KPopHardConstraints::REVISE.skip_workspace_quality_gates); }
     }
 
     #[test]
-    fn delight_behavior_always_runs_kpop_and_exits_on_two_consecutive_solved() {
+    fn delight_behavior_always_runs_kpop_and_exits_on_mpc_plan_done() {
         assert_eq!(
             KPopHardConstraints::DELIGHT.skip_kpop_on_initial_pass,
             KPopHardConstraints::CODE.skip_kpop_on_initial_pass,
@@ -145,10 +126,6 @@ mod tests {
             KPopHardConstraints::TIDY.skip_kpop_on_initial_pass,
         );
         assert_eq!(KPopHardConstraints::DELIGHT.exit, KPopHardConstraintsExit::CodeTidy);
-        assert_eq!(KPopHardConstraints::DELIGHT.consecutive_kpop_solved_to_exit(), 2);
-        assert_ne!(
-            KPopHardConstraints::DELIGHT.consecutive_kpop_solved_to_exit(),
-            KPopHardConstraints::INIT.consecutive_kpop_solved_to_exit(),
-        );
+        assert!(KPopHardConstraints::DELIGHT.require_passing_gates_for_exit());
     }
 }

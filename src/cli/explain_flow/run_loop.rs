@@ -67,7 +67,7 @@ fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
             Err(e)
         } else {
             Err(
-                "malvin explain: gate loop did not exit on two consecutive ## KPOP_SOLVED markers"
+                "malvin explain: gate loop did not exit on mpc plan DONE"
                     .to_string(),
             )
         }

@@ -1,8 +1,7 @@
 use super::{
-    kpop_engine_loop_one_iteration, refresh_consecutive_solved_streak,
-    restore_carry_forward_before_iteration_snapshot,
+    kpop_engine_loop_one_iteration, restore_carry_forward_before_iteration_snapshot,
     run_kpop_engine, run_kpop_engine_on_loop_iteration, run_gate_workspace_gates_with_fresh_backups,
-    session_wrote_kpop_solved, wire_kpop_engine_client,
+    wire_kpop_engine_client,
 };
 
 #[test]
@@ -19,22 +18,13 @@ use crate::artifacts::SessionDotfileBackups;
 use crate::session_dotfile_backup::GitignoreBackup;
 
 #[test]
-fn refresh_consecutive_solved_streak_increments_or_resets() {
+fn session_mpc_plan_declares_done_reads_done_file() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let empty = tmp.path().join("empty.md");
-    std::fs::write(&empty, "").expect("write");
-    assert_eq!(refresh_consecutive_solved_streak(1, &empty).expect("read"), 0);
-    let solved = tmp.path().join("solved.md");
-    std::fs::write(&solved, "## KPOP_SOLVED\n").expect("write");
-    assert_eq!(refresh_consecutive_solved_streak(1, &solved).expect("read"), 2);
-}
-
-#[test]
-fn session_wrote_kpop_solved_reads_marker() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "## KPOP_SOLVED\n").expect("write");
-    assert!(session_wrote_kpop_solved(&path).expect("read"));
+    let artifacts =
+        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
+    assert!(!super::session_mpc_plan_declares_done(&artifacts).expect("read"));
+    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
+    assert!(super::session_mpc_plan_declares_done(&artifacts).expect("read"));
 }
 
 pub(crate) fn gate_early_exit_fixture() -> (
@@ -159,7 +149,6 @@ fn kpop_engine_loop_rejects_over_budget_exp_log_after_session() {
                 params: &loop_params,
                 iteration: 1,
                 run_timing: &run_timing,
-                consecutive_solved: 0,
                 client: &mut client,
             })
             .await
