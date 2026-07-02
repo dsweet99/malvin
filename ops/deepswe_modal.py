@@ -2242,6 +2242,12 @@ def finalize_modal_eval(
     click.echo(f"pass: {grade_result.get('pass')}")
     if agent_result:
         click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
+        agent_stdout = agent_result.get("stdout")
+        if isinstance(agent_stdout, str) and agent_stdout.strip():
+            click.echo("--- agent stdout ---")
+            click.echo(agent_stdout.rstrip())
+            click.echo("--- end agent stdout ---")
     click.echo(f"artifacts: {run_root.resolve()}")
 
     if grade_result.get("pass") is False:
@@ -2443,7 +2449,7 @@ def run_modal_eval(
 @click.option(
     "--command",
     "malvin_command",
-    type=click.Choice(["code", "do"]),
+    type=click.Choice(["code", "do", "hello"]),
     default="code",
     show_default=True,
 )
@@ -3541,6 +3547,32 @@ def _test_write_metadata() -> None:
         assert loaded == payload
 
 
+def _test_finalize_modal_eval_echoes_agent_stdout() -> None:
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory() as tmp:
+        run_root = Path(tmp)
+
+        @click.command()
+        def _invoke() -> None:
+            finalize_modal_eval(
+                run_root=run_root,
+                spec=MagicMock(task_id="demo"),
+                workspace=run_root,
+                malvin_command="hello",
+                malvin_args=(),
+                grade_only=False,
+                agent_result={"exit_code": 0, "stdout": "agent said hi\n"},
+                grade_result={"pass": None, "reward": None},
+            )
+
+        result = runner.invoke(_invoke)
+        assert result.exit_code == 0, result.output
+        assert "agent said hi" in result.output
+        assert "--- agent stdout ---" in result.output
+
+
 def _test_resolve_cursor_api_cidrs_mocked() -> None:
     def fake_getaddrinfo(host: str, port: int, *args: Any, **kwargs: Any) -> list[tuple]:
         if host == CURSOR_API_HOSTS[0]:
@@ -3925,6 +3957,7 @@ def run_agent_toolchain_unit_tests() -> None:
 def run_harvest_sandbox_unit_tests() -> None:
     """Harvest, staging, tar overlay, and eval-context unit tests."""
     _test_write_metadata()
+    _test_finalize_modal_eval_echoes_agent_stdout()
     _test_resolve_cursor_api_cidrs_mocked()
     _test_upload_ignore_patterns()
     _test_stage_malvin_repo()

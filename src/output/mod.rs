@@ -198,7 +198,8 @@ pub(crate) fn stdout_use_color() -> bool {
 }
 
 pub use stdout_tee_env::{
-    agent_stdout_tee_enabled, force_stdout_tee_from_env, stdout_is_interactive,
+    agent_stdout_tee_enabled, enable_probe_stdout_tee, force_stdout_tee_from_env,
+    stdout_is_interactive,
 };
 
 pub(crate) fn stderr_use_color() -> bool {

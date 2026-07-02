@@ -55,14 +55,14 @@ mod tests {
 
     #[test]
     fn bare_invocation_max_loops_flag_detected_at_top_level() {
-        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "investigate"]);
         assert!(subcommand_flag_from_command_line(&matches, "kpop", "max_loops"));
         assert!(!subcommand_flag_from_command_line(&matches, "code", "max_loops"));
     }
 
     #[test]
     fn bare_workflow_flag_from_command_line_maps_bare_max_loops() {
-        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "hello"]);
+        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "investigate"]);
         assert!(bare_workflow_flag_from_command_line(&matches, "kpop", "max_loops"));
         assert!(!bare_workflow_flag_from_command_line(&matches, "code", "max_loops"));
         assert!(!bare_workflow_flag_from_command_line(&matches, "kpop", "missing"));

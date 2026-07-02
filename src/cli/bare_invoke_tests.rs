@@ -101,7 +101,7 @@ fn bare_flags_forward_to_kpop() {
 #[test]
 fn resolve_bare_helper_functions_directly() {
     let cmd = Cli::command();
-    let matches = cmd.get_matches_from(["malvin", "hello"]);
+    let matches = cmd.get_matches_from(["malvin", "investigate"]);
     let cli = Cli::from_arg_matches(&matches).expect("cli");
     let kpop_cmd = resolve_bare_kpop(&cli, &matches).expect("kpop");
     assert!(matches!(kpop_cmd, Commands::Kpop(_)));
@@ -110,14 +110,25 @@ fn resolve_bare_helper_functions_directly() {
 }
 
 #[test]
+fn hello_subcommand_does_not_resolve_as_bare_kpop() {
+    let cli = parse_cli_with_config_defaults(["malvin", "hello"])
+        .expect("parse")
+        .0;
+    match cli.command {
+        Some(Commands::Hello(_)) => {}
+        other => panic!("expected hello subcommand, got {other:?}"),
+    }
+}
+
+#[test]
 fn unit_helpers_join_request_bare_loop() {
     require_bare_request(None, "usage").expect_err("empty");
     require_bare_request(Some(&"   ".to_string()), "usage").expect_err("whitespace");
-    let cli = parse_cli_with_config_defaults(["malvin", "hello", "world"])
+    let cli = parse_cli_with_config_defaults(["malvin", "fix", "bug"])
         .expect("parse")
         .0;
     assert!(cli.command.is_none());
-    assert_eq!(cli.bare_args, vec!["hello", "world"]);
+    assert_eq!(cli.bare_args, vec!["fix", "bug"]);
     let cmd = Cli::command();
     let matches = cmd.get_matches_from(["malvin", "hello"]);
     let cli = Cli::from_arg_matches(&matches).expect("cli");

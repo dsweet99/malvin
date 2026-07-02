@@ -124,6 +124,7 @@ fn apply_gate_loop_command_defaults(
             },
         ),
         Commands::Do(_)
+        | Commands::Hello(_)
         | Commands::Init(_)
         | Commands::Inspire(_)
         | Commands::Models(_) | Commands::Logs(_) => {}
@@ -138,6 +139,7 @@ pub fn apply_workspace_config_defaults(
         cli.command,
         Some(
             Commands::Do(_)
+                | Commands::Hello(_)
                 | Commands::Models(_)
                 | Commands::Logs(_)
         )

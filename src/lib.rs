@@ -201,6 +201,9 @@ pub mod init_cmd;
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;
 
+#[path = "cli/hello_flow.rs"]
+pub mod hello_flow;
+
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
 
