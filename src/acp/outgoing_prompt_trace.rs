@@ -22,6 +22,8 @@ pub struct CoderPromptOptions<'a> {
     /// When true, skip client-level prompt retries (gate kpop outer loop owns retries).
     pub single_attempt: bool,
     /// When set, strip stale mpc plan `DONE` before each gate retry.
+    /// Only effective in the mini backend's retry loop (`client_gate_retry.rs`);
+    /// the ACP backend ignores this field.
     pub mpc_plan_path: Option<&'a Path>,
 }
 

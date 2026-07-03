@@ -134,7 +134,7 @@ pub(super) async fn run_kpop_engine_coder_turn(
             CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 single_attempt: true,
-                mpc_plan_path: Some(&crate::artifacts::mpc_plan_path(prepared.artifacts())),
+                mpc_plan_path: None,
                 ..Default::default()
             },
         )

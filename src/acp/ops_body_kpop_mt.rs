@@ -23,6 +23,21 @@ async fn end_reused_coder_session(client: &mut AgentClient) {
     client.end_coder_session().await.ok();
 }
 
+async fn recover_failed_multiturn_round(
+    client: &mut AgentClient,
+    ctl: &AgentKpopMultiturnCtl<'_, '_>,
+    reuse_open: bool,
+    err: AgentError,
+) -> Result<(), AgentError> {
+    let _ = crate::artifacts::restore_workspace_session_dotfiles(
+        ctl.cwd, ctl.session_dotfile_backups,
+    );
+    if reuse_open {
+        end_reused_coder_session(client).await;
+    }
+    Err(err)
+}
+
 async fn finish_kpop_multiturn_session(
     client: &mut AgentClient,
     reuse_open: bool,
@@ -85,7 +100,7 @@ pub(crate) async fn run_kpop_multiturn_once(
             })
             .await;
         }
-        multiturn_after_successful_round(
+        if let Err(e) = multiturn_after_successful_round(
             session,
             MultiturnRoundAfter {
                 cwd: ctl.cwd,
@@ -93,7 +108,10 @@ pub(crate) async fn run_kpop_multiturn_once(
                 state: ctl.state,
             },
         )
-        .await?;
+        .await
+        {
+            return recover_failed_multiturn_round(client, ctl, reuse_open, e).await;
+        }
     }
 
     finish_kpop_multiturn_session(client, reuse_open, owned).await
@@ -113,6 +131,9 @@ mod kiss_cov_auto{
     fn kiss_cov_end_reused_coder_session() { let _ = end_reused_coder_session; }
 
     #[test]
+    fn kiss_cov_recover_failed_multiturn_round() { let _ = recover_failed_multiturn_round; }
+
+    #[test]
     fn kiss_cov_finish_kpop_multiturn_session() { let _ = finish_kpop_multiturn_session; }
 
     #[test]
@@ -128,6 +149,7 @@ mod kiss_cov_gate_refs{
         let _: Option<MultiturnRoundAfter> = None;
         let _ = multiturn_after_successful_round;
         let _ = end_reused_coder_session;
+        let _ = recover_failed_multiturn_round;
         let _ = finish_kpop_multiturn_session;
         let _ = run_kpop_multiturn_once;
     }
