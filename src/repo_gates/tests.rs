@@ -3,6 +3,33 @@ use super::checks_test_helpers::{git_init, write_git_root_checks as write_checks
 use std::fs;
 
 #[test]
+fn load_malvin_checks_skips_comments_and_blank_lines() {
+    let tmp = tempfile::tempdir().unwrap();
+    let checks_path = tmp.path().join(".malvin/checks");
+    std::fs::create_dir_all(checks_path.parent().unwrap()).unwrap();
+    std::fs::write(&checks_path, "# header\n\ncustom-a\n# tail\n").unwrap();
+    let lines = load_malvin_checks(&checks_path).unwrap();
+    assert_eq!(lines, vec!["custom-a".to_string()]);
+}
+
+#[test]
+fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
+    crate::test_utils::with_isolated_home(|w| {
+        std::fs::create_dir_all(w.join(".malvin")).unwrap();
+        std::fs::write(
+            w.join(".malvin/checks"),
+            "# lint gates\ncustom-a\ncargo nextest run\n",
+        )
+        .unwrap();
+        let md = prompt_quality_gates_markdown(w).unwrap();
+        assert!(md.contains("`custom-a`"));
+        assert!(md.contains("`cargo nextest run`"));
+        assert!(!md.contains("# lint"));
+        assert!(!md.contains("--partition"));
+    });
+}
+
+#[test]
 fn builtin_gate_command_lines_returns_kiss_only_for_rust_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();

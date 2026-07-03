@@ -141,7 +141,7 @@ fn run_quality_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    let commands = crate::repo_gates::gate_command_lines_for_workspace_run(work_dir)
+    let commands = crate::repo_gates::gate_command_lines(work_dir)
         .map_err(RepoGateFailure::Message)?;
     run_malvin_checks_with_details(work_dir, output, run_log_dir, &commands)
 }

@@ -140,9 +140,9 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 ## Quality gates (`.malvin/checks`)
 
-Gate-loop commands (`code`, `tidy`, `delight`, `explain`, `revise`, bare `malvin REQUEST`) run workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty line).
+Gate-loop commands (`code`, `tidy`, `delight`, `explain`, `revise`, bare `malvin REQUEST`) run workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
 
-When `.malvin/checks` is missing at session startup, malvin runs a checks-discovery KPop session first (`init_constraints.md`), then aborts if the agent did not write a valid checks file. Delete `.malvin/checks` to trigger discovery again on the next gate-loop command.
+When `.malvin/checks` is missing or contains no command lines at session startup, malvin runs a checks-discovery KPop session first (`init_constraints.md`), then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next gate-loop command.
 
 `malvin do --repo-gates` and mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 

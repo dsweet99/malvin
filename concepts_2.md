@@ -65,7 +65,7 @@ Before and after agent work and at loop exit, malvin must discover gate commands
 
 ### Where it lives
 
-- `src/repo_gates/mod.rs` — discovery, default checks, `sandbox_safe_gate_commands`, prompt markdown for gate failures
+- `src/repo_gates/mod.rs` — discovery, default checks, prompt markdown for gate failures
 - `src/cli/repo_checks/gate_run.rs` — `run_repo_workspace_gates`, sequential command execution
 - `src/cli/workflow_kpop_shared.rs` — `run_kpop_workspace_gates` with dotfile restore sandwich (pre-gate restore → repair → run → post-gate restore)
 - `src/workflow_context.rs` — injects `quality_gates` output into agent prompts
@@ -78,7 +78,7 @@ Discovery, workspace preparation, execution, logging, and prompt formatting are 
 
 ### Related typing aids
 
-`sandbox_safe_gate_commands` filters discovered lines for sandbox-safe execution. Gate failure markdown builders live in `repo_gates`. These label subsets of the pipeline; runtime orchestration remains in `workflow_kpop_shared` and `gate_run`.
+Gate failure markdown builders live in `repo_gates`. These label subsets of the pipeline; runtime orchestration remains in `workflow_kpop_shared` and `gate_run`.
 
 ---
 

@@ -17,15 +17,3 @@ fn command_matches_malvin_checks_gate_uses_checks_file_not_hardcoded_needles() {
         assert!(!command_matches_malvin_checks_gate("long-running-cmd run", w));
     });
 }
-
-#[test]
-fn command_matches_malvin_checks_gate_sees_sandbox_expanded_nextest() {
-    crate::test_utils::with_isolated_home(|w| {
-        std::fs::create_dir_all(w.join(".malvin")).unwrap();
-        std::fs::write(w.join(".malvin/checks"), "cargo nextest run\n").unwrap();
-        assert!(command_matches_malvin_checks_gate(
-            "cargo nextest run --partition hash:1/2",
-            w
-        ));
-    });
-}

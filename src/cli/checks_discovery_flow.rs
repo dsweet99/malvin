@@ -1,28 +1,29 @@
 //! Lazy `.malvin/checks` discovery via `KPop` (`init_constraints.md`).
 
-use std::collections::HashMap;
 use std::path::Path;
 
-use crate::artifacts::{
-    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts, RunArtifacts,
-};
-use crate::kpop_engine::{
-    run_kpop_engine, KPopEngineParams, KPopEnginePrepared, KPopHardConstraints,
-};
-use crate::kpop_program::render_repo_program_without_quality_gates;
+use crate::artifacts::create_kpop_run_artifacts;
 use crate::malvin_checks_path;
-use crate::malvin_config_file::{self, AgentConfig};
-use crate::output::{print_stderr_line, MALVIN_WHO};
-use crate::prompts::{PromptError, PromptStore};
-use crate::repo_gates::init_discovery_validate::validate_checks_command_lines;
 use crate::repo_gates::load_malvin_checks;
 
-use super::workflow_kpop_shared::{
-    kpop_engine_loop_iterations, kpop_workflow_context_without_gates,
-};
-use super::{prepare_kpop_prompt_store, SharedOpts, WorkflowCliOptions};
+use super::SharedOpts;
 
-const DISCOVERY_COMMAND: &str = "checks_discover";
+#[path = "checks_discovery_kpop.rs"]
+mod checks_discovery_kpop;
+
+use checks_discovery_kpop::run_checks_discovery_kpop;
+
+fn checks_file_has_commands(work_dir: &Path) -> Result<(), String> {
+    let path = malvin_checks_path(work_dir);
+    if !path.is_file() {
+        return Err("checks discovery: .malvin/checks still missing".to_string());
+    }
+    let lines = load_malvin_checks(&path)?;
+    if lines.is_empty() {
+        return Err("checks discovery: .malvin/checks has no commands".to_string());
+    }
+    Ok(())
+}
 
 fn checks_already_valid(work_dir: &Path) -> Result<bool, String> {
     let path = malvin_checks_path(work_dir);
@@ -30,99 +31,14 @@ fn checks_already_valid(work_dir: &Path) -> Result<bool, String> {
         return Ok(false);
     }
     let lines = load_malvin_checks(&path)?;
-    validate_checks_command_lines(work_dir, &lines)?;
-    Ok(true)
-}
-
-fn prepare_checks_discovery_prompt_store(
-    workflow: WorkflowCliOptions,
-) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
-    store
-        .validate_exists("kpop_program.md")
-        .map_err(|e: PromptError| e.0)?;
-    store
-        .validate_exists("init_constraints.md")
-        .map_err(|e: PromptError| e.0)?;
-    Ok(store)
-}
-
-fn checks_discovery_kpop_request(
-    store: &PromptStore,
-    artifacts: &RunArtifacts,
-) -> Result<String, String> {
-    let mut ctx = HashMap::new();
-    ctx.insert(
-        "repo_root_path".to_string(),
-        artifacts.work_dir.display().to_string(),
-    );
-    render_repo_program_without_quality_gates(store, "init_constraints.md", &ctx, artifacts)
-}
-
-fn load_discovery_agent_config(work_dir: &Path) -> AgentConfig {
-    malvin_config_file::load_malvin_config(work_dir).agent
+    Ok(!lines.is_empty())
 }
 
 fn finish_checks_discovery(work_dir: &Path) -> Result<(), String> {
-    let path = malvin_checks_path(work_dir);
-    if !path.is_file() {
-        return Err("checks discovery: .malvin/checks still missing".to_string());
-    }
-    let lines = load_malvin_checks(&path)?;
-    validate_checks_command_lines(work_dir, &lines).map_err(|e| {
-        format!("checks discovery: .malvin/checks exists but is invalid: {e}")
-    })
+    checks_file_has_commands(work_dir)
 }
 
-async fn run_checks_discovery_kpop(
-    shared: &SharedOpts,
-    artifacts: &RunArtifacts,
-) -> Result<(), String> {
-    let workflow = WorkflowCliOptions {
-        force: !shared.no_force,
-    };
-    let store = prepare_checks_discovery_prompt_store(workflow)?;
-    let request_text = checks_discovery_kpop_request(&store, artifacts)?;
-    std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = kpop_workflow_context_without_gates(artifacts, DISCOVERY_COMMAND)?;
-    let prepared = KPopEnginePrepared {
-        artifacts: artifacts.clone(),
-        context,
-        request_text: request_text.clone(),
-        startup_emit_request: request_text,
-        store,
-        malvin_checks_backup,
-    };
-    let agent_cfg = load_discovery_agent_config(&artifacts.work_dir);
-    let max_loops = if crate::acp::test_no_real_agent_enabled() {
-        1
-    } else {
-        agent_cfg.max_loops
-    };
-    let _iterations = kpop_engine_loop_iterations(max_loops);
-    let (_gates_ok, _agent_ran, _timing, _last_backups) = run_kpop_engine(KPopEngineParams {
-        command: DISCOVERY_COMMAND,
-        shared,
-        workflow,
-        prepared: &prepared,
-        max_loops,
-        behavior: KPopHardConstraints::CHECKS_DISCOVERY,
-    })
-    .await?;
-    if crate::kpop_progression::mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))
-        == Ok(false)
-        && malvin_checks_path(&artifacts.work_dir).is_file()
-    {
-        print_stderr_line(
-            MALVIN_WHO,
-            "checks discovery: mpc plan not DONE but .malvin/checks exists",
-        );
-    }
-    Ok(())
-}
-
-/// Run checks discovery `KPop` when `.malvin/checks` is missing or invalid.
+/// Run checks discovery `KPop` when `.malvin/checks` is missing or has no commands.
 pub(crate) async fn ensure_malvin_checks_discovered(
     work_dir: &Path,
     shared: &SharedOpts,
@@ -164,6 +80,12 @@ pub(crate) async fn ensure_malvin_checks_discovered_for_cli_request(
 mod tests {
     use super::*;
     use crate::artifacts::create_kpop_run_artifacts;
+    use crate::prompts::PromptStore;
+    use crate::cli::WorkflowCliOptions;
+    use checks_discovery_kpop::{
+        checks_discovery_kpop_request, load_discovery_agent_config,
+        prepare_checks_discovery_prompt_store,
+    };
 
     #[test]
     fn checks_discovery_kpop_request_expands_placeholders() {
@@ -206,12 +128,32 @@ mod tests {
 
     #[test]
     fn finish_checks_discovery_accepts_valid_kiss_checks() {
-        if crate::lookup_bin_on_path("kiss").is_none() {
-            return;
-        }
         let tmp = tempfile::tempdir().expect("tempdir");
         crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         finish_checks_discovery(tmp.path()).expect("valid");
+    }
+
+    #[test]
+    fn finish_checks_discovery_accepts_checks_with_leading_comment() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        crate::seed_malvin_checks(tmp.path(), "# header\nkiss check\n");
+        finish_checks_discovery(tmp.path()).expect("valid with comment");
+    }
+
+    #[test]
+    fn finish_checks_discovery_fails_when_comment_only() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        crate::seed_malvin_checks(tmp.path(), "# only\n");
+        let err = finish_checks_discovery(tmp.path()).unwrap_err();
+        assert!(err.contains("has no commands"), "{err:?}");
+    }
+
+    #[test]
+    fn checks_already_valid_false_when_comment_only() {
+        crate::test_utils::with_isolated_home(|tmp| {
+            crate::seed_malvin_checks(tmp, "# only\n");
+            assert!(!checks_already_valid(tmp).expect("read"));
+        });
     }
 
     #[test]
@@ -240,6 +182,7 @@ mod tests {
 #[allow(unused_imports)]
 mod kiss_cov_gate_refs {
     use super::*;
+    use checks_discovery_kpop::checks_discovery_kpop_request;
     #[test]
     fn kiss_cov_unit_names() {
         let _ = checks_discovery_kpop_request;

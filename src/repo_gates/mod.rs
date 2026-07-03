@@ -1,8 +1,6 @@
 #![allow(clippy::missing_errors_doc)]
 
-pub(crate) mod init_discovery_validate;
 pub(crate) mod gate_command_match;
-pub(crate) mod sandbox_safe;
 
 use std::path::Path;
 
@@ -13,8 +11,6 @@ pub const KISSIGNORE_FILE: &str = ".kissignore";
 pub const KISSCONFIG_FILE: &str = ".kissconfig";
 
 pub const KISS_CHECK_COMMAND: &str = "kiss check";
-
-pub use sandbox_safe::sandbox_safe_gate_commands;
 
 #[must_use]
 pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
@@ -78,11 +74,6 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
     crate::malvin_config_file::ensure_malvin_config_file(work_dir)
 }
 
-pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
-    let lines = gate_command_lines(work_dir)?;
-    Ok(sandbox_safe_gate_commands(&lines))
-}
-
 mod prompt_markdown;
 
 pub use prompt_markdown::{
@@ -99,15 +90,18 @@ pub fn format_quality_gates_markdown(commands: &[String]) -> String {
         .join("\n")
 }
 
+pub(crate) fn parse_malvin_checks_text(text: &str) -> Vec<String> {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(std::string::ToString::to_string)
+        .collect()
+}
+
 pub fn load_malvin_checks(checks_path: &Path) -> Result<Vec<String>, String> {
     let raw = std::fs::read_to_string(checks_path)
         .map_err(|e| format!("read {}: {e}", checks_path.display()))?;
-    Ok(raw
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty())
-        .map(std::string::ToString::to_string)
-        .collect())
+    Ok(parse_malvin_checks_text(&raw))
 }
 
 #[cfg(test)]

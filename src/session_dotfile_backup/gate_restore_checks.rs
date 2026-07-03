@@ -6,11 +6,7 @@ pub(super) fn substantive_check_lines(bytes: &[u8]) -> Vec<String> {
     let Ok(text) = std::str::from_utf8(bytes) else {
         return Vec::new();
     };
-    text.lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .map(str::to_string)
-        .collect()
+    crate::repo_gates::parse_malvin_checks_text(text)
 }
 
 pub(super) fn is_bare_kiss_check_bytes(bytes: &[u8]) -> bool {
