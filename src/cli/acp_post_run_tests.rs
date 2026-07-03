@@ -195,7 +195,7 @@ fn merge_restore_check_abort_then_print_timing_noops_without_json() {
     let work = tempfile::tempdir().unwrap();
     let empty = crate::test_utils::empty_session_dotfile_backups(work.path());
     let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("init", Some(work.path())).expect("artifacts");
+        crate::artifacts::create_kpop_run_artifacts("code", Some(work.path())).expect("artifacts");
     merge_acp_restore_check_abort_then_print_timing(Ok(()), &artifacts, &empty)
     .expect("merge");
 }

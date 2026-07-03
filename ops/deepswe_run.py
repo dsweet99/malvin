@@ -403,7 +403,7 @@ def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
 
 
 def canonical_tool(line: str) -> str:
-    """First whitespace-delimited token, lowercased (matches malvin init discovery)."""
+    """First whitespace-delimited token, lowercased (for deduping check command lines)."""
     parts = line.strip().split()
     return parts[0].lower() if parts else ""
 
@@ -618,7 +618,7 @@ def ensure_kiss_check_first(lines: list[str]) -> list[str]:
 
 
 def discover_deepswe_check_lines(root: Path) -> list[str]:
-    """Mirror malvin init discovery: repo signals, then builtins, kiss first."""
+    """DeepSWE checks discovery: pre-commit/Makefile signals, existing checks, builtins; kiss first."""
     precommit = precommit_hook_entries(root)
     makefile = makefile_gate_targets(root)
     if precommit:

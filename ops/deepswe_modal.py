@@ -128,7 +128,7 @@ CRITICAL_CURSOR_API_HOSTS = ("api2.cursor.sh", "api.cursor.com")
 
 # Modal Sandbox.create defaults are 0.125 CPU and 128 MiB — too small for malvin +
 # cursor-agent. Agent memory follows task.toml environment.memory_mb; malvin USS cap
-# is seeded separately via ensure_deepswe_malvin_config (default_repo/config.toml = 4 GiB).
+# is seeded separately via ensure_deepswe_malvin_config (~/.malvin_home/config.toml mem_limit_gb).
 AGENT_SANDBOX_CPU = 2.0
 AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0

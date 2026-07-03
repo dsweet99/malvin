@@ -126,14 +126,14 @@ mod tests {
     fn emit_run_startup_sequence_omits_host_resources_when_disabled() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let artifacts =
-            crate::artifacts::create_run_artifacts_from_text("init", Some(tmp.path())).expect("art");
+            crate::artifacts::create_run_artifacts_from_text("code", Some(tmp.path())).expect("art");
         emit_run_startup_sequence(
             &artifacts,
             RunStartupEmitOpts {
                 tee_stdout: false,
                 host_resources: false,
             },
-            "init",
+            "code",
         )
         .expect("startup");
         let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");
