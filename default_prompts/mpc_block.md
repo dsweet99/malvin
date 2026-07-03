@@ -3,9 +3,11 @@
   - If you believe there is nothing left to do, write "DONE" to `{{ mpc_plan_path }}` and stop.
   - If the plan is large or complex enough to require more than one phase, write a two-phase plan:
     (i) Work Phase: One detailed first phase.
-    (ii) Deffered Phase: One rough summary of the remaineder of the work.
+    (ii) Deferred Phase: One rough summary of the remaineder of the work.
   - Otherwise, if the plan can be completed in one phase (preferred), label the entire plane the 'Work Phase'
-
+  - Some plan attributes:
+   - Name and describe key concepts, behaviors, invariants, and edge cases.
+   - Include a plan to unit test.
 2. KPOP: Check the plan for contradictions, errors, scope violation/creep, or plan inefficiency.
   - Append any questions you might have. Do research to answer your questions.
   - Leave no decisions open.
