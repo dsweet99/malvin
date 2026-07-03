@@ -69,6 +69,7 @@ pub async fn run_delight(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_for_cwd(shared).await?;
     let prepared = prepare_delight_kpop_run(&delight.out_path, delight.guidance.as_ref(), workflow)?;
     delight.out_path =
         crate::cli::default_output_path::path_relative_to_cwd(&prepared.resolved_out_path)?;

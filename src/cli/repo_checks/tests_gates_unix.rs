@@ -43,6 +43,7 @@ fn run_repo_workspace_gates_invokes_expected_quality_commands() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     workspace_git_minimal_cargo_rs_py_tests(work);
+    super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
     install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo", "ruff"], 0);

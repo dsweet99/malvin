@@ -145,23 +145,15 @@ fn format_quality_gates_markdown_lists_commands() {
 }
 
 #[test]
-fn prompt_quality_gates_markdown_ephemeral_restores_missing_malvin_checks() {
+fn prompt_quality_gates_markdown_ephemeral_errors_when_checks_missing() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     git_init(w);
-    fs::write(
-        w.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .unwrap();
     let checks_path = crate::malvin_checks_path(w);
     assert!(!checks_path.exists());
-    let md = prompt_quality_gates_markdown_ephemeral(w).unwrap();
-    assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
-    assert!(
-        !checks_path.exists(),
-        "ephemeral prompt expansion must restore Missing .malvin/checks"
-    );
+    let err = prompt_quality_gates_markdown_ephemeral(w).unwrap_err();
+    assert!(err.contains("is missing"), "unexpected error: {err}");
+    assert!(!checks_path.exists());
 }
 
 #[test]
@@ -175,53 +167,6 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
     });
 }
 
-#[test]
-fn refresh_provisional_malvin_checks_file_replaces_existing() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    git_init(w);
-    write_checks(w, "old\n");
-    refresh_provisional_malvin_checks_file(w).unwrap();
-    let text = fs::read_to_string(crate::malvin_checks_path(w)).unwrap();
-    assert!(text.contains("kiss check"));
-    assert!(!text.contains("old"));
-}
-
-#[test]
-fn augment_init_checks_adds_ruff_from_precommit_template() {
-    crate::test_utils::with_isolated_home(|w| {
-        write_checks(w, "kiss check\n");
-        fs::write(
-            w.join(".pre-commit-config.yaml"),
-            "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n",
-        )
-        .unwrap();
-        crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates(w)
-            .unwrap();
-        let checks = fs::read_to_string(crate::malvin_checks_path(w)).unwrap();
-        assert!(checks.contains("ruff check ."));
-        assert!(checks.contains(DEFAULT_PYTEST_CHECK));
-    });
-}
-
-#[test]
-fn augment_init_checks_adds_pytest_when_ruff_already_present() {
-    crate::test_utils::with_isolated_home(|w| {
-        write_checks(w, "kiss check\nruff check .\n");
-        crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates(w)
-            .unwrap();
-        let checks = fs::read_to_string(crate::malvin_checks_path(w)).unwrap();
-        assert!(checks.contains("ruff check ."));
-        assert!(checks.contains(DEFAULT_PYTEST_CHECK));
-    });
-}
-
-#[test]
-fn smoke_cov_discover_init_checks_finalize() {
-    let _ = crate::repo_gates::discover_init_checks::finalize_init_checks_from_repo;
-    let _ = crate::repo_gates::discover_init_checks::checks_cover_precommit_signals;
-    let _ = crate::repo_gates::discover_init_checks::augment_init_checks_with_precommit_python_gates;
-}
 
 #[test]
 fn default_rust_test_command_matches_nextest_probe() {

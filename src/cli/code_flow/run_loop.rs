@@ -62,6 +62,11 @@ pub async fn run_code(
     if cli_request.is_empty() {
         return Err("malvin code: missing required REQUEST (text or path)".into());
     }
+    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_for_cli_request(
+        cli_request,
+        shared,
+    )
+    .await?;
     let prepared = prepare_code_kpop_run(workflow, cli_request)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 
@@ -120,7 +125,12 @@ mod tests {
     #[test]
     fn code_outer_loop_summarize_params_builds_code_context() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = super::super::run_startup::prepare_code_kpop_run(

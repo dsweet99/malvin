@@ -87,6 +87,12 @@ fn workflow_context_paths_use_relative_prompt_paths() {
 #[test]
 fn workflow_context_render_includes_kpop_and_quality_gates() {
     with_isolated_home(|work, _home| {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init");
+        common::seed_malvin_checks(work, "true\n");
         let plan = work.join("plan.md");
         std::fs::write(&plan, "p").expect("write");
         let artifacts = create_run_artifacts(&plan, Some(work)).expect("artifacts");

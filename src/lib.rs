@@ -195,8 +195,6 @@ pub mod source_detect;
 #[path = "cli/source_detect_kiss_cov_tests.rs"]
 mod source_detect_kiss_cov_tests;
 
-#[path = "cli/init_cmd.rs"]
-pub mod init_cmd;
 
 #[path = "cli/do_flow.rs"]
 pub mod do_flow;

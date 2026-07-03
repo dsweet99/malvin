@@ -2822,11 +2822,23 @@ def _test_ephemeral_cache_find_expr() -> None:
     assert ".pytest_cache" in expr
 
 
+_GIT_TEST_IDENTITY = {
+    "GIT_AUTHOR_NAME": "malvin-test",
+    "GIT_AUTHOR_EMAIL": "malvin-test@example.com",
+    "GIT_COMMITTER_NAME": "malvin-test",
+    "GIT_COMMITTER_EMAIL": "malvin-test@example.com",
+}
+
+
 def _test_reset_workspace_removes_user_pycache() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
-        run_cmd(["git", "init", "-q"], cwd=workspace)
-        run_cmd(["git", "commit", "--allow-empty", "-m", "init", "-q"], cwd=workspace)
+        run_cmd(["git", "init", "-q"], cwd=workspace, env=_GIT_TEST_IDENTITY)
+        run_cmd(
+            ["git", "commit", "--allow-empty", "-m", "init", "-q"],
+            cwd=workspace,
+            env=_GIT_TEST_IDENTITY,
+        )
         cache = workspace / "pkg" / "__pycache__"
         cache.mkdir(parents=True)
         (cache / "mod.cpython-312.pyc").write_bytes(b"\x00")

@@ -8,9 +8,8 @@ use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string}
 /// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `bug`, `tidy`, …).
 ///
 /// Runs workspace preparation (`kiss clamp` when applicable) before gate lines.
-/// When `.malvin/checks` is absent, materializes default gate lines via
-/// [`repo_gates::ensure_default_malvin_checks_file`], then runs each non-empty line from
-/// `.malvin/checks` in order. Does not run `pre-commit`.
+/// When `.malvin/checks` is absent, returns an error (no silent seeding).
+/// Runs each non-empty line from `.malvin/checks` in order. Does not run `pre-commit`.
 /// With `run_log_dir: Some(path)`, gate output is also appended to `path/quality_gates.log`.
 pub fn run_repo_workspace_gates(
     work_dir: &Path,

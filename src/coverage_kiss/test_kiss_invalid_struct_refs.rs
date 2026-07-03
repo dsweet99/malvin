@@ -221,5 +221,5 @@ fn kiss_invalid_struct_value_refs_gate10_5() {
 
 #[test]
 fn kiss_invalid_struct_value_refs_gate10_6() {
-    let _ = crate::repo_gates::discover_init_checks_fixtures::write_repo_files;
+    let _ = crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered;
 }

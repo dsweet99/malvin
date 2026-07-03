@@ -2,12 +2,12 @@
 
 use std::path::Path;
 
-use super::{ensure_default_malvin_checks_file, format_quality_gates_markdown, load_malvin_checks};
+use super::{format_quality_gates_markdown, load_malvin_checks};
 
 /// Markdown list of quality gate commands for prompt substitution (`{{ quality_gates }}`).
 ///
 /// Reads **only** [`.malvin/checks`]. Returns an error if that file is not a regular file.
-/// Callers that need defaults materialized first should run [`ensure_default_malvin_checks_file`].
+/// Callers must ensure `.malvin/checks` exists (e.g. via lazy discovery) before calling.
 pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> {
     let checks_path = crate::resolve_malvin_checks_path(work_dir);
     if !checks_path.is_file() {
@@ -20,18 +20,13 @@ pub fn prompt_quality_gates_markdown(work_dir: &Path) -> Result<String, String> 
     Ok(format_quality_gates_markdown(&lines))
 }
 
-/// Materializes default `.malvin/checks` only while building prompt markdown, then restores prior state.
-///
-/// Avoids leaving an untracked `.malvin/checks` when the workspace had none before the call.
+/// Reads `.malvin/checks` for prompt substitution without modifying the workspace file.
 pub fn prompt_quality_gates_markdown_ephemeral(work_dir: &Path) -> Result<String, String> {
     use crate::session_dotfile_backup::{
         backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
     };
     let backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let result = (|| {
-        ensure_default_malvin_checks_file(work_dir)?;
-        prompt_quality_gates_markdown(work_dir)
-    })();
+    let result = prompt_quality_gates_markdown(work_dir);
     restore_workspace_malvin_checks_backup(work_dir, &backup)?;
     result
 }

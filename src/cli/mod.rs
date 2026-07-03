@@ -26,7 +26,7 @@ pub(crate) mod revise_flow;
 
 pub(crate) mod code_flow;
 mod code_flow_a;
-pub(crate) mod init_discovery_flow;
+pub(crate) mod checks_discovery_flow;
 mod loop_opts;
 pub(crate) mod default_output_path;
 pub(crate) mod workflow_kpop_shared;

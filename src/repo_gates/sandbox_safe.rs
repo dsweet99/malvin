@@ -118,6 +118,7 @@ mod tests {
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
         )
         .unwrap();
+        crate::seed_malvin_checks(w, "kiss check\ncargo clippy -j 2 --all-targets\ncargo nextest run\n");
         let a = gate_command_lines_for_workspace_run(w).unwrap();
         let b = sandbox_safe_gate_commands(&gate_command_lines(w).unwrap());
         assert_eq!(a, b);

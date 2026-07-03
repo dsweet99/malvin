@@ -12,7 +12,6 @@ pub use super::logs_cmd::LogsArgs;
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
-pub use crate::init_cmd::InitArgs;
 pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
@@ -45,8 +44,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Prep this repo
-    Init(InitArgs),
     /// Respond simply
     Do(DoArgs),
     /// Verify Cursor ACP connectivity

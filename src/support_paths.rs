@@ -142,7 +142,7 @@ mod env_path_tests {
         let old_path = std::env::var_os("PATH");
         let err = unsafe {
             std::env::set_var("PATH", &isolated);
-            let e = require_kiss_for_malvin("init").unwrap_err();
+            let e = require_kiss_for_malvin("code").unwrap_err();
             match &old_path {
                 Some(v) => std::env::set_var("PATH", v),
                 None => std::env::remove_var("PATH"),
@@ -151,7 +151,7 @@ mod env_path_tests {
         };
 
         assert!(
-            err.contains("cargo install kiss-ai") && err.contains("malvin init"),
+            err.contains("cargo install kiss-ai") && err.contains("malvin code"),
             "unexpected message: {err:?}"
         );
     }

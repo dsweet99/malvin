@@ -103,6 +103,12 @@ fn sync_review_file_returns_nonempty_artifact_text() {
 #[test]
 fn workflow_context_review_path_points_to_artifact() {
     with_isolated_home(|work| {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(work, "true\n");
         let run_dir = work.join(".malvin/logs").join("run123");
         std::fs::create_dir_all(&run_dir).unwrap();
         let plan_path = run_dir.join("plan.md");
@@ -143,6 +149,12 @@ fn workflow_context_review_path_points_to_artifact() {
 #[test]
 fn workflow_context_includes_malvin_command() {
     with_isolated_home(|work| {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(work)
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(work, "true\n");
         let run_dir = work.join(".malvin/logs").join("run123");
         std::fs::create_dir_all(&run_dir).unwrap();
         let plan_path = run_dir.join("plan.md");

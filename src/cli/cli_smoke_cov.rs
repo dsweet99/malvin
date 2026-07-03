@@ -170,12 +170,6 @@ fn smoke_tidy_effective_max_loops() {
 }
 
 #[test]
-fn smoke_parse_languages() {
-    let langs = crate::init_cmd::parse_languages(&["rust".into(), "python".into()]).expect("parse");
-    assert_eq!(langs.len(), 2);
-}
-
-#[test]
 fn smoke_emit_command_line_writes_log() {
     use std::path::Path;
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -192,13 +186,6 @@ fn smoke_format_logs_dir_under_run_dir() {
     std::fs::create_dir_all(&run_dir).expect("mkdir");
     let logs = crate::format_logs_dir(&run_dir).expect("logs dir");
     assert!(logs.contains("run"));
-}
-
-#[test]
-fn smoke_cli_parse_init_subcommand() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "init", "rust"]).expect("parse");
-    assert!(matches!(cli.command, Some(Commands::Init(_))));
 }
 
 #[test]

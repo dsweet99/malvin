@@ -33,6 +33,12 @@ mod tests {
     #[test]
     fn tidy_kpop_request_has_no_unresolved_braces() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();

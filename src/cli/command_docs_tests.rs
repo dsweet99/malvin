@@ -65,16 +65,6 @@ fn kpop_doc_parses_without_request_when_doc_flag_set() {
 }
 
 #[test]
-fn init_doc_parses_without_languages_when_doc_flag_set() {
-    let cli = Cli::try_parse_from(["malvin", "init", "--doc"]).expect("parse");
-    assert!(cli.shared.doc);
-    match cli.command.as_ref() {
-        Some(Commands::Init(i)) => assert!(i.languages.is_empty()),
-        _ => panic!("expected Init"),
-    }
-}
-
-#[test]
 fn delight_doc_parses_without_out_path() {
     let cli = Cli::try_parse_from(["malvin", "delight", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
@@ -154,25 +144,6 @@ fn malvin_doc_embeds_name_section() {
     );
 }
 
-#[test]
-fn init_doc_substitutes_advice_path() {
-    use crate::cli::args::{Commands, InitArgs};
-    let cmd = Commands::Init(InitArgs {
-        force: false,
-        languages: vec![],
-        path: None,
-    });
-    let out = capture_doc(Some(&cmd)).expect("capture");
-    let text = String::from_utf8(out).expect("utf8");
-    assert!(
-        text.contains(".malvin/advice.md"),
-        "init doc must show advice path"
-    );
-    assert!(
-        !text.contains("{{ advice_path }}"),
-        "init doc must not leave unresolved advice_path placeholder"
-    );
-}
 
 #[cfg(test)]
 #[allow(unused_imports)]

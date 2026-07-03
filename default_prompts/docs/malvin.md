@@ -20,13 +20,12 @@ Bare invocation (no subcommand):
 - `malvin REQUEST...` — run KPop on each request in sequence; each gets its own run directory under `~/.malvin_home/logs/<hash>/`
 - Quote a single request when the text contains spaces (e.g. `malvin "Why does the cache miss?"`)
 
-Use subcommands for other workflows: `init`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`.
+Use subcommands for other workflows: `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`, `logs`.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `init` | Bootstrap a repo with malvin templates and tooling |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
@@ -71,7 +70,7 @@ By default malvin tees agent stdout to the terminal (and `stdout.log` in the run
 
 ### `--no-markdown`
 
-Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `delight`, `explain`, `revise`, `inspire`, and the `init` summary phase). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
+Disable styled markdown rendering of agent stdout for agent-backed subcommands that use the shared ACP client (`code`, `kpop`, `tidy` when the agent runs, `delight`, `explain`, `revise`, `inspire`). No effect on `models`. **`do` uses plain stdout** on a TTY regardless of this flag; piped `do` output is always plain.
 
 ### `-v` / `--verbose`
 
@@ -87,7 +86,7 @@ Use the in-process mini agent backend (OpenRouter HTTP + bash fence loop) instea
 
 When `--mini` is set:
 
-- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `nvidia/nemotron-3-ultra-550b-a55b:free`. Legacy installs may lack `"model-mini"` on disk until you edit config or run `malvin init`; opening config merges the template key in memory only (same as other agent keys).
+- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `nvidia/nemotron-3-ultra-550b-a55b:free`. Legacy installs may lack `"model-mini"` on disk until you edit config; opening config merges the template key in memory only (same as other agent keys).
 - `--model` is sent to OpenRouter; `--model auto` resolves to `nvidia/nemotron-3-ultra-550b-a55b:free` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
 - `--no-force` is a no-op (nothing to approve).
 - `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below). OpenRouter billing/credit failures (402/403) and ACP “upgrade your plan” errors fail immediately at the gate level without retry or `mini gate attempt N failed` wrapping.
@@ -137,7 +136,15 @@ Print built-in documentation and exit. Does not spawn an agent or create a run d
 - `malvin <COMMAND> --doc` — documentation for that subcommand.
 - `malvin revise doc.md --doc` — `revise` requires a placeholder `DOC_PATH` (any existing or dummy filename) even with `--doc`.
 
-Other subcommand arguments (for example `<REQUEST>` or `init` languages) are not required when `--doc` is set, except `revise` as noted above.
+Other subcommand arguments (for example `<REQUEST>`) are not required when `--doc` is set, except `revise` as noted above.
+
+## Quality gates (`.malvin/checks`)
+
+Gate-loop commands (`code`, `tidy`, `delight`, `explain`, `revise`, bare `malvin REQUEST`) run workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty line).
+
+When `.malvin/checks` is missing at session startup, malvin runs a checks-discovery KPop session first (`init_constraints.md`), then aborts if the agent did not write a valid checks file. Delete `.malvin/checks` to trigger discovery again on the next gate-loop command.
+
+`malvin do --repo-gates` and mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 
 ### `-h` / `--help`
 
@@ -191,15 +198,15 @@ Top-level keys include `mem_limit_gb` and `theme`.
 
 ## Log retention
 
-Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). `malvin init` skips pruning. Use `malvin logs status` to inspect retention state and `malvin logs gc` (with optional `--dry-run`) to prune manually without starting an agent session. `malvin init` and agent-backed commands (including `malvin do`, `code`, and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command or `malvin logs gc` may delete excess oldest runs once.
+Before most agent-backed commands create a new run directory, malvin may prune older directories under `~/.malvin_home/logs/<hash>/` according to `~/.malvin_home/config.toml` `[logs]` settings (`max_count`, `max_age_days`, `max_bytes`). Set `max_count = 0` for unlimited run count (byte and age caps still apply). Use `malvin logs status` to inspect retention state and `malvin logs gc` (with optional `--dry-run`) to prune manually without starting an agent session. Agent-backed commands (including `malvin do`, `code`, and `tidy`) ensure the home config file exists with defaults. After upgrading to a build with default `max_count = 1000`, the next GC-enabled command or `malvin logs gc` may delete excess oldest runs once.
 
 ## External dependencies
 
 - **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `malvin models` without `--mini`, and for agent subcommands).
 - **OpenRouter** (when `--mini` or `malvin models --mini`): `OPENROUTER_API_KEY` for completions; listing works without a key. Network access required for live fetches.
 - **`bash` on `PATH`** (when `--mini`): required on Linux and macOS; Windows native is not supported in v1 (use WSL).
-- **kiss**: required before `code` and `tidy` start; installed/configured by `init`.
-- **pre-commit**: installed and hooked by `init`.
+- **kiss**: required before `code` and `tidy` start (`cargo install kiss-ai`).
+- **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax
 

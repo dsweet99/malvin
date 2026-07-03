@@ -98,6 +98,10 @@ fn minimal_git_cargo_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",
     )
     .expect("Cargo.toml");
+    crate::seed_malvin_checks(
+        &work,
+        "kiss check\ncargo clippy --jobs 3 --all-targets --all-features\nruff check\n",
+    );
     (tmp, work)
 }
 

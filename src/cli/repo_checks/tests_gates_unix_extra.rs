@@ -31,7 +31,7 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
 }
 
 #[test]
-fn run_repo_workspace_gates_materializes_default_malvin_checks() {
+fn run_repo_workspace_gates_errors_when_malvin_checks_missing() {
     with_isolated_home(|work| {
         super::tests_gates_helpers::git_init_work(work);
         fs::write(work.join("main.rs"), "fn main() {}\n").unwrap();
@@ -45,22 +45,24 @@ fn run_repo_workspace_gates_materializes_default_malvin_checks() {
         let bin_dir = tempfile::tempdir().unwrap();
         write_executable_script(bin_dir.path(), "kiss", "#!/bin/sh\nexit 0\n");
         let _guard = set_fake_command_dir(bin_dir.path());
-        assert!(run_repo_workspace_gates(work, RepoGateOutput::Tagged, None).is_ok());
+        let err = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None).unwrap_err();
         assert!(
-            !malvin_checks.exists(),
-            "ephemeral gate runs must restore Missing .malvin/checks"
+            err.contains("missing"),
+            "expected missing-checks error, got: {err}"
         );
+        assert!(!malvin_checks.exists());
     });
 }
 
 #[test]
-fn run_repo_workspace_gates_runs_tree_builtins_without_git_or_malvin_checks() {
+fn run_repo_workspace_gates_runs_seeded_builtin_checks_without_git_or_malvin_checks() {
     with_isolated_home(|work| {
         fs::write(
             work.join("Cargo.toml"),
             "[package]\nname = 'm'\nversion = '0.1.0'\n",
         )
         .unwrap();
+        super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
         let bin_dir = tempfile::tempdir().unwrap();
         let trace = bin_dir.path().join("trace.log");
         install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo"], 0);
@@ -80,6 +82,7 @@ fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
     let work = tmp.path();
     super::tests_gates_helpers::git_init_work(work);
     fs::write(work.join("script.py"), "print('ok')\n").unwrap();
+    super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
     install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "ruff"], 0);
@@ -98,6 +101,7 @@ fn quality_gates_log_records_gate_lines_when_run_log_dir_set() {
     let run_dir = work.join("malvin_run");
     fs::create_dir_all(&run_dir).unwrap();
     workspace_git_cargo_main_only(work);
+    super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
     let bin_dir = tempfile::tempdir().unwrap();
     for name in ["kiss", "cargo"] {
         write_executable_script(

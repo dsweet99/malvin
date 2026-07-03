@@ -100,6 +100,7 @@ fn restore_env_var(key: &str, value: Option<std::ffi::OsString>) {
 pub fn test_home_workspace() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
     let (root, home, workspace) = fast_test_home_workspace();
     std::fs::write(workspace.join(".kissconfig"), "x").expect("kissconfig");
+    seed_malvin_checks(&workspace, "true\n");
     (root, home, workspace)
 }
 

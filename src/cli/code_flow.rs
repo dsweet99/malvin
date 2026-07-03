@@ -81,6 +81,7 @@ mod tests {
             .current_dir(tmp.path())
             .status()
             .expect("git init");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(

@@ -5,12 +5,43 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 OPS = Path(__file__).resolve().parents[1] / "ops"
 if str(OPS) not in sys.path:
     sys.path.insert(0, str(OPS))
+
+
+def _modal_credentials_configured() -> bool:
+    if os.environ.get("MODAL_TOKEN_ID") and os.environ.get("MODAL_TOKEN_SECRET"):
+        return True
+    try:
+        import modal.config as modal_config
+
+        cfg = modal_config.config
+        return bool(cfg.get("token_id") and cfg.get("token_secret"))
+    except Exception:
+        return False
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Stub Modal app lookup when host credentials are absent."""
+    if _modal_credentials_configured():
+        return
+    import modal
+
+    session._modal_lookup_patcher = patch.object(  # type: ignore[attr-defined]
+        modal.App, "lookup", return_value=MagicMock(name="modal_app")
+    )
+    session._modal_lookup_patcher.start()
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    patcher = getattr(session, "_modal_lookup_patcher", None)
+    if patcher is not None:
+        patcher.stop()
 
 
 def pytest_configure(config: pytest.Config) -> None:

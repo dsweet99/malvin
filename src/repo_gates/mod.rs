@@ -1,23 +1,9 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub(crate) mod discover_py;
-pub mod discover_init_checks;
-pub(crate) mod discover_init_checks_signals;
-#[cfg(test)]
-#[path = "discover_init_checks_fixtures.rs"]
-mod discover_init_checks_fixtures;
-pub mod init_discovery;
 pub(crate) mod init_discovery_validate;
 pub(crate) mod gate_command_match;
 pub(crate) mod sandbox_safe;
-
-#[cfg(test)]
-#[path = "discover_init_checks_tests.rs"]
-mod discover_init_checks_tests;
-
-#[cfg(test)]
-#[path = "discover_init_checks_merge_tests.rs"]
-mod discover_init_checks_merge_tests;
 
 use std::path::Path;
 use std::process::Stdio;
@@ -120,16 +106,6 @@ pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {
 
 pub use gate_command_match::command_matches_malvin_checks_gate;
 
-/// Overwrite `.malvin/checks` with language/tooling builtins (for init `--force` rediscovery).
-pub fn refresh_provisional_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
-    let checks_path = crate::malvin_checks_path(work_dir);
-    if checks_path.is_file() {
-        std::fs::remove_file(&checks_path)
-            .map_err(|e| format!("remove {}: {e}", checks_path.display()))?;
-    }
-    ensure_default_malvin_checks_file(work_dir)
-}
-
 pub fn ensure_default_malvin_checks_file(work_dir: &Path) -> Result<(), String> {
     let checks_path = crate::malvin_checks_path(work_dir);
     if checks_path.is_file() {
@@ -168,8 +144,7 @@ pub fn ensure_default_malvin_config_file(work_dir: &Path) -> Result<(), String> 
 }
 
 pub fn gate_command_lines_for_workspace_run(work_dir: &Path) -> Result<Vec<String>, String> {
-    ensure_default_malvin_checks_file(work_dir)?;
-    let lines = load_malvin_checks(&crate::resolve_malvin_checks_path(work_dir))?;
+    let lines = gate_command_lines(work_dir)?;
     Ok(sandbox_safe_gate_commands(&lines))
 }
 

@@ -2,8 +2,8 @@
 pub(crate) enum KPopHardConstraintsExit {
     /// `CodeTidy` = single mpc plan `DONE` and passing gates; restore checks each turn.
     CodeTidy,
-    /// `InitDiscovery` = mpc plan `DONE` and valid checks file; do not restore `.malvin/checks` between turns.
-    InitDiscovery,
+    /// `ChecksDiscovery` = valid checks file on disk; do not restore `.malvin/checks` between turns.
+    ChecksDiscovery,
 }
 
 #[derive(Clone, Copy)]
@@ -27,11 +27,11 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
-    pub const INIT: Self = Self {
+    pub const CHECKS_DISCOVERY: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
-        exit: KPopHardConstraintsExit::InitDiscovery,
+        exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
@@ -88,8 +88,11 @@ mod tests {
     }
 
     #[test]
-    fn init_discovery_behavior_differs_from_code() {
-        assert_eq!(KPopHardConstraints::INIT.exit, KPopHardConstraintsExit::InitDiscovery);
+    fn checks_discovery_behavior_differs_from_code() {
+        assert_eq!(
+            KPopHardConstraints::CHECKS_DISCOVERY.exit,
+            KPopHardConstraintsExit::ChecksDiscovery
+        );
         assert_eq!(KPopHardConstraints::CODE.exit, KPopHardConstraintsExit::CodeTidy);
     }
 
@@ -102,8 +105,8 @@ mod tests {
     }
 
     #[test]
-    fn init_discovery_exit_policy_allows_done_without_gate_pass() {
-        assert!(!KPopHardConstraints::INIT.require_passing_gates_for_exit());
+    fn checks_discovery_exit_policy_allows_done_without_gate_pass() {
+        assert!(!KPopHardConstraints::CHECKS_DISCOVERY.require_passing_gates_for_exit());
     }
 
     #[test]

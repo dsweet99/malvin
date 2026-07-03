@@ -144,18 +144,18 @@ fn models_rejects_name_flag() {
 }
 
 #[test]
-fn init_rejects_name_flag() {
+fn inspire_rejects_name_flag() {
     use crate::test_stderr_capture::capture_stderr_output;
 
     let stderr = capture_stderr_output(|| {
         assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "init"]),
+            entrypoint_from(["malvin", "--name", "probe", "inspire", "topic"]),
             Exit::Failure
         );
     });
     assert!(
         stderr.contains("only supported for bare"),
-        "stderr must reject --name on init; got: {stderr:?}"
+        "stderr must reject --name on inspire; got: {stderr:?}"
     );
 }
 

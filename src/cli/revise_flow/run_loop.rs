@@ -69,6 +69,7 @@ pub async fn run_revise(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_for_cwd(shared).await?;
     let prepared = prepare_revise_kpop_run(&revise.doc_path, workflow)?;
     error_run_log::set_command_error_run_dir(Some(prepared.inner.artifacts.run_dir.clone()));
 

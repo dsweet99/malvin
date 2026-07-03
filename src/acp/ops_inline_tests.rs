@@ -84,25 +84,20 @@ mod resolve_agent_bin_unix_tests {
         write_path_executable(&cursor_bin, EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
+        let old_no_real_agent = std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV);
 
         unsafe {
             std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
             std::env::set_var("PATH", &path_dir);
         }
 
         assert_eq!(resolve_agent_bin().as_deref(), Some(agent_bin.as_path()));
 
         unsafe {
-            if let Some(value) = old_override {
-                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-            } else {
-                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-            }
-            if let Some(value) = old_path {
-                std::env::set_var("PATH", value);
-            } else {
-                std::env::remove_var("PATH");
-            }
+            restore_optional_env("MALVIN_AGENT_ACP_BIN", old_override);
+            restore_optional_env("PATH", old_path);
+            restore_optional_env(MALVIN_TEST_NO_REAL_AGENT_ENV, old_no_real_agent);
         }
     }
 
@@ -116,25 +111,20 @@ mod resolve_agent_bin_unix_tests {
         write_path_executable(&cursor_agent, EXIT0);
         let old_override = std::env::var_os("MALVIN_AGENT_ACP_BIN");
         let old_path = std::env::var_os("PATH");
+        let old_no_real_agent = std::env::var_os(MALVIN_TEST_NO_REAL_AGENT_ENV);
 
         unsafe {
             std::env::remove_var("MALVIN_AGENT_ACP_BIN");
+            std::env::remove_var(MALVIN_TEST_NO_REAL_AGENT_ENV);
             std::env::set_var("PATH", &path_dir);
         }
 
         assert_eq!(resolve_agent_bin().as_deref(), Some(cursor_agent.as_path()));
 
         unsafe {
-            if let Some(value) = old_override {
-                std::env::set_var("MALVIN_AGENT_ACP_BIN", value);
-            } else {
-                std::env::remove_var("MALVIN_AGENT_ACP_BIN");
-            }
-            if let Some(value) = old_path {
-                std::env::set_var("PATH", value);
-            } else {
-                std::env::remove_var("PATH");
-            }
+            restore_optional_env("MALVIN_AGENT_ACP_BIN", old_override);
+            restore_optional_env("PATH", old_path);
+            restore_optional_env(MALVIN_TEST_NO_REAL_AGENT_ENV, old_no_real_agent);
         }
     }
 

@@ -168,6 +168,7 @@ mod unix_cov {
     #[test]
     fn run_kpop_agent_loops_propagates_exp_log_setup_error() {
         crate::test_utils::with_isolated_home(|workspace| {
+            crate::seed_malvin_checks(workspace, "true\n");
             crate::test_utils::block_on_test_async(async {
                 std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
                 let (kpop, shared, workflow) = test_kpop_args(2);

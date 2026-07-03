@@ -35,9 +35,9 @@ pub(crate) fn gate_early_exit_fixture() -> (
     crate::repo_checks::FakeCommandDirGuard,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+    crate::repo_gates::checks_test_helpers::write_git_root_checks(tmp.path(), "kiss check\n");
     let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
+    std::fs::write(crate::malvin_checks_path(tmp.path()), "kiss check\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");

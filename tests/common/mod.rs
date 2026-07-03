@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-mod sandbox_test_helpers;
+mod git_test_helpers;
 mod acp_code_fanout_mocks;
 mod acp_code_run;
 mod acp_core;
@@ -21,9 +21,7 @@ mod do_stdout_harness;
 #[cfg(unix)]
 mod do_stdout_harness_extra;
 #[cfg(unix)]
-mod init_harness_run;
-#[cfg(unix)]
-mod init_harness;
+mod checks_discovery_harness;
 #[cfg(unix)]
 mod integration_cli_args;
 #[cfg(unix)]
@@ -54,6 +52,7 @@ mod revise_harness;
 mod contract;
 pub mod mini_test_helpers;
 pub mod observability_parity;
+mod sandbox_test_helpers;
 mod workspace;
 #[cfg(unix)]
 mod gate_bin_cache;
@@ -66,6 +65,7 @@ pub use cli_parity_tty::*;
 #[cfg(all(unix, target_os = "linux"))]
 pub use cli_parity_tty_kpop::run_kpop_multiturn_investigate;
 
+pub use git_test_helpers::{git_commit_all, git_init};
 pub use sandbox_test_helpers::{
     enable_test_fast_teardown, test_wait_until_async,
 };
@@ -120,7 +120,10 @@ pub use do_stdout_harness::*;
 #[cfg(unix)]
 pub use do_stdout_harness_extra::*;
 #[cfg(unix)]
-pub use init_harness::*;
+pub use checks_discovery_harness::{
+    acp_mock_checks_discovery_and_code_js, acp_mock_checks_discovery_no_write_js,
+    count_malvin_run_dirs, spawn_malvin_code_discovery, CodeDiscoverySpawn,
+};
 #[cfg(unix)]
 pub use integration_cli_args::{ABORT_CODE_TEST_ARGS, INTEGRATION_TEST_MALVIN_ARGS};
 #[cfg(unix)]

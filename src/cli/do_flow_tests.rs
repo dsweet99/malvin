@@ -15,6 +15,7 @@ fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
         .current_dir(tmp.path())
         .status()
         .expect("git init");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "ignored").expect("plan");
     let run_dir = tmp.path().join(".malvin/logs").join("r");

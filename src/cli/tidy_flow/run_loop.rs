@@ -14,6 +14,7 @@ pub async fn run_tidy(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
+    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_for_cwd(shared).await?;
     let prepared = prepare_tidy_kpop_run(workflow)?;
     error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
 

@@ -54,6 +54,12 @@ mod advice_path_embed_tests {
     #[test]
     fn embedded_header_render_without_unresolved_braces() {
         let tmp = tempfile::tempdir().expect("tempdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let plan_path = tmp.path().join("plan.md");
         std::fs::write(&plan_path, "plan body\n").expect("write plan");
         let artifacts =

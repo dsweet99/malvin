@@ -40,6 +40,7 @@ where
 {
     crate::test_utils::enable_test_fast_teardown();
     crate::test_utils::with_isolated_home(|workspace| {
+        crate::seed_malvin_checks(workspace, "true\n");
         std::fs::create_dir_all(workspace.join(".malvin")).expect("mkdir");
         let artifacts = create_kpop_run_artifacts("kpop", Some(workspace)).expect("artifacts");
         let store = PromptStore::default_store();

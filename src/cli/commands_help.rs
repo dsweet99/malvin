@@ -87,7 +87,7 @@ mod tests {
     fn render_commands_only_help_lists_subcommands_not_options() {
         let help = render_commands_only_help();
         assert!(help.contains("Commands:"));
-        assert!(help.contains("init"));
+        assert!(help.contains("code"));
         assert!(help.contains("Usage: malvin [COMMAND|REQUEST]..."));
         assert!(help.contains("one or more REQUESTs"));
         assert!(help.contains("malvin --help"));
@@ -125,7 +125,7 @@ mod tests {
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
-        assert!(lines.iter().any(|line| line.starts_with("  init")));
+        assert!(lines.iter().any(|line| line.starts_with("  code")));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! Integration smoke: GC skip for `init`, GC-on for `do` and `code`.
+//! Integration smoke: GC-on for `do` and `code`.
 
 use malvin::output::{format_who_tag_delim, MALVIN_WHO};
 
@@ -6,17 +6,9 @@ mod common;
 
 use std::path::Path;
 
-use common::{malvin_init_output_with_home, test_home_workspace};
+use common::test_home_workspace;
 
-const SEED_RUN: &str = "20260101_000000_seedseed";
 const RUN_OLD_AGE: &str = "20200101_000000_oldrun01";
-
-fn seed_log_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
-    let seed = common::malvin_run_logs_bucket(work_dir, home).join(SEED_RUN);
-    std::fs::create_dir_all(&seed).expect("seed run dir");
-    std::fs::write(seed.join("marker.txt"), "seed\n").expect("seed marker");
-    seed
-}
 
 fn write_gc_config_age_only(home: &Path) {
     std::fs::create_dir_all(home.join(malvin::MALVIN_USER_HOME_DIR)).expect("mkdir .malvin_home");
@@ -32,20 +24,6 @@ fn seed_old_run(work_dir: &Path, home: &Path) -> std::path::PathBuf {
     std::fs::create_dir_all(&old).expect("seed run dir");
     std::fs::write(old.join("marker.txt"), "seed\n").expect("seed marker");
     old
-}
-
-#[test]
-fn malvin_init_does_not_prune_preexisting_log_dirs() {
-    let root = tempfile::tempdir().expect("tempdir");
-    let home = root.path().join("home");
-    std::fs::create_dir_all(&home).expect("mkdir home");
-    let project = root.path().join("project");
-    std::fs::create_dir_all(&project).expect("mkdir project");
-    let seed = seed_log_run(&project, &home);
-    let out = malvin_init_output_with_home(&project, &home, &["python"]);
-    assert!(out.status.success(), "malvin init failed: {out:?}");
-    assert!(seed.is_dir(), "init must not GC pre-seeded run log dirs");
-    assert!(seed.join("marker.txt").is_file());
 }
 
 #[cfg(unix)]

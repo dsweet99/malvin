@@ -32,7 +32,6 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Do(_)
         | Commands::Hello(_)
-        | Commands::Init(_)
         | Commands::Kpop(_)
         | Commands::Inspire(_)
         | Commands::Models(_)
@@ -187,22 +186,6 @@ pub(crate) fn dispatch_command(
             )
         }),
         Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
-        Commands::Init(init) => {
-            let shared = shared.clone();
-            let tee = shared.tee_startup_stdout();
-            run_async_cli(|| async move {
-                crate::init_cmd::run_init(crate::init_cmd::RunInitRequest {
-                    path: init.path,
-                    languages: &init.languages,
-                    shared: &shared,
-                    opts: crate::init_cmd::RunInitOptions {
-                        overwrite_templates: init.force,
-                        tee_startup_stdout: tee,
-                    },
-                })
-                .await
-            })
-        }
         cmd @ (Commands::Models(_) | Commands::Logs(_)) => {
             dispatch_agent_free(cmd)
         }

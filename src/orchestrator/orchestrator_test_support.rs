@@ -53,6 +53,7 @@ pub fn workflow_ctx_for_smoke(
             .status()
             .expect("git init");
     }
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();

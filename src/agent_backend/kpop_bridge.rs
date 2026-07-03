@@ -143,6 +143,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
         std::fs::write(tmp.path().join(".kissconfig"), b"k\n").expect("kissconfig");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path())
             .expect("snapshot");
         let work = tmp.path().to_path_buf();

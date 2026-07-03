@@ -15,21 +15,11 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = crate::cli::entrypoint_commands::run_code_command;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _: Option<crate::cli::exit::Exit> = None;
-    let _: Option<crate::init_cmd::InitArgs> = None;
-    let _ = stringify!(crate::init_cmd::bootstrap_repo_tooling);
-    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_repo);
-    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_pre_commit_hooks);
-    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_kiss_repo_init);
-    let _ = stringify!(crate::init_cmd::init_cmd_bootstrap::ensure_git_lfs_hooks);
-    let _ = stringify!(crate::init_cmd::create_initial_commit);
-    let _ = stringify!(crate::init_cmd::init_cmd_mid_core::emit_init_startup);
-    let _ = stringify!(crate::init_cmd::repo_already_has_commits);
-    let _ = crate::init_cmd::run_init;
+    let _ = crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered;
 }
 
 #[test]
 fn smoke_cov_cli_cli_units_1a() {
-    let _ = stringify!(crate::init_cmd::write_init_templates);
     let _: Option<crate::cli::kpop_flow::KpopPrepared> = None;
     let _ = crate::cli::kpop_flow::kpop_run_acp_multiturn;
     let _ = crate::cli::run_kpop;
@@ -57,7 +47,6 @@ fn smoke_cov_cli_cli_units_1b() {
     let _ = crate::do_flow::do_flow_prompt::combine_do_raw_header_and_user;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run_with_store;
     let _ = crate::do_flow::do_flow_prompt::build_do_coder_run;
-    let _: Option<crate::init_cmd::RunInitOptions> = None;
     let shared = crate::cli::SharedOpts {
         model: crate::config::DEFAULT_CLI_MODEL.into(),
         no_force: false,
@@ -77,26 +66,7 @@ fn smoke_cov_cli_cli_units_1b() {
         mini_max_gate_retries: 0,
         mini_max_shrink_passes: 0,
     };
-    let init_req = crate::init_cmd::RunInitRequest {
-        path: None,
-        languages: &[],
-        shared: &shared,
-        opts: crate::init_cmd::RunInitOptions {
-            overwrite_templates: false,
-            tee_startup_stdout: false,
-        },
-    };
-    let crate::init_cmd::RunInitRequest {
-        path,
-        languages,
-        shared: _,
-        opts: _,
-    } = init_req;
-    assert!(path.is_none());
-    assert!(languages.is_empty());
-    let _ = crate::init_cmd::run_init;
-    let _: Option<crate::init_cmd::Language> = None;
-    let _ = stringify!(crate::init_cmd::from_str_case_insensitive);
+    let _ = shared.model;
     let _ = stringify!(prepare_kpop_artifacts);
 }
 

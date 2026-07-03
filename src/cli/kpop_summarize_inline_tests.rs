@@ -118,14 +118,18 @@ fn list_written_exp_logs_collects_kpop_dir_md_files() {
     assert!(paths[0].ends_with("exp_log_a.md"));
 }
 
-#[test]
-fn code_outer_loop_summarize_params_wires_code_command() {
+fn code_summarize_prepared_fixture() -> (
+    tempfile::TempDir,
+    std::path::PathBuf,
+    crate::cli::code_flow::CodeKpopPrepared,
+) {
     let tmp = tempfile::tempdir().expect("tempdir");
     std::process::Command::new("git")
         .args(["init"])
         .current_dir(tmp.path())
         .status()
         .expect("git init");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let old = std::env::current_dir().expect("cwd");
     std::env::set_current_dir(tmp.path()).expect("chdir");
     let prepared = crate::cli::code_flow::prepare_code_kpop_run(
@@ -133,6 +137,12 @@ fn code_outer_loop_summarize_params_wires_code_command() {
         "ship it",
     )
     .expect("prepared");
+    (tmp, old, prepared)
+}
+
+#[test]
+fn code_outer_loop_summarize_params_wires_code_command() {
+    let (_tmp, old, prepared) = code_summarize_prepared_fixture();
     let shared = super::kpop_summarize_tests::summarize_shared_opts(1);
     let params = code_outer_loop_summarize_params(
         CodeOuterLoopSummarizeInputs {

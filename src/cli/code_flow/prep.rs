@@ -50,6 +50,7 @@ mod tests {
         std::fs::write(&plan, "ship widgets\n").expect("write plan");
         let artifacts =
             crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
+        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
         let text = code_kpop_request(&store, &artifacts).expect("request");

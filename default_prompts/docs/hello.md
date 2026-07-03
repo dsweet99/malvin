@@ -12,7 +12,7 @@ One **single-turn** Cursor ACP connectivity probe: sends the fixed prompt `Hello
 
 ## Intention
 
-Verify that `cursor-agent` / `agent acp` is installed, authenticated, and reachable from this environment. Used by DeepSWE `ops/deepswe_run.py hello TASK` (Modal sandbox: same auth injection and CIDR allowlist path as `solve`, without task plan or Harbor grading) and local smoke checks (`--host` or `malvin hello`).
+Verify that `cursor-agent` / `agent acp` is installed, authenticated, and reachable from this environment. Use it for local smoke checks before running longer agent workflows.
 
 ## Usage
 
@@ -35,7 +35,6 @@ See `malvin --doc`. Same tee and auth behavior as `malvin do`.
 | Command | When |
 |---------|------|
 | `malvin do` | General one-shot agent turn with a custom request |
-| `python ops/deepswe_run.py hello TASK` | Full Modal sandbox smoke test (auth + CIDR allowlist); no solving or grading |
 
 ## Examples
 

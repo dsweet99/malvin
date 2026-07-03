@@ -19,14 +19,14 @@ fn dotfile_backup_state_from_path(path: &Path) -> Option<DotfileBackupState> {
 fn repair_invalid_malvin_checks_on_disk(work_dir: &Path) -> Result<(), String> {
     let path = crate::malvin_checks_path(work_dir);
     let Some(DotfileBackupState::Present(payload)) = dotfile_backup_state_from_path(&path) else {
-        return crate::repo_gates::ensure_default_malvin_checks_file(work_dir);
+        return Ok(());
     };
     if !is_bare_kiss_check_bytes(&payload.bytes) {
         return Ok(());
     }
     std::fs::remove_file(&path)
         .map_err(|e| format!("remove {}: {e}", path.display()))?;
-    crate::repo_gates::ensure_default_malvin_checks_file(work_dir)
+    Ok(())
 }
 
 fn default_malvin_home_config_bytes() -> Result<Vec<u8>, String> {

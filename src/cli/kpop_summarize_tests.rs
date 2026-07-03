@@ -44,7 +44,12 @@ pub(crate) fn kpop_inputs<'a>(shared: &'a SharedOpts) -> KpopOuterLoopSummarizeI
 pub(crate) fn summarize_test_workspace() -> (tempfile::TempDir, crate::artifacts::RunArtifacts, PromptStore, SharedOpts)
 {
     let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(tmp.path())
+        .status()
+        .expect("git init");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
     let store = PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
@@ -70,11 +75,8 @@ fn kpop_outer_loop_summarize_params_builds_kpop_context() {
 
 #[test]
 fn render_kpop_summarize_prompt_includes_activity_heading() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-    let artifacts = create_kpop_run_artifacts("kpop", Some(tmp.path())).expect("artifacts");
-    let store = PromptStore::default_store();
-    store.ensure_defaults().expect("defaults");
+    let (tmp, artifacts, store, _shared) = summarize_test_workspace();
+    let _ = tmp;
     let prompt = render_kpop_summarize_prompt(&store, &artifacts, "malvin kpop").expect("render");
     assert!(prompt.contains("Summarize the activity"));
     assert!(prompt.contains("Executive summary"));

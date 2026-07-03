@@ -57,7 +57,7 @@ fn repair_ignores_non_utf8_checks_that_are_not_bare_kiss() {
 }
 
 #[test]
-fn repair_materializes_missing_checks_file() {
+fn repair_leaves_missing_checks_unchanged() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     git_init(work);
@@ -66,8 +66,7 @@ fn repair_materializes_missing_checks_file() {
 
     repair_clamp_damaged_dotfiles_on_disk(work).expect("repair");
 
-    let checks = std::fs::read_to_string(checks_path(work)).expect("checks");
-    assert!(checks.contains("kiss check"));
+    assert!(!checks_path(work).exists());
 }
 
 #[test]
@@ -97,9 +96,10 @@ fn repair_clamp_damaged_dotfiles_on_disk_fixes_bare_kiss_leaves_threshold_unchan
 
     repair_clamp_damaged_dotfiles_on_disk(work).expect("repair");
 
-    let checks = std::fs::read_to_string(checks_path(work)).expect("checks");
-    assert!(checks.contains("kiss check"));
-    assert_ne!(checks.trim(), "kiss");
+    assert!(
+        !checks_path(work).exists(),
+        "bare kiss checks should be removed without seeding defaults"
+    );
     let kissconfig = std::fs::read_to_string(work.join(".kissconfig")).expect("kissconfig");
     assert!(kissconfig.contains("test_coverage_threshold = 0"));
     assert!(kissconfig_low_coverage_threshold(kissconfig.as_bytes()));

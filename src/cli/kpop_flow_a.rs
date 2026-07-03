@@ -55,12 +55,35 @@ pub(in crate) fn finish_kpop_prepared(early: KpopArtifactsEarly) -> Result<KpopP
     })
 }
 
+#[allow(dead_code)] // used by kpop_flow_a_tests and kpop_flow_run_loop_tests
 pub(crate) fn kpop_boot_store_client_prepared(
     kpop: &KpopArgs,
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(PromptStore, AgentBackend, KpopPrepared), String> {
     let early = prepare_kpop_artifacts(kpop)?;
+    kpop_emit_startup(kpop, shared, &early.artifacts)?;
+    let store = kpop_prompt_store(kpop, workflow)?;
+    let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
+    let mut client = build_agent_backend(shared, workflow, emit_stdout_markdown, "kpop")?;
+    client.ensure_authenticated().map_err(|e| e.to_string())?;
+    let prepared = finish_kpop_prepared(early)?;
+    client.set_prompts_log_run_dir(Some(prepared.artifacts.run_dir.clone()));
+    crate::cli::error_run_log::set_command_error_run_dir(Some(prepared.artifacts.run_dir.clone()));
+    Ok((store, client, prepared))
+}
+
+async fn kpop_boot_with_discovery(
+    kpop: &KpopArgs,
+    shared: &SharedOpts,
+    workflow: WorkflowCliOptions,
+) -> Result<(PromptStore, AgentBackend, KpopPrepared), String> {
+    let early = prepare_kpop_artifacts(kpop)?;
+    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered(
+        &early.artifacts.work_dir,
+        shared,
+    )
+    .await?;
     kpop_emit_startup(kpop, shared, &early.artifacts)?;
     let store = kpop_prompt_store(kpop, workflow)?;
     let emit_stdout_markdown = shared.acp_stdout_markdown_enabled();
@@ -127,7 +150,7 @@ pub async fn run_kpop(
         return run_kpop_short_id_lookup(&kpop);
     }
 
-    let (store, mut client, prepared) = kpop_boot_store_client_prepared(&kpop, shared, workflow)?;
+    let (store, mut client, prepared) = kpop_boot_with_discovery(&kpop, &shared, workflow).await?;
 
     let loops = super::kpop_flow_run_loop::run_kpop_agent_loops(
         super::kpop_flow_run_loop::RunKpopAgentLoopsParams {

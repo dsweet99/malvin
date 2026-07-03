@@ -71,5 +71,5 @@ malvin logs gc --all-buckets --dry-run
 
 ## Notes
 
-- `malvin init` still skips GC; `malvin do` and other agent commands run GC before creating a new run dir.
+- `malvin do` and other agent commands run GC before creating a new run dir.
 - After upgrading to a build with `max_count`, the next GC-enabled command or `malvin logs gc` may delete excess oldest runs once.
