@@ -10,6 +10,18 @@ impl MtStubPrompts {
     pub fn kpop_block(&mut self) -> Result<String, String> {
         Ok("stub kpop block".to_string())
     }
+
+    pub fn kpop_block_a(&mut self) -> Result<String, String> {
+        Ok("stub kpop block a".to_string())
+    }
+
+    pub fn kpop_block_b(&self) -> Result<String, String> {
+        Ok("stub kpop block b".to_string())
+    }
+
+    pub fn kpop_block_c(&self) -> Result<String, String> {
+        Ok("stub kpop block c".to_string())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -21,6 +33,18 @@ impl EchoPrompts {
     /// Returns `Err` when prompt assembly fails (stub never fails).
     pub fn kpop_block(&mut self) -> Result<String, String> {
         Ok("K".to_string())
+    }
+
+    pub fn kpop_block_a(&mut self) -> Result<String, String> {
+        Ok("Ka".to_string())
+    }
+
+    pub fn kpop_block_b(&self) -> Result<String, String> {
+        Ok("Kb".to_string())
+    }
+
+    pub fn kpop_block_c(&self) -> Result<String, String> {
+        Ok("Kc".to_string())
     }
 }
 
@@ -44,6 +68,19 @@ impl CaptureBlocks {
     pub fn kpop_block(&mut self) -> Result<String, String> {
         self.blocks.lock().expect("blocks lock").push(());
         Ok("stub kpop block".to_string())
+    }
+
+    pub fn kpop_block_a(&mut self) -> Result<String, String> {
+        self.blocks.lock().expect("blocks lock").push(());
+        Ok("stub kpop block a".to_string())
+    }
+
+    pub fn kpop_block_b(&self) -> Result<String, String> {
+        Ok("stub kpop block b".to_string())
+    }
+
+    pub fn kpop_block_c(&self) -> Result<String, String> {
+        Ok("stub kpop block c".to_string())
     }
 }
 

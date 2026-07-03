@@ -184,7 +184,11 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
-        let mut client = mock_client(vec![MockStep::Ok(mini_done_response())]);
+        let mut client = mock_client(vec![
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+        ]);
         let mut state = crate::agent_backend::backend_kpop_test_helpers::smoke_multiturn_state(
             tmp.path(),
             exp_log,

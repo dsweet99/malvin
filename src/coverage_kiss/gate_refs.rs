@@ -82,7 +82,9 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     for (name, body) in [
         ("header.md", "hdr\n"),
         ("kpop_common.md", "common\n"),
-        ("mpc_block.md", "block {{ user_request_path }}\n"),
+        ("mpc_block_a.md", "block {{ user_request_path }}\n"),
+        ("mpc_block_b.md", "block_b\n"),
+        ("mpc_block_c.md", "block_c\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }

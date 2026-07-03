@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::{MtStubPrompts, append_kpop_line};
+use common::append_kpop_line;
 use malvin::KpopEchoPrompts;
 use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
@@ -26,24 +26,20 @@ fn multiturn_exits_when_mpc_plan_hits_done() {
 }
 
 #[test]
-fn kpop_single_prompt_then_stop_even_after_agent_writes_steps() {
-    let tmp = tempfile::tempdir().unwrap();
-    let path = tmp.path().join("exp.md");
-    std::fs::write(&path, "").unwrap();
-    let mpc_plan = tmp.path().join("mpc_plan.md");
-    let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
-        exp_log_path: path.clone(),
-        mpc_plan_path: mpc_plan,
-    })
-    .unwrap();
-    let first = state.next_prompt().expect("prompt");
-    let MultiturnPrompt::KpopBlock(s) = first.expect("first");
+fn kpop_three_phases_then_stop_even_after_agent_writes_steps() {
+    let common::MultiturnTestHarness { mut state, exp_path, _tmp } =
+        common::setup_multiturn_stub_mt();
+    let first = state.next_prompt().expect("phase A");
+    let MultiturnPrompt::KpopBlock(s) = first.expect("phase A some");
     assert!(s.contains("stub kpop block"));
     for step in 1..=10 {
-        append_kpop_line(&path, step);
+        append_kpop_line(&exp_path, step);
     }
-    let p2 = state.next_prompt().expect("second");
-    assert!(p2.is_none());
-    assert!(hypotheses_emitted(&std::fs::read_to_string(&path).unwrap()) >= 10);
+    let p2 = state.next_prompt().expect("phase B");
+    assert!(p2.is_some(), "phase B should be offered");
+    let p3 = state.next_prompt().expect("phase C");
+    assert!(p3.is_some(), "phase C should be offered");
+    let p4 = state.next_prompt().expect("after all phases");
+    assert!(p4.is_none(), "no more prompts after all three phases");
+    assert!(hypotheses_emitted(&std::fs::read_to_string(&exp_path).unwrap()) >= 10);
 }

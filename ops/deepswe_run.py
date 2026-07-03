@@ -587,9 +587,7 @@ def default_rust_test_command() -> str:
 
 def builtin_gate_command_lines(root: Path) -> list[str]:
     out = [KISS_CHECK_COMMAND]
-    has_py, has_pytest = python_ruff_and_pytest_flags(root)
-    if has_py:
-        out.append("ruff check .")
+    _has_py, has_pytest = python_ruff_and_pytest_flags(root)
     if has_pytest:
         if repo_uses_stestr(root):
             out.append(DEFAULT_STESTR_CHECK)
@@ -2518,7 +2516,7 @@ def _test_discover_deepswe_checks_python_repo() -> None:
         )
         text = discover_deepswe_checks(root)
         assert text.startswith(f"{KISS_CHECK_COMMAND}\n")
-        assert "ruff check ." in text
+        assert "ruff check ." not in text
         assert DEFAULT_PYTEST_CHECK in text
 
 

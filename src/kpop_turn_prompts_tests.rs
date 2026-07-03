@@ -31,7 +31,9 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     for (name, body) in [
         ("header.md", "<<hdr plan={{ plan_path }}>>\n"),
         ("kpop_common.md", "<<common>>\n"),
-        ("mpc_block.md", "<<block req={{ user_request_path }}>>\n"),
+        ("mpc_block_a.md", "<<block_a req={{ user_request_path }}>>\n"),
+        ("mpc_block_b.md", "<<block_b>>\n"),
+        ("mpc_block_c.md", "<<block_c>>\n"),
         ("mbc2.md", "MBC2\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
@@ -50,19 +52,31 @@ fn expected_kpop_block_output(
     let common = store
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
-    let body = store
-        .render_prompt_only("mpc_block.md", map)
-        .expect("block");
+    let body_a = store
+        .render_prompt_only("mpc_block_a.md", map)
+        .expect("block_a");
+    let body_b = store
+        .render_prompt_only("mpc_block_b.md", map)
+        .expect("block_b");
+    let body_c = store
+        .render_prompt_only("mpc_block_c.md", map)
+        .expect("block_c");
+    let bodies = format!(
+        "{}\n\n{}\n\n{}",
+        body_a.trim_end(),
+        body_b.trim_end(),
+        body_c.trim_end()
+    );
     if with_rules {
         let header = render_header(store, map).expect("header");
         format!(
             "{}\n\n{}\n\n{}",
             header.trim_end(),
             common.trim_end(),
-            body.trim_end()
+            bodies
         )
     } else {
-        format!("{}\n\n{}", common.trim_end(), body.trim_end())
+        format!("{}\n\n{}", common.trim_end(), bodies)
     }
 }
 
@@ -84,14 +98,22 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     let common = store
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
-    let body = store
-        .render_prompt_only("mpc_block.md", map)
-        .expect("block");
+    let body_a = store
+        .render_prompt_only("mpc_block_a.md", map)
+        .expect("block_a");
+    let body_b = store
+        .render_prompt_only("mpc_block_b.md", map)
+        .expect("block_b");
+    let body_c = store
+        .render_prompt_only("mpc_block_c.md", map)
+        .expect("block_c");
     let expected = format!(
-        "{}\n\n{}\n\n{}",
+        "{}\n\n{}\n\n{}\n\n{}\n\n{}",
         header.trim_end(),
         common.trim_end(),
-        body.trim_end()
+        body_a.trim_end(),
+        body_b.trim_end(),
+        body_c.trim_end()
     );
     assert_eq!(gate, expected);
     assert!(gate.contains(request_path));

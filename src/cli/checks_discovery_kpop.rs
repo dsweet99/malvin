@@ -7,7 +7,6 @@ use crate::artifacts::{backup_workspace_malvin_checks_if_present, RunArtifacts};
 use crate::kpop_engine::{
     run_kpop_engine, KPopEngineParams, KPopEnginePrepared, KPopHardConstraints,
 };
-use crate::kpop_program::render_repo_program_without_quality_gates;
 use crate::malvin_checks_path;
 use crate::malvin_config_file::{self, AgentConfig};
 use crate::output::{print_stderr_line, MALVIN_WHO};
@@ -25,9 +24,6 @@ pub(super) fn prepare_checks_discovery_prompt_store(
 ) -> Result<PromptStore, String> {
     let store = prepare_kpop_prompt_store(workflow, false)?;
     store
-        .validate_exists("kpop_program.md")
-        .map_err(|e: PromptError| e.0)?;
-    store
         .validate_exists("init_constraints.md")
         .map_err(|e: PromptError| e.0)?;
     Ok(store)
@@ -42,7 +38,10 @@ pub(super) fn checks_discovery_kpop_request(
         "repo_root_path".to_string(),
         artifacts.work_dir.display().to_string(),
     );
-    render_repo_program_without_quality_gates(store, "init_constraints.md", &ctx, artifacts)
+    store
+        .render_prompt_only("init_constraints.md", &ctx)
+        .map(|s| s.trim().to_string())
+        .map_err(|e: PromptError| e.0)
 }
 
 pub(super) fn load_discovery_agent_config(work_dir: &Path) -> AgentConfig {

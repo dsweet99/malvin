@@ -2,6 +2,7 @@ mod prepared;
 mod behavior;
 mod params;
 mod kpop_session;
+mod kpop_session_multiturn;
 mod kpop_session_finish;
 mod run_loop_exit;
 mod run_loop;

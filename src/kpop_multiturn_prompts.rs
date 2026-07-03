@@ -29,6 +29,48 @@ impl KpopMultiturnPrompts<'_> {
             Self::Smoke(_) => Ok("k".to_string()),
         }
     }
+
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails.
+    pub fn kpop_block_a(&mut self) -> Result<String, String> {
+        match self {
+            Self::Turn(inner) => inner.kpop_block_a(),
+            Self::StubMt(inner) => inner.kpop_block_a(),
+            Self::StubEcho(inner) => inner.kpop_block_a(),
+            Self::StubCapture(inner) => inner.kpop_block_a(),
+            #[cfg(test)]
+            Self::Smoke(_) => Ok("ka".to_string()),
+        }
+    }
+
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails.
+    pub fn kpop_block_b(&self) -> Result<String, String> {
+        match self {
+            Self::Turn(inner) => inner.kpop_block_b(),
+            Self::StubMt(inner) => inner.kpop_block_b(),
+            Self::StubEcho(inner) => inner.kpop_block_b(),
+            Self::StubCapture(inner) => inner.kpop_block_b(),
+            #[cfg(test)]
+            Self::Smoke(_) => Ok("kb".to_string()),
+        }
+    }
+
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails.
+    pub fn kpop_block_c(&self) -> Result<String, String> {
+        match self {
+            Self::Turn(inner) => inner.kpop_block_c(),
+            Self::StubMt(inner) => inner.kpop_block_c(),
+            Self::StubEcho(inner) => inner.kpop_block_c(),
+            Self::StubCapture(inner) => inner.kpop_block_c(),
+            #[cfg(test)]
+            Self::Smoke(_) => Ok("kc".to_string()),
+        }
+    }
 }
 
 #[cfg(test)]

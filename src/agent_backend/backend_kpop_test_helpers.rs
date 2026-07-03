@@ -43,6 +43,17 @@ pub(crate) fn mini_done_backend() -> AgentBackend {
     mock_backend(vec![MockStep::Ok(mini_done_response())], 1)
 }
 
+pub(crate) fn mini_done_backend_multiturn() -> AgentBackend {
+    mock_backend(
+        vec![
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
+        ],
+        1,
+    )
+}
+
 pub(crate) fn smoke_multiturn_state(
     work: &std::path::Path,
     exp_log: std::path::PathBuf,
@@ -62,6 +73,14 @@ fn smoke_multiturn_state_builds_state() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let exp = tmp.path().join("exp.md");
     std::fs::write(&exp, "# exp\n").expect("write");
-    let state = smoke_multiturn_state(tmp.path(), exp);
-    assert!(!state.prompt_sent);
+    let mut state = smoke_multiturn_state(tmp.path(), exp);
+    assert!(
+        state.next_prompt().expect("first prompt").is_some(),
+        "freshly constructed state should offer its first prompt"
+    );
+}
+
+#[test]
+fn smoke_mini_done_backend_multiturn_constructs() {
+    let _backend = mini_done_backend_multiturn();
 }

@@ -31,23 +31,6 @@ pub(crate) fn render_repo_program(
     })
 }
 
-/// Like [`render_repo_program`] but omits reading `.malvin/checks` for `{{ quality_gates }}`.
-pub(crate) fn render_repo_program_without_quality_gates(
-    store: &PromptStore,
-    constraints_prompt: &str,
-    constraints_context: &HashMap<String, String>,
-    artifacts: &RunArtifacts,
-) -> Result<String, String> {
-    render_program_with_template(RenderRepoProgram {
-        store,
-        constraints_prompt,
-        constraints_context,
-        artifacts,
-        program_prompt: "kpop_program.md",
-        include_quality_gates: false,
-    })
-}
-
 pub(crate) fn render_creative_program(
     store: &PromptStore,
     constraints_prompt: &str,

@@ -7,10 +7,12 @@ pub(crate) enum KPopHardConstraintsExit {
 }
 
 #[derive(Clone, Copy)]
+#[allow(clippy::struct_excessive_bools)]
 pub(crate) struct KPopHardConstraints {
     pub skip_kpop_on_initial_pass: bool,
     pub recheck_gates_after_exhausted: bool,
     pub skip_workspace_quality_gates: bool,
+    pub use_multiturn_mpc: bool,
     pub exit: KPopHardConstraintsExit,
 }
 
@@ -19,42 +21,49 @@ impl KPopHardConstraints {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: true,
         skip_workspace_quality_gates: false,
+        use_multiturn_mpc: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const CHECKS_DISCOVERY: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const REVISE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const KPOP: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
+        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
 

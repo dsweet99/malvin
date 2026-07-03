@@ -2,8 +2,9 @@
 //!
 //! Agents write `exp_log_*.md` under `_kpop/` with markdown section markers malvin
 //! interprets for observability (step counts). Completion is declared via mpc plan `DONE` in
-//! `_kpop/mpc_plan.md` (see `default_prompts/mpc_block.md`). Prompt sources:
-//! `default_prompts/kpop_common.md`, `default_prompts/mpc_block.md`.
+//! `_kpop/mpc_plan.md` (see `default_prompts/mpc_block_b.md`). Prompt sources:
+//! `default_prompts/kpop_common.md`, `default_prompts/mpc_block_a.md`,
+//! `default_prompts/mpc_block_b.md`, `default_prompts/mpc_block_c.md`.
 
 /// Parsed marker kind on a `## Step K — …` heading line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

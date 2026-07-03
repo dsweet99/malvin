@@ -1,7 +1,8 @@
 //! `KPop` delegation tests for [`super::backend::AgentBackend`].
 
 use super::backend_kpop_test_helpers::{
-    empty_backups, mini_done_backend, mock_backend, smoke_multiturn_state,
+    empty_backups, mini_done_backend, mini_done_backend_multiturn, mock_backend,
+    smoke_multiturn_state,
 };
 use super::{
     agent_backend_attach_run_timing_for_session, agent_backend_run_kpop_flow,
@@ -31,7 +32,7 @@ fn agent_backend_run_kpop_multiturn_mini_delegates() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
-        let mut backend = mini_done_backend();
+        let mut backend = mini_done_backend_multiturn();
         let mut state = smoke_multiturn_state(tmp.path(), exp_log);
         let backups = empty_backups();
         let ctl = AgentKpopMultiturnCtl {
@@ -98,6 +99,8 @@ fn agent_backend_run_kpop_multiturn_mini_succeeds_on_second_attempt() {
         let mut backend = mock_backend(
             vec![
                 MockStep::RateLimited,
+                MockStep::Ok(super::test_support::mini_done_response()),
+                MockStep::Ok(super::test_support::mini_done_response()),
                 MockStep::Ok(super::test_support::mini_done_response()),
             ],
             2,

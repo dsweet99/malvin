@@ -14,6 +14,7 @@ use crate::cli::workflow_kpop_shared::{
 use crate::run_timing::TimingPhase;
 
 use super::kpop_session_finish::finish_kpop_engine_session_success;
+use super::kpop_session_multiturn::run_kpop_engine_multiturn;
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
 
@@ -53,22 +54,22 @@ pub(crate) fn print_kpop_engine_log_line(prepared: &KPopEnginePrepared, exp_log_
 }
 
 fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
-    let params = ctx.iteration.loop_params;
-    let prepared = params.prepared;
+    let prepared = ctx.iteration.loop_params.prepared;
+    let iter_ctx = gate_iteration_context(
+        prepared.context(),
+        prepared.artifacts(),
+        &ctx.iteration.exp_log_path,
+        ctx.iteration.iteration,
+    );
     KpopTurnPrompts {
         store: prepared.store(),
-        base: &gate_iteration_context(
-            prepared.context(),
-            prepared.artifacts(),
-            &ctx.iteration.exp_log_path,
-            ctx.iteration.iteration,
-        ),
+        base: &iter_ctx,
         prepend_rules_once: false,
     }
     .kpop_engine_single_turn_prompt()
 }
 
-fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {
+pub(super) fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {
     let prepared = ctx.iteration.loop_params.prepared;
     let work_dir = prepared.artifacts().work_dir.as_path();
     let backups = ctx.iteration.session_dotfile_backups;
@@ -84,7 +85,7 @@ fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Res
     }
 }
 
-async fn finalize_kpop_engine_turn(
+pub(super) async fn finalize_kpop_engine_turn(
     ctx: &mut KPopEngineMultiturnCtx<'_>,
     work_dir: &std::path::Path,
     prompt_result: Result<(), AgentError>,
@@ -109,7 +110,7 @@ async fn finalize_kpop_engine_turn(
     Ok(())
 }
 
-async fn run_kpop_engine_coder_turn(
+pub(super) async fn run_kpop_engine_coder_turn(
     ctx: &mut KPopEngineMultiturnCtx<'_>,
     prompt: &str,
     work_dir: &std::path::Path,
@@ -164,6 +165,9 @@ async fn run_kpop_engine_coder_turn(
 async fn run_kpop_engine_single_turn(
     ctx: &mut KPopEngineMultiturnCtx<'_>,
 ) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
+    if ctx.iteration.loop_params.behavior.use_multiturn_mpc {
+        return run_kpop_engine_multiturn(ctx).await;
+    }
     let prepared = ctx.iteration.loop_params.prepared;
     let prompt = build_kpop_engine_prompt(ctx)?;
     let work_dir = prepared.artifacts().work_dir.as_path();

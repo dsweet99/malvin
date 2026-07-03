@@ -15,17 +15,16 @@ General Constraints:
   - Call a function or method directly. Test a meaningful aspect of its behavior.
 - Agents can overfit code to tests or evaluation metrics. Look for signs of this (e.g., special-casing). Excise the overfitted code.
   - Consider metamorphic tests and fuzzing tests to help prevent code from overfitting to tests.
-- NO serious bugs in scope
+- No bugs in scope
 - No serious time-complexity inefficiencies in scope
 - No serious memory-complexity inefficiencies in scope
 - Each unit test tests something meaningful. Simple tests are fine. Bogus tests are not.
 - Any code you write should be idiomatic. (For example: Don't use ".inc" files in Rust.)
 - Assert liberally. Good contracts make code reliable and maintainable.
+- Assert symmetry of inverse operations: save/load, serialize/deserialize, add/subtract, etc.
 
-- At times a task may seem formidable, but you are tenacious and your spirit is indominable. When faced with a large task, use this strategy
-  - Find one piece of the task that you can handle. Define it clearly. Then completely focus on it until it is done.
-  - It is better to make an improvement and fail to solve everything in one turn that to do nothing at all. You will get another turn. The driver
-    will keep restarting you so that you can try again. The key is to make some progress on every turn.
+Satisfying general constraints falls in scope.
+
 
 If you write new code:
 - Stay in scope.

@@ -116,7 +116,7 @@ impl RunArtifacts {
     }
 }
 
-/// Per-session MPC plan scratch file rendered as `{{ mpc_plan_path }}` in `mpc_block.md`.
+/// Per-session MPC plan scratch file rendered as `{{ mpc_plan_path }}` in `mpc_block_a/b/c.md`.
 #[must_use]
 pub fn mpc_plan_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("_kpop").join("mpc_plan.md")
