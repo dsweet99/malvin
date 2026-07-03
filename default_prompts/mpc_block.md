@@ -5,9 +5,8 @@
     (i) Work Phase: One detailed first phase.
     (ii) Deferred Phase: One rough summary of the remaineder of the work.
   - Otherwise, if the plan can be completed in one phase (preferred), label the entire plane the 'Work Phase'
-  - Some plan attributes:
-   - Name and describe key concepts, behaviors, invariants, and edge cases.
-   - Include a plan to unit test.
+  - Include a plan to unit test. Think of all behaviors a reasonable individual would expect, and test for those. Think of all the ways an adversary could try to break or simply find mistakes in your code, and test for those.
+  
 2. KPOP: Check the plan for contradictions, errors, scope violation/creep, or plan inefficiency.
   - Append any questions you might have. Do research to answer your questions.
   - Leave no decisions open.
