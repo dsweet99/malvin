@@ -87,7 +87,7 @@ mod tests {
         });
         let full = DotfileBackupState::Present(DotfileBackupPayload {
             backup_path: std::path::PathBuf::from("/tmp/test"),
-            bytes: b"kiss check\nruff check\n".to_vec(),
+            bytes: b"kiss check\nlint check\n".to_vec(),
         });
         assert!(is_bare_kiss_checks(&bare));
         assert!(is_bare_kiss_checks(&kiss_check));

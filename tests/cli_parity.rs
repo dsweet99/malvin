@@ -4,11 +4,6 @@ use common::check_ignored;
 use std::path::Path;
 use std::process::Command;
 
-const INIT_TEMPLATE_GITIGNORE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/gitignore"
-));
-
 #[cfg(unix)]
 fn run_root_help_output() -> std::process::Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
@@ -136,56 +131,5 @@ fn repo_root_gitignore_ignores_malvin_logs_and_target() {
     assert!(
         check_ignored(root, "target/release/foo"),
         "repo .gitignore should ignore Rust target/"
-    );
-}
-
-#[test]
-fn init_template_gitignore_ignores_deepswe_results() {
-    assert!(
-        INIT_TEMPLATE_GITIGNORE
-            .lines()
-            .any(|line| line.trim() == "results/"),
-        "init template .gitignore should ignore DeepSWE eval artifacts under results/"
-    );
-}
-
-#[test]
-fn init_template_gitignore_is_consistent_with_git_check_ignore() {
-    const TEMPLATE: &str = INIT_TEMPLATE_GITIGNORE;
-    let tmp = tempfile::tempdir().unwrap();
-    std::fs::write(tmp.path().join(".gitignore"), TEMPLATE).unwrap();
-    let st = Command::new("git")
-        .args(["init"])
-        .current_dir(tmp.path())
-        .status()
-        .expect("git init");
-    assert!(st.success(), "git init failed");
-    assert!(
-        check_ignored(tmp.path(), ".malvin/logs/x/plan.md"),
-        "template should ignore .malvin/logs/ runs"
-    );
-    assert!(
-        check_ignored(tmp.path(), "log"),
-        "template should ignore root log"
-    );
-    assert!(
-        check_ignored(tmp.path(), "log_2"),
-        "template should ignore root log_2"
-    );
-    assert!(
-        check_ignored(tmp.path(), "target/release/foo"),
-        "template should ignore Rust target/"
-    );
-    assert!(
-        !check_ignored(tmp.path(), "src/lib.rs"),
-        "template should not ignore normal sources"
-    );
-    assert!(
-        check_ignored(tmp.path(), "pkg/__pycache__/x.py"),
-        "template should ignore sources under nested __pycache__ dirs (not only *.pyc)"
-    );
-    assert!(
-        check_ignored(tmp.path(), "lib/foo.pyc"),
-        "template should ignore .pyc via **/*.py[cod]"
     );
 }

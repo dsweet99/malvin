@@ -14,7 +14,7 @@ fn command_matches_malvin_checks_gate_uses_checks_file_not_hardcoded_needles() {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(w.join(".malvin/checks"), "custom-gate --flag\n").unwrap();
         assert!(command_matches_malvin_checks_gate("sh -c custom-gate --flag", w));
-        assert!(!command_matches_malvin_checks_gate("cargo nextest run", w));
+        assert!(!command_matches_malvin_checks_gate("long-running-cmd run", w));
     });
 }
 
@@ -24,7 +24,7 @@ fn command_matches_malvin_checks_gate_sees_sandbox_expanded_nextest() {
         std::fs::create_dir_all(w.join(".malvin")).unwrap();
         std::fs::write(w.join(".malvin/checks"), "cargo nextest run\n").unwrap();
         assert!(command_matches_malvin_checks_gate(
-            DEFAULT_RUST_NEXTEST_PARTITION_1,
+            "cargo nextest run --partition hash:1/2",
             w
         ));
     });

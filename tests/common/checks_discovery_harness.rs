@@ -7,8 +7,7 @@ use super::acp_tidy_kpop::{
 };
 
 fn acp_mock_combined_discovery_and_kpop_js(kpop_chunk: &str) -> String {
-    let discovery = r"    const isDiscovery = promptText.includes('KPOP') || promptText.includes('init_constraints');
-    if (isDiscovery && promptText.includes('Discover how the repo in')) {
+    let discovery = r"    if (promptText.includes('Discover how the repo in')) {
       function resolvePromptPath(relOrAbs) {
         if (relOrAbs.startsWith('./')) return path.join(process.cwd(), relOrAbs.slice(2));
         if (relOrAbs.startsWith('/')) return relOrAbs;
@@ -49,7 +48,7 @@ pub fn acp_mock_checks_discovery_and_code_js() -> String {
 
 pub fn acp_mock_checks_discovery_no_write_js() -> String {
     let body = format!(
-        "{}\n    const isDiscovery = promptText.includes('KPOP') || promptText.includes('init_constraints');\n    if (isDiscovery && promptText.includes('Discover how the repo in')) {{\n      const pathMatch = promptText.match(/([^\\s`]+\\/_kpop\\/exp_log_[^\\s`]+\\.md)/);\n      if (pathMatch) {{\n        let p = pathMatch[1];\n        let expPath = p.startsWith('./') ? path.join(process.cwd(), p.slice(2)) : path.join(process.cwd(), p);\n        fs.mkdirSync(path.dirname(expPath), {{ recursive: true }});\n        fs.appendFileSync(expPath, '\\n## Step 1 — KPOP mock\\n');\n      }}\n    }}",
+        "{}\n    if (promptText.includes('Discover how the repo in')) {{\n      const pathMatch = promptText.match(/([^\\s`]+\\/_kpop\\/exp_log_[^\\s`]+\\.md)/);\n      if (pathMatch) {{\n        let p = pathMatch[1];\n        let expPath = p.startsWith('./') ? path.join(process.cwd(), p.slice(2)) : path.join(process.cwd(), p);\n        fs.mkdirSync(path.dirname(expPath), {{ recursive: true }});\n        fs.appendFileSync(expPath, '\\n## Step 1 — KPOP mock\\n');\n      }}\n    }}",
         acp_mock_kpop_prompt_preamble(),
     );
     super::acp_core::acp_mock_js("", &body)

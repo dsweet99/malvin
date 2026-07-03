@@ -4,9 +4,15 @@ pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     r"    const fs = require('fs');
     const path = require('path');
     let promptText = (((msg.params || {}).prompt || [])[0] || {}).text || '';
-    const userReqMatch = promptText.match(/User request \(read this file\):\s*\n\n`([^`]+)`/);
-    if (userReqMatch) {
-      let reqRel = userReqMatch[1].replace(/^\.\//, '');
+    let reqRel = null;
+    const legacyReqMatch = promptText.match(/User request \(read this file\):\s*\n\n`([^`]+)`/);
+    if (legacyReqMatch) {
+      reqRel = legacyReqMatch[1].replace(/^\.\//, '');
+    } else {
+      const mpcReqMatch = promptText.match(/User request[^`]*`([^`]+)`/);
+      if (mpcReqMatch) reqRel = mpcReqMatch[1].replace(/^\.\//, '');
+    }
+    if (reqRel) {
       const reqAbs = path.isAbsolute(reqRel) ? reqRel : path.join(process.cwd(), reqRel);
       try {
         promptText += '\n' + fs.readFileSync(reqAbs, 'utf8');

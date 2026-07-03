@@ -1,8 +1,6 @@
 use std::fs;
 use std::time::Duration;
 
-use crate::repo_gates;
-
 use super::command_support::set_fake_command_dir;
 use super::tests_gates_common::log_contains_command;
 use super::tests_gates_helpers::{
@@ -39,24 +37,20 @@ async fn test_scan_for_extension_handles_symlink_cycles() {
 }
 
 #[test]
-fn run_repo_workspace_gates_invokes_expected_quality_commands() {
+fn run_repo_workspace_gates_invokes_seeded_kiss_check() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     workspace_git_minimal_cargo_rs_py_tests(work);
     super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
-    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo", "ruff"], 0);
+    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss"], 0);
     let _guard = set_fake_command_dir(bin_dir.path());
     let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
     assert!(result.is_ok());
     let log = fs::read_to_string(&trace).unwrap();
     assert!(log.contains("kiss clamp"));
-    assert!(log.contains("kiss check"));
-    assert!(log.contains("cargo clippy"));
-    assert!(log.contains(repo_gates::default_rust_test_command(work)));
-    assert!(log_contains_command(&log, "ruff check"));
-    assert!(!log_contains_command(&log, "pytest"));
+    assert!(log_contains_command(&log, "kiss check"));
 }
 
 #[test]
@@ -73,7 +67,6 @@ fn run_repo_workspace_gates_skips_pre_commit_when_config_present() {
     let log = fs::read_to_string(&trace).unwrap();
     assert!(!log_contains_command(&log, "pre-commit run --all-files"));
     assert!(!log_contains_command(&log, "kiss check"));
-    assert!(!log_contains_command(&log, "cargo clippy"));
     assert!(log_contains_command(&log, "custom --only"));
 }
 

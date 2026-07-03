@@ -8,7 +8,7 @@ use crate::test_stderr_capture::capture_stderr_output;
 #[cfg(unix)]
 fn install_zero_exit_gate_bins(bin_dir: &Path) {
     use std::os::unix::fs::PermissionsExt;
-    for name in ["kiss", "cargo", "ruff"] {
+    for name in ["kiss", "lint"] {
         let path = bin_dir.join(name);
         std::fs::write(&path, "#!/bin/sh\nexit 0\n").expect("write fake bin");
         let mut perms = std::fs::metadata(&path).expect("bin meta").permissions();
@@ -85,7 +85,7 @@ fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
 }
 
 #[cfg(unix)]
-fn minimal_git_cargo_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
+fn minimal_git_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path().to_path_buf();
     std::process::Command::new("git")
@@ -98,17 +98,14 @@ fn minimal_git_cargo_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",
     )
     .expect("Cargo.toml");
-    crate::seed_malvin_checks(
-        &work,
-        "kiss check\ncargo clippy --jobs 3 --all-targets --all-features\nruff check\n",
-    );
+    crate::seed_malvin_checks(&work, "kiss check\nlint check\n");
     (tmp, work)
 }
 
 #[cfg(unix)]
 #[test]
 fn gate_run_wires_private_runners_on_minimal_workspace() {
-    let (_tmp, work) = minimal_git_cargo_workspace();
+    let (_tmp, work) = minimal_git_workspace();
     let bin_dir = tempfile::tempdir().expect("bindir");
     install_zero_exit_gate_bins(bin_dir.path());
     let _guard = set_fake_command_dir(bin_dir.path());
@@ -124,7 +121,7 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
 fn kiss_cov_wires_tests_gates_unix_scan() {
     #[cfg(unix)]
     {
-        let (_tmp, work) = minimal_git_cargo_workspace();
+        let (_tmp, work) = minimal_git_workspace();
         assert!(work.join("Cargo.toml").is_file());
     }
 }

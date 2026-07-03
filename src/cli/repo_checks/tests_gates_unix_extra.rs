@@ -1,6 +1,5 @@
 use std::fs;
 
-use crate::repo_gates;
 use crate::test_utils::with_isolated_home;
 
 use super::command_support::set_fake_command_dir;
@@ -27,7 +26,7 @@ fn run_repo_workspace_gates_executes_only_malvin_checks_when_present() {
     let log = fs::read_to_string(&trace).unwrap();
     assert!(log_contains_command(&log, "custom --option"));
     assert!(!log_contains_command(&log, "kiss check"));
-    assert!(!log_contains_command(&log, "cargo clippy"));
+    assert!(!log_contains_command(&log, "lint check"));
 }
 
 #[test]
@@ -55,7 +54,7 @@ fn run_repo_workspace_gates_errors_when_malvin_checks_missing() {
 }
 
 #[test]
-fn run_repo_workspace_gates_runs_seeded_builtin_checks_without_git_or_malvin_checks() {
+fn run_repo_workspace_gates_runs_seeded_kiss_only_without_git_or_malvin_checks() {
     with_isolated_home(|work| {
         fs::write(
             work.join("Cargo.toml"),
@@ -65,33 +64,14 @@ fn run_repo_workspace_gates_runs_seeded_builtin_checks_without_git_or_malvin_che
         super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
         let bin_dir = tempfile::tempdir().unwrap();
         let trace = bin_dir.path().join("trace.log");
-        install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "cargo"], 0);
+        install_trace_echo_bins(bin_dir.path(), &trace, &["kiss"], 0);
         let _guard = set_fake_command_dir(bin_dir.path());
         let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
         assert!(result.is_ok());
         let log = fs::read_to_string(&trace).unwrap();
         assert!(log_contains_command(&log, "kiss check"));
-        assert!(log_contains_command(&log, "cargo clippy"));
-        assert!(log_contains_command(&log, repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1));
+        assert!(!log_contains_command(&log, "lint check"));
     });
-}
-
-#[test]
-fn run_repo_workspace_gates_skips_pytest_without_test_named_py_files() {
-    let tmp = tempfile::tempdir().unwrap();
-    let work = tmp.path();
-    super::tests_gates_helpers::git_init_work(work);
-    fs::write(work.join("script.py"), "print('ok')\n").unwrap();
-    super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
-    let bin_dir = tempfile::tempdir().unwrap();
-    let trace = bin_dir.path().join("trace.log");
-    install_trace_echo_bins(bin_dir.path(), &trace, &["kiss", "ruff"], 0);
-    let _guard = set_fake_command_dir(bin_dir.path());
-    let result = run_repo_workspace_gates(work, RepoGateOutput::Tagged, None);
-    assert!(result.is_ok());
-    let log = fs::read_to_string(&trace).unwrap();
-    assert!(log_contains_command(&log, "ruff check"));
-    assert!(!log_contains_command(&log, "pytest -sv tests"));
 }
 
 #[test]
@@ -103,25 +83,15 @@ fn quality_gates_log_records_gate_lines_when_run_log_dir_set() {
     workspace_git_cargo_main_only(work);
     super::tests_gates_helpers::seed_workspace_builtin_malvin_checks(work);
     let bin_dir = tempfile::tempdir().unwrap();
-    for name in ["kiss", "cargo"] {
-        write_executable_script(
-            bin_dir.path(),
-            name,
-            "#!/bin/sh\necho \"stdout from $0\"\necho \"stderr from $0\" >&2\nexit 0\n",
-        );
-    }
+    write_executable_script(
+        bin_dir.path(),
+        "kiss",
+        "#!/bin/sh\necho \"stdout from $0\"\necho \"stderr from $0\" >&2\nexit 0\n",
+    );
     let _guard = set_fake_command_dir(bin_dir.path());
     run_repo_workspace_gates(work, RepoGateOutput::Tagged, Some(&run_dir)).unwrap();
     let qlog = fs::read_to_string(run_dir.join("quality_gates.log")).unwrap();
     assert!(qlog.contains("Running `kiss check`"));
-    assert!(qlog.contains(&format!(
-        "Running `{}`",
-        repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_1
-    )));
-    assert!(qlog.contains(&format!(
-        "Running `{}`",
-        repo_gates::DEFAULT_RUST_NEXTEST_PARTITION_2
-    )));
     assert!(qlog.contains("[stdout]"));
     assert!(qlog.contains("[stderr]"));
     assert!(qlog.contains("stdout from"));
@@ -135,7 +105,7 @@ fn prepare_repo_workspace_skips_quality_commands() {
     workspace_git_kissconfig_90_cargo_rs_py(work);
     let bin_dir = tempfile::tempdir().unwrap();
     let trace = bin_dir.path().join("trace.log");
-    for name in ["kiss", "cargo", "ruff", "pytest"] {
+    for name in ["kiss", "lint", "gate_b"] {
         write_trace_echo_script(bin_dir.path(), name, &trace, 1);
     }
     let _guard = set_fake_command_dir(bin_dir.path());

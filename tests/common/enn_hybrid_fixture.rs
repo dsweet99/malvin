@@ -23,11 +23,11 @@ const ENN_HYBRID_FILES: &[(&str, &str)] = &[
     ("tests/test_foo.py", "def test_x():\n    pass\n"),
     (
         ".pre-commit-config.yaml",
-        "repos:\n- repo: local\n  hooks:\n  - id: ruff\n    entry: ruff check .\n    language: system\n",
+        "repos:\n- repo: local\n  hooks:\n  - id: lint\n    entry: lint check .\n    language: system\n",
     ),
     (
         "Makefile",
-        "lint:\n\tcd rust && cargo clippy --all-targets --all-features -- -D warnings\n\truff check\n\ntest:\n\tpytest -sv tests\n",
+        "lint:\n\tcd rust && gate_b --all-targets\n\tlint check\n\ntest:\n\tgate_b run tests\n",
     ),
 ];
 

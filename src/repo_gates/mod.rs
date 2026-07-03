@@ -1,15 +1,10 @@
 #![allow(clippy::missing_errors_doc)]
 
-pub(crate) mod discover_py;
 pub(crate) mod init_discovery_validate;
 pub(crate) mod gate_command_match;
 pub(crate) mod sandbox_safe;
 
 use std::path::Path;
-use std::process::Stdio;
-use std::sync::OnceLock;
-
-use discover_py::python_ruff_and_pytest_flags;
 
 pub use crate::workspace_paths::MALVIN_CHECKS_REL as MALVIN_CHECKS_FILE;
 
@@ -18,55 +13,6 @@ pub const KISSIGNORE_FILE: &str = ".kissignore";
 pub const KISSCONFIG_FILE: &str = ".kissconfig";
 
 pub const KISS_CHECK_COMMAND: &str = "kiss check";
-
-pub const DEFAULT_PYTEST_CHECK: &str = "pytest -sv tests";
-
-pub const DEFAULT_RUST_CLIPPY: &str =
-    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo";
-
-pub const DEFAULT_RUST_TEST: &str = "cargo test";
-
-pub const DEFAULT_RUST_NEXTEST: &str = "cargo nextest run";
-
-pub const DEFAULT_RUST_NEXTEST_PARTITION_1: &str = "cargo nextest run --partition hash:1/2";
-
-pub const DEFAULT_RUST_NEXTEST_PARTITION_2: &str = "cargo nextest run --partition hash:2/2";
-
-static CARGO_NEXTEST_AVAILABLE: OnceLock<bool> = OnceLock::new();
-
-#[must_use]
-pub fn cargo_nextest_available(work_dir: &Path) -> bool {
-    let _ = work_dir;
-    *CARGO_NEXTEST_AVAILABLE.get_or_init(|| {
-        crate::malvin_sandbox::malvin_std_command("cargo")
-            .args(["nextest", "--version"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .is_ok_and(|s| s.success())
-    })
-}
-
-#[must_use]
-pub fn default_rust_test_command(work_dir: &Path) -> &'static str {
-    if cargo_nextest_available(work_dir) {
-        DEFAULT_RUST_NEXTEST
-    } else {
-        DEFAULT_RUST_TEST
-    }
-}
-
-#[must_use]
-pub fn rust_test_gate_command_lines(work_dir: &Path) -> Vec<String> {
-    if cargo_nextest_available(work_dir) {
-        vec![
-            DEFAULT_RUST_NEXTEST_PARTITION_1.to_string(),
-            DEFAULT_RUST_NEXTEST_PARTITION_2.to_string(),
-        ]
-    } else {
-        vec![DEFAULT_RUST_TEST.to_string()]
-    }
-}
 
 pub use sandbox_safe::sandbox_safe_gate_commands;
 
@@ -78,19 +24,8 @@ pub fn should_run_workspace_gates(work_dir: &Path) -> bool {
 }
 
 pub(crate) fn builtin_gate_command_lines(work_dir: &Path) -> Vec<String> {
-    let mut out = vec![KISS_CHECK_COMMAND.to_string()];
-    let (has_py, has_pytest) = python_ruff_and_pytest_flags(work_dir);
-    if has_py {
-        out.push("ruff check .".to_string());
-    }
-    if has_pytest {
-        out.push(DEFAULT_PYTEST_CHECK.to_string());
-    }
-    if work_dir.join("Cargo.toml").is_file() {
-        out.push(DEFAULT_RUST_CLIPPY.to_string());
-        out.extend(rust_test_gate_command_lines(work_dir));
-    }
-    out
+    let _ = work_dir;
+    vec![KISS_CHECK_COMMAND.to_string()]
 }
 
 pub fn gate_command_lines(work_dir: &Path) -> Result<Vec<String>, String> {

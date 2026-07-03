@@ -119,7 +119,7 @@ pub fn sanitize_clamp_damaged_dotfiles_in_bundle(
 
 /// Repair known `kiss clamp` damage on disk before gate-loop snapshots.
 ///
-/// Removes bare `kiss` checks (replacing with repo defaults). Does not rewrite
+/// Removes bare `kiss` checks on disk without seeding defaults. Does not rewrite
 /// `gate.test_coverage_threshold`; kiss clamp sets that naturally when needed.
 pub fn repair_clamp_damaged_dotfiles_on_disk(work_dir: &Path) -> Result<(), String> {
     repair_invalid_malvin_home_config_on_disk(work_dir)?;

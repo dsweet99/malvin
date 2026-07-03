@@ -5,7 +5,7 @@ KPop is short for "Karl Popper".
 KPop may be referenced later on like a command, "KPop: <problem statement or question>"
 ]
 
-Apply this method to the user's problem.
+Clearly restate the problem you have been asked to solve.
 
 Repeat until you think you've solved the problem:
 LOOP_START
@@ -19,5 +19,5 @@ LOOP_END
 Log your hypotheses and test results -- as they become available -- to `{{ exp_log }}`. Be sure to log hypotheses and results
 as you generate them. They are valuable. The user and other agents will want to read them.
 
-When you are all done, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
+When you are done with the loop, append a brief executive summary and a super-brief tl;dr to the log, and echo both to the user (the chat/context) directly.
 

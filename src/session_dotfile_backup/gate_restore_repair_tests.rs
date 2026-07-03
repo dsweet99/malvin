@@ -147,6 +147,7 @@ fn sanitize_bundle_fixes_poisoned_checks_slot_leaves_kissconfig_unchanged() {
         panic!("expected checks present");
     };
     assert!(String::from_utf8_lossy(&checks.bytes).contains("kiss check"));
+    assert_eq!(checks.bytes, b"kiss check\n");
     let DotfileBackupState::Present(ref kissconfig) = sanitized.kissconfig else {
         panic!("expected kissconfig present");
     };

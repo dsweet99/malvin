@@ -25,7 +25,7 @@ pub const DEFAULT_MAX_LOOPS_CODE: usize = 3;
 
 const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/default_repo/config.toml"
+    "/assets/default_malvin_home_config.toml"
 ));
 
 #[derive(Debug, Clone, PartialEq, Eq)]

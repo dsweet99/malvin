@@ -3,7 +3,7 @@ use super::checks_test_helpers::{git_init, write_git_root_checks as write_checks
 use std::fs;
 
 #[test]
-fn builtin_gate_command_lines_skips_ruff_when_no_python() {
+fn builtin_gate_command_lines_returns_kiss_only_for_rust_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     fs::create_dir(w.join(".git")).unwrap();
@@ -13,30 +13,18 @@ fn builtin_gate_command_lines_skips_ruff_when_no_python() {
     )
     .unwrap();
     let g = builtin_gate_command_lines(w);
-    assert!(g.iter().any(|c| c == KISS_CHECK_COMMAND));
-    assert!(!g.iter().any(|c| c.starts_with("ruff")));
-    assert!(g.iter().any(|c| c.starts_with("cargo clippy")));
+    assert_eq!(g, vec![KISS_CHECK_COMMAND.to_string()]);
 }
 
 #[test]
-fn builtin_gate_command_lines_skips_pytest_without_test_named_py() {
+fn builtin_gate_command_lines_returns_kiss_only_for_python_repo() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     fs::create_dir(w.join(".git")).unwrap();
     fs::write(w.join("main.py"), "x=1\n").unwrap();
-    let g = builtin_gate_command_lines(w);
-    assert!(g.iter().any(|c| c == "ruff check ."));
-    assert!(!g.iter().any(|c| c.contains("pytest")));
-}
-
-#[test]
-fn builtin_gate_command_lines_runs_pytest_when_test_module_present() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    fs::create_dir(w.join(".git")).unwrap();
     fs::write(w.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
     let g = builtin_gate_command_lines(w);
-    assert!(g.iter().any(|c| c == DEFAULT_PYTEST_CHECK));
+    assert_eq!(g, vec![KISS_CHECK_COMMAND.to_string()]);
 }
 
 #[test]
@@ -71,7 +59,7 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
 }
 
 #[test]
-fn ensure_default_malvin_checks_file_writes_builtin_lines() {
+fn ensure_default_malvin_checks_file_writes_kiss_only() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     git_init(w);
@@ -82,7 +70,7 @@ fn ensure_default_malvin_checks_file_writes_builtin_lines() {
     .unwrap();
     let checks_path = crate::malvin_checks_path(w);
     assert!(!checks_path.exists());
-    let expected = builtin_gate_command_lines(w);
+    let expected = vec![KISS_CHECK_COMMAND.to_string()];
     ensure_default_malvin_checks_file(w).unwrap();
     assert!(checks_path.is_file());
     assert_eq!(load_malvin_checks(&checks_path).unwrap(), expected);
@@ -91,27 +79,7 @@ fn ensure_default_malvin_checks_file_writes_builtin_lines() {
 }
 
 #[test]
-fn builtin_gate_command_lines_uses_partitioned_nextest_when_available() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    fs::create_dir(w.join(".git")).unwrap();
-    fs::write(
-        w.join("Cargo.toml"),
-        "[package]\nname = 'm'\nversion = '0.1.0'\n",
-    )
-    .unwrap();
-    let lines = builtin_gate_command_lines(w);
-    if cargo_nextest_available(w) {
-        assert!(lines.contains(&DEFAULT_RUST_NEXTEST_PARTITION_1.to_string()));
-        assert!(lines.contains(&DEFAULT_RUST_NEXTEST_PARTITION_2.to_string()));
-        assert!(!lines.contains(&DEFAULT_RUST_NEXTEST.to_string()));
-    } else {
-        assert!(lines.contains(&DEFAULT_RUST_TEST.to_string()));
-    }
-}
-
-#[test]
-fn prompt_quality_gates_includes_rust_builtin_without_git_when_cargo_toml_present() {
+fn prompt_quality_gates_includes_kiss_only_for_seeded_checks() {
     crate::test_utils::with_isolated_home(|w| {
         fs::write(
             w.join("Cargo.toml"),
@@ -121,11 +89,7 @@ fn prompt_quality_gates_includes_rust_builtin_without_git_when_cargo_toml_presen
         ensure_default_malvin_checks_file(w).unwrap();
         let md = prompt_quality_gates_markdown(w).unwrap();
         assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
-        assert!(md.contains("cargo clippy"));
-        assert!(
-            md.contains("cargo test") || md.contains("cargo nextest run"),
-            "md: {md}"
-        );
+        assert_eq!(md.matches('`').count(), 2);
     });
 }
 
@@ -138,10 +102,10 @@ fn should_run_workspace_gates_when_git_present() {
 
 #[test]
 fn format_quality_gates_markdown_lists_commands() {
-    let lines = vec!["kiss check".to_string(), "cargo test".to_string()];
+    let lines = vec!["kiss check".to_string(), "lint check".to_string()];
     let md = format_quality_gates_markdown(&lines);
     assert!(md.contains("`kiss check`"));
-    assert!(md.contains("`cargo test`"));
+    assert!(md.contains("`lint check`"));
 }
 
 #[test]
@@ -165,17 +129,4 @@ fn prompt_quality_gates_markdown_errors_when_malvin_checks_missing() {
             "unexpected error message: {err}"
         );
     });
-}
-
-
-#[test]
-fn default_rust_test_command_matches_nextest_probe() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    let cmd = default_rust_test_command(w);
-    if cargo_nextest_available(w) {
-        assert_eq!(cmd, DEFAULT_RUST_NEXTEST);
-    } else {
-        assert_eq!(cmd, DEFAULT_RUST_TEST);
-    }
 }

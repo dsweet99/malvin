@@ -1,8 +1,7 @@
 #!/bin/bash
 # Pre-commit hook: fail if any .rs or .py files are untracked, or if
 # default_prompts/do_header.md exists but is not tracked (this malvin monorepo
-# embeds it via include_str!; the default_repo/ template omits this check for
-# generic consumer projects).
+# embeds it via include_str!; generic consumer projects may omit this check.
 #
 # Untracked files that match .gitignore (and other standard Git excludes) are
 # ignored; we use --exclude-standard so behavior matches `git status`.

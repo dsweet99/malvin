@@ -149,14 +149,14 @@ fn merge_keeps_agent_expanded_malvin_checks() {
     let progress = bundle_with(
         GitignoreBackup::Missing,
         DotfileBackupState::Missing,
-        present(b"kiss check\nruff check\n"),
+        present(b"kiss check\nlint check\n"),
         DotfileBackupState::Missing,
     );
     let merged = merge_for_gate_restore(&anchor, &progress);
     let DotfileBackupState::Present(ref payload) = merged.malvin_checks else {
         panic!("expected malvin_checks present");
     };
-    assert_eq!(payload.bytes, b"kiss check\nruff check\n");
+    assert_eq!(payload.bytes, b"kiss check\nlint check\n");
 }
 
 #[test]

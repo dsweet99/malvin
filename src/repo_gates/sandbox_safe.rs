@@ -47,8 +47,12 @@ fn partition_nextest_line(line: &str, index: u32, total: u32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repo_gates::{DEFAULT_RUST_NEXTEST_PARTITION_1, DEFAULT_RUST_NEXTEST_PARTITION_2};
-    use crate::repo_gates::{gate_command_lines, gate_command_lines_for_workspace_run, load_malvin_checks, MALVIN_CHECKS_FILE};
+    use crate::repo_gates::{
+        gate_command_lines, gate_command_lines_for_workspace_run, load_malvin_checks, MALVIN_CHECKS_FILE,
+    };
+
+    const NEXTEST_PARTITION_1: &str = "cargo nextest run --partition hash:1/2";
+    const NEXTEST_PARTITION_2: &str = "cargo nextest run --partition hash:2/2";
 
     #[test]
     fn gate_command_lines_for_workspace_run_sandbox_safe_transforms_checks() {
@@ -78,8 +82,8 @@ mod tests {
         let safe = gate_command_lines_for_workspace_run(w).unwrap();
         assert_eq!(raw[1], "cargo clippy -j 2 --all-targets");
         assert_eq!(safe[1], "cargo clippy -j 2 --all-targets");
-        assert_eq!(safe[2], DEFAULT_RUST_NEXTEST_PARTITION_1);
-        assert_eq!(safe[3], DEFAULT_RUST_NEXTEST_PARTITION_2);
+        assert_eq!(safe[2], NEXTEST_PARTITION_1);
+        assert_eq!(safe[3], NEXTEST_PARTITION_2);
     }
 
     #[test]
@@ -90,13 +94,13 @@ mod tests {
         ];
         let safe = sandbox_safe_gate_commands(&lines);
         assert_eq!(safe[0], "cargo clippy -j 2 --all-targets");
-        assert_eq!(safe[1], DEFAULT_RUST_NEXTEST_PARTITION_1);
-        assert_eq!(safe[2], DEFAULT_RUST_NEXTEST_PARTITION_2);
+        assert_eq!(safe[1], NEXTEST_PARTITION_1);
+        assert_eq!(safe[2], NEXTEST_PARTITION_2);
     }
 
     #[test]
     fn sandbox_safe_gate_commands_leaves_partitioned_nextest_unchanged() {
-        let lines = vec![DEFAULT_RUST_NEXTEST_PARTITION_1.to_string()];
+        let lines = vec![NEXTEST_PARTITION_1.to_string()];
         let safe = sandbox_safe_gate_commands(&lines);
         assert_eq!(safe, lines);
     }

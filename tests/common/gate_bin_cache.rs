@@ -24,7 +24,7 @@ pub fn static_failing_gates_path_var() -> String {
     static PATH: OnceLock<String> = OnceLock::new();
     PATH.get_or_init(|| {
         let dir = static_gate_bin_subdir("fail");
-        for name in ["kiss", "cargo", "ruff", "pytest"] {
+        for name in ["kiss", "lint", "gate_b"] {
             let path = dir.join(name);
             if !path.is_file() {
                 write_failing_command_env_trace(&path, name);
@@ -37,7 +37,7 @@ pub fn static_failing_gates_path_var() -> String {
 
 #[cfg(unix)]
 pub fn write_failing_gate_tools(bin_dir: &Path, trace: &Path) {
-    for name in ["kiss", "cargo", "ruff", "pytest"] {
+    for name in ["kiss", "lint", "gate_b"] {
         write_failing_command(&bin_dir.join(name), trace);
     }
 }

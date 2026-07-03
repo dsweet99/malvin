@@ -153,7 +153,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         &[
             "Know thyself, agent",
             "# Definition: KPop",
-            "Write a plan to satisfy the user's request",
+            "Write a plan to satisfy the user request",
         ],
     );
     assert_prompt_contains_each(
@@ -162,7 +162,7 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
             "Hypothesize",
             ".malvin/logs/run42/_kpop/mpc_plan.md",
             ".malvin/logs/run42/request.md",
-            "KPOP: Execute the work phase",
+            "KPop: Execute the work phase",
         ],
     );
     assert!(
