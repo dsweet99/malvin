@@ -2,7 +2,7 @@
 
 [
 KPop is short for "Karl Popper".
-KPop may be referenced later on like a command, "KPop: <problem statement or question>"
+KPop may be referenced later on like a command, "KPop: <problem>"
 ]
 
 Clearly restate the problem you have been asked to solve.
