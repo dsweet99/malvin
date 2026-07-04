@@ -7,6 +7,8 @@ KPop may be referenced later on like a command, "KPop: <problem>"
 
 Clearly restate the problem you have been asked to solve.
 
+**Brainstorm**: Call `malvin inspire PROMPT` to generate helpful ideas. You many specify the number of ideas to generate in the PROMPT if you wish.
+
 Repeat until you think you've solved the problem:
 LOOP_START
 

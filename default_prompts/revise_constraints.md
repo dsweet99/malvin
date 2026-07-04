@@ -9,6 +9,8 @@ c- Revise `{{ doc_path }}` in place. Edit that file directly; do not write to a 
 - Unsubstantiated throw-away: An extra phrase that sounds like "there's more to the story", that you're referring to something well-known that the reader should know, but there's no support in the text through reference or data. Like "and related settings".
 
 ## Constraints
+- Write in plain English. Use complete sentences.
+- Avoid invented shorthand words or phrases.
 - No cases of mystifying synonymy
 - Use complete sentences most everywhere. Avoid choppy or "AI shorthand" writing.
   - It's ok to use phrases in bullet points, pseudocode comments, captions, etc.,
@@ -18,7 +20,7 @@ c- Revise `{{ doc_path }}` in place. Edit that file directly; do not write to a 
 - No unnecessary intros
 - No unsubstantiated throw-aways
 - No vague, underprecise, wishy-washy, or hedgy language. Replace them with clear, precise, supported claims (whatever they may be) or just remove them.
-- Don't use or discuss terms before introducing them.
+- Introduce terms at the time of first use, prefereably in a natural way.
 - Claims should come with stated evidence or citation. Hypotheses should be labeled as such.
 - Attempt to falsify every claim and hypothesis.
 - Make sure sentences flow naturally from one to the next. Use good transitions.
