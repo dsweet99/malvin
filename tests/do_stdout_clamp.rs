@@ -7,7 +7,7 @@ use common::{
 };
 
 #[cfg_attr(unix, test)]
-fn do_does_not_run_kiss_clamp_by_default_when_source_exists_and_kissconfig_missing() {
+fn do_runs_kiss_clamp_when_snapshotting_without_kissconfig() {
     let (ctx, marker, kissconfig) = prepare_do_auto_clamp_case(&acp_mock_do_streaming_update_js());
     let out = run_do_say_hi_path_prefixed(&ctx);
     assert!(
@@ -16,12 +16,16 @@ fn do_does_not_run_kiss_clamp_by_default_when_source_exists_and_kissconfig_missi
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        !marker.exists(),
-        "did not expect kiss clamp by default"
+        marker.exists(),
+        "expected kiss clamp when snapshotting without .kissconfig"
     );
     assert!(
-        !kissconfig.exists(),
-        "did not expect malvin do to create .kissconfig via kiss clamp"
+        kissconfig.is_file(),
+        "expected snapshotted .kissconfig to be restored after do"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&kissconfig).expect("read kissconfig"),
+        "k\n"
     );
 }
 

@@ -109,7 +109,7 @@ mod kissconfig_warn_tests {
             None,
         );
         std::fs::File::create(tmp.path().join("marker.md")).expect("touch");
-        assert!(!crate::repo_checks::gate_run::source_like_files_present(
+        assert!(!crate::source_detect::has_source_files(
             tmp.path()
         ));
     }

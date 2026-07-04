@@ -1,6 +1,6 @@
 
 
-2. If the checks in Step 1 passed and you believe the user request is fully satisfied, write "DONE" to `{{ mpc_plan_path }}` and stop. Otherwise, continue.
+2. If Step 1 could not falsify satisfaction of the user request (i.e., the user request is fully satisfied) write "DONE" to `{{ mpc_plan_path }}` and stop. Otherwise, continue.
 
 3. KPop: Write a plan to satisfy the user request:
   - Write to `{{ mpc_plan_path }}`

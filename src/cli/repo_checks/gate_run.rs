@@ -1,7 +1,8 @@
 use std::path::Path;
 
-use super::command_support::{apply_fake_path_if_present, run_command_failure, run_command_for};
+use super::command_support::{apply_fake_path_if_present, run_command_failure};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
+use super::kiss_clamp::kiss_clamp_needed;
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
@@ -103,8 +104,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    let kissconfig = work_dir.join(".kissconfig");
-    if kissconfig.exists() || !source_like_files_present(work_dir) {
+    if !kiss_clamp_needed(work_dir) {
         return Ok(());
     }
     emit_repo_gate_line(
@@ -112,28 +112,7 @@ fn ensure_kiss_clamp_if_needed_with_details(
         "Running `kiss clamp` (existing code without .kissconfig)",
         run_log_dir,
     );
-    let mut command = crate::malvin_sandbox::malvin_std_command(run_command_for("kiss"));
-    command.arg("clamp").current_dir(work_dir);
-    apply_fake_path_if_present(&mut command);
-    let output = command
-        .output()
-        .map_err(|e| RepoGateFailure::Message(format!("`kiss clamp` failed to start: {e}")))?;
-    try_append_command_output(run_log_dir, "kiss clamp", &output);
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(run_command_failure("kiss clamp", &output))
-    }
-}
-
-pub fn scan_for_extension_handles_symlink_cycles(root: &Path) -> bool {
-    crate::source_detect::has_extension_files(root, "rs")
-        || crate::source_detect::has_extension_files(root, "py")
-}
-
-pub fn source_like_files_present(root: &Path) -> bool {
-    scan_for_extension_handles_symlink_cycles(root)
-        || crate::source_detect::has_workspace_marker_files(root)
+    super::kiss_clamp::ensure_kiss_clamp_if_needed_with_details(work_dir, run_log_dir)
 }
 
 fn run_quality_gates_with_details(

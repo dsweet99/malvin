@@ -16,7 +16,7 @@ fn source_like_files_present_does_not_follow_external_symlink_dirs() {
     std::fs::create_dir_all(outside.path().join("src")).unwrap();
     std::fs::write(outside.path().join("src/main.rs"), "fn main() {}").unwrap();
     std::os::unix::fs::symlink(outside.path(), tmp.path().join("src")).unwrap();
-    assert!(!super::gate_run::source_like_files_present(tmp.path()));
+    assert!(!crate::source_detect::has_source_files(tmp.path()));
 }
 
 #[tokio::test]
@@ -27,7 +27,8 @@ async fn test_scan_for_extension_handles_symlink_cycles() {
     std::os::unix::fs::symlink(&root, root.join("src").join("cycle")).unwrap();
 
     let scan = tokio::task::spawn_blocking(move || {
-        super::gate_run::scan_for_extension_handles_symlink_cycles(&root)
+        crate::source_detect::has_extension_files(&root, "rs")
+            || crate::source_detect::has_extension_files(&root, "py")
     });
     let found = tokio::time::timeout(Duration::from_secs(1), scan)
         .await

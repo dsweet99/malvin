@@ -98,7 +98,8 @@ impl SessionDotfileBackups {
         Self::snapshot_with_id(work_dir, alloc::random_backup_id)
     }
 
-    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first.
+    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first and runs
+    /// `kiss clamp` when the workspace has source files but no `.kissconfig`.
     ///
     /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry; without this,
     /// a prior restore with [`DotfileBackupState::Missing`] can delete the file and the next
@@ -114,6 +115,7 @@ impl SessionDotfileBackups {
         work_dir: &Path,
         mut generate_id: impl FnMut(usize) -> String,
     ) -> Result<Self, String> {
+        crate::repo_checks::ensure_kiss_clamp_if_needed(work_dir)?;
         Ok(Self {
             kissconfig: backup_slot(0, work_dir, &mut generate_id)?,
             malvin_checks: backup_slot(1, work_dir, &mut generate_id)?,

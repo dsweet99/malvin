@@ -27,7 +27,7 @@ fn shell_binary_returns_nonempty_names() {
 #[test]
 fn source_like_files_absent_in_empty_dir() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    assert!(!source_like_files_present(tmp.path()));
+    assert!(!crate::source_detect::has_source_files(tmp.path()));
 }
 
 #[test]
@@ -124,6 +124,11 @@ fn kiss_cov_wires_tests_gates_unix_scan() {
         let (_tmp, work) = minimal_git_workspace();
         assert!(work.join("Cargo.toml").is_file());
     }
+}
+
+#[test]
+fn kiss_cov_kiss_clamp_ensure_with_details_ref() {
+    let _ = super::super::kiss_clamp::ensure_kiss_clamp_if_needed_with_details;
 }
 
 #[test]

@@ -8,6 +8,43 @@ use crate::artifacts::{
 };
 use crate::test_utils::with_isolated_home;
 
+#[cfg(unix)]
+fn install_fake_kiss_clamp_script(bin_dir: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let kiss = bin_dir.join("kiss");
+    std::fs::write(
+        &kiss,
+        "#!/bin/sh\ncd \"$PWD\"\nprintf '%s\\n' '[gate]' 'test_coverage_threshold = 0' > .kissconfig\nexit 0\n",
+    )
+    .unwrap();
+    let mut perms = std::fs::metadata(&kiss).unwrap().permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&kiss, perms).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn snapshot_runs_kiss_clamp_before_backing_up_kissconfig() {
+    use crate::artifacts::SessionDotfileBackups;
+    use crate::repo_checks::set_fake_command_dir;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tmp.path();
+    std::fs::write(work.join("main.rs"), "fn main() {}").unwrap();
+
+    let bin_dir = tempfile::tempdir().unwrap();
+    install_fake_kiss_clamp_script(bin_dir.path());
+    let _guard = set_fake_command_dir(bin_dir.path());
+
+    let backups = SessionDotfileBackups::snapshot(work).unwrap();
+    assert!(matches!(
+        backups.kissconfig,
+        crate::artifacts::KissConfigBackup::Present(_)
+    ));
+    assert!(work.join(".kissconfig").is_file());
+}
+
 #[test]
 fn kissconfig_backup_skips_when_workspace_file_missing() {
     let tmp = tempfile::tempdir().unwrap();
