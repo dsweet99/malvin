@@ -1872,7 +1872,7 @@ def inject_verifier_files(sandbox: modal.Sandbox, tests_dir: Path, task_dir: Pat
             rel = fpath.relative_to(tests_resolved)
             remote = f"{TESTS_REMOTE}/{rel}"
             content = fpath.read_bytes()
-            sandbox.filesystem.write_file(remote, content)
+            sandbox.filesystem.write_bytes(content, remote)
     solution_dir = task_dir.resolve() / "solution"
     if solution_dir.is_dir():
         for fpath in solution_dir.rglob("*"):
@@ -1880,7 +1880,7 @@ def inject_verifier_files(sandbox: modal.Sandbox, tests_dir: Path, task_dir: Pat
                 rel = fpath.relative_to(task_dir.resolve())
                 remote = f"{TASK_REMOTE}/{rel}"
                 content = fpath.read_bytes()
-                sandbox.filesystem.write_file(remote, content)
+                sandbox.filesystem.write_bytes(content, remote)
     task_tests_dir = task_dir.resolve() / "tests"
     if task_tests_dir.is_dir():
         for fpath in task_tests_dir.rglob("*"):
@@ -1888,7 +1888,7 @@ def inject_verifier_files(sandbox: modal.Sandbox, tests_dir: Path, task_dir: Pat
                 rel = fpath.relative_to(task_dir.resolve())
                 remote = f"{TASK_REMOTE}/{rel}"
                 content = fpath.read_bytes()
-                sandbox.filesystem.write_file(remote, content)
+                sandbox.filesystem.write_bytes(content, remote)
 
 
 def mount_local_toolchain(
@@ -2097,7 +2097,7 @@ def run_deepswe_run_in_sandbox(
 
     The agent image is built without ``/tests`` or ``/task/solution``.
     After the agent exec completes, verifier files are injected via
-    ``sandbox.filesystem.write_file``, then a second exec runs
+    ``sandbox.filesystem.write_bytes``, then a second exec runs
     ``--grade-only``.
     """
     sandbox: modal.Sandbox | None = None
@@ -3760,10 +3760,13 @@ def _test_inject_verifier_files() -> None:
         solution.mkdir()
         (solution / "solution.patch").write_text("diff\n", encoding="utf-8")
         inject_verifier_files(sandbox, tests, task)
-    write_calls = sandbox.filesystem.write_file.call_args_list
-    remote_paths = {call[0][0] for call in write_calls}
+    write_calls = sandbox.filesystem.write_bytes.call_args_list
+    remote_paths = {call[0][1] for call in write_calls}
     assert f"{TESTS_REMOTE}/test.sh" in remote_paths
     assert f"{TASK_REMOTE}/solution/solution.patch" in remote_paths
+    for call in write_calls:
+        assert isinstance(call[0][0], bytes), "first arg to write_bytes must be bytes data"
+        assert isinstance(call[0][1], str), "second arg to write_bytes must be str remote path"
 
 
 def _test_validate_toolchain_repos() -> None:
