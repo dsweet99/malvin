@@ -84,6 +84,7 @@ from deepswe_run import (
     malvin_needs_task_plan,
     materialize_workspace,
     parse_task_dir,
+    validate_verifier_paths,
     reset_workspace,
     timestamp_dir,
     write_plan_and_checks,
@@ -1823,6 +1824,73 @@ def mount_eval_context(
     )
 
 
+def mount_agent_context(
+    image: modal.Image,
+    *,
+    task_dir: Path,
+    workspace: Path,
+    deepswe_run_py: Path,
+) -> modal.Image:
+    """Layer workspace and non-secret task files for the agent phase.
+
+    Unlike ``mount_eval_context``, this omits ``/tests`` and ``/task/solution``
+    so the agent cannot access verifier files during execution.
+    """
+    task_dir_resolved = task_dir.resolve()
+    prepared = image.run_commands(
+        "python3 -m pip install --break-system-packages click"
+    )
+    result = (
+        prepared.add_local_dir(
+            str(workspace.resolve()),
+            remote_path=APP_REMOTE,
+            ignore=workspace_mount_ignore(),
+        )
+        .add_local_file(str(task_dir_resolved / "task.toml"), remote_path=f"{TASK_REMOTE}/task.toml")
+        .add_local_file(str(task_dir_resolved / "instruction.md"), remote_path=f"{TASK_REMOTE}/instruction.md")
+        .add_local_file(str(deepswe_run_py.resolve()), remote_path=DEEPSWE_RUN_REMOTE)
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "sandbox_prep.py"),
+            remote_path=SANDBOX_PREP_REMOTE,
+        )
+        .add_local_file(
+            str(deepswe_run_py.resolve().parent / "toolchain_repos.py"),
+            remote_path=TOOLCHAIN_REPOS_REMOTE,
+        )
+    )
+    env_dir = task_dir_resolved / "environment"
+    if env_dir.is_dir():
+        result = result.add_local_dir(str(env_dir), remote_path=f"{TASK_REMOTE}/environment")
+    return result
+
+
+def inject_verifier_files(sandbox: modal.Sandbox, tests_dir: Path, task_dir: Path) -> None:
+    """Copy verifier files into a running sandbox for the grade phase."""
+    tests_resolved = tests_dir.resolve()
+    for fpath in tests_resolved.rglob("*"):
+        if fpath.is_file():
+            rel = fpath.relative_to(tests_resolved)
+            remote = f"{TESTS_REMOTE}/{rel}"
+            content = fpath.read_bytes()
+            sandbox.filesystem.write_file(remote, content)
+    solution_dir = task_dir.resolve() / "solution"
+    if solution_dir.is_dir():
+        for fpath in solution_dir.rglob("*"):
+            if fpath.is_file():
+                rel = fpath.relative_to(task_dir.resolve())
+                remote = f"{TASK_REMOTE}/{rel}"
+                content = fpath.read_bytes()
+                sandbox.filesystem.write_file(remote, content)
+    task_tests_dir = task_dir.resolve() / "tests"
+    if task_tests_dir.is_dir():
+        for fpath in task_tests_dir.rglob("*"):
+            if fpath.is_file():
+                rel = fpath.relative_to(task_dir.resolve())
+                remote = f"{TASK_REMOTE}/{rel}"
+                content = fpath.read_bytes()
+                sandbox.filesystem.write_file(remote, content)
+
+
 def mount_local_toolchain(
     image: modal.Image,
     *,
@@ -2022,8 +2090,16 @@ def run_deepswe_run_in_sandbox(
     harvest_workspace: Path | None = None,
     timeout: int = 7200,
     spec: Any | None = None,
+    tests_dir: Path | None = None,
+    task_dir: Path | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Exec ``deepswe_run.py`` once in a Modal sandbox (agent + grade in one command)."""
+    """Run agent and grade as two execs in one Modal sandbox.
+
+    The agent image is built without ``/tests`` or ``/task/solution``.
+    After the agent exec completes, verifier files are injected via
+    ``sandbox.filesystem.write_file``, then a second exec runs
+    ``--grade-only``.
+    """
     sandbox: modal.Sandbox | None = None
     run_logs_remote = f"{LOGS_REMOTE}/run"
     try:
@@ -2050,42 +2126,67 @@ def run_deepswe_run_in_sandbox(
         allowlist = network.get("outbound_cidr_allowlist")
         if allowlist:
             pin_cursor_api_hosts_in_sandbox(sandbox, allowlist)
-        argv = [
-            "python3",
-            DEEPSWE_RUN_REMOTE,
-            "run",
-            "--task",
-            TASK_REMOTE,
-            "--workspace",
-            APP_REMOTE,
-            "--runtime",
-            "in-sandbox",
+
+        base_argv = [
+            "python3", DEEPSWE_RUN_REMOTE, "run",
+            "--task", TASK_REMOTE,
+            "--workspace", APP_REMOTE,
+            "--runtime", "in-sandbox",
             "--skip-materialize",
-            "--results-dir",
-            run_logs_remote,
+            "--results-dir", run_logs_remote,
         ]
+
         if grade_only:
-            argv.append("--grade-only")
+            argv = [*base_argv, "--grade-only"]
+            proc = sandbox.exec(
+                *argv,
+                stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+                workdir=APP_REMOTE, text=False, bufsize=0,
+            )
+            click.echo("Running deepswe_run.py on Modal (grade-only exec)...")
+            stream_process_output(proc, sys.stdout, sys.stderr)
+            proc.wait()
+            agent_result, grade_result = parse_deepswe_run_result(
+                sandbox, run_logs_remote=run_logs_remote, grade_only=True,
+            )
         else:
+            agent_argv = [*base_argv, "--skip-grade", "--command", command, *malvin_argv]
+            proc = sandbox.exec(
+                *agent_argv,
+                stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+                workdir=APP_REMOTE, text=False, bufsize=0,
+            )
+            click.echo("Running deepswe_run.py on Modal (agent exec — no /tests or /task/solution)...")
+            stream_process_output(proc, sys.stdout, sys.stderr)
+            proc.wait()
+            agent_result, _ = parse_deepswe_run_result(
+                sandbox, run_logs_remote=run_logs_remote, grade_only=False,
+            )
+            if agent_result is None:
+                agent_result = {"exit_code": int(proc.returncode or 0)}
+            elif "exit_code" not in agent_result:
+                agent_result["exit_code"] = int(proc.returncode or 0)
+
             if skip_grade:
-                argv.append("--skip-grade")
-            argv.extend(["--command", command, *malvin_argv])
-        proc = sandbox.exec(
-            *argv,
-            stdout=StreamType.PIPE,
-            stderr=StreamType.PIPE,
-            workdir=APP_REMOTE,
-            text=False,
-            bufsize=0,
-        )
-        click.echo("Running deepswe_run.py on Modal (single exec)...")
-        stream_process_output(proc, sys.stdout, sys.stderr)
-        proc.wait()
-        agent_result, grade_result = parse_deepswe_run_result(
-            sandbox,
-            run_logs_remote=run_logs_remote,
-            grade_only=grade_only,
-        )
+                grade_result = {"pass": None, "reward": None, "skipped": True}
+            else:
+                assert tests_dir is not None, "tests_dir required for grade injection"
+                assert task_dir is not None, "task_dir required for grade injection"
+                click.echo("Injecting verifier files into sandbox...")
+                inject_verifier_files(sandbox, tests_dir, task_dir)
+                grade_argv = [*base_argv, "--grade-only"]
+                grade_proc = sandbox.exec(
+                    *grade_argv,
+                    stdout=StreamType.PIPE, stderr=StreamType.PIPE,
+                    workdir=APP_REMOTE, text=False, bufsize=0,
+                )
+                click.echo("Running deepswe_run.py on Modal (grade exec)...")
+                stream_process_output(grade_proc, sys.stdout, sys.stderr)
+                grade_proc.wait()
+                _, grade_result = parse_deepswe_run_result(
+                    sandbox, run_logs_remote=run_logs_remote, grade_only=True,
+                )
+
         if agent_result is None and not grade_only:
             agent_result = {"exit_code": int(proc.returncode or 0)}
         elif agent_result is not None and "exit_code" not in agent_result:
@@ -2153,7 +2254,6 @@ def offline_agent_checks(checks: str) -> str:
 def harbor_agent_image(
     spec: Any,
     workspace: Path,
-    tests_dir: Path,
     *,
     dockerfile: Path,
     malvin_repo: Path,
@@ -2173,11 +2273,10 @@ def harbor_agent_image(
     preinstall = offline_check_tool_install_commands(checks)
     if preinstall:
         augmented = augmented.run_commands(*preinstall).env({"UV_NO_SYNC": "1"})
-    return mount_eval_context(
+    return mount_agent_context(
         augmented,
         task_dir=spec.task_dir,
         workspace=workspace,
-        tests_dir=tests_dir,
         deepswe_run_py=deepswe_run_py,
     )
 
@@ -2302,6 +2401,7 @@ def run_modal_eval(
 ) -> None:
     """Run agent + Harbor grade on Modal (library entry for ``deepswe_run solve``)."""
     spec = parse_task_dir(task_dir)
+    validate_verifier_paths(spec)
     results_root = results_dir or default_deepswe_results_dir()
     workspace = workspace or (results_root / spec.task_id / "workspace")
     run_root = results_root / spec.task_id / f"modal_{timestamp_dir()}"
@@ -2379,7 +2479,6 @@ def run_modal_eval(
                 agent_img = harbor_agent_image(
                     spec,
                     workspace,
-                    spec.tests_dir,
                     dockerfile=spec.dockerfile,
                     malvin_repo=malvin_staged,
                     deepswe_run_py=deepswe_run_py,
@@ -2403,7 +2502,7 @@ def run_modal_eval(
                 else:
                     click.echo(
                         "Running malvin agent and Harbor grade in Modal sandbox "
-                        "(Cursor API allowlist, in-sandbox runtime)..."
+                        "(two execs: agent then grade after file injection)..."
                     )
                     agent_result, grade_result = run_deepswe_run_in_sandbox(
                         agent_img,
@@ -2416,6 +2515,8 @@ def run_modal_eval(
                         harvest_workspace=workspace,
                         spec=spec,
                         timeout=sandbox_timeout,
+                        tests_dir=spec.tests_dir,
+                        task_dir=spec.task_dir,
                     )
             if agent_result is None:
                 agent_result = {"exit_code": 1}
@@ -3307,6 +3408,11 @@ def _test_tier_a_before_workspace_harvest() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         artifacts_dir = Path(tmp) / "agent_sandbox"
         workspace = Path(tmp) / "workspace"
+        t_dir = Path(tmp) / "tests"
+        t_dir.mkdir()
+        (t_dir / "test.sh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        task = Path(tmp) / "task"
+        task.mkdir()
         with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
             with patch(
                 f"{__name__}.resolve_agent_sandbox_cidrs",
@@ -3329,6 +3435,8 @@ def _test_tier_a_before_workspace_harvest() -> None:
                                 cursor_secrets=[],
                                 artifacts_dir=artifacts_dir,
                                 harvest_workspace=workspace,
+                                tests_dir=t_dir,
+                                task_dir=task,
                             )
         assert (artifacts_dir / "metadata.json").is_file()
         assert grade_result["reward"] == 1
@@ -3454,29 +3562,40 @@ def _test_agent_sandbox_network() -> None:
     )
     fake_sandbox.filesystem.read_text.return_value = metadata
     image = MagicMock()
-    with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
-        with patch(
-            f"{__name__}.resolve_agent_sandbox_cidrs",
-            return_value=["9.9.9.9/32"],
-        ):
-            with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
-                agent_result, grade_result = run_deepswe_run_in_sandbox(
-                    image,
-                    command="code",
-                    malvin_argv=[],
-                    grade_only=False,
-                    cursor_secrets=[],
-                )
+    with tempfile.TemporaryDirectory() as tmp:
+        t_dir = Path(tmp) / "tests"
+        t_dir.mkdir()
+        (t_dir / "test.sh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        task = Path(tmp) / "task"
+        task.mkdir()
+        with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
+            with patch(
+                f"{__name__}.resolve_agent_sandbox_cidrs",
+                return_value=["9.9.9.9/32"],
+            ):
+                with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
+                    agent_result, grade_result = run_deepswe_run_in_sandbox(
+                        image,
+                        command="code",
+                        malvin_argv=[],
+                        grade_only=False,
+                        cursor_secrets=[],
+                        tests_dir=t_dir,
+                        task_dir=task,
+                    )
     mock_pin.assert_called_once_with(fake_sandbox, ["9.9.9.9/32"])
     assert mock_create.call_args.kwargs["outbound_cidr_allowlist"] == ["9.9.9.9/32"]
     assert mock_create.call_args.kwargs["cpu"] == AGENT_SANDBOX_CPU
     assert mock_create.call_args.kwargs["memory"] == AGENT_SANDBOX_MEMORY_MIB
     assert "block_network" not in mock_create.call_args.kwargs
-    assert fake_sandbox.exec.call_count == 1
-    exec_argv = fake_sandbox.exec.call_args.args
-    assert exec_argv[0] == "python3"
-    assert "--runtime" in exec_argv
-    assert "in-sandbox" in exec_argv
+    assert fake_sandbox.exec.call_count == 2
+    first_exec_argv = fake_sandbox.exec.call_args_list[0].args
+    assert first_exec_argv[0] == "python3"
+    assert "--runtime" in first_exec_argv
+    assert "in-sandbox" in first_exec_argv
+    assert "--skip-grade" in first_exec_argv
+    second_exec_argv = fake_sandbox.exec.call_args_list[1].args
+    assert "--grade-only" in second_exec_argv
     assert agent_result["exit_code"] == 0
     assert grade_result["reward"] == 0
     fake_sandbox.detach.assert_called_once()
@@ -3605,6 +3724,46 @@ def _test_mount_eval_context_recipe() -> None:
     pip_cmds = [call for call in recorder.calls if call[0] == "run_commands"]
     assert pip_cmds
     assert "click" in pip_cmds[0][1][0]
+
+
+def _test_mount_agent_context_excludes_tests() -> None:
+    malvin_repo = malvin_repo_root()
+    recorder = _RecordingImage()
+    deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
+    mount_agent_context(
+        recorder,
+        task_dir=malvin_repo,
+        workspace=malvin_repo,
+        deepswe_run_py=deepswe_run_py,
+    )
+    dir_uploads = [call for call in recorder.calls if call[0] == "add_local_dir"]
+    remote_dirs = {call[2].get("remote_path", "") for call in dir_uploads}
+    assert TESTS_REMOTE not in remote_dirs
+    assert TASK_REMOTE not in remote_dirs
+    file_uploads = [call for call in recorder.calls if call[0] == "add_local_file"]
+    remote_files = {call[2]["remote_path"] for call in file_uploads}
+    assert f"{TASK_REMOTE}/task.toml" in remote_files
+    assert f"{TASK_REMOTE}/instruction.md" in remote_files
+    assert DEEPSWE_RUN_REMOTE in remote_files
+
+
+def _test_inject_verifier_files() -> None:
+    import tempfile
+    sandbox = MagicMock()
+    with tempfile.TemporaryDirectory() as tmp:
+        tests = Path(tmp) / "tests"
+        tests.mkdir()
+        (tests / "test.sh").write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+        task = Path(tmp) / "task"
+        task.mkdir()
+        solution = task / "solution"
+        solution.mkdir()
+        (solution / "solution.patch").write_text("diff\n", encoding="utf-8")
+        inject_verifier_files(sandbox, tests, task)
+    write_calls = sandbox.filesystem.write_file.call_args_list
+    remote_paths = {call[0][0] for call in write_calls}
+    assert f"{TESTS_REMOTE}/test.sh" in remote_paths
+    assert f"{TASK_REMOTE}/solution/solution.patch" in remote_paths
 
 
 def _test_validate_toolchain_repos() -> None:
@@ -4096,6 +4255,8 @@ def run_harvest_sandbox_unit_tests() -> None:
     _test_can_overlay_existing_file_denies_unremovable()
     _test_extract_tar_over_workspace_skips_unremovable()
     _test_mount_eval_context_recipe()
+    _test_mount_agent_context_excludes_tests()
+    _test_inject_verifier_files()
 
 
 def run_harbor_modal_probe_unit_tests() -> None:

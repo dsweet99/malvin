@@ -8,4 +8,13 @@
 
 ## Actions
 
-1. KPop: Find (i) a failure to satisfy the user request to the letter, (ii) a failure to satisfy the user request in spirit, (iii) a failure to generalize, or simply, (iv) a failure to interpret the user request.
+1. KPop: Find (i) failures to satisfy the user request to the letter, (ii) failures to satisfy the user request in spirit, (iii) failures to generalize, or simply, (iv) failures to correctly interpret the user request. Report on the failures that you find.
+
+   Before testing, read the user request and state:
+   - The **contracts** this work must honor (e.g., "any command that accepts a format flag must produce valid output in that format regardless of other flags").
+   - The **invariants** a consumer would rely on (e.g., "every subcommand that doesn't need input files must work without them").
+   - The **ambiguous phrases** that have more than one plausible reading, and which reading a first-time reader would most naturally adopt.
+
+   Then verify against those contracts and invariants — not against the implementation's own assumptions. A requirement is only satisfied when an adversarial reader of the user request, seeing only the user request and the output, would agree it is met. Do not validate an interpretation by confirming it against itself.
+
+   For each feature, test it in combination with every other feature it could interact with. A feature that works in isolation but fails when composed with another is a failure.

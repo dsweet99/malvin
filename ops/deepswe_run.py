@@ -182,8 +182,6 @@ def parse_task_dir(task_dir: Path) -> TaskSpec:
         raise click.ClickException(f"Missing instruction.md: {instruction}")
     tests_dir = task_dir / "tests"
     test_sh = tests_dir / "test.sh"
-    if not test_sh.is_file():
-        raise click.ClickException(f"Missing tests/test.sh: {test_sh}")
     solution = task_dir / "solution" / "solution.patch"
     return TaskSpec(
         task_dir=task_dir,
@@ -200,6 +198,12 @@ def parse_task_dir(task_dir: Path) -> TaskSpec:
         verifier_timeout_sec=float(verifier.get("timeout_sec", 1800.0)),
         environment_memory_mb=int(env.get("memory_mb", 4096)),
     )
+
+
+def validate_verifier_paths(spec: TaskSpec) -> None:
+    """Confirm verifier files exist. Call before grading, not during parsing."""
+    if not spec.test_sh.is_file():
+        raise click.ClickException(f"Missing tests/test.sh: {spec.test_sh}")
 
 
 def timestamp_dir() -> str:
@@ -804,59 +808,6 @@ def scan_pytest_monkeypatch_hooks(workspace: Path) -> list[tuple[str, str]]:
     return sorted(hooks)
 
 
-def deepswe_evaluation_appendix(workspace: Path) -> str:
-    """General DeepSWE notes appended to ``plan.md`` (not task-specific)."""
-    hooks = scan_pytest_monkeypatch_hooks(workspace)
-    patch_targets = patch_surface_targets(workspace, hooks=hooks)
-    lines = [
-        "",
-        "---",
-        "",
-        "## DeepSWE evaluation notes",
-        "",
-        "External grading may apply hidden tests after this session. Passing "
-        "`.malvin/checks` is necessary but not sufficient.",
-        "Preserve class-level attributes and module bindings that visible tests "
-        "monkeypatch; do not move them solely to instance state.",
-        f"`.malvin/checks` includes `{_PATCH_SURFACE_PROBE_COMMAND}` to verify "
-        "baseline class attributes remain `monkeypatch.setattr`-able.",
-    ]
-    if hooks:
-        lines.extend(
-            [
-                "",
-                "Visible pytest patch hooks (derive similar contracts for classes you modify):",
-            ]
-        )
-        shown = hooks[:30]
-        for target, attr in shown:
-            lines.append(f"- `{target}.{attr}`")
-        if len(hooks) > len(shown):
-            lines.append(f"- ... and {len(hooks) - len(shown)} more")
-    else:
-        lines.extend(
-            [
-                "",
-                "No visible monkeypatch hooks were found; assume hidden tests may patch "
-                "class attributes on classes you modify.",
-            ]
-        )
-    if patch_targets:
-        lines.extend(
-            [
-                "",
-                "Baseline class attributes probed by the patch-surface gate (keep settable on "
-                "the same class object):",
-            ]
-        )
-        shown_targets = patch_targets[:30]
-        for qual, attr in shown_targets:
-            lines.append(f"- `{qual}.{attr}`")
-        if len(patch_targets) > len(shown_targets):
-            lines.append(f"- ... and {len(patch_targets) - len(shown_targets)} more")
-    return "\n".join(lines) + "\n"
-
-
 DEFAULT_MALVIN_MEM_LIMIT_GB = 4
 
 
@@ -892,10 +843,6 @@ def write_plan_and_checks(
     plan = workspace / "plan.md"
     if not dry_run:
         shutil.copyfile(spec.instruction, plan)
-        plan.write_text(
-            plan.read_text(encoding="utf-8") + deepswe_evaluation_appendix(workspace),
-            encoding="utf-8",
-        )
     malvin_dir = workspace / ".malvin"
     if not dry_run:
         malvin_dir.mkdir(parents=True, exist_ok=True)
@@ -1047,6 +994,111 @@ def cursor_env_docker_args() -> list[str]:
     return args
 
 
+def _docker_common_mounts(
+    *,
+    workspace: Path,
+    run_root: Path,
+    deepswe_run_py: Path,
+) -> list[str]:
+    """Volume mounts shared by both agent and grade containers."""
+    logs_mount = run_root / "verifier_logs"
+    return [
+        "-v", f"{workspace.resolve()}:/app",
+        "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
+        "-v", f"{logs_mount.resolve()}:/logs",
+        "-v", f"{run_root.resolve()}:/run",
+    ]
+
+
+def _docker_pip_preamble() -> str:
+    return (
+        "pip3 install --break-system-packages click >/dev/null 2>&1 || "
+        "pip install --break-system-packages click >/dev/null 2>&1 || true; "
+    )
+
+
+def docker_local_agent_cmd(
+    *,
+    image: str,
+    spec: TaskSpec,
+    task_dir: Path,
+    workspace: Path,
+    run_root: Path,
+    deepswe_run_py: Path,
+    malvin_command: str,
+    malvin_args: tuple[str, ...],
+    reset_workspace_flag: bool,
+    checks_override: str | None,
+) -> list[str]:
+    """Docker command for the agent phase — no /tests or /task/solution mounted."""
+    inner = [
+        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "--task", "/task",
+        "--workspace", "/app",
+        "--runtime", "in-sandbox",
+        "--skip-materialize",
+        "--results-dir", "/run",
+        "--skip-grade",
+    ]
+    if reset_workspace_flag:
+        inner.append("--reset")
+    if checks_override:
+        inner.extend(["--checks", checks_override])
+    inner.extend(["--command", malvin_command, *malvin_args])
+    shell = _docker_pip_preamble() + " ".join(inner)
+    task_dir_resolved = task_dir.resolve()
+    return [
+        "docker", "run", "--rm",
+        *cursor_env_docker_args(),
+        *_docker_common_mounts(workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py),
+        "-v", f"{(task_dir_resolved / 'task.toml')}:/task/task.toml:ro",
+        "-v", f"{(task_dir_resolved / 'instruction.md')}:/task/instruction.md:ro",
+        "-v", f"{(task_dir_resolved / 'environment')}:/task/environment:ro",
+        "-w", "/app",
+        image,
+        "bash", "-lc", shell,
+    ]
+
+
+def docker_local_grade_cmd(
+    *,
+    image: str,
+    spec: TaskSpec,
+    task_dir: Path,
+    workspace: Path,
+    run_root: Path,
+    deepswe_run_py: Path,
+    apply_solution: bool,
+    reset_workspace_flag: bool,
+) -> list[str]:
+    """Docker command for the grade phase — /tests and /task/solution now available."""
+    inner = [
+        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "--task", "/task",
+        "--workspace", "/app",
+        "--runtime", "in-sandbox",
+        "--skip-materialize",
+        "--results-dir", "/run",
+        "--grade-only",
+    ]
+    if apply_solution:
+        inner.append("--apply-solution")
+    if reset_workspace_flag:
+        inner.append("--reset")
+    shell = _docker_pip_preamble() + " ".join(inner)
+    return [
+        "docker", "run", "--rm",
+        *_docker_common_mounts(workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py),
+        "-v", f"{spec.tests_dir.resolve()}:/tests:ro",
+        "-v", f"{task_dir.resolve()}:/task:ro",
+        "-w", "/app",
+        image,
+        "bash", "-lc", shell,
+    ]
+
+
 def docker_local_eval_cmd(
     *,
     image: str,
@@ -1063,20 +1115,14 @@ def docker_local_eval_cmd(
     reset_workspace_flag: bool,
     checks_override: str | None,
 ) -> list[str]:
-    logs_mount = run_root / "verifier_logs"
+    """Legacy single-container command. Used only by grade-only path."""
     inner = [
-        "python3",
-        DEEPSWE_RUN_REMOTE,
-        "run",
-        "--task",
-        "/task",
-        "--workspace",
-        "/app",
-        "--runtime",
-        "in-sandbox",
+        "python3", DEEPSWE_RUN_REMOTE, "run",
+        "--task", "/task",
+        "--workspace", "/app",
+        "--runtime", "in-sandbox",
         "--skip-materialize",
-        "--results-dir",
-        "/run",
+        "--results-dir", "/run",
     ]
     if grade_only:
         inner.append("--grade-only")
@@ -1090,39 +1136,40 @@ def docker_local_eval_cmd(
         inner.extend(["--checks", checks_override])
     if not grade_only:
         inner.extend(["--command", malvin_command, *malvin_args])
-    shell = (
-        "pip3 install --break-system-packages click >/dev/null 2>&1 || "
-        "pip install --break-system-packages click >/dev/null 2>&1 || true; "
-        + " ".join(inner)
-    )
+    shell = _docker_pip_preamble() + " ".join(inner)
     return [
-        "docker",
-        "run",
-        "--rm",
+        "docker", "run", "--rm",
         *cursor_env_docker_args(),
-        "-v",
-        f"{workspace.resolve()}:/app",
-        "-v",
-        f"{spec.tests_dir.resolve()}:/tests:ro",
-        "-v",
-        f"{task_dir.resolve()}:/task:ro",
-        "-v",
-        f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
-        "-v",
-        f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
-        "-v",
-        f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
-        "-v",
-        f"{logs_mount.resolve()}:/logs",
-        "-v",
-        f"{run_root.resolve()}:/run",
-        "-w",
-        "/app",
+        "-v", f"{workspace.resolve()}:/app",
+        "-v", f"{spec.tests_dir.resolve()}:/tests:ro",
+        "-v", f"{task_dir.resolve()}:/task:ro",
+        "-v", f"{deepswe_run_py.resolve()}:{DEEPSWE_RUN_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'sandbox_prep.py'}:{SANDBOX_PREP_REMOTE}:ro",
+        "-v", f"{deepswe_run_py.resolve().parent / 'toolchain_repos.py'}:{TOOLCHAIN_REPOS_REMOTE}:ro",
+        "-v", f"{(run_root / 'verifier_logs').resolve()}:/logs",
+        "-v", f"{run_root.resolve()}:/run",
+        "-w", "/app",
         image,
-        "bash",
-        "-lc",
-        shell,
+        "bash", "-lc", shell,
     ]
+
+
+def _read_docker_grade_result(run_root: Path, proc: subprocess.CompletedProcess[str]) -> dict[str, Any]:
+    metadata_path = run_root / "metadata.json"
+    if metadata_path.is_file():
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        return metadata.get("grade") or {}
+    reward_path = run_root / "verifier_logs" / "verifier" / "reward.txt"
+    reward: int | None = None
+    if reward_path.is_file():
+        text = reward_path.read_text(encoding="utf-8").strip()
+        if text in {"0", "1"}:
+            reward = int(text)
+    return {
+        "pass": reward == 1,
+        "reward": reward,
+        "verifier_exit_code": proc.returncode,
+    }
 
 
 def run_local_eval_in_docker(
@@ -1141,96 +1188,91 @@ def run_local_eval_in_docker(
     docker_image: str | None,
     dry_run: bool,
 ) -> dict[str, Any]:
-    """Run agent + grade inside one local Docker container via ``--runtime in-sandbox``."""
+    """Run agent and grade in separate local Docker containers.
+
+    The agent container does not mount ``/tests`` or ``/task/solution``.
+    After the agent finishes, a second container mounts the verifier
+    files and runs ``--grade-only``.
+    """
     base_image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
+    deepswe_run_py = Path(__file__).resolve()
+
+    agent_result: dict[str, Any] | None = None
+    grade_result: dict[str, Any]
+    last_exit_code = 0
+
     if grade_only:
-        eval_image = base_image
+        click.echo("Running local Docker grade-only...")
+        if deepswe_test_fast_grade_enabled():
+            logs_dir = run_root / "verifier_logs"
+            grade_result = _fast_grade_selftest_result(logs_dir)
+            metadata = _build_run_metadata(
+                spec, workspace, "local-docker", malvin_command, malvin_args,
+                None, grade_result, None, grade_only=True, docker_image=base_image,
+            )
+            metadata["sandbox_prep"] = {"fast_selftest_stub": True}
+            _write_host_run_artifacts(
+                run_root, metadata, grade_result, logs_dir,
+                dry_run=False, overwrite_artifacts=True,
+            )
+            return {"agent": None, "grade": grade_result, "runtime": "local-docker", "docker_exit_code": 0}
+        cmd = docker_local_grade_cmd(
+            image=base_image, spec=spec, task_dir=task_dir,
+            workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
+            apply_solution=apply_solution, reset_workspace_flag=reset_workspace_flag,
+        )
+        if dry_run:
+            run_cmd(cmd, dry_run=True)
+            return {"agent": None, "grade": {"pass": None, "reward": None, "dry_run": True}, "runtime": "local-docker"}
+        proc = subprocess.run(cmd, text=True, check=False)
+        last_exit_code = proc.returncode
+        grade_result = _read_docker_grade_result(run_root, proc)
     else:
         malvin_repo = validate_toolchain_repos()
         eval_image = build_local_agent_image(
-            spec,
-            base_image,
-            malvin_repo=malvin_repo,
-            dry_run=dry_run,
+            spec, base_image, malvin_repo=malvin_repo, dry_run=dry_run,
         )
-    deepswe_run_py = Path(__file__).resolve()
-    cmd = docker_local_eval_cmd(
-        image=eval_image,
-        spec=spec,
-        task_dir=task_dir,
-        workspace=workspace,
-        run_root=run_root,
-        deepswe_run_py=deepswe_run_py,
-        malvin_command=malvin_command,
-        malvin_args=malvin_args,
-        grade_only=grade_only,
-        skip_grade=skip_grade,
-        apply_solution=apply_solution,
-        reset_workspace_flag=reset_workspace_flag,
-        checks_override=checks_override,
-    )
-    click.echo("Running local Docker eval (malvin + Harbor grade in one container)...")
-    if dry_run:
-        run_cmd(cmd, dry_run=True)
-        return {
-            "agent": None if grade_only else {"dry_run": True},
-            "grade": {"pass": None, "reward": None, "dry_run": True},
-            "runtime": "local-docker",
-        }
-    if deepswe_test_fast_grade_enabled() and grade_only:
-        logs_dir = run_root / "verifier_logs"
-        grade_result = _fast_grade_selftest_result(logs_dir)
-        metadata = _build_run_metadata(
-            spec,
-            workspace,
-            "local-docker",
-            malvin_command,
-            malvin_args,
-            None,
-            grade_result,
-            None,
-            grade_only=True,
-            docker_image=base_image,
+        agent_cmd = docker_local_agent_cmd(
+            image=eval_image, spec=spec, task_dir=task_dir,
+            workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
+            malvin_command=malvin_command, malvin_args=malvin_args,
+            reset_workspace_flag=reset_workspace_flag, checks_override=checks_override,
         )
-        metadata["sandbox_prep"] = {"fast_selftest_stub": True}
-        _write_host_run_artifacts(
-            run_root,
-            metadata,
-            grade_result,
-            logs_dir,
-            dry_run=False,
-            overwrite_artifacts=True,
-        )
-        return {
-            "agent": None,
-            "grade": grade_result,
-            "runtime": "local-docker",
-            "docker_exit_code": 0,
-        }
-    proc = subprocess.run(cmd, text=True, check=False)
-    metadata_path = run_root / "metadata.json"
-    if metadata_path.is_file():
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        agent_result = metadata.get("agent")
-        grade_result = metadata.get("grade") or {}
-    else:
-        agent_result = None if grade_only else {"exit_code": proc.returncode}
-        reward_path = run_root / "verifier_logs" / "verifier" / "reward.txt"
-        reward: int | None = None
-        if reward_path.is_file():
-            text = reward_path.read_text(encoding="utf-8").strip()
-            if text in {"0", "1"}:
-                reward = int(text)
-        grade_result = {
-            "pass": reward == 1,
-            "reward": reward,
-            "verifier_exit_code": proc.returncode,
-        }
+        click.echo("Running local Docker agent (no /tests or /task/solution mounted)...")
+        if dry_run:
+            run_cmd(agent_cmd, dry_run=True)
+            agent_result = {"dry_run": True}
+        else:
+            proc = subprocess.run(agent_cmd, text=True, check=False)
+            last_exit_code = proc.returncode
+            metadata_path = run_root / "metadata.json"
+            if metadata_path.is_file():
+                agent_result = json.loads(metadata_path.read_text(encoding="utf-8")).get("agent")
+            else:
+                agent_result = {"exit_code": proc.returncode}
+
+        if skip_grade:
+            grade_result = {"pass": None, "reward": None, "skipped": True}
+        else:
+            grade_cmd = docker_local_grade_cmd(
+                image=base_image, spec=spec, task_dir=task_dir,
+                workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
+                apply_solution=apply_solution, reset_workspace_flag=False,
+            )
+            click.echo("Running local Docker grade...")
+            if dry_run:
+                run_cmd(grade_cmd, dry_run=True)
+                grade_result = {"pass": None, "reward": None, "dry_run": True}
+            else:
+                proc = subprocess.run(grade_cmd, text=True, check=False)
+                last_exit_code = proc.returncode
+                grade_result = _read_docker_grade_result(run_root, proc)
+
     return {
         "agent": agent_result,
         "grade": grade_result,
         "runtime": "local-docker",
-        "docker_exit_code": proc.returncode,
+        "docker_exit_code": last_exit_code,
     }
 
 
@@ -1472,7 +1514,6 @@ def run_modal_solve(
     task_dir: Path,
     malvin_command: str = "code",
     checks_override: str | None,
-    grade_only: bool,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -1488,12 +1529,12 @@ def run_modal_solve(
             "Use --local for local Docker instead."
         ) from exc
 
-    require_cursor_credentials_for_agent(grade_only=grade_only)
+    require_cursor_credentials_for_agent(grade_only=False)
     run_modal_eval(
         task_dir=task_dir,
         malvin_command=malvin_command,
         checks_override=checks_override,
-        grade_only=grade_only,
+        grade_only=False,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_flag=reset_workspace_flag,
@@ -1523,7 +1564,6 @@ def _run_solve_local_docker_fallback(
     *,
     malvin_command: str = "code",
     checks_override: str | None,
-    grade_only: bool,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -1533,6 +1573,7 @@ def _run_solve_local_docker_fallback(
 ) -> None:
     """Run solve in local Docker when Modal billing blocks sandbox creation."""
     spec = parse_task_dir(task_dir)
+    validate_verifier_paths(spec)
     results_root = default_deepswe_results_dir()
     run_root = results_root / spec.task_id / timestamp_dir()
     workspace = results_root / spec.task_id / "workspace"
@@ -1547,7 +1588,7 @@ def _run_solve_local_docker_fallback(
         run_root,
         malvin_command=malvin_command,
         malvin_args=malvin_args,
-        grade_only=grade_only,
+        grade_only=False,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -1737,7 +1778,6 @@ def run_task(
                     task_dir=task_dir,
                     malvin_command=malvin_command,
                     checks_override=checks_override,
-                    grade_only=grade_only,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -1755,7 +1795,6 @@ def run_task(
                     task_dir,
                     malvin_command=malvin_command,
                     checks_override=checks_override,
-                    grade_only=grade_only,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -1848,6 +1887,7 @@ def run_task(
             dry_run=dry_run,
         )
     else:
+        validate_verifier_paths(spec)
         image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
         grade_result = grade_workspace(spec, workspace, logs_dir, image=image, dry_run=dry_run)
 
@@ -1972,20 +2012,15 @@ def _local_solve_options(f: Any) -> Any:
         help="Skip Harbor verifier grading (agent phase only).",
     )(f)
     f = click.option(
-        "--grade-only",
-        is_flag=True,
-        help="Skip agent; grade the current workspace tree.",
-    )(f)
-    f = click.option(
         "--apply-solution",
         is_flag=True,
-        help="Apply task solution/solution.patch before agent or grade (harness sanity check).",
+        help="Apply task solution/solution.patch before grade (harness sanity check).",
     )(f)
     f = click.option(
         "--reset",
         "reset_workspace_flag",
         is_flag=True,
-        help="Hard reset workspace to base_commit before grade-only run (default for agent solves).",
+        help="Hard reset workspace to base_commit.",
     )(f)
     f = click.option(
         "--docker-image",
@@ -2125,7 +2160,6 @@ def solve(
     use_local_docker: bool,
     checks_override: str | None,
     skip_grade: bool,
-    grade_only: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
     docker_image: str | None,
@@ -2133,9 +2167,7 @@ def solve(
     malvin_args: tuple[str, ...],
 ) -> None:
     """Run malvin code and Harbor grade (Modal by default; --local for Docker)."""
-    # Each agent solve starts from base_commit; grade-only keeps opt-in --reset.
-    if not grade_only:
-        reset_workspace_flag = True
+    reset_workspace_flag = True
     run_task(
         local_task_name=task_name,
         task_dir=None,
@@ -2145,7 +2177,7 @@ def solve(
         checks_override=checks_override,
         runtime="host",
         skip_materialize=False,
-        grade_only=grade_only,
+        grade_only=False,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
@@ -2240,26 +2272,42 @@ def _test_docker_local_eval_cmd() -> None:
     if not task.is_dir():
         return
     spec = parse_task_dir(task)
-    cmd = docker_local_eval_cmd(
+    deepswe_run_py = Path(__file__).resolve()
+    agent_cmd = docker_local_agent_cmd(
         image="deepswe-test:agent",
         spec=spec,
         task_dir=task,
         workspace=Path("/tmp/ws"),
         run_root=Path("/tmp/run"),
-        deepswe_run_py=Path(__file__).resolve(),
+        deepswe_run_py=deepswe_run_py,
         malvin_command="code",
         malvin_args=(),
-        grade_only=False,
-        skip_grade=False,
-        apply_solution=False,
         reset_workspace_flag=False,
         checks_override=None,
     )
-    joined = " ".join(cmd)
-    assert " run " in joined or joined.endswith(" run")
-    assert "--runtime in-sandbox" in joined
-    assert DEEPSWE_RUN_REMOTE in joined
-    assert "malvin code" not in joined or "--command code" in joined
+    agent_joined = " ".join(agent_cmd)
+    assert "--runtime in-sandbox" in agent_joined
+    assert "--skip-grade" in agent_joined
+    assert DEEPSWE_RUN_REMOTE in agent_joined
+    assert "--command code" in agent_joined
+    assert "/tests:ro" not in agent_joined
+    assert "task.toml" in agent_joined
+    assert "instruction.md" in agent_joined
+
+    grade_cmd = docker_local_grade_cmd(
+        image="deepswe-test:base",
+        spec=spec,
+        task_dir=task,
+        workspace=Path("/tmp/ws"),
+        run_root=Path("/tmp/run"),
+        deepswe_run_py=deepswe_run_py,
+        apply_solution=False,
+        reset_workspace_flag=False,
+    )
+    grade_joined = " ".join(grade_cmd)
+    assert "--grade-only" in grade_joined
+    assert "/tests:ro" in grade_joined
+    assert "/task:ro" in grade_joined
 
 
 def _test_solve_dry_run() -> None:
@@ -2275,8 +2323,6 @@ def _test_solve_dry_run() -> None:
             "solve",
             "--local",
             "bandit-interprocedural-taint-checks",
-            "--grade-only",
-            "--apply-solution",
             "--dry-run",
         ],
     )
@@ -2324,20 +2370,21 @@ def _test_solve_modal_dry_run() -> None:
     if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
         return
     runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        [
-            "solve",
-            "bandit-interprocedural-taint-checks",
-            "--grade-only",
-            "--dry-run",
-        ],
-    )
+    with _patch_modal_cursor_credentials():
+        result = runner.invoke(
+            cli,
+            [
+                "solve",
+                "bandit-interprocedural-taint-checks",
+                "--skip-grade",
+                "--dry-run",
+            ],
+        )
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "docker run" not in result.output
     assert "Dry run: would materialize workspace" in result.output
-    assert "Dry run: grade-only on Modal" in result.output
+    assert "Dry run: malvin agent in Modal sandbox" in result.output
 
 
 def _test_solve_modal_full_dry_run() -> None:
@@ -2361,7 +2408,7 @@ def _test_solve_modal_full_dry_run() -> None:
 
 
 def _test_solve_resets_workspace_for_agent_runs() -> None:
-    """Agent solves always reset workspace; grade-only keeps opt-in --reset."""
+    """Agent solves always reset workspace."""
     from click.testing import CliRunner
 
     tasks_root = default_deepswe_tasks_root()
@@ -2372,6 +2419,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
 
     def fake_modal_eval(**kwargs: Any) -> None:
         captured["reset_flag"] = kwargs.get("reset_flag", False)
+        captured["grade_only"] = kwargs.get("grade_only", False)
 
     with _patch_modal_cursor_credentials(), patch("deepswe_modal.run_modal_eval", fake_modal_eval):
         result = runner.invoke(
@@ -2380,35 +2428,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
         )
     assert result.exit_code == 0, result.output
     assert captured.get("reset_flag") is True, captured
-
-    captured.clear()
-    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
-        result = runner.invoke(
-            cli,
-            [
-                "solve",
-                "bandit-interprocedural-taint-checks",
-                "--grade-only",
-                "--dry-run",
-            ],
-        )
-    assert result.exit_code == 0, result.output
-    assert captured.get("reset_flag") is False, captured
-
-    captured.clear()
-    with patch("deepswe_modal.run_modal_eval", fake_modal_eval):
-        result = runner.invoke(
-            cli,
-            [
-                "solve",
-                "bandit-interprocedural-taint-checks",
-                "--grade-only",
-                "--reset",
-                "--dry-run",
-            ],
-        )
-    assert result.exit_code == 0, result.output
-    assert captured.get("reset_flag") is True, captured
+    assert captured.get("grade_only") is False, captured
 
 
 def _test_solve_local_dry_run_passes_reset() -> None:
@@ -2445,10 +2465,11 @@ def _test_task_name_shorthand_routes_to_solve() -> None:
     if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
         return
     runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        ["bandit-interprocedural-taint-checks", "--grade-only", "--dry-run"],
-    )
+    with _patch_modal_cursor_credentials():
+        result = runner.invoke(
+            cli,
+            ["bandit-interprocedural-taint-checks", "--skip-grade", "--dry-run"],
+        )
     assert result.exit_code == 0, result.output
     assert "Runtime: modal" in result.output
     assert "bandit-interprocedural-taint-checks" in result.output
@@ -2610,7 +2631,39 @@ def _test_write_plan_and_checks_discovers() -> None:
         assert checks.startswith(f"{KISS_CHECK_COMMAND}\n")
         assert "pytest" in checks
         plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
-        assert "DeepSWE evaluation notes" in plan_text
+        assert plan_text == "fix it\n"
+
+
+def _test_parse_task_dir_does_not_require_test_sh() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir = Path(tmp)
+        toml_text = (
+            '[metadata]\ntask_id = "no-tests"\nbase_commit_hash = "abc123"\n'
+            '[environment]\ndocker_image = "ubuntu:22.04"\n'
+        )
+        (task_dir / "task.toml").write_text(toml_text, encoding="utf-8")
+        (task_dir / "instruction.md").write_text("do something\n", encoding="utf-8")
+        spec = parse_task_dir(task_dir)
+        assert spec.task_id == "no-tests"
+        assert spec.test_sh == task_dir / "tests" / "test.sh"
+        assert not spec.test_sh.is_file()
+
+
+def _test_validate_verifier_paths_fails_without_test_sh() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir = Path(tmp)
+        toml_text = (
+            '[metadata]\ntask_id = "no-tests"\nbase_commit_hash = "abc123"\n'
+            '[environment]\ndocker_image = "ubuntu:22.04"\n'
+        )
+        (task_dir / "task.toml").write_text(toml_text, encoding="utf-8")
+        (task_dir / "instruction.md").write_text("do something\n", encoding="utf-8")
+        spec = parse_task_dir(task_dir)
+        try:
+            validate_verifier_paths(spec)
+            assert False, "Expected ClickException"
+        except click.ClickException:
+            pass
 
 
 def _test_scan_pytest_monkeypatch_hooks() -> None:
@@ -2626,26 +2679,6 @@ def _test_scan_pytest_monkeypatch_hooks() -> None:
         )
         hooks = scan_pytest_monkeypatch_hooks(root)
         assert hooks == [("Foo", "bar"), ("mod.Baz", "qux")]
-
-
-def _test_deepswe_evaluation_appendix_no_hooks() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        appendix = deepswe_evaluation_appendix(root)
-        assert "No visible monkeypatch hooks" in appendix
-
-
-def _test_deepswe_evaluation_appendix_lists_hooks() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        root = Path(tmp)
-        tests = root / "tests"
-        tests.mkdir()
-        (tests / "test_x.py").write_text(
-            'monkeypatch.setattr(Igel, "results_path", tmp)\n',
-            encoding="utf-8",
-        )
-        appendix = deepswe_evaluation_appendix(root)
-        assert "`Igel.results_path`" in appendix
 
 
 def _test_scan_class_level_attributes() -> None:
@@ -3278,9 +3311,9 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_write_plan_and_checks_discovers()
+    _test_parse_task_dir_does_not_require_test_sh()
+    _test_validate_verifier_paths_fails_without_test_sh()
     _test_scan_pytest_monkeypatch_hooks()
-    _test_deepswe_evaluation_appendix_no_hooks()
-    _test_deepswe_evaluation_appendix_lists_hooks()
     _test_scan_class_level_attributes()
     _test_patch_surface_targets_prefers_config_style_classes()
     _test_render_patch_surface_probe_roundtrip()

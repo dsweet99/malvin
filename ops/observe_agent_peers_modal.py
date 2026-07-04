@@ -84,7 +84,6 @@ def main(task_dir: Path) -> None:
     image = harbor_agent_image(
         spec,
         workspace,
-        spec.tests_dir,
         dockerfile=spec.dockerfile,
         malvin_repo=malvin_repo,
         deepswe_run_py=deepswe_run_py,

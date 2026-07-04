@@ -9,14 +9,6 @@ def test_deepswe_scan_pytest_monkeypatch_hooks() -> None:
     deepswe_run._test_scan_pytest_monkeypatch_hooks()
 
 
-def test_deepswe_evaluation_appendix_no_hooks() -> None:
-    deepswe_run._test_deepswe_evaluation_appendix_no_hooks()
-
-
-def test_deepswe_evaluation_appendix_lists_hooks() -> None:
-    deepswe_run._test_deepswe_evaluation_appendix_lists_hooks()
-
-
 def test_deepswe_scan_class_level_attributes() -> None:
     deepswe_run._test_scan_class_level_attributes()
 
@@ -51,3 +43,11 @@ def test_deepswe_ephemeral_cache_find_expr() -> None:
 
 def test_deepswe_purge_root_owned_ephemeral_caches_docker_cmd() -> None:
     deepswe_run._test_purge_root_owned_ephemeral_caches_docker_cmd()
+
+
+def test_deepswe_parse_task_dir_does_not_require_test_sh() -> None:
+    deepswe_run._test_parse_task_dir_does_not_require_test_sh()
+
+
+def test_deepswe_validate_verifier_paths_fails_without_test_sh() -> None:
+    deepswe_run._test_validate_verifier_paths_fails_without_test_sh()
