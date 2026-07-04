@@ -33,10 +33,6 @@ Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin do "fix 
 
 ## Options
 
-### `--repo-gates`
-
-Before the agent runs, execute workspace quality gates from `.malvin/checks` (via `run_repo_workspace_gates_no_kiss_clamp`). Failure aborts before any prompt.
-
 ### `--thoughts`
 
 Stream agent “thought” tokens to stdout in addition to normal output.
@@ -77,11 +73,14 @@ With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo in
 |---------|------|
 | `malvin code` | Multi-iteration plan implementation |
 | `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
+| `malvin do Hello` | One-turn Cursor ACP connectivity smoke check |
+
+**Note:** bare `malvin hello` or `malvin Hello` (no subcommand) runs a kpop loop, not a connectivity probe — same as `malvin foobar`.
 
 ## Examples
 
 ```text
+malvin do Hello
 malvin do "List failing tests and suggest fixes"
 malvin do notes/task.md
-malvin do --repo-gates "Refactor foo.rs to use Result"
 ```

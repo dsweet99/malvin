@@ -201,20 +201,3 @@ fn do_trace_log_contains_thought_when_hidden_from_stdout() {
         "trace log should retain thought text; path={log_path:?}"
     );
 }
-
-#[cfg_attr(unix, test)]
-fn do_repo_gates_keeps_gate_diagnostics_off_stdout() {
-    let out = run_do_with_mock(&["--repo-gates"]);
-    assert!(
-        out.status.success(),
-        "malvin do --repo-gates failed: {out:?}"
-    );
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let lines = stdout_lines_preserve_shape(&out.stdout);
-    assert!(lines.iter().any(|l| l == "agent message"), "got: {lines:?}");
-    assert!(
-        lines.iter().all(|l| !l.contains(":malvin|:")),
-        "did not expect tagged repo-gate stdout lines, got: {lines:?}"
-    );
-    assert!(!stdout.contains("\"jsonrpc\""), "stdout was {stdout:?}");
-}

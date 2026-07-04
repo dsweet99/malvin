@@ -163,16 +163,14 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::Cli> = None;
     let _: Option<crate::cli::Commands> = None;
     let do_args = crate::do_flow::DoArgs {
-        repo_gates: false,
         thoughts: false,
         request: None,
     };
     let crate::do_flow::DoArgs {
-        repo_gates,
         thoughts,
         request,
     } = do_args;
-    assert!(!repo_gates && !thoughts && request.is_none());
+    assert!(!thoughts && request.is_none());
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
     let _ = stringify!(RenderRepoProgram);

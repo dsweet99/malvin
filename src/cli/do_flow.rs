@@ -8,7 +8,6 @@ use crate::agent_backend::{
 };
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
-use crate::repo_checks;
 use crate::run_timing::TimingPhase;
 use clap::Args;
 
@@ -22,12 +21,9 @@ pub use do_flow_prompt::{
 /// Arguments for [`run_do`].
 #[derive(Args, Debug)]
 pub struct DoArgs {
-    /// Run repository quality gates before the prompt (coding-style runs).
-    #[arg(long, default_value_t = false)]
-    pub repo_gates: bool,
     #[arg(long, default_value_t = false)]
     pub thoughts: bool,
-    /// Existing `.md` path or literal text → `.malvin/logs/.../plan.md`.
+    /// Existing `.md` path or literal text
     pub request: Option<String>,
 }
 
@@ -61,21 +57,6 @@ fn new_do_client(
     build_agent_backend_with_tee(shared, workflow, tee)
 }
 
-fn run_do_repo_gates_if_requested(
-    do_args: &DoArgs,
-    artifacts: &RunArtifacts,
-) -> Result<(), String> {
-    if do_args.repo_gates {
-        repo_checks::run_repo_workspace_gates_no_kiss_clamp(
-            &artifacts.work_dir,
-            repo_checks::RepoGateOutput::Stderr,
-            Some(&artifacts.run_dir),
-        )?;
-    }
-    Ok(())
-}
-
-
 async fn prepare_do_run(
     do_args: &DoArgs,
     shared: &SharedOpts,
@@ -91,7 +72,6 @@ async fn prepare_do_run(
     )
     .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    run_do_repo_gates_if_requested(do_args, &artifacts)?;
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let coder = do_flow_prompt::build_do_coder_run(&artifacts, &text)?;
     let session_dotfile_backups =
@@ -222,7 +202,6 @@ mod kiss_cov_gate_refs{
         let _: Option<DoRunPrep> = None;
         let _ = new_do_client;
         let _ = prepare_do_run;
-        let _ = run_do_repo_gates_if_requested;
     }
 }
 

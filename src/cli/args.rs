@@ -46,8 +46,6 @@ pub struct Cli {
 pub enum Commands {
     /// Respond simply
     Do(DoArgs),
-    /// Verify Cursor ACP connectivity
-    Hello(crate::hello_flow::HelloArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),

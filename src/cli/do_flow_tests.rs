@@ -143,23 +143,6 @@ fn cli_accepts_do_and_passes_request() {
     match cli.command {
         Some(Commands::Do(d)) => {
             assert_eq!(d.request.as_deref(), Some("fix the bug"));
-            assert!(!d.repo_gates);
-            assert!(!d.thoughts);
-        }
-        _ => panic!("expected Do subcommand"),
-    }
-}
-
-#[test]
-fn cli_accepts_do_repo_gates() {
-    use crate::cli::Cli;
-    use crate::cli::Commands;
-
-    let cli = Cli::try_parse_from(["malvin", "do", "--repo-gates", "y"]).expect("parse");
-    match cli.command {
-        Some(Commands::Do(d)) => {
-            assert!(d.repo_gates);
-            assert_eq!(d.request.as_deref(), Some("y"));
             assert!(!d.thoughts);
         }
         _ => panic!("expected Do subcommand"),

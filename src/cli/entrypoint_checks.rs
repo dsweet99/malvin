@@ -11,7 +11,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::malvin_config_file::ensure_malvin_config_file(&cwd)
         }
-        Commands::Do(_) | Commands::Hello(_) => {
+        Commands::Do(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
             crate::repo_gates::ensure_default_malvin_config_file(&cwd)
         }
@@ -66,7 +66,6 @@ mod tests {
 
             std::fs::remove_file(&config).expect("remove config");
             ensure_malvin_checks_for_command(&Commands::Do(DoArgs {
-                repo_gates: false,
                 thoughts: false,
                 request: None,
             }))

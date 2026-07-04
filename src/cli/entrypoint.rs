@@ -1,6 +1,6 @@
 use super::models_cmd;
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_hello, run_kpop, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
@@ -31,7 +31,6 @@ pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
         Commands::Code(_) => require_kiss_for_malvin("code"),
         Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
         Commands::Do(_)
-        | Commands::Hello(_)
         | Commands::Kpop(_)
         | Commands::Inspire(_)
         | Commands::Models(_)
@@ -170,15 +169,6 @@ pub(crate) fn dispatch_command(
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
-                &shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
-        Commands::Hello(hello) => run_async_cli(|| {
-            run_hello(
-                hello,
                 &shared,
                 WorkflowCliOptions {
                     force: !shared.no_force,

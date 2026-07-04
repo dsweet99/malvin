@@ -14,7 +14,6 @@ fn kiss_cov_output_units() {
     let _ = crate::output::stderr_log::emit_stderr_log_lines;
     let _ = crate::output::stdout_tee_env::stdout_is_interactive;
     let _ = crate::output::stdout_tee_env::force_stdout_tee_from_env;
-    let _ = crate::output::stdout_tee_env::enable_probe_stdout_tee;
     let _ = crate::output::stdout_tee_env::agent_stdout_tee_enabled;
 }
 

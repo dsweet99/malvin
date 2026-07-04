@@ -1384,34 +1384,8 @@ def malvin_needs_task_plan(command: str) -> bool:
     return command == "code"
 
 
-_hello_subcommand_cache: dict[str, bool] = {}
-
-
-def malvin_has_hello_subcommand(malvin_cmd: str = MALVIN_CMD) -> bool:
-    """True when *malvin_cmd* exposes the ``hello`` connectivity subcommand."""
-    cached = _hello_subcommand_cache.get(malvin_cmd)
-    if cached is not None:
-        return cached
-    try:
-        proc = subprocess.run(
-            [malvin_cmd, "hello", "--help"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
-        )
-        help_text = (proc.stdout or "") + (proc.stderr or "")
-        has_hello = proc.returncode == 0 and "Verify Cursor ACP connectivity" in help_text
-    except (OSError, subprocess.TimeoutExpired):
-        has_hello = False
-    _hello_subcommand_cache[malvin_cmd] = has_hello
-    return has_hello
-
-
 def hello_probe_cmd(malvin_cmd: str, malvin_args: tuple[str, ...]) -> list[str]:
     """Argv for a one-turn Cursor connectivity probe with stdout tee."""
-    if malvin_has_hello_subcommand(malvin_cmd):
-        return [malvin_cmd, "hello", *malvin_args]
     return [malvin_cmd, "do", "Hello", *malvin_args]
 
 
@@ -1443,7 +1417,7 @@ def run_hello_probe_on_host(
     *,
     dry_run: bool,
 ) -> None:
-    """Run ``malvin hello`` on the host and relay agent stdout to local stdout."""
+    """Run ``malvin do Hello`` on the host and relay agent stdout to local stdout."""
     cmd = hello_probe_cmd(MALVIN_CMD, malvin_args)
     click.echo(f"Running agent: {' '.join(cmd)}")
     if dry_run:
@@ -2042,7 +2016,7 @@ def _hello_options(f: Any) -> Any:
         "--host",
         "run_on_host",
         is_flag=True,
-        help="Run malvin hello on this machine (no Modal/Docker/task workspace).",
+        help="Run malvin do Hello on this machine (no Modal/Docker/task workspace).",
     )(f)
     f = click.option(
         "--local",
@@ -2202,7 +2176,7 @@ def hello(
     dry_run: bool,
     malvin_args: tuple[str, ...],
 ) -> None:
-    """Run malvin hello (Cursor connectivity probe). Default: full Modal sandbox smoke test (auth + CIDR allowlist, no Harbor grade). Use ``--host`` for a local probe."""
+    """Run malvin do Hello (Cursor connectivity probe). Default: full Modal sandbox smoke test (auth + CIDR allowlist, no Harbor grade). Use ``--host`` for a local probe."""
     if run_on_host:
         if use_local_docker:
             raise click.ClickException("Use either --host or --local, not both")
@@ -3009,51 +2983,6 @@ def _test_run_malvin_do_uses_prompt_not_plan() -> None:
         assert captured["cmd"] == [MALVIN_CMD, "do", "Hello"]
 
 
-def _test_run_malvin_hello_uses_subcommand() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        workspace = Path(tmp)
-        captured: dict[str, Any] = {}
-
-        def fake_relay(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
-            captured["cmd"] = cmd
-            captured["cwd"] = cwd
-            return 0, "agent said hi\n"
-
-        with patch(f"{__name__}._relay_subprocess_stdout", fake_relay):
-            with patch(f"{__name__}.malvin_has_hello_subcommand", return_value=True):
-                result = run_malvin(
-                    workspace,
-                    command="hello",
-                    malvin_args=("--thoughts",),
-                    dry_run=False,
-                )
-        assert captured["cmd"] == [MALVIN_CMD, "hello", "--thoughts"], captured
-        assert captured["cwd"] == workspace
-        assert result["exit_code"] == 0
-        assert result["stdout"] == "agent said hi\n"
-
-
-def _test_run_malvin_hello_falls_back_to_do_when_subcommand_missing() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        workspace = Path(tmp)
-        captured: dict[str, Any] = {}
-
-        def fake_relay(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
-            captured["cmd"] = cmd
-            return 0, "legacy hello\n"
-
-        with patch(f"{__name__}._relay_subprocess_stdout", fake_relay):
-            with patch(f"{__name__}.malvin_has_hello_subcommand", return_value=False):
-                result = run_malvin(
-                    workspace,
-                    command="hello",
-                    malvin_args=("--thoughts",),
-                    dry_run=False,
-                )
-        assert captured["cmd"] == [MALVIN_CMD, "do", "Hello", "--thoughts"], captured
-        assert result["stdout"] == "legacy hello\n"
-
-
 def _test_resolve_malvin_cmd_prefers_repo_target() -> None:
     root = malvin_repo_root()
     debug = root / "target" / "debug" / "malvin"
@@ -3098,7 +3027,7 @@ def _test_hello_host_relays_stdout() -> None:
     runner = CliRunner()
 
     def fake_relay(cmd: list[str], *, cwd: Path) -> tuple[int, str]:
-        assert "hello" in cmd
+        assert "do" in cmd and "Hello" in cmd
         return 0, "agent said hi\n"
 
     with patch(f"{__name__}._relay_subprocess_stdout", fake_relay):
@@ -3118,7 +3047,7 @@ def _test_hello_host_rejects_local() -> None:
 
 
 def _test_hello_modal_dry_run() -> None:
-    """``hello TASK`` runs malvin hello on Modal without Harbor grading."""
+    """``hello TASK`` runs malvin do Hello on Modal without Harbor grading."""
     from click.testing import CliRunner
 
     tasks_root = default_deepswe_tasks_root()
@@ -3333,8 +3262,6 @@ def run_self_tests() -> None:
     _test_scan_class_level_attributes_skips_non_utf8()
     _test_run_malvin_uses_plan_name_not_at_notation()
     _test_run_malvin_do_uses_prompt_not_plan()
-    _test_run_malvin_hello_uses_subcommand()
-    _test_run_malvin_hello_falls_back_to_do_when_subcommand_missing()
     _test_resolve_malvin_cmd_prefers_repo_target()
     _test_relay_subprocess_stdout_sets_force_tee_env()
     _test_run_command_accepts_hello()

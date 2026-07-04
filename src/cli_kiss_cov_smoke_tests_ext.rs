@@ -4,7 +4,6 @@
 fn smoke_cov_cli_cross_file_symbols_b() {
     let _ = stringify!(DoRunPrep);
     let _ = stringify!(new_do_client);
-    let _ = stringify!(run_do_repo_gates_if_requested);
     let _ = stringify!(prepare_do_run);
     let _ = stringify!(run_do_coder_prompt);
     let _ = stringify!(run_do_acp);

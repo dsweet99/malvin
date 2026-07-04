@@ -5,7 +5,7 @@ use super::gate_log::{emit_repo_gate_line, try_append_command_output};
 use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
-/// Workspace quality gates for CLI workflows (`code`, `do`, `kpop`, `bug`, `tidy`, …).
+/// Workspace quality gates for CLI workflows (`code`, `kpop`, `bug`, `tidy`, …).
 ///
 /// Runs workspace preparation (`kiss clamp` when applicable) before gate lines.
 /// When `.malvin/checks` is absent, returns an error (no silent seeding).
@@ -29,7 +29,7 @@ pub fn run_repo_workspace_gates(
 
 /// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
 ///
-/// Used by `malvin do --repo-gates`, which must not create or rewrite `.kissconfig` implicitly.
+/// Used by gate-loop internals and unit tests; does not create or rewrite `.kissconfig` implicitly.
 pub fn run_repo_workspace_gates_no_kiss_clamp(
     work_dir: &Path,
     output: RepoGateOutput,

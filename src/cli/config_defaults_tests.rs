@@ -221,8 +221,10 @@ fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
         std::env::set_current_dir(work).expect("chdir");
         let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
         match cli.command.expect("command") {
-            Commands::Hello(_) => {}
-            other => panic!("expected hello, got {other:?}"),
+            Commands::Kpop(k) => {
+                assert_eq!(k.request.as_deref(), Some("hello"));
+            }
+            other => panic!("expected kpop, got {other:?}"),
         }
         std::env::set_current_dir(cwd).expect("restore cwd");
     });

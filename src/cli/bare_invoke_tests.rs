@@ -110,17 +110,6 @@ fn resolve_bare_helper_functions_directly() {
 }
 
 #[test]
-fn hello_subcommand_does_not_resolve_as_bare_kpop() {
-    let cli = parse_cli_with_config_defaults(["malvin", "hello"])
-        .expect("parse")
-        .0;
-    match cli.command {
-        Some(Commands::Hello(_)) => {}
-        other => panic!("expected hello subcommand, got {other:?}"),
-    }
-}
-
-#[test]
 fn unit_helpers_join_request_bare_loop() {
     require_bare_request(None, "usage").expect_err("empty");
     require_bare_request(Some(&"   ".to_string()), "usage").expect_err("whitespace");

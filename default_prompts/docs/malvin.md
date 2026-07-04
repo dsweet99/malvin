@@ -144,7 +144,7 @@ Gate-loop commands (`code`, `tidy`, `delight`, `explain`, `revise`, bare `malvin
 
 When `.malvin/checks` is missing or contains no command lines at session startup, malvin runs a checks-discovery KPop session first (`init_constraints.md`), then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next gate-loop command.
 
-`malvin do --repo-gates` and mid-loop gate iterations do **not** run discovery; they error if checks are absent.
+Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 
 ### `-h` / `--help`
 

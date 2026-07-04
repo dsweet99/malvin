@@ -76,7 +76,6 @@ mod command_log_tests;
 mod markdown_flag_parse_tests;
 
 pub use crate::do_flow::run_do;
-pub use crate::hello_flow::run_hello;
 pub use crate::inspire_flow::run_inspire;
 pub use args::{Cli, Commands, InspireArgs, KpopArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
