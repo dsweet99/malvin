@@ -9,7 +9,7 @@ use crate::artifacts::{
 };
 use crate::test_utils::with_isolated_home;
 use crate::malvin_config_file::open_malvin_config;
-use crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk;
+use crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk;
 use crate::{malvin_config_path, MALVIN_HOME_CONFIG_FILE, seed_malvin_config};
 
 #[test]
@@ -88,7 +88,7 @@ fn repair_breaks_empty_home_config_on_disk_before_next_snapshot() {
         seed_malvin_config(work, "mem_limit_gb = 7\n");
         let cfg = malvin_config_path(work);
         std::fs::write(&cfg, b"").expect("agent truncates home config");
-        repair_clamp_damaged_dotfiles_on_disk(work).expect("repair");
+        repair_invalid_malvin_home_config_on_disk(work).expect("repair");
         let restored = std::fs::read_to_string(&cfg).expect("read home config");
         assert!(
             restored.contains("mem_limit_gb"),

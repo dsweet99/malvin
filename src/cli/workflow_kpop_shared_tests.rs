@@ -9,7 +9,7 @@ fn kpop_render_fixture(
     crate::artifacts::RunArtifacts,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts(workflow, Some(tmp.path())).expect("artifacts");
     let store = crate::prompts::PromptStore::default_store();
@@ -62,7 +62,7 @@ fn clear_quality_gates_log_for_next_agent_empties_file() {
     assert_eq!(std::fs::read_to_string(&qlog).expect("read"), "");
 }
 
-fn kiss_check_gate_failure_fixture(
+fn gate_failure_fixture(
     exit_code: i32,
 ) -> (
     tempfile::TempDir,
@@ -72,8 +72,8 @@ fn kiss_check_gate_failure_fixture(
     crate::artifacts::SessionDotfileBackups,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", exit_code);
-    std::fs::write(crate::malvin_checks_path(tmp.path()), "kiss check\n").expect("checks");
+    let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "false", exit_code);
+    std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
@@ -82,18 +82,18 @@ fn kiss_check_gate_failure_fixture(
 
 #[test]
 fn run_kpop_workspace_gates_refreshes_quality_gates_log() {
-    let (_tmp, _bin, _guard, artifacts, backups) = kiss_check_gate_failure_fixture(1);
+    let (_tmp, _bin, _guard, artifacts, backups) = gate_failure_fixture(1);
     std::fs::write(artifacts.quality_gates_log_path(), "stale output").expect("write");
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("gates fail");
     assert!(
         crate::repo_checks::is_gate_failure_error(&err),
         "gate failure must survive post-gate restore: {err}"
     );
-    assert!(err.contains("kiss"), "expected kiss gate failure: {err}");
+    assert!(err.contains("false"), "expected false gate failure: {err}");
     let log = std::fs::read_to_string(artifacts.quality_gates_log_path()).expect("read");
     assert!(
-        log.contains("Running `kiss check`"),
-        "expected kiss gate in log: {log}"
+        log.contains("Running `false`"),
+        "expected false gate in log: {log}"
     );
     assert!(log.contains("[stdout]"));
     assert!(!log.contains("stale output"));
@@ -107,7 +107,7 @@ fn gate_iteration_context_overrides_exp_log() {
         .current_dir(tmp.path())
         .status()
         .expect("git init");
-    crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+    crate::seed_malvin_checks(tmp.path(), "true\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let base = kpop_workflow_context(&artifacts, "code").expect("ctx");
@@ -117,14 +117,11 @@ fn gate_iteration_context_overrides_exp_log() {
     assert!(exp.contains("_g2.md"));
 }
 
-fn bare_kiss_repair_fixture(
+fn missing_checks_fixture(
     work: &std::path::Path,
 ) -> (
     crate::artifacts::RunArtifacts,
-    (
-        tempfile::TempDir,
-        crate::repo_checks::FakeCommandDirGuard,
-    ),
+    crate::artifacts::SessionDotfileBackups,
 ) {
     if crate::git_worktree_toplevel(work).is_none() {
         std::process::Command::new("git")
@@ -133,34 +130,31 @@ fn bare_kiss_repair_fixture(
             .status()
             .expect("git init");
     }
-    std::fs::write(
-        work.join(".kissconfig"),
-        "[gate]\ntest_coverage_threshold = 0\n",
-    )
-    .expect("kissconfig");
-    let guard = crate::test_agent_client::write_fake_gate(work, "kiss", 0);
-    std::fs::write(crate::malvin_checks_path(work), "kiss\n").expect("re-poison");
+    let checks_path = crate::malvin_checks_path(work);
+    if checks_path.is_file() {
+        std::fs::remove_file(&checks_path).expect("remove checks");
+    }
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
-    (artifacts, guard)
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
+    (artifacts, backups)
 }
 
 #[test]
-fn run_kpop_workspace_gates_fails_after_bare_kiss_removed_from_disk() {
+fn run_kpop_workspace_gates_fails_when_checks_missing() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (artifacts, (_bin, _guard)) = bare_kiss_repair_fixture(tmp.path());
-    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
+    let (artifacts, backups) = missing_checks_fixture(tmp.path());
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("missing checks");
     assert!(
         err.contains(".malvin/checks is missing"),
-        "bare kiss repair removes checks without seeding defaults: {err}"
+        "missing checks must fail clearly: {err}"
     );
 }
 
 #[test]
 fn run_kpop_workspace_gates_restores_before_executing_checks() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
     let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
     std::fs::write(crate::malvin_checks_path(tmp.path()), "false\n").expect("tamper");
     run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass after restore");
@@ -169,7 +163,7 @@ fn run_kpop_workspace_gates_restores_before_executing_checks() {
 #[test]
 fn run_kpop_workspace_gates_leaves_session_gitignore_after_post_gate_restore() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
+    let (_bin, _guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "true", 0);
     std::fs::write(tmp.path().join(".gitignore"), "gi\n").expect("drifted gitignore");
     let (artifacts, backups) = kpop_gates_restore_fixture(tmp.path());
     run_kpop_workspace_gates(&artifacts, &backups, true).expect("gates pass");
@@ -181,33 +175,33 @@ fn kpop_gates_restore_fixture(
     work: &std::path::Path,
 ) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
     (artifacts, backups)
 }
 
-fn kissconfig_restore_failure_fixture(
+fn gitignore_restore_failure_fixture(
     work: &std::path::Path,
 ) -> (crate::artifacts::RunArtifacts, crate::artifacts::SessionDotfileBackups) {
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
-    std::fs::write(work.join(".kissconfig"), "orig\n").expect("kissconfig");
+    std::fs::write(work.join(".gitignore"), "orig\n").expect("gitignore");
     let backups = crate::artifacts::SessionDotfileBackups::snapshot(work).expect("snapshot");
-    std::fs::remove_file(work.join(".kissconfig")).expect("remove kissconfig");
-    std::fs::create_dir(work.join(".kissconfig")).expect("kissconfig dir");
+    std::fs::remove_file(work.join(".gitignore")).expect("remove gitignore");
+    std::fs::create_dir(work.join(".gitignore")).expect("gitignore dir");
     (artifacts, backups)
 }
 
 #[test]
 fn restore_failure_prevents_gate_run() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let (artifacts, backups) = kissconfig_restore_failure_fixture(tmp.path());
+    let (artifacts, backups) = gitignore_restore_failure_fixture(tmp.path());
     let err = run_kpop_workspace_gates(&artifacts, &backups, true).expect_err("restore fails");
-    assert!(err.contains("kissconfig restore"));
+    assert!(err.contains("gitignore restore"));
 }
 
 #[test]
@@ -221,10 +215,10 @@ fn render_repo_program_includes_scope() {
 
 #[test]
 fn prefer_gate_outcome_keeps_gate_error_when_restore_also_fails() {
-    let gate = Err("__MALVIN_GATE_FAILURE__:`kiss check` failed (exit 1)".into());
+    let gate = Err("__MALVIN_GATE_FAILURE__:`false` failed (exit 1)".into());
     let restore = Err("gitignore restore: Is a directory".into());
     let err = prefer_gate_outcome_over_post_gate_cleanup(gate, restore).unwrap_err();
-    assert!(err.contains("kiss check"));
+    assert!(err.contains("false"));
     assert!(!err.contains("gitignore restore"));
 }
 

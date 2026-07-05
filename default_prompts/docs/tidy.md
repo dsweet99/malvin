@@ -9,7 +9,7 @@ Bring the workspace back to a **gate-clean** state using the KPop gate loop scop
 | Input | None (implicit goal: pass `.malvin/checks`) |
 | Fast path | If gates pass on first check, **no agent** — prints `DONE` |
 | Loop | Outer gate iterations when gates fail |
-| Requires | `kiss` on PATH; Cursor agent CLI only when gates fail |
+| Requires | Cursor agent CLI only when gates fail |
 
 ## Intention
 
@@ -51,7 +51,7 @@ See `malvin --doc`.
 
 **Gate loop (when agent runs):**
 
-1. Each outer iteration clears `_kpop/mpc_plan.md`, renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session (`header.md` + `kpop_common.md` + `mpc_block.md`).
+1. Each outer iteration clears `_kpop/mpc_plan.md` and `_kpop/priors.md`, renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session: priors phase first, then blocks A/B/C (`header.md` + `kpop_common.md` + `mpc_block_a/b/c.md`).
 2. Agent logs hypotheses and test results to `_kpop/exp_log_<iteration>.md`.
 3. Early exit on mpc plan `DONE` with passing gates.
 4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
@@ -63,8 +63,9 @@ See `malvin --doc`.
 | `tidy_constraints.md` | Implicit goal: pass workspace quality gates |
 | `kpop_program.md` | Rendered into `plan.md` — scope + quality gates |
 | `kpop_common.md` | Popper method; log to experiment log |
-| `mpc_block.md` | MPC workflow per session |
-| `header.md` | Prepended on each gate-loop agent turn |
+| `priors.md` | Tacit-belief priors (rendered into `mbc2.md` for the priors phase) |
+| `mpc_block_a/b/c.md` | MPC workflow per session |
+| `header.md` | Prepended on block A only |
 
 ## Comparison to `code`
 
@@ -78,7 +79,7 @@ See `malvin --doc`.
 ## Artifacts
 
 - `~/.malvin_home/logs/<hash>/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
-- `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
+- `_kpop/priors.md`, `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
 
 ## Examples
 

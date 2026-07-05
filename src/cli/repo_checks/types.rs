@@ -93,14 +93,14 @@ pub enum RepoGateOutput {
 #[test]
 fn repo_gate_failure_into_error_formats_command_exit() {
     let failure = RepoGateCommandFailure {
-        command: "kiss check".to_string(),
+        command: "make lint".to_string(),
         exit_code: Some(1),
         stdout: "out".to_string(),
         stderr: "err".to_string(),
     };
     let msg = RepoGateFailure::Command(failure).into_error();
     assert!(msg.starts_with(GATE_FAILURE_MARKER));
-    assert!(msg.contains("kiss check"));
+    assert!(msg.contains("make lint"));
     assert!(msg.contains("exit 1"));
     assert!(!msg.contains("stdout:"));
     let _: RepoGateOutput = RepoGateOutput::Tagged;

@@ -14,7 +14,7 @@ use common::{
 #[test]
 fn delight_runs_kpop_when_gates_already_pass() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
@@ -36,7 +36,7 @@ fn delight_runs_kpop_when_gates_already_pass() {
 #[test]
 fn delight_allocates_sibling_when_default_pitch_preexists() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::write(workspace.join("pitch.md"), "existing\n").expect("seed pitch");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
@@ -65,7 +65,7 @@ fn delight_allocates_sibling_when_default_pitch_preexists() {
 #[test]
 fn delight_fails_when_custom_out_path_preexists() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::create_dir_all(workspace.join("plans")).expect("mkdir");
     std::fs::write(workspace.join("plans/existing.md"), "existing\n").expect("seed plan");
     let path = bin_path_with_fake_kiss(&root);
@@ -93,7 +93,7 @@ fn delight_fails_when_custom_out_path_preexists() {
 #[test]
 fn delight_fails_when_agent_solves_but_output_missing() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_delight_mpc_plan_done_without_output_js());
     let out = spawn_delight(&DelightSpawn {
@@ -110,7 +110,7 @@ fn delight_fails_when_agent_solves_but_output_missing() {
 #[test]
 fn delight_writes_custom_out_path() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_delight_kpop_steps_js());
     let out = spawn_delight(&DelightSpawn {
@@ -136,7 +136,7 @@ fn delight_writes_custom_out_path() {
 #[test]
 fn delight_kpop_fails_when_post_session_output_empty() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_delight_kpop_empty_output_js());
     let out = spawn_delight(&DelightSpawn {

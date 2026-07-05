@@ -30,7 +30,7 @@ fn prompt_quality_gates_markdown_matches_checks_file_verbatim() {
 }
 
 #[test]
-fn builtin_gate_command_lines_returns_kiss_only_for_rust_repo() {
+fn builtin_gate_command_lines_returns_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     fs::create_dir(w.join(".git")).unwrap();
@@ -39,19 +39,7 @@ fn builtin_gate_command_lines_returns_kiss_only_for_rust_repo() {
         "[package]\nname = 'm'\nversion = '0.1.0'\n",
     )
     .unwrap();
-    let g = builtin_gate_command_lines(w);
-    assert_eq!(g, vec![KISS_CHECK_COMMAND.to_string()]);
-}
-
-#[test]
-fn builtin_gate_command_lines_returns_kiss_only_for_python_repo() {
-    let tmp = tempfile::tempdir().unwrap();
-    let w = tmp.path();
-    fs::create_dir(w.join(".git")).unwrap();
-    fs::write(w.join("main.py"), "x=1\n").unwrap();
-    fs::write(w.join("test_foo.py"), "def test_x():\n    assert True\n").unwrap();
-    let g = builtin_gate_command_lines(w);
-    assert_eq!(g, vec![KISS_CHECK_COMMAND.to_string()]);
+    assert!(builtin_gate_command_lines(w).is_empty());
 }
 
 #[test]
@@ -67,7 +55,6 @@ fn gate_command_lines_uses_only_malvin_checks_when_present() {
     write_checks(w, "custom-a\ncustom-b\n");
     let g = gate_command_lines(w).unwrap();
     assert_eq!(g, vec!["custom-a".to_string(), "custom-b".to_string()]);
-    assert!(!g.iter().any(|c| c == KISS_CHECK_COMMAND));
 }
 
 #[test]
@@ -86,7 +73,7 @@ fn ensure_default_malvin_config_file_writes_template_when_missing() {
 }
 
 #[test]
-fn ensure_default_malvin_checks_file_writes_kiss_only() {
+fn ensure_default_malvin_checks_file_does_not_seed_when_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     git_init(w);
@@ -97,27 +84,8 @@ fn ensure_default_malvin_checks_file_writes_kiss_only() {
     .unwrap();
     let checks_path = crate::malvin_checks_path(w);
     assert!(!checks_path.exists());
-    let expected = vec![KISS_CHECK_COMMAND.to_string()];
     ensure_default_malvin_checks_file(w).unwrap();
-    assert!(checks_path.is_file());
-    assert_eq!(load_malvin_checks(&checks_path).unwrap(), expected);
-    ensure_default_malvin_checks_file(w).unwrap();
-    assert_eq!(load_malvin_checks(&checks_path).unwrap(), expected);
-}
-
-#[test]
-fn prompt_quality_gates_includes_kiss_only_for_seeded_checks() {
-    crate::test_utils::with_isolated_home(|w| {
-        fs::write(
-            w.join("Cargo.toml"),
-            "[package]\nname='x'\nversion='0.1.0'\n",
-        )
-        .unwrap();
-        ensure_default_malvin_checks_file(w).unwrap();
-        let md = prompt_quality_gates_markdown(w).unwrap();
-        assert!(md.contains(&format!("- `{KISS_CHECK_COMMAND}`")));
-        assert_eq!(md.matches('`').count(), 2);
-    });
+    assert!(!checks_path.exists());
 }
 
 #[test]
@@ -129,10 +97,10 @@ fn should_run_workspace_gates_when_git_present() {
 
 #[test]
 fn format_quality_gates_markdown_lists_commands() {
-    let lines = vec!["kiss check".to_string(), "lint check".to_string()];
+    let lines = vec!["make lint".to_string(), "ruff check .".to_string()];
     let md = format_quality_gates_markdown(&lines);
-    assert!(md.contains("`kiss check`"));
-    assert!(md.contains("`lint check`"));
+    assert!(md.contains("`make lint`"));
+    assert!(md.contains("`ruff check .`"));
 }
 
 #[test]

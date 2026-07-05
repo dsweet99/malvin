@@ -22,7 +22,7 @@ fn mpc_plan_done_stops_without_second_prompt() {
 }
 
 #[test]
-fn three_phase_prompts_then_stop() {
+fn four_phase_prompts_then_stop() {
     let tmp = tempfile::tempdir().unwrap();
     let path = tmp.path().join("exp.md");
     std::fs::write(&path, "").unwrap();
@@ -33,6 +33,11 @@ fn three_phase_prompts_then_stop() {
         mpc_plan_path: mpc_plan,
     })
     .unwrap();
+    let priors = state.next_prompt().expect("phase Priors");
+    let Some(MultiturnPrompt::KpopBlock(s)) = priors else {
+        panic!("expected kpop block for phase Priors");
+    };
+    assert!(s.contains("stub priors"));
     let first = state.next_prompt().expect("phase A");
     let Some(MultiturnPrompt::KpopBlock(s)) = first else {
         panic!("expected kpop block for phase A");

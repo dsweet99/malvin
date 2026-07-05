@@ -7,8 +7,8 @@ use common::{
 };
 
 #[cfg_attr(unix, test)]
-fn do_runs_kiss_clamp_when_snapshotting_without_kissconfig() {
-    let (ctx, marker, kissconfig) = prepare_do_auto_clamp_case(&acp_mock_do_streaming_update_js());
+fn do_does_not_run_clamp_when_snapshotting() {
+    let (ctx, marker, _kissconfig) = prepare_do_auto_clamp_case(&acp_mock_do_streaming_update_js());
     let out = run_do_say_hi_path_prefixed(&ctx);
     assert!(
         out.status.success(),
@@ -16,21 +16,13 @@ fn do_runs_kiss_clamp_when_snapshotting_without_kissconfig() {
         String::from_utf8_lossy(&out.stderr)
     );
     assert!(
-        marker.exists(),
-        "expected kiss clamp when snapshotting without .kissconfig"
-    );
-    assert!(
-        kissconfig.is_file(),
-        "expected snapshotted .kissconfig to be restored after do"
-    );
-    assert_eq!(
-        std::fs::read_to_string(&kissconfig).expect("read kissconfig"),
-        "k\n"
+        !marker.exists(),
+        "malvin do must not run clamp during snapshot"
     );
 }
 
 #[cfg_attr(unix, test)]
-fn do_does_not_run_kiss_clamp_when_kissconfig_exists() {
+fn do_leaves_existing_kissconfig_unchanged_when_present() {
     let existing = "k\n";
     let (ctx, marker) = prepare_do_skip_clamp_case(&acp_mock_do_streaming_update_js(), existing);
     let out = run_do_say_hi_path_prefixed(&ctx);
@@ -41,7 +33,7 @@ fn do_does_not_run_kiss_clamp_when_kissconfig_exists() {
     );
     assert!(
         !marker.exists(),
-        "did not expect kiss clamp to run when .kissconfig exists"
+        "malvin do must not invoke clamp"
     );
     assert_eq!(
         std::fs::read_to_string(ctx.workspace.join(".kissconfig")).expect("read kissconfig"),

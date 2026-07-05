@@ -152,9 +152,7 @@ mod begin_coder_session_guard_tests {
         };
         let backups = crate::artifacts::SessionDotfileBackups::from_parts(
             crate::artifacts::SessionDotfileParts {
-                kissconfig: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
-                kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
                 gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
                 vision: crate::session_dotfile_backup::VisionBackup::Missing,

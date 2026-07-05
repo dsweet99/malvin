@@ -33,7 +33,7 @@ pub fn acp_mock_code_check_plan_tampers_malvin_checks_then_implement_verifies_re
 {checked}
     }} else if (promptText.includes('Implement the plan in')) {{
       const c = fs.readFileSync(path.join(process.cwd(), '.malvin/checks'), 'utf8');
-      if (c === 'kiss check\n') {{
+      if (c === 'true\n') {{
 {implement_ok}
       }} else {{
         fs.writeFileSync(path.join(runDir, 'result.md'), 'ABORT: malvin_checks leaked into implement\n', 'utf8');

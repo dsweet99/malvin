@@ -5,14 +5,13 @@ use std::process::Command;
 
 #[cfg(all(unix, target_os = "linux"))]
 fn kpop_multiturn_prep(mock_js: &str) -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf, String) {
-    use super::{seed_malvin_checks, test_home_workspace, write_fake_kiss, cached_mock_executable};
+    use super::{seed_malvin_checks, test_home_workspace, cached_mock_executable};
 
     let (root, home, workspace) = test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "c = 1\n");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let mock = cached_mock_executable( mock_js);
-    write_fake_kiss(&bin_dir.join("kiss"));
     let path = format!(
         "{}:{}",
         bin_dir.display(),
@@ -30,7 +29,6 @@ pub fn run_kpop_multiturn_investigate(
     };
 
     let (root, home, workspace, mock, path) = kpop_multiturn_prep(mock_js);
-    std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("write kissconfig");
     std::fs::write(workspace.join(".gitignore"), "g = 1\n").expect("write gitignore");
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_malvin"));
     cmd.current_dir(&workspace)

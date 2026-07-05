@@ -102,6 +102,7 @@ fn agent_backend_run_kpop_multiturn_mini_succeeds_on_second_attempt() {
                 MockStep::Ok(super::test_support::mini_done_response()),
                 MockStep::Ok(super::test_support::mini_done_response()),
                 MockStep::Ok(super::test_support::mini_done_response()),
+                MockStep::Ok(super::test_support::mini_done_response()),
             ],
             2,
         );

@@ -8,7 +8,7 @@ General Constraints:
 - All quality gates (see below) must pass.
 - Keep it simple. Be correct, but keep complexity low.
 - Respect the VISION.md files.
-- Agents can overfit tests to kiss's coverage estimator. Look for signs of this. Replace the overfitted tests with good unit tests
+- Agents can overfit tests to a coverage estimator or metric threshold. Look for signs of this. Replace the overfitted tests with good unit tests
   - Make tests F.I.R.S.T.:  Fast, Independent, Repeatable, Self-Validating, Timely.
   - "Fast" means, ideally, under 1s. 2-4s would be ok for a very important test, but you should prefer to break tests up into smaller, more focused tests that run in less time.
   - For any non-trivial feature addition or for a bug fix, write at least one failing test first.

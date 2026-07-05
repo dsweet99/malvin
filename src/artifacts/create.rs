@@ -69,6 +69,26 @@ pub(crate) fn reset_mpc_plan_file_for_iteration(
     reset_mpc_plan_file(artifacts)
 }
 
+pub(crate) fn reset_priors_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
+    let path = crate::artifacts::priors_path(artifacts);
+    let parent = path.parent().ok_or_else(|| {
+        Error::new(
+            ErrorKind::InvalidInput,
+            "priors path has no parent directory",
+        )
+    })?;
+    std::fs::create_dir_all(parent)?;
+    std::fs::write(&path, "")?;
+    Ok(path)
+}
+
+pub(crate) fn reset_priors_file_for_iteration(
+    artifacts: &RunArtifacts,
+    _iteration: usize,
+) -> std::io::Result<PathBuf> {
+    reset_priors_file(artifacts)
+}
+
 pub(crate) fn ensure_gate_exp_log_file(
     artifacts: &RunArtifacts,
     iteration: usize,

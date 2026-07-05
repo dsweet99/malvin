@@ -1,11 +1,11 @@
-//! Shared fixtures for orchestrator unit tests (keeps per-test duplication low for `kiss check`).
+//! Shared fixtures for orchestrator unit tests.
 
 use std::collections::HashMap;
 
 use crate::acp::{AgentClient, AgentIoOptions};
 use crate::artifacts::{
-    KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup, RunArtifacts,
-    SessionDotfileBackups, create_run_artifacts_from_text,
+    MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,
+    create_run_artifacts_from_text,
 };
 use crate::orchestrator::workflow_context;
 use crate::prompt_stratification::WorkflowRenderContext;
@@ -31,9 +31,7 @@ pub fn no_session_client() -> AgentClient {
 #[must_use]
 pub fn empty_dotfile_backups() -> SessionDotfileBackups {
     SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        kissconfig: KissConfigBackup::Missing,
         malvin_checks: MalvinChecksBackup::Missing,
-        kissignore: KissignoreBackup::Missing,
         malvin_config: MalvinConfigBackup::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
@@ -77,8 +75,8 @@ mod tests {
         let _ = no_session_client();
         let backups = empty_dotfile_backups();
         assert!(matches!(
-            backups.kissconfig,
-            crate::artifacts::KissConfigBackup::Missing
+            backups.malvin_checks,
+            crate::artifacts::MalvinChecksBackup::Missing
         ));
     }
 

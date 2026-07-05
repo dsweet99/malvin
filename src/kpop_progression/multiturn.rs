@@ -7,8 +7,22 @@ use crate::multiturn_prompt::MultiturnPrompt;
 
 use super::multiturn_types::KpopMultiturnParams;
 
+fn advance_mpc_phase(
+    builder: &mut KpopMultiturnPrompts<'_>,
+    phase: MpcPhase,
+) -> Result<(MpcPhase, String), String> {
+    match phase {
+        MpcPhase::Priors => builder.kpop_priors().map(|s| (MpcPhase::A, s)),
+        MpcPhase::A => builder.kpop_block_a().map(|s| (MpcPhase::B, s)),
+        MpcPhase::B => builder.kpop_block_b().map(|s| (MpcPhase::C, s)),
+        MpcPhase::C => builder.kpop_block_c().map(|s| (MpcPhase::Done, s)),
+        MpcPhase::Done => Err("advance_mpc_phase called in Done phase".into()),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MpcPhase {
+    Priors,
     A,
     B,
     C,
@@ -55,13 +69,13 @@ impl<'a> KpopMultiturnState<'a> {
             builder: params.builder,
             exp_log_path: params.exp_log_path,
             mpc_plan_path: params.mpc_plan_path,
-            phase: MpcPhase::A,
+            phase: MpcPhase::Priors,
         })
     }
 
     /// Returns the next prompt to send, or `None` when the multiturn session should stop.
     ///
-    /// Cycles through phases A → B → C, checking for `DONE` before each phase.
+    /// Cycles through phases Priors → A → B → C, checking for `DONE` before each phase.
     ///
     /// # Errors
     ///
@@ -75,38 +89,20 @@ impl<'a> KpopMultiturnState<'a> {
             self.phase = MpcPhase::Done;
             return Ok(None);
         }
-        match self.phase {
-            MpcPhase::A => {
-                self.phase = MpcPhase::B;
-                self.builder
-                    .kpop_block_a()
-                    .map(|s| Some(MultiturnPrompt::KpopBlock(s)))
-            }
-            MpcPhase::B => {
-                self.phase = MpcPhase::C;
-                self.builder
-                    .kpop_block_b()
-                    .map(|s| Some(MultiturnPrompt::KpopBlock(s)))
-            }
-            MpcPhase::C => {
-                self.phase = MpcPhase::Done;
-                self.builder
-                    .kpop_block_c()
-                    .map(|s| Some(MultiturnPrompt::KpopBlock(s)))
-            }
-            MpcPhase::Done => Ok(None),
-        }
+        let (next_phase, prompt) = advance_mpc_phase(&mut self.builder, self.phase)?;
+        self.phase = next_phase;
+        Ok(Some(MultiturnPrompt::KpopBlock(prompt)))
     }
 
     pub const fn record_kpop_block_prompt_completed(&mut self) {}
 
-    /// Resets the phase back to A after a failed ACP transport attempt so the outer
+    /// Resets the phase back to Priors after a failed ACP transport attempt so the outer
     /// retry loop can call [`Self::next_prompt`] again.
     ///
     /// Strips any stale mpc plan `DONE` marker written during the failed attempt so a retry
     /// cannot short-circuit to success without restore or a fresh agent pass.
     pub(crate) fn reset_for_transport_retry(&mut self) {
-        self.phase = MpcPhase::A;
+        self.phase = MpcPhase::Priors;
         strip_mpc_plan_done_on_disk(&self.mpc_plan_path);
     }
 }
@@ -117,11 +113,14 @@ mod mpc_phase_tests {
 
     #[test]
     fn mpc_phase_derived_traits() {
+        let priors = MpcPhase::Priors;
         let a = MpcPhase::A;
-        let a2 = a;
-        assert_eq!(a, a2);
+        assert_eq!(priors, MpcPhase::Priors);
+        assert_eq!(a, a);
         assert_ne!(a, MpcPhase::Done);
+        assert_ne!(priors, MpcPhase::A);
         let _ = format!("{a:?}");
+        let _ = format!("{priors:?}");
         let _ = format!("{:?}", MpcPhase::Done);
     }
 }

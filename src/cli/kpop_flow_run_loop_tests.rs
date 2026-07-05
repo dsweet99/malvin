@@ -197,7 +197,7 @@ mod unix_cov {
             crate::test_utils::block_on_test_async(async {
                 use crate::repo_gates::checks_test_helpers::write_git_root_checks;
 
-                write_git_root_checks(workspace, b"kiss check\n");
+                write_git_root_checks(workspace, b"true\n");
                 let mock = workspace.join("mock-agent");
                 let _env = install_mock_agent_env(workspace, &mock);
                 let (kpop, shared, workflow) = test_kpop_args(0);

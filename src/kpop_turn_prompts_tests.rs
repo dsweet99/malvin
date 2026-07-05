@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::{PromptStore, render_header};
+use crate::prompts::{PromptStore, render_header, render_priors_mbc2_prompt};
 
 fn kpop_turn_test_context() -> WorkflowRenderContext {
     WorkflowRenderContext::from(HashMap::from([
@@ -21,6 +21,10 @@ fn kpop_turn_test_context() -> WorkflowRenderContext {
             "current_state".to_string(),
             "User: test\nRetry: not a retry".to_string(),
         ),
+        (
+            "priors_path".to_string(),
+            "./.malvin/logs/run/_kpop/priors.md".to_string(),
+        ),
     ]))
 }
 
@@ -34,7 +38,11 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
         ("mpc_block_a.md", "<<block_a req={{ user_request_path }}>>\n"),
         ("mpc_block_b.md", "<<block_b>>\n"),
         ("mpc_block_c.md", "<<block_c>>\n"),
-        ("mbc2.md", "MBC2\n"),
+        ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
+        (
+            "priors.md",
+            "Read {{ user_request_path }}. Write {{ priors_path }}.\n",
+        ),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -168,5 +176,19 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
     assert!(
         !out.contains(header.trim()),
         "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
+    );
+}
+
+#[test]
+fn kpop_priors_phase_expands_paths_and_wraps_mbc2() {
+    let (_tmp, store) = kpop_turn_test_store();
+    let base = kpop_turn_test_context();
+    let out = render_priors_mbc2_prompt(&store, base.as_map()).expect("priors phase");
+    assert!(out.contains("./.malvin/logs/run/request.md"));
+    assert!(out.contains("./.malvin/logs/run/_kpop/priors.md"));
+    assert!(out.contains("MBC2"));
+    assert!(
+        !out.contains("{{"),
+        "priors phase must not leave unresolved placeholders: {out}"
     );
 }

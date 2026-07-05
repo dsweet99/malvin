@@ -49,6 +49,7 @@ pub(crate) fn mini_done_backend_multiturn() -> AgentBackend {
             MockStep::Ok(mini_done_response()),
             MockStep::Ok(mini_done_response()),
             MockStep::Ok(mini_done_response()),
+            MockStep::Ok(mini_done_response()),
         ],
         1,
     )

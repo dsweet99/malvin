@@ -11,7 +11,7 @@ use common::{
 #[test]
 fn code_stops_when_kpop_writes_abort_result() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks_legacy_fast(&workspace, "kiss check\n");
+    seed_malvin_checks_legacy_fast(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable(&acp_mock_code_kpop_abort_result_js());
     let out = spawn_code(&CodeSpawn {

@@ -26,9 +26,12 @@ fn multiturn_exits_when_mpc_plan_hits_done() {
 }
 
 #[test]
-fn kpop_three_phases_then_stop_even_after_agent_writes_steps() {
+fn kpop_four_phases_then_stop_even_after_agent_writes_steps() {
     let common::MultiturnTestHarness { mut state, exp_path, _tmp } =
         common::setup_multiturn_stub_mt();
+    let priors = state.next_prompt().expect("phase Priors");
+    let MultiturnPrompt::KpopBlock(s) = priors.expect("phase Priors some");
+    assert!(s.contains("stub priors"));
     let first = state.next_prompt().expect("phase A");
     let MultiturnPrompt::KpopBlock(s) = first.expect("phase A some");
     assert!(s.contains("stub kpop block"));
@@ -40,6 +43,6 @@ fn kpop_three_phases_then_stop_even_after_agent_writes_steps() {
     let p3 = state.next_prompt().expect("phase C");
     assert!(p3.is_some(), "phase C should be offered");
     let p4 = state.next_prompt().expect("after all phases");
-    assert!(p4.is_none(), "no more prompts after all three phases");
+    assert!(p4.is_none(), "no more prompts after all four phases");
     assert!(hypotheses_emitted(&std::fs::read_to_string(&exp_path).unwrap()) >= 10);
 }

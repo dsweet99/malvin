@@ -9,9 +9,12 @@ use std::fs;
 #[cfg(unix)]
 use common::{
     acp_mock_checks_discovery_and_code_js, acp_mock_checks_discovery_no_write_js,
-    bin_path_with_fake_kiss, count_malvin_run_dirs, fast_test_home_workspace, seed_malvin_checks,
+    count_malvin_run_dirs, fast_test_home_workspace, seed_malvin_checks,
     spawn_malvin_code_discovery, CodeDiscoverySpawn,
 };
+
+#[cfg(unix)]
+const DISCOVERY_MAKEFILE: &str = "lint:\n\ttrue\n";
 
 #[cfg(unix)]
 fn committed_repo_with_plan() -> (tempfile::TempDir, std::path::PathBuf, std::path::PathBuf) {
@@ -26,6 +29,7 @@ fn committed_repo_with_plan() -> (tempfile::TempDir, std::path::PathBuf, std::pa
     );
     fs::write(workspace.join("README.md"), "hi\n").expect("write readme");
     fs::write(workspace.join("plan.md"), "build feature\n").expect("write plan");
+    fs::write(workspace.join("Makefile"), DISCOVERY_MAKEFILE).expect("write makefile");
     assert!(
         std::process::Command::new("git")
             .args(["add", "."])
@@ -53,7 +57,7 @@ fn committed_repo_with_plan() -> (tempfile::TempDir, std::path::PathBuf, std::pa
 #[test]
 fn malvin_code_runs_checks_discovery_when_checks_missing() {
     let (root, home, workspace) = committed_repo_with_plan();
-    let path = bin_path_with_fake_kiss(&root);
+    let path = format!("{}:{}", root.path().join("bin").display(), std::env::var("PATH").unwrap_or_default());
     let mock = acp_mock_checks_discovery_and_code_js();
     let out = spawn_malvin_code_discovery(&CodeDiscoverySpawn {
         project: &workspace,
@@ -70,8 +74,8 @@ fn malvin_code_runs_checks_discovery_when_checks_missing() {
     );
     let checks = fs::read_to_string(workspace.join(".malvin/checks")).expect("checks");
     assert!(
-        checks.lines().any(|l| l.trim() == "kiss check"),
-        "discovery should write kiss check; got: {checks:?}"
+        checks.lines().any(|l| l.trim() == "make lint"),
+        "discovery should write repo-derived make lint; got: {checks:?}"
     );
     assert!(
         count_malvin_run_dirs(&workspace, &home) >= 2,
@@ -83,7 +87,7 @@ fn malvin_code_runs_checks_discovery_when_checks_missing() {
 #[test]
 fn malvin_code_fails_when_discovery_does_not_write_checks() {
     let (root, home, workspace) = committed_repo_with_plan();
-    let path = bin_path_with_fake_kiss(&root);
+    let path = format!("{}:{}", root.path().join("bin").display(), std::env::var("PATH").unwrap_or_default());
     let mock = acp_mock_checks_discovery_no_write_js();
     let out = spawn_malvin_code_discovery(&CodeDiscoverySpawn {
         project: &workspace,
@@ -107,8 +111,8 @@ fn malvin_code_fails_when_discovery_does_not_write_checks() {
 #[test]
 fn malvin_code_skips_discovery_when_checks_preseeded() {
     let (root, home, workspace) = committed_repo_with_plan();
-    seed_malvin_checks(&workspace, "kiss check\n");
-    let path = bin_path_with_fake_kiss(&root);
+    seed_malvin_checks(&workspace, "true\n");
+    let path = format!("{}:{}", root.path().join("bin").display(), std::env::var("PATH").unwrap_or_default());
     let mock = acp_mock_checks_discovery_no_write_js();
     let out = spawn_malvin_code_discovery(&CodeDiscoverySpawn {
         project: &workspace,
@@ -127,5 +131,5 @@ fn malvin_code_skips_discovery_when_checks_preseeded() {
         "pre-seeded checks must skip discovery: {combined:?}"
     );
     let checks = fs::read_to_string(workspace.join(".malvin/checks")).expect("checks");
-    assert!(checks.contains("kiss check"));
+    assert!(checks.contains("true"));
 }

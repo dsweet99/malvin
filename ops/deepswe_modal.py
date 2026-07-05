@@ -9,8 +9,7 @@ The default ``solve`` path runs malvin and Harbor grade in one Modal sandbox wit
 Cursor API ``outbound_cidr_allowlist`` (``deepswe_run.py --runtime in-sandbox``). Grade-only
 runs use a separate ``block_network`` sandbox. Open egress remains
 available via ``run_deepswe_run_in_sandbox(open_network=True)`` for diagnostics.
-malvin is built from local source (``MALVIN_REPO``) when an in-sandbox agent image is required;
-kiss is installed from crates.io at the pinned stable release (see ``toolchain_repos.KISS_STABLE_VERSION``).
+malvin is built from local source (``MALVIN_REPO``) when an in-sandbox agent image is required.
 
 Prerequisites: Modal CLI authenticated; Cursor API key in ``CURSOR_AGENT_API_KEY``,
 ``CURSOR_API_KEY``, or ``AGENT_API_KEY``; malvin repo at parent of ``ops/``; DeepSWE task at
@@ -91,9 +90,6 @@ from deepswe_run import (
 )
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from toolchain_repos import (
-    KISS_STABLE_VERSION,
-    kiss_cargo_install_command,
-    kiss_repo_root,
     malvin_repo_root,
     validate_toolchain_repos,
 )
@@ -1896,8 +1892,7 @@ def mount_local_toolchain(
     *,
     malvin_repo: Path,
 ) -> modal.Image:
-    """Layer local malvin source and stable kiss from crates.io inside the Modal image."""
-    kiss_install = kiss_cargo_install_command()
+    """Layer local malvin source inside the Modal image."""
     return (
         image.add_local_dir(
             str(malvin_repo.resolve()),
@@ -1906,7 +1901,6 @@ def mount_local_toolchain(
             copy=True,
         )
         .run_commands(
-            f"bash -lc '{kiss_install}'",
             f"bash -lc 'RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked'",
             "curl -fsSL https://cursor.com/install | bash",
             "/root/.local/bin/agent --version || true",
@@ -2260,7 +2254,7 @@ def harbor_agent_image(
     deepswe_run_py: Path,
     checks: str = "",
 ) -> modal.Image:
-    """Harbor task image plus local malvin, stable kiss, cursor-agent, and deepswe_run."""
+    """Harbor task image plus local malvin, cursor-agent, and deepswe_run."""
     base = harbor_image(spec, dockerfile=dockerfile)
     augmented = base.run_commands(
         "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev python3-pip",
@@ -2645,9 +2639,6 @@ def _test_repo_roots() -> None:
     malvin_repo = malvin_repo_root()
     assert malvin_repo.name == "malvin"
     assert (malvin_repo / "ops" / "deepswe_modal.py").is_file()
-    kiss_repo = kiss_repo_root()
-    assert kiss_repo.name == "kiss"
-    assert KISS_STABLE_VERSION in kiss_cargo_install_command()
 
 
 def _test_default_deepswe_results_dir() -> None:
@@ -3782,7 +3773,7 @@ def _test_validate_toolchain_repos() -> None:
 
 
 def _test_offline_check_tool_install_commands() -> None:
-    cmds = offline_check_tool_install_commands("kiss check\nuv run mypy\npytest -sv tests\nruff check .")
+    cmds = offline_check_tool_install_commands("uv run mypy\npytest -sv tests\nruff check .")
     assert len(cmds) == 1
     assert "mypy" in cmds[0]
     assert "ruff" in cmds[0]
@@ -3792,7 +3783,7 @@ def _test_offline_check_tool_install_commands() -> None:
 
 
 def _test_offline_agent_checks() -> None:
-    raw = "kiss check\nuv run mypy\npytest -sv tests\nruff check .\n"
+    raw = "uv run mypy\npytest -sv tests\nruff check .\n"
     out = offline_agent_checks(raw)
     assert "uv run mypy" not in out
     assert "mypy\n" in out
@@ -4040,11 +4031,9 @@ def _test_mount_local_toolchain_recipe() -> None:
     assert uploads[0][2]["remote_path"] == MALVIN_TOOLCHAIN_REMOTE
     assert uploads[0][2]["ignore"] == malvin_upload_ignore()
     commands = next(call[1] for call in recorder.calls if call[0] == "run_commands")
-    assert len(commands) == 4
-    assert "kiss-ai" in commands[0]
-    assert "0.4.8" in commands[0]
-    assert MALVIN_TOOLCHAIN_REMOTE in commands[1]
-    assert "cursor.com/install" in commands[2]
+    assert len(commands) == 3
+    assert MALVIN_TOOLCHAIN_REMOTE in commands[0]
+    assert "cursor.com/install" in commands[1]
     env_calls = [call for call in recorder.calls if call[0] == "env"]
     assert env_calls[-1][1][0] == {"PATH": TOOLCHAIN_PATH}
 

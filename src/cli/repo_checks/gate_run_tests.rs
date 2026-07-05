@@ -1,20 +1,16 @@
-use std::path::Path;
-
 use super::*;
-use crate::output::{format_who_tag_delim, ERROR_WHO, MALVIN_WHO, WARNING_WHO};
 use crate::repo_checks::command_support::set_fake_command_dir;
 use crate::test_stderr_capture::capture_stderr_output;
+use crate::output::{format_who_tag_delim, ERROR_WHO, MALVIN_WHO, WARNING_WHO};
 
 #[cfg(unix)]
-fn install_zero_exit_gate_bins(bin_dir: &Path) {
+fn install_zero_exit_gate_bins(bin_dir: &std::path::Path) {
     use std::os::unix::fs::PermissionsExt;
-    for name in ["kiss", "lint"] {
-        let path = bin_dir.join(name);
-        std::fs::write(&path, "#!/bin/sh\nexit 0\n").expect("write fake bin");
-        let mut perms = std::fs::metadata(&path).expect("bin meta").permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&path, perms).expect("chmod fake bin");
-    }
+    let path = bin_dir.join("lint");
+    std::fs::write(&path, "#!/bin/sh\nexit 0\n").expect("write fake bin");
+    let mut perms = std::fs::metadata(&path).expect("bin meta").permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&path, perms).expect("chmod fake bin");
 }
 
 #[test]
@@ -40,9 +36,7 @@ fn prepare_repo_workspace_succeeds_on_empty_dir() {
 fn gate_run_private_helpers_succeed_on_empty_workspace() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
-    prepare_repo_workspace_with_details(work, RepoGateOutput::Tagged, None, true).expect("prepare");
-    ensure_kiss_clamp_if_needed_with_details(work, RepoGateOutput::Tagged, None)
-        .expect("kiss clamp skipped without sources");
+    prepare_repo_workspace_with_details(work).expect("prepare");
     run_malvin_checks_with_details(work, RepoGateOutput::Tagged, None, &[])
         .expect("empty malvin_checks");
     run_shell_command_line_with_details(work, RepoGateOutput::Tagged, None, "")
@@ -72,7 +66,7 @@ fn failing_gate_run_stderr_uses_malvin_not_error_or_warning() {
     let error_tag = format_who_tag_delim(ERROR_WHO);
     let warning_tag = format_who_tag_delim(WARNING_WHO);
     let stderr = capture_stderr_output(|| {
-        let _ = run_repo_workspace_gates_no_kiss_clamp(work, RepoGateOutput::Stderr, None);
+        let _ = run_repo_workspace_gates(work, RepoGateOutput::Stderr, None);
     });
     assert!(
         stderr.contains(&malvin_tag) && stderr.contains("failgate"),
@@ -98,7 +92,7 @@ fn minimal_git_workspace() -> (tempfile::TempDir, std::path::PathBuf) {
         "[package]\nname = \"m\"\nversion = \"0.1.0\"\n",
     )
     .expect("Cargo.toml");
-    crate::seed_malvin_checks(&work, "kiss check\nlint check\n");
+    crate::seed_malvin_checks(&work, "true\nlint check\n");
     (tmp, work)
 }
 
@@ -113,29 +107,13 @@ fn gate_run_wires_private_runners_on_minimal_workspace() {
     run_quality_gates_with_details(&work, RepoGateOutput::Tagged, None).expect("quality gates");
     run_repo_workspace_gates_with_details(&work, RepoGateOutput::Tagged, None)
         .expect("workspace gates");
-    run_repo_workspace_gates_no_kiss_clamp_with_details(&work, RepoGateOutput::Tagged, None)
-        .expect("workspace gates without kiss clamp");
-}
-
-#[test]
-fn kiss_cov_wires_tests_gates_unix_scan() {
-    #[cfg(unix)]
-    {
-        let (_tmp, work) = minimal_git_workspace();
-        assert!(work.join("Cargo.toml").is_file());
-    }
-}
-
-#[test]
-fn kiss_cov_kiss_clamp_ensure_with_details_ref() {
-    let _ = super::super::kiss_clamp::ensure_kiss_clamp_if_needed_with_details;
 }
 
 #[test]
 fn prefer_gate_outcome_over_checks_restore_keeps_gate_failure() {
-    let gate = Err("__MALVIN_GATE_FAILURE__:`kiss check` failed (exit 1)".into());
+    let gate = Err("__MALVIN_GATE_FAILURE__:`make lint` failed (exit 1)".into());
     let restore = Err("malvin_checks restore: blocked".into());
     let err = super::prefer_gate_outcome_over_checks_restore(gate, restore).unwrap_err();
-    assert!(err.contains("kiss check"));
+    assert!(err.contains("make lint"));
     assert!(!err.contains("malvin_checks restore"));
 }

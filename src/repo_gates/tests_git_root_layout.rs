@@ -21,7 +21,7 @@ fn kiss_cov_repo_gates_test_helpers() {
     let tmp = tempfile::tempdir().unwrap();
     let w = tmp.path();
     git_init(w);
-    write_checks(w, "kiss check\n");
+    write_checks(w, "true\n");
     write_legacy_checks(w, "legacy\n");
     let _ = stringify!(write_legacy_cwd_checks);
 }

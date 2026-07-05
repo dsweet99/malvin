@@ -11,7 +11,7 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 | Loop | Full gate-kpop loop (`KPopHardConstraints::EXPLAIN`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
 | Exit policy | mpc plan `DONE` in per-iteration session; workspace gates need not pass |
-| Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
+| Requires | No `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
 
 ## Intention
 

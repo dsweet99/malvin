@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn checks_discovery_kpop_request_expands_placeholders() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "make lint\n");
         let artifacts =
             create_kpop_run_artifacts("checks_discover", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
@@ -127,16 +127,16 @@ mod tests {
     }
 
     #[test]
-    fn finish_checks_discovery_accepts_valid_kiss_checks() {
+    fn finish_checks_discovery_accepts_valid_repo_checks() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "make lint\n");
         finish_checks_discovery(tmp.path()).expect("valid");
     }
 
     #[test]
     fn finish_checks_discovery_accepts_checks_with_leading_comment() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        crate::seed_malvin_checks(tmp.path(), "# header\nkiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "# header\nmake lint\n");
         finish_checks_discovery(tmp.path()).expect("valid with comment");
     }
 

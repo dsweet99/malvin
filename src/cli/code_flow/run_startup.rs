@@ -63,7 +63,7 @@ mod tests {
         );
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "build feature\n").expect("write plan");
-        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let old = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(tmp.path()).expect("chdir");
         let prepared = prepare_code_kpop_run(

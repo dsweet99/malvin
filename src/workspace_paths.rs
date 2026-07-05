@@ -87,7 +87,7 @@ pub fn malvin_home_logs_root() -> PathBuf {
     malvin_user_home_root().join("logs")
 }
 
-/// `~/.malvin/snapshots/` — session dotfile backups (kissconfig, gitignore tree, etc.).
+/// `~/.malvin/snapshots/` — session dotfile backups (checks, home config, gitignore tree, etc.).
 pub const MALVIN_SNAPSHOTS_DIR: &str = "snapshots";
 
 #[must_use]

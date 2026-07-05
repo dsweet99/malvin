@@ -18,7 +18,7 @@ const MAX_RECENT_DELIGHT_PITCHES: usize = 5;
 pub(crate) fn prepare_delight_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
+    let store = prepare_kpop_prompt_store(workflow, true)?;
     store
         .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;

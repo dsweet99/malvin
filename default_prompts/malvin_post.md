@@ -23,7 +23,7 @@ o|TIMING: wall = 78620.8s llm_wait = 75415.2s tool_calls = 54004.6s implement = 
     - All other unit tests passed 
 
 # Good
-- All kiss metric constraints satisfied.
+- All configured metric constraints satisfied.
  - Large dependency cycle gone.
 - All unit tests pass
 - All glances unit tests pass (except the four that didn't pass with official rich, either)
@@ -46,8 +46,8 @@ ERROR tests/test_webui.py::test_plugins - selenium.common.exceptions.SessionNotC
 
 # Bad
 - one very long-running unit test file (test_examples_progress.py); passed, though
-- some simplistic tests, created, apparently, to meet the high per-file test threshold (85%): test_kiss_coverage.py
+- some simplistic tests, created, apparently, to meet the high per-file test threshold (85%): test_coverage_helpers.py
     - not sure if this is bad, though; the do exercise code and assert; better than nothing
-- used importlib in test files to hide dependencies from kiss's imported_names_per_file metric. It could have just used more files.
+- used importlib in test files to hide dependencies from per-file import-count metrics. It could have just used more files.
 - 70% of time in tool calls. Maybe overly thorough with pytest. In practice, I often use testmon to speed things up. This experiment did not used tesmon.
 

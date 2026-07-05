@@ -3,15 +3,12 @@
 use crate::session_dotfile_backup::slots::{DotfileSpecRow, DOTFILE_ROWS};
 use std::path::Path;
 
-pub(super) const KISSCONFIG_FILE: &str = ".kissconfig";
-pub(super) const MALVIN_CONFIG_SLOT: usize = 3;
+pub(super) const MALVIN_CONFIG_SLOT: usize = 1;
 
 pub(super) const ROW_WITNESS_0: DotfileSpecRow = DOTFILE_ROWS[0];
 pub(super) const ROW_WITNESS_1: DotfileSpecRow = DOTFILE_ROWS[1];
 pub(super) const ROW_WITNESS_2: DotfileSpecRow = DOTFILE_ROWS[2];
 pub(super) const ROW_WITNESS_3: DotfileSpecRow = DOTFILE_ROWS[3];
-pub(super) const ROW_WITNESS_4: DotfileSpecRow = DOTFILE_ROWS[4];
-pub(super) const ROW_WITNESS_5: DotfileSpecRow = DOTFILE_ROWS[5];
 
 pub(super) fn dotfile_spec_row_field_count(row: &DotfileSpecRow) -> usize {
     let &DotfileSpecRow {

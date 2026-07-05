@@ -29,7 +29,7 @@ pub fn chmod755(path: &Path) {
 }
 
 #[cfg(unix)]
-pub fn write_fake_kiss_clamp_installs_kissconfig(kiss: &Path, kissconfig: &Path, marker: &Path) {
+pub fn write_fake_clamp_installs_kissconfig(kiss: &Path, kissconfig: &Path, marker: &Path) {
     std::fs::write(
         kiss,
         format!(
@@ -115,10 +115,10 @@ pub fn prepare_do_auto_clamp_case(
     std::fs::create_dir_all(ctx.workspace.join("src")).expect("mkdir src");
     std::fs::write(ctx.workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     let _ = std::fs::remove_file(ctx.workspace.join(".kissconfig"));
-    let marker = ctx.workspace.join("kiss_clamp_called.txt");
+    let marker = ctx.workspace.join("clamp_called.txt");
     let kissconfig = ctx.workspace.join(".kissconfig");
     let kiss = ctx.bin_dir.join("kiss");
-    write_fake_kiss_clamp_installs_kissconfig(&kiss, &kissconfig, &marker);
+    write_fake_clamp_installs_kissconfig(&kiss, &kissconfig, &marker);
     (ctx, marker, kissconfig)
 }
 
@@ -131,7 +131,7 @@ pub fn prepare_do_skip_clamp_case(
     std::fs::create_dir_all(ctx.workspace.join("src")).expect("mkdir src");
     std::fs::write(ctx.workspace.join("src/main.rs"), "fn main() {}").expect("write source");
     std::fs::write(ctx.workspace.join(".kissconfig"), existing_kiss).expect("write kissconfig");
-    let marker = ctx.workspace.join("kiss_clamp_called.txt");
+    let marker = ctx.workspace.join("clamp_called.txt");
     let kiss = ctx.bin_dir.join("kiss");
     write_fake_kiss_marker_fail(&kiss, &marker);
     (ctx, marker)

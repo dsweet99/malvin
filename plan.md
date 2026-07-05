@@ -1,157 +1,150 @@
-# Plan: Remove `malvin hello` and `do --repo-gates`
+# Plan: Remove kiss and hardcoded gate tools from malvin
 
 ## User Request
 
-- Remove `malvin hello`. Use `malvin do` instead.
-- Remove `--repo-gates` as an option to `do`.
+I'd like to remove kiss from malvin.
 
-## Pre-removal state (historical)
+Extended scope (same effort): **remove pytest, cargo, clippy, and all other malvin-owned linter/tester specifications.** Malvin and Modal/DeepSWE must not seed or mandate particular quality tools. Checks should come from **repo signals** (pre-commit, Makefile, existing `.malvin/checks`) or from **checks-discovery KPop** inferring what the repo already uses — not from malvin builtins.
 
-The sections below describe the tree **before** this plan was executed. They are kept for context only; the live code no longer matches.
+(Summarized from prior discussion: kiss as an agent quality gate has been net harmful on DeepSWE — misaligned with Harbor grading, drove API refactors, consumed agent budget.)
 
-### `malvin hello` subcommand (removed)
+## Current State
 
-Thin wrapper around `run_do` with a fixed prompt:
+### External quality gates (agent-facing)
 
-| File | Role |
-|------|------|
-| `src/cli/hello_flow.rs` | Defines `HelloArgs`, `HELLO_PROBE_PROMPT` (`"Hello"`), `run_hello()` → calls `run_do` with `repo_gates: false` |
-| `src/cli/args.rs` | `Commands::Hello(HelloArgs)` with doc comment "Verify Cursor ACP connectivity" |
-| `src/cli/entrypoint.rs` | Dispatches `Commands::Hello` → `run_hello` |
-| `src/lib.rs`, `src/cli/mod.rs` | Module export and `pub use run_hello` |
-| `default_prompts/docs/hello.md` | Embedded via `src/cli/command_docs.rs` |
+Malvin and DeepSWE today **specify** tools in several places:
 
-Before delegating to `do`, `run_hello` calls `enable_probe_stdout_tee()` and `set_stdout_suppressed(false)`. These differ from plain `malvin do Hello` in edge cases:
+| Area | Location | Runtime behavior |
+|------|----------|------------------|
+| Default gate command (Rust) | `src/repo_gates/mod.rs` | `builtin_gate_command_lines()` → **`kiss check` only**. Used by test helper `ensure_default_malvin_checks_file()` and `gate_restore_repair.rs` (replaces bare `kiss`-only checks). |
+| Default gate commands (DeepSWE Python) | `ops/deepswe_run.py` | `builtin_gate_command_lines(root)` adds **`kiss check`**, then **`pytest -sv tests`**, **`stestr run`**, **`cargo clippy …`**, **`cargo test` / `cargo nextest run`** when repo heuristics match. Merged after pre-commit/Makefile scan. |
+| Kiss clamp / dotfiles | `kiss_clamp.rs`, `session_dotfile_backup/` | `kiss clamp` at snapshot; backs up `.kissconfig` / `.kissignore`. |
+| CLI kiss requirement | `entrypoint.rs` | `code` / `tidy` require kiss on PATH. |
+| Checks discovery prompt | `init_constraints.md` | Agent discovers repo gates; **mandates `kiss check`**. |
+| DeepSWE discovery | `discover_deepswe_check_lines()` | Pre-commit + Makefile scan **plus** builtin fallbacks + stestr/pytest swap + `ensure_kiss_check_first()`. |
+| Sandbox prep | `ops/sandbox_prep.py` | `probe_check_tools()` — tool-specific probes for kiss, ruff, pytest, stestr, mypy, cargo. |
+| Modal offline installs | `deepswe_modal.py` | `offline_check_tool_install_commands(checks)` preinstalls mypy/ruff packages when **checks text** mentions them (reactive, not a default list). |
 
-| Concern | `malvin hello` | `malvin do Hello` |
-|---------|----------------|-------------------|
-| Interactive tee | yes (probe flag or TTY) | yes (TTY) |
-| Piped stdout, no `MALVIN_FORCE_STDOUT_TEE` | probe tee forced on | may differ |
-| `--background` | forces stdout unsuppressed | entrypoint suppresses stdout (`entrypoint.rs:108`) |
+**Malvin Rust core** has **no** pytest/cargo/clippy builtins today — only kiss. **DeepSWE ops** is where pytest/cargo/clippy/stestr defaults live.
 
-For typical interactive smoke checks the commands are equivalent. Deepswe already sets `MALVIN_FORCE_STDOUT_TEE=1` in `_relay_subprocess_stdout`, so the ops path is unaffected.
+**Gate flow today (code/tidy/do KPop):**
 
-**Probe tee (hello-only):**
+1. CLI requires kiss on PATH (code/tidy only).
+2. Checks discovery KPop if `.malvin/checks` missing/empty (mandates kiss in prompt).
+3. KPop snapshot may run `kiss clamp` (including `do` without CLI kiss check).
+4. Gates run `.malvin/checks` lines (often kiss + repo or DeepSWE-seeded pytest/cargo).
 
-| File | Role |
-|------|------|
-| `src/output/stdout_tee_env.rs` | `PROBE_STDOUT_TEE` atomic; `enable_probe_stdout_tee()` consulted by `agent_stdout_tee_enabled()` |
-| Only production caller | `src/cli/hello_flow.rs` |
+### Internal malvin kiss coverage (developer-only)
 
-**Hello referenced in match arms (must be cleaned):**
+`coverage_kiss/`, `*_kiss_cov_*` witnesses — malvin-repo CI only, not workspace agent gates. Optional Phase 4.
 
-- `src/cli/config_defaults.rs` — loop/mini defaults
-- `src/cli/entrypoint.rs` — `require_kiss_for_cli_command`
-- `src/cli/entrypoint_checks.rs` — `ensure_default_malvin_config_file` for `Do | Hello`
-- `src/cli/config_defaults_tests.rs` — parse/coverage test match arm
-- `src/cli/bare_invoke_tests.rs` — `hello_subcommand_does_not_resolve_as_bare_kpop` (dedicated test; must be **deleted**)
+### Adjacent behavior after removal
 
-**Docs:** `default_prompts/docs/malvin.md` commands table does **not** list `hello`. `hello.md` exists as a standalone `--doc` page.
-
-**Ops layer (separate CLI, not malvin):**
-
-| File | Role |
-|------|------|
-| `ops/deepswe_run.py` | `malvin_has_hello_subcommand()` probes `malvin hello --help`; `hello_probe_cmd()` prefers `malvin hello`, falls back to `malvin do Hello`; `run_malvin(command="hello")` and Click `hello` subcommand for Modal/host smoke tests |
-| `ops/deepswe_modal.py` | `--command` choice includes `"hello"`; passes through to `deepswe_run` |
-| `tests/test_deepswe_run_selftest_hello.py` | Python self-tests for deepswe `hello` (ops command name unchanged) |
-
-### `do --repo-gates` (removed)
-
-| File | Role |
-|------|------|
-| `src/cli/do_flow.rs` | `DoArgs.repo_gates: bool` (`#[arg(long, default_value_t = false)]`); `run_do_repo_gates_if_requested()` calls `repo_checks::run_repo_workspace_gates_no_kiss_clamp` when true |
-| `default_prompts/docs/do.md` | Documents `--repo-gates` option and example |
-| `default_prompts/docs/malvin.md` | Line 147: "`malvin do --repo-gates` and mid-loop gate iterations do **not** run discovery" |
-| `src/cli/repo_checks/gate_run.rs` | Doc comment: "Used by `malvin do --repo-gates`" on `run_repo_workspace_gates_no_kiss_clamp` |
-
-**Tests encoding current behavior:**
-
-| File | Test |
-|------|------|
-| `src/cli/do_flow_tests.rs` | `cli_accepts_do_repo_gates` |
-| `tests/do_stdout.rs` | `do_repo_gates_keeps_gate_diagnostics_off_stdout` |
-| `tests/do_stdout_clamp.rs` | `do_repo_gates_does_not_invoke_kiss_clamp_without_kissconfig` |
-| `src/cli_kiss_cov_smoke_tests.rs` | Asserts `repo_gates: false` on default `DoArgs` |
-| `src/cli/do_flow_kiss_cov_tests.rs`, `src/cli_kiss_cov_smoke_tests_ext.rs` | References `run_do_repo_gates_if_requested` |
-
-**Adjacent (unchanged):** Gate-loop commands (`code`, `tidy`, bare kpop, etc.) still run workspace gates via `repo_checks::run_repo_workspace_gates` in the kpop loop. `run_repo_workspace_gates_no_kiss_clamp` remains used by `src/cli/repo_checks/gate_run_tests.rs` — not dead code, only loses its CLI entry point.
+- **No malvin-owned gate commands:** Rust `builtin_gate_command_lines()` → `[]`. DeepSWE deletes `builtin_gate_command_lines()`, `DEFAULT_*_CHECK` constants, kiss-first and stestr-append logic.
+- **Checks discovery KPop stays:** Agent reads pre-commit, Makefile, CI, etc.; **no mandated tools** in `init_constraints.md`.
+- **DeepSWE scan-only:** `discover_deepswe_check_lines()` keeps pre-commit + Makefile + existing `.malvin/checks` merge; **no builtin append loop**. Empty scan → empty checks file (or newline-only); workflows must tolerate empty or fail at gate time.
+- **Existing user `.malvin/checks`:** Not rewritten by malvin.
+- **`malvin do` without kiss:** Removing snapshot clamp fixes snapshot failure when kiss missing.
 
 ## Requested Changes
 
-1. Remove the `malvin hello` subcommand; connectivity probing becomes `malvin do Hello` (optionally `malvin do Hello --thoughts`).
-2. Remove the `--repo-gates` flag from `malvin do`; `do` never runs workspace quality gates before the agent prompt.
-3. Update docs, tests, and ops helpers that reference the removed surfaces.
-
-## Behavioral impact
-
-| Removed surface | Replacement | Footgun |
-|-----------------|-------------|---------|
-| `malvin hello` | `malvin do Hello` | After removal, **`malvin hello` does not error** — clap routes it like `malvin foobar`: bare kpop with request `"hello"` via `resolve_bare_command` (`src/cli/bare_invoke.rs`). Document in `do.md`; no code change planned to block this. |
-| `malvin do --repo-gates` | none (use gate-loop commands) | Parse error after flag removal. |
+1. Remove kiss from agent pipeline (gates, clamp, dotfiles, CLI requirement, docs).
+2. Remove **all malvin/Modal hardcoded linter and tester commands** (pytest, cargo clippy, cargo test, stestr, kiss, etc.) from builtins and discovery fallbacks.
+3. **Keep checks-discovery KPop** — agent infers commands from repo files; malvin does not name specific tools in prompts or defaults.
+4. **DeepSWE:** keep pre-commit/Makefile scanning only; drop builtin fallbacks and tool-specific sandbox probing.
+5. Keep malvin functional when `.malvin/checks` is populated by discovery or the user.
 
 ## Q&A
 
-### Q1. Keep the ops `deepswe_run hello` command, or rename it?
+### Q1. Does “remove kiss” include malvin’s internal `coverage_kiss/` harness?
 
-**Answer:** Keep it. It is a deepswe smoke-test entry point (Modal CIDR/auth, `--host` local probe), not a malvin subcommand. Only change the malvin argv it builds: always `[malvin_cmd, "do", "Hello", *malvin_args]`. Remove `malvin_has_hello_subcommand`, `_hello_subcommand_cache`, and fallback logic in `hello_probe_cmd`.
+**Answer:** **No** for Phases 1–3. Optional Phase 4. `.pre-commit-config.yaml` malvin dev hooks are also out of scope unless Phase 4.
 
-### Q2. Delete `run_repo_workspace_gates_no_kiss_clamp` and probe-tee machinery?
+### Q2. What replaces missing `.malvin/checks`?
 
-**Answer:** Remove probe-tee only (`enable_probe_stdout_tee`, `PROBE_STDOUT_TEE`, exports in `src/output/mod.rs`, kiss-cov refs). Keep `run_repo_workspace_gates_no_kiss_clamp` — still exercised by `gate_run_tests.rs`; update its doc comment to drop the `do --repo-gates` reference.
+**Answer:**
 
-### Q3. Where should connectivity-probe guidance live after deleting `hello.md`?
+- **Malvin (`code`/`tidy`/`do`):** checks-discovery KPop runs when file missing/empty; agent writes commands found in repo config. No malvin default commands. Fail clearly if discovery finishes with no commands.
+- **DeepSWE:** `discover_deepswe_check_lines()` returns pre-commit + Makefile + existing checks only — **no builtins**. Empty repo → empty checks (not `kiss check\n` or pytest).
+- **Rust `builtin_gate_command_lines()` → `[]`**. Delete kiss repair paths in `gate_restore_repair.rs`; do not auto-fill checks.
 
-**Answer:** Add a short note to `default_prompts/docs/do.md` (Examples or Related commands): `malvin do Hello` for a one-turn Cursor ACP smoke check. Note that bare `malvin hello` (no subcommand) runs kpop, not a connectivity probe. Delete `default_prompts/docs/hello.md`.
+### Q3. Should malvin strip tools from existing `.malvin/checks`?
 
-### Q4. Restore hello's `--background` / piped-tee behavior on `do Hello`?
+**Answer:** **No.** Stop seeding/mandating; do not rewrite user files.
 
-**Answer:** No — out of scope. Callers that need forced tee (deepswe, CI) already set `MALVIN_FORCE_STDOUT_TEE=1`. Interactive `malvin do Hello` is sufficient for human smoke checks.
+### Q4. What happens to `.kissconfig` / `.kissignore`?
+
+**Answer:** Drop from session backup/restore and kiss merge/repair logic. Files may remain on disk unmanaged.
+
+### Q5. DeepSWE Docker/Modal image?
+
+**Answer:** Remove kiss install and kiss-first discovery. Remove builtin pytest/cargo/stestr seeding. Keep scanning repo config files only.
+
+### Q6. `sandbox_prep` and Modal offline tool installs?
+
+**Answer:** **Remove `probe_check_tools()` entirely** (user decision). Review `offline_check_tool_install_commands()` in `deepswe_modal.py` — it reacts to checks text, not malvin defaults; keep only if still needed for Harbor offline sandboxes, or simplify in Phase 3.
 
 ## Plan
 
-### Phase 1 — Remove `malvin hello`
+### Phase 1 — Remove kiss from core gate pipeline (Rust)
 
-- [x] Delete `src/cli/hello_flow.rs`
-- [x] Remove `hello_flow` module from `src/lib.rs`; remove `pub use run_hello` from `src/cli/mod.rs`
-- [x] Remove `Commands::Hello` and `HelloArgs` import from `src/cli/args.rs`
-- [x] Remove `Commands::Hello` dispatch from `src/cli/entrypoint.rs`; drop `run_hello` import
-- [x] Remove `Commands::Hello` arms from `src/cli/config_defaults.rs`, `src/cli/entrypoint_checks.rs`, `src/cli/entrypoint.rs` (`require_kiss_for_cli_command`)
-- [x] Remove `Commands::Hello` from `src/cli/command_docs.rs`; delete `default_prompts/docs/hello.md`
-- [x] Add connectivity-probe example and bare-`hello` footgun note to `default_prompts/docs/do.md`
-- [x] Remove probe-tee dead code from `src/output/stdout_tee_env.rs` and re-exports in `src/output/mod.rs`; update kiss-cov refs in `src/output/output_kiss_cov_tests.rs`
-- [x] Delete test `hello_subcommand_does_not_resolve_as_bare_kpop` in `src/cli/bare_invoke_tests.rs`; remove `Commands::Hello` match arm in `src/cli/config_defaults_tests.rs`
-- [x] Simplify `ops/deepswe_run.py`:
-  - `hello_probe_cmd` → always `[malvin_cmd, "do", "Hello", *malvin_args]`
-  - Remove `malvin_has_hello_subcommand`, `_hello_subcommand_cache`
-  - Remove `_test_run_malvin_hello_uses_subcommand` and `_test_run_malvin_hello_falls_back_to_do_when_subcommand_missing`
-  - Update `_test_hello_host_relays_stdout`: assert `"do"` and `"Hello"` in cmd (not `"hello"`)
-  - Update docstrings that say "malvin hello" to "malvin do Hello" where referring to malvin argv
-- [x] Leave deepswe Click command name `hello` and `ops/deepswe_modal.py` `--command hello` unchanged
+- [x] **`src/repo_gates/mod.rs`:** Remove kiss constants; `builtin_gate_command_lines()` → `[]`.
+- [x] **Delete:** `kiss_clamp.rs`, `kissconfig_warn.rs`; simplify `gate_run.rs`.
+- [x] **`entrypoint.rs` / `support_paths.rs`:** Remove kiss CLI requirement.
+- [x] **`session_dotfile_backup/slots.rs`:** Remove kiss rows; renumber slots. Update `mod.rs`, `wrappers.rs`, merge/restore.
+- [x] **`artifacts/mod.rs`:** Drop kiss re-exports.
+- [x] **Gate restore:** Delete kiss merge/repair in `gate_restore_merge.rs`, `gate_restore_checks.rs`, `gate_restore_repair.rs` (including `default_malvin_checks_bytes` kiss replacement).
+- [x] **Tests:** repo_gates, gate_run, session_dotfile_backup, do_stdout/clamp, kiss_*_gate_path, code_kpop_contract, acp_do_dotfiles, cli_parity, kpop_bridge, review_prep/gate_error regression.
 
 **Validation:**
 
-- `cargo test bare_invoke config_defaults command_docs do_flow`
-- `cargo build`; `rg 'Commands::Hello|hello_flow|enable_probe_stdout_tee' src/` — no hits
-- `rg 'malvin hello' src/` — no hits (footgun note lives in `default_prompts/docs/do.md`; ops docstrings updated separately)
-- `malvin do Hello --help` parses; `malvin hello` resolves to bare kpop (same as `malvin foobar`), **not** a connectivity probe
-- `python ops/deepswe_run.py self-test` — hello probe paths assert `[MALVIN_CMD, "do", "Hello", ...]`
+- `cargo test repo_gates`
+- `cargo test gate_run_tests`
+- `cargo test session_dotfile_backup`
+- `cargo test checks_discovery`
+- `cargo build --release`
+- `rg 'require_kiss|kiss_clamp|KISS_CHECK' src tests` — no matches
 
-### Phase 2 — Remove `do --repo-gates`
+### Phase 2 — Prompts, docs, checks discovery (no mandated tools)
 
-- [x] Remove `repo_gates` field from `DoArgs` in `src/cli/do_flow.rs`
-- [x] Delete `run_do_repo_gates_if_requested` and its call in `prepare_do_run`; remove unused `repo_checks` import if no longer needed in this file
-- [x] Remove `cli_accepts_do_repo_gates` and `repo_gates` assertions from `src/cli/do_flow_tests.rs`
-- [x] Remove integration tests: `do_repo_gates_keeps_gate_diagnostics_off_stdout` (`tests/do_stdout.rs`), `do_repo_gates_does_not_invoke_kiss_clamp_without_kissconfig` (`tests/do_stdout_clamp.rs`); keep remaining clamp tests that assert default `do` behavior
-- [x] Update `src/cli_kiss_cov_smoke_tests.rs` and `src/cli/do_flow_kiss_cov_tests.rs` / `src/cli_kiss_cov_smoke_tests_ext.rs` to drop `repo_gates` / `run_do_repo_gates_if_requested` refs
-- [x] Update `src/cli/entrypoint_checks.rs` test struct literal (`repo_gates: false` → field gone)
-- [x] Update docs: remove `--repo-gates` section and example from `default_prompts/docs/do.md`; rewrite line 147 in `default_prompts/docs/malvin.md` (mid-loop gate iterations only — drop `do --repo-gates` clause)
-- [x] Update doc comment on `run_repo_workspace_gates_no_kiss_clamp` in `src/cli/repo_checks/gate_run.rs`
+- [x] **`init_constraints.md`:** Remove “Always include `kiss check`…”. Keep “discover how the repo runs quality gates” with pre-commit/Makefile/CI examples — **do not name pytest, cargo, clippy, kiss, or other specific tools** as requirements or examples of what to always include.
+- [x] **Docs:** Remove kiss PATH requirement, kiss dotfiles from backup lists, kiss-metric success criteria (`code.md`, `tidy.md`, `malvin.md`, `kpop.md`, `do.md`, `inspire.md`, `kpop_program.md`, `malvin_post.md`).
+- [x] **`README.md`:** Remove `cargo install kiss-ai` agent prerequisite.
+- [x] **Discovery tests:** `checks_discovery_flow.rs`, `tests/checks_discovery.rs` — assert discovery produces **repo-derived** commands (e.g. from seeded Makefile/pre-commit fixture), not `kiss check` or hardcoded pytest/cargo.
+- [x] **Prep/workflow tests:** Replace `seed_malvin_checks(..., "kiss check\n")` with neutral fixtures (`make lint\n`, `true\n`, or repo-specific lines).
 
 **Validation:**
 
-- `cargo test do_flow do_stdout do_stdout_clamp` — passes; no tests reference `--repo-gates`
-- `malvin do --help` — no `--repo-gates` flag
-- `malvin do --repo-gates "x"` — clap parse error
-- `rg '--repo-gates|run_do_repo_gates|DoArgs.*repo_gates' src/ default_prompts/docs/` — no hits (`src/repo_gates/` module name is expected elsewhere)
-- `cargo test gate_run` — `run_repo_workspace_gates_no_kiss_clamp` tests still pass
+- `cargo test checks_discovery`
+- `grep -rE 'kiss check|kiss-ai|Always include.*kiss|pytest -sv|cargo clippy' default_prompts README.md` — no agent-facing mandated-tool references
+- Discovery prompt text contains no tool mandates
+
+### Phase 3 — DeepSWE and ops (scan-only, no builtins, no probe_check_tools)
+
+- [x] **`ops/deepswe_run.py`:**
+  - Delete `KISS_CHECK_COMMAND`, `DEFAULT_PYTEST_CHECK`, `DEFAULT_STESTR_CHECK`, `DEFAULT_RUST_*`, `builtin_gate_command_lines()`, `ensure_kiss_check_first()`, kiss install in Docker build, `.kiss` markers.
+  - **`discover_deepswe_check_lines()`:** Keep `precommit_hook_entries`, `makefile_gate_targets`, `existing_malvin_checks_lines`, `dedupe_check_lines` — **remove** builtin fallback loop, stestr/pytest swap that appends `DEFAULT_STESTR_CHECK`, and kiss-first wrapper.
+  - **`discover_deepswe_checks()`:** Empty/missing workspace → `""` or `"\n"`, not kiss/pytest.
+  - Remove helpers only used by deleted builtins (`python_ruff_and_pytest_flags`, `repo_uses_stestr` gate-append paths) if unused after scan-only discovery.
+  - Rewrite `_test_discover_deepswe_checks_*` — minimal repo expects **empty** lines; python repo with tests dir but no pre-commit expects **empty** (no auto-pytest); pre-commit fixture still discovers `ruff check`.
+- [x] **`ops/deepswe_modal.py`:** Remove kiss image install and kiss self-tests; align with scan-only discovery; review `offline_check_tool_install_commands` / `offline_agent_checks` (keep reactive installs or trim in same PR).
+- [x] **`ops/sandbox_prep.py`:** **Remove `probe_check_tools()`** and its call site in `prepare_task_sandbox`; delete probe self-tests.
+- [x] **`ops/toolchain_repos.py`:** Remove kiss helpers when unused.
+- [x] **`tests/test_deepswe_run_selftest_discover.py`:** Update for scan-only behavior; drop `test_deepswe_kiss_repo_root` if applicable.
+- [x] **Optional:** Delete `ops/kiss_triage/`, `tests/test_kiss_admin_tooling_contract.py`.
+
+**Validation:**
+
+- `python -m pytest tests/test_deepswe_run_selftest_discover.py -q`
+- `python -m pytest tests/test_ops_selftest.py -q` (sandbox_prep self-tests)
+- `rg -E 'DEFAULT_PYTEST|DEFAULT_RUST|DEFAULT_STESTR|KISS_CHECK|ensure_kiss_check_first|builtin_gate_command_lines|probe_check_tools' ops/` — no matches
+- Fixture repo with only `tests/test_foo.py` and no pre-commit → discovered checks **empty**
+- Fixture repo with `.pre-commit-config.yaml` ruff hook → discovered checks contain ruff line only
+
+### Phase 4 (optional) — Remove internal kiss dependency entirely
+
+- [ ] `coverage_kiss/`, `*_kiss_cov_*`, `.pre-commit-config.yaml` kiss hook.
+
+**Validation:** `cargo test` without kiss on PATH.
+
+**Note:** Independent of agent behavior; defer unless requested.

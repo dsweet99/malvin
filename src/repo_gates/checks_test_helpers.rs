@@ -46,7 +46,7 @@ pub(crate) fn mpc_plan_gate_exit_fixture(
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let (cmd, name, code) = if gate_passes {
-        (b"kiss check\n".as_slice(), "kiss", 0)
+        (b"true\n".as_slice(), "true", 0)
     } else {
         (b"false\n".as_slice(), "false", 1)
     };

@@ -14,7 +14,7 @@ use common::{
 #[test]
 fn revise_runs_kpop_when_gates_already_pass() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::write(workspace.join("doc.md"), "# Draft\n\nHedgy maybe text.\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_steps_js());
@@ -38,7 +38,7 @@ fn revise_runs_kpop_when_gates_already_pass() {
 #[test]
 fn revise_fails_when_doc_path_missing() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_steps_js());
     let out = spawn_revise(&ReviseSpawn {
@@ -65,7 +65,7 @@ fn revise_fails_when_doc_path_missing() {
 #[test]
 fn revise_fails_when_agent_solves_but_output_empty() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_kpop_empty_output_js());
@@ -84,7 +84,7 @@ fn revise_fails_when_agent_solves_but_output_empty() {
 #[test]
 fn revise_fails_when_agent_solves_but_output_missing() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_revise_mpc_plan_done_without_output_js());

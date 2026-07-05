@@ -111,7 +111,6 @@ pub use ansi_strip::strip_ansi_escapes;
 pub use artifacts::startup_request_tag_label;
 pub use artifacts::{
     MalvinChecksBackup, RunArtifacts, SessionDotfileBackups,
-    backup_workspace_kissconfig_if_present, backup_workspace_kissignore_if_present,
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_config_if_present,
     create_run_artifacts_from_text, restore_workspace_session_dotfiles,
 };
@@ -131,8 +130,6 @@ pub use run_timing::{
     RunTiming, TimingPhase, finalize_and_emit_run_timing, finalize_run_timing_json_only,
     print_summary_from_run_dir,
 };
-pub use session_dotfile_backup::KissConfigBackup;
-
 pub mod artifacts;
 mod child_health;
 mod test_poll;
@@ -155,7 +152,6 @@ pub use multiturn_prompt::MultiturnPrompt;
 pub mod support_paths;
 pub use support_paths::{
     agent_or_cursor_agent_bin, command_line, format_logs_dir, init_from_env, lookup_bin_on_path,
-    require_kiss_for_malvin,
 };
 pub mod workflow_context;
 pub mod orchestrator;

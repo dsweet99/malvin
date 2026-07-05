@@ -1,6 +1,6 @@
 //! Behavioral smoke tests for CLI helpers.
 
-use super::entrypoint::{require_kiss_for_cli_command, try_tokio_runtime};
+use super::entrypoint::try_tokio_runtime;
 use super::{Cli, Commands};
 
 #[test]
@@ -156,14 +156,6 @@ fn smoke_try_tokio_runtime_builds_multi_thread() {
 }
 
 #[test]
-fn smoke_require_kiss_for_cli_command_models_does_not_require_kiss_bin() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();
-    let cmd = cli.command.as_ref().expect("subcommand");
-    assert!(require_kiss_for_cli_command(cmd).is_ok());
-}
-
-#[test]
 fn smoke_tidy_effective_max_loops() {
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(0), 1);
     assert_eq!(super::tidy_flow::effective_tidy_max_loops(3), 3);
@@ -194,14 +186,6 @@ fn smoke_run_emit_echo_primary_noop_when_not_plain() {
     let plan = tmp.path().join("plan.md");
     std::fs::write(&plan, "plan").expect("write plan");
     super::run_emit::echo_primary_to_stdout(&plan, false).expect("echo");
-}
-
-#[test]
-fn smoke_require_kiss_allows_do_without_kiss_on_path() {
-    use clap::Parser;
-    let cli = Cli::try_parse_from(["malvin", "do", "task"]).expect("parse");
-    let cmd = cli.command.as_ref().expect("subcommand");
-    assert!(require_kiss_for_cli_command(cmd).is_ok());
 }
 
 #[test]

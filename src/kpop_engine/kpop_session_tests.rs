@@ -47,7 +47,7 @@ pub(crate) fn prepared_fixture(
 ) -> (KPopEnginePrepared, SessionDotfileBackups) {
     if with_checks {
         std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+        std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
     }
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts(command, Some(work)).expect("artifacts");

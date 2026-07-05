@@ -43,6 +43,21 @@ pub(crate) fn wire_kpop_engine_client(
     client.set_prompts_log_run_dir(Some(params.prepared.artifacts().run_dir.clone()));
 }
 
+fn prepare_gate_iteration_artifacts(
+    artifacts: &crate::artifacts::RunArtifacts,
+    iteration: usize,
+    work_dir: &std::path::Path,
+) -> Result<std::path::PathBuf, String> {
+    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
+    let exp_log_path =
+        crate::artifacts::ensure_gate_exp_log_file(artifacts, iteration).map_err(|e| e.to_string())?;
+    crate::artifacts::reset_mpc_plan_file_for_iteration(artifacts, iteration)
+        .map_err(|e| e.to_string())?;
+    crate::artifacts::reset_priors_file_for_iteration(artifacts, iteration)
+        .map_err(|e| e.to_string())?;
+    Ok(exp_log_path)
+}
+
 pub(crate) async fn run_kpop_engine_on_loop_iteration(
     ctx: KpopEngineLoopIterationCtx<'_>,
 ) -> Result<SessionDotfileBackups, String> {
@@ -50,14 +65,8 @@ pub(crate) async fn run_kpop_engine_on_loop_iteration(
     let iteration = ctx.iteration;
     let client = ctx.client;
     let work_dir = &params.prepared.artifacts().work_dir;
-    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
-    let exp_log_path = crate::artifacts::ensure_gate_exp_log_file(
-        params.prepared.artifacts(),
-        iteration,
-    )
-    .map_err(|e| e.to_string())?;
-    crate::artifacts::reset_mpc_plan_file_for_iteration(params.prepared.artifacts(), iteration)
-        .map_err(|e| e.to_string())?;
+    let exp_log_path =
+        prepare_gate_iteration_artifacts(params.prepared.artifacts(), iteration, work_dir)?;
 
     let session_dotfile_backups =
         SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)?;

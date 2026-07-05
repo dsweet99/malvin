@@ -92,6 +92,7 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
         ("result_path", "./.malvin/logs/run42/result.md"),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
         ("mpc_plan_path", "./.malvin/logs/run42/_kpop/mpc_plan.md"),
+        ("priors_path", "./.malvin/logs/run42/_kpop/priors.md"),
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),

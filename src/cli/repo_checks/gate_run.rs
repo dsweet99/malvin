@@ -2,13 +2,10 @@ use std::path::Path;
 
 use super::command_support::{apply_fake_path_if_present, run_command_failure};
 use super::gate_log::{emit_repo_gate_line, try_append_command_output};
-use super::kiss_clamp::kiss_clamp_needed;
-use super::kissconfig_warn::warn_kissconfig_test_coverage_if_needed;
 use super::types::{RepoGateFailure, RepoGateOutput, repo_gate_failure_to_string};
 
 /// Workspace quality gates for CLI workflows (`code`, `kpop`, `bug`, `tidy`, …).
 ///
-/// Runs workspace preparation (`kiss clamp` when applicable) before gate lines.
 /// When `.malvin/checks` is absent, returns an error (no silent seeding).
 /// Runs each non-empty line from `.malvin/checks` in order. Does not run `pre-commit`.
 /// With `run_log_dir: Some(path)`, gate output is also appended to `path/quality_gates.log`.
@@ -28,25 +25,6 @@ pub fn run_repo_workspace_gates(
     prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
 }
 
-/// Same as [`run_repo_workspace_gates`] except workspace preparation skips the `kiss clamp` step.
-///
-/// Used by gate-loop internals and unit tests; does not create or rewrite `.kissconfig` implicitly.
-pub fn run_repo_workspace_gates_no_kiss_clamp(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    run_log_dir: Option<&Path>,
-) -> Result<(), String> {
-    use crate::artifacts::{
-        backup_workspace_malvin_checks_if_present, restore_workspace_malvin_checks_backup,
-    };
-    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(work_dir)?;
-    let gate_result = run_repo_workspace_gates_no_kiss_clamp_with_details(work_dir, output, run_log_dir)
-        .map_err(repo_gate_failure_to_string);
-    let restore_result =
-        restore_workspace_malvin_checks_backup(work_dir, &malvin_checks_backup);
-    prefer_gate_outcome_over_checks_restore(gate_result, restore_result)
-}
-
 fn prefer_gate_outcome_over_checks_restore(
     gate_result: Result<(), String>,
     restore_result: Result<(), String>,
@@ -60,16 +38,7 @@ pub fn run_repo_workspace_gates_with_details(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), RepoGateFailure> {
-    prepare_repo_workspace_with_details(work_dir, output, run_log_dir, true)?;
-    run_quality_gates_with_details(work_dir, output, run_log_dir)
-}
-
-pub fn run_repo_workspace_gates_no_kiss_clamp_with_details(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    run_log_dir: Option<&Path>,
-) -> Result<(), RepoGateFailure> {
-    prepare_repo_workspace_with_details(work_dir, output, run_log_dir, false)?;
+    prepare_repo_workspace_with_details(work_dir)?;
     run_quality_gates_with_details(work_dir, output, run_log_dir)
 }
 
@@ -79,40 +48,15 @@ pub fn prepare_repo_workspace(
     output: RepoGateOutput,
     run_log_dir: Option<&Path>,
 ) -> Result<(), String> {
-    prepare_repo_workspace_with_details(work_dir, output, run_log_dir, true)
-        .map_err(repo_gate_failure_to_string)
+    let _ = output;
+    let _ = run_log_dir;
+    prepare_repo_workspace_with_details(work_dir).map_err(repo_gate_failure_to_string)
 }
 
-fn prepare_repo_workspace_with_details(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    run_log_dir: Option<&Path>,
-    kiss_clamp_prep: bool,
-) -> Result<(), RepoGateFailure> {
-    // Choke point: every gate run repairs kiss-clamp damage before prep or checks execute.
-    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)
+fn prepare_repo_workspace_with_details(work_dir: &Path) -> Result<(), RepoGateFailure> {
+    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)
         .map_err(RepoGateFailure::Message)?;
-    if kiss_clamp_prep {
-        ensure_kiss_clamp_if_needed_with_details(work_dir, output, run_log_dir)?;
-    }
-    warn_kissconfig_test_coverage_if_needed(work_dir, output, run_log_dir);
     Ok(())
-}
-
-fn ensure_kiss_clamp_if_needed_with_details(
-    work_dir: &Path,
-    output: RepoGateOutput,
-    run_log_dir: Option<&Path>,
-) -> Result<(), RepoGateFailure> {
-    if !kiss_clamp_needed(work_dir) {
-        return Ok(());
-    }
-    emit_repo_gate_line(
-        output,
-        "Running `kiss clamp` (existing code without .kissconfig)",
-        run_log_dir,
-    );
-    super::kiss_clamp::ensure_kiss_clamp_if_needed_with_details(work_dir, run_log_dir)
 }
 
 fn run_quality_gates_with_details(

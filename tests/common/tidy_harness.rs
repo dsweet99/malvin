@@ -41,14 +41,14 @@ pub fn spawn_tidy_with_timeout(
 }
 
 pub fn workspace_kiss_check_only(workspace: &Path) {
-    super::seed_malvin_checks(workspace, "kiss check\n");
+    super::seed_malvin_checks(workspace, "true\n");
 }
 
 pub fn bin_path_with_failing_gates(_root: &tempfile::TempDir, _trace: &Path) -> String {
     super::gate_bin_cache::static_failing_gates_path_var()
 }
 
-pub fn write_kiss_fail_until_n_passes(path: &Path, trace: &Path, fail_count: u32) {
+pub fn write_gate_fail_until_n_passes(path: &Path, trace: &Path, fail_count: u32) {
     let trace = trace.display();
     let script = format!(
         "#!/usr/bin/env sh\n\
@@ -74,9 +74,26 @@ pub fn bin_path_with_kiss_fail_until_n_passes(
     trace: &Path,
     fail_count: u32,
 ) -> String {
+    bin_path_with_named_gate_fail_until_n_passes(root, "kiss", trace, fail_count)
+}
+
+pub fn bin_path_with_lint_fail_until_n_passes(
+    root: &tempfile::TempDir,
+    trace: &Path,
+    fail_count: u32,
+) -> String {
+    bin_path_with_named_gate_fail_until_n_passes(root, "lint", trace, fail_count)
+}
+
+fn bin_path_with_named_gate_fail_until_n_passes(
+    root: &tempfile::TempDir,
+    tool: &str,
+    trace: &Path,
+    fail_count: u32,
+) -> String {
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
-    write_kiss_fail_until_n_passes(&bin_dir.join("kiss"), trace, fail_count);
+    write_gate_fail_until_n_passes(&bin_dir.join(tool), trace, fail_count);
     format!(
         "{}:{}",
         bin_dir.display(),

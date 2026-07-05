@@ -1,6 +1,6 @@
 use super::{
     command_accepts_session_name, dispatch_command, finish_entrypoint, prepare_cli_output,
-    print_command_error, require_kiss_for_cli_command, unsupported_name_error, Commands, Exit,
+    print_command_error, unsupported_name_error, Commands, Exit,
 };
 use crate::cli::args::Cli;
 use crate::cli::entrypoint_checks::ensure_malvin_checks_for_command;
@@ -70,13 +70,10 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
 }
 
 fn entrypoint_preflight(command: &Commands) -> Option<Exit> {
-    require_kiss_for_cli_command(command)
-        .err()
-        .or_else(|| ensure_malvin_checks_for_command(command).err())
-        .map(|e| {
-            print_command_error(&e);
-            Exit::Failure
-        })
+    ensure_malvin_checks_for_command(command).err().map(|e| {
+        print_command_error(&e);
+        Exit::Failure
+    })
 }
 
 fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::SessionNameGuard), Exit> {

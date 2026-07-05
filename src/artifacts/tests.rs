@@ -92,6 +92,27 @@ fn create_kpop_run_artifacts_writes_request_md() {
 }
 
 #[test]
+fn priors_path_points_at_kpop_scratch_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
+    let path = priors_path(&art);
+    assert!(path.ends_with("_kpop/priors.md"));
+    assert_eq!(path.parent().unwrap(), mpc_plan_path(&art).parent().unwrap());
+}
+
+#[test]
+fn reset_priors_file_creates_empty_scratch_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let art = create_run_artifacts_from_text("prompt", Some(tmp.path())).unwrap();
+    let path = reset_priors_file_for_iteration(&art, 1).unwrap();
+    assert_eq!(path, priors_path(&art));
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "");
+    std::fs::write(&path, "stale priors\n").unwrap();
+    reset_priors_file_for_iteration(&art, 2).unwrap();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "");
+}
+
+#[test]
 fn work_dir_for_path_uses_parent_or_dot() {
     assert_eq!(work_dir_for_path(Path::new("a/b.md")), PathBuf::from("a"));
     assert_eq!(work_dir_for_path(Path::new("plan.md")), PathBuf::from("."));

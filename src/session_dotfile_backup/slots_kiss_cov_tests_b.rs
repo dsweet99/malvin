@@ -1,9 +1,8 @@
 //! More kiss witnesses for [`super::slots`] (split for file-size limits).
 
 use super::slots_kiss_cov_shared::{
-    dotfile_spec_row_field_count, write_merged_default_malvin_config, KISSCONFIG_FILE,
-    MALVIN_CONFIG_SLOT, ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2, ROW_WITNESS_3,
-    ROW_WITNESS_4, ROW_WITNESS_5,
+    dotfile_spec_row_field_count, write_merged_default_malvin_config, MALVIN_CONFIG_SLOT,
+    ROW_WITNESS_0, ROW_WITNESS_1, ROW_WITNESS_2, ROW_WITNESS_3,
 };
 use super::slots::{
     dotfile_source_path, labels_for_test, restore_malvin_config_missing_for_test, DotfileSpecRow,
@@ -47,14 +46,7 @@ fn kiss_cov_dotfile_spec_row_copy_clone_traits() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_const_eval_witnesses() {
-    let witnesses = [
-        &ROW_WITNESS_0,
-        &ROW_WITNESS_1,
-        &ROW_WITNESS_2,
-        &ROW_WITNESS_3,
-        &ROW_WITNESS_4,
-        &ROW_WITNESS_5,
-    ];
+    let witnesses = [&ROW_WITNESS_0, &ROW_WITNESS_1, &ROW_WITNESS_2, &ROW_WITNESS_3];
     for row in witnesses {
         let &DotfileSpecRow {
             rel,
@@ -104,8 +96,6 @@ fn kiss_cov_dotfile_rows_destructure_by_value() {
         if slot == MALVIN_CONFIG_SLOT {
             assert!(path.to_string_lossy().contains("malvin"));
         } else if slot == 0 {
-            assert_eq!(path, Path::new("/tmp/work").join(KISSCONFIG_FILE));
-        } else if slot == 1 {
             assert_eq!(
                 path,
                 crate::resolve_malvin_checks_path(Path::new("/tmp/work"))
@@ -138,7 +128,7 @@ fn kiss_cov_dotfile_spec_row_all_literal_forms() {
 
 #[test]
 fn kiss_cov_dotfile_spec_row_same_file_value_witness() {
-    let row = DOTFILE_ROWS[5];
+    let row = DOTFILE_ROWS[3];
     let DotfileSpecRow {
         rel,
         home_subdir,

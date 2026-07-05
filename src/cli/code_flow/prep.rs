@@ -6,7 +6,7 @@ use crate::kpop_program::render_repo_program;
 pub fn prepare_code_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
+    let store = prepare_kpop_prompt_store(workflow, true)?;
     store
         .validate_exists("kpop_program.md")
         .map_err(|e: PromptError| e.0)?;
@@ -50,7 +50,7 @@ mod tests {
         std::fs::write(&plan, "ship widgets\n").expect("write plan");
         let artifacts =
             crate::artifacts::create_run_artifacts(&plan, Some(tmp.path())).expect("artifacts");
-        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
         let text = code_kpop_request(&store, &artifacts).expect("request");

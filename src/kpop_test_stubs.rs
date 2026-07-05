@@ -7,6 +7,13 @@ impl MtStubPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
+    pub fn kpop_priors(&self) -> Result<String, String> {
+        Ok("stub priors".to_string())
+    }
+
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails (stub never fails).
     pub fn kpop_block(&mut self) -> Result<String, String> {
         Ok("stub kpop block".to_string())
     }
@@ -28,6 +35,13 @@ impl MtStubPrompts {
 pub struct EchoPrompts;
 
 impl EchoPrompts {
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails (stub never fails).
+    pub fn kpop_priors(&self) -> Result<String, String> {
+        Ok("Kp".to_string())
+    }
+
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
@@ -60,6 +74,14 @@ impl CaptureBlocks {
     #[must_use]
     pub const fn new(blocks: Arc<Mutex<Vec<()>>>) -> Self {
         Self { blocks }
+    }
+
+    /// # Errors
+    ///
+    /// Returns `Err` when prompt assembly fails (stub never fails).
+    pub fn kpop_priors(&self) -> Result<String, String> {
+        self.blocks.lock().expect("blocks lock").push(());
+        Ok("stub priors".to_string())
     }
 
     /// # Errors

@@ -8,7 +8,7 @@ use crate::kpop_program::render_repo_program;
 pub fn prepare_tidy_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
+    let store = prepare_kpop_prompt_store(workflow, true)?;
     store
         .validate_exists("kpop_program.md")
         .map_err(|e: PromptError| e.0)?;
@@ -38,7 +38,7 @@ mod tests {
             .current_dir(tmp.path())
             .status()
             .expect("git init");
-        crate::seed_malvin_checks(tmp.path(), "kiss check\n");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
@@ -77,7 +77,7 @@ mod tests {
     fn kpop_program_context_includes_scope_and_gates() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".malvin/checks"), "kiss check\n").expect("checks");
+        std::fs::write(tmp.path().join(".malvin/checks"), "true\n").expect("checks");
         let artifacts =
             crate::artifacts::create_kpop_run_artifacts("tidy", Some(tmp.path())).expect("artifacts");
         let ctx = kpop_program_context(tmp.path(), "scope", &artifacts).expect("context");

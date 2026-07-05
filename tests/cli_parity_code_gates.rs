@@ -14,7 +14,7 @@ mod unix_tests {
     #[test]
     fn gate_loop_failure_surfaces_guidance_message() {
         let (root, home, workspace) = fast_test_home_workspace();
-        seed_malvin_checks(&workspace, "kiss check\n");
+        seed_malvin_checks(&workspace, "lint\n");
         let trace = root.path().join("gate-trace.log");
         let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
         let path = static_failing_gates_path_var();
@@ -46,7 +46,7 @@ mod unix_tests {
             "expected recovery guidance: {combined:?}"
         );
         assert!(
-            combined.contains("kiss check") || trace.exists(),
+            combined.contains("lint") || trace.exists(),
             "expected gate failure detail or trace log: combined={combined:?} trace={}",
             trace.display()
         );

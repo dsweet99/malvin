@@ -43,7 +43,7 @@ pub fn run_kpop_outer_loop(
     home_config_seed: Option<&str>,
 ) -> (std::process::Output, tempfile::TempDir) {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     if let Some(content) = home_config_seed {
         seed_malvin_config(&workspace, content);
     }

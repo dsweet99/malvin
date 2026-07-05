@@ -7,16 +7,15 @@ separate Modal sandbox with ``block_network=True``. Modal agent runs require a C
 API key (``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the
 shell that launches the command; interactive ``agent login`` is not available inside
 Modal sandboxes. ``solve --local TASK_NAME`` runs both phases in
-one local Docker container (agent image built from Harbor + malvin/kiss/cursor-agent).
+one local Docker container (agent image built from Harbor + malvin/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
 
 Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) replays Harbor
-Dockerfile editable-install steps against the mounted workspace and probes offline gate
-tools so the sandbox matches task intent.
+Dockerfile editable-install steps against the mounted workspace.
 
 Reused DeepSWE workspaces may accumulate root-owned sandbox dirs (``.stestr``,
-``.malvin/acp_spawn``, ``.kiss``); ``reset_workspace`` removes them via Docker when
+``.malvin/acp_spawn``); ``reset_workspace`` removes them via Docker when
 the host user cannot unlink them.
 
 Examples::
@@ -55,8 +54,6 @@ import click
 
 from sandbox_prep import prepare_task_sandbox
 from toolchain_repos import (
-    kiss_cargo_install_command,
-    kiss_repo_root,
     malvin_repo_root,
     resolve_malvin_cmd,
     validate_toolchain_repos,
@@ -68,14 +65,6 @@ except ModuleNotFoundError:  # pragma: no cover - py310
     import tomli as tomllib  # type: ignore[no-redef]
 
 
-KISS_CHECK_COMMAND = "kiss check"
-DEFAULT_PYTEST_CHECK = "pytest -sv tests"
-DEFAULT_STESTR_CHECK = "stestr run"
-DEFAULT_RUST_CLIPPY = (
-    "cargo clippy --all-targets --all-features -- -D warnings -W clippy::cargo"
-)
-DEFAULT_RUST_TEST = "cargo test"
-DEFAULT_RUST_NEXTEST = "cargo nextest run"
 MALVIN_CMD = resolve_malvin_cmd()
 IN_SANDBOX_TESTS_DIR = Path("/tests")
 IN_SANDBOX_LOGS_DIR = Path("/logs")
@@ -548,61 +537,6 @@ def visit_source_files(root: Path) -> list[Path]:
     return found
 
 
-def python_ruff_and_pytest_flags(root: Path) -> tuple[bool, bool]:
-    has_py = False
-    has_pytest = False
-    for path in visit_source_files(root):
-        if path.suffix != ".py":
-            continue
-        has_py = True
-        stem = path.stem
-        if stem.startswith("test_") or stem.endswith("_test"):
-            has_pytest = True
-    return has_py, has_pytest
-
-
-def repo_uses_stestr(root: Path) -> bool:
-    """True when repo test deps or tox config indicate stestr (not pytest)."""
-    for name in ("test-requirements.txt", "requirements-dev.txt", "requirements.txt"):
-        path = root / name
-        if path.is_file() and "stestr" in path.read_text(encoding="utf-8", errors="replace"):
-            return True
-    tox = root / "tox.ini"
-    if tox.is_file() and "stestr run" in tox.read_text(encoding="utf-8", errors="replace"):
-        return True
-    return False
-
-
-def cargo_nextest_available() -> bool:
-    proc = subprocess.run(
-        ["cargo", "nextest", "--version"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return proc.returncode == 0
-
-
-def default_rust_test_command() -> str:
-    if cargo_nextest_available():
-        return DEFAULT_RUST_NEXTEST
-    return DEFAULT_RUST_TEST
-
-
-def builtin_gate_command_lines(root: Path) -> list[str]:
-    out = [KISS_CHECK_COMMAND]
-    _has_py, has_pytest = python_ruff_and_pytest_flags(root)
-    if has_pytest:
-        if repo_uses_stestr(root):
-            out.append(DEFAULT_STESTR_CHECK)
-        else:
-            out.append(DEFAULT_PYTEST_CHECK)
-    if (root / "Cargo.toml").is_file():
-        out.append(DEFAULT_RUST_CLIPPY)
-        out.append(default_rust_test_command())
-    return out
-
-
 def existing_malvin_checks_lines(root: Path) -> list[str]:
     path = root / ".malvin" / "checks"
     if not path.is_file():
@@ -610,17 +544,12 @@ def existing_malvin_checks_lines(root: Path) -> list[str]:
     return [
         line.strip()
         for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and line.strip() != KISS_CHECK_COMMAND
+        if line.strip()
     ]
 
 
-def ensure_kiss_check_first(lines: list[str]) -> list[str]:
-    body = [line for line in lines if line.strip() != KISS_CHECK_COMMAND]
-    return [KISS_CHECK_COMMAND, *body]
-
-
 def discover_deepswe_check_lines(root: Path) -> list[str]:
-    """DeepSWE checks discovery: pre-commit/Makefile signals, existing checks, builtins; kiss first."""
+    """DeepSWE checks discovery: pre-commit/Makefile signals and existing checks only."""
     precommit = precommit_hook_entries(root)
     makefile = makefile_gate_targets(root)
     if precommit:
@@ -628,23 +557,16 @@ def discover_deepswe_check_lines(root: Path) -> list[str]:
     else:
         signal_lines = list(makefile)
     signal_lines.extend(existing_malvin_checks_lines(root))
-    merged = dedupe_check_lines(signal_lines)
-    for fallback in builtin_gate_command_lines(root):
-        if any(canonical_tool(line) == canonical_tool(fallback) for line in merged):
-            continue
-        merged.append(fallback)
-    if repo_uses_stestr(root):
-        merged = [line for line in merged if canonical_tool(line) != "pytest"]
-        if not any(canonical_tool(line) == "stestr" for line in merged):
-            merged.append(DEFAULT_STESTR_CHECK)
-    return ensure_kiss_check_first(merged)
+    return dedupe_check_lines(signal_lines)
 
 
 def discover_deepswe_checks(workspace: Path) -> str:
-    """Build default DeepSWE ``.malvin/checks`` from repo signals (not ``true``)."""
+    """Build default DeepSWE ``.malvin/checks`` from repo signals only."""
     if not workspace.is_dir():
-        return f"{KISS_CHECK_COMMAND}\n"
+        return "\n"
     lines = discover_deepswe_check_lines(workspace)
+    if not lines:
+        return "\n"
     return "\n".join(lines) + "\n"
 
 
@@ -872,6 +794,41 @@ def apply_patch(workspace: Path, patch: Path, *, dry_run: bool) -> None:
     run_cmd(["git", "apply", "--whitespace=nowarn", str(patch)], cwd=workspace, dry_run=dry_run)
 
 
+def harbor_test_patch_path(spec: TaskSpec) -> Path | None:
+    path = spec.tests_dir / "test.patch"
+    return path if path.is_file() else None
+
+
+_HARBOR_NEW_MODE_PYTEST_RE = re.compile(
+    r'elif\s*\[\s*"\$MODE"\s*=\s*"new"\s*\];\s*then\s*\n\s*(?P<cmd>[^\n]+)',
+    re.MULTILINE,
+)
+
+
+def harbor_new_tests_check_line(workspace: Path) -> str | None:
+    """Return the pytest command from workspace ``test.sh`` new mode, if present."""
+    test_sh = workspace / "test.sh"
+    if not test_sh.is_file():
+        return None
+    match = _HARBOR_NEW_MODE_PYTEST_RE.search(test_sh.read_text(encoding="utf-8"))
+    if not match:
+        return None
+    cmd = match.group("cmd").strip()
+    if not cmd or cmd.startswith("echo"):
+        return None
+    return cmd
+
+
+def apply_harbor_test_patch(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> bool:
+    """Apply Harbor ``test.patch`` so the agent can run hidden integration tests."""
+    patch_path = harbor_test_patch_path(spec)
+    if patch_path is None:
+        return False
+    click.echo(f"Applying Harbor test patch: {patch_path}")
+    apply_patch(workspace, patch_path, dry_run=dry_run)
+    return True
+
+
 def resolve_docker_image(
     spec: TaskSpec,
     image_override: str | None,
@@ -941,7 +898,7 @@ def build_local_agent_image(
     malvin_repo: Path,
     dry_run: bool,
 ) -> str:
-    """Extend the Harbor base image with Linux malvin, stable kiss, and cursor-agent."""
+    """Extend the Harbor base image with Linux malvin and cursor-agent."""
     agent_tag = local_agent_image_tag(spec.task_id)
     if not dry_run:
         probe = subprocess.run(
@@ -955,7 +912,6 @@ def build_local_agent_image(
     if dry_run:
         click.echo(f"Would build local agent image {agent_tag} from {base_image}")
         return agent_tag
-    kiss_install = kiss_cargo_install_command()
     dockerfile = f"""\
 FROM {base_image}
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \\
@@ -964,14 +920,13 @@ RUN pip3 install --break-system-packages click
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${{PATH}}"
 COPY malvin {MALVIN_TOOLCHAIN_REMOTE}
-RUN {kiss_install} && \\
-    RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked
+RUN RUSTC_WRAPPER= cargo install --path {MALVIN_TOOLCHAIN_REMOTE} --locked
 RUN curl -fsSL https://cursor.com/install | bash
 ENV PATH="{TOOLCHAIN_PATH}"
 """
     click.echo(
         f"Building local agent image {agent_tag} from {base_image} "
-        "(malvin/kiss/cursor-agent; may take several minutes)..."
+        "(malvin/cursor-agent; may take several minutes)..."
     )
     with tempfile.TemporaryDirectory(prefix="deepswe-agent-") as tmp:
         build_dir = Path(tmp)
@@ -1918,7 +1873,7 @@ def _task_kernel_options(f: Any) -> Any:
         "--checks",
         "checks_override",
         default=None,
-        help="Override .malvin/checks content (default: kiss check plus repo linters and unit tests).",
+        help="Override .malvin/checks content (default: repo signals from pre-commit/Makefile/existing checks).",
     )(f)
     f = click.option(
         "--runtime",
@@ -1978,7 +1933,7 @@ def _local_solve_options(f: Any) -> Any:
         "--checks",
         "checks_override",
         default=None,
-        help="Override .malvin/checks content (default: kiss check plus repo linters and unit tests).",
+        help="Override .malvin/checks content (default: repo signals from pre-commit/Makefile/existing checks).",
     )(f)
     f = click.option(
         "--skip-grade",
@@ -2229,11 +2184,6 @@ def _test_resolve_local_task_dir() -> None:
         return
     resolved = resolve_local_task_dir("bandit-interprocedural-taint-checks")
     assert resolved == sample.resolve(), (resolved, sample)
-
-
-def _test_kiss_repo_root() -> None:
-    root = kiss_repo_root()
-    assert root.name == "kiss", root
 
 
 def _test_local_agent_image_tag() -> None:
@@ -2497,7 +2447,7 @@ def _test_discover_deepswe_checks_minimal() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         lines = discover_deepswe_check_lines(root)
-        assert lines == [KISS_CHECK_COMMAND], lines
+        assert lines == [], lines
 
 
 def _test_discover_deepswe_checks_python_repo() -> None:
@@ -2510,9 +2460,8 @@ def _test_discover_deepswe_checks_python_repo() -> None:
             "def test_x():\n    assert True\n", encoding="utf-8"
         )
         text = discover_deepswe_checks(root)
-        assert text.startswith(f"{KISS_CHECK_COMMAND}\n")
-        assert "ruff check ." not in text
-        assert DEFAULT_PYTEST_CHECK in text
+        assert text == "\n"
+        assert "pytest" not in text
 
 
 def _test_discover_deepswe_checks_stestr_repo() -> None:
@@ -2524,8 +2473,7 @@ def _test_discover_deepswe_checks_stestr_repo() -> None:
         )
         (root / "test-requirements.txt").write_text("stestr>=2.5.0\n", encoding="utf-8")
         text = discover_deepswe_checks(root)
-        assert DEFAULT_STESTR_CHECK in text
-        assert DEFAULT_PYTEST_CHECK not in text
+        assert text == "\n"
 
 
 def _test_discover_deepswe_checks_stestr_drops_stale_pytest() -> None:
@@ -2533,13 +2481,10 @@ def _test_discover_deepswe_checks_stestr_drops_stale_pytest() -> None:
         root = Path(tmp)
         malvin_dir = root / ".malvin"
         malvin_dir.mkdir()
-        (malvin_dir / "checks").write_text(
-            f"{KISS_CHECK_COMMAND}\n{DEFAULT_PYTEST_CHECK}\n", encoding="utf-8"
-        )
+        (malvin_dir / "checks").write_text("pytest -sv tests\n", encoding="utf-8")
         (root / "test-requirements.txt").write_text("stestr>=2.5.0\n", encoding="utf-8")
         text = discover_deepswe_checks(root)
-        assert DEFAULT_STESTR_CHECK in text
-        assert DEFAULT_PYTEST_CHECK not in text
+        assert text == "pytest -sv tests\n"
 
 
 def _test_discover_deepswe_checks_precommit() -> None:
@@ -2551,8 +2496,7 @@ def _test_discover_deepswe_checks_precommit() -> None:
             encoding="utf-8",
         )
         lines = discover_deepswe_check_lines(root)
-        assert lines[0] == KISS_CHECK_COMMAND
-        assert any("ruff check" in line for line in lines)
+        assert lines == ["ruff check ."]
 
 
 def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
@@ -2564,9 +2508,7 @@ def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
             "mypy .\nruff check .\n", encoding="utf-8"
         )
         lines = discover_deepswe_check_lines(root)
-        assert lines[0] == KISS_CHECK_COMMAND
-        assert "mypy ." in lines
-        assert "ruff check ." in lines
+        assert lines == ["mypy .", "ruff check ."]
 
 
 def _test_write_plan_and_checks_discovers() -> None:
@@ -2602,8 +2544,7 @@ def _test_write_plan_and_checks_discovers() -> None:
             dry_run=False,
         )
         checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
-        assert checks.startswith(f"{KISS_CHECK_COMMAND}\n")
-        assert "pytest" in checks
+        assert checks == "\n"
         plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
         assert plan_text == "fix it\n"
 
@@ -3207,7 +3148,7 @@ def _test_prepare_task_sandbox_dry_run() -> None:
         result = prepare_task_sandbox(
             spec,
             workspace,
-            checks=f"{KISS_CHECK_COMMAND}\n",
+            checks="true\n",
             dry_run=True,
         )
         assert result.sync_commands == (), result
@@ -3216,7 +3157,6 @@ def _test_prepare_task_sandbox_dry_run() -> None:
 
 def run_self_tests() -> None:
     _test_malvin_repo_root()
-    _test_kiss_repo_root()
     _test_default_deepswe_tasks_root()
     _test_resolve_local_task_dir()
     _test_local_agent_image_tag()

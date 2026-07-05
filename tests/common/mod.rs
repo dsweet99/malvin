@@ -102,7 +102,8 @@ pub use kpop_harness::{spawn_kpop, KpopSpawn};
 #[cfg(unix)]
 pub use tidy_harness::{
     TidySpawn, bin_path_with_failing_gates, bin_path_with_fake_kiss,
-    bin_path_with_kiss_fail_until_n_passes, spawn_tidy, spawn_tidy_with_timeout,
+    bin_path_with_kiss_fail_until_n_passes, bin_path_with_lint_fail_until_n_passes,
+    spawn_tidy, spawn_tidy_with_timeout,
     workspace_kiss_check_only,
 };
 pub use gate_bin_cache::{static_fake_kiss_path_var, static_failing_gates_path_var, write_failing_gate_tools};

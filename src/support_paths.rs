@@ -29,16 +29,6 @@ pub fn agent_or_cursor_agent_bin() -> Option<PathBuf> {
     None
 }
 
-#[allow(clippy::missing_errors_doc)]
-pub fn require_kiss_for_malvin(subcommand: &str) -> Result<(), String> {
-    if lookup_bin_on_path("kiss").is_some() {
-        return Ok(());
-    }
-    Err(format!(
-        "`kiss` is not installed or not on PATH; install it with `cargo install kiss-ai` before running `malvin {subcommand}`."
-    ))
-}
-
 pub fn init_from_env() {
     let _ = COMMAND_LINE.get_or_init(|| std::env::args().collect::<Vec<_>>().join(" "));
     crate::malvin_sandbox::init_malvin_spawn_baseline();
@@ -130,30 +120,6 @@ mod env_path_tests {
         };
 
         assert_eq!(got, Some(candidate));
-    }
-
-    #[test]
-    fn require_kiss_for_malvin_errors_with_install_hint_when_kiss_missing() {
-        let _guard = test_env_lock();
-        let tmp = tempdir().unwrap();
-        let isolated = tmp.path().join("bin");
-        fs::create_dir_all(&isolated).unwrap();
-
-        let old_path = std::env::var_os("PATH");
-        let err = unsafe {
-            std::env::set_var("PATH", &isolated);
-            let e = require_kiss_for_malvin("code").unwrap_err();
-            match &old_path {
-                Some(v) => std::env::set_var("PATH", v),
-                None => std::env::remove_var("PATH"),
-            }
-            e
-        };
-
-        assert!(
-            err.contains("cargo install kiss-ai") && err.contains("malvin code"),
-            "unexpected message: {err:?}"
-        );
     }
 }
 

@@ -2,6 +2,7 @@ use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 use crate::kpop_test_stubs::{CaptureBlocks, EchoPrompts, MtStubPrompts};
 
 fn assert_all_phases(p: &mut KpopMultiturnPrompts<'_>) {
+    let _ = p.kpop_priors().unwrap();
     let _ = p.kpop_block().unwrap();
     let _ = p.kpop_block_a().unwrap();
     let _ = p.kpop_block_b().unwrap();

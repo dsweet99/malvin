@@ -12,27 +12,23 @@ pub use create::{
 };
 pub(crate) use create::{
     ensure_gate_exp_log_file, ensure_quality_gates_log_file, reset_mpc_plan_file_for_iteration,
+    reset_priors_file_for_iteration,
 };
 
 pub use crate::session_dotfile_backup::{
-    GitignoreBackup, KissConfigBackup, KissignoreBackup, MalvinChecksBackup, MalvinConfigBackup,
-    MalvinConfigWorkspaceBackup, VisionBackup,
-    SessionDotfileBackups, SessionDotfileParts, backup_workspace_gitignore_if_present,
-    backup_workspace_gitignore_if_present_with_id, backup_workspace_kissconfig_if_present,
-    backup_workspace_kissconfig_if_present_with_id, backup_workspace_kissignore_if_present,
-    backup_workspace_kissignore_if_present_with_id, backup_workspace_malvin_checks_if_present,
-    backup_workspace_malvin_checks_if_present_with_id,
+    GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
+    VisionBackup, SessionDotfileBackups, SessionDotfileParts,
+    backup_workspace_gitignore_if_present, backup_workspace_gitignore_if_present_with_id,
+    backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_gitignore_backup, restore_workspace_kissconfig_backup,
-    restore_workspace_kissignore_backup, restore_workspace_malvin_checks_backup,
+    restore_workspace_gitignore_backup, restore_workspace_malvin_checks_backup,
     restore_workspace_malvin_config_backup, restore_workspace_malvin_config_workspace_backup,
     restore_workspace_vision_backup, backup_workspace_vision_if_present,
-    backup_workspace_vision_if_present_with_id,
-    restore_workspace_session_dotfiles, merge_and_sanitize_for_gate_restore,
-    merge_for_gate_restore, repair_clamp_damaged_dotfiles_on_disk,
-    sanitize_clamp_damaged_dotfiles_in_bundle,
+    backup_workspace_vision_if_present_with_id, restore_workspace_session_dotfiles,
+    merge_and_sanitize_for_gate_restore, merge_for_gate_restore,
+    repair_invalid_malvin_home_config_on_disk, sanitize_invalid_malvin_home_config_in_bundle,
 };
 
 pub use md_request::{
@@ -120,6 +116,12 @@ impl RunArtifacts {
 #[must_use]
 pub fn mpc_plan_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("_kpop").join("mpc_plan.md")
+}
+
+/// Agent-written priors scratch file rendered as `{{ priors_path }}` in `priors.md` and `mpc_block_a.md`.
+#[must_use]
+pub fn priors_path(artifacts: &RunArtifacts) -> PathBuf {
+    artifacts.run_dir.join("_kpop").join("priors.md")
 }
 
 /// Marker left when outer-loop iteration `iteration` ended with mpc plan `DONE`.

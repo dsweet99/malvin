@@ -22,7 +22,7 @@ const DISCOVERY_COMMAND: &str = "checks_discover";
 pub(super) fn prepare_checks_discovery_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
+    let store = prepare_kpop_prompt_store(workflow, true)?;
     store
         .validate_exists("init_constraints.md")
         .map_err(|e: PromptError| e.0)?;

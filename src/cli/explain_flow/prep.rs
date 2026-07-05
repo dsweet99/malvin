@@ -90,7 +90,7 @@ pub(crate) fn explain_output_paths(work_dir: &Path) -> ExplainResolvedOutputs {
 pub(crate) fn prepare_explain_kpop_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    let store = prepare_kpop_prompt_store(workflow, false)?;
+    let store = prepare_kpop_prompt_store(workflow, true)?;
     store
         .validate_exists("kpop_program_creative.md")
         .map_err(|e: PromptError| e.0)?;

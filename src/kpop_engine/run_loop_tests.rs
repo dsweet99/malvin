@@ -35,9 +35,9 @@ pub(crate) fn gate_early_exit_fixture() -> (
     crate::repo_checks::FakeCommandDirGuard,
 ) {
     let tmp = tempfile::tempdir().expect("tempdir");
-    crate::repo_gates::checks_test_helpers::write_git_root_checks(tmp.path(), "kiss check\n");
+    crate::repo_gates::checks_test_helpers::write_git_root_checks(tmp.path(), "true\n");
     let (bin, guard) = crate::test_agent_client::write_fake_gate(tmp.path(), "kiss", 0);
-    std::fs::write(crate::malvin_checks_path(tmp.path()), "kiss check\n").expect("checks");
+    std::fs::write(crate::malvin_checks_path(tmp.path()), "true\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(tmp.path()).expect("snapshot");
@@ -80,7 +80,7 @@ fn write_gate_checks_file(work: &std::path::Path, content: &str) {
 fn fail_gate_prepared_fixture(
     work: &std::path::Path,
 ) -> (SessionDotfileBackups, crate::kpop_engine::KPopEnginePrepared) {
-    write_gate_checks_file(work, "kiss check\n");
+    write_gate_checks_file(work, "true\n");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
@@ -133,7 +133,7 @@ fn fail_gate_after_exhausted_restores_disk_without_rerunning_gates_for_code() {
     assert!(err.contains("quality gates did not pass"));
     assert_eq!(
         std::fs::read_to_string(crate::malvin_checks_path(tmp.path())).expect("read"),
-        "kiss check\n",
+        "true\n",
         "exhausted fail path must rewind dotfiles without invoking gates again"
     );
 }

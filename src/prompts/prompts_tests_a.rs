@@ -70,6 +70,56 @@ fn validate_kpop_prompts_requires_mbc2_when_requested() {
         "expected mbc2 missing error, got {:?}",
         err.0
     );
+    assert!(
+        err.0.contains("priors.md"),
+        "expected priors missing error, got {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn validate_kpop_prompts_requires_priors_when_mbc2_present() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    write_kpop_prompt_fixtures(root);
+    std::fs::write(root.join("mbc2.md"), "mbc2").unwrap();
+    let store = PromptStore::with_root(root.to_path_buf());
+    let err = store
+        .validate_kpop_prompts(crate::prompts::KpopPromptValidation {
+            require_mbc2: true,
+        })
+        .unwrap_err();
+    assert!(
+        err.0.contains("priors.md"),
+        "expected priors missing error, got {:?}",
+        err.0
+    );
+    assert!(
+        !err.0.contains("mbc2.md"),
+        "mbc2 is present; error was {:?}",
+        err.0
+    );
+}
+
+#[test]
+fn render_priors_mbc2_prompt_expands_paths_and_wraps_mbc2() {
+    let store = PromptStore::default_store();
+    let ctx = HashMap::from([
+        (
+            "user_request_path".to_string(),
+            "./logs/run/user_request.md".to_string(),
+        ),
+        (
+            "priors_path".to_string(),
+            "./logs/run/_kpop/priors.md".to_string(),
+        ),
+    ]);
+    let out = render_priors_mbc2_prompt(&store, &ctx).expect("render priors mbc2");
+    assert!(out.contains("./logs/run/user_request.md"));
+    assert!(out.contains("./logs/run/_kpop/priors.md"));
+    assert!(out.contains("MBC2"));
+    assert!(out.contains("Generate at least 30"));
+    assert!(!out.contains("{{"));
 }
 
 #[test]
@@ -122,6 +172,18 @@ fn validate_required_fails_when_kpop_program_missing() {
         "custom prompt roots must fail fast when kpop_program.md is absent: {}",
         err.0
     );
+}
+
+#[test]
+fn default_kpop_program_avoids_mandated_tool_names() {
+    let body = crate::prompts::default_file("kpop_program.md").expect("kpop_program.md");
+    let banned = ["kiss", "pytest", "cargo clippy", "kiss-ai"];
+    for needle in banned {
+        assert!(
+            !body.contains(needle),
+            "kpop_program.md must not name mandated tools; found {needle:?} in template"
+        );
+    }
 }
 
 #[test]

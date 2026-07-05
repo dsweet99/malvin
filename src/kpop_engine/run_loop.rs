@@ -69,7 +69,7 @@ pub(crate) fn restore_carry_forward_before_iteration_snapshot(
 ) -> Result<(), String> {
     if let Some(prior) = carry_forward {
         let mut sanitized = prior.clone();
-        crate::session_dotfile_backup::sanitize_clamp_damaged_dotfiles_in_bundle(
+        crate::session_dotfile_backup::sanitize_invalid_malvin_home_config_in_bundle(
             &mut sanitized,
             work_dir,
         );
@@ -94,7 +94,7 @@ fn exhausted_loop_gate_ok(
 }
 
 fn prepare_kpop_engine_loop(work_dir: &Path) -> Result<SessionDotfileBackups, String> {
-    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
+    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     SessionDotfileBackups::snapshot_after_ensuring_home_config(work_dir)
 }
 

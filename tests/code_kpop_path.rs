@@ -1,4 +1,4 @@
-//! `malvin code` fails fast when `kiss` is not on `PATH`.
+//! CLI entry does not require `kiss` on `PATH` for agent-backed subcommands.
 
 #[cfg(unix)]
 mod common;
@@ -25,37 +25,6 @@ fn run_malvin_path_timed(
     cmd.env("PATH", path_bin);
     configure(&mut cmd);
     command_output_with_timeout(&mut cmd, MALVIN_TEST_CMD_TIMEOUT).expect("spawn malvin")
-}
-
-fn assert_malvin_subcommand_fails_without_kiss(args: &[&str]) {
-    let path_root = tempfile::tempdir().unwrap();
-    let isolated_bin = path_root.path().join("bin");
-    std::fs::create_dir_all(&isolated_bin).unwrap();
-
-    #[cfg(unix)]
-    let out = run_malvin_path_timed(&isolated_bin, |c| {
-        c.args(args);
-    });
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("PATH", &isolated_bin)
-        .args(args)
-        .output()
-        .expect("spawn malvin");
-
-    assert!(
-        !out.status.success(),
-        "expected non-zero exit; stdout/stderr: {out:?}"
-    );
-    let msg = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        msg.contains("kiss") && msg.contains("cargo install kiss-ai"),
-        "expected kiss + install hint; got: {msg:?}"
-    );
 }
 
 fn assert_malvin_subcommand_not_kiss_gated_without_auth(
@@ -104,24 +73,29 @@ fn assert_malvin_subcommand_not_kiss_gated_without_auth(
 }
 
 #[test]
-fn malvin_code_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["code", "x"]);
+fn malvin_code_is_not_kiss_gated_when_kiss_missing_from_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    std::fs::write(work.path().join("plan.md"), "plan\n").unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["code", "plan.md"], Some(work.path()));
 }
 
 #[test]
-fn malvin_tidy_fails_fast_when_kiss_missing_from_path() {
-    assert_malvin_subcommand_fails_without_kiss(&["tidy"]);
+fn malvin_tidy_is_not_kiss_gated_when_kiss_missing_from_path() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["tidy"], Some(work.path()));
 }
 
 #[test]
-fn delight_does_not_require_kiss_on_path() {
+fn delight_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["delight"], Some(work.path()));
 }
 
 #[test]
-fn revise_does_not_require_kiss_on_path() {
+fn revise_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
     std::fs::write(work.path().join("doc.md"), "# Doc\n").unwrap();
@@ -129,41 +103,10 @@ fn revise_does_not_require_kiss_on_path() {
 }
 
 #[test]
-fn explain_does_not_require_kiss_on_path() {
+fn explain_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();
     assert_malvin_subcommand_not_kiss_gated_without_auth(&["explain", "topic"], Some(work.path()));
-}
-
-#[test]
-fn malvin_tidy_kiss_missing_error_cites_tidy_subcommand() {
-    let path_root = tempfile::tempdir().unwrap();
-    let isolated_bin = path_root.path().join("bin");
-    std::fs::create_dir_all(&isolated_bin).unwrap();
-    #[cfg(unix)]
-    let out = run_malvin_path_timed(&isolated_bin, |c| {
-        c.arg("tidy");
-    });
-    #[cfg(not(unix))]
-    let out = Command::new(env!("CARGO_BIN_EXE_malvin"))
-        .env("PATH", &isolated_bin)
-        .arg("tidy")
-        .output()
-        .expect("spawn malvin");
-    assert!(!out.status.success());
-    let msg = format!(
-        "{}{}",
-        String::from_utf8_lossy(&out.stdout),
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert!(
-        msg.contains("`malvin tidy`"),
-        "expected error to name the tidy subcommand; got: {msg:?}"
-    );
-    assert!(
-        !msg.contains("`malvin code`"),
-        "expected tidy path not to reuse code subcommand text; got: {msg:?}"
-    );
 }
 
 #[test]

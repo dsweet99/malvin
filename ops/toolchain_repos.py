@@ -1,4 +1,4 @@
-"""Shared malvin/kiss repo root helpers for ops Modal scripts."""
+"""Shared malvin repo root helpers for ops Modal scripts."""
 
 from __future__ import annotations
 
@@ -7,14 +7,6 @@ import shutil
 from pathlib import Path
 
 import click
-
-KISS_CRATE = "kiss-ai"
-KISS_STABLE_VERSION = "0.4.8"
-
-
-def kiss_cargo_install_command() -> str:
-    """Install the pinned stable kiss release from crates.io."""
-    return f"cargo install {KISS_CRATE} --version {KISS_STABLE_VERSION} --locked"
 
 
 def malvin_repo_root() -> Path:
@@ -34,14 +26,6 @@ def resolve_malvin_cmd() -> str:
             return str(candidate)
     on_path = shutil.which("malvin")
     return on_path if on_path else "malvin"
-
-
-def kiss_repo_root() -> Path:
-    """Return the kiss source tree (``KISS_REPO`` or sibling ``kiss`` repo)."""
-    override = os.environ.get("KISS_REPO")
-    if override:
-        return Path(override).resolve()
-    return malvin_repo_root().parent / "kiss"
 
 
 def validate_toolchain_repos() -> Path:

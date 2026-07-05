@@ -7,8 +7,7 @@ editable installs and leave site-packages inconsistent with the checkout
 (HISTORY: pydantic v1 vs v2 on FastAPI tasks).
 
 ``prepare_task_sandbox`` replays Dockerfile dependency-install RUN lines against
-the mounted workspace (skipping clone/checkout and network fetches), then probes
-that quality-gate tools are callable offline.
+the mounted workspace (skipping clone/checkout and network fetches).
 """
 
 from __future__ import annotations
@@ -27,10 +26,6 @@ def _normalize_run_command(command: str) -> str:
     no_continuations = command.replace("\\", " ")
     return " ".join(no_continuations.split())
 
-
-def _canonical_tool(line: str) -> str:
-    parts = line.strip().split()
-    return parts[0].lower() if parts else ""
 
 
 def _run_shell(command: str, workspace: Path) -> tuple[int, str]:
@@ -259,83 +254,6 @@ def registry_image_cache_bust_commands(dockerfile: Path | None = None) -> list[s
     ]
 
 
-def probe_check_tools(checks: str, workspace: Path) -> list[str]:
-    """Return human-readable errors when gate tools are missing or broken offline."""
-    errors: list[str] = []
-    seen: set[str] = set()
-    for line in checks.splitlines():
-        trimmed = line.strip()
-        if not trimmed:
-            continue
-        tool = _canonical_tool(trimmed)
-        if tool in seen:
-            continue
-        seen.add(tool)
-        if tool == "kiss":
-            proc = subprocess.run(
-                ["kiss", "--version"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                errors.append("kiss is not callable")
-        elif tool == "ruff":
-            proc = subprocess.run(
-                ["ruff", "--version"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                errors.append("ruff is not callable")
-        elif tool == "pytest":
-            proc = subprocess.run(
-                ["python3", "-c", "import pytest"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                detail = (proc.stderr or proc.stdout or "").strip()
-                errors.append(f"pytest import failed: {detail or 'unknown'}")
-        elif tool == "stestr":
-            proc = subprocess.run(
-                ["stestr", "--version"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                errors.append("stestr is not callable")
-        elif tool == "mypy":
-            proc = subprocess.run(
-                ["mypy", "--version"],
-                cwd=workspace,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if proc.returncode != 0:
-                errors.append("mypy is not callable")
-        elif tool == "cargo":
-            if "clippy" in trimmed or "test" in trimmed or "nextest" in trimmed:
-                proc = subprocess.run(
-                    ["cargo", "--version"],
-                    cwd=workspace,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-                if proc.returncode != 0:
-                    errors.append("cargo is not callable")
-    return errors
-
-
 def prepare_task_sandbox(
     spec: Any,
     workspace: Path,
@@ -343,7 +261,7 @@ def prepare_task_sandbox(
     checks: str,
     dry_run: bool = False,
 ) -> SandboxPrepResult:
-    """Replay Harbor Dockerfile install steps and verify offline gate-tool readiness."""
+    """Replay Harbor Dockerfile install steps against the mounted workspace."""
     workspace = workspace.resolve()
     sync_commands = workspace_sync_commands_from_dockerfile(spec.dockerfile)
     if sync_commands:
@@ -363,26 +281,11 @@ def prepare_task_sandbox(
             )
             click.echo(f"Prep sync warning (exit {code})", err=True)
 
-    probe_errors: list[str] = []
-    if checks.strip():
-        if dry_run:
-            click.echo("Prep probe (dry-run): would verify gate tools offline")
-        else:
-            probe_errors = probe_check_tools(checks, workspace)
-            if probe_errors:
-                for err in probe_errors:
-                    click.echo(f"Prep probe failed: {err}", err=True)
-
-    ok = not probe_errors
-    if not ok and not dry_run:
-        raise click.ClickException(
-            "Sandbox prep failed: " + "; ".join(probe_errors)
-        )
     return SandboxPrepResult(
         sync_commands=tuple(sync_commands),
         sync_warnings=tuple(sync_warnings),
-        probe_errors=tuple(probe_errors),
-        ok=ok,
+        probe_errors=(),
+        ok=True,
     )
 
 
@@ -480,13 +383,6 @@ def _test_should_replay_skips_apt_and_git() -> None:
     assert should_replay_run_command("go mod download")
 
 
-def _test_probe_check_tools_unknown_tool_ignored() -> None:
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp:
-        errors = probe_check_tools("custom-linter .\n", Path(tmp))
-        assert errors == []
-
 
 def _test_registry_image_cache_bust_commands() -> None:
     import tempfile
@@ -528,7 +424,6 @@ def run_self_tests() -> None:
     _test_dockerfile_bulk_pip_commands_fastapi()
     _test_workspace_sync_commands_fastapi_task_dockerfile()
     _test_should_replay_skips_apt_and_git()
-    _test_probe_check_tools_unknown_tool_ignored()
     click.echo("sandbox_prep self-tests passed")
 
 

@@ -1,6 +1,4 @@
-use crate::session_dotfile_backup::gate_restore_merge::{
-    kissconfig_low_coverage_threshold, merge_for_gate_restore,
-};
+use crate::session_dotfile_backup::gate_restore_merge::merge_for_gate_restore;
 use crate::session_dotfile_backup::{
     DotfileBackupPayload, DotfileBackupState, GitignoreBackup, GitignoreFileBackup,
     SessionDotfileBackups,
@@ -23,16 +21,9 @@ fn gitignore_present(bytes: &[u8]) -> GitignoreBackup {
     }
 }
 
-fn bundle_with(
-    gitignore: GitignoreBackup,
-    kissconfig: DotfileBackupState,
-    checks: DotfileBackupState,
-    kissignore: DotfileBackupState,
-) -> SessionDotfileBackups {
+fn bundle_with(gitignore: GitignoreBackup, checks: DotfileBackupState) -> SessionDotfileBackups {
     SessionDotfileBackups {
-        kissconfig,
         malvin_checks: checks,
-        kissignore,
         malvin_config: DotfileBackupState::Missing,
         gitignore,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
@@ -49,13 +40,7 @@ fn merge_rejects_deleted_vision() {
             bytes: bytes.to_vec(),
         }],
     };
-    let anchor = bundle_with(
-        GitignoreBackup::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-        DotfileBackupState::Missing,
-    );
-    let mut anchor = anchor;
+    let mut anchor = bundle_with(GitignoreBackup::Missing, DotfileBackupState::Missing);
     anchor.vision = vision_present(b"baseline\n");
     let mut progress = anchor.clone();
     progress.vision = crate::session_dotfile_backup::VisionBackup::Missing;
@@ -64,53 +49,34 @@ fn merge_rejects_deleted_vision() {
 }
 
 #[test]
-fn merge_rejects_deleted_gitignore_and_bare_kiss_checks() {
+fn merge_rejects_deleted_gitignore() {
     let anchor = bundle_with(
         gitignore_present(b"baseline\n"),
-        present(b"[gate]\ntest_coverage_threshold = 90\n"),
-        present(b"kiss check .\n"),
-        DotfileBackupState::Missing,
+        present(b"make lint\n"),
     );
-    let progress = bundle_with(
-        GitignoreBackup::Missing,
-        present(b"[gate]\ntest_coverage_threshold = 0\n"),
-        present(b"kiss\n"),
-        DotfileBackupState::Missing,
-    );
+    let progress = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let merged = merge_for_gate_restore(&anchor, &progress);
     assert!(matches!(merged.gitignore, GitignoreBackup::Present { .. }));
     assert!(matches!(merged.malvin_checks, DotfileBackupState::Present(_)));
-    let DotfileBackupState::Present(ref payload) = merged.kissconfig else {
-        panic!("expected kissconfig present");
-    };
-    assert!(!kissconfig_low_coverage_threshold(&payload.bytes));
 }
 
 #[test]
-fn merge_rejects_kissconfig_and_home_config_tamper() {
+fn merge_rejects_home_config_tamper() {
     let anchor = SessionDotfileBackups {
-        kissconfig: present(b"x\n"),
-        malvin_checks: present(b"kiss check .\n"),
-        kissignore: DotfileBackupState::Missing,
+        malvin_checks: present(b"make lint\n"),
         malvin_config: present(b"mem_limit_gb = 7\n"),
         gitignore: GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let progress = SessionDotfileBackups {
-        kissconfig: present(b"TAMPERED\n"),
-        malvin_checks: present(b"kiss check .\n"),
-        kissignore: DotfileBackupState::Missing,
+        malvin_checks: present(b"make lint\n"),
         malvin_config: present(b"TAMPERED\n"),
         gitignore: GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,
         malvin_config_workspace: DotfileBackupState::Missing,
     };
     let merged = merge_for_gate_restore(&anchor, &progress);
-    let DotfileBackupState::Present(ref kiss) = merged.kissconfig else {
-        panic!("expected kissconfig");
-    };
-    assert_eq!(kiss.bytes, b"x\n");
     let DotfileBackupState::Present(ref cfg) = merged.malvin_config else {
         panic!("expected malvin_config");
     };
@@ -121,83 +87,26 @@ fn merge_rejects_kissconfig_and_home_config_tamper() {
 fn merge_rejects_tampered_malvin_checks() {
     let anchor = bundle_with(
         GitignoreBackup::Missing,
-        DotfileBackupState::Missing,
-        present(b"kiss check\n"),
-        DotfileBackupState::Missing,
+        present(b"make lint\n"),
     );
-    let progress = bundle_with(
-        GitignoreBackup::Missing,
-        DotfileBackupState::Missing,
-        present(b"TAMPERED\n"),
-        DotfileBackupState::Missing,
-    );
+    let progress = bundle_with(GitignoreBackup::Missing, present(b"TAMPERED\n"));
     let merged = merge_for_gate_restore(&anchor, &progress);
     let DotfileBackupState::Present(ref payload) = merged.malvin_checks else {
         panic!("expected malvin_checks present");
     };
-    assert_eq!(payload.bytes, b"kiss check\n");
+    assert_eq!(payload.bytes, b"make lint\n");
 }
 
 #[test]
 fn merge_keeps_agent_expanded_malvin_checks() {
-    let anchor = bundle_with(
-        GitignoreBackup::Missing,
-        DotfileBackupState::Missing,
-        present(b"kiss check\n"),
-        DotfileBackupState::Missing,
-    );
+    let anchor = bundle_with(GitignoreBackup::Missing, present(b"make lint\n"));
     let progress = bundle_with(
         GitignoreBackup::Missing,
-        DotfileBackupState::Missing,
-        present(b"kiss check\nlint check\n"),
-        DotfileBackupState::Missing,
+        present(b"make lint\nruff check .\n"),
     );
     let merged = merge_for_gate_restore(&anchor, &progress);
     let DotfileBackupState::Present(ref payload) = merged.malvin_checks else {
         panic!("expected malvin_checks present");
     };
-    assert_eq!(payload.bytes, b"kiss check\nlint check\n");
-}
-
-#[test]
-fn merge_prefers_progress_that_repairs_clamp_damage_when_anchor_corrupted() {
-    let anchor = bundle_with(
-        GitignoreBackup::Missing,
-        present(b"[gate]\ntest_coverage_threshold = 0\n"),
-        present(b"kiss\n"),
-        DotfileBackupState::Missing,
-    );
-    let progress = bundle_with(
-        GitignoreBackup::Missing,
-        present(b"[gate]\ntest_coverage_threshold = 90\n"),
-        present(b"kiss check .\n"),
-        DotfileBackupState::Missing,
-    );
-    let merged = merge_for_gate_restore(&anchor, &progress);
-    let DotfileBackupState::Present(ref kiss) = merged.kissconfig else {
-        panic!("expected kissconfig");
-    };
-    assert!(!kissconfig_low_coverage_threshold(&kiss.bytes));
-    let DotfileBackupState::Present(ref checks) = merged.malvin_checks else {
-        panic!("expected malvin_checks");
-    };
-    assert_eq!(checks.bytes, b"kiss check .\n");
-}
-
-#[test]
-fn merge_keeps_agent_created_kissignore() {
-    let anchor = bundle_with(
-        gitignore_present(b"baseline\n"),
-        present(b"[gate]\ntest_coverage_threshold = 90\n"),
-        present(b"kiss check .\n"),
-        DotfileBackupState::Missing,
-    );
-    let progress = bundle_with(
-        gitignore_present(b"baseline\n"),
-        present(b"[gate]\ntest_coverage_threshold = 90\n"),
-        present(b"kiss check .\n"),
-        present(b"target/\n"),
-    );
-    let merged = merge_for_gate_restore(&anchor, &progress);
-    assert!(matches!(merged.kissignore, DotfileBackupState::Present(_)));
+    assert_eq!(payload.bytes, b"make lint\nruff check .\n");
 }

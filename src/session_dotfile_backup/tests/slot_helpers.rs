@@ -6,21 +6,23 @@ use super::slots::{
     backup_slot, dotfile_source_path, labels_for_test, restore_slot, DotfileSpecRow, DOTFILE_ROWS,
 };
 
+fn empty_parts() -> crate::session_dotfile_backup::SessionDotfileParts {
+    crate::session_dotfile_backup::SessionDotfileParts {
+        malvin_checks: DotfileBackupState::Missing,
+        malvin_config: DotfileBackupState::Missing,
+        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
+        vision: crate::session_dotfile_backup::VisionBackup::Missing,
+        malvin_config_workspace: DotfileBackupState::Missing,
+    }
+}
+
 #[test]
 fn restore_excluding_malvin_checks_on_bundle() {
     let tmp = tempfile::tempdir().unwrap();
     let work = tmp.path();
     std::fs::create_dir_all(work.join(".malvin")).unwrap();
     std::fs::write(work.join(crate::MALVIN_CHECKS_REL), "c\n").unwrap();
-    let bundle = SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        kissconfig: DotfileBackupState::Missing,
-        malvin_checks: DotfileBackupState::Missing,
-        kissignore: DotfileBackupState::Missing,
-        malvin_config: DotfileBackupState::Missing,
-        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    });
+    let bundle = SessionDotfileBackups::from_parts(empty_parts());
     bundle.restore_excluding_malvin_checks(work).unwrap();
     assert!(work.join(crate::MALVIN_CHECKS_REL).is_file());
 }
@@ -51,11 +53,9 @@ fn kiss_cov_dotfile_spec_row_by_value_all_slots() {
         assert!(!copy_err.is_empty());
         assert!(!restore_copy_err.is_empty());
         let path = dotfile_source_path(slot, std::path::Path::new("/tmp/work"));
-        if slot == 3 {
+        if slot == 1 {
             assert!(path.to_string_lossy().contains("malvin"));
         } else if slot == 0 {
-            assert_eq!(path, std::path::Path::new("/tmp/work").join(rel));
-        } else if slot == 1 {
             assert_eq!(
                 path,
                 crate::resolve_malvin_checks_path(std::path::Path::new("/tmp/work"))
@@ -80,36 +80,25 @@ fn dotfile_slot_helpers_and_session_restore_noop() {
     let mut id = |n: usize| format!("slot{n}");
     let _ = backup_slot(0, tmp.path(), &mut id);
     let _ = restore_slot(tmp.path(), &DotfileBackupState::Missing, 1);
-    let bundle = SessionDotfileBackups::from_parts(crate::session_dotfile_backup::SessionDotfileParts {
-        kissconfig: DotfileBackupState::Missing,
-        malvin_checks: DotfileBackupState::Missing,
-        kissignore: DotfileBackupState::Missing,
-        malvin_config: DotfileBackupState::Missing,
-        gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
-        vision: crate::session_dotfile_backup::VisionBackup::Missing,
-        malvin_config_workspace: DotfileBackupState::Missing,
-    });
+    let bundle = SessionDotfileBackups::from_parts(empty_parts());
     restore_workspace_session_dotfiles(tmp.path(), &bundle).unwrap();
 }
 
 #[test]
-fn dotfile_source_path_slot_three_uses_home_config() {
+fn dotfile_source_path_home_config_slot_uses_malvin_config_path() {
     crate::test_utils::with_isolated_home(|work| {
         crate::seed_malvin_config(work, "home-config\n");
         let mut id = |n: usize| format!("cfg{n}");
-        let backup = backup_slot(3, work, &mut id).unwrap();
+        let backup = backup_slot(1, work, &mut id).unwrap();
         let DotfileBackupState::Present(payload) = backup else {
             panic!("expected home config backup");
         };
         assert_eq!(String::from_utf8(payload.bytes).unwrap(), "home-config\n");
         assert!(payload.backup_path.starts_with(snapshot_category_dir("malvin_config")));
-        assert_eq!(
-            dotfile_source_path(3, work),
-            crate::malvin_config_path(work)
-        );
+        assert_eq!(dotfile_source_path(1, work), crate::malvin_config_path(work));
         assert_eq!(
             dotfile_source_path(0, work),
-            work.join(DOTFILE_ROWS[0].rel)
+            crate::resolve_malvin_checks_path(work)
         );
     });
 }

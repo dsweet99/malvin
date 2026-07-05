@@ -126,16 +126,16 @@ pub(crate) fn run_kpop_workspace_gates(
 ) -> Result<(), String> {
     let work_dir = artifacts.work_dir.as_path();
     restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks)?;
-    // Carry-forward backups may still hold kiss-clamp damage; repair on disk before executing gates.
-    crate::session_dotfile_backup::repair_clamp_damaged_dotfiles_on_disk(work_dir)?;
+    // Carry-forward backups may still hold invalid home-config bytes; repair on disk before gates.
+    crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     clear_quality_gates_log_for_next_agent(artifacts)?;
     let gate_result = run_repo_workspace_gates(
         work_dir,
         RepoGateOutput::Tagged,
         Some(artifacts.run_dir.as_path()),
     );
-    // Gate prep (e.g. `kiss clamp`) may mutate dotfiles during the run; rewind disk so
-    // outer retries and the next iteration snapshot cannot anchor off re-damaged files.
+    // Gate runs may mutate dotfiles on disk; restore rewinds so outer retries and the next
+    // iteration snapshot cannot anchor off post-gate workspace state.
     let restore_result =
         restore_session_dotfiles_for_gates(work_dir, session_dotfile_backups, restore_malvin_checks);
     prefer_gate_outcome_over_post_gate_cleanup(gate_result, restore_result)

@@ -85,9 +85,9 @@ mod linux_pty {
             "kpop should restore protected files before each prompt: {combined:?}"
         );
         assert_eq!(
-            std::fs::read_to_string(workspace.join(".kissconfig")).expect("read kissconfig"),
-            "k = 1\n",
-            "kpop should restore kissconfig before each prompt: {combined:?}"
+            std::fs::read_to_string(workspace.join(".malvin/checks")).expect("read checks"),
+            "c = 1\n",
+            "kpop should restore malvin checks before each prompt: {combined:?}"
         );
         assert_eq!(
             std::fs::read_to_string(workspace.join(".gitignore")).expect("read gitignore"),

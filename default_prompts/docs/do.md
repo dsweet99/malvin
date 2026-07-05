@@ -64,7 +64,7 @@ With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo in
 ## Session behavior
 
 - Ensures `~/.malvin_home/config.toml` exists with defaults (same as `code` and `tidy`).
-- Backs up `.kissconfig`, `.kissignore`, `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
+- Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
 ## Related commands

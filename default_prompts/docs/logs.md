@@ -7,7 +7,7 @@ Inspect and manually trigger run-log garbage collection for a workspace bucket u
 | | |
 |---|---|
 | Agent session | None |
-| kiss / `.malvin/` | Not required |
+| `.malvin/` | Not required |
 | Run directory | Not created |
 | Config | Ensures `~/.malvin_home/config.toml` exists (merges missing keys) |
 

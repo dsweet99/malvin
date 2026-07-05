@@ -11,7 +11,7 @@ Revise an **existing document in place** via the KPop gate loop scoped by `revis
 | Loop | Full gate-kpop loop (`KPopHardConstraints::REVISE`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`) |
 | Exit policy | mpc plan `DONE` in per-iteration session; workspace gates need not pass |
-| Requires | No `kiss` or `.malvin/checks` preflight (document workflow, like `explain` / `delight`) |
+| Requires | No `.malvin/checks` preflight (document workflow, like `explain` / `delight`) |
 
 ## Intention
 

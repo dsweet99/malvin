@@ -6,7 +6,7 @@ mod common;
 #[cfg(unix)]
 use common::{
     TidySpawn, acp_mock_kpop_tampers_gitignore_writes_solved_js, acp_mock_tidy_kpop_steps_js,
-    bin_path_with_failing_gates, bin_path_with_fake_kiss, bin_path_with_kiss_fail_until_n_passes,
+    bin_path_with_failing_gates, bin_path_with_fake_kiss, bin_path_with_lint_fail_until_n_passes,
     combined_cli_output, fast_test_home_workspace, seed_malvin_checks, spawn_tidy,
     cached_mock_executable,
 };
@@ -15,7 +15,7 @@ use common::{
 #[test]
 fn tidy_skips_kpop_when_gates_already_pass() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
     let out = spawn_tidy(&TidySpawn {
@@ -43,8 +43,8 @@ fn tidy_skips_kpop_when_gates_already_pass() {
 #[test]
 fn tidy_kpop_fails_when_post_session_gates_still_fail() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
-    let trace = root.path().join("kiss-trace.log");
+    seed_malvin_checks(&workspace, "lint\n");
+    let trace = root.path().join("gate-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
     let out = spawn_tidy(&TidySpawn {
@@ -61,7 +61,7 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
     );
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(
-        trace_log.contains("kiss"),
+        trace_log.contains("lint"),
         "expected post-kpop quality gate run: {trace_log}"
     );
 }
@@ -70,10 +70,10 @@ fn tidy_kpop_fails_when_post_session_gates_still_fail() {
 #[test]
 fn tidy_gate_loop_restores_session_gitignore_after_early_exit_gates() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "lint\n");
     std::fs::write(workspace.join(".gitignore"), "gi\n").expect("gitignore");
-    let trace = root.path().join("kiss-trace.log");
-    let path = bin_path_with_kiss_fail_until_n_passes(&root, &trace, 1);
+    let trace = root.path().join("gate-trace.log");
+    let path = bin_path_with_lint_fail_until_n_passes(&root, &trace, 1);
     let mock = cached_mock_executable( &acp_mock_kpop_tampers_gitignore_writes_solved_js());
     let out = spawn_tidy(&TidySpawn {
         workspace: &workspace,

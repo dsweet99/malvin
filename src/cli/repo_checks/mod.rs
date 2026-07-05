@@ -1,8 +1,6 @@
 mod command_support;
 mod gate_log;
 mod gate_run;
-mod kiss_clamp;
-pub mod kissconfig_warn;
 mod types;
 
 #[cfg(test)]
@@ -21,10 +19,9 @@ pub use command_support::{
 };
 
 pub use gate_run::{
-    run_repo_workspace_gates, run_repo_workspace_gates_no_kiss_clamp,
+    run_repo_workspace_gates,
     run_repo_workspace_gates_with_details,
 };
-pub use kiss_clamp::ensure_kiss_clamp_if_needed;
 #[cfg(test)]
 pub(crate) use types::repo_gate_failure_to_string;
 pub use types::{

@@ -6,18 +6,17 @@ mod common;
 #[cfg(unix)]
 use common::{
     CodeSpawn, acp_mock_code_kpop_steps_js, acp_mock_kpop_abort_tampers_checks_js,
-    acp_mock_kpop_tampers_kissconfig_writes_solved_js,
     acp_mock_kpop_tampers_malvin_checks_writes_solved_js, bin_path_with_failing_gates,
     bin_path_with_fake_kiss, combined_cli_output, seed_malvin_checks,
     seed_malvin_checks_legacy_fast, spawn_code, ABORT_CODE_TEST_ARGS,
-    fast_test_home_workspace, test_home_workspace, cached_mock_executable,
+    fast_test_home_workspace, cached_mock_executable,
 };
 
 #[cfg(unix)]
 #[test]
 fn code_runs_kpop_when_gates_already_pass() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
     let out = spawn_code(&CodeSpawn {
@@ -46,8 +45,8 @@ fn code_runs_kpop_when_gates_already_pass() {
 #[test]
 fn code_kpop_fails_when_post_session_gates_still_fail() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
-    let trace = root.path().join("kiss-trace.log");
+    seed_malvin_checks(&workspace, "lint\n");
+    let trace = root.path().join("gate-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_code_kpop_steps_js());
     let out = spawn_code(&CodeSpawn {
@@ -65,40 +64,8 @@ fn code_kpop_fails_when_post_session_gates_still_fail() {
     );
     let trace_log = std::fs::read_to_string(&trace).unwrap_or_default();
     assert!(
-        trace_log.contains("kiss"),
+        trace_log.contains("lint"),
         "expected post-kpop quality gate run: {trace_log}"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
-    let (root, home, workspace) = test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
-    std::fs::write(workspace.join(".kissconfig"), "x\n").expect("kissconfig");
-    let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_kpop_tampers_kissconfig_writes_solved_js());
-    let out = spawn_code(&CodeSpawn {
-        workspace: &workspace,
-        home: &home,
-        mock: &mock,
-        path_var: &path,
-        extra_args: &["--trust-the-plan", "--max-loops", "0"],
-        request: "ship it",
-        gate_trace: None,
-    });
-    let combined = combined_cli_output(&out);
-    assert!(
-        out.status.success(),
-        "expected code success with restored kissconfig: {combined:?}"
-    );
-    assert!(
-        !combined.contains("ABORT:"),
-        "kissconfig tamper must not leak into later phases: {combined:?}"
-    );
-    assert_eq!(
-        std::fs::read_to_string(workspace.join(".kissconfig")).expect("read"),
-        "x\n"
     );
 }
 
@@ -106,7 +73,7 @@ fn code_gate_loop_restores_kissconfig_before_post_session_gates() {
 #[test]
 fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let path = bin_path_with_fake_kiss(&root);
     let mock = cached_mock_executable( &acp_mock_kpop_tampers_malvin_checks_writes_solved_js());
     let out = spawn_code(&CodeSpawn {
@@ -129,7 +96,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
     );
     assert_eq!(
         std::fs::read_to_string(workspace.join(".malvin/checks")).expect("read"),
-        "kiss check\n"
+        "true\n"
     );
 }
 
@@ -137,7 +104,7 @@ fn code_gate_loop_restores_malvin_checks_before_post_session_gates() {
 #[test]
 fn kpop_tamper_abort_does_not_run_gates() {
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks_legacy_fast(&workspace, "kiss check\n");
+    seed_malvin_checks_legacy_fast(&workspace, "true\n");
     let trace = root.path().join("kiss-trace.log");
     let path = bin_path_with_failing_gates(&root, &trace);
     let mock = cached_mock_executable( &acp_mock_kpop_abort_tampers_checks_js());

@@ -61,7 +61,7 @@ Emission is scattered across output, trace, and shim modules. Each call site wri
 
 ### Problem it solves
 
-Before and after agent work and at loop exit, malvin must discover gate commands from `.malvin/checks`, prepare the workspace (`kiss clamp`), run commands sequentially (one at a time in the sandbox), log results to `quality_gates.log`, and surface failures to agents via prompt markdown and `review.md`. Workflows share this pipeline but differ in when gates run and whether dotfiles are restored around them.
+Before and after agent work and at loop exit, malvin must load gate commands from `.malvin/checks`, repair invalid home config when needed (`repair_invalid_malvin_home_config_on_disk`), run commands sequentially (one at a time in the sandbox), log results to `quality_gates.log`, and surface failures to agents via prompt markdown and `review.md`. Workflows share this pipeline but differ in when gates run and whether dotfiles are restored around them.
 
 ### Where it lives
 
@@ -86,13 +86,13 @@ Gate failure markdown builders live in `repo_gates`. These label subsets of the 
 
 ### Problem it solves
 
-Agent sessions mutate workspace dotfiles (`.malvin/checks`, `.kissconfig`, `VISION.md`, etc.). Malvin must snapshot before agent work, restore after gates or session end, repair kiss-clamp damage to backed-up content, and carry backups across gate-loop iterations without poisoning the next snapshot. Without this policy, agent edits to config files would persist into subsequent iterations or gate runs.
+Agent sessions mutate workspace dotfiles (`.malvin/checks`, `~/.malvin_home/config.toml`, `.gitignore`, `VISION.md`, etc.). Malvin must snapshot before agent work, restore after gates or session end, repair invalid home-config bytes in backed-up content, and carry backups across gate-loop iterations without poisoning the next snapshot. Without this policy, agent edits to config files would persist into subsequent iterations or gate runs.
 
 ### Where it lives
 
 - `src/session_dotfile_backup/mod.rs` — `SessionDotfileBackups`, `snapshot`, `restore`, `restore_excluding_malvin_checks`
 - `src/session_dotfile_backup/gate_restore_merge.rs` — merge backed-up bytes with on-disk state for gate runs
-- `src/session_dotfile_backup/gate_restore_repair.rs` — repair clamp-damaged dotfiles in bundles and on disk
+- `src/session_dotfile_backup/gate_restore_repair.rs` — repair invalid home config in bundles and on disk
 - `src/session_dotfile_backup/gate_restore_checks.rs` — checks-specific restore helpers
 - `src/kpop_engine/run_loop.rs` — `restore_carry_forward_before_iteration_snapshot` across iterations
 - `src/kpop_engine/behavior.rs` — `restore_malvin_checks_after_session` per workflow
@@ -105,4 +105,4 @@ The restore sandwich enforced in `workflow_kpop_shared.rs` (pre-gate restore →
 
 ### Related typing aids
 
-`SessionDotfileBackups` struct with per-slot `DotfileBackupState`. `DotfileBackupPayload` captures bytes and backup path. `merge_for_gate_restore` and `repair_clamp_damaged_dotfiles_on_disk` handle subsets of restore policy. None coordinate the full snapshot → agent → gate → restore lifecycle.
+`SessionDotfileBackups` struct with per-slot `DotfileBackupState`. `DotfileBackupPayload` captures bytes and backup path. `merge_for_gate_restore` and `repair_invalid_malvin_home_config_on_disk` handle subsets of restore policy. None coordinate the full snapshot → agent → gate → restore lifecycle.

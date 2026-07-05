@@ -12,7 +12,7 @@ fn kiss_cov_unit_names() {
 #[test]
 fn seed_malvin_checks_writes_under_git_root() {
     with_isolated_home(|work| {
-        seed_malvin_checks(work, "kiss check\n");
+        seed_malvin_checks(work, "true\n");
         assert!(crate::malvin_checks_path(work).is_file());
     });
 }
@@ -34,7 +34,7 @@ fn seed_malvin_checks_skips_git_init_when_repo_exists() {
         .current_dir(work)
         .status()
         .expect("git init");
-    seed_malvin_checks(work, "kiss check\n");
+    seed_malvin_checks(work, "true\n");
     assert!(crate::malvin_checks_path(work).is_file());
 }
 

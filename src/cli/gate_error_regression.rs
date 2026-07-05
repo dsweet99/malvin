@@ -9,7 +9,7 @@ use super::entrypoint::print_command_error;
 
 fn sample_command_failure() -> RepoGateCommandFailure {
     RepoGateCommandFailure {
-        command: "kiss check".to_string(),
+        command: "make lint".to_string(),
         exit_code: Some(1),
         stdout: "gate-out".to_string(),
         stderr: "gate-err".to_string(),
@@ -47,14 +47,14 @@ fn print_command_error_on_wrapped_gate_retry_avoids_error_tag() {
         "wrapped context should remain visible; got: {stderr:?}"
     );
     assert!(
-        stderr.contains("`kiss check` failed (exit 1)"),
+        stderr.contains("`make lint` failed (exit 1)"),
         "gate summary should remain visible; got: {stderr:?}"
     );
 }
 
 #[test]
 fn gate_failure_entrypoint_path_prints_summary_once() {
-    let summary = "`kiss check` failed (exit 1)";
+    let summary = "`make lint` failed (exit 1)";
     let stderr = capture_stderr_output(|| {
         let msg = repo_gate_failure_to_string(RepoGateFailure::Command(sample_command_failure()));
         assert!(is_gate_failure_error(&msg));

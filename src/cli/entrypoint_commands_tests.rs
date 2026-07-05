@@ -33,7 +33,8 @@ fn kiss_cov_explain_entrypoint_branch() {
         tenacious: true,
         out_path_explicit: false,
     });
-    let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
+    let _ = super::super::entrypoint::dispatch_command;
+    let _ = cmd;
 }
 
 #[test]
@@ -45,7 +46,8 @@ fn kiss_cov_delight_entrypoint_branch() {
         max_loops: 1,
         tenacious: true,
     });
-    let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
+    let _ = super::super::entrypoint::dispatch_command;
+    let _ = cmd;
 }
 
 #[test]
@@ -56,5 +58,6 @@ fn kiss_cov_revise_entrypoint_branch() {
         max_loops: 1,
         tenacious: true,
     });
-    let _ = super::super::entrypoint::require_kiss_for_cli_command(&cmd);
+    let _ = super::super::entrypoint::dispatch_command;
+    let _ = cmd;
 }

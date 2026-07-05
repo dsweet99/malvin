@@ -24,7 +24,7 @@ mod unix_tests {
     impl TidyStartupGateFixture {
         fn new() -> Self {
             let (root, home, workspace) = fast_test_home_workspace();
-            seed_malvin_checks(&workspace, "kiss check\n");
+            seed_malvin_checks(&workspace, "lint\n");
             let trace = root.path().join("tidy-startup-gate-trace.log");
             let path = bin_path_with_failing_gates(&root, &trace);
             let mock = cached_mock_executable( &acp_mock_tidy_kpop_steps_js());
@@ -63,7 +63,7 @@ mod unix_tests {
             "tidy startup gate failure must not claim implementation never started: {combined:?}"
         );
         assert!(
-            combined.contains("kiss check"),
+            combined.contains("lint"),
             "expected gate failure detail from repo checks: {combined:?}"
         );
         assert!(

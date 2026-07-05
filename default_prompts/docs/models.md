@@ -7,7 +7,7 @@ List model ids for malvin runs. No malvin prompts and no run directory under `~/
 | | |
 |---|---|
 | Agent session | None |
-| kiss / `.malvin/` | Not required |
+| `.malvin/` | Not required |
 | Output | Model list + default model footer (see below) |
 
 ## Intention

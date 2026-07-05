@@ -7,7 +7,7 @@ fn post_gate_fixture() -> (KPopEnginePrepared, SessionDotfileBackups) {
     let tmp = tempfile::tempdir().expect("tempdir");
     let work = tmp.path();
     std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-    std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+    std::fs::write(work.join(".malvin/checks"), "make lint\n").expect("checks");
     let artifacts =
         crate::artifacts::create_kpop_run_artifacts("code", Some(work)).expect("artifacts");
     let backups = SessionDotfileBackups::snapshot(work).expect("snapshot");
@@ -109,9 +109,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
     assert_eq!(max_loops, 1);
     
     let backups = SessionDotfileBackups::from_parts(crate::artifacts::SessionDotfileParts {
-        kissconfig: crate::session_dotfile_backup::DotfileBackupState::Missing,
         malvin_checks: crate::session_dotfile_backup::DotfileBackupState::Missing,
-        kissignore: crate::session_dotfile_backup::DotfileBackupState::Missing,
         malvin_config: crate::session_dotfile_backup::DotfileBackupState::Missing,
         gitignore: crate::session_dotfile_backup::GitignoreBackup::Missing,
         vision: crate::session_dotfile_backup::VisionBackup::Missing,

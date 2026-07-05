@@ -8,9 +8,7 @@ use crate::acp::{
     CoderPromptOptions, KpopFailAfterPrompt,
 };
 use crate::nested_budget_scopes::BudgetScopeLayer;
-use crate::cli::workflow_kpop_shared::{
-    gate_iteration_context, post_kpop_session_gates,
-};
+use crate::cli::workflow_kpop_shared::post_kpop_session_gates;
 use crate::run_timing::TimingPhase;
 
 use super::kpop_session_finish::finish_kpop_engine_session_success;
@@ -55,12 +53,7 @@ pub(crate) fn print_kpop_engine_log_line(prepared: &KPopEnginePrepared, exp_log_
 
 fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let prepared = ctx.iteration.loop_params.prepared;
-    let iter_ctx = gate_iteration_context(
-        prepared.context(),
-        prepared.artifacts(),
-        &ctx.iteration.exp_log_path,
-        ctx.iteration.iteration,
-    );
+    let iter_ctx = super::kpop_session_multiturn::iter_context(ctx);
     KpopTurnPrompts {
         store: prepared.store(),
         base: &iter_ctx,
@@ -169,9 +162,18 @@ async fn run_kpop_engine_single_turn(
         return run_kpop_engine_multiturn(ctx).await;
     }
     let prepared = ctx.iteration.loop_params.prepared;
-    let prompt = build_kpop_engine_prompt(ctx)?;
     let work_dir = prepared.artifacts().work_dir.as_path();
     let log_path = prepared.artifacts().log_path("kpop");
+
+    let priors_prompt = super::kpop_session_multiturn::build_prompt_priors(ctx)?;
+    let priors_result =
+        run_kpop_engine_coder_turn(ctx, &priors_prompt, work_dir, log_path.as_path()).await;
+    if priors_result.is_err() {
+        finalize_kpop_engine_turn(ctx, work_dir, priors_result).await?;
+        return Ok(None);
+    }
+
+    let prompt = build_kpop_engine_prompt(ctx)?;
     let prompt_result =
         run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
     let post_agent_backups = if prompt_result.is_ok() {

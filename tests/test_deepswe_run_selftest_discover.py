@@ -9,10 +9,6 @@ def test_deepswe_malvin_repo_root() -> None:
     deepswe_run._test_malvin_repo_root()
 
 
-def test_deepswe_kiss_repo_root() -> None:
-    deepswe_run._test_kiss_repo_root()
-
-
 def test_deepswe_default_deepswe_tasks_root() -> None:
     deepswe_run._test_default_deepswe_tasks_root()
 

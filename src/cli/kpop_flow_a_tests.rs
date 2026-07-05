@@ -34,7 +34,7 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
         std::fs::create_dir_all(work.join("deep/nested")).expect("mkdir");
         std::fs::write(work.join("deep/.gitignore"), "nested\n").expect("nested gitignore");
         std::fs::create_dir_all(work.join(".malvin")).expect("malvin dir");
-        std::fs::write(work.join(".malvin/checks"), "kiss check\n").expect("checks");
+        std::fs::write(work.join(".malvin/checks"), "true\n").expect("checks");
         let kpop = KpopArgs {
             max_loops: 1,
                 tenacious: false,
@@ -90,7 +90,7 @@ fn seed_kpop_multiturn_mock_workspace(
     use crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
     use crate::repo_gates::checks_test_helpers::write_git_root_checks;
 
-    write_git_root_checks(workspace, b"kiss check\n");
+    write_git_root_checks(workspace, b"true\n");
     std::fs::write(workspace.join(".kissconfig"), "k = 1\n").expect("kissconfig");
     let mock = workspace.join("mock-agent");
     let env = install_mock_agent_env(workspace, &mock);

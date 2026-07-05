@@ -132,17 +132,15 @@ mod tests {
         assert!(!client.has_open_coder_session());
     }
 
-    fn kissconfig_dir_blocks_restore(work: &std::path::Path) {
-        let kiss = work.join(".kissconfig");
-        let _ = std::fs::remove_file(&kiss);
-        std::fs::create_dir(&kiss).expect("kissconfig dir");
+    fn malvin_checks_dir_blocks_restore(work: &std::path::Path) {
+        let checks = work.join(".malvin").join("checks");
+        let _ = std::fs::remove_file(&checks);
+        std::fs::create_dir(&checks).expect("malvin checks dir");
     }
 
     #[tokio::test]
     async fn run_kpop_flow_once_mini_closes_session_when_restore_fails() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".malvin")).expect("mkdir");
-        std::fs::write(tmp.path().join(".kissconfig"), b"k\n").expect("kissconfig");
         crate::seed_malvin_checks(tmp.path(), "true\n");
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path())
             .expect("snapshot");
@@ -154,7 +152,7 @@ mod tests {
                 responses: vec![MockStep::Ok(mini_done_response())],
                 call_count: 0,
                 on_response: Some(Box::new(move |_, _| {
-                    kissconfig_dir_blocks_restore(&work);
+                    malvin_checks_dir_blocks_restore(&work);
                 })),
             })),
         );
@@ -185,6 +183,7 @@ mod tests {
         let exp_log = tmp.path().join("exp.md");
         std::fs::write(&exp_log, "# exp\n").expect("exp log");
         let mut client = mock_client(vec![
+            MockStep::Ok(mini_done_response()),
             MockStep::Ok(mini_done_response()),
             MockStep::Ok(mini_done_response()),
             MockStep::Ok(mini_done_response()),

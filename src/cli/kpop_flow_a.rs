@@ -17,7 +17,7 @@ pub(in crate) fn kpop_prompt_store(
     _kpop: &KpopArgs,
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
-    prepare_kpop_prompt_store(workflow, false)
+    prepare_kpop_prompt_store(workflow, true)
 }
 
 pub struct KpopPrepared {

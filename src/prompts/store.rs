@@ -132,8 +132,13 @@ impl PromptStore {
                 missing.push(name);
             }
         }
-        if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
-            missing.push("mbc2.md");
+        if validation.require_mbc2 {
+            if self.prompt_text("priors.md").is_err() {
+                missing.push("priors.md");
+            }
+            if self.prompt_text("mbc2.md").is_err() {
+                missing.push("mbc2.md");
+            }
         }
         if missing.is_empty() {
             return Ok(());
@@ -220,4 +225,17 @@ pub fn render_mbc2_for_scheduled_kpop_block(
     let mut ctx = context.clone();
     ctx.insert("coding_rules".to_string(), String::new());
     store.render_prompt_only("mbc2.md", &ctx)
+}
+
+/// # Errors
+///
+/// Returns [`PromptError`] when `priors.md` or `mbc2.md` cannot be loaded or rendered.
+pub fn render_priors_mbc2_prompt(
+    store: &PromptStore,
+    context: &std::collections::HashMap<String, String>,
+) -> Result<String, PromptError> {
+    let priors_body = store.render_prompt_only("priors.md", context)?;
+    let mut ctx = context.clone();
+    ctx.insert("user_prompt".to_string(), priors_body);
+    render_mbc2_for_scheduled_kpop_block(store, &ctx)
 }

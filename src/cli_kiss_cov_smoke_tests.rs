@@ -10,8 +10,7 @@ fn smoke_cov_cli_cli_units_0() {
     let _ = crate::do_flow::do_flow_prompt::combine_do_prompt_file_and_user;
     let _ = stringify!(crate::cli::entrypoint::dispatch_command);
     let _ = crate::cli::entrypoint::print_command_error;
-    let _ = crate::cli::entrypoint::require_kiss_for_cli_command;
-    let _ = stringify!(crate::cli::entrypoint::run_async_cli);
+    let _ = crate::cli::entrypoint::print_command_error;
     let _ = crate::cli::entrypoint_commands::run_code_command;
     let _ = crate::cli::entrypoint_commands::run_inspire_command;
     let _: Option<crate::cli::exit::Exit> = None;
@@ -191,7 +190,7 @@ fn smoke_cov_cli_cli_symbols_a() {
 #[test]
 fn smoke_cov_cli_cli_symbols_b() {
     let _ = crate::repo_checks::run_repo_workspace_gates;
-    let _ = crate::repo_checks::run_repo_workspace_gates_no_kiss_clamp;
+    let _ = crate::repo_checks::run_repo_workspace_gates;
     let _: Option<crate::repo_checks::FakeCommandDirGuard> = None;
     let _ = stringify!(FakeCommandDirGuard);
 }

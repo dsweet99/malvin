@@ -25,23 +25,6 @@ pub(crate) const fn unsupported_name_error(command: &Commands, bare_invoke: bool
     )
 }
 
-pub fn require_kiss_for_cli_command(cmd: &Commands) -> Result<(), String> {
-    use crate::require_kiss_for_malvin;
-    match cmd {
-        Commands::Code(_) => require_kiss_for_malvin("code"),
-        Commands::Tidy(_) => require_kiss_for_malvin("tidy"),
-        Commands::Do(_)
-        | Commands::Kpop(_)
-        | Commands::Inspire(_)
-        | Commands::Models(_)
-        | Commands::Logs(_)
-       
-        | Commands::Delight(_)
-        | Commands::Explain(_)
-        | Commands::Revise(_) => Ok(()),
-    }
-}
-
 #[path = "entrypoint_from.rs"]
 mod entrypoint_from;
 pub use entrypoint_from::entrypoint_from;

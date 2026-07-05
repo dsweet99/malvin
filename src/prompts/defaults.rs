@@ -15,6 +15,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mpc_block_a.md",
     "mpc_block_b.md",
     "mpc_block_c.md",
+    "priors.md",
     "mbc2.md",
     "kpop_program.md",
     "kpop_program_creative.md",

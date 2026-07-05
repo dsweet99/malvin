@@ -27,7 +27,7 @@ fn acp_mock_combined_discovery_and_kpop_js(kpop_chunk: &str) -> String {
       }
       const checksPath = path.join(process.cwd(), '.malvin', 'checks');
       fs.mkdirSync(path.dirname(checksPath), { recursive: true });
-      fs.writeFileSync(checksPath, 'kiss check\n');
+      fs.writeFileSync(checksPath, 'make lint\n');
     }";
     let kpop_done = super::acp_core::session_update_chunk_line(
         "agent_message_chunk",

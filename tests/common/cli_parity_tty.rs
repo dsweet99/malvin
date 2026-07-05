@@ -20,7 +20,7 @@ fn pty_malvin_workspace(mock_js: &str) -> PtyEnv {
     use super::{cached_mock_executable, fast_test_home_workspace, seed_malvin_checks, write_fake_kiss};
 
     let (root, home, workspace) = fast_test_home_workspace();
-    seed_malvin_checks(&workspace, "kiss check\n");
+    seed_malvin_checks(&workspace, "true\n");
     let bin_dir = root.path().join("bin");
     std::fs::create_dir_all(&bin_dir).expect("mkdir bin");
     let mock = cached_mock_executable(mock_js);

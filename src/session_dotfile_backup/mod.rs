@@ -11,7 +11,7 @@ mod wrappers;
 
 pub use gate_restore_merge::{merge_and_sanitize_for_gate_restore, merge_for_gate_restore};
 pub use gate_restore_repair::{
-    repair_clamp_damaged_dotfiles_on_disk, sanitize_clamp_damaged_dotfiles_in_bundle,
+    repair_invalid_malvin_home_config_on_disk, sanitize_invalid_malvin_home_config_in_bundle,
 };
 
 use std::path::Path;
@@ -25,13 +25,10 @@ pub use vision_tree::{
     restore_workspace_vision_backup, VisionBackup, VisionFileBackup,
 };
 pub use wrappers::{
-    backup_workspace_kissconfig_if_present, backup_workspace_kissconfig_if_present_with_id,
-    backup_workspace_kissignore_if_present, backup_workspace_kissignore_if_present_with_id,
     backup_workspace_malvin_checks_if_present, backup_workspace_malvin_checks_if_present_with_id,
     backup_workspace_malvin_config_if_present, backup_workspace_malvin_config_if_present_with_id,
     backup_workspace_malvin_config_workspace_if_present,
     backup_workspace_malvin_config_workspace_if_present_with_id,
-    restore_workspace_kissconfig_backup, restore_workspace_kissignore_backup,
     restore_workspace_malvin_checks_backup, restore_workspace_malvin_config_backup,
     restore_workspace_malvin_config_workspace_backup,
 };
@@ -51,17 +48,13 @@ pub enum DotfileBackupState {
     Present(DotfileBackupPayload),
 }
 
-pub type KissConfigBackup = DotfileBackupState;
 pub type MalvinChecksBackup = DotfileBackupState;
-pub type KissignoreBackup = DotfileBackupState;
 pub type MalvinConfigBackup = DotfileBackupState;
 pub type MalvinConfigWorkspaceBackup = DotfileBackupState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileParts {
-    pub kissconfig: KissConfigBackup,
     pub malvin_checks: MalvinChecksBackup,
-    pub kissignore: KissignoreBackup,
     pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
     pub vision: VisionBackup,
@@ -70,9 +63,7 @@ pub struct SessionDotfileParts {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionDotfileBackups {
-    pub kissconfig: KissConfigBackup,
     pub malvin_checks: MalvinChecksBackup,
-    pub kissignore: KissignoreBackup,
     pub malvin_config: MalvinConfigBackup,
     pub gitignore: GitignoreBackup,
     pub vision: VisionBackup,
@@ -83,9 +74,7 @@ impl SessionDotfileBackups {
     #[must_use]
     pub fn from_parts(parts: SessionDotfileParts) -> Self {
         Self {
-            kissconfig: parts.kissconfig,
             malvin_checks: parts.malvin_checks,
-            kissignore: parts.kissignore,
             malvin_config: parts.malvin_config,
             gitignore: parts.gitignore,
             vision: parts.vision,
@@ -98,8 +87,7 @@ impl SessionDotfileBackups {
         Self::snapshot_with_id(work_dir, alloc::random_backup_id)
     }
 
-    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first and runs
-    /// `kiss clamp` when the workspace has source files but no `.kissconfig`.
+    /// Like [`snapshot`], but ensures `~/.malvin_home/config.toml` exists first.
     ///
     /// Gate workflows (`code`, `tidy`, …) materialize home config at CLI entry; without this,
     /// a prior restore with [`DotfileBackupState::Missing`] can delete the file and the next
@@ -115,15 +103,12 @@ impl SessionDotfileBackups {
         work_dir: &Path,
         mut generate_id: impl FnMut(usize) -> String,
     ) -> Result<Self, String> {
-        crate::repo_checks::ensure_kiss_clamp_if_needed(work_dir)?;
         Ok(Self {
-            kissconfig: backup_slot(0, work_dir, &mut generate_id)?,
-            malvin_checks: backup_slot(1, work_dir, &mut generate_id)?,
-            kissignore: backup_slot(2, work_dir, &mut generate_id)?,
-            malvin_config: backup_slot(3, work_dir, &mut generate_id)?,
+            malvin_checks: backup_slot(0, work_dir, &mut generate_id)?,
+            malvin_config: backup_slot(1, work_dir, &mut generate_id)?,
             gitignore: gitignore_tree::backup_gitignore_tree(work_dir, &mut generate_id)?,
             vision: vision_tree::backup_vision_tree(work_dir, &mut generate_id)?,
-            malvin_config_workspace: backup_slot(5, work_dir, &mut generate_id)?,
+            malvin_config_workspace: backup_slot(3, work_dir, &mut generate_id)?,
         })
     }
 
@@ -132,7 +117,7 @@ impl SessionDotfileBackups {
         restore_workspace_session_dotfiles(work_dir, self)
     }
 
-    /// Restore kiss and malvin config dotfiles only; leave `.malvin/checks` unchanged.
+    /// Restore malvin config dotfiles only; leave `.malvin/checks` unchanged.
     #[allow(clippy::missing_errors_doc)]
     pub fn restore_excluding_malvin_checks(&self, work_dir: &Path) -> Result<(), String> {
         restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, self)
@@ -145,7 +130,7 @@ pub fn restore_workspace_session_dotfiles(
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
     restore_workspace_session_dotfiles_excluding_malvin_checks(work_dir, bundle)?;
-    restore_slot(work_dir, &bundle.malvin_checks, 1)
+    restore_slot(work_dir, &bundle.malvin_checks, 0)
         .map(|()| crate::remove_legacy_malvin_checks_file(work_dir))
 }
 
@@ -154,12 +139,10 @@ pub fn restore_workspace_session_dotfiles_excluding_malvin_checks(
     work_dir: &Path,
     bundle: &SessionDotfileBackups,
 ) -> Result<(), String> {
-    restore_slot(work_dir, &bundle.kissconfig, 0)?;
-    restore_slot(work_dir, &bundle.kissignore, 2)?;
-    restore_slot(work_dir, &bundle.malvin_config, 3)?;
+    restore_slot(work_dir, &bundle.malvin_config, 1)?;
     gitignore_tree::restore_workspace_gitignore_backup(work_dir, &bundle.gitignore)?;
     vision_tree::restore_workspace_vision_backup(work_dir, &bundle.vision)?;
-    restore_slot(work_dir, &bundle.malvin_config_workspace, 5)
+    restore_slot(work_dir, &bundle.malvin_config_workspace, 3)
 }
 
 #[cfg(test)]

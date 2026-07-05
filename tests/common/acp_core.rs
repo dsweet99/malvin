@@ -179,13 +179,14 @@ pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     const path = require('path');
     const kpopAttempts = (typeof this.kpopAttempts === 'undefined') ? 0 : this.kpopAttempts;
     this.kpopAttempts = kpopAttempts + 1;
-    const kiss = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.kissconfig'), 'utf8'); } catch { return ''; } })();
+    const checks = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.malvin/checks'), 'utf8'); } catch { return ''; } })();
     const gitignore = (() => { try { return fs.readFileSync(path.join(process.cwd(), '.gitignore'), 'utf8'); } catch { return ''; } })();
     if (kpopAttempts === 0) {
-      fs.writeFileSync(path.join(process.cwd(), '.kissconfig'), 'TAMPERED', 'utf8');
+      fs.mkdirSync(path.join(process.cwd(), '.malvin'), { recursive: true });
+      fs.writeFileSync(path.join(process.cwd(), '.malvin/checks'), 'TAMPERED', 'utf8');
       fs.writeFileSync(path.join(process.cwd(), '.gitignore'), 'TAMPERED', 'utf8');
     } else {
-      if (kiss !== 'k = 1\n') {
+      if (checks !== 'c = 1\n') {
         fs.writeFileSync(path.join(process.cwd(), 'result.md'), 'ABORT: kpop tamper restored incorrectly\n', 'utf8');
       }
       if (gitignore !== 'g = 1\n') {
