@@ -6,6 +6,6 @@
 
 ## Actions
 
-0. KPop: Devise a bespoke, adversarial process for checking whether the user request has been satisfied.
+0. Call 'malvin inspire PROMPT' to get 10 ideas for likely failures to satisfy the user request. Consider intent, specifics, and implications. Consider work done so far.
 
-1. KPop: Use the process from step 0 to show that the user request has not been satisfied.
+1. KPop: Check for all of the proposed failures.
