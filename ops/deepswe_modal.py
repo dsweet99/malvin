@@ -130,6 +130,7 @@ AGENT_SANDBOX_CPU = 2.0
 AGENT_SANDBOX_MEMORY_MIB = 4096
 GRADE_SANDBOX_CPU = 1.0
 GRADE_SANDBOX_MEMORY_MIB = 2048
+SANDBOX_HEADROOM_SEC = 900
 MODAL_MAX_CIDR_ALLOWLIST = 100
 ALLOWLIST_CACHE_TTL_SEC = 86400
 
@@ -1691,13 +1692,17 @@ def agent_sandbox_resource_kwargs(spec: Any | None = None) -> dict[str, Any]:
     return {"cpu": AGENT_SANDBOX_CPU, "memory": memory_mib}
 
 
-def agent_sandbox_timeout_sec(spec: Any, *, skip_grade: bool) -> int:
-    """Modal sandbox lifetime: agent (+ verifier when graded) plus headroom."""
+def agent_sandbox_timeout_sec(
+    spec: Any, *, skip_grade: bool, grade_only: bool = False,
+) -> int:
+    """Modal sandbox backstop: grade-only, skip-grade, or graded plus headroom."""
+    verifier = float(getattr(spec, "verifier_timeout_sec", 1800.0))
+    if grade_only:
+        return int(verifier + SANDBOX_HEADROOM_SEC)
     agent = float(getattr(spec, "agent_timeout_sec", 5400.0))
     if skip_grade:
-        return int(agent + 900)
-    verifier = float(getattr(spec, "verifier_timeout_sec", 1800.0))
-    return int(agent + verifier + 900)
+        return int(agent + SANDBOX_HEADROOM_SEC)
+    return int(agent + verifier + SANDBOX_HEADROOM_SEC)
 
 
 def grade_sandbox_resource_kwargs() -> dict[str, Any]:
@@ -2363,18 +2368,23 @@ def finalize_modal_eval(
     click.echo(f"pass: {grade_result.get('pass')}")
     if agent_result:
         click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        if agent_result.get("timed_out"):
+            click.echo("agent timed_out: true")
         click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
         agent_stdout = agent_result.get("stdout")
         if isinstance(agent_stdout, str) and agent_stdout.strip():
             click.echo("--- agent stdout ---")
             click.echo(agent_stdout.rstrip())
             click.echo("--- end agent stdout ---")
+    if grade_result.get("timed_out"):
+        click.echo("grade timed_out: true")
     click.echo(f"artifacts: {run_root.resolve()}")
 
     if grade_result.get("pass") is False:
         raise SystemExit(1)
-    if agent_result and agent_result.get("exit_code") not in (0, None):
-        raise SystemExit(agent_result["exit_code"])
+    if agent_result and not agent_result.get("timed_out"):
+        if agent_result.get("exit_code") not in (0, None):
+            raise SystemExit(agent_result["exit_code"])
     if modal_error and grade_result.get("reward") is None:
         raise SystemExit(1)
 
@@ -2438,7 +2448,9 @@ def run_modal_eval(
         if checks is None:
             checks = discover_deepswe_checks(workspace)
     try:
-        sandbox_timeout = agent_sandbox_timeout_sec(spec, skip_grade=skip_grade)
+        sandbox_timeout = agent_sandbox_timeout_sec(
+            spec, skip_grade=skip_grade, grade_only=grade_only,
+        )
         if grade_only:
             grade_img = mount_eval_context(
                 harbor_image(spec, dockerfile=spec.dockerfile),
@@ -2704,6 +2716,7 @@ def _test_agent_sandbox_timeout_sec() -> None:
     )
     assert agent_sandbox_timeout_sec(spec, skip_grade=False) == 8100
     assert agent_sandbox_timeout_sec(spec, skip_grade=True) == 6300
+    assert agent_sandbox_timeout_sec(spec, skip_grade=False, grade_only=True) == 2700
 
 
 def _test_compress_ipv4_cidrs() -> None:

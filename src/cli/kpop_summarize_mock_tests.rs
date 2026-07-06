@@ -1,21 +1,10 @@
 #![allow(unsafe_code)]
 
-use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::path::Path;
 
 use crate::artifacts::create_kpop_run_artifacts;
 use crate::cli::kpop_summarize::run_inline_summarize_coder_prompt;
 use crate::prompts::PromptStore;
-
-fn cached_summarize_mock_agent() -> PathBuf {
-    static MOCK: OnceLock<PathBuf> = OnceLock::new();
-    MOCK.get_or_init(|| {
-        let path = std::env::temp_dir().join("malvin-mock-summarize-agent");
-        write_mock_summarize_agent(&path);
-        path
-    })
-    .clone()
-}
 
 pub(crate) fn write_mock_summarize_agent(path: &Path) {
     use std::os::unix::fs::PermissionsExt;
@@ -32,6 +21,7 @@ pub(crate) fn write_mock_summarize_agent(path: &Path) {
     let mut perms = std::fs::metadata(path).expect("meta").permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(path, perms).expect("chmod");
+    crate::test_utils::sync_test_executable(path);
 }
 
 pub(crate) fn with_summarize_mock_agent<F>(f: F)
@@ -45,7 +35,8 @@ where
         let artifacts = create_kpop_run_artifacts("kpop", Some(workspace)).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let mock = cached_summarize_mock_agent();
+        let mock = workspace.join(".malvin/mock-summarize-agent");
+        write_mock_summarize_agent(&mock);
         unsafe {
             std::env::set_var(crate::acp::MALVIN_TEST_NO_REAL_AGENT_ENV, "1");
             std::env::set_var("MALVIN_AGENT_ACP_BIN", &mock);

@@ -1,145 +1,203 @@
-# Plan: Remove kiss and hardcoded gate tools from malvin
+# Plan: Enforce Harbor per-phase timeouts in DeepSWE solve
 
 ## User Request
 
-I'd like to remove kiss from malvin.
-
-Extended scope (same effort): **remove pytest, cargo, clippy, and all other malvin-owned linter/tester specifications.** Malvin and Modal/DeepSWE must not seed or mandate particular quality tools. Checks should come from **repo signals** (pre-commit, Makefile, existing `.malvin/checks`) or from **checks-discovery KPop** inferring what the repo already uses — not from malvin builtins.
-
-(Summarized from prior discussion: kiss as an agent quality gate has been net harmful on DeepSWE — misaligned with Harbor grading, drove API refactors, consumed agent budget.)
+Enforce DeepSWE/Harbor per-task timeouts correctly (separate agent and verifier budgets from `task.toml`), instead of only sizing a combined Modal sandbox ceiling.
 
 ## Current State
 
-### External quality gates (agent-facing)
+### Harbor / DeepSWE task config
 
-Malvin and DeepSWE **do not seed or mandate** particular quality tools. Checks come from repo signals (pre-commit, Makefile, existing `.malvin/checks`) or checks-discovery KPop inference.
+Each task under `../deep-swe/tasks/<id>/task.toml` declares phase timeouts (Harbor schema):
 
-| Area | Location | Implemented behavior |
-|------|----------|----------------------|
-| Default gate commands (Rust) | `src/repo_gates/mod.rs` | `builtin_gate_command_lines()` → `[]`; `ensure_default_malvin_checks_file()` writes nothing when builtins are empty |
-| DeepSWE discovery | `ops/deepswe_run.py` | `discover_deepswe_check_lines()` — pre-commit + Makefile + existing `.malvin/checks` only; no builtins |
-| Kiss clamp / dotfiles | (removed) | No `kiss_clamp.rs`; no kiss rows in session dotfile backup |
-| CLI kiss requirement | `entrypoint.rs` | Removed for `code` / `tidy` / `do` |
-| Checks discovery prompt | `init_constraints.md` | Repo-signal-only; no mandated tool names |
-| Sandbox prep | `ops/sandbox_prep.py` | `probe_check_tools()` removed |
-| Modal offline installs | `deepswe_modal.py` | `offline_check_tool_install_commands(checks)` preinstalls packages when **checks text** mentions them (reactive, not a default list) |
+| Section | Field | Typical value |
+|---|---|---|
+| `[agent]` | `timeout_sec` | 5400 (90 min) |
+| `[verifier]` | `timeout_sec` | 1800 (30 min) |
+| `[environment]` | `build_timeout_sec` | 1800 (30 min) |
 
-**Gate flow today (code/tidy/do KPop):**
+All 113 tasks in the current dataset use the same numbers; the schema allows per-task variation.
 
-1. No CLI kiss requirement.
-2. Checks-discovery KPop if `.malvin/checks` missing/empty — infers commands from repo config; no malvin default commands.
-3. No kiss clamp at snapshot.
-4. Gates run `.malvin/checks` lines from user or discovery. The malvin repo itself uses its own tracked `.malvin/checks` (maintainer-chosen dev gates; malvin does not rewrite existing checks files).
+Harbor's native harness treats these as **independent caps**: the agent gets up to `agent.timeout_sec`, then the verifier gets up to `verifier.timeout_sec` on whatever workspace state remains.
 
-**Other invariants:**
+### What malvin reads today
 
-- **Existing user `.malvin/checks`:** Not rewritten by malvin.
-- **DeepSWE scan-only:** Empty repo scan → empty checks file (or newline-only); workflows must tolerate empty or fail at gate time.
-- **`malvin do` without kiss:** Snapshot no longer runs kiss clamp.
+`parse_task_dir()` in `ops/deepswe_run.py` loads agent and verifier timeouts into `TaskSpec`:
 
-### Internal malvin kiss coverage (developer-only)
+```186:187:ops/deepswe_run.py
+        agent_timeout_sec=float(agent.get("timeout_sec", 5400.0)),
+        verifier_timeout_sec=float(verifier.get("timeout_sec", 1800.0)),
+```
 
-`coverage_kiss/`, `*_kiss_cov_*` witnesses — malvin-repo CI only, not workspace agent gates. Optional Phase 4 (deferred).
+`build_timeout_sec` is **not** parsed or used anywhere in malvin.
+
+### Solve call path (default vs inner exec)
+
+Default `solve TASK` does **not** call host-side `run_task()`. It goes:
+
+`solve` → `run_modal_solve` → `run_modal_eval` → `run_deepswe_run_in_sandbox` → **`deepswe_run.py run --runtime in-sandbox`** (two execs: `--skip-grade`, then `--grade-only`).
+
+Local Docker and Modal therefore enforce timeouts inside **`run_task()` in-sandbox**, not on the host orchestrator.
+
+### What each phase actually includes (enforcement boundary)
+
+`run_task()` in `ops/deepswe_run.py` (~1772–1821) runs work in this order:
+
+1. `prepare_task_sandbox()` — **always** (can take minutes; pip replay)
+2. If `not grade_only`: `write_plan_and_checks`, `ensure_deepswe_malvin_config`, `run_malvin()`
+3. If grading: `grade_workspace_native()` (in-sandbox) or `grade_workspace()` (host)
+
+Modal/local Docker split this into two containers/exec:
+
+| Exec | Flags | Work included |
+|---|---|---|
+| Agent | `--skip-grade` | prep + plan + config + malvin |
+| Grade | `--grade-only` | prep + verifier |
+
+Harbor's agent budget must cover **all of row 1**; verifier budget must cover **all of row 2** — not just `run_malvin()` or `bash test.sh`.
+
+### Where phases run today (no per-phase enforcement)
+
+| Path | Agent | Verifier | Timeout today |
+|---|---|---|---|
+| **Default `solve`** → Modal | `sandbox.exec` → in-sandbox `run --skip-grade` | second exec → `--grade-only` | Single `modal.Sandbox.create(timeout=…)` from `agent_sandbox_timeout_sec()` (sum + 900s headroom); inner execs unbounded |
+| **`solve --local`** | Docker → in-sandbox `run --skip-grade` | second container → `--grade-only` | None on host `subprocess.run(docker …)` |
+| **`run --runtime in-sandbox`** | full agent block in `run_task()` | grade block in `run_task()` | None |
+| **`run --runtime host`** | `run_malvin()` on host | `grade_workspace()` (Docker) | None |
+
+Subprocess call sites with no `timeout=` today: `run_malvin()` (~1423), `grade_workspace_native()` (~1253), `grade_workspace()` (~1314), `_relay_subprocess_stdout()` for hello (~1347–1366).
+
+### Modal sandbox timeout helper
+
+```1694:1700:ops/deepswe_modal.py
+def agent_sandbox_timeout_sec(spec: Any, *, skip_grade: bool) -> int:
+    agent = float(getattr(spec, "agent_timeout_sec", 5400.0))
+    if skip_grade:
+        return int(agent + 900)
+    verifier = float(getattr(spec, "verifier_timeout_sec", 1800.0))
+    return int(agent + verifier + 900)
+```
+
+Passed to `modal.Sandbox.create(timeout=…)`. Host-side `proc.wait()` on inner execs has no deadline.
+
+**Bug:** `run_modal_eval(grade_only=True)` calls this with `skip_grade=False`, so grade-only runs get `agent + verifier + 900` even though only the verifier exec runs.
+
+### Metadata and exit behavior
+
+- `_build_run_metadata()` has no `timed_out` field today.
+- `_exit_from_evaluation()` (`deepswe_run.py` ~1606) and `finalize_modal_eval()` (`deepswe_modal.py` ~2374) both:
+  - exit 1 when `grade.pass is False`
+  - **exit with agent `exit_code` when nonzero**, even if grade passed
+
+So agent timeout (e.g. exit 124) would fail the CLI after a passing grade unless exit helpers are updated.
+
+### Tests encoding current behavior
+
+- `ops/deepswe_modal.py`: `_test_agent_sandbox_timeout_sec()` asserts 8100 / 6300.
+- No test asserts per-phase kill at configured limits.
+
+### Adjacent / out of scope
+
+- `hello --host` calls `run_hello_probe_on_host()` without loading `TaskSpec` — connectivity probe, not a scored solve.
+- `build_timeout_sec` unused; `build_local_agent_image()` / Modal `harbor_image()` builds uncapped.
 
 ## Requested Changes
 
-1. Remove kiss from agent pipeline (gates, clamp, dotfiles, CLI requirement, docs).
-2. Remove **all malvin/Modal hardcoded linter and tester commands** (pytest, cargo clippy, cargo test, stestr, kiss, etc.) from builtins and discovery fallbacks.
-3. **Keep checks-discovery KPop** — agent infers commands from repo files; malvin does not name specific tools in prompts or defaults.
-4. **DeepSWE:** keep pre-commit/Makefile scanning only; drop builtin fallbacks and tool-specific sandbox probing.
-5. Keep malvin functional when `.malvin/checks` is populated by discovery or the user.
+1. Enforce `[agent] timeout_sec` on the **full agent exec** (prep + plan + config + malvin), not malvin alone.
+2. Enforce `[verifier] timeout_sec` on the **full verifier exec** (prep + grade), not `test.sh` alone.
+3. Keep Modal/local-Docker orchestration working: outer sandbox/container lifetime is a **backstop** with enough headroom; inner phase limits match Harbor (agent budget does not consume verifier budget).
+4. Record timeout outcomes in metadata (`timed_out`, exit code, configured limits).
+5. After agent timeout, **still run grading**; **CLI exit status follows grade** (see Q3).
+6. Fix Modal sandbox timeout formulas for graded, skip-grade, and **grade-only** paths.
+7. Update self-tests; no live agent runs required.
+
+**Out of scope:** `hello --host`, `build_timeout_sec`, Harbor CLI timeout multipliers.
 
 ## Q&A
 
-### Q1. Does “remove kiss” include malvin’s internal `coverage_kiss/` harness?
+### Q1. Should `environment.build_timeout_sec` be in scope?
 
-**Answer:** **No** for Phases 1–3. Optional Phase 4. `.pre-commit-config.yaml` malvin dev hooks are also out of scope unless Phase 4.
+**Answer:** Defer. Agent and verifier phase caps are the solve-path gap. Build timeout applies to `docker build` / Modal image build — follow-up if needed.
 
-### Q2. What replaces missing `.malvin/checks`?
+### Q2. Where should enforcement live?
 
-**Answer:**
+**Answer:** Primary enforcement in `ops/deepswe_run.py` inside `run_task()`, using a monotonic **phase deadline** (`agent_deadline` / `verifier_deadline`) that covers prep and subprocess work for that exec. Modal and local Docker already invoke `run_task()` in-sandbox per exec; no duplicate timers in `deepswe_modal.py` except the outer sandbox backstop (Phase 2).
 
-- **Malvin (`code`/`tidy`/`do`):** checks-discovery KPop runs when file missing/empty; agent writes commands found in repo config. No malvin default commands. Fail clearly if discovery finishes with no commands.
-- **DeepSWE:** `discover_deepswe_check_lines()` returns pre-commit + Makefile + existing checks only — **no builtins**. Empty repo → empty checks (not `kiss check\n` or pytest).
-- **Rust `builtin_gate_command_lines()` → `[]`**. Delete kiss repair paths in `gate_restore_repair.rs`; do not auto-fill checks.
+### Q3. On agent timeout, should grading still run? What exit code?
 
-### Q3. Should malvin strip tools from existing `.malvin/checks`?
+**Answer:** Yes — grade the partial workspace. Mark `agent.timed_out: true` and `exit_code: 124`. **CLI exit follows grade:** if `grade.pass is True`, exit 0; if grade fails or verifier times out, exit 1. Update `_exit_from_evaluation()` and `finalize_modal_eval()` to skip the agent exit-code check when `agent.timed_out` is true (grade already ran). This matches “score the submission, note agent overrun in metadata.”
 
-**Answer:** **No.** Stop seeding/mandating; do not rewrite user files.
+### Q4. On verifier timeout, what is the outcome?
 
-### Q4. What happens to `.kissconfig` / `.kissignore`?
+**Answer:** `pass: false`, `reward: 0`, `timed_out: true`, non-zero verifier exit code (124). Write `verifier.log` with whatever was captured before kill.
 
-**Answer:** Drop from session backup/restore and kiss merge/repair logic. Files may remain on disk unmanaged.
+### Q5. How to stop malvin + cursor-agent on timeout?
 
-### Q5. DeepSWE Docker/Modal image?
+**Answer:** Process-group kill: `start_new_session=True`, on timeout `SIGTERM` then `SIGKILL` to the group. Each subprocess call within a phase gets `timeout_sec=min(remaining_deadline, …)`.
 
-**Answer:** Remove kiss install and kiss-first discovery. Remove builtin pytest/cargo/stestr seeding. Keep scanning repo config files only.
+### Q6. Combined `run_task` (host runtime, agent + grade in one invocation)?
 
-### Q6. `sandbox_prep` and Modal offline tool installs?
-
-**Answer:** **Remove `probe_check_tools()` entirely** (user decision). Review `offline_check_tool_install_commands()` in `deepswe_modal.py` — it reacts to checks text, not malvin defaults; keep only if still needed for Harbor offline sandboxes, or simplify in Phase 3.
+**Answer:** Prep at the top counts toward the **agent** deadline only (runs once). Start `agent_deadline` before prep when `not grade_only`; start a fresh `verifier_deadline` before the grade block when `not skip_grade`. Do not double-charge prep to the verifier budget in this path.
 
 ## Plan
 
-### Phase 1 — Remove kiss from core gate pipeline (Rust)
+### Phase 1 — Phase deadlines in `run_task()` + subprocess helper
 
-- [x] **`src/repo_gates/mod.rs`:** Remove kiss constants; `builtin_gate_command_lines()` → `[]`.
-- [x] **Delete:** `kiss_clamp.rs`, `kissconfig_warn.rs`; simplify `gate_run.rs`.
-- [x] **`entrypoint.rs` / `support_paths.rs`:** Remove kiss CLI requirement.
-- [x] **`session_dotfile_backup/slots.rs`:** Remove kiss rows; renumber slots. Update `mod.rs`, `wrappers.rs`, merge/restore.
-- [x] **`artifacts/mod.rs`:** Drop kiss re-exports.
-- [x] **Gate restore:** Delete kiss merge/repair in `gate_restore_merge.rs`, `gate_restore_checks.rs`, `gate_restore_repair.rs` (including `default_malvin_checks_bytes` kiss replacement).
-- [x] **Tests:** repo_gates, gate_run, session_dotfile_backup, do_stdout/clamp, kiss_*_gate_path, code_kpop_contract, acp_do_dotfiles, cli_parity, kpop_bridge, review_prep/gate_error regression.
-
-**Validation:**
-
-- `cargo test repo_gates`
-- `cargo test gate_run_tests`
-- `cargo test session_dotfile_backup`
-- `cargo test checks_discovery`
-- `cargo build --release`
-- `rg 'require_kiss|kiss_clamp|KISS_CHECK' src tests` — no matches
-
-### Phase 2 — Prompts, docs, checks discovery (no mandated tools)
-
-- [x] **`init_constraints.md`:** Remove “Always include `kiss check`…”. Keep “discover how the repo runs quality gates” with pre-commit/Makefile/CI examples — **do not name pytest, cargo, clippy, kiss, or other specific tools** as requirements or examples of what to always include.
-- [x] **Docs:** Remove kiss PATH requirement, kiss dotfiles from backup lists, kiss-metric success criteria (`code.md`, `tidy.md`, `malvin.md`, `kpop.md`, `do.md`, `inspire.md`, `kpop_program.md`, `malvin_post.md`).
-- [x] **`README.md`:** Remove `cargo install kiss-ai` agent prerequisite.
-- [x] **Discovery tests:** `checks_discovery_flow.rs`, `tests/checks_discovery.rs` — assert discovery produces **repo-derived** commands (e.g. from seeded Makefile/pre-commit fixture), not `kiss check` or hardcoded pytest/cargo.
-- [x] **Prep/workflow tests:** Replace `seed_malvin_checks(..., "kiss check\n")` with neutral fixtures (`make lint\n`, `true\n`, or repo-specific lines).
+- [x] Add `_run_with_timeout(cmd, *, cwd, timeout_sec, stream=False)` in `ops/deepswe_run.py`:
+  - returns `exit_code`, `timed_out`, `elapsed_sec`, optional output;
+  - process-group termination on timeout;
+  - maps timeout to exit code 124.
+- [x] Add `_remaining_sec(deadline: float) -> float` (floor at 0).
+- [x] Refactor `run_task()` phase structure:
+  - **`grade_only` exec:** set `verifier_deadline` **before** `prepare_task_sandbox`; each step (prep, grade) uses remaining budget.
+  - **Agent exec** (`not grade_only`): set `agent_deadline` **before** prep; prep, plan, config, and `run_malvin()` use remaining budget.
+  - **Combined path** (`not grade_only` and `not skip_grade`, e.g. host runtime): agent deadline before prep; after agent completes, new verifier deadline before grade (prep not repeated).
+  - On deadline exhausted before a step: skip remaining steps in that phase, set `timed_out: true`, exit code 124.
+- [x] Thread remaining budget into `prepare_task_sandbox` (add optional `timeout_sec` or deadline param to its slow subprocess calls in `sandbox_prep.py` — minimal surface: pass deadline into prep and cap `_run_shell` calls).
+- [x] Update `run_malvin()`, `grade_workspace_native()`, and `grade_workspace()` to accept `timeout_sec` from caller (already computed from phase deadline).
+- [x] On verifier timeout: force `pass: false`, `reward: 0` when no valid reward file.
+- [x] Extend `_build_run_metadata()` with configured limits and `timed_out` on agent/grade dicts.
+- [x] Update `_exit_from_evaluation()` and `finalize_modal_eval()`: when `agent.get("timed_out")`, do not raise on agent `exit_code`; still exit 1 on `grade.pass is False`.
+- [x] Add `_print_evaluation_summary()` lines for `timed_out`.
 
 **Validation:**
 
-- `cargo test checks_discovery`
-- `grep -rE 'kiss check|kiss-ai|Always include.*kiss|pytest -sv|cargo clippy' default_prompts README.md` — no agent-facing mandated-tool references
-- Discovery prompt text contains no tool mandates
+- `python ops/deepswe_run.py self-test` passes.
+- `_test_run_with_timeout_kills_slow_command()`: `sleep 999` with 1s cap → `timed_out`, elapsed ≈ 1s.
+- `_test_run_task_agent_phase_includes_prep()`: mock prep + malvin; assert total wall time capped at `agent_timeout_sec`.
+- `_test_exit_after_agent_timeout_grade_pass()`: mock agent `{timed_out: true, exit_code: 124}`, grade `{pass: true}` → `_exit_from_evaluation` does not raise.
+- Dry-run unchanged: `python ops/deepswe_run.py run … --dry-run` still prints commands only.
 
-### Phase 3 — DeepSWE and ops (scan-only, no builtins, no probe_check_tools)
+### Phase 2 — Modal outer sandbox backstop
 
-- [x] **`ops/deepswe_run.py`:**
-  - Delete `KISS_CHECK_COMMAND`, `DEFAULT_PYTEST_CHECK`, `DEFAULT_STESTR_CHECK`, `DEFAULT_RUST_*`, `builtin_gate_command_lines()`, `ensure_kiss_check_first()`, kiss install in Docker build, `.kiss` markers.
-  - **`discover_deepswe_check_lines()`:** Keep `precommit_hook_entries`, `makefile_gate_targets`, `existing_malvin_checks_lines`, `dedupe_check_lines` — **remove** builtin fallback loop, stestr/pytest swap that appends `DEFAULT_STESTR_CHECK`, and kiss-first wrapper.
-  - **`discover_deepswe_checks()`:** Empty/missing workspace → `""` or `"\n"`, not kiss/pytest.
-  - Remove helpers only used by deleted builtins (`python_ruff_and_pytest_flags`, `repo_uses_stestr` gate-append paths) if unused after scan-only discovery.
-  - Rewrite `_test_discover_deepswe_checks_*` — minimal repo expects **empty** lines; python repo with tests dir but no pre-commit expects **empty** (no auto-pytest); pre-commit fixture still discovers `ruff check`.
-- [x] **`ops/deepswe_modal.py`:** Remove kiss image install and kiss self-tests; align with scan-only discovery; review `offline_check_tool_install_commands` / `offline_agent_checks` (keep reactive installs or trim in same PR).
-- [x] **`ops/sandbox_prep.py`:** **Remove `probe_check_tools()`** and its call site in `prepare_task_sandbox`; delete probe self-tests.
-- [x] **`ops/toolchain_repos.py`:** Remove kiss helpers when unused.
-- [x] **`tests/test_deepswe_run_selftest_discover.py`:** Update for scan-only behavior; drop `test_deepswe_kiss_repo_root` if applicable.
-- [x] **Optional:** Delete `ops/kiss_triage/`, `tests/test_kiss_admin_tooling_contract.py`.
+- [x] Replace `agent_sandbox_timeout_sec()` with explicit modes (or add `grade_only: bool`):
+  - **Graded solve:** `agent + verifier + INJECT_SLACK + SANDBOX_HEADROOM` (keep **900s headroom** until prep is reliably under phase deadlines; do **not** shrink to 300s).
+  - **Skip-grade:** `agent + SANDBOX_HEADROOM`
+  - **Grade-only:** `verifier + SANDBOX_HEADROOM` (fix current bug using full sum)
+- [x] Pass correct mode from `run_modal_eval()` (`grade_only`, `skip_grade` flags).
+- [x] Update `_test_agent_sandbox_timeout_sec()` for new grade-only case; graded/skip-grade values stay 8100/6300 with 900 headroom (+ small inject slack constant if added, e.g. 120s between execs → 8220 graded — document constant in code).
+- [x] Do **not** add host-side `proc.wait(timeout=…)` unless Phase 1 inner enforcement proves insufficient.
 
 **Validation:**
 
-- `python -m pytest tests/test_deepswe_run_selftest_discover.py -q`
-- `python -m pytest tests/test_ops_selftest.py -q` (sandbox_prep self-tests)
-- `rg -E 'DEFAULT_PYTEST|DEFAULT_RUST|DEFAULT_STESTR|KISS_CHECK|ensure_kiss_check_first|builtin_gate_command_lines|probe_check_tools' ops/` — no matches
-- Fixture repo with only `tests/test_foo.py` and no pre-commit → discovered checks **empty**
-- Fixture repo with `.pre-commit-config.yaml` ruff hook → discovered checks contain ruff line only
+- `python ops/deepswe_modal.py --self-test` passes.
+- `pytest tests/test_ops_selftest.py -k deepswe_modal` passes.
+- `_test_agent_sandbox_timeout_sec()` covers all three modes.
 
-### Phase 4 (optional) — Remove internal kiss dependency entirely
+### Phase 3 — Local Docker outer safety (optional)
 
-- [ ] `coverage_kiss/`, `*_kiss_cov_*`, `.pre-commit-config.yaml` kiss hook.
+- [x] Host-side timeouts on `subprocess.run(agent_cmd)` / `subprocess.run(grade_cmd)` in `run_local_eval_in_docker()` (~1201, ~1222): `spec.agent_timeout_sec + slack` and `spec.verifier_timeout_sec + slack` as backstop only.
 
-**Validation:** `cargo test` without kiss on PATH.
+**Validation:**
 
-**Note:** Independent of agent behavior; defer unless requested.
+- `python ops/deepswe_run.py self-test` passes.
+- Docker tests pass when Docker available (`DEEPSWE_SKIP_DOCKER_SELFTESTS=0`).
+
+### Phase 4 — Docs
+
+- [x] Update `ops/deepswe_run.py` module docstring: per-phase enforcement from `task.toml`; note Modal/default path uses in-sandbox `run_task()`.
+- [x] One-line comment on `agent_sandbox_timeout_sec` modes in `deepswe_modal.py`.
+
+**Validation:**
+
+- Grep confirms docstring mentions per-phase enforcement and in-sandbox path.

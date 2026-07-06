@@ -6,10 +6,16 @@ sandbox with a Cursor API CIDR allowlist, harvests the workspace, then grades in
 separate Modal sandbox with ``block_network=True``. Modal agent runs require a Cursor
 API key (``CURSOR_AGENT_API_KEY``, ``CURSOR_API_KEY``, or ``AGENT_API_KEY``) in the
 shell that launches the command; interactive ``agent login`` is not available inside
-Modal sandboxes. ``solve --local TASK_NAME`` runs both phases in
-one local Docker container (agent image built from Harbor + malvin/cursor-agent).
+Modal sandboxes. ``solve --local TASK_NAME`` runs agent and grade in separate local
+Docker containers (agent image built from Harbor + malvin/cursor-agent).
 ``--runtime host`` runs malvin on the host and grades via Docker; ``--runtime in-sandbox``
 runs both phases in the current environment (Modal sandbox or an outer ``docker run``).
+
+Harbor per-phase timeouts from ``task.toml`` (``agent.timeout_sec``, ``verifier.timeout_sec``)
+are enforced in ``run_task()`` via monotonic phase deadlines covering prep, plan, config,
+malvin, and grade. Default ``solve`` (Modal) and ``solve --local`` (Docker) invoke
+in-sandbox ``run_task()`` per exec; inner enforcement is primary. Modal sandbox lifetime
+and local Docker ``subprocess.run`` timeouts are outer backstops with 900s headroom.
 
 Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) replays Harbor
 Dockerfile editable-install steps against the mounted workspace.
@@ -40,6 +46,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -78,6 +85,133 @@ TOOLCHAIN_PATH = (
     ":/usr/sbin:/usr/bin:/sbin:/bin"
 )
 CURSOR_ENV_KEYS = ("CURSOR_AGENT_API_KEY", "CURSOR_API_KEY", "AGENT_API_KEY")
+TIMEOUT_EXIT_CODE = 124
+LOCAL_DOCKER_HEADROOM_SEC = 900
+_KILL_GRACE_SEC = 2.0
+_POLL_INTERVAL_SEC = 0.1
+
+
+def _docker_backstop_timeout_sec(configured: float) -> float:
+    """Host-side Docker ``subprocess.run`` backstop: configured phase cap plus headroom."""
+    return configured + LOCAL_DOCKER_HEADROOM_SEC
+
+
+def _remaining_sec(deadline: float) -> float:
+    """Seconds until monotonic *deadline*; floor at 0."""
+    return max(0.0, deadline - time.monotonic())
+
+
+@dataclass
+class SubprocessResult:
+    exit_code: int
+    timed_out: bool
+    elapsed_sec: float
+    output: str | None = None
+
+
+def _kill_process_group(pgid: int, proc: subprocess.Popen[Any]) -> None:
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    grace_deadline = time.monotonic() + _KILL_GRACE_SEC
+    while proc.poll() is None and time.monotonic() < grace_deadline:
+        time.sleep(_POLL_INTERVAL_SEC)
+    if proc.poll() is None:
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def _run_with_timeout(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout_sec: float,
+    stream: bool = False,
+    inherit_stdio: bool = False,
+    env: dict[str, str] | None = None,
+) -> SubprocessResult:
+    """Run *cmd* under a wall-clock cap; kill the process group on expiry."""
+    if timeout_sec <= 0:
+        return SubprocessResult(
+            exit_code=TIMEOUT_EXIT_CODE,
+            timed_out=True,
+            elapsed_sec=0.0,
+            output="" if stream and not inherit_stdio else None,
+        )
+    t0 = time.monotonic()
+    deadline = t0 + timeout_sec
+    popen_kwargs: dict[str, Any] = {
+        "args": cmd,
+        "start_new_session": True,
+    }
+    if cwd is not None:
+        popen_kwargs["cwd"] = str(cwd)
+    if env is not None:
+        popen_kwargs["env"] = env
+    chunks: list[str] = []
+    if stream and not inherit_stdio:
+        popen_kwargs["stdout"] = subprocess.PIPE
+        popen_kwargs["stderr"] = subprocess.STDOUT
+        popen_kwargs["text"] = True
+        popen_kwargs["bufsize"] = 1
+    elif not inherit_stdio:
+        popen_kwargs["stdout"] = subprocess.PIPE
+        popen_kwargs["stderr"] = subprocess.PIPE
+        popen_kwargs["text"] = True
+
+    proc = subprocess.Popen(**popen_kwargs)
+    pgid = proc.pid
+    timed_out = False
+    while proc.poll() is None:
+        if time.monotonic() >= deadline:
+            timed_out = True
+            _kill_process_group(pgid, proc)
+            proc.wait()
+            break
+        if stream and not inherit_stdio and proc.stdout is not None:
+            line = proc.stdout.readline()
+            if line:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                chunks.append(line)
+        else:
+            time.sleep(_POLL_INTERVAL_SEC)
+
+    elapsed = time.monotonic() - t0
+    if timed_out:
+        return SubprocessResult(
+            exit_code=TIMEOUT_EXIT_CODE,
+            timed_out=True,
+            elapsed_sec=elapsed,
+            output="".join(chunks) if stream and not inherit_stdio else None,
+        )
+
+    if inherit_stdio:
+        exit_code = int(proc.returncode or 0)
+        return SubprocessResult(
+            exit_code=exit_code,
+            timed_out=False,
+            elapsed_sec=elapsed,
+            output=None,
+        )
+
+    stdout = proc.stdout.read() if proc.stdout is not None else ""
+    stderr = proc.stderr.read() if proc.stderr is not None else ""
+    if stream:
+        output = "".join(chunks)
+        if proc.stdout is not None:
+            output += proc.stdout.read() or ""
+    else:
+        output = (stdout or "") + (stderr or "")
+    return SubprocessResult(
+        exit_code=int(proc.returncode or 0),
+        timed_out=False,
+        elapsed_sec=elapsed,
+        output=output,
+    )
 
 
 def default_deepswe_tasks_root() -> Path:
@@ -147,6 +281,25 @@ class TaskSpec:
     agent_timeout_sec: float
     verifier_timeout_sec: float
     environment_memory_mb: int
+
+
+def _agent_timeout_result(spec: TaskSpec, *, agent_seconds: float = 0.0) -> dict[str, Any]:
+    return {
+        "exit_code": TIMEOUT_EXIT_CODE,
+        "timed_out": True,
+        "timeout_sec": spec.agent_timeout_sec,
+        "agent_seconds": agent_seconds,
+    }
+
+
+def _grade_timeout_result(spec: TaskSpec) -> dict[str, Any]:
+    return {
+        "pass": False,
+        "reward": 0,
+        "timed_out": True,
+        "timeout_sec": spec.verifier_timeout_sec,
+        "verifier_exit_code": TIMEOUT_EXIT_CODE,
+    }
 
 
 def parse_task_dir(task_dir: Path) -> TaskSpec:
@@ -761,7 +914,9 @@ def write_plan_and_checks(
     command: str,
     checks_override: str | None,
     dry_run: bool,
-) -> None:
+    deadline: float | None = None,
+) -> bool:
+    """Write workspace plan and checks. Returns False if *deadline* is exhausted."""
     plan = workspace / "plan.md"
     if not dry_run:
         shutil.copyfile(spec.instruction, plan)
@@ -770,8 +925,12 @@ def write_plan_and_checks(
         malvin_dir.mkdir(parents=True, exist_ok=True)
     checks = checks_override
     if checks is None:
+        if deadline is not None and _remaining_sec(deadline) <= 0:
+            return False
         checks = discover_deepswe_checks(workspace)
     if not dry_run:
+        if deadline is not None and _remaining_sec(deadline) <= 0:
+            return False
         patch_targets = patch_surface_targets(workspace)
         if patch_targets:
             probe_path = malvin_dir / "patch_surface_probe.py"
@@ -788,6 +947,7 @@ def write_plan_and_checks(
     click.echo(f"Writing {checks_path}: {checks.strip()!r}")
     if not dry_run:
         checks_path.write_text(checks, encoding="utf-8")
+    return True
 
 
 def apply_patch(workspace: Path, patch: Path, *, dry_run: bool) -> None:
@@ -1127,6 +1287,22 @@ def _read_docker_grade_result(run_root: Path, proc: subprocess.CompletedProcess[
     }
 
 
+def _run_local_docker_subprocess(
+    cmd: list[str],
+    *,
+    timeout_sec: float,
+) -> subprocess.CompletedProcess[str] | None:
+    """Run a local Docker command with a host-side backstop timeout."""
+    try:
+        return subprocess.run(cmd, text=True, check=False, timeout=timeout_sec)
+    except subprocess.TimeoutExpired:
+        click.echo(
+            f"local Docker backstop timed out after {timeout_sec:.0f}s",
+            err=True,
+        )
+        return None
+
+
 def run_local_eval_in_docker(
     spec: TaskSpec,
     task_dir: Path,
@@ -1179,9 +1355,16 @@ def run_local_eval_in_docker(
         if dry_run:
             run_cmd(cmd, dry_run=True)
             return {"agent": None, "grade": {"pass": None, "reward": None, "dry_run": True}, "runtime": "local-docker"}
-        proc = subprocess.run(cmd, text=True, check=False)
-        last_exit_code = proc.returncode
-        grade_result = _read_docker_grade_result(run_root, proc)
+        proc = _run_local_docker_subprocess(
+            cmd,
+            timeout_sec=_docker_backstop_timeout_sec(spec.verifier_timeout_sec),
+        )
+        if proc is None:
+            last_exit_code = TIMEOUT_EXIT_CODE
+            grade_result = _grade_timeout_result(spec)
+        else:
+            last_exit_code = proc.returncode
+            grade_result = _read_docker_grade_result(run_root, proc)
     else:
         malvin_repo = validate_toolchain_repos()
         eval_image = build_local_agent_image(
@@ -1198,13 +1381,20 @@ def run_local_eval_in_docker(
             run_cmd(agent_cmd, dry_run=True)
             agent_result = {"dry_run": True}
         else:
-            proc = subprocess.run(agent_cmd, text=True, check=False)
-            last_exit_code = proc.returncode
-            metadata_path = run_root / "metadata.json"
-            if metadata_path.is_file():
-                agent_result = json.loads(metadata_path.read_text(encoding="utf-8")).get("agent")
+            proc = _run_local_docker_subprocess(
+                agent_cmd,
+                timeout_sec=_docker_backstop_timeout_sec(spec.agent_timeout_sec),
+            )
+            if proc is None:
+                last_exit_code = TIMEOUT_EXIT_CODE
+                agent_result = _agent_timeout_result(spec)
             else:
-                agent_result = {"exit_code": proc.returncode}
+                last_exit_code = proc.returncode
+                metadata_path = run_root / "metadata.json"
+                if metadata_path.is_file():
+                    agent_result = json.loads(metadata_path.read_text(encoding="utf-8")).get("agent")
+                else:
+                    agent_result = {"exit_code": proc.returncode}
 
         if skip_grade:
             grade_result = {"pass": None, "reward": None, "skipped": True}
@@ -1219,9 +1409,16 @@ def run_local_eval_in_docker(
                 run_cmd(grade_cmd, dry_run=True)
                 grade_result = {"pass": None, "reward": None, "dry_run": True}
             else:
-                proc = subprocess.run(grade_cmd, text=True, check=False)
-                last_exit_code = proc.returncode
-                grade_result = _read_docker_grade_result(run_root, proc)
+                proc = _run_local_docker_subprocess(
+                    grade_cmd,
+                    timeout_sec=_docker_backstop_timeout_sec(spec.verifier_timeout_sec),
+                )
+                if proc is None:
+                    last_exit_code = TIMEOUT_EXIT_CODE
+                    grade_result = _grade_timeout_result(spec)
+                else:
+                    last_exit_code = proc.returncode
+                    grade_result = _read_docker_grade_result(run_root, proc)
 
     return {
         "agent": agent_result,
@@ -1237,6 +1434,8 @@ def grade_workspace_native(
     logs_dir: Path,
     *,
     dry_run: bool,
+    timeout_sec: float | None = None,
+    configured_timeout_sec: float | None = None,
 ) -> dict[str, Any]:
     """Run Harbor ``test.sh`` in the current environment (no Docker wrapper)."""
     verifier_log = logs_dir / "verifier.log"
@@ -1250,33 +1449,51 @@ def grade_workspace_native(
     logs_dir.mkdir(parents=True, exist_ok=True)
     (logs_dir / "verifier").mkdir(parents=True, exist_ok=True)
     (logs_dir / "artifacts").mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(
-        cmd,
-        cwd=str(workspace),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    verifier_log.write_text(
-        (proc.stdout or "") + (proc.stderr or ""),
-        encoding="utf-8",
-    )
-    sys.stdout.write(proc.stdout or "")
-    sys.stderr.write(proc.stderr or "")
+    if timeout_sec is not None and timeout_sec <= 0:
+        result = SubprocessResult(
+            exit_code=TIMEOUT_EXIT_CODE,
+            timed_out=True,
+            elapsed_sec=0.0,
+            output="",
+        )
+    elif timeout_sec is None:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(workspace),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        result = SubprocessResult(
+            exit_code=int(proc.returncode or 0),
+            timed_out=False,
+            elapsed_sec=0.0,
+            output=(proc.stdout or "") + (proc.stderr or ""),
+        )
+    else:
+        result = _run_with_timeout(cmd, cwd=workspace, timeout_sec=timeout_sec, stream=False)
+    verifier_log.write_text(result.output or "", encoding="utf-8")
+    if result.output:
+        sys.stdout.write(result.output)
     reward_path = logs_dir / "verifier" / "reward.txt"
     reward: int | None = None
-    if reward_path.is_file():
+    if not result.timed_out and reward_path.is_file():
         text = reward_path.read_text(encoding="utf-8").strip()
         if text in {"0", "1"}:
             reward = int(text)
     model_patch = logs_dir / "artifacts" / "model.patch"
-    return {
-        "pass": reward == 1,
-        "reward": reward,
-        "verifier_exit_code": proc.returncode,
+    grade: dict[str, Any] = {
+        "pass": reward == 1 if not result.timed_out else False,
+        "reward": reward if not result.timed_out else 0,
+        "verifier_exit_code": result.exit_code,
         "verifier_log": str(verifier_log),
         "model_patch": str(model_patch) if model_patch.is_file() else None,
     }
+    if configured_timeout_sec is not None:
+        grade["timeout_sec"] = configured_timeout_sec
+    if result.timed_out:
+        grade["timed_out"] = True
+    return grade
 
 
 def grade_workspace(
@@ -1286,6 +1503,8 @@ def grade_workspace(
     *,
     image: str,
     dry_run: bool,
+    timeout_sec: float | None = None,
+    configured_timeout_sec: float | None = None,
 ) -> dict[str, Any]:
     logs_dir.mkdir(parents=True, exist_ok=True)
     (logs_dir / "verifier").mkdir(parents=True, exist_ok=True)
@@ -1311,27 +1530,45 @@ def grade_workspace(
         return {"pass": None, "reward": None, "dry_run": True}
     if deepswe_test_fast_grade_enabled():
         return _fast_grade_selftest_result(logs_dir)
-    proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
-    verifier_log.write_text(
-        (proc.stdout or "") + (proc.stderr or ""),
-        encoding="utf-8",
-    )
-    sys.stdout.write(proc.stdout or "")
-    sys.stderr.write(proc.stderr or "")
+    if timeout_sec is not None and timeout_sec <= 0:
+        result = SubprocessResult(
+            exit_code=TIMEOUT_EXIT_CODE,
+            timed_out=True,
+            elapsed_sec=0.0,
+            output="",
+        )
+    elif timeout_sec is None:
+        proc = subprocess.run(cmd, text=True, capture_output=True, check=False)
+        result = SubprocessResult(
+            exit_code=int(proc.returncode or 0),
+            timed_out=False,
+            elapsed_sec=0.0,
+            output=(proc.stdout or "") + (proc.stderr or ""),
+        )
+    else:
+        result = _run_with_timeout(cmd, timeout_sec=timeout_sec, stream=False)
+    verifier_log.write_text(result.output or "", encoding="utf-8")
+    if result.output:
+        sys.stdout.write(result.output)
     reward_path = logs_dir / "verifier" / "reward.txt"
     reward: int | None = None
-    if reward_path.is_file():
+    if not result.timed_out and reward_path.is_file():
         text = reward_path.read_text(encoding="utf-8").strip()
         if text in {"0", "1"}:
             reward = int(text)
     model_patch = logs_dir / "artifacts" / "model.patch"
-    return {
-        "pass": reward == 1,
-        "reward": reward,
-        "verifier_exit_code": proc.returncode,
+    grade: dict[str, Any] = {
+        "pass": reward == 1 if not result.timed_out else False,
+        "reward": reward if not result.timed_out else 0,
+        "verifier_exit_code": result.exit_code,
         "verifier_log": str(verifier_log),
         "model_patch": str(model_patch) if model_patch.is_file() else None,
     }
+    if configured_timeout_sec is not None:
+        grade["timeout_sec"] = configured_timeout_sec
+    if result.timed_out:
+        grade["timed_out"] = True
+    return grade
 
 
 def malvin_needs_task_plan(command: str) -> bool:
@@ -1395,6 +1632,8 @@ def run_malvin(
     command: str,
     malvin_args: tuple[str, ...],
     dry_run: bool,
+    timeout_sec: float | None = None,
+    configured_timeout_sec: float | None = None,
 ) -> dict[str, Any]:
     if command == "do":
         if not malvin_args:
@@ -1412,17 +1651,59 @@ def run_malvin(
     if dry_run:
         run_cmd(cmd, cwd=workspace, dry_run=True)
         return {"agent_seconds": 0.0, "exit_code": 0, "dry_run": True}
-    if command == "hello":
-        exit_code, agent_stdout = _relay_subprocess_stdout(cmd, cwd=workspace)
+    if timeout_sec is not None and timeout_sec <= 0:
         elapsed = time.monotonic() - t0
-        return {
+        result: dict[str, Any] = {
             "agent_seconds": elapsed,
-            "exit_code": exit_code,
-            "stdout": agent_stdout,
+            "exit_code": TIMEOUT_EXIT_CODE,
+            "timed_out": True,
         }
-    proc = subprocess.run(cmd, cwd=str(workspace), check=False)
-    elapsed = time.monotonic() - t0
-    return {"agent_seconds": elapsed, "exit_code": proc.returncode}
+        if configured_timeout_sec is not None:
+            result["timeout_sec"] = configured_timeout_sec
+        return result
+    if command == "hello":
+        env = os.environ.copy()
+        env.setdefault("MALVIN_FORCE_STDOUT_TEE", "1")
+        if timeout_sec is None:
+            exit_code, agent_stdout = _relay_subprocess_stdout(cmd, cwd=workspace)
+            elapsed = time.monotonic() - t0
+            return {
+                "agent_seconds": elapsed,
+                "exit_code": exit_code,
+                "stdout": agent_stdout,
+            }
+        sub = _run_with_timeout(
+            cmd,
+            cwd=workspace,
+            timeout_sec=timeout_sec,
+            stream=True,
+            env=env,
+        )
+        return {
+            "agent_seconds": sub.elapsed_sec,
+            "exit_code": sub.exit_code,
+            "stdout": sub.output or "",
+            "timed_out": sub.timed_out,
+            "timeout_sec": configured_timeout_sec,
+        }
+    if timeout_sec is None:
+        proc = subprocess.run(cmd, cwd=str(workspace), check=False)
+        elapsed = time.monotonic() - t0
+        return {"agent_seconds": elapsed, "exit_code": proc.returncode}
+    sub = _run_with_timeout(
+        cmd,
+        cwd=workspace,
+        timeout_sec=timeout_sec,
+        inherit_stdio=True,
+    )
+    agent: dict[str, Any] = {
+        "agent_seconds": sub.elapsed_sec,
+        "exit_code": sub.exit_code,
+        "timed_out": sub.timed_out,
+    }
+    if configured_timeout_sec is not None:
+        agent["timeout_sec"] = configured_timeout_sec
+    return agent
 
 
 def find_latest_malvin_log(workspace: Path | None = None) -> Path | None:
@@ -1594,12 +1875,16 @@ def _print_evaluation_summary(
     click.echo(f"pass: {grade_result.get('pass')}")
     if agent_result:
         click.echo(f"malvin exit: {agent_result.get('exit_code')}")
+        if agent_result.get("timed_out"):
+            click.echo("agent timed_out: true")
         click.echo(f"agent_seconds: {agent_result.get('agent_seconds', 0):.1f}")
         agent_stdout = agent_result.get("stdout")
         if isinstance(agent_stdout, str) and agent_stdout.strip():
             click.echo("--- agent stdout ---")
             click.echo(agent_stdout.rstrip())
             click.echo("--- end agent stdout ---")
+    if grade_result.get("timed_out"):
+        click.echo("grade timed_out: true")
     click.echo(f"artifacts: {run_root.resolve()}")
 
 
@@ -1609,8 +1894,9 @@ def _exit_from_evaluation(
 ) -> None:
     if grade_result.get("pass") is False:
         raise SystemExit(1)
-    if agent_result and agent_result.get("exit_code") not in (0, None):
-        raise SystemExit(agent_result["exit_code"])
+    if agent_result and not agent_result.get("timed_out"):
+        if agent_result.get("exit_code") not in (0, None):
+            raise SystemExit(agent_result["exit_code"])
 
 
 def _run_local_docker_task(
@@ -1779,46 +2065,103 @@ def run_task(
     checks_text = ""
     if not grade_only and malvin_needs_task_plan(malvin_command):
         checks_text = checks_override or discover_deepswe_checks(workspace)
+
+    prep_deadline: float | None = None
+    if grade_only:
+        prep_deadline = time.monotonic() + spec.verifier_timeout_sec
+    elif not grade_only:
+        prep_deadline = time.monotonic() + spec.agent_timeout_sec
+
     prep_result = prepare_task_sandbox(
         spec,
         workspace,
         checks=checks_text,
         dry_run=dry_run,
+        deadline=prep_deadline,
     )
 
     agent_result: dict[str, Any] | None = None
-    if not grade_only:
-        if malvin_needs_task_plan(malvin_command):
-            write_plan_and_checks(
-                spec,
-                workspace,
-                command=malvin_command,
-                checks_override=checks_override,
-                dry_run=dry_run,
-            )
-        ensure_deepswe_malvin_config(spec, dry_run=dry_run)
-        agent_result = run_malvin(
-            workspace,
-            command=malvin_command,
-            malvin_args=malvin_args,
-            dry_run=dry_run,
-        )
+    if grade_only and prep_result.timed_out:
+        agent_result = None
+    elif not grade_only:
+        if prep_result.timed_out:
+            agent_result = _agent_timeout_result(spec)
+        else:
+            agent_deadline = prep_deadline
+            assert agent_deadline is not None
+            agent_timed_out = False
+            if malvin_needs_task_plan(malvin_command):
+                if _remaining_sec(agent_deadline) <= 0:
+                    agent_timed_out = True
+                else:
+                    if not write_plan_and_checks(
+                        spec,
+                        workspace,
+                        command=malvin_command,
+                        checks_override=checks_override,
+                        dry_run=dry_run,
+                        deadline=agent_deadline,
+                    ):
+                        agent_timed_out = True
+            if not agent_timed_out:
+                if _remaining_sec(agent_deadline) <= 0:
+                    agent_timed_out = True
+                else:
+                    ensure_deepswe_malvin_config(spec, dry_run=dry_run)
+                    if _remaining_sec(agent_deadline) <= 0:
+                        agent_timed_out = True
+            if not agent_timed_out:
+                remaining = _remaining_sec(agent_deadline)
+                if remaining <= 0:
+                    agent_timed_out = True
+                else:
+                    agent_result = run_malvin(
+                        workspace,
+                        command=malvin_command,
+                        malvin_args=malvin_args,
+                        dry_run=dry_run,
+                        timeout_sec=remaining,
+                        configured_timeout_sec=spec.agent_timeout_sec,
+                    )
+                    if agent_result.get("timed_out"):
+                        agent_timed_out = True
+            if agent_timed_out and agent_result is None:
+                agent_result = _agent_timeout_result(spec)
 
     grade_result: dict[str, Any]
     if skip_grade:
         grade_result = {"pass": None, "reward": None, "skipped": True}
-    elif in_sandbox:
-        test_sh = IN_SANDBOX_TESTS_DIR / "test.sh"
-        grade_result = grade_workspace_native(
-            workspace,
-            test_sh,
-            logs_dir,
-            dry_run=dry_run,
-        )
+    elif grade_only and prep_result.timed_out:
+        grade_result = _grade_timeout_result(spec)
     else:
-        validate_verifier_paths(spec)
-        image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
-        grade_result = grade_workspace(spec, workspace, logs_dir, image=image, dry_run=dry_run)
+        if grade_only:
+            assert prep_deadline is not None
+            remaining = _remaining_sec(prep_deadline)
+        else:
+            verifier_deadline = time.monotonic() + spec.verifier_timeout_sec
+            remaining = _remaining_sec(verifier_deadline)
+        if in_sandbox:
+            test_sh = IN_SANDBOX_TESTS_DIR / "test.sh"
+            grade_result = grade_workspace_native(
+                workspace,
+                test_sh,
+                logs_dir,
+                dry_run=dry_run,
+                timeout_sec=remaining,
+                configured_timeout_sec=spec.verifier_timeout_sec,
+            )
+        else:
+            validate_verifier_paths(spec)
+            image = resolve_docker_image(spec, docker_image, dry_run=dry_run)
+            grade_result = grade_workspace(
+                spec,
+                workspace,
+                logs_dir,
+                image=image,
+                dry_run=dry_run,
+                timeout_sec=remaining,
+                configured_timeout_sec=spec.verifier_timeout_sec,
+            )
 
     malvin_log = find_latest_malvin_log(workspace)
     metadata = _build_run_metadata(
@@ -3155,6 +3498,301 @@ def _test_prepare_task_sandbox_dry_run() -> None:
         assert result.ok is True
 
 
+def _minimal_timeout_task_tree(
+    tmp: Path,
+    *,
+    agent_timeout_sec: float = 2.5,
+    verifier_timeout_sec: float = 1.0,
+) -> tuple[Path, Path]:
+    task_dir = tmp / "task"
+    task_dir.mkdir()
+    workspace = tmp / "workspace"
+    workspace.mkdir()
+    (task_dir / "task.toml").write_text(
+        """
+[metadata]
+task_id = "timeout-test"
+base_commit_hash = "abc"
+
+[environment]
+docker_image = "fake:local"
+
+[agent]
+timeout_sec = {agent}
+
+[verifier]
+timeout_sec = {verifier}
+""".format(agent=agent_timeout_sec, verifier=verifier_timeout_sec),
+        encoding="utf-8",
+    )
+    (task_dir / "instruction.md").write_text("instruction\n", encoding="utf-8")
+    tests = task_dir / "tests"
+    tests.mkdir()
+    (tests / "test.sh").write_text("#!/bin/bash\ntrue\n", encoding="utf-8")
+    (workspace / "plan.md").write_text("# plan\n", encoding="utf-8")
+    return task_dir, workspace
+
+
+def _test_remaining_sec_floors_at_zero() -> None:
+    assert _remaining_sec(time.monotonic() - 1.0) == 0.0
+    assert _remaining_sec(time.monotonic() + 5.0) >= 4.9
+
+
+def _test_run_with_timeout_kills_slow_command() -> None:
+    t0 = time.monotonic()
+    result = _run_with_timeout(["sleep", "999"], timeout_sec=1.0, stream=False)
+    elapsed = time.monotonic() - t0
+    assert result.timed_out is True
+    assert result.exit_code == TIMEOUT_EXIT_CODE
+    assert elapsed < 2.5
+
+
+def _test_exit_after_agent_timeout_grade_pass() -> None:
+    _exit_from_evaluation(
+        {"pass": True},
+        {"timed_out": True, "exit_code": TIMEOUT_EXIT_CODE},
+    )
+
+
+def _test_exit_after_agent_timeout_grade_fail() -> None:
+    try:
+        _exit_from_evaluation(
+            {"pass": False},
+            {"timed_out": True, "exit_code": TIMEOUT_EXIT_CODE},
+        )
+    except SystemExit as exc:
+        assert exc.code == 1
+    else:
+        raise AssertionError("expected SystemExit(1)")
+
+
+def _test_agent_timeout_skip_grade_exits_zero() -> None:
+    _exit_from_evaluation(
+        {"skipped": True, "pass": None},
+        {"timed_out": True, "exit_code": TIMEOUT_EXIT_CODE},
+    )
+
+
+def _test_verifier_timeout_forces_fail() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        logs_dir = workspace / "logs"
+        test_sh = workspace / "test.sh"
+        test_sh.write_text("#!/bin/bash\nsleep 999\n", encoding="utf-8")
+        result = grade_workspace_native(
+            workspace,
+            test_sh,
+            logs_dir,
+            dry_run=False,
+            timeout_sec=0.0,
+            configured_timeout_sec=30.0,
+        )
+    assert result["timed_out"] is True
+    assert result["pass"] is False
+    assert result["reward"] == 0
+
+
+def _test_run_task_agent_phase_includes_prep() -> None:
+    from sandbox_prep import SandboxPrepResult
+
+    captured: list[dict[str, Any]] = []
+
+    def slow_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
+        time.sleep(2.0)
+        return SandboxPrepResult((), (), (), True, False)
+
+    def slow_malvin(*_args: Any, **kwargs: Any) -> dict[str, Any]:
+        remaining = kwargs.get("timeout_sec")
+        if remaining is not None and remaining < 2.0:
+            return {
+                "exit_code": TIMEOUT_EXIT_CODE,
+                "timed_out": True,
+                "agent_seconds": remaining,
+                "timeout_sec": kwargs.get("configured_timeout_sec"),
+            }
+        time.sleep(2.0)
+        return {
+            "exit_code": 0,
+            "agent_seconds": 2.0,
+            "timeout_sec": kwargs.get("configured_timeout_sec"),
+        }
+
+    def capture_artifacts(
+        _run_root: Path,
+        metadata: dict[str, Any],
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
+        captured.append(metadata)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp), agent_timeout_sec=2.5)
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        t0 = time.monotonic()
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "prepare_task_sandbox", slow_prep),
+            patch.object(mod, "run_malvin", slow_malvin),
+            patch.object(mod, "write_plan_and_checks"),
+            patch.object(mod, "ensure_deepswe_malvin_config"),
+            patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
+            patch.object(mod, "_print_evaluation_summary"),
+            patch.object(mod, "_exit_from_evaluation"),
+        ):
+            run_task(
+                local_task_name=None,
+                task_dir=task_dir,
+                workspace=workspace,
+                results_dir=run_root,
+                malvin_command="code",
+                checks_override="true",
+                runtime="host",
+                skip_materialize=True,
+                grade_only=False,
+                skip_grade=True,
+                apply_solution=False,
+                reset_workspace_flag=False,
+                docker_image=None,
+                dry_run=False,
+                malvin_args=(),
+            )
+        elapsed = time.monotonic() - t0
+        assert elapsed < 3.5, elapsed
+        assert captured, "expected metadata write"
+        agent = captured[0].get("agent") or {}
+        assert agent.get("timed_out") is True
+
+
+def _test_combined_path_agent_timeout_still_grades() -> None:
+    from sandbox_prep import SandboxPrepResult
+
+    grade_calls: list[float | None] = []
+
+    def fast_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
+        return SandboxPrepResult((), (), (), True, False)
+
+    def timeout_malvin(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        return {
+            "exit_code": TIMEOUT_EXIT_CODE,
+            "timed_out": True,
+            "agent_seconds": 0.0,
+            "timeout_sec": 2.5,
+        }
+
+    def capture_grade(*_args: Any, **kwargs: Any) -> dict[str, Any]:
+        grade_calls.append(kwargs.get("timeout_sec"))
+        return {"pass": True, "reward": 1, "verifier_exit_code": 0}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "prepare_task_sandbox", fast_prep),
+            patch.object(mod, "run_malvin", timeout_malvin),
+            patch.object(mod, "write_plan_and_checks"),
+            patch.object(mod, "ensure_deepswe_malvin_config"),
+            patch.object(mod, "grade_workspace", capture_grade),
+            patch.object(mod, "_write_host_run_artifacts"),
+            patch.object(mod, "_print_evaluation_summary"),
+            patch.object(mod, "_exit_from_evaluation"),
+        ):
+            run_task(
+                local_task_name=None,
+                task_dir=task_dir,
+                workspace=workspace,
+                results_dir=run_root,
+                malvin_command="code",
+                checks_override="true",
+                runtime="host",
+                skip_materialize=True,
+                grade_only=False,
+                skip_grade=False,
+                apply_solution=False,
+                reset_workspace_flag=False,
+                docker_image="fake:local",
+                dry_run=False,
+                malvin_args=(),
+            )
+    assert len(grade_calls) == 1
+
+
+def _test_finalize_modal_eval_skips_agent_exit_on_timed_out() -> None:
+    from deepswe_modal import finalize_modal_eval
+
+    with tempfile.TemporaryDirectory() as tmp:
+        run_root = Path(tmp)
+        spec = TaskSpec(
+            task_dir=Path(tmp),
+            task_id="t",
+            base_commit="HEAD",
+            docker_image="fake:local",
+            dockerfile=Path(tmp) / "Dockerfile",
+            instruction=Path(tmp) / "instruction.md",
+            tests_dir=Path(tmp) / "tests",
+            test_sh=Path(tmp) / "tests" / "test.sh",
+            solution_patch=None,
+            repository_url=None,
+            agent_timeout_sec=3600.0,
+            verifier_timeout_sec=1800.0,
+            environment_memory_mb=4096,
+        )
+        finalize_modal_eval(
+            run_root=run_root,
+            spec=spec,
+            workspace=Path(tmp),
+            malvin_command="code",
+            malvin_args=(),
+            grade_only=False,
+            agent_result={"timed_out": True, "exit_code": TIMEOUT_EXIT_CODE},
+            grade_result={"pass": True, "reward": 1},
+        )
+
+
+def _test_run_local_eval_in_docker_passes_backstop_timeout() -> None:
+    captured: list[float | None] = []
+
+    def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
+        captured.append(kwargs.get("timeout"))
+        proc = MagicMock()
+        proc.returncode = 0
+        return proc
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(
+            Path(tmp),
+            agent_timeout_sec=5400.0,
+            verifier_timeout_sec=1800.0,
+        )
+        spec = parse_task_dir(task_dir)
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "validate_toolchain_repos", return_value=Path("/fake/malvin")),
+            patch.object(mod, "build_local_agent_image", return_value="deepswe-test:agent"),
+            patch("subprocess.run", side_effect=fake_run),
+        ):
+            run_local_eval_in_docker(
+                spec,
+                task_dir,
+                workspace,
+                run_root,
+                malvin_command="code",
+                malvin_args=(),
+                grade_only=False,
+                skip_grade=False,
+                apply_solution=False,
+                reset_workspace_flag=False,
+                checks_override=None,
+                docker_image="fake:local",
+                dry_run=False,
+            )
+    assert captured == [6300.0, 2700.0], captured
+
+
 def run_self_tests() -> None:
     _test_malvin_repo_root()
     _test_default_deepswe_tasks_root()
@@ -3191,6 +3829,16 @@ def run_self_tests() -> None:
     _test_ensure_deepswe_malvin_config_seeds_home_config()
     _test_ensure_deepswe_malvin_config_skips_default_memory()
     _test_prepare_task_sandbox_dry_run()
+    _test_remaining_sec_floors_at_zero()
+    _test_run_with_timeout_kills_slow_command()
+    _test_exit_after_agent_timeout_grade_pass()
+    _test_exit_after_agent_timeout_grade_fail()
+    _test_agent_timeout_skip_grade_exits_zero()
+    _test_verifier_timeout_forces_fail()
+    _test_run_task_agent_phase_includes_prep()
+    _test_combined_path_agent_timeout_still_grades()
+    _test_run_local_eval_in_docker_passes_backstop_timeout()
+    _test_finalize_modal_eval_skips_agent_exit_on_timed_out()
     _test_tasks_command()
     _test_is_modal_spend_limit_error()
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()

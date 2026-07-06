@@ -14,11 +14,18 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import click
+
+TIMEOUT_EXIT_CODE = 124
+
+
+def _remaining_sec(deadline: float) -> float:
+    return max(0.0, deadline - time.monotonic())
 
 
 def _normalize_run_command(command: str) -> str:
@@ -28,20 +35,40 @@ def _normalize_run_command(command: str) -> str:
 
 
 
-def _run_shell(command: str, workspace: Path) -> tuple[int, str]:
-    proc = subprocess.run(
-        ["bash", "-lc", command],
-        cwd=str(workspace),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+def _run_shell(
+    command: str,
+    workspace: Path,
+    *,
+    timeout_sec: float | None = None,
+) -> tuple[int, str, bool]:
+    if timeout_sec is not None and timeout_sec <= 0:
+        return TIMEOUT_EXIT_CODE, "phase deadline exhausted before prep command", True
+    run_kwargs: dict[str, Any] = {
+        "args": ["bash", "-lc", command],
+        "cwd": str(workspace),
+        "text": True,
+        "capture_output": True,
+        "check": False,
+    }
+    if timeout_sec is not None:
+        run_kwargs["timeout"] = timeout_sec
+    try:
+        proc = subprocess.run(**run_kwargs)
+    except subprocess.TimeoutExpired as exc:
+        detail_parts: list[str] = []
+        if exc.stdout:
+            detail_parts.append(exc.stdout)
+        if exc.stderr:
+            detail_parts.append(exc.stderr)
+        detail = "".join(detail_parts).strip() or "prep command timed out"
+        click.echo(detail, err=True)
+        return TIMEOUT_EXIT_CODE, detail, True
     if proc.stdout:
         click.echo(proc.stdout, nl=False)
     if proc.stderr:
         click.echo(proc.stderr, nl=False, err=True)
     detail = (proc.stderr or proc.stdout or "").strip()
-    return proc.returncode, detail
+    return proc.returncode, detail, False
 
 
 # RUN bodies we never replay: workspace already has the checkout; no network in agent sandboxes.
@@ -82,6 +109,7 @@ class SandboxPrepResult:
     sync_warnings: tuple[str, ...]
     probe_errors: tuple[str, ...]
     ok: bool
+    timed_out: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -89,6 +117,7 @@ class SandboxPrepResult:
             "sync_warnings": list(self.sync_warnings),
             "probe_errors": list(self.probe_errors),
             "ok": self.ok,
+            "timed_out": self.timed_out,
         }
 
 
@@ -260,6 +289,7 @@ def prepare_task_sandbox(
     *,
     checks: str,
     dry_run: bool = False,
+    deadline: float | None = None,
 ) -> SandboxPrepResult:
     """Replay Harbor Dockerfile install steps against the mounted workspace."""
     workspace = workspace.resolve()
@@ -273,7 +303,21 @@ def prepare_task_sandbox(
         click.echo(f"Prep sync: {command}")
         if dry_run:
             continue
-        code, detail = _run_shell(command, workspace)
+        timeout_sec = _remaining_sec(deadline) if deadline is not None else None
+        code, detail, timed_out = _run_shell(command, workspace, timeout_sec=timeout_sec)
+        if timed_out:
+            sync_warnings.append(
+                f"sync timed out for {command!r}"
+                + (f": {detail}" if detail else "")
+            )
+            click.echo("Prep sync timed out", err=True)
+            return SandboxPrepResult(
+                sync_commands=tuple(sync_commands),
+                sync_warnings=tuple(sync_warnings),
+                probe_errors=(),
+                ok=False,
+                timed_out=True,
+            )
         if code != 0:
             sync_warnings.append(
                 f"sync exit {code} for {command!r}"
