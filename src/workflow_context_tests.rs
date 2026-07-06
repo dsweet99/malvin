@@ -118,13 +118,6 @@ fn insert_artifact_paths_populates_expected_keys() {
         ctx.get("user_request_path").map(String::as_str),
         ctx.get("plan_path").map(String::as_str),
     );
-    assert!(
-        ctx.get("priors_path")
-            .expect("priors_path")
-            .ends_with("_kpop/priors.md"),
-        "priors_path must point at run_dir/_kpop/priors.md, got {:?}",
-        ctx.get("priors_path")
-    );
 }
 
 #[test]

@@ -8,7 +8,7 @@
     (ii) Deferred Phase: One rough summary of the remainder of the work.
   - Otherwise, if the plan can be completed in one phase (preferred), just write one phase and label it 'Work Phase'
   - Write any questions you many have.
-  - Do research to answer your questions. Consider priors above and also ideas such as best practices, heuristics, common knownledge, etc. to resolve uncertainties.
+  - Do research to answer your questions. Consider gate 1 findings above and also ideas such as best practices, heuristics, common knownledge, etc. to resolve uncertainties.
   - Write to `{{ mpc_plan_path }}`
 
 3b. KPop: Check the plan for errors. Revise plan to fix.

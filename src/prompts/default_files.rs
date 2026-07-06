@@ -13,16 +13,15 @@ fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     }
 }
 
-fn default_mbc2_and_priors_prompt(name: &str) -> Option<&'static str> {
+fn default_mbc2_prompt(name: &str) -> Option<&'static str> {
     match name {
         "mbc2.md" => Some(include_str!("../../default_prompts/mbc2.md")),
-        "priors.md" => Some(include_str!("../../default_prompts/priors.md")),
         _ => None,
     }
 }
 
 fn default_kpop_prompt(name: &str) -> Option<&'static str> {
-    default_mbc2_and_priors_prompt(name).or_else(|| match name {
+    default_mbc2_prompt(name).or_else(|| match name {
         "kpop.md" | "kpop_common.md" => Some(include_str!("../../default_prompts/kpop_common.md")),
         "mpc_block_a.md" => Some(include_str!("../../default_prompts/mpc_block_a.md")),
         "mpc_block_b.md" => Some(include_str!("../../default_prompts/mpc_block_b.md")),
@@ -69,7 +68,7 @@ mod tests {
         assert!(default_kpop_prompt("mpc_block_a.md").is_some());
         assert!(default_kpop_prompt("mpc_block_b.md").is_some());
         assert!(default_kpop_prompt("mpc_block_c.md").is_some());
-        assert!(default_kpop_prompt("priors.md").is_some());
+        assert!(default_kpop_prompt("mbc2.md").is_some());
         assert!(default_kpop_prompt("missing.md").is_none());
         assert!(default_file("code_constraints.md").is_some());
     }

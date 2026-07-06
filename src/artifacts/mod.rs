@@ -12,7 +12,6 @@ pub use create::{
 };
 pub(crate) use create::{
     ensure_gate_exp_log_file, ensure_quality_gates_log_file, reset_mpc_plan_file_for_iteration,
-    reset_priors_file_for_iteration,
 };
 
 pub use crate::session_dotfile_backup::{
@@ -116,12 +115,6 @@ impl RunArtifacts {
 #[must_use]
 pub fn mpc_plan_path(artifacts: &RunArtifacts) -> PathBuf {
     artifacts.run_dir.join("_kpop").join("mpc_plan.md")
-}
-
-/// Agent-written priors scratch file rendered as `{{ priors_path }}` in `priors.md` and `mpc_block_a.md`.
-#[must_use]
-pub fn priors_path(artifacts: &RunArtifacts) -> PathBuf {
-    artifacts.run_dir.join("_kpop").join("priors.md")
 }
 
 /// Marker left when outer-loop iteration `iteration` ended with mpc plan `DONE`.

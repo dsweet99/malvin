@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::{PromptStore, render_header, render_priors_mbc2_prompt};
+use crate::prompts::{PromptStore, render_header};
 
 fn kpop_turn_test_context() -> WorkflowRenderContext {
     WorkflowRenderContext::from(HashMap::from([
@@ -21,10 +21,6 @@ fn kpop_turn_test_context() -> WorkflowRenderContext {
             "current_state".to_string(),
             "User: test\nRetry: not a retry".to_string(),
         ),
-        (
-            "priors_path".to_string(),
-            "./.malvin/logs/run/_kpop/priors.md".to_string(),
-        ),
     ]))
 }
 
@@ -39,10 +35,6 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
         ("mpc_block_b.md", "<<block_b>>\n"),
         ("mpc_block_c.md", "<<block_c>>\n"),
         ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
-        (
-            "priors.md",
-            "Read {{ user_request_path }}. Write {{ priors_path }}.\n",
-        ),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -180,15 +172,42 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
 }
 
 #[test]
-fn kpop_priors_phase_expands_paths_and_wraps_mbc2() {
+fn kpop_block_b_and_c_render_body_only_without_placeholders() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
-    let out = render_priors_mbc2_prompt(&store, base.as_map()).expect("priors phase");
-    assert!(out.contains("./.malvin/logs/run/request.md"));
-    assert!(out.contains("./.malvin/logs/run/_kpop/priors.md"));
-    assert!(out.contains("MBC2"));
+    let prompts = KpopTurnPrompts {
+        store: &store,
+        base: &base,
+        prepend_rules_once: false,
+    };
+
+    let block_b = prompts.kpop_block_b().expect("block b");
+    assert!(block_b.contains("<<block_b>>"));
+    assert!(!block_b.contains("{{"), "block b must not leave unresolved placeholders: {block_b}");
+
+    let block_c = prompts.kpop_block_c().expect("block c");
+    assert!(block_c.contains("<<block_c>>"));
+    assert!(!block_c.contains("{{"), "block c must not leave unresolved placeholders: {block_c}");
+}
+
+#[test]
+fn kpop_block_b_errors_when_template_missing() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let root = tmp.path().join("prompts");
+    std::fs::create_dir_all(&root).expect("mkdir");
+    std::fs::write(root.join("mpc_block_a.md"), "a\n").expect("write");
+    let store = PromptStore::with_root(root);
+    store.ensure_defaults().expect("defaults");
+    let base = kpop_turn_test_context();
+    let prompts = KpopTurnPrompts {
+        store: &store,
+        base: &base,
+        prepend_rules_once: false,
+    };
+
+    let err = prompts.kpop_block_b().unwrap_err();
     assert!(
-        !out.contains("{{"),
-        "priors phase must not leave unresolved placeholders: {out}"
+        err.contains("mpc_block_b.md") || err.contains("Missing") || !err.is_empty(),
+        "expected render error for missing template, got {err:?}"
     );
 }

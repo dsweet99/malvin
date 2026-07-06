@@ -53,8 +53,6 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
     let exp_log_path = ensure_gate_exp_log_file(artifacts, exp_iter).map_err(|e| e.to_string())?;
     crate::artifacts::reset_mpc_plan_file_for_iteration(artifacts, agent_loop)
         .map_err(|e| e.to_string())?;
-    crate::artifacts::reset_priors_file_for_iteration(artifacts, agent_loop)
-        .map_err(|e| e.to_string())?;
     Ok(KpopLoopSnapshot {
         backups,
         exp_iter,

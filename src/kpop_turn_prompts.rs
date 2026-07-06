@@ -54,13 +54,6 @@ impl KpopTurnPrompts<'_> {
         )
     }
 
-    fn render_body_only(&self, body_file: &str) -> Result<String, String> {
-        let map = self.base.as_map();
-        self.store
-            .render_prompt_only(body_file, map)
-            .map_err(|e: PromptError| e.0)
-    }
-
     /// Gate workflow: `header.md` + `kpop_common.md` + all three `mpc_block` files in one prompt.
     ///
     /// # Errors
@@ -108,7 +101,10 @@ impl KpopTurnPrompts<'_> {
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
     pub fn kpop_block_b(&self) -> Result<String, String> {
-        self.render_body_only("mpc_block_b.md")
+        let map = self.base.as_map();
+        self.store
+            .render_prompt_only("mpc_block_b.md", map)
+            .map_err(|e: PromptError| e.0)
     }
 
     /// Multi-turn phase C: `mpc_block_c.md` only.
@@ -117,7 +113,10 @@ impl KpopTurnPrompts<'_> {
     ///
     /// Returns `Err` when a prompt template cannot be rendered.
     pub fn kpop_block_c(&self) -> Result<String, String> {
-        self.render_body_only("mpc_block_c.md")
+        let map = self.base.as_map();
+        self.store
+            .render_prompt_only("mpc_block_c.md", map)
+            .map_err(|e: PromptError| e.0)
     }
 
     /// Concatenated single-turn prompt: `kpop_common.md` + all three `mpc_block` files.
@@ -173,24 +172,6 @@ impl KpopTurnPrompts<'_> {
             (PromptStratum::EmbeddedTemplate, common),
             (PromptStratum::GateLoopBlock, body),
         ]))
-    }
-
-    /// Multi-turn engine prompt for phase B: `mpc_block_b.md` only.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_engine_prompt_b(&self) -> Result<String, String> {
-        self.render_body_only("mpc_block_b.md")
-    }
-
-    /// Multi-turn engine prompt for phase C: `mpc_block_c.md` only.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err` when a prompt template cannot be rendered.
-    pub fn kpop_engine_prompt_c(&self) -> Result<String, String> {
-        self.render_body_only("mpc_block_c.md")
     }
 }
 

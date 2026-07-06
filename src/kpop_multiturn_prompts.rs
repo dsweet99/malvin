@@ -1,6 +1,5 @@
 use crate::kpop_test_stubs::{CaptureBlocks, EchoPrompts, MtStubPrompts};
 use crate::kpop_turn_prompts::KpopTurnPrompts;
-use crate::prompts::render_priors_mbc2_prompt;
 
 #[cfg(test)]
 #[derive(Debug)]
@@ -17,21 +16,6 @@ pub enum KpopMultiturnPrompts<'a> {
 }
 
 impl KpopMultiturnPrompts<'_> {
-    /// # Errors
-    ///
-    /// Returns `Err` when prompt assembly fails.
-    pub fn kpop_priors(&self) -> Result<String, String> {
-        match self {
-            Self::Turn(inner) => render_priors_mbc2_prompt(inner.store, inner.base.as_map())
-                .map_err(|e| e.0),
-            Self::StubMt(inner) => inner.kpop_priors(),
-            Self::StubEcho(inner) => inner.kpop_priors(),
-            Self::StubCapture(inner) => inner.kpop_priors(),
-            #[cfg(test)]
-            Self::Smoke(_) => Ok("priors".to_string()),
-        }
-    }
-
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails.

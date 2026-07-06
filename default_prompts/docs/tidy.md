@@ -51,7 +51,7 @@ See `malvin --doc`.
 
 **Gate loop (when agent runs):**
 
-1. Each outer iteration clears `_kpop/mpc_plan.md` and `_kpop/priors.md`, renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session: priors phase first, then blocks A/B/C (`header.md` + `kpop_common.md` + `mpc_block_a/b/c.md`).
+1. Each outer iteration clears `_kpop/mpc_plan.md`, renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session: blocks A/B/C (`header.md` + `kpop_common.md` + `mpc_block_a/b/c.md`).
 2. Agent logs hypotheses and test results to `_kpop/exp_log_<iteration>.md`.
 3. Early exit on mpc plan `DONE` with passing gates.
 4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
@@ -63,7 +63,6 @@ See `malvin --doc`.
 | `tidy_constraints.md` | Implicit goal: pass workspace quality gates |
 | `kpop_program.md` | Rendered into `plan.md` — scope + quality gates |
 | `kpop_common.md` | Popper method; log to experiment log |
-| `priors.md` | Tacit-belief priors (rendered into `mbc2.md` for the priors phase) |
 | `mpc_block_a/b/c.md` | MPC workflow per session |
 | `header.md` | Prepended on block A only |
 
@@ -79,7 +78,7 @@ See `malvin --doc`.
 ## Artifacts
 
 - `~/.malvin_home/logs/<hash>/<run>/plan.md` — rendered tidy KPop request (not a user-authored plan)
-- `_kpop/priors.md`, `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
+- `quality_gates.log`, `_kpop/exp_log_*.md`, `kpop.log`, `stdout.log` (when agent runs)
 
 ## Examples
 

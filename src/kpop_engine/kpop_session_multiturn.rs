@@ -2,7 +2,6 @@ use crate::acp::AgentError;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 use crate::cli::workflow_kpop_shared::gate_iteration_context;
 use crate::prompt_stratification::WorkflowRenderContext;
-use crate::prompts::render_priors_mbc2_prompt;
 
 use super::kpop_session::{
     KPopEngineMultiturnCtx, finalize_kpop_engine_turn, restore_kpop_engine_session_dotfiles,
@@ -31,12 +30,6 @@ pub(super) fn iter_context(ctx: &KPopEngineMultiturnCtx<'_>) -> WorkflowRenderCo
     )
 }
 
-pub(super) fn build_prompt_priors(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
-    let prepared = ctx.iteration.loop_params.prepared;
-    let ic = iter_context(ctx);
-    render_priors_mbc2_prompt(prepared.store(), ic.as_map()).map_err(|e| e.0)
-}
-
 fn build_prompt_a(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let ic = iter_context(ctx);
     make_turn_prompts(ctx, &ic).kpop_engine_prompt_a()
@@ -44,12 +37,12 @@ fn build_prompt_a(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
 
 fn build_prompt_b(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let ic = iter_context(ctx);
-    make_turn_prompts(ctx, &ic).kpop_engine_prompt_b()
+    make_turn_prompts(ctx, &ic).kpop_block_b()
 }
 
 fn build_prompt_c(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let ic = iter_context(ctx);
-    make_turn_prompts(ctx, &ic).kpop_engine_prompt_c()
+    make_turn_prompts(ctx, &ic).kpop_block_c()
 }
 
 async fn send_phase(
@@ -96,9 +89,6 @@ async fn run_phases(
     work_dir: &std::path::Path,
     log_path: &std::path::Path,
 ) -> Result<(), AgentError> {
-    let prompt_priors = build_prompt_priors(ctx).map_err(AgentError)?;
-    send_phase(ctx, &prompt_priors, work_dir, log_path).await?;
-
     let prompt_a = build_prompt_a(ctx).map_err(AgentError)?;
     send_phase(ctx, &prompt_a, work_dir, log_path).await?;
 

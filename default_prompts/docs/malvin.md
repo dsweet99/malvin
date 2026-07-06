@@ -234,8 +234,8 @@ malvin kpop notes/question.md
 
 `code`, `tidy`, `delight`, `explain`, and `revise` share an outer **gate loop** implemented in `kpop_engine`:
 
-1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin clears `_kpop/mpc_plan.md` and `_kpop/priors.md`, then may run one KPop agent session. Scope comes from that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `plan.md`. Within the session, malvin sends prompts in order: **priors** (`mbc2.md` with rendered `priors.md` as the user prompt), then **A** (`header.md` + `kpop_common.md` + `mpc_block_a.md`), **B** (`mpc_block_b.md`), and **C** (`mpc_block_c.md`, skipped if mpc plan is already `DONE` after B).
-2. The agent writes tacit-belief priors to `_kpop/priors.md` during the priors phase; block A lists that file as INPUT. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
+1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin clears `_kpop/mpc_plan.md`, then may run one KPop agent session. Scope comes from that command’s constraints file (`code_constraints.md`, `tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `plan.md`. Within the session, malvin sends prompts in order: **A** (`header.md` + `kpop_common.md` + `mpc_block_a.md`), **B** (`mpc_block_b.md`), and **C** (`mpc_block_c.md`, skipped if mpc plan is already `DONE` after B).
+2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
 3. Malvin exits early when the mpc plan file contains exactly `DONE` and workspace quality gates pass (`code` / `tidy`). Bare `malvin REQUEST` and document workflows (`delight`, `explain`, `revise`) exit on mpc plan `DONE` without requiring passing workspace gates.
 4. Otherwise the loop continues until the outer budget is exhausted; `code` rechecks gates after exhaustion, `tidy` may exit without recheck depending on configuration.
 

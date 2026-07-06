@@ -52,11 +52,10 @@ See `malvin --doc`. Does **not** require workspace quality gates at CLI entry (u
 
 ## Multiturn architecture
 
-Each agent session cycles through four MPC phases in order: **priors → A → B → C** (C skipped when mpc plan is already `DONE` after B).
+Each agent session cycles through three MPC phases in order: **A → B → C** (C skipped when mpc plan is already `DONE` after B).
 
 | Phase | Prompt assembly |
 |-------|-----------------|
-| **Priors** | `mbc2.md` with rendered `priors.md` as `{{ user_prompt }}` |
 | **A** | `header.md` + `kpop_common.md` + `mpc_block_a.md` |
 | **B** | `mpc_block_b.md` only |
 | **C** | `mpc_block_c.md` only |
@@ -73,11 +72,10 @@ Per-session artifacts under `_kpop/`:
 
 | File | Role |
 |------|------|
-| `priors.md` | Agent-written tacit-belief priors (INPUT for block A) |
 | `exp_log_<run>.md` | Experiment log — hypotheses, tests, and results (authoritative for investigation) |
 | `mpc_plan.md` | Per-iteration MPC scratch plan; exactly `DONE` signals the agent finished this session |
 
-Between outer `--max-loops` iterations, malvin clears `mpc_plan.md` and `priors.md` (and may record a done marker for the prior iteration). Each outer iteration gets its own experiment log (`_g2`, `_g3`, … suffix when applicable).
+Between outer `--max-loops` iterations, malvin clears `mpc_plan.md` (and may record a done marker for the prior iteration). Each outer iteration gets its own experiment log (`_g2`, `_g3`, … suffix when applicable).
 
 ## KPOP_LOG line
 
@@ -102,7 +100,6 @@ Stops when any of:
 ## Artifacts
 
 - `request.md` — input brief
-- `_kpop/priors.md` — tacit-belief priors scratch file
 - `_kpop/mpc_plan.md` — per-iteration MPC plan scratch file (exactly `DONE` for early exit)
 - `_kpop/exp_log_*.md` — experiment log (authoritative for hypotheses and test results)
 - `kpop.log` — session transcript

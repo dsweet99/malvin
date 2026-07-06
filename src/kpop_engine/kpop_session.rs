@@ -165,14 +165,6 @@ async fn run_kpop_engine_single_turn(
     let work_dir = prepared.artifacts().work_dir.as_path();
     let log_path = prepared.artifacts().log_path("kpop");
 
-    let priors_prompt = super::kpop_session_multiturn::build_prompt_priors(ctx)?;
-    let priors_result =
-        run_kpop_engine_coder_turn(ctx, &priors_prompt, work_dir, log_path.as_path()).await;
-    if priors_result.is_err() {
-        finalize_kpop_engine_turn(ctx, work_dir, priors_result).await?;
-        return Ok(None);
-    }
-
     let prompt = build_kpop_engine_prompt(ctx)?;
     let prompt_result =
         run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;

@@ -53,8 +53,6 @@ fn prepare_gate_iteration_artifacts(
         crate::artifacts::ensure_gate_exp_log_file(artifacts, iteration).map_err(|e| e.to_string())?;
     crate::artifacts::reset_mpc_plan_file_for_iteration(artifacts, iteration)
         .map_err(|e| e.to_string())?;
-    crate::artifacts::reset_priors_file_for_iteration(artifacts, iteration)
-        .map_err(|e| e.to_string())?;
     Ok(exp_log_path)
 }
 

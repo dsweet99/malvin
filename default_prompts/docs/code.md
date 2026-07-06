@@ -53,8 +53,8 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 2. **Gate loop** (`KPopHardConstraints::CODE`) — Unlike `tidy`, **always** enters the loop (no “gates already pass” fast path).
 3. **Per outer iteration:**
    - Render `kpop_program.md` with `code_constraints.md` as scope into `plan.md`.
-   - Clear `_kpop/mpc_plan.md` and `_kpop/priors.md` at iteration start (malvin resets scratch files between outer iterations).
-   - Run one KPop agent session: priors (`mbc2.md` + `priors.md`), then blocks A/B/C (`header.md` + `kpop_common.md` + `mpc_block_a/b/c.md`); log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
+   - Clear `_kpop/mpc_plan.md` at iteration start (malvin resets scratch files between outer iterations).
+   - Run one KPop agent session: blocks A/B/C (`header.md` + `kpop_common.md` + `mpc_block_a/b/c.md`); log to `kpop.log` and `_kpop/exp_log_<iteration>.md`.
    - Snapshot at each outer iteration; restore after each prompt: `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml` (global defaults).
    - Restore all protected files immediately before post-session quality gates (gate pass/fail is not proof of restore).
    - Track whether the mpc plan file contains exactly `DONE`.
@@ -67,14 +67,12 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 | `code_constraints.md` | Plan-specific scope (constraints, plan path) |
 | `kpop_program.md` | Rendered into `plan.md` — scope constraints + quality gates |
 | `kpop_common.md` | Popper method: hypothesize → predict → falsify; log to experiment log |
-| `priors.md` | Tacit-belief priors prompt (rendered into `mbc2.md` for the priors phase) |
 | `mpc_block_a/b/c.md` | MPC workflow per session: plan → review → revise → implement → `DONE` in mpc plan file |
 | `header.md` | Prepended on block A only |
 
 ## Artifacts
 
 - `~/.malvin_home/logs/<hash>/<run>/plan.md` — input plan
-- `_kpop/priors.md` — agent-written tacit-belief priors (INPUT for block A)
 - `_kpop/mpc_plan.md` — per-iteration MPC plan scratch file
 - `_kpop/exp_log_*.md` — experiment log (hypotheses and test results)
 - `kpop.log` — session transcript

@@ -12,39 +12,34 @@ Extended scope (same effort): **remove pytest, cargo, clippy, and all other malv
 
 ### External quality gates (agent-facing)
 
-Malvin and DeepSWE today **specify** tools in several places:
+Malvin and DeepSWE **do not seed or mandate** particular quality tools. Checks come from repo signals (pre-commit, Makefile, existing `.malvin/checks`) or checks-discovery KPop inference.
 
-| Area | Location | Runtime behavior |
-|------|----------|------------------|
-| Default gate command (Rust) | `src/repo_gates/mod.rs` | `builtin_gate_command_lines()` → **`kiss check` only**. Used by test helper `ensure_default_malvin_checks_file()` and `gate_restore_repair.rs` (replaces bare `kiss`-only checks). |
-| Default gate commands (DeepSWE Python) | `ops/deepswe_run.py` | `builtin_gate_command_lines(root)` adds **`kiss check`**, then **`pytest -sv tests`**, **`stestr run`**, **`cargo clippy …`**, **`cargo test` / `cargo nextest run`** when repo heuristics match. Merged after pre-commit/Makefile scan. |
-| Kiss clamp / dotfiles | `kiss_clamp.rs`, `session_dotfile_backup/` | `kiss clamp` at snapshot; backs up `.kissconfig` / `.kissignore`. |
-| CLI kiss requirement | `entrypoint.rs` | `code` / `tidy` require kiss on PATH. |
-| Checks discovery prompt | `init_constraints.md` | Agent discovers repo gates; **mandates `kiss check`**. |
-| DeepSWE discovery | `discover_deepswe_check_lines()` | Pre-commit + Makefile scan **plus** builtin fallbacks + stestr/pytest swap + `ensure_kiss_check_first()`. |
-| Sandbox prep | `ops/sandbox_prep.py` | `probe_check_tools()` — tool-specific probes for kiss, ruff, pytest, stestr, mypy, cargo. |
-| Modal offline installs | `deepswe_modal.py` | `offline_check_tool_install_commands(checks)` preinstalls mypy/ruff packages when **checks text** mentions them (reactive, not a default list). |
-
-**Malvin Rust core** has **no** pytest/cargo/clippy builtins today — only kiss. **DeepSWE ops** is where pytest/cargo/clippy/stestr defaults live.
+| Area | Location | Implemented behavior |
+|------|----------|----------------------|
+| Default gate commands (Rust) | `src/repo_gates/mod.rs` | `builtin_gate_command_lines()` → `[]`; `ensure_default_malvin_checks_file()` writes nothing when builtins are empty |
+| DeepSWE discovery | `ops/deepswe_run.py` | `discover_deepswe_check_lines()` — pre-commit + Makefile + existing `.malvin/checks` only; no builtins |
+| Kiss clamp / dotfiles | (removed) | No `kiss_clamp.rs`; no kiss rows in session dotfile backup |
+| CLI kiss requirement | `entrypoint.rs` | Removed for `code` / `tidy` / `do` |
+| Checks discovery prompt | `init_constraints.md` | Repo-signal-only; no mandated tool names |
+| Sandbox prep | `ops/sandbox_prep.py` | `probe_check_tools()` removed |
+| Modal offline installs | `deepswe_modal.py` | `offline_check_tool_install_commands(checks)` preinstalls packages when **checks text** mentions them (reactive, not a default list) |
 
 **Gate flow today (code/tidy/do KPop):**
 
-1. CLI requires kiss on PATH (code/tidy only).
-2. Checks discovery KPop if `.malvin/checks` missing/empty (mandates kiss in prompt).
-3. KPop snapshot may run `kiss clamp` (including `do` without CLI kiss check).
-4. Gates run `.malvin/checks` lines (often kiss + repo or DeepSWE-seeded pytest/cargo).
+1. No CLI kiss requirement.
+2. Checks-discovery KPop if `.malvin/checks` missing/empty — infers commands from repo config; no malvin default commands.
+3. No kiss clamp at snapshot.
+4. Gates run `.malvin/checks` lines from user or discovery. The malvin repo itself uses its own tracked `.malvin/checks` (maintainer-chosen dev gates; malvin does not rewrite existing checks files).
+
+**Other invariants:**
+
+- **Existing user `.malvin/checks`:** Not rewritten by malvin.
+- **DeepSWE scan-only:** Empty repo scan → empty checks file (or newline-only); workflows must tolerate empty or fail at gate time.
+- **`malvin do` without kiss:** Snapshot no longer runs kiss clamp.
 
 ### Internal malvin kiss coverage (developer-only)
 
-`coverage_kiss/`, `*_kiss_cov_*` witnesses — malvin-repo CI only, not workspace agent gates. Optional Phase 4.
-
-### Adjacent behavior after removal
-
-- **No malvin-owned gate commands:** Rust `builtin_gate_command_lines()` → `[]`. DeepSWE deletes `builtin_gate_command_lines()`, `DEFAULT_*_CHECK` constants, kiss-first and stestr-append logic.
-- **Checks discovery KPop stays:** Agent reads pre-commit, Makefile, CI, etc.; **no mandated tools** in `init_constraints.md`.
-- **DeepSWE scan-only:** `discover_deepswe_check_lines()` keeps pre-commit + Makefile + existing `.malvin/checks` merge; **no builtin append loop**. Empty scan → empty checks file (or newline-only); workflows must tolerate empty or fail at gate time.
-- **Existing user `.malvin/checks`:** Not rewritten by malvin.
-- **`malvin do` without kiss:** Removing snapshot clamp fixes snapshot failure when kiss missing.
+`coverage_kiss/`, `*_kiss_cov_*` witnesses — malvin-repo CI only, not workspace agent gates. Optional Phase 4 (deferred).
 
 ## Requested Changes
 
