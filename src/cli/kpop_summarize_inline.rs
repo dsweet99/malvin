@@ -49,7 +49,6 @@ pub(crate) struct GateInlineSummarizeCtx<'a> {
     pub malvin_command: &'a str,
     pub iteration: usize,
     pub total_iterations: usize,
-    pub mpc_plan_done: bool,
 }
 
 /// Runs inline summarize inside an open gate-kpop coder session when warranted.
@@ -59,7 +58,6 @@ pub(crate) async fn maybe_run_gate_inline_summarize(
     if !super::should_inline_outer_loop_summarize_on_gate_iteration(
         ctx.iteration,
         ctx.total_iterations,
-        ctx.mpc_plan_done,
     ) {
         return Ok(());
     }

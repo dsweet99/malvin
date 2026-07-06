@@ -10,7 +10,7 @@ Author a **user-delighting feature pitch** via the KPop gate loop scoped by `del
 | Output | Workspace file at `--out-path` (default: `pitch.md`) |
 | Loop | Full gate-kpop loop (`KPopHardConstraints::DELIGHT`) |
 | Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
-| Exit policy | mpc plan `DONE` in per-iteration session; workspace gates need not pass |
+| Exit policy | Valid non-empty output at `--out-path`; workspace gates need not pass |
 | Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain` / `revise`) |
 
 ## Intention
@@ -60,7 +60,7 @@ See `malvin --doc`.
 All of the following must hold:
 
 1. Preflight passed (default `pitch.md` may have been auto-allocated to a sibling; non-default paths must not have pre-existed).
-2. Outer gate-loop iteration writes exactly `DONE` to the mpc plan file.
+2. Agent completed within the `--max-loops` budget.
 3. After the session, `--out-path` is a regular file with size &gt; 0.
 
 On success, malvin prints `DONE` to stdout.

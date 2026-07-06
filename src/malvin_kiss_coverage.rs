@@ -145,7 +145,7 @@ fn smoke_test_stderr_capture() {
 fn smoke_kpop_multiturn_builder_type() {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
     let mut smoke = KpopMultiturnPrompts::Smoke(SmokeKpopBuilder);
-    assert_eq!(smoke.kpop_block().expect("kpop"), "k");
+    assert_eq!(smoke.kpop_prompt().expect("kpop"), "k");
 }
 
 #[test]

@@ -128,8 +128,7 @@ async fn run_kpop_multiturn_mock_once(
     let mut state = KpopMultiturnState::new(
         builder,
         snap.exp_log_path.clone(),
-        crate::artifacts::mpc_plan_path(&prepared.artifacts),
-            )
+    )
         .map_err(|e| e.to_string())?;
     kpop_run_acp_multiturn(
         KpopAcpMultiturnCtx {

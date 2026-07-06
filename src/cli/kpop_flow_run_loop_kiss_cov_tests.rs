@@ -1,40 +1,18 @@
 //! Kiss identifier refs for [`crate::cli::kpop_flow::kpop_flow_run_loop`] and its test helpers.
 
 #[test]
-fn kpop_loop_exit_after_iteration_exits_early_on_done_without_gates() {
-    use crate::repo_gates::checks_test_helpers::mpc_plan_gate_exit_fixture;
-
-    let (_tmp, artifacts, backups) = mpc_plan_gate_exit_fixture(false);
-    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
-    let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
-        &artifacts,
-        &backups,
-        1,
-        2,
-    )
-    .expect("read");
-    assert!(exit.will_exit_after_this_loop);
-    assert!(exit.early_exit_on_solved);
+fn kpop_loop_exit_after_iteration_exits_on_last_loop() {
+    crate::test_utils::with_isolated_home(|_work| {
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(2, 2);
+        assert!(exit.will_exit_after_this_loop);
+        assert!(!exit.early_exit_on_solved);
+    });
 }
 
 #[test]
-fn kpop_loop_exit_after_iteration_waits_for_done() {
-    crate::test_utils::with_isolated_home(|work| {
-        std::fs::create_dir_all(work.join(".malvin")).expect("mkdir");
-        let artifacts =
-            crate::artifacts::create_kpop_run_artifacts("test", Some(work)).expect("artifacts");
-        let backups =
-            crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(work)
-                .expect("snapshot");
-        std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "still working\n")
-            .expect("write");
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(
-            &artifacts,
-            &backups,
-            1,
-            2,
-        )
-        .expect("read");
+fn kpop_loop_exit_after_iteration_continues_before_last_loop() {
+    crate::test_utils::with_isolated_home(|_work| {
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(1, 2);
         assert!(!exit.early_exit_on_solved);
         assert!(!exit.will_exit_after_this_loop);
     });
@@ -54,7 +32,6 @@ fn kiss_cov_kpop_flow_run_loop_privates() {
     let _ = super::kpop_flow_run_loop::run_kpop_agent_loops;
     let _ = super::kpop_flow_run_loop::clear_legacy_gate_exp_log;
     let _ = stringify!(KpopLoopExitAfterIteration);
-    let _ = stringify!(declares_solved);
     let _ = stringify!(will_exit_after_this_loop);
     let _ = stringify!(kpop);
     let _ = stringify!(store);

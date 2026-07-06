@@ -84,7 +84,7 @@ fn smoke_cov_cli_cli_code_flow_units() {
     let _ = crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
     let _ = crate::cli::workflow_kpop_shared::print_kpop_session_log_line;
     let _ = crate::cli::workflow_kpop_shared::finish_kpop_acp_session;
-    let _ = stringify!(gate_retry_strips_stale_mpc_plan_done_before_next_attempt);
+    let _ = stringify!(gate_loop_early_exit);
     let _ = stringify!(crate::kpop_engine::run_kpop_engine);
     let _ = stringify!(crate::kpop_engine::run_kpop_hard_constraints_after_session);
     let _ = stringify!(crate::kpop_engine::finish_kpop_engine_after_pass);
@@ -146,7 +146,6 @@ fn smoke_cov_cli_kpop_flow_run_loop_types() {
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
     let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
     let _ = stringify!(KpopLoopExitAfterIteration);
-    let _ = crate::kpop_engine::KPopHardConstraints::KPOP;
     let _ = stringify!(kpop);
     let _ = stringify!(store);
     let _ = stringify!(client);

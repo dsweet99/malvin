@@ -58,6 +58,26 @@ mod tests {
     fn kiss_cov_delight_run_startup() {
         let _ = delight_kpop_workflow_context;
         let _ = prepare_delight_kpop_run;
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("pitch.md");
+        std::fs::write(&path, "body\n").expect("write");
+        let store = crate::prompts::PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let artifacts =
+            crate::artifacts::create_kpop_run_artifacts("delight", Some(tmp.path())).expect("artifacts");
+        let prepared = DelightKpopPrepared {
+            inner: KPopEnginePrepared {
+                artifacts,
+                context: crate::prompt_stratification::WorkflowRenderContext::default(),
+                request_text: "req".into(),
+                startup_emit_request: "req".into(),
+                store,
+                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            },
+            resolved_out_path: path.clone(),
+        };
+        assert_eq!(prepared.resolved_out_path, path);
+        assert_eq!(prepared.inner.request_text, "req");
     }
 
     #[test]

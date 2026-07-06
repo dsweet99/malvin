@@ -36,7 +36,7 @@ struct ReviseGateFinish<'a> {
 }
 
 fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
-    let gate_r = if finish.gates_ok {
+    let gate_r = if finish.gates_ok || finish.agent_ran {
         validate_revise_output(&finish.prepared.resolved_doc_path)?;
         finish_kpop_engine_after_pass(
             finish.shared,
@@ -44,15 +44,6 @@ fn revise_gate_outcome(finish: ReviseGateFinish<'_>) -> Result<(), String> {
             finish.agent_ran,
             finish.run_timing,
         )
-    } else if finish.agent_ran {
-        if let Err(e) = validate_revise_output(&finish.prepared.resolved_doc_path) {
-            Err(e)
-        } else {
-            Err(
-                "malvin revise: gate loop did not exit on mpc plan DONE"
-                    .to_string(),
-            )
-        }
     } else {
         fail_kpop_engine_after_exhausted(
             "malvin revise",
@@ -126,12 +117,29 @@ pub async fn run_revise(
 mod tests {
     use super::*;
     use crate::artifacts::create_kpop_run_artifacts;
+    use crate::cli::kpop_summarize_tests::summarize_shared_opts;
+
+    fn revise_gate_outcome_prepared(tmp: &tempfile::TempDir, doc_path: &std::path::Path) -> ReviseKpopPrepared {
+        let store = crate::prompts::PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
+        ReviseKpopPrepared {
+            inner: crate::kpop_engine::KPopEnginePrepared {
+                artifacts,
+                context: crate::prompt_stratification::WorkflowRenderContext::default(),
+                request_text: "req".into(),
+                startup_emit_request: "req".into(),
+                store,
+                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            },
+            resolved_doc_path: doc_path.to_path_buf(),
+        }
+    }
 
     #[test]
     fn revise_post_session_validates_output_file_exists() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let missing = tmp.path().join("doc.md");
-        let err = validate_revise_output(&missing).expect_err("missing");
+        let err = validate_revise_output(&tmp.path().join("doc.md")).expect_err("missing");
         assert!(err.contains("expected document"));
     }
 
@@ -153,48 +161,30 @@ mod tests {
     }
 
     #[test]
-    fn revise_run_loop_entry_is_covered() {
-        let _ = run_revise;
-    }
-
-    #[test]
-    fn revise_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
+    fn revise_gate_outcome_succeeds_when_agent_ran_with_valid_output_without_gate_exit() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let doc = tmp.path().join("doc.md");
         std::fs::write(&doc, "# Revised\n").expect("write");
-        let store = crate::prompts::PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let artifacts = create_kpop_run_artifacts("revise", Some(tmp.path())).expect("artifacts");
-        let prepared = ReviseKpopPrepared {
-            inner: crate::kpop_engine::KPopEnginePrepared {
-                artifacts,
-                context: crate::prompt_stratification::WorkflowRenderContext::default(),
-                request_text: "req".into(),
-                startup_emit_request: "req".into(),
-                store,
-                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
-            },
-            resolved_doc_path: doc,
-        };
-        let shared = crate::cli::SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            no_tenacious: false,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            max_acp_retries: 1,
-            doc: false,
-            name: None,
-            mini: false,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        };
+        let prepared = revise_gate_outcome_prepared(&tmp, &doc);
+        let shared = summarize_shared_opts(1);
+        let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
+        revise_gate_outcome(ReviseGateFinish {
+            shared: &shared,
+            prepared: &prepared,
+            agent_ran: true,
+            gates_ok: false,
+            run_timing: None,
+            last_backups: &backups,
+            summarize_res: Ok(()),
+        })
+        .expect("valid output after agent ran should succeed");
+    }
+
+    #[test]
+    fn revise_gate_outcome_fails_when_agent_ran_with_missing_output() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prepared = revise_gate_outcome_prepared(&tmp, &tmp.path().join("doc.md"));
+        let shared = summarize_shared_opts(1);
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
         let err = revise_gate_outcome(ReviseGateFinish {
             shared: &shared,
@@ -205,7 +195,8 @@ mod tests {
             last_backups: &backups,
             summarize_res: Ok(()),
         })
-        .expect_err("needs mpc plan DONE");
-        assert!(err.contains("mpc plan DONE"));
+        .expect_err("missing output should fail validation");
+        assert!(err.contains("expected document"));
+        assert!(!err.contains("mpc plan DONE"));
     }
 }

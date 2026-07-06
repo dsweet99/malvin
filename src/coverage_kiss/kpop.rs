@@ -13,7 +13,7 @@ fn smoke_kpop_progression_and_multiturn() {
     let mpc = tmp.path().join("mpc_plan.md");
     assert!(!crate::kpop_progression::agent_declared_success(&mpc));
     std::fs::write(&mpc, "DONE\n").expect("write");
-    assert!(crate::kpop_progression::agent_declared_success(&mpc));
+    assert!(!crate::kpop_progression::agent_declared_success(&mpc));
 
     let exp = tmp.path().join("exp.md");
     std::fs::write(&exp, "hello").expect("exp");
@@ -23,7 +23,6 @@ fn smoke_kpop_progression_and_multiturn() {
     let state = crate::kpop_progression::KpopMultiturnState::new(
         crate::kpop_multiturn_prompts::KpopMultiturnPrompts::StubMt(crate::MtStubPrompts),
         exp,
-        mpc,
     )
     .expect("multiturn state");
     assert_eq!(

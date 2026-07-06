@@ -200,10 +200,8 @@ fn kiss_witness_loop_driver_and_client_helpers() {
 }
 
 #[test]
-fn kiss_witness_gate_retry_mpc_plan_strip() {
-    let _ = stringify!(gate_retry_strips_stale_mpc_plan_done_before_next_attempt);
-    let _ = stringify!(gate_retry_mpc_plan_strip_mock_client);
-    let _ = stringify!(run_gate_retry_mpc_plan_strip_prompt);
+fn kiss_witness_gate_retry_second_attempt() {
+    let _ = stringify!(gate_retry_succeeds_on_second_attempt_after_rate_limit);
 }
 
 #[test]

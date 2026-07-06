@@ -102,9 +102,9 @@ fn explain_gate_outcome_fixture() -> (
 }
 
 #[test]
-fn explain_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
+fn explain_gate_outcome_succeeds_when_agent_ran_with_valid_output_without_gate_exit() {
     let (_tmp, prepared, shared, backups) = explain_gate_outcome_fixture();
-    let err = explain_gate_outcome(ExplainGateFinish {
+    explain_gate_outcome(ExplainGateFinish {
         shared: &shared,
         prepared: &prepared,
         tex_path: &prepared.tex_path,
@@ -115,6 +115,46 @@ fn explain_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
         last_backups: &backups,
         summarize_res: Ok(()),
     })
-    .expect_err("needs mpc plan DONE");
-    assert!(err.contains("mpc plan DONE"));
+    .expect("valid output after agent ran should succeed");
+}
+
+#[test]
+fn explain_gate_outcome_fails_when_agent_ran_with_missing_output() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let prepared = explain_gate_outcome_prepared(&tmp);
+    let shared = crate::cli::SharedOpts {
+        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        no_force: true,
+        no_tenacious: false,
+        no_tee: true,
+        no_markdown: true,
+        verbose: false,
+        max_acp_retries: 1,
+        doc: false,
+        name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
+    };
+    let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
+    let missing_tex = tmp.path().join("missing.tex");
+    let err = explain_gate_outcome(ExplainGateFinish {
+        shared: &shared,
+        prepared: &prepared,
+        tex_path: &missing_tex,
+        pdf_path: &prepared.pdf_path,
+        agent_ran: true,
+        gates_ok: false,
+        run_timing: None,
+        last_backups: &backups,
+        summarize_res: Ok(()),
+    })
+    .expect_err("missing tex should fail validation");
+    assert!(err.contains("expected tex file"));
+    assert!(!err.contains("mpc plan DONE"));
 }

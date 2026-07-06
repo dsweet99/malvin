@@ -54,7 +54,7 @@ struct ExplainGateFinish<'a> {
 }
 
 fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
-    let gate_r = if finish.gates_ok {
+    let gate_r = if finish.gates_ok || finish.agent_ran {
         validate_explain_output(finish.tex_path, finish.pdf_path)?;
         finish_kpop_engine_after_pass(
             finish.shared,
@@ -62,15 +62,6 @@ fn explain_gate_outcome(finish: ExplainGateFinish<'_>) -> Result<(), String> {
             finish.agent_ran,
             finish.run_timing,
         )
-    } else if finish.agent_ran {
-        if let Err(e) = validate_explain_output(finish.tex_path, finish.pdf_path) {
-            Err(e)
-        } else {
-            Err(
-                "malvin explain: gate loop did not exit on mpc plan DONE"
-                    .to_string(),
-            )
-        }
     } else {
         fail_kpop_engine_after_exhausted(
             "malvin explain",

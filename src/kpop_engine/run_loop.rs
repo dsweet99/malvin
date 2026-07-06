@@ -1,14 +1,12 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use crate::kpop_progression::mpc_plan_declares_done;
-
 use crate::cli::workflow_kpop_shared::{
     kpop_engine_loop_iterations, run_kpop_workspace_gates,
 };
 
 pub(crate) use super::run_loop_exit::{
-    mpc_plan_early_exit, run_gate_workspace_gates_with_fresh_backups, GateLoopExitCtx,
+    gate_loop_early_exit, run_gate_workspace_gates_with_fresh_backups, GateLoopExitCtx,
 };
 
 #[path = "run_loop_iteration.rs"]
@@ -26,14 +24,13 @@ pub(crate) type KPopEngineLoopOutcome = (
 
 pub(crate) struct KPopEngineEarlyExitCtx<'a> {
     pub behavior: super::behavior::KPopHardConstraints,
-    pub mpc_plan_done: bool,
     pub artifacts: &'a crate::artifacts::RunArtifacts,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub agent_ran: bool,
     pub run_timing: Option<&'a Arc<Mutex<crate::run_timing::RunTiming>>>,
 }
 
-pub(crate) fn kpop_engine_mpc_plan_early_exit(
+pub(crate) fn kpop_engine_gate_loop_early_exit(
     ctx: KPopEngineEarlyExitCtx<'_>,
 ) -> Option<KPopEngineLoopOutcome> {
     let gate_ctx = GateLoopExitCtx {
@@ -41,7 +38,7 @@ pub(crate) fn kpop_engine_mpc_plan_early_exit(
         artifacts: ctx.artifacts,
         session_dotfile_backups: ctx.session_dotfile_backups,
     };
-    if mpc_plan_early_exit(&gate_ctx, ctx.mpc_plan_done) {
+    if gate_loop_early_exit(&gate_ctx) {
         Some((
             true,
             ctx.agent_ran,
@@ -51,12 +48,6 @@ pub(crate) fn kpop_engine_mpc_plan_early_exit(
     } else {
         None
     }
-}
-
-pub(crate) fn session_mpc_plan_declares_done(
-    artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<bool, String> {
-    mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))
 }
 
 /// Restore loop-carried dotfile backups before anchoring the next iteration.

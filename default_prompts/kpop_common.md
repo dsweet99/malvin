@@ -7,6 +7,8 @@ KPop may be referenced later on like a command, "KPop: <problem>"
 
 Clearly restate the problem you have been asked to solve.
 
+The user request is in `{{ user_request_path }}`.
+
 Repeat until you think you've solved the problem:
 LOOP_START
 

@@ -12,9 +12,6 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
-    "mpc_block_a.md",
-    "mpc_block_b.md",
-    "mpc_block_c.md",
     "mbc2.md",
     "kpop_program.md",
     "kpop_program_creative.md",
@@ -34,6 +31,26 @@ mod review_plan_embed_tests {
     use super::DEFAULT_PROMPTS;
     use super::default_file;
     use crate::prompts::malformed_brace_placeholders;
+
+    #[test]
+    fn embedded_defaults_exclude_mpc_blocks() {
+        for name in DEFAULT_PROMPTS {
+            assert!(
+                !name.starts_with("mpc_block_"),
+                "DEFAULT_PROMPTS must not embed mpc_block files: {name}"
+            );
+        }
+        let count = std::fs::read_dir("default_prompts")
+            .expect("default_prompts dir")
+            .filter_map(Result::ok)
+            .filter(|e| {
+                e.file_name()
+                    .to_str()
+                    .is_some_and(|n| n.starts_with("mpc_block_"))
+            })
+            .count();
+        assert_eq!(count, 0, "default_prompts/ must contain no mpc_block_*.md files");
+    }
 
     #[test]
     fn embedded_default_prompts_use_spaced_brace_placeholders() {

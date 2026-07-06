@@ -99,7 +99,7 @@ fn kiss_invalid_struct_value_refs_5() {
     let _ = crate::kpop_program::RenderRepoProgram;
     let _ = crate::kpop_multiturn_prompts::SmokeKpopBuilder;
     let _ = crate::kpop_test_stubs::EchoPrompts;
-    let _ = crate::kpop_test_stubs::kpop_block;
+    let _ = crate::kpop_test_stubs::kpop_prompt;
 }
 
 #[test]

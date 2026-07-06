@@ -3,7 +3,7 @@ use super::acp_tidy_kpop::{
 };
 use super::acp_core::{acp_mock_js, session_update_chunk_line};
 
-const DELIGHT_PITCH_WRITE: &str = r"      const outMatch = promptText.match(/Write a new pitch to [`']?([^\s`'\n]+)/);
+const DELIGHT_PITCH_WRITE: &str = r"      const outMatch = promptText.match(/Write a new pitch to `([^`]+)`/);
       if (outMatch) {
         let outRel = outMatch[1].replace(/^\.\//, '');
         const outAbs = path.isAbsolute(outRel) ? outRel : path.join(process.cwd(), outRel);
@@ -11,24 +11,11 @@ const DELIGHT_PITCH_WRITE: &str = r"      const outMatch = promptText.match(/Wri
         fs.writeFileSync(outAbs, '# Delight pitch\n\nA delightful improvement.\n', 'utf8');
       }";
 
-const DELIGHT_DONE_APPEND: &str = r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-      if (mpcMatch) {
-        const mpcPath = resolvePromptPath(mpcMatch[1]);
-        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
-        fs.writeFileSync(mpcPath, 'DONE\n');
-      }";
-
 fn acp_mock_delight_iteration_body() -> String {
     acp_mock_kpop_iteration_body()
         .replace(
             "      if (expPath) {",
             &format!("{DELIGHT_PITCH_WRITE}\n      if (expPath) {{"),
-        )
-        .replace(
-            "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
-            &format!(
-                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{DELIGHT_DONE_APPEND}"
-            ),
         )
 }
 
@@ -50,13 +37,13 @@ pub fn acp_mock_delight_kpop_steps_js() -> String {
     acp_mock_js("", &format!("{}\n{done}", acp_mock_delight_kpop_script(DELIGHT_PITCH_WRITE)))
 }
 
-pub fn acp_mock_delight_mpc_plan_done_without_output_js() -> String {
+pub fn acp_mock_delight_agent_ran_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'delight solved only\n'");
     acp_mock_js("", &format!("{}\n{done}", acp_mock_delight_kpop_script("")))
 }
 
 pub fn acp_mock_delight_kpop_empty_output_js() -> String {
-    let empty_write = r"      const outMatch = promptText.match(/Write a new pitch to [`']?([^\s`'\n]+)/);
+    let empty_write = r"      const outMatch = promptText.match(/Write a new pitch to `([^`]+)`/);
       if (outMatch) {
         let outRel = outMatch[1].replace(/^\.\//, '');
         const outAbs = path.isAbsolute(outRel) ? outRel : path.join(process.cwd(), outRel);

@@ -160,8 +160,8 @@ fn kiss_cov_kpop_engine_loop_iteration_ctx_type() {
 
 #[test]
 fn kiss_cov_kpop_engine_early_exit_fn_names() {
-    let _ = stringify!(crate::kpop_engine::run_loop::kpop_engine_mpc_plan_early_exit);
-    let _ = stringify!(crate::kpop_engine::run_loop_exit::mpc_plan_early_exit);
+    let _ = stringify!(crate::kpop_engine::run_loop::kpop_engine_gate_loop_early_exit);
+    let _ = stringify!(crate::kpop_engine::run_loop_exit::gate_loop_early_exit);
 }
 
 #[test]

@@ -5,11 +5,38 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_mpc_plan_done_without_output_js,
+    ExplainSpawn, acp_mock_explain_kpop_empty_pdf_js, acp_mock_explain_agent_ran_without_output_js,
     acp_mock_explain_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output,
     seed_git_kiss_cargo_gate_workspace, seed_stale_default_explain_outputs,
     spawn_explain, test_home_workspace, workspace_kiss_check_only, cached_mock_executable,
 };
+
+#[cfg(unix)]
+#[test]
+fn explain_succeeds_when_agent_writes_valid_tex_and_pdf() {
+    let (root, home, workspace) = test_home_workspace();
+    seed_git_kiss_cargo_gate_workspace(&workspace);
+    workspace_kiss_check_only(&workspace);
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = cached_mock_executable( &acp_mock_explain_kpop_steps_js());
+    let out = spawn_explain(&ExplainSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        request: "gate loop exit",
+        extra_args: &["--max-loops", "1"],
+    });
+    assert!(
+        out.status.success(),
+        "explain must succeed when agent writes valid tex and pdf: {:?}",
+        combined_cli_output(&out)
+    );
+    let tex = std::fs::metadata(workspace.join("gate_loop_exit.tex")).expect("tex exists");
+    let pdf = std::fs::metadata(workspace.join("gate_loop_exit.pdf")).expect("pdf exists");
+    assert!(tex.len() > 0, "tex must be non-empty");
+    assert!(pdf.len() > 0, "pdf must be non-empty");
+}
 
 #[cfg(unix)]
 #[test]
@@ -127,7 +154,7 @@ fn explain_fails_when_agent_solves_but_output_missing() {
     seed_git_kiss_cargo_gate_workspace(&workspace);
     workspace_kiss_check_only(&workspace);
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_explain_mpc_plan_done_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_explain_agent_ran_without_output_js());
     let out = spawn_explain(&ExplainSpawn {
         workspace: &workspace,
         home: &home,

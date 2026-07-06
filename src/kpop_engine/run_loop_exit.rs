@@ -1,4 +1,4 @@
-//! Gate-loop exit predicates for `DONE` in the MPC plan file.
+//! Gate-loop exit predicates.
 
 use crate::artifacts::SessionDotfileBackups;
 use crate::cli::workflow_kpop_shared::run_kpop_workspace_gates;
@@ -24,18 +24,14 @@ pub(crate) fn run_gate_workspace_gates_with_fresh_backups(
     .is_ok()
 }
 
-pub(crate) fn mpc_plan_early_exit(ctx: &GateLoopExitCtx<'_>, mpc_plan_done: bool) -> bool {
-    mpc_plan_done && gates_pass_for_exit(ctx)
-}
-
-fn gates_pass_for_exit(ctx: &GateLoopExitCtx<'_>) -> bool {
-    if ctx.behavior.require_passing_gates_for_exit() && !ctx.behavior.skip_workspace_quality_gates {
-        run_gate_workspace_gates_with_fresh_backups(
+pub(crate) fn gate_loop_early_exit(ctx: &GateLoopExitCtx<'_>) -> bool {
+    if ctx.behavior.skip_workspace_quality_gates {
+        return false;
+    }
+    ctx.behavior.require_passing_gates_for_exit()
+        && run_gate_workspace_gates_with_fresh_backups(
             ctx.artifacts,
             ctx.session_dotfile_backups,
             ctx.behavior,
         )
-    } else {
-        true
-    }
 }

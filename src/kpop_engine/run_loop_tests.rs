@@ -17,16 +17,6 @@ fn kiss_cov_gate_run_loop_privates() {
 use crate::artifacts::SessionDotfileBackups;
 use crate::session_dotfile_backup::GitignoreBackup;
 
-#[test]
-fn session_mpc_plan_declares_done_reads_done_file() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts =
-        crate::artifacts::create_kpop_run_artifacts("code", Some(tmp.path())).expect("artifacts");
-    assert!(!super::session_mpc_plan_declares_done(&artifacts).expect("read"));
-    std::fs::write(crate::artifacts::mpc_plan_path(&artifacts), "DONE\n").expect("write");
-    assert!(super::session_mpc_plan_declares_done(&artifacts).expect("read"));
-}
-
 pub(crate) fn gate_early_exit_fixture() -> (
     tempfile::TempDir,
     crate::artifacts::RunArtifacts,

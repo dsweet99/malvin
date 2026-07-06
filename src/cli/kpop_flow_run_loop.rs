@@ -1,10 +1,10 @@
-//! Outer `malvin kpop` agent loop (`--max-loops`, early exit on `DONE` in mpc plan file).
+//! Outer `malvin kpop` agent loop (`--max-loops`).
 
 use std::path::PathBuf;
 
 use crate::artifacts::{ensure_gate_exp_log_file, SessionDotfileBackups};
 use crate::cli::KpopArgs;
-use crate::kpop_progression::{mpc_plan_declares_done, KpopMultiturnState};
+use crate::kpop_progression::KpopMultiturnState;
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::prompts::PromptStore;
 use crate::KpopTurnPrompts;
@@ -51,8 +51,6 @@ pub(crate) fn snapshot_kpop_loop_dotfiles_and_exp_log(
         SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
     let exp_iter = kpop_agent_loop_exp_iteration(agent_loop, max_loops);
     let exp_log_path = ensure_gate_exp_log_file(artifacts, exp_iter).map_err(|e| e.to_string())?;
-    crate::artifacts::reset_mpc_plan_file_for_iteration(artifacts, agent_loop)
-        .map_err(|e| e.to_string())?;
     Ok(KpopLoopSnapshot {
         backups,
         exp_iter,
@@ -65,38 +63,23 @@ pub(crate) struct KpopLoopExitAfterIteration {
     pub(crate) early_exit_on_solved: bool,
 }
 
-pub(crate) fn kpop_loop_exit_after_iteration(
-    artifacts: &crate::artifacts::RunArtifacts,
-    session_dotfile_backups: &SessionDotfileBackups,
+pub(crate) const fn kpop_loop_exit_after_iteration(
     agent_loop: usize,
     max_loops: usize,
-) -> Result<KpopLoopExitAfterIteration, String> {
-    let mpc_plan_done =
-        mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))?;
-    let gate_ctx = crate::kpop_engine::GateLoopExitCtx {
-        behavior: crate::kpop_engine::KPopHardConstraints::KPOP,
-        artifacts,
-        session_dotfile_backups,
-    };
-    let early_exit = crate::kpop_engine::mpc_plan_early_exit(&gate_ctx, mpc_plan_done);
-    Ok(KpopLoopExitAfterIteration {
-        will_exit_after_this_loop: early_exit || agent_loop == max_loops,
-        early_exit_on_solved: early_exit,
-    })
+) -> KpopLoopExitAfterIteration {
+    KpopLoopExitAfterIteration {
+        will_exit_after_this_loop: agent_loop == max_loops,
+        early_exit_on_solved: false,
+    }
 }
 
 async fn finish_kpop_loop_iteration(
     params: &mut RunKpopAgentLoopsParams<'_>,
-    loop_snapshot: &KpopLoopSnapshot,
+    _loop_snapshot: &KpopLoopSnapshot,
     bounds: (usize, usize),
 ) -> Result<Option<bool>, String> {
     let (agent_loop, max_loops) = bounds;
-    let exit = kpop_loop_exit_after_iteration(
-        &params.prepared.artifacts,
-        &loop_snapshot.backups,
-        agent_loop,
-        max_loops,
-    )?;
+    let exit = kpop_loop_exit_after_iteration(agent_loop, max_loops);
     crate::cli::kpop_summarize::maybe_run_inline_summarize_on_kpop_loop(
         crate::cli::kpop_summarize::InlineSummarizeOnKpopLoopCtx {
             client: params.client,
@@ -132,7 +115,6 @@ async fn run_kpop_multiturn_for_loop(
     let mut state = KpopMultiturnState::new(
         builder,
         loop_snapshot.exp_log_path.clone(),
-        crate::artifacts::mpc_plan_path(&params.prepared.artifacts),
     )?;
     crate::gate_loop_session::set_active_gate_iteration(Some(loop_snapshot.exp_iter));
     let acp_result = kpop_run_acp_multiturn(

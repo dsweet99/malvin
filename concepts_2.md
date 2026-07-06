@@ -8,22 +8,21 @@ This glossary documents cross-cutting ideas that malvin implements across many m
 
 ### Problem it solves
 
-The outer `KPopEngine` gate loop must decide when to stop iterating. Exit depends on workflow-specific rules: whether the mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE`, and whether workspace quality gates must pass before the loop terminates. Operators and workflow authors need predictable stop conditions without each call site re-implementing the same predicates.
+The outer `KPopEngine` gate loop must decide when to stop iterating. Exit depends on workflow-specific rules: whether workspace quality gates must pass before the loop terminates, and whether the workflow skips gate checks during the loop. Operators and workflow authors need predictable stop conditions without each call site re-implementing the same predicates.
 
 ### Where it lives
 
-- `src/kpop_engine/run_loop_exit.rs` — `GateLoopExitCtx`, `mpc_plan_early_exit`, `gates_pass_for_exit`
+- `src/kpop_engine/run_loop_exit.rs` — `GateLoopExitCtx`, `gate_loop_early_exit`
 - `src/kpop_engine/behavior.rs` — `KPopHardConstraints`, `KPopHardConstraintsExit` presets per workflow (gate requirement, checks restore)
 - `src/kpop_engine/run_loop.rs` — iteration driver, carry-forward dotfile restore before each snapshot
-- `src/kpop_progression/mpc_plan.rs` — `mpc_plan_declares_done`, `strip_mpc_plan_done_on_disk`
-- `src/kpop_progression/counters.rs` — `agent_declared_success` (delegates to mpc plan `DONE`)
+- `src/kpop_progression/counters.rs` — `agent_declared_success` (legacy hook; always `false` after mpc_block removal)
 - `src/kpop_log_protocol/mod.rs` — `ExperimentLog` step-heading parsing (`## Step N — KPop`)
 
-When the mpc plan declares `DONE` and gates pass (where required), the outer gate loop exits early via `mpc_plan_early_exit`.
+When `gate_loop_early_exit` returns true (workspace gates pass and the workflow requires passing gates for exit), the outer gate loop exits early. Bare `malvin kpop` does not use this path; it stops on `--max-loops` exhaustion only.
 
 ### Why there is no single type
 
-Exit predicates, mpc plan `DONE` checks, and gate re-run at exit are separate functions wired through `GateLoopExitCtx`. `KPopHardConstraints` is a config bundle describing per-workflow gate requirements, not a state machine that owns iteration progress.
+Exit predicates and gate re-run at exit are separate functions wired through `GateLoopExitCtx`. `KPopHardConstraints` is a config bundle describing per-workflow gate requirements, not a state machine that owns iteration progress.
 
 ### Related typing aids
 

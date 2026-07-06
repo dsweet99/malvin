@@ -56,7 +56,6 @@ fn insert_kpop_and_workspace_paths(
         .unwrap_or_else(|_| artifacts.run_dir.join("_kpop"));
     insert_formatted(context, "kpop_log_dir", &kpop_dir, base);
     insert_formatted(context, "exp_log", &artifacts.exp_log_path(), base);
-    insert_formatted(context, "mpc_plan_path", &crate::artifacts::mpc_plan_path(artifacts), base);
     insert_formatted(
         context,
         "advice_path",

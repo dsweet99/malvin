@@ -7,9 +7,7 @@ use crate::artifacts::{backup_workspace_malvin_checks_if_present, RunArtifacts};
 use crate::kpop_engine::{
     run_kpop_engine, KPopEngineParams, KPopEnginePrepared, KPopHardConstraints,
 };
-use crate::malvin_checks_path;
 use crate::malvin_config_file::{self, AgentConfig};
-use crate::output::{print_stderr_line, MALVIN_WHO};
 use crate::prompts::{PromptError, PromptStore};
 
 use crate::cli::workflow_kpop_shared::{
@@ -84,14 +82,5 @@ pub(super) async fn run_checks_discovery_kpop(
         behavior: KPopHardConstraints::CHECKS_DISCOVERY,
     })
     .await?;
-    if crate::kpop_progression::mpc_plan_declares_done(&crate::artifacts::mpc_plan_path(artifacts))
-        == Ok(false)
-        && malvin_checks_path(&artifacts.work_dir).is_file()
-    {
-        print_stderr_line(
-            MALVIN_WHO,
-            "checks discovery: mpc plan not DONE but .malvin/checks exists",
-        );
-    }
     Ok(())
 }

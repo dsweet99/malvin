@@ -11,24 +11,11 @@ const REVISE_DOC_WRITE: &str = r"      const docMatch = promptText.match(/Revise
         fs.writeFileSync(docAbs, '# Revised\n\nClear prose.\n', 'utf8');
       }";
 
-const REVISE_DONE_APPEND: &str = r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-      if (mpcMatch) {
-        const mpcPath = resolvePromptPath(mpcMatch[1]);
-        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
-        fs.writeFileSync(mpcPath, 'DONE\n');
-      }";
-
 fn acp_mock_revise_iteration_body() -> String {
     acp_mock_kpop_iteration_body()
         .replace(
             "      if (expPath) {",
             &format!("{REVISE_DOC_WRITE}\n      if (expPath) {{"),
-        )
-        .replace(
-            "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
-            &format!(
-                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{REVISE_DONE_APPEND}"
-            ),
         )
 }
 
@@ -57,7 +44,7 @@ const REVISE_DOC_DELETE: &str = r"      const docMatch = promptText.match(/Revis
         try { fs.unlinkSync(docAbs); } catch (_) {}
       }";
 
-pub fn acp_mock_revise_mpc_plan_done_without_output_js() -> String {
+pub fn acp_mock_revise_agent_ran_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'revise solved only\n'");
     acp_mock_js(
         "",

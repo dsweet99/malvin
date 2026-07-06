@@ -3,13 +3,7 @@ use std::collections::HashMap;
 use crate::prompts::*;
 
 fn write_kpop_prompt_fixtures(root: &std::path::Path) {
-    for (name, body) in [
-        ("header.md", ""),
-        ("kpop_common.md", "kc"),
-        ("mpc_block_a.md", "ka"),
-        ("mpc_block_b.md", "kb"),
-        ("mpc_block_c.md", "kc"),
-    ] {
+    for (name, body) in [("header.md", ""), ("kpop_common.md", "kc")] {
         std::fs::write(root.join(name), body).unwrap();
     }
 }
@@ -77,9 +71,9 @@ fn render_expands_coding_rules_placeholder_to_empty() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();
     std::fs::write(root.join("header.md"), "H").unwrap();
-    std::fs::write(root.join("mpc_block_a.md"), "{{ coding_rules }}").unwrap();
+    std::fs::write(root.join("kpop_common.md"), "{{ coding_rules }}").unwrap();
     let store = PromptStore::with_root(root.to_path_buf());
-    let out = store.render("mpc_block_a.md", &HashMap::new()).unwrap();
+    let out = store.render("kpop_common.md", &HashMap::new()).unwrap();
     assert_eq!(out, "");
 }
 

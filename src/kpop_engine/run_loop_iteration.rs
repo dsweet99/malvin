@@ -6,8 +6,7 @@ use crate::cli::workflow_kpop_shared::kpop_engine_loop_iterations;
 use super::super::kpop_session::{print_kpop_engine_log_line, run_kpop_engine_session, KPopEngineMultiturnCtx};
 use super::super::params::{KPopEngineIterationParams, KPopEngineParams};
 use super::{
-    kpop_engine_mpc_plan_early_exit, session_mpc_plan_declares_done, KPopEngineEarlyExitCtx,
-    KPopEngineLoopOutcome,
+    kpop_engine_gate_loop_early_exit, KPopEngineEarlyExitCtx, KPopEngineLoopOutcome,
 };
 use crate::artifacts::SessionDotfileBackups;
 
@@ -51,8 +50,6 @@ fn prepare_gate_iteration_artifacts(
     crate::session_dotfile_backup::repair_invalid_malvin_home_config_on_disk(work_dir)?;
     let exp_log_path =
         crate::artifacts::ensure_gate_exp_log_file(artifacts, iteration).map_err(|e| e.to_string())?;
-    crate::artifacts::reset_mpc_plan_file_for_iteration(artifacts, iteration)
-        .map_err(|e| e.to_string())?;
     Ok(exp_log_path)
 }
 
@@ -98,10 +95,8 @@ pub(crate) async fn kpop_engine_loop_one_iteration(
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
     let _exp_log = crate::kpop_log_protocol::ExperimentLog::read(&exp_log_path)
         .map_err(|e| e.to_string())?;
-    let mpc_plan_done = session_mpc_plan_declares_done(params.prepared.artifacts())?;
-    let early = kpop_engine_mpc_plan_early_exit(KPopEngineEarlyExitCtx {
+    let early = kpop_engine_gate_loop_early_exit(KPopEngineEarlyExitCtx {
         behavior: params.behavior,
-        mpc_plan_done,
         artifacts: params.prepared.artifacts(),
         session_dotfile_backups: &session_dotfile_backups,
         agent_ran: true,

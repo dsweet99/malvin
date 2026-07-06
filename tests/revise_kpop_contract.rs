@@ -5,10 +5,35 @@ mod common;
 
 #[cfg(unix)]
 use common::{
-    ReviseSpawn, acp_mock_revise_kpop_empty_output_js, acp_mock_revise_mpc_plan_done_without_output_js,
+    ReviseSpawn, acp_mock_revise_kpop_empty_output_js, acp_mock_revise_agent_ran_without_output_js,
     acp_mock_revise_kpop_steps_js, bin_path_with_fake_kiss, combined_cli_output, fast_test_home_workspace,
     seed_malvin_checks, spawn_revise, cached_mock_executable,
 };
+
+#[cfg(unix)]
+#[test]
+fn revise_succeeds_when_agent_writes_valid_document() {
+    let (root, home, workspace) = fast_test_home_workspace();
+    seed_malvin_checks(&workspace, "true\n");
+    std::fs::write(workspace.join("doc.md"), "# Draft\n\nHedgy maybe text.\n").expect("seed");
+    let path = bin_path_with_fake_kiss(&root);
+    let mock = cached_mock_executable( &acp_mock_revise_kpop_steps_js());
+    let out = spawn_revise(&ReviseSpawn {
+        workspace: &workspace,
+        home: &home,
+        mock: &mock,
+        path_var: &path,
+        doc_path: "doc.md",
+        extra_args: &["--max-loops", "0"],
+    });
+    assert!(
+        out.status.success(),
+        "revise must succeed when agent writes valid document: {:?}",
+        combined_cli_output(&out)
+    );
+    let doc = std::fs::read_to_string(workspace.join("doc.md")).expect("read doc");
+    assert!(!doc.is_empty(), "document must be non-empty");
+}
 
 #[cfg(unix)]
 #[test]
@@ -87,7 +112,7 @@ fn revise_fails_when_agent_solves_but_output_missing() {
     seed_malvin_checks(&workspace, "true\n");
     std::fs::write(workspace.join("doc.md"), "seed\n").expect("seed");
     let path = bin_path_with_fake_kiss(&root);
-    let mock = cached_mock_executable( &acp_mock_revise_mpc_plan_done_without_output_js());
+    let mock = cached_mock_executable( &acp_mock_revise_agent_ran_without_output_js());
     let out = spawn_revise(&ReviseSpawn {
         workspace: &workspace,
         home: &home,

@@ -36,7 +36,7 @@ struct DelightGateFinish<'a> {
 }
 
 fn delight_gate_outcome(finish: DelightGateFinish<'_>) -> Result<(), String> {
-    let gate_r = if finish.gates_ok {
+    let gate_r = if finish.gates_ok || finish.agent_ran {
         validate_delight_output(&finish.prepared.resolved_out_path)?;
         finish_kpop_engine_after_pass(
             finish.shared,
@@ -44,15 +44,6 @@ fn delight_gate_outcome(finish: DelightGateFinish<'_>) -> Result<(), String> {
             finish.agent_ran,
             finish.run_timing,
         )
-    } else if finish.agent_ran {
-        if let Err(e) = validate_delight_output(&finish.prepared.resolved_out_path) {
-            Err(e)
-        } else {
-            Err(
-                "malvin delight: gate loop did not exit on mpc plan DONE"
-                    .to_string(),
-            )
-        }
     } else {
         fail_kpop_engine_after_exhausted(
             "malvin delight",
@@ -128,12 +119,29 @@ pub async fn run_delight(
 mod tests {
     use super::*;
     use crate::artifacts::create_kpop_run_artifacts;
+    use crate::cli::kpop_summarize_tests::summarize_shared_opts;
+
+    fn delight_gate_outcome_prepared(tmp: &tempfile::TempDir, out_path: &std::path::Path) -> DelightKpopPrepared {
+        let store = crate::prompts::PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let artifacts = create_kpop_run_artifacts("delight", Some(tmp.path())).expect("artifacts");
+        DelightKpopPrepared {
+            inner: crate::kpop_engine::KPopEnginePrepared {
+                artifacts,
+                context: crate::prompt_stratification::WorkflowRenderContext::default(),
+                request_text: "req".into(),
+                startup_emit_request: "req".into(),
+                store,
+                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
+            },
+            resolved_out_path: out_path.to_path_buf(),
+        }
+    }
 
     #[test]
     fn delight_post_session_validates_output_file_exists() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let missing = tmp.path().join("plan.md");
-        let err = validate_delight_output(&missing).expect_err("missing");
+        let err = validate_delight_output(&tmp.path().join("plan.md")).expect_err("missing");
         assert!(err.contains("expected pitch file"));
     }
 
@@ -155,48 +163,30 @@ mod tests {
     }
 
     #[test]
-    fn delight_run_loop_entry_is_covered() {
-        let _ = run_delight;
-    }
-
-    #[test]
-    fn delight_gate_outcome_fails_when_loop_exhausted_with_output_but_no_exit() {
+    fn delight_gate_outcome_succeeds_when_agent_ran_with_valid_output_without_gate_exit() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let plan = tmp.path().join("plan.md");
         std::fs::write(&plan, "# Plan\n").expect("write");
-        let store = crate::prompts::PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let artifacts = create_kpop_run_artifacts("delight", Some(tmp.path())).expect("artifacts");
-        let prepared = DelightKpopPrepared {
-            inner: crate::kpop_engine::KPopEnginePrepared {
-                artifacts,
-                context: crate::prompt_stratification::WorkflowRenderContext::default(),
-                request_text: "req".into(),
-                startup_emit_request: "req".into(),
-                store,
-                malvin_checks_backup: crate::artifacts::MalvinChecksBackup::Missing,
-            },
-            resolved_out_path: plan,
-        };
-        let shared = crate::cli::SharedOpts {
-            model: crate::config::DEFAULT_CLI_MODEL.into(),
-            no_force: true,
-            no_tenacious: false,
-            no_tee: true,
-            no_markdown: true,
-            verbose: false,
-            max_acp_retries: 1,
-            doc: false,
-            name: None,
-            mini: false,
-        mini_max_bash_turns: 32,
-        mini_max_http_turns: 32,
-        mini_max_bash_execs: 128,
-        mini_max_http_retries: 0,
-        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
-        mini_max_gate_retries: 0,
-        mini_max_shrink_passes: 0,
-        };
+        let prepared = delight_gate_outcome_prepared(&tmp, &plan);
+        let shared = summarize_shared_opts(1);
+        let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
+        delight_gate_outcome(DelightGateFinish {
+            shared: &shared,
+            prepared: &prepared,
+            agent_ran: true,
+            gates_ok: false,
+            run_timing: None,
+            last_backups: &backups,
+            summarize_res: Ok(()),
+        })
+        .expect("valid output after agent ran should succeed");
+    }
+
+    #[test]
+    fn delight_gate_outcome_fails_when_agent_ran_with_missing_output() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prepared = delight_gate_outcome_prepared(&tmp, &tmp.path().join("pitch.md"));
+        let shared = summarize_shared_opts(1);
         let backups = crate::artifacts::SessionDotfileBackups::snapshot(tmp.path()).expect("snap");
         let err = delight_gate_outcome(DelightGateFinish {
             shared: &shared,
@@ -207,7 +197,8 @@ mod tests {
             last_backups: &backups,
             summarize_res: Ok(()),
         })
-        .expect_err("needs mpc plan DONE");
-        assert!(err.contains("mpc plan DONE"));
+        .expect_err("missing output should fail validation");
+        assert!(err.contains("expected pitch file"));
+        assert!(!err.contains("mpc plan DONE"));
     }
 }

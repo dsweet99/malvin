@@ -9,7 +9,7 @@ pub const fn acp_mock_kpop_prompt_preamble() -> &'static str {
     if (legacyReqMatch) {
       reqRel = legacyReqMatch[1].replace(/^\.\//, '');
     } else {
-      const mpcReqMatch = promptText.match(/User request[^`]*`([^`]+)`/);
+      const mpcReqMatch = promptText.match(/User request[^`]*`([^`]+)`/i);
       if (mpcReqMatch) reqRel = mpcReqMatch[1].replace(/^\.\//, '');
     }
     if (reqRel) {
@@ -90,30 +90,8 @@ pub fn acp_mock_code_kpop_steps_js() -> String {
     acp_mock_kpop_steps_js(r"'code kpop step\n'")
 }
 
-pub const fn acp_mock_mpc_plan_done_write_js() -> &'static str {
-    r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-      if (mpcMatch) {
-        const mpcPath = resolvePromptPath(mpcMatch[1]);
-        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
-        fs.writeFileSync(mpcPath, 'DONE\n');
-      }"
-}
-
 pub fn acp_mock_kpop_writes_solved_js(chunk: &str) -> String {
-    let done_write = acp_mock_mpc_plan_done_write_js();
-    let iteration = acp_mock_kpop_iteration_body().replace(
-        "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
-        &format!(
-            "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{done_write}"
-        ),
-    );
-    let body = format!(
-        "{}\n    if ({}) {{\n{iteration}\n    }}",
-        acp_mock_kpop_prompt_preamble(),
-        acp_mock_kpop_block_match_js(),
-    );
-    let done = session_update_chunk_line("agent_message_chunk", chunk);
-    acp_mock_js("", &format!("{body}\n{done}"))
+    acp_mock_kpop_steps_js(chunk)
 }
 
 pub fn acp_mock_rich_markdown_kpop_writes_solved_js() -> String {
@@ -124,7 +102,7 @@ pub fn acp_mock_rich_markdown_kpop_writes_solved_js() -> String {
 
 fn acp_mock_kpop_tamper_dotfile_writes_solved_js(rel: &str) -> String {
     let tamper = format!(
-        "              fs.writeFileSync(path.join(process.cwd(), '{rel}'), 'TAMPERED\\n', 'utf8');\n              const mpcMatch = promptText.match(/`([^`]*\\/mpc_plan\\.md)`/);\n              if (mpcMatch) fs.writeFileSync(resolvePromptPath(mpcMatch[1]), 'DONE\\n');"
+        "              fs.writeFileSync(path.join(process.cwd(), '{rel}'), 'TAMPERED\\n', 'utf8');"
     );
     let iteration = acp_mock_kpop_iteration_body().replace(
         "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
@@ -155,9 +133,7 @@ pub fn acp_mock_kpop_tampers_malvin_checks_writes_solved_js() -> String {
 
 pub fn acp_mock_kpop_tampers_home_malvin_config_writes_solved_js() -> String {
     let tamper = r"              const os = require('os');
-              fs.writeFileSync(path.join(os.homedir(), '.malvin_home', 'config.toml'), 'TAMPERED\n', 'utf8');
-              const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-              if (mpcMatch) fs.writeFileSync(resolvePromptPath(mpcMatch[1]), 'DONE\n');";
+              fs.writeFileSync(path.join(os.homedir(), '.malvin_home', 'config.toml'), 'TAMPERED\n', 'utf8');";
     let iteration = acp_mock_kpop_iteration_body().replace(
         "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
         &format!(

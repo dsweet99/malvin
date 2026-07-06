@@ -91,7 +91,6 @@ fn kpop_markdown_fixture_context() -> WorkflowRenderContext {
         ("review_path", "./.malvin/logs/run42/review.md"),
         ("result_path", "./.malvin/logs/run42/result.md"),
         ("exp_log", ".malvin/logs/run42/_kpop/exp_log_run42.md"),
-        ("mpc_plan_path", "./.malvin/logs/run42/_kpop/mpc_plan.md"),
         ("malvin_command", "kpop"),
         ("quality_gates", ""),
         ("quality_gates_log", "./.malvin/logs/run42/quality_gates.log"),
@@ -147,34 +146,44 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         base: &base,
         prepend_rules_once: true,
     };
-    let kpop = turn.kpop_block().unwrap();
+    let kpop = turn.kpop_prompt().unwrap();
     assert_substrings_monotonic(
         &kpop,
         &[
             "Know thyself, agent",
             "# Definition: KPop",
-            "Write a plan to satisfy the user request",
+            "Hypothesize",
         ],
     );
     assert_prompt_contains_each(
         &kpop,
         &[
-            "Hypothesize",
-            ".malvin/logs/run42/_kpop/mpc_plan.md",
+            ".malvin/logs/run42/_kpop/exp_log_run42.md",
             ".malvin/logs/run42/request.md",
-            "KPop: Execute the work phase",
         ],
     );
     assert!(
+        !kpop.contains("mpc_plan.md"),
+        "kpop prompt must not reference mpc plan path: {kpop:?}"
+    );
+    assert!(
+        !kpop.contains("Write a plan to satisfy the user request"),
+        "kpop prompt must not include legacy mpc block wording: {kpop:?}"
+    );
+    assert!(
+        !kpop.contains("KPop: Execute the work phase"),
+        "kpop prompt must not include legacy mpc block wording: {kpop:?}"
+    );
+    assert!(
         !kpop.contains("budget for any KPOPs"),
-        "kpop_block must not include hypothesis budget wording: {kpop:?}"
+        "kpop prompt must not include hypothesis budget wording: {kpop:?}"
     );
     assert!(
         !kpop.contains("Complete up to"),
-        "kpop_block must not use backticked want budget wording: {kpop:?}"
+        "kpop prompt must not use backticked want budget wording: {kpop:?}"
     );
     assert!(
         !kpop.contains("remaining_hypotheses"),
-        "kpop_block must not reference remaining_hypotheses: {kpop:?}"
+        "kpop prompt must not reference remaining_hypotheses: {kpop:?}"
     );
 }

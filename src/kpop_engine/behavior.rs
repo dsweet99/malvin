@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KPopHardConstraintsExit {
-    /// `CodeTidy` = single mpc plan `DONE` and passing gates; restore checks each turn.
+    /// `CodeTidy` = passing gates; restore checks each turn.
     CodeTidy,
     /// `ChecksDiscovery` = valid checks file on disk; do not restore `.malvin/checks` between turns.
     ChecksDiscovery,
@@ -12,7 +12,6 @@ pub(crate) struct KPopHardConstraints {
     pub skip_kpop_on_initial_pass: bool,
     pub recheck_gates_after_exhausted: bool,
     pub skip_workspace_quality_gates: bool,
-    pub use_multiturn_mpc: bool,
     pub exit: KPopHardConstraintsExit,
 }
 
@@ -21,49 +20,36 @@ impl KPopHardConstraints {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: true,
         skip_workspace_quality_gates: false,
-        use_multiturn_mpc: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const TIDY: Self = Self {
         skip_kpop_on_initial_pass: true,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
-        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const CHECKS_DISCOVERY: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: false,
-        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::ChecksDiscovery,
     };
     pub const DELIGHT: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
-        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
-        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
     pub const REVISE: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
         skip_workspace_quality_gates: true,
-        use_multiturn_mpc: false,
-        exit: KPopHardConstraintsExit::CodeTidy,
-    };
-    pub const KPOP: Self = Self {
-        skip_kpop_on_initial_pass: false,
-        recheck_gates_after_exhausted: false,
-        skip_workspace_quality_gates: true,
-        use_multiturn_mpc: false,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
 
@@ -134,14 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn kpop_behavior_skips_workspace_gates_for_exit() {
-        assert!(KPopHardConstraints::KPOP.require_passing_gates_for_exit());
-        const { assert!(KPopHardConstraints::KPOP.skip_workspace_quality_gates); }
-        assert!(KPopHardConstraints::KPOP.restore_malvin_checks_after_session());
-    }
-
-    #[test]
-    fn delight_behavior_always_runs_kpop_and_exits_on_mpc_plan_done() {
+    fn delight_behavior_always_runs_kpop() {
         assert_eq!(
             KPopHardConstraints::DELIGHT.skip_kpop_on_initial_pass,
             KPopHardConstraints::CODE.skip_kpop_on_initial_pass,

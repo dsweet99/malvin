@@ -33,12 +33,12 @@ fn counts_steps_in_exp_log() {
 }
 
 #[test]
-fn agent_declared_success_requires_mpc_plan_done() {
+fn agent_declared_success_always_false() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let path = tmp.path().join("mpc_plan.md");
     assert!(!agent_declared_success(&path));
     std::fs::write(&path, "DONE\n").expect("write");
-    assert!(agent_declared_success(&path));
+    assert!(!agent_declared_success(&path));
     std::fs::write(&path, "DONE extra\n").expect("write");
     assert!(!agent_declared_success(&path));
     std::fs::write(&path, "NOT DONE\n").expect("write");

@@ -19,12 +19,6 @@ fn acp_mock_combined_discovery_and_kpop_js(kpop_chunk: &str) -> String {
         fs.mkdirSync(path.dirname(expPath), { recursive: true });
         fs.appendFileSync(expPath, '\n## Step 1 — KPOP mock\n');
       }
-      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-      if (mpcMatch) {
-        const mpcPath = resolvePromptPath(mpcMatch[1]);
-        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
-        fs.writeFileSync(mpcPath, 'DONE\n');
-      }
       const checksPath = path.join(process.cwd(), '.malvin', 'checks');
       fs.mkdirSync(path.dirname(checksPath), { recursive: true });
       fs.writeFileSync(checksPath, 'make lint\n');

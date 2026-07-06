@@ -2,8 +2,6 @@ use std::path::Path;
 
 use crate::kpop_log_protocol::ExperimentLog;
 
-use super::mpc_plan::mpc_plan_declares_done;
-
 /// Reads the experiment log at `path` into a string.
 ///
 /// # Errors
@@ -29,10 +27,10 @@ pub fn hypotheses_emitted(text: &str) -> usize {
     log.kpop_step_count() + log.mbc2_step_count()
 }
 
-/// True when the mpc plan file at `path` exists and its trimmed contents are exactly `DONE`.
+/// Legacy hook retained for API stability; pre-MPC `KPop` has no `mpc-plan` `DONE` signal.
 #[must_use]
-pub fn agent_declared_success(path: &Path) -> bool {
-    mpc_plan_declares_done(path).unwrap_or(false)
+pub const fn agent_declared_success(_path: &Path) -> bool {
+    false
 }
 
 #[cfg(test)]
@@ -47,9 +45,7 @@ mod kiss_cov_gate_refs {
         assert_eq!(hypotheses_emitted(text), 1);
 
         let tmp = tempfile::tempdir().expect("tempdir");
-        let mpc = tmp.path().join("mpc_plan.md");
-        assert!(!agent_declared_success(&mpc));
-        std::fs::write(&mpc, "DONE\n").expect("write");
-        assert!(agent_declared_success(&mpc));
+        let path = tmp.path().join("any.md");
+        assert!(!agent_declared_success(&path));
     }
 }

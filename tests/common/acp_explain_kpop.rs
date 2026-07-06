@@ -24,25 +24,11 @@ const REVISE_DOC_WRITE: &str = r"      const docMatch = promptText.match(/Revise
         fs.writeFileSync(docAbs, '# Revised\n\nClear prose.\n', 'utf8');
       }";
 
-const EXPLAIN_DONE_APPEND: &str = r"      const mpcMatch = promptText.match(/`([^`]*\/mpc_plan\.md)`/);
-      if (mpcMatch) {
-        const mpcPath = resolvePromptPath(mpcMatch[1]);
-        fs.mkdirSync(path.dirname(mpcPath), { recursive: true });
-        fs.writeFileSync(mpcPath, 'DONE\n');
-      }";
-
 fn acp_mock_kpop_iteration_with_preface(preface: &str) -> String {
-    acp_mock_kpop_iteration_body()
-        .replace(
-            "      if (expPath) {",
-            &format!("{preface}\n      if (expPath) {{"),
-        )
-        .replace(
-            "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
-            &format!(
-                "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{EXPLAIN_DONE_APPEND}"
-            ),
-        )
+    acp_mock_kpop_iteration_body().replace(
+        "      if (expPath) {",
+        &format!("{preface}\n      if (expPath) {{"),
+    )
 }
 
 fn acp_mock_explain_iteration_body() -> String {
@@ -87,7 +73,7 @@ pub fn acp_mock_explain_kpop_steps_js() -> String {
     acp_mock_js("", &format!("{}\n{done}", acp_mock_explain_revise_kpop_script()))
 }
 
-pub fn acp_mock_explain_mpc_plan_done_without_output_js() -> String {
+pub fn acp_mock_explain_agent_ran_without_output_js() -> String {
     let done = session_update_chunk_line("agent_message_chunk", r"'explain solved only\n'");
     acp_mock_js("", &format!("{}\n{done}", acp_mock_explain_kpop_script("")))
 }

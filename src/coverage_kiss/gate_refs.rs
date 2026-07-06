@@ -76,22 +76,11 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     use crate::prompts::PromptStore;
     use std::collections::HashMap;
 
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&root).expect("mkdir");
-    for (name, body) in [
-        ("header.md", "hdr\n"),
-        ("kpop_common.md", "common\n"),
-        ("mpc_block_a.md", "block {{ user_request_path }}\n"),
-        ("mpc_block_b.md", "block_b\n"),
-        ("mpc_block_c.md", "block_c\n"),
-    ] {
-        std::fs::write(root.join(name), body).expect("write");
-    }
-    let store = PromptStore::with_root(root);
+    let store = PromptStore::default_store();
     store.ensure_defaults().expect("defaults");
     let base = WorkflowRenderContext::from(HashMap::from([
         ("plan_path".to_string(), "p".to_string()),
+        ("exp_log".to_string(), "./_kpop/exp.md".to_string()),
         (
             "user_request_path".to_string(),
             "./.malvin/logs/run/user_request.md".to_string(),
@@ -102,7 +91,7 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
         base: &base,
         prepend_rules_once: false,
     };
-    let out = prompts.kpop_block().expect("kpop block");
+    let out = prompts.kpop_prompt().expect("kpop prompt");
     assert!(out.contains("user_request.md"));
 }
 

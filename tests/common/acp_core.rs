@@ -146,33 +146,6 @@ pub fn code_review_fanout_branches(reviewed_chunk: &str, review_write_body: &str
     )
 }
 
-pub fn acp_mock_bug_mpc_plan_done_js() -> String {
-    let body = r"    const fs = require('fs');
-    const path = require('path');
-    const os = require('os');
-    const root = path.join(os.homedir(), '.malvin_home', 'logs');
-    if (fs.existsSync(root)) {
-      outer: for (const hash of fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-        const bucket = path.join(root, hash.name);
-        const runs = fs.readdirSync(bucket, { withFileTypes: true })
-          .filter((e) => e.isDirectory())
-          .map((e) => e.name)
-          .sort()
-          .reverse();
-        for (const run of runs) {
-        const kpopDir = path.join(bucket, run, '_kpop');
-        if (!fs.existsSync(kpopDir)) continue;
-        const mpcPlan = path.join(kpopDir, 'mpc_plan.md');
-        fs.mkdirSync(kpopDir, { recursive: true });
-        fs.writeFileSync(mpcPlan, 'DONE\n');
-        break outer;
-        }
-      }
-    }";
-    let done = session_update_chunk_line("agent_message_chunk", r"'kpop solved\n'");
-    acp_mock_js("", &format!("{body}\n{done}"))
-}
-
 #[cfg(all(unix, target_os = "linux"))]
 pub fn acp_mock_kpop_tamper_then_restore_js() -> String {
     let body = r"    const fs = require('fs');

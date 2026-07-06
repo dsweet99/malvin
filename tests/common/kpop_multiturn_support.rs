@@ -14,11 +14,9 @@ pub fn setup_multiturn_stub_mt() -> MultiturnTestHarness<'static> {
     let tmp = tempfile::tempdir().unwrap();
     let exp_path = tmp.path().join("exp.md");
     std::fs::write(&exp_path, "").unwrap();
-    let mpc_plan = tmp.path().join("mpc_plan.md");
     let state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: exp_path.clone(),
-        mpc_plan_path: mpc_plan,
     })
     .unwrap();
     MultiturnTestHarness { state, exp_path, _tmp: tmp }

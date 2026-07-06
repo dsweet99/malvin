@@ -10,7 +10,7 @@ Revise an **existing document in place** via the KPop gate loop scoped by `revis
 | Output | Same path, edited in place (no `--out-path`) |
 | Loop | Full gate-kpop loop (`KPopHardConstraints::REVISE`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`) |
-| Exit policy | mpc plan `DONE` in per-iteration session; workspace gates need not pass |
+| Exit policy | Valid non-empty document at `DOC_PATH`; workspace gates need not pass |
 | Requires | No `.malvin/checks` preflight (document workflow, like `explain` / `delight`) |
 
 ## Intention
@@ -48,7 +48,7 @@ See `malvin --doc`.
 All of the following must hold:
 
 1. Preflight passed (`DOC_PATH` existed as a regular file at start).
-2. Outer gate-loop iteration writes exactly `DONE` to the mpc plan file.
+2. Agent completed within the `--max-loops` budget.
 3. After the session, `DOC_PATH` is still a regular file with size &gt; 0.
 
 On success, malvin prints `DONE` to stdout.

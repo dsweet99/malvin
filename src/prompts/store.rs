@@ -127,11 +127,6 @@ impl PromptStore {
         if self.prompt_text("kpop_common.md").is_err() {
             missing.push("kpop_common.md");
         }
-        for name in ["mpc_block_a.md", "mpc_block_b.md", "mpc_block_c.md"] {
-            if self.prompt_text(name).is_err() {
-                missing.push(name);
-            }
-        }
         if validation.require_mbc2 && self.prompt_text("mbc2.md").is_err() {
             missing.push("mbc2.md");
         }

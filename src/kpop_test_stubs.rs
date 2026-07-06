@@ -7,20 +7,8 @@ impl MtStubPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self) -> Result<String, String> {
+    pub fn kpop_prompt(&mut self) -> Result<String, String> {
         Ok("stub kpop block".to_string())
-    }
-
-    pub fn kpop_block_a(&mut self) -> Result<String, String> {
-        Ok("stub kpop block a".to_string())
-    }
-
-    pub fn kpop_block_b(&self) -> Result<String, String> {
-        Ok("stub kpop block b".to_string())
-    }
-
-    pub fn kpop_block_c(&self) -> Result<String, String> {
-        Ok("stub kpop block c".to_string())
     }
 }
 
@@ -31,20 +19,8 @@ impl EchoPrompts {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self) -> Result<String, String> {
+    pub fn kpop_prompt(&mut self) -> Result<String, String> {
         Ok("K".to_string())
-    }
-
-    pub fn kpop_block_a(&mut self) -> Result<String, String> {
-        Ok("Ka".to_string())
-    }
-
-    pub fn kpop_block_b(&self) -> Result<String, String> {
-        Ok("Kb".to_string())
-    }
-
-    pub fn kpop_block_c(&self) -> Result<String, String> {
-        Ok("Kc".to_string())
     }
 }
 
@@ -65,22 +41,9 @@ impl CaptureBlocks {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails (stub never fails).
-    pub fn kpop_block(&mut self) -> Result<String, String> {
+    pub fn kpop_prompt(&mut self) -> Result<String, String> {
         self.blocks.lock().expect("blocks lock").push(());
         Ok("stub kpop block".to_string())
-    }
-
-    pub fn kpop_block_a(&mut self) -> Result<String, String> {
-        self.blocks.lock().expect("blocks lock").push(());
-        Ok("stub kpop block a".to_string())
-    }
-
-    pub fn kpop_block_b(&self) -> Result<String, String> {
-        Ok("stub kpop block b".to_string())
-    }
-
-    pub fn kpop_block_c(&self) -> Result<String, String> {
-        Ok("stub kpop block c".to_string())
     }
 }
 

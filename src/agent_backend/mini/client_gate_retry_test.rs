@@ -130,74 +130,43 @@ async fn gate_retry_billing_failure_fails_fast_without_gate_attempt_message() {
 }
 
 #[tokio::test]
-async fn gate_retry_strips_stale_mpc_plan_done_before_next_attempt() {
-    use std::path::PathBuf;
-
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let mpc_plan_path: PathBuf = tmp.path().join("mpc_plan.md");
-    std::fs::write(&mpc_plan_path, "").expect("write mpc plan");
-    let mut client = gate_retry_mpc_plan_strip_mock_client(&mpc_plan_path);
-    let work_dir = tempfile::tempdir().expect("workdir");
-    let log_path = work_dir.path().join("gate_kpop.log");
-    run_gate_retry_mpc_plan_strip_prompt(&mut client, work_dir.path(), &log_path, &mpc_plan_path)
-        .await;
-    assert_eq!(
-        std::fs::read_to_string(&mpc_plan_path).expect("read mpc plan"),
-        "",
-        "stale mpc plan DONE from failed gate attempt must be stripped before retry"
-    );
-}
-
-fn gate_retry_mpc_plan_strip_mock_client(mpc_plan_path: &std::path::Path) -> MiniAgentClient {
+async fn gate_retry_succeeds_on_second_attempt_after_rate_limit() {
+    use crate::acp::CoderPromptOptions;
     use std::sync::Mutex;
 
     use crate::agent_backend::mini::{LlmBackend, MockScript, MockStep};
     use crate::agent_backend::test_support::{mini_done_response, mini_loop_config, test_io};
 
-    let mpc_plan_for_hook = mpc_plan_path.to_path_buf();
     let llm = LlmBackend::Mock(Mutex::new(MockScript {
-        responses: vec![
-            MockStep::RateLimited,
-            MockStep::Ok(mini_done_response()),
-        ],
+        responses: vec![MockStep::RateLimited, MockStep::Ok(mini_done_response())],
         call_count: 0,
-        on_response: Some(Box::new(move |idx, _| {
-            if idx == 0 {
-                std::fs::write(&mpc_plan_for_hook, "DONE\n")
-                    .expect("simulate agent writing done before gate failure");
-            }
-        })),
+        on_response: None,
     }));
     let mut config = mini_loop_config(1, 2);
     config.max_gate_retries = 2;
     config.max_http_retries = 0;
     config.max_transport_retries = 0;
-    MiniAgentClient::new_mock(config, test_io(), llm)
-}
-
-async fn run_gate_retry_mpc_plan_strip_prompt(
-    client: &mut MiniAgentClient,
-    work_dir: &std::path::Path,
-    log_path: &std::path::Path,
-    mpc_plan_path: &std::path::Path,
-) {
-    use crate::acp::CoderPromptOptions;
-
-    client.begin_coder_session(work_dir).await.expect("begin");
+    let mut client = MiniAgentClient::new_mock(config, test_io(), llm);
+    let work_dir = tempfile::tempdir().expect("workdir");
+    let log_path = work_dir.path().join("gate_kpop.log");
+    client.begin_coder_session(work_dir.path()).await.expect("begin");
     client
         .run_coder_prompt(
             "task",
-            log_path,
+            &log_path,
             "gate_kpop",
             CoderPromptOptions {
                 single_attempt: false,
-                mpc_plan_path: Some(mpc_plan_path),
                 ..Default::default()
             },
         )
         .await
         .expect("gate retry should succeed on second attempt");
     client.end_coder_session().await.expect("end");
+    let LlmBackend::Mock(m) = &client.llm else {
+        panic!("mock llm");
+    };
+    assert_eq!(m.lock().expect("lock").call_count, 2, "two gate attempts");
 }
 
 #[tokio::test]

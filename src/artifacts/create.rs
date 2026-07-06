@@ -9,64 +9,7 @@ pub(crate) fn ensure_quality_gates_log_file(artifacts: &RunArtifacts) -> std::io
 }
 
 pub(crate) fn ensure_kpop_exp_log_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    write_empty_exp_log(&artifacts.exp_log_path())?;
-    ensure_mpc_plan_file(artifacts)
-}
-
-pub(crate) fn ensure_mpc_plan_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    let path = crate::artifacts::mpc_plan_path(artifacts);
-    let parent = path.parent().ok_or_else(|| {
-        Error::new(
-            ErrorKind::InvalidInput,
-            "mpc plan path has no parent directory",
-        )
-    })?;
-    std::fs::create_dir_all(parent)?;
-    if !path.exists() {
-        std::fs::write(&path, "")?;
-    }
-    Ok(path)
-}
-
-pub(crate) fn record_mpc_plan_done_marker_if_present(
-    artifacts: &RunArtifacts,
-    iteration: usize,
-) -> std::io::Result<()> {
-    let path = crate::artifacts::mpc_plan_path(artifacts);
-    let had_done = std::fs::read_to_string(&path)
-        .map(|text| text.trim() == "DONE")
-        .unwrap_or(false);
-    if had_done {
-        let marker = crate::artifacts::mpc_plan_done_marker_path(artifacts, iteration);
-        if let Some(parent) = marker.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(marker, "")?;
-    }
-    Ok(())
-}
-
-pub(crate) fn reset_mpc_plan_file(artifacts: &RunArtifacts) -> std::io::Result<PathBuf> {
-    let path = crate::artifacts::mpc_plan_path(artifacts);
-    let parent = path.parent().ok_or_else(|| {
-        Error::new(
-            ErrorKind::InvalidInput,
-            "mpc plan path has no parent directory",
-        )
-    })?;
-    std::fs::create_dir_all(parent)?;
-    std::fs::write(&path, "")?;
-    Ok(path)
-}
-
-pub(crate) fn reset_mpc_plan_file_for_iteration(
-    artifacts: &RunArtifacts,
-    iteration: usize,
-) -> std::io::Result<PathBuf> {
-    if iteration > 1 {
-        record_mpc_plan_done_marker_if_present(artifacts, iteration - 1)?;
-    }
-    reset_mpc_plan_file(artifacts)
+    write_empty_exp_log(&artifacts.exp_log_path())
 }
 
 pub(crate) fn ensure_gate_exp_log_file(

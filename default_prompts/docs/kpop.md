@@ -40,7 +40,7 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 1 | Separate kpop agent runs; stops early when mpc plan `DONE` |
+| `--max-loops` | 1 | Separate kpop agent runs (one Popper session per iteration) |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -50,22 +50,13 @@ Bare `malvin REQUEST` uses the same flags at the top level (see `malvin --doc`).
 
 See `malvin --doc`. Does **not** require workspace quality gates at CLI entry (unlike `code` / `tidy`).
 
-## Multiturn architecture
+## Session architecture
 
-Each agent session cycles through three MPC phases in order: **A → B → C** (C skipped when mpc plan is already `DONE` after B).
-
-| Phase | Prompt assembly |
-|-------|-----------------|
-| **A** | `header.md` + `kpop_common.md` + `mpc_block_a.md` |
-| **B** | `mpc_block_b.md` only |
-| **C** | `mpc_block_c.md` only |
-
-Prompt layers within block A:
+Each agent session sends **one prompt**: `header.md` + `kpop_common.md` (Popper loop: hypothesize → predict → falsify; log to experiment log).
 
 | Piece | Role |
 |-------|------|
 | **kpop_common** | Popper method: hypothesize → predict → falsify; log outcomes to the experiment log |
-| **mpc_block_a** | MPC workflow: write plan → KPop-review plan → revise plan → implement → write exactly `DONE` to mpc plan file |
 | **User brief** | On disk at `user_request_path` (`request.md` in the run dir) |
 
 Per-session artifacts under `_kpop/`:
@@ -73,9 +64,8 @@ Per-session artifacts under `_kpop/`:
 | File | Role |
 |------|------|
 | `exp_log_<run>.md` | Experiment log — hypotheses, tests, and results (authoritative for investigation) |
-| `mpc_plan.md` | Per-iteration MPC scratch plan; exactly `DONE` signals the agent finished this session |
 
-Between outer `--max-loops` iterations, malvin clears `mpc_plan.md` (and may record a done marker for the prior iteration). Each outer iteration gets its own experiment log (`_g2`, `_g3`, … suffix when applicable).
+Each outer `--max-loops` iteration gets its own experiment log (`_g2`, `_g3`, … suffix when applicable).
 
 ## KPOP_LOG line
 
@@ -93,14 +83,12 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 
 Stops when any of:
 
-- mpc plan file (`_kpop/mpc_plan.md`) contains exactly `DONE`
-- `--max-loops` runs complete without early success
+- `--max-loops` runs complete
 - Internal error
 
 ## Artifacts
 
 - `request.md` — input brief
-- `_kpop/mpc_plan.md` — per-iteration MPC plan scratch file (exactly `DONE` for early exit)
 - `_kpop/exp_log_*.md` — experiment log (authoritative for hypotheses and test results)
 - `kpop.log` — session transcript
 - `quality_gates.log` when gates are embedded in prompts

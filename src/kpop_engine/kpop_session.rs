@@ -1,4 +1,3 @@
-use crate::kpop_progression::strip_mpc_plan_done_on_disk;
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 use crate::agent_backend::agent_backend_timing;
@@ -8,11 +7,10 @@ use crate::acp::{
     CoderPromptOptions, KpopFailAfterPrompt,
 };
 use crate::nested_budget_scopes::BudgetScopeLayer;
-use crate::cli::workflow_kpop_shared::post_kpop_session_gates;
+use crate::cli::workflow_kpop_shared::{gate_iteration_context, post_kpop_session_gates};
 use crate::run_timing::TimingPhase;
 
 use super::kpop_session_finish::finish_kpop_engine_session_success;
-use super::kpop_session_multiturn::run_kpop_engine_multiturn;
 use super::params::KPopEngineIterationParams;
 use super::prepared::KPopEnginePrepared;
 
@@ -51,9 +49,19 @@ pub(crate) fn print_kpop_engine_log_line(prepared: &KPopEnginePrepared, exp_log_
     );
 }
 
+fn iter_context(ctx: &KPopEngineMultiturnCtx<'_>) -> crate::prompt_stratification::WorkflowRenderContext {
+    let prepared = ctx.iteration.loop_params.prepared;
+    gate_iteration_context(
+        prepared.context(),
+        prepared.artifacts(),
+        &ctx.iteration.exp_log_path,
+        ctx.iteration.iteration,
+    )
+}
+
 fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
     let prepared = ctx.iteration.loop_params.prepared;
-    let iter_ctx = super::kpop_session_multiturn::iter_context(ctx);
+    let iter_ctx = iter_context(ctx);
     KpopTurnPrompts {
         store: prepared.store(),
         base: &iter_ctx,
@@ -127,17 +135,12 @@ pub(super) async fn run_kpop_engine_coder_turn(
             CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
                 single_attempt: true,
-                mpc_plan_path: None,
                 ..Default::default()
             },
         )
         .await;
     if prompt_result.is_ok() {
         let malvin_command = format!("malvin {}", params.command);
-        let mpc_plan_done = crate::kpop_progression::mpc_plan_declares_done(
-            &crate::artifacts::mpc_plan_path(prepared.artifacts()),
-        )
-        .unwrap_or(false);
         prompt_result = crate::cli::kpop_summarize::maybe_run_gate_inline_summarize(
             crate::cli::kpop_summarize::GateInlineSummarizeCtx {
                 client: ctx.iteration.client,
@@ -146,7 +149,6 @@ pub(super) async fn run_kpop_engine_coder_turn(
                 malvin_command: &malvin_command,
                 iteration: ctx.iteration.iteration,
                 total_iterations: ctx.iteration.total_iterations,
-                mpc_plan_done,
             },
         )
         .await
@@ -158,9 +160,6 @@ pub(super) async fn run_kpop_engine_coder_turn(
 async fn run_kpop_engine_single_turn(
     ctx: &mut KPopEngineMultiturnCtx<'_>,
 ) -> Result<Option<crate::artifacts::SessionDotfileBackups>, String> {
-    if ctx.iteration.loop_params.behavior.use_multiturn_mpc {
-        return run_kpop_engine_multiturn(ctx).await;
-    }
     let prepared = ctx.iteration.loop_params.prepared;
     let work_dir = prepared.artifacts().work_dir.as_path();
     let log_path = prepared.artifacts().log_path("kpop");
@@ -208,11 +207,7 @@ pub(crate) async fn run_kpop_engine_session(
                 {
                     Err(err) => return Err(err.0),
                     Ok(true) => break,
-                    Ok(false) => {
-                        strip_mpc_plan_done_on_disk(&crate::artifacts::mpc_plan_path(
-                            ctx.iteration.loop_params.prepared.artifacts(),
-                        ));
-                    }
+                    Ok(false) => {}
                 }
             }
         }
@@ -227,4 +222,3 @@ pub(crate) async fn run_kpop_engine_session(
 #[cfg(test)]
 #[path = "kpop_session_kiss_cov_tests.rs"]
 mod kpop_session_kiss_cov_tests;
-

@@ -10,7 +10,7 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 | Output | `explain.tex` and `explain.pdf` in the request work directory (override with `--out-path`) |
 | Loop | Full gate-kpop loop (`KPopHardConstraints::EXPLAIN`) |
 | Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
-| Exit policy | mpc plan `DONE` in per-iteration session; workspace gates need not pass |
+| Exit policy | Valid non-empty tex and pdf outputs; workspace gates need not pass |
 | Requires | No `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
 
 ## Intention
@@ -59,7 +59,7 @@ See `malvin --doc`.
 
 All of the following must hold:
 
-1. Outer gate-loop iteration writes exactly `DONE` to the mpc plan file.
+1. Agent completed within the `--max-loops` budget.
 2. After the session, the resolved `--out-path` and its derived `.pdf` exist and each has size &gt; 0.
 3. The decoupled `malvin revise` workflow runs automatically on the same `--out-path` `.tex` file (prose clarity pass via `revise_constraints.md`).
 

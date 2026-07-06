@@ -11,7 +11,7 @@ pub use create::{
     create_run_artifacts_from_text, create_run_artifacts_from_text_opts, create_run_artifacts_opts,
 };
 pub(crate) use create::{
-    ensure_gate_exp_log_file, ensure_quality_gates_log_file, reset_mpc_plan_file_for_iteration,
+    ensure_gate_exp_log_file, ensure_quality_gates_log_file,
 };
 
 pub use crate::session_dotfile_backup::{
@@ -109,21 +109,6 @@ impl RunArtifacts {
     pub fn sandbox_oom_json_path(&self) -> PathBuf {
         self.run_dir.join(SANDBOX_OOM_JSON)
     }
-}
-
-/// Per-session MPC plan scratch file rendered as `{{ mpc_plan_path }}` in `mpc_block_a/b/c.md`.
-#[must_use]
-pub fn mpc_plan_path(artifacts: &RunArtifacts) -> PathBuf {
-    artifacts.run_dir.join("_kpop").join("mpc_plan.md")
-}
-
-/// Marker left when outer-loop iteration `iteration` ended with mpc plan `DONE`.
-#[must_use]
-pub fn mpc_plan_done_marker_path(artifacts: &RunArtifacts, iteration: usize) -> PathBuf {
-    artifacts
-        .run_dir
-        .join("_kpop")
-        .join(format!("mpc_plan_done_g{iteration}.marker"))
 }
 
 /// On-disk `KPop` user brief for flows where it differs from [`RunArtifacts::plan_path`] (e.g. `code`).

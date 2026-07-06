@@ -56,7 +56,7 @@ pub(crate) fn mini_done_backend_multiturn() -> AgentBackend {
 }
 
 pub(crate) fn smoke_multiturn_state(
-    work: &std::path::Path,
+    _work: &std::path::Path,
     exp_log: std::path::PathBuf,
 ) -> crate::kpop_progression::KpopMultiturnState<'static> {
     use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
@@ -64,7 +64,6 @@ pub(crate) fn smoke_multiturn_state(
     crate::kpop_progression::KpopMultiturnState::new(
         KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log,
-        work.join("mpc_plan.md"),
     )
     .expect("state")
 }

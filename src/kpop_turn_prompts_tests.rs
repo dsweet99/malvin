@@ -15,7 +15,7 @@ fn kpop_turn_test_context() -> WorkflowRenderContext {
         ("exp_log".to_string(), "./.malvin/logs/run/_kpop/exp_log.md".to_string()),
         (
             "user_request_path".to_string(),
-            "./.malvin/logs/run/request.md".to_string(),
+            "./.malvin/logs/run/user_request.md".to_string(),
         ),
         (
             "current_state".to_string(),
@@ -29,12 +29,8 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     let root = tmp.path().join("prompts");
     std::fs::create_dir_all(&root).expect("mkdir");
     for (name, body) in [
-        ("header.md", "<<hdr plan={{ plan_path }}>>\n"),
-        ("kpop_common.md", "<<common>>\n"),
-        ("mpc_block_a.md", "<<block_a req={{ user_request_path }}>>\n"),
-        ("mpc_block_b.md", "<<block_b>>\n"),
-        ("mpc_block_c.md", "<<block_c>>\n"),
-        ("mbc2.md", "MBC2 {{ user_prompt }}\n"),
+        ("header.md", "<<hdr plan={{ plan_path }} req={{ user_request_path }}>>\n"),
+        ("kpop_common.md", "<<common exp={{ exp_log }}>>\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -43,7 +39,7 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     (tmp, store)
 }
 
-fn expected_kpop_block_output(
+fn expected_kpop_prompt_output(
     store: &PromptStore,
     ctx: &WorkflowRenderContext,
     with_rules: bool,
@@ -52,39 +48,20 @@ fn expected_kpop_block_output(
     let common = store
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
-    let body_a = store
-        .render_prompt_only("mpc_block_a.md", map)
-        .expect("block_a");
-    let body_b = store
-        .render_prompt_only("mpc_block_b.md", map)
-        .expect("block_b");
-    let body_c = store
-        .render_prompt_only("mpc_block_c.md", map)
-        .expect("block_c");
-    let bodies = format!(
-        "{}\n\n{}\n\n{}",
-        body_a.trim_end(),
-        body_b.trim_end(),
-        body_c.trim_end()
-    );
     if with_rules {
         let header = render_header(store, map).expect("header");
-        format!(
-            "{}\n\n{}\n\n{}",
-            header.trim_end(),
-            common.trim_end(),
-            bodies
-        )
+        format!("{}\n\n{}", header.trim_end(), common.trim_end())
     } else {
-        format!("{}\n\n{}", common.trim_end(), bodies)
+        common.trim_end().to_string()
     }
 }
 
 #[test]
-fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
+fn kpop_engine_single_turn_prompt_is_header_plus_common() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
-    let request_path = "./.malvin/logs/run/request.md";
+    let request_path = "./.malvin/logs/run/user_request.md";
+    let exp_path = "./.malvin/logs/run/_kpop/exp_log.md";
     let prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
@@ -98,33 +75,14 @@ fn render_turn_with_body_matches_kpop_engine_single_turn_without_header() {
     let common = store
         .render_prompt_only("kpop_common.md", map)
         .expect("common");
-    let body_a = store
-        .render_prompt_only("mpc_block_a.md", map)
-        .expect("block_a");
-    let body_b = store
-        .render_prompt_only("mpc_block_b.md", map)
-        .expect("block_b");
-    let body_c = store
-        .render_prompt_only("mpc_block_c.md", map)
-        .expect("block_c");
-    let expected = format!(
-        "{}\n\n{}\n\n{}\n\n{}\n\n{}",
-        header.trim_end(),
-        common.trim_end(),
-        body_a.trim_end(),
-        body_b.trim_end(),
-        body_c.trim_end()
-    );
+    let expected = format!("{}\n\n{}", header.trim_end(), common.trim_end());
     assert_eq!(gate, expected);
     assert!(gate.contains(request_path));
-    assert!(
-        !gate.contains("budget for any KPOPs"),
-        "gate prompt must not include hypothesis budget wording"
-    );
+    assert!(gate.contains(exp_path));
 }
 
 #[test]
-fn kpop_block_matches_independently_rendered_sections() {
+fn kpop_prompt_matches_independently_rendered_sections() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let mut prompts = KpopTurnPrompts {
@@ -133,23 +91,23 @@ fn kpop_block_matches_independently_rendered_sections() {
         prepend_rules_once: true,
     };
 
-    let first = prompts.kpop_block().expect("first kpop turn");
+    let first = prompts.kpop_prompt().expect("first kpop turn");
     assert_eq!(
         first,
-        expected_kpop_block_output(&store, &base, true),
-        "first turn should equal header + common + block with exact composition"
+        expected_kpop_prompt_output(&store, &base, true),
+        "first turn should equal header + common"
     );
 
-    let second = prompts.kpop_block().expect("second kpop turn");
+    let second = prompts.kpop_prompt().expect("second kpop turn");
     assert_eq!(
         second,
-        expected_kpop_block_output(&store, &base, false),
+        expected_kpop_prompt_output(&store, &base, false),
         "after prepend_rules_once is consumed, output should omit header"
     );
 }
 
 #[test]
-fn kpop_block_without_prepend_rules_never_includes_header() {
+fn kpop_prompt_without_prepend_rules_never_includes_header() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let mut prompts = KpopTurnPrompts {
@@ -158,56 +116,15 @@ fn kpop_block_without_prepend_rules_never_includes_header() {
         prepend_rules_once: false,
     };
 
-    let out = prompts.kpop_block().expect("kpop turn");
+    let out = prompts.kpop_prompt().expect("kpop turn");
     assert_eq!(
         out,
-        expected_kpop_block_output(&store, &base, false),
+        expected_kpop_prompt_output(&store, &base, false),
         "prepend_rules_once=false should never prepend header"
     );
     let header = render_header(&store, base.as_map()).expect("header");
     assert!(
         !out.contains(header.trim()),
         "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
-    );
-}
-
-#[test]
-fn kpop_block_b_and_c_render_body_only_without_placeholders() {
-    let (_tmp, store) = kpop_turn_test_store();
-    let base = kpop_turn_test_context();
-    let prompts = KpopTurnPrompts {
-        store: &store,
-        base: &base,
-        prepend_rules_once: false,
-    };
-
-    let block_b = prompts.kpop_block_b().expect("block b");
-    assert!(block_b.contains("<<block_b>>"));
-    assert!(!block_b.contains("{{"), "block b must not leave unresolved placeholders: {block_b}");
-
-    let block_c = prompts.kpop_block_c().expect("block c");
-    assert!(block_c.contains("<<block_c>>"));
-    assert!(!block_c.contains("{{"), "block c must not leave unresolved placeholders: {block_c}");
-}
-
-#[test]
-fn kpop_block_b_errors_when_template_missing() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let root = tmp.path().join("prompts");
-    std::fs::create_dir_all(&root).expect("mkdir");
-    std::fs::write(root.join("mpc_block_a.md"), "a\n").expect("write");
-    let store = PromptStore::with_root(root);
-    store.ensure_defaults().expect("defaults");
-    let base = kpop_turn_test_context();
-    let prompts = KpopTurnPrompts {
-        store: &store,
-        base: &base,
-        prepend_rules_once: false,
-    };
-
-    let err = prompts.kpop_block_b().unwrap_err();
-    assert!(
-        err.contains("mpc_block_b.md") || err.contains("Missing") || !err.is_empty(),
-        "expected render error for missing template, got {err:?}"
     );
 }
