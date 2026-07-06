@@ -68,7 +68,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
     let kpop = KpopArgs {
         max_loops,
         tenacious: false,
-        request: Some("investigate".into()),
+        requests: vec!["investigate".into()],
     };
     let shared = SharedOpts {
         model: DEFAULT_CLI_MODEL.into(),

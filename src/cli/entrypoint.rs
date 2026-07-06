@@ -1,27 +1,27 @@
 use super::models_cmd;
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_kpop, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_tidy,
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Only bare `malvin REQUEST` (resolved kpop), `do`, `code`, `tidy`, and `delight` accept `--name`.
-pub(crate) const fn command_accepts_session_name(command: &Commands, bare_invoke: bool) -> bool {
-    match command {
+/// `kpop`, `do`, `code`, `tidy`, and `delight` accept `--name`.
+pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
+    matches!(
+        command,
         Commands::Do(_)
-        | Commands::Code(_)
-        | Commands::Tidy(_)
-        | Commands::Delight(_) => true,
-        Commands::Kpop(_) => bare_invoke,
-        _ => false,
-    }
+            | Commands::Code(_)
+            | Commands::Tidy(_)
+            | Commands::Delight(_)
+            | Commands::Kpop(_)
+    )
 }
 
-pub(crate) const fn unsupported_name_error(command: &Commands, bare_invoke: bool) -> Option<&'static str> {
-    if command_accepts_session_name(command, bare_invoke) {
+pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'static str> {
+    if command_accepts_session_name(command) {
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `do`, `code`, `tidy`, and `delight`",
+        "`--name` is only supported for `kpop`, `do`, `code`, `tidy`, and `delight`",
     )
 }
 
@@ -117,15 +117,7 @@ pub(crate) fn dispatch_command(
                 max_acp_retries: &mut shared.max_acp_retries,
                 matches,
             });
-            run_async_cli(|| {
-                run_kpop(
-                    kpop,
-                    &shared,
-                    WorkflowCliOptions {
-                        force: !shared.no_force,
-                    },
-                )
-            })
+            super::entrypoint_commands::run_kpop_command(kpop, &shared, matches)
         }
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {

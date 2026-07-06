@@ -2,7 +2,7 @@ use super::{Exit, entrypoint_from};
 
 #[cfg(unix)]
 #[test]
-fn bare_kpop_duplicate_name_exits_failure() {
+fn kpop_duplicate_name_exits_failure() {
     crate::test_utils::with_isolated_home(|work| {
         let _ = work;
         let mut child = crate::malvin_sandbox::malvin_std_command("sleep")
@@ -13,7 +13,7 @@ fn bare_kpop_duplicate_name_exits_failure() {
         std::fs::create_dir_all(crate::names_registry_root()).expect("mkdir names");
         std::fs::write(crate::name_path("probe"), format!("{holder_pid}\n")).expect("peer lock");
         assert_eq!(
-            entrypoint_from(["malvin", "--name", "probe", "investigate cache"]),
+            entrypoint_from(["malvin", "--name", "probe", "kpop", "investigate cache"]),
             Exit::Failure
         );
         let _ = child.kill();

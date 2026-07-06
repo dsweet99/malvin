@@ -1,4 +1,4 @@
-//! Bare CLI invocation (`malvin REQUEST...` → kpop) contract tests.
+//! `kpop` subcommand contract tests.
 
 use malvin::cli::{parse_cli_with_config_defaults, Cli, Commands};
 use clap::CommandFactory;
@@ -10,10 +10,10 @@ fn parse(argv: &[&str]) -> Cli {
 }
 
 #[test]
-fn bare_request_parses_as_kpop() {
-    let cli = parse(&["malvin", "investigate"]);
+fn kpop_request_parses() {
+    let cli = parse(&["malvin", "kpop", "investigate"]);
     match cli.command {
-        Some(Commands::Kpop(k)) => assert_eq!(k.request.as_deref(), Some("investigate")),
+        Some(Commands::Kpop(k)) => assert_eq!(k.requests.as_slice(), &["investigate"]),
         other => panic!("expected kpop, got {other:?}"),
     }
 }
@@ -43,25 +43,29 @@ fn tidy_subcommand_still_parses() {
 }
 
 #[test]
-fn legacy_kpop_subcommand_still_parses() {
-    let cli = parse(&["malvin", "kpop", "q"]);
-    assert!(matches!(cli.command, Some(Commands::Kpop(_))));
+fn kpop_subcommand_parses_multiple_requests() {
+    let cli = parse(&["malvin", "kpop", "req_a.md", "req_b.md"]);
+    match cli.command {
+        Some(Commands::Kpop(k)) => {
+            assert_eq!(k.requests.as_slice(), &["req_a.md", "req_b.md"]);
+        }
+        other => panic!("expected kpop, got {other:?}"),
+    }
 }
 
 #[test]
-fn cli_help_lists_bare_invocation_hint() {
+fn bare_request_without_subcommand_fails_to_parse() {
+    let err = parse_cli_with_config_defaults(["malvin", "investigate"]).unwrap_err();
+    assert!(err.to_string().contains("investigate"));
+}
+
+#[test]
+fn cli_help_lists_kpop_subcommand() {
     let mut cmd = Cli::command();
     let help = cmd.render_help().to_string();
-    assert!(help.contains("malvin REQUEST"));
+    assert!(help.contains("kpop"));
     assert!(help.contains("do"));
     assert!(!help.contains("@code"));
-}
-
-#[test]
-fn multiple_bare_requests_do_not_join_into_single_kpop() {
-    let cli = parse(&["malvin", "req_a.md", "req_b.md"]);
-    assert!(cli.command.is_none());
-    assert_eq!(cli.bare_args, vec!["req_a.md", "req_b.md"]);
 }
 
 #[test]
@@ -73,10 +77,4 @@ fn code_subcommand_accepts_multiple_plans() {
         }
         other => panic!("expected code, got {other:?}"),
     }
-}
-
-#[test]
-fn kiss_cov_bare_resolve_helper_names() {
-    const NAMES: &[&str] = &["resolve_bare_kpop", "resolve_bare_command"];
-    assert_eq!(NAMES.len(), 2);
 }

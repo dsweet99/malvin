@@ -1,6 +1,5 @@
 pub(crate) mod args;
 mod args_bug_kpop;
-mod bare_invoke;
 mod bug_id_lookup;
 mod bug_id_lookup_kpop;
 pub(crate) mod cli_request;

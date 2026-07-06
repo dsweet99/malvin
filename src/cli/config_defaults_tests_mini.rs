@@ -1,5 +1,5 @@
 use super::{
-    apply_workspace_config_defaults, config_defaults_tests::with_seeded_agent_config, Cli,
+    apply_workspace_config_defaults, config_defaults_tests::with_seeded_agent_config, Cli, Commands,
 };
 use clap::{CommandFactory, FromArgMatches};
 
@@ -46,14 +46,17 @@ fn apply_mini_model_default_for_do_when_mini() {
 }
 
 #[test]
-fn apply_bare_sequential_mini_model_default() {
+fn apply_kpop_sequential_mini_model_default() {
     with_seeded_agent_config(|| {
-        let matches = Cli::command().get_matches_from(["malvin", "--mini", "a.md", "b.md"]);
+        let matches = Cli::command().get_matches_from(["malvin", "--mini", "kpop", "a.md", "b.md"]);
         let mut cli = Cli::from_arg_matches(&matches).expect("cli");
-        crate::cli::bare_invoke::resolve_bare_command(&mut cli, &matches).expect("bare");
         apply_workspace_config_defaults(&matches, &mut cli).expect("apply");
         assert_eq!(cli.shared.model, "cfg-mini-model");
-        assert!(cli.command.is_none());
-        assert_eq!(cli.bare_args, vec!["a.md", "b.md"]);
+        match cli.command.expect("command") {
+            Commands::Kpop(kpop) => {
+                assert_eq!(kpop.requests.as_slice(), &["a.md", "b.md"]);
+            }
+            other => panic!("expected kpop, got {other:?}"),
+        }
     });
 }

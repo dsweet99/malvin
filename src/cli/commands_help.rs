@@ -1,4 +1,4 @@
-//! Commands-only help for bare `malvin` (no subcommand, no REQUEST).
+//! Commands-only help for bare `malvin` (no subcommand).
 
 use std::io::{self, Write};
 
@@ -39,13 +39,11 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [COMMAND|REQUEST]...".to_string());
+    lines.push("Usage: malvin [COMMAND]".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
     lines.extend([
-        String::new(),
-        "Pass one or more REQUESTs with no subcommand to run KPop on each in sequence.".to_string(),
         String::new(),
         "Use `malvin --help` to see options.".to_string(),
     ]);
@@ -73,14 +71,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn commands_only_help_lines_includes_request_usage_and_epilog() {
+    fn commands_only_help_lines_includes_command_usage_and_epilog() {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [COMMAND|REQUEST]..."));
-        assert!(text.contains("one or more REQUESTs"));
+        assert!(text.contains("Usage: malvin [COMMAND]"));
         assert!(text.contains("Commands:"));
-        assert!(!text.contains("kpop"));
+        assert!(text.contains("kpop"));
     }
 
     #[test]
@@ -88,12 +85,11 @@ mod tests {
         let help = render_commands_only_help();
         assert!(help.contains("Commands:"));
         assert!(help.contains("code"));
-        assert!(help.contains("Usage: malvin [COMMAND|REQUEST]..."));
-        assert!(help.contains("one or more REQUESTs"));
+        assert!(help.contains("kpop"));
+        assert!(help.contains("Usage: malvin [COMMAND]"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));
-        assert!(!help.contains("kpop"), "hidden kpop subcommand must not appear");
     }
 
     #[test]
@@ -111,14 +107,14 @@ mod tests {
     }
 
     #[test]
-    fn visible_subcommands_omits_hidden_kpop() {
+    fn visible_subcommands_includes_kpop() {
         let cmd = Cli::command();
         let names: Vec<_> = visible_subcommands(&cmd)
             .into_iter()
             .map(|sub| sub.get_name().to_string())
             .collect();
         assert!(names.contains(&"code".to_string()));
-        assert!(!names.iter().any(|name| name == "kpop"));
+        assert!(names.contains(&"kpop".to_string()));
     }
 
     #[test]

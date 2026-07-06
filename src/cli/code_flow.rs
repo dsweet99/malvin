@@ -63,7 +63,7 @@ mod tests {
         let _kpop = crate::cli::KpopArgs {
             max_loops: 1,
                 tenacious: false,
-            request: Some("req".to_string()),
+            requests: vec!["req".to_string()],
         };
         assert_eq!(effective_code_max_loops(code.max_loops), 1);
     }

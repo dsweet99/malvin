@@ -12,7 +12,7 @@ pub fn kpop_emit_startup(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
 ) -> Result<(), String> {
-    let request = crate::cli::cli_request::require_cli_request(kpop.request.as_ref(), "kpop")?;
+    let request = crate::cli::cli_request::require_cli_request(kpop.first_request(), "kpop")?;
     crate::cli::run_emit::emit_run_startup_sequence(
         artifacts,
         crate::cli::run_emit::RunStartupEmitOpts {
@@ -50,7 +50,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
         tenacious: false,
-        request: Some("smoke".into()),
+        requests: vec!["smoke".into()],
     };
     kpop_emit_startup(&kpop, &shared, &artifacts).expect("startup");
     let log = std::fs::read_to_string(artifacts.run_dir.join("command.log")).expect("log");

@@ -8,8 +8,30 @@ pub struct KpopArgs {
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
-    /// Existing `.md` path or literal text → `.malvin/logs/.../request.md`.
-    pub request: Option<String>,
+    /// Existing `.md` path, literal text, or KPOP log id for lookup.
+    #[arg(value_name = "REQUEST", num_args = 0..)]
+    pub requests: Vec<String>,
+}
+
+impl KpopArgs {
+    pub(crate) fn first_request(&self) -> Option<&String> {
+        self.requests.first()
+    }
+
+    pub(crate) fn is_lookup(&self) -> bool {
+        self.requests.len() == 1
+            && crate::cli::bug_id_lookup_kpop::is_kpop_lookup_request(
+                self.first_request().map(String::as_str),
+            )
+    }
+
+    pub(crate) fn with_request(&self, request: String) -> Self {
+        Self {
+            max_loops: self.max_loops,
+            tenacious: self.tenacious,
+            requests: vec![request],
+        }
+    }
 }
 
 #[cfg(test)]

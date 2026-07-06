@@ -1,5 +1,5 @@
 use super::{
-    command_accepts_session_name, unsupported_name_error, Commands, Exit, entrypoint_from,
+    command_accepts_session_name, Commands, Exit, entrypoint_from,
 };
 use crate::cli::args_bug_kpop::KpopArgs;
 use crate::cli::models_cmd::ModelsArgs;
@@ -43,47 +43,28 @@ fn bare_help_does_not_create_name_file() {
     crate::test_utils::with_isolated_home(|work| {
         let _ = work;
         let probe = crate::name_path("probe");
-        assert_eq!(entrypoint_from(["malvin", "--name", "probe"]), Exit::Success);
+        assert_eq!(
+            entrypoint_from(["malvin", "--name", "probe"]),
+            Exit::Success
+        );
         assert!(!probe.exists(), "bare help must not create name file");
     });
 }
 
 #[test]
-fn bare_kpop_command_accepts_session_name_when_bare_invoke() {
+fn kpop_command_accepts_session_name() {
     assert!(command_accepts_session_name(
         &Commands::Kpop(KpopArgs {
             max_loops: 1,
-                tenacious: false,
-            request: Some("task".into()),
+            tenacious: false,
+            requests: vec!["task".into()],
         }),
-        true
     ));
-}
-
-#[test]
-fn explicit_kpop_subcommand_rejects_session_name() {
-    assert!(!command_accepts_session_name(
-        &Commands::Kpop(KpopArgs {
-            max_loops: 1,
-                tenacious: false,
-            request: Some("task".into()),
-        }),
-        false
-    ));
-    assert!(unsupported_name_error(
-        &Commands::Kpop(KpopArgs {
-            max_loops: 1,
-                tenacious: false,
-            request: Some("task".into()),
-        }),
-        false
-    )
-    .is_some());
 }
 
 #[test]
 fn models_command_rejects_session_name() {
-    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs { mini: false }), false));
+    assert!(!command_accepts_session_name(&Commands::Models(ModelsArgs { mini: false })));
 }
 
 #[test]
@@ -94,9 +75,8 @@ fn delight_command_accepts_session_name() {
             guidance: None,
             out_path: "pitch.md".to_string(),
             max_loops: 1,
-                tenacious: false,
+            tenacious: false,
         }),
-        false
     ));
 }
 
@@ -108,23 +88,21 @@ fn explain_command_rejects_session_name() {
             request: Some("topic".to_string()),
             out_path: "explain.tex".to_string(),
             max_loops: 1,
-                tenacious: false,
+            tenacious: false,
             out_path_explicit: false,
         }),
-        false
     ));
 }
 
 #[test]
-fn bare_request_resolves_to_kpop_that_accepts_session_name() {
+fn kpop_with_name_parses() {
     use crate::cli::config_defaults::parse_cli_with_config_defaults;
 
     let (cli, _) =
-        parse_cli_with_config_defaults(["malvin", "--name", "probe", "investigate cache"])
-            .expect("parse bare kpop");
-    let command = cli.command.expect("bare request resolves to subcommand");
-    assert!(cli.bare_args.len() == 1);
-    assert!(command_accepts_session_name(&command, true));
+        parse_cli_with_config_defaults(["malvin", "--name", "probe", "kpop", "investigate cache"])
+            .expect("parse kpop");
+    let command = cli.command.expect("kpop subcommand");
+    assert!(command_accepts_session_name(&command));
 }
 
 #[test]
@@ -138,7 +116,7 @@ fn models_rejects_name_flag() {
         );
     });
     assert!(
-        stderr.contains("only supported for bare"),
+        stderr.contains("only supported for"),
         "stderr must reject --name on models; got: {stderr:?}"
     );
 }
@@ -154,7 +132,7 @@ fn inspire_rejects_name_flag() {
         );
     });
     assert!(
-        stderr.contains("only supported for bare"),
+        stderr.contains("only supported for"),
         "stderr must reject --name on inspire; got: {stderr:?}"
     );
 }
@@ -173,7 +151,7 @@ fn explain_rejects_name_before_preflight() {
             );
         });
         assert!(
-            stderr.contains("only supported for bare"),
+            stderr.contains("only supported for"),
             "stderr must reject --name on explain; got: {stderr:?}"
         );
         assert!(
@@ -197,7 +175,7 @@ fn revise_rejects_name_before_preflight() {
             );
         });
         assert!(
-            stderr.contains("only supported for bare"),
+            stderr.contains("only supported for"),
             "stderr must reject --name on revise; got: {stderr:?}"
         );
         assert!(

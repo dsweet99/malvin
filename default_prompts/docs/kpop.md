@@ -2,8 +2,6 @@
 
 **KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `code` / `tidy`—focused on understanding, not shipping a pre-written plan.
 
-Prefer **bare** invocation when investigating: `malvin REQUEST` (same workflow, `kpop` subcommand is hidden but equivalent).
-
 ## Summary
 
 | | |
@@ -19,18 +17,17 @@ Explore questions or codebase behavior scientifically: falsifiable hypotheses, t
 ## Usage
 
 ```text
-malvin [OPTIONS] <REQUEST>...           # bare kpop
-malvin kpop [OPTIONS] <REQUEST>         # hidden alias (single request)
+malvin kpop [OPTIONS] <REQUEST>...
 malvin kpop <KPOP_ID>                   # log lookup only
 ```
 
 ## Arguments
 
-### `<REQUEST>...` (investigation brief, one or more for bare invocation)
+### `<REQUEST>...` (investigation brief, one or more)
 
-Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin "Why does the cache miss?"`). Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
+Each shell argument is one request. Quote for internal spaces (e.g. `malvin kpop "Why does the cache miss?"`). Text or an existing `.md` file path. Stored as `request.md` in the run dir (not `plan.md`).
 
-Bare `malvin REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `~/.malvin_home/logs/<hash>/`, equivalent to separate shell invocations. The hidden `kpop` subcommand accepts a single request only.
+`malvin kpop REQUEST...` runs each request in sequence as a separate kpop invocation. Each gets its own run directory under `~/.malvin_home/logs/<hash>/`, equivalent to separate shell invocations.
 
 ### `<KPOP_ID>` (log lookup)
 
@@ -43,8 +40,6 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 | `--max-loops` | 1 | Separate kpop agent runs (one Popper session per iteration) |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
-
-Bare `malvin REQUEST` uses the same flags at the top level (see `malvin --doc`).
 
 ## Global options
 
@@ -104,8 +99,8 @@ Stops when any of:
 ## Examples
 
 ```text
-malvin "Why does cache invalidation fail under load?"
-malvin req_1.md req_2.md req_3.md
+malvin kpop "Why does cache invalidation fail under load?"
+malvin kpop req_1.md req_2.md req_3.md
 malvin kpop questions/regression.md
 malvin kpop Ma3bx9
 ```

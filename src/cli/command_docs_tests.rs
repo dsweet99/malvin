@@ -2,7 +2,7 @@ use super::{
     command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC,
 };
 use crate::cli::Cli;
-use crate::cli::args::{Commands, InspireArgs, KpopArgs};
+use crate::cli::{Commands, InspireArgs, KpopArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
 use crate::cli::revise_flow::ReviseArgs;
@@ -22,7 +22,7 @@ fn subcommand_doc_embeds_have_malvin_heading() {
     let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
         max_loops: 1,
         tenacious: false,
-        request: None,
+        requests: vec![],
     }));
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
@@ -40,7 +40,7 @@ fn print_doc_some_writes_subcommand_md() {
     let cmd = Commands::Kpop(KpopArgs {
         max_loops: 1,
         tenacious: false,
-        request: None,
+        requests: vec![],
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
     assert_eq!(out.as_slice(), command_doc_markdown(&cmd).as_bytes());
@@ -59,7 +59,7 @@ fn kpop_doc_parses_without_request_when_doc_flag_set() {
     let cli = Cli::try_parse_from(["malvin", "kpop", "--doc"]).expect("parse");
     assert!(cli.shared.doc);
     match cli.command.as_ref() {
-        Some(Commands::Kpop(k)) => assert!(k.request.is_none()),
+        Some(Commands::Kpop(k)) => assert!(k.requests.is_empty()),
         _ => panic!("expected Kpop"),
     }
 }

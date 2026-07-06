@@ -37,18 +37,6 @@ fn apply_mini_model_default(matches: &ArgMatches, shared: &mut SharedOpts, agent
     }
 }
 
-pub(crate) fn apply_bare_sequential_config_defaults(
-    matches: &ArgMatches,
-    cli: &mut Cli,
-    agent: &AgentConfig,
-) {
-    apply_shared_config_defaults(matches, &mut cli.shared, agent);
-    apply_mini_model_default(matches, &mut cli.shared, agent);
-    if !subcommand_flag_from_command_line(matches, "kpop", "max_loops") {
-        cli.bare_max_loops = agent.max_loops;
-    }
-}
-
 pub(crate) struct CodeWorkflowLoopMut<'a> {
     pub subcommand: &'a str,
     pub max_loops: &'a mut usize,
@@ -153,11 +141,6 @@ pub fn apply_workspace_config_defaults(
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let agent = crate::malvin_config_file::load_malvin_config(&cwd).agent;
 
-    if cli.command.is_none() && cli.bare_args.len() > 1 {
-        apply_bare_sequential_config_defaults(matches, cli, &agent);
-        return Ok(());
-    }
-
     let Some(command) = cli.command.as_mut() else {
         return Ok(());
     };
@@ -187,9 +170,6 @@ pub fn parse_cli_with_config_defaults(
     let cmd = Cli::command();
     let matches = cmd.try_get_matches_from(args)?;
     let mut cli = Cli::from_arg_matches(&matches)?;
-    if let Err(e) = super::bare_invoke::resolve_bare_command(&mut cli, &matches) {
-        return Err(clap::Error::raw(clap::error::ErrorKind::InvalidValue, e));
-    }
     if let Err(e) = apply_workspace_config_defaults(&matches, &mut cli) {
         return Err(clap::Error::raw(
             clap::error::ErrorKind::InvalidValue,

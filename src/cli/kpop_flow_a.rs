@@ -32,7 +32,7 @@ pub(in crate) struct KpopArtifactsEarly {
 
 pub(in crate) fn prepare_kpop_artifacts(kpop: &KpopArgs) -> Result<KpopArtifactsEarly, String> {
     use crate::cli::cli_request::require_cli_request;
-    let request = require_cli_request(kpop.request.as_ref(), "kpop")?;
+    let request = require_cli_request(kpop.first_request(), "kpop")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts =
         create_kpop_run_artifacts(&text, Some(work_dir.as_path())).map_err(|e| e.to_string())?;
@@ -135,7 +135,7 @@ pub(in crate) async fn kpop_run_acp_multiturn(
 }
 
 pub(crate) fn run_kpop_short_id_lookup(kpop: &KpopArgs) -> Result<(), String> {
-    let id = kpop.request.as_deref().expect("checked above").trim();
+    let id = kpop.first_request().expect("checked above").trim();
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let exp_log = crate::cli::bug_id_lookup_kpop::lookup_kpop_id(&cwd, id)?;
     crate::cli::bug_id_lookup_kpop::dump_kpop_log_to_stdout(&exp_log)
@@ -146,7 +146,7 @@ pub async fn run_kpop(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    if crate::cli::bug_id_lookup_kpop::is_kpop_lookup_request(kpop.request.as_deref()) {
+    if kpop.is_lookup() {
         return run_kpop_short_id_lookup(&kpop);
     }
 

@@ -32,7 +32,7 @@ const DEFAULT_MALVIN_CONFIG_TEMPLATE: &str = include_str!(concat!(
 pub struct AgentConfig {
     pub model: String,
     pub model_mini: String,
-    /// Gate-loop budget for kpop and bare invocation.
+    /// Gate-loop budget for kpop.
     pub max_loops: usize,
     /// Gate-loop budget for code and tidy.
     pub max_loops_code: usize,

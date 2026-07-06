@@ -7,30 +7,12 @@ pub(crate) fn subcommand_flag_from_command_line(
     id: &str,
 ) -> bool {
     let Some((name, sub)) = matches.subcommand() else {
-        return bare_workflow_flag_from_command_line(matches, subcommand, id);
+        return false;
     };
     if name != subcommand {
         return false;
     }
     sub.value_source(id)
-        .is_some_and(|source| source == ValueSource::CommandLine)
-}
-
-pub(crate) fn bare_workflow_flag_from_command_line(
-    matches: &ArgMatches,
-    subcommand: &str,
-    id: &str,
-) -> bool {
-    if subcommand != "kpop" {
-        return false;
-    }
-    let bare_id = match id {
-        "max_loops" => "bare_max_loops",
-        "tenacious" => "bare_tenacious",
-        _ => return false,
-    };
-    matches
-        .value_source(bare_id)
         .is_some_and(|source| source == ValueSource::CommandLine)
 }
 
@@ -51,20 +33,5 @@ mod tests {
             "malvin", "kpop", "--max-loops", "2", "hello",
         ]);
         assert!(subcommand_flag_from_command_line(&explicit, "kpop", "max_loops"));
-    }
-
-    #[test]
-    fn bare_invocation_max_loops_flag_detected_at_top_level() {
-        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "investigate"]);
-        assert!(subcommand_flag_from_command_line(&matches, "kpop", "max_loops"));
-        assert!(!subcommand_flag_from_command_line(&matches, "code", "max_loops"));
-    }
-
-    #[test]
-    fn bare_workflow_flag_from_command_line_maps_bare_max_loops() {
-        let matches = Cli::command().get_matches_from(["malvin", "--max-loops", "2", "investigate"]);
-        assert!(bare_workflow_flag_from_command_line(&matches, "kpop", "max_loops"));
-        assert!(!bare_workflow_flag_from_command_line(&matches, "code", "max_loops"));
-        assert!(!bare_workflow_flag_from_command_line(&matches, "kpop", "missing"));
     }
 }

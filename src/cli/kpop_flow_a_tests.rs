@@ -38,7 +38,7 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
         let kpop = KpopArgs {
             max_loops: 1,
                 tenacious: false,
-            request: Some("fast startup".into()),
+            requests: vec!["fast startup".into()],
         };
         let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
         let request_path = early.artifacts.plan_path.clone();
@@ -76,7 +76,7 @@ fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
         let kpop = KpopArgs {
             max_loops: 1,
                 tenacious: false,
-            request: Some("Ma1b2c".into()),
+            requests: vec!["Ma1b2c".into()],
         };
         run_kpop_short_id_lookup(&kpop).expect("lookup dump");
         std::env::set_current_dir(old).expect("restore cwd");

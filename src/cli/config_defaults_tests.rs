@@ -215,14 +215,14 @@ fn apply_workspace_config_defaults_for_inspire() {
 }
 
 #[test]
-fn parse_cli_with_config_defaults_bare_request_resolves_to_kpop() {
+fn parse_cli_with_config_defaults_kpop_request() {
     crate::test_utils::with_isolated_home(|work| {
         let cwd = std::env::current_dir().expect("cwd");
         std::env::set_current_dir(work).expect("chdir");
-        let (cli, _) = parse_cli_with_config_defaults(["malvin", "hello"]).expect("parse");
+        let (cli, _) = parse_cli_with_config_defaults(["malvin", "kpop", "hello"]).expect("parse");
         match cli.command.expect("command") {
             Commands::Kpop(k) => {
-                assert_eq!(k.request.as_deref(), Some("hello"));
+                assert_eq!(k.requests.as_slice(), &["hello"]);
             }
             other => panic!("expected kpop, got {other:?}"),
         }

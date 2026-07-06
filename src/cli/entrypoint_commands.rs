@@ -7,8 +7,6 @@ use super::explain_flow::ExplainArgs;
 use super::revise_flow::ReviseArgs;
 use clap::ArgMatches;
 
-use super::args::Cli;
-use super::bare_invoke::{bare_loop_opts, BareLoopOpts};
 use super::entrypoint::run_async_cli;
 use super::entrypoint_checks::ensure_malvin_checks_for_command;
 
@@ -43,43 +41,34 @@ pub(crate) fn run_code_command(mut code: CodeArgs, shared: &SharedOpts) -> Resul
     })
 }
 
-pub(crate) fn run_bare_sequential_kpop(
-    cli: &Cli,
-    matches: &ArgMatches,
+pub(crate) fn run_kpop_command(
+    mut kpop: KpopArgs,
     shared: &SharedOpts,
+    _matches: &ArgMatches,
 ) -> Result<(), String> {
-    let mut shared = shared.clone();
-    let loops = bare_loop_opts(
-        cli,
-        matches,
-        BareLoopOpts {
-            max_loops: cli.bare_max_loops,
-            tenacious: crate::cli::loop_opts::DEFAULT_TENACIOUS,
-        },
-    );
-    let mut max_loops = loops.max_loops;
-    super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
-        subcommand: "kpop",
-        max_loops: &mut max_loops,
-        tenacious: loops.tenacious,
-        no_tenacious: shared.no_tenacious,
-        max_acp_retries: &mut shared.max_acp_retries,
-        matches,
-    });
+    if kpop.is_lookup() {
+        return run_async_cli(|| {
+            run_kpop(
+                kpop,
+                shared,
+                WorkflowCliOptions {
+                    force: !shared.no_force,
+                },
+            )
+        });
+    }
+    let requests = std::mem::take(&mut kpop.requests);
     let workflow = WorkflowCliOptions {
         force: !shared.no_force,
     };
     ensure_malvin_checks_for_command(&Commands::Kpop(KpopArgs {
-        max_loops,
-        tenacious: loops.tenacious,
-        request: None,
+        max_loops: kpop.max_loops,
+        tenacious: kpop.tenacious,
+        requests: vec![],
     }))?;
-    crate::sequential_requests::run_sequential("", &cli.bare_args, |request| {
-        let kpop = KpopArgs {
-            max_loops,
-            tenacious: loops.tenacious,
-            request: Some(request.to_string()),
-        };
+    crate::sequential_requests::run_sequential("kpop", &requests, |request| {
+        let kpop = kpop.with_request(request.to_string());
+        let shared = shared.clone();
         run_async_cli(|| run_kpop(kpop, &shared, workflow))
     })
 }
