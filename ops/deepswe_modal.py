@@ -79,6 +79,7 @@ from deepswe_run import (
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
+    ensure_minimal_malvin_checks,
     find_latest_malvin_log,
     malvin_needs_task_plan,
     materialize_workspace,
@@ -1957,6 +1958,10 @@ HARVEST_WORKSPACE_TAR_EXCLUDES = (
     "--exclude=./.git",
     "--exclude=./.malvin/logs",
     "--exclude=./.stestr",
+    "--exclude=./.venv",
+    "--exclude=./venv",
+    "--exclude=./.tox",
+    "--exclude=./node_modules",
     "--exclude=__pycache__",
     "--exclude=*.pyc",
     "--exclude=*.pyo",
@@ -2001,7 +2006,7 @@ def _extract_tar_over_workspace(archive: tarfile.TarFile, workspace: Path) -> No
             continue
         try:
             _tar_extract_member(archive, member, workspace)
-        except OSError:
+        except (OSError, tarfile.ExtractError):
             continue
 
 
@@ -2446,7 +2451,7 @@ def run_modal_eval(
     if malvin_needs_task_plan(malvin_command):
         checks = checks_override
         if checks is None:
-            checks = discover_deepswe_checks(workspace)
+            checks = discover_deepswe_checks(workspace, tests_dir=spec.tests_dir)
     try:
         sandbox_timeout = agent_sandbox_timeout_sec(
             spec, skip_grade=skip_grade, grade_only=grade_only,
@@ -2480,6 +2485,8 @@ def run_modal_eval(
                     checks_override=agent_checks,
                     dry_run=False,
                 )
+            elif malvin_command == "hello":
+                ensure_minimal_malvin_checks(workspace)
             malvin_repo = validate_toolchain_repos()
             with stage_malvin_repo(malvin_repo) as malvin_staged:
                 agent_img = harbor_agent_image(

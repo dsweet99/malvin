@@ -743,23 +743,34 @@ def existing_malvin_checks_lines(root: Path) -> list[str]:
     ]
 
 
-def discover_deepswe_check_lines(root: Path) -> list[str]:
-    """DeepSWE checks discovery: pre-commit/Makefile signals and existing checks only."""
+def discover_deepswe_check_lines(
+    root: Path,
+    *,
+    tests_dir: Path | None = None,
+) -> list[str]:
+    """DeepSWE checks discovery: Harbor test.patch, pre-commit/Makefile, existing checks."""
+    signal_lines: list[str] = []
+    if tests_dir is not None:
+        signal_lines.extend(harbor_patch_check_lines(tests_dir))
     precommit = precommit_hook_entries(root)
     makefile = makefile_gate_targets(root)
     if precommit:
-        signal_lines = supplement_makefile_signals(precommit, makefile)
+        signal_lines.extend(supplement_makefile_signals(precommit, makefile))
     else:
-        signal_lines = list(makefile)
+        signal_lines.extend(makefile)
     signal_lines.extend(existing_malvin_checks_lines(root))
     return dedupe_check_lines(signal_lines)
 
 
-def discover_deepswe_checks(workspace: Path) -> str:
-    """Build default DeepSWE ``.malvin/checks`` from repo signals only."""
+def discover_deepswe_checks(
+    workspace: Path,
+    *,
+    tests_dir: Path | None = None,
+) -> str:
+    """Build default DeepSWE ``.malvin/checks`` from repo and Harbor verifier signals."""
     if not workspace.is_dir():
         return "\n"
-    lines = discover_deepswe_check_lines(workspace)
+    lines = discover_deepswe_check_lines(workspace, tests_dir=tests_dir)
     if not lines:
         return "\n"
     return "\n".join(lines) + "\n"
@@ -822,10 +833,15 @@ def _hook_class_names(hooks: list[tuple[str, str]]) -> set[str]:
 def patch_surface_targets(
     workspace: Path,
     *,
+    tests_dir: Path | None = None,
     hooks: list[tuple[str, str]] | None = None,
 ) -> list[tuple[str, str]]:
     """Select class attributes Harbor-style tests are likely to monkeypatch."""
-    hooks = hooks if hooks is not None else scan_pytest_monkeypatch_hooks(workspace)
+    if hooks is None:
+        hooks = scan_pytest_monkeypatch_hooks(workspace)
+        if tests_dir is not None:
+            patch_hooks = scan_test_patch_monkeypatch_hooks(tests_dir)
+            hooks = sorted(set(hooks) | set(patch_hooks))
     hook_names = _hook_class_names(hooks)
     hook_pairs = {
         (target, attr)
@@ -936,6 +952,17 @@ def malvin_mem_limit_gb(environment_memory_mb: int) -> int:
     return (mb + 1023) // 1024
 
 
+def ensure_minimal_malvin_checks(workspace: Path, *, dry_run: bool = False) -> None:
+    """Seed an empty checks file for probes that still expand quality gates."""
+    checks_path = workspace / ".malvin" / "checks"
+    if checks_path.is_file():
+        return
+    if dry_run:
+        return
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text("", encoding="utf-8")
+
+
 def ensure_deepswe_malvin_config(spec: TaskSpec, *, dry_run: bool) -> None:
     """Seed ``~/.malvin_home/config.toml`` so malvin USS cap matches the task envelope."""
     mem_gb = malvin_mem_limit_gb(spec.environment_memory_mb)
@@ -957,6 +984,7 @@ def write_plan_and_checks(
     checks_override: str | None,
     dry_run: bool,
     deadline: float | None = None,
+    tests_dir: Path | None = None,
 ) -> bool:
     """Write workspace plan and checks. Returns False if *deadline* is exhausted."""
     plan = workspace / "plan.md"
@@ -969,11 +997,13 @@ def write_plan_and_checks(
     if checks is None:
         if deadline is not None and _remaining_sec(deadline) <= 0:
             return False
-        checks = discover_deepswe_checks(workspace)
+        checks = discover_deepswe_checks(workspace, tests_dir=tests_dir or spec.tests_dir)
     if not dry_run:
         if deadline is not None and _remaining_sec(deadline) <= 0:
             return False
-        patch_targets = patch_surface_targets(workspace)
+        patch_targets = patch_surface_targets(
+            workspace, tests_dir=tests_dir or spec.tests_dir,
+        )
         if patch_targets:
             probe_path = malvin_dir / "patch_surface_probe.py"
             probe_path.write_text(
@@ -1005,6 +1035,66 @@ _HARBOR_NEW_MODE_PYTEST_RE = re.compile(
     r'elif\s*\[\s*"\$MODE"\s*=\s*"new"\s*\];\s*then\s*\n\s*(?P<cmd>[^\n]+)',
     re.MULTILINE,
 )
+
+_HARBOR_PATCH_BASE_MODE_PYTEST_RE = re.compile(
+    r"base\)\s*\n(?:[ \t]*echo[^\n]*\n)*[ \t]*(?P<cmd>[^\n]+)",
+    re.MULTILINE,
+)
+
+
+def _embedded_test_sh_from_patch(patch_path: Path) -> str | None:
+    """Return added ``test.sh`` body from a Harbor ``test.patch``, if present."""
+    if not patch_path.is_file():
+        return None
+    text = patch_path.read_text(encoding="utf-8")
+    added: list[str] = []
+    in_test_sh = False
+    for line in text.splitlines():
+        if line.startswith("+++ b/test.sh"):
+            in_test_sh = True
+            continue
+        if not in_test_sh:
+            continue
+        if line.startswith("diff --git"):
+            break
+        if line.startswith("+++ b/") and "test.sh" not in line:
+            break
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])
+    if not added:
+        return None
+    return "\n".join(added)
+
+
+def harbor_patch_check_lines(tests_dir: Path) -> list[str]:
+    """Return base-mode pytest commands embedded in Harbor ``tests/test.patch``."""
+    test_sh = _embedded_test_sh_from_patch(tests_dir / "test.patch")
+    if not test_sh:
+        return []
+    match = _HARBOR_PATCH_BASE_MODE_PYTEST_RE.search(test_sh)
+    if not match:
+        return []
+    cmd = match.group("cmd").strip()
+    if not cmd or cmd.startswith("echo"):
+        return []
+    return [cmd]
+
+
+def scan_test_patch_monkeypatch_hooks(tests_dir: Path) -> list[tuple[str, str]]:
+    """Return monkeypatch targets from added lines in Harbor ``tests/test.patch``."""
+    patch_path = tests_dir / "test.patch"
+    if not patch_path.is_file():
+        return []
+    hooks: set[tuple[str, str]] = set()
+    for line in patch_path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("+") or line.startswith("+++"):
+            continue
+        for match in _MONKEYPATCH_HOOK_RE.finditer(line[1:]):
+            target = match.group(1).strip()
+            attr = match.group(2).strip()
+            if target and attr:
+                hooks.add((target, attr))
+    return sorted(hooks)
 
 
 def harbor_new_tests_check_line(workspace: Path) -> str | None:
@@ -1769,7 +1859,7 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
 def run_modal_solve(
     *,
     task_dir: Path,
-    malvin_command: str = "route",
+    malvin_command: str = "code",
     checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
@@ -2111,7 +2201,9 @@ def run_task(
 
     checks_text = ""
     if not grade_only and malvin_needs_task_plan(malvin_command):
-        checks_text = checks_override or discover_deepswe_checks(workspace)
+        checks_text = checks_override or discover_deepswe_checks(
+            workspace, tests_dir=spec.tests_dir,
+        )
 
     prep_deadline: float | None = None
     if grade_only:
@@ -2150,6 +2242,8 @@ def run_task(
                         deadline=agent_deadline,
                     ):
                         agent_timed_out = True
+            elif malvin_command == "hello":
+                ensure_minimal_malvin_checks(workspace, dry_run=dry_run)
             if not agent_timed_out:
                 if _remaining_sec(agent_deadline) <= 0:
                     agent_timed_out = True
@@ -2495,7 +2589,7 @@ def solve(
         task_dir=None,
         workspace=None,
         results_dir=None,
-        malvin_command="route",
+        malvin_command="code",
         checks_override=checks_override,
         runtime="host",
         skip_materialize=False,
@@ -2647,8 +2741,8 @@ def _test_solve_dry_run() -> None:
     assert "docker run" in result.output
     assert "Runtime: local-docker" in result.output
     assert "--runtime in-sandbox" in result.output
-    assert "--command route" in result.output
-    assert "--command code" not in result.output
+    assert "--command code" in result.output
+    assert "--command route" not in result.output
 
 
 def _patch_modal_cursor_credentials() -> Any:
@@ -2749,7 +2843,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     assert result.exit_code == 0, result.output
     assert captured.get("reset_flag") is True, captured
     assert captured.get("grade_only") is False, captured
-    assert captured.get("malvin_command") == "route", captured
+    assert captured.get("malvin_command") == "code", captured
 
 
 def _test_solve_local_dry_run_passes_reset() -> None:
@@ -2906,6 +3000,17 @@ def _test_discover_deepswe_checks_existing_malvin_checks() -> None:
         )
         lines = discover_deepswe_check_lines(root)
         assert lines == ["mypy .", "ruff check ."]
+
+
+def _test_harbor_patch_check_lines() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "gql-incremental-graphql-delivery"
+    if not task.is_dir():
+        return
+    lines = harbor_patch_check_lines(task / "tests")
+    assert lines == [
+        "python -m pytest tests --ignore=tests/test_incremental_delivery.py"
+    ], lines
 
 
 def _test_write_plan_and_checks_discovers() -> None:
@@ -3138,8 +3243,8 @@ def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Modal workspace spend limit reached" in result.output
     assert "local-docker (Modal spend-limit fallback)" in result.output
-    assert "--command route" in result.output
-    assert "--command code" not in result.output
+    assert "--command code" in result.output
+    assert "--command route" not in result.output
 
 
 def _test_tasks_command() -> None:
@@ -3173,6 +3278,13 @@ _GIT_TEST_IDENTITY = {
     "GIT_COMMITTER_NAME": "malvin-test",
     "GIT_COMMITTER_EMAIL": "malvin-test@example.com",
 }
+
+
+def _test_ensure_minimal_malvin_checks() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        ensure_minimal_malvin_checks(workspace)
+        assert (workspace / ".malvin" / "checks").is_file()
 
 
 def _test_repair_workspace_submodules_noop_without_gitmodules() -> None:
@@ -3907,6 +4019,7 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_stestr_drops_stale_pytest()
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
+    _test_harbor_patch_check_lines()
     _test_write_plan_and_checks_discovers()
     _test_parse_task_dir_does_not_require_test_sh()
     _test_validate_verifier_paths_fails_without_test_sh()
@@ -3934,6 +4047,7 @@ def run_self_tests() -> None:
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
     _test_ephemeral_cache_find_expr()
     _test_purge_root_owned_ephemeral_caches_docker_cmd()
+    _test_ensure_minimal_malvin_checks()
     _test_repair_workspace_submodules_noop_without_gitmodules()
     _test_repair_workspace_submodules_after_stale_gitdir()
     _test_reset_workspace_removes_user_pycache()
