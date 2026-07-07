@@ -1,4 +1,4 @@
-# malvin router
+# malvin (default route)
 
 One **single-turn** agent session with autonomous routing brief: no gate loop, no KPop experiment log.
 
@@ -7,7 +7,7 @@ One **single-turn** agent session with autonomous routing brief: no gate loop, n
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Plain stdout (no markdown styling) |
+| Output | Styled stdout on a TTY (same startup chrome as `code` / `kpop` / `tidy`) |
 | Log | `router.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 
 ## Intention
@@ -17,8 +17,10 @@ Let the agent read the user request and decide how to satisfy it — including i
 ## Usage
 
 ```text
-malvin router [OPTIONS] <REQUEST>
+malvin [OPTIONS] <REQUEST>
 ```
+
+There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous routing workflow.
 
 ## Arguments
 
@@ -33,11 +35,10 @@ Exactly **one shell argument**. Quote for internal spaces. Literal text, or an e
 
 ## Global options
 
-See `malvin --doc`. Notable for `router`:
+See `malvin --doc`. Notable for the default route:
 
-| Flag | Effect on `router` |
-|------|---------------------|
-| `--no-markdown` | Ignored for styling — stdout is always plain |
+| Flag | Effect |
+|------|--------|
 | `--no-tee` | Disables live streaming |
 | `--verbose` | Full prompt bodies in `prompts.log` |
 
@@ -80,6 +81,6 @@ No implement, review, concerns, learn, or summary phases.
 ## Examples
 
 ```text
-malvin router "Figure out why tests fail and fix them"
-malvin router notes/task.md
+malvin "Figure out why tests fail and fix them"
+malvin notes/task.md
 ```

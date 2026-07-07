@@ -132,8 +132,12 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     );
     assert!(bare_s.contains("Commands:"), "bare stdout: {bare_s}");
     assert!(
-        bare_s.contains("[COMMAND]"),
-        "bare stdout must show [COMMAND] usage: {bare_s}"
+        bare_s.contains("[REQUEST]"),
+        "bare stdout must show [REQUEST] usage: {bare_s}"
+    );
+    assert!(
+        bare_s.contains("<COMMAND>"),
+        "bare stdout must show <COMMAND> usage: {bare_s}"
     );
     assert!(
         bare_s.contains("kpop"),

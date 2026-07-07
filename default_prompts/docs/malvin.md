@@ -11,20 +11,21 @@ malvin is a non-interactive CLI agent that drives the Cursor ACP (`cursor-agent`
 ## Usage
 
 ```text
+malvin [OPTIONS] [REQUEST]
 malvin [OPTIONS] <COMMAND>
 ```
 
-Use subcommands for all workflows. For KPop investigation, use `malvin kpop REQUEST`.
+Bare `malvin REQUEST` runs autonomous routing (decides among `kpop`, `inspire`, and `code`). Use subcommands for named workflows. For KPop investigation, use `malvin kpop REQUEST`.
 
-Use subcommands: `kpop`, `do`, `router`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`, `logs`.
+Use subcommands: `kpop`, `do`, `inspire`, `code`, `tidy`, `delight`, `explain`, `revise`, `models`, `logs`.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
+| *(default)* | Bare `malvin REQUEST` — one-shot autonomous routing among `kpop` / `inspire` / `code` |
 | `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
-| `router` | One-shot autonomous routing (decides among `kpop` / `inspire` / `code`) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
 | `code` | Implement a plan via the KPop gate loop (`code_constraints.md`) |
 | `tidy` | Fix quality gates via the KPop gate loop (`tidy_constraints.md`) |
@@ -112,7 +113,7 @@ Maximum bash fence executions across all HTTP turns in one `run_coder_prompt` wh
 
 ### `--name <NAME>`
 
-Optional session name for `kpop`, `do`, `router`, `code`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
+Optional session name for bare `malvin REQUEST`, `kpop`, `do`, `code`, `tidy`, and `delight`. When omitted on those invocations, malvin assigns a unique five-character id (`[a-z0-9]`). Every command that accepts `--name` acquires a session name lock before substantive work.
 
 Malvin registers the top-level process under this name in a per-user registry at `~/.malvin_home/names/<NAME>` (one line: holder PID). If another live malvin process already holds the same name, the new invocation exits immediately with status 1. Stale or abandoned name files left by crashes, `SIGKILL`, or partial writes are reclaimed automatically on the next acquire — no manual cleanup under `~/.malvin_home/names/`.
 
@@ -209,7 +210,7 @@ Several commands accept a positional request. `<REQUEST>` is always exactly **on
 
 | Command | Path argument | Work directory |
 |---------|---------------|----------------|
-| `code`, `do`, `router`, `kpop`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
+| `code`, bare `malvin REQUEST`, `do`, `kpop`, `inspire` | Existing `.md` file path (no whitespace; case-sensitive `.md` suffix) reads that file; nonexistent `.md` paths are literal text | Parent of the file, or `.` for literal text |
 
 ### Sequential requests
 

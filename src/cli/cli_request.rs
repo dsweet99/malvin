@@ -10,7 +10,13 @@ pub(crate) fn require_cli_request(
         .filter(|s| !s.is_empty());
     trimmed
         .map(std::string::ToString::to_string)
-        .ok_or_else(|| format!("malvin {subcommand}: missing required REQUEST (text or path)"))
+        .ok_or_else(|| {
+            if subcommand.is_empty() {
+                "malvin: missing required REQUEST (text or path)".to_string()
+            } else {
+                format!("malvin {subcommand}: missing required REQUEST (text or path)")
+            }
+        })
 }
 
 #[cfg(test)]

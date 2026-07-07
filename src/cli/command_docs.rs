@@ -18,13 +18,15 @@ const fn gate_loop_command_doc(cmd: &Commands) -> Option<&'static str> {
     }
 }
 
+#[cfg(test)]
+pub(crate) const ROUTER_DOC: &str = include_str!("../../default_prompts/docs/router.md");
+
 pub(crate) const fn command_doc_markdown(cmd: &Commands) -> &'static str {
     if let Some(doc) = gate_loop_command_doc(cmd) {
         return doc;
     }
     match cmd {
         Commands::Do(_) => include_str!("../../default_prompts/docs/do.md"),
-        Commands::Router(_) => include_str!("../../default_prompts/docs/router.md"),
         Commands::Inspire(_) => include_str!("../../default_prompts/docs/inspire.md"),
         Commands::Models(_) => include_str!("../../default_prompts/docs/models.md"),
         Commands::Logs(_) => include_str!("../../default_prompts/docs/logs.md"),

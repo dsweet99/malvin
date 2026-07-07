@@ -184,7 +184,11 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _: Option<crate::cli::AgentStdoutTeeFlags> = None;
     let _ = crate::do_flow::prepare_do_prompt_store;
     let _ = crate::router_flow::prepare_router_prompt_store;
-    let _: Option<crate::router_flow::RouterArgs> = None;
+    let router_args = crate::router_flow::RouterArgs {
+        request: None,
+    };
+    let crate::router_flow::RouterArgs { request: router_request } = router_args;
+    assert!(router_request.is_none());
     let _ = stringify!(RouterRunPrep);
     let _ = crate::router_flow::run_router;
     let _: Option<crate::cli::kpop_flow::KpopAcpMultiturnCtx> = None;

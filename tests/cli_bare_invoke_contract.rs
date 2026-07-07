@@ -54,9 +54,10 @@ fn kpop_subcommand_parses_multiple_requests() {
 }
 
 #[test]
-fn bare_request_without_subcommand_fails_to_parse() {
-    let err = parse_cli_with_config_defaults(["malvin", "investigate"]).unwrap_err();
-    assert!(err.to_string().contains("investigate"));
+fn bare_request_without_subcommand_parses_as_default_route() {
+    let cli = parse(&["malvin", "investigate"]);
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("investigate"));
 }
 
 #[test]
@@ -65,6 +66,7 @@ fn cli_help_lists_kpop_subcommand() {
     let help = cmd.render_help().to_string();
     assert!(help.contains("kpop"));
     assert!(help.contains("do"));
+    assert!(!help.contains("router"));
     assert!(!help.contains("@code"));
 }
 

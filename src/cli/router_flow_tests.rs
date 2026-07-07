@@ -118,15 +118,10 @@ fn router_coder_run_exposes_combined_and_trace_split() {
 }
 
 #[test]
-fn cli_accepts_router_and_passes_request() {
+fn cli_accepts_default_route_request() {
     use crate::cli::Cli;
-    use crate::cli::Commands;
 
-    let cli = Cli::try_parse_from(["malvin", "router", "route this task"]).expect("parse");
-    match cli.command {
-        Some(Commands::Router(r)) => {
-            assert_eq!(r.request.as_deref(), Some("route this task"));
-        }
-        _ => panic!("expected Router subcommand"),
-    }
+    let cli = Cli::try_parse_from(["malvin", "route this task"]).expect("parse");
+    assert!(cli.command.is_none());
+    assert_eq!(cli.request.as_deref(), Some("route this task"));
 }

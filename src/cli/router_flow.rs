@@ -1,4 +1,4 @@
-//! `router` subcommand: one coder ACP prompt with dual headers (`header.md` + `router.md`) and user request.
+//! Default-route flow: one coder ACP prompt with dual headers (`header.md` + `router.md`) and user request.
 
 use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
@@ -6,6 +6,7 @@ use crate::agent_backend::{
     agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
     agent_backend_set_run_timing, build_agent_backend_with_tee, AgentBackend,
 };
+use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
 use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
 use crate::output::agent_stdout_tee_enabled;
 use crate::run_timing::TimingPhase;
@@ -57,7 +58,7 @@ async fn prepare_router_run(
     workflow: WorkflowCliOptions,
 ) -> Result<RouterRunPrep, String> {
     let client = new_router_client(shared, workflow)?;
-    let request = require_cli_request(router_args.request.as_ref(), "router")?;
+    let request = require_cli_request(router_args.request.as_ref(), "")?;
     let (text, work_dir) = resolve_user_md_request(&request)?;
     let artifacts = crate::artifacts::create_run_artifacts_from_text_opts(
         &text,
@@ -84,7 +85,15 @@ pub async fn run_router(
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
     let mut prep = prepare_router_run(&router_args, shared, workflow).await?;
-    crate::cli::run_emit::emit_command_line(&prep.artifacts.run_dir, false)?;
+    let request = require_cli_request(router_args.request.as_ref(), "")?;
+    emit_run_startup_sequence(
+        &prep.artifacts,
+        RunStartupEmitOpts {
+            tee_stdout: shared.tee_startup_stdout(),
+            host_resources: true,
+        },
+        &request,
+    )?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
     let acp_res = run_router_acp(&mut prep.client, &prep.artifacts, prep.coder).await;

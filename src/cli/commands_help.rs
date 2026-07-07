@@ -39,7 +39,8 @@ fn commands_only_help_lines(cmd: &Command) -> Vec<String> {
         lines.push(about.to_string());
         lines.push(String::new());
     }
-    lines.push("Usage: malvin [COMMAND]".to_string());
+    lines.push("Usage: malvin [OPTIONS] [REQUEST]".to_string());
+    lines.push("        malvin [OPTIONS] <COMMAND>".to_string());
     lines.push(String::new());
     lines.push("Commands:".to_string());
     lines.extend(format_command_lines(&visible_subcommands(cmd)));
@@ -75,7 +76,8 @@ mod tests {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);
         let text = lines.join("\n");
-        assert!(text.contains("Usage: malvin [COMMAND]"));
+        assert!(text.contains("Usage: malvin [OPTIONS] [REQUEST]"));
+        assert!(text.contains("malvin [OPTIONS] <COMMAND>"));
         assert!(text.contains("Commands:"));
         assert!(text.contains("kpop"));
     }
@@ -86,7 +88,8 @@ mod tests {
         assert!(help.contains("Commands:"));
         assert!(help.contains("code"));
         assert!(help.contains("kpop"));
-        assert!(help.contains("Usage: malvin [COMMAND]"));
+        assert!(help.contains("Usage: malvin [OPTIONS] [REQUEST]"));
+        assert!(help.contains("malvin [OPTIONS] <COMMAND>"));
         assert!(help.contains("malvin --help"));
         assert!(!help.contains("Options:"));
         assert!(!help.contains("--no-color"));

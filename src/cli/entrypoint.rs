@@ -4,12 +4,11 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// `kpop`, `do`, `router`, `code`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `kpop`, `do`, `code`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
         Commands::Do(_)
-            | Commands::Router(_)
             | Commands::Code(_)
             | Commands::Tidy(_)
             | Commands::Delight(_)
@@ -22,7 +21,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for `kpop`, `do`, `router`, `code`, `tidy`, and `delight`",
+        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `code`, `tidy`, and `delight`",
     )
 }
 
@@ -151,20 +150,26 @@ pub(crate) fn dispatch_command(
                 },
             )
         }),
-        Commands::Router(router_cmd) => run_async_cli(|| {
-            run_router(
-                router_cmd,
-                &shared,
-                WorkflowCliOptions {
-                    force: !shared.no_force,
-                },
-            )
-        }),
         Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
         cmd @ (Commands::Models(_) | Commands::Logs(_)) => {
             dispatch_agent_free(cmd)
         }
     }
+}
+
+pub fn dispatch_default_route(request: String, shared: &SharedOpts) -> Result<(), String> {
+    use crate::router_flow::RouterArgs;
+    run_async_cli(|| {
+        run_router(
+            RouterArgs {
+                request: Some(request),
+            },
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
 }
 
 fn dispatch_agent_free(command: Commands) -> Result<(), String> {

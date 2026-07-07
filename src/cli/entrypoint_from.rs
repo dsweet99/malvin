@@ -1,9 +1,11 @@
 use super::{
-    command_accepts_session_name, dispatch_command, finish_entrypoint, prepare_cli_output,
-    print_command_error, unsupported_name_error, Commands, Exit,
+    command_accepts_session_name, dispatch_command, dispatch_default_route, finish_entrypoint,
+    prepare_cli_output, print_command_error, unsupported_name_error, Commands, Exit,
 };
 use crate::cli::args::Cli;
-use crate::cli::entrypoint_checks::ensure_malvin_checks_for_command;
+use crate::cli::entrypoint_checks::{
+    ensure_malvin_checks_for_command, ensure_malvin_checks_for_default_route,
+};
 
 fn parse_cli_args_or_exit(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
@@ -57,7 +59,7 @@ fn entrypoint_doc_exit(cli: &Cli) -> Exit {
 }
 
 fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
-    if cli.command.is_none() && !cli.shared.doc {
+    if cli.command.is_none() && cli.request.is_none() && !cli.shared.doc {
         let _ = crate::cli::commands_help::print_commands_only_help();
         return Some(Exit::Success);
     }
@@ -70,11 +72,20 @@ fn entrypoint_before_dispatch(cli: &Cli) -> Option<Exit> {
     None
 }
 
-fn entrypoint_preflight(command: &Commands) -> Option<Exit> {
-    ensure_malvin_checks_for_command(command).err().map(|e| {
-        print_command_error(&e);
-        Exit::Failure
-    })
+fn entrypoint_preflight(cli: &Cli) -> Option<Exit> {
+    if let Some(command) = cli.command.as_ref() {
+        return ensure_malvin_checks_for_command(command).err().map(|e| {
+            print_command_error(&e);
+            Exit::Failure
+        });
+    }
+    if cli.request.is_some() {
+        return ensure_malvin_checks_for_default_route().err().map(|e| {
+            print_command_error(&e);
+            Exit::Failure
+        });
+    }
+    None
 }
 
 fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::SessionNameGuard), Exit> {
@@ -84,12 +95,20 @@ fn entrypoint_acquire_session(opt_name: Option<&str>) -> Result<(String, crate::
     })
 }
 
-fn entrypoint_validate_name(cli: &Cli, command: &Commands) -> Option<Exit> {
+fn entrypoint_validate_name(cli: &Cli) -> Option<Exit> {
     cli.shared.name.as_ref()?;
+    if default_route_accepts_session_name(cli) {
+        return None;
+    }
+    let command = cli.command.as_ref().expect("command or default route request");
     unsupported_name_error(command).map(|message| {
         print_command_error(message);
         Exit::Failure
     })
+}
+
+const fn default_route_accepts_session_name(cli: &Cli) -> bool {
+    cli.command.is_none() && cli.request.is_some()
 }
 
 fn entrypoint_sweep_stale_acp_spawn_locks() {
@@ -115,24 +134,35 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
         return exit;
     }
     entrypoint_sweep_stale_acp_spawn_locks();
-    let command_ref = cli.command.as_ref().expect("subcommand when not --doc-only");
-    if let Some(exit) = entrypoint_validate_name(&cli, command_ref) {
+    if let Some(exit) = entrypoint_validate_name(&cli) {
         return exit;
     }
-    if let Some(exit) = entrypoint_preflight(command_ref) {
+    if let Some(exit) = entrypoint_preflight(&cli) {
         return exit;
     }
-    if command_accepts_session_name(command_ref) {
-        let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
-            Ok((session_name, guard)) => {
-                crate::set_active_acp_lock_slot(session_name);
-                guard
-            }
-            Err(exit) => return exit,
-        };
+    if cli.command.is_some() || default_route_accepts_session_name(&cli) {
+        let accepts_name = cli
+            .command
+            .as_ref()
+            .is_some_and(command_accepts_session_name)
+            || default_route_accepts_session_name(&cli);
+        if accepts_name {
+            let _session_name_guard = match entrypoint_acquire_session(cli.shared.name.as_deref()) {
+                Ok((session_name, guard)) => {
+                    crate::set_active_acp_lock_slot(session_name);
+                    guard
+                }
+                Err(exit) => return exit,
+            };
+        }
     }
-    let command = cli.command.expect("subcommand when not --doc-only");
-    finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
+    if let Some(command) = cli.command {
+        finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
+    } else if let Some(request) = cli.request {
+        finish_entrypoint(dispatch_default_route(request, &cli.shared))
+    } else {
+        Exit::Success
+    }
 }
 
 pub fn entrypoint_from(

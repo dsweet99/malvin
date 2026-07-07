@@ -1,8 +1,8 @@
 use super::{
-    command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC,
+    command_doc_markdown, print_doc_to_writer, MALVIN_OVERVIEW_DOC, ROUTER_DOC,
 };
 use crate::cli::Cli;
-use crate::cli::{Commands, InspireArgs, KpopArgs, RouterArgs};
+use crate::cli::{Commands, InspireArgs, KpopArgs};
 use crate::cli::delight_flow::DelightArgs;
 use crate::cli::explain_flow::ExplainArgs;
 use crate::cli::revise_flow::ReviseArgs;
@@ -28,8 +28,7 @@ max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Inspire(InspireArgs { request: None }));
     assert!(md.starts_with("# malvin inspire"));
-    let md = command_doc_markdown(&Commands::Router(RouterArgs { request: None }));
-    assert!(md.starts_with("# malvin router"));
+    assert!(ROUTER_DOC.starts_with("# malvin"));
 }
 
 #[test]

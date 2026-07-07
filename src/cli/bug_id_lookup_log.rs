@@ -41,7 +41,7 @@ pub(super) fn parse_log_line(text: &str, id: &str, kind: MalvinRunLogKind) -> Op
             continue;
         };
         let rest = payload[idx + needle.len()..].trim();
-        if rest.is_empty() || rest.contains(' ') {
+        if rest.is_empty() {
             continue;
         }
         return Some(rest.to_string());
@@ -68,6 +68,18 @@ pub(super) fn match_run_logs(
         }
     }
     None
+}
+
+#[test]
+fn parse_log_line_accepts_path_with_spaces() {
+    use crate::output::{format_who_tag_prefix, MALVIN_WHO};
+    let id = "Mspc01";
+    let line = format!(
+        "20260101.000000.000 {}KPOP_LOG: {id} ./my project/exp.md\n",
+        format_who_tag_prefix(MALVIN_WHO)
+    );
+    let path = parse_log_line(&line, id, MalvinRunLogKind::Kpop).expect("parse");
+    assert_eq!(path, "./my project/exp.md");
 }
 
 #[test]
