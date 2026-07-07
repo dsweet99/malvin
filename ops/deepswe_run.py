@@ -1108,17 +1108,6 @@ def malvin_mem_limit_gb(environment_memory_mb: int) -> int:
     return (mb + 1023) // 1024
 
 
-def ensure_minimal_malvin_checks(workspace: Path, *, dry_run: bool = False) -> None:
-    """Seed an empty checks file for probes that still expand quality gates."""
-    checks_path = workspace / ".malvin" / "checks"
-    if checks_path.is_file():
-        return
-    if dry_run:
-        return
-    checks_path.parent.mkdir(parents=True, exist_ok=True)
-    checks_path.write_text("", encoding="utf-8")
-
-
 def ensure_deepswe_malvin_config(spec: TaskSpec, *, dry_run: bool) -> None:
     """Seed ``~/.malvin_home/config.toml`` so malvin USS cap matches the task envelope."""
     mem_gb = malvin_mem_limit_gb(spec.environment_memory_mb)
@@ -1132,6 +1121,24 @@ def ensure_deepswe_malvin_config(spec: TaskSpec, *, dry_run: bool) -> None:
     config_path.write_text(f"mem_limit_gb = {mem_gb}\n", encoding="utf-8")
 
 
+def write_task_plan(
+    spec: TaskSpec,
+    workspace: Path,
+    *,
+    dry_run: bool = False,
+) -> None:
+    """Copy task instruction to workspace ``plan.md``.
+
+    Quality gates (``.malvin/checks``) are left to malvin's checks-discovery flow.
+    """
+    plan = workspace / "plan.md"
+    if dry_run:
+        click.echo(f"Writing {plan} from {spec.instruction}")
+        return
+    shutil.copyfile(spec.instruction, plan)
+    click.echo(f"Writing {plan}")
+
+
 def write_plan_and_checks(
     spec: TaskSpec,
     workspace: Path,
@@ -1142,46 +1149,9 @@ def write_plan_and_checks(
     deadline: float | None = None,
     tests_dir: Path | None = None,
 ) -> bool:
-    """Write workspace plan and checks. Returns False if *deadline* is exhausted."""
-    plan = workspace / "plan.md"
-    if not dry_run:
-        shutil.copyfile(spec.instruction, plan)
-    malvin_dir = workspace / ".malvin"
-    if not dry_run:
-        malvin_dir.mkdir(parents=True, exist_ok=True)
-    checks = checks_override
-    if checks is None:
-        if deadline is not None and _remaining_sec(deadline) <= 0:
-            return False
-        checks = discover_deepswe_checks(workspace, tests_dir=tests_dir or spec.tests_dir)
-    harbor_baseline = [
-        line
-        for line in harbor_baseline_check_lines(tests_dir or spec.tests_dir)
-        if is_runnable_check_line(line)
-    ]
-    if not dry_run:
-        if deadline is not None and _remaining_sec(deadline) <= 0:
-            return False
-        patch_targets = patch_surface_targets(
-            workspace,
-            tests_dir=tests_dir or spec.tests_dir,
-            harbor_baseline=harbor_baseline,
-        )
-        if patch_targets:
-            probe_path = malvin_dir / "patch_surface_probe.py"
-            probe_path.write_text(
-                render_patch_surface_probe(patch_targets),
-                encoding="utf-8",
-            )
-            probe_path.chmod(probe_path.stat().st_mode | 0o111)
-            if _PATCH_SURFACE_PROBE_COMMAND not in checks:
-                checks = checks.rstrip() + f"\n{_PATCH_SURFACE_PROBE_COMMAND}\n"
-    if not checks.endswith("\n"):
-        checks += "\n"
-    checks_path = malvin_dir / "checks"
-    click.echo(f"Writing {checks_path}: {checks.strip()!r}")
-    if not dry_run:
-        checks_path.write_text(checks, encoding="utf-8")
+    """Backward-compatible alias for :func:`write_task_plan`."""
+    _ = (command, checks_override, deadline, tests_dir)
+    write_task_plan(spec, workspace, dry_run=dry_run)
     return True
 
 
@@ -1808,7 +1778,6 @@ def docker_local_agent_cmd(
     malvin_command: str,
     malvin_args: tuple[str, ...],
     reset_workspace_flag: bool,
-    checks_override: str | None,
 ) -> list[str]:
     """Docker command for the agent phase — no /tests or /task/solution mounted."""
     inner = [
@@ -1822,8 +1791,6 @@ def docker_local_agent_cmd(
     ]
     if reset_workspace_flag:
         inner.append("--reset")
-    if checks_override:
-        inner.extend(["--checks", checks_override])
     inner.extend(["--command", malvin_command, *malvin_args])
     shell = _docker_pip_preamble() + " ".join(inner)
     task_dir_resolved = task_dir.resolve()
@@ -1891,7 +1858,6 @@ def docker_local_eval_cmd(
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
-    checks_override: str | None,
 ) -> list[str]:
     """Legacy single-container command. Used only by grade-only path."""
     inner = [
@@ -1910,8 +1876,6 @@ def docker_local_eval_cmd(
         inner.append("--apply-solution")
     if reset_workspace_flag:
         inner.append("--reset")
-    if checks_override:
-        inner.extend(["--checks", checks_override])
     if not grade_only:
         inner.extend(["--command", malvin_command, *malvin_args])
     shell = _docker_pip_preamble() + " ".join(inner)
@@ -1978,7 +1942,6 @@ def run_local_eval_in_docker(
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
-    checks_override: str | None,
     docker_image: str | None,
     dry_run: bool,
 ) -> dict[str, Any]:
@@ -2037,7 +2000,7 @@ def run_local_eval_in_docker(
             image=eval_image, spec=spec, task_dir=task_dir,
             workspace=workspace, run_root=run_root, deepswe_run_py=deepswe_run_py,
             malvin_command=malvin_command, malvin_args=malvin_args,
-            reset_workspace_flag=reset_workspace_flag, checks_override=checks_override,
+            reset_workspace_flag=reset_workspace_flag,
         )
         click.echo("Running local Docker agent (no /tests or /task/solution mounted)...")
         if dry_run:
@@ -2391,7 +2354,6 @@ def run_modal_solve(
     *,
     task_dir: Path,
     malvin_command: str = "route",
-    checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -2411,7 +2373,6 @@ def run_modal_solve(
     run_modal_eval(
         task_dir=task_dir,
         malvin_command=malvin_command,
-        checks_override=checks_override,
         grade_only=False,
         skip_grade=skip_grade,
         apply_solution=apply_solution,
@@ -2441,7 +2402,6 @@ def _run_solve_local_docker_fallback(
     task_dir: Path,
     *,
     malvin_command: str = "route",
-    checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -2470,7 +2430,6 @@ def _run_solve_local_docker_fallback(
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag,
-        checks_override=checks_override,
         docker_image=docker_image,
         dry_run=dry_run,
     )
@@ -2579,7 +2538,6 @@ def _run_local_docker_task(
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
-    checks_override: str | None,
     docker_image: str | None,
     dry_run: bool,
 ) -> None:
@@ -2594,7 +2552,6 @@ def _run_local_docker_task(
         skip_grade=skip_grade,
         apply_solution=apply_solution,
         reset_workspace_flag=reset_workspace_flag or apply_solution,
-        checks_override=checks_override,
         docker_image=docker_image,
         dry_run=dry_run,
     )
@@ -2632,7 +2589,6 @@ def run_task(
     workspace: Path | None,
     results_dir: Path | None,
     malvin_command: str,
-    checks_override: str | None,
     runtime: str,
     skip_materialize: bool,
     grade_only: bool,
@@ -2660,7 +2616,6 @@ def run_task(
                 run_modal_solve(
                     task_dir=task_dir,
                     malvin_command=malvin_command,
-                    checks_override=checks_override,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -2677,7 +2632,6 @@ def run_task(
                 _run_solve_local_docker_fallback(
                     task_dir,
                     malvin_command=malvin_command,
-                    checks_override=checks_override,
                     skip_grade=skip_grade,
                     apply_solution=apply_solution,
                     reset_workspace_flag=reset_workspace_flag,
@@ -2717,7 +2671,6 @@ def run_task(
             skip_grade=skip_grade,
             apply_solution=apply_solution,
             reset_workspace_flag=reset_workspace_flag,
-            checks_override=checks_override,
             docker_image=docker_image,
             dry_run=dry_run,
         )
@@ -2737,12 +2690,6 @@ def run_task(
     ):
         apply_harbor_test_patch(spec, workspace, dry_run=dry_run)
 
-    checks_text = ""
-    if not grade_only and malvin_needs_task_plan(malvin_command):
-        checks_text = checks_override or discover_deepswe_checks(
-            workspace, tests_dir=spec.tests_dir,
-        )
-
     prep_deadline: float | None = None
     if grade_only:
         prep_deadline = time.monotonic() + spec.verifier_timeout_sec
@@ -2752,7 +2699,6 @@ def run_task(
     prep_result = prepare_task_sandbox(
         spec,
         workspace,
-        checks=checks_text,
         dry_run=dry_run,
         deadline=prep_deadline,
     )
@@ -2771,17 +2717,9 @@ def run_task(
                 if _remaining_sec(agent_deadline) <= 0:
                     agent_timed_out = True
                 else:
-                    if not write_plan_and_checks(
-                        spec,
-                        workspace,
-                        command=malvin_command,
-                        checks_override=checks_override,
-                        dry_run=dry_run,
-                        deadline=agent_deadline,
-                    ):
-                        agent_timed_out = True
+                    write_task_plan(spec, workspace, dry_run=dry_run)
             elif malvin_command == "hello":
-                ensure_minimal_malvin_checks(workspace, dry_run=dry_run)
+                pass
             if not agent_timed_out:
                 if _remaining_sec(agent_deadline) <= 0:
                     agent_timed_out = True
@@ -2895,12 +2833,6 @@ def _task_kernel_options(f: Any) -> Any:
         ),
     )(f)
     f = click.option(
-        "--checks",
-        "checks_override",
-        default=None,
-        help="Override .malvin/checks content (default: repo signals from pre-commit/Makefile/existing checks).",
-    )(f)
-    f = click.option(
         "--runtime",
         type=click.Choice(["host", "in-sandbox"]),
         default="host",
@@ -2953,12 +2885,6 @@ def _local_solve_options(f: Any) -> Any:
         "use_local_docker",
         is_flag=True,
         help="Run in a local Docker container instead of Modal (default: Modal).",
-    )(f)
-    f = click.option(
-        "--checks",
-        "checks_override",
-        default=None,
-        help="Override .malvin/checks content (default: repo signals from pre-commit/Makefile/existing checks).",
     )(f)
     f = click.option(
         "--skip-grade",
@@ -3049,7 +2975,6 @@ def run_task_cli(
     workspace: Path | None,
     results_dir: Path | None,
     malvin_command: str,
-    checks_override: str | None,
     runtime: str,
     skip_materialize: bool,
     grade_only: bool,
@@ -3068,7 +2993,6 @@ def run_task_cli(
         workspace=workspace,
         results_dir=results_dir,
         malvin_command=malvin_command,
-        checks_override=checks_override,
         runtime=runtime,
         skip_materialize=skip_materialize,
         grade_only=grade_only,
@@ -3128,7 +3052,6 @@ def solve(
     ctx: click.Context,
     task_name: str,
     use_local_docker: bool,
-    checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
     reset_workspace_flag: bool,
@@ -3144,7 +3067,6 @@ def solve(
         workspace=None,
         results_dir=None,
         malvin_command="route",
-        checks_override=checks_override,
         runtime="host",
         skip_materialize=False,
         grade_only=False,
@@ -3186,7 +3108,6 @@ def hello(
         workspace=None,
         results_dir=None,
         malvin_command="hello",
-        checks_override=None,
         runtime="host",
         skip_materialize=False,
         grade_only=False,
@@ -3248,7 +3169,6 @@ def _test_docker_local_eval_cmd() -> None:
         malvin_command="route",
         malvin_args=(),
         reset_workspace_flag=False,
-        checks_override=None,
     )
     agent_joined = " ".join(agent_cmd)
     assert "--runtime in-sandbox" in agent_joined
@@ -3603,16 +3523,11 @@ def _test_is_runnable_rejects_unexpanded_variables() -> None:
     )
 
 
-def _test_write_plan_and_checks_discovers() -> None:
+def _test_write_task_plan() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         workspace = Path(tmp)
         instruction = workspace / "instruction.md"
         instruction.write_text("fix it\n", encoding="utf-8")
-        (workspace / "mod.py").write_text("pass\n", encoding="utf-8")
-        (workspace / "tests").mkdir()
-        (workspace / "tests" / "test_mod.py").write_text(
-            "def test_mod():\n    assert True\n", encoding="utf-8"
-        )
         spec = TaskSpec(
             task_dir=workspace,
             task_id="fake",
@@ -3628,17 +3543,14 @@ def _test_write_plan_and_checks_discovers() -> None:
             verifier_timeout_sec=1800.0,
             environment_memory_mb=4096,
         )
-        write_plan_and_checks(
-            spec,
-            workspace,
-            command="route",
-            checks_override=None,
-            dry_run=False,
-        )
-        checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
-        assert checks == "\n"
+        write_task_plan(spec, workspace, dry_run=False)
+        assert not (workspace / ".malvin" / "checks").exists()
         plan_text = (workspace / "plan.md").read_text(encoding="utf-8")
         assert plan_text == "fix it\n"
+
+
+def _test_write_plan_and_checks_discovers() -> None:
+    _test_write_task_plan()
 
 
 def _test_parse_task_dir_does_not_require_test_sh() -> None:
@@ -3769,26 +3681,9 @@ def _test_write_plan_and_checks_includes_patch_surface_probe() -> None:
             verifier_timeout_sec=1800.0,
             environment_memory_mb=4096,
         )
-        write_plan_and_checks(
-            spec,
-            workspace,
-            command="route",
-            checks_override=None,
-            dry_run=False,
-        )
-        checks = (workspace / ".malvin" / "checks").read_text(encoding="utf-8")
-        assert _PATCH_SURFACE_PROBE_COMMAND in checks
-        probe = workspace / ".malvin" / "patch_surface_probe.py"
-        assert probe.is_file(), probe
-        proc = subprocess.run(
-            [sys.executable, str(probe)],
-            cwd=workspace,
-            env={**os.environ, "PYTHONPATH": str(workspace)},
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert proc.returncode == 0, proc.stderr
+        write_task_plan(spec, workspace, dry_run=False)
+        assert not (workspace / ".malvin" / "checks").exists()
+        assert not (workspace / ".malvin" / "patch_surface_probe.py").exists()
 
 
 def _test_is_modal_spend_limit_error() -> None:
@@ -3868,13 +3763,6 @@ _GIT_TEST_IDENTITY = {
     "GIT_COMMITTER_NAME": "malvin-test",
     "GIT_COMMITTER_EMAIL": "malvin-test@example.com",
 }
-
-
-def _test_ensure_minimal_malvin_checks() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        workspace = Path(tmp)
-        ensure_minimal_malvin_checks(workspace)
-        assert (workspace / ".malvin" / "checks").is_file()
 
 
 def _test_repair_workspace_submodules_noop_without_gitmodules() -> None:
@@ -4283,7 +4171,6 @@ def _test_prepare_task_sandbox_dry_run() -> None:
         result = prepare_task_sandbox(
             spec,
             workspace,
-            checks="true\n",
             dry_run=True,
         )
         assert result.sync_commands == (), result
@@ -4426,7 +4313,7 @@ def _test_run_task_agent_phase_includes_prep() -> None:
         with (
             patch.object(mod, "prepare_task_sandbox", slow_prep),
             patch.object(mod, "run_malvin", slow_malvin),
-            patch.object(mod, "write_plan_and_checks"),
+            patch.object(mod, "write_task_plan"),
             patch.object(mod, "ensure_deepswe_malvin_config"),
             patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
             patch.object(mod, "_print_evaluation_summary"),
@@ -4438,7 +4325,6 @@ def _test_run_task_agent_phase_includes_prep() -> None:
                 workspace=workspace,
                 results_dir=run_root,
                 malvin_command="route",
-                checks_override="true",
                 runtime="host",
                 skip_materialize=True,
                 grade_only=False,
@@ -4484,7 +4370,7 @@ def _test_combined_path_agent_timeout_still_grades() -> None:
         with (
             patch.object(mod, "prepare_task_sandbox", fast_prep),
             patch.object(mod, "run_malvin", timeout_malvin),
-            patch.object(mod, "write_plan_and_checks"),
+            patch.object(mod, "write_task_plan"),
             patch.object(mod, "ensure_deepswe_malvin_config"),
             patch.object(mod, "grade_workspace", capture_grade),
             patch.object(mod, "_write_host_run_artifacts"),
@@ -4497,7 +4383,6 @@ def _test_combined_path_agent_timeout_still_grades() -> None:
                 workspace=workspace,
                 results_dir=run_root,
                 malvin_command="route",
-                checks_override="true",
                 runtime="host",
                 skip_materialize=True,
                 grade_only=False,
@@ -4578,7 +4463,6 @@ def _test_run_local_eval_in_docker_passes_backstop_timeout() -> None:
                 skip_grade=False,
                 apply_solution=False,
                 reset_workspace_flag=False,
-                checks_override=None,
                 docker_image="fake:local",
                 dry_run=False,
             )
@@ -4641,7 +4525,6 @@ def run_self_tests() -> None:
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
     _test_ephemeral_cache_find_expr()
     _test_purge_root_owned_ephemeral_caches_docker_cmd()
-    _test_ensure_minimal_malvin_checks()
     _test_repair_workspace_submodules_noop_without_gitmodules()
     _test_repair_workspace_submodules_after_stale_gitdir()
     _test_reset_workspace_removes_user_pycache()

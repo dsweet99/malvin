@@ -75,11 +75,9 @@ from sandbox_prep import (
     registry_image_cache_bust_commands,
 )
 from deepswe_run import (
-    discover_deepswe_checks,
     apply_patch,
     default_deepswe_results_dir,
     default_deepswe_tasks_root,
-    ensure_minimal_malvin_checks,
     find_latest_malvin_log,
     malvin_needs_task_plan,
     materialize_workspace,
@@ -87,7 +85,7 @@ from deepswe_run import (
     validate_verifier_paths,
     reset_workspace,
     timestamp_dir,
-    write_plan_and_checks,
+    write_task_plan,
 )
 from modal_sandbox_app import lookup_sandbox_app, test_sandbox_app_lookup
 from toolchain_repos import (
@@ -2408,7 +2406,6 @@ def run_modal_eval(
     workspace: Path | None = None,
     results_dir: Path | None = None,
     malvin_command: str = "route",
-    checks_override: str | None = None,
     grade_only: bool = False,
     skip_grade: bool = False,
     apply_solution: bool = False,
@@ -2455,11 +2452,6 @@ def run_modal_eval(
     modal_error: str | None = None
     agent_artifacts: Path | None = None
     deepswe_run_py = Path(__file__).resolve().parent / "deepswe_run.py"
-    checks = ""
-    if malvin_needs_task_plan(malvin_command):
-        checks = checks_override
-        if checks is None:
-            checks = discover_deepswe_checks(workspace, tests_dir=spec.tests_dir)
     try:
         sandbox_timeout = agent_sandbox_timeout_sec(
             spec, skip_grade=skip_grade, grade_only=grade_only,
@@ -2484,17 +2476,8 @@ def run_modal_eval(
                 timeout=sandbox_timeout,
             )
         else:
-            agent_checks = offline_agent_checks(checks or "")
             if malvin_needs_task_plan(malvin_command):
-                write_plan_and_checks(
-                    spec,
-                    workspace,
-                    command=malvin_command,
-                    checks_override=agent_checks,
-                    dry_run=False,
-                )
-            elif malvin_command == "hello":
-                ensure_minimal_malvin_checks(workspace)
+                write_task_plan(spec, workspace, dry_run=False)
             malvin_repo = validate_toolchain_repos()
             with stage_malvin_repo(malvin_repo) as malvin_staged:
                 agent_img = harbor_agent_image(
@@ -2503,7 +2486,6 @@ def run_modal_eval(
                     dockerfile=spec.dockerfile,
                     malvin_repo=malvin_staged,
                     deepswe_run_py=deepswe_run_py,
-                    checks=agent_checks,
                 )
                 agent_artifacts = run_root / "agent_sandbox"
                 if skip_grade:
@@ -4165,7 +4147,7 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
         fake_grade = {"pass": True, "reward": 1}
         with (
             patch(f"{__name__}.materialize_workspace"),
-            patch(f"{__name__}.write_plan_and_checks"),
+            patch(f"{__name__}.write_task_plan"),
             patch(f"{__name__}.validate_toolchain_repos", return_value=Path("/m")),
             patch(f"{__name__}.stage_malvin_repo", side_effect=_fake_stage_malvin_repo),
             patch(f"{__name__}.harbor_agent_image", return_value=MagicMock()),

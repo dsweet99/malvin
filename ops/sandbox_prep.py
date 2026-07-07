@@ -434,7 +434,6 @@ def prepare_task_sandbox(
     spec: Any,
     workspace: Path,
     *,
-    checks: str,
     dry_run: bool = False,
     deadline: float | None = None,
 ) -> SandboxPrepResult:

@@ -19,7 +19,6 @@ Your goal is to convince the user that the request is satisfied in a completely 
 
 
 # Process
-
 Understand the request. Restate it clearly in your own words. Check for errors and flag uncertainties.
 
 Consider
@@ -32,12 +31,14 @@ Next:
 2. Figure out how to satisfy the request.
 3. Satisfy the request.
 
-Try to falsify, break, or otherwise invalidate each of the the three steps and any substeps you create along the way. Lean on inspire and kpop for situations of high difficulty or high uncertainty.
+Try to falsify, break, or otherwise invalidate each of the the three steps and any substeps you create along the way. Lean on inspire and kpop for situations involving difficulty or uncertainty.
 
 ## Done?
-Model the mind of the user. What would they need to see or have to consider the request satisfied?
+Model the mind of the user. What would they need to see or have to consider the request satisfied? Write a rubric.
 
-When you hypothesize you are done, falsify viciously.
+When you hypothesize you are done, falsify viciously. kpop is your friend here.
+
+You may need more than one pass a step 3 & doneness-checking. **The harder the problem is the more passes it may take.**
 
 # Report
 When you're all done, write a short summary of the evidence right here in the chat. (Don't summarize how you worked through the problem. The key to epistemic decoupling is that once you have solid evidence, how you got it no longer matters.)
