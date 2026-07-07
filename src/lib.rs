@@ -198,6 +198,9 @@ pub mod do_flow;
 #[path = "cli/inspire_flow.rs"]
 pub mod inspire_flow;
 
+#[path = "cli/router_flow.rs"]
+pub mod router_flow;
+
 pub mod kpop_engine;
 
 #[path = "cli/mod.rs"]
@@ -228,4 +231,5 @@ pub(crate) mod acp_session_unit_tests;
 #[cfg(test)] mod malvin_test_seed;
 #[cfg(test)] pub use malvin_test_seed::{seed_malvin_checks, seed_malvin_config};
 #[cfg(test)] pub mod test_utils;
+#[cfg(test)] pub mod flow_prompt_join_test_helpers;
 #[cfg(test)] pub mod test_agent_client;

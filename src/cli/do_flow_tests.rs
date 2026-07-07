@@ -1,50 +1,15 @@
 use clap::Parser;
 use std::collections::HashMap;
 
-use crate::artifacts::RunArtifacts;
 use crate::do_flow::do_flow_prompt::{
     build_do_coder_run, build_do_coder_run_with_store, combine_do_acp_prompt_header_and_user,
     combine_do_prompt_file_and_user, combine_do_raw_header_and_user, prepare_do_prompt_store,
 };
+use crate::flow_prompt_join_test_helpers::{
+    assert_dual_workflow_header_join, assert_header_user_join, flow_test_artifacts,
+};
 use crate::prompts::{DO_HEADER_MD, HEADER_MD, PromptStore};
 use crate::prompt_stratification::WorkflowRenderContext;
-
-fn do_flow_test_artifacts(tmp: &tempfile::TempDir) -> RunArtifacts {
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(tmp.path())
-        .status()
-        .expect("git init");
-    crate::seed_malvin_checks(tmp.path(), "true\n");
-    let plan = tmp.path().join("plan.md");
-    std::fs::write(&plan, "ignored").expect("plan");
-    let run_dir = tmp.path().join(".malvin/logs").join("r");
-    std::fs::create_dir_all(&run_dir).expect("run");
-    RunArtifacts {
-        run_dir,
-        plan_path: plan,
-        work_dir: tmp.path().to_path_buf(),
-    }
-}
-
-fn assert_header_user_join(combined: &str, header: &str, user: &str) {
-    assert_eq!(combined, format!("{header}\n\n{user}"));
-    assert_eq!(combined.split("\n\n").count(), 2);
-    assert_eq!(combined.matches(header).count(), 1);
-    assert_eq!(combined.matches(user).count(), 1);
-}
-
-fn assert_do_triple_join(combined: &str, coding_header: &str, do_header: &str, user: &str) {
-    assert_eq!(
-        combined,
-        format!("{coding_header}\n\n{do_header}\n\n{user}")
-    );
-    assert_eq!(combined.split("\n\n").count(), 3);
-    assert!(combined.contains(coding_header));
-    assert!(combined.contains(do_header));
-    assert!(combined.ends_with(user));
-    assert_eq!(combined.matches(user).count(), 1);
-}
 
 fn mock_do_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
@@ -80,10 +45,10 @@ fn prepare_do_prompt_store_loads_default_templates() {
 #[test]
 fn build_do_coder_run_combines_both_headers_and_user() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = do_flow_test_artifacts(&tmp);
+    let artifacts = flow_test_artifacts(&tmp);
     let store = mock_do_prompt_store(&tmp);
     let run = build_do_coder_run_with_store(&store, &artifacts, "USER_TOKEN\n\n").expect("run");
-    assert_do_triple_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
+    assert_dual_workflow_header_join(&run.combined, "CODING_HDR", "DO_HDR", "USER_TOKEN");
     let (trace_header, trace_user) = &run.header_user_for_trace;
     assert_header_user_join(trace_header, "CODING_HDR", "DO_HDR");
     assert_eq!(trace_user, "USER_TOKEN");
@@ -92,7 +57,7 @@ fn build_do_coder_run_combines_both_headers_and_user() {
 #[test]
 fn build_do_coder_run_default_store_produces_dual_headers() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let artifacts = do_flow_test_artifacts(&tmp);
+    let artifacts = flow_test_artifacts(&tmp);
     let run = build_do_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
     assert!(run.combined.contains("malvin do"));
@@ -111,7 +76,7 @@ fn build_do_coder_run_default_store_produces_dual_headers() {
 fn combine_do_acp_prompt_joins_rendered_header_and_request() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let store = mock_do_prompt_store(&tmp);
-    let artifacts = do_flow_test_artifacts(&tmp);
+    let artifacts = flow_test_artifacts(&tmp);
     let (combined, header, user) =
         combine_do_acp_prompt_header_and_user(&store, &artifacts, "USER_TOKEN").expect("combine");
     assert_eq!(header, "CODING_HDR");
@@ -125,7 +90,7 @@ fn combine_do_raw_header_and_user_joins_rendered_do_header_and_request() {
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(DO_HEADER_MD), "DO_TOKEN\n").expect("do_header");
-    let artifacts = do_flow_test_artifacts(&tmp);
+    let artifacts = flow_test_artifacts(&tmp);
     let store = PromptStore::with_root(prompt_root);
     let (combined, header, user) =
         combine_do_raw_header_and_user(&store, &artifacts, "USER_RAW_TOKEN\n\n").expect("combine");

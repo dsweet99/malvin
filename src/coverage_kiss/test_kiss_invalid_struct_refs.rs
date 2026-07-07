@@ -82,6 +82,12 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::cli::bug_id_lookup::bug_id_lookup_log::fallback_err_label;
     let _ = crate::cli::code_flow::run_loop::CodeGateFinish;
     let _ = crate::cli::do_flow::DoRunPrep;
+    let _ = crate::router_flow::RouterRunPrep;
+    let _ = crate::cli::config_defaults::LoopDefaultMut;
+    let _ = crate::cli::config_defaults::CodeWorkflowLoopMut;
+    let _ = crate::cli::flow_prompt_combine::DualHeaderCoderRun;
+    let _ = crate::cli::flow_prompt_combine::DualHeaderPromptInput;
+    let _ = crate::cli::flow_prompt_combine::build_dual_header_coder_run_with_store;
     let _ = crate::cli::explain_flow::run_startup::ExplainKpopPrepared;
     let _ = crate::cli::kpop_flow::kpop_flow_a::KpopPrepared;
 }
@@ -210,6 +216,8 @@ fn kiss_invalid_struct_value_refs_gate10_5() {
     let _ = crate::agent_backend::mini::trace_tests::stdout_log_tool_t_lines;
     let _ = crate::artifacts::log_gc_hook_tests::seed_home_logs_for_gc_test;
     let _ = crate::cli::config_defaults_tests::assert_workflow_defaults;
+    let _ = crate::flow_prompt_join_test_helpers::assert_header_user_join;
+    let _ = crate::flow_prompt_join_test_helpers::assert_dual_workflow_header_join;
     let _ = crate::cli::kpop_flow_a_tests::seed_short_id_lookup_fixture;
     let _ = crate::cli::kpop_flow_a_tests::seed_kpop_multiturn_mock_workspace;
     let _ = crate::cli::kpop_flow_a_tests::run_kpop_multiturn_mock_once;

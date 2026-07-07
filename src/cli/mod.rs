@@ -25,6 +25,7 @@ pub(crate) mod revise_flow;
 
 pub(crate) mod code_flow;
 mod code_flow_a;
+pub(crate) mod flow_prompt_combine;
 pub(crate) mod checks_discovery_flow;
 mod loop_opts;
 pub(crate) mod default_output_path;
@@ -44,6 +45,9 @@ mod cli_cross_cov;
 #[cfg(test)]
 #[path = "do_flow_tests.rs"]
 mod do_flow_tests;
+#[cfg(test)]
+#[path = "router_flow_tests.rs"]
+mod router_flow_tests;
 #[cfg(test)]
 #[path = "acp_post_run_tests.rs"]
 mod acp_post_run_tests;
@@ -76,7 +80,8 @@ mod markdown_flag_parse_tests;
 
 pub use crate::do_flow::run_do;
 pub use crate::inspire_flow::run_inspire;
-pub use args::{Cli, Commands, InspireArgs, KpopArgs};
+pub use crate::router_flow::run_router;
+pub use args::{Cli, Commands, InspireArgs, KpopArgs, RouterArgs};
 pub use config_defaults::parse_cli_with_config_defaults;
 pub use entrypoint::entrypoint;
 pub use exit::Exit;

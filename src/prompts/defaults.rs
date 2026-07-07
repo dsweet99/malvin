@@ -7,6 +7,7 @@ pub use default_files::default_file;
 
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
+pub const ROUTER_MD: &str = "router.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -25,6 +26,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "mini_constraints.md",
     HEADER_MD,
     DO_HEADER_MD,
+    ROUTER_MD,
 ];
 
 #[cfg(test)]
@@ -97,6 +99,50 @@ mod advice_path_embed_tests {
             header.contains("User:"),
             "header must render current_state from workflow context"
         );
+    }
+}
+
+#[cfg(test)]
+mod router_header_embed_tests {
+    use std::path::Path;
+
+    use super::{DO_HEADER_MD, HEADER_MD, ROUTER_MD, default_file};
+    use crate::artifacts::create_run_artifacts;
+    use crate::orchestrator::{workflow_context, workflow_context_paths_only};
+    use crate::prompts::{PromptStore, render_header};
+    use crate::router_flow::router_flow_prompt::build_router_coder_run;
+
+    #[test]
+    fn embedded_header_and_router_render_without_unresolved_braces() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .status()
+            .expect("git init");
+        crate::seed_malvin_checks(tmp.path(), "true\n");
+        let plan_path = tmp.path().join("plan.md");
+        std::fs::write(&plan_path, "plan body\n").expect("write plan");
+        let artifacts =
+            create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
+        let store = PromptStore::default_store();
+        store.ensure_defaults().expect("defaults");
+        let ctx = workflow_context(&artifacts, &store, "router").expect("ctx");
+        let header = render_header(&store, ctx.as_map()).expect("header");
+        assert!(!header.contains("{{"), "header must expand all placeholders");
+        let paths_ctx = workflow_context_paths_only(&artifacts, "router");
+        let router_body = store
+            .render_prompt_only(ROUTER_MD, paths_ctx.as_map())
+            .expect("router");
+        assert!(
+            !router_body.contains("{{"),
+            "router.md must expand user_request_path"
+        );
+        let run = build_router_coder_run(&artifacts, "user body").expect("run");
+        assert!(!run.combined.contains("{{"));
+        assert!(default_file(ROUTER_MD).is_some());
+        assert!(default_file(DO_HEADER_MD).is_some());
+        assert!(default_file(HEADER_MD).is_some());
     }
 }
 

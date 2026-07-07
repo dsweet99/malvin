@@ -12,6 +12,7 @@ pub use super::logs_cmd::LogsArgs;
 pub use super::models_cmd::ModelsArgs;
 pub use crate::do_flow::DoArgs;
 pub use crate::inspire_flow::InspireArgs;
+pub use crate::router_flow::RouterArgs;
 pub use super::args_bug_kpop::KpopArgs;
 pub use super::shared_opts::GlobalOpts;
 
@@ -37,6 +38,8 @@ pub struct Cli {
 pub enum Commands {
     /// Respond simply
     Do(DoArgs),
+    /// Route autonomously
+    Router(RouterArgs),
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),

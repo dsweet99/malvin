@@ -1,14 +1,15 @@
 use super::models_cmd;
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router, run_tidy,
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// `kpop`, `do`, `code`, `tidy`, and `delight` accept `--name`.
+/// `kpop`, `do`, `router`, `code`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
         Commands::Do(_)
+            | Commands::Router(_)
             | Commands::Code(_)
             | Commands::Tidy(_)
             | Commands::Delight(_)
@@ -21,7 +22,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for `kpop`, `do`, `code`, `tidy`, and `delight`",
+        "`--name` is only supported for `kpop`, `do`, `router`, `code`, `tidy`, and `delight`",
     )
 }
 
@@ -144,6 +145,15 @@ pub(crate) fn dispatch_command(
         Commands::Do(do_cmd) => run_async_cli(|| {
             run_do(
                 do_cmd,
+                &shared,
+                WorkflowCliOptions {
+                    force: !shared.no_force,
+                },
+            )
+        }),
+        Commands::Router(router_cmd) => run_async_cli(|| {
+            run_router(
+                router_cmd,
                 &shared,
                 WorkflowCliOptions {
                     force: !shared.no_force,

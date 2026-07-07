@@ -62,4 +62,11 @@ fn kiss_witness_cli_and_artifacts_d() {
     let _ = stringify!(seed_kpop_multiturn_mock_workspace);
     let _ = stringify!(run_kpop_multiturn_mock_once);
     let _ = stringify!(run_gate_inline_summarize_first_iteration);
+    let _ = stringify!(assert_header_user_join);
+    let _ = stringify!(assert_dual_workflow_header_join);
+    let _ = stringify!(flow_test_artifacts);
+    let _ = stringify!(DualHeaderCoderRun);
+    let _ = stringify!(DualHeaderPromptInput);
+    let _ = stringify!(build_dual_header_coder_run_with_store);
+    let _ = stringify!(mock_router_prompt_store);
 }

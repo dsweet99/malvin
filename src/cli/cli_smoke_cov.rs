@@ -207,3 +207,8 @@ fn smoke_prepare_do_prompt_store_loads_defaults() {
     assert!(crate::do_flow::prepare_do_prompt_store().is_ok());
 }
 
+#[test]
+fn smoke_prepare_router_prompt_store_loads_defaults() {
+    assert!(crate::router_flow::prepare_router_prompt_store().is_ok());
+}
+

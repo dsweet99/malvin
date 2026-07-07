@@ -127,6 +127,7 @@ fn apply_gate_loop_command_defaults(
             },
         ),
         Commands::Do(_)
+        | Commands::Router(_)
         | Commands::Inspire(_)
         | Commands::Models(_) | Commands::Logs(_) => {}
     }
@@ -140,6 +141,7 @@ pub fn apply_workspace_config_defaults(
         cli.command,
         Some(
             Commands::Do(_)
+                | Commands::Router(_)
                 | Commands::Models(_)
                 | Commands::Logs(_)
         )
@@ -201,3 +203,7 @@ mod config_defaults_tests;
 #[cfg(test)]
 #[path = "config_defaults_tests_mini.rs"]
 mod config_defaults_tests_mini;
+
+#[cfg(test)]
+#[path = "config_defaults_tests_router.rs"]
+mod config_defaults_tests_router;
