@@ -50,28 +50,28 @@ pub struct SharedOpts {
     #[arg(long = "max-acp-retries", global = true, default_value_t = DEFAULT_MAX_ACP_RETRIES)]
     pub max_acp_retries: u32,
     /// Use in-process mini agent (`OpenRouter` + bash loop) instead of Cursor ACP.
-    #[arg(long, global = true, default_value_t = false)]
+    #[arg(long, global = true, default_value_t = false, hide = true)]
     pub mini: bool,
     /// Deprecated alias for `--mini-max-http-turns`.
     #[arg(long = "mini-max-bash-turns", global = true, default_value_t = 32, hide = true)]
     pub mini_max_bash_turns: u32,
     /// Max Investigate-phase HTTP turns per `run_coder_prompt` when `--mini` [default: 32].
-    #[arg(long = "mini-max-http-turns", global = true, default_value_t = 32)]
+    #[arg(long = "mini-max-http-turns", global = true, default_value_t = 32, hide = true)]
     pub mini_max_http_turns: u32,
     /// Max bash subprocess executions per `run_coder_prompt` when `--mini` [default: 128].
-    #[arg(long = "mini-max-bash-execs", global = true, default_value_t = 128)]
+    #[arg(long = "mini-max-bash-execs", global = true, default_value_t = 128, hide = true)]
     pub mini_max_bash_execs: u32,
     /// Max transient `OpenRouter` HTTP retries per completion when `--mini` [default: 0].
-    #[arg(long = "mini-max-http-retries", global = true, default_value_t = 0)]
+    #[arg(long = "mini-max-http-retries", global = true, default_value_t = 0, hide = true)]
     pub mini_max_http_retries: u32,
     /// Max transport-layer retries per `OpenRouter` completion when `--mini` (from config when unset).
     #[arg(skip)]
     pub mini_max_transport_retries: u32,
     /// Max whole-loop gate retries after failure when `--mini` [default: 0].
-    #[arg(long = "mini-max-gate-retries", global = true, default_value_t = 0)]
+    #[arg(long = "mini-max-gate-retries", global = true, default_value_t = 0, hide = true)]
     pub mini_max_gate_retries: u32,
     /// Max context-recovery shrink passes per overflow when `--mini` [default: 0].
-    #[arg(long = "mini-max-shrink-passes", global = true, default_value_t = 0)]
+    #[arg(long = "mini-max-shrink-passes", global = true, default_value_t = 0, hide = true)]
     pub mini_max_shrink_passes: u32,
     /// Print built-in documentation (`malvin --doc` or `malvin <COMMAND> --doc`) and exit.
     #[arg(long, global = true, default_value_t = false)]

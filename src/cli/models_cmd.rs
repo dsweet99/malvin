@@ -12,7 +12,7 @@ use crate::config::DEFAULT_CLI_MODEL;
 #[derive(Args, Debug, Clone, Copy)]
 pub struct ModelsArgs {
     /// List `OpenRouter` models for `--mini` instead of Cursor agent models.
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, hide = true)]
     pub mini: bool,
 }
 

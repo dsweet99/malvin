@@ -31,7 +31,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `explain`, `revise`
 | `delight` | Author a user-delighting feature pitch via the KPop gate loop |
 | `explain` | Explain code or concepts as a LaTeX PDF via the KPop gate loop |
 | `revise` | Revise an existing document in place via the KPop gate loop |
-| `models` | List models (Cursor agent CLI by default; `models --mini` lists OpenRouter) |
+| `models` | List models via the Cursor agent CLI |
 | `logs` | Inspect and prune run-log retention under `~/.malvin_home/logs/` |
 
 Per-command documentation: `malvin <COMMAND> --doc` (embedded from `default_prompts/docs/<command>.md`).
@@ -75,40 +75,6 @@ Log **full** outgoing prompt bodies to stdout and `prompts.log`. Default: only t
 ### `--max-acp-retries <N>` (default: 3)
 
 Maximum bounded attempts per ACP spawn or `session/prompt`, with 1s / 3s backoff between tries. `--tenacious` on gate-loop commands sets this to 9999.
-
-### `--mini`
-
-Use the in-process mini agent backend (OpenRouter HTTP + bash fence loop) instead of Cursor ACP. Requires `OPENROUTER_API_KEY` and `bash` on `PATH`. Does not spawn `cursor-agent`; suitable for headless eval without Cursor credentials.
-
-When `--mini` is set:
-
-- Model selection precedence: `--model` on the command line (if given), then `[agent]."model-mini"` in `~/.malvin_home/config.toml`, then the built-in default slug `nvidia/nemotron-3-ultra-550b-a55b:free`. Legacy installs may lack `"model-mini"` on disk until you edit config; opening config merges the template key in memory only (same as other agent keys).
-- `--model` is sent to OpenRouter; `--model auto` resolves to `nvidia/nemotron-3-ultra-550b-a55b:free` (via `MINI_DEFAULT_MODEL`, not ACP `agent.model`).
-- `--no-force` is a no-op (nothing to approve).
-- `--max-acp-retries` applies to gate iteration retries (not HTTP transport retries; see config below). OpenRouter billing/credit failures (402/403) and ACP “upgrade your plan” errors fail immediately at the gate level without retry or `mini gate attempt N failed` wrapping.
-- `[agent].max_mini_transport_retries` in `~/.malvin_home/config.toml` (default **3**) caps retries for all non-billing OpenRouter HTTP failures (429, 5xx, 4xx, auth, JSON decode, reqwest transport, provider capacity). Billing/payment failures (402/403) fail immediately. `--mini-max-http-retries` is deprecated and ignored by the mini retry loop.
-- Cost estimates from OpenRouter `usage.cost` appear in `run_timing.json` and on a separate `COST:` finalize line after `TIMING:` (`total_cost`, `mean_cost_per_tx`, …).
-- `trace.jsonl` uses the same ACP-shaped `direction` / `message` records as non-mini runs (synthetic, not JSON-RPC wire capture). Each OpenRouter HTTP attempt also records a `miniHttpExchange` audit field (status, body capped at 64 KiB, error when present); raw HTTP is never teed to stdout.
-- Bash tool summaries on stdout use the same Read / Search / Edit / Run vocabulary as ACP when heuristics match.
-
-Environment variables (mini only):
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `OPENROUTER_API_KEY` | yes | Bearer token |
-| `OPENROUTER_HTTP_REFERER` | no | OpenRouter attribution header |
-| `OPENROUTER_BASE_URL` | no | Override API base (testing) |
-| `OPENROUTER_REQUEST_TIMEOUT` | no | HTTP timeout in seconds (default 120) |
-
-`malvin models` uses the Cursor agent CLI by default. Use the subcommand flag `malvin models --mini` to list OpenRouter models (no Cursor CLI required). Global `--mini` on other subcommands does not affect `malvin models`.
-
-### `--mini-max-http-turns <N>` (default: 32)
-
-Maximum HTTP completion rounds inside one `run_coder_prompt` when `--mini`. Each round may execute multiple ` ```bash ` blocks before the next OpenRouter call. `--mini-max-bash-turns` is a deprecated hidden alias for the same flag.
-
-### `--mini-max-bash-execs <N>` (default: 128)
-
-Maximum bash fence executions across all HTTP turns in one `run_coder_prompt` when `--mini`.
 
 ### `--name <NAME>`
 
@@ -180,7 +146,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 Each run writes two parallel channels with different contracts:
 
 - **`stdout.log` (narrative):** lossy, human-oriented lines with who-tags (`m|`, `t|`, `u|`, `b|`, …). Use for skimming a run and vocabulary/ordering checks.
-- **`trace.jsonl` (audit):** machine-authoritative ACP-shaped JSONL (`agent_message_chunk`, `tool_call`, mini-only fields like `miniTerminal`, `miniHttpExchange`). Use for tool exit codes, shrink/fork events, and gate-loop audit tooling.
+- **`trace.jsonl` (audit):** machine-authoritative ACP-shaped JSONL (`agent_message_chunk`, `tool_call`, and other audit fields). Use for tool exit codes, shrink/fork events, and gate-loop audit tooling.
 
 Consumers must know which file to trust for which question. Named types live in `src/observability/` (`ObservabilityChannel`, `AuditEventKind`).
 
@@ -198,9 +164,7 @@ Before most agent-backed commands create a new run directory, malvin may prune o
 
 ## External dependencies
 
-- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `malvin models` without `--mini`, and for agent subcommands).
-- **OpenRouter** (when `--mini` or `malvin models --mini`): `OPENROUTER_API_KEY` for completions; listing works without a key. Network access required for live fetches.
-- **`bash` on `PATH`** (when `--mini`): required on Linux and macOS; Windows native is not supported in v1 (use WSL).
+- **Cursor agent CLI**: `agent` or `cursor-agent` on `PATH` (required for `malvin models` and agent subcommands).
 - **pre-commit**: optional; malvin does not install hooks automatically.
 
 ## Request syntax

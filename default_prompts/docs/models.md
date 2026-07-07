@@ -12,7 +12,7 @@ List model ids for malvin runs. No malvin prompts and no run directory under `~/
 
 ## Intention
 
-Discover valid `--model` values for other malvin commands. Default mode uses the Cursor agent CLI; `--mini` lists OpenRouter chat models for the in-process mini backend.
+Discover valid `--model` values for other malvin commands via the Cursor agent CLI.
 
 ## Usage
 
@@ -20,17 +20,11 @@ Discover valid `--model` values for other malvin commands. Default mode uses the
 malvin models [OPTIONS]
 ```
 
-### Subcommand flags
-
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `--mini` | off | Fetch live OpenRouter models instead of running `agent models` |
-
 ## Global options
 
-See `malvin --doc`. Only `--no-color` materially affects output formatting. Global `--model` is parsed but **not used** by this subcommand. Global `--mini` does **not** trigger OpenRouter listing; only `malvin models --mini` does.
+See `malvin --doc`. Only `--no-color` materially affects output formatting. Global `--model` is parsed but **not used** by this subcommand.
 
-## Behavior (default — Cursor agent CLI)
+## Behavior
 
 1. Resolve `agent` or `cursor-agent` on `PATH`.
 2. Run `<binary> models`.
@@ -38,28 +32,10 @@ See `malvin --doc`. Only `--no-color` materially affects output formatting. Glob
 4. Parse bullet-list model names when possible; otherwise print cleaned stdout verbatim.
 5. Print blank line and: `Default model: auto`.
 
-## Behavior (`--mini` — OpenRouter)
-
-1. `GET {OPENROUTER_BASE_URL}/models?output_modalities=text&sort=most-popular` (default base URL: `https://openrouter.ai/api/v1`).
-2. `OPENROUTER_API_KEY` is optional for this public catalog; when set, the same Bearer / referer headers as mini completions are sent.
-3. Print one tab-separated row per model: `slug\tname`.
-4. Print blank line and: `Default mini model: nvidia/nemotron-3-ultra-550b-a55b:free`.
-5. Network or API failures exit non-zero with an error message (no static fallback list).
-
-Environment variables (mini listing only):
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `OPENROUTER_API_KEY` | no | Optional Bearer token |
-| `OPENROUTER_HTTP_REFERER` | no | OpenRouter attribution header |
-| `OPENROUTER_BASE_URL` | no | Override API base (testing) |
-| `OPENROUTER_REQUEST_TIMEOUT` | no | HTTP timeout in seconds (default 120) |
-
 ## Examples
 
 ```text
 malvin models
-malvin models --mini
 malvin --no-color models
 malvin --model sonnet-4 kpop plan.md    # --model applies to agent subcommands, not models
 ```
