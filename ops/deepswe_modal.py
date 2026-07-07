@@ -30,10 +30,10 @@ Examples::
     modal run ops/deepswe_modal.py --grade-only --apply-solution \\
         --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
 
-    # Gate B — normative live eval (default tenacious ``malvin code`` + Harbor grade):
+    # Gate B — normative live eval (default tenacious bare ``malvin`` + Harbor grade):
     modal run ops/deepswe_modal.py \\
         --task ../deep-swe/tasks/bandit-interprocedural-taint-checks \\
-        --command code
+        --command route
 
 Local unit tests (no Modal credentials)::
 
@@ -2399,7 +2399,7 @@ def run_modal_eval(
     task_dir: Path,
     workspace: Path | None = None,
     results_dir: Path | None = None,
-    malvin_command: str = "code",
+    malvin_command: str = "route",
     checks_override: str | None = None,
     grade_only: bool = False,
     skip_grade: bool = False,
@@ -2593,8 +2593,8 @@ def run_modal_eval(
 @click.option(
     "--command",
     "malvin_command",
-    type=click.Choice(["code", "do", "hello"]),
-    default="code",
+    type=click.Choice(["route", "do", "hello"]),
+    default="route",
     show_default=True,
 )
 @click.option(
@@ -3440,7 +3440,7 @@ def _test_tier_a_before_workspace_harvest() -> None:
                         ):
                             agent_result, grade_result = run_deepswe_run_in_sandbox(
                                 image,
-                                command="code",
+                                command="route",
                                 malvin_argv=[],
                                 grade_only=False,
                                 cursor_secrets=[],
@@ -3477,7 +3477,7 @@ def _test_deepswe_exec_binary_stream_kwargs() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox):
         run_deepswe_run_in_sandbox(
             image,
-            command="code",
+            command="route",
             malvin_argv=[],
             grade_only=True,
             cursor_secrets=[],
@@ -3504,7 +3504,7 @@ def _test_harvest_binary_model_patch() -> None:
             with patch(f"{__name__}.harvest_sandbox_logs", return_value={"harvested": False}):
                 run_deepswe_run_in_sandbox(
                     image,
-                    command="code",
+                    command="route",
                     malvin_argv=[],
                     grade_only=True,
                     cursor_secrets=[],
@@ -3541,7 +3541,7 @@ def _test_grade_in_sandbox_network() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         _agent, grade_result = run_deepswe_run_in_sandbox(
             image,
-            command="code",
+            command="route",
             malvin_argv=[],
             grade_only=True,
             cursor_secrets=[],
@@ -3587,7 +3587,7 @@ def _test_agent_sandbox_network() -> None:
                 with patch(f"{__name__}.pin_cursor_api_hosts_in_sandbox") as mock_pin:
                     agent_result, grade_result = run_deepswe_run_in_sandbox(
                         image,
-                        command="code",
+                        command="route",
                         malvin_argv=[],
                         grade_only=False,
                         cursor_secrets=[],
@@ -3623,7 +3623,7 @@ def _test_agent_sandbox_open_network() -> None:
     with patch.object(modal.Sandbox, "create", return_value=fake_sandbox) as mock_create:
         agent_result, _grade = run_deepswe_run_in_sandbox(
             image,
-            command="code",
+            command="route",
             malvin_argv=[],
             grade_only=False,
             skip_grade=True,
@@ -4060,7 +4060,7 @@ def _test_mount_local_toolchain_recipe() -> None:
 
 def _test_docstring_normative_command() -> None:
     doc = __doc__ or ""
-    assert "--command code" in doc
+    assert "--command route" in doc
     assert "--background" not in doc
     assert "--max-loops 1" not in doc
     assert "Gate A" in doc

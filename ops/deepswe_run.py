@@ -1704,7 +1704,7 @@ def grade_workspace(
 
 
 def malvin_needs_task_plan(command: str) -> bool:
-    """True when the agent phase reads task ``plan.md`` (``malvin`` or ``malvin code``)."""
+    """True when the agent phase reads task ``plan.md`` (bare ``malvin plan.md``)."""
     return command in ("code", "route")
 
 
@@ -1859,7 +1859,7 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
 def run_modal_solve(
     *,
     task_dir: Path,
-    malvin_command: str = "code",
+    malvin_command: str = "route",
     checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
@@ -2348,12 +2348,12 @@ def _task_kernel_options(f: Any) -> Any:
     f = click.option(
         "--command",
         "malvin_command",
-        type=click.Choice(["route", "code", "do", "hello"]),
+        type=click.Choice(["route", "do", "hello"]),
         default="route",
         show_default=True,
         help=(
             "malvin entrypoint for the agent phase "
-            "(route: bare `malvin plan.md`; code: `malvin code plan.md`)."
+            "(route: bare `malvin plan.md` autonomous routing)."
         ),
     )(f)
     f = click.option(
@@ -2589,7 +2589,7 @@ def solve(
         task_dir=None,
         workspace=None,
         results_dir=None,
-        malvin_command="code",
+        malvin_command="route",
         checks_override=checks_override,
         runtime="host",
         skip_materialize=False,
@@ -2741,8 +2741,8 @@ def _test_solve_dry_run() -> None:
     assert "docker run" in result.output
     assert "Runtime: local-docker" in result.output
     assert "--runtime in-sandbox" in result.output
-    assert "--command code" in result.output
-    assert "--command route" not in result.output
+    assert "--command route" in result.output
+    assert "--command code" not in result.output
 
 
 def _patch_modal_cursor_credentials() -> Any:
@@ -2843,7 +2843,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     assert result.exit_code == 0, result.output
     assert captured.get("reset_flag") is True, captured
     assert captured.get("grade_only") is False, captured
-    assert captured.get("malvin_command") == "code", captured
+    assert captured.get("malvin_command") == "route", captured
 
 
 def _test_solve_local_dry_run_passes_reset() -> None:
@@ -3041,7 +3041,7 @@ def _test_write_plan_and_checks_discovers() -> None:
         write_plan_and_checks(
             spec,
             workspace,
-            command="code",
+            command="route",
             checks_override=None,
             dry_run=False,
         )
@@ -3182,7 +3182,7 @@ def _test_write_plan_and_checks_includes_patch_surface_probe() -> None:
         write_plan_and_checks(
             spec,
             workspace,
-            command="code",
+            command="route",
             checks_override=None,
             dry_run=False,
         )
@@ -3243,8 +3243,8 @@ def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Modal workspace spend limit reached" in result.output
     assert "local-docker (Modal spend-limit fallback)" in result.output
-    assert "--command code" in result.output
-    assert "--command route" not in result.output
+    assert "--command route" in result.output
+    assert "--command code" not in result.output
 
 
 def _test_tasks_command() -> None:
@@ -3847,7 +3847,7 @@ def _test_run_task_agent_phase_includes_prep() -> None:
                 task_dir=task_dir,
                 workspace=workspace,
                 results_dir=run_root,
-                malvin_command="code",
+                malvin_command="route",
                 checks_override="true",
                 runtime="host",
                 skip_materialize=True,
@@ -3906,7 +3906,7 @@ def _test_combined_path_agent_timeout_still_grades() -> None:
                 task_dir=task_dir,
                 workspace=workspace,
                 results_dir=run_root,
-                malvin_command="code",
+                malvin_command="route",
                 checks_override="true",
                 runtime="host",
                 skip_materialize=True,
@@ -3945,7 +3945,7 @@ def _test_finalize_modal_eval_skips_agent_exit_on_timed_out() -> None:
             run_root=run_root,
             spec=spec,
             workspace=Path(tmp),
-            malvin_command="code",
+            malvin_command="route",
             malvin_args=(),
             grade_only=False,
             agent_result={"timed_out": True, "exit_code": TIMEOUT_EXIT_CODE},
@@ -3982,7 +3982,7 @@ def _test_run_local_eval_in_docker_passes_backstop_timeout() -> None:
                 task_dir,
                 workspace,
                 run_root,
-                malvin_command="code",
+                malvin_command="route",
                 malvin_args=(),
                 grade_only=False,
                 skip_grade=False,
