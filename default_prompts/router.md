@@ -13,3 +13,6 @@ The user has made a request. You need to act autonomously, without further input
 How would you satify this request?
 How would you go about figuring out how to satisfy this request?
 How would you learn to figure out how to satisfy this request? Do that. Ask `inspire` for helpful ideas.
+
+When you're all done write a short summary, right here in the chat. One small textual/markdown artifact (table, Mermaid, ASCII art, etc.)
+ would be appreciated (if appropriate only; no gratuitous artifacts).

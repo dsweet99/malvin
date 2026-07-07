@@ -4,11 +4,10 @@ use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_requ
 use crate::cli::cli_request::require_cli_request;
 use crate::agent_backend::{
     agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, build_agent_backend_with_tee, AgentBackend,
+    agent_backend_set_run_timing, build_agent_backend, AgentBackend,
 };
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
-use crate::cli::{AgentStdoutTeeFlags, SharedOpts, WorkflowCliOptions};
-use crate::output::agent_stdout_tee_enabled;
+use crate::cli::{SharedOpts, WorkflowCliOptions};
 use crate::run_timing::TimingPhase;
 use clap::Args;
 
@@ -34,22 +33,12 @@ struct RouterRunPrep {
 }
 
 fn new_router_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<AgentBackend, String> {
-    let interactive = agent_stdout_tee_enabled();
-    let emit_markdown = interactive && shared.acp_stdout_markdown_enabled();
-    let tee = if interactive {
-        AgentStdoutTeeFlags {
-            emit_stdout_markdown: emit_markdown,
-            raw_output: false,
-            show_thoughts_on_stdout: false,
-        }
-    } else {
-        AgentStdoutTeeFlags {
-            emit_stdout_markdown: false,
-            raw_output: true,
-            show_thoughts_on_stdout: false,
-        }
-    };
-    build_agent_backend_with_tee(shared, workflow, tee)
+    build_agent_backend(
+        shared,
+        workflow,
+        shared.acp_stdout_markdown_enabled(),
+        "router",
+    )
 }
 
 async fn prepare_router_run(
@@ -115,24 +104,20 @@ async fn run_router_coder_prompt(
     artifacts: &RunArtifacts,
     coder: &router_flow_prompt::RouterCoderRun,
 ) -> Result<(), String> {
-    let (ref header, ref user) = coder.header_user_for_trace;
-    crate::output::set_heartbeat_stdout_suppressed(true);
-    let run = client
+    client
         .run_coder_prompt(
             &coder.combined,
             &artifacts.log_path("router"),
             "router",
             crate::acp::CoderPromptOptions {
                 llm_phase: Some(TimingPhase::Implement),
-                do_trace_split: Some((header.as_str(), user.as_str())),
+                do_trace_split: None,
                 stdout_bracket_label: None,
                 ..Default::default()
             },
         )
         .await
-        .map_err(|e| e.to_string());
-    crate::output::set_heartbeat_stdout_suppressed(false);
-    run
+        .map_err(|e| e.to_string())
 }
 
 async fn run_router_acp(

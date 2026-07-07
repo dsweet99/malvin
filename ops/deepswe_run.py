@@ -32,7 +32,7 @@ Examples::
     python ops/deepswe_run.py hello bandit-interprocedural-taint-checks  # Modal auth + CIDR smoke (no grade)
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks
     python ops/deepswe_run.py run --task ../deep-swe/tasks/bandit-interprocedural-taint-checks --grade-only
-    python ops/deepswe_run.py run --task /task --workspace /app --runtime in-sandbox --command code
+    python ops/deepswe_run.py run --task /task --workspace /app --runtime in-sandbox --command route
 
 Local unit tests (no agent run)::
 
@@ -1572,8 +1572,8 @@ def grade_workspace(
 
 
 def malvin_needs_task_plan(command: str) -> bool:
-    """True when the agent phase reads task ``plan.md`` (``malvin code``)."""
-    return command == "code"
+    """True when the agent phase reads task ``plan.md`` (``malvin`` or ``malvin code``)."""
+    return command in ("code", "route")
 
 
 def hello_probe_cmd(malvin_cmd: str, malvin_args: tuple[str, ...]) -> list[str]:
@@ -1641,11 +1641,16 @@ def run_malvin(
         cmd = [MALVIN_CMD, "do", *malvin_args]
     elif command == "hello":
         cmd = hello_probe_cmd(MALVIN_CMD, malvin_args)
-    else:
+    elif command in ("code", "route"):
         plan = workspace / "plan.md"
         if not dry_run and not plan.is_file():
             raise click.ClickException(f"Missing plan.md in workspace: {plan}")
-        cmd = [MALVIN_CMD, command, plan.name, *malvin_args]
+        if command == "route":
+            cmd = [MALVIN_CMD, plan.name, *malvin_args]
+        else:
+            cmd = [MALVIN_CMD, command, plan.name, *malvin_args]
+    else:
+        raise click.ClickException(f"Unknown malvin command: {command!r}")
     click.echo(f"Running agent: {' '.join(cmd)}")
     t0 = time.monotonic()
     if dry_run:
@@ -1722,7 +1727,7 @@ def write_metadata(out_dir: Path, payload: dict[str, Any]) -> None:
 def run_modal_solve(
     *,
     task_dir: Path,
-    malvin_command: str = "code",
+    malvin_command: str = "route",
     checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
@@ -1772,7 +1777,7 @@ def _is_modal_spend_limit_error(exc: BaseException) -> bool:
 def _run_solve_local_docker_fallback(
     task_dir: Path,
     *,
-    malvin_command: str = "code",
+    malvin_command: str = "route",
     checks_override: str | None,
     skip_grade: bool,
     apply_solution: bool,
@@ -2207,10 +2212,13 @@ def _task_kernel_options(f: Any) -> Any:
     f = click.option(
         "--command",
         "malvin_command",
-        type=click.Choice(["code", "do", "hello"]),
-        default="code",
+        type=click.Choice(["route", "code", "do", "hello"]),
+        default="route",
         show_default=True,
-        help="malvin subcommand to run for the agent phase.",
+        help=(
+            "malvin entrypoint for the agent phase "
+            "(route: bare `malvin plan.md`; code: `malvin code plan.md`)."
+        ),
     )(f)
     f = click.option(
         "--checks",
@@ -2438,14 +2446,14 @@ def solve(
     dry_run: bool,
     malvin_args: tuple[str, ...],
 ) -> None:
-    """Run malvin code and Harbor grade (Modal by default; --local for Docker)."""
+    """Run malvin and Harbor grade (Modal by default; --local for Docker)."""
     reset_workspace_flag = True
     run_task(
         local_task_name=task_name,
         task_dir=None,
         workspace=None,
         results_dir=None,
-        malvin_command="code",
+        malvin_command="route",
         checks_override=checks_override,
         runtime="host",
         skip_materialize=False,
@@ -2547,7 +2555,7 @@ def _test_docker_local_eval_cmd() -> None:
         workspace=Path("/tmp/ws"),
         run_root=Path("/tmp/run"),
         deepswe_run_py=deepswe_run_py,
-        malvin_command="code",
+        malvin_command="route",
         malvin_args=(),
         reset_workspace_flag=False,
         checks_override=None,
@@ -2556,7 +2564,7 @@ def _test_docker_local_eval_cmd() -> None:
     assert "--runtime in-sandbox" in agent_joined
     assert "--skip-grade" in agent_joined
     assert DEEPSWE_RUN_REMOTE in agent_joined
-    assert "--command code" in agent_joined
+    assert "--command route" in agent_joined
     assert "/tests:ro" not in agent_joined
     assert "task.toml" in agent_joined
     assert "instruction.md" in agent_joined
@@ -3248,9 +3256,9 @@ def _test_run_malvin_uses_plan_name_not_at_notation() -> None:
             return subprocess.CompletedProcess(cmd, 0)
 
         with patch("subprocess.run", fake_run):
-            run_malvin(workspace, command="code", malvin_args=(), dry_run=False)
-        assert captured["cmd"][2] == "plan.md"
-        assert "@" not in captured["cmd"][2]
+            run_malvin(workspace, command="route", malvin_args=(), dry_run=False)
+        assert captured["cmd"][1] == "plan.md"
+        assert "@" not in captured["cmd"][1]
 
 
 def _test_run_malvin_do_uses_prompt_not_plan() -> None:

@@ -125,3 +125,46 @@ fn cli_accepts_default_route_request() {
     assert!(cli.command.is_none());
     assert_eq!(cli.request.as_deref(), Some("route this task"));
 }
+
+#[test]
+fn router_client_uses_kpop_style_agent_io_not_do_style() {
+    use crate::agent_backend::build_agent_backend;
+    use crate::cli::{SharedOpts, WorkflowCliOptions};
+
+    let shared = SharedOpts {
+        model: crate::config::DEFAULT_CLI_MODEL.into(),
+        no_force: true,
+        no_tenacious: false,
+        no_tee: true,
+        no_markdown: false,
+        verbose: false,
+        max_acp_retries: crate::config::DEFAULT_MAX_ACP_RETRIES,
+        doc: false,
+        name: None,
+        mini: false,
+        mini_max_bash_turns: 32,
+        mini_max_http_turns: 32,
+        mini_max_bash_execs: 128,
+        mini_max_http_retries: 0,
+        mini_max_transport_retries: crate::support_paths::DEFAULT_MAX_MINI_TRANSPORT_RETRIES,
+        mini_max_gate_retries: 0,
+        mini_max_shrink_passes: 0,
+    };
+    let backend = build_agent_backend(
+        &shared,
+        WorkflowCliOptions { force: false },
+        shared.acp_stdout_markdown_enabled(),
+        "router",
+    )
+    .expect("backend");
+    let io = match backend {
+        crate::agent_backend::AgentBackend::Acp(c) => c.io,
+        crate::agent_backend::AgentBackend::Mini(c) => c.io,
+    };
+    assert!(
+        !io.raw_output,
+        "bare route must use styled logging, not do-style raw_output"
+    );
+    assert!(io.show_thoughts_on_stdout);
+    assert!(io.emit_stdout_markdown);
+}

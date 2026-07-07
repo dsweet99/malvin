@@ -8,6 +8,8 @@ use crate::prompts::{HEADER_MD, PromptError, PromptStore, ROUTER_MD};
 
 pub(crate) struct RouterCoderRun {
     pub combined: String,
+    /// Dual-header parts from prompt assembly; retained for tests (stdout uses uniform trace like kpop).
+    #[allow(dead_code)]
     pub header_user_for_trace: (String, String),
 }
 
