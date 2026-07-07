@@ -7,6 +7,8 @@ malvin kpop --help      # Empirical reasoner, hypothesizes and falsifies
 malvin inspire --help   # Idea generator, explores creatively
 ```
 
+Caveat: Don't use '--mini'. It's not working yet.
+
 The user has made a request. You need to act autonomously, without further input from the user. You need to satisfy the request as accurately and as precisely as you can. When uncertain, make decisions. Your goal is to satisfy the request from the perspective of the requesting user.
 
 How would you satify this request?
