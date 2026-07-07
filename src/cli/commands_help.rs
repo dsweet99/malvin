@@ -71,6 +71,12 @@ pub fn print_commands_only_help() -> io::Result<()> {
 mod tests {
     use super::*;
 
+    fn help_lists_subcommand(cmd: &Command, name: &str) -> bool {
+        format_command_lines(&visible_subcommands(cmd))
+            .iter()
+            .any(|line| line.starts_with(&format!("  {name}")))
+    }
+
     #[test]
     fn commands_only_help_lines_includes_command_usage_and_epilog() {
         let cmd = Cli::command();
@@ -85,9 +91,10 @@ mod tests {
     #[test]
     fn render_commands_only_help_lists_subcommands_not_options() {
         let help = render_commands_only_help();
+        let cmd = Cli::command();
         assert!(help.contains("Commands:"));
-        assert!(help.contains("code"));
-        assert!(help.contains("kpop"));
+        assert!(!help_lists_subcommand(&cmd, "code"));
+        assert!(help_lists_subcommand(&cmd, "kpop"));
         assert!(help.contains("Usage: malvin [OPTIONS] [REQUEST]"));
         assert!(help.contains("malvin [OPTIONS] <COMMAND>"));
         assert!(help.contains("malvin --help"));
@@ -116,15 +123,14 @@ mod tests {
             .into_iter()
             .map(|sub| sub.get_name().to_string())
             .collect();
-        assert!(names.contains(&"code".to_string()));
-        assert!(names.contains(&"kpop".to_string()));
+        assert!(!names.iter().any(|n| n == "code"));
     }
 
     #[test]
     fn format_command_lines_aligns_names() {
         let cmd = Cli::command();
         let lines = format_command_lines(&visible_subcommands(&cmd));
-        assert!(lines.iter().any(|line| line.starts_with("  code")));
+        assert!(lines.iter().any(|line| line.starts_with("  kpop")));
     }
 
     #[test]

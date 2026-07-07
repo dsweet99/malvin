@@ -12,7 +12,7 @@ One **single-turn** agent session: no gate loop, no KPop experiment log, no revi
 
 ## Intention
 
-Answer a question, perform a one-off task, or continue informal work without the `code` pipeline. Suitable for terminals and pipes.
+Answer a question, perform a one-off task, or continue informal work without a gate-loop pipeline. Suitable for terminals and pipes.
 
 ## Usage
 
@@ -24,7 +24,7 @@ malvin do [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as `code`).
+Exactly **one shell argument**. Quote for internal spaces (e.g. `malvin do "fix the typo"`). Literal text, or an existing `.md` file path (same rules as bare `malvin REQUEST`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -63,7 +63,7 @@ With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo in
 
 ## Session behavior
 
-- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `code` and `tidy`).
+- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `tidy`).
 - Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
@@ -71,7 +71,6 @@ With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo in
 
 | Command | When |
 |---------|------|
-| `malvin code` | Multi-iteration plan implementation |
 | `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
 | `malvin do Hello` | One-turn Cursor ACP connectivity smoke check |
 

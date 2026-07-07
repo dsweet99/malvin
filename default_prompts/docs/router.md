@@ -7,12 +7,12 @@ One **single-turn** agent session with autonomous routing brief: no gate loop, n
 | | |
 |---|---|
 | Input | `<REQUEST>` text or existing `.md` path |
-| Output | Styled stdout on a TTY (same startup chrome as `code` / `kpop` / `tidy`) |
+| Output | Styled stdout on a TTY (same startup chrome as `kpop` / `tidy`) |
 | Log | `router.log` under `~/.malvin_home/logs/<hash>/<run>/` |
 
 ## Intention
 
-Let the agent read the user request and decide how to satisfy it — including invoking other malvin commands such as `kpop`, `inspire`, or `code`. Suitable when the right workflow is not known upfront.
+Let the agent read the user request and decide how to satisfy it — including invoking other malvin commands such as `kpop` or `inspire`. Suitable when the right workflow is not known upfront.
 
 ## Usage
 
@@ -26,7 +26,7 @@ There is no `router` subcommand. Bare `malvin REQUEST` is the default autonomous
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `do` and `code`).
+Exactly **one shell argument**. Quote for internal spaces. Literal text, or an existing `.md` file path (same rules as `do`).
 
 | Form | Work directory | Stored as |
 |------|----------------|-----------|
@@ -49,7 +49,7 @@ One coder prompt per invocation:
 | Piece | Role |
 |-------|------|
 | `header.md` | Standard Malvin coding context (log-reading, calibration, sandbox rules) |
-| `router.md` | Autonomous routing brief; points agent at `kpop` / `inspire` / `code` |
+| `router.md` | Autonomous routing brief; points agent at `kpop` / `inspire` |
 | User request | Appended after headers |
 
 ### Required template keys
@@ -75,7 +75,6 @@ No implement, review, concerns, learn, or summary phases.
 |---------|------|
 | `malvin do` | One-turn direct answer without routing brief |
 | `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
-| `malvin code` | Multi-iteration plan implementation |
 | `malvin inspire` | Creative ideation without routing |
 
 ## Examples

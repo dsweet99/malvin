@@ -61,5 +61,5 @@ Environment variables (mini listing only):
 malvin models
 malvin models --mini
 malvin --no-color models
-malvin --model sonnet-4 code plan.md    # --model applies to code, not models
+malvin --model sonnet-4 kpop plan.md    # --model applies to agent subcommands, not models
 ```

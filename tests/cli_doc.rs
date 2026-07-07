@@ -17,49 +17,30 @@ fn malvin_doc_prints_full_malvin_md() {
 }
 
 #[test]
-fn malvin_code_without_request_shows_short_usage_and_exits_zero() {
+fn malvin_code_is_deprecated() {
     let bin = env!("CARGO_BIN_EXE_malvin");
-    let bare = std::process::Command::new(bin)
-        .args(["code"])
-        .output()
-        .expect("spawn malvin code");
-    let help = std::process::Command::new(bin)
-        .args(["code", "--help"])
-        .output()
-        .expect("spawn malvin code --help");
-    assert!(
-        bare.status.success(),
-        "stderr={}",
-        String::from_utf8_lossy(&bare.stderr)
-    );
-    assert!(help.status.success());
-    let bare_s = String::from_utf8_lossy(&bare.stdout);
-    let help_s = String::from_utf8_lossy(&help.stdout);
-    assert_ne!(
-        bare.stdout, help.stdout,
-        "malvin code must not duplicate full --help"
-    );
-    assert!(bare_s.contains("Write code"), "code stdout: {bare_s}");
-    assert!(
-        bare_s.contains("Usage: malvin code") && bare_s.contains("PLAN"),
-        "code stdout must show PLAN usage: {bare_s}"
-    );
-    assert!(
-        bare_s.contains("malvin code --help"),
-        "code stdout must point to --help: {bare_s}"
-    );
-    assert!(
-        !bare_s.contains("Options:"),
-        "code stdout must omit options: {bare_s}"
-    );
-    assert!(
-        help_s.contains("Options:"),
-        "full help must list options: {help_s}"
-    );
-    assert!(
-        help_s.contains("--max-loops"),
-        "full help must list code flags: {help_s}"
-    );
+    for args in [
+        &["code"][..],
+        &["code", "plan.md"][..],
+        &["code", "--help"][..],
+        &["code", "--doc"][..],
+    ] {
+        let out = std::process::Command::new(bin)
+            .args(args)
+            .output()
+            .unwrap_or_else(|e| panic!("spawn malvin {args:?}: {e}"));
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "malvin {args:?} must exit 1; stderr={}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains("deprecated"),
+            "malvin {args:?} stderr must mention deprecation: {stderr}"
+        );
+    }
 }
 
 #[test]
@@ -142,6 +123,10 @@ fn bare_malvin_shows_commands_only_and_exits_zero() {
     assert!(
         bare_s.contains("kpop"),
         "bare stdout must list kpop subcommand: {bare_s}"
+    );
+    assert!(
+        !bare_s.lines().any(|line| line.starts_with("  code ")),
+        "bare stdout must omit deprecated code subcommand: {bare_s}"
     );
     assert!(
         bare_s.contains("malvin --help"),

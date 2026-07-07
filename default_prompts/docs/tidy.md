@@ -13,7 +13,7 @@ Bring the workspace back to a **gate-clean** state using the KPop gate loop scop
 
 ## Intention
 
-Recover after failed `code` pre-checks, CI drift, or local gate failures—without a feature plan.
+Recover after CI drift or local gate failures—without a feature plan.
 
 ## Usage
 
@@ -54,7 +54,7 @@ See `malvin --doc`.
 1. Each outer iteration renders `tidy_constraints.md` through `kpop_program.md` into `plan.md`, then runs one KPop session (`header.md` + `kpop_common.md`).
 2. Agent logs hypotheses and test results to `_kpop/exp_log_<iteration>.md`.
 3. Early exit when workspace gates pass.
-4. Unlike `code`, tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
+4. Tidy does **not** recheck gates after a fully exhausted loop (`recheck_gates_after_exhausted: false`).
 
 ## Prompt roles
 
@@ -64,15 +64,6 @@ See `malvin --doc`.
 | `kpop_program.md` | Rendered into `plan.md` — scope + quality gates |
 | `kpop_common.md` | Popper method; log to experiment log |
 | `header.md` | Prepended on each session |
-
-## Comparison to `code`
-
-| | `tidy` | `code` |
-|---|--------|--------|
-| User plan | None | `plan.md` from request |
-| Skip agent if gates pass | Yes | No |
-| Constraints file | `tidy_constraints.md` | `code_constraints.md` |
-| Recheck gates after exhaustion | No | Yes |
 
 ## Artifacts
 
@@ -84,5 +75,4 @@ See `malvin --doc`.
 ```text
 malvin tidy
 malvin tidy --max-loops 5
-malvin tidy && malvin code plan.md
 ```

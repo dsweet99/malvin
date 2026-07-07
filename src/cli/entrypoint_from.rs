@@ -39,7 +39,6 @@ fn entrypoint_short_help_when_request_missing(
 fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
     let command = cli.command.as_ref()?;
     let (request, subcommand) = match command {
-        Commands::Code(code) => (code.requests.first(), "code"),
         Commands::Inspire(inspire) => (inspire.request.as_ref(), "inspire"),
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
         Commands::Kpop(kpop) => (kpop.requests.first(), "kpop"),
@@ -169,6 +168,10 @@ pub fn entrypoint_from(
     args: impl IntoIterator<Item = impl Into<std::ffi::OsString> + Clone>,
 ) -> Exit {
     crate::init_from_env();
+    let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    if let Some(exit) = crate::cli::deprecated_code::exit_if_code_subcommand(&args) {
+        return exit;
+    }
     match parse_cli_args_or_exit(args) {
         Ok((cli, matches)) => run_entrypoint(cli, matches),
         Err(exit) => exit,

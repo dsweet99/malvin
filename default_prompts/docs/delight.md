@@ -9,13 +9,13 @@ Author a **user-delighting feature pitch** via the KPop gate loop scoped by `del
 | Input | Optional guidance text or `.md` path |
 | Output | Workspace file at `--out-path` (default: `pitch.md`) |
 | Loop | Full gate-kpop loop (`KPopHardConstraints::DELIGHT`) |
-| Fast path | **None** — always runs the agent (like `code`, unlike `tidy`) |
+| Fast path | **None** — always runs the agent (unlike `tidy`) |
 | Exit policy | Valid non-empty output at `--out-path`; workspace gates need not pass |
 | Requires | No `.malvin/checks` preflight at CLI entry (document workflow, like `explain` / `revise`) |
 
 ## Intention
 
-Generate a fresh, repo-grounded pitch for a feature or improvement that would delight the user — without overwriting an existing pitch file. Typical pipeline: `malvin delight` → `malvin code <out-path>`.
+Generate a fresh, repo-grounded pitch for a feature or improvement that would delight the user — without overwriting an existing pitch file. Typical pipeline: `malvin delight` → bare `malvin REQUEST` with the pitch path.
 
 ## Usage
 
@@ -70,7 +70,6 @@ On success, malvin prints `DONE` to stdout.
 | Command | When |
 |---------|------|
 | `malvin inspire` | One-shot MBC2 ideation; no pitch file |
-| `malvin code` | Implement a plan via the gate loop |
 
 ## Examples
 
@@ -79,5 +78,5 @@ malvin delight
 malvin delight "Improve error messages for gate failures"
 malvin delight guidance.md
 malvin delight --out-path plans/feature.md
-malvin code plans/feature.md
+malvin "Implement the plan in plans/feature.md"
 ```

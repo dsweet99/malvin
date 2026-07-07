@@ -9,6 +9,11 @@ fn parse(argv: &[&str]) -> Cli {
         .0
 }
 
+fn help_lists_subcommand_line(help: &str, name: &str) -> bool {
+    help.lines()
+        .any(|line| line.starts_with(&format!("  {name} ")))
+}
+
 #[test]
 fn kpop_request_parses() {
     let cli = parse(&["malvin", "kpop", "investigate"]);
@@ -64,7 +69,8 @@ fn bare_request_without_subcommand_parses_as_default_route() {
 fn cli_help_lists_kpop_subcommand() {
     let mut cmd = Cli::command();
     let help = cmd.render_help().to_string();
-    assert!(help.contains("kpop"));
+    assert!(!help_lists_subcommand_line(&help, "code"));
+    assert!(help_lists_subcommand_line(&help, "kpop"));
     assert!(help.contains("do"));
     assert!(!help.contains("router"));
     assert!(!help.contains("@code"));

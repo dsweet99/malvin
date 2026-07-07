@@ -109,15 +109,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_subcommand_short_help_code_omits_options() {
+    fn render_subcommand_short_help_code_still_builds_when_hidden() {
         let help = render_subcommand_short_help("code").expect("code subcommand");
-        assert!(help.contains("Write code"));
         assert!(help.contains("Usage: malvin code"));
-        assert!(help.contains("PLAN"));
-        assert!(help.contains("Arguments:"));
-        assert!(help.contains("malvin code --help"));
-        assert!(!help.contains("Options:"));
-        assert!(!help.contains("--max-loops"));
     }
 
     #[test]

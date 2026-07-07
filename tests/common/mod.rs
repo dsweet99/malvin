@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+mod assert_code_deprecated;
 mod git_test_helpers;
 mod acp_code_fanout_mocks;
 mod acp_code_run;
@@ -95,6 +96,7 @@ pub use live_agent::{
     LIVE_AGENT_CMD_TIMEOUT,
 };
 pub use process::{MALVIN_TEST_CMD_TIMEOUT, command_output_with_timeout};
+pub use assert_code_deprecated::assert_code_deprecated;
 #[cfg(unix)]
 pub use code_harness::{spawn_code, CodeSpawn};
 #[cfg(unix)]

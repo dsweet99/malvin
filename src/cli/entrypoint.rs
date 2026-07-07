@@ -4,7 +4,7 @@ use super::{
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
-/// Bare `malvin REQUEST`, `kpop`, `do`, `code`, `tidy`, and `delight` accept `--name`.
+/// Bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight` accept `--name`.
 pub(crate) const fn command_accepts_session_name(command: &Commands) -> bool {
     matches!(
         command,
@@ -21,7 +21,7 @@ pub(crate) const fn unsupported_name_error(command: &Commands) -> Option<&'stati
         return None;
     }
     Some(
-        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `code`, `tidy`, and `delight`",
+        "`--name` is only supported for bare `malvin REQUEST`, `kpop`, `do`, `tidy`, and `delight`",
     )
 }
 

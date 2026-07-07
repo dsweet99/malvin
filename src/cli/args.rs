@@ -42,7 +42,8 @@ pub enum Commands {
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),
-    /// Write code
+    /// Write code (deprecated; hidden from help)
+    #[command(hide = true)]
     Code(crate::cli::code_flow::CodeArgs),
     /// Reason scientifically
     Kpop(KpopArgs),

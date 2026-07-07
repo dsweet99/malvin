@@ -33,8 +33,8 @@ fn entrypoint_from_bare_malvin_exits_success() {
 }
 
 #[test]
-fn entrypoint_from_code_without_request_exits_success() {
-    assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Success);
+fn entrypoint_from_code_is_deprecated() {
+    assert_eq!(entrypoint_from(["malvin", "code"]), Exit::Failure);
 }
 
 #[test]

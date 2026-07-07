@@ -9,7 +9,7 @@ Produce a short, reader-friendly **LaTeX explanation** via the KPop gate loop sc
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | `explain.tex` and `explain.pdf` in the request work directory (override with `--out-path`) |
 | Loop | Full gate-kpop loop (`KPopHardConstraints::EXPLAIN`) |
-| Fast path | **None** — always runs the agent (like `code` / `delight`, unlike `tidy`) |
+| Fast path | **None** — always runs the agent (like `delight`, unlike `tidy`) |
 | Exit policy | Valid non-empty tex and pdf outputs; workspace gates need not pass |
 | Requires | No `.malvin/checks` preflight (document workflow, like `delight` / `revise`) |
 
@@ -27,7 +27,7 @@ malvin explain [OPTIONS] <REQUEST>
 
 ### `<REQUEST>` (required)
 
-Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `inspire` / `code`).
+Exactly **one shell argument**. Quote for internal spaces. Topic as literal text, or an existing `.md` file path (same rules as `inspire`).
 
 When `REQUEST` names an existing `.md` file, the work directory is that file's parent; otherwise the work directory is `.` (cwd). With the default `--out-path`, outputs land in that work directory. A custom `--out-path` resolves against the current working directory instead.
 
@@ -72,7 +72,6 @@ On success, malvin prints `DONE` to stdout.
 | `malvin inspire` | One-shot MBC2 ideation |
 | `malvin delight` | Author a feature pitch |
 | `malvin revise` | Prose clarity pass on an existing document (runs automatically after `explain`; also available standalone) |
-| `malvin code` | Implement a plan via the gate loop |
 
 ## Examples
 

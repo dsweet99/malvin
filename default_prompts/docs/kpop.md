@@ -1,6 +1,6 @@
 # malvin kpop
 
-**KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `code` / `tidy`—focused on understanding, not shipping a pre-written plan.
+**KPOP** (Popperian investigation): hypothesis-driven exploration with an experiment log under `_kpop/`. Distinct from gate-loop `tidy`—focused on understanding, not shipping a pre-written plan.
 
 ## Summary
 
@@ -45,7 +45,7 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 
 ## Global options
 
-See `malvin --doc`. Does **not** require workspace quality gates at CLI entry (unlike `code` / `tidy`).
+See `malvin --doc`. Does **not** require workspace quality gates at CLI entry (unlike `tidy`).
 
 ## Session architecture
 
@@ -98,7 +98,6 @@ Stops when any of:
 | Command | When |
 |---------|------|
 | `malvin inspire` | Creative MBC2 ideas, not hypothesis testing |
-| `malvin code` | Implement a plan with gate loop + `code_constraints.md` |
 | `malvin do` | Single-turn task without KPop logging |
 
 ## Examples

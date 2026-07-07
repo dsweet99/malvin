@@ -12,7 +12,7 @@ One **single-turn** MBC2 (boundary exploration) session: structurally distant id
 
 ## Intention
 
-Batch creative exploration separate from the `kpop` hypothesis loop. Use before committing to `code` or a long investigation.
+Batch creative exploration separate from the `kpop` hypothesis loop. Use before committing to a long investigation or implementation run.
 
 ## Usage
 
@@ -36,7 +36,7 @@ Exactly **one** coder prompt: rendered `mbc2.md` only (no coding header or repo 
 
 ## Session behavior
 
-- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `do`, `code`, and `tidy`).
+- Ensures `~/.malvin_home/config.toml` exists with defaults (same as `do` and `tidy`).
 - Backs up `.gitignore`, `.malvin/checks`, `.malvin/config.toml`, and `~/.malvin_home/config.toml`; restores after the session.
 - Checks `result.md` for `ABORT:` after the session.
 
