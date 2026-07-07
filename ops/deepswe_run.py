@@ -59,7 +59,12 @@ from unittest.mock import MagicMock, patch
 
 import click
 
-from sandbox_prep import prepare_task_sandbox
+from sandbox_prep import (
+    collect_pip_install_intents,
+    pins_for_task,
+    prepare_task_sandbox,
+    registry_image_cache_bust_commands,
+)
 from toolchain_repos import (
     malvin_repo_root,
     resolve_malvin_cmd,
@@ -246,6 +251,103 @@ def read_task_language(task_dir: Path) -> str:
     if isinstance(language, str) and language.strip():
         return language.strip()
     return "?"
+
+
+def goal_task_ids(deepswe_opt: Path | None = None) -> list[str]:
+    """Return the 34 Python goal task ids from ``deepswe_opt.md``."""
+    path = deepswe_opt or (malvin_repo_root() / "deepswe_opt.md")
+    if not path.is_file():
+        return []
+    ids: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        token = line.strip()
+        if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)+", token):
+            ids.append(token)
+    return ids
+
+
+def audit_task_entry(
+    task_dir: Path,
+    *,
+    require_python_baseline: bool,
+) -> dict[str, Any]:
+    """Collect harness audit fields for one Harbor task."""
+    spec = parse_task_dir(task_dir)
+    dockerfile_text = (
+        spec.dockerfile.read_text(encoding="utf-8") if spec.dockerfile.is_file() else ""
+    )
+    intents = collect_pip_install_intents(dockerfile_text) if dockerfile_text else []
+    pins = pins_for_task(
+        spec.dockerfile if spec.dockerfile.is_file() else None,
+        task_dir / "environment",
+    )
+    baseline = harbor_baseline_check_lines(spec.tests_dir)
+    runnable = [line for line in baseline if is_runnable_check_line(line)]
+    patch_targets = patch_surface_targets(
+        task_dir,
+        tests_dir=spec.tests_dir,
+        harbor_baseline=runnable,
+    )
+    language = read_task_language(task_dir)
+    failures: list[str] = []
+    if require_python_baseline and language == "python" and not runnable:
+        failures.append("no_runnable_baseline")
+    if runnable and patch_targets:
+        failures.append("patch_surface_with_baseline")
+    return {
+        "task_id": spec.task_id,
+        "language": language,
+        "pip_intents": intents,
+        "pins": pins,
+        "cache_bust": registry_image_cache_bust_commands(
+            spec.dockerfile if spec.dockerfile.is_file() else None,
+            task_dir / "environment",
+        ),
+        "baseline": baseline,
+        "runnable_baseline": runnable,
+        "patch_surface_count": len(patch_targets),
+        "failures": failures,
+    }
+
+
+def run_deepswe_audit(
+    *,
+    goal_only: bool = True,
+    report: bool = False,
+) -> int:
+    """Audit Harbor tasks for harness readiness; exit 1 when goal tasks fail."""
+    tasks_root = default_deepswe_tasks_root()
+    if not tasks_root.is_dir():
+        raise click.ClickException(f"DeepSWE tasks directory not found: {tasks_root}")
+    if goal_only and not report:
+        task_ids = goal_task_ids()
+    else:
+        task_ids = list_deepswe_tasks()
+    failed = 0
+    for task_id in task_ids:
+        task_dir = tasks_root / task_id
+        if not task_dir.is_dir():
+            click.echo(f"{task_id}\tMISSING")
+            failed += 1
+            continue
+        entry = audit_task_entry(
+            task_dir,
+            require_python_baseline=goal_only and not report,
+        )
+        status = "ok" if not entry["failures"] else "FAIL"
+        if entry["failures"]:
+            failed += 1
+        baseline_preview = entry["runnable_baseline"][:1]
+        click.echo(
+            f"{task_id}\t{status}\tbaseline={baseline_preview!r}\t"
+            f"pins={len(entry['pins'])}\tpatch_surface={entry['patch_surface_count']}\t"
+            f"failures={entry['failures']}"
+        )
+    if failed:
+        click.echo(f"audit failed: {failed}/{len(task_ids)} tasks", err=True)
+        return 1
+    click.echo(f"audit passed: {len(task_ids)} tasks")
+    return 0
 
 
 def list_deepswe_tasks() -> list[str]:
@@ -748,10 +850,23 @@ def discover_deepswe_check_lines(
     *,
     tests_dir: Path | None = None,
 ) -> list[str]:
-    """DeepSWE checks discovery: Harbor test.patch, pre-commit/Makefile, existing checks."""
-    signal_lines: list[str] = []
+    """DeepSWE checks discovery: Harbor baseline first, then supplemental signals."""
+    harbor: list[str] = []
     if tests_dir is not None:
-        signal_lines.extend(harbor_patch_check_lines(tests_dir))
+        harbor = [
+            line
+            for line in harbor_baseline_check_lines(tests_dir)
+            if is_runnable_check_line(line)
+        ]
+    if harbor:
+        lines = list(harbor)
+        if os.environ.get("DEEPSWE_AGENT_NEW_TESTS") == "1":
+            new_line = harbor_new_tests_check_line(root, tests_dir=tests_dir)
+            if new_line and is_runnable_check_line(new_line):
+                lines.append(new_line)
+        return dedupe_check_lines(lines)
+
+    signal_lines: list[str] = []
     precommit = precommit_hook_entries(root)
     makefile = makefile_gate_targets(root)
     if precommit:
@@ -830,13 +945,51 @@ def _hook_class_names(hooks: list[tuple[str, str]]) -> set[str]:
     return names
 
 
+def python_import_roots(workspace: Path) -> list[str]:
+    """Return ``PYTHONPATH`` roots for importing the task workspace."""
+    roots: list[str] = []
+    src = workspace / "src"
+    if src.is_dir():
+        roots.append(str(src))
+    roots.append(str(workspace.resolve()))
+    return roots
+
+
+def _import_class_preflight(workspace: Path, qual: str) -> bool:
+    """True when *qual* class module imports under workspace roots."""
+    module_name, _, class_name = qual.rpartition(".")
+    if not module_name or not class_name:
+        return False
+    script = (
+        "import importlib, sys\n"
+        f"sys.path[:0] = {python_import_roots(workspace)!r}\n"
+        f"importlib.import_module({module_name!r})\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return proc.returncode == 0
+
+
 def patch_surface_targets(
     workspace: Path,
     *,
     tests_dir: Path | None = None,
     hooks: list[tuple[str, str]] | None = None,
+    harbor_baseline: list[str] | None = None,
 ) -> list[tuple[str, str]]:
     """Select class attributes Harbor-style tests are likely to monkeypatch."""
+    if harbor_baseline is None and tests_dir is not None:
+        harbor_baseline = [
+            line
+            for line in harbor_baseline_check_lines(tests_dir)
+            if is_runnable_check_line(line)
+        ]
+    if harbor_baseline:
+        return []
     if hooks is None:
         hooks = scan_pytest_monkeypatch_hooks(workspace)
         if tests_dir is not None:
@@ -857,7 +1010,10 @@ def patch_surface_targets(
         if short in hook_names or len(attrs) >= 2:
             selected.update((qual, attr) for attr in attrs)
     ordered = sorted(selected)
-    return ordered[:_PATCH_SURFACE_PROBE_MAX_TARGETS]
+    filtered = [
+        pair for pair in ordered if _import_class_preflight(workspace, pair[0])
+    ]
+    return filtered[:_PATCH_SURFACE_PROBE_MAX_TARGETS]
 
 
 def render_patch_surface_probe(targets: list[tuple[str, str]]) -> str:
@@ -998,11 +1154,18 @@ def write_plan_and_checks(
         if deadline is not None and _remaining_sec(deadline) <= 0:
             return False
         checks = discover_deepswe_checks(workspace, tests_dir=tests_dir or spec.tests_dir)
+    harbor_baseline = [
+        line
+        for line in harbor_baseline_check_lines(tests_dir or spec.tests_dir)
+        if is_runnable_check_line(line)
+    ]
     if not dry_run:
         if deadline is not None and _remaining_sec(deadline) <= 0:
             return False
         patch_targets = patch_surface_targets(
-            workspace, tests_dir=tests_dir or spec.tests_dir,
+            workspace,
+            tests_dir=tests_dir or spec.tests_dir,
+            harbor_baseline=harbor_baseline,
         )
         if patch_targets:
             probe_path = malvin_dir / "patch_surface_probe.py"
@@ -1036,10 +1199,249 @@ _HARBOR_NEW_MODE_PYTEST_RE = re.compile(
     re.MULTILINE,
 )
 
-_HARBOR_PATCH_BASE_MODE_PYTEST_RE = re.compile(
-    r"base\)\s*\n(?:[ \t]*echo[^\n]*\n)*[ \t]*(?P<cmd>[^\n]+)",
-    re.MULTILINE,
+_OFFLINE_UNSAFE_CMD_RE = re.compile(
+    r"^\s*(?:pip3?\s+install|npm\s+install|apt-get|curl\s|wget\s|git\s)",
+    re.I,
 )
+_BASE_TRIGGER_RES = (
+    re.compile(r'^\s*if\s+\[\[\s*"\$\{?(?:mode|MODE)\}?"\s*==\s*"base"\s*\]\]', re.I),
+    re.compile(r'^\s*if\s+\[\[\s*"\$(?:mode|MODE)"\s*==\s*"base"\s*\]\]', re.I),
+    re.compile(r'^\s*(?:if|elif)\s+\[\s*"\$(?:MODE|1|mode)"\s*=\s*"base"\s*\]', re.I),
+    re.compile(r"^\s*base\)\s*$", re.I),
+)
+_TEST_RUNNER_MARKERS = (
+    "pytest",
+    "stestr",
+    "vitest",
+    "pnpm",
+    "python -c",
+    "python3 -c",
+)
+
+
+def _join_shell_continuations(lines: list[str]) -> list[str]:
+    joined: list[str] = []
+    buf = ""
+    for raw in lines:
+        line = raw.rstrip()
+        if not line.strip():
+            if buf:
+                joined.append(buf.strip())
+                buf = ""
+            continue
+        if line.rstrip().endswith("\\"):
+            buf += line.rstrip()[:-1].strip() + " "
+            continue
+        if buf:
+            joined.append((buf + line.strip()).strip())
+            buf = ""
+        else:
+            joined.append(line.strip())
+    if buf:
+        joined.append(buf.strip())
+    return joined
+
+
+def _parse_shell_functions(script: str) -> dict[str, str]:
+    funcs: dict[str, str] = {}
+    for match in re.finditer(
+        r"^(?:function\s+)?(\w+)\s*\(\)\s*\{",
+        script,
+        re.MULTILINE,
+    ):
+        name = match.group(1)
+        start = match.end()
+        depth = 1
+        index = start
+        while index < len(script) and depth:
+            ch = script[index]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+            index += 1
+        funcs[name] = script[start : index - 1]
+    return funcs
+
+
+def _parse_shell_array(script: str, name: str) -> list[str]:
+    match = re.search(
+        rf"{re.escape(name)}=\(\s*(.*?)\s*\)",
+        script,
+        re.DOTALL,
+    )
+    if not match:
+        return []
+    body = match.group(1)
+    return re.findall(r'"([^"]+)"', body) or re.findall(r"'([^']+)'", body) or [
+        line.strip()
+        for line in body.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def _parse_shell_scalar(script: str, name: str) -> str | None:
+    match = re.search(rf'^{re.escape(name)}="([^"]*)"', script, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _extract_block_body(lines: list[str], start: int) -> tuple[list[str], int]:
+    line = lines[start]
+    if re.search(r"base\)\s*$", line, re.I):
+        body: list[str] = []
+        index = start + 1
+        while index < len(lines):
+            current = lines[index]
+            if re.match(r"^\s*(?:new|\*\)|\w+\))\s*", current):
+                break
+            if re.match(r"^\s*;;\s*$", current):
+                break
+            body.append(current)
+            index += 1
+        return body, index
+
+    index = start + 1
+    if index < len(lines) and lines[index].strip() == "then":
+        index += 1
+    depth = 0
+    body = []
+    while index < len(lines):
+        current = lines[index]
+        stripped = current.strip()
+        if re.match(r"^\s*(?:elif|else)\s", current) and depth == 0:
+            break
+        if stripped == "fi" and depth == 0:
+            break
+        if re.match(r"^\s*if\s", current):
+            depth += 1
+        if stripped == "fi":
+            depth -= 1
+        body.append(current)
+        index += 1
+    return body, index
+
+
+def _find_base_mode_body(script: str) -> str | None:
+    lines = script.splitlines()
+    for index, line in enumerate(lines):
+        if not any(pattern.search(line) for pattern in _BASE_TRIGGER_RES):
+            continue
+        body_lines, _ = _extract_block_body(lines, index)
+        if body_lines:
+            return "\n".join(body_lines)
+    return None
+
+
+def _normalize_runner_command(cmd: str) -> str:
+    out = cmd.strip()
+    out = re.sub(r"^\$PYTHON\b", "python3", out)
+    out = re.sub(r"^\$\{PYTHON\}", "python3", out)
+    out = re.sub(r'^"\$PYTHON_BIN"', "python3", out)
+    out = out.replace('"${PYTHON_BIN}"', "python3")
+    out = out.replace("$PYTHON_BIN", "python3")
+    return out.strip()
+
+
+def _expand_function_calls(body: str, funcs: dict[str, str], script: str) -> str:
+    expanded: list[str] = []
+    for raw in body.splitlines():
+        line = raw.strip()
+        call = re.match(r"^(\w+)\s*$", line)
+        if call and call.group(1) in funcs:
+            expanded.extend(funcs[call.group(1)].splitlines())
+            continue
+        expanded.append(raw)
+    return "\n".join(expanded)
+
+
+def _commands_from_base_body(body: str, script: str) -> list[str]:
+    funcs = _parse_shell_functions(script)
+    body = _expand_function_calls(body, funcs, script)
+    lines = _join_shell_continuations(body.splitlines())
+    commands: list[str] = []
+    index = 0
+    while index < len(lines):
+        line = lines[index].strip()
+        index += 1
+        if not line or line.startswith("#"):
+            continue
+        if _OFFLINE_UNSAFE_CMD_RE.match(line):
+            continue
+        if line.startswith("echo"):
+            continue
+        if re.match(r"^[A-Z_][A-Z0-9_]*=.*", line) and not any(
+            marker in line for marker in _TEST_RUNNER_MARKERS
+        ):
+            continue
+        if line in {"(", ")"}:
+            continue
+
+        if line.startswith("("):
+            block = line
+            while index < len(lines) and not block.rstrip().endswith(")"):
+                block += " " + lines[index].strip()
+                index += 1
+            inner = block.lstrip("(").rstrip(")").strip()
+            for part in re.split(r"\s*;\s*", inner):
+                part = part.strip()
+                if part.startswith("cd "):
+                    continue
+                sub = _commands_from_base_body(part, script)
+                commands.extend(sub)
+            continue
+
+        if re.search(r"(?:\$PYTHON|python3?)\s+-c\s+", line):
+            block = line
+            if not re.search(r'-c\s+"[\s\S]*"$', block) and not re.search(
+                r"-c\s+'[\s\S]*'$", block
+            ):
+                while index < len(lines):
+                    block += "\n" + lines[index]
+                    index += 1
+                    if re.search(r'"\s*$', block) or re.search(r"'\s*$", block):
+                        break
+            commands.append(_normalize_runner_command(block))
+            continue
+
+        if '"${EXISTING_BASE_SUITE[@]}"' in line or '"${BASE_SUITE[@]}"' in line:
+            paths = _parse_shell_array(script, "BASE_SUITE")
+            if paths:
+                prefix = line.split("-m pytest", 1)[0]
+                joined = " ".join(f'"{p}"' for p in paths)
+                line = f"{prefix}-m pytest -v {joined}".strip()
+
+        line = _expand_shell_variables(line, script)
+
+        if re.search(r"\btest\.py\s+base\b", line):
+            continue
+
+        if any(marker in line for marker in _TEST_RUNNER_MARKERS):
+            commands.append(_normalize_runner_command(line))
+    return commands
+
+
+def is_runnable_check_line(line: str) -> bool:
+    """True when *line* is an offline agent gate command."""
+    trimmed = line.strip()
+    if not trimmed or trimmed.startswith("#"):
+        return False
+    if trimmed.startswith("echo"):
+        return False
+    if trimmed in {"(", ")"}:
+        return False
+    if re.match(r"^[A-Z_][A-Z0-9_]*=\s*\"?\"?$", trimmed):
+        return False
+    if re.search(r"\btest\.py\s+base\b", trimmed):
+        return False
+    if "${" in trimmed or re.search(r"(?<!\w)\$[A-Z_][A-Z0-9_]*", trimmed):
+        return False
+    if any(marker in trimmed for marker in _TEST_RUNNER_MARKERS):
+        return True
+    if "python -m pytest" in trimmed or "python3 -m pytest" in trimmed:
+        return True
+    if trimmed.startswith("timeout ") and "pytest" in trimmed:
+        return True
+    return False
 
 
 def _embedded_test_sh_from_patch(patch_path: Path) -> str | None:
@@ -1066,18 +1468,141 @@ def _embedded_test_sh_from_patch(patch_path: Path) -> str | None:
     return "\n".join(added)
 
 
-def harbor_patch_check_lines(tests_dir: Path) -> list[str]:
-    """Return base-mode pytest commands embedded in Harbor ``tests/test.patch``."""
+def _embedded_test_py_from_patch(patch_path: Path) -> str | None:
+    """Return added ``test.py`` body from a Harbor ``test.patch``, if present."""
+    if not patch_path.is_file():
+        return None
+    text = patch_path.read_text(encoding="utf-8")
+    added: list[str] = []
+    in_test_py = False
+    for line in text.splitlines():
+        if line.startswith("+++ b/test.py"):
+            in_test_py = True
+            continue
+        if not in_test_py:
+            continue
+        if line.startswith("diff --git"):
+            break
+        if line.startswith("+++ b/") and "test.py" not in line:
+            break
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])
+    if not added:
+        return None
+    return "\n".join(added)
+
+
+def _baseline_from_test_py_wrapper(tests_dir: Path) -> list[str]:
+    """Expand ``python3 test.py base`` wrappers using embedded ``test.py`` in patch."""
+    body = _embedded_test_py_from_patch(tests_dir / "test.patch")
+    if not body:
+        return []
+    files_match = re.search(r"base_test_files\s*=\s*\[(.*?)\]", body, re.DOTALL)
+    if not files_match:
+        return []
+    files = re.findall(r'"([^"]+)"', files_match.group(1))
+    flags_match = re.search(
+        r'if mode == "base":.*?pytest\.main\(base_test_files\s*\+\s*\[(.*?)\]\)',
+        body,
+        re.DOTALL,
+    )
+    flags = re.findall(r'"([^"]+)"', flags_match.group(1)) if flags_match else ["-x", "-q"]
+    if not files:
+        return []
+    cmd = "python -m pytest " + " ".join(files)
+    for flag in flags:
+        cmd += f" {flag}" if flag.startswith("-") else f" -{flag}"
+    return [cmd] if is_runnable_check_line(cmd) else []
+
+
+def _expand_ignore_args_command(line: str, script: str) -> str:
+    if "$IGNORE_ARGS" not in line and "${IGNORE_ARGS}" not in line:
+        return line
+    new_files = _parse_shell_array(script, "NEW_TEST_FILES")
+    if not new_files:
+        return line
+    ignore = " ".join(f"--ignore={path}" for path in new_files)
+    return (
+        line.replace("$IGNORE_ARGS", ignore).replace("${IGNORE_ARGS}", ignore).strip()
+    )
+
+
+def _expand_shell_array_refs(line: str, script: str) -> str:
+    for array_name in ("BASE_SUITE", "EXISTING_BASE_SUITE", "NEW_TEST_FILES"):
+        token = f'"${{{array_name}[@]}}"'
+        if token not in line and f'"${array_name}[@]"' not in line:
+            continue
+        paths = _parse_shell_array(script, array_name)
+        if not paths and array_name == "EXISTING_BASE_SUITE":
+            paths = _parse_shell_array(script, "BASE_SUITE")
+        if paths:
+            joined = " ".join(f'"{path}"' for path in paths)
+            line = line.replace(token, joined).replace(f'"${array_name}[@]"', joined)
+    return line
+
+
+def _expand_shell_variables(line: str, script: str) -> str:
+    line = _expand_shell_array_refs(line, script)
+    line = _expand_ignore_args_command(line, script)
+    new_tests = _parse_shell_scalar(script, "NEW_TESTS")
+    if new_tests and "$NEW_TESTS" in line:
+        line = line.replace("$NEW_TESTS", new_tests)
+    modified = _parse_shell_scalar(script, "MODIFIED_EXISTING")
+    if modified and "$MODIFIED_EXISTING" in line:
+        line = line.replace('"$MODIFIED_EXISTING"', modified).replace(
+            "$MODIFIED_EXISTING", modified
+        )
+    return line
+
+
+def _find_new_mode_body(script: str) -> str | None:
+    lines = script.splitlines()
+    new_triggers = (
+        re.compile(r'^\s*(?:elif|if)\s+\[\[\s*"\$(?:mode|MODE)"\s*==\s*"new"\s*\]\]', re.I),
+        re.compile(r'^\s*(?:elif|if)\s+\[\s*"\$(?:MODE|1|mode)"\s*=\s*"new"\s*\]', re.I),
+        re.compile(r"^\s*new\)\s*$", re.I),
+    )
+    for index, line in enumerate(lines):
+        if not any(pattern.search(line) for pattern in new_triggers):
+            continue
+        body_lines, _ = _extract_block_body(lines, index)
+        if body_lines:
+            return "\n".join(body_lines)
+    return None
+
+
+def harbor_new_mode_check_lines(tests_dir: Path) -> list[str]:
+    """Return offline-runnable new-mode commands from Harbor ``tests/test.patch``."""
     test_sh = _embedded_test_sh_from_patch(tests_dir / "test.patch")
     if not test_sh:
         return []
-    match = _HARBOR_PATCH_BASE_MODE_PYTEST_RE.search(test_sh)
-    if not match:
+    body = _find_new_mode_body(test_sh)
+    if not body:
         return []
-    cmd = match.group("cmd").strip()
-    if not cmd or cmd.startswith("echo"):
+    commands = _commands_from_base_body(body, test_sh)
+    return [cmd for cmd in commands if is_runnable_check_line(cmd)]
+
+
+def harbor_baseline_check_lines(tests_dir: Path) -> list[str]:
+    """Return offline-runnable base-mode commands from Harbor ``tests/test.patch``."""
+    test_sh = _embedded_test_sh_from_patch(tests_dir / "test.patch")
+    if not test_sh:
         return []
-    return [cmd]
+    body = _find_base_mode_body(test_sh)
+    if not body:
+        return []
+    if re.search(r"\btest\.py\s+base\b", body):
+        wrapped = _baseline_from_test_py_wrapper(tests_dir)
+        if wrapped:
+            return wrapped
+    commands = _commands_from_base_body(body, test_sh)
+    runnable = [cmd for cmd in commands if is_runnable_check_line(cmd)]
+    return runnable
+
+
+def harbor_patch_check_lines(tests_dir: Path) -> list[str]:
+    """Backward-compatible alias for :func:`harbor_baseline_check_lines`."""
+    return harbor_baseline_check_lines(tests_dir)
 
 
 def scan_test_patch_monkeypatch_hooks(tests_dir: Path) -> list[tuple[str, str]]:
@@ -1097,18 +1622,24 @@ def scan_test_patch_monkeypatch_hooks(tests_dir: Path) -> list[tuple[str, str]]:
     return sorted(hooks)
 
 
-def harbor_new_tests_check_line(workspace: Path) -> str | None:
-    """Return the pytest command from workspace ``test.sh`` new mode, if present."""
+def harbor_new_tests_check_line(
+    workspace: Path,
+    *,
+    tests_dir: Path | None = None,
+) -> str | None:
+    """Return the new-mode test command from workspace or Harbor ``test.patch``."""
     test_sh = workspace / "test.sh"
-    if not test_sh.is_file():
-        return None
-    match = _HARBOR_NEW_MODE_PYTEST_RE.search(test_sh.read_text(encoding="utf-8"))
-    if not match:
-        return None
-    cmd = match.group("cmd").strip()
-    if not cmd or cmd.startswith("echo"):
-        return None
-    return cmd
+    if test_sh.is_file():
+        match = _HARBOR_NEW_MODE_PYTEST_RE.search(test_sh.read_text(encoding="utf-8"))
+        if match:
+            cmd = match.group("cmd").strip()
+            if cmd and not cmd.startswith("echo") and is_runnable_check_line(cmd):
+                return cmd
+    if tests_dir is not None:
+        lines = harbor_new_mode_check_lines(tests_dir)
+        if lines:
+            return lines[0]
+    return None
 
 
 def apply_harbor_test_patch(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> bool:
@@ -2199,6 +2730,13 @@ def run_task(
         click.echo(f"Applying reference solution: {spec.solution_patch}")
         apply_patch(workspace, spec.solution_patch, dry_run=dry_run)
 
+    if (
+        not grade_only
+        and os.environ.get("DEEPSWE_AGENT_NEW_TESTS") == "1"
+        and harbor_test_patch_path(spec) is not None
+    ):
+        apply_harbor_test_patch(spec, workspace, dry_run=dry_run)
+
     checks_text = ""
     if not grade_only and malvin_needs_task_plan(malvin_command):
         checks_text = checks_override or discover_deepswe_checks(
@@ -2564,6 +3102,22 @@ def tasks_cmd() -> None:
 def self_test_cmd() -> None:
     """Run unit tests and exit (no task run)."""
     run_self_tests()
+
+
+@cli.command("audit")
+@click.option(
+    "--goal-tasks/--all-tasks",
+    default=True,
+    help="Audit the 34 Python goal tasks (default) or full catalog with --all-tasks.",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    help="Informational report for the full catalog (no failure on missing Python baseline).",
+)
+def audit_cmd(goal_tasks: bool, report: bool) -> None:
+    """Audit Harbor task harness readiness (baseline checks, pins, patch_surface policy)."""
+    raise SystemExit(run_deepswe_audit(goal_only=goal_tasks and not report, report=report))
 
 
 @cli.command("solve")
@@ -3007,10 +3561,46 @@ def _test_harbor_patch_check_lines() -> None:
     task = tasks_root / "gql-incremental-graphql-delivery"
     if not task.is_dir():
         return
-    lines = harbor_patch_check_lines(task / "tests")
+    lines = harbor_baseline_check_lines(task / "tests")
     assert lines == [
         "python -m pytest tests --ignore=tests/test_incremental_delivery.py"
     ], lines
+
+
+def _test_harbor_baseline_adaptix_if_mode() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "adaptix-name-mapping-aliases"
+    if not task.is_dir():
+        return
+    lines = harbor_baseline_check_lines(task / "tests")
+    assert lines == [
+        "python -m pytest tests/ -x -q --ignore=tests/integration/morphing/test_aliases.py"
+    ], lines
+
+
+def _test_harbor_baseline_mashumaro_test_py_wrapper() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "mashumaro-flattened-dataclass-fields"
+    if not task.is_dir():
+        return
+    lines = harbor_baseline_check_lines(task / "tests")
+    assert lines and lines[0].startswith("python -m pytest tests/test_aliases.py"), lines
+
+
+def _test_harbor_baseline_httpx_streaming_braced_mode() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "httpx-streaming-json-iteration"
+    if not task.is_dir():
+        return
+    lines = harbor_baseline_check_lines(task / "tests")
+    assert lines and "pytest" in lines[0] and "test_json_stream.py" in lines[0], lines
+
+
+def _test_is_runnable_rejects_unexpanded_variables() -> None:
+    assert not is_runnable_check_line("python -m pytest tests $IGNORE_ARGS -v")
+    assert is_runnable_check_line(
+        "python -m pytest tests --ignore=tests/foo.py -v"
+    )
 
 
 def _test_write_plan_and_checks_discovers() -> None:
@@ -4020,6 +4610,10 @@ def run_self_tests() -> None:
     _test_discover_deepswe_checks_precommit()
     _test_discover_deepswe_checks_existing_malvin_checks()
     _test_harbor_patch_check_lines()
+    _test_harbor_baseline_adaptix_if_mode()
+    _test_harbor_baseline_mashumaro_test_py_wrapper()
+    _test_harbor_baseline_httpx_streaming_braced_mode()
+    _test_is_runnable_rejects_unexpanded_variables()
     _test_write_plan_and_checks_discovers()
     _test_parse_task_dir_does_not_require_test_sh()
     _test_validate_verifier_paths_fails_without_test_sh()

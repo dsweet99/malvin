@@ -1748,7 +1748,12 @@ def _image_build_shell_commands(
     return [_image_build_shell_command(cmd, workdir=workdir) for cmd in commands if cmd.strip()]
 
 
-def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
+def harbor_image(
+    spec: Any,
+    *,
+    dockerfile: Path,
+    workspace: Path | None = None,
+) -> modal.Image:
     """Modal image with Harbor task dependencies; workspace/tests mounted at runtime."""
     docker_image = getattr(spec, "docker_image", None)
     if docker_image:
@@ -1759,7 +1764,10 @@ def harbor_image(spec: Any, *, dockerfile: Path) -> modal.Image:
         click.echo(f"Pulling Harbor image {docker_image}...")
         base = modal.Image.from_registry(docker_image, force_build=True)
         build_cmds = list(
-            registry_image_cache_bust_commands(dockerfile if dockerfile.is_file() else None)
+            registry_image_cache_bust_commands(
+                dockerfile if dockerfile.is_file() else None,
+                workspace=workspace,
+            )
         )
         if build_cmds:
             click.echo(
@@ -2265,7 +2273,7 @@ def harbor_agent_image(
     checks: str = "",
 ) -> modal.Image:
     """Harbor task image plus local malvin, cursor-agent, and deepswe_run."""
-    base = harbor_image(spec, dockerfile=dockerfile)
+    base = harbor_image(spec, dockerfile=dockerfile, workspace=workspace)
     augmented = base.run_commands(
         "apt-get update -qq && apt-get install -y -qq curl build-essential pkg-config libssl-dev python3-pip",
         "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
@@ -2458,7 +2466,7 @@ def run_modal_eval(
         )
         if grade_only:
             grade_img = mount_eval_context(
-                harbor_image(spec, dockerfile=spec.dockerfile),
+                harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace),
                 task_dir=spec.task_dir,
                 workspace=workspace,
                 tests_dir=spec.tests_dir,

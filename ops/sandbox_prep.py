@@ -266,21 +266,168 @@ def dockerfile_bulk_pip_commands(dockerfile: Path) -> list[str]:
     return commands
 
 
-def registry_image_cache_bust_commands(dockerfile: Path | None = None) -> list[str]:
-    """Lightweight Modal registry cache bust that avoids starlette/httpx2 drift.
+_REQUIREMENTS_FILE_RE = re.compile(r"-r\s+(\S+)")
+_PKG_PIN_RE = re.compile(
+    r"(?<![\w.-])([a-zA-Z0-9][a-zA-Z0-9._-]*)==([\d][\w.]*(?:\+[\w.-]+)?)"
+)
+_BASH_LC_RE = re.compile(r"""bash\s+-lc\s+(["'])(.*)\1""", re.DOTALL)
+_PYDANTIC_PIN_RE = re.compile(r"^pydantic==([\d.]+)\s*(?:#.*)?$", re.MULTILINE)
+_PYDANTIC_CORE_PIN_RE = re.compile(r"^pydantic-core==([\d.]+)\s*(?:#.*)?$", re.MULTILINE)
+
+
+def collect_pip_install_intents(dockerfile_text: str) -> list[str]:
+    """Return pip install shell segments from Dockerfile RUN lines (incl. ``bash -lc``)."""
+    intents: list[str] = []
+    for run in parse_dockerfile_run_commands(dockerfile_text):
+        for segment in _split_shell_segments(run):
+            if _is_pip_install_segment(segment):
+                intents.append(segment)
+            bash_match = _BASH_LC_RE.search(segment)
+            if not bash_match:
+                continue
+            inner = bash_match.group(2)
+            for part in re.split(r"[;&]", inner):
+                part = part.strip()
+                if part and _is_pip_install_segment(part):
+                    intents.append(part)
+    return intents
+
+
+def _pins_from_requirements_file(requirements_path: Path) -> dict[str, str]:
+    if not requirements_path.is_file():
+        return {}
+    pins: dict[str, str] = {}
+    for raw in requirements_path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = _PKG_PIN_RE.search(line)
+        if match:
+            pins[match.group(1).lower()] = match.group(2)
+    return pins
+
+
+def collect_pinned_packages(workspace: Path, intents: list[str]) -> dict[str, str]:
+    """Collect ``name==version`` pins from pip intents and referenced ``-r`` files."""
+    pins: dict[str, str] = {}
+    workspace = workspace.resolve()
+    for intent in intents:
+        for req_match in _REQUIREMENTS_FILE_RE.finditer(intent):
+            pins.update(_pins_from_requirements_file(workspace / req_match.group(1)))
+        for match in _PKG_PIN_RE.finditer(intent):
+            pins[match.group(1).lower()] = match.group(2)
+    return pins
+
+
+def requirements_paths_from_dockerfile(dockerfile: Path) -> list[str]:
+    """Return ``-r`` requirements paths referenced by Dockerfile bulk pip installs."""
+    if not dockerfile.is_file():
+        return []
+    intents = collect_pip_install_intents(dockerfile.read_text(encoding="utf-8"))
+    paths: list[str] = []
+    for intent in intents:
+        paths.extend(match.group(1) for match in _REQUIREMENTS_FILE_RE.finditer(intent))
+    return paths
+
+
+def read_pydantic_pins_from_requirements(requirements_path: Path) -> tuple[str | None, str | None]:
+    """Return ``(pydantic, pydantic-core)`` pins from a requirements file, if present."""
+    if not requirements_path.is_file():
+        return None, None
+    text = requirements_path.read_text(encoding="utf-8")
+    pydantic_match = _PYDANTIC_PIN_RE.search(text)
+    core_match = _PYDANTIC_CORE_PIN_RE.search(text)
+    return (
+        pydantic_match.group(1) if pydantic_match else None,
+        core_match.group(1) if core_match else None,
+    )
+
+
+def pydantic_pins_for_cache_bust(
+    dockerfile: Path | None,
+    workspace: Path | None = None,
+) -> tuple[str | None, str | None]:
+    """Return task pydantic pins when present in workspace requirements."""
+    if dockerfile is None or not dockerfile.is_file() or workspace is None:
+        return None, None
+    workspace = workspace.resolve()
+    for req_rel in requirements_paths_from_dockerfile(dockerfile):
+        pydantic_ver, core_ver = read_pydantic_pins_from_requirements(workspace / req_rel)
+        if pydantic_ver is not None:
+            return pydantic_ver, core_ver
+    return None, None
+
+
+def pins_for_task(
+    dockerfile: Path | None,
+    workspace: Path | None = None,
+) -> dict[str, str]:
+    """Pinned packages for a task workspace (Modal image build / cache bust)."""
+    if dockerfile is None or not dockerfile.is_file() or workspace is None:
+        return {}
+    intents = collect_pip_install_intents(dockerfile.read_text(encoding="utf-8"))
+    return collect_pinned_packages(workspace.resolve(), intents)
+
+
+# Smoke imports after Harbor registry pull: pydantic v1 layers and httpx2 namespace drift.
+_DRIFT_PROBE_SCRIPT = (
+    "python3 -c '"
+    "import importlib.util, sys; "
+    "bad=[]; "
+    "s=importlib.util.find_spec(chr(112)+chr(121)+chr(100)+chr(97)+chr(110)+chr(116)+chr(105)+chr(99)); "
+    "exec(\"import pydantic\\nif pydantic.__version__.startswith(\\\"1.\\\"): bad.append(\\\"pydantic_v1\\\")\") if s else None; "
+    "s=importlib.util.find_spec(chr(104)+chr(116)+chr(116)+chr(112)+chr(120)); "
+    "exec(\"import httpx\\nif httpx.__name__ != \\\"httpx\\\": bad.append(\\\"httpx2\\\")\") if s else None; "
+    "sys.exit(1 if bad else 0)'"
+)
+
+
+def run_drift_probe_commands() -> list[str]:
+    """Shell commands that reinstall drift-prone packages only when probe fails."""
+    drift_fix = (
+        "'starlette==1.0.0' 'click==8.3.1' 'typer==0.25.1'"
+    )
+    return [
+        f"{_DRIFT_PROBE_SCRIPT} || "
+        f"pip install --no-cache-dir --force-reinstall {drift_fix}",
+    ]
+
+
+def _pydantic_v1_eviction_command() -> str:
+    """Evict stale pydantic v1 when the image has pydantic but no task pin."""
+    return (
+        "python3 -c \""
+        "import importlib.util, sys; "
+        "spec=importlib.util.find_spec('pydantic'); "
+        "import pydantic; "
+        "sys.exit(1 if pydantic.__version__.startswith('1.') else 0)"
+        "\" 2>/dev/null || "
+        "pip install --no-cache-dir 'pydantic>=2,<3'"
+    )
+
+
+def registry_image_cache_bust_commands(
+    dockerfile: Path | None = None,
+    workspace: Path | None = None,
+) -> list[str]:
+    """Modal registry cache bust from task pins, then conditional drift repair.
 
     Modal may serve stale Harbor registry layers (pydantic v1). Re-running the full
     editable ``pip install -e`` after pull can upgrade starlette and break Harbor
-    verifiers that expect ``httpx`` (not ``httpx2``). Replaying bulk test-dependency
-    pip segments can upgrade click/typer and fail baseline tests under
-    ``filterwarnings = error``. Pin pydantic v2 and starlette only.
+    verifiers that expect ``httpx`` (not ``httpx2``). Task-derived pins are applied
+    first; starlette/click/typer are reinstalled only when the drift probe fails.
     """
-    _ = dockerfile
-    return [
-        "pip install --no-cache-dir --force-reinstall "
-        "'pydantic==2.13.4' 'starlette==1.0.0' "
-        "'click==8.3.1' 'typer==0.25.1'",
-    ]
+    pins = pins_for_task(dockerfile, workspace)
+    cmds: list[str] = []
+    if pins:
+        pkg_args = [f"'{name}=={ver}'" for name, ver in sorted(pins.items())]
+        cmds.append(
+            "pip install --no-cache-dir --force-reinstall " + " ".join(pkg_args)
+        )
+    else:
+        cmds.append(_pydantic_v1_eviction_command())
+    cmds.extend(run_drift_probe_commands())
+    return cmds
 
 
 def prepare_task_sandbox(
@@ -438,12 +585,56 @@ RUN pip install --no-cache-dir -e ".[all]" && pip install --no-cache-dir pytest 
         dockerfile = Path(tmp) / "Dockerfile"
         dockerfile.write_text(text, encoding="utf-8")
         cmds = registry_image_cache_bust_commands(dockerfile)
-    assert cmds[0].startswith("pip install")
-    assert "pydantic==2.13.4" in cmds[0]
-    assert "starlette==1.0.0" in cmds[0]
-    assert "click==8.3.1" in cmds[0]
-    assert "typer==0.25.1" in cmds[0]
-    assert len(cmds) == 1
+    assert len(cmds) >= 2, cmds
+    assert cmds[0].startswith("python3 -c") or cmds[0].startswith("pip install")
+    assert "starlette==1.0.0" in cmds[-1]
+    assert "pydantic==2.13.4" not in " ".join(cmds)
+
+
+def _test_registry_image_cache_bust_adaptix_pydantic_pin() -> None:
+    import tempfile
+
+    tasks_root = Path(__file__).resolve().parent.parent.parent / "deep-swe" / "tasks"
+    dockerfile = tasks_root / "adaptix-name-mapping-aliases" / "environment" / "Dockerfile"
+    if not dockerfile.is_file():
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        req_dir = workspace / "requirements"
+        req_dir.mkdir()
+        (req_dir / "test_extra_new.txt").write_text(
+            "pydantic==2.10.3\npydantic-core==2.27.1\n",
+            encoding="utf-8",
+        )
+        cmds = registry_image_cache_bust_commands(dockerfile, workspace=workspace)
+    assert any("pydantic==2.10.3" in c for c in cmds), cmds
+    assert any("pydantic-core==2.27.1" in c for c in cmds), cmds
+    assert not any("pydantic==2.13.4" in c for c in cmds), cmds
+
+
+def _test_pydantic_pins_for_cache_bust_reads_requirements() -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        dockerfile = root / "Dockerfile"
+        dockerfile.write_text(
+            "RUN pip install -r requirements/dev.txt\n",
+            encoding="utf-8",
+        )
+        (root / "requirements").mkdir()
+        (root / "requirements" / "dev.txt").write_text("pydantic==1.2.3\n", encoding="utf-8")
+        pins = pins_for_task(dockerfile, workspace=root)
+    assert pins.get("pydantic") == "1.2.3"
+
+
+def _test_collect_pip_install_intents_bash_lc() -> None:
+    text = """FROM base
+RUN bash -lc "if [ -f requirements.txt ]; then pip install -r requirements.txt; fi; pip install -e . pytest"
+"""
+    intents = collect_pip_install_intents(text)
+    assert any("-r requirements.txt" in i for i in intents), intents
+    assert any("-e ." in i for i in intents), intents
 
 
 def _test_dockerfile_bulk_pip_commands_fastapi() -> None:
@@ -465,6 +656,9 @@ def run_self_tests() -> None:
     _test_infra_abort_dockerfile_sync_is_offline()
     _test_dockerfile_image_build_commands_fastapi()
     _test_registry_image_cache_bust_commands()
+    _test_registry_image_cache_bust_adaptix_pydantic_pin()
+    _test_pydantic_pins_for_cache_bust_reads_requirements()
+    _test_collect_pip_install_intents_bash_lc()
     _test_dockerfile_bulk_pip_commands_fastapi()
     _test_workspace_sync_commands_fastapi_task_dockerfile()
     _test_should_replay_skips_apt_and_git()
