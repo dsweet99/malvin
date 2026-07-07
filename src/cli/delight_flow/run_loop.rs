@@ -82,6 +82,7 @@ pub async fn run_delight(
         workflow,
         prepared: &prepared.inner,
         max_loops,
+        max_hypotheses: delight.max_hypotheses,
         behavior: KPopHardConstraints::DELIGHT,
     })
     .await?;

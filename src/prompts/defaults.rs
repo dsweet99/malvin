@@ -12,6 +12,7 @@ pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
 pub const DEFAULT_PROMPTS: &[&str] = &[
     "kpop_common.md",
+    "kpop_block.md",
     "mbc2.md",
     "kpop_program.md",
     "kpop_program_creative.md",

@@ -80,6 +80,7 @@ pub async fn run_revise(
         workflow,
         prepared: &prepared.inner,
         max_loops,
+        max_hypotheses: revise.max_hypotheses,
         behavior: KPopHardConstraints::REVISE,
     })
     .await?;

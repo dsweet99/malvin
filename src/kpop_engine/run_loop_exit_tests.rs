@@ -36,6 +36,7 @@ fn kpop_engine_loop_ctx_types_are_constructible() {
     };
     let _ = KPopEngineEarlyExitCtx {
         behavior: KPopHardConstraints::CODE,
+        consecutive_solved: 0,
         artifacts: &prepared.artifacts,
         session_dotfile_backups: &backups,
         agent_ran: true,

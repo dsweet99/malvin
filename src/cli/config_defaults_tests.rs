@@ -61,12 +61,15 @@ fn apply_loop_defaults_honors_partial_cli_overrides() {
             "malvin", "kpop", "--max-loops", "3", "hello",
         ]);
         let mut max_loops = 3_usize;
+        let mut max_hypotheses = 5_usize;
         apply_loop_defaults(
             &matches,
             "kpop",
             LoopDefaultMut {
                 max_loops: &mut max_loops,
+                max_hypotheses: &mut max_hypotheses,
                 config_max_loops: 9,
+                config_max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             },
         );
         assert_eq!(max_loops, 3);
@@ -84,6 +87,7 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
         model: "cfg".into(),
         model_mini: "cfg-mini".into(),
         max_loops: 8,
+        max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         max_loops_code: 6,
         max_acp_retries: 6,
         max_mini_transport_retries: 3,
@@ -113,12 +117,15 @@ fn flag_and_shared_helpers_detect_and_apply_defaults() {
     assert_eq!(shared.max_acp_retries, 6);
 
     let mut max_loops = 1_usize;
+    let mut max_hypotheses = 1_usize;
     apply_loop_defaults(
         &matches,
         "kpop",
         LoopDefaultMut {
             max_loops: &mut max_loops,
+            max_hypotheses: &mut max_hypotheses,
             config_max_loops,
+            config_max_hypotheses: agent.max_hypotheses,
         },
     );
     assert_eq!(max_loops, 8);

@@ -5,6 +5,8 @@ use malvin::MultiturnPrompt;
 use malvin::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use malvin::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
 
+const TEST_MAX_HYPOTHESES: usize = 50;
+
 #[test]
 fn single_prompt_then_stop() {
     let tmp = tempfile::tempdir().unwrap();
@@ -13,13 +15,14 @@ fn single_prompt_then_stop() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .unwrap();
     let first = state.next_prompt().expect("kpop prompt");
     let Some(MultiturnPrompt::KpopBlock(s)) = first else {
         panic!("expected kpop block prompt");
     };
-    assert!(s.contains("stub kpop block"));
+    assert!(s.contains("stub kpop want="));
     assert!(state.next_prompt().expect("after prompt").is_none());
 }
 
@@ -31,6 +34,7 @@ fn empty_exp_log_still_offers_single_prompt() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .unwrap();
     assert!(state.next_prompt().expect("kpop prompt").is_some());

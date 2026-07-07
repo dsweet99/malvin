@@ -80,7 +80,7 @@ See `malvin --doc`: `--model`, `--no-force`, `--no-tee`, `--no-markdown`, `--ver
 | Command | When |
 |---------|------|
 | `malvin tidy` | Fix gates without a feature plan |
-| `malvin kpop` / bare `malvin` | Investigation without a shipping plan |
+| `malvin kpop` | Investigation without a shipping plan |
 
 ## Examples
 

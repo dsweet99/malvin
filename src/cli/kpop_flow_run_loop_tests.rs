@@ -67,6 +67,7 @@ pub(crate) fn test_kpop_args(max_loops: usize) -> (crate::cli::KpopArgs, crate::
 
     let kpop = KpopArgs {
         max_loops,
+        max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         tenacious: false,
         requests: vec!["investigate".into()],
     };

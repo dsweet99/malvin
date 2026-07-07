@@ -14,6 +14,7 @@ fn revise_args_for_explain_output_use_tex_path() {
         request: Some("topic".to_string()),
         out_path: "explain.tex".to_string(),
         max_loops: 7,
+        max_hypotheses: 5,
         tenacious: false,
         out_path_explicit: false,
     };
@@ -30,6 +31,7 @@ fn kiss_cov_explain_entrypoint_branch() {
         request: Some("topic".to_string()),
         out_path: "explain.tex".to_string(),
         max_loops: 1,
+        max_hypotheses: 5,
         tenacious: true,
         out_path_explicit: false,
     });
@@ -44,6 +46,7 @@ fn kiss_cov_delight_entrypoint_branch() {
         guidance: None,
         out_path: "pitch.md".to_string(),
         max_loops: 1,
+        max_hypotheses: 5,
         tenacious: true,
     });
     let _ = super::super::entrypoint::dispatch_command;
@@ -56,6 +59,7 @@ fn kiss_cov_revise_entrypoint_branch() {
     let cmd = Commands::Revise(crate::cli::revise_flow::ReviseArgs {
         doc_path: "doc.md".to_string(),
         max_loops: 1,
+        max_hypotheses: 5,
         tenacious: true,
     });
     let _ = super::super::entrypoint::dispatch_command;

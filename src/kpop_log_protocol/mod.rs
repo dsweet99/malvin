@@ -66,6 +66,25 @@ impl ExperimentLog {
         self.kpop_step_count() + self.mbc2_step_count()
     }
 
+    #[must_use]
+    pub fn kpop_solved_marker_count(&self) -> usize {
+        self.text.lines().filter(|line| is_kpop_solved_line(line)).count()
+    }
+
+    #[must_use]
+    pub fn declares_solved(&self) -> bool {
+        self.kpop_solved_marker_count() > 0
+    }
+
+}
+
+fn is_kpop_solved_line(line: &str) -> bool {
+    let t = line.trim_start();
+    let Some(rest) = t.strip_prefix("## KPOP_SOLVED") else {
+        return false;
+    };
+    rest.is_empty()
+        || rest.starts_with(|c: char| c.is_whitespace() || matches!(c, '-' | '—' | '–' | ':'))
 }
 
 fn is_kpop_step_label(tail: &str) -> bool {

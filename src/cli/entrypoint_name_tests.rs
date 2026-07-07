@@ -56,6 +56,7 @@ fn kpop_command_accepts_session_name() {
     assert!(command_accepts_session_name(
         &Commands::Kpop(KpopArgs {
             max_loops: 1,
+max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             tenacious: false,
             requests: vec!["task".into()],
         }),
@@ -75,6 +76,7 @@ fn delight_command_accepts_session_name() {
             guidance: None,
             out_path: "pitch.md".to_string(),
             max_loops: 1,
+            max_hypotheses: 5,
             tenacious: false,
         }),
     ));
@@ -88,6 +90,7 @@ fn explain_command_rejects_session_name() {
             request: Some("topic".to_string()),
             out_path: "explain.tex".to_string(),
             max_loops: 1,
+            max_hypotheses: 5,
             tenacious: false,
             out_path_explicit: false,
         }),

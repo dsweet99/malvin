@@ -21,6 +21,7 @@ fn subcommand_doc_embeds_have_malvin_heading() {
     assert!(md.starts_with("# malvin "));
     let md = command_doc_markdown(&Commands::Kpop(KpopArgs {
         max_loops: 1,
+max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         tenacious: false,
         requests: vec![],
     }));
@@ -39,6 +40,7 @@ fn print_doc_none_writes_full_malvin_md() {
 fn print_doc_some_writes_subcommand_md() {
     let cmd = Commands::Kpop(KpopArgs {
         max_loops: 1,
+max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         tenacious: false,
         requests: vec![],
     });
@@ -93,6 +95,7 @@ fn print_doc_explain_writes_subcommand_md() {
         request: Some("topic".to_string()),
         out_path: "explain.tex".to_string(),
         max_loops: 3,
+        max_hypotheses: 5,
         tenacious: true,
         out_path_explicit: false,
     });
@@ -106,6 +109,7 @@ fn print_doc_delight_writes_subcommand_md() {
         guidance: None,
         out_path: "pitch.md".to_string(),
         max_loops: 3,
+        max_hypotheses: 5,
         tenacious: true,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");
@@ -127,6 +131,7 @@ fn print_doc_revise_writes_subcommand_md() {
     let cmd = Commands::Revise(ReviseArgs {
         doc_path: "doc.md".to_string(),
         max_loops: 3,
+        max_hypotheses: 5,
         tenacious: true,
     });
     let out = capture_doc(Some(&cmd)).expect("capture");

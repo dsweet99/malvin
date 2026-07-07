@@ -17,6 +17,7 @@ pub fn setup_multiturn_stub_mt() -> MultiturnTestHarness<'static> {
     let state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::StubMt(MtStubPrompts),
         exp_log_path: exp_path.clone(),
+        max_hypotheses: 50,
     })
     .unwrap();
     MultiturnTestHarness { state, exp_path, _tmp: tmp }

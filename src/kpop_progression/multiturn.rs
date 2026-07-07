@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::counters::read_exp_log_text;
+use super::counters::{agent_declared_success, hypotheses_emitted, read_exp_log_text};
 use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
 use crate::multiturn_prompt::MultiturnPrompt;
 
@@ -9,7 +9,9 @@ use super::multiturn_types::KpopMultiturnParams;
 pub struct KpopMultiturnState<'a> {
     pub(crate) builder: KpopMultiturnPrompts<'a>,
     pub(crate) exp_log_path: PathBuf,
-    sent_prompt: bool,
+    pub max_hypotheses: usize,
+    pub(crate) prompt_sent: bool,
+    pub(crate) done: bool,
 }
 
 impl<'a> KpopMultiturnState<'a> {
@@ -22,10 +24,15 @@ impl<'a> KpopMultiturnState<'a> {
     /// # Errors
     ///
     /// Returns `Err` when the experiment log cannot be read.
-    pub fn new(builder: KpopMultiturnPrompts<'a>, exp_log_path: PathBuf) -> Result<Self, String> {
+    pub fn new(
+        builder: KpopMultiturnPrompts<'a>,
+        exp_log_path: PathBuf,
+        max_hypotheses: usize,
+    ) -> Result<Self, String> {
         Self::from_params(KpopMultiturnParams {
             builder,
             exp_log_path,
+            max_hypotheses,
         })
     }
 
@@ -39,7 +46,9 @@ impl<'a> KpopMultiturnState<'a> {
         Ok(Self {
             builder: params.builder,
             exp_log_path: params.exp_log_path,
-            sent_prompt: false,
+            max_hypotheses: params.max_hypotheses,
+            prompt_sent: false,
+            done: false,
         })
     }
 
@@ -49,20 +58,45 @@ impl<'a> KpopMultiturnState<'a> {
     ///
     /// Returns `Err` when reading the log or building prompt text fails.
     pub fn next_prompt(&mut self) -> Result<Option<MultiturnPrompt>, String> {
-        if self.sent_prompt {
+        if self.done {
             return Ok(None);
         }
-        let _text = read_exp_log_text(&self.exp_log_path)?;
-        let prompt = self.builder.kpop_prompt()?;
-        self.sent_prompt = true;
-        Ok(Some(MultiturnPrompt::KpopBlock(prompt)))
+        let text = read_exp_log_text(&self.exp_log_path)?;
+        if agent_declared_success(&text) {
+            self.done = true;
+            return Ok(None);
+        }
+        if hypotheses_emitted(&text) >= self.max_hypotheses {
+            self.done = true;
+            return Ok(None);
+        }
+        if self.prompt_sent {
+            self.done = true;
+            return Ok(None);
+        }
+        self.prompt_sent = true;
+        let remaining_after = self
+            .max_hypotheses
+            .saturating_sub(hypotheses_emitted(&text));
+        self.builder
+            .kpop_block(self.max_hypotheses, remaining_after)
+            .map(|s| Some(MultiturnPrompt::KpopBlock(s)))
     }
 
-    pub const fn record_kpop_block_prompt_completed(&mut self) {}
+    pub const fn record_kpop_block_prompt_completed(&mut self) {
+        // Single-prompt sessions: no catch-up rounds.
+    }
 
     /// Resets so the outer retry loop can call [`Self::next_prompt`] again.
-    pub(crate) const fn reset_for_transport_retry(&mut self) {
-        self.sent_prompt = false;
+    pub(crate) fn reset_for_transport_retry(&mut self) {
+        self.prompt_sent = false;
+        let Ok(text) = read_exp_log_text(&self.exp_log_path) else {
+            self.done = false;
+            return;
+        };
+        if !agent_declared_success(&text) && hypotheses_emitted(&text) < self.max_hypotheses {
+            self.done = false;
+        }
     }
 }
 

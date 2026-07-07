@@ -91,7 +91,19 @@ pub fn acp_mock_code_kpop_steps_js() -> String {
 }
 
 pub fn acp_mock_kpop_writes_solved_js(chunk: &str) -> String {
-    acp_mock_kpop_steps_js(chunk)
+    let solved = "              fs.appendFileSync(expPath, '\\n## KPOP_SOLVED\\n');";
+    let iteration = acp_mock_kpop_iteration_body().replace(
+        "          fs.appendFileSync(expPath, `\\n## Step ${step} — KPOP mock\\n`);",
+        &format!(
+            "          fs.appendFileSync(expPath, `\\n## Step ${{step}} — KPOP mock\\n`);\n{solved}"
+        ),
+    );
+    let body = format!(
+        "{}\n    if (promptText.match(/Complete up to [`]?(\\d+)[`]? KPOP iterations/)) {{\n{iteration}\n    }}",
+        acp_mock_kpop_prompt_preamble(),
+    );
+    let done = session_update_chunk_line("agent_message_chunk", chunk);
+    acp_mock_js("", &format!("{body}\n{done}"))
 }
 
 pub fn acp_mock_rich_markdown_kpop_writes_solved_js() -> String {

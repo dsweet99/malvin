@@ -22,3 +22,11 @@ fn step_kind_classifies_kpop_mbc2_and_rejects_kpopulation() {
     assert_eq!(step_kind("## Step 2 — MBC2 y"), Some(StepHeadingKind::Mbc2));
     assert_eq!(step_kind("## Step 3 — kpopulation x"), None);
 }
+
+#[test]
+fn kpop_solved_marker_accepts_inline_summary() {
+    let log = ExperimentLog::from_text("## KPOP_SOLVED — cache fixed\n");
+    assert!(log.declares_solved());
+    let log = ExperimentLog::from_text("## KPOP_SOLVEDNESS\n");
+    assert!(!log.declares_solved());
+}

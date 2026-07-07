@@ -63,6 +63,7 @@ pub(crate) fn run_kpop_command(
     };
     ensure_malvin_checks_for_command(&Commands::Kpop(KpopArgs {
         max_loops: kpop.max_loops,
+        max_hypotheses: kpop.max_hypotheses,
         tenacious: kpop.tenacious,
         requests: vec![],
     }))?;
@@ -77,6 +78,7 @@ pub(crate) fn revise_args_for_explain_output(explain: &ExplainArgs, doc_path: &s
     ReviseArgs {
         doc_path: doc_path.to_string(),
         max_loops: explain.max_loops,
+        max_hypotheses: explain.max_hypotheses,
         tenacious: explain.tenacious,
     }
 }

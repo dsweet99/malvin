@@ -28,6 +28,7 @@ fn default_kpop_prompt(name: &str) -> Option<&'static str> {
             Some(include_str!("../../default_prompts/kpop_program_creative.md"))
         }
         "kpop_summarize.md" => Some(include_str!("../../default_prompts/kpop_summarize.md")),
+        "kpop_block.md" => Some(include_str!("../../default_prompts/kpop_block.md")),
         _ => None,
     })
 }

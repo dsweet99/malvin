@@ -79,6 +79,7 @@ pub async fn run_code(
         workflow,
         prepared: &prepared,
         max_loops,
+        max_hypotheses: code.max_hypotheses,
         behavior: KPopHardConstraints::CODE,
     })
     .await?;

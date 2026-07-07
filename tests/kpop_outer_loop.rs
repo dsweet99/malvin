@@ -1,4 +1,4 @@
-//! `malvin kpop --max-loops`: outer agent loop with `KPop` implementer sessions.
+//! `malvin kpop --max-loops`: outer agent loop and early exit on `## KPOP_SOLVED`.
 
 mod common;
 
@@ -7,9 +7,21 @@ mod linux {
     use std::fs;
 
     use crate::common::{
-        acp_mock_kpop_steps_js, exp_logs_in_run, gate_exp_logs_in_run, only_run_dir,
-        run_kpop_outer_loop,
+        acp_mock_kpop_steps_js, acp_mock_kpop_writes_solved_js, exp_logs_in_run,
+        gate_exp_logs_in_run, kpop_log_lines, only_run_dir, run_kpop_outer_loop,
     };
+
+    #[test]
+    fn kpop_max_loops_three_stops_after_first_solved() {
+        let mock = acp_mock_kpop_writes_solved_js(r"'done\n'");
+        let (out, root) = run_kpop_outer_loop(&mock, &["--max-loops", "3"], None);
+        assert!(out.status.success(), "kpop should succeed: {out:?}");
+        assert_eq!(kpop_log_lines(&String::from_utf8_lossy(&out.stdout)).len(), 1);
+        assert_eq!(
+            gate_exp_logs_in_run(&only_run_dir(&root.path().join("workspace"), &root.path().join("home"))).len(),
+            1
+        );
+    }
 
     #[test]
     fn kpop_max_loops_one_writes_legacy_exp_log() {

@@ -7,7 +7,8 @@
 | | |
 |---|---|
 | Input | One or more investigation briefs → `request.md` per run dir |
-| Loop | `--max-loops` separate agent **runs** (each with its own experiment log) |
+| Loop | `--max-loops` separate agent **runs** (each with its own experiment log); stops early when a run's log contains `## KPOP_SOLVED` |
+| Per run | Up to `--max-hypotheses` typed `## Step … — KPOP` lines |
 | Lookup | `malvin kpop <KPOP_ID>` prints a prior log (no agent) |
 
 ## Intention
@@ -37,7 +38,8 @@ Short id: `M` plus five characters from `a-z` and `0-9` (example: `Ma3bx9`). Mal
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `--max-loops` | 1 | Separate kpop agent runs (one Popper session per iteration) |
+| `--max-loops` | 1 | Separate kpop agent runs; stops early when a run's log contains `## KPOP_SOLVED` |
+| `--max-hypotheses` | 5 | `## Step … — KPOP` budget **per** agent run |
 | `--tenacious` | on | `--max-acp-retries=9999` and `--max-loops=9999` |
 | `--no-tenacious` | off | Restore normal loop/retry budgets |
 
@@ -47,12 +49,13 @@ See `malvin --doc`. Does **not** require workspace quality gates at CLI entry (u
 
 ## Session architecture
 
-Each agent session sends **one prompt**: `header.md` + `kpop_common.md` (Popper loop: hypothesize → predict → falsify; log to experiment log).
+Each agent session sends **one prompt**: `header.md` + `kpop_common.md` + `kpop_block.md` (Popper loop with a per-run hypothesis budget).
 
 | Piece | Role |
 |-------|------|
 | **kpop_common** | Popper method: hypothesize → predict → falsify; log outcomes to the experiment log |
-| **User brief** | On disk at `user_request_path` (`request.md` in the run dir) |
+| **kpop_block** | Turn budget (`want` = `--max-hypotheses`); may append `## KPOP_SOLVED` |
+| **User brief** | Inlined in `kpop_block.md` and on disk at `user_request_path` (`request.md`) |
 
 Per-session artifacts under `_kpop/`:
 
@@ -78,7 +81,9 @@ Use `malvin kpop Ma3bx9` later to dump that log.
 
 Stops when any of:
 
+- A run's experiment log contains `## KPOP_SOLVED` (outer loop exits early)
 - `--max-loops` runs complete
+- Per-run `--max-hypotheses` budget is exhausted (no more `## Step … — KPOP` lines)
 - Internal error
 
 ## Artifacts

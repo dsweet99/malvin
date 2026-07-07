@@ -64,6 +64,7 @@ pub(crate) fn smoke_multiturn_state(
     crate::kpop_progression::KpopMultiturnState::new(
         KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log,
+        10,
     )
     .expect("state")
 }

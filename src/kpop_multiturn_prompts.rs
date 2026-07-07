@@ -1,4 +1,4 @@
-use crate::kpop_test_stubs::{CaptureBlocks, EchoPrompts, MtStubPrompts};
+use crate::kpop_test_stubs::{CaptureWants, EchoPrompts, MtStubPrompts};
 use crate::kpop_turn_prompts::KpopTurnPrompts;
 
 #[cfg(test)]
@@ -10,7 +10,7 @@ pub enum KpopMultiturnPrompts<'a> {
     Turn(KpopTurnPrompts<'a>),
     StubMt(MtStubPrompts),
     StubEcho(EchoPrompts),
-    StubCapture(CaptureBlocks),
+    StubCapture(CaptureWants),
     #[cfg(test)]
     Smoke(SmokeKpopBuilder),
 }
@@ -19,12 +19,16 @@ impl KpopMultiturnPrompts<'_> {
     /// # Errors
     ///
     /// Returns `Err` when prompt assembly fails.
-    pub fn kpop_prompt(&mut self) -> Result<String, String> {
+    pub fn kpop_block(
+        &mut self,
+        want: usize,
+        remaining_after_this_turn: usize,
+    ) -> Result<String, String> {
         match self {
-            Self::Turn(inner) => inner.kpop_prompt(),
-            Self::StubMt(inner) => inner.kpop_prompt(),
-            Self::StubEcho(inner) => inner.kpop_prompt(),
-            Self::StubCapture(inner) => inner.kpop_prompt(),
+            Self::Turn(inner) => inner.kpop_block(want, remaining_after_this_turn),
+            Self::StubMt(inner) => inner.kpop_block(want, remaining_after_this_turn),
+            Self::StubEcho(inner) => inner.kpop_block(want, remaining_after_this_turn),
+            Self::StubCapture(inner) => inner.kpop_block(want, remaining_after_this_turn),
             #[cfg(test)]
             Self::Smoke(_) => Ok("k".to_string()),
         }

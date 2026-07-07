@@ -2,9 +2,12 @@ use clap::Args;
 
 #[derive(Args, Debug, Clone)]
 pub struct KpopArgs {
-    /// How many separate kpop agent runs to perform (one Popper session per iteration).
+    /// How many times to run the kpop agent (stops early when the exp log contains `## KPOP_SOLVED`).
     #[arg(long, default_value_t = 1)]
     pub max_loops: usize,
+    /// Total `KPop` hypothesis steps (`## Step` headings in the exp log) per agent run.
+    #[arg(long, default_value_t = crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES)]
+    pub max_hypotheses: usize,
     /// Expand to `--max-acp-retries=9999` and `--max-loops=9999`.
     #[arg(long, default_value_t = crate::cli::loop_opts::DEFAULT_TENACIOUS)]
     pub tenacious: bool,
@@ -28,6 +31,7 @@ impl KpopArgs {
     pub(crate) fn with_request(&self, request: String) -> Self {
         Self {
             max_loops: self.max_loops,
+            max_hypotheses: self.max_hypotheses,
             tenacious: self.tenacious,
             requests: vec![request],
         }
@@ -62,12 +66,8 @@ mod tests {
             "max_loops help must not mention mpc plan: {help}"
         );
         assert!(
-            !help.contains("done"),
-            "max_loops help must not mention DONE early exit: {help}"
-        );
-        assert!(
-            help.contains("run") || help.contains("iteration"),
-            "max_loops help should describe iteration budget: {help}"
+            help.contains("kpop_solved") || help.contains("solved"),
+            "max_loops help should mention KPOP_SOLVED early exit: {help}"
         );
     }
 }

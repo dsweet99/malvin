@@ -70,7 +70,7 @@ fn agent_bundle_agent_error_auth_error_fmt() {
 }
 
 #[test]
-fn kiss_cov_kpop_turn_render_turn_with_body() {
+fn kiss_cov_kpop_turn_kpop_block() {
     use crate::kpop_turn_prompts::KpopTurnPrompts;
     use crate::prompt_stratification::WorkflowRenderContext;
     use crate::prompts::PromptStore;
@@ -89,9 +89,10 @@ fn kiss_cov_kpop_turn_render_turn_with_body() {
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
+        request_text: "brief",
         prepend_rules_once: false,
     };
-    let out = prompts.kpop_prompt().expect("kpop prompt");
+    let out = prompts.kpop_block(2, 0).expect("kpop prompt");
     assert!(out.contains("user_request.md"));
 }
 

@@ -82,6 +82,7 @@ max_acp_retries = 5
             model: "gpt-5".to_string(),
             model_mini: MINI_DEFAULT_MODEL.to_string(),
                 max_loops: 3,
+                max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
             max_loops_code: DEFAULT_MAX_LOOPS_CODE,
             max_acp_retries: 5,
             max_mini_transport_retries: 3,

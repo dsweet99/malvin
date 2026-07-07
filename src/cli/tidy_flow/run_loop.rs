@@ -34,6 +34,7 @@ pub async fn run_tidy(
         workflow,
         prepared: &prepared,
         max_loops,
+        max_hypotheses: tidy.max_hypotheses,
         behavior: KPopHardConstraints::TIDY,
     })
     .await?;

@@ -75,8 +75,6 @@ With `--mini`, narrative stdout is plain (no `m|` tags) and does **not** echo in
 | `malvin kpop` | Hypothesis-driven investigation with `_kpop/` log |
 | `malvin do Hello` | One-turn Cursor ACP connectivity smoke check |
 
-**Note:** bare `malvin hello` or `malvin Hello` (no subcommand) runs a kpop loop, not a connectivity probe — same as `malvin foobar`.
-
 ## Examples
 
 ```text

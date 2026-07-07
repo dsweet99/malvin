@@ -31,6 +31,7 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     for (name, body) in [
         ("header.md", "<<hdr plan={{ plan_path }} req={{ user_request_path }}>>\n"),
         ("kpop_common.md", "<<common exp={{ exp_log }}>>\n"),
+        ("kpop_block.md", "<<block want={{ want }} user={{ user_request }}>>\n"),
     ] {
         std::fs::write(root.join(name), body).expect("write");
     }
@@ -39,25 +40,8 @@ fn kpop_turn_test_store() -> (tempfile::TempDir, PromptStore) {
     (tmp, store)
 }
 
-fn expected_kpop_prompt_output(
-    store: &PromptStore,
-    ctx: &WorkflowRenderContext,
-    with_rules: bool,
-) -> String {
-    let map = ctx.as_map();
-    let common = store
-        .render_prompt_only("kpop_common.md", map)
-        .expect("common");
-    if with_rules {
-        let header = render_header(store, map).expect("header");
-        format!("{}\n\n{}", header.trim_end(), common.trim_end())
-    } else {
-        common.trim_end().to_string()
-    }
-}
-
 #[test]
-fn kpop_engine_single_turn_prompt_is_header_plus_common() {
+fn kpop_engine_single_turn_prompt_is_header_common_and_block() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let request_path = "./.malvin/logs/run/user_request.md";
@@ -65,66 +49,50 @@ fn kpop_engine_single_turn_prompt_is_header_plus_common() {
     let prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
+        request_text: "investigate cache",
         prepend_rules_once: false,
     };
-    let gate = prompts.kpop_engine_single_turn_prompt().expect("gate prompt");
-    let map = base.as_map();
-    let header = store
-        .render_prompt_only("header.md", map)
-        .expect("header");
-    let common = store
-        .render_prompt_only("kpop_common.md", map)
-        .expect("common");
-    let expected = format!("{}\n\n{}", header.trim_end(), common.trim_end());
-    assert_eq!(gate, expected);
+    let gate = prompts.kpop_engine_single_turn_prompt(5).expect("gate prompt");
     assert!(gate.contains(request_path));
     assert!(gate.contains(exp_path));
+    assert!(gate.contains("investigate cache"));
+    assert!(gate.contains("<<block want=5"));
 }
 
 #[test]
-fn kpop_prompt_matches_independently_rendered_sections() {
+fn kpop_block_prepends_header_once_then_common_and_block() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
+        request_text: "brief text",
         prepend_rules_once: true,
     };
 
-    let first = prompts.kpop_prompt().expect("first kpop turn");
-    assert_eq!(
-        first,
-        expected_kpop_prompt_output(&store, &base, true),
-        "first turn should equal header + common"
-    );
+    let first = prompts.kpop_block(3, 0).expect("first kpop turn");
+    let header = render_header(&store, base.as_map()).expect("header");
+    assert!(first.contains(header.trim()));
+    assert!(first.contains("brief text"));
 
-    let second = prompts.kpop_prompt().expect("second kpop turn");
-    assert_eq!(
-        second,
-        expected_kpop_prompt_output(&store, &base, false),
-        "after prepend_rules_once is consumed, output should omit header"
-    );
+    let second = prompts.kpop_block(3, 0).expect("second kpop turn");
+    assert!(!second.contains(header.trim()));
+    assert!(second.contains("brief text"));
 }
 
 #[test]
-fn kpop_prompt_without_prepend_rules_never_includes_header() {
+fn kpop_block_without_prepend_rules_never_includes_header() {
     let (_tmp, store) = kpop_turn_test_store();
     let base = kpop_turn_test_context();
     let mut prompts = KpopTurnPrompts {
         store: &store,
         base: &base,
+        request_text: "brief",
         prepend_rules_once: false,
     };
 
-    let out = prompts.kpop_prompt().expect("kpop turn");
-    assert_eq!(
-        out,
-        expected_kpop_prompt_output(&store, &base, false),
-        "prepend_rules_once=false should never prepend header"
-    );
+    let out = prompts.kpop_block(2, 1).expect("kpop turn");
     let header = render_header(&store, base.as_map()).expect("header");
-    assert!(
-        !out.contains(header.trim()),
-        "output must not contain rendered header fragment:\nheader={header:?}\nout={out:?}"
-    );
+    assert!(!out.contains(header.trim()));
+    assert!(out.contains("brief"));
 }

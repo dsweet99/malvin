@@ -1,7 +1,9 @@
 use crate::kpop_multiturn_prompts::{KpopMultiturnPrompts, SmokeKpopBuilder};
 use crate::kpop_progression::{KpopMultiturnParams, KpopMultiturnState};
-use crate::kpop_test_stubs::CaptureBlocks;
+use crate::kpop_test_stubs::CaptureWants;
 use std::sync::{Arc, Mutex};
+
+const TEST_MAX_HYPOTHESES: usize = 10;
 
 #[test]
 fn kpop_multiturn_transport_retry_offers_prompt_again_after_failed_attempt() {
@@ -12,6 +14,7 @@ fn kpop_multiturn_transport_retry_offers_prompt_again_after_failed_attempt() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .expect("state");
 
@@ -37,6 +40,7 @@ fn single_prompt_then_done() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .expect("state");
 
@@ -48,24 +52,25 @@ fn single_prompt_then_done() {
 }
 
 #[test]
-fn capture_blocks_records_one_prompt() {
+fn capture_wants_records_one_prompt() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let exp_log_path = tmp.path().join("exp_log.md");
     std::fs::write(&exp_log_path, "\n").expect("write exp log");
-    let blocks = Arc::new(Mutex::new(Vec::new()));
+    let wants = Arc::new(Mutex::new(Vec::new()));
 
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
-        builder: KpopMultiturnPrompts::StubCapture(CaptureBlocks::new(blocks.clone())),
+        builder: KpopMultiturnPrompts::StubCapture(CaptureWants::new(wants.clone())),
         exp_log_path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .expect("state");
 
     assert!(state.next_prompt().expect("kpop prompt").is_some());
     assert!(state.next_prompt().expect("after prompt").is_none());
     assert_eq!(
-        blocks.lock().expect("blocks lock").len(),
+        wants.lock().expect("wants lock").len(),
         1,
-        "CaptureBlocks should record one kpop prompt"
+        "CaptureWants should record one kpop prompt"
     );
 }
 
@@ -78,6 +83,7 @@ fn reset_for_transport_retry_reoffers_single_prompt() {
     let mut state = KpopMultiturnState::from_params(KpopMultiturnParams {
         builder: KpopMultiturnPrompts::Smoke(SmokeKpopBuilder),
         exp_log_path,
+        max_hypotheses: TEST_MAX_HYPOTHESES,
     })
     .expect("state");
 

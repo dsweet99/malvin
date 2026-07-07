@@ -6,7 +6,8 @@ use crate::cli::workflow_kpop_shared::{
 };
 
 pub(crate) use super::run_loop_exit::{
-    gate_loop_early_exit, run_gate_workspace_gates_with_fresh_backups, GateLoopExitCtx,
+    gate_loop_early_exit, kpop_solved_early_exit, refresh_consecutive_solved_streak,
+    run_gate_workspace_gates_with_fresh_backups, GateLoopExitCtx,
 };
 
 #[path = "run_loop_iteration.rs"]
@@ -24,6 +25,7 @@ pub(crate) type KPopEngineLoopOutcome = (
 
 pub(crate) struct KPopEngineEarlyExitCtx<'a> {
     pub behavior: super::behavior::KPopHardConstraints,
+    pub consecutive_solved: usize,
     pub artifacts: &'a crate::artifacts::RunArtifacts,
     pub session_dotfile_backups: &'a SessionDotfileBackups,
     pub agent_ran: bool,
@@ -33,6 +35,19 @@ pub(crate) struct KPopEngineEarlyExitCtx<'a> {
 pub(crate) fn kpop_engine_gate_loop_early_exit(
     ctx: KPopEngineEarlyExitCtx<'_>,
 ) -> Option<KPopEngineLoopOutcome> {
+    if kpop_solved_early_exit(
+        ctx.behavior,
+        ctx.consecutive_solved,
+        ctx.artifacts,
+        ctx.session_dotfile_backups,
+    ) {
+        return Some((
+            true,
+            ctx.agent_ran,
+            ctx.run_timing.cloned(),
+            ctx.session_dotfile_backups.clone(),
+        ));
+    }
     let gate_ctx = GateLoopExitCtx {
         behavior: ctx.behavior,
         artifacts: ctx.artifacts,
@@ -93,29 +108,34 @@ struct KpopEngineIterationInput<'a> {
     params: &'a super::params::KPopEngineParams<'a>,
     iteration: usize,
     run_timing: &'a Arc<Mutex<crate::run_timing::RunTiming>>,
+    consecutive_solved: usize,
 }
 
 async fn run_kpop_engine_iteration(
     input: KpopEngineIterationInput<'_>,
-) -> Result<(SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
+) -> Result<(usize, SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
     let KpopEngineIterationInput {
         params,
         iteration,
         run_timing,
+        consecutive_solved,
     } = input;
     let mut client =
         run_loop_iteration::build_authenticated_kpop_engine_client(params, run_timing)?;
-    let (backups, early) = kpop_engine_loop_one_iteration(KpopEngineLoopIterationCtx {
-        params,
-        iteration,
-        run_timing,
-        client: &mut client,
-    })
+    let (streak, backups, early) = kpop_engine_loop_one_iteration(
+        KpopEngineLoopIterationCtx {
+            params,
+            iteration,
+            run_timing,
+            client: &mut client,
+        },
+        consecutive_solved,
+    )
     .await?;
     if client.has_open_coder_session() {
         client.end_coder_session().await.map_err(|e| e.to_string())?;
     }
-    Ok((backups, early))
+    Ok((streak, backups, early))
 }
 
 pub(crate) async fn run_kpop_engine(
@@ -137,16 +157,19 @@ pub(crate) async fn run_kpop_engine(
 
     let iterations = kpop_engine_loop_iterations(params.max_loops);
     let run_timing = crate::run_timing::attach_kpop_engine_loop_run_timing();
+    let mut consecutive_solved = 0usize;
     for iteration in 1..=iterations {
         if iteration > 1 {
             restore_carry_forward_before_iteration_snapshot(work_dir, Some(&last_backups))?;
         }
-        let (backups, early) = run_kpop_engine_iteration(KpopEngineIterationInput {
+        let (streak, backups, early) = run_kpop_engine_iteration(KpopEngineIterationInput {
             params: &params,
             iteration,
             run_timing: &run_timing,
+            consecutive_solved,
         })
         .await?;
+        consecutive_solved = streak;
         last_backups = backups;
         if let Some(outcome) = early {
             return Ok(outcome);

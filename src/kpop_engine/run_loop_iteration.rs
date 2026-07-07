@@ -87,20 +87,24 @@ pub(crate) async fn run_kpop_engine_on_loop_iteration(
 
 pub(crate) async fn kpop_engine_loop_one_iteration(
     ctx: KpopEngineLoopIterationCtx<'_>,
-) -> Result<(SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
+    consecutive_solved: usize,
+) -> Result<(usize, SessionDotfileBackups, Option<KPopEngineLoopOutcome>), String> {
     let params = ctx.params;
     let iteration = ctx.iteration;
     let run_timing = ctx.run_timing;
     let session_dotfile_backups = run_kpop_engine_on_loop_iteration(ctx).await?;
     let exp_log_path = params.prepared.artifacts().gate_exp_log_path(iteration);
-    let _exp_log = crate::kpop_log_protocol::ExperimentLog::read(&exp_log_path)
-        .map_err(|e| e.to_string())?;
+    let streak = super::refresh_consecutive_solved_streak(
+        consecutive_solved,
+        &exp_log_path,
+    )?;
     let early = kpop_engine_gate_loop_early_exit(KPopEngineEarlyExitCtx {
         behavior: params.behavior,
+        consecutive_solved: streak,
         artifacts: params.prepared.artifacts(),
         session_dotfile_backups: &session_dotfile_backups,
         agent_ran: true,
         run_timing: Some(run_timing),
     });
-    Ok((session_dotfile_backups, early))
+    Ok((streak, session_dotfile_backups, early))
 }

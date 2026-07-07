@@ -79,6 +79,7 @@ pub(super) async fn run_checks_discovery_kpop(
         workflow,
         prepared: &prepared,
         max_loops,
+        max_hypotheses: agent_cfg.max_hypotheses,
         behavior: KPopHardConstraints::CHECKS_DISCOVERY,
     })
     .await?;

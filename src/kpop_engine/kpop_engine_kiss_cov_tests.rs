@@ -95,6 +95,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         workflow,
         prepared: &prepared,
         max_loops: 1,
+        max_hypotheses: 5,
         behavior: KPopHardConstraints::CODE,
     };
     let KPopEngineParams {
@@ -103,6 +104,7 @@ fn kiss_cov_kpop_engine_loop_params_types() {
         workflow: _,
         prepared: _,
         max_loops,
+        max_hypotheses: _,
         behavior: _,
     } = loop_params;
     assert_eq!(command, "code");

@@ -3,18 +3,45 @@
 #[test]
 fn kpop_loop_exit_after_iteration_exits_on_last_loop() {
     crate::test_utils::with_isolated_home(|_work| {
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(2, 2);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("exp.md");
+        std::fs::write(&path, "").expect("write");
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 2, 2, 5)
+            .expect("exit");
         assert!(exit.will_exit_after_this_loop);
-        assert!(!exit.early_exit_on_solved);
+        assert!(!exit.declares_solved);
     });
 }
 
 #[test]
 fn kpop_loop_exit_after_iteration_continues_before_last_loop() {
     crate::test_utils::with_isolated_home(|_work| {
-        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(1, 2);
-        assert!(!exit.early_exit_on_solved);
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("exp.md");
+        std::fs::write(&path, "").expect("write");
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 2, 5)
+            .expect("exit");
+        assert!(!exit.declares_solved);
+        assert!(!exit.budget_exhausted);
         assert!(!exit.will_exit_after_this_loop);
+    });
+}
+
+#[test]
+fn kpop_loop_exit_after_iteration_stops_outer_loop_when_budget_exhausted() {
+    crate::test_utils::with_isolated_home(|_work| {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("exp.md");
+        std::fs::write(
+            &path,
+            "## Step 1 — KPop a\n## Step 2 — KPop b\n## Step 3 — KPop c\n",
+        )
+        .expect("write");
+        let exit = super::kpop_flow_run_loop::kpop_loop_exit_after_iteration(&path, 1, 3, 3)
+            .expect("exit");
+        assert!(!exit.declares_solved);
+        assert!(exit.budget_exhausted);
+        assert!(exit.will_exit_after_this_loop);
     });
 }
 

@@ -49,6 +49,7 @@ fn kpop_emit_startup_creates_malvin_run_under_root() {
     };
     let kpop = crate::cli::KpopArgs {
         max_loops: 1,
+max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
         tenacious: false,
         requests: vec!["smoke".into()],
     };
@@ -144,9 +145,10 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
     let mut turn = crate::KpopTurnPrompts {
         store: &store,
         base: &base,
+        request_text: "investigate cache",
         prepend_rules_once: true,
     };
-    let kpop = turn.kpop_prompt().unwrap();
+    let kpop = turn.kpop_block(5, 0).unwrap();
     assert_substrings_monotonic(
         &kpop,
         &[
@@ -175,15 +177,15 @@ fn kpop_turn_prompts_include_kpop_common_and_exp_log() {
         "kpop prompt must not include legacy mpc block wording: {kpop:?}"
     );
     assert!(
-        !kpop.contains("budget for any KPOPs"),
-        "kpop prompt must not include hypothesis budget wording: {kpop:?}"
+        kpop.contains("Complete up to"),
+        "kpop prompt must include block budget wording: {kpop:?}"
     );
     assert!(
-        !kpop.contains("Complete up to"),
-        "kpop prompt must not use backticked want budget wording: {kpop:?}"
+        kpop.contains("investigate cache"),
+        "kpop prompt must inline user request: {kpop:?}"
     );
     assert!(
-        !kpop.contains("remaining_hypotheses"),
-        "kpop prompt must not reference remaining_hypotheses: {kpop:?}"
+        kpop.contains("## KPOP_SOLVED"),
+        "kpop prompt must mention KPOP_SOLVED early stop: {kpop:?}"
     );
 }

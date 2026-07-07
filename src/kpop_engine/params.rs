@@ -10,6 +10,7 @@ pub(crate) struct KPopEngineParams<'a> {
     pub workflow: WorkflowCliOptions,
     pub prepared: &'a KPopEnginePrepared,
     pub max_loops: usize,
+    pub max_hypotheses: usize,
     pub behavior: KPopHardConstraints,
 }
 

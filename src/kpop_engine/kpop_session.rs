@@ -60,14 +60,16 @@ fn iter_context(ctx: &KPopEngineMultiturnCtx<'_>) -> crate::prompt_stratificatio
 }
 
 fn build_kpop_engine_prompt(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<String, String> {
-    let prepared = ctx.iteration.loop_params.prepared;
+    let params = ctx.iteration.loop_params;
+    let prepared = params.prepared;
     let iter_ctx = iter_context(ctx);
     KpopTurnPrompts {
         store: prepared.store(),
         base: &iter_ctx,
+        request_text: &prepared.request_text,
         prepend_rules_once: false,
     }
-    .kpop_engine_single_turn_prompt()
+    .kpop_engine_single_turn_prompt(params.max_hypotheses)
 }
 
 pub(super) fn restore_kpop_engine_session_dotfiles(ctx: &KPopEngineMultiturnCtx<'_>) -> Result<(), String> {
@@ -165,8 +167,14 @@ async fn run_kpop_engine_single_turn(
     let log_path = prepared.artifacts().log_path("kpop");
 
     let prompt = build_kpop_engine_prompt(ctx)?;
-    let prompt_result =
+    let max_hypotheses = ctx.iteration.loop_params.max_hypotheses;
+    let exp_log_path = ctx.iteration.exp_log_path.clone();
+    let mut prompt_result =
         run_kpop_engine_coder_turn(ctx, &prompt, work_dir, log_path.as_path()).await;
+    if prompt_result.is_ok() {
+        prompt_result = crate::kpop_progression::check_hypothesis_budget(&exp_log_path, max_hypotheses)
+            .map_err(AgentError);
+    }
     let post_agent_backups = if prompt_result.is_ok() {
         Some(
             crate::artifacts::SessionDotfileBackups::snapshot_after_ensuring_home_config(

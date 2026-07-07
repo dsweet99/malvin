@@ -54,6 +54,14 @@ impl KPopHardConstraints {
     };
 
     #[must_use]
+    pub const fn consecutive_kpop_solved_to_exit(self) -> usize {
+        match self.exit {
+            KPopHardConstraintsExit::CodeTidy => 2,
+            KPopHardConstraintsExit::ChecksDiscovery => 1,
+        }
+    }
+
+    #[must_use]
     pub const fn require_passing_gates_for_exit(self) -> bool {
         matches!(self.exit, KPopHardConstraintsExit::CodeTidy)
     }

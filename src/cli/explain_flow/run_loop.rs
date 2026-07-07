@@ -136,6 +136,7 @@ async fn run_explain_gate_session(
         workflow,
         prepared,
         max_loops: effective_explain_max_loops(explain.max_loops),
+        max_hypotheses: explain.max_hypotheses,
         behavior: KPopHardConstraints::EXPLAIN,
     })
     .await
