@@ -531,11 +531,53 @@ def materialize_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> 
     git_run(workspace, "checkout", spec.base_commit, dry_run=dry_run)
 
 
+def repair_workspace_submodules(workspace: Path, *, dry_run: bool = False) -> None:
+    """Re-init git submodules when harvest left stale ``gitdir`` pointers.
+
+    Modal workspace harvest excludes ``.git`` but overlays submodule worktrees;
+    their ``.git`` files may reference missing ``.git/modules/*`` metadata.
+    """
+    if not (workspace / ".gitmodules").is_file():
+        return
+    ws = str(workspace.resolve())
+    status = run_cmd(
+        ["git", "-c", f"safe.directory={ws}", "status", "--porcelain"],
+        cwd=workspace,
+        check=False,
+        dry_run=dry_run,
+    )
+    if status.returncode == 0:
+        return
+    if dry_run:
+        click.echo("Would repair broken git submodules", err=True)
+        return
+    click.echo("Repairing broken git submodules...", err=True)
+    run_cmd(
+        ["git", "-c", f"safe.directory={ws}", "submodule", "deinit", "-f", "--all"],
+        cwd=workspace,
+        check=False,
+    )
+    run_cmd(
+        [
+            "git",
+            "-c",
+            f"safe.directory={ws}",
+            "submodule",
+            "update",
+            "--init",
+            "--recursive",
+        ],
+        cwd=workspace,
+        check=False,
+    )
+
+
 def reset_workspace(spec: TaskSpec, workspace: Path, *, dry_run: bool) -> None:
     git_run(workspace, "reset", "--hard", spec.base_commit, dry_run=dry_run)
     if dry_run:
         git_run(workspace, "clean", "-fdx", dry_run=True)
         return
+    repair_workspace_submodules(workspace)
     purge_root_owned_ephemeral_caches(workspace)
     if git_clean(workspace):
         return
@@ -2605,6 +2647,8 @@ def _test_solve_dry_run() -> None:
     assert "docker run" in result.output
     assert "Runtime: local-docker" in result.output
     assert "--runtime in-sandbox" in result.output
+    assert "--command route" in result.output
+    assert "--command code" not in result.output
 
 
 def _patch_modal_cursor_credentials() -> Any:
@@ -2690,11 +2734,12 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     if not (tasks_root / "bandit-interprocedural-taint-checks").is_dir():
         return
     runner = CliRunner()
-    captured: dict[str, bool] = {}
+    captured: dict[str, Any] = {}
 
     def fake_modal_eval(**kwargs: Any) -> None:
         captured["reset_flag"] = kwargs.get("reset_flag", False)
         captured["grade_only"] = kwargs.get("grade_only", False)
+        captured["malvin_command"] = kwargs.get("malvin_command")
 
     with _patch_modal_cursor_credentials(), patch("deepswe_modal.run_modal_eval", fake_modal_eval):
         result = runner.invoke(
@@ -2704,6 +2749,7 @@ def _test_solve_resets_workspace_for_agent_runs() -> None:
     assert result.exit_code == 0, result.output
     assert captured.get("reset_flag") is True, captured
     assert captured.get("grade_only") is False, captured
+    assert captured.get("malvin_command") == "route", captured
 
 
 def _test_solve_local_dry_run_passes_reset() -> None:
@@ -3092,6 +3138,8 @@ def _test_solve_modal_spend_limit_falls_back_to_local_dry_run() -> None:
     assert result.exit_code == 0, result.output
     assert "Modal workspace spend limit reached" in result.output
     assert "local-docker (Modal spend-limit fallback)" in result.output
+    assert "--command route" in result.output
+    assert "--command code" not in result.output
 
 
 def _test_tasks_command() -> None:
@@ -3125,6 +3173,40 @@ _GIT_TEST_IDENTITY = {
     "GIT_COMMITTER_NAME": "malvin-test",
     "GIT_COMMITTER_EMAIL": "malvin-test@example.com",
 }
+
+
+def _test_repair_workspace_submodules_noop_without_gitmodules() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        run_cmd(["git", "init", "-q"], cwd=workspace, env=_GIT_TEST_IDENTITY)
+        repair_workspace_submodules(workspace)
+
+
+def _test_repair_workspace_submodules_after_stale_gitdir() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = Path(tmp)
+        (workspace / ".gitmodules").write_text(
+            '[submodule "child"]\n\tpath = child\n\turl = file:///nonexistent\n',
+            encoding="utf-8",
+        )
+        recorded: list[list[str]] = []
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            recorded.append(cmd)
+            if len(cmd) >= 3 and cmd[0] == "git" and "status" in cmd:
+                return subprocess.CompletedProcess(
+                    cmd,
+                    128,
+                    "",
+                    "fatal: not a git repository: child/../.git/modules/child",
+                )
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with patch(f"{__name__}.run_cmd", side_effect=fake_run):
+            repair_workspace_submodules(workspace)
+        joined = [" ".join(cmd) for cmd in recorded]
+        assert any("submodule deinit" in line for line in joined)
+        assert any("submodule update" in line for line in joined)
 
 
 def _test_reset_workspace_removes_user_pycache() -> None:
@@ -3852,6 +3934,8 @@ def run_self_tests() -> None:
     _test_solve_modal_spend_limit_falls_back_to_local_dry_run()
     _test_ephemeral_cache_find_expr()
     _test_purge_root_owned_ephemeral_caches_docker_cmd()
+    _test_repair_workspace_submodules_noop_without_gitmodules()
+    _test_repair_workspace_submodules_after_stale_gitdir()
     _test_reset_workspace_removes_user_pycache()
     _test_purge_root_owned_sandbox_artifacts_docker()
     _test_purge_root_owned_ephemeral_caches_docker()

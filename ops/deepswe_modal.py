@@ -4167,13 +4167,14 @@ def _test_run_modal_eval_modal_agent_modal_grade() -> None:
                 task_dir=task,
                 workspace=workspace,
                 results_dir=results,
-                malvin_command="code",
+                malvin_command="route",
                 grade_only=False,
                 skip_grade=False,
                 dry_run=False,
             )
         assert mock_sandbox.call_count == 1
         agent_call = mock_sandbox.call_args
+        assert agent_call.kwargs["command"] == "route"
         assert agent_call.kwargs["grade_only"] is False
         assert agent_call.kwargs["skip_grade"] is False
         assert agent_call.kwargs.get("open_network") is not True
