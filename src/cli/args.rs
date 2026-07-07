@@ -42,6 +42,9 @@ pub enum Commands {
     /// Be creative
     #[command(name = "inspire")]
     Inspire(InspireArgs),
+    /// Be creative (legacy name)
+    #[command(name = "adaptix", hide = true)]
+    Adaptix(InspireArgs),
     /// Write code (deprecated; hidden from help)
     #[command(hide = true)]
     Code(crate::cli::code_flow::CodeArgs),

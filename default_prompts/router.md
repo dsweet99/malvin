@@ -11,11 +11,19 @@ The user has made a request. You need to act autonomously, without further input
 
 How would you satify this request?
 How would you go about figuring out how to satisfy this request?
-How would you learn to figure out how to satisfy this request? Do that. Ask `inspire` for helpful ideas.
+How would you learn to figure out how to satisfy this request?
 
-Your goal is to provide convince the user that the request is satisfied is a completely objective way. You
+ Ask `inspire` for helpful ideas for answering the last question.
+
+1. Learn to figure out how to satisfy the request.
+2. Figure out how to satisfy the request.
+3. Satisfy the request.
+
+
+
+Your goal is to convince the user that the request is satisfied in a completely objective way. You
  want to achieve *epistemic decoupling*, i.e., the state where the user would be convinced by the evidence
- *directly* no matter its source.
+ *directly* no matter who was presenting it (you or anyone else).
 
-When you're all done, write a short summary right here in the chat. One small textual/markdown artifact (table, Mermaid, ASCII art, etc.)
- would be appreciated (if appropriate only; no gratuitous artifacts).
+When you're all done, write a short summary of the evidence right here in the chat.
+

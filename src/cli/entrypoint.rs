@@ -150,7 +150,9 @@ pub(crate) fn dispatch_command(
                 },
             )
         }),
-        Commands::Inspire(inspire) => super::entrypoint_commands::run_inspire_command(inspire, &shared),
+        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
+            super::entrypoint_commands::run_inspire_command(inspire, &shared)
+        }
         cmd @ (Commands::Models(_) | Commands::Logs(_)) => {
             dispatch_agent_free(cmd)
         }

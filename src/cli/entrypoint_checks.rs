@@ -4,6 +4,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
     match cmd {
         Commands::Models(_)
         | Commands::Inspire(_)
+        | Commands::Adaptix(_)
         | Commands::Explain(_)
         | Commands::Delight(_)
         | Commands::Revise(_) => Ok(()),

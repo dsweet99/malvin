@@ -37,6 +37,11 @@
 mod log_gc;
 mod log_gc_config;
 mod malvin_config_file;
+mod workflow_name_aliases;
+pub use workflow_name_aliases::{
+    canonical_workflow_name, resolve_session_log_path, resolve_workspace_malvin_config_path,
+    WORKSPACE_CONFIG_PATHS,
+};
 mod gate_loop_session;
 mod sequential_requests;
 mod sandbox_oom;

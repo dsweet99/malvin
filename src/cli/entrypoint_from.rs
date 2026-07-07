@@ -39,7 +39,9 @@ fn entrypoint_short_help_when_request_missing(
 fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
     let command = cli.command.as_ref()?;
     let (request, subcommand) = match command {
-        Commands::Inspire(inspire) => (inspire.request.as_ref(), "inspire"),
+        Commands::Inspire(inspire) | Commands::Adaptix(inspire) => {
+            (inspire.request.as_ref(), "inspire")
+        }
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
         Commands::Kpop(kpop) => (kpop.requests.first(), "kpop"),
         _ => return None,
