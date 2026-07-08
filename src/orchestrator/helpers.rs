@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub use crate::workflow_context::{
-    format_prompt_path, workflow_context, workflow_context_paths_only,
+    format_prompt_path, workflow_context_paths_only,
 };
+#[cfg(test)]
+pub use crate::workflow_context::workflow_context;
 pub(crate) use crate::workflow_context::insert_formatted;
 
 /// Removes a review file when it exists; succeeds when `p` is absent.

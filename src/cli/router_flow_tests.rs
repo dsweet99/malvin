@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::flow_prompt_join_test_helpers::{
     assert_dual_workflow_header_join, assert_header_user_join, flow_test_artifacts,
+    flow_test_artifacts_no_checks,
 };
 use crate::router_flow::router_flow_prompt::{
     build_router_coder_run, build_router_coder_run_with_store,
@@ -42,6 +43,24 @@ fn prepare_router_prompt_store_loads_default_templates() {
     let store = prepare_router_prompt_store().expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_MD).is_ok());
+}
+
+#[test]
+fn build_router_coder_run_succeeds_without_checks_in_non_git_workspace() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts_no_checks(&tmp);
+    let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
+    assert!(run.combined.contains("Know thyself"));
+    assert!(run.combined.contains("act autonomously"));
+    assert!(
+        run.combined.contains("Context Prep"),
+        "router prompt must include standard header content"
+    );
+    assert!(
+        !run.combined.contains("{{"),
+        "router prompt must expand all template placeholders without checks"
+    );
+    assert_eq!(run.combined.matches("USER_TOKEN").count(), 1);
 }
 
 #[test]

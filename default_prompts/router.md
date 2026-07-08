@@ -7,7 +7,7 @@ malvin kpop --help      # Empirical reasoner, hypothesizes and falsifies
 malvin inspire --help   # Idea generator, explores creatively
 ```
 
-`inspire` and `kpop` are a powerful combination. You can use inspire to generate several ideas then as kpop to invalidate them. If any survive, they'll be more likely to be good ones. Also, inspire and kpop will have their own contexts, so they'll be impartial.
+`inspire` and `kpop` are a powerful combination. You can use inspire to generate several ideas then as kpop to invalidate them. If any survive, they'll be more likely to be good ones. Also, inspire and kpop will have their own contexts, so they'll be impartial (but you'll need to let them know about your needs in detail).
 
 ---
 There's a user request in `{{ user_request_path }}'.

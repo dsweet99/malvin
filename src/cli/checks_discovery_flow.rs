@@ -66,16 +66,6 @@ pub(crate) async fn ensure_malvin_checks_discovered_for_cwd(
     ensure_malvin_checks_discovered(&cwd, shared).await
 }
 
-/// Gate-loop prelude for commands whose workspace comes from a CLI request path.
-pub(crate) async fn ensure_malvin_checks_discovered_for_cli_request(
-    request: &str,
-    shared: &SharedOpts,
-) -> Result<(), String> {
-    let (_, work_dir) =
-        crate::artifacts::resolve_user_md_request(request).map_err(|e| e.to_string())?;
-    ensure_malvin_checks_discovered(&work_dir, shared).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

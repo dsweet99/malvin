@@ -3,10 +3,9 @@ mod common;
 use std::path::Path;
 
 use malvin::artifacts::create_run_artifacts;
-use malvin::prompts::PromptStore;
 use common::with_isolated_home;
 use malvin::workflow_context::{
-    format_prompt_path, workflow_context, workflow_context_paths_only,
+    format_prompt_path, workflow_context_paths_only,
 };
 
 #[test]
@@ -85,22 +84,17 @@ fn workflow_context_paths_use_relative_prompt_paths() {
 }
 
 #[test]
-fn workflow_context_render_includes_kpop_and_quality_gates() {
+fn workflow_context_paths_include_quality_gates_log_alias() {
     with_isolated_home(|work, _home| {
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(work)
-            .status()
-            .expect("git init");
-        common::seed_malvin_checks(work, "true\n");
         let plan = work.join("plan.md");
         std::fs::write(&plan, "p").expect("write");
         let artifacts = create_run_artifacts(&plan, Some(work)).expect("artifacts");
-        let store = PromptStore::default_store();
-        store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context(&artifacts, &store, "tidy").expect("context");
-        assert!(ctx.contains_key("kpop"));
-        assert!(ctx.contains_key("quality_gates"));
+        let ctx = workflow_context_paths_only(&artifacts, "tidy");
+        assert!(ctx.contains_key("quality_gates_log"));
+        assert_eq!(
+            ctx.get("quality_gates_path").map(String::as_str),
+            ctx.get("quality_gates_log").map(String::as_str),
+        );
     });
 }
 

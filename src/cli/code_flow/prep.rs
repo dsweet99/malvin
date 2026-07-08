@@ -20,12 +20,7 @@ pub fn code_kpop_request(
     store: &PromptStore,
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<String, String> {
-    let mut context =
-        crate::orchestrator::workflow_context_paths_only(artifacts, "code");
-    context.insert(
-        "quality_gates".to_string(),
-        crate::repo_gates::prompt_quality_gates_markdown_ephemeral(&artifacts.work_dir)?,
-    );
+    let context = crate::orchestrator::workflow_context_paths_only(artifacts, "code");
     render_repo_program(
         store,
         "code_constraints.md",

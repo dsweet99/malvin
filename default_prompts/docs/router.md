@@ -9,6 +9,7 @@ One **single-turn** agent session with autonomous routing brief: no gate loop, n
 | Input | `<REQUEST>` text or existing `.md` path |
 | Output | Styled stdout on a TTY (same startup chrome as `kpop` / `tidy`) |
 | Log | `router.log` under `~/.malvin_home/logs/<hash>/<run>/` |
+| Requires | No `.malvin/checks` at startup |
 
 ## Intention
 

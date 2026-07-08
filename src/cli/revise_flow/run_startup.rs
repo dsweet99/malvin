@@ -74,6 +74,22 @@ mod tests {
     }
 
     #[test]
+    fn prepare_revise_kpop_run_succeeds_without_checks() {
+        crate::test_utils::with_isolated_home(|work| {
+            let cwd = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(work).expect("chdir");
+            std::fs::write(work.join("doc.md"), "body\n").expect("write");
+            let prepared = prepare_revise_kpop_run(
+                "doc.md",
+                crate::cli::WorkflowCliOptions { force: true },
+            )
+            .expect("prepare without checks");
+            assert!(!prepared.inner.context.contains_key("quality_gates"));
+            std::env::set_current_dir(cwd).expect("restore");
+        });
+    }
+
+    #[test]
     fn revise_preflight_runs_before_run_dir_created() {
         crate::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");

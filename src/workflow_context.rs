@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::artifacts::RunArtifacts;
 use crate::prompt_stratification::WorkflowRenderContext;
+#[cfg(test)]
 use crate::prompts::{PromptError, PromptStore};
 
 pub(crate) fn insert_formatted(ctx: &mut HashMap<String, String>, key: &str, path: &Path, base: &Path) {
@@ -108,6 +109,7 @@ pub fn workflow_context_paths_only(
 /// # Errors
 ///
 /// Returns [`PromptError`] when quality gate markdown or `kpop_common.md` rendering fails.
+#[cfg(test)]
 pub fn workflow_context(
     artifacts: &RunArtifacts,
     prompts: &PromptStore,

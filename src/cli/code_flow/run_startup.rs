@@ -11,7 +11,7 @@ pub(crate) type CodeKpopPrepared = KPopEnginePrepared;
 fn code_kpop_workflow_context(
     artifacts: &crate::artifacts::RunArtifacts,
 ) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context(artifacts, "code")
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "code")
 }
 
 pub(crate) fn prepare_code_kpop_run(

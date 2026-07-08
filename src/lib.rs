@@ -163,7 +163,9 @@ pub mod orchestrator;
 pub use orchestrator::{
     Orchestrator, WorkflowConfig, WorkflowError, check_abort, fail_on_abort_for_artifacts,
 };
-pub use workflow_context::{format_prompt_path, workflow_context, workflow_context_paths_only};
+pub use workflow_context::{format_prompt_path, workflow_context_paths_only};
+#[cfg(test)]
+pub use workflow_context::workflow_context;
 pub mod observability;
 pub mod kpop_log_protocol;
 pub mod kpop_program;

@@ -91,7 +91,8 @@ Stops when any of:
 - `request.md` — input brief
 - `_kpop/exp_log_*.md` — experiment log (authoritative for hypotheses and test results)
 - `kpop.log` — session transcript
-- `quality_gates.log` when gates are embedded in prompts
+
+Investigation prompts do not embed workspace quality gates. Use `malvin tidy` to clean a repo against `.malvin/checks`.
 
 ## Related commands
 

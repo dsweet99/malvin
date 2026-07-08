@@ -82,3 +82,4 @@ When communicating to the user:
 - No colloquialisms
 - Write in clear, plain language.
 - Use complete sentences.
+- No agent shorthand or made-up terms.

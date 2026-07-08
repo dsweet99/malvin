@@ -7,7 +7,7 @@ use crate::artifacts::{
     MalvinChecksBackup, MalvinConfigBackup, RunArtifacts, SessionDotfileBackups,
     create_run_artifacts_from_text,
 };
-use crate::orchestrator::workflow_context;
+use crate::orchestrator::workflow_context_paths_only;
 use crate::prompt_stratification::WorkflowRenderContext;
 use crate::prompts::PromptStore;
 
@@ -55,7 +55,7 @@ pub fn workflow_ctx_for_smoke(
     let artifacts =
         create_run_artifacts_from_text(run_artifact_body, Some(tmp.path())).expect("art");
     let store = PromptStore::default_store();
-    let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+    let ctx = workflow_context_paths_only(&artifacts, "code");
     (artifacts, store, ctx)
 }
 

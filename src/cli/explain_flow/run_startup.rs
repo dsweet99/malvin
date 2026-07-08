@@ -83,6 +83,25 @@ mod tests {
     }
 
     #[test]
+    fn prepare_explain_kpop_run_succeeds_without_checks() {
+        crate::test_utils::with_isolated_home(|work| {
+            let cwd = std::env::current_dir().expect("cwd");
+            std::env::set_current_dir(work).expect("chdir");
+            std::fs::write(work.join("explain.tex"), "STALE\n").expect("write");
+            std::fs::write(work.join("explain.pdf"), b"%PDF").expect("write");
+            let prepared = prepare_explain_kpop_run(
+                Some(&"topic".to_string()),
+                "explain.tex",
+                false,
+                crate::cli::WorkflowCliOptions { force: true },
+            )
+            .expect("prepare without checks");
+            assert!(!prepared.inner.context.contains_key("quality_gates"));
+            std::env::set_current_dir(cwd).expect("restore");
+        });
+    }
+
+    #[test]
     fn explain_preflight_runs_before_run_dir_created() {
         crate::test_utils::with_isolated_home(|work| {
             let cwd = std::env::current_dir().expect("cwd");

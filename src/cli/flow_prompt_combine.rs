@@ -35,8 +35,8 @@ pub(crate) fn combine_acp_prompt_header_and_user(
     text: &str,
     command: &str,
 ) -> Result<(String, String, String), String> {
-    use crate::orchestrator::workflow_context;
-    let context = workflow_context(artifacts, store, command).map_err(|e: PromptError| e.0)?;
+    use crate::orchestrator::workflow_context_paths_only;
+    let context = workflow_context_paths_only(artifacts, command);
     let header = render_header(store, context.as_map()).map_err(|e: PromptError| e.0)?;
     let user = text.trim_end().to_string();
     let combined = join_labeled_strata([

@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use crate::artifacts::RunArtifacts;
 use crate::agent_backend::{agent_backend_set_implement_display_name, AgentBackend};
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::cli::workflow_kpop_shared::kpop_workflow_context;
 use crate::prompts::{render_header, PromptError, PromptStore};
 use crate::run_timing::TimingPhase;
 
@@ -186,7 +185,8 @@ pub(crate) fn render_kpop_summarize_prompt(
     artifacts: &RunArtifacts,
     malvin_command: &str,
 ) -> Result<String, String> {
-    let mut ctx = kpop_workflow_context(artifacts, malvin_command)?;
+    let mut ctx =
+        crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, malvin_command)?;
     insert_summarize_log_context(&mut ctx, artifacts, kpop_flows_ran(artifacts));
     let header = render_header(store, ctx.as_map()).map_err(|e: PromptError| e.0)?;
     let body = store

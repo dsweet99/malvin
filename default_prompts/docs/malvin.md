@@ -102,11 +102,11 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 ## Quality gates (`.malvin/checks`)
 
-Gate-loop commands (`kpop`, `tidy`, `delight`, `explain`, `revise`) run workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored.
+Only **`malvin tidy`** requires `.malvin/checks`. At `tidy` startup, when the checks file is missing or contains no command lines, malvin runs a checks-discovery KPop session (`init_constraints.md`), then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next `tidy` run.
 
-When `.malvin/checks` is missing or contains no command lines at session startup, malvin runs a checks-discovery KPop session first (`init_constraints.md`), then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next gate-loop command.
+`tidy` runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 
-Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
+Other commands (`do`, bare `malvin REQUEST`, `kpop`, `inspire`, `delight`, `explain`, `revise`) do not require `.malvin/checks` at startup and may run outside a git repo. `header.md` notes about checks lines are advisory when a workspace happens to have gates; they are not a startup requirement for those commands.
 
 ### `-h` / `--help`
 
@@ -194,7 +194,7 @@ malvin kpop notes/question.md
 
 1. For each outer iteration (budget: `effective_max_loops(--max-loops) + 1` iterations), malvin may run one KPop agent session. Scope comes from that command’s constraints file (`tidy_constraints.md`, etc.) rendered through `kpop_program.md` into `plan.md`. Within the session, malvin sends one prompt: `header.md` + `kpop_common.md` (Popper loop).
 2. Hypotheses and test results go to `~/.malvin_home/logs/<hash>/<run>/_kpop/exp_log_<n>.md`.
-3. Malvin exits early when workspace quality gates pass (`tidy`). `kpop` and document workflows (`delight`, `explain`, `revise`) run until `--max-loops` is exhausted.
+3. Malvin exits early when workspace quality gates pass (`tidy`). Document workflows (`delight`, `explain`, `revise`) run until `--max-loops` is exhausted. `kpop` investigation runs until its own loop budget is exhausted.
 4. Otherwise the loop continues until the outer budget is exhausted; `tidy` may exit without recheck depending on configuration.
 
 See `malvin tidy --doc`, `malvin delight --doc`, `malvin explain --doc`, and `malvin revise --doc` for command-specific behavior.

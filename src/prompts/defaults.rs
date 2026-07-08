@@ -70,7 +70,7 @@ mod advice_path_embed_tests {
     use std::path::Path;
 
     use crate::artifacts::create_run_artifacts;
-    use crate::orchestrator::workflow_context;
+    use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
 
     #[test]
@@ -88,7 +88,7 @@ mod advice_path_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context(&artifacts, &store, "code").expect("ctx");
+        let ctx = workflow_context_paths_only(&artifacts, "code");
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         assert!(
@@ -108,7 +108,7 @@ mod router_header_embed_tests {
 
     use super::{DO_HEADER_MD, HEADER_MD, ROUTER_MD, default_file};
     use crate::artifacts::create_run_artifacts;
-    use crate::orchestrator::{workflow_context, workflow_context_paths_only};
+    use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
     use crate::router_flow::router_flow_prompt::build_router_coder_run;
 
@@ -127,7 +127,7 @@ mod router_header_embed_tests {
             create_run_artifacts(Path::new(&plan_path), Some(tmp.path())).expect("artifacts");
         let store = PromptStore::default_store();
         store.ensure_defaults().expect("defaults");
-        let ctx = workflow_context(&artifacts, &store, "router").expect("ctx");
+        let ctx = workflow_context_paths_only(&artifacts, "router");
         let header = render_header(&store, ctx.as_map()).expect("header");
         assert!(!header.contains("{{"), "header must expand all placeholders");
         let paths_ctx = workflow_context_paths_only(&artifacts, "router");

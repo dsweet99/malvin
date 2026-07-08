@@ -78,15 +78,10 @@ pub async fn run_explain(
     shared: &SharedOpts,
     workflow: WorkflowCliOptions,
 ) -> Result<(), String> {
-    let request = explain
+    let _request = explain
         .request
         .as_ref()
         .ok_or_else(|| "malvin explain: missing required REQUEST (text or path)".to_string())?;
-    crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_for_cli_request(
-        request,
-        shared,
-    )
-    .await?;
     let prepared = prepare_explain_kpop_run(
         explain.request.as_ref(),
         &explain.out_path,

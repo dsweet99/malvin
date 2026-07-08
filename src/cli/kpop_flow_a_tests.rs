@@ -29,6 +29,21 @@ fn seed_short_id_lookup_fixture(cwd: &std::path::Path) -> String {
 }
 
 #[test]
+fn finish_kpop_prepared_succeeds_without_checks_in_non_git_workspace() {
+    crate::test_utils::with_isolated_home(|_work| {
+        let kpop = KpopArgs {
+            max_loops: 1,
+            max_hypotheses: crate::malvin_config_file::DEFAULT_MAX_HYPOTHESES,
+            tenacious: false,
+            requests: vec!["no gates needed".into()],
+        };
+        let early = prepare_kpop_artifacts(&kpop).expect("early artifacts");
+        let prepared = finish_kpop_prepared(early).expect("prepared");
+        assert!(!prepared.context.contains_key("quality_gates"));
+    });
+}
+
+#[test]
 fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace() {
     crate::test_utils::with_isolated_home(|work| {
         std::fs::create_dir_all(work.join("deep/nested")).expect("mkdir");
@@ -60,7 +75,7 @@ fn prepare_and_finish_kpop_artifacts_skips_nested_gitignore_in_non_git_workspace
                 .expect("user_request_path")
                 .contains("request.md")
         );
-        assert!(prepared.context.contains_key("quality_gates"));
+        assert!(!prepared.context.contains_key("quality_gates"));
         assert!(matches!(
             prepared.session_dotfile_backups.gitignore,
             crate::session_dotfile_backup::GitignoreBackup::Missing

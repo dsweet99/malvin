@@ -1,9 +1,8 @@
 use crate::artifacts::RunArtifacts;
 use crate::orchestrator::{
     WorkflowError, clear_review_file, prefer_primary_errors_over_timing, prompt_md_stem,
-    workflow_context,
+    workflow_context_paths_only,
 };
-use crate::prompts::PromptStore;
 use crate::review_sync::{is_lgtm, sync_review_file};
 use crate::test_utils::with_isolated_home;
 
@@ -119,8 +118,8 @@ fn workflow_context_review_path_points_to_artifact() {
             plan_path,
             work_dir: work.to_path_buf(),
         };
-        let prompts = PromptStore::default_store();
-        let ctx = workflow_context(&artifacts, &prompts, "code").expect("workflow_context");
+        let ctx = crate::cli::workflow_kpop_shared::kpop_workflow_context(&artifacts, "code")
+            .expect("kpop_workflow_context");
 
         let review_path = ctx
             .get("review_path")
@@ -164,8 +163,7 @@ fn workflow_context_includes_malvin_command() {
             plan_path,
             work_dir: work.to_path_buf(),
         };
-        let prompts = PromptStore::default_store();
-        let ctx = workflow_context(&artifacts, &prompts, "tidy").expect("workflow_context");
+        let ctx = workflow_context_paths_only(&artifacts, "tidy");
         assert_eq!(ctx.get("malvin_command").map(String::as_str), Some("tidy"));
     });
 }
