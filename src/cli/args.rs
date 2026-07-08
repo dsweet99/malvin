@@ -6,6 +6,7 @@ use super::shared_opts::SharedOpts;
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
 use super::revise_flow::ReviseArgs;
+use super::init_flow::InitArgs;
 use super::tidy_flow::TidyArgs;
 
 pub use super::logs_cmd::LogsArgs;
@@ -50,6 +51,8 @@ pub enum Commands {
     Code(crate::cli::code_flow::CodeArgs),
     /// Reason scientifically
     Kpop(KpopArgs),
+    /// Discover quality gates and write `.malvin/checks`
+    Init(InitArgs),
     /// Ensure all checks pass
     Tidy(TidyArgs),
     /// Author a user-delighting feature pitch

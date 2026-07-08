@@ -78,6 +78,12 @@ mod tests {
     }
 
     #[test]
+    fn commands_only_help_lists_init() {
+        let cmd = Cli::command();
+        assert!(help_lists_subcommand(&cmd, "init"));
+    }
+
+    #[test]
     fn commands_only_help_lines_includes_command_usage_and_epilog() {
         let cmd = Cli::command();
         let lines = commands_only_help_lines(&cmd);

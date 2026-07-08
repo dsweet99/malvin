@@ -15,6 +15,11 @@ fn prepare_cli_output_applies_color_and_background_flags() {
 }
 
 #[test]
+fn entrypoint_from_init_doc_argv_exits_success() {
+    assert_eq!(entrypoint_from(["malvin", "init", "--doc"]), Exit::Success);
+}
+
+#[test]
 fn entrypoint_from_doc_argv_exits_success() {
     assert_eq!(entrypoint_from(["malvin", "--doc"]), Exit::Success);
 }

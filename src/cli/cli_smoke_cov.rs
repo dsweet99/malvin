@@ -144,6 +144,13 @@ fn smoke_new_agent_client_maps_max_acp_retries() {
 }
 
 #[test]
+fn smoke_cli_parse_init_subcommand() {
+    use clap::Parser;
+    let cli = Cli::try_parse_from(["malvin", "init"]).unwrap();
+    assert!(matches!(cli.command, Some(Commands::Init(_))));
+}
+
+#[test]
 fn smoke_cli_parse_models_subcommand() {
     use clap::Parser;
     let cli = Cli::try_parse_from(["malvin", "models"]).unwrap();

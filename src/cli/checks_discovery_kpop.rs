@@ -15,8 +15,6 @@ use crate::cli::workflow_kpop_shared::{
 };
 use crate::cli::{prepare_kpop_prompt_store, SharedOpts, WorkflowCliOptions};
 
-const DISCOVERY_COMMAND: &str = "checks_discover";
-
 pub(super) fn prepare_checks_discovery_prompt_store(
     workflow: WorkflowCliOptions,
 ) -> Result<PromptStore, String> {
@@ -49,6 +47,7 @@ pub(super) fn load_discovery_agent_config(work_dir: &Path) -> AgentConfig {
 pub(super) async fn run_checks_discovery_kpop(
     shared: &SharedOpts,
     artifacts: &RunArtifacts,
+    kpop_command: &str,
 ) -> Result<(), String> {
     let workflow = WorkflowCliOptions {
         force: !shared.no_force,
@@ -57,7 +56,7 @@ pub(super) async fn run_checks_discovery_kpop(
     let request_text = checks_discovery_kpop_request(&store, artifacts)?;
     std::fs::write(&artifacts.plan_path, &request_text).map_err(|e| e.to_string())?;
     let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let context = kpop_workflow_context_without_gates(artifacts, DISCOVERY_COMMAND)?;
+    let context = kpop_workflow_context_without_gates(artifacts, kpop_command)?;
     let prepared = KPopEnginePrepared {
         artifacts: artifacts.clone(),
         context,
@@ -74,7 +73,7 @@ pub(super) async fn run_checks_discovery_kpop(
     };
     let _iterations = kpop_engine_loop_iterations(max_loops);
     let (_gates_ok, _agent_ran, _timing, _last_backups) = run_kpop_engine(KPopEngineParams {
-        command: DISCOVERY_COMMAND,
+        command: kpop_command,
         shared,
         workflow,
         prepared: &prepared,

@@ -1,6 +1,6 @@
 use super::models_cmd;
 use super::{
-    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_router, run_tidy,
+    Commands, Exit, SharedOpts, WorkflowCliOptions, run_do, run_init, run_router, run_tidy,
 };
 
 /// Commands that accept `--name` acquire a session name lock before substantive work.
@@ -119,6 +119,7 @@ pub(crate) fn dispatch_command(
             });
             super::entrypoint_commands::run_kpop_command(kpop, &shared, matches)
         }
+        Commands::Init(init) => run_async_cli(|| run_init(init, &shared)),
         Commands::Tidy(mut tidy) => {
             super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
                 subcommand: "tidy",

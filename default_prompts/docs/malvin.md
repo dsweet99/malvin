@@ -102,7 +102,7 @@ Other subcommand arguments (for example `<REQUEST>`) are not required when `--do
 
 ## Quality gates (`.malvin/checks`)
 
-Only **`malvin tidy`** requires `.malvin/checks`. At `tidy` startup, when the checks file is missing or contains no command lines, malvin runs a checks-discovery KPop session (`init_constraints.md`), then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next `tidy` run.
+Only **`malvin tidy`** requires `.malvin/checks` at gate-loop time. Use **`malvin init`** to discover and write `.malvin/checks` explicitly (KPop session from `init_constraints.md`). At `tidy` startup, when the checks file is missing or contains no command lines, malvin runs the same checks-discovery session, then aborts if the agent did not write a checks file with at least one command. Delete `.malvin/checks` to trigger discovery again on the next `init` or `tidy` run.
 
 `tidy` runs workspace quality gates from `.malvin/checks` at the repo git root (one shell command per non-empty, non-comment line). Full-line comments starting with `#` are ignored. Mid-loop gate iterations do **not** run discovery; they error if checks are absent.
 

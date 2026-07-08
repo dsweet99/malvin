@@ -38,6 +38,14 @@ fn print_doc_none_writes_full_malvin_md() {
 }
 
 #[test]
+fn print_doc_init_writes_subcommand_md() {
+    use crate::cli::init_flow::InitArgs;
+    let cmd = Commands::Init(InitArgs {});
+    let out = capture_doc(Some(&cmd)).expect("capture");
+    assert!(out.starts_with(b"# malvin init"));
+}
+
+#[test]
 fn print_doc_some_writes_subcommand_md() {
     let cmd = Commands::Kpop(KpopArgs {
         max_loops: 1,

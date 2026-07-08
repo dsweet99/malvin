@@ -13,6 +13,23 @@ mod checks_discovery_kpop;
 
 use checks_discovery_kpop::run_checks_discovery_kpop;
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ChecksDiscoveryOpts {
+    pub artifact_request: &'static str,
+    pub kpop_command: &'static str,
+}
+
+impl ChecksDiscoveryOpts {
+    pub const TIDY_LAZY: Self = Self {
+        artifact_request: "checks discovery",
+        kpop_command: "checks_discover",
+    };
+    pub const INIT: Self = Self {
+        artifact_request: "init",
+        kpop_command: "init",
+    };
+}
+
 fn checks_file_has_commands(work_dir: &Path) -> Result<(), String> {
     let path = malvin_checks_path(work_dir);
     if !path.is_file() {
@@ -42,14 +59,15 @@ fn finish_checks_discovery(work_dir: &Path) -> Result<(), String> {
 pub(crate) async fn ensure_malvin_checks_discovered(
     work_dir: &Path,
     shared: &SharedOpts,
+    opts: ChecksDiscoveryOpts,
 ) -> Result<(), String> {
     if checks_already_valid(work_dir)? {
         return Ok(());
     }
-    let artifacts = create_kpop_run_artifacts("checks discovery", Some(work_dir))
+    let artifacts = create_kpop_run_artifacts(opts.artifact_request, Some(work_dir))
         .map_err(|e| e.to_string())?;
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
-    let discovery_result = run_checks_discovery_kpop(shared, &artifacts).await;
+    let discovery_result = run_checks_discovery_kpop(shared, &artifacts, opts.kpop_command).await;
     let finish_result = finish_checks_discovery(work_dir);
     if discovery_result.is_ok() && finish_result.is_ok() {
         crate::cli::error_run_log::clear_command_error_run_dir();
@@ -61,9 +79,10 @@ pub(crate) async fn ensure_malvin_checks_discovered(
 /// Gate-loop prelude: discover `.malvin/checks` when missing (uses process cwd).
 pub(crate) async fn ensure_malvin_checks_discovered_for_cwd(
     shared: &SharedOpts,
+    opts: ChecksDiscoveryOpts,
 ) -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    ensure_malvin_checks_discovered(&cwd, shared).await
+    ensure_malvin_checks_discovered(&cwd, shared, opts).await
 }
 
 #[cfg(test)]
@@ -76,6 +95,16 @@ mod tests {
         checks_discovery_kpop_request, load_discovery_agent_config,
         prepare_checks_discovery_prompt_store,
     };
+
+    #[test]
+    fn checks_discovery_opts_init_and_tidy_lazy_differ() {
+        assert_ne!(
+            ChecksDiscoveryOpts::INIT.artifact_request,
+            ChecksDiscoveryOpts::TIDY_LAZY.artifact_request,
+        );
+        assert_eq!(ChecksDiscoveryOpts::INIT.kpop_command, "init");
+        assert_eq!(ChecksDiscoveryOpts::TIDY_LAZY.kpop_command, "checks_discover");
+    }
 
     #[test]
     fn checks_discovery_kpop_request_expands_placeholders() {
