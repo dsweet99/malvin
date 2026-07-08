@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::artifacts::resolve_user_md_request;
+use crate::artifacts::{
+    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts, resolve_user_md_request,
+    user_request_path, RunArtifacts,
+};
+use crate::kpop_engine::KPopEnginePrepared;
 use crate::prompts::{PromptError, PromptStore};
 use crate::workflow_context::insert_formatted;
 
@@ -40,6 +44,42 @@ pub(crate) fn priors_kpop_request(
     );
     insert_formatted(&mut ctx, "out_priors_path", resolved_out_path, workspace_root);
     render_creative_program(store, "priors_constraints.md", &ctx, artifacts)
+}
+
+pub(crate) fn materialize_priors_kpop_prepared(
+    preflight: (String, PathBuf, PathBuf),
+    store: PromptStore,
+    startup_emit_request: String,
+) -> Result<(KPopEnginePrepared, PathBuf), String> {
+    let (request_text, resolved_out_path, work_dir) = preflight;
+    let artifacts =
+        create_kpop_run_artifacts("priors", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
+    let user_request_disk = user_request_path(&artifacts);
+    std::fs::write(&user_request_disk, &request_text).map_err(|e| e.to_string())?;
+    let composed =
+        priors_kpop_request(&store, &artifacts, &resolved_out_path, &user_request_disk)?;
+    std::fs::write(&artifacts.plan_path, &composed).map_err(|e| e.to_string())?;
+    let malvin_checks_backup = backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
+    let mut context = priors_kpop_workflow_context(&artifacts)?;
+    context.insert(
+        "user_request_path".to_string(),
+        crate::workflow_context::format_prompt_path(&user_request_disk, &artifacts.work_dir),
+    );
+    let inner = KPopEnginePrepared {
+        artifacts,
+        context,
+        request_text: composed.clone(),
+        startup_emit_request,
+        store,
+        malvin_checks_backup,
+    };
+    Ok((inner, resolved_out_path))
+}
+
+fn priors_kpop_workflow_context(
+    artifacts: &RunArtifacts,
+) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
+    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "priors")
 }
 
 pub(crate) fn priors_preflight(

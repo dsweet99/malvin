@@ -162,7 +162,7 @@ pub(crate) fn write_mock_agent(path: &std::path::Path) {
 mod unix_cov {
     use super::super::kpop_flow_run_loop::{run_kpop_agent_loops, RunKpopAgentLoopsParams};
 
-    use crate::cli::kpop_flow::kpop_boot_store_client_prepared;
+    use crate::kpop_flow::kpop_boot_store_client_prepared;
 
     use super::{install_mock_agent_env, test_kpop_args};
 

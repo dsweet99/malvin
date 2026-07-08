@@ -1,4 +1,4 @@
-//! Kiss identifier refs for [`crate::cli::kpop_flow::kpop_flow_run_loop`] and its test helpers.
+//! Kiss identifier refs for [`crate::kpop_flow::kpop_flow_run_loop`] and its test helpers.
 
 #[test]
 fn kpop_loop_exit_after_iteration_exits_on_last_loop() {

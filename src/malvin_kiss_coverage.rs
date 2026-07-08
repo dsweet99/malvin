@@ -215,9 +215,9 @@ fn kiss_cov_acp_session_unit_tests() {
 
 #[test]
 fn kiss_cov_cli_helper_symbols() {
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
-    let _: Option<crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
+    let _: Option<crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams<'_>> = None;
+    let _: Option<crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome> = None;
+    let _: Option<crate::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot> = None;
     let _ = stringify!(RunKpopAgentLoopsParams);
     let _ = stringify!(kpop);
     let _ = stringify!(prepared);

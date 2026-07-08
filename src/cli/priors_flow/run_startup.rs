@@ -1,19 +1,12 @@
-use crate::artifacts::{
-    backup_workspace_malvin_checks_if_present, create_kpop_run_artifacts, user_request_path,
-};
 use crate::kpop_engine::KPopEnginePrepared;
 
-use super::prep::{priors_kpop_request, priors_preflight, prepare_priors_kpop_prompt_store};
+use super::prep::{
+    materialize_priors_kpop_prepared, prepare_priors_kpop_prompt_store, priors_preflight,
+};
 
 pub struct PriorsKpopPrepared {
     pub inner: KPopEnginePrepared,
     pub resolved_out_path: std::path::PathBuf,
-}
-
-fn priors_kpop_workflow_context(
-    artifacts: &crate::artifacts::RunArtifacts,
-) -> Result<crate::prompt_stratification::WorkflowRenderContext, String> {
-    crate::cli::workflow_kpop_shared::kpop_workflow_context_without_gates(artifacts, "priors")
 }
 
 pub fn prepare_priors_kpop_run(
@@ -21,29 +14,10 @@ pub fn prepare_priors_kpop_run(
     out_path: &str,
     workflow: crate::cli::WorkflowCliOptions,
 ) -> Result<PriorsKpopPrepared, String> {
-    let (request_text, resolved_out_path, work_dir) = priors_preflight(request, out_path)?;
+    let preflight = priors_preflight(request, out_path)?;
     let store = prepare_priors_kpop_prompt_store(workflow)?;
-    let artifacts =
-        create_kpop_run_artifacts("priors", Some(work_dir.as_path())).map_err(|e| e.to_string())?;
-    let user_request_disk = user_request_path(&artifacts);
-    std::fs::write(&user_request_disk, &request_text).map_err(|e| e.to_string())?;
-    let composed = priors_kpop_request(&store, &artifacts, &resolved_out_path, &user_request_disk)?;
-    std::fs::write(&artifacts.plan_path, &composed).map_err(|e| e.to_string())?;
-    let malvin_checks_backup =
-        backup_workspace_malvin_checks_if_present(&artifacts.work_dir)?;
-    let mut context = priors_kpop_workflow_context(&artifacts)?;
-    context.insert(
-        "user_request_path".to_string(),
-        crate::workflow_context::format_prompt_path(&user_request_disk, &artifacts.work_dir),
-    );
-    let inner = KPopEnginePrepared {
-        artifacts,
-        context,
-        request_text: composed.clone(),
-        startup_emit_request: request.to_string(),
-        store,
-        malvin_checks_backup,
-    };
+    let (inner, resolved_out_path) =
+        materialize_priors_kpop_prepared(preflight, store, request.to_string())?;
     Ok(PriorsKpopPrepared {
         inner,
         resolved_out_path,
@@ -56,7 +30,6 @@ mod tests {
 
     #[test]
     fn kiss_cov_priors_run_startup() {
-        let _ = priors_kpop_workflow_context;
         let _ = prepare_priors_kpop_run;
         let tmp = tempfile::tempdir().expect("tempdir");
         let path = tmp.path().join("priors.md");
@@ -98,7 +71,7 @@ mod tests {
                 "expected sibling allocation, got {}",
                 prepared.resolved_out_path.display()
             );
-            let user_req = user_request_path(&prepared.inner.artifacts);
+            let user_req = crate::artifacts::user_request_path(&prepared.inner.artifacts);
             assert!(user_req.is_file(), "must write user_request.md");
             std::env::set_current_dir(cwd).expect("restore");
         });

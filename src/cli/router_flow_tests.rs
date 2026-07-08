@@ -51,7 +51,7 @@ fn build_router_coder_run_succeeds_without_checks_in_non_git_workspace() {
     let artifacts = flow_test_artifacts_no_checks(&tmp);
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("act autonomously"));
+    assert!(run.combined.contains("Act autonomously"));
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"
@@ -81,7 +81,7 @@ fn build_router_coder_run_default_store_produces_dual_headers() {
     let artifacts = flow_test_artifacts(&tmp);
     let run = build_router_coder_run(&artifacts, "USER_TOKEN").expect("run");
     assert!(run.combined.contains("Know thyself"));
-    assert!(run.combined.contains("act autonomously"));
+    assert!(run.combined.contains("Act autonomously"));
     assert!(
         run.combined.contains("Context Prep"),
         "router prompt must include standard header content"

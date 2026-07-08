@@ -104,7 +104,7 @@ fn run_kpop_short_id_lookup_dumps_matching_exp_log() {
 fn seed_kpop_multiturn_mock_workspace(
     workspace: &std::path::Path,
 ) -> (std::path::PathBuf, crate::test_utils::SavedEnvVars) {
-    use crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
+    use crate::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env;
     use crate::repo_gates::checks_test_helpers::write_git_root_checks;
 
     write_git_root_checks(workspace, b"true\n");
@@ -118,8 +118,8 @@ fn seed_kpop_multiturn_mock_workspace(
 async fn run_kpop_multiturn_mock_once(
     workspace: &std::path::Path,
 ) -> Result<std::path::PathBuf, String> {
-    use crate::cli::kpop_flow::kpop_flow_run_loop::snapshot_kpop_loop_dotfiles_and_exp_log;
-    use crate::cli::kpop_flow::kpop_flow_run_loop_tests::test_kpop_args;
+    use crate::kpop_flow::kpop_flow_run_loop::snapshot_kpop_loop_dotfiles_and_exp_log;
+    use crate::kpop_flow::kpop_flow_run_loop_tests::test_kpop_args;
     use crate::cli::workflow_kpop_shared::gate_iteration_context;
     use crate::kpop_multiturn_prompts::KpopMultiturnPrompts;
     use crate::kpop_progression::KpopMultiturnState;

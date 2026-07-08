@@ -89,17 +89,17 @@ fn kiss_invalid_struct_value_refs_4() {
     let _ = crate::cli::flow_prompt_combine::DualHeaderPromptInput;
     let _ = crate::cli::flow_prompt_combine::build_dual_header_coder_run_with_store;
     let _ = crate::cli::explain_flow::run_startup::ExplainKpopPrepared;
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopPrepared;
+    let _ = crate::kpop_flow::kpop_flow_a::KpopPrepared;
 }
 
 #[test]
 fn kiss_invalid_struct_value_refs_5() {
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopArtifactsEarly;
-    let _ = crate::cli::kpop_flow::kpop_flow_a::KpopAcpMultiturnCtx;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot;
-    let _ = crate::cli::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;
+    let _ = crate::kpop_flow::kpop_flow_a::KpopArtifactsEarly;
+    let _ = crate::kpop_flow::kpop_flow_a::KpopAcpMultiturnCtx;
+    let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams;
+    let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome;
+    let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot;
+    let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::InlineSummarizeOnKpopLoopCtx;
     let _ = crate::cli::kpop_summarize::kpop_summarize_inline::GateInlineSummarizeCtx;
     let _ = crate::kpop_program::RenderRepoProgram;
@@ -218,9 +218,9 @@ fn kiss_invalid_struct_value_refs_gate10_5() {
     let _ = crate::cli::config_defaults_tests::assert_workflow_defaults;
     let _ = crate::flow_prompt_join_test_helpers::assert_header_user_join;
     let _ = crate::flow_prompt_join_test_helpers::assert_dual_workflow_header_join;
-    let _ = crate::cli::kpop_flow_a_tests::seed_short_id_lookup_fixture;
-    let _ = crate::cli::kpop_flow_a_tests::seed_kpop_multiturn_mock_workspace;
-    let _ = crate::cli::kpop_flow_a_tests::run_kpop_multiturn_mock_once;
+    let _ = crate::kpop_flow_a_tests::seed_short_id_lookup_fixture;
+    let _ = crate::kpop_flow_a_tests::seed_kpop_multiturn_mock_workspace;
+    let _ = crate::kpop_flow_a_tests::run_kpop_multiturn_mock_once;
     let _ = crate::cli::kpop_summarize_inline_tests::run_gate_inline_summarize_first_iteration;
     let _ = crate::cli::kpop_summarize_mock_tests::write_summarize_fixture_exp_logs;
     let _ = crate::cli::kpop_summarize_mock_tests::run_inline_summarize_on_open_mock_session;

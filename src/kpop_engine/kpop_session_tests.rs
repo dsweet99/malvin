@@ -155,7 +155,7 @@ fn kiss_cov_run_kpop_engine_session_success_branch() {
     crate::test_utils::with_isolated_home(|work| {
         let mock = work.join("mock-gate-kpop-agent");
         let _env =
-            crate::cli::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env(work, &mock);
+            crate::kpop_flow::kpop_flow_run_loop_tests::install_mock_agent_env(work, &mock);
         let (prepared, backups) =
             prepared_fixture("code", work, true, PreparedContextMode::PathsOnly);
         let (shared, _) = shared_workflow();

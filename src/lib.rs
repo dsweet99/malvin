@@ -210,6 +210,9 @@ pub mod router_flow;
 
 pub mod kpop_engine;
 
+#[path = "cli/kpop_flow.rs"]
+pub mod kpop_flow;
+
 #[path = "cli/mod.rs"]
 pub mod cli;
 
