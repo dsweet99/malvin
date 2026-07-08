@@ -195,11 +195,22 @@ fn smoke_cov_cli_cli_symbols_a() {
     let _ = crate::router_flow::prepare_router_prompt_store;
     let router_args = crate::router_flow::RouterArgs {
         request: None,
+        max_loops: 1,
     };
-    let crate::router_flow::RouterArgs { request: router_request } = router_args;
+    let crate::router_flow::RouterArgs {
+        request: router_request,
+        max_loops: router_max_loops,
+    } = router_args;
     assert!(router_request.is_none());
+    assert_eq!(router_max_loops, 1);
     let _ = stringify!(RouterRunPrep);
     let _ = crate::router_flow::run_router;
+    let _: Option<crate::router_flow::router_flow_acp::RouterAcpIterationInput<'_>> = None;
+    let _: Option<crate::router_flow::router_flow_acp::RouterAcpIterationOutcome> = None;
+    let _: Option<crate::router_flow::router_flow_loop::RouterAgentLoopInput<'_>> = None;
+    let _: Option<crate::router_flow::router_flow_loop::RouterAgentLoopOutcome> = None;
+    let _ = stringify!(RouterAcpIterationInput);
+    let _ = stringify!(RouterAgentLoopInput);
     let _: Option<crate::kpop_flow::KpopAcpMultiturnCtx> = None;
 }
 

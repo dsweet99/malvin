@@ -164,12 +164,25 @@ pub(crate) fn dispatch_command(
     }
 }
 
-pub fn dispatch_default_route(request: String, shared: &SharedOpts) -> Result<(), String> {
+pub fn dispatch_default_route(
+    request: String,
+    max_loops: usize,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
     use crate::router_flow::RouterArgs;
+    let mut max_loops = max_loops;
+    super::loop_opts::apply_default_route_tenacious(
+        &mut max_loops,
+        &mut shared.max_acp_retries,
+        shared.no_tenacious,
+        matches,
+    );
     run_async_cli(|| {
         run_router(
             RouterArgs {
                 request: Some(request),
+                max_loops,
             },
             shared,
             WorkflowCliOptions {

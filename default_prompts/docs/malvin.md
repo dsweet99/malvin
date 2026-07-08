@@ -23,7 +23,7 @@ Use subcommands: `kpop`, `do`, `inspire`, `tidy`, `delight`, `priors`, `explain`
 
 | Command | Purpose |
 |---------|---------|
-| *(default)* | Bare `malvin REQUEST` — one-shot autonomous routing among `kpop` / `inspire` |
+| *(default)* | Bare `malvin REQUEST` — autonomous routing among `kpop` / `inspire` (`--max-loops`, `CONTINUE_ROUTER`) |
 | `kpop` | KPop investigation (Popperian hypothesis loop) |
 | `do` | One-shot agent turn (non-looping) |
 | `inspire` | One-shot MBC2 boundary exploration (batch ideation) |
@@ -59,7 +59,7 @@ By default malvin passes `--force` to `cursor-agent` so tool calls proceed witho
 
 ### `--no-tenacious`
 
-By default gate-loop commands (`kpop`, `tidy`, `delight`, `priors`, `explain`, `revise`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
+By default the bare route and gate-loop commands (`kpop`, `tidy`, `delight`, `priors`, `explain`, `revise`) expand to `--max-loops=9999` and `--max-acp-retries=9999`. `--no-tenacious` restores normal loop/retry budgets.
 
 ### `--no-tee`
 
@@ -134,7 +134,7 @@ Every agent-backed command creates `~/.malvin_home/logs/<hash>/<timestamp>_<toke
 | File | Role |
 |------|------|
 | `plan.md` or `request.md` | Copy of user input for this run |
-| `kpop.log`, `do.log`, `router.log`, `inspire.log`, … | Per-prompt transcripts |
+| `kpop.log`, `do.log`, `router.log`, `router_b.log`, `inspire.log`, … | Per-prompt transcripts |
 | `stdout.log` | Tee of agent stdout (unless `--no-tee`) — **narrative** channel |
 | `trace.jsonl` | ACP-shaped audit record — **authoritative** for semantics (tool results, shrink/fork, LLM usage) |
 | `prompts.log` | Outgoing prompts (names only, or full bodies with `--verbose`) |

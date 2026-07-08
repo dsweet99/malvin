@@ -97,6 +97,10 @@ fn kiss_invalid_struct_value_refs_5() {
     let _ = crate::kpop_flow::kpop_flow_a::KpopArtifactsEarly;
     let _ = crate::kpop_flow::kpop_flow_a::KpopAcpMultiturnCtx;
     let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsParams;
+    let _ = crate::router_flow::router_flow_acp::RouterAcpIterationInput;
+    let _ = crate::router_flow::router_flow_acp::RouterAcpIterationOutcome;
+    let _ = crate::router_flow::router_flow_loop::RouterAgentLoopInput;
+    let _ = crate::router_flow::router_flow_loop::RouterAgentLoopOutcome;
     let _ = crate::kpop_flow::kpop_flow_run_loop::RunKpopAgentLoopsOutcome;
     let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopSnapshot;
     let _ = crate::kpop_flow::kpop_flow_run_loop::KpopLoopExitAfterIteration;

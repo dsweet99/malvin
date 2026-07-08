@@ -6,7 +6,7 @@ mod store;
 mod template;
 pub use template::*;
 
-pub use defaults::{DO_HEADER_MD, HEADER_MD, ROUTER_MD};
+pub use defaults::{DO_HEADER_MD, HEADER_MD, ROUTER_B_MD, ROUTER_MD};
 
 #[allow(unused_imports)]
 pub(crate) use defaults::{DEFAULT_PROMPTS, REQUIRED_PROMPTS, default_file};
@@ -28,14 +28,14 @@ pub fn enforce_no_unresolved_braces_in(
     text: &str,
     prompt_file: Option<&str>,
 ) -> Result<(), PromptError> {
-    if text.contains("{{") {
+    if template::unresolved_spaced_brace_placeholders(text).is_empty() {
+        Ok(())
+    } else {
         let msg = prompt_file.map_or_else(
             || UNRESOLVED_BRACES_MSG.to_string(),
             |name| format!("{UNRESOLVED_BRACES_MSG} (in {name})"),
         );
         Err(PromptError(msg))
-    } else {
-        Ok(())
     }
 }
 

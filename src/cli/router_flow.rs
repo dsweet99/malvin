@@ -1,17 +1,16 @@
-//! Default-route flow: one coder ACP prompt with dual headers (`header.md` + `router.md`) and user request.
+//! Default-route flow: dual-header `router.md` then bare `router_b.md` on one coder session per outer loop.
 
-use crate::artifacts::{RunArtifacts, SessionDotfileBackups, resolve_user_md_request};
+use crate::artifacts::{RunArtifacts, resolve_user_md_request};
 use crate::cli::cli_request::require_cli_request;
-use crate::agent_backend::{
-    agent_backend_attach_run_timing_for_session, agent_backend_set_implement_display_name,
-    agent_backend_set_run_timing, build_agent_backend, AgentBackend,
-};
+use crate::agent_backend::{build_agent_backend, AgentBackend};
 use crate::cli::run_emit::{emit_run_startup_sequence, RunStartupEmitOpts};
+use crate::cli::workflow_kpop_shared::effective_max_loops;
 use crate::cli::{SharedOpts, WorkflowCliOptions};
-use crate::run_timing::TimingPhase;
-use clap::Args;
-
 pub(crate) mod router_flow_prompt;
+#[path = "router_flow_acp.rs"]
+pub(crate) mod router_flow_acp;
+#[path = "router_flow_loop.rs"]
+pub(crate) mod router_flow_loop;
 
 pub use router_flow_prompt::{
     combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
@@ -19,17 +18,29 @@ pub use router_flow_prompt::{
 };
 
 /// Arguments for [`run_router`].
-#[derive(Args, Debug)]
+#[derive(Debug)]
 pub struct RouterArgs {
     /// Existing `.md` path or literal text
     pub request: Option<String>,
+    pub max_loops: usize,
 }
 
 struct RouterRunPrep {
     client: AgentBackend,
     artifacts: RunArtifacts,
     coder: router_flow_prompt::RouterCoderRun,
-    session_dotfile_backups: SessionDotfileBackups,
+    router_b_prompt: String,
+}
+
+#[must_use]
+pub(crate) fn router_wants_continue(agent_text: &str) -> bool {
+    let trimmed = agent_text.trim();
+    if trimmed == "CONTINUE_ROUTER" {
+        return true;
+    }
+    trimmed
+        .lines()
+        .any(|line| line.trim() == "CONTINUE_ROUTER")
 }
 
 fn new_router_client(shared: &SharedOpts, workflow: WorkflowCliOptions) -> Result<AgentBackend, String> {
@@ -58,13 +69,12 @@ async fn prepare_router_run(
     crate::cli::error_run_log::set_command_error_run_dir(Some(artifacts.run_dir.clone()));
     client.ensure_authenticated().map_err(|e| e.to_string())?;
     let coder = router_flow_prompt::build_router_coder_run(&artifacts, &text)?;
-    let session_dotfile_backups =
-        SessionDotfileBackups::snapshot_after_ensuring_home_config(&artifacts.work_dir)?;
+    let router_b_prompt = router_flow_prompt::build_router_b_prompt_for_run(&artifacts)?;
     Ok(RouterRunPrep {
         client,
         artifacts,
         coder,
-        session_dotfile_backups,
+        router_b_prompt,
     })
 }
 
@@ -85,11 +95,21 @@ pub async fn run_router(
     )?;
     prep.client
         .set_prompts_log_run_dir(Some(prep.artifacts.run_dir.clone()));
-    let acp_res = run_router_acp(&mut prep.client, &prep.artifacts, prep.coder).await;
+
+    let max_loops = effective_max_loops(router_args.max_loops);
+    let loop_outcome = router_flow_loop::run_router_agent_loops(router_flow_loop::RouterAgentLoopInput {
+        client: &mut prep.client,
+        artifacts: &prep.artifacts,
+        coder: &prep.coder,
+        router_b_prompt: &prep.router_b_prompt,
+        max_loops,
+    })
+    .await?;
+
     let r = crate::acp_post_run::merge_acp_with_workspace_session_restore_and_check_abort(
-        acp_res,
-        &prep.artifacts.work_dir,
-        &prep.session_dotfile_backups,
+        loop_outcome.last_acp,
+        prep.artifacts.work_dir.as_path(),
+        &loop_outcome.last_backups,
         &prep.artifacts.artifact_result_md(),
     );
     if r.is_ok() {
@@ -99,59 +119,47 @@ pub async fn run_router(
     Ok(())
 }
 
-async fn run_router_coder_prompt(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    coder: &router_flow_prompt::RouterCoderRun,
-) -> Result<(), String> {
-    client
-        .run_coder_prompt(
-            &coder.combined,
-            &artifacts.log_path("router"),
-            "router",
-            crate::acp::CoderPromptOptions {
-                llm_phase: Some(TimingPhase::Implement),
-                do_trace_split: None,
-                stdout_bracket_label: None,
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| e.to_string())
-}
+#[cfg(test)]
+mod router_wants_continue_tests {
+    use super::router_wants_continue;
 
-async fn run_router_acp(
-    client: &mut AgentBackend,
-    artifacts: &RunArtifacts,
-    coder: router_flow_prompt::RouterCoderRun,
-) -> Result<(), String> {
-    let timing = agent_backend_attach_run_timing_for_session(client);
-    if let Err(e) = client.begin_coder_session(&artifacts.work_dir).await {
-        agent_backend_set_run_timing(client, None);
-        return Err(e.to_string());
+    #[test]
+    fn exact_continue_marker() {
+        assert!(router_wants_continue("CONTINUE_ROUTER"));
     }
-    agent_backend_set_implement_display_name(client, "router");
-    let run_res = run_router_coder_prompt(client, artifacts, &coder).await;
-    let end_res = client.end_coder_session().await.map_err(|e| e.to_string());
-    let merged =
-        crate::acp_post_run::prefer_primary_over_secondary(run_res, end_res, "end coder session");
-    crate::acp_post_run::emit_run_timing_json_only_after_backend(
-        client,
-        &artifacts.run_dir,
-        &timing,
-        merged,
-    )
+
+    #[test]
+    fn continue_marker_with_trailing_newlines() {
+        assert!(router_wants_continue("CONTINUE_ROUTER\n\n"));
+    }
+
+    #[test]
+    fn continue_marker_on_own_line() {
+        assert!(router_wants_continue("CONTINUE_ROUTER\n"));
+    }
+
+    #[test]
+    fn report_text_does_not_continue() {
+        assert!(!router_wants_continue(
+            "Summary\n\nEvidence shows the fix works.\n"
+        ));
+    }
+
+    #[test]
+    fn inline_continue_token_without_own_line_does_not_continue() {
+        assert!(!router_wants_continue(
+            "Please output CONTINUE_ROUTER when done."
+        ));
+    }
 }
 
 #[cfg(test)]
 mod kiss_static_fn_item_refs {
-    use super::{run_router, run_router_acp, run_router_coder_prompt};
+    use super::run_router;
 
     #[test]
     fn kiss_static_fn_item_refs() {
         let _ = run_router;
-        let _ = run_router_acp;
-        let _ = run_router_coder_prompt;
     }
 }
 

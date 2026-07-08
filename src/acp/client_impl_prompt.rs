@@ -108,7 +108,7 @@ mod tests {
         let log = tmp.path().join("coder.log");
         let err = client
             .run_coder_prompt(
-                "hello {{ unresolved",
+                "hello {{ unresolved }}",
                 &log,
                 "test",
                 CoderPromptOptions {

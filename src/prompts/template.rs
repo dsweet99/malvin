@@ -15,7 +15,7 @@ pub fn render_template(prompt_text: &str, context: &HashMap<String, String>) -> 
     substitute_template(&translated, context)
 }
 
-fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
+pub(crate) fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
     let key = raw.trim();
     raw.starts_with(' ')
         && raw.ends_with(' ')
@@ -23,6 +23,27 @@ fn is_spaced_brace_placeholder_inner(raw: &str) -> bool {
         && key
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Returns each remaining `{{ key }}` placeholder in `text` (spaces required around `key`).
+#[must_use]
+pub fn unresolved_spaced_brace_placeholders(text: &str) -> Vec<String> {
+    let mut unresolved = Vec::new();
+    let mut search_from = 0usize;
+    while let Some(rel) = text[search_from..].find("{{") {
+        let open = search_from + rel;
+        let after_open = open + 2;
+        let Some(close_rel) = text[after_open..].find("}}") else {
+            break;
+        };
+        let close = after_open + close_rel;
+        let raw = &text[after_open..close];
+        if is_spaced_brace_placeholder_inner(raw) {
+            unresolved.push(format!("{{{{{raw}}}}}"));
+        }
+        search_from = close + 2;
+    }
+    unresolved
 }
 
 /// Returns each `{{…}}` token in `text` that is not exactly `{{ key }}` (spaces required).
@@ -103,6 +124,15 @@ mod template_kiss {
         ctx.insert("name".to_string(), "world".to_string());
         let out = super::render_template("Hello {{ name }}", &ctx);
         assert_eq!(out, "Hello world");
+    }
+
+    #[test]
+    fn unresolved_spaced_brace_placeholders_detects_only_spaced_keys() {
+        assert_eq!(
+            super::unresolved_spaced_brace_placeholders("x {{ y }} z"),
+            vec!["{{ y }}".to_string()]
+        );
+        assert!(super::unresolved_spaced_brace_placeholders("x {{…}} z").is_empty());
     }
 
     #[test]

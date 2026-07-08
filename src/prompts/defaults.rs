@@ -8,6 +8,7 @@ pub use default_files::default_file;
 pub const HEADER_MD: &str = "header.md";
 pub const DO_HEADER_MD: &str = "do_header.md";
 pub const ROUTER_MD: &str = "router.md";
+pub const ROUTER_B_MD: &str = "router_b.md";
 
 pub const REQUIRED_PROMPTS: &[&str] = &[HEADER_MD, "kpop_program.md"];
 
@@ -28,6 +29,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     HEADER_MD,
     DO_HEADER_MD,
     ROUTER_MD,
+    ROUTER_B_MD,
 ];
 
 #[cfg(test)]
@@ -107,11 +109,13 @@ mod advice_path_embed_tests {
 mod router_header_embed_tests {
     use std::path::Path;
 
-    use super::{DO_HEADER_MD, HEADER_MD, ROUTER_MD, default_file};
+    use super::{DO_HEADER_MD, HEADER_MD, ROUTER_B_MD, ROUTER_MD, default_file};
     use crate::artifacts::create_run_artifacts;
     use crate::orchestrator::workflow_context_paths_only;
     use crate::prompts::{PromptStore, render_header};
-    use crate::router_flow::router_flow_prompt::build_router_coder_run;
+    use crate::router_flow::router_flow_prompt::{
+        build_router_b_prompt, build_router_coder_run, prepare_router_prompt_store,
+    };
 
     #[test]
     fn embedded_header_and_router_render_without_unresolved_braces() {
@@ -141,7 +145,11 @@ mod router_header_embed_tests {
         );
         let run = build_router_coder_run(&artifacts, "user body").expect("run");
         assert!(!run.combined.contains("{{"));
+        let store = prepare_router_prompt_store().expect("store");
+        let router_b = build_router_b_prompt(&store, &artifacts).expect("router_b");
+        assert!(!router_b.contains("{{"));
         assert!(default_file(ROUTER_MD).is_some());
+        assert!(default_file(ROUTER_B_MD).is_some());
         assert!(default_file(DO_HEADER_MD).is_some());
         assert!(default_file(HEADER_MD).is_some());
     }

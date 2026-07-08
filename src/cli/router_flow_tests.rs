@@ -6,17 +6,18 @@ use crate::flow_prompt_join_test_helpers::{
     flow_test_artifacts_no_checks,
 };
 use crate::router_flow::router_flow_prompt::{
-    build_router_coder_run, build_router_coder_run_with_store,
+    build_router_b_prompt, build_router_coder_run, build_router_coder_run_with_store,
     combine_router_acp_prompt_header_and_user, combine_router_prompt_file_and_user,
     combine_router_raw_header_and_user, prepare_router_prompt_store,
 };
-use crate::prompts::{HEADER_MD, PromptStore, ROUTER_MD};
+use crate::prompts::{HEADER_MD, PromptStore, ROUTER_B_MD, ROUTER_MD};
 
 fn mock_router_prompt_store(tmp: &tempfile::TempDir) -> PromptStore {
     let prompt_root = tmp.path().join("prompts");
     std::fs::create_dir_all(&prompt_root).expect("mkdir");
     std::fs::write(prompt_root.join(HEADER_MD), "CODING_HDR\n").expect("header");
     std::fs::write(prompt_root.join(ROUTER_MD), "ROUTER_HDR\n").expect("router");
+    std::fs::write(prompt_root.join(ROUTER_B_MD), "ROUTER_B_HDR\n").expect("router_b");
     std::fs::write(prompt_root.join("kpop_common.md"), "").expect("kpop_common");
     PromptStore::with_root(prompt_root)
 }
@@ -43,6 +44,7 @@ fn prepare_router_prompt_store_loads_default_templates() {
     let store = prepare_router_prompt_store().expect("store");
     assert!(store.validate_exists(HEADER_MD).is_ok());
     assert!(store.validate_exists(ROUTER_MD).is_ok());
+    assert!(store.validate_exists(ROUTER_B_MD).is_ok());
 }
 
 #[test]
@@ -134,6 +136,16 @@ fn router_coder_run_exposes_combined_and_trace_split() {
     let (trace_header, trace_user) = run.header_user_for_trace;
     assert!(trace_header.contains("Know thyself"));
     assert_eq!(trace_user, "TRACE_USER");
+}
+
+#[test]
+fn build_router_b_prompt_renders_without_unresolved_braces() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let artifacts = flow_test_artifacts(&tmp);
+    let store = prepare_router_prompt_store().expect("store");
+    let body = build_router_b_prompt(&store, &artifacts).expect("router_b");
+    assert!(body.contains("CONTINUE_ROUTER"));
+    assert!(!body.contains("{{"));
 }
 
 #[test]

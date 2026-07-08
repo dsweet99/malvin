@@ -1,4 +1,4 @@
-use super::{DO_HEADER_MD, HEADER_MD, ROUTER_MD};
+use super::{DO_HEADER_MD, HEADER_MD, ROUTER_B_MD, ROUTER_MD};
 
 fn default_constraints_prompt(name: &str) -> Option<&'static str> {
     match name {
@@ -41,6 +41,7 @@ pub fn default_file(name: &str) -> Option<&'static str> {
             HEADER_MD => Some(include_str!("../../default_prompts/header.md")),
             DO_HEADER_MD => Some(include_str!("../../default_prompts/do_header.md")),
             ROUTER_MD => Some(include_str!("../../default_prompts/router.md")),
+            ROUTER_B_MD => Some(include_str!("../../default_prompts/router_b.md")),
             _ => None,
         })
 }

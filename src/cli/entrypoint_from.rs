@@ -161,7 +161,13 @@ fn run_entrypoint(cli: Cli, matches: clap::ArgMatches) -> Exit {
     if let Some(command) = cli.command {
         finish_entrypoint(dispatch_command(command, &cli.shared, &matches))
     } else if let Some(request) = cli.request {
-        finish_entrypoint(dispatch_default_route(request, &cli.shared))
+        let mut shared = cli.shared;
+        finish_entrypoint(dispatch_default_route(
+            request,
+            cli.max_loops,
+            &mut shared,
+            &matches,
+        ))
     } else {
         Exit::Success
     }
