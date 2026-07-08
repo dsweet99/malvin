@@ -1,0 +1,43 @@
+# malvin init
+
+Discover how the workspace runs quality gates today and write `.malvin/checks` (one shell command per non-empty line).
+
+## Summary
+
+| | |
+|---|---|
+| Input | None |
+| Prompt | `init_constraints.md` |
+| Agent | KPop checks-discovery session when `.malvin/checks` is missing or has no commands |
+| Fast path | If `.malvin/checks` already has at least one command line, **no agent** |
+| Requires | Cursor agent CLI only when discovery runs |
+
+## Intention
+
+Bootstrap a repo for `malvin tidy` without running the full tidy gate loop. Use this when you want `.malvin/checks` materialized explicitly instead of waiting for the first `tidy` run.
+
+## Usage
+
+```text
+malvin init [OPTIONS]
+```
+
+No positional arguments. Work directory is always `.` (cwd).
+
+## Behavior
+
+1. If `.malvin/checks` is missing or contains only comments, malvin runs a KPop session scoped by `init_constraints.md`. The agent inspects existing repo tooling (for example `.pre-commit-config.yaml`, `Makefile`, CI workflows) and writes `.malvin/checks` at the repo git root.
+2. If the agent session completes but `.malvin/checks` still has no commands, malvin exits with an error.
+3. If `.malvin/checks` already has at least one command line, malvin exits successfully without spawning an agent.
+
+Delete `.malvin/checks` to trigger discovery again.
+
+## Options
+
+Inherits global malvin options (`--model`, `--no-force`, `--verbose`, etc.). No init-specific flags.
+
+## Notes
+
+- `malvin tidy` runs the same discovery prelude when checks are absent, then continues into the tidy gate loop.
+- Discovery uses repo signals only; malvin does not invent default linters or test runners when the repo provides no signal.
+- Comment lines in `.malvin/checks` start with `#` after trimming and are ignored when running gates.
