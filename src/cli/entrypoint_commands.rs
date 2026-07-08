@@ -1,9 +1,10 @@
 use super::{
     CodeArgs, Commands, KpopArgs, SharedOpts, WorkflowCliOptions, run_inspire, run_code, run_kpop,
-    run_delight, run_explain, run_revise,
+    run_delight, run_explain, run_priors, run_revise,
 };
 use super::delight_flow::DelightArgs;
 use super::explain_flow::ExplainArgs;
+use super::priors_flow::PriorsArgs;
 use super::revise_flow::ReviseArgs;
 use clap::ArgMatches;
 
@@ -128,6 +129,30 @@ pub(crate) fn run_delight_command(
     })
 }
 
+pub(crate) fn run_priors_command(
+    mut priors: PriorsArgs,
+    shared: &mut SharedOpts,
+    matches: &clap::ArgMatches,
+) -> Result<(), String> {
+    super::loop_opts::apply_gate_loop_tenacious(super::loop_opts::GateLoopTenaciousApply {
+        subcommand: "priors",
+        max_loops: &mut priors.max_loops,
+        tenacious: priors.tenacious,
+        no_tenacious: shared.no_tenacious,
+        max_acp_retries: &mut shared.max_acp_retries,
+        matches,
+    });
+    run_async_cli(|| {
+        run_priors(
+            &mut priors,
+            shared,
+            WorkflowCliOptions {
+                force: !shared.no_force,
+            },
+        )
+    })
+}
+
 pub(crate) fn dispatch_plan_authoring_gate(
     command: Commands,
     shared: &mut SharedOpts,
@@ -135,6 +160,7 @@ pub(crate) fn dispatch_plan_authoring_gate(
 ) -> Result<(), String> {
     match command {
         Commands::Delight(delight) => run_delight_command(delight, shared, matches),
+        Commands::Priors(priors) => run_priors_command(priors, shared, matches),
         Commands::Explain(explain) => run_explain_command(explain, shared, matches),
         Commands::Revise(revise) => run_revise_command(revise, shared, matches),
         other => Err(format!("internal: unexpected plan-authoring command {other:?}")),

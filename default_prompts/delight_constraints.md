@@ -1,4 +1,5 @@
 - Understand any related VISION.md files.
+- Use 'malvin inspire' to gebetate 10 ideas first. Criticize all, and eliminate 9.g
 - Write a new pitch to `{{ out_pitch_path }}`. Malvin allocated that path at preflight; do not write elsewhere.
 {{ delight_guidance }}- Author a repo-grounded delight pitch for a feature or improvement that would delight the user.
 - Keep the pitch concise and actionable for a later implementation run. No implementation details. Format as problem-solution-benefit or what-so what-now what. 

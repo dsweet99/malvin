@@ -22,6 +22,7 @@ pub const DEFAULT_PROMPTS: &[&str] = &[
     "code_constraints.md",
     "init_constraints.md",
     "delight_constraints.md",
+    "priors_constraints.md",
     "revise_constraints.md",
     "mini_constraints.md",
     HEADER_MD,

@@ -40,6 +40,12 @@ impl KPopHardConstraints {
         skip_workspace_quality_gates: true,
         exit: KPopHardConstraintsExit::CodeTidy,
     };
+    pub const PRIORS: Self = Self {
+        skip_kpop_on_initial_pass: false,
+        recheck_gates_after_exhausted: false,
+        skip_workspace_quality_gates: true,
+        exit: KPopHardConstraintsExit::CodeTidy,
+    };
     pub const EXPLAIN: Self = Self {
         skip_kpop_on_initial_pass: false,
         recheck_gates_after_exhausted: false,
@@ -139,5 +145,16 @@ mod tests {
         );
         assert_eq!(KPopHardConstraints::DELIGHT.exit, KPopHardConstraintsExit::CodeTidy);
         assert!(KPopHardConstraints::DELIGHT.require_passing_gates_for_exit());
+    }
+
+    #[test]
+    fn priors_behavior_matches_delight_exit_policy() {
+        assert_eq!(KPopHardConstraints::PRIORS.exit, KPopHardConstraintsExit::CodeTidy);
+        assert!(KPopHardConstraints::PRIORS.require_passing_gates_for_exit());
+        const { assert!(KPopHardConstraints::PRIORS.skip_workspace_quality_gates); }
+        assert_eq!(
+            KPopHardConstraints::PRIORS.skip_kpop_on_initial_pass,
+            KPopHardConstraints::DELIGHT.skip_kpop_on_initial_pass,
+        );
     }
 }

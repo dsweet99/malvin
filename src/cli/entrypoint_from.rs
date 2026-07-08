@@ -43,6 +43,7 @@ fn entrypoint_request_missing_short_help(cli: &Cli) -> Option<Exit> {
             (inspire.request.as_ref(), "inspire")
         }
         Commands::Explain(explain) => (explain.request.as_ref(), "explain"),
+        Commands::Priors(priors) => (priors.request.as_ref(), "priors"),
         Commands::Kpop(kpop) => (kpop.requests.first(), "kpop"),
         _ => return None,
     };

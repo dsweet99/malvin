@@ -116,6 +116,13 @@ fn delight_skips_external_linter_preflight() {
 }
 
 #[test]
+fn priors_skips_external_linter_preflight() {
+    let work = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(work.path().join(".git")).unwrap();
+    assert_malvin_subcommand_not_kiss_gated_without_auth(&["priors", "topic"], Some(work.path()));
+}
+
+#[test]
 fn revise_skips_external_linter_preflight() {
     let work = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(work.path().join(".git")).unwrap();

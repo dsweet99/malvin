@@ -108,6 +108,15 @@ fn apply_gate_loop_command_defaults(
                 agent,
             },
         ),
+        Commands::Priors(priors) => apply_code_workflow_loop_defaults(
+            matches,
+            CodeWorkflowLoopMut {
+                subcommand: "priors",
+                max_loops: &mut priors.max_loops,
+                max_hypotheses: &mut priors.max_hypotheses,
+                agent,
+            },
+        ),
         Commands::Explain(explain) => apply_code_workflow_loop_defaults(
             matches,
             CodeWorkflowLoopMut {

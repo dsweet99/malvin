@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 const DEFAULT_SIBLING_MAX: usize = 9999;
 
 pub(crate) const DELIGHT_DEFAULT_OUT_PATH: &str = "pitch.md";
+pub(crate) const PRIORS_DEFAULT_OUT_PATH: &str = "priors.md";
 
 /// Relative path string for `path` when it lies under the process cwd.
 pub(crate) fn path_relative_to_cwd(path: &Path) -> Result<String, String> {

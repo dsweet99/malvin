@@ -7,6 +7,7 @@ pub fn ensure_malvin_checks_for_command(cmd: &Commands) -> Result<(), String> {
         | Commands::Adaptix(_)
         | Commands::Explain(_)
         | Commands::Delight(_)
+        | Commands::Priors(_)
         | Commands::Revise(_) => Ok(()),
         Commands::Logs(_) => {
             let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
