@@ -17,8 +17,10 @@ malvin, and grade. Default ``solve`` (Modal) and ``solve --local`` (Docker) invo
 in-sandbox ``run_task()`` per exec; inner enforcement is primary. Modal sandbox lifetime
 and local Docker ``subprocess.run`` timeouts are outer backstops with 900s headroom.
 
-Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) replays Harbor
-Dockerfile editable-install steps against the mounted workspace.
+Before the agent phase, ``prepare_task_sandbox`` (``sandbox_prep.py``) runs offline
+editable replay and declared-dependency verification probes against the mounted
+workspace. Prep failures short-abort before malvin or grade in a known-bad env.
+Modal image build reconciles declared deps when network is available.
 
 Reused DeepSWE workspaces may accumulate root-owned sandbox dirs (``.stestr``,
 ``.malvin/acp_spawn``); ``reset_workspace`` removes them via Docker when
@@ -61,6 +63,7 @@ import click
 
 from sandbox_prep import (
     collect_pip_install_intents,
+    format_prep_error,
     pins_for_task,
     prepare_task_sandbox,
     registry_image_cache_bust_commands,
@@ -2696,12 +2699,63 @@ def run_task(
     elif not grade_only:
         prep_deadline = time.monotonic() + spec.agent_timeout_sec
 
+    task_language = read_task_language(task_dir)
+    python_in_sandbox = in_sandbox and task_language == "python"
     prep_result = prepare_task_sandbox(
         spec,
         workspace,
         dry_run=dry_run,
         deadline=prep_deadline,
+        offline_editable=python_in_sandbox,
+        verify_probes=python_in_sandbox,
     )
+
+    if not prep_result.ok:
+        err_msg = (
+            prep_result.probe_errors[0]
+            if prep_result.probe_errors
+            else (
+                prep_result.sync_warnings[0]
+                if prep_result.sync_warnings
+                else format_prep_error(spec.task_id, phase="runtime prep", detail="unknown")
+            )
+        )
+        click.echo(err_msg, err=True)
+        agent_result: dict[str, Any] | None = None
+        if grade_only:
+            agent_result = None
+        elif not skip_grade or not grade_only:
+            agent_result = {"exit_code": 1, "error": err_msg, "prep_failed": True}
+        grade_result: dict[str, Any]
+        if skip_grade:
+            grade_result = {"pass": None, "reward": None, "skipped": True}
+        else:
+            grade_result = {
+                "pass": False,
+                "reward": 0.0,
+                "prep_failed": True,
+                "error": err_msg,
+            }
+        malvin_log = find_latest_malvin_log(workspace)
+        metadata = _build_run_metadata(
+            spec,
+            workspace,
+            runtime,
+            malvin_command,
+            malvin_args,
+            agent_result,
+            grade_result,
+            malvin_log,
+            grade_only=grade_only,
+            docker_image=spec.docker_image if not in_sandbox else None,
+        )
+        metadata["sandbox_prep"] = prep_result.as_dict()
+        _write_host_run_artifacts(
+            run_root, metadata, grade_result, logs_dir, dry_run=dry_run, overwrite_artifacts=True
+        )
+        _print_evaluation_summary(grade_result, agent_result, run_root)
+        _exit_from_evaluation(grade_result, agent_result)
+        return
 
     agent_result: dict[str, Any] | None = None
     if grade_only and prep_result.timed_out:
@@ -4173,8 +4227,74 @@ def _test_prepare_task_sandbox_dry_run() -> None:
             workspace,
             dry_run=True,
         )
-        assert result.sync_commands == (), result
+        assert len(result.sync_commands) == 1, result
+        assert "-e" in result.sync_commands[0]
         assert result.ok is True
+
+
+def _test_prepare_task_sandbox_probe_failure() -> None:
+    from sandbox_prep import SandboxPrepResult
+
+    probe_err = (
+        "sandbox runtime probe failed (timeout-test) — pydantic 1.10.26 violates >=2.0.0"
+    )
+    captured: list[dict[str, Any]] = []
+
+    def fake_prep(*_args: Any, **_kwargs: Any) -> SandboxPrepResult:
+        return SandboxPrepResult(
+            sync_commands=("pip install -e . --no-deps",),
+            sync_warnings=(),
+            probe_errors=(probe_err,),
+            ok=False,
+        )
+
+    def capture_artifacts(
+        _run_root: Path,
+        metadata: dict[str, Any],
+        *_args: Any,
+        **_kwargs: Any,
+    ) -> None:
+        captured.append(metadata)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        task_dir, workspace = _minimal_timeout_task_tree(Path(tmp))
+        run_root = Path(tmp) / "run"
+        run_root.mkdir()
+        mod = sys.modules[__name__]
+        with (
+            patch.object(mod, "prepare_task_sandbox", fake_prep),
+            patch.object(mod, "_write_host_run_artifacts", capture_artifacts),
+            patch.object(mod, "_print_evaluation_summary"),
+            patch.object(mod, "_exit_from_evaluation", side_effect=SystemExit(1)),
+        ):
+            try:
+                run_task(
+                    local_task_name=None,
+                    task_dir=task_dir,
+                    workspace=workspace,
+                    results_dir=run_root,
+                    malvin_command="hello",
+                    runtime="host",
+                    skip_materialize=True,
+                    grade_only=False,
+                    skip_grade=False,
+                    apply_solution=False,
+                    reset_workspace_flag=False,
+                    docker_image=None,
+                    dry_run=False,
+                    malvin_args=(),
+                )
+            except SystemExit as exc:
+                assert exc.code == 1
+            else:
+                raise AssertionError("expected SystemExit from prep failure")
+        assert captured, "expected metadata write"
+        prep = captured[0].get("sandbox_prep") or {}
+        assert prep.get("ok") is False, prep
+        assert probe_err in (prep.get("probe_errors") or []), prep
+        agent = captured[0].get("agent") or {}
+        assert agent.get("prep_failed") is True, agent
+        assert probe_err in (agent.get("error") or ""), agent
 
 
 def _minimal_timeout_task_tree(
@@ -4510,6 +4630,7 @@ def run_self_tests() -> None:
     _test_ensure_deepswe_malvin_config_seeds_home_config()
     _test_ensure_deepswe_malvin_config_skips_default_memory()
     _test_prepare_task_sandbox_dry_run()
+    _test_prepare_task_sandbox_probe_failure()
     _test_remaining_sec_floors_at_zero()
     _test_run_with_timeout_kills_slow_command()
     _test_exit_after_agent_timeout_grade_pass()

@@ -72,6 +72,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modal_sandbox_lifecycle import release_modal_sandbox
 from sandbox_prep import (
     dockerfile_image_build_commands,
+    format_prep_error,
     registry_image_cache_bust_commands,
 )
 from deepswe_run import (
@@ -1746,6 +1747,40 @@ def _image_build_shell_commands(
     return [_image_build_shell_command(cmd, workdir=workdir) for cmd in commands if cmd.strip()]
 
 
+def _looks_like_image_prep_failure(msg: str) -> bool:
+    """True when a Modal exception likely came from cache-bust or mandatory probe."""
+    lower = msg.lower()
+    if any(
+        token in lower
+        for token in (
+            "pydantic",
+            "violates",
+            "namespace drift",
+            "probe",
+            "not installed",
+        )
+    ):
+        return True
+    if "exit code" in lower and any(
+        token in lower for token in ("image", "build", "pip", "run_command", "run_commands")
+    ):
+        return True
+    return False
+
+
+def format_modal_image_prep_error(task_id: str, exc: BaseException) -> str:
+    """Map Modal image-build failures to short-abort dependency prep messages."""
+    msg = str(exc)
+    if _looks_like_image_prep_failure(msg):
+        return format_prep_error(
+            task_id,
+            phase="image build",
+            detail=msg,
+            hint="check registry cache bust / pyproject.toml reconcile",
+        )
+    return f"Modal solve failed: {msg}"
+
+
 def harbor_image(
     spec: Any,
     *,
@@ -2529,8 +2564,8 @@ def run_modal_eval(
             else:
                 grade_result["runtime"] = "modal-sandbox"
     except Exception as exc:
-        modal_error = str(exc)
-        click.echo(f"Modal solve failed: {exc}", err=True)
+        modal_error = format_modal_image_prep_error(spec.task_id, exc)
+        click.echo(modal_error, err=True)
         if agent_artifacts is not None:
             remote_meta = load_agent_sandbox_metadata(agent_artifacts)
             if remote_meta:
@@ -3933,6 +3968,54 @@ class _RecordingImage:
         return self
 
 
+def _test_format_modal_image_prep_error() -> None:
+    err = format_modal_image_prep_error(
+        "aiomonitor-task-snapshots-diff",
+        Exception("pydantic 1.10.26 violates >=2.0.0"),
+    )
+    assert "sandbox image build failed" in err
+    assert "aiomonitor-task-snapshots-diff" in err
+    assert "pydantic" in err
+
+    generic = format_modal_image_prep_error(
+        "some-task",
+        Exception("Image build failed: exit code 1"),
+    )
+    assert "sandbox image build failed" in generic
+    assert "some-task" in generic
+
+    unrelated = format_modal_image_prep_error("other-task", Exception("network timeout"))
+    assert unrelated.startswith("Modal solve failed:")
+
+
+def _test_harbor_image_aiomonitor_pydantic_reconcile() -> None:
+    tasks_root = default_deepswe_tasks_root()
+    task = tasks_root / "aiomonitor-task-snapshots-diff"
+    workspace = (
+        Path.home()
+        / ".malvin_home"
+        / "deepswe-results"
+        / "aiomonitor-task-snapshots-diff"
+        / "workspace"
+    )
+    if not task.is_dir() or not workspace.is_dir():
+        return
+    spec = parse_task_dir(task)
+    registry = MagicMock(return_value=MagicMock())
+    pulled = registry.return_value
+    pulled.run_commands = MagicMock(return_value="final-image")
+    with patch.object(modal.Image, "from_registry", registry), patch(
+        f"{__name__}.registry_image_cache_bust_commands",
+        wraps=registry_image_cache_bust_commands,
+    ) as cache_bust:
+        result = harbor_image(spec, dockerfile=spec.dockerfile, workspace=workspace)
+    assert result == "final-image"
+    cache_bust.assert_called_once()
+    run_args = pulled.run_commands.call_args[0]
+    joined = " ".join(run_args)
+    assert "pydantic" in joined, joined
+
+
 def _test_harbor_image_registry_skips_bulk_pip_replay() -> None:
     from sandbox_prep import dockerfile_bulk_pip_commands
 
@@ -4264,6 +4347,8 @@ def run_harvest_sandbox_unit_tests() -> None:
 
 def run_harbor_modal_probe_unit_tests() -> None:
     """Harbor image, modal probe, sandbox app, and self-test flag unit tests."""
+    _test_format_modal_image_prep_error()
+    _test_harbor_image_aiomonitor_pydantic_reconcile()
     _test_harbor_image_registry_skips_bulk_pip_replay()
     _test_harbor_image_prefers_registry_for_fastapi_task()
     _test_harbor_image_builds_from_dockerfile_with_cache_bust()
