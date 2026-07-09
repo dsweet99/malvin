@@ -17,6 +17,14 @@ pub fn set_command_error_run_dir(path: Option<PathBuf>) {
         .unwrap_or_else(std::sync::PoisonError::into_inner) = path;
 }
 
+/// Returns the directory currently bound for [`append_command_error_to_run_log`].
+pub fn command_error_run_dir() -> Option<PathBuf> {
+    COMMAND_ERROR_RUN_DIR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
 /// Clears the directory installed by [`set_command_error_run_dir`].
 pub fn clear_command_error_run_dir() {
     set_command_error_run_dir(None);
@@ -48,6 +56,18 @@ mod tests {
     use super::*;
     use crate::output::{format_who_tag_delim, ERROR_WHO};
     use tempfile::tempdir;
+
+    #[test]
+    fn command_error_run_dir_reads_active_binding() {
+        clear_command_error_run_dir();
+        assert_eq!(command_error_run_dir(), None);
+        let dir = tempdir().expect("tempdir");
+        let path = dir.path().to_path_buf();
+        set_command_error_run_dir(Some(path.clone()));
+        assert_eq!(command_error_run_dir(), Some(path));
+        clear_command_error_run_dir();
+        assert_eq!(command_error_run_dir(), None);
+    }
 
     #[test]
     fn append_command_error_writes_malvin_error_log() {

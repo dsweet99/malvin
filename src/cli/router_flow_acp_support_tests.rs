@@ -1,10 +1,13 @@
 //! Tests for [`super::router_flow_acp_support`].
 
 use super::{
-    iteration_backups_after_router_a, router_b_template_and_label, workspace_has_valid_checks,
-    RouterAInitSnapshotInput, RouterChecksSnapshotMode,
+    iteration_backups_after_router_a, maybe_run_router_init, router_b_template_and_label,
+    workspace_has_valid_checks, RouterAInitSnapshotInput, RouterChecksSnapshotMode,
 };
 use crate::artifacts::{MalvinChecksBackup, SessionDotfileBackups};
+use crate::cli::error_run_log::{
+    clear_command_error_run_dir, command_error_run_dir, set_command_error_run_dir,
+};
 use crate::prompts::{ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
 
 #[test]
@@ -70,6 +73,25 @@ fn iteration_backups_after_router_a_refreshes_when_init_may_run() {
             refreshed.malvin_checks,
             MalvinChecksBackup::Present(_)
         ));
+    });
+}
+
+#[test]
+fn maybe_run_router_init_restores_router_error_run_log_binding() {
+    crate::test_utils::with_isolated_home(|workspace| {
+        crate::test_utils::block_on_test_async(async {
+            crate::seed_malvin_checks(workspace, "true\n");
+            let router_dir = workspace.join("router-run");
+            std::fs::create_dir_all(&router_dir).expect("router run dir");
+            set_command_error_run_dir(Some(router_dir.clone()));
+            let (shared, _) =
+                crate::router_flow::router_flow_acp::router_flow_acp_tests::test_router_shared();
+            maybe_run_router_init(workspace, &shared, true)
+                .await
+                .expect("init skipped when checks already valid");
+            assert_eq!(command_error_run_dir(), Some(router_dir));
+            clear_command_error_run_dir();
+        });
     });
 }
 
