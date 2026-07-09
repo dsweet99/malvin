@@ -18,6 +18,7 @@ pub fn set_command_error_run_dir(path: Option<PathBuf>) {
 }
 
 /// Returns the directory currently bound for [`append_command_error_to_run_log`].
+#[cfg(test)]
 pub fn command_error_run_dir() -> Option<PathBuf> {
     COMMAND_ERROR_RUN_DIR
         .lock()

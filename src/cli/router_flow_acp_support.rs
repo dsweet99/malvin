@@ -5,7 +5,7 @@ use crate::artifacts::{
     GitignoreBackup, MalvinChecksBackup, MalvinConfigBackup, MalvinConfigWorkspaceBackup,
     RunArtifacts, SessionDotfileBackups, VisionBackup,
 };
-use crate::cli::checks_discovery_flow::{ensure_malvin_checks_discovered, ChecksDiscoveryOpts};
+use crate::cli::checks_discovery_flow::ensure_malvin_checks_discovered_via_init_subprocess;
 use crate::cli::SharedOpts;
 use crate::prompts::{PromptStore, ROUTER_B_COMPLEX_MD, ROUTER_B_SIMPLE_MD};
 use crate::router_flow::router_flow_prompt;
@@ -96,11 +96,7 @@ pub(crate) async fn maybe_run_router_init(
     if !coding_task {
         return Ok(());
     }
-    let prior_error_run_dir = crate::cli::error_run_log::command_error_run_dir();
-    let result =
-        ensure_malvin_checks_discovered(work_dir, shared, ChecksDiscoveryOpts::INIT).await;
-    crate::cli::error_run_log::set_command_error_run_dir(prior_error_run_dir);
-    result
+    ensure_malvin_checks_discovered_via_init_subprocess(work_dir, shared).await
 }
 
 pub(crate) const fn router_b_template_and_label(complexity_score: u8) -> (&'static str, &'static str) {
